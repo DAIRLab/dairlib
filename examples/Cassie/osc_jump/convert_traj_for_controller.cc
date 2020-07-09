@@ -28,8 +28,12 @@ DEFINE_string(folder_path,
 
 namespace dairlib {
 
+/// This program pre-computes the output trajectories (center of mass, pelvis
+/// orientation, feet trajectories) for the OSC controller.
+///
+
 int DoMain() {
-  // Drake system initialization stuff
+  // Drake system initialization
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
@@ -51,7 +55,6 @@ int DoMain() {
 
   auto l_toe_frame = &plant.GetBodyByName("toe_left").body_frame();
   auto r_toe_frame = &plant.GetBodyByName("toe_right").body_frame();
-  auto pelvis_frame = &plant.GetBodyByName("pelvis").body_frame();
   auto hip_left_frame = &plant.GetBodyByName("hip_left").body_frame();
   auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
   auto world = &plant.world_frame();
@@ -62,16 +65,12 @@ int DoMain() {
   auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
   auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
 
-  std::cout << traj_mode0.datapoints.rows() << std::endl;
   DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
                  traj_mode2.datapoints.cols();
 
   MatrixXd xu(nx + nx + nu, n_points);
   VectorXd times(n_points);
-
-  std::cout << "Mode transition 0 to 1: " << traj_mode0.time_vector.tail(1);
-  std::cout << "\nMode transition 1 to 2: " << traj_mode1.time_vector.tail(1);
 
   xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
   times << traj_mode0.time_vector, traj_mode1.time_vector,
@@ -82,11 +81,9 @@ int DoMain() {
   MatrixXd l_hip_points(6, n_points);
   MatrixXd r_hip_points(6, n_points);
   MatrixXd center_of_mass_points(6, n_points);
-//  MatrixXd pelvis_orientation(4, n_points);
   MatrixXd pelvis_orientation(8, n_points);
   Vector3d zero_offset = Vector3d::Zero();
 
-  std::cout << "Initial state: " << xu.block(0, 0, nx, 1) << std::endl;
   for (unsigned int i = 0; i < times.size(); ++i) {
     plant.SetPositionsAndVelocities(context.get(), xu.block(0, i, nx, 1));
     center_of_mass_points.block(0, i, 3, 1) =
@@ -108,14 +105,6 @@ int DoMain() {
     plant.CalcPointsPositions(*context, *hip_right_frame, zero_offset, *world,
                               &r_hip_pos_block);
 
-//    pelvis_orientation.block(1, i, 3, 1) =
-//        plant.CalcRelativeRotationMatrix(*context, *world, *pelvis_frame)
-//            .ToQuaternion()
-//            .vec();
-//    pelvis_orientation(0, i) =
-//        plant.CalcRelativeRotationMatrix(*context, *world, *pelvis_frame)
-//            .ToQuaternion()
-//            .w();
     pelvis_orientation.block(0, i, 4, 1) = xu.block(0, i, 4, 1);
     pelvis_orientation.block(4, i, 4, 1) = xu.block(nx, i, 4, 1);
 
@@ -139,20 +128,13 @@ int DoMain() {
     plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                             *hip_right_frame, zero_offset,
                                             *world, *world, &J_r_hip);
-    //    plant.CalcJacobianAngularVelocity(*context, JacobianWrtVariable::kV,
-    //                                      *r_toe_frame, *world, *world,
-    //                                      &J_pelvis_orientation);
     center_of_mass_points.block(3, i, 3, 1) = J_CoM * xu.block(nq, i, nv, 1);
     l_foot_points.block(3, i, 3, 1) = J_l_foot * xu.block(nq, i, nv, 1);
     r_foot_points.block(3, i, 3, 1) = J_r_foot * xu.block(nq, i, nv, 1);
     l_hip_points.block(3, i, 3, 1) = J_l_hip * xu.block(nq, i, nv, 1);
     r_hip_points.block(3, i, 3, 1) = J_r_hip * xu.block(nq, i, nv, 1);
-    //    pelvis_orientation.block(4, i, 3, 1) =
-    //        J_pelvis_orientation * xu.block(nq, i, nv, 1);
   }
 
-  //  l_foot_points.topRows(3) = l_foot_points.topRows(3) - l_hip_points;
-  //  r_foot_points.topRows(3) = r_foot_points.topRows(3) - r_hip_points;
   l_foot_points = l_foot_points - l_hip_points;
   r_foot_points = r_foot_points - r_hip_points;
 
@@ -185,7 +167,6 @@ int DoMain() {
                                         "pelvis_roty", "pelvis_rotz",
                                         "pelvis_rotwdot", "pelvis_rotxdot",
                                         "pelvis_rotydot", "pelvis_rotzdot"};
-  //      "pelvis_wx",   "pelvis_wy",   "pelvis_wz"};
 
   std::vector<LcmTrajectory::Trajectory> trajectories = {
       lfoot_traj_block, rfoot_traj_block, com_traj_block,

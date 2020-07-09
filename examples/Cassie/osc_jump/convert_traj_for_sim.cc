@@ -2,6 +2,7 @@
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 #include "examples/Cassie/cassie_utils.h"
+#include "multibody/multibody_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
@@ -25,6 +26,9 @@ DEFINE_string(folder_path,
 
 namespace dairlib {
 
+/// This program converts the trajectory computed using the fixed spring
+/// cassie model to the cassie model with springs. This is necessary to
+/// initialize the simulator at a particular state along the trajectory
 int DoMain() {
   // Drake system initialization stuff
   drake::systems::DiagramBuilder<double> builder;
@@ -105,8 +109,6 @@ int DoMain() {
                                            nv_wo_spr) =
       map_velocity_from_no_spring_to_spring;
 
-  std::cout << map_state_from_no_spring_to_spring << std::endl;
-
   const LcmTrajectory& loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
   auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
@@ -133,16 +135,12 @@ int DoMain() {
   state_traj_w_spr.traj_name = "cassie_jumping_trajectory_x";
   state_traj_w_spr.datapoints = x_w_spr;
   state_traj_w_spr.time_vector = times;
-  const std::vector<string>& state_names =
-      multibody::createStateAndActuatorNameVectorFromMap(
-          multibody::makeNameToPositionsMap(plant_w_spr),
-          multibody::makeNameToVelocitiesMap(plant_w_spr),
-          std::map<std::string, int>());
-  const std::vector<string>& state_dot_names =
-      multibody::createStateAndActuatorNameVectorFromMapDot(
-          multibody::makeNameToPositionsMap(plant_w_spr),
-          multibody::makeNameToVelocitiesMap(plant_w_spr),
-          std::map<std::string, int>());
+  const std::vector<string> state_names =
+      multibody::createStateNameVectorFromMap(
+          plant_w_spr);
+  const std::vector<string> state_dot_names =
+      multibody::createStateNameVectorFromMap(
+          plant_w_spr);
 
   state_traj_w_spr.datatypes.reserve(2 * nx_w_spr);
   state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),

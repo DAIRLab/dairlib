@@ -1,8 +1,5 @@
-#pragma once
+#include "systems/primitives/gaussian_noise_pass_through.h"
 
-#include "systems/sensors/gaussian_noise_pass_through.h"
-#include <memory>
-#include <utility>
 #include <drake/common/eigen_types.h>
 
 namespace dairlib {
@@ -17,11 +14,13 @@ GaussianNoisePassThrough::GaussianNoisePassThrough(
       num_inputs_(num_inputs),
       pos_variance_(pos_variance),
       vel_variance_(vel_variance) {
-  systems::OutputVector<double> input(num_positions, num_velocities, num_inputs);
-  systems::OutputVector<double> output(num_positions, num_velocities, num_inputs);
+  systems::OutputVector<double> input(num_positions, num_velocities,
+                                      num_inputs);
+  systems::OutputVector<double> output(num_positions, num_velocities,
+                                       num_inputs);
   this->DeclareVectorInputPort(input);
   this->DeclareVectorOutputPort(output,
-      &GaussianNoisePassThrough::DoCalcVectorOutput);
+                                &GaussianNoisePassThrough::DoCalcVectorOutput);
 }
 
 void GaussianNoisePassThrough::DoCalcVectorOutput(
@@ -29,16 +28,13 @@ void GaussianNoisePassThrough::DoCalcVectorOutput(
     systems::OutputVector<double>* output) const {
   const systems::OutputVector<double>& input =
       *this->template EvalVectorInput<OutputVector>(context, 0);
-//  output->SetPositions(input.GetPositions() +
-//      pos_variance_ * Eigen::VectorXd::Random
-//          (num_positions_));
-  output->SetPositions(input.GetPositions() +
-      pos_variance_ * Eigen::VectorXd::Ones
-          (num_positions_));
-  output->SetVelocities(input.GetVelocities() +
-      vel_variance_ * Eigen::VectorXd::Random(num_velocities_));
-  output->SetEfforts(input.GetEfforts());
-  output->set_timestamp(input.get_timestamp());
+
+  output->SetFrom(input);
+  output->GetMutablePositions() +=
+      pos_variance_ * Eigen::VectorXd::Random(num_positions_);
+  output->GetMutableVelocities() +=
+      vel_variance_ * Eigen::VectorXd::Random(num_velocities_);
+//  std::cout << output->
 }
 
 }  // namespace systems

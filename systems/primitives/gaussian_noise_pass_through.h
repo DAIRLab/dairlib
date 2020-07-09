@@ -10,19 +10,20 @@
 namespace dairlib {
 namespace systems {
 
-/// doublehis class is copied from drake/systems/primitives/Passdoublehrough
-/// with the modification that it only passes through a subset of the vector
-/// Unliked SubvectorPassdoublehrough, this is designed for use with
-/// doubleimeStampedVectors. It will pass through the subvector AND the timestamp.
+/// this class is copied from drake/systems/primitives/Passthrough
+/// with the modification that it adds random noise to the values it is
+/// passing through
 class GaussianNoisePassThrough final : public
     drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(GaussianNoisePassThrough)
 
   /// Constructs a pass through system (`y = u.segment(start,length)`).
-  /// @param vector_size the length of the input vector
-  /// @param start the initial index of the subvector
-  /// @param length number of elements in the subvector
+  /// @param num_positions the number of generalized positions
+  /// @param num_velocities the number of generalized velocities
+  /// @param num_inputs the number of inputs
+  /// @param pos_variance covariance matrix for the generalized position
+  /// @param vel_variance covariance matrix for the generalized velocities
   explicit GaussianNoisePassThrough(int num_positions,
                                     int num_velocities,
                                     int num_inputs,
@@ -59,12 +60,6 @@ class GaussianNoisePassThrough final : public
   int num_inputs_;
   Eigen::MatrixXd pos_variance_;
   Eigen::MatrixXd vel_variance_;
-//  int pos_start_;
-//  int pos_length_;
-//  int vel_start_;
-//  int vel_length_;
-//  int input_start_;
-//  int input_length_;
 };
 
 }  // namespace systems

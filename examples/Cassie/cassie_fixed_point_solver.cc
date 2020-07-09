@@ -82,9 +82,9 @@ void CassieFixedPointSolver(
   program.AddConstraint(q(positions_map.at("hip_pitch_left")) ==
       q(positions_map.at("hip_pitch_right")));
   program.AddConstraint(q(positions_map.at("hip_roll_left")) ==
-                        -q(positions_map.at("hip_roll_right")));
-  program.AddConstraint(q(positions_map.at("hip_yaw_left")) == 0.0);
-  program.AddConstraint(q(positions_map.at("hip_yaw_right")) == 0.0);
+      -q(positions_map.at("hip_roll_right")));
+  program.AddConstraint(q(positions_map.at("hip_yaw_right")) == 0);
+  program.AddConstraint(q(positions_map.at("hip_yaw_left")) == 0);
 
   // Add some contact force constraints: linear version
   if (linear_friction_cone) {

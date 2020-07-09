@@ -9,6 +9,7 @@
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 
+#include "attic/multibody/rigidbody_utils.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 
@@ -24,8 +25,11 @@ namespace systems {
 /// robot states as a OutputVector.
 class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
  public:
+  explicit RobotOutputReceiver(const RigidBodyTree<double>& tree);
+
   explicit RobotOutputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant);
+
 
  private:
   void CopyOutput(const drake::systems::Context<double>& context,
@@ -42,6 +46,9 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
 /// Converts a OutputVector object to LCM type lcmt_robot_output
 class RobotOutputSender : public drake::systems::LeafSystem<double> {
  public:
+  explicit RobotOutputSender(const RigidBodyTree<double>& tree,
+      const bool publish_efforts=false);
+
   explicit RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
     const bool publish_efforts=false);;
@@ -79,6 +86,8 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
 /// robot inputs as a TimestampedVector.
 class RobotInputReceiver : public drake::systems::LeafSystem<double> {
  public:
+  explicit RobotInputReceiver(const RigidBodyTree<double>& tree);
+
   explicit RobotInputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant);
 
@@ -97,6 +106,7 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
 /// an LcmPublisherSystem to publish the messages it generates.
 class RobotCommandSender : public drake::systems::LeafSystem<double> {
  public:
+  explicit RobotCommandSender(const RigidBodyTree<double>& tree);
 
   explicit RobotCommandSender(
       const drake::multibody::MultibodyPlant<double>& plant);

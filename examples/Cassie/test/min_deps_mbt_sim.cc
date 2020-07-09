@@ -53,9 +53,6 @@ int do_main(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   parser.AddModelFromFile(full_name);
 
-  plant.AddForceElement<drake::multibody::UniformGravityFieldElement>(
-      -9.81 * Eigen::Vector3d::UnitZ());
-
   plant.WeldFrames(
     plant.world_frame(), plant.GetFrameByName("pelvis"),
     drake::math::RigidTransform<double>(Eigen::Vector3d::Zero()).GetAsIsometry3());

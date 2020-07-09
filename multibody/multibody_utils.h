@@ -33,8 +33,7 @@ template <typename T>
 void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
-                    bool visualize_ground = true,
-                    const Eigen::Vector3d& normal_W = Eigen::Vector3d(0, 0, 1));
+                    Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1));
 
 /// Given a MultiBodyTree, builds a map from position name to position index
 template <typename T>
@@ -53,15 +52,15 @@ std::map<std::string, int> makeNameToActuatorsMap(
 
 /// Given a set of maps constructed from the above functions, construct a
 /// vector of state and actuator names in order of their index
-std::vector<std::string> createStateAndActuatorNameVectorFromMap(
-    const std::map<std::string, int>& pos_map,
-    const std::map<std::string, int>& vel_map,
-    const std::map<std::string, int>& act_map);
+template <typename T>
+std::vector<std::string> createStateNameVectorFromMap(
+    const drake::multibody::MultibodyPlant<T>& plant);
 
-std::vector<std::string> createStateAndActuatorNameVectorFromMapDot(
-    const std::map<std::string, int>& pos_map,
-    const std::map<std::string, int>& vel_map,
-    const std::map<std::string, int>& act_map);
+/// Given a set of maps constructed from the above functions, construct a
+/// vector of state and actuator names in order of their index
+template <typename T>
+std::vector<std::string> createActuatorNameVectorFromMap(
+    const drake::multibody::MultibodyPlant<T>& plant);
 
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the

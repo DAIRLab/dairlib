@@ -1,9 +1,7 @@
 #include <drake/lcmt_contact_results_for_viz.hpp>
 #include <drake/multibody/parsing/parser.h>
-#include <drake/systems/lcm/lcm_interface_system.h>
 #include <gflags/gflags.h>
 
-#include "dairlib/lcmt_cassie_mujoco_contact.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
@@ -15,10 +13,9 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/gaussian_noise_pass_through.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/sensors/gaussian_noise_pass_through.h"
 
-#include "drake/multibody/joints/floating_base_types.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -50,7 +47,6 @@ using examples::JumpingEventFsm;
 using examples::Cassie::osc_jump::COMTrajGenerator;
 using examples::Cassie::osc_jump::FlightFootTrajGenerator;
 using examples::Cassie::osc_jump::PelvisOrientationTrajGenerator;
-using multibody::GetBodyIndexFromName;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
@@ -63,11 +59,8 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
-DEFINE_double(balance_height, 1.125,
-              "Balancing height for Cassie before attempting the jump");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
-
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
 DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
 DEFINE_bool(contact_based_fsm, true,
@@ -77,8 +70,9 @@ DEFINE_double(transition_delay, 0.0,
               "Time to wait after trigger to "
               "transition between FSM states.");
 DEFINE_string(simulator, "DRAKE",
-              "Simulator used, important for determining "
-              "how to interpret contact information");
+              "Simulator used, important for determining how to interpret "
+              "contact information. Other options include MUJOCO and soon to "
+              "include GAZEBO.");
 DEFINE_bool(add_noise, false,
             "Whether to add gaussian noise to state "
             "inputted to controller");
@@ -92,19 +86,13 @@ int DoMain(int argc, char* argv[]) {
 
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
-  //  addCassieMultibody(&plant_w_springs, nullptr, true,
-  //                     "examples/Cassie/urdf/cassie_v2.urdf",
-  //                     true /*spring model*/, false /*loop closure*/);
   addCassieMultibody(&plant_w_springs, nullptr, true,
-                     "examples/Cassie/urdf/cassie_agility_v2.urdf",
+                     "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
-  //  addCassieMultibody(&plant_wo_springs, nullptr, true,
-  //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-  //                     false, false);
   addCassieMultibody(&plant_wo_springs, nullptr, true,
-                     "examples/Cassie/urdf/cassie_agility_fixed_springs.urdf",
-                     false, false);
+                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     false);
   plant_w_springs.Finalize();
   plant_wo_springs.Finalize();
 
@@ -183,16 +171,7 @@ int DoMain(int argc, char* argv[]) {
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
   com_traj = com_traj + offset_traj;
 
-  MatrixXd pos_cov = MatrixXd::Zero(nq, nq);
-  pos_cov(4, 4) = 0.0;
-  MatrixXd vel_cov = MatrixXd::Zero(nv, nv);
-  vel_cov(5, 5) = 0.0;
-
   /**** Initialize all the leaf systems ****/
-  SIMULATOR simulator;
-  simulator = DRAKE;  // Default is DRAKE
-  if (FLAGS_simulator == "MUJOCO") simulator = MUJOCO;
-
   drake::lcm::DrakeLcm lcm;
 
   vector<pair<const Vector3d, const Frame<double>&>> contact_points;
@@ -215,7 +194,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
       plant_w_springs, transition_times, FLAGS_contact_based_fsm,
-      FLAGS_transition_delay, (FSM_STATE)FLAGS_init_fsm_state, simulator);
+      FLAGS_transition_delay, (FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -227,9 +206,6 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  auto gaussian_noise = builder.AddSystem<systems::GaussianNoisePassThrough>(
-      plant_w_springs.num_positions(), plant_w_springs.num_velocities(),
-      plant_w_springs.num_actuators(), pos_cov, vel_cov);
 
   LcmSubscriberSystem* contact_results_sub = nullptr;
   if (FLAGS_simulator == "DRAKE") {
@@ -238,7 +214,7 @@ int DoMain(int argc, char* argv[]) {
             "CASSIE_CONTACT_DRAKE", &lcm));
   } else if (FLAGS_simulator == "MUJOCO") {
     contact_results_sub = builder.AddSystem(
-        LcmSubscriberSystem::Make<dairlib::lcmt_cassie_mujoco_contact>(
+        LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
             "CASSIE_CONTACT_MUJOCO", &lcm));
   } else if (FLAGS_simulator == "GAZEBO") {
     // TODO(yangwill): Set up contact results in Gazebo
@@ -289,10 +265,10 @@ int DoMain(int argc, char* argv[]) {
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2000;
-  W_com(1, 1) = 20;
+  W_com(1, 1) = 200;
   W_com(2, 2) = 2000;
-  MatrixXd K_p_com = 36 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 12 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
   ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
                                     &plant_w_springs, &plant_wo_springs);
   for (FSM_STATE mode : stance_modes) {
@@ -348,11 +324,20 @@ int DoMain(int argc, char* argv[]) {
 
   /*****Connect ports*****/
   // State receiver connections (Connected through LCM driven loop)
-  builder.Connect(state_receiver->get_output_port(0),
-                  gaussian_noise->get_input_port());
   drake::systems::LeafSystem<double>* controller_state_input = state_receiver;
+  std::cout << "Running with noise: " << FLAGS_add_noise << std::endl;
   if (FLAGS_add_noise) {
-    std::cout << "Running with noise: " << std::endl;
+    MatrixXd pos_cov = MatrixXd::Zero(plant_w_springs.num_positions(),
+                                      plant_w_springs.num_positions());
+    pos_cov(4, 4) = 0.0;
+    MatrixXd vel_cov = MatrixXd::Zero(plant_w_springs.num_velocities(),
+                                      plant_w_springs.num_velocities());
+    vel_cov(5, 5) = 0.0;
+    auto gaussian_noise = builder.AddSystem<systems::GaussianNoisePassThrough>(
+        plant_w_springs.num_positions(), plant_w_springs.num_velocities(),
+        plant_w_springs.num_actuators(), pos_cov, vel_cov);
+    builder.Connect(state_receiver->get_output_port(0),
+                    gaussian_noise->get_input_port());
     controller_state_input = gaussian_noise;
   }
 
@@ -383,8 +368,6 @@ int DoMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(controller_state_input->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
-                  pelvis_rot_traj_generator->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
                   com_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),

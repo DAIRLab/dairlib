@@ -1,4 +1,4 @@
-#include "com_traj_generator.h"
+#include "examples/Cassie/osc_jump/com_traj_generator.h"
 
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
@@ -73,25 +73,21 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
       discrete_state->get_mutable_vector(com_x_offset_idx_).get_mutable_value();
 
   const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+      this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const auto robot_output =
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
   double timestamp = robot_output->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
 
   if (prev_fsm_state(0) != fsm_state(0)) {  // When to reset the clock
     prev_fsm_state(0) = fsm_state(0);
 
-    VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
-    const OutputVector<double>* robot_output =
-        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
     VectorXd q = robot_output->GetPositions();
     plant_.SetPositions(context_.get(), q);
     VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
     com_x_offset(0) =
-        0.025 + (center_of_mass(0) - crouch_traj_.value(current_time)(0));
+        kLandingOffset + (center_of_mass(0) - crouch_traj_.value(timestamp)(0));
     // TODO(yangwill) Remove this or calculate it based on the robot's state.
     // Actually, this is necessary due to the traj opt solution's placement
     // of the final CoM
@@ -108,14 +104,15 @@ COMTrajGenerator::generateBalanceTraj(
   VectorXd q = robot_output->GetPositions();
   plant_.SetPositions(context_.get(), q);
 
-  Vector3d targetCoM = crouch_traj_.value(time_offset_);
-  Vector3d currCoM = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d target_com = crouch_traj_.value(time_offset_);
+  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
 
   // generate a trajectory from current position to target position
   MatrixXd centerOfMassPoints(3, 2);
-  centerOfMassPoints << currCoM, targetCoM;
+  centerOfMassPoints << curr_com, target_com;
   VectorXd breaks_vector(2);
-  breaks_vector << time, time + 20.0 * (currCoM - targetCoM).norm();
+  breaks_vector << time,
+      time + kTransitionSpeed * (curr_com - target_com).norm();
 
   return PiecewisePolynomial<double>::FirstOrderHold(breaks_vector,
                                                      centerOfMassPoints);
@@ -128,22 +125,19 @@ COMTrajGenerator::generateCrouchTraj(
   // This assumes that the crouch is starting at the exact position as the
   // start of the target trajectory which should be handled by balance
   // trajectory
-  const PiecewisePolynomial<double>& com_traj =
-      crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);
 
-  return com_traj;
+  return crouch_traj_;
 }
 
 drake::trajectories::PiecewisePolynomial<double>
 COMTrajGenerator::generateLandingTraj(
     const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
     double time) const {
-  const VectorXd com_x_offset =
-      context.get_discrete_state().get_vector(com_x_offset_idx_).get_value();
+  const auto& com_x_offset =
+      context.get_discrete_state().get_vector(com_x_offset_idx_);
 
   // Only offset the x-position
-  Vector3d offset;
-  offset << com_x_offset(0), 0, 0;
+  Vector3d offset(com_x_offset[0], 0, 0);
 
   auto traj_segment =
       crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);
@@ -159,31 +153,25 @@ void COMTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const auto robot_output =
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
   double time = robot_output->get_timestamp();
 
   // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
+  const auto& fsm_state =
+      this->EvalVectorInput(context, fsm_port_)->get_value();
 
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   const drake::VectorX<double>& x = robot_output->GetState();
 
-  switch (static_cast<int>(fsm_state(0))) {
-    case (BALANCE):  //  BALANCE
-      *casted_traj = generateBalanceTraj(context, x, time);
-      break;
-    case (CROUCH):  //  CROUCH
-      *casted_traj = generateCrouchTraj(context, x, time);
-      break;
-    case (LAND):  //  LAND
-      *casted_traj = generateLandingTraj(context, x, time);
-      break;
-  }
+  if (fsm_state[0] == BALANCE)
+    *casted_traj = generateBalanceTraj(context, x, time);
+  else if (fsm_state[0] == CROUCH)
+    *casted_traj = generateCrouchTraj(context, x, time);
+  else if (fsm_state[0] == LAND)
+    *casted_traj = generateLandingTraj(context, x, time);
 }
 
 }  // namespace dairlib::examples::Cassie::osc_jump

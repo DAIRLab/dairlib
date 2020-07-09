@@ -52,8 +52,7 @@ void setContext(const MultibodyPlant<T>& plant,
 
 template <typename T>
 void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
-                    double mu_static, double mu_kinetic,
-                    bool visualize_ground, const Eigen::Vector3d& normal_W) {
+                double mu_static, double mu_kinetic, Eigen::Vector3d normal_W) {
   if (!plant->geometry_source_is_registered()) {
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
@@ -69,10 +68,8 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
       plant->world_body(), X_WG, HalfSpace(), "collision", friction);
 
   // Add visual for the ground.
-  if (visualize_ground) {
-    plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
-                                  "visual");
-  }
+  plant->RegisterVisualGeometry(
+      plant->world_body(), X_WG, HalfSpace(), "visual");
 }
 
 /// Construct a map between joint names and position indices
@@ -246,47 +243,33 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   return name_to_index_map;
 }
 
-vector<string> createStateAndActuatorNameVectorFromMap(
-    const map<string, int>& pos_map, const map<string, int>& vel_map,
-    const map<string, int>& act_map) {
-  unsigned long nq = pos_map.size();
-  unsigned long nv = vel_map.size();
-  vector<string> state_and_actuator_names(nq + nv + act_map.size());
+template <typename T>
+vector<string> createStateNameVectorFromMap(
+    const MultibodyPlant<T>& plant) {
+  map<string, int> pos_map = makeNameToPositionsMap(plant);
+  map<string, int> vel_map = makeNameToVelocitiesMap(plant);
+  vector<string> state_names(pos_map.size() + vel_map.size());
 
   for (const auto& name_index_pair : pos_map) {
-    state_and_actuator_names[name_index_pair.second] = name_index_pair.first;
+    state_names[name_index_pair.second] = name_index_pair.first;
   }
   for (const auto& name_index_pair : vel_map) {
-    state_and_actuator_names[name_index_pair.second + nq] =
+    state_names[name_index_pair.second + pos_map.size()] =
         name_index_pair.first;
   }
-  for (const auto& name_index_pair : act_map) {
-    state_and_actuator_names[name_index_pair.second + nq + nv] =
-        name_index_pair.first;
-  }
-  return state_and_actuator_names;
+  return state_names;
 }
 
-vector<string> createStateAndActuatorNameVectorFromMapDot(
-    const map<string, int>& pos_map, const map<string, int>& vel_map,
-    const map<string, int>& act_map) {
-  unsigned long nq = pos_map.size();
-  unsigned long nv = vel_map.size();
-  vector<string> state_and_actuator_names(nq + nv + act_map.size());
+template <typename T>
+vector<string> createActuatorNameVectorFromMap(
+    const MultibodyPlant<T>& plant) {
+  map<string, int> act_map = makeNameToActuatorsMap(plant);
+  vector<string> actuator_names(act_map.size());
 
-  for (const auto& name_index_pair : pos_map) {
-    state_and_actuator_names[name_index_pair.second] = name_index_pair.first
-        + "_dot";
-  }
-  for (const auto& name_index_pair : vel_map) {
-    state_and_actuator_names[name_index_pair.second + nq] =
-        name_index_pair.first + "_dot";
-  }
   for (const auto& name_index_pair : act_map) {
-    state_and_actuator_names[name_index_pair.second + nq + nv] =
-        name_index_pair.first + "_dot";
+    actuator_names[name_index_pair.second] = name_index_pair.first;
   }
-  return state_and_actuator_names;
+  return actuator_names;
 }
 
 bool JointsWithinLimits(const MultibodyPlant<double>& plant,
@@ -348,7 +331,11 @@ template map<string, int> makeNameToVelocitiesMap<double>(const MultibodyPlant<d
 template map<string, int> makeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, bool visualize_ground, const Eigen::Vector3d& normal_W);  // NOLINT
+template vector<string> createStateNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> createStateNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const VectorX<double>& state, const VectorX<double>& input);  // NOLINT

@@ -8,7 +8,6 @@ namespace dairlib {
 namespace examples {
 
 enum FSM_STATE { BALANCE, CROUCH, FLIGHT, LAND};
-enum SIMULATOR { DRAKE, MUJOCO, GAZEBO};
 
 /// Event based FSM for jumping with option to change to a time-based FSM
 /// @param[plant] The MultibodyPlant that this FSM operates with
@@ -23,8 +22,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   JumpingEventFsm(const drake::multibody::MultibodyPlant<double>& plant,
                   const std::vector<double>& transition_times,
                   bool contact_based = true, double delay_time = 0.0,
-                  FSM_STATE init_state = BALANCE,
-                  SIMULATOR simulator_type = DRAKE);
+                  FSM_STATE init_state = BALANCE);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -60,7 +58,6 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   int transition_flag_idx_;
 
   const FSM_STATE init_state_;
-  const SIMULATOR simulator_type_;
 };
 
 }  // namespace examples

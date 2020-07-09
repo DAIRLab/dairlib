@@ -9,7 +9,8 @@
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
+#include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
@@ -38,8 +39,6 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using dairlib::goldilocks_models::readCSV;
-using dairlib::goldilocks_models::writeCSV;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
@@ -176,8 +175,6 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
       parser.AddModelFromFile(full_name);
-      plant_ik.mutable_gravity_field().set_gravity_vector(
-          -9.81 * Eigen::Vector3d::UnitZ());
       plant_ik.Finalize();
 
       // Visualize
@@ -270,8 +267,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   string full_name =
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   // Create maps for joints

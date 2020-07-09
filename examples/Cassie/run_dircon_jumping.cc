@@ -1,16 +1,15 @@
 #include <chrono>
 #include <memory>
 #include <string>
-#include <gflags/gflags.h>
-
-#include "common/find_resource.h"
-#include "drake/multibody/parsing/parser.h"
 
 #include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/solvers/choose_best_solver.h>
 #include <drake/solvers/snopt_solver.h>
 #include <drake/systems/analysis/simulator.h>
+#include <gflags/gflags.h>
+
+#include "common/find_resource.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -19,6 +18,8 @@
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
+
+#include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
@@ -42,6 +43,7 @@ using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
 using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
+using dairlib::systems::trajectory_optimization ::PointPositionConstraint;
 using drake::math::RotationMatrix;
 using drake::multibody::Body;
 using drake::multibody::MultibodyPlant;
@@ -85,7 +87,7 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
                                   const MultibodyPlant<double>& plant);
 MatrixXd loadSavedDecisionVars(const string& filepath);
 
-MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,
+MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,
                                      const PiecewisePolynomial<double>& inputs,
                                      VectorXd times);
 vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
@@ -93,42 +95,6 @@ vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
                                             const map<string, int>& act_map);
 void printConstraint(const shared_ptr<HybridDircon<double>>& trajopt,
                      const MathematicalProgramResult& result);
-
-// Position constraint of a body origin in one dimension (x, y, or z)
-class OneDimBodyPosConstraint : public solvers::NonlinearConstraint<double> {
- public:
-  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
-                          int xyz_idx, double lb, double ub)
-      : solvers::NonlinearConstraint<double>(
-            1, plant->num_positions(), VectorXd::Ones(1) * lb,
-            VectorXd::Ones(1) * ub, body_name + "_constraint"),
-        plant_(plant),
-        body_(plant->GetBodyByName(body_name)),
-        xyz_idx_(xyz_idx) {}
-  ~OneDimBodyPosConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorXd q = x;
-
-    std::unique_ptr<drake::systems::Context<double>> context =
-        plant_->CreateDefaultContext();
-    plant_->SetPositions(context.get(), q);
-
-    VectorXd pt(3);
-    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
-                                      Vector3d::Zero(), plant_->world_frame(),
-                                      &pt);
-    *y = pt.segment(xyz_idx_, 1);
-  };
-
- private:
-  const MultibodyPlant<double>* plant_;
-  const drake::multibody::Body<double>& body_;
-  // xyz_idx_ takes value of 0, 1 or 2.
-  // 0 is x, 1 is y and 2 is z component of the position vector.
-  const int xyz_idx_;
-};
 
 void DoMain() {
   // Drake system initialization stuff
@@ -286,7 +252,8 @@ void DoMain() {
   std::cout << "Adding kinematic constraints: " << std::endl;
   setKinematicConstraints(trajopt.get(), plant);
   std::cout << "Setting initial conditions: " << std::endl;
-  vector<int> mode_lengths = trajopt->mode_lengths();
+  vector<int> mode_lengths = {FLAGS_knot_points, FLAGS_knot_points,
+                              FLAGS_knot_points};
 
   int num_knot_points = trajopt->N();
   std::cout << "nq: " << n_q << endl;
@@ -334,7 +301,6 @@ void DoMain() {
       x_guess << q_guess_stance[i], v_guess_stance[i];
       trajopt->SetInitialGuess(trajopt->state(knot_point), x_guess);
     }
-
   }
 
   // To avoid NaN quaternions
@@ -407,21 +373,21 @@ void DoMain() {
     traj_block.time_vector =
         Eigen::Map<Eigen::VectorXd>(breaks_copy.data(), breaks_copy.size())
             .segment(FLAGS_knot_points * mode, FLAGS_knot_points);
-    traj_block.datapoints = generate_state_input_matrix(state_traj, input_traj,
+    traj_block.datapoints = generateStateAndInputMatrix(state_traj, input_traj,
                                                         traj_block.time_vector);
     // To store x and xdot at the knot points
     const vector<string>& datatypes_wo_inputs =
-        multibody::createStateAndActuatorNameVectorFromMap(pos_map, vel_map,
-            std::map<string, int>());
+        multibody::createStateNameVectorFromMap(plant);
     const vector<string>& datatypes_w_inputs =
-        multibody::createStateAndActuatorNameVectorFromMap(pos_map, vel_map,
-            act_map);
+        multibody::createActuatorNameVectorFromMap(plant);
     traj_block.datatypes.reserve(datatypes_wo_inputs.size() +
                                  datatypes_w_inputs.size());
     traj_block.datatypes.insert(traj_block.datatypes.end(),
-        datatypes_wo_inputs.begin(), datatypes_wo_inputs.end());
+                                datatypes_wo_inputs.begin(),
+                                datatypes_wo_inputs.end());
     traj_block.datatypes.insert(traj_block.datatypes.end(),
-        datatypes_w_inputs.begin(), datatypes_w_inputs.end());
+                                datatypes_w_inputs.begin(),
+                                datatypes_w_inputs.end());
     std::cout << "datatypes size: " << traj_block.datatypes.size() << std::endl;
     trajectories.push_back(traj_block);
     trajectory_names.push_back(traj_block.traj_name);
@@ -456,7 +422,7 @@ void printConstraint(const shared_ptr<HybridDircon<double>>& trajopt,
     auto y = trajopt->EvalBinding(binding, result.GetSolution());
     auto c = binding.evaluator();
     bool isSatisfied = (y.array() >= c->lower_bound().array() - tol).all() &&
-        (y.array() <= c->upper_bound().array() + tol).all();
+                       (y.array() <= c->upper_bound().array() + tol).all();
     if (!isSatisfied) {
       cout << "Constraint violation: " << c->get_description() << endl;
       MatrixXd tmp(y.size(), 3);
@@ -484,7 +450,8 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // Get the decision variables that will be used
   int N = trajopt->N();
-  auto mode_lengths = trajopt->mode_lengths();
+  std::vector<int> mode_lengths = {FLAGS_knot_points, FLAGS_knot_points,
+                                   FLAGS_knot_points};
   auto x0 = trajopt->initial_state();
   auto x_top = trajopt->state(N / 2);
   auto xf = trajopt->final_state();
@@ -507,12 +474,11 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
 
-
   // Jumping height constraints
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
                                     x0(pos_map.at("base_z")));
   trajopt->AddBoundingBoxConstraint(FLAGS_jump_height + rest_height - eps,
-      FLAGS_jump_height + rest_height + eps,
+                                    FLAGS_jump_height + rest_height + eps,
                                     x_top(pos_map.at("base_z")));
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
                                     xf(pos_map.at("base_z")));
@@ -521,7 +487,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddLinearConstraint(VectorXd::Zero(n_v) == x0.tail(n_v));
   trajopt->AddLinearConstraint(VectorXd::Zero(n_v) == xf.tail(n_v));
   trajopt->AddLinearConstraint(VectorXd::Zero(n_v) ==
-      x_second_to_last.tail(n_v));
+                               x_second_to_last.tail(n_v));
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
@@ -591,11 +557,14 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // toe position constraint in y direction (avoid leg crossing)
   // tighter constraint than before
-  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", 1, 0.05, 0.6);
-  auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", 1, -0.6, -0.05);
-  for (int mode = 0; mode < 3; ++mode){
+  auto left_foot_constraint = std::make_shared<PointPositionConstraint<double>>(
+      plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+      0.05 * VectorXd::Ones(1), 0.6 * VectorXd::Ones(1));
+  auto right_foot_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          -0.6 * VectorXd::Ones(1), -0.05 * VectorXd::Ones(1));
+  for (int mode = 0; mode < 3; ++mode) {
     for (int index = 0; index < mode_lengths[mode]; index++) {
       // Assumes mode_lengths are the same across modes
       auto x = trajopt->state((mode_lengths[mode] - 1) * mode + index);
@@ -896,7 +865,7 @@ MatrixXd loadSavedDecisionVars(const string& filepath) {
       .datapoints;
 }
 
-MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,
+MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,
                                      const PiecewisePolynomial<double>& inputs,
                                      VectorXd times) {
   int num_states = states.value(0).size();

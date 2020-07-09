@@ -1,4 +1,5 @@
 #include "flight_foot_traj_generator.h"
+
 #include "multibody/multibody_utils.h"
 
 using std::cout;
@@ -15,6 +16,7 @@ using dairlib::multibody::createContext;
 using dairlib::systems::OutputVector;
 using drake::multibody::BodyFrame;
 using drake::multibody::Frame;
+using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -24,40 +26,39 @@ using drake::systems::EventStatus;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
-using drake::multibody::JacobianWrtVariable;
 
 namespace dairlib::examples::Cassie::osc_jump {
 
 FlightFootTrajGenerator::FlightFootTrajGenerator(
     const MultibodyPlant<double>& plant, const string& hip_name,
-    bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj, double
-    time_offset)
+    bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj,
+    double time_offset)
     : plant_(plant),
-      hip_frame_(plant.GetFrameByName(hip_name)),
       world_(plant.world_frame()),
-      foot_traj_(foot_traj){
+      hip_frame_(plant.GetFrameByName(hip_name)),
+      foot_traj_(foot_traj) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
 
   if (isLeftFoot) {
     this->set_name("l_foot_traj");
     this->DeclareAbstractOutputPort("l_foot_traj", traj_inst,
-        &FlightFootTrajGenerator::CalcTraj);
+                                    &FlightFootTrajGenerator::CalcTraj);
   } else {
     this->set_name("r_foot_traj");
     this->DeclareAbstractOutputPort("r_foot_traj", traj_inst,
-        &FlightFootTrajGenerator::CalcTraj);
+                                    &FlightFootTrajGenerator::CalcTraj);
   }
 
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
-              plant_.num_velocities(),
-              plant_.num_actuators()))
+                                                        plant_.num_velocities(),
+                                                        plant_.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
-  //Shift trajectory by time_offset
+  // Shift trajectory by time_offset
   foot_traj_.shiftRight(time_offset);
 }
 
@@ -96,25 +97,20 @@ void FlightFootTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*) this->EvalVectorInput(context, state_port_);
+  const auto robot_output =
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
   VectorXd x = robot_output->GetState();
   double timestamp = robot_output->get_timestamp();
 
   // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-      (BasicVector<double>*) this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
+  const auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
 
   auto* casted_traj =
-      (PiecewisePolynomial<double>*) dynamic_cast<PiecewisePolynomial<double>*>(
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  switch ((int) fsm_state(0)) {
-    case (FLIGHT):  // FLIGHT
-      *casted_traj = generateFlightTraj(context, robot_output->GetState(),
-          timestamp);
-      break;
-    default:break;
+  if (fsm_state[0] == FLIGHT) {
+    *casted_traj =
+        generateFlightTraj(context, robot_output->GetState(), timestamp);
   }
 }
 

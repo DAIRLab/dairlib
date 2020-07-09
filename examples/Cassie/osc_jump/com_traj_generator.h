@@ -2,7 +2,7 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 
-#include "jumping_event_based_fsm.h"
+#include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 
@@ -63,6 +63,12 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   int state_port_;
   int fsm_port_;
+
+  static constexpr double kTransitionSpeed = 20.0; // 20 m/s
+  // The trajectory optimization solution sets the final CoM very close to
+  // rear toe contacts - this is an offset to move it closer to the center of
+  // the support polygon
+  static constexpr double kLandingOffset = 0.025; // 0.025 m (2.5cm)
 };
 
 }  // namespace dairlib::examples::Cassie::osc_jump

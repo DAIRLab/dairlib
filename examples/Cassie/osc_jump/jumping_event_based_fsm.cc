@@ -90,6 +90,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   // The fsm state will change transition_delay_ seconds after the guard
   // condition was first triggered.
   // This supports both contact-based and time-based guard conditions
+  // TODO(yangwill) Remove timing delays once hardware testing is finished
   if (fsm_state(0) == BALANCE) {
     if (timestamp > transition_times_[BALANCE]) {
       fsm_state << CROUCH;

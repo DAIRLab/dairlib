@@ -23,7 +23,7 @@
 #include "attic/systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "attic/systems/trajectory_optimization/hybrid_dircon.h"
 #include "attic/systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -119,7 +119,7 @@ void visualizeGait(std::string file, int steps, double rate) {
                                                         options_list);
 
   // read in file and set decision variable values
-  MatrixXd z = dairlib::goldilocks_models::readCSV(file);
+  MatrixXd z = readCSV(file);
 
   // go through solver interface
   auto solver = std::make_shared<drake::solvers::SnoptSolver>();

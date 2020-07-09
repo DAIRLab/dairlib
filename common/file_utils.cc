@@ -1,5 +1,5 @@
 #include <vector>
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 #include "drake/common/drake_assert.h"
 
 using Eigen::MatrixXd;
@@ -17,7 +17,6 @@ const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
                                        Eigen::DontAlignCols, ", ", "\n");
 
 namespace dairlib {
-namespace goldilocks_models {
 
 MatrixXd readCSV(const string & path) {
     ifstream indata;
@@ -48,5 +47,4 @@ void writeCSV(const std::string& path, const MatrixXd& M) {
   outfile.close();
 }
 
-}  // namespace goldilocks_models
 }  // namespace dairlib

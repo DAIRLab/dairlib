@@ -111,7 +111,7 @@ int do_main(int argc, char* argv[]) {
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
+          "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out

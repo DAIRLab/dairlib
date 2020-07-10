@@ -1,5 +1,33 @@
 #include "examples/goldilocks_models/find_models/goldilocks_model_traj_opt.h"
 
+using std::cout;
+using std::endl;
+using std::map;
+using std::string;
+using std::vector;
+
+using drake::VectorX;
+using drake::geometry::SceneGraph;
+using drake::multibody::Body;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::Cost;
+using drake::solvers::MathematicalProgramResult;
+using drake::solvers::MatrixXDecisionVariable;
+using drake::solvers::VectorXDecisionVariable;
+using drake::symbolic::Expression;
+using drake::symbolic::Variable;
+using drake::systems::rendering::MultibodyPositionToGeometryPose;
+using drake::systems::trajectory_optimization::MultipleShooting;
+using drake::trajectories::PiecewisePolynomial;
+using Eigen::Matrix3Xd;
+using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+
+using dairlib::systems::trajectory_optimization::HybridDircon;
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -9,17 +37,15 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     const ReducedOrderModel& rom,
     std::unique_ptr<HybridDircon<double>> dircon_in,
     const MultibodyPlant<double>& plant,
-    const std::vector<int> & num_time_samples,
-    bool is_get_nominal,
-    bool is_add_tau_in_cost,
-    int rom_option, int robot_option, double constraint_scale) {
+    const std::vector<int>& num_time_samples, bool is_get_nominal,
+    bool is_add_tau_in_cost, int rom_option, int robot_option,
+    double constraint_scale) {
   int n_tau = rom.n_tau();
 
   // Get total sample ponits
   int N = 0;
-  for (uint i = 0; i < num_time_samples.size(); i++)
-    N += num_time_samples[i];
-  N -= num_time_samples.size() - 1; //Overlaps between modes
+  for (uint i = 0; i < num_time_samples.size(); i++) N += num_time_samples[i];
+  N -= num_time_samples.size() - 1;  // Overlaps between modes
 
   // Members assignment
   dircon = std::move(dircon_in);
@@ -33,9 +59,10 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
   // Constraints
   if (!is_get_nominal) {
     // Create dynamics constraint (pointer)
-    dynamics_constraint_at_head = make_shared<find_models::DynamicsConstraint>(
-        rom, plant, true);
-    // dynamics_constraint_at_tail = make_shared<find_models::DynamicsConstraint>(
+    dynamics_constraint_at_head =
+        std::make_shared<find_models::DynamicsConstraint>(rom, plant, true);
+    // dynamics_constraint_at_tail =
+    // std::make_shared<find_models::DynamicsConstraint>(
     //                                n_s, n_feature_s, theta_s,
     //                                n_sDDot, n_feature_sDDot, theta_sDDot,
     //                                n_tau, B_tau, plant, plant_double,
@@ -48,8 +75,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       // no constraint, so we don't need to scale
     } else if (robot_option == 0) {
       if (rom_option == 0) {
-//        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 3500.0));
-//        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 600.0));
+        //        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 /
+        //        3500.0)); constraint_scale_map.insert(std::pair<int,
+        //        double>(1, 1.0 / 600.0));
       } else if (rom_option == 1) {
         // Not tuned yet
       } else {
@@ -57,8 +85,10 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         DRAKE_DEMAND(false);
       }
     } else if (robot_option == 1) {
-      // we can use `rom_scale` to avoid scaling the constraint down too much to have effective accuracy
+      // we can use `rom_scale` to avoid scaling the constraint down too much to
+      // have effective accuracy
       double rom_scale = 100;
+      // clang-format off
       if (rom_option == 0) {
         constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 3200.0 * rom_scale));
@@ -83,6 +113,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);
       }
+      // clang-format on
     } else {
       // The scaling of others hasn't tuned yet
       DRAKE_DEMAND(false);
@@ -160,7 +191,6 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
 
 }  // end of constructor
 
-
 Eigen::VectorBlock<const VectorXDecisionVariable>
 GoldilocksModelTrajOpt::reduced_model_input(int index, int n_tau) const {
   DRAKE_DEMAND(index >= 0 && index < num_knots_);
@@ -214,14 +244,14 @@ void GoldilocksModelTrajOpt::ConstructStateCubicSplineInfo(
       states->col(k) = xk;
       inputs.col(k) = uk;
       auto context = multibody::createContext(plant, xk, uk);
-      constraints[i]->updateData(*context, result.GetSolution(dircon->force(i, j)));
+      constraints[i]->updateData(*context,
+                                 result.GetSolution(dircon->force(i, j)));
       derivatives->col(k) =
           drake::math::DiscardGradient(constraints[i]->getXDot());
     }
-    mode_start += num_time_samples[i] -1;
+    mode_start += num_time_samples[i] - 1;
   }
 }
 
 }  // namespace goldilocks_models
 }  // namespace dairlib
-

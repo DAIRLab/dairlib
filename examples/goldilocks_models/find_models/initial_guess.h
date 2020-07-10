@@ -16,7 +16,8 @@ namespace dairlib::goldilocks_models {
 std::string SetInitialGuessByInterpolation(const std::string& directory,
                                            int iter, int sample,
                                            const TasksGenerator* task_gen,
-                                           const Task& task, const ReducedOrderModel& rom,
+                                           const Task& task,
+                                           const ReducedOrderModel& rom,
                                            bool use_database, int robot);
 // set scale for theta and gamma
 Eigen::VectorXd GetThetaScale(const std::string& directory, int iter);

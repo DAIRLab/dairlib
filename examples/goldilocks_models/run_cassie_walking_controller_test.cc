@@ -14,6 +14,7 @@
 //   max: 0.15 ms
 
 // After using the MBP's context from OSC
+//   (commit number for reference: a664bc7554e790ca842e7c051cd333601700a8f1)
 // UpdateYdotAndError::UpdateJdotV()
 //   min: 0.068 ms
 //   ave: 0.09 ms

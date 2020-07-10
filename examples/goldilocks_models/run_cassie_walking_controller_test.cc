@@ -6,12 +6,22 @@
 //   (benchmark data size: 399 number of samples)
 // UpdateYdotAndError::UpdateJdotV()
 //   min: 0.077 ms
-//   max: 0.27 ms
 //   ave: 0.12 ms
+//   max: 0.27 ms
 // UpdateYdotAndError::UpdateJ()
 //   min: 0.038 ms
-//   max: 0.15 ms
 //   ave: 0.06 ms
+//   max: 0.15 ms
+
+// After using the MBP's context from OSC
+// UpdateYdotAndError::UpdateJdotV()
+//   min: 0.068 ms
+//   ave: 0.09 ms
+//   max: 0.14 ms
+// UpdateYdotAndError::UpdateJ()
+//   min: 0.030 ms
+//   ave: 0.044 ms
+//   max: 0.33 ms
 
 #include <gflags/gflags.h>
 #include <string>
@@ -82,7 +92,6 @@ DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 
-
 /// Center of mass model (only for testing)
 /// Note that this is not LIPM. The COM is not wrt stance foot.
 class Com : public ReducedOrderModel {
@@ -93,14 +102,13 @@ class Com : public ReducedOrderModel {
   };
 
   Com(const drake::multibody::MultibodyPlant<double>& plant,
-       const MonomialFeatures& mapping_basis,
-       const MonomialFeatures& dynamic_basis, int world_dim)
+      const MonomialFeatures& mapping_basis,
+      const MonomialFeatures& dynamic_basis, int world_dim)
       : ReducedOrderModel(world_dim, 0, MatrixX<double>::Zero(world_dim, 0),
                           world_dim + mapping_basis.length(),
-                          (world_dim - 1) + dynamic_basis.length(), mapping_basis,
-                          dynamic_basis, "COM"),
+                          (world_dim - 1) + dynamic_basis.length(),
+                          mapping_basis, dynamic_basis, "COM"),
         plant_(plant),
-        context_(plant_.CreateDefaultContext()),
         world_(plant_.world_frame()),
         world_dim_(world_dim) {
     DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
@@ -129,9 +137,8 @@ class Com : public ReducedOrderModel {
   Com(const Com& old_obj)
       : ReducedOrderModel(old_obj),
         plant_(old_obj.plant()),
-        context_(old_obj.plant().CreateDefaultContext()),
         world_(old_obj.world()),
-        world_dim_(old_obj.world_dim()) {};
+        world_dim_(old_obj.world_dim()){};
 
   std::unique_ptr<ReducedOrderModel> Clone() const override {
     return std::make_unique<Com>(*this);
@@ -139,10 +146,10 @@ class Com : public ReducedOrderModel {
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
-      const drake::VectorX<double>& q) const final {
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final {
     // Get CoM position
-    plant_.SetPositions(context_.get(), q);
-    VectorX<double> CoM = plant_.CalcCenterOfMassPosition(*context_);
+    VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
 
     VectorX<double> feature(n_feature_y());
     if (world_dim_ == 2) {
@@ -160,18 +167,17 @@ class Com : public ReducedOrderModel {
     return feature;
   };
   drake::VectorX<double> EvalMappingFeatJV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final {
-    plant_.SetPositions(context_.get(), q);
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final {
     // Get CoM velocity
     MatrixX<double> J_com(3, plant_.num_velocities());
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+        context, JacobianWrtVariable::kV, world_, world_, &J_com);
     VectorX<double> JV_CoM = J_com * v;
 
     // Convert v to qdot
     VectorX<double> qdot(plant_.num_positions());
-    plant_.MapVelocityToQDot(*context_, v, &qdot);
+    plant_.MapVelocityToQDot(context, v, &qdot);
 
     VectorX<double> ret(n_feature_y());
     if (world_dim_ == 2) {
@@ -182,37 +188,32 @@ class Com : public ReducedOrderModel {
     return ret;
   };
   drake::VectorX<double> EvalMappingFeatJdotV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final {
-    VectorX<double> x(plant_.num_positions() + plant_.num_velocities());
-    x << q, v;
-    plant_.SetPositionsAndVelocities(context_.get(), x);
-
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final {
     // Get CoM JdotV
     VectorX<double> JdotV_com =
         plant_.CalcBiasCenterOfMassTranslationalAcceleration(
-            *context_, JacobianWrtVariable::kV, world_, world_);
+            context, JacobianWrtVariable::kV, world_, world_);
 
     // Convert v to qdot
     VectorX<double> qdot(plant_.num_positions());
-    plant_.MapVelocityToQDot(*context_, v, &qdot);
+    plant_.MapVelocityToQDot(context, v, &qdot);
 
     VectorX<double> ret(n_feature_y());
     if (world_dim_ == 2) {
-      ret << JdotV_com(0), JdotV_com(2),
-          mapping_basis().EvalJdotV(q, qdot);
+      ret << JdotV_com(0), JdotV_com(2), mapping_basis().EvalJdotV(q, qdot);
     } else {
       ret << JdotV_com, mapping_basis().EvalJdotV(q, qdot);
     }
     return ret;
   };
   drake::MatrixX<double> EvalMappingFeatJ(
-      const drake::VectorX<double>& q) const final {
-    plant_.SetPositions(context_.get(), q);
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final {
     // Get CoM J
     MatrixX<double> J_com(3, plant_.num_velocities());
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+        context, JacobianWrtVariable::kV, world_, world_, &J_com);
 
     MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
     if (world_dim_ == 2) {
@@ -233,7 +234,6 @@ class Com : public ReducedOrderModel {
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
 
   int world_dim_;

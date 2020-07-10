@@ -17,12 +17,14 @@ namespace controllers {
 /// OscTrackingData is a virtual class
 
 /// Input of the constructor:
-/// - dimension of the output/trajectory
-/// - gains of PD controller
+/// - name of the trajectory
+/// - dimension of the trajectory
+/// - gains of the PD controller
 /// - cost weight
-/// - a flag indicating the trajectory is a constant
-/// - a flag indicating the trajectory has exponential term (that is, the traj
-///   is of ExponentialPlusPiecewisePolynomial class)
+/// - MBP (full model)
+/// - MBP (model without spring)
+/// - a flag for using only the model without spring in evaluation (this flag is
+///   designed for OptimalRomTrackingData)
 
 /// In OSC, the position and the velocity of the robot are given. The goal is to
 /// find the optimal
@@ -69,7 +71,8 @@ class OscTrackingData {
       const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
+      bool use_only_plant_wo_spr_in_evaluation = false);
 
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_state_
@@ -113,6 +116,12 @@ class OscTrackingData {
   std::string GetName() const { return name_; };
   int GetTrajDim() const { return n_r_; };
   bool IsActive() const { return track_at_current_state_; }
+  const drake::multibody::MultibodyPlant<double>* plant_w_spr() const {
+    return plant_w_spr_;
+  };
+  const drake::multibody::MultibodyPlant<double>* plant_wo_spr() const {
+    return plant_wo_spr_;
+  };
 
   void SaveYddotCommandSol(const Eigen::VectorXd& dv);
 
@@ -203,6 +212,9 @@ class OscTrackingData {
   // Store whether or not the tracking data is active
   bool track_at_current_state_;
   int state_idx_ = 0;
+
+  // Flag
+  bool use_only_plant_wo_spr_in_evaluation_;
 };
 
 /// ComTrackingData is used when we want to track center of mass trajectory.
@@ -457,10 +469,11 @@ class OptimalRomTrackingData final : public OscTrackingData {
       const goldilocks_models::ReducedOrderModel& rom);
 
  private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYAndError(const Eigen::VectorXd& x_wo_spr,
+                       drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_wo_spr,
+      drake::systems::Context<double>& context_wo_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                drake::systems::Context<double>& context_wo_spr) final;
@@ -470,10 +483,6 @@ class OptimalRomTrackingData final : public OscTrackingData {
   void CheckDerivedOscTrackingData() final;
 
   const goldilocks_models::ReducedOrderModel& rom_;
-
-  // Map position/velocity from model with spring to without spring
-  Eigen::MatrixXd map_position_from_spring_to_no_spring_;
-  Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 };
 
 

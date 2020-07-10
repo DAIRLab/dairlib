@@ -2,55 +2,16 @@
 
 #include <string>
 
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
+#include "multibody/multibody_utils.h"
+#include "solvers/nonlinear_constraint.h"
+#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "drake/common/drake_assert.h"
 #include "drake/common/drake_throw.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"
-#include "multibody/multibody_utils.h"
-
-#include "drake/common/drake_assert.h"
-#include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/reduced_order_models.h"
-
-#include "solvers/nonlinear_constraint.h"
-
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
-
-using std::map;
-using std::string;
-using std::vector;
-using std::list;
-using std::unique_ptr;
-using std::make_unique;
-using std::make_shared;
-using std::isnan;
-using std::isinf;
-
-using Eigen::Dynamic;
-using Eigen::AutoDiffScalar;
-using Eigen::VectorXd;
-using Eigen::Vector3d;
-using Eigen::Matrix;
-using Eigen::MatrixXd;
-using drake::VectorX;
-using drake::MatrixX;
-using drake::AutoDiffVecXd;
-using drake::AutoDiffXd;
-using drake::math::DiscardGradient;
-using drake::math::autoDiffToValueMatrix;
-using drake::math::autoDiffToGradientMatrix;
-using drake::math::initializeAutoDiff;
-using drake::solvers::to_string;
-using drake::solvers::VectorXDecisionVariable;
-using drake::solvers::Constraint;
-using drake::solvers::MathematicalProgram;
-using drake::solvers::Constraint;
-using drake::solvers::VariableRefList;
-using drake::solvers::Binding;
-using drake::symbolic::Variable;
-using drake::symbolic::Expression;
-using drake::multibody::MultibodyPlant;
-
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -61,34 +22,42 @@ using dairlib::solvers::NonlinearConstraint;
 class DynamicsConstraint : public NonlinearConstraint<double> {
  public:
   DynamicsConstraint(const ReducedOrderModel& rom,
-                     const MultibodyPlant<double>& plant, bool is_head,
+                     const drake::multibody::MultibodyPlant<double>& plant,
+                     bool is_head,
                      const std::string& description = "rom_dyn_constraint");
 
   // Getters
-  VectorXd GetY(const VectorXd& q) const;
-  VectorXd GetYdot(const VectorXd& x) const;
-  VectorXd GetYddot(const VectorXd& y, const VectorXd& ydot,
-                    const VectorXd& tau) const;
+  // Use the methods with context as a argument to speed up computation
+  Eigen::VectorXd GetY(const Eigen::VectorXd& q,
+                       const drake::systems::Context<double>& context) const;
+  Eigen::VectorXd GetYdot(const Eigen::VectorXd& x,
+                          const drake::systems::Context<double>& context) const;
+  Eigen::VectorXd GetY(const Eigen::VectorXd& q) const;
+  Eigen::VectorXd GetYdot(const Eigen::VectorXd& x) const;
+  Eigen::VectorXd GetYddot(const Eigen::VectorXd& y,
+                           const Eigen::VectorXd& ydot,
+                           const Eigen::VectorXd& tau) const;
 
-  MatrixXd getGradientWrtTheta(
-    const VectorXd & x_i_double, const VectorXd & tau_i_double,
-    const VectorXd & x_iplus1_double, const VectorXd & tau_iplus1_double,
-    const VectorXd & h_i_double) const;
+  Eigen::MatrixXd getGradientWrtTheta(const Eigen::VectorXd& x_i_double,
+                                      const Eigen::VectorXd& tau_i_double,
+                                      const Eigen::VectorXd& x_iplus1_double,
+                                      const Eigen::VectorXd& tau_iplus1_double,
+                                      const Eigen::VectorXd& h_i_double) const;
 
   // Extend the model by assuming the parameters of the new dynamics row are 0's
   // the new dynamics row = tau.
-  VectorXd computeTauToExtendModel(
-    const VectorXd & x_i_double, const VectorXd & x_iplus1_double,
-    const VectorXd & h_i, const VectorXd & theta_y_append);
+  Eigen::VectorXd computeTauToExtendModel(
+      const Eigen::VectorXd& x_i_double, const Eigen::VectorXd& x_iplus1_double,
+      const Eigen::VectorXd& h_i, const Eigen::VectorXd& theta_y_append);
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override;
-  VectorXd EvalConstraintWithModelParams(
-    const VectorXd & x_i, const VectorXd & tau_i,
-    const VectorXd & x_iplus1, const VectorXd & tau_iplus1,
-    const VectorXd & h_i,
-    const VectorXd & theta_y, const VectorXd & theta_yddot) const;
+  Eigen::VectorXd EvalConstraintWithModelParams(
+      const Eigen::VectorXd& x_i, const Eigen::VectorXd& tau_i,
+      const Eigen::VectorXd& x_iplus1, const Eigen::VectorXd& tau_iplus1,
+      const Eigen::VectorXd& h_i, const Eigen::VectorXd& theta_y,
+      const Eigen::VectorXd& theta_yddot) const;
 
   std::unique_ptr<ReducedOrderModel> rom_;
 
@@ -112,10 +81,13 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
   // 1e-6 good for fd
   // 1e-4 good for cd;  // B matrix error ~ 1e-13 to 1e-15
   // 1e-3 good for ho;
-  vector<double> fd_shift_vec_{0, eps_fd_};  // forward difference
-  vector<double> cd_shift_vec_{ -eps_cd_ / 2, eps_cd_ / 2};  // central difference
-  vector<double> ho_shift_vec_{ -eps_ho_ / 2, -eps_ho_ / 4,
+  std::vector<double> fd_shift_vec_{0, eps_fd_};  // forward difference
+  std::vector<double> cd_shift_vec_{ -eps_cd_ / 2, eps_cd_ / 2};  // central difference
+  std::vector<double> ho_shift_vec_{ -eps_ho_ / 2, -eps_ho_ / 4,
                                 eps_ho_ / 4, eps_ho_ / 2};
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
 };
 
 

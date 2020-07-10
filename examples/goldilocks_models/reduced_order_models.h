@@ -132,33 +132,40 @@ class ReducedOrderModel {
   void SetTheta(const Eigen::VectorXd& theta);
 
   // Evaluators for y, yddot, y's Jacobian and y's JdotV
-  drake::VectorX<double> EvalMappingFunc(const drake::VectorX<double>& q) const;
+  drake::VectorX<double> EvalMappingFunc(
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const;
   drake::VectorX<double> EvalDynamicFunc(
       const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
       const drake::VectorX<double>& tau) const;
   drake::VectorX<double> EvalMappingFuncJV(
-      const drake::VectorX<double>& q, const drake::VectorX<double>& v) const;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const;
   drake::VectorX<double> EvalMappingFuncJdotV(
-      const drake::VectorX<double>& q, const drake::VectorX<double>& v) const;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const;
   // Recommend using EvalMappingFuncJV instead of EvalMappingFuncJ to exploit
   // the sparsity of Jacobian
   drake::MatrixX<double> EvalMappingFuncJ(
-      const drake::VectorX<double>& q) const;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const;
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   virtual drake::VectorX<double> EvalMappingFeat(
-      const drake::VectorX<double>& q) const = 0;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const = 0;
   virtual drake::VectorX<double> EvalDynamicFeat(
       const drake::VectorX<double>& y,
       const drake::VectorX<double>& ydot) const = 0;
   virtual drake::VectorX<double> EvalMappingFeatJV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const = 0;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const = 0;
   virtual drake::VectorX<double> EvalMappingFeatJdotV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const = 0;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const = 0;
   virtual drake::MatrixX<double> EvalMappingFeatJ(
-      const drake::VectorX<double>& q) const = 0;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const = 0;
 
   void CheckModelConsistency() const;
 
@@ -201,18 +208,20 @@ class Lipm : public ReducedOrderModel {
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
-      const drake::VectorX<double>& q) const final;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
       const drake::VectorX<double>& y,
       const drake::VectorX<double>& ydot) const final;
   drake::VectorX<double> EvalMappingFeatJV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalMappingFeatJdotV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
   drake::MatrixX<double> EvalMappingFeatJ(
-      const drake::VectorX<double>& q) const final;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
 
   // Getters for copy constructor
   const drake::multibody::MultibodyPlant<double>& plant() const {
@@ -224,7 +233,6 @@ class Lipm : public ReducedOrderModel {
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
   const BodyPoint& stance_contact_point_;
@@ -251,18 +259,20 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
-      const drake::VectorX<double>& q) const final;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
       const drake::VectorX<double>& y,
       const drake::VectorX<double>& ydot) const final;
   drake::VectorX<double> EvalMappingFeatJV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalMappingFeatJdotV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
   drake::MatrixX<double> EvalMappingFeatJ(
-      const drake::VectorX<double>& q) const final;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
 
   // Getters for copy constructor
   const drake::multibody::MultibodyPlant<double>& plant() const {
@@ -274,7 +284,6 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
   const BodyPoint& stance_contact_point_;
@@ -300,18 +309,20 @@ class FixHeightAccel : public ReducedOrderModel {
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
-      const drake::VectorX<double>& q) const final;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
       const drake::VectorX<double>& y,
       const drake::VectorX<double>& ydot) const final;
   drake::VectorX<double> EvalMappingFeatJV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalMappingFeatJdotV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
   drake::MatrixX<double> EvalMappingFeatJ(
-      const drake::VectorX<double>& q) const final;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
 
   // Getters for copy constructor
   const drake::multibody::MultibodyPlant<double>& plant() const {
@@ -322,7 +333,6 @@ class FixHeightAccel : public ReducedOrderModel {
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
   const BodyPoint& stance_contact_point_;
@@ -348,18 +358,20 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
-      const drake::VectorX<double>& q) const final;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
       const drake::VectorX<double>& y,
       const drake::VectorX<double>& ydot) const final;
   drake::VectorX<double> EvalMappingFeatJV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalMappingFeatJdotV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final;
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
   drake::MatrixX<double> EvalMappingFeatJ(
-      const drake::VectorX<double>& q) const final;
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
 
   // Getters for copy constructor
   const drake::multibody::MultibodyPlant<double>& plant() const {
@@ -371,7 +383,6 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
   const BodyPoint& stance_contact_point_;

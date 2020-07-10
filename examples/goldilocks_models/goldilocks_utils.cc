@@ -5,6 +5,18 @@
 #include <sys/stat.h>  // Check the existence of a file/folder
 #include <cstdlib>  // System call to create folder (and also parent directory)
 
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using Eigen::Matrix3Xd;
+using drake::trajectories::PiecewisePolynomial;
+using std::vector;
+using std::shared_ptr;
+using std::cout;
+using std::endl;
+using std::string;
+using std::to_string;
+
 namespace dairlib {
 namespace goldilocks_models  {
 
@@ -231,7 +243,7 @@ vector<std::string> ParseCsvToStringVec(const std::string& file_name,
   return ret;
 }
 
-void SaveStringVecToCsv(vector<std::string> strings,
+void SaveStringVecToCsv(const vector<std::string>& strings,
                         const std::string& file_name) {
   std::ofstream ofile;
   ofile.open(file_name, std::ofstream::out);

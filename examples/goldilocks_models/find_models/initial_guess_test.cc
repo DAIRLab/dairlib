@@ -29,7 +29,8 @@ class DummyRom : public ReducedOrderModel {
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
-      const drake::VectorX<double>& q) const final {
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final {
     return mapping_basis().Eval(q);
   };
   drake::VectorX<double> EvalDynamicFeat(
@@ -39,19 +40,20 @@ class DummyRom : public ReducedOrderModel {
     return drake::VectorX<double>::Zero(0);
   };
   drake::VectorX<double> EvalMappingFeatJV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final {
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final {
     throw std::runtime_error("not implemented");
     return drake::VectorX<double>::Zero(0);
   };
   drake::VectorX<double> EvalMappingFeatJdotV(
-      const drake::VectorX<double>& q,
-      const drake::VectorX<double>& v) const final {
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final {
     throw std::runtime_error("not implemented");
     return drake::VectorX<double>::Zero(0);
   };
   drake::MatrixX<double> EvalMappingFeatJ(
-      const drake::VectorX<double>& q) const final {
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final {
     return mapping_basis().EvalJwrtqdot(q);
   };
 };

@@ -2,6 +2,41 @@
 
 #include "multibody/multibody_utils.h"
 
+using std::map;
+using std::string;
+using std::vector;
+using std::list;
+using std::unique_ptr;
+using std::make_unique;
+using std::make_shared;
+using std::isnan;
+using std::isinf;
+
+using Eigen::Dynamic;
+using Eigen::AutoDiffScalar;
+using Eigen::VectorXd;
+using Eigen::Vector3d;
+using Eigen::Matrix;
+using Eigen::MatrixXd;
+using drake::VectorX;
+using drake::MatrixX;
+using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
+using drake::math::DiscardGradient;
+using drake::math::autoDiffToValueMatrix;
+using drake::math::autoDiffToGradientMatrix;
+using drake::math::initializeAutoDiff;
+using drake::solvers::to_string;
+using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::Constraint;
+using drake::solvers::VariableRefList;
+using drake::solvers::Binding;
+using drake::symbolic::Variable;
+using drake::symbolic::Expression;
+using drake::multibody::MultibodyPlant;
+
 namespace dairlib {
 namespace goldilocks_models {
 namespace find_models {
@@ -21,14 +56,26 @@ DynamicsConstraint::DynamicsConstraint(const ReducedOrderModel& rom,
       n_v_(plant.num_velocities()),
       n_u_(plant.num_actuators()),
       n_tau_(rom.n_tau()),
-      is_head_(is_head) {}
+      is_head_(is_head),
+      plant_(plant),
+      context_(plant.CreateDefaultContext()) {}
 
 // Getters
+VectorXd DynamicsConstraint::GetY(
+    const VectorXd& q, const drake::systems::Context<double>& context) const {
+  return rom_->EvalMappingFunc(q, context);
+};
+VectorXd DynamicsConstraint::GetYdot(
+    const VectorXd& x, const drake::systems::Context<double>& context) const {
+  return rom_->EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_), context);
+};
 VectorXd DynamicsConstraint::GetY(const VectorXd& q) const {
-  return rom_->EvalMappingFunc(q);
+  plant_.SetPositions(context_.get(), q);
+  return rom_->EvalMappingFunc(q, *context_);
 };
 VectorXd DynamicsConstraint::GetYdot(const VectorXd& x) const {
-  return rom_->EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_));
+  plant_.SetPositionsAndVelocities(context_.get(), x);
+  return rom_->EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_), *context_);
 };
 VectorXd DynamicsConstraint::GetYddot(const VectorXd& y, const VectorXd& ydot,
                                       const VectorXd& tau) const {
@@ -58,10 +105,12 @@ VectorXd DynamicsConstraint::EvalConstraintWithModelParams(
   // Get s and ds at knot i and i+1
   rom_->SetThetaY(theta_y);
   rom_->SetThetaYddot(theta_yddot);
-  VectorXd s_i = GetY(x_i.head(n_q_));
-  VectorXd ds_i = GetYdot(x_i);
-  VectorXd s_iplus1 = GetY(x_iplus1.head(n_q_));
-  VectorXd ds_iplus1 = GetYdot(x_iplus1);
+  plant_.SetPositionsAndVelocities(context_.get(), x_i);
+  VectorXd s_i = GetY(x_i.head(n_q_), *context_);
+  VectorXd ds_i = GetYdot(x_i, *context_);
+  plant_.SetPositionsAndVelocities(context_.get(), x_iplus1);
+  VectorXd s_iplus1 = GetY(x_iplus1.head(n_q_), *context_);
+  VectorXd ds_iplus1 = GetYdot(x_iplus1, *context_);
 
   // cout << "s_i = " << s_i.transpose() << endl;
   // cout << "ds_i = " << ds_i.transpose() << endl;

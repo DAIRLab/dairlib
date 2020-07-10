@@ -31,10 +31,12 @@ using multibody::JwrtqdotToJwrtv;
 using goldilocks_models::ReducedOrderModel;
 
 /**** OscTrackingData ****/
-OscTrackingData::OscTrackingData(
-    const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
-    const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
-    const MultibodyPlant<double>* plant_wo_spr)
+OscTrackingData::OscTrackingData(const string& name, int n_r,
+                                 const MatrixXd& K_p, const MatrixXd& K_d,
+                                 const MatrixXd& W,
+                                 const MultibodyPlant<double>* plant_w_spr,
+                                 const MultibodyPlant<double>* plant_wo_spr,
+                                 bool use_only_plant_wo_spr_in_evaluation)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       world_w_spr_(plant_w_spr_->world_frame()),
@@ -43,7 +45,9 @@ OscTrackingData::OscTrackingData(
       n_r_(n_r),
       K_p_(K_p),
       K_d_(K_d),
-      W_(W) {}
+      W_(W),
+      use_only_plant_wo_spr_in_evaluation_(
+          use_only_plant_wo_spr_in_evaluation) {}
 
 // Update
 bool OscTrackingData::Update(
@@ -63,8 +67,13 @@ bool OscTrackingData::Update(
     yddot_des_ = traj.MakeDerivative(2)->value(t);
 
     // Update feedback output (Calling virtual methods)
-    UpdateYAndError(x_w_spr, context_w_spr);
-    UpdateYdotAndError(x_w_spr, context_w_spr);
+    if (use_only_plant_wo_spr_in_evaluation_) {
+      UpdateYAndError(x_wo_spr, context_wo_spr);
+      UpdateYdotAndError(x_wo_spr, context_wo_spr);
+    } else {
+      UpdateYAndError(x_w_spr, context_w_spr);
+      UpdateYdotAndError(x_w_spr, context_w_spr);
+    }
     UpdateYddotDes();
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
@@ -635,30 +644,20 @@ OptimalRomTrackingData::OptimalRomTrackingData(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
     const MultibodyPlant<double>* plant_wo_spr, const ReducedOrderModel& rom)
-    : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr),
-      rom_(rom) {
-  map_position_from_spring_to_no_spring_ =
-      PositionMapFromSpringToNoSpring(*plant_w_spr, *plant_wo_spr);
-  map_velocity_from_spring_to_no_spring_ =
-      VelocityMapFromSpringToNoSpring(*plant_w_spr, *plant_wo_spr);
-}
+    : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr, true),
+      rom_(rom) {}
 
-void OptimalRomTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
-                                             Context<double>& context_w_spr) {
-  VectorXd q = map_position_from_spring_to_no_spring_ *
-               x_w_spr.head(plant_w_spr_->num_positions());
-  y_ = rom_.EvalMappingFunc(q);
-
+void OptimalRomTrackingData::UpdateYAndError(const VectorXd& x_wo_spr,
+                                             Context<double>& context_wo_spr) {
+  y_ = rom_.EvalMappingFunc(x_wo_spr.head(plant_wo_spr_->num_positions()),
+                            context_wo_spr);
   error_y_ = y_des_ - y_;
 }
 void OptimalRomTrackingData::UpdateYdotAndError(
-    const VectorXd& x_w_spr, Context<double>& context_w_spr) {
-  VectorXd q = map_position_from_spring_to_no_spring_ *
-               x_w_spr.head(plant_w_spr_->num_positions());
-  VectorXd v = map_velocity_from_spring_to_no_spring_ *
-               x_w_spr.tail(plant_w_spr_->num_velocities());
-
-  ydot_ = rom_.EvalMappingFuncJV(q, v);
+    const VectorXd& x_wo_spr, Context<double>& context_wo_spr) {
+  ydot_ = rom_.EvalMappingFuncJV(x_wo_spr.head(plant_wo_spr_->num_positions()),
+                                 x_wo_spr.tail(plant_wo_spr_->num_velocities()),
+                                 context_wo_spr);
   error_ydot_ = ydot_des_ - ydot_;
 }
 void OptimalRomTrackingData::UpdateYddotDes() {
@@ -667,13 +666,13 @@ void OptimalRomTrackingData::UpdateYddotDes() {
 void OptimalRomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                      Context<double>& context_wo_spr) {
   VectorXd q = x_wo_spr.head(plant_wo_spr_->num_positions());
-  J_ = rom_.EvalMappingFuncJ(q);
+  J_ = rom_.EvalMappingFuncJ(q, context_wo_spr);
 }
 void OptimalRomTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                          Context<double>& context_wo_spr) {
   VectorXd q = x_wo_spr.head(plant_wo_spr_->num_positions());
   VectorXd v = x_wo_spr.tail(plant_wo_spr_->num_velocities());
-  JdotV_ = rom_.EvalMappingFuncJdotV(q,v);
+  JdotV_ = rom_.EvalMappingFuncJdotV(q, v, context_wo_spr);
 }
 void OptimalRomTrackingData::CheckDerivedOscTrackingData() {
   DRAKE_DEMAND(GetTrajDim() == rom_.n_y());

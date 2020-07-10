@@ -73,13 +73,14 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
                                         task_delta[i] * 0.5
                                   : task_0[i] + sub_task_grid.back());
   }
+}
 
-  // Print
-  for (int i = 0; i < task_dim; i++) {
-    cout << names[i] << ": \n";
-    cout << "  # of samples = " << N_sample_vec[i] << endl;
-    cout << "  center = " << task_0[i] << endl;
-    cout << "  spacing = " << task_delta[i] << endl;
+void GridTasksGenerator::PrintInfo() const {
+  for (int i = 0; i < dim(); i++) {
+    cout << names()[i] << ": \n";
+    cout << "  # of samples = " << sample_numbers()[i] << endl;
+    cout << "  center = " << task_0_[i] << endl;
+    cout << "  spacing = " << task_delta_[i] << endl;
     cout << "  min = " << task_min_range_[i] << endl;
     cout << "  max = " << task_max_range_[i] << endl;
   }
@@ -151,16 +152,16 @@ UniformTasksGenerator::UniformTasksGenerator(
     // Distribution
     distribution_.emplace_back(task_min_range_[i], task_max_range_[i]);
   }
+}
 
-  // Print
-  for (int i = 0; i < task_dim; i++) {
-    cout << names[i] << ": \n";
-    cout << "  # of samples = " << N_sample_vec[i] << endl;
+void UniformTasksGenerator::PrintInfo() const {
+  for (int i = 0; i < dim(); i++) {
+    cout << names()[i] << ": \n";
+    cout << "  # of samples = " << sample_numbers()[i] << endl;
     cout << "  min = " << task_min_range_[i] << endl;
     cout << "  max = " << task_max_range_[i] << endl;
   }
 }
-
 vector<double> UniformTasksGenerator::NewTask(int sample_idx) {
   vector<double> ret(task_dim_, 0);
   for (int i = 0; i < task_dim_; i++) {

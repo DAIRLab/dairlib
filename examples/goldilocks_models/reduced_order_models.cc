@@ -34,18 +34,7 @@ MonomialFeatures::MonomialFeatures() : MonomialFeatures(0, 0, {}) {}
 
 MonomialFeatures::MonomialFeatures(int n_order, int n_q, vector<int> skip_inds,
                                    const std::string& name)
-    : n_q_(n_q), name_(name) {
-  // Print
-  if (!name.empty()) cout << name << " ";
-  cout << "uses monominal features with\n";
-  cout << "  n_order = " << n_order << endl;
-  cout << "  n_q = " << n_q << endl;
-  cout << "  skip_inds = {";
-  for (const auto& idx : skip_inds) {
-    cout << idx << ", ";
-  }
-  cout << "}\n";
-
+    : n_q_(n_q), name_(name), n_order_(n_order), skip_inds_(skip_inds) {
   for (const auto& idx : skip_inds) {
     DRAKE_DEMAND(idx >= 0);
     DRAKE_DEMAND(idx < n_q);
@@ -124,6 +113,18 @@ MonomialFeatures::MonomialFeatures(int n_order, int n_q, vector<int> skip_inds,
     DRAKE_DEMAND(ele.first.second.size() == 2);
   }
 };
+
+void MonomialFeatures::PrintInfo() const {
+  if (!name_.empty()) cout << name_ << " ";
+  cout << "uses monominal features with\n";
+  cout << "  n_order = " << n_order_ << endl;
+  cout << "  n_q = " << n_q_ << endl;
+  cout << "  skip_inds = {";
+  for (const auto& idx : skip_inds_) {
+    cout << idx << ", ";
+  }
+  cout << "}\n";
+}
 
 set<multiset<int>> MonomialFeatures::ConstructSubfeaturesWithOneMoreOrder(
     const vector<int>& active_inds,

@@ -37,6 +37,7 @@ class MonomialFeatures {
   drake::VectorX<double> EvalJdotV(const drake::VectorX<double>& q,
                                    const drake::VectorX<double>& qdot) const;
 
+  void PrintInfo() const;
   void PrintSymbolicFeatures() const;
   void PrintSymbolicPartialDerivatives(int order) const;
 
@@ -59,6 +60,8 @@ class MonomialFeatures {
 
   int n_q_;
   std::string name_;
+  int n_order_;
+  std::vector<int> skip_inds_;
 
   // A list of features
   // We use a set of indices to represent each term. E.g. {1, 1, 2} represents

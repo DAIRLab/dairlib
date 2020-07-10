@@ -1451,6 +1451,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Tasks setup
+  task_gen->PrintInfo();
   DRAKE_DEMAND(task_gen->task_min("stride length") >= 0);
   DRAKE_DEMAND(task_gen->task_min("velocity") >= 0);
   int N_sample = task_gen->total_sample_number();
@@ -1707,6 +1708,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     mapping_basis = std::make_unique<MonomialFeatures>(
         2, plant.num_positions(), skip_inds, "mapping basis");
   }
+  mapping_basis->PrintInfo();
   // Basis for dynamic function
   std::unique_ptr<MonomialFeatures> dynamic_basis;
   if (FLAGS_rom_option == 0) {
@@ -1730,6 +1732,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // TODO: finish implementing the rest of the ROM
     throw std::runtime_error("Not implemented");
   }
+  dynamic_basis->PrintInfo();
   // Contact frames and position for mapping function
   string stance_foot_body_name;
   Vector3d stance_foot_contact_point_pos;

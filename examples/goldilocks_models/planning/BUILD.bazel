@@ -6,8 +6,8 @@ cc_library(
     hdrs = ["RoM_planning_traj_opt.h"],
     deps = [
         "@drake//:drake_shared_library",
-        "//examples/goldilocks_models:kinematics_expression",
-        "//examples/goldilocks_models:dynamics_expression",
+        "//examples/goldilocks_models/attic:kinematics_expression",
+        "//examples/goldilocks_models/attic:dynamics_expression",
         ":kinematics_constraint",
         ":dynamics_constraint",
         ":FoM_guard_constraint",
@@ -28,8 +28,8 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         "//multibody:utils",
-        "//examples/goldilocks_models:kinematics_expression",
-        "//examples/goldilocks_models:dynamics_expression",
+        "//examples/goldilocks_models/attic:kinematics_expression",
+        "//examples/goldilocks_models/attic:dynamics_expression",
         "//common:file_utils",
     ],
 )
@@ -45,7 +45,7 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         "//multibody:utils",
-        "//examples/goldilocks_models:kinematics_expression",
+        "//examples/goldilocks_models/attic:kinematics_expression",
     ],
 )
 cc_library(
@@ -59,7 +59,7 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         "//multibody:utils",
-        "//examples/goldilocks_models:kinematics_expression",
+        "//examples/goldilocks_models/attic:kinematics_expression",
     ],
 )
 cc_library(
@@ -73,7 +73,7 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         "//multibody:utils",
-        "//examples/goldilocks_models:kinematics_expression",
+        "//examples/goldilocks_models/attic:kinematics_expression",
     ],
 )
 cc_library(
@@ -87,7 +87,7 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         "//multibody:utils",
-        "//examples/goldilocks_models:kinematics_expression",
+        "//examples/goldilocks_models/attic:kinematics_expression",
     ],
 )
 

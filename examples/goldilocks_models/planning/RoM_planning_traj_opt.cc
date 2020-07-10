@@ -10,8 +10,8 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
-#include "examples/goldilocks_models/kinematics_expression.h"
-#include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/attic/kinematics_expression.h"
+#include "examples/goldilocks_models/attic/dynamics_expression.h"
 #include "examples/goldilocks_models/planning/kinematics_constraint.h"
 #include "examples/goldilocks_models/planning/dynamics_constraint.h"
 #include "examples/goldilocks_models/planning/FoM_guard_constraint.h"

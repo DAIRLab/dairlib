@@ -5,7 +5,7 @@
 #include <string>
 
 #include "common/find_resource.h"
-#include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/attic/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/traj_opt_helper_func.h"
 #include "common/file_utils.h"
 #include "drake/lcm/drake_lcm.h"

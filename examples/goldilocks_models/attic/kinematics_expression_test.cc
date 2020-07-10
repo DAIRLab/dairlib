@@ -3,7 +3,7 @@
 #include "math.h"
 #include <Eigen/Dense>
 
-#include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/attic/kinematics_expression.h"
 #include "drake/common/drake_assert.h"
 
 

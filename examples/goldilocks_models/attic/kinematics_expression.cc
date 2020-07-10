@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/attic/kinematics_expression.h"
 
 
 namespace dairlib {

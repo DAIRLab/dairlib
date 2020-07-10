@@ -9,7 +9,7 @@
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/drake_assert.h"
-#include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/attic/kinematics_expression.h"
 
 using std::map;
 using std::string;

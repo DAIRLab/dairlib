@@ -27,7 +27,6 @@
 
 #include "multibody/visualization_utils.h"
 
-#include "systems/goldilocks_models/symbolic_manifold.h"
 #include "common/file_utils.h"
 
 #include "drake/solvers/choose_best_solver.h"

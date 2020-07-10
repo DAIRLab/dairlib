@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/attic/dynamics_expression.h"
 
 
 namespace dairlib {

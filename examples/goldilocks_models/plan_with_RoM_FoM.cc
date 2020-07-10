@@ -2,9 +2,9 @@
 #include <chrono>
 
 #include "common/find_resource.h"
-#include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/attic/dynamics_expression.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/attic/kinematics_expression.h"
 #include "examples/goldilocks_models/planning/RoM_planning_traj_opt.h"
 #include "common/file_utils.h"
 

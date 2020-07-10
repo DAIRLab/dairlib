@@ -436,9 +436,10 @@ void SaveBoundaryPointInfor(const string dir,int boundary_point_index,
 }
 
 //check the solution of trajectory optimization and rerun if necessary
-void CheckSolution(const Task& task, const string dir,int traj_num){
+void CheckSolution(const Task& task, const string dir, int traj_num,
+    int iteration){
   int rerun = 0;
-  int max_rerun_num = 4;
+  int max_rerun_num = 5;
   int is_success;
   //check if snopt find a solution successfully. If not, rerun the Traj Opt
   for(rerun=0;rerun<max_rerun_num;rerun++){
@@ -452,11 +453,18 @@ void CheckSolution(const Task& task, const string dir,int traj_num){
     }
   }
   //if snopt still can't find a solution, try to use adjacent sample to help
+  //if this is iteration 1, we should use the central point to help
   for(rerun=0;rerun<max_rerun_num;rerun++){
     is_success = (readCSV(dir + to_string(traj_num) +
         string("_0_is_success.csv")))(0, 0);
     if(is_success==0){
-      TrajOptGivenModel(task, dir, traj_num,true,traj_num-1);
+      if(iteration==1)
+      {
+        TrajOptGivenModel(task, dir, traj_num,true,0);
+      }
+      else{
+        TrajOptGivenModel(task, dir, traj_num,true,traj_num-1);
+      }
     }
     else{
       break;
@@ -522,7 +530,7 @@ void BoundaryForOneDirection(const string dir,int max_iteration,
         string("_0_task.csv"), new_task);
     //run trajectory optimization and judge the solution
     TrajOptGivenModel(task, dir, traj_num, false);
-    CheckSolution(task,dir,traj_num);
+    CheckSolution(task,dir,traj_num,iter);
     double sample_cost =
         (readCSV(dir + to_string(traj_num) + string("_0_c.csv")))(0, 0);
     // without a good initial guess, the initial point is easily stuck in a local minimum
@@ -565,13 +573,13 @@ void BoundaryForOneDirection(const string dir,int max_iteration,
         TrajOptGivenModel(task, dir, traj_idx,
                           true, traj_idx-1);
         //make sure this sample success
-        CheckSolution(task,dir,traj_idx);
+        CheckSolution(task,dir,traj_idx,iter+1);
       }
       else{
         TrajOptGivenModel(task, dir, traj_idx,
                           true, traj_idx+1);
         //make sure this sample success
-        CheckSolution(task,dir,traj_idx);
+        CheckSolution(task,dir,traj_idx,iter+1);
       }
       //update cost list
       cost_list(iter,1) = readCSV(dir + to_string(traj_idx)

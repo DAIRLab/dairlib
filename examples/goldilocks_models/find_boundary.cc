@@ -84,6 +84,9 @@ DEFINE_bool(search_sl,true,"decide whether to search the stride length");
 DEFINE_bool(search_gi,true,"decide whether to search the ground incline");
 DEFINE_bool(search_v,false,"decide whether to search the velocity");
 DEFINE_bool(search_tr,false,"decide whether to search the turning rate");
+DEFINE_bool(continue_from_midpoint,false,"if the program was stopped by accident,"
+                                         "this can be used to accelerate rerunning"
+                                         " the program");
 
 //others
 DEFINE_string(
@@ -435,13 +438,11 @@ void SaveBoundaryPointInfor(const string dir,int boundary_point_index,
   cout<<endl;
 }
 
-//check the solution of trajectory optimization and rerun if necessary
-void CheckSolution(const Task& task, const string dir, int traj_num,
-    int iteration){
+//rerun unsuccessful trajectory optimization
+void RerunTrajOpt(const Task& task, const string dir, int traj_num){
   int rerun = 0;
   int max_rerun_num = 5;
   int is_success;
-  //check if snopt find a solution successfully. If not, rerun the Traj Opt
   for(rerun=0;rerun<max_rerun_num;rerun++){
     is_success = (readCSV(dir + to_string(traj_num) +
         string("_0_is_success.csv")))(0, 0);
@@ -452,36 +453,39 @@ void CheckSolution(const Task& task, const string dir, int traj_num,
       break;
     }
   }
+}
+
+//check the solution of trajectory optimization and rerun if necessary
+void CheckSolution(const Task& task, const string dir, int traj_num,
+    int iteration){
+  int is_success;
+
+  //check if snopt find a solution successfully. If not, rerun the Traj Opt
+  RerunTrajOpt(task,dir,traj_num);
+
   //if snopt still can't find a solution, try to use adjacent sample to help
-  //if this is iteration 1, we should use the central point to help
-  for(rerun=0;rerun<max_rerun_num;rerun++){
-    is_success = (readCSV(dir + to_string(traj_num) +
-        string("_0_is_success.csv")))(0, 0);
-    if(is_success==0){
-      if(iteration==1)
-      {
-        TrajOptGivenModel(task, dir, traj_num,true,0);
-      }
-      else{
-        TrajOptGivenModel(task, dir, traj_num,true,traj_num-1);
-      }
+  is_success = (readCSV(dir + to_string(traj_num) +
+      string("_0_is_success.csv")))(0, 0);
+  if(is_success==0){
+    if(iteration==1)
+    {
+      //if number of iteration is 1, we should use the central point to help
+      TrajOptGivenModel(task, dir, traj_num,true,0);
     }
     else{
-      break;
+      TrajOptGivenModel(task, dir, traj_num,true,traj_num-1);
     }
   }
-  //if snopt still failed to find a solution,turn off the scaling option
+  RerunTrajOpt(task,dir,traj_num);
+
+  // if snopt still failed to find a solution,turn off the scaling option
   // and try again
-  for(rerun=0;rerun<max_rerun_num;rerun++){
-    is_success = (readCSV(dir + to_string(traj_num) +
-        string("_0_is_success.csv")))(0, 0);
-    if(is_success==0){
-      TrajOptGivenModel(task, dir, traj_num,true,-1,false);
-    }
-    else{
-      break;
-    }
+  is_success = (readCSV(dir + to_string(traj_num) +
+      string("_0_is_success.csv")))(0, 0);
+  if(is_success==0){
+    TrajOptGivenModel(task, dir, traj_num,true,-1,false);
   }
+  RerunTrajOpt(task,dir,traj_num);
 }
 
 //search the boundary point along one direction
@@ -529,7 +533,10 @@ void BoundaryForOneDirection(const string dir,int max_iteration,
     writeCSV(dir + to_string(traj_num) +
         string("_0_task.csv"), new_task);
     //run trajectory optimization and judge the solution
-    TrajOptGivenModel(task, dir, traj_num, false);
+    if(! (FLAGS_continue_from_midpoint && file_exist(dir + to_string(traj_num) +
+        string("_0_w.csv")))){
+      TrajOptGivenModel(task, dir, traj_num, false);
+    }
     CheckSolution(task,dir,traj_num,iter);
     double sample_cost =
         (readCSV(dir + to_string(traj_num) + string("_0_c.csv")))(0, 0);
@@ -742,7 +749,9 @@ int find_boundary(int argc, char* argv[]){
   cout << "\nCalculate Central Point Cost:\n";
   cout << "sample# (rerun #) | stride | incline | velocity | turning rate | "
           "init_file | Status | Solve time | Cost (tau cost)\n";
-  TrajOptGivenModel(task, dir, traj_opt_num, false);
+  if(!FLAGS_continue_from_midpoint){
+    TrajOptGivenModel(task, dir, traj_opt_num, false);
+  }
   //make sure solution found for the initial point
   int init_is_success = (readCSV(dir + string("0_0_is_success.csv")))(0,0);
   while(!init_is_success){

@@ -65,12 +65,12 @@ int test_initial_guess(int iter, int sample, int robot) {
   GridTasksGenerator task_gen_grid;
   if (robot == 0) {
     task_gen_grid = GridTasksGenerator(
-        3, {"stride length", "ground incline", "velocity"}, {10, 5, 5},
+        3, {"stride length", "ground incline", "velocity"}, {2, 2, 2},
         {0.25, 0, 0.4}, {0.015, 0.05, 0.02}, true);
   } else {
     task_gen_grid = GridTasksGenerator(
         4, {"stride length", "ground incline", "velocity", "turning rate"},
-        {10, 5, 5, 5}, {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, true);
+        {2, 2, 2, 2}, {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, true);
   }
   TasksGenerator* task_gen = &task_gen_grid;
   int total_sample_num = task_gen->total_sample_number();
@@ -83,8 +83,10 @@ int test_initial_guess(int iter, int sample, int robot) {
   ReducedOrderModel* rom = &dummy_rom;
   int n_theta_y = rom->n_theta_y();
   int n_theta_yddot = rom->n_theta_yddot();
-  VectorXd current_theta = VectorXd::Random(n_theta_y + n_theta_yddot);
-  rom->SetTheta(current_theta);
+  VectorXd current_theta_y = VectorXd::Random(n_theta_y);
+  VectorXd current_theta_yddot = VectorXd::Random(n_theta_yddot);
+  rom->SetThetaY(current_theta_y);
+  rom->SetThetaYddot(current_theta_yddot);
   // dummy decision variable size
   int n_w = 20;
 
@@ -95,11 +97,12 @@ int test_initial_guess(int iter, int sample, int robot) {
   // for each iteration, create theta_s and theta_sDDot
   int iteration = 0;
   for (iteration = 0; iteration <= iter; iteration++) {
-    VectorXd theta_y = VectorXd::Random(n_theta_y);
-    VectorXd theta_yDDot = VectorXd::Random(n_theta_yddot);
+    VectorXd theta_y = current_theta_y + 1e-4 * VectorXd::Random(n_theta_y);
+    VectorXd theta_yddot =
+        current_theta_yddot + 1e-4 * VectorXd::Random(n_theta_yddot);
     writeCSV(dir + to_string(iteration) + string("_theta_y.csv"), theta_y);
-    writeCSV(dir + to_string(iteration) + string("_theta_yDDot.csv"),
-             theta_yDDot);
+    writeCSV(dir + to_string(iteration) + string("_theta_yddot.csv"),
+             theta_yddot);
     // for each sample, create gamma, is_success and w
     int sample = 0;
     int dim = 0;
@@ -113,7 +116,7 @@ int test_initial_guess(int iter, int sample, int robot) {
         std::default_random_engine re;
         gamma[dim] = dist(re);
       }
-      writeCSV(dir + prefix + string("_task.csv"), gamma);
+      writeCSV(dir + prefix + string("task.csv"), gamma);
       bool is_success = 1;
       writeCSV(dir + prefix + string("is_success.csv"),
                is_success * MatrixXd::Ones(1, 1));

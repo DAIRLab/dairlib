@@ -22,7 +22,6 @@
 #include "examples/goldilocks_models/find_models/initial_guess.h"
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/attic/kinematics_expression.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/task.h"
 #include "common/file_utils.h"

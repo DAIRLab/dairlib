@@ -1,7 +1,18 @@
 // This file is modified from examples/Cassie/run_osc_walking_controller.cc
-// We use this file to test RomTrackingData
+// We use this file to test OptimalRomTrackingData
+
+// Benchmark on computation time (over 399 number of samples)
+// UpdateYdotAndError::UpdateJdotV()
+//   min: 0.077 ms
+//   max: 0.27 ms
+//   ave: 0.12 ms
+// UpdateYdotAndError::UpdateJ()
+//   min: 0.038 ms
+//   max: 0.15 ms
+//   ave: 0.06 ms
 
 #include <gflags/gflags.h>
+#include <string>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -10,6 +21,7 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/cp_traj_gen.h"
@@ -22,17 +34,21 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
-namespace dairlib {
+namespace dairlib::goldilocks_models {
 
 using std::cout;
 using std::endl;
 using std::vector;
+using std::to_string;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+using drake::MatrixX;
+using drake::VectorX;
+using drake::multibody::JacobianWrtVariable;
 using drake::multibody::Frame;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
@@ -42,8 +58,11 @@ using drake::systems::lcm::TriggerTypeSet;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
+using systems::controllers::OptimalRomTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+
+using multibody::JwrtqdotToJwrtv;
 
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
@@ -61,12 +80,168 @@ DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 
+
+/// Center of mass model (only for testing)
+/// Note that this is not LIPM. The COM is not wrt stance foot.
+class Com : public ReducedOrderModel {
+ public:
+  static int kDimension(int world_dim) {
+    DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+    return world_dim;
+  };
+
+  Com(const drake::multibody::MultibodyPlant<double>& plant,
+       const MonomialFeatures& mapping_basis,
+       const MonomialFeatures& dynamic_basis, int world_dim)
+      : ReducedOrderModel(world_dim, 0, MatrixX<double>::Zero(world_dim, 0),
+                          world_dim + mapping_basis.length(),
+                          (world_dim - 1) + dynamic_basis.length(), mapping_basis,
+                          dynamic_basis, "COM"),
+        plant_(plant),
+        context_(plant_.CreateDefaultContext()),
+        world_(plant_.world_frame()),
+        world_dim_(world_dim) {
+    DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+
+    // Initialize model parameters (dependant on the feature vectors)
+    VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
+    theta_y(0) = 1;
+    theta_y(1 + n_feature_y()) = 1;
+    if (world_dim == 3) {
+      theta_y(2 + 2 * n_feature_y()) = 1;
+    }
+    SetThetaY(theta_y);
+
+    VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+    theta_yddot(0) = 1;
+    if (world_dim == 3) {
+      theta_yddot(1 + n_feature_yddot()) = 1;
+    }
+    SetThetaYddot(theta_yddot);
+
+    // Always check dimension after model construction
+    CheckModelConsistency();
+  };
+
+  // Copy constructor for the Clone() method
+  Com(const Com& old_obj)
+      : ReducedOrderModel(old_obj),
+        plant_(old_obj.plant()),
+        context_(old_obj.plant().CreateDefaultContext()),
+        world_(old_obj.world()),
+        world_dim_(old_obj.world_dim()) {};
+
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<Com>(*this);
+  }
+
+  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+  drake::VectorX<double> EvalMappingFeat(
+      const drake::VectorX<double>& q) const final {
+    // Get CoM position
+    plant_.SetPositions(context_.get(), q);
+    VectorX<double> CoM = plant_.CalcCenterOfMassPosition(*context_);
+
+    VectorX<double> feature(n_feature_y());
+    if (world_dim_ == 2) {
+      feature << CoM(0), CoM(2), mapping_basis().Eval(q);
+    } else {
+      feature << CoM, mapping_basis().Eval(q);
+    }
+    return feature;
+  };
+  drake::VectorX<double> EvalDynamicFeat(
+      const drake::VectorX<double>& y,
+      const drake::VectorX<double>& ydot) const final {
+    VectorX<double> feature(n_feature_yddot());
+    cout << "Warning: EvalDynamicFeat is not implemented\n";
+    return feature;
+  };
+  drake::VectorX<double> EvalMappingFeatJV(
+      const drake::VectorX<double>& q,
+      const drake::VectorX<double>& v) const final {
+    plant_.SetPositions(context_.get(), q);
+    // Get CoM velocity
+    MatrixX<double> J_com(3, plant_.num_velocities());
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+    VectorX<double> JV_CoM = J_com * v;
+
+    // Convert v to qdot
+    VectorX<double> qdot(plant_.num_positions());
+    plant_.MapVelocityToQDot(*context_, v, &qdot);
+
+    VectorX<double> ret(n_feature_y());
+    if (world_dim_ == 2) {
+      ret << JV_CoM(0), JV_CoM(2), mapping_basis().EvalJV(q, qdot);
+    } else {
+      ret << JV_CoM, mapping_basis().EvalJV(q, qdot);
+    }
+    return ret;
+  };
+  drake::VectorX<double> EvalMappingFeatJdotV(
+      const drake::VectorX<double>& q,
+      const drake::VectorX<double>& v) const final {
+    VectorX<double> x(plant_.num_positions() + plant_.num_velocities());
+    x << q, v;
+    plant_.SetPositionsAndVelocities(context_.get(), x);
+
+    // Get CoM JdotV
+    VectorX<double> JdotV_com =
+        plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+            *context_, JacobianWrtVariable::kV, world_, world_);
+
+    // Convert v to qdot
+    VectorX<double> qdot(plant_.num_positions());
+    plant_.MapVelocityToQDot(*context_, v, &qdot);
+
+    VectorX<double> ret(n_feature_y());
+    if (world_dim_ == 2) {
+      ret << JdotV_com(0), JdotV_com(2),
+          mapping_basis().EvalJdotV(q, qdot);
+    } else {
+      ret << JdotV_com, mapping_basis().EvalJdotV(q, qdot);
+    }
+    return ret;
+  };
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q) const final {
+    plant_.SetPositions(context_.get(), q);
+    // Get CoM J
+    MatrixX<double> J_com(3, plant_.num_velocities());
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+
+    MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
+    if (world_dim_ == 2) {
+      ret << J_com.row(0), J_com.row(2),
+          JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+    } else {
+      ret << J_com, JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+    }
+    return ret;
+  };
+
+  // Getters for copy constructor
+  const drake::multibody::MultibodyPlant<double>& plant() const {
+    return plant_;
+  };
+  const drake::multibody::BodyFrame<double>& world() const { return world_; };
+  int world_dim() const { return world_dim_; };
+
+ private:
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const drake::multibody::BodyFrame<double>& world_;
+
+  int world_dim_;
+};
+
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
 // Maybe we need to update the lcm driven loop to clear the queue of lcm message
 // if it's more than one message?
-
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -83,11 +258,6 @@ int DoMain(int argc, char* argv[]) {
                      false);
   plant_wo_springs.Finalize();
 
-  // Build the controller diagram
-  DiagramBuilder<double> builder;
-
-  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_springs or plant_wo_springs because the contact frames exit in both
   // plants)
@@ -95,6 +265,30 @@ int DoMain(int argc, char* argv[]) {
   auto left_heel = LeftToeRear(plant_wo_springs);
   auto right_toe = RightToeFront(plant_wo_springs);
   auto right_heel = RightToeRear(plant_wo_springs);
+
+  // Build LIPM reduced-order model
+  // Basis for mapping function (dependent on the robot)
+  MonomialFeatures mapping_basis(2, plant_wo_springs.num_positions(), {3, 4, 5},
+                                 "mapping basis");
+  mapping_basis.PrintInfo();
+  // Basis for dynamic function
+  MonomialFeatures dynamic_basis(2, 2 * Lipm::kDimension(3), {},
+                                 "dynamic basis");
+  dynamic_basis.PrintInfo();
+  // Construct reduced-order model
+  Com com(plant_wo_springs, mapping_basis, dynamic_basis, 3);
+  ReducedOrderModel* rom = &com;
+  cout << "Construct reduced-order model (" << rom->name()
+       << ") with parameters\n";
+  cout << "n_y = " << rom->n_y() << ", n_tau = " << rom->n_tau() << endl;
+  cout << "B_tau = \n" << rom->B() << "\n";
+  cout << "n_feature_y = " << rom->n_feature_y() << endl;
+  cout << "n_feature_yddot = " << rom->n_feature_yddot() << endl;
+
+  // Build the controller diagram
+  DiagramBuilder<double> builder;
+
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
   // Get body frames and points
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
@@ -317,8 +511,9 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  ComTrackingData center_of_mass_traj("lipm_traj", 3, K_p_com, K_d_com, W_com,
-                                      &plant_w_springs, &plant_wo_springs);
+  OptimalRomTrackingData center_of_mass_traj("rom_lipm_traj", 3, K_p_com,
+                                             K_d_com, W_com, &plant_w_springs,
+                                             &plant_wo_springs, *rom);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
@@ -386,7 +581,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(lipm_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("lipm_traj"));
+                  osc->get_tracking_data_input_port("rom_lipm_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
@@ -415,6 +610,8 @@ int DoMain(int argc, char* argv[]) {
   return 0;
 }
 
-}  // namespace dairlib
+}  // namespace dairlib::goldilocks_models
 
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::goldilocks_models::DoMain(argc, argv);
+}

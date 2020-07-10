@@ -8,10 +8,10 @@ cc_binary(
         ":goldilocks_utils",
         ":task",
         "//common:eigen_utils",
+        "//common:file_utils",
         "//examples/Cassie:cassie_utils",
         "//examples/goldilocks_models/find_models:initial_guess",
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
-        "//common:file_utils",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -25,8 +25,8 @@ cc_binary(
     deps = [
         ":goldilocks_utils",
         "//common",
-        "//examples/goldilocks_models/planning:RoM_planning_traj_opt",
         "//common:file_utils",
+        "//examples/goldilocks_models/planning:RoM_planning_traj_opt",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -69,8 +69,8 @@ cc_library(
         "reduced_order_models.h",
     ],
     deps = [
-        "//multibody:utils",
         "//common:file_utils",
+        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
 )
@@ -92,6 +92,7 @@ cc_binary(
     name = "run_cassie_walking_controller_test",
     srcs = ["run_cassie_walking_controller_test.cc"],
     deps = [
+        ":reduced_order_models",
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie:simulator_drift",

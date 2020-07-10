@@ -489,7 +489,7 @@ drake::MatrixX<double> Lipm::EvalMappingFeatJ(
 }
 VectorX<double> Lipm::EvalMappingFeatJdotV(const VectorX<double>& q,
                                            const VectorX<double>& v) const {
-  VectorX<double> x(plant_.num_positions() + plant_.num_positions());
+  VectorX<double> x(plant_.num_positions() + plant_.num_velocities());
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
@@ -662,7 +662,7 @@ drake::MatrixX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJ(
 }
 VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v) const {
-  VectorX<double> x(plant_.num_positions() + plant_.num_positions());
+  VectorX<double> x(plant_.num_positions() + plant_.num_velocities());
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
@@ -793,7 +793,7 @@ drake::MatrixX<double> FixHeightAccel::EvalMappingFeatJ(
 }
 VectorX<double> FixHeightAccel::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v) const {
-  VectorX<double> x(plant_.num_positions() + plant_.num_positions());
+  VectorX<double> x(plant_.num_positions() + plant_.num_velocities());
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
@@ -943,7 +943,7 @@ drake::MatrixX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJ(
 }
 VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v) const {
-  VectorX<double> x(plant_.num_positions() + plant_.num_positions());
+  VectorX<double> x(plant_.num_positions() + plant_.num_velocities());
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
 

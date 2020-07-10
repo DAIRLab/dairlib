@@ -1,7 +1,9 @@
 // This file is modified from examples/Cassie/run_osc_walking_controller.cc
 // We use this file to test OptimalRomTrackingData
 
-// Benchmark on computation time (over 399 number of samples)
+// Benchmark on computation time
+//   (commit number for reference: 2a9023265ca20d6eb5201225d4a3051ed8029f76)
+//   (benchmark data size: 399 number of samples)
 // UpdateYdotAndError::UpdateJdotV()
 //   min: 0.077 ms
 //   max: 0.27 ms

@@ -19,7 +19,7 @@ using BodyPoint =
 
 class MonomialFeatures {
  public:
-  /// Construct a basis features composed of monomials up to order `n_order`.
+  /// Construct basis features composed of monomials up to order `n_order`.
   /// `n_q` is the input size, and `skip_inds` denotes the indices of the input
   /// which are not used to construct the monomials.
   MonomialFeatures(int n_order, int n_q, std::vector<int> skip_inds = {},
@@ -79,8 +79,8 @@ class MonomialFeatures {
       second_ord_partial_diff_;
 };
 
-// TODO: pass context into ReducedOrderModel's eval methods in order to utilize
-//  drake's caching system
+// TODO(yminchen): pass context into ReducedOrderModel's eval methods in order
+//  to utilize drake's caching system
 
 /// ReducedOrderModel assumes the following structures of mapping function and
 /// dynamics function
@@ -192,7 +192,6 @@ class Lipm : public ReducedOrderModel {
   // Copy constructor for the Clone() method
   Lipm(const Lipm&);
 
-  // Use covariant return type for Clone method. It's more useful.
   std::unique_ptr<ReducedOrderModel> Clone() const override {
     return std::make_unique<Lipm>(*this);
   }
@@ -243,7 +242,6 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   // Copy constructor for the Clone() method
   TwoDimLipmWithSwingFoot(const TwoDimLipmWithSwingFoot&);
 
-  // Use covariant return type for Clone method. It's more useful.
   std::unique_ptr<ReducedOrderModel> Clone() const override {
     return std::make_unique<TwoDimLipmWithSwingFoot>(*this);
   }
@@ -293,7 +291,6 @@ class FixHeightAccel : public ReducedOrderModel {
   // Copy constructor for the Clone() method
   FixHeightAccel(const FixHeightAccel&);
 
-  // Use covariant return type for Clone method. It's more useful.
   std::unique_ptr<ReducedOrderModel> Clone() const override {
     return std::make_unique<FixHeightAccel>(*this);
   }
@@ -342,7 +339,6 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   // Copy constructor for the Clone() method
   FixHeightAccelWithSwingFoot(const FixHeightAccelWithSwingFoot&);
 
-  // Use covariant return type for Clone method. It's more useful.
   std::unique_ptr<ReducedOrderModel> Clone() const override {
     return std::make_unique<FixHeightAccelWithSwingFoot>(*this);
   }

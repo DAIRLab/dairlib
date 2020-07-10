@@ -165,14 +165,14 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
 
   // Read in pose
   MatrixXd x0_each_mode =
-    goldilocks_models::readCSV(dir_data + string("x0_each_mode.csv"));
+    readCSV(dir_data + string("x0_each_mode.csv"));
   MatrixXd xf_each_mode =
-    goldilocks_models::readCSV(dir_data + string("xf_each_mode.csv"));
+    readCSV(dir_data + string("xf_each_mode.csv"));
   DRAKE_DEMAND(x0_each_mode.cols() == FLAGS_n_mode);
 
   // Read in states
   MatrixXd states =
-    goldilocks_models::readCSV(dir_data + string("state_at_knots.csv"));
+    readCSV(dir_data + string("state_at_knots.csv"));
   DRAKE_DEMAND(states.cols() == FLAGS_n_mode * FLAGS_n_nodes -
                (FLAGS_n_mode - 1));
   int n_r = states.rows() / 2;
@@ -411,7 +411,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
     t0 = 1;
   }
   VectorXd planner_time =
-    goldilocks_models::readCSV(dir_data + string("time_at_knots.csv")).col(0);
+    readCSV(dir_data + string("time_at_knots.csv")).col(0);
   for (int i = 0; i < states.cols(); i++) {
     // T_breakpoint.push_back(t0 + i * dt);
     // cout << t0 + i * dt << endl;

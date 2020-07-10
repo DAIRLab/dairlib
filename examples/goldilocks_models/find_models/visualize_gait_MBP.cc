@@ -80,7 +80,7 @@ void visualizeGait(int argc, char* argv[]) {
   // Looping through the iterations
   for (int iter = iter_start; iter <= iter_end; iter++) {
     // Read in ground incline
-    double ground_incline = goldilocks_models::readCSV(
+    double ground_incline = readCSV(
         directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
         string("_task.csv"))(ground_incline_idx, 0);
 
@@ -89,20 +89,20 @@ void visualizeGait(int argc, char* argv[]) {
     MatrixXd state_mat;
     MatrixXd statedot_mat;
     if (!FLAGS_construct_cubic) {
-      time_mat = goldilocks_models::readCSV(
+      time_mat = readCSV(
           directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
           string("_time_at_knots.csv"));
-      state_mat = goldilocks_models::readCSV(
+      state_mat = readCSV(
           directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
           string("_state_at_knots.csv"));
     } else {
-      time_mat = goldilocks_models::readCSV(
+      time_mat = readCSV(
           directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
           string("_t_cubic_spline.csv"));
-      state_mat = goldilocks_models::readCSV(
+      state_mat = readCSV(
           directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
           string("_x_cubic_spline.csv"));
-      statedot_mat = goldilocks_models::readCSV(
+      statedot_mat = readCSV(
           directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
           string("_xdot_cubic_spline.csv"));
     }

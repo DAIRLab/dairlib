@@ -77,9 +77,9 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
 
     // Read in pose
     MatrixXd x0_each_mode =
-      goldilocks_models::readCSV(directory + string("x0_each_mode.csv"));
+      readCSV(directory + string("x0_each_mode.csv"));
     MatrixXd xf_each_mode =
-      goldilocks_models::readCSV(directory + string("xf_each_mode.csv"));
+      readCSV(directory + string("xf_each_mode.csv"));
 
     // Create a testing piecewise polynomial
     std::vector<double> T_breakpoint{0, FLAGS_step_time};

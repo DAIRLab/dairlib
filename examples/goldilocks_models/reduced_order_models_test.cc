@@ -31,7 +31,7 @@ MatrixX<double> CalcJByNumericalDiff(
   auto context = plant.CreateDefaultContext();
 
   // Central differencing
-  double dx = 1e-4;
+  double dx = 4e-4;
   VectorX<double> r_f, r_i;
   MatrixX<double> J_wrt_qdot =
       MatrixX<double>(rom.n_y(), plant.num_positions());
@@ -292,12 +292,35 @@ class ReducedOrderModelTest : public ::testing::Test {
     context_ = plant_.CreateDefaultContext();
     n_q_ = plant_.num_positions();
     n_v_ = plant_.num_velocities();
+
+    // Initialize states for testing
+    // 1. Random state
+    VectorX<double> x = VectorX<double>::Random(n_q_ + n_v_);
+    x.head(4).normalize();
+    x_samples_.push_back(x);
+    // 2. Double support phase of Cassie walking
+    x << 0.990065, 0.000339553, 0.00444831, 0.00085048, 0.00836164,
+        -0.000249535, 1.03223, -0.000810813, 6.8811e-05, 0.00177426,
+        -0.00514383, 0.447568, 0.44727, -1.01775, -1.01819, 1.29924, 1.30006,
+        -1.56023, -1.56018, 0.156632, -0.0502397, 0.101071, 0.232441, -0.296125,
+        -0.0559459, -0.663525, 0.116557, -0.0264677, -0.107556, 2.18153,
+        -0.0230963, -1.65117, -1.02961, 1.75789, -0.0410481, -1.46269, 0.482573;
+    x_samples_.push_back(x);
+    // 3. Left single support phase of Cassie walking
+    x << 0.989849, -0.000815987, -0.017933, -0.0111588, 0.344537, -0.148108,
+        1.00902, -0.0357916, -0.0422061, -0.0068692, -0.0355008, 0.274222,
+        0.644396, -1.00482, -1.50496, 1.36746, 1.73074, -1.45868, -0.936994,
+        -0.110601, -0.0521661, -0.00286609, 0.910837, -0.0174017, -0.00158473,
+        0.124156, 0.8427, 0.0224065, 0.0678774, -1.22403, 2.89698, 0.32455,
+        2.21075, -0.333968, -2.51737, 1.36041, -4.312;
+    x_samples_.push_back(x);
   }
 
   drake::multibody::MultibodyPlant<double> plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   int n_q_;
   int n_v_;
+  std::vector<VectorX<double>> x_samples_;
 };
 
 TEST_F(ReducedOrderModelTest, SecondOrderFeatures) {
@@ -311,27 +334,29 @@ TEST_F(ReducedOrderModelTest, SecondOrderFeatures) {
   rom->SetTheta(VectorX<double>::Random(n_theta));
 
   // Initialize a random state
-  VectorX<double> q = VectorX<double>::Random(n_q_);
-  VectorX<double> v = VectorX<double>::Random(n_v_);
-  VectorX<double> x(n_q_ + n_v_);
-  x << q, v;
-  plant_.SetPositionsAndVelocities(context_.get(), x);
+  for (const auto& x : x_samples_) {
+    VectorX<double> q = x.head(n_q_);
+    VectorX<double> v = x.tail(n_v_);
 
-  // Test ydot
-  VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom) * v;
-  VectorX<double> qdot_analytical = rom->EvalMappingFuncJV(q, v, *context_);
-  EXPECT_TRUE((qdot_numerical - qdot_analytical).norm() < 1e-6);
+    plant_.SetPositionsAndVelocities(context_.get(), x);
 
-  // Test Jacobian
-  MatrixX<double> J_numerical = CalcJByNumericalDiff(q, plant_, *rom);
-  MatrixX<double> J_analytical = rom->EvalMappingFuncJ(q, *context_);
-  EXPECT_TRUE((J_numerical - J_analytical).norm() < 1e-6);
+    // Test ydot
+    VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom) * v;
+    VectorX<double> qdot_analytical = rom->EvalMappingFuncJV(q, v, *context_);
+    EXPECT_TRUE((qdot_numerical - qdot_analytical).norm() < 1e-5);
 
-  // Test JdotV
-  VectorX<double> JdotV_numerical =
-      CalcJdotVByNumericalDiff(q, v, plant_, *rom);
-  VectorX<double> JdotV_analytical = rom->EvalMappingFuncJdotV(q, v, *context_);
-  EXPECT_TRUE((JdotV_numerical - JdotV_analytical).norm() < 1e-6);
+    // Test Jacobian
+    MatrixX<double> J_numerical = CalcJByNumericalDiff(q, plant_, *rom);
+    MatrixX<double> J_analytical = rom->EvalMappingFuncJ(q, *context_);
+    EXPECT_TRUE((J_numerical - J_analytical).norm() < 1e-5);
+
+    // Test JdotV
+    VectorX<double> JdotV_numerical =
+        CalcJdotVByNumericalDiff(q, v, plant_, *rom);
+    VectorX<double> JdotV_analytical =
+        rom->EvalMappingFuncJdotV(q, v, *context_);
+    EXPECT_TRUE((JdotV_numerical - JdotV_analytical).norm() < 1e-5);
+  }
 
   // Benchmark of computation time (in millisecond) on 8750H CPU:
   //   qdot_numerical = 0.349023
@@ -353,27 +378,29 @@ TEST_F(ReducedOrderModelTest, ThirdOrderFeatures) {
   rom->SetTheta(VectorX<double>::Random(n_theta));
 
   // Initialize a random state
-  VectorX<double> q = VectorX<double>::Random(n_q_);
-  VectorX<double> v = VectorX<double>::Random(n_v_);
-  VectorX<double> x(n_q_ + n_v_);
-  x << q, v;
-  plant_.SetPositionsAndVelocities(context_.get(), x);
+  for (const auto& x : x_samples_) {
+    VectorX<double> q = x.head(n_q_);
+    VectorX<double> v = x.tail(n_v_);
 
-  // Test ydot
-  VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom) * v;
-  VectorX<double> qdot_analytical = rom->EvalMappingFuncJV(q, v, *context_);
-  EXPECT_TRUE((qdot_numerical - qdot_analytical).norm() < 1e-6);
+    plant_.SetPositionsAndVelocities(context_.get(), x);
 
-  // Test Jacobian
-  MatrixX<double> J_numerical = CalcJByNumericalDiff(q, plant_, *rom);
-  MatrixX<double> J_analytical = rom->EvalMappingFuncJ(q, *context_);
-  EXPECT_TRUE((J_numerical - J_analytical).norm() < 1e-6);
+    // Test ydot
+    VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom) * v;
+    VectorX<double> qdot_analytical = rom->EvalMappingFuncJV(q, v, *context_);
+    EXPECT_TRUE((qdot_numerical - qdot_analytical).norm() < 1e-5);
 
-  // Test JdotV
-  VectorX<double> JdotV_numerical =
-      CalcJdotVByNumericalDiff(q, v, plant_, *rom);
-  VectorX<double> JdotV_analytical = rom->EvalMappingFuncJdotV(q, v, *context_);
-  EXPECT_TRUE((JdotV_numerical - JdotV_analytical).norm() < 1e-6);
+    // Test Jacobian
+    MatrixX<double> J_numerical = CalcJByNumericalDiff(q, plant_, *rom);
+    MatrixX<double> J_analytical = rom->EvalMappingFuncJ(q, *context_);
+    EXPECT_TRUE((J_numerical - J_analytical).norm() < 1e-5);
+
+    // Test JdotV
+    VectorX<double> JdotV_numerical =
+        CalcJdotVByNumericalDiff(q, v, plant_, *rom);
+    VectorX<double> JdotV_analytical =
+        rom->EvalMappingFuncJdotV(q, v, *context_);
+    EXPECT_TRUE((JdotV_numerical - JdotV_analytical).norm() < 1e-5);
+  }
 
   // Benchmark of computation time (in millisecond) on 8750H CPU:
   //   qdot_numerical = 1.13087

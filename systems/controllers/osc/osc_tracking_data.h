@@ -7,7 +7,6 @@
 #include <drake/common/trajectories/trajectory.h>
 
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/osc/osc_user_defined_pos.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 
 namespace dairlib {
@@ -401,62 +400,6 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<int> joint_vel_idx_w_spr_;
   std::vector<int> joint_pos_idx_wo_spr_;
   std::vector<int> joint_vel_idx_wo_spr_;
-};
-
-class AbstractTrackingData final : public OscTrackingData {
- public:
-  AbstractTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
-      OscUserDefinedPos* user_defined_pos);
-  AbstractTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
-      OscUserDefinedPos* user_defined_pos_w_spr,
-      OscUserDefinedPos* user_defined_pos_wo_spr);
-
- private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                  drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYddotDes() final;
-  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
-
-  void CheckDerivedOscTrackingData() final;
-
-  // Compute Jacobian (qdot version instead of v!) by numerical differentiation
-  Eigen::MatrixXd JacobianOfUserDefinedPos(
-      const OscUserDefinedPos& user_defined_pos, Eigen::VectorXd q) const;
-
-  bool only_one_user_defined_pos_;
-
-  OscUserDefinedPos* user_defined_pos_wo_spr_;
-  OscUserDefinedPos* user_defined_pos_w_spr_;
-
-  // Map position/velocity from model with spring to without spring
-  Eigen::MatrixXd map_position_from_spring_to_no_spring_;
-  Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
-
-  // Step size for numerical differentiation
-  // It's tuned for minimizing JdotV error:
-  // (states and user-defined functions are in the osc_tracking_data_test.cc)
-  //   dx_ = 1e-5 if forward differencing.
-  //                 JdotV error norm ~ 1e-5, J error norm ~ 1e-5,
-  //                 runtime for JdotV calculation (Cassie CoM) ~ 1.6ms
-  //   dx_ = 4e-4 if central differencing.
-  //                 JdotV error norm ~ 5e-8, J error norm ~ 5e-9
-  //                 runtime for JdotV calculation (Cassie CoM) ~ 3.0ms
-  double dx_ = 1e-5;
-  // if is_forward_differencing_ = false, we use central differencing
-  bool is_forward_differencing_ = true;
 };
 
 class OptimalRomTrackingData final : public OscTrackingData {

@@ -1488,7 +1488,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // 1e-3 is small enough to avoid gittering at the end
       // 1e-2 is a good compromise on both speed and gittering
       // 1e-1 caused divergence when close to optimal sol
-      h_step = 1e-4;
+      h_step = 1e-3;
       /*if (beta_momentum != 0) {
         // haven't tried or tuned this yet.
         h_step = 1e-5;
@@ -1728,7 +1728,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else {
-    // TODO: finish implementing the rest of the ROM
     throw std::runtime_error("Not implemented");
   }
   dynamic_basis->PrintInfo();
@@ -1738,14 +1737,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
   string swing_foot_body_name;
   Vector3d swing_foot_contact_point_pos;
   if (FLAGS_robot_option == 0) {
-    // TODO: finish implementing the rest of the ROM
-    throw std::runtime_error("Not implemented");
-
-    //    stance_foot_body_name
-    //    stance_foot_contact_point_pos
-    //    swing_foot_body_name =
-    //    swing_foot_contact_point_pos =
-
+    stance_foot_body_name = "left_lower_leg_mass";
+    stance_foot_contact_point_pos = Vector3d(0, 0, -0.5);
+    swing_foot_body_name = "right_lower_leg_mass";
+    swing_foot_contact_point_pos = Vector3d(0, 0, -0.5);
   } else {  // FLAGS_robot_option == 1
     auto left_toe = LeftToeFront(plant);
     auto left_heel = LeftToeRear(plant);

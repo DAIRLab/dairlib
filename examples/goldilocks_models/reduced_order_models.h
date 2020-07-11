@@ -236,7 +236,7 @@ class Lipm : public ReducedOrderModel {
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
   const BodyPoint& stance_contact_point_;
-
+  bool is_quaternion_;
   int world_dim_;
 };
 
@@ -289,6 +289,7 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   const BodyPoint& stance_contact_point_;
   // contact body frame and contact point of the swing foot
   const BodyPoint& swing_contact_point_;
+  bool is_quaternion_;
 };
 
 class FixHeightAccel : public ReducedOrderModel {
@@ -336,6 +337,7 @@ class FixHeightAccel : public ReducedOrderModel {
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
   const BodyPoint& stance_contact_point_;
+  bool is_quaternion_;
 };
 
 class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
@@ -388,6 +390,7 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   const BodyPoint& stance_contact_point_;
   // contact body frame and contact point of the swing foot
   const BodyPoint& swing_contact_point_;
+  bool is_quaternion_;
 };
 
 namespace testing {
@@ -434,6 +437,7 @@ class Com : public ReducedOrderModel {
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::BodyFrame<double>& world_;
+  bool is_quaternion_;
 };
 }  // namespace testing
 

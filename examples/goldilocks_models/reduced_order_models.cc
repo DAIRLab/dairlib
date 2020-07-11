@@ -370,7 +370,6 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
       stance_contact_point_(stance_contact_point),
       world_dim_(world_dim) {
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
-  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
 
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
@@ -387,6 +386,8 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
     theta_yddot(1 + n_feature_yddot()) = 1;
   }
   SetThetaYddot(theta_yddot);
+
+  is_quaternion_ = isQuaternion(plant);
 
   // Always check dimension after model construction
   CheckModelConsistency();
@@ -409,11 +410,6 @@ VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
                              stance_contact_point_.first, plant_.world_frame(),
                              &stance_foot_pos);
   VectorX<double> st_to_CoM = CoM - stance_foot_pos;
-  // cout << "CoM = " << CoM.transpose() << endl;
-  // cout << "stance_foot_pos = " << stance_foot_pos.transpose() << endl;
-  // cout << "CoM from MBP = " << CoM(0) << " " << CoM(2) << endl;
-  // cout << "st_to_CoM from MBP = " << st_to_CoM(0) << " " << st_to_CoM(2) <<
-  // endl;
 
   VectorX<double> feature(n_feature_y());
   if (world_dim_ == 2) {
@@ -483,9 +479,12 @@ drake::MatrixX<double> Lipm::EvalMappingFeatJ(
   MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
   if (world_dim_ == 2) {
     ret << J_st_to_CoM.row(0), J_st_to_CoM.row(2),
-        JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+        is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                       : mapping_basis().EvalJwrtqdot(q);
   } else {
-    ret << J_st_to_CoM, JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+    ret << J_st_to_CoM,
+        is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                       : mapping_basis().EvalJwrtqdot(q);
   }
   return ret;
 }
@@ -532,8 +531,6 @@ TwoDimLipmWithSwingFoot::TwoDimLipmWithSwingFoot(
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
       swing_contact_point_(swing_contact_point) {
-  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
-
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
   VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
@@ -544,6 +541,8 @@ TwoDimLipmWithSwingFoot::TwoDimLipmWithSwingFoot(
   theta_yddot(0) = 1;
   SetThetaY(theta_y);
   SetThetaYddot(theta_yddot);
+
+  is_quaternion_ = isQuaternion(plant);
 
   // Always check dimension after model construction
   CheckModelConsistency();
@@ -573,13 +572,6 @@ VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeat(
                              swing_contact_point_.first, plant_.world_frame(),
                              &right_foot_pos);
   VectorX<double> CoM_to_sw = right_foot_pos - CoM;
-  // cout << "CoM = " << CoM.transpose() << endl;
-  // cout << "left_foot_pos = " << left_foot_pos.transpose() << endl;
-  // cout << "right_foot_pos = " << right_foot_pos.transpose() << endl;
-  // cout << "CoM from MBP = " << CoM(0) << " " << CoM(2) << endl;
-  // cout << "st_to_CoM from MBP = " << st_to_CoM(0) << " " << st_to_CoM(2) <<
-  // endl; cout << "CoM_to_sw from MBP = " << CoM_to_sw(0) << " " <<
-  // CoM_to_sw(2) << endl;
 
   VectorX<double> feature(n_feature_y());
   feature << st_to_CoM(0), st_to_CoM(2), CoM_to_sw(0), CoM_to_sw(2),
@@ -654,7 +646,9 @@ drake::MatrixX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJ(
 
   MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
   ret << J_st_to_CoM.row(0), J_st_to_CoM.row(2), J_CoM_to_sw.row(0),
-      J_CoM_to_sw.row(2), JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+      J_CoM_to_sw.row(2),
+      is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                     : mapping_basis().EvalJwrtqdot(q);
   return ret;
 }
 VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJdotV(
@@ -699,14 +693,14 @@ FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
       plant_(plant),
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point) {
-  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
-
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
   VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
   theta_y(0) = 1;
   SetThetaY(theta_y);
   SetThetaYddot(theta_yddot);
+
+  is_quaternion_ = isQuaternion(plant);
 
   // Always check dimension after model construction
   CheckModelConsistency();
@@ -780,7 +774,8 @@ drake::MatrixX<double> FixHeightAccel::EvalMappingFeatJ(
 
   MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
   ret << J_st_to_CoM.row(2),
-      JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+      is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                     : mapping_basis().EvalJwrtqdot(q);
   return ret;
 }
 VectorX<double> FixHeightAccel::EvalMappingFeatJdotV(
@@ -821,8 +816,6 @@ FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
       swing_contact_point_(swing_contact_point) {
-  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
-
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
   VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
@@ -831,6 +824,8 @@ FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
   theta_y(2 + 2 * n_feature_y()) = 1;
   SetThetaY(theta_y);
   SetThetaYddot(theta_yddot);
+
+  is_quaternion_ = isQuaternion(plant);
 
   // Always check dimension after model construction
   CheckModelConsistency();
@@ -925,7 +920,8 @@ drake::MatrixX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJ(
 
   MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
   ret << J_st_to_CoM.row(2), J_CoM_to_sw.row(0), J_CoM_to_sw.row(2),
-      JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+      is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                     : mapping_basis().EvalJwrtqdot(q);
   return ret;
 }
 VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJdotV(
@@ -966,8 +962,6 @@ testing::Com::Com(const drake::multibody::MultibodyPlant<double>& plant,
                         mapping_basis, dynamic_basis, "COM"),
       plant_(plant),
       world_(plant_.world_frame()) {
-  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
-
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
   theta_y(0) = 1;
@@ -979,6 +973,8 @@ testing::Com::Com(const drake::multibody::MultibodyPlant<double>& plant,
   theta_yddot(0) = 1;
   theta_yddot(1 + n_feature_yddot()) = 1;
   SetThetaYddot(theta_yddot);
+
+  is_quaternion_ = isQuaternion(plant);
 
   // Always check dimension after model construction
   CheckModelConsistency();
@@ -1049,7 +1045,9 @@ drake::MatrixX<double> testing::Com::EvalMappingFeatJ(
       context, JacobianWrtVariable::kV, world_, world_, &J_com);
 
   MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
-  ret << J_com, JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+  ret << J_com, is_quaternion_
+                    ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                    : mapping_basis().EvalJwrtqdot(q);
   return ret;
 };
 

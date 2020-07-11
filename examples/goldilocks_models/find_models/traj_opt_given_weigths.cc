@@ -1580,10 +1580,6 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   //       endl;
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
-  cout << sample_idx << ": ";
-  cout << setting.init_file << ", ";
-  cout << gm_traj_opt.dircon->decision_variables().size() << ", ";
-  cout << gm_traj_opt.dircon->initial_guess().size() << endl;
   auto start = std::chrono::high_resolution_clock::now();
   const MathematicalProgramResult result =
       Solve(*gm_traj_opt.dircon, gm_traj_opt.dircon->initial_guess());

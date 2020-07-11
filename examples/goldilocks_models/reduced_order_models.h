@@ -390,5 +390,52 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   const BodyPoint& swing_contact_point_;
 };
 
+namespace testing {
+/// 3D center of mass model (only for testing)
+/// Note that this is not LIPM. The COM is not wrt stance foot.
+class Com : public ReducedOrderModel {
+ public:
+  static const int kDimension = 3;
+
+  Com(const drake::multibody::MultibodyPlant<double>& plant,
+      const MonomialFeatures& mapping_basis,
+      const MonomialFeatures& dynamic_basis);
+
+  // Copy constructor for the Clone() method
+  Com(const Com& old_obj);
+
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<Com>(*this);
+  }
+
+  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+  drake::VectorX<double> EvalMappingFeat(
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
+  drake::VectorX<double> EvalDynamicFeat(
+      const drake::VectorX<double>& y,
+      const drake::VectorX<double>& ydot) const final;
+  drake::VectorX<double> EvalMappingFeatJV(
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
+  drake::VectorX<double> EvalMappingFeatJdotV(
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
+
+  // Getters for copy constructor
+  const drake::multibody::MultibodyPlant<double>& plant() const {
+    return plant_;
+  };
+  const drake::multibody::BodyFrame<double>& world() const { return world_; };
+
+ private:
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+};
+}  // namespace testing
+
 }  // namespace goldilocks_models
 }  // namespace dairlib

@@ -93,153 +93,6 @@ DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 
-/// Center of mass model (only for testing)
-/// Note that this is not LIPM. The COM is not wrt stance foot.
-class Com : public ReducedOrderModel {
- public:
-  static int kDimension(int world_dim) {
-    DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
-    return world_dim;
-  };
-
-  Com(const drake::multibody::MultibodyPlant<double>& plant,
-      const MonomialFeatures& mapping_basis,
-      const MonomialFeatures& dynamic_basis, int world_dim)
-      : ReducedOrderModel(world_dim, 0, MatrixX<double>::Zero(world_dim, 0),
-                          world_dim + mapping_basis.length(),
-                          (world_dim - 1) + dynamic_basis.length(),
-                          mapping_basis, dynamic_basis, "COM"),
-        plant_(plant),
-        world_(plant_.world_frame()),
-        world_dim_(world_dim) {
-    DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
-
-    // Initialize model parameters (dependant on the feature vectors)
-    VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
-    theta_y(0) = 1;
-    theta_y(1 + n_feature_y()) = 1;
-    if (world_dim == 3) {
-      theta_y(2 + 2 * n_feature_y()) = 1;
-    }
-    SetThetaY(theta_y);
-
-    VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
-    theta_yddot(0) = 1;
-    if (world_dim == 3) {
-      theta_yddot(1 + n_feature_yddot()) = 1;
-    }
-    SetThetaYddot(theta_yddot);
-
-    // Always check dimension after model construction
-    CheckModelConsistency();
-  };
-
-  // Copy constructor for the Clone() method
-  Com(const Com& old_obj)
-      : ReducedOrderModel(old_obj),
-        plant_(old_obj.plant()),
-        world_(old_obj.world()),
-        world_dim_(old_obj.world_dim()){};
-
-  std::unique_ptr<ReducedOrderModel> Clone() const override {
-    return std::make_unique<Com>(*this);
-  }
-
-  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
-  drake::VectorX<double> EvalMappingFeat(
-      const drake::VectorX<double>& q,
-      const drake::systems::Context<double>& context) const final {
-    // Get CoM position
-    VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
-
-    VectorX<double> feature(n_feature_y());
-    if (world_dim_ == 2) {
-      feature << CoM(0), CoM(2), mapping_basis().Eval(q);
-    } else {
-      feature << CoM, mapping_basis().Eval(q);
-    }
-    return feature;
-  };
-  drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const final {
-    VectorX<double> feature(n_feature_yddot());
-    cout << "Warning: EvalDynamicFeat is not implemented\n";
-    return feature;
-  };
-  drake::VectorX<double> EvalMappingFeatJV(
-      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
-      const drake::systems::Context<double>& context) const final {
-    // Get CoM velocity
-    MatrixX<double> J_com(3, plant_.num_velocities());
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        context, JacobianWrtVariable::kV, world_, world_, &J_com);
-    VectorX<double> JV_CoM = J_com * v;
-
-    // Convert v to qdot
-    VectorX<double> qdot(plant_.num_positions());
-    plant_.MapVelocityToQDot(context, v, &qdot);
-
-    VectorX<double> ret(n_feature_y());
-    if (world_dim_ == 2) {
-      ret << JV_CoM(0), JV_CoM(2), mapping_basis().EvalJV(q, qdot);
-    } else {
-      ret << JV_CoM, mapping_basis().EvalJV(q, qdot);
-    }
-    return ret;
-  };
-  drake::VectorX<double> EvalMappingFeatJdotV(
-      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
-      const drake::systems::Context<double>& context) const final {
-    // Get CoM JdotV
-    VectorX<double> JdotV_com =
-        plant_.CalcBiasCenterOfMassTranslationalAcceleration(
-            context, JacobianWrtVariable::kV, world_, world_);
-
-    // Convert v to qdot
-    VectorX<double> qdot(plant_.num_positions());
-    plant_.MapVelocityToQDot(context, v, &qdot);
-
-    VectorX<double> ret(n_feature_y());
-    if (world_dim_ == 2) {
-      ret << JdotV_com(0), JdotV_com(2), mapping_basis().EvalJdotV(q, qdot);
-    } else {
-      ret << JdotV_com, mapping_basis().EvalJdotV(q, qdot);
-    }
-    return ret;
-  };
-  drake::MatrixX<double> EvalMappingFeatJ(
-      const drake::VectorX<double>& q,
-      const drake::systems::Context<double>& context) const final {
-    // Get CoM J
-    MatrixX<double> J_com(3, plant_.num_velocities());
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        context, JacobianWrtVariable::kV, world_, world_, &J_com);
-
-    MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
-    if (world_dim_ == 2) {
-      ret << J_com.row(0), J_com.row(2),
-          JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
-    } else {
-      ret << J_com, JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
-    }
-    return ret;
-  };
-
-  // Getters for copy constructor
-  const drake::multibody::MultibodyPlant<double>& plant() const {
-    return plant_;
-  };
-  const drake::multibody::BodyFrame<double>& world() const { return world_; };
-  int world_dim() const { return world_dim_; };
-
- private:
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  const drake::multibody::BodyFrame<double>& world_;
-
-  int world_dim_;
-};
-
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
@@ -269,17 +122,17 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant_wo_springs);
   auto right_heel = RightToeRear(plant_wo_springs);
 
-  // Build LIPM reduced-order model
+  // Build COM reduced-order model
   // Basis for mapping function (dependent on the robot)
   MonomialFeatures mapping_basis(2, plant_wo_springs.num_positions(), {3, 4, 5},
                                  "mapping basis");
   mapping_basis.PrintInfo();
   // Basis for dynamic function
-  MonomialFeatures dynamic_basis(2, 2 * Lipm::kDimension(3), {},
+  MonomialFeatures dynamic_basis(2, 2 * testing::Com::kDimension, {},
                                  "dynamic basis");
   dynamic_basis.PrintInfo();
   // Construct reduced-order model
-  Com com(plant_wo_springs, mapping_basis, dynamic_basis, 3);
+  testing::Com com(plant_wo_springs, mapping_basis, dynamic_basis);
   ReducedOrderModel* rom = &com;
   cout << "Construct reduced-order model (" << rom->name()
        << ") with parameters\n";

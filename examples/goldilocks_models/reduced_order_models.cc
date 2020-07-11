@@ -28,6 +28,7 @@ using std::vector;
 namespace dairlib {
 namespace goldilocks_models {
 
+using multibody::isQuaternion;
 using multibody::JwrtqdotToJwrtv;
 using multibody::WToQuatDotMap;
 
@@ -369,6 +370,7 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
       stance_contact_point_(stance_contact_point),
       world_dim_(world_dim) {
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
 
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
@@ -530,6 +532,8 @@ TwoDimLipmWithSwingFoot::TwoDimLipmWithSwingFoot(
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
       swing_contact_point_(swing_contact_point) {
+  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
+
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
   VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
@@ -695,6 +699,8 @@ FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
       plant_(plant),
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point) {
+  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
+
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
   VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
@@ -815,6 +821,8 @@ FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
       swing_contact_point_(swing_contact_point) {
+  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
+
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
   VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
@@ -947,6 +955,103 @@ VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJdotV(
       mapping_basis().EvalJdotV(q, qdot);
   return ret;
 }
+
+/// 3D Center of mass model (only for testing)
+/// Note that this is not LIPM. The COM is not wrt stance foot.
+testing::Com::Com(const drake::multibody::MultibodyPlant<double>& plant,
+                  const MonomialFeatures& mapping_basis,
+                  const MonomialFeatures& dynamic_basis)
+    : ReducedOrderModel(3, 0, MatrixX<double>::Zero(3, 0),
+                        3 + mapping_basis.length(), 2 + dynamic_basis.length(),
+                        mapping_basis, dynamic_basis, "COM"),
+      plant_(plant),
+      world_(plant_.world_frame()) {
+  DRAKE_DEMAND(isQuaternion(plant));  // Because of the use of JwrtqdotToJwrtv
+
+  // Initialize model parameters (dependant on the feature vectors)
+  VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
+  theta_y(0) = 1;
+  theta_y(1 + n_feature_y()) = 1;
+  theta_y(2 + 2 * n_feature_y()) = 1;
+  SetThetaY(theta_y);
+
+  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  theta_yddot(0) = 1;
+  theta_yddot(1 + n_feature_yddot()) = 1;
+  SetThetaYddot(theta_yddot);
+
+  // Always check dimension after model construction
+  CheckModelConsistency();
+};
+
+// Copy constructor for the Clone() method
+testing::Com::Com(const testing::Com& old_obj)
+    : ReducedOrderModel(old_obj),
+      plant_(old_obj.plant()),
+      world_(old_obj.world()){};
+
+// Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+drake::VectorX<double> testing::Com::EvalMappingFeat(
+    const drake::VectorX<double>& q,
+    const drake::systems::Context<double>& context) const {
+  // Get CoM position
+  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+
+  VectorX<double> feature(n_feature_y());
+  feature << CoM, mapping_basis().Eval(q);
+  return feature;
+};
+drake::VectorX<double> testing::Com::EvalDynamicFeat(
+    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot) const {
+  VectorX<double> feature(n_feature_yddot());
+  cout << "Warning: EvalDynamicFeat is not implemented\n";
+  return feature;
+};
+drake::VectorX<double> testing::Com::EvalMappingFeatJV(
+    const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+    const drake::systems::Context<double>& context) const {
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  VectorX<double> JV_CoM = J_com * v;
+
+  // Convert v to qdot
+  VectorX<double> qdot(plant_.num_positions());
+  plant_.MapVelocityToQDot(context, v, &qdot);
+
+  VectorX<double> ret(n_feature_y());
+  ret << JV_CoM, mapping_basis().EvalJV(q, qdot);
+  return ret;
+};
+drake::VectorX<double> testing::Com::EvalMappingFeatJdotV(
+    const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+    const drake::systems::Context<double>& context) const {
+  // Get CoM JdotV
+  VectorX<double> JdotV_com =
+      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+          context, JacobianWrtVariable::kV, world_, world_);
+
+  // Convert v to qdot
+  VectorX<double> qdot(plant_.num_positions());
+  plant_.MapVelocityToQDot(context, v, &qdot);
+
+  VectorX<double> ret(n_feature_y());
+  ret << JdotV_com, mapping_basis().EvalJdotV(q, qdot);
+  return ret;
+};
+drake::MatrixX<double> testing::Com::EvalMappingFeatJ(
+    const drake::VectorX<double>& q,
+    const drake::systems::Context<double>& context) const {
+  // Get CoM J
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+
+  MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
+  ret << J_com, JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+  return ret;
+};
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

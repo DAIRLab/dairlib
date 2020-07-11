@@ -490,6 +490,9 @@ AbstractTrackingData::AbstractTrackingData(
     : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr),
       user_defined_pos_wo_spr_(user_defined_pos_wo_spr),
       user_defined_pos_w_spr_(user_defined_pos_w_spr) {
+  // Because of the use of JwrtqdotToJwrtv
+  DRAKE_DEMAND(multibody::isQuaternion(*plant_wo_spr));
+
   only_one_user_defined_pos_ =
       user_defined_pos_w_spr == user_defined_pos_wo_spr;
 

@@ -3,7 +3,6 @@ import numpy as np
 import os
 
 robot_option = 1
-normalized_cost = True
 file_dir = '/Users/jason-hu/'
 
 # optimization setting
@@ -17,8 +16,8 @@ min_gi2 = -0.175
 max_gi2 = 0.125
 min_sl2 = 0.1675
 max_sl2 = 0.3175
-plot_large_range = 1
-plot_small_range = 1
+plot_large_range = 0
+plot_small_range = 0
 
 if robot_option == 0:
     robot = 'five_link/'
@@ -54,44 +53,25 @@ if robot_option == 1:
            '_small_iter200/'
     dir7 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
            '_large_iter100/'
+    dir8 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/4D_task_space/' + 'robot_' + str(robot_option) + \
+           '_grid_iter50_sl_tr/'
+    dir9 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/4D_task_space/' + 'robot_' + str(robot_option) + \
+           '_nominal_sl_tr/'
 
 
 i = 0
 x = []
 y = []
 z = []
-dir = dir4
-dir_nominal = dir3
-found_same_sample = False
-while os.path.isfile(dir+str(i)+'_'+str(0)+'_gamma.csv'):
-    gamma = np.genfromtxt(dir + str(i) + '_' + str(0) + '_gamma.csv', delimiter=",")
+dir = dir9
+while os.path.isfile(dir+str(i)+'_'+str(0)+'_task.csv'):
+    gamma = np.genfromtxt(dir + str(i) + '_' + str(0) + '_task.csv', delimiter=",")
     cost = float(np.genfromtxt(dir + str(i) + '_' + str(0) + '_c.csv', delimiter=","))
-    if np.genfromtxt(dir + str(i) + '_' + str(0) + '_is_success.csv', delimiter=",") == 1:
-        if normalized_cost:
-            j = 0
-            # search the nominal cost map
-            while os.path.isfile(dir_nominal+str(j)+'_'+str(0)+'_gamma.csv'):
-                gamma_nominal = np.genfromtxt(dir_nominal + str(j) + '_' + str(0) + '_gamma.csv', delimiter=",")
-                if np.array_equal(gamma, gamma_nominal):
-                    found_same_sample = True
-                    if np.genfromtxt(dir_nominal + str(j) + '_' + str(0) + '_is_success.csv', delimiter=",") == 1:
-                        nominal_cost = float(np.genfromtxt(dir_nominal + str(j) + '_' + str(0) + '_c.csv', delimiter=","))
-                        if cost/nominal_cost < 1.5:
-                            x.append(gamma[0])
-                            y.append(gamma[1])
-                            z.append(cost/nominal_cost)
-                    break
-                j = j+1
-            if found_same_sample:
-                found_same_sample = False
-            else:
-                x.append(gamma[0])
-                y.append(gamma[1])
-                z.append(0)
-        else:
-            x.append(gamma[0])
-            y.append(gamma[1])
-            z.append(cost)
+    # only consider reasonable point
+    if cost < 35:
+        x.append(gamma[0])
+        y.append(gamma[3])
+        z.append(cost)
     i = i+1
 
 fig, ax = plt.subplots()
@@ -104,11 +84,8 @@ print(np.shape(z))
 surf = ax.tricontourf(x, y, z)
 fig.colorbar(surf, shrink=0.5, aspect=6)
 ax.set_xlabel('Stride length')
-ax.set_ylabel('Ground incline')
-if normalized_cost:
-    ax.set_title('normalized cost landscape')
-else:
-    ax.set_title('cost landscape')
+ax.set_ylabel('Turning rate')
+ax.set_title('cost landscape')
 
 # optimization range
 # large range

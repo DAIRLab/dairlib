@@ -10,10 +10,10 @@ robot_option = 1
 file_dir = '/Users/jason-hu/'
 if robot_option == 1:
     robot = 'cassie/'
-    dir1 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/'+'robot_' + str(robot_option) + \
-           '_2d_nominal/'
-    dir2 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-           '_2d_initial_model/'
+    dir1 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/4D_task_space/' + 'robot_' + str(robot_option) + \
+           '_grid_iter50_sl_tr/'
+    dir2 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/4D_task_space/' + 'robot_' + str(robot_option) + \
+           '_nominal_sl_tr/'
 
 # number of searching directions
 n_direction = 16
@@ -38,7 +38,7 @@ def tricolorplot(x1, y1, x2, y2, x3, y3, color):
     XY[:, 0] = X
     XY[:, 1] = Y
     t1 = plt.Polygon(XY, color=color)
-    plt.gca().add_patch(t1)
+    ax1.add_patch(t1)
     plt.plot(X, Y, color=color)
 
 
@@ -74,7 +74,6 @@ def polycolorplot(x1, y1, z1, x2, y2, z2):
             tricolorplot(x1[i-1], y1[i-1], x1[i], y1[i], x2[j-1], y2[j-1], color)
             i = i+1
 
-    plt.show()
 
 
 def extractadjacentline(dir):
@@ -82,10 +81,14 @@ def extractadjacentline(dir):
     for i in range(n_direction):
         min_sin = 1
         for j in range(n_direction):
-            line1 = np.genfromtxt(dir + str(i) + '_' + str(0) + '_searching_direction.csv', delimiter=",")
-            line2 = np.genfromtxt(dir + str(j) + '_' + str(0) + '_searching_direction.csv', delimiter=",")
-            sin = np.cross(line1, line2) / (np.linalg.norm(line1) * np.linalg.norm(line2))
-            cos = np.dot(line1, line2) / (np.linalg.norm(line1) * np.linalg.norm(line2))
+            # Note:decide which column of the searching direction to use
+            # Eg. column index 0 corresponds to stride length
+            line1 = np.genfromtxt(dir + str(i+1) + '_searching_direction.csv', delimiter=",")
+            vec1 = np.array([line1[0], line1[3]])
+            line2 = np.genfromtxt(dir + str(j+1) + '_searching_direction.csv', delimiter=",")
+            vec2 = np.array([line2[0], line2[3]])
+            sin = np.cross(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+            cos = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
             # restrict the direction
             if (cos > 0) & (sin > 0):
                 # find the adjacent pair
@@ -97,8 +100,8 @@ def extractadjacentline(dir):
 
 
 def process_data_from_direction(i, dir1, dir2):
-    data_dir1 = np.genfromtxt(dir1 + str(i) + '_' + str(0) + '_cost_list.csv', delimiter=",")
-    data_dir2 = np.genfromtxt(dir2 + str(i) + '_' + str(0) + '_cost_list.csv', delimiter=",")
+    data_dir1 = np.genfromtxt(dir1 + str(int(i+1)) + '_cost_list.csv', delimiter=",")
+    data_dir2 = np.genfromtxt(dir2 + str(int(i+1)) + '_cost_list.csv', delimiter=",")
     # choose the longer line
     if data_dir1.shape[0] >= data_dir2.shape[0]:
         num_large = data_dir1.shape[0]
@@ -109,7 +112,7 @@ def process_data_from_direction(i, dir1, dir2):
     # need to add central point on the points list
     task0 = np.genfromtxt(dir1 + str(0) + '_' + str(0) + '_task.csv', delimiter=",")
     x0 = task0[0]
-    y0 = task0[1]
+    y0 = task0[3]
     cost1 = np.genfromtxt(dir1 + str(0) + '_' + str(0) + '_c.csv', delimiter=",")
     cost2 = np.genfromtxt(dir2 + str(0) + '_' + str(0) + '_c.csv', delimiter=",")
     if cost1 > cost2:
@@ -124,9 +127,9 @@ def process_data_from_direction(i, dir1, dir2):
     # Note:decide which column of the task to plot according to the task dimensions
     # Eg. column index 0 corresponds to stride length
     for j in range(num_small):
-        task = np.genfromtxt(dir1 + str(data_dir1[j, 0]) + '_' + str(0) + '_task.csv', delimiter=",")
+        task = np.genfromtxt(dir1 + str(int(data_dir1[j, 0])) + '_' + str(0) + '_task.csv', delimiter=",")
         x[j] = task[0]
-        y[j] = task[1]
+        y[j] = task[3]
         cost1 = data_dir1[j,1]
         cost2 = data_dir2[j,1]
         if cost1 > cost2:
@@ -136,13 +139,20 @@ def process_data_from_direction(i, dir1, dir2):
     for j in range(num_small, num_large):
         if data_dir1.shape[0] >= data_dir2.shape[0]:
             # extended range
+            task = np.genfromtxt(dir1 + str(int(data_dir1[j, 0])) + '_' + str(0) + '_task.csv', delimiter=",")
+            x[j] = task[0]
+            y[j] = task[3]
             z[j] = 0
         else:
             # shrunk range
+            task = np.genfromtxt(dir2 + str(int(data_dir2[j, 0])) + '_' + str(0) + '_task.csv', delimiter=",")
+            x[j] = task[0]
+            y[j] = task[3]
             z[j] = 2
-    x = np.concatenate([np.array([x0]), x])
-    y = np.concatenate([np.array([y0]), y])
-    z = np.concatenate([np.array([z0]), z])
+    if i != 0:
+        x = np.concatenate([np.array([x0]), x])
+        y = np.concatenate([np.array([y0]), y])
+        z = np.concatenate([np.array([z0]), z])
 
     return x,y,z
 
@@ -157,8 +167,33 @@ def generateplot(dir1, dir2, adj_index):
         polycolorplot(x1, y1, z1, x2, y2, z2)
 
 
-def main():
-    adjacent = extractadjacentline(dir1)
-    generateplot(dir1, dir2, adjacent)
+fig1 = plt.figure(num=1, figsize=(6.4, 4.8))
+ax1 = fig1.gca()
+adjacent = extractadjacentline(dir1)
+print(adjacent)
+generateplot(dir1, dir2, adjacent)
+plt.show()
+
+[0,-1,-0.5,0.5,1]
+[0,-1,-0.5,0.5,1]
+
+0,-1
+0,1
+-1,0
+-1,-1
+-1,-0.5
+-1,0.5
+-1,1
+-0.5,-1
+-0.5,1
+0.5,0
+0.5,-1
+0.5,-0.5
+0.5,0.5
+0.5,1
+1,-0.5
+1,0.5
+
+
 
 

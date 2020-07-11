@@ -90,7 +90,7 @@ class MonomialFeatureTest : public ::testing::Test {
   MonomialFeatureTest(){};
 };
 
-TEST_F(MonomialFeatureTest, FeatureLengthTest) {
+TEST_F(MonomialFeatureTest, FeatureLength) {
   EXPECT_TRUE(MonomialFeatures(2, 2).length() == 6);
   // 1 + 4 + (4Choose2 + 4) = 1 + 4 + 10 = 15
   EXPECT_TRUE(MonomialFeatures(2, 4).length() == 15);
@@ -294,76 +294,96 @@ class ReducedOrderModelTest : public ::testing::Test {
     context_ = plant_.CreateDefaultContext();
     n_q_ = plant_.num_positions();
     n_v_ = plant_.num_velocities();
-
-    // Create rom
-    std::vector<int> skip_inds = {3, 4, 5};
-    mapping_basis_ =
-        std::make_unique<MonomialFeatures>(2, n_q_, skip_inds, "mapping basis");
-    skip_inds.clear();
-    dynamic_basis_ = std::make_unique<MonomialFeatures>(
-        2, 2 * testing::Com::kDimension, skip_inds, "dynamic basis");
-
-    rom_ = std::make_unique<testing::Com>(plant_, *mapping_basis_,
-                                          *dynamic_basis_);
-    int n_theta = rom_->n_theta();
-    rom_->SetTheta(VectorX<double>::Random(n_theta));
   }
 
   drake::multibody::MultibodyPlant<double> plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
-  std::unique_ptr<MonomialFeatures> mapping_basis_;
-  std::unique_ptr<MonomialFeatures> dynamic_basis_;
-  std::unique_ptr<ReducedOrderModel> rom_;
   int n_q_;
   int n_v_;
 };
 
-TEST_F(ReducedOrderModelTest, YdotTest) {
+TEST_F(ReducedOrderModelTest, SecondOrderFeatures) {
+  // Create ROM with random parameters
+  MonomialFeatures mapping_basis(2, n_q_, {3, 4, 5}, "mapping basis");
+  MonomialFeatures dynamic_basis;  // We don't test dynamics evaluation
+  ;
+  std::unique_ptr<ReducedOrderModel> rom =
+      std::make_unique<testing::Com>(plant_, mapping_basis, dynamic_basis);
+  int n_theta = rom->n_theta();
+  rom->SetTheta(VectorX<double>::Random(n_theta));
+
+  // Initilaize a random state
   VectorX<double> q = VectorX<double>::Random(n_q_);
   VectorX<double> v = VectorX<double>::Random(n_v_);
   VectorX<double> x(n_q_ + n_v_);
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
-  VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom_) * v;
-  VectorX<double> qdot_analytical = rom_->EvalMappingFuncJV(q, v, *context_);
-
+  // Test Ydot
+  VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom) * v;
+  VectorX<double> qdot_analytical = rom->EvalMappingFuncJV(q, v, *context_);
   EXPECT_TRUE((qdot_numerical - qdot_analytical).norm() < 1e-6);
-  // Benchmark of computation time
-  // Time for qdot_numerical = 0.000349023
-  // Time for qdot_analytical = 4.0516e-05
 
-}
-
-TEST_F(ReducedOrderModelTest, JacobianTest) {
-  VectorX<double> q = VectorX<double>::Random(n_q_);
-  plant_.SetPositions(context_.get(), q);
-
-  MatrixX<double> J_numerical = CalcJByNumericalDiff(q, plant_, *rom_);
-  MatrixX<double> J_analytical = rom_->EvalMappingFuncJ(q, *context_);
-
+  // Test Jacobian
+  MatrixX<double> J_numerical = CalcJByNumericalDiff(q, plant_, *rom);
+  MatrixX<double> J_analytical = rom->EvalMappingFuncJ(q, *context_);
   EXPECT_TRUE((J_numerical - J_analytical).norm() < 1e-6);
-  // Benchmark of computation time
-  // Time for J_numerical = 0.000322259
-  // Time for J_analytical = 5.9275e-05
+
+  // Test JdotV
+  VectorX<double> JdotV_numerical =
+      CalcJdotVByNumericalDiff(q, v, plant_, *rom);
+  VectorX<double> JdotV_analytical = rom->EvalMappingFuncJdotV(q, v, *context_);
+  EXPECT_TRUE((JdotV_numerical - JdotV_analytical).norm() < 1e-6);
+
+  // Benchmark of computation time (in millisecond) on 8750H CPU:
+  //   qdot_numerical = 0.349023
+  //   qdot_analytical = 0.040516
+  //   J_numerical = 0.322259
+  //   J_analytical = 0.059275
+  //   JdotV_numerical = 12.7207
+  //   JdotV_analytical = 0.087186
 }
 
-TEST_F(ReducedOrderModelTest, JdotVTest) {
+TEST_F(ReducedOrderModelTest, ThirdOrderFeatures) {
+  // Create ROM with random parameters
+  MonomialFeatures mapping_basis(3, n_q_, {3, 4, 5}, "mapping basis");
+  MonomialFeatures dynamic_basis;  // We don't test dynamics evaluation
+  ;
+  std::unique_ptr<ReducedOrderModel> rom =
+      std::make_unique<testing::Com>(plant_, mapping_basis, dynamic_basis);
+  int n_theta = rom->n_theta();
+  rom->SetTheta(VectorX<double>::Random(n_theta));
+
+  // Initilaize a random state
   VectorX<double> q = VectorX<double>::Random(n_q_);
   VectorX<double> v = VectorX<double>::Random(n_v_);
   VectorX<double> x(n_q_ + n_v_);
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
-  VectorX<double> JdotV_numerical =
-      CalcJdotVByNumericalDiff(q, v, plant_, *rom_);
-  VectorX<double> JdotV_analytical =
-      rom_->EvalMappingFuncJdotV(q, v, *context_);
+  // Test Ydot
+  VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom) * v;
+  VectorX<double> qdot_analytical = rom->EvalMappingFuncJV(q, v, *context_);
+  EXPECT_TRUE((qdot_numerical - qdot_analytical).norm() < 1e-6);
 
+  // Test Jacobian
+  MatrixX<double> J_numerical = CalcJByNumericalDiff(q, plant_, *rom);
+  MatrixX<double> J_analytical = rom->EvalMappingFuncJ(q, *context_);
+  EXPECT_TRUE((J_numerical - J_analytical).norm() < 1e-6);
+
+  // Test JdotV
+  VectorX<double> JdotV_numerical =
+      CalcJdotVByNumericalDiff(q, v, plant_, *rom);
+  VectorX<double> JdotV_analytical = rom->EvalMappingFuncJdotV(q, v, *context_);
   EXPECT_TRUE((JdotV_numerical - JdotV_analytical).norm() < 1e-6);
-  // Benchmark of computation time
-  // Time for JdotV_numerical = 0.0127207
-  // Time for JdotV_analytical = 8.7186e-05
+
+  // Benchmark of computation time (in millisecond) on 8750H CPU:
+  //   qdot_numerical = 1.13087
+  //   qdot_analytical = 0.217754
+  //   J_numerical = 1.0687
+  //   J_analytical = 0.407693
+  //   JdotV_numerical = 41.3167
+  //   JdotV_analytical = 0.238603
 }
 
 }  // namespace

@@ -30,7 +30,7 @@ class MonomialFeatures {
   drake::VectorX<double> Eval(const drake::VectorX<double>& q) const;
   // Note that both EvalJV() and EvalJdotV() use qdot not v.
   // Also, we recommend using EvalJV instead of EvalJ to exploit the sparsity of
-  // Jacobian (though not sure how much this helps)
+  // Jacobian (benchmarked in the unit test file)
   drake::VectorX<double> EvalJV(const drake::VectorX<double>& q,
                                 const drake::VectorX<double>& qdot) const;
   drake::MatrixX<double> EvalJwrtqdot(const drake::VectorX<double>& q) const;
@@ -49,7 +49,7 @@ class MonomialFeatures {
       const std::set<std::multiset<int>>& terms_of_same_order);
 
   // The name `EvalFeatureTimeDerivatives` could be misleading since JdotV is
-  // not feature_ddot but the "bais term" of feature ddot.
+  // not feature_ddot but the "bias term" of feature ddot.
   drake::VectorX<double> EvalFeatureTimeDerivatives(
       const drake::VectorX<double>& q, const drake::VectorX<double>& qdot,
       const std::map<std::pair<int, std::multiset<int>>,

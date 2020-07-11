@@ -7,6 +7,10 @@ group "1.controllers" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_walking_controller_test";
         host = "localhost";
     }
+    cmd "3.rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller";
+        host = "localhost";
+    }
 }
 
 group "2.drake-simulator" {
@@ -56,6 +60,11 @@ script "run-rom-test-walking" {
     run_script "start-operator-simulation-floating-base";
     start cmd "1.simulator for OSC controller";
     start cmd "2.rom-test-walking-controller";
+}
+script "run-rom-walking" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "1.simulator for OSC controller";
+    start cmd "3.rom-walking-controller";
 }
 
 script "start-operator-simulation-fixed-base" {

@@ -105,3 +105,22 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "run_cassie_rom_controller",
+    srcs = ["run_cassie_rom_controller.cc"],
+    deps = [
+        ":reduced_order_models",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie:simulator_drift",
+        "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+

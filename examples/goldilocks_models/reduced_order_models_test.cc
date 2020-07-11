@@ -24,13 +24,11 @@ namespace {
 // TODO: Need a unit test for B matrix in find_model::DynamicsConstraint
 //  Example in traj_opt_given_weigths.cc
 
+// Numerically calculate the Jacobian of a reduced order model position y = r(q)
 MatrixX<double> CalcJByNumericalDiff(
     VectorX<double> q, const drake::multibody::MultibodyPlant<double>& plant,
     const ReducedOrderModel& rom, bool wrt_qdot = false) {
   auto context = plant.CreateDefaultContext();
-
-  MatrixX<double> J(rom.n_y(),
-                    wrt_qdot ? plant.num_positions() : plant.num_velocities());
 
   // Central differencing
   double dx = 1e-4;
@@ -49,13 +47,13 @@ MatrixX<double> CalcJByNumericalDiff(
   }
 
   if (wrt_qdot) {
-    J = J_wrt_qdot;
+    return J_wrt_qdot;
   } else {
-    J = multibody::JwrtqdotToJwrtv(q, J_wrt_qdot);
+    return multibody::JwrtqdotToJwrtv(q, J_wrt_qdot);
   }
-  return J;
 }
 
+// Numerically calculate JdotV of a reduced order model position y = r(q)
 VectorX<double> CalcJdotVByNumericalDiff(
     VectorX<double> q, const VectorX<double>& v,
     const drake::multibody::MultibodyPlant<double>& plant,
@@ -306,20 +304,20 @@ TEST_F(ReducedOrderModelTest, SecondOrderFeatures) {
   // Create ROM with random parameters
   MonomialFeatures mapping_basis(2, n_q_, {3, 4, 5}, "mapping basis");
   MonomialFeatures dynamic_basis;  // We don't test dynamics evaluation
-  ;
+
   std::unique_ptr<ReducedOrderModel> rom =
       std::make_unique<testing::Com>(plant_, mapping_basis, dynamic_basis);
   int n_theta = rom->n_theta();
   rom->SetTheta(VectorX<double>::Random(n_theta));
 
-  // Initilaize a random state
+  // Initialize a random state
   VectorX<double> q = VectorX<double>::Random(n_q_);
   VectorX<double> v = VectorX<double>::Random(n_v_);
   VectorX<double> x(n_q_ + n_v_);
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
-  // Test Ydot
+  // Test ydot
   VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom) * v;
   VectorX<double> qdot_analytical = rom->EvalMappingFuncJV(q, v, *context_);
   EXPECT_TRUE((qdot_numerical - qdot_analytical).norm() < 1e-6);
@@ -348,20 +346,20 @@ TEST_F(ReducedOrderModelTest, ThirdOrderFeatures) {
   // Create ROM with random parameters
   MonomialFeatures mapping_basis(3, n_q_, {3, 4, 5}, "mapping basis");
   MonomialFeatures dynamic_basis;  // We don't test dynamics evaluation
-  ;
+
   std::unique_ptr<ReducedOrderModel> rom =
       std::make_unique<testing::Com>(plant_, mapping_basis, dynamic_basis);
   int n_theta = rom->n_theta();
   rom->SetTheta(VectorX<double>::Random(n_theta));
 
-  // Initilaize a random state
+  // Initialize a random state
   VectorX<double> q = VectorX<double>::Random(n_q_);
   VectorX<double> v = VectorX<double>::Random(n_v_);
   VectorX<double> x(n_q_ + n_v_);
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
-  // Test Ydot
+  // Test ydot
   VectorX<double> qdot_numerical = CalcJByNumericalDiff(q, plant_, *rom) * v;
   VectorX<double> qdot_analytical = rom->EvalMappingFuncJV(q, v, *context_);
   EXPECT_TRUE((qdot_numerical - qdot_analytical).norm() < 1e-6);

@@ -5,6 +5,7 @@
 #include <cstdlib>  // System call to create folder (and also parent directory)
 #include <iostream>
 
+using drake::multibody::Frame;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
@@ -41,6 +42,99 @@ SubQpData::SubQpData(int N_sample) {
     P_vec.push_back(std::make_shared<MatrixXd>());
     q_vec.push_back(std::make_shared<VectorXd>());
   }
+}
+
+std::unique_ptr<ReducedOrderModel> CreateRom(
+    int rom_option, int robot_option,
+    const drake::multibody::MultibodyPlant<double>& plant, bool print_info) {
+  // Basis for mapping function (dependent on the robot)
+  vector<int> empty_inds = {};
+  std::unique_ptr<MonomialFeatures> mapping_basis;
+  if (robot_option == 0) {
+    mapping_basis = std::make_unique<MonomialFeatures>(
+        2, plant.num_positions(), empty_inds, "mapping basis");
+  } else {                              // robot_option == 1
+    vector<int> skip_inds = {3, 4, 5};  // quat_z, x, and y
+    mapping_basis = std::make_unique<MonomialFeatures>(
+        2, plant.num_positions(), skip_inds, "mapping basis");
+  }
+  if (print_info) {
+    mapping_basis->PrintInfo();
+  }
+  // Basis for dynamic function
+  std::unique_ptr<MonomialFeatures> dynamic_basis;
+  if (rom_option == 0) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * Lipm::kDimension(2), empty_inds, "dynamic basis");
+  } else if (rom_option == 1) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * TwoDimLipmWithSwingFoot::kDimension, empty_inds,
+        "dynamic basis");
+  } else if (rom_option == 2) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * FixHeightAccel::kDimension, empty_inds, "dynamic basis");
+  } else if (rom_option == 3) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * FixHeightAccelWithSwingFoot::kDimension, empty_inds,
+        "dynamic basis");
+  } else if (rom_option == 4) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+  } else {
+    throw std::runtime_error("Not implemented");
+  }
+  if (print_info) {
+    dynamic_basis->PrintInfo();
+  }
+  // Contact frames and position for mapping function
+  string stance_foot_body_name;
+  Vector3d stance_foot_contact_point_pos;
+  string swing_foot_body_name;
+  Vector3d swing_foot_contact_point_pos;
+  if (robot_option == 0) {
+    stance_foot_body_name = "left_lower_leg_mass";
+    stance_foot_contact_point_pos = Vector3d(0, 0, -0.5);
+    swing_foot_body_name = "right_lower_leg_mass";
+    swing_foot_contact_point_pos = Vector3d(0, 0, -0.5);
+  } else {  // robot_option == 1
+    auto left_toe = LeftToeFront(plant);
+    auto left_heel = LeftToeRear(plant);
+    stance_foot_body_name = "toe_left";
+    stance_foot_contact_point_pos = (left_toe.first + left_heel.first) / 2;
+    swing_foot_body_name = "toe_right";
+    swing_foot_contact_point_pos = (left_toe.first + left_heel.first) / 2;
+  }
+  auto stance_foot = std::pair<const Vector3d, const Frame<double>&>(
+      stance_foot_contact_point_pos,
+      plant.GetFrameByName(stance_foot_body_name));
+  auto swing_foot = std::pair<const Vector3d, const Frame<double>&>(
+      swing_foot_contact_point_pos, plant.GetFrameByName(swing_foot_body_name));
+
+  // Construct reduced-order model
+  std::unique_ptr<ReducedOrderModel> rom;
+  if (rom_option == 0) {
+    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
+                                 *dynamic_basis, 2);
+  } else if (rom_option == 1) {
+    rom = std::make_unique<TwoDimLipmWithSwingFoot>(
+        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
+  } else if (rom_option == 2) {
+    rom = std::make_unique<FixHeightAccel>(plant, stance_foot, *mapping_basis,
+                                           *dynamic_basis);
+  } else if (rom_option == 3) {
+    rom = std::make_unique<FixHeightAccelWithSwingFoot>(
+        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
+  } else if (rom_option == 4) {
+    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
+                                 *dynamic_basis, 3);
+  } else {
+    throw std::runtime_error("Not implemented");
+  }
+  if (print_info) {
+    rom->PrintInfo();
+  }
+
+  return std::move(rom);
 }
 
 // Create time knots for creating cubic splines
@@ -87,34 +181,34 @@ void storeSplineOfS(const vector<VectorXd>& h_vec,
 
   // Create the matrix for csv file
   // The first row is time, and the rest rows are s
-  MatrixXd t_and_s(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
-  MatrixXd t_and_ds(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
-  MatrixXd t_and_dds(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
-  t_and_s(0, 0) = 0;
-  t_and_ds(0, 0) = 0;
-  t_and_dds(0, 0) = 0;
-  t_and_s.block(1, 0, n_s, 1) = s_spline.value(0);
-  t_and_ds.block(1, 0, n_s, 1) = s_spline.derivative(1).value(0);
-  t_and_dds.block(1, 0, n_s, 1) = s_spline.derivative(2).value(0);
+  MatrixXd t_and_y(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
+  MatrixXd t_and_ydot(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
+  MatrixXd t_and_yddot(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
+  t_and_y(0, 0) = 0;
+  t_and_ydot(0, 0) = 0;
+  t_and_yddot(0, 0) = 0;
+  t_and_y.block(1, 0, n_s, 1) = s_spline.value(0);
+  t_and_ydot.block(1, 0, n_s, 1) = s_spline.derivative(1).value(0);
+  t_and_yddot.block(1, 0, n_s, 1) = s_spline.derivative(2).value(0);
   for (unsigned int i = 0; i < h_vec.size(); i++) {
     for (int j = 1; j < n_sample_each_seg; j++) {
       double time = T_breakpoint[i] + j * h_vec[i](0) / (n_sample_each_seg - 1);
-      t_and_s(0, j + i * (n_sample_each_seg - 1)) = time;
-      t_and_ds(0, j + i * (n_sample_each_seg - 1)) = time;
-      t_and_dds(0, j + i * (n_sample_each_seg - 1)) = time;
-      t_and_s.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
+      t_and_y(0, j + i * (n_sample_each_seg - 1)) = time;
+      t_and_ydot(0, j + i * (n_sample_each_seg - 1)) = time;
+      t_and_yddot(0, j + i * (n_sample_each_seg - 1)) = time;
+      t_and_y.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
           s_spline.value(time);
-      t_and_ds.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
+      t_and_ydot.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
           s_spline.derivative(1).value(time);
-      t_and_dds.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
+      t_and_yddot.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
           s_spline.derivative(2).value(time);
     }
   }
 
   // Store into csv file
-  writeCSV(directory + prefix + string("t_and_s.csv"), t_and_s);
-  writeCSV(directory + prefix + string("t_and_ds.csv"), t_and_ds);
-  writeCSV(directory + prefix + string("t_and_dds.csv"), t_and_dds);
+  writeCSV(directory + prefix + string("t_and_y.csv"), t_and_y);
+  writeCSV(directory + prefix + string("t_and_ydot.csv"), t_and_ydot);
+  writeCSV(directory + prefix + string("t_and_yddot.csv"), t_and_yddot);
 }
 
 void checkSplineOfS(const vector<VectorXd>& h_vec,

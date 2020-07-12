@@ -11,9 +11,7 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::Matrix3Xd;
-using Eigen::MatrixXd;
 using Eigen::Vector3d;
-using Eigen::VectorXd;
 using std::cout;
 using std::endl;
 using std::map;
@@ -256,8 +254,8 @@ drake::MatrixX<double> MonomialFeatures::EvalJwrtqdot(
 
 /// Constructors of ReducedOrderModel
 ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
-                                     const Eigen::MatrixXd& B, int n_feature_y,
-                                     int n_feature_yddot,
+                                     const drake::MatrixX<double>& B,
+                                     int n_feature_y, int n_feature_yddot,
                                      const MonomialFeatures& mapping_basis,
                                      const MonomialFeatures& dynamic_basis,
                                      const std::string& name)
@@ -270,8 +268,8 @@ ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
       n_feature_yddot_(n_feature_yddot),
       mapping_basis_(mapping_basis),
       dynamic_basis_(dynamic_basis),
-      theta_y_(VectorXd::Zero(n_y * n_feature_y)),
-      theta_yddot_(VectorXd::Zero(n_y * n_feature_yddot)){};
+      theta_y_(VectorX<double>::Zero(n_y * n_feature_y)),
+      theta_yddot_(VectorX<double>::Zero(n_y * n_feature_yddot)){};
 
 /// Methods of ReducedOrderModel
 void ReducedOrderModel::CheckModelConsistency() const {
@@ -280,20 +278,30 @@ void ReducedOrderModel::CheckModelConsistency() const {
   DRAKE_DEMAND(theta_y_.size() == n_y_ * n_feature_y_);
   DRAKE_DEMAND(theta_yddot_.size() == n_yddot_ * n_feature_yddot_);
 };
-Eigen::VectorXd ReducedOrderModel::theta() const {
-  Eigen::VectorXd ret(theta_y_.size() + theta_yddot_.size());
+void ReducedOrderModel::PrintInfo() const {
+  cout << "Reduced-order model (" << name() << ") with parameters\n";
+  cout << "n_y = " << n_y_ << ", n_tau = " << n_tau_ << endl;
+  if (n_tau_ != 0) {
+    cout << "B = \n" << B_ << "\n";
+  }
+  cout << "n_feature_y = " << n_feature_y_ << endl;
+  cout << "n_feature_yddot = " << n_feature_yddot_ << endl;
+}
+
+VectorX<double> ReducedOrderModel::theta() const {
+  VectorX<double> ret(theta_y_.size() + theta_yddot_.size());
   ret << theta_y_, theta_yddot_;
   return ret;
 };
-void ReducedOrderModel::SetThetaY(const VectorXd& theta_y) {
+void ReducedOrderModel::SetThetaY(const VectorX<double>& theta_y) {
   DRAKE_DEMAND(theta_y_.size() == theta_y.size());
   theta_y_ = theta_y;
 };
-void ReducedOrderModel::SetThetaYddot(const VectorXd& theta_yddot) {
+void ReducedOrderModel::SetThetaYddot(const VectorX<double>& theta_yddot) {
   DRAKE_DEMAND(theta_yddot_.size() == theta_yddot.size());
   theta_yddot_ = theta_yddot;
 };
-void ReducedOrderModel::SetTheta(const VectorXd& theta) {
+void ReducedOrderModel::SetTheta(const VectorX<double>& theta) {
   DRAKE_DEMAND(theta.size() == theta_y_.size() + theta_yddot_.size());
   theta_y_ = theta.head(theta_y_.size());
   theta_yddot_ = theta.tail(theta_yddot_.size());
@@ -372,7 +380,7 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)
-  VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
+  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
   theta_y(0) = 1;
   theta_y(1 + n_feature_y()) = 1;
   if (world_dim == 3) {
@@ -380,7 +388,8 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
   }
   SetThetaY(theta_y);
 
-  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  VectorX<double> theta_yddot =
+      VectorX<double>::Zero(n_yddot() * n_feature_yddot());
   theta_yddot(0) = 1;
   if (world_dim == 3) {
     theta_yddot(1 + n_feature_yddot()) = 1;
@@ -532,8 +541,9 @@ TwoDimLipmWithSwingFoot::TwoDimLipmWithSwingFoot(
       stance_contact_point_(stance_contact_point),
       swing_contact_point_(swing_contact_point) {
   // Initialize model parameters (dependant on the feature vectors)
-  VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
-  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
+  VectorX<double> theta_yddot =
+      VectorX<double>::Zero(n_yddot() * n_feature_yddot());
   theta_y(0) = 1;
   theta_y(1 + n_feature_y()) = 1;
   theta_y(2 + 2 * n_feature_y()) = 1;
@@ -694,8 +704,9 @@ FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point) {
   // Initialize model parameters (dependant on the feature vectors)
-  VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
-  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
+  VectorX<double> theta_yddot =
+      VectorX<double>::Zero(n_yddot() * n_feature_yddot());
   theta_y(0) = 1;
   SetThetaY(theta_y);
   SetThetaYddot(theta_yddot);
@@ -817,8 +828,9 @@ FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
       stance_contact_point_(stance_contact_point),
       swing_contact_point_(swing_contact_point) {
   // Initialize model parameters (dependant on the feature vectors)
-  VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
-  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
+  VectorX<double> theta_yddot =
+      VectorX<double>::Zero(n_yddot() * n_feature_yddot());
   theta_y(0) = 1;
   theta_y(1 + n_feature_y()) = 1;
   theta_y(2 + 2 * n_feature_y()) = 1;
@@ -963,13 +975,14 @@ testing::Com::Com(const drake::multibody::MultibodyPlant<double>& plant,
       plant_(plant),
       world_(plant_.world_frame()) {
   // Initialize model parameters (dependant on the feature vectors)
-  VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
+  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
   theta_y(0) = 1;
   theta_y(1 + n_feature_y()) = 1;
   theta_y(2 + 2 * n_feature_y()) = 1;
   SetThetaY(theta_y);
 
-  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  VectorX<double> theta_yddot =
+      VectorX<double>::Zero(n_yddot() * n_feature_yddot());
   theta_yddot(0) = 1;
   theta_yddot(1 + n_feature_yddot()) = 1;
   SetThetaYddot(theta_yddot);

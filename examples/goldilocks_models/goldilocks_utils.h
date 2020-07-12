@@ -1,6 +1,8 @@
 #pragma once
 
 #include "common/file_utils.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
 #include <iostream>
@@ -58,6 +60,12 @@ class SubQpData {
   std::vector<std::shared_ptr<Eigen::MatrixXd>> P_vec;  // w = P_i * theta + q_i
   std::vector<std::shared_ptr<Eigen::VectorXd>> q_vec;  // w = P_i * theta + q_i
 };
+
+// Create reduced order model
+std::unique_ptr<ReducedOrderModel> CreateRom(
+    int rom_option, int robot_option,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    bool print_info = true);
 
 // Create cubic splines from s and sdot
 drake::trajectories::PiecewisePolynomial<double> createCubicSplineGivenSAndSdot(

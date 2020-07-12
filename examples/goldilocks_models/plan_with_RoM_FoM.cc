@@ -1,38 +1,37 @@
-#include <gflags/gflags.h>
 #include <chrono>
+#include <gflags/gflags.h>
 
-#include "common/find_resource.h"
-#include "examples/goldilocks_models/attic/dynamics_expression.h"
-#include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/attic/kinematics_expression.h"
-#include "examples/goldilocks_models/planning/RoM_planning_traj_opt.h"
 #include "common/file_utils.h"
+#include "common/find_resource.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/planning/rom_traj_opt.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::vector;
-using std::string;
-using std::to_string;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::VectorXcd;
-using Eigen::MatrixXd;
+using dairlib::FindResourceOrThrow;
+using drake::AutoDiffXd;
+using drake::geometry::SceneGraph;
+using drake::multibody::Body;
+using drake::multibody::Frame;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::SolutionResult;
-
-using drake::geometry::SceneGraph;
-using drake::multibody::MultibodyPlant;
-using drake::multibody::Body;
-using drake::multibody::Parser;
-using drake::AutoDiffXd;
-using dairlib::FindResourceOrThrow;
+using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXcd;
+using Eigen::VectorXd;
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+using std::to_string;
+using std::vector;
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -56,17 +55,21 @@ DEFINE_bool(fix_all_timestep, true, "Make all timesteps the same size");
 int planningWithRomAndFom(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  DRAKE_DEMAND(FLAGS_robot_option == 0);
+  if (FLAGS_robot_option == 0) {
+    DRAKE_DEMAND(FLAGS_rom_option != 4);
+  }
+
   // Create MBP
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(
-                            "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+      "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(
-    -9.81 * Eigen::Vector3d::UnitZ());
-  plant.WeldFrames(
-    plant.world_frame(), plant.GetFrameByName("base"),
-    drake::math::RigidTransform<double>());
+  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
+                                                   Eigen::Vector3d::UnitZ());
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                   drake::math::RigidTransform<double>());
   plant.Finalize();
 
   // Create autoDiff version of the plant
@@ -74,51 +77,43 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Files parameters
   const string dir = "../dairlib_data/goldilocks_models/planning/robot_" +
-      to_string(FLAGS_robot_option) + "/";
-  const string dir_model = dir + "models/";
-  const string dir_data = dir + "data/";
+                     to_string(FLAGS_robot_option) + "/";
+  const string dir_model = dir + "models/";  // location of the model files
+  const string dir_data = dir + "data/";     // location to store the opt result
   string init_file = FLAGS_init_file;
   if (!CreateFolderIfNotExist(dir_model)) return 0;
   if (!CreateFolderIfNotExist(dir_data)) return 0;
 
-  // Reduced order model parameters
-  cout << "\nWarning: Need to make sure that the implementation in "
-       "DynamicsExpression agrees with n_s and n_tau.\n";
-  int n_s = 4;
-  int n_sDDot = n_s;
-  int n_tau = 2;
-  cout << "n_s = " << n_s << ", n_tau = " << n_tau << endl;
-  MatrixXd B_tau = MatrixXd::Zero(n_sDDot, n_tau);
-  B_tau(2, 0) = 1;
-  B_tau(3, 1) = 1;
-  cout << "B_tau = \n" << B_tau << endl << endl;
+  // Reduced order model
+  std::unique_ptr<ReducedOrderModel> rom =
+      CreateRom(FLAGS_rom_option, FLAGS_robot_option, plant, false);
+  // Check that we are using the correct model
+  DRAKE_DEMAND(rom->n_y() == readCSV(dir_model + string("rom_n_y.csv"))(0, 0));
+  DRAKE_DEMAND(rom->n_tau() ==
+               readCSV(dir_model + string("rom_n_tau.csv"))(0, 0));
+  DRAKE_DEMAND(rom->n_feature_y() ==
+               readCSV(dir_model + string("rom_n_feature_y.csv"))(0, 0));
+  DRAKE_DEMAND(rom->n_feature_yddot() ==
+               readCSV(dir_model + string("rom_n_feature_yddot.csv"))(0, 0));
+  if (rom->n_tau() != 0) {
+    DRAKE_DEMAND((rom->B() - readCSV(dir_model + string("rom_B.csv"))).norm() ==
+                 0);
+  }
 
-  // Reduced order model setup
-  KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_sDDot, 0, FLAGS_rom_option,
-                                    FLAGS_robot_option);
-  VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
-  VectorXd dummy_s = VectorXd::Ones(n_s);
-  int n_feature_s = kin_expression.getFeature(dummy_q).size();
-  int n_feature_sDDot =
-    dyn_expression.getFeature(dummy_s, dummy_s).size();
-  int n_theta_s = n_s * n_feature_s;
-  int n_theta_sDDot = n_sDDot * n_feature_sDDot;
-  // cout << "n_theta_s = " << n_theta_s << endl;
-  // cout << "n_theta_sDDot = " << n_theta_sDDot << endl;
-
-  // Read in theta
-  string dir_and_pf = dir_model + to_string(FLAGS_iter) + string("_");
-  cout << "dir_and_pf = " << dir_and_pf << endl;
-  VectorXd theta_s = readCSV(dir_and_pf + string("theta_s.csv")).col(0);
-  VectorXd theta_sDDot = readCSV(dir_and_pf + string("theta_sDDot.csv")).col(0);
-  DRAKE_DEMAND(theta_s.size() == n_theta_s);
-  DRAKE_DEMAND(theta_sDDot.size() == n_theta_sDDot);
-  // cout << "theta_s = " << theta_s.transpose() << endl;
-  // cout << "theta_sDDot = " << theta_sDDot.transpose() << endl;
+  // Update the ROM parameters from file
+  VectorXd theta_y =
+      readCSV(dir_model + to_string(FLAGS_iter) + string("_theta_y.csv"))
+          .col(0);
+  VectorXd theta_yddot =
+      readCSV(dir_model + to_string(FLAGS_iter) + string("_theta_yddot.csv"))
+          .col(0);
+  rom->SetThetaY(theta_y);
+  rom->SetThetaYddot(theta_yddot);
 
   // Optimization parameters
-  MatrixXd Q = MatrixXd::Identity(n_s, n_s);
+  int n_y = rom->n_y();
+  int n_tau = rom->n_tau();
+  MatrixXd Q = MatrixXd::Identity(n_y, n_y);
   MatrixXd R = MatrixXd::Identity(n_tau, n_tau);
 
   // Prespecify the time steps
@@ -133,19 +128,18 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     max_dt.push_back(.3);
   }
   int N = 0;
-  for (uint i = 0; i < num_time_samples.size(); i++)
-    N += num_time_samples[i];
+  for (uint i = 0; i < num_time_samples.size(); i++) N += num_time_samples[i];
   N -= num_time_samples.size() - 1;
   // cout << "N = " << N << endl;
 
   // Read in initial robot state
-  dir_and_pf = dir_model + to_string(FLAGS_iter) + string("_") +
-               to_string(FLAGS_sample) + string("_");
+  string dir_and_pf = dir_model + to_string(FLAGS_iter) + string("_") +
+                      to_string(FLAGS_sample) + string("_");
   cout << "dir_and_pf = " << dir_and_pf << endl;
   VectorXd init_state =
-    readCSV(dir_and_pf + string("state_at_knots.csv")).col(0);
-  if (FLAGS_disturbance != 0){
-    init_state(9) += FLAGS_disturbance/1;  // add to floating base angle
+      readCSV(dir_and_pf + string("state_at_knots.csv")).col(0);
+  if (FLAGS_disturbance != 0) {
+    init_state(9) += FLAGS_disturbance / 1;  // add to floating base angle
   }
 
   bool with_init_guess = true;
@@ -158,17 +152,18 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   VectorXd x_guess_right_in_front;
   if (with_init_guess) {
     h_guess = readCSV(dir_and_pf + string("time_at_knots.csv")).col(0);
-    r_guess = readCSV(dir_and_pf + string("t_and_s.csv")).block(
-                1, 0, n_s, knots_per_mode);
-    dr_guess = readCSV(dir_and_pf + string("t_and_ds.csv")).block(
-                 1, 0, n_s, knots_per_mode);
-    tau_guess = readCSV(dir_and_pf + string("t_and_tau.csv")).block(
-                  1, 0, n_tau, knots_per_mode);
+    r_guess = readCSV(dir_and_pf + string("t_and_y.csv"))
+                  .block(1, 0, n_y, knots_per_mode);
+    dr_guess = readCSV(dir_and_pf + string("t_and_ydot.csv"))
+                   .block(1, 0, n_y, knots_per_mode);
+    tau_guess = readCSV(dir_and_pf + string("t_and_tau.csv"))
+                    .block(1, 0, n_tau, knots_per_mode);
     x_guess_left_in_front =
-      readCSV(dir_and_pf + string("state_at_knots.csv")).col(0);
-    x_guess_right_in_front =
-      readCSV(dir_and_pf + string("state_at_knots.csv")).col(knots_per_mode - 1);
-    cout << "WARNING: last column of state_at_knots.csv should be pre-impact state.\n";
+        readCSV(dir_and_pf + string("state_at_knots.csv")).col(0);
+    x_guess_right_in_front = readCSV(dir_and_pf + string("state_at_knots.csv"))
+                                 .col(knots_per_mode - 1);
+    cout << "\nWARNING: last column of state_at_knots.csv should be pre-impact "
+            "state.\n";
     // cout << "h_guess = " << h_guess << endl;
     // cout << "r_guess = " << r_guess << endl;
     // cout << "dr_guess = " << dr_guess << endl;
@@ -180,79 +175,67 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   // Construct
   cout << "\nConstructing optimization problem...\n";
   auto start = std::chrono::high_resolution_clock::now();
-  auto trajopt = std::make_unique<RomPlanningTrajOptWithFomImpactMap>(
-                   num_time_samples, min_dt, max_dt, Q, R,
-                   n_s, n_tau, B_tau,
-                   n_feature_s, n_feature_sDDot, theta_s, theta_sDDot, plant,
-                   FLAGS_zero_touchdown_impact, FLAGS_final_position,
-                   init_state,
-                   h_guess,
-                   r_guess,
-                   dr_guess,
-                   tau_guess,
-                   x_guess_left_in_front,
-                   x_guess_right_in_front,
-                   with_init_guess,
-                   FLAGS_fix_duration,
-                   FLAGS_fix_all_timestep,
-                   true,
-                   false,
-                   FLAGS_rom_option,
-                   FLAGS_robot_option);
+  RomTrajOptWithFomImpactMap trajopt(
+      num_time_samples, min_dt, max_dt, Q, R, *rom, plant,
+      FLAGS_zero_touchdown_impact, FLAGS_final_position, init_state, h_guess,
+      r_guess, dr_guess, tau_guess, x_guess_left_in_front,
+      x_guess_right_in_front, with_init_guess, FLAGS_fix_duration,
+      FLAGS_fix_all_timestep, true, false, FLAGS_rom_option,
+      FLAGS_robot_option);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
 
   if (FLAGS_print_snopt_file) {
-    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                             "Print file", "../snopt.out");
+    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                            "../snopt.out");
   }
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 10000);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Verify level", 0);
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major iterations limit", 10000);
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
 
   // Initial guess for all variables
   if (!init_file.empty()) {
     VectorXd z0 = readCSV(dir_data + init_file).col(0);
-    int n_dec = trajopt->decision_variables().size();
+    int n_dec = trajopt.decision_variables().size();
     if (n_dec > z0.rows()) {
       cout << "dim(initial guess) < dim(decision var). "
-           "Fill the rest with zero's.\n";
+              "Fill the rest with zero's.\n";
       VectorXd old_z0 = z0;
       z0.resize(n_dec);
       z0 = VectorXd::Zero(n_dec);
       z0.head(old_z0.rows()) = old_z0;
     }
-    trajopt->SetInitialGuessForAllVariables(z0);
+    trajopt.SetInitialGuessForAllVariables(z0);
   }
 
   // Testing
-  cout << "\nChoose the best solver: " << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
+  cout << "\nChoose the best solver: "
+       << drake::solvers::ChooseBestSolver(trajopt).name() << endl;
 
   // Solve
   cout << "\nSolving optimization problem...\n";
   start = std::chrono::high_resolution_clock::now();
-  const MathematicalProgramResult result = Solve(
-        *trajopt, trajopt->initial_guess());
+  const MathematicalProgramResult result =
+      Solve(trajopt, trajopt.initial_guess());
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   cout << "    Solve time:" << elapsed.count() << " | ";
   SolutionResult solution_result = result.get_solution_result();
-  cout << solution_result <<  " | ";
-  cout << "Cost:" << result.get_optimal_cost() << ")\n";
+  cout << solution_result << " | ";
+  cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Check which solver we are using
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // Extract solution
-  VectorXd z_sol = result.GetSolution(trajopt->decision_variables());
+  VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
   writeCSV(dir_data + string("z.csv"), z_sol);
-  // cout << trajopt->decision_variables() << endl;
+  // cout << trajopt.decision_variables() << endl;
 
-  VectorXd time_at_knots = trajopt->GetSampleTimes(result);
-  MatrixXd state_at_knots = trajopt->GetStateSamples(result);
-  MatrixXd input_at_knots = trajopt->GetInputSamples(result);
+  VectorXd time_at_knots = trajopt.GetSampleTimes(result);
+  MatrixXd state_at_knots = trajopt.GetStateSamples(result);
+  MatrixXd input_at_knots = trajopt.GetInputSamples(result);
   writeCSV(dir_data + string("time_at_knots.csv"), time_at_knots);
   writeCSV(dir_data + string("state_at_knots.csv"), state_at_knots);
   writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
@@ -260,8 +243,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   MatrixXd x0_each_mode(2 * plant.num_positions(), num_time_samples.size());
   MatrixXd xf_each_mode(2 * plant.num_positions(), num_time_samples.size());
   for (uint i = 0; i < num_time_samples.size(); i++) {
-    x0_each_mode.col(i) = result.GetSolution(trajopt->x0_vars_by_mode(i));
-    xf_each_mode.col(i) = result.GetSolution(trajopt->xf_vars_by_mode(i));
+    x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
+    xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
   }
   writeCSV(dir_data + string("x0_each_mode.csv"), x0_each_mode);
   writeCSV(dir_data + string("xf_each_mode.csv"), xf_each_mode);

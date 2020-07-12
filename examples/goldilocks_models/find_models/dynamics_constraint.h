@@ -17,9 +17,8 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace find_models {
 
-using dairlib::solvers::NonlinearConstraint;
 
-class DynamicsConstraint : public NonlinearConstraint<double> {
+class DynamicsConstraint : public solvers::NonlinearConstraint<double> {
  public:
   DynamicsConstraint(const ReducedOrderModel& rom,
                      const drake::multibody::MultibodyPlant<double>& plant,

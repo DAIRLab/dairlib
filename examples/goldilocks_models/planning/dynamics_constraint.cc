@@ -1,96 +1,82 @@
 #include "examples/goldilocks_models/planning/dynamics_constraint.h"
 
-#include "common/file_utils.h"  // writeCSV
-
 namespace dairlib {
 namespace goldilocks_models {
 namespace planning {
 
-DynamicsConstraint::DynamicsConstraint(int n_r, int n_ddr, int n_feature_dyn,
-                                       const VectorXd& theta_dyn, int n_tau,
-                                       MatrixXd B_tau, int rom_option,
-                                       int robot_option,
+using std::isinf;
+using std::isnan;
+using std::list;
+using std::make_shared;
+using std::make_unique;
+using std::map;
+using std::string;
+using std::unique_ptr;
+using std::vector;
+
+using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
+using drake::MatrixX;
+using drake::VectorX;
+using drake::math::autoDiffToGradientMatrix;
+using drake::math::autoDiffToValueMatrix;
+using drake::math::DiscardGradient;
+using drake::math::initializeAutoDiff;
+using drake::multibody::MultibodyPlant;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::to_string;
+using drake::solvers::VariableRefList;
+using drake::solvers::VectorXDecisionVariable;
+using drake::symbolic::Expression;
+using drake::symbolic::Variable;
+using Eigen::AutoDiffScalar;
+using Eigen::Dynamic;
+using Eigen::Matrix;
+using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+
+DynamicsConstraint::DynamicsConstraint(const ReducedOrderModel& rom,
                                        const std::string& description)
-    : Constraint(2 * n_r, 2 * (2 * n_r + n_tau) + 1, VectorXd::Zero(2 * n_r),
-                 VectorXd::Zero(2 * n_r), description),
-      n_r_(n_r),
-      n_ddr_(n_ddr),
-      n_feature_dyn_(n_feature_dyn),
-      n_theta_dyn_(theta_dyn.size()),
-      theta_dyn_(theta_dyn),
-      n_y_(n_r + n_ddr),
-      n_tau_(n_tau),
-      dyn_expression_(DynamicsExpression(n_ddr, n_feature_dyn, B_tau,
-                                         rom_option, robot_option)) {
-  // Check the theta size
-  DRAKE_DEMAND(n_ddr * n_feature_dyn == theta_dyn.size());
+    : NonlinearConstraint<double>(2 * rom.n_y(),
+                                  2 * (2 * rom.n_y() + rom.n_tau()) + 1,
+                                  VectorXd::Zero(2 * rom.n_y()),
+                                  VectorXd::Zero(2 * rom.n_y()), description),
+      rom_(rom),
+      n_y_(rom.n_y()),
+      n_z_(2 * rom.n_y()),
+      n_tau_(rom.n_tau()) {}
 
-  // Check the feature size implemented in the model expression
-  VectorXd r_temp = VectorXd::Zero(n_ddr);
-  VectorXd dr_temp = VectorXd::Zero(n_ddr);
-  DRAKE_DEMAND(n_feature_dyn ==
-               dyn_expression_.getFeature(r_temp, dr_temp).size());
-}
-
-
-void DynamicsConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
-                                Eigen::VectorXd* y) const {
-  AutoDiffVecXd y_t;
-  Eval(initializeAutoDiff(q), &y_t);
-  *y = autoDiffToValueMatrix(y_t);
-}
-
-void DynamicsConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& ytyth,
-                                AutoDiffVecXd* y) const {
+void DynamicsConstraint::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<double>>& ztzth,
+    drake::VectorX<double>* y) const {
   // Extract elements
-  AutoDiffVecXd y_i = ytyth.head(n_y_);
-  AutoDiffVecXd tau_i = ytyth.segment(n_y_, n_tau_);
-  AutoDiffVecXd y_iplus1 = ytyth.segment(n_y_ + n_tau_, n_y_);
-  AutoDiffVecXd tau_iplus1 = ytyth.segment(2 * (n_y_) + n_tau_, n_tau_);
-  const AutoDiffVecXd h_i = ytyth.tail(1);
+  VectorX<double> z_i = ztzth.head(n_z_);
+  VectorX<double> tau_i = ztzth.segment(n_z_, n_tau_);
+  VectorX<double> z_iplus1 = ztzth.segment(n_z_ + n_tau_, n_z_);
+  VectorX<double> tau_iplus1 = ztzth.segment(2 * (n_z_) + n_tau_, n_tau_);
+  VectorX<double> h_i = ztzth.tail(1);
 
-  // Impose dynamics constraint
-  *y = getConstraintValueInAutoDiff(y_i, tau_i, y_iplus1, tau_iplus1, h_i);
+  // Evaluate derivatives at knot points
+  VectorX<double> g_i = g(z_i, tau_i);
+  VectorX<double> g_iplus1 = g(z_iplus1, tau_iplus1);
 
-//  auto output = getConstraintValueInAutoDiff(y_i, tau_i, y_iplus1, tau_iplus1, h_i);
-//  *y = output / 40.0;
-//  goldilocks_models::writeCSV("../dyn_constraint_grad.csv", autoDiffToGradientMatrix(output));
+  // Value of the cubic spline at the collocation point
+  VectorX<double> z_c = (z_i + z_iplus1) / 2 + (g_i - g_iplus1) * h_i(0) / 8;
+  VectorX<double> tau_c = (tau_i + tau_iplus1) / 2;
+
+  // Assign dynamics constraint value
+  *y = (z_iplus1 - z_i) / h_i(0) - (g_i + 4 * g(z_c, tau_c) + g_iplus1) / 6;
 }
 
-void DynamicsConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x,
-                                VectorX<Expression>*y) const {
-  throw std::logic_error(
-    "This constraint class does not support symbolic evaluation.");
+VectorX<double> DynamicsConstraint::g(const VectorX<double>& z,
+                                      const VectorX<double>& tau) const {
+  VectorX<double> zdot(2 * n_y_);
+  zdot << z.tail(n_y_), rom_.EvalDynamicFunc(z.head(n_y_), z.tail(n_y_), tau);
+  return zdot;
 }
-
-AutoDiffVecXd DynamicsConstraint::getConstraintValueInAutoDiff(
-  const AutoDiffVecXd & y_i, const AutoDiffVecXd & tau_i,
-  const AutoDiffVecXd & y_iplus1, const AutoDiffVecXd & tau_iplus1,
-  const AutoDiffVecXd & h_i) const {
-
-  //
-  AutoDiffVecXd g_i = g(y_i, tau_i);
-  AutoDiffVecXd g_iplus1 = g(y_iplus1, tau_iplus1);
-
-  // Value of the cubic spline at collocation point
-  AutoDiffVecXd y_c = (y_i + y_iplus1) / 2 + (g_i - g_iplus1) * h_i(0) / 8;
-  AutoDiffVecXd tau_c = (tau_i + tau_iplus1) / 2;
-
-  // Get constraint value in autoDiff
-  return (y_iplus1 - y_i) / h_i(0) - (g_i + 4 * g(y_c, tau_c) + g_iplus1) / 6;
-}
-
-AutoDiffVecXd DynamicsConstraint::g(const AutoDiffVecXd & y,
-                                    const AutoDiffVecXd & tau) const {
-  AutoDiffVecXd r = y.head(n_r_);
-  AutoDiffVecXd dr = y.tail(n_r_);
-  AutoDiffVecXd dy = initializeAutoDiff(VectorXd::Zero(2 * n_r_));
-
-  dy << dr, dyn_expression_.getExpression(theta_dyn_, r, dr, tau);
-  return dy;
-}
-
-
 
 }  // namespace planning
 }  // namespace goldilocks_models

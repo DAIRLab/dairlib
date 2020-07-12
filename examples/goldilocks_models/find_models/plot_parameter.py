@@ -26,11 +26,11 @@ if len(sys.argv) >= 7:
 
 
 row_idx_to_be_plotted = range(idx_start,idx_end)
-name = 'theta_sDDot' # theta_s or theta_sDDot
+name = 'theta_yddot' # theta_y or theta_yddot
 if kin_or_dyn == 0:
-    name = 'theta_s'
+    name = 'theta_y'
 
-robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
+robot_option = 0;  # 0 is five-link robot. 1 is cassie_fixed_spring
 # directory = 'data/robot_' + str(robot_option) + '/'
 directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
 

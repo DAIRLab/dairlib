@@ -24,9 +24,10 @@ cc_binary(
     data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
     deps = [
         ":goldilocks_utils",
+        ":reduced_order_models",
         "//common",
         "//common:file_utils",
-        "//examples/goldilocks_models/planning:RoM_planning_traj_opt",
+        "//examples/goldilocks_models/planning:rom_traj_opt",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -41,7 +42,9 @@ cc_library(
         "goldilocks_utils.h",
     ],
     deps = [
+        ":reduced_order_models",
         "//common:file_utils",
+        "//examples/Cassie:cassie_utils",
         "@drake//:drake_shared_library",
     ],
 )
@@ -123,4 +126,3 @@ cc_binary(
         "@gflags",
     ],
 )
-

@@ -93,7 +93,7 @@ class MonomialFeatures {
 /// https://dair.seas.upenn.edu/wp-content/uploads/Chen2020.pdf
 class ReducedOrderModel {
  public:
-  ReducedOrderModel(int n_y, int n_tau, const Eigen::MatrixXd& B,
+  ReducedOrderModel(int n_y, int n_tau, const drake::MatrixX<double>& B,
                     int n_feature_y, int n_feature_yddot,
                     const MonomialFeatures& mapping_basis,
                     const MonomialFeatures& dynamic_basis,
@@ -114,7 +114,7 @@ class ReducedOrderModel {
   int n_tau() const { return n_tau_; };
   int n_feature_y() const { return n_feature_y_; };
   int n_feature_yddot() const { return n_feature_yddot_; };
-  const Eigen::MatrixXd& B() const { return B_; };
+  const drake::MatrixX<double>& B() const { return B_; };
 
   // Getters for basis functions
   const MonomialFeatures& mapping_basis() const { return mapping_basis_; };
@@ -124,12 +124,12 @@ class ReducedOrderModel {
   int n_theta_y() const { return theta_y_.size(); };
   int n_theta_yddot() const { return theta_yddot_.size(); };
   int n_theta() const { return theta_y_.size() + theta_yddot_.size(); };
-  const Eigen::VectorXd& theta_y() const { return theta_y_; };
-  const Eigen::VectorXd& theta_yddot() const { return theta_yddot_; };
-  Eigen::VectorXd theta() const;
-  void SetThetaY(const Eigen::VectorXd& theta_y);
-  void SetThetaYddot(const Eigen::VectorXd& theta_yddot);
-  void SetTheta(const Eigen::VectorXd& theta);
+  const drake::VectorX<double>& theta_y() const { return theta_y_; };
+  const drake::VectorX<double>& theta_yddot() const { return theta_yddot_; };
+  drake::VectorX<double> theta() const;
+  void SetThetaY(const drake::VectorX<double>& theta_y);
+  void SetThetaYddot(const drake::VectorX<double>& theta_yddot);
+  void SetTheta(const drake::VectorX<double>& theta);
 
   // Evaluators for y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFunc(
@@ -167,6 +167,8 @@ class ReducedOrderModel {
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const = 0;
 
+  void PrintInfo() const;
+
   void CheckModelConsistency() const;
 
  private:
@@ -174,16 +176,16 @@ class ReducedOrderModel {
   int n_y_;
   int n_yddot_;
   int n_tau_;
-  Eigen::MatrixXd B_;
+  drake::MatrixX<double> B_;
 
   int n_feature_y_;
   int n_feature_yddot_;
 
-  const MonomialFeatures& mapping_basis_;
-  const MonomialFeatures& dynamic_basis_;
+  const MonomialFeatures mapping_basis_;
+  const MonomialFeatures dynamic_basis_;
 
-  Eigen::VectorXd theta_y_;
-  Eigen::VectorXd theta_yddot_;
+  drake::VectorX<double> theta_y_;
+  drake::VectorX<double> theta_yddot_;
 };
 
 /// Linear inverted pendulum model (either 2D or 3D, determined by `world_dim`)
@@ -235,7 +237,7 @@ class Lipm : public ReducedOrderModel {
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
-  const BodyPoint& stance_contact_point_;
+  const BodyPoint stance_contact_point_;
   bool is_quaternion_;
   int world_dim_;
 };
@@ -286,9 +288,9 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
-  const BodyPoint& stance_contact_point_;
+  const BodyPoint stance_contact_point_;
   // contact body frame and contact point of the swing foot
-  const BodyPoint& swing_contact_point_;
+  const BodyPoint swing_contact_point_;
   bool is_quaternion_;
 };
 
@@ -336,7 +338,7 @@ class FixHeightAccel : public ReducedOrderModel {
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
-  const BodyPoint& stance_contact_point_;
+  const BodyPoint stance_contact_point_;
   bool is_quaternion_;
 };
 
@@ -387,9 +389,9 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
-  const BodyPoint& stance_contact_point_;
+  const BodyPoint stance_contact_point_;
   // contact body frame and contact point of the swing foot
-  const BodyPoint& swing_contact_point_;
+  const BodyPoint swing_contact_point_;
   bool is_quaternion_;
 };
 

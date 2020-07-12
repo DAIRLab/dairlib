@@ -1696,92 +1696,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Construct reduced order model
   cout << "\nReduced-order model setting:\n";
   cout << "rom_option = " << FLAGS_rom_option << endl;
-  // Basis for mapping function (dependent on the robot)
-  vector<int> empty_inds = {};
-  std::unique_ptr<MonomialFeatures> mapping_basis;
-  if (FLAGS_robot_option == 0) {
-    mapping_basis = std::make_unique<MonomialFeatures>(
-        2, plant.num_positions(), empty_inds, "mapping basis");
-  } else {                              // FLAGS_robot_option == 1
-    vector<int> skip_inds = {3, 4, 5};  // quat_z, x, and y
-    mapping_basis = std::make_unique<MonomialFeatures>(
-        2, plant.num_positions(), skip_inds, "mapping basis");
-  }
-  mapping_basis->PrintInfo();
-  // Basis for dynamic function
-  std::unique_ptr<MonomialFeatures> dynamic_basis;
-  if (FLAGS_rom_option == 0) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(2), empty_inds, "dynamic basis");
-  } else if (FLAGS_rom_option == 1) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * TwoDimLipmWithSwingFoot::kDimension, empty_inds,
-        "dynamic basis");
-  } else if (FLAGS_rom_option == 2) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * FixHeightAccel::kDimension, empty_inds, "dynamic basis");
-  } else if (FLAGS_rom_option == 3) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * FixHeightAccelWithSwingFoot::kDimension, empty_inds,
-        "dynamic basis");
-  } else if (FLAGS_rom_option == 4) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else {
-    throw std::runtime_error("Not implemented");
-  }
-  dynamic_basis->PrintInfo();
-  // Contact frames and position for mapping function
-  string stance_foot_body_name;
-  Vector3d stance_foot_contact_point_pos;
-  string swing_foot_body_name;
-  Vector3d swing_foot_contact_point_pos;
-  if (FLAGS_robot_option == 0) {
-    stance_foot_body_name = "left_lower_leg_mass";
-    stance_foot_contact_point_pos = Vector3d(0, 0, -0.5);
-    swing_foot_body_name = "right_lower_leg_mass";
-    swing_foot_contact_point_pos = Vector3d(0, 0, -0.5);
-  } else {  // FLAGS_robot_option == 1
-    auto left_toe = LeftToeFront(plant);
-    auto left_heel = LeftToeRear(plant);
-    stance_foot_body_name = "toe_left";
-    stance_foot_contact_point_pos = (left_toe.first + left_heel.first) / 2;
-    swing_foot_body_name = "toe_right";
-    swing_foot_contact_point_pos = (left_toe.first + left_heel.first) / 2;
-  }
-  auto stance_foot = std::pair<const Vector3d, const Frame<double>&>(
-      stance_foot_contact_point_pos,
-      plant.GetFrameByName(stance_foot_body_name));
-  auto swing_foot = std::pair<const Vector3d, const Frame<double>&>(
-      swing_foot_contact_point_pos, plant.GetFrameByName(swing_foot_body_name));
-  // Construct reduced-order model
-  std::unique_ptr<ReducedOrderModel> rom;
-  if (FLAGS_rom_option == 0) {
-    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
-                                 *dynamic_basis, 2);
-  } else if (FLAGS_rom_option == 1) {
-    rom = std::make_unique<TwoDimLipmWithSwingFoot>(
-        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
-  } else if (FLAGS_rom_option == 2) {
-    rom = std::make_unique<FixHeightAccel>(plant, stance_foot, *mapping_basis,
-                                           *dynamic_basis);
-  } else if (FLAGS_rom_option == 3) {
-    rom = std::make_unique<FixHeightAccelWithSwingFoot>(
-        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
-  } else if (FLAGS_rom_option == 4) {
-    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
-                                 *dynamic_basis, 3);
-  } else {
-    // TODO: finish implementing the rest of the ROM
-    throw std::runtime_error("Not implemented");
-  }
-  writeCSV(dir + string("B_tau.csv"), rom->B());
-  cout << "Construct reduced-order model (" << rom->name()
-       << ") with parameters\n";
-  cout << "n_y = " << rom->n_y() << ", n_tau = " << rom->n_tau() << endl;
-  cout << "B_tau = \n" << rom->B() << "\n";
-  cout << "n_feature_y = " << rom->n_feature_y() << endl;
-  cout << "n_feature_yddot = " << rom->n_feature_yddot() << endl;
+  std::unique_ptr<ReducedOrderModel> rom =
+      CreateRom(FLAGS_rom_option, FLAGS_robot_option, plant);
+  writeCSV(dir + string("rom_B.csv"), rom->B());
+  writeCSV(dir + string("rom_n_y.csv"), rom->n_y() * VectorXd::Ones(1));
+  writeCSV(dir + string("rom_n_tau.csv"), rom->n_tau() * VectorXd::Ones(1));
+  writeCSV(dir + string("rom_n_feature_y.csv"),
+           rom->n_feature_y() * VectorXd::Ones(1));
+  writeCSV(dir + string("rom_n_feature_yddot.csv"),
+           rom->n_feature_yddot() * VectorXd::Ones(1));
 
   // Reduced order model setup
   if (iter_start != 0) {

@@ -37,6 +37,8 @@ using drake::symbolic::Variable;
 using drake::symbolic::Expression;
 using drake::multibody::MultibodyPlant;
 
+using dairlib::solvers::NonlinearConstraint;
+
 namespace dairlib {
 namespace goldilocks_models {
 namespace find_models {

@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/planning/kinematics_constraint_cost.h"
+#include "examples/goldilocks_models/planning/visualization/kinematics_constraint_cost.h"
 
 
 namespace dairlib {

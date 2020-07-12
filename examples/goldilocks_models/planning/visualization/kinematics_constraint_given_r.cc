@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/planning/kinematics_constraint_given_r.h"
+#include "examples/goldilocks_models/planning/visualization/kinematics_constraint_given_r.h"
 
 
 namespace dairlib {

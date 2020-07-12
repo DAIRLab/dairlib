@@ -1,72 +1,48 @@
+#include <unistd.h>  // for pausing the program for a few seconds
+#include <chrono>
+#include <memory>
+#include <string>
 #include <gflags/gflags.h>
 
-#include <memory>
-#include <chrono>
-
-#include <string>
-
-#include <unistd.h> // for pausing the program for a few seconds
-
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/primitives/trajectory_source.h"
-
-#include "drake/lcm/drake_lcm.h"
-
-#include "drake/multibody/parsing/parser.h"
-#include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "drake/geometry/geometry_visualization.h"
-
+#include "common/file_utils.h"
 #include "common/find_resource.h"
-#include "systems/primitives/subvector_pass_through.h"
-
+#include "examples/goldilocks_models/planning/visualization/FoM_stance_foot_constraint_given_pos.h"
+#include "examples/goldilocks_models/planning/visualization/kinematics_constraint_cost.h"
+#include "examples/goldilocks_models/planning/visualization/kinematics_constraint_given_r.h"
+#include "examples/goldilocks_models/planning/visualization/kinematics_constraint_only_pos.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/primitives/trajectory_source.h"
-#include "drake/lcm/drake_lcm.h"
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
-
+#include "drake/geometry/geometry_visualization.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram_builder.h"
 
-#include "common/file_utils.h"
-
-#include "examples/goldilocks_models/planning/kinematics_constraint_cost.h"
-#include "examples/goldilocks_models/planning/kinematics_constraint_given_r.h"
-#include "examples/goldilocks_models/planning/kinematics_constraint_only_pos.h"
-#include "examples/goldilocks_models/planning/FoM_stance_foot_constraint_given_pos.h"
-
-using drake::multibody::MultibodyPlant;
-using drake::geometry::SceneGraph;
-using drake::multibody::Body;
-using drake::multibody::Parser;
-using drake::systems::rendering::MultibodyPositionToGeometryPose;
-
+using Eigen::Matrix3Xd;
+using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using Eigen::Matrix3Xd;
-using drake::trajectories::PiecewisePolynomial;
-using drake::MatrixX;
-using std::vector;
-using std::shared_ptr;
 using std::cin;
 using std::cout;
 using std::endl;
+using std::shared_ptr;
 using std::string;
 using std::to_string;
+using std::vector;
 
-using drake::math::DiscardGradient;
-using drake::math::autoDiffToValueMatrix;
+using drake::MatrixX;
+using drake::geometry::SceneGraph;
 using drake::math::autoDiffToGradientMatrix;
+using drake::math::autoDiffToValueMatrix;
+using drake::math::DiscardGradient;
 using drake::math::initializeAutoDiff;
+using drake::multibody::Body;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
+using drake::systems::rendering::MultibodyPositionToGeometryPose;
+using drake::trajectories::PiecewisePolynomial;
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -93,13 +69,12 @@ map<string, int> doMakeNameToPositionsMap() {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   Parser parser(&plant, &scene_graph);
   std::string full_name = FindResourceOrThrow(
-                            "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+      "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(
-    -9.81 * Eigen::Vector3d::UnitZ());
-  plant.WeldFrames(
-    plant.world_frame(), plant.GetFrameByName("base"),
-    drake::math::RigidTransform<double>());
+  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
+                                                   Eigen::Vector3d::UnitZ());
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                   drake::math::RigidTransform<double>());
   plant.Finalize();
 
   return multibody::makeNameToPositionsMap(plant);
@@ -112,12 +87,12 @@ map<string, int> doMakeNameToPositionsMap() {
 void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  int robot_option = 0; // haven't implemented for Cassie yet
+  int robot_option = 0;  // haven't implemented for Cassie yet
 
   // parameters
-//  const string dir_data = "examples/goldilocks_models/planning/data/";
+  //  const string dir_data = "examples/goldilocks_models/planning/data/";
   const string dir = "../dairlib_data/goldilocks_models/planning/robot_" +
-      to_string(robot_option) + "/";
+                     to_string(robot_option) + "/";
   const string dir_data = dir + "data/";
   const string dir_model = dir + "models/";
 
@@ -164,17 +139,14 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   VectorXd theta_kin = readCSV(prefix + string("_theta_s.csv")).col(0);
 
   // Read in pose
-  MatrixXd x0_each_mode =
-    readCSV(dir_data + string("x0_each_mode.csv"));
-  MatrixXd xf_each_mode =
-    readCSV(dir_data + string("xf_each_mode.csv"));
+  MatrixXd x0_each_mode = readCSV(dir_data + string("x0_each_mode.csv"));
+  MatrixXd xf_each_mode = readCSV(dir_data + string("xf_each_mode.csv"));
   DRAKE_DEMAND(x0_each_mode.cols() == FLAGS_n_mode);
 
   // Read in states
-  MatrixXd states =
-    readCSV(dir_data + string("state_at_knots.csv"));
-  DRAKE_DEMAND(states.cols() == FLAGS_n_mode * FLAGS_n_nodes -
-               (FLAGS_n_mode - 1));
+  MatrixXd states = readCSV(dir_data + string("state_at_knots.csv"));
+  DRAKE_DEMAND(states.cols() ==
+               FLAGS_n_mode * FLAGS_n_nodes - (FLAGS_n_mode - 1));
   int n_r = states.rows() / 2;
 
   // Get the stance foot positions
@@ -186,19 +158,21 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       left_stance = (i % 2) ? true : false;
 
     VectorX<double> q0 = x0_each_mode.col(i).head(7);
+    // clang-format off
     if (left_stance) {
       VectorX<double> left_foot_pos_xz_0(2);
       left_foot_pos_xz_0 <<
-                         q0(0) - 0.5 * sin(q0(2) + q0(3)) - 0.5 * sin(q0(2) + q0(3) + q0(5)),
-                         q0(1) - 0.5 * cos(q0(2) + q0(3)) - 0.5 * cos(q0(2) + q0(3) + q0(5));
+          q0(0) - 0.5 * sin(q0(2) + q0(3)) - 0.5 * sin(q0(2) + q0(3) + q0(5)),
+          q0(1) - 0.5 * cos(q0(2) + q0(3)) - 0.5 * cos(q0(2) + q0(3) + q0(5));
       stance_foot_pos_each_mode.col(i) = left_foot_pos_xz_0;
     } else {
       VectorX<double> right_foot_pos_xz_0(2);
       right_foot_pos_xz_0 <<
-                          q0(0) - 0.5 * sin(q0(2) + q0(4)) - 0.5 * sin(q0(2) + q0(4) + q0(6)),
-                          q0(1) - 0.5 * cos(q0(2) + q0(4)) - 0.5 * cos(q0(2) + q0(4) + q0(6));
+          q0(0) - 0.5 * sin(q0(2) + q0(4)) - 0.5 * sin(q0(2) + q0(4) + q0(6)),
+          q0(1) - 0.5 * cos(q0(2) + q0(4)) - 0.5 * cos(q0(2) + q0(4) + q0(6));
       stance_foot_pos_each_mode.col(i) = right_foot_pos_xz_0;
     }
+    // clang-format on
   }
   cout << "stance_foot_pos_each_mode = \n" << stance_foot_pos_each_mode << endl;
 
@@ -247,16 +221,17 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       // cout << "Adding full-order model joint constraint...\n";
       vector<string> l_or_r{"left_", "right_"};
       vector<string> fom_joint_names{"hip_pin", "knee_pin"};
-      vector<double> lb_for_fom_joints{ -M_PI / 2.0, 5.0 / 180.0 * M_PI};
-      vector<double> ub_for_fom_joints{ M_PI / 2.0, M_PI / 2.0};
+      vector<double> lb_for_fom_joints{-M_PI / 2.0, 5.0 / 180.0 * M_PI};
+      vector<double> ub_for_fom_joints{M_PI / 2.0, M_PI / 2.0};
       for (unsigned int k = 0; k < l_or_r.size(); k++) {
         for (unsigned int l = 0; l < fom_joint_names.size(); l++) {
           math_prog.AddLinearConstraint(
-            q(positions_map.at(l_or_r[k] + fom_joint_names[l])),
-            lb_for_fom_joints[l], ub_for_fom_joints[l]);
+              q(positions_map.at(l_or_r[k] + fom_joint_names[l])),
+              lb_for_fom_joints[l], ub_for_fom_joints[l]);
           // cout << "(" << positions_map.at(l_or_r[k] + fom_joint_names[l]) <<
           //      ") " << l_or_r[k] + fom_joint_names[l] << ": lb = " <<
-          //      lb_for_fom_joints[l] << ", ub = " << ub_for_fom_joints[l] << endl;
+          //      lb_for_fom_joints[l] << ", ub = " << ub_for_fom_joints[l] <<
+          //      endl;
         }
       }
 
@@ -270,20 +245,20 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
         // // AutoDiffVecXd r_i_autoDiff = initializeAutoDiff(r_i);
         // // drake::math::initializeAutoDiffGivenGradientMatrix(
         // //   r_i, grad_r, r_i_autoDiff);
-        // // auto kin_constraint = std::make_shared<planning::KinematicsConstraintGivenR>(
-        // //                         n_r, r_i_autoDiff, 7, FLAGS_n_feature_kin, theta_kin, robot_option);
-        auto kin_constraint = std::make_shared<planning::KinematicsConstraintOnlyPos>(
-                                n_r, 7, FLAGS_n_feature_kin, theta_kin, robot_option);
+        // // auto kin_constraint =
+        // std::make_shared<planning::KinematicsConstraintGivenR>(
+        // //                         n_r, r_i_autoDiff, 7, FLAGS_n_feature_kin,
+        // theta_kin, robot_option);
+        auto kin_constraint =
+            std::make_shared<planning::KinematicsConstraintOnlyPos>(
+                n_r, 7, FLAGS_n_feature_kin, theta_kin, robot_option);
         if (left_stance) {
           // math_prog.AddConstraint(kin_constraint, q);
           math_prog.AddConstraint(kin_constraint, {r, q});
         } else {
           VectorXDecisionVariable q_swap(7);
-          q_swap << q.segment(0, 3),
-                 q.segment(4, 1),
-                 q.segment(3, 1),
-                 q.segment(6, 1),
-                 q.segment(5, 1);
+          q_swap << q.segment(0, 3), q.segment(4, 1), q.segment(3, 1),
+              q.segment(6, 1), q.segment(5, 1);
           // cout << "q_swap = " << q_swap.transpose() << endl;
           // math_prog.AddConstraint(kin_constraint, q_swap);
           math_prog.AddConstraint(kin_constraint, {r, q_swap});
@@ -295,19 +270,15 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       //////////////////////// Soft Constraint Version//////////////////////////
       else {
         auto kin_cost = std::make_shared<planning::KinematicsConstraintCost>(
-                          n_r, 7, FLAGS_n_feature_kin, theta_kin,
-                          FLAGS_soft_constraint_weight,
-                          robot_option);
+            n_r, 7, FLAGS_n_feature_kin, theta_kin,
+            FLAGS_soft_constraint_weight, robot_option);
         if (left_stance) {
           // math_prog.AddCost(kin_cost, q);
           math_prog.AddCost(kin_cost, {r, q});
         } else {
           VectorXDecisionVariable q_swap(7);
-          q_swap << q.segment(0, 3),
-                 q.segment(4, 1),
-                 q.segment(3, 1),
-                 q.segment(6, 1),
-                 q.segment(5, 1);
+          q_swap << q.segment(0, 3), q.segment(4, 1), q.segment(3, 1),
+              q.segment(6, 1), q.segment(5, 1);
           // cout << "q_swap = " << q_swap.transpose() << endl;
           // math_prog.AddCost(kin_cost, q_swap);
           math_prog.AddCost(kin_cost, {r, q_swap});
@@ -319,15 +290,17 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       // Add stance foot constraint
       // cout << "Adding full-order model stance foot constraint...\n";
       auto fom_sf_constraint =
-        std::make_shared<planning::FomStanceFootConstraintGivenPos>(
-          left_stance, n_q, stance_foot_pos_each_mode.col(i));
+          std::make_shared<planning::FomStanceFootConstraintGivenPos>(
+              left_stance, n_q, stance_foot_pos_each_mode.col(i));
       math_prog.AddConstraint(fom_sf_constraint, q);
 
       // Add cost
-      // Among the feasible solutions, pick the one that's closest to interpolated_q
-      VectorXd interpolated_q = x0_each_mode.col(i).head(7) +
-                                (xf_each_mode.col(i).head(7) - x0_each_mode.col(i).head(7))
-                                * j / (FLAGS_n_nodes - 1);
+      // Among the feasible solutions, pick the one that's closest to
+      // interpolated_q
+      VectorXd interpolated_q =
+          x0_each_mode.col(i).head(7) +
+          (xf_each_mode.col(i).head(7) - x0_each_mode.col(i).head(7)) * j /
+              (FLAGS_n_nodes - 1);
       // cout << "interpolated_q = " << interpolated_q.transpose() << endl;
       //////////////////////////////////////////////////////////////////////////
       // MatrixXd Id = MatrixXd::Identity(1, 1);
@@ -362,17 +335,21 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       // math_prog.SetInitialGuess(r, r_i);
       // math_prog.SetInitialGuess(q, interpolated_q);
 
-      // math_prog.SetSolverOption(drake::solvers::GurobiSolver::id(), "BarConvTol", 1E-9);
+      // math_prog.SetSolverOption(drake::solvers::GurobiSolver::id(),
+      // "BarConvTol", 1E-9);
       // math_prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
       //                           "Print file", "snopt.out");
       // math_prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
       //                           "Major iterations limit", 10000);
-      // math_prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-14); //1.0e-10
-      // math_prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-14); //1.0e-10
+      // math_prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major
+      // feasibility tolerance", 1.0e-14); //1.0e-10
+      // math_prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor
+      // feasibility tolerance", 1.0e-14); //1.0e-10
       cout << "Start solving...\n";
       const auto result = Solve(math_prog);
       auto solution_result = result.get_solution_result();
-      cout << solution_result << " | Cost:" << result.get_optimal_cost() << endl;
+      cout << solution_result << " | Cost:" << result.get_optimal_cost()
+           << endl;
       VectorXd q_sol = result.GetSolution(q);
       cout << "q_sol = " << q_sol.transpose() << endl;
 
@@ -384,11 +361,9 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Time to solve IK:" << elapsed.count() << "\n";
 
-
   // TODO: When you create the video, you need to adjust the ratio of duration
-  // for each mode. (look at the time)
-  // Right now, we can just set it to be equal time, cause you don't have time.
-
+  //  for each mode. (look at the time)
+  //  Right now, we can just set it to be equal time, cause you don't have time.
 
   writeCSV(dir_data + string("q_at_knots_IK.csv"), q_at_all_knots);
 
@@ -411,7 +386,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
     t0 = 1;
   }
   VectorXd planner_time =
-    readCSV(dir_data + string("time_at_knots.csv")).col(0);
+      readCSV(dir_data + string("time_at_knots.csv")).col(0);
   for (int i = 0; i < states.cols(); i++) {
     // T_breakpoint.push_back(t0 + i * dt);
     // cout << t0 + i * dt << endl;
@@ -423,7 +398,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
     Y.push_back(qv);
   }
   PiecewisePolynomial<double> pp_xtraj =
-    PiecewisePolynomial<double>::FirstOrderHold(T_breakpoint, Y);
+      PiecewisePolynomial<double>::FirstOrderHold(T_breakpoint, Y);
 
   // Create MBP
   drake::systems::DiagramBuilder<double> builder;
@@ -433,13 +408,12 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
   Parser parser(&plant, &scene_graph);
   std::string full_name = FindResourceOrThrow(
-                            "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+      "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(
-    -9.81 * Eigen::Vector3d::UnitZ());
-  plant.WeldFrames(
-    plant.world_frame(), plant.GetFrameByName("base"),
-    drake::math::RigidTransform<double>());
+  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
+                                                   Eigen::Vector3d::UnitZ());
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                   drake::math::RigidTransform<double>());
   plant.Finalize();
 
   // visualizer
@@ -462,4 +436,3 @@ int main(int argc, char* argv[]) {
   dairlib::goldilocks_models::planning::visualizeFullOrderModelTraj(argc, argv);
   return 0;
 }
-

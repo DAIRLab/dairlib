@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/planning/kinematics_constraint_only_pos.h"
+#include "examples/goldilocks_models/planning/visualization/kinematics_constraint_only_pos.h"
 
 
 namespace dairlib {

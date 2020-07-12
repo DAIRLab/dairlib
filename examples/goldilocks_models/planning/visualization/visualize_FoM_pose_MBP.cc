@@ -103,8 +103,6 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
     std::string full_name = FindResourceOrThrow(
                               "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
     parser.AddModelFromFile(full_name);
-    plant.mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
     plant.WeldFrames(
       plant.world_frame(), plant.GetFrameByName("base"),
       drake::math::RigidTransform<double>());

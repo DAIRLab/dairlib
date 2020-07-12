@@ -6,10 +6,11 @@
 
 #include "common/file_utils.h"
 #include "common/find_resource.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/planning/visualization/FoM_stance_foot_constraint_given_pos.h"
 #include "examples/goldilocks_models/planning/visualization/kinematics_constraint_cost.h"
-#include "examples/goldilocks_models/planning/visualization/kinematics_constraint_given_r.h"
 #include "examples/goldilocks_models/planning/visualization/kinematics_constraint_only_pos.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -48,10 +49,9 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace planning {
 
+DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
+DEFINE_int32(rom_option, 1, "0: LIPM. 1: LIPM with point-mass swing foot");
 DEFINE_int32(iter, 298, "Which iteration");
-DEFINE_int32(n_mode, 2, "# of modes");
-DEFINE_int32(n_nodes, 20, "# of nodes per mode");
-DEFINE_int32(n_feature_kin, 70, "# of kinematics features");
 DEFINE_double(dt, 0.1, "Duration per step * 2");
 DEFINE_bool(is_do_inverse_kin, false, "Do inverse kinematics for presentation");
 
@@ -71,8 +71,6 @@ map<string, int> doMakeNameToPositionsMap() {
   std::string full_name = FindResourceOrThrow(
       "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
   plant.Finalize();
@@ -82,39 +80,26 @@ map<string, int> doMakeNameToPositionsMap() {
 
 // This program visualizes the full order model by doing inverse kinematics.
 // This program is used with the planning which contains FoM at pre/post impact.
-// Therefore, this program is just for presentation usage. (so that easy to
+// Therefore, this program is just for presentation usage. (so that it's easy to
 // explain to other what you are doing)
 void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  int robot_option = 0;  // haven't implemented for Cassie yet
+  DRAKE_DEMAND(FLAGS_robot_option == 0);  // haven't implemented Cassie yet
 
   // parameters
-  //  const string dir_data = "examples/goldilocks_models/planning/data/";
   const string dir = "../dairlib_data/goldilocks_models/planning/robot_" +
-                     to_string(robot_option) + "/";
-  const string dir_data = dir + "data/";
-  const string dir_model = dir + "models/";
+                     to_string(FLAGS_robot_option) + "/";
+  const string data_directory = dir + "data/";
+  const string model_directory = dir + "models/";
 
+  // Confirmation
   bool start_with_left_stance = true;
-  if (start_with_left_stance)
+  if (start_with_left_stance) {
     cout << "This program assumes the robot start with left stance. ";
-  else
-    cout << "This program assumes the robot start with right stance. ";
-  cout << "Is this correct? (Y/N)\n";
-  char answer[1];
-  cin >> answer;
-  if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-    cout << "Ending the program.\n";
-    return;
   } else {
-    cout << "Continue the program...\n";
+    cout << "This program assumes the robot start with right stance. ";
   }
-  bool left_stance = start_with_left_stance;
-
-  cout << "Total # of modes = " << FLAGS_n_mode << endl;
-  cout << "# of nodes per mode = " << FLAGS_n_nodes << endl;
-  cout << "n_feature_kin = " << FLAGS_n_feature_kin << endl;
   cout << "iter (used for theta) = " << FLAGS_iter << endl;
 
   cout << "Are the above numbers correct? (Y/N)\n";
@@ -127,31 +112,39 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
     cout << "Continue the program...\n";
   }
 
+  // Read in some parameters
+  int n_step = readCSV(data_directory + string("n_step.csv"))(0, 0);
+  int n_nodes = readCSV(data_directory + string("nodes_per_step.csv"))(0, 0);
+
   // Setup
+  bool left_stance = start_with_left_stance;
   double desired_torso = 0;
   if (FLAGS_assign_des_torso_angle) {
     desired_torso = 0.1;
   }
   double d_clearance = FLAGS_d_clearance;
 
-  // Read in the parameters
-  string prefix = dir_model + to_string(FLAGS_iter);
-  VectorXd theta_kin = readCSV(prefix + string("_theta_s.csv")).col(0);
+  // Reduced order model
+  MultibodyPlant<double> plant(0.0);
+  CreateMBP(&plant, FLAGS_robot_option);
+  std::unique_ptr<ReducedOrderModel> rom =
+      CreateRom(FLAGS_rom_option, FLAGS_robot_option, plant, false);
+  ReadModelParameters(rom.get(), model_directory, FLAGS_iter);
+  int n_y = rom->n_y();
 
   // Read in pose
-  MatrixXd x0_each_mode = readCSV(dir_data + string("x0_each_mode.csv"));
-  MatrixXd xf_each_mode = readCSV(dir_data + string("xf_each_mode.csv"));
-  DRAKE_DEMAND(x0_each_mode.cols() == FLAGS_n_mode);
+  MatrixXd x0_each_mode = readCSV(data_directory + string("x0_each_mode.csv"));
+  MatrixXd xf_each_mode = readCSV(data_directory + string("xf_each_mode.csv"));
+  DRAKE_DEMAND(x0_each_mode.cols() == n_step);
 
   // Read in states
-  MatrixXd states = readCSV(dir_data + string("state_at_knots.csv"));
-  DRAKE_DEMAND(states.cols() ==
-               FLAGS_n_mode * FLAGS_n_nodes - (FLAGS_n_mode - 1));
-  int n_r = states.rows() / 2;
+  MatrixXd states = readCSV(data_directory + string("state_at_knots.csv"));
+  DRAKE_DEMAND(states.cols() == n_step * n_nodes - (n_step - 1));
+  DRAKE_DEMAND(n_y * 2 == states.rows());
 
   // Get the stance foot positions
   MatrixXd stance_foot_pos_each_mode(2, x0_each_mode.cols());
-  for (int i = 0; i < FLAGS_n_mode; i++) {
+  for (int i = 0; i < n_step; i++) {
     if (start_with_left_stance)
       left_stance = (i % 2) ? false : true;
     else
@@ -180,10 +173,10 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   int n_q = 7;
   map<string, int> positions_map = doMakeNameToPositionsMap();
   MatrixXd q_at_all_knots(7, states.cols());
-  for (int i = 0; i < FLAGS_n_mode; i++) {
+  for (int i = 0; i < n_step; i++) {
     if (!FLAGS_assign_des_torso_angle) {
-      q_at_all_knots.col((FLAGS_n_nodes - 1) * i) = x0_each_mode.col(i);
-      q_at_all_knots.col((FLAGS_n_nodes - 1) * (i + 1)) = xf_each_mode.col(i);
+      q_at_all_knots.col((n_nodes - 1) * i) = x0_each_mode.col(i);
+      q_at_all_knots.col((n_nodes - 1) * (i + 1)) = xf_each_mode.col(i);
     } else {
       double difference;
       VectorXd modified_x0_each_mode = x0_each_mode.col(i);
@@ -191,30 +184,30 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       modified_x0_each_mode(2) += difference;
       modified_x0_each_mode(3) -= difference;
       modified_x0_each_mode(4) -= difference;
-      q_at_all_knots.col((FLAGS_n_nodes - 1) * i) = modified_x0_each_mode;
+      q_at_all_knots.col((n_nodes - 1) * i) = modified_x0_each_mode;
       VectorXd modified_xf_each_mode = xf_each_mode.col(i);
       difference = desired_torso - modified_xf_each_mode(2);
       modified_xf_each_mode(2) += difference;
       modified_xf_each_mode(3) -= difference;
       modified_xf_each_mode(4) -= difference;
-      q_at_all_knots.col((FLAGS_n_nodes - 1) * (i + 1)) = modified_xf_each_mode;
+      q_at_all_knots.col((n_nodes - 1) * (i + 1)) = modified_xf_each_mode;
     }
   }
 
   // Do inverse kinematics
   auto start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < FLAGS_n_mode; i++) {
+  for (int i = 0; i < n_step; i++) {
     cout << "\n\n\n";
 
     if (start_with_left_stance)
-      left_stance = (i % 2) ? false : true;
+      left_stance = i % 2 == 0;
     else
-      left_stance = (i % 2) ? true : false;
+      left_stance = i % 2 != 0;
     cout << "left_stance = " << left_stance << endl;
 
-    for (int j = 1; j < FLAGS_n_nodes - 1; j++) {
+    for (int j = 1; j < n_nodes - 1; j++) {
       MathematicalProgram math_prog;
-      auto r = math_prog.NewContinuousVariables(n_r, "r");
+      auto r = math_prog.NewContinuousVariables(n_y, "r");
       auto q = math_prog.NewContinuousVariables(7, "q");
 
       // Full order model joint limits
@@ -237,21 +230,13 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
 
       // Add RoM-FoM mapping constraints
       // cout << "Adding RoM-FoM mapping constraint...\n";
-      VectorXd r_i = states.col(j + (FLAGS_n_nodes - 1) * i).head(n_r);
+      VectorXd r_i = states.col(j + (n_nodes - 1) * i).head(n_y);
       cout << "r_i = " << r_i << endl;
       //////////////////////// Hard Constraint Version//////////////////////////
       if (!FLAGS_is_soft_constraint) {
-        // // MatrixXd grad_r = MatrixXd::Zero(n_r, 7);
-        // // AutoDiffVecXd r_i_autoDiff = initializeAutoDiff(r_i);
-        // // drake::math::initializeAutoDiffGivenGradientMatrix(
-        // //   r_i, grad_r, r_i_autoDiff);
-        // // auto kin_constraint =
-        // std::make_shared<planning::KinematicsConstraintGivenR>(
-        // //                         n_r, r_i_autoDiff, 7, FLAGS_n_feature_kin,
-        // theta_kin, robot_option);
         auto kin_constraint =
-            std::make_shared<planning::KinematicsConstraintOnlyPos>(
-                n_r, 7, FLAGS_n_feature_kin, theta_kin, robot_option);
+            std::make_shared<planning::KinematicsConstraintOnlyPos>(*rom,
+                                                                    plant);
         if (left_stance) {
           // math_prog.AddConstraint(kin_constraint, q);
           math_prog.AddConstraint(kin_constraint, {r, q});
@@ -270,8 +255,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       //////////////////////// Soft Constraint Version//////////////////////////
       else {
         auto kin_cost = std::make_shared<planning::KinematicsConstraintCost>(
-            n_r, 7, FLAGS_n_feature_kin, theta_kin,
-            FLAGS_soft_constraint_weight, robot_option);
+            *rom, plant, FLAGS_soft_constraint_weight);
         if (left_stance) {
           // math_prog.AddCost(kin_cost, q);
           math_prog.AddCost(kin_cost, {r, q});
@@ -300,7 +284,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       VectorXd interpolated_q =
           x0_each_mode.col(i).head(7) +
           (xf_each_mode.col(i).head(7) - x0_each_mode.col(i).head(7)) * j /
-              (FLAGS_n_nodes - 1);
+              (n_nodes - 1);
       // cout << "interpolated_q = " << interpolated_q.transpose() << endl;
       //////////////////////////////////////////////////////////////////////////
       // MatrixXd Id = MatrixXd::Identity(1, 1);
@@ -316,10 +300,10 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       }
       if (d_clearance > 0) {
         double delta_angle;
-        if (j < 0.5 * FLAGS_n_nodes) {
-          delta_angle = d_clearance * 2.0 * j / FLAGS_n_nodes;
+        if (j < 0.5 * n_nodes) {
+          delta_angle = d_clearance * 2.0 * j / n_nodes;
         } else {
-          delta_angle = d_clearance * 2 - d_clearance * 2.0 * j / FLAGS_n_nodes;
+          delta_angle = d_clearance * 2 - d_clearance * 2.0 * j / n_nodes;
         }
 
         if (left_stance) {
@@ -353,8 +337,8 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
       VectorXd q_sol = result.GetSolution(q);
       cout << "q_sol = " << q_sol.transpose() << endl;
 
-      q_at_all_knots.col(j + (FLAGS_n_nodes - 1) * i) = q_sol;
-      // q_at_all_knots.col(j + (FLAGS_n_nodes - 1) * i) = interpolated_q;
+      q_at_all_knots.col(j + (n_nodes - 1) * i) = q_sol;
+      // q_at_all_knots.col(j + (n_nodes - 1) * i) = interpolated_q;
     }
   }
   auto finish = std::chrono::high_resolution_clock::now();
@@ -365,7 +349,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   //  for each mode. (look at the time)
   //  Right now, we can just set it to be equal time, cause you don't have time.
 
-  writeCSV(dir_data + string("q_at_knots_IK.csv"), q_at_all_knots);
+  writeCSV(data_directory + string("q_at_knots_IK.csv"), q_at_all_knots);
 
   // Pause the system for 1 second
   if (FLAGS_realtime_factor != 1) {
@@ -386,7 +370,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
     t0 = 1;
   }
   VectorXd planner_time =
-      readCSV(dir_data + string("time_at_knots.csv")).col(0);
+      readCSV(data_directory + string("time_at_knots.csv")).col(0);
   for (int i = 0; i < states.cols(); i++) {
     // T_breakpoint.push_back(t0 + i * dt);
     // cout << t0 + i * dt << endl;
@@ -400,24 +384,16 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   PiecewisePolynomial<double> pp_xtraj =
       PiecewisePolynomial<double>::FirstOrderHold(T_breakpoint, Y);
 
-  // Create MBP
+  // Create MBP for visualization
   drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<double> plant(0.0);
+  MultibodyPlant<double> plant_vis(0.0);
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   Vector3d ground_normal(0, 0, 1);
-  multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
-  Parser parser(&plant, &scene_graph);
-  std::string full_name = FindResourceOrThrow(
-      "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
-  parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                   drake::math::RigidTransform<double>());
-  plant.Finalize();
+  CreateMBPForVisualization(&plant_vis, &scene_graph, ground_normal,
+                            FLAGS_robot_option);
 
   // visualizer
-  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+  multibody::connectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
                                          pp_xtraj);
   auto diagram = builder.Build();
   // while (true)
@@ -425,8 +401,6 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(FLAGS_realtime_factor);
   simulator.Initialize();
   simulator.AdvanceTo(pp_xtraj.end_time());
-
-  return;
 }
 }  // namespace planning
 }  // namespace goldilocks_models

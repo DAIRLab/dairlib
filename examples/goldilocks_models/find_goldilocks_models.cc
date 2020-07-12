@@ -171,31 +171,6 @@ DEFINE_string(
     "The name of the program (to keep a record for future references)");
 DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 
-void createMBP(MultibodyPlant<double>* plant, int robot_option) {
-  if (robot_option == 0) {
-    Parser parser(plant);
-    string full_name = FindResourceOrThrow(
-        "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
-    parser.AddModelFromFile(full_name);
-    plant->mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
-    plant->WeldFrames(
-      plant->world_frame(), plant->GetFrameByName("base"),
-      drake::math::RigidTransform<double>());
-    plant->Finalize();
-
-  } else if (robot_option == 1) {
-    Parser parser(plant);
-    string full_name =
-      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-    parser.AddModelFromFile(full_name);
-    plant->mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
-    plant->Finalize();
-  } else {
-    throw std::runtime_error("Should not reach here");
-  }
-}
 void setCostWeight(double* Q, double* R, double* all_cost_scale,
                    int robot_option) {
   if (robot_option == 0) {
@@ -1390,7 +1365,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Create MBP
   drake::logging::set_log_level("err");  // ignore warnings about joint limits
   MultibodyPlant<double> plant(0.0);
-  createMBP(&plant, FLAGS_robot_option);
+  CreateMBP(&plant, FLAGS_robot_option);
 
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);

@@ -148,8 +148,6 @@ vector<VectorXd> GetCassieInitGuessForQ(int N, double stride_length,
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
       parser.AddModelFromFile(full_name);
-      plant_ik.mutable_gravity_field().set_gravity_vector(
-          -9.81 * Eigen::Vector3d::UnitZ());
       plant_ik.Finalize();
 
       // Visualize

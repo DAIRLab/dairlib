@@ -1,11 +1,14 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include <sys/stat.h>  // Check the existence of a file/folder
 
 #include <sys/stat.h>  // Check the existence of a file/folder
 #include <cstdlib>  // System call to create folder (and also parent directory)
 #include <iostream>
 
+#include "drake/multibody/parsing/parser.h"
+
 using drake::multibody::Frame;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
@@ -41,6 +44,55 @@ SubQpData::SubQpData(int N_sample) {
     nl_vec.push_back(std::make_shared<int>());
     P_vec.push_back(std::make_shared<MatrixXd>());
     q_vec.push_back(std::make_shared<VectorXd>());
+  }
+}
+
+void CreateMBP(MultibodyPlant<double>* plant, int robot_option) {
+  if (robot_option == 0) {
+    Parser parser(plant);
+    string full_name = FindResourceOrThrow(
+        "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+    parser.AddModelFromFile(full_name);
+    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base"),
+                      drake::math::RigidTransform<double>());
+    plant->Finalize();
+
+  } else if (robot_option == 1) {
+    Parser parser(plant);
+    string full_name =
+        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+    parser.AddModelFromFile(full_name);
+    plant->Finalize();
+  } else {
+    throw std::runtime_error("robot_option " + to_string(robot_option) +
+                             "is not implemented");
+  }
+}
+
+void CreateMBPForVisualization(MultibodyPlant<double>* plant,
+                               drake::geometry::SceneGraph<double>* scene_graph,
+                               Eigen::Vector3d ground_normal,
+                               int robot_option) {
+  if (robot_option == 0) {
+    multibody::addFlatTerrain(plant, scene_graph, 0.8, 0.8, ground_normal);
+    Parser parser(plant, scene_graph);
+    string full_name = FindResourceOrThrow(
+        "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+    parser.AddModelFromFile(full_name);
+    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base"),
+                      drake::math::RigidTransform<double>());
+    plant->Finalize();
+
+  } else if (robot_option == 1) {
+    multibody::addFlatTerrain(plant, scene_graph, 0.8, 0.8, ground_normal);
+    Parser parser(plant, scene_graph);
+    string full_name =
+        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+    parser.AddModelFromFile(full_name);
+    plant->Finalize();
+  } else {
+    throw std::runtime_error("robot_option " + to_string(robot_option) +
+                             "is not implemented");
   }
 }
 
@@ -135,6 +187,28 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   }
 
   return std::move(rom);
+}
+
+void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
+                         int model_iter) {
+  // Check that we are using the correct model
+  DRAKE_DEMAND(rom->n_y() == readCSV(dir + string("rom_n_y.csv"))(0, 0));
+  DRAKE_DEMAND(rom->n_tau() == readCSV(dir + string("rom_n_tau.csv"))(0, 0));
+  DRAKE_DEMAND(rom->n_feature_y() ==
+               readCSV(dir + string("rom_n_feature_y.csv"))(0, 0));
+  DRAKE_DEMAND(rom->n_feature_yddot() ==
+               readCSV(dir + string("rom_n_feature_yddot.csv"))(0, 0));
+  if (rom->n_tau() != 0) {
+    DRAKE_DEMAND((rom->B() - readCSV(dir + string("rom_B.csv"))).norm() == 0);
+  }
+
+  // Update the ROM parameters from file
+  VectorXd theta_y =
+      readCSV(dir + to_string(model_iter) + string("_theta_y.csv")).col(0);
+  VectorXd theta_yddot =
+      readCSV(dir + to_string(model_iter) + string("_theta_yddot.csv")).col(0);
+  rom->SetThetaY(theta_y);
+  rom->SetThetaYddot(theta_yddot);
 }
 
 // Create time knots for creating cubic splines

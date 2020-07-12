@@ -62,15 +62,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Create MBP
   MultibodyPlant<double> plant(0.0);
-  Parser parser(&plant);
-  std::string full_name = FindResourceOrThrow(
-      "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
-  parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                   drake::math::RigidTransform<double>());
-  plant.Finalize();
+  CreateMBP(&plant, FLAGS_robot_option);
 
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
@@ -87,28 +79,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   // Reduced order model
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(FLAGS_rom_option, FLAGS_robot_option, plant, false);
-  // Check that we are using the correct model
-  DRAKE_DEMAND(rom->n_y() == readCSV(dir_model + string("rom_n_y.csv"))(0, 0));
-  DRAKE_DEMAND(rom->n_tau() ==
-               readCSV(dir_model + string("rom_n_tau.csv"))(0, 0));
-  DRAKE_DEMAND(rom->n_feature_y() ==
-               readCSV(dir_model + string("rom_n_feature_y.csv"))(0, 0));
-  DRAKE_DEMAND(rom->n_feature_yddot() ==
-               readCSV(dir_model + string("rom_n_feature_yddot.csv"))(0, 0));
-  if (rom->n_tau() != 0) {
-    DRAKE_DEMAND((rom->B() - readCSV(dir_model + string("rom_B.csv"))).norm() ==
-                 0);
-  }
-
-  // Update the ROM parameters from file
-  VectorXd theta_y =
-      readCSV(dir_model + to_string(FLAGS_iter) + string("_theta_y.csv"))
-          .col(0);
-  VectorXd theta_yddot =
-      readCSV(dir_model + to_string(FLAGS_iter) + string("_theta_yddot.csv"))
-          .col(0);
-  rom->SetThetaY(theta_y);
-  rom->SetThetaYddot(theta_yddot);
+  ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
 
   // Optimization parameters
   int n_y = rom->n_y();
@@ -132,12 +103,17 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   N -= num_time_samples.size() - 1;
   // cout << "N = " << N << endl;
 
+  // Store data
+  writeCSV(dir_data + string("n_step.csv"), n_step * VectorXd::Ones(1));
+  writeCSV(dir_data + string("nodes_per_step.csv"),
+           knots_per_mode * VectorXd::Ones(1));
+
   // Read in initial robot state
-  string dir_and_pf = dir_model + to_string(FLAGS_iter) + string("_") +
-                      to_string(FLAGS_sample) + string("_");
-  cout << "dir_and_pf = " << dir_and_pf << endl;
+  string model_dir_n_pref = dir_model + to_string(FLAGS_iter) + string("_") +
+                            to_string(FLAGS_sample) + string("_");
+  cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
   VectorXd init_state =
-      readCSV(dir_and_pf + string("state_at_knots.csv")).col(0);
+      readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
   if (FLAGS_disturbance != 0) {
     init_state(9) += FLAGS_disturbance / 1;  // add to floating base angle
   }
@@ -151,17 +127,18 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   VectorXd x_guess_left_in_front;
   VectorXd x_guess_right_in_front;
   if (with_init_guess) {
-    h_guess = readCSV(dir_and_pf + string("time_at_knots.csv")).col(0);
-    r_guess = readCSV(dir_and_pf + string("t_and_y.csv"))
+    h_guess = readCSV(model_dir_n_pref + string("time_at_knots.csv")).col(0);
+    r_guess = readCSV(model_dir_n_pref + string("t_and_y.csv"))
                   .block(1, 0, n_y, knots_per_mode);
-    dr_guess = readCSV(dir_and_pf + string("t_and_ydot.csv"))
+    dr_guess = readCSV(model_dir_n_pref + string("t_and_ydot.csv"))
                    .block(1, 0, n_y, knots_per_mode);
-    tau_guess = readCSV(dir_and_pf + string("t_and_tau.csv"))
+    tau_guess = readCSV(model_dir_n_pref + string("t_and_tau.csv"))
                     .block(1, 0, n_tau, knots_per_mode);
     x_guess_left_in_front =
-        readCSV(dir_and_pf + string("state_at_knots.csv")).col(0);
-    x_guess_right_in_front = readCSV(dir_and_pf + string("state_at_knots.csv"))
-                                 .col(knots_per_mode - 1);
+        readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
+    x_guess_right_in_front =
+        readCSV(model_dir_n_pref + string("state_at_knots.csv"))
+            .col(knots_per_mode - 1);
     cout << "\nWARNING: last column of state_at_knots.csv should be pre-impact "
             "state.\n";
     // cout << "h_guess = " << h_guess << endl;

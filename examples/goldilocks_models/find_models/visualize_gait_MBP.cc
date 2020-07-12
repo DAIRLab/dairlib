@@ -272,8 +272,6 @@ void visualizeGait(int argc, char* argv[]) {
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
     }
     parser.AddModelFromFile(full_name);
-    plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                     Eigen::Vector3d::UnitZ());
     if (FLAGS_robot_option == 0) {
       plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                        drake::math::RigidTransform<double>());

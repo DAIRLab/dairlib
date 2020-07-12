@@ -61,11 +61,27 @@ class SubQpData {
   std::vector<std::shared_ptr<Eigen::VectorXd>> q_vec;  // w = P_i * theta + q_i
 };
 
+// Create MultibodyPlant
+void CreateMBP(drake::multibody::MultibodyPlant<double>* plant,
+               int robot_option);
+
+// Create MultibodyPlant for visualization
+void CreateMBPForVisualization(drake::multibody::MultibodyPlant<double>* plant,
+                               drake::geometry::SceneGraph<double>* scene_graph,
+                               Eigen::Vector3d ground_normal, int robot_option);
+
 // Create reduced order model
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant,
     bool print_info = true);
+
+// Read in model parameters from files
+// `rom` is the ReducedOrderModel class which we want to write the params into.
+// `dir` is the path where the model data is stored
+// `model_iter` is the optimization iteration # of the model with we want to use
+void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
+                         int model_iter);
 
 // Create cubic splines from s and sdot
 drake::trajectories::PiecewisePolynomial<double> createCubicSplineGivenSAndSdot(

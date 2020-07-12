@@ -21,10 +21,11 @@ cc_binary(
     deps = [
         ":FoM_stance_foot_constraint_given_pos",
         ":kinematics_constraint_cost",
-        ":kinematics_constraint_given_r",
         ":kinematics_constraint_only_pos",
         "//common",
         "//common:file_utils",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:reduced_order_models",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
@@ -41,23 +42,9 @@ cc_library(
         "kinematics_constraint_only_pos.h",
     ],
     deps = [
-        "//examples/goldilocks_models/attic:kinematics_expression",
+        "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "kinematics_constraint_given_r",
-    srcs = [
-        "kinematics_constraint_given_r.cc",
-    ],
-    hdrs = [
-        "kinematics_constraint_given_r.h",
-    ],
-    deps = [
-        "//examples/goldilocks_models/attic:kinematics_expression",
-        "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )
@@ -71,8 +58,9 @@ cc_library(
         "kinematics_constraint_cost.h",
     ],
     deps = [
-        "//examples/goldilocks_models/attic:kinematics_expression",
+        "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
+        "//solvers:nonlinear_cost",
         "@drake//:drake_shared_library",
     ],
 )
@@ -86,7 +74,9 @@ cc_library(
         "FoM_stance_foot_constraint_given_pos.h",
     ],
     deps = [
+        "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )

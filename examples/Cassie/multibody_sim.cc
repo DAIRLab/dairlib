@@ -62,6 +62,8 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_string(channel_u, "CASSIE_INPUT", "The name of the LCM channel that "
+                                         "sends Cassie's inputs");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -95,7 +97,7 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", lcm));
+          FLAGS_channel_u, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,

@@ -15,7 +15,6 @@
 #include "multibody/visualization_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/geometry/geometry_visualization.h"
-#include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"
@@ -41,7 +40,6 @@ using drake::math::DiscardGradient;
 using drake::math::initializeAutoDiff;
 using drake::multibody::Body;
 using drake::multibody::MultibodyPlant;
-using drake::multibody::Parser;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 using drake::trajectories::PiecewisePolynomial;
 
@@ -61,22 +59,6 @@ DEFINE_bool(assign_des_torso_angle, true, "Assign a desired torso angle");
 DEFINE_double(d_clearance, 0, "Max angle for swing foot ground clearance");
 
 DEFINE_double(realtime_factor, 1, "Visualization realtime factor");
-
-map<string, int> doMakeNameToPositionsMap() {
-  // Create a plant
-  drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<double> plant(0.0);
-  SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
-  Parser parser(&plant, &scene_graph);
-  std::string full_name = FindResourceOrThrow(
-      "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
-  parser.AddModelFromFile(full_name);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                   drake::math::RigidTransform<double>());
-  plant.Finalize();
-
-  return multibody::makeNameToPositionsMap(plant);
-}
 
 // This program visualizes the full order model by doing inverse kinematics.
 // This program is used with the planning which contains FoM at pre/post impact.
@@ -171,7 +153,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
 
   // Some setup
   int n_q = 7;
-  map<string, int> positions_map = doMakeNameToPositionsMap();
+  map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
   MatrixXd q_at_all_knots(7, states.cols());
   for (int i = 0; i < n_step; i++) {
     if (!FLAGS_assign_des_torso_angle) {

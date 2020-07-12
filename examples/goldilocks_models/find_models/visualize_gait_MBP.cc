@@ -92,7 +92,7 @@ void visualizeGait(int argc, char* argv[]) {
     // Read in ground incline
     double ground_incline = goldilocks_models::readCSV(
         directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
-        string("_ground_incline.csv"))(0, 0);
+        string("_task.csv"))(1, 0);
 
     // Read in trajecotry
     VectorXd time_mat;

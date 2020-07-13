@@ -131,3 +131,5 @@ local_repository(
     path = DAIRLIB_LOCAL_INEKF_PATH,
 )
 
+load("//tools/workspace/pinocchio:repository.bzl", "pinocchio_repository")
+pinocchio_repository("pinocchio")

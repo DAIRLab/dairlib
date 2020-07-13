@@ -346,6 +346,7 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
+        "@pinocchio"
     ],
     tags = ["manual"],
 )

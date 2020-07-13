@@ -296,33 +296,32 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
 
     if (mode.get_force_regularization() != 0) {
       // Add regularization cost on force
-      int n_l = mode.evaluators().count_full() * mode.num_knotpoints();
       {
         int size = force_vars_.at(i_mode).size();
         AddQuadraticCost(
             mode.get_force_regularization() * MatrixXd::Identity(size, size),
-            VectorXd::Zero(n_l), force_vars_.at(i_mode));
+            VectorXd::Zero(size), force_vars_.at(i_mode));
       }
 
       {
         int size = collocation_force_vars_.at(i_mode).size();
         AddQuadraticCost(
             mode.get_force_regularization() * MatrixXd::Identity(size, size),
-            VectorXd::Zero(n_l), collocation_force_vars_.at(i_mode));
+            VectorXd::Zero(size), collocation_force_vars_.at(i_mode));
       }
 
       {
         int size = collocation_slack_vars_.at(i_mode).size();
         AddQuadraticCost(
             mode.get_force_regularization() * MatrixXd::Identity(size, size),
-            VectorXd::Zero(n_l), collocation_slack_vars_.at(i_mode));
+            VectorXd::Zero(size), collocation_slack_vars_.at(i_mode));
       }
 
       {
         int size = quaternion_slack_vars_.at(i_mode).size();
         AddQuadraticCost(
             mode.get_force_regularization() * MatrixXd::Identity(size, size),
-            VectorXd::Zero(n_l), quaternion_slack_vars_.at(i_mode));
+            VectorXd::Zero(size), quaternion_slack_vars_.at(i_mode));
       }
     }
   }

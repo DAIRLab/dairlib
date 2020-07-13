@@ -71,6 +71,7 @@ DEFINE_int32(max_iter, 100, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
 DEFINE_bool(ipopt, false, "Use IPOPT as solver instead of SNOPT");
+DEFINE_bool(playback, true, "Playback the solution");
 
 // Parameters which enable dircon-improving features
 DEFINE_bool(scale_constraint, true, "Scale the nonlinear constraint values");
@@ -601,7 +602,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   auto diagram = builder.Build();
 
-  while (true) {
+  while (FLAGS_playback) {
     drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(.1);
     simulator.Initialize();

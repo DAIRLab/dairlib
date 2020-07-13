@@ -37,6 +37,8 @@ class VisualizationGui(QWidget):
         self.delete = False
         self.clear = False
         self.ready = False
+        self.subscriptions = {}
+        self.nextMessage = None
 
         # JSON attributes
         self.channel = ""
@@ -74,7 +76,7 @@ class VisualizationGui(QWidget):
                 self.data = json.load(json_file)
 
             # start listenning to LCM messages
-            self.subscription = lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
+            lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
 
             self.ready = True
             self.modelFile = self.data['model_file']
@@ -83,7 +85,13 @@ class VisualizationGui(QWidget):
 
             # create each object/shape to be drawn
             for data in self.data['data']:
+
                 newObject = ObjectToDraw(data)
+
+                # maybe remove the subscription after done
+                if (newObject.category == "lcm" and (newObject.name not in self.subscriptions)):
+                    self.subscriptions[data['name']] = LCMMessage(newObject.source_data['abstract_channel'], newObject.source_data['abstract_type'], newObject.source_data["abstract_field"], newObject.source_data["index"])
+
                 if (newObject.name not in self.shapes):
                     self.shapes[newObject.name] = newObject
                 else:
@@ -102,6 +110,9 @@ class VisualizationGui(QWidget):
                 self.clearBtn = QPushButton('Clear History')
                 self.clearBtn.clicked.connect(self.clearHistory)
                 self.vbox.addWidget(self.clearBtn)
+
+            for lcmMessage in self.subscriptions.values():
+                lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg: self.abstract_handler(msg, field = lcmMessage.field))
 
     def deleteShapes(self):
         '''
@@ -182,15 +193,8 @@ class VisualizationGui(QWidget):
     # The following is a test function for handling messages from different lcm
     # channels
 
-    # def abstract_handler(self, msg):
-    #     field = getattr(msg, "tracking_data")
-    #
-    #     a = None
-    #     for el in field:
-    #         if (el.name == "com_traj"):
-    #             a = el.y
-    #             print(a)
-    #             break
+    def abstract_handler(self, msg, field = None):
+        print(field)
 
     def state_handler(self, msg):
         '''
@@ -241,8 +245,11 @@ class VisualizationGui(QWidget):
                         currShape.point, self.plant.world_frame())
                     next_loc = pt_world.transpose()[0]
 
-                elif (currShape.category == "CoM"):
+                elif (currShape.category == "com"):
                     next_loc = self.plant.CalcCenterOfMassPosition(context = self.context)
+
+                elif (currShape.category == "lcm"):
+                    next_loc = [1, 1, 1]
 
                 self.drawShape(currShape, next_loc)
 
@@ -385,14 +392,14 @@ class ObjectToDraw():
         self.name = data['name']
 
         info = data['info']
-        source_data = info['source_data']
+        self.source_data = info['source_data']
         type_data = info['type_data']
 
-        self.category = source_data['category']
+        self.category = self.source_data['category']
 
         if (self.category == "kinematic_point"):
-            self.frame = source_data['frame']
-            self.point = source_data['point']
+            self.frame = self.source_data['frame']
+            self.point = self.source_data['point']
 
         self.alpha = type_data['alpha']
         self.type = type_data['type']
@@ -434,6 +441,14 @@ class ObjectToDraw():
 
         elif (self.type == "axis"):
             self.thickness = otherObject.thickness
+
+
+class LCMMessage():
+    def __init__(self, channel, type, field, index):
+        self.channel = channel
+        self.type = type
+        self.field = field
+        self.index = index
 
 # Adding the widget
 panel = VisualizationGui()

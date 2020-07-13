@@ -56,13 +56,44 @@
                     }
             },
             {"name": "com_point",
-            "info" : {"source_data" : {"category":"CoM"},
+            "info" : {"source_data" : {"category":"com"},
                       "type_data" : {"color":[0, 1, 0],
                                      "alpha": 0.5,
                                      "type": "point",
                                      "radius": 1
                                    }
                     }
+            },
+
+            {"name": "toe_point3",
+             "info" : {"source_data" : {"category":"lcm",
+                                        "abstract_channel" : "CASSIE_OUTPUT",
+                                        "abstract_type" : "dairlib.lcmt_cassie_out",
+                                        "abstract_field" : "efforts",
+                                        "index" : 0
+                                       },
+                        "type_data": {"color":[0, 1, 0],
+                                      "alpha": 0.5,
+                                      "type": "point",
+                                      "radius": 0.05
+                                    }
+                      }
+
+            },
+            {"name": "toe_point2",
+             "info" : {"source_data" : {"category":"lcm",
+                                        "abstract_channel" : "OSC_DEBUG",
+                                        "abstract_type" : "dairlib.lcmt_osc_output",
+                                        "abstract_field" : "tracking_data[0].y",
+                                        "index" : 1
+                                       },
+                        "type_data": {"color":[0, 1, 0],
+                                      "alpha": 0.5,
+                                      "type": "point",
+                                      "radius": 0.05
+                                    }
+                      }
+
             }
           ]
 }

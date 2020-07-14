@@ -20,8 +20,7 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
                                  bool contact_based, double delay_time,
                                  FSM_STATE init_state)
-    : plant_(plant),
-      transition_times_(transition_times),
+    : transition_times_(transition_times),
       contact_based_(contact_based),
       transition_delay_(delay_time),
       init_state_(init_state) {

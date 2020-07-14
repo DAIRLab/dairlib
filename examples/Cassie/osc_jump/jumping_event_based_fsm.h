@@ -44,7 +44,6 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
       bool guard_condition, double current_time,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  const drake::multibody::MultibodyPlant<double>& plant_;
   int state_port_;
   int contact_port_;
   std::vector<double> transition_times_;

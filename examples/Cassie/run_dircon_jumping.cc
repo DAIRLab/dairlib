@@ -57,7 +57,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_int32(knot_points, 10, "Number of knot points per contact mode");
 DEFINE_double(height, 0.3, "Target height for jumping.");
-DEFINE_double(land_height, 0.0, "End height relative to initial height.");
+DEFINE_double(distance, 0.0, "Target distance (x) from the initial position.");
 DEFINE_int32(scale_option, 0,
              "Scale option of SNOPT"
              "Use 2 if seeing snopta exit 40 in log file");
@@ -225,9 +225,6 @@ void DoMain() {
   options_list.push_back(flight_mode_options);
   options_list.push_back(double_stance_options);
 
-  std::cout << "num_constraints" << options_list[1].getNumConstraints()
-            << std::endl;
-
   auto trajopt = std::make_shared<HybridDircon<double>>(
       plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);
 
@@ -316,22 +313,22 @@ void DoMain() {
   }
 
   // Printing
-  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
-    cout << trajopt->decision_variable(i) << ", ";
-    cout << trajopt->decision_variable(i).get_id() << ", ";
-    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
-         << ", ";
-    auto scale_map = trajopt->GetVariableScaling();
-    auto it = scale_map.find(i);
-    if (it != scale_map.end()) {
-      cout << it->second;
-    } else {
-      cout << "none";
-    }
-    cout << ", ";
-    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
-    cout << endl;
-  }
+//  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
+//    cout << trajopt->decision_variable(i) << ", ";
+//    cout << trajopt->decision_variable(i).get_id() << ", ";
+//    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
+//         << ", ";
+//    auto scale_map = trajopt->GetVariableScaling();
+//    auto it = scale_map.find(i);
+//    if (it != scale_map.end()) {
+//      cout << it->second;
+//    } else {
+//      cout << "none";
+//    }
+//    cout << ", ";
+//    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
+//    cout << endl;
+//  }
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
@@ -342,12 +339,11 @@ void DoMain() {
   //  SolutionResult solution_result = result.get_solution_result();
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  cout << '\a';  // Beep
   cout << "Solve time:" << elapsed.count() << std::endl;
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "Solve result: " << result.get_solution_result() << std::endl;
 
-  printConstraint(trajopt, result);
+//  printConstraint(trajopt, result);
 
   const PiecewisePolynomial<double>& state_traj =
       trajopt->ReconstructStateTrajectory(result);
@@ -376,19 +372,23 @@ void DoMain() {
     traj_block.datapoints = generateStateAndInputMatrix(state_traj, input_traj,
                                                         traj_block.time_vector);
     // To store x and xdot at the knot points
-    const vector<string>& datatypes_wo_inputs =
+    const vector<string>& state_datatypes =
         multibody::createStateNameVectorFromMap(plant);
-    const vector<string>& datatypes_w_inputs =
+    const vector<string>& input_datatypes =
         multibody::createActuatorNameVectorFromMap(plant);
-    traj_block.datatypes.reserve(datatypes_wo_inputs.size() +
-                                 datatypes_w_inputs.size());
+    traj_block.datatypes.reserve(state_datatypes.size() +
+        state_datatypes.size() +
+        input_datatypes.size());
     traj_block.datatypes.insert(traj_block.datatypes.end(),
-                                datatypes_wo_inputs.begin(),
-                                datatypes_wo_inputs.end());
+                                state_datatypes.begin(),
+                                state_datatypes.end());
     traj_block.datatypes.insert(traj_block.datatypes.end(),
-                                datatypes_w_inputs.begin(),
-                                datatypes_w_inputs.end());
-    std::cout << "datatypes size: " << traj_block.datatypes.size() << std::endl;
+                                state_datatypes.begin(),
+                                state_datatypes.end());
+    traj_block.datatypes.insert(traj_block.datatypes.end(),
+                                input_datatypes.begin(),
+                                input_datatypes.end());
+//    std::cout << "datatypes size: " << traj_block.datatypes.size() << std::endl;
     trajectories.push_back(traj_block);
     trajectory_names.push_back(traj_block.traj_name);
   }
@@ -446,7 +446,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
-  int n_x = n_q + n_v;
 
   // Get the decision variables that will be used
   int N = trajopt->N();
@@ -463,16 +462,21 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // Duration Bounds
   double min_duration = 1.0;
-  double max_duration = 1.5;
+  double max_duration = 1.0;
   trajopt->AddDurationBounds(min_duration, max_duration);
 
   // Standing constraints
-  double rest_height = 1.075;
+  double rest_height = 1.0;
   double eps = 1e-6;
 
-  // Just position constraints
+  // position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
+
+  // initial fb orientation constraint
+  VectorXd quat_identity(4);
+  quat_identity << 1, 0, 0, 0;
+  trajopt->AddBoundingBoxConstraint(quat_identity, quat_identity, x0.head(4));
 
   // Jumping height constraints
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
@@ -516,7 +520,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   l_r_pairs.pop_back();
 
-  std::cout << "Joint symmetric constraints: " << std::endl;
+  // Symmetry constraints
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& sym_joint_name : sym_joint_names) {
       trajopt->AddLinearConstraint(
@@ -557,10 +561,11 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // toe position constraint in y direction (avoid leg crossing)
   // tighter constraint than before
-  auto left_foot_constraint = std::make_shared<PointPositionConstraint<double>>(
-      plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-      0.05 * VectorXd::Ones(1), 0.6 * VectorXd::Ones(1));
-  auto right_foot_constraint =
+  auto left_foot_y_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          0.05 * VectorXd::Ones(1), 0.6 * VectorXd::Ones(1));
+  auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
           -0.6 * VectorXd::Ones(1), -0.05 * VectorXd::Ones(1));
@@ -568,10 +573,37 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
     for (int index = 0; index < mode_lengths[mode]; index++) {
       // Assumes mode_lengths are the same across modes
       auto x = trajopt->state((mode_lengths[mode] - 1) * mode + index);
-      trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
-      trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
+      trajopt->AddConstraint(left_foot_y_constraint, x.head(n_q));
+      trajopt->AddConstraint(right_foot_y_constraint, x.head(n_q));
     }
   }
+  // Jumping distance constraint
+  auto left_foot_x_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
+          (FLAGS_distance - eps) * VectorXd::Ones(1),
+          (FLAGS_distance + eps) * VectorXd::Ones(1));
+  auto right_foot_x_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
+          (FLAGS_distance - eps) * VectorXd::Ones(1),
+          (FLAGS_distance + eps) * VectorXd::Ones(1));
+  trajopt->AddConstraint(left_foot_x_constraint, xf.head(n_q));
+  trajopt->AddConstraint(right_foot_x_constraint, xf.head(n_q));
+
+  // Foot clearance constraint
+  auto left_foot_z_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+          (0.75*FLAGS_height - eps) * VectorXd::Ones(1),
+          (FLAGS_height + eps) * VectorXd::Ones(1));
+  auto right_foot_z_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+          (0.75*FLAGS_height - eps) * VectorXd::Ones(1),
+          (FLAGS_height + eps) * VectorXd::Ones(1));
+  trajopt->AddConstraint(left_foot_z_constraint, x_top.head(n_q));
+  trajopt->AddConstraint(right_foot_z_constraint, x_top.head(n_q));
 
   // Only add constraints of lambdas for stance modes
   vector<int> stance_modes{0, 2};

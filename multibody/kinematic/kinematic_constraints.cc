@@ -147,7 +147,7 @@ void KinematicAccelerationConstraint<T>::EvaluateConstraint(
   const auto& lambda = vars.tail(evaluators_.count_full());
   multibody::setContext<T>(plant_, x, u, context_);
 
-  *y = evaluators_.EvalActiveSecondTimeDerivative(*context_, lambda);
+  *y = evaluators_.EvalActiveSecondTimeDerivative(context_, lambda);
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(

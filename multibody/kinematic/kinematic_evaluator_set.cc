@@ -12,7 +12,15 @@ using drake::systems::Context;
 template <typename T>
 KinematicEvaluatorSet<T>::KinematicEvaluatorSet(
     const drake::multibody::MultibodyPlant<T>& plant)
-    : plant_(plant) {}
+    : plant_(plant) {
+  if (plant.geometry_source_is_registered()) {
+    drake::log()->warn(
+        "Plant in KinematicEvaluatorSet has an associated SceneGraph. This may "
+        "introduce undesired contact forces when using "
+        "EvalActiveSecondTimeDerivative, EvalFullSecondTimeDerivative, and "
+        "CalcTimeDerivativesWithForWithForce.");
+  }
+}
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalActive(
@@ -90,19 +98,19 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullTimeDerivative(
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalFullSecondTimeDerivative(
-    const Context<T>& context, const VectorX<T>& lambda) const {
+    Context<T>* context, const VectorX<T>& lambda) const {
   const auto& vdot = CalcTimeDerivativesWithForce(context, lambda);
-  const auto& J = EvalFullJacobian(context);
-  const auto& Jdotv = EvalFullJacobianDotTimesV(context);
+  const auto& J = EvalFullJacobian(*context);
+  const auto& Jdotv = EvalFullJacobianDotTimesV(*context);
   return J * vdot + Jdotv;
 }
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalActiveSecondTimeDerivative(
-    const Context<T>& context, const VectorX<T>& lambda) const {
+    Context<T>* context, const VectorX<T>& lambda) const {
   const auto& xdot = CalcTimeDerivativesWithForce(context, lambda);
-  const auto& J = EvalActiveJacobian(context);
-  const auto& Jdotv = EvalActiveJacobianDotTimesV(context);
+  const auto& J = EvalActiveJacobian(*context);
+  const auto& Jdotv = EvalActiveJacobianDotTimesV(*context);
   return J * xdot.tail(plant_.num_velocities()) + Jdotv;
 }
 
@@ -195,21 +203,24 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivativesWithForce(
-    const Context<T>& context, const VectorX<T>& lambda) const {
-  MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
-  plant_.CalcMassMatrix(context, &M);
+    Context<T>* context, const VectorX<T>& lambda) const {
+  VectorX<T> J_transpose_lambda =
+      EvalFullJacobian(*context).transpose() * lambda;
+  context->FixInputPort(
+      plant_.get_applied_generalized_force_input_port().get_index(),
+      J_transpose_lambda);
 
-  VectorX<T> right_hand_side = CalcMassMatrixTimesVDot(context, lambda);
-
-  VectorX<T> v_dot = M.llt().solve(right_hand_side);
-
+  // N.B. Evaluating the generalized acceleration port rather than the time
+  // derivatives to ensure that this supports continuous and discrete plants
+  // (discrete plants would not compute time derivatives)
+  const VectorX<T>& v_dot =
+      plant_.get_generalized_acceleration_output_port()
+          .template Eval<drake::systems::BasicVector<double>>(*context)
+          .CopyToVector();
   VectorX<T> x_dot(plant_.num_positions() + plant_.num_velocities());
   VectorX<T> q_dot(plant_.num_positions());
-
-  plant_.MapVelocityToQDot(context, plant_.GetVelocities(context), &q_dot);
-
+  plant_.MapVelocityToQDot(*context, plant_.GetVelocities(*context), &q_dot);
   x_dot << q_dot, v_dot;
-
   return x_dot;
 }
 
@@ -312,7 +323,7 @@ bool KinematicEvaluatorSet<T>::is_active(int index) const {
   }
 
   // Loop over the individual evaluators. If the given index is in the index
-  // range for a particular evaluator, check if it is active. 
+  // range for a particular evaluator, check if it is active.
   // `count` here refers to the starting index of the current evaluator into the
   // full vector.
   int count = 0;
@@ -328,7 +339,6 @@ bool KinematicEvaluatorSet<T>::is_active(int index) const {
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::multibody::KinematicEvaluatorSet)
-
 
 }  // namespace multibody
 }  // namespace dairlib

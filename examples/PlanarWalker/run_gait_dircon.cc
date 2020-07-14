@@ -221,18 +221,25 @@ int main(int argc, char* argv[]) {
   std::srand(time(0));  // Initialize random number generator.
 
   auto plant = std::make_unique<MultibodyPlant<double>>(0.0);
+  auto plant_vis = std::make_unique<MultibodyPlant<double>>(0.0);
   auto scene_graph = std::make_unique<SceneGraph<double>>();
-  Parser parser(plant.get(), scene_graph.get());
+  Parser parser(plant.get());
+  Parser parser_vis(plant_vis.get(), scene_graph.get());
   std::string full_name =
       dairlib::FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf");
 
   parser.AddModelFromFile(full_name);
+  parser_vis.AddModelFromFile(full_name);
 
   plant->WeldFrames(
       plant->world_frame(), plant->GetFrameByName("base"),
       drake::math::RigidTransform<double>());
+  plant_vis->WeldFrames(
+      plant_vis->world_frame(), plant_vis->GetFrameByName("base"),
+      drake::math::RigidTransform<double>());
 
   plant->Finalize();
+  plant_vis->Finalize();
 
   Eigen::VectorXd x0 = Eigen::VectorXd::Zero(plant->num_positions() +
                        plant->num_velocities());
@@ -285,12 +292,12 @@ int main(int argc, char* argv[]) {
     std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
         drake::systems::System<double>::ToAutoDiffXd(*plant);
     dairlib::runDircon<drake::AutoDiffXd>(
-      std::move(plant_autodiff), plant.get(), std::move(scene_graph),
+      std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
       FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
       init_lc_traj, init_vc_traj);
   } else {
     dairlib::runDircon<double>(
-      std::move(plant), plant.get(), std::move(scene_graph),
+      std::move(plant), plant_vis.get(), std::move(scene_graph),
       FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
       init_lc_traj, init_vc_traj);
   }

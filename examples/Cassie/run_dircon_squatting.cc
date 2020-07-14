@@ -6,9 +6,8 @@
 
 #include <gflags/gflags.h>
 
-#include "common/find_resource.h"
 #include "common/file_utils.h"
-
+#include "common/find_resource.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/com_pose_system.h"
@@ -20,6 +19,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon/dircon.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
@@ -68,6 +68,7 @@ DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
 DEFINE_bool(store_data, false, "To store solution or not");
 DEFINE_int32(max_iter, 100, "Iteration limit");
+DEFINE_int32(N, 20, "Number of knotpoints");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
 DEFINE_bool(ipopt, false, "Use IPOPT as solver instead of SNOPT");
@@ -90,14 +91,17 @@ void DoMain(double duration, int max_iter, string data_directory,
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant(0.0);
-  Parser parser(&plant, &scene_graph);
+  MultibodyPlant<double> plant_vis(0.0);
+
+  Parser parser(&plant);
+  Parser parser_vis(&plant_vis, &scene_graph);
 
   string full_name =
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
+  parser_vis.AddModelFromFile(full_name);
   plant.Finalize();
+  plant_vis.Finalize();
 
   // Create maps for joints
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
@@ -149,7 +153,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   evaluators.add_evaluator(&left_loop_eval);
   evaluators.add_evaluator(&right_loop_eval);
 
-  int num_knotpoints = 20;
+  int num_knotpoints = FLAGS_N;
   double min_T = .01 * 19;
   double max_T = .3 * 19;
   double mu = 1;
@@ -213,7 +217,6 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   auto trajopt = Dircon<double>(&double_support);
 
-  
   if (FLAGS_ipopt) {
     // Ipopt settings adapted from CaSaDi and FROST
     auto id = drake::solvers::IpoptSolver::id();
@@ -237,7 +240,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   } else {
     // Snopt settings
     auto id = drake::solvers::SnoptSolver::id();
-    // trajopt.SetSolverOption(id, "Print file", "../snopt.out");
+    trajopt.SetSolverOption(id, "Print file", "../snopt.out");
     trajopt.SetSolverOption(id, "Major iterations limit", max_iter);
     trajopt.SetSolverOption(id, "Iterations limit", 100000);
     trajopt.SetSolverOption(id, "Verify level", 0);
@@ -420,42 +423,40 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt.SetInitialGuessForAllVariables(
         VectorXd::Random(trajopt.decision_variables().size()));
 
-    VectorXd q_init;
-    VectorXd u_init;
-    VectorXd lambda_init;
+    VectorXd q0, qf, u0, uf, lambda0, lambdaf;
+    double min_normal_force = 70;
+    double toe_spread = .3;
+    double init_height = 1.0;
+    double final_height = 1.1;
+    double init_time = .5;
+    CassieFixedPointSolver(plant, init_height, 0, min_normal_force, true,
+                           toe_spread, &q0, &u0, &lambda0);
+    CassieFixedPointSolver(plant, final_height, 0, min_normal_force, true,
+                           toe_spread, &qf, &uf, &lambdaf);
+    // Build spline
+    VectorXd times(2);
+    times << 0, init_time;
+    // Use cubic spline for state with zero endpoint derivatives
+    MatrixXd state_matrix(plant.num_positions() + plant.num_velocities(), 2);
+    VectorXd zero_velocity = VectorXd::Zero(plant.num_velocities());
+    state_matrix.col(0) << q0, zero_velocity;
+    state_matrix.col(1) << qf, zero_velocity;
+    auto state_spline = PiecewisePolynomial<double>::CubicShapePreserving(
+        times, state_matrix, true);
 
-    for (int i = 0; i < num_knotpoints; i++) {
-      double height = 1 + 0.1 * i / (num_knotpoints - 1);
-      double min_normal_force = 70;
-      double toe_spread = .3;
-      CassieFixedPointSolver(plant, height, 0, min_normal_force, true,
-                             toe_spread, &q_init, &u_init, &lambda_init);
+    // Use FOH for input and forces
+    MatrixXd input_matrix(plant.num_actuators(), 2);
+    input_matrix << u0, uf;
+    auto input_spline =
+        PiecewisePolynomial<double>::FirstOrderHold(times, input_matrix);
 
-      // guess for state
-      auto xi = trajopt.state(i);
-      VectorXd xi_init(n_q + n_v);
-      xi_init << q_init, VectorXd::Zero(n_v);
-      trajopt.SetInitialGuess(xi, xi_init);
+    MatrixXd force_matrix(lambda0.size(), 2);
+    force_matrix << lambda0, lambdaf;
+    auto force_spline =
+        PiecewisePolynomial<double>::FirstOrderHold(times, force_matrix);
 
-      // guess for input
-      auto ui = trajopt.input(i);
-      trajopt.SetInitialGuess(ui, u_init);
-
-      // guess for constraint force
-      // Reorder force to be be consistent with
-      // those you set in DIRCON
-      VectorXd lambda_sol_reorder(lambda_init.size());
-      lambda_sol_reorder << lambda_init.tail(lambda_init.size() - 2),
-          lambda_init.head(2);
-
-      auto lambdai = trajopt.force_vars(0, i);
-      trajopt.SetInitialGuess(lambdai, lambda_sol_reorder);
-
-      // if (i > 0) {
-      //   auto lambdaci = trajopt.collocation_force_vars(0, i - 1);
-      //   trajopt.SetInitialGuess(lambdaci, lambda_sol_reorder);
-      // }
-    }
+    trajopt.SetInitialForceTrajectory(0, force_spline);
+    trajopt.SetInitialTrajectory(input_spline, state_spline);
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion
   // produces NAN value in some calculation.
@@ -470,8 +471,9 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
 
+  int num_poses = std::min(num_knotpoints, 5);
   trajopt.CreateVisualizationCallback(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf", num_poses);
 
   drake::solvers::SolverId solver_id("");
 
@@ -548,12 +550,12 @@ void DoMain(double duration, int max_iter, string data_directory,
   builder.Connect(traj_source->get_output_port(),
                   passthrough->get_input_port());
   auto to_pose =
-      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
+      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant_vis);
   builder.Connect(passthrough->get_output_port(), to_pose->get_input_port());
 
   builder.Connect(
       to_pose->get_output_port(),
-      scene_graph.get_source_pose_port(plant.get_source_id().value()));
+      scene_graph.get_source_pose_port(plant_vis.get_source_id().value()));
 
   // *******Add COM visualization**********
   bool plot_com = true;

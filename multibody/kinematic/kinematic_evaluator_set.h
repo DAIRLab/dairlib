@@ -8,6 +8,12 @@ namespace multibody {
 /// Simple class that maintains a vector pointers to KinematicEvaluator
 /// objects. Provides a basic API for counting and accumulating evaluations
 /// and their Jacobians.
+///
+/// N.B. To utilize some of the second derivative methods
+/// (EvalActiveSecondTimeDerivative, EvalFullSecondTimeDerivative, and
+/// CalcTimeDerivativesWithForWithForce), the plant should *NOT* be declared
+/// with an associated SceneGraph (which would introduce contact dynamics via
+/// the Drake simulation)
 template <typename T>
 class KinematicEvaluatorSet {
  public:
@@ -23,8 +29,9 @@ class KinematicEvaluatorSet {
 
   /// Evaluates the second time-derivative, d^2/dt^2 phi(q), given force
   /// lambda (lambda for full constraints)
+  /// Note that calculations of acceleration require changing the context
   drake::VectorX<T> EvalActiveSecondTimeDerivative(
-      const drake::systems::Context<T>& context,
+      drake::systems::Context<T>* context,
       const drake::VectorX<T>& lambda) const;
 
   /// Evaluates the constraint Jacobian w.r.t. velocity v (not qdot)
@@ -44,8 +51,9 @@ class KinematicEvaluatorSet {
 
   /// Evaluates the second time-derivative, d^2/dt^2 phi(q), given force
   /// lambda (lambda for full constraints)
+  /// Note that calculations of acceleration require changing the context
   drake::VectorX<T> EvalFullSecondTimeDerivative(
-      const drake::systems::Context<T>& context,
+      drake::systems::Context<T>* context,
       const drake::VectorX<T>& lambda) const;
 
   /// Evaluates, phi(q), including inactive rows
@@ -89,11 +97,12 @@ class KinematicEvaluatorSet {
   /// forces. Similar to CalcMassMatrixTimesVDot, but uses inv(M)
   /// and includes qdot. Forces are associated with the full kinematic
   /// elements.
+  /// Note that calculations of acceleration require changing the context
   /// @param context
   /// @param lambda constraint forces, applied via
   ///   evaluators.EvalActiveJacobian().transpose() * lambda
   drake::VectorX<T> CalcTimeDerivativesWithForce(
-      const drake::systems::Context<T>& context,
+      drake::systems::Context<T>* context,
       const drake::VectorX<T>& lambda) const;
 
   /// Computes vdot given the state and control inputs, satisfying kinematic
@@ -131,7 +140,7 @@ class KinematicEvaluatorSet {
   };
 
   const std::vector<KinematicEvaluator<T>*>& get_evaluators() const {
-      return evaluators_;
+    return evaluators_;
   };
 
   /// Adds an evaluator to the end of the list, returning the associated index

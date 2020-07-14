@@ -51,7 +51,7 @@ class DirconCollocationConstraint : public solvers::NonlinearConstraint<T> {
 
  private:
   drake::VectorX<T> CalcTimeDerivativesWithForce(
-    const drake::systems::Context<T>& context,
+    drake::systems::Context<T>* context,
     const drake::VectorX<T>& forces) const;
 
   const drake::multibody::MultibodyPlant<T>& plant_;

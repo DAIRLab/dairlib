@@ -606,7 +606,7 @@ PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
       inputs.col(k) = drake::math::DiscardGradient(uk);
       auto context = multibody::createContext<T>(plant_, xk, uk);
       auto xdot = get_mode(i).evaluators().CalcTimeDerivativesWithForce(
-          *context, result.GetSolution(force_vars(i, j)));
+          context.get(), result.GetSolution(force_vars(i, j)));
       derivatives.col(k) = drake::math::DiscardGradient(xdot);
     }
   }
@@ -664,6 +664,38 @@ void Dircon<T>::SetInitialForceTrajectory(
 
   // call superclass method
   SetInitialGuess(collocation_slack_vars_[mode_index], guess_collocation_slack);
+}
+
+
+template <typename T>
+void Dircon<T>::SetInitialForceTrajectory(
+    int mode_index, const PiecewisePolynomial<double>& traj_init_l) {
+  const auto& mode = get_mode(mode_index);
+  double start_time = 0;
+  double h;
+  if (timesteps_are_decision_variables())
+    h = GetInitialGuess(h_vars()[0]);
+  else
+    h = fixed_timestep();
+
+  VectorXd guess_force(force_vars_[mode_index].size());
+  VectorXd guess_collocation_force(collocation_force_vars_[mode_index].size());
+  if (traj_init_l.empty()) {
+    guess_force.fill(0);  // Start with 0
+  } else {
+    for (int i = 0; i < mode.num_knotpoints(); ++i) {
+      guess_force.segment(mode.evaluators().count_full() * i,
+                          mode.evaluators().count_full()) =
+          traj_init_l.value(start_time + i * h);
+    }
+    for (int i = 0; i < mode.num_knotpoints() - 1; ++i) {
+      guess_collocation_force.segment(mode.evaluators().count_full() * i,
+                                      mode.evaluators().count_full()) =
+          traj_init_l.value(start_time + (i + 0.5) * h);
+    }
+  }
+  SetInitialGuess(force_vars_[mode_index], guess_force);
+  SetInitialGuess(collocation_force_vars_[mode_index], guess_collocation_force);
 }
 
 template <typename T>

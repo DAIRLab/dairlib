@@ -51,21 +51,26 @@ using systems::trajectory_optimization::DirconMode;
 using systems::trajectory_optimization::Dircon;
 
 // Fixed path to double pendulum SDF model.
-static const char* const kDoublePendulumSdfPath =
+static const char* const kDoublePendulumUrdfPath =
   "systems/trajectory_optimization/dircon/test/acrobot_floating.urdf";
 
 template <typename T>
 void runDircon() {
-  const std::string sdf_path =
-      FindResourceOrThrow(kDoublePendulumSdfPath);
+  const std::string urdf_path =
+      FindResourceOrThrow(kDoublePendulumUrdfPath);
   MultibodyPlant<double> plant_double(0.0);
+  MultibodyPlant<double> plant_vis(0.0);
 
   drake::systems::DiagramBuilder<double> builder;
   auto& scene_graph = *builder.AddSystem<SceneGraph>();
-  Parser parser(&plant_double, &scene_graph);
+  Parser parser(&plant_double);
+  Parser parser_vis(&plant_vis, &scene_graph);
 
-  parser.AddModelFromFile(sdf_path);
+  parser.AddModelFromFile(urdf_path);
   plant_double.Finalize();
+
+  parser_vis.AddModelFromFile(urdf_path);
+  plant_vis.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_pointer;
   if (typeid(T) == typeid(drake::AutoDiffXd)) {
@@ -171,7 +176,7 @@ void runDircon() {
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant_double, &builder, &scene_graph,
+  multibody::connectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
                                          pp_xtraj);
   auto diagram = builder.Build();
 

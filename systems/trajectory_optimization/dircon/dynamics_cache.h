@@ -37,7 +37,7 @@ class DynamicsCache {
       int max_size);
 
   drake::VectorX<T> CalcTimeDerivativesWithForce(
-      const drake::systems::Context<T>& context,
+      drake::systems::Context<T>* context,
       const drake::VectorX<T>& forces);
 
  private:

@@ -1,4 +1,5 @@
 #include "systems/trajectory_optimization/dircon/dircon_opt_constraints.h"
+
 #include "multibody/multibody_utils.h"
 
 namespace dairlib {
@@ -17,34 +18,34 @@ using Eigen::VectorXd;
 
 template <typename T>
 QuaternionConstraint<T>::QuaternionConstraint()
-    : NonlinearConstraint<T>(1, 4, VectorXd::Zero(1), 
-          VectorXd::Zero(1), "quaternion_norm_constraint") {}
+    : NonlinearConstraint<T>(1, 4, VectorXd::Zero(1), VectorXd::Zero(1),
+                             "quaternion_norm_constraint") {}
 template <typename T>
 void QuaternionConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
   (*y).resize(1);
   // Using x.norm() is better, numerically, than x.squaredNorm() except when
   // x is near zero. The below is a permutation of x.norm() = 1 that will be
-  // differentiable everywhere, unlike x.norm(). 
+  // differentiable everywhere, unlike x.norm().
   *y << sqrt(x.squaredNorm() + 1e-3) - sqrt(1 + 1e-3);
 }
 
 template <typename T>
 DirconCollocationConstraint<T>::DirconCollocationConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators, Context<T>* context_0,
-    Context<T>* context_1, int mode_index, int knot_index,
-    DynamicsCache<T>* cache)
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
+    Context<T>* context_0, Context<T>* context_1, int mode_index,
+    int knot_index, DynamicsCache<T>* cache)
     : NonlinearConstraint<T>(
           plant.num_positions() + plant.num_velocities(),
-          1 + 2 * (plant.num_positions() + plant.num_velocities()
-              + plant.num_actuators())
-              + (4 * evaluators.count_full())
-              + multibody::QuaternionStartIndices(plant).size(),
+          1 +
+              2 * (plant.num_positions() + plant.num_velocities() +
+                   plant.num_actuators()) +
+              (4 * evaluators.count_full()) +
+              multibody::QuaternionStartIndices(plant).size(),
           VectorXd::Zero(plant.num_positions() + plant.num_velocities()),
           VectorXd::Zero(plant.num_positions() + plant.num_velocities()),
-          "collocation[" + std::to_string(mode_index) + "]["
-              + std::to_string(knot_index) + "]"),
+          "collocation[" + std::to_string(mode_index) + "][" +
+              std::to_string(knot_index) + "]"),
       plant_(plant),
       evaluators_(evaluators),
       context_0_(context_0),
@@ -78,16 +79,16 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   const auto& u1 = x.segment(1 + 2 * n_x_ + n_u_, n_u_);
   const auto& l0 = x.segment(1 + 2 * (n_x_ + n_u_), n_l_);
   const auto& l1 = x.segment(1 + 2 * (n_x_ + n_u_) + n_l_, n_l_);
-  const auto& lc = x.segment(1 + 2 * (n_x_ + n_u_) + 2* n_l_, n_l_);
-  const auto& gamma = x.segment(1 + 2 * (n_x_ + n_u_) + 3* n_l_, n_l_);
-  const auto& quat_slack = x.segment(1 + 2 * (n_x_ + n_u_) + 4* n_l_,
-      quat_start_indices_.size());
+  const auto& lc = x.segment(1 + 2 * (n_x_ + n_u_) + 2 * n_l_, n_l_);
+  const auto& gamma = x.segment(1 + 2 * (n_x_ + n_u_) + 3 * n_l_, n_l_);
+  const auto& quat_slack =
+      x.segment(1 + 2 * (n_x_ + n_u_) + 4 * n_l_, quat_start_indices_.size());
 
   // Evaluate dynamics at k and k+1
   multibody::setContext<T>(plant_, x0, u0, context_0_);
   multibody::setContext<T>(plant_, x1, u1, context_1_);
-  const auto& xdot0 = CalcTimeDerivativesWithForce(*context_0_, l0);
-  const auto& xdot1 = CalcTimeDerivativesWithForce(*context_1_, l1);
+  const auto& xdot0 = CalcTimeDerivativesWithForce(context_0_, l0);
+  const auto& xdot1 = CalcTimeDerivativesWithForce(context_1_, l1);
 
   // Cubic interpolation to get xcol and xdotcol.
   const auto& xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
@@ -96,11 +97,12 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
 
   // Evaluate dynamics at colocation point
   multibody::setContext<T>(plant_, xcol, ucol, context_col_.get());
-  auto g = CalcTimeDerivativesWithForce(*context_col_, lc);
+  auto g = CalcTimeDerivativesWithForce(context_col_.get(), lc);
 
   // Add velocity slack contribution, J^T * gamma
   VectorX<T> gamma_in_qdot_space(plant_.num_positions());
-  plant_.MapVelocityToQDot(*context_col_,
+  plant_.MapVelocityToQDot(
+      *context_col_,
       evaluators_.EvalFullJacobian(*context_col_).transpose() * gamma,
       &gamma_in_qdot_space);
   g.head(plant_.num_positions()) += gamma_in_qdot_space;
@@ -116,7 +118,7 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
 
 template <typename T>
 drake::VectorX<T> DirconCollocationConstraint<T>::CalcTimeDerivativesWithForce(
-    const drake::systems::Context<T>& context,
+    drake::systems::Context<T>* context,
     const drake::VectorX<T>& forces) const {
   if (cache_) {
     return cache_->CalcTimeDerivativesWithForce(context, forces);
@@ -125,17 +127,16 @@ drake::VectorX<T> DirconCollocationConstraint<T>::CalcTimeDerivativesWithForce(
   }
 }
 
-
 template <typename T>
 ImpactConstraint<T>::ImpactConstraint(
     const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
     Context<T>* context, std::string description)
-    : NonlinearConstraint<T>(plant.num_velocities(),
-          plant.num_positions() + 2 * plant.num_velocities()
-              + evaluators.count_full(),
+    : NonlinearConstraint<T>(
+          plant.num_velocities(),
+          plant.num_positions() + 2 * plant.num_velocities() +
+              evaluators.count_full(),
           VectorXd::Zero(plant.num_velocities()),
-          VectorXd::Zero(plant.num_velocities()),
-          description),
+          VectorXd::Zero(plant.num_velocities()), description),
       plant_(plant),
       evaluators_(evaluators),
       context_(context),
@@ -158,23 +159,22 @@ void ImpactConstraint<T>::EvaluateConstraint(
   drake::MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
   plant_.CalcMassMatrix(*context_, &M);
 
-  *y = M * (v1 - x0.tail(plant_.num_velocities()))
-      - evaluators_.EvalFullJacobian(*context_).transpose() * impulse;
+  *y = M * (v1 - x0.tail(plant_.num_velocities())) -
+       evaluators_.EvalFullJacobian(*context_).transpose() * impulse;
 }
 
 template <typename T>
 CachedAccelerationConstraint<T>::CachedAccelerationConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
     Context<T>* context, const std::string& description,
     DynamicsCache<T>* cache)
-    : NonlinearConstraint<T>(evaluators.count_active(),
-          plant.num_positions() + plant.num_velocities() + plant.num_actuators()
-              + evaluators.count_full(),
+    : NonlinearConstraint<T>(
+          evaluators.count_active(),
+          plant.num_positions() + plant.num_velocities() +
+              plant.num_actuators() + evaluators.count_full(),
           VectorXd::Zero(evaluators.count_active()),
-          VectorXd::Zero(evaluators.count_active()),
-          description),
-      plant_(plant), 
+          VectorXd::Zero(evaluators.count_active()), description),
+      plant_(plant),
       evaluators_(evaluators),
       cache_(cache) {
   // Create a new context if one was not provided
@@ -191,34 +191,32 @@ void CachedAccelerationConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& vars, VectorX<T>* y) const {
   const auto& x = vars.head(plant_.num_positions() + plant_.num_velocities());
   const auto& u = vars.segment(plant_.num_positions() + plant_.num_velocities(),
-      plant_.num_actuators());
+                               plant_.num_actuators());
   const auto& lambda = vars.tail(evaluators_.count_full());
   multibody::setContext<T>(plant_, x, u, context_);
 
   if (cache_) {
-    const auto& xdot = cache_->CalcTimeDerivativesWithForce(*context_, lambda);
+    const auto& xdot =
+        cache_->CalcTimeDerivativesWithForce(context_, lambda);
     const auto& J = evaluators_.EvalActiveJacobian(*context_);
-    const auto& Jdotv = evaluators_.EvalActiveJacobianDotTimesV(*context_);
+    const auto& Jdotv =
+        evaluators_.EvalActiveJacobianDotTimesV(*context_);
     *y = J * xdot.tail(plant_.num_velocities()) + Jdotv;
-
-    // drake::MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
-    // plant_.CalcMassMatrix(*context_, &M);
-    // std::cout << "result: " << std::endl << *y << std::endl;
-    // std::cout << "J M^-1 J^T: " << std::endl  << J * M.inverse() * J.transpose() << std::endl;
   } else {
-    *y = evaluators_.EvalActiveSecondTimeDerivative(*context_, lambda);
+    *y = evaluators_.EvalActiveSecondTimeDerivative(context_, lambda);
   }
 }
-
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::systems::trajectory_optimization::QuaternionConstraint)
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class ::dairlib::systems::trajectory_optimization::DirconCollocationConstraint)
+    class ::dairlib::systems::trajectory_optimization::
+        DirconCollocationConstraint)
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::systems::trajectory_optimization::ImpactConstraint)
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class ::dairlib::systems::trajectory_optimization::CachedAccelerationConstraint)
+    class ::dairlib::systems::trajectory_optimization::
+        CachedAccelerationConstraint)
 }  // namespace trajectory_optimization
 }  // namespace systems
 }  // namespace dairlib

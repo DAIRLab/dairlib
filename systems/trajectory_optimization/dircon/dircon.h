@@ -108,6 +108,15 @@ class Dircon
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_lc,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_vc);
 
+  /// Set the initial guess for the force variables for a specific mode.
+  /// Sets both the contact forces lambda and the collocation forces lambda_c
+  /// from the same trajectory. Does not set velocity constraint slack variables
+  /// @param mode the mode index
+  /// @param traj_init_l contact forces lambda (interpreted at knot points)
+  void SetInitialForceTrajectory(
+      int mode,
+      const drake::trajectories::PiecewisePolynomial<double>& traj_init_l);
+
   /// Get all knotpoint force variables associated with a specific mode and
   /// knotpoint
   const drake::solvers::VectorXDecisionVariable force_vars(int mode_index,

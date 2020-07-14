@@ -118,11 +118,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
-  // Create osc debug sender.
-  auto osc_debug_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
-
   // Add emulator for floating base drift
   Eigen::VectorXd drift_mean =
       Eigen::VectorXd::Zero(plant_w_springs.num_positions());

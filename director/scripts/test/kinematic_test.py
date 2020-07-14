@@ -21,6 +21,7 @@ import numpy as np
 import json
 import sys
 from collections import deque
+import re
 
 class VisualizationGui(QWidget):
 
@@ -44,7 +45,7 @@ class VisualizationGui(QWidget):
         self.channel = ""
         self.data = None
         self.modelFile = None
-        self.weldBody = False
+        self.weldBody = None
         self.shapes = {}
         self.plant = None
 
@@ -81,16 +82,14 @@ class VisualizationGui(QWidget):
             self.ready = True
             self.modelFile = self.data['model_file']
             if ('weld-body' in self.data):
-                self.weldBody = True
+                self.weldBody = self.data['weld-body']
 
             # create each object/shape to be drawn
             for data in self.data['data']:
-
                 newObject = ObjectToDraw(data)
-
-                # maybe remove the subscription after done
                 if (newObject.category == "lcm" and (newObject.name not in self.subscriptions)):
-                    self.subscriptions[data['name']] = LCMMessage(newObject.source_data['abstract_channel'], newObject.source_data['abstract_type'], newObject.source_data["abstract_field"], newObject.source_data["index"])
+                    self.subscriptions[data['name']] = LCMMessage(newObject.source_data['abstract_channel'], newObject.source_data['abstract_type'],
+                    newObject.source_data["abstract_field"], newObject.source_data["x_index"], newObject.source_data["y_index"], newObject.source_data["z_index"])
 
                 if (newObject.name not in self.shapes):
                     self.shapes[newObject.name] = newObject
@@ -111,8 +110,25 @@ class VisualizationGui(QWidget):
                 self.clearBtn.clicked.connect(self.clearHistory)
                 self.vbox.addWidget(self.clearBtn)
 
-            for lcmMessage in self.subscriptions.values():
-                lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg: self.abstract_handler(msg, field = lcmMessage.field))
+            if (self.plant == None):
+                # Create the plant
+                builder = pydrake.systems.framework.DiagramBuilder()
+                self.plant, scene_graph = \
+                    pydrake.multibody.plant.AddMultibodyPlantSceneGraph(builder, 0)
+                pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(
+                FindResourceOrThrow(self.modelFile))
+
+                # determine if there is a need to use the "weldframes" function
+                if (self.weldBody != None):
+                    self.plant.WeldFrames(self.plant.world_frame(),
+                        self.plant.GetFrameByName(self.weldBody), RigidTransform.Identity())
+                self.plant.Finalize()
+                self.context = self.plant.CreateDefaultContext()
+
+            # maybe remove the subscription after done
+            for name in self.subscriptions:
+                lcmMessage = self.subscriptions[name]
+                lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg, field=lcmMessage.field, name=name, x=lcmMessage.x, y=lcmMessage.y, z=lcmMessage.z: self.abstract_handler(msg, field, name, x, y, z))
 
     def deleteShapes(self):
         '''
@@ -192,9 +208,40 @@ class VisualizationGui(QWidget):
 
     # The following is a test function for handling messages from different lcm
     # channels
+    def abstract_handler(self, msg, field, name, x, y, z):
+        self.handle_checkBox(name)
+        attribute = msg
 
-    def abstract_handler(self, msg, field = None):
-        print(field)
+        field = field.split(".")
+        regExpr = re.compile('.+\[\d\]')
+        for part in field:
+            index = None
+            attName = None
+            if regExpr.match(part) is not None:
+                index = part[len(part) - 2]
+                attName = part[0:len(part) - 3:1]
+                attribute = getattr(attribute, attName)[int(index)]
+            else:
+                index = None
+                attName = part
+                attribute = getattr(attribute, attName)
+
+        next_loc = [attribute[x], attribute[y], attribute[z]]
+
+        self.drawShape(self.shapes[name], next_loc)
+
+    def handle_checkBox(self, name):
+        '''
+        Function for checking if a checkBox is checked or not
+        '''
+        if (self.checkBoxes[name].isChecked() == True):
+            if (self.checkBoxesPrevState[name] == False):
+                self.checkBoxesPrevState[name] = True
+                self.checkBoxChecked(name)
+        else:
+            if (self.checkBoxesPrevState[name] == True):
+                self.checkBoxesPrevState[name] = False
+                self.checkBoxNotChecked(name)
 
     def state_handler(self, msg):
         '''
@@ -202,21 +249,6 @@ class VisualizationGui(QWidget):
         '''
         # start listenning to messages once the JSON file has been read
         if (self.ready == True):
-            if (self.plant == None):
-                # Create the plant
-                builder = pydrake.systems.framework.DiagramBuilder()
-                self.plant, scene_graph = \
-                    pydrake.multibody.plant.AddMultibodyPlantSceneGraph(builder, 0)
-                pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(
-                FindResourceOrThrow(self.modelFile))
-
-                # determine if there is a need to use the "weldframes" function
-                if (self.weldBody == True):
-                    self.plant.WeldFrames(self.plant.world_frame(),
-                        self.plant.GetFrameByName("pelvis"), RigidTransform.Identity())
-                self.plant.Finalize()
-                self.context = self.plant.CreateDefaultContext()
-
             # TODO (for Michael): bind our more robust decoding mechanisms to python
             self.msg = msg
             self.plant.SetPositions(self.context, self.msg.position)
@@ -224,15 +256,7 @@ class VisualizationGui(QWidget):
 
             # check if the checkboxes are checked
             for name in self.shapes:
-                if (self.checkBoxes[name].isChecked() == True):
-                    if (self.checkBoxesPrevState[name] == False):
-                        self.checkBoxesPrevState[name] = True
-                        self.checkBoxChecked(name)
-                else:
-                    if (self.checkBoxesPrevState[name] == True):
-                        self.checkBoxesPrevState[name] = False
-                        self.checkBoxNotChecked(name)
-
+                self.handle_checkBox(name)
                 currShape = self.shapes[name]
 
                 # define next_loc according to each shape/object to be drawn
@@ -247,9 +271,6 @@ class VisualizationGui(QWidget):
 
                 elif (currShape.category == "com"):
                     next_loc = self.plant.CalcCenterOfMassPosition(context = self.context)
-
-                elif (currShape.category == "lcm"):
-                    next_loc = [1, 1, 1]
 
                 self.drawShape(currShape, next_loc)
 
@@ -293,7 +314,7 @@ class VisualizationGui(QWidget):
                 # reset JSON attributes
                 self.data = None
                 self.modelFile = None
-                self.weldBody = False
+                self.weldBody = None
                 self.shapes = {}
                 self.plant = None
 
@@ -444,11 +465,13 @@ class ObjectToDraw():
 
 
 class LCMMessage():
-    def __init__(self, channel, type, field, index):
+    def __init__(self, channel, type, field, x_index, y_index, z_index):
         self.channel = channel
         self.type = type
         self.field = field
-        self.index = index
+        self.x = x_index
+        self.y = y_index
+        self.z = z_index
 
 # Adding the widget
 panel = VisualizationGui()

@@ -2,9 +2,9 @@
 
 #include <gflags/gflags.h>
 
+#include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_cassie_out.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
@@ -14,6 +14,7 @@
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
@@ -28,9 +29,11 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
+
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 
@@ -62,6 +65,7 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -84,12 +88,22 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
-                     FLAGS_spring_model, true);
-  plant.Finalize();
+  Parser parser(&plant, &scene_graph);
+  std::string terrain_name =
+      FindResourceOrThrow("examples/simple_examples/terrain.urdf");
+  parser.AddModelFromFile(terrain_name);
+  Vector3d offset;
+  offset << 0.15, 0, FLAGS_terrain_height;
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                   drake::math::RigidTransform<double>(offset));
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
+
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+                     FLAGS_spring_model, true);
+
+  plant.Finalize();
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -115,8 +129,8 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
-  const auto& sensor_aggregator = AddImuAndAggregator(
-      &builder, plant, passthrough->get_output_port());
+  const auto& sensor_aggregator =
+      AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
@@ -141,6 +155,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
+  ConnectDrakeVisualizer(&builder, scene_graph);
+
   auto diagram = builder.Build();
 
   // Create a context for this system:
@@ -163,9 +179,10 @@ int do_main(int argc, char* argv[]) {
   } else {
     CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
   }
-  q_init << 1, 0, 0, 0, 0, 0, 1.0, .0045, -.0045, 0, 0, .4973,
-      .4973, -1.1997, -1.1997, 0, 0, 1.4267, 1.4267, 0,
-      -1.5968, 0, -1.5968;
+
+  if(FLAGS_terrain_height < 0.0){
+    q_init(6) -= FLAGS_terrain_height;
+  }
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
 

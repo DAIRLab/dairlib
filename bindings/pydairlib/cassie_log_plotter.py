@@ -128,18 +128,17 @@ def main():
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v, fsm = process_lcm_log.process_log(log, pos_map, vel_map)
 
+
     # plt.plot(t_osc, osc_debug[0].error_y[:, 2])
     # plt.plot(t_osc, osc_debug[0].error_ydot[:, 2])
-    plt.plot(t_osc, osc_debug[0].yddot_command[:, 2])
-    plt.plot(t_osc, osc_debug[0].yddot_command_sol[:, 2])
+    # plt.plot(t_osc, osc_debug[0].yddot_command[:, 2])
+    # plt.plot(t_osc, osc_debug[0].yddot_command_sol[:, 2])
     # plt.plot(t_osc, osc_debug[0].yddot_command[:,2])
     # plt.plot(t_osc, control_inputs)
     # plt.plot(t_state, contact_info[0, :, 2])
     # plt.plot(t_state, contact_info[1, :, 2])
     # plt.plot(t_state, contact_info[2, :, 2])
     # plt.plot(t_state, contact_info[3, :, 2])
-    plt.show()
-    return
     # init_x = np.hstack((q[0,:], v[0,:]))
     # plant.SetPositionsAndVelocities(context, init_x)
     # M = plant.CalcMassMatrixViaInverseDynamics(context)
@@ -156,14 +155,14 @@ def main():
 
     # calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v)
 
-    start_time = 0.6
-    end_time = 0.8
+    start_time = 1.0
+    end_time = 2.0
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
 
     plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
-    plot_nominal_state(x_traj_nominal, state_names_wo_spr)
+    # plot_nominal_state(x_traj_nominal, state_names_wo_spr, start_time, end_time)
 
     # For printing out osc_values at a specific time interval
     t_osc_start_idx = get_index_at_time(t_osc_debug, start_time)
@@ -174,11 +173,11 @@ def main():
     plot_osc_control_inputs(control_inputs, datatypes, t_osc,
                             t_osc_end_idx, t_osc_start_idx)
 
-    calc_costs(t_state, t_osc, osc_debug, control_inputs)
+    # calc_costs(t_state, t_osc, osc_debug, control_inputs)
     #
-    plot_nominal_control_inputs(nu, datatypes,
-                                u_traj_nominal.get_segment_times(),
-                                u_traj_nominal)
+    # plot_nominal_control_inputs(nu, datatypes,
+    #                             u_traj_nominal.get_segment_times(),
+    #                             u_traj_nominal)
 
     plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
 
@@ -523,7 +522,8 @@ def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
     plt.legend()
 
 
-def plot_nominal_state(x_traj_nominal, state_names_wo_spr):
+def plot_nominal_state(x_traj_nominal, state_names_wo_spr, start_time,
+                       end_time):
     x_nominal = []
     xdot_nominal = []
     # v_nominal = []
@@ -534,7 +534,7 @@ def plot_nominal_state(x_traj_nominal, state_names_wo_spr):
     # vel_slice = slice(19 + 4, 19 + 7)
     # t_nominal = np.linspace(x_traj_nominal.start_time(),
     #                         x_traj_nominal.end_time(), 3000)
-    t_nominal = np.linspace(0.6, 0.8, 2000)
+    t_nominal = np.linspace(start_time - 1.0, end_time - 1.0, 2000)
     for t in (t_nominal):
         x_nominal.append(x_traj_nominal.value(t))
         # xdot_nominal.append(xdot_traj_nominal.value(t))
@@ -707,14 +707,14 @@ def plot_feet_from_optimization(x_traj,
 
 
 def plot_simulation_state(q, v, t_state, t_state_slice, state_names):
-    # fig = plt.figure('simulation positions')
+    fig = plt.figure('simulation positions')
     # state_indices = slice(0, q.shape[1])
     n_fb_pos = 7
     n_fb_vel = 6
     state_indices = slice(n_fb_pos, q.shape[1])
     # state_indices = slice(0, n_fb_pos)
-    # plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
-    # plt.legend(state_names[state_indices])
+    plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
+    plt.legend(state_names[state_indices])
 
     fig = plt.figure('simulation velocities: ' + filename)
     # fig = plt.figure('Nominal state: ' + filename)

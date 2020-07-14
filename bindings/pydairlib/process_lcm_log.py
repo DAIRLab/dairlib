@@ -95,21 +95,23 @@ def process_log(log, pos_map, vel_map):
             num_left_contacts = 0
             num_right_contacts = 0
             for i in range(msg.num_point_pair_contacts):
-                if msg.point_pair_contact_info[i].body2_name == "toe_left(2)":
+                if msg.point_pair_contact_info[i].body2_name == "toe_left(3)":
                     contact_info_locs[num_left_contacts].append(
                         msg.point_pair_contact_info[i].contact_point)
                     contact_info[num_left_contacts].append(
                         msg.point_pair_contact_info[i].contact_force)
                     num_left_contacts += 1
                 elif msg.point_pair_contact_info[
-                    i].body2_name == "toe_right(2)":
+                    i].body2_name == "toe_right(3)":
                     contact_info_locs[2 + num_right_contacts].append(
                         msg.point_pair_contact_info[i].contact_point)
                     contact_info[2 + num_right_contacts].append(
                         msg.point_pair_contact_info[i].contact_force)
                     num_right_contacts += 1
                 else:
-                    print("ERROR")
+                    print(msg.point_pair_contact_info[i].body2_name)
+                    print(msg.point_pair_contact_info[i].body1_name)
+                    # print("ERROR")
             while num_left_contacts != 2:
                 contact_info[num_left_contacts].append((0.0, 0.0, 0.0))
                 contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))

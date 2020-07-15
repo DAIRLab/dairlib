@@ -405,7 +405,7 @@ PointPositionConstraint<T>::PointPositionConstraint(
 template <typename T>
 void PointPositionConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
-  plant_.SetPositions(context_.get(), x);
+  multibody::SetPositionsIfNew<T>(plant_, x, context_.get());
 
   drake::VectorX<T> pt(3);
   this->plant_.CalcPointsPositions(*context_, body_.body_frame(),
@@ -440,7 +440,7 @@ PointVelocityConstraint<T>::PointVelocityConstraint(
 template <typename T>
 void PointVelocityConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
-  plant_.SetPositionsAndVelocities(context_.get(), x);
+  multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, x, context_.get());
 
   drake::MatrixX<T> J(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(

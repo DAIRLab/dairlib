@@ -51,7 +51,7 @@ void KinematicPositionConstraint<T>::EvaluateConstraint(
   const auto& q = vars.head(plant_.num_positions());
   const auto& alpha = vars.tail(full_constraint_relative_.size());
 
-  plant_.SetPositions(context_, q);
+  SetPositionsIfNew<T>(plant_, q, context_);
 
   *y = evaluators_.EvalActive(*context_);
 
@@ -99,7 +99,7 @@ KinematicVelocityConstraint<T>::KinematicVelocityConstraint(
 template <typename T>
 void KinematicVelocityConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
-  plant_.SetPositionsAndVelocities(context_, x);
+  SetPositionsAndVelocitiesIfNew<T>(plant_, x, context_);
 
   *y = evaluators_.EvalActiveTimeDerivative(*context_);
 }

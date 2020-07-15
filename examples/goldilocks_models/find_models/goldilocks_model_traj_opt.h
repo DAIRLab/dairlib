@@ -49,10 +49,9 @@ class GoldilocksModelTrajOpt {
   std::shared_ptr<find_models::DynamicsConstraint> dynamics_constraint_at_head;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
       dynamics_constraint_at_head_bindings;
-  //  std::shared_ptr<find_models::DynamicsConstraint>
-  //  dynamics_constraint_at_tail;
-  //  std::vector<drake::solvers::Binding<Constraint>>
-  //  dynamics_constraint_at_tail_bindings;
+  std::shared_ptr<find_models::DynamicsConstraint> dynamics_constraint_at_tail;
+  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
+      dynamics_constraint_at_tail_bindings;
 
   std::vector<drake::solvers::Binding<drake::solvers::Cost>> tau_cost_bindings;
 

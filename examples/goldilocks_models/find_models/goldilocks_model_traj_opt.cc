@@ -61,12 +61,8 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     // Create dynamics constraint (pointer)
     dynamics_constraint_at_head =
         std::make_shared<find_models::DynamicsConstraint>(rom, plant, true);
-    // dynamics_constraint_at_tail =
-    // std::make_shared<find_models::DynamicsConstraint>(
-    //                                n_s, n_feature_s, theta_s,
-    //                                n_sDDot, n_feature_sDDot, theta_sDDot,
-    //                                n_tau, B_tau, plant, plant_double,
-    //                                false);
+    dynamics_constraint_at_tail =
+        std::make_shared<find_models::DynamicsConstraint>(rom, plant, false);
 
     // Constraint scaling
     // TODO: re-tune this after you remove at_head and at_tail
@@ -119,6 +115,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       DRAKE_DEMAND(false);
     }
     dynamics_constraint_at_head->SetConstraintScaling(constraint_scale_map);
+    // Not sure if scaling constraint for the tail should be the same (not
+    // tuned)
+    dynamics_constraint_at_tail->SetConstraintScaling(constraint_scale_map);
 
     // variable scaling
     // TODO: need to tune variable as well.
@@ -180,9 +179,13 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
             dircon->AddConstraint(dynamics_constraint_at_head,
                                   {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1,
                                    tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));
-        // dynamics_constraint_at_tail_bindings.push_back(dircon->AddConstraint(
-        //   dynamics_constraint_at_tail, {x_at_knot_k, tau_at_knot_k,
-        //     x_at_knot_kplus1, tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));
+        if (j == num_time_samples[i] - 2) {
+          // Add constraint to the end of the last segment
+          dynamics_constraint_at_tail_bindings.push_back(dircon->AddConstraint(
+              dynamics_constraint_at_tail,
+              {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1, tau_at_knot_kplus1,
+               h_btwn_knot_k_iplus1}));
+        }
       }
       N_accum += num_time_samples[i];
       N_accum -= 1;  // due to overlaps between modes

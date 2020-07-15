@@ -5,14 +5,14 @@ import os
 import time
 import sys
 
-# This script plots 's', 'ds', 'dds', or 'tau'.
+# This script plots 'y', 'ydot', 'yddot', or 'tau'.
 
 iteration_start = 1
 iteration_end = 35
 iteration_spacing = 1
 name_idx = 0
 batch = 0
-robot_option = 0;  # 0 is five-link robot. 1 is cassie_fixed_spring
+robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 if len(sys.argv) >= 2:
     iteration_start = int(sys.argv[1])
 if len(sys.argv) >= 3:
@@ -31,7 +31,7 @@ if len(sys.argv) >= 7:
 directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
 
 
-name_list = ['s', 'ds', 'dds', 'tau']
+name_list = ['y', 'ydot', 'yddot', 'tau']
 name = name_list[name_idx]
 
 # Get the max and min

@@ -60,7 +60,13 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
+DEFINE_string(folder_path,
+              "/home/yangwill/Documents/research/projects/cassie"
+              "/jumping/saved_trajs/",
+              "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
+DEFINE_string(mode_name, "state_input_trajectory",
+              "Base name of each trajectory");
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
 DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
 DEFINE_bool(contact_based_fsm, true,
@@ -114,12 +120,10 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel = RightToeRear(plant_wo_springs);
 
   /**** Get trajectory from optimization ****/
-  const LcmTrajectory& original_traj = LcmTrajectory(
-      "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
-      FLAGS_traj_name);
-  const LcmTrajectory& processed_trajs = LcmTrajectory(
-      "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
-      FLAGS_traj_name + "_processed");
+  const LcmTrajectory& original_traj =
+      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name);
+  const LcmTrajectory& processed_trajs =
+      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name + "_processed");
 
   const LcmTrajectory::Trajectory& lcm_com_traj =
       processed_trajs.getTrajectory("center_of_mass_trajectory");
@@ -131,13 +135,14 @@ int DoMain(int argc, char* argv[]) {
       processed_trajs.getTrajectory("pelvis_rot_trajectory");
   vector<PiecewisePolynomial<double>> state_trajs;
   for (int i = 0; i < n_modes; ++i) {
-    const LcmTrajectory::Trajectory& state_traj_i = original_traj.getTrajectory(
-        "cassie_jumping_trajectory_x_u" + std::to_string(i));
+    const LcmTrajectory::Trajectory& state_traj_i =
+        original_traj.getTrajectory(FLAGS_mode_name + std::to_string(i));
     state_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
         state_traj_i.time_vector, state_traj_i.datapoints.topRows(nx),
         state_traj_i.datapoints.topRows(2 * nx).bottomRows(nx)));
   }
 
+  std::cout << "Loading output trajectories: " << std::endl;
   PiecewisePolynomial<double> com_traj =
       PiecewisePolynomial<double>::CubicHermite(
           lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
@@ -151,10 +156,9 @@ int DoMain(int argc, char* argv[]) {
           lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
           lcm_r_foot_traj.datapoints.bottomRows(3));
   PiecewisePolynomial<double> pelvis_rot_trajectory;
-  pelvis_rot_trajectory = PiecewisePolynomial<double>::CubicHermite(
+  pelvis_rot_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
       lcm_pelvis_rot_traj.time_vector,
-      lcm_pelvis_rot_traj.datapoints.topRows(4),
-      lcm_pelvis_rot_traj.datapoints.bottomRows(4));
+      lcm_pelvis_rot_traj.datapoints.topRows(4));
 
   // For the time-based FSM
   double flight_time = FLAGS_delay_time + state_trajs[0].end_time();

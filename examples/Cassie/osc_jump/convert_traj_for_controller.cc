@@ -1,8 +1,10 @@
 #include <drake/geometry/scene_graph.h>
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
+
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/lcm_trajectory.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 
 using drake::geometry::SceneGraph;
@@ -22,9 +24,10 @@ DEFINE_bool(are_feet_relative, true,
 DEFINE_string(trajectory_name, "",
               "File name where the optimal trajectory is stored.");
 DEFINE_string(folder_path,
-              "/home/yangwill/Documents/research/projects/cassie"
-              "/jumping/saved_trajs/",
+              "",
               "Folder path for where the trajectory names are stored");
+DEFINE_int32(num_modes, 0, "Number of contact modes in the trajectory");
+DEFINE_string(mode_name, "state_input_trajectory", "Base name of each trajectory");
 
 namespace dairlib {
 
@@ -61,20 +64,31 @@ int DoMain() {
 
   const LcmTrajectory& loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
-  auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
-  auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
 
-  DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
-  int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
-                 traj_mode2.datapoints.cols();
+  int n_points = 0;
+  std::vector<int> knot_points;
+  std::vector<LcmTrajectory::Trajectory> trajectories;
+  for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
+    trajectories.push_back(
+        loadedTrajs.getTrajectory(FLAGS_mode_name + std::to_string(mode)));
+    knot_points.push_back(trajectories[mode].time_vector.size());
+
+    n_points += knot_points[mode];
+  }
 
   MatrixXd xu(nx + nx + nu, n_points);
   VectorXd times(n_points);
 
-  xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
-  times << traj_mode0.time_vector, traj_mode1.time_vector,
-      traj_mode2.time_vector;
+  int start_idx = 0;
+  for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
+    if (mode != 0) start_idx += knot_points[mode - 1];
+    xu.block(0, start_idx, nx + nx + nu, knot_points[mode]) =
+        trajectories[mode].datapoints;
+    times.segment(start_idx, knot_points[mode]) =
+        trajectories[mode].time_vector;
+  }
+
+  std::cout << "knot points: " << n_points << std::endl;
 
   MatrixXd l_foot_points(6, n_points);
   MatrixXd r_foot_points(6, n_points);
@@ -163,12 +177,11 @@ int DoMain() {
   pelvis_orientation_block.traj_name = "pelvis_rot_trajectory";
   pelvis_orientation_block.datapoints = pelvis_orientation;
   pelvis_orientation_block.time_vector = times;
-  pelvis_orientation_block.datatypes = {"pelvis_rotw", "pelvis_rotx",
-                                        "pelvis_roty", "pelvis_rotz",
-                                        "pelvis_rotwdot", "pelvis_rotxdot",
-                                        "pelvis_rotydot", "pelvis_rotzdot"};
+  pelvis_orientation_block.datatypes = {
+      "pelvis_rotw",    "pelvis_rotx",    "pelvis_roty",    "pelvis_rotz",
+      "pelvis_rotwdot", "pelvis_rotxdot", "pelvis_rotydot", "pelvis_rotzdot"};
 
-  std::vector<LcmTrajectory::Trajectory> trajectories = {
+  std::vector<LcmTrajectory::Trajectory> converted_trajectories = {
       lfoot_traj_block, rfoot_traj_block, com_traj_block,
       pelvis_orientation_block};
   std::vector<std::string> trajectory_names = {
@@ -176,7 +189,7 @@ int DoMain() {
       com_traj_block.traj_name, pelvis_orientation_block.traj_name};
 
   auto processed_traj =
-      LcmTrajectory(trajectories, trajectory_names, "jumping_trajectory",
+      LcmTrajectory(converted_trajectories, trajectory_names, "jumping_trajectory",
                     "Feet trajectories "
                     "for Cassie jumping");
 

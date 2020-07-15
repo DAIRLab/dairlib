@@ -3,19 +3,23 @@
 #include <fstream>
 #include <memory>
 #include <string>
+
 #include <gflags/gflags.h>
+
+#include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/lcm_trajectory.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "common/file_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
+
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
@@ -59,9 +63,11 @@ using drake::systems::rendering::MultibodyPositionToGeometryPose;
 using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_string(init_file, "", "the file name of initial guess");
-DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
+DEFINE_string(data_directory, "default_filepath",
               "directory to save/read data");
-DEFINE_bool(store_data, false, "To store solution or not");
+DEFINE_string(save_filename, "default_filename",
+              "Filename to save decision "
+              "vars to.");
 
 // SNOPT parameters
 DEFINE_int32(max_iter, 100000, "Iteration limit");
@@ -169,7 +175,8 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(0.0);
       Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8, ground_normal);
+      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8,
+                                ground_normal);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
@@ -222,10 +229,14 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_seed, double dt,
   return v_seed;
 }
 
+MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,
+                                     const PiecewisePolynomial<double>& inputs,
+                                     VectorXd times);
+
 void DoMain(double duration, double stride_length, double ground_incline,
             bool is_fix_time, int n_node, int max_iter,
             const string& data_directory, const string& init_file, double tol,
-            bool to_store_data, int scale_option) {
+            int scale_option) {
   // Dircon parameter
   double minimum_timestep = 0.01;
   DRAKE_DEMAND(duration / (n_node - 1) >= minimum_timestep);
@@ -431,8 +442,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  //  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-  //                           "../snopt.out");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                           "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -906,177 +917,72 @@ void DoMain(double duration, double stride_length, double ground_incline,
   cout << "Solving DIRCON\n\n";
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = Solve(*trajopt, trajopt->initial_guess());
-  SolutionResult solution_result = result.get_solution_result();
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  // trajopt->PrintSolution();
-  for (int i = 0; i < 100; i++) {
-    cout << '\a';
-  }  // making noise to notify
 
-  // Testing - check if the nonlinear constraints are all satisfied
-  // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
-  //                             result, tol);
-  // cout << "constraint_satisfied = " << constraint_satisfied << endl;
-
-  // store the solution of the decision variable
-  VectorXd z = result.GetSolution(trajopt->decision_variables());
-  if (to_store_data) {
-    writeCSV(data_directory + string("z.csv"), z);
-  }
-
-  // Print the solution
-  /*for (int i = 0; i < z.size(); i++) {
-    cout << i << ": " << trajopt->decision_variables()[i] << ", " << z[i]
-         << endl;
-  }
-  cout << endl;*/
-
-  // store the time, state, and input at knot points
-  VectorXd time_at_knots = trajopt->GetSampleTimes(result);
-  MatrixXd state_at_knots = trajopt->GetStateSamples(result);
-  MatrixXd input_at_knots = trajopt->GetInputSamples(result);
-  //  state_at_knots.col(N - 1) = result.GetSolution(xf);
-  cout << "time_at_knots = \n" << time_at_knots << "\n";
-  cout << "state_at_knots = \n" << state_at_knots << "\n";
-  cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
-  cout << "input_at_knots = \n" << input_at_knots << "\n";
-  if (to_store_data) {
-    writeCSV(data_directory + string("t_i.csv"), time_at_knots);
-    writeCSV(data_directory + string("x_i.csv"), state_at_knots);
-    writeCSV(data_directory + string("u_i.csv"), input_at_knots);
-  }
-
-  // Store lambda
-  if (to_store_data) {
-    std::ofstream ofile;
-    ofile.open(data_directory + "lambda.txt", std::ofstream::out);
-    cout << "lambda_sol = \n";
-    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
-      for (int index = 0; index < num_time_samples[mode]; index++) {
-        auto lambdai = trajopt->force(mode, index);
-        cout << result.GetSolution(lambdai).transpose() << endl;
-        ofile << result.GetSolution(lambdai).transpose() << endl;
-      }
-    }
-    ofile.close();
-  }
-
-  // Print weight
-  cout << "\nw_Q = " << w_Q << endl;
-  cout << "w_R = " << w_R << endl;
-  cout << "w_lambda = " << w_lambda << endl;
-  cout << "w_lambda_diff = " << w_lambda_diff << endl;
-  cout << "w_v_diff = " << w_v_diff << endl;
-  cout << "w_u_diff = " << w_u_diff << endl;
-  cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
-  cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
-  cout << "w_q_quat_xyz = " << w_q_quat_xyz << endl;
-
-  // Print the result
-  cout << "\n" << to_string(solution_result) << endl;
   cout << "Solve time:" << elapsed.count() << std::endl;
-  cout << "Cost:" << result.get_optimal_cost() << std::endl;
-  // Check which solver was used
-  cout << "Solver: " << result.get_solver_id().name() << "\n\n";
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+  std::cout << "Solve result: " << result.get_solution_result() << std::endl;
 
-  // Calculate each term of the cost
-  double total_cost = 0;
-  double cost_x = 0;
-  for (int i = 0; i < N - 1; i++) {
-    auto v0 = state_at_knots.col(i).tail(n_v);
-    auto v1 = state_at_knots.col(i + 1).tail(n_v);
-    auto h = time_at_knots(i + 1) - time_at_knots(i);
-    cost_x += ((v0.transpose() * W_Q * v0) * h / 2)(0);
-    cost_x += ((v1.transpose() * W_Q * v1) * h / 2)(0);
-  }
-  total_cost += cost_x;
-  cout << "cost_x = " << cost_x << endl;
-  double cost_u = 0;
-  for (int i = 0; i < N - 1; i++) {
-    auto u0 = input_at_knots.col(i);
-    auto u1 = input_at_knots.col(i + 1);
-    auto h = time_at_knots(i + 1) - time_at_knots(i);
-    cost_u += ((u0.transpose() * W_R * u0) * h / 2)(0);
-    cost_u += ((u1.transpose() * W_R * u1) * h / 2)(0);
-  }
-  total_cost += cost_u;
-  cout << "cost_u = " << cost_u << endl;
-  double cost_lambda = 0;
-  for (unsigned int i = 0; i < num_time_samples.size(); i++) {
-    for (int j = 0; j < num_time_samples[i]; j++) {
-      auto lambda = result.GetSolution(trajopt->force(i, j));
-      cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();
-    }
-  }
-  total_cost += cost_lambda;
-  cout << "cost_lambda = " << cost_lambda << endl;
-  // cost on force difference wrt time
-  double cost_lambda_diff = 0;
-  for (int i = 0; i < N - 1; i++) {
-    auto lambda0 = result.GetSolution(trajopt->force(0, i));
-    auto lambda1 = result.GetSolution(trajopt->force(0, i + 1));
-    auto lambdac = result.GetSolution(trajopt->collocation_force(0, i));
-    if (diff_with_force_at_collocation) {
-      cost_lambda_diff +=
-          w_lambda_diff * (lambda0 - lambdac).dot(lambda0 - lambdac);
-      cost_lambda_diff +=
-          w_lambda_diff * (lambdac - lambda1).dot(lambdac - lambda1);
-    } else {
-      cost_lambda_diff +=
-          w_lambda_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
-    }
-  }
-  total_cost += cost_lambda_diff;
-  cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
-  // cost on vel difference wrt time
-  double cost_vel_diff = 0;
-  for (int i = 0; i < N - 1; i++) {
-    auto v0 = result.GetSolution(trajopt->state(i).tail(n_v));
-    auto v1 = result.GetSolution(trajopt->state(i + 1).tail(n_v));
-    cost_vel_diff += (v0 - v1).dot(Q_v_diff * (v0 - v1));
-  }
-  total_cost += cost_vel_diff;
-  cout << "cost_vel_diff = " << cost_vel_diff << endl;
-  // cost on input difference wrt time
-  double cost_u_diff = 0;
-  for (int i = 0; i < N - 1; i++) {
-    auto u0 = result.GetSolution(trajopt->input(i));
-    auto u1 = result.GetSolution(trajopt->input(i + 1));
-    cost_u_diff += w_u_diff * (u0 - u1).dot(u0 - u1);
-  }
-  total_cost += cost_u_diff;
-  cout << "cost_u_diff = " << cost_u_diff << endl;
-  // add cost on joint position
-  double cost_q_hip_roll = 0;
-  for (int i = 0; i < N; i++) {
-    auto q = result.GetSolution(trajopt->state(i).segment(7, 2));
-    cost_q_hip_roll += w_q_hip_roll * q.transpose() * q;
-  }
-  total_cost += cost_q_hip_roll;
-  cout << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
-  double cost_q_hip_yaw = 0;
-  for (int i = 0; i < N; i++) {
-    auto q = result.GetSolution(trajopt->state(i).segment(9, 2));
-    cost_q_hip_yaw += w_q_hip_yaw * q.transpose() * q;
-  }
-  total_cost += cost_q_hip_yaw;
-  cout << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
-  // add cost on quaternion
-  double cost_q_quat_xyz = 0;
-  for (int i = 0; i < N; i++) {
-    auto q = result.GetSolution(trajopt->state(i).segment(1, 3));
-    cost_q_quat_xyz += w_q_quat_xyz * q.transpose() * q;
-  }
-  total_cost += cost_q_quat_xyz;
-  cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
+  const PiecewisePolynomial<double>& state_traj =
+      trajopt->ReconstructStateTrajectory(result);
+  const PiecewisePolynomial<double>& input_traj =
+      trajopt->ReconstructInputTrajectory(result);
 
-  cout << "total_cost = " << total_cost << endl;
+  LcmTrajectory::Trajectory decision_vars;
+  decision_vars.traj_name = "decision_vars";
+  decision_vars.datapoints = result.GetSolution();
+  decision_vars.time_vector = VectorXd::Zero(decision_vars.datapoints.size());
+  decision_vars.datatypes = vector<string>(decision_vars.datapoints.size());
+
+  int num_modes = 2;
+  std::vector<LcmTrajectory::Trajectory> trajectories;
+  std::vector<std::string> trajectory_names;
+
+  int start_idx = 0;
+  for (int mode = 0; mode < num_modes; ++mode) {
+    LcmTrajectory::Trajectory traj_block;
+    traj_block.traj_name =
+        "state_input_trajectory" + std::to_string(mode);
+    std::vector<double> breaks_copy =
+        std::vector(state_traj.get_segment_times());
+    traj_block.time_vector =
+        Eigen::Map<Eigen::VectorXd>(breaks_copy.data(), breaks_copy.size())
+            .segment(start_idx, num_time_samples[mode]);
+    start_idx += num_time_samples[mode];
+    traj_block.datapoints = generateStateAndInputMatrix(state_traj, input_traj,
+                                                        traj_block.time_vector);
+    // To store x and xdot at the knot points
+    const vector<string>& state_datatypes =
+        multibody::createStateNameVectorFromMap(plant);
+    const vector<string>& input_datatypes =
+        multibody::createActuatorNameVectorFromMap(plant);
+    traj_block.datatypes.reserve(state_datatypes.size() +
+                                 state_datatypes.size() +
+                                 input_datatypes.size());
+    traj_block.datatypes.insert(traj_block.datatypes.end(),
+                                state_datatypes.begin(),
+                                state_datatypes.end());
+    traj_block.datatypes.insert(traj_block.datatypes.end(),
+                                state_datatypes.begin(),
+                                state_datatypes.end());
+    traj_block.datatypes.insert(traj_block.datatypes.end(),
+                                input_datatypes.begin(),
+                                input_datatypes.end());
+    trajectories.push_back(traj_block);
+    trajectory_names.push_back(traj_block.traj_name);
+  }
+
+  trajectories.push_back(decision_vars);
+  trajectory_names.push_back(decision_vars.traj_name);
+  LcmTrajectory saved_traj(trajectories, trajectory_names, "walking_trajectory",
+                           "Decision variables and state/input trajectories "
+                           "for walking");
+  saved_traj.writeToFile(FLAGS_data_directory + FLAGS_save_filename);
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =
       trajopt->ReconstructStateTrajectory(result);
-
   auto traj_source =
       builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
@@ -1091,50 +997,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
 
-  // *******Add COM visualization**********
-  bool plot_com = true;
-  bool com_on_ground = true;
-  auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
-  if (plot_com) {
-    double radius = .02;
-    UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);
-    SpatialInertia<double> M_Bcm(1, Eigen::Vector3d::Zero(), G_Bcm);
-
-    const drake::multibody::RigidBody<double>& ball =
-        ball_plant->AddRigidBody("Ball", M_Bcm);
-
-    ball_plant->RegisterAsSourceForSceneGraph(&scene_graph);
-    // Add visual for the COM.
-    const Eigen::Vector4d orange(1.0, 0.55, 0.0, 1.0);
-    const RigidTransformd X_BS = RigidTransformd::Identity();
-    ball_plant->RegisterVisualGeometry(ball, X_BS, Sphere(radius), "visual",
-                                       orange);
-    ball_plant->Finalize();
-
-    // connect
-    auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
-        plant.num_positions() + plant.num_velocities(), 0,
-        plant.num_positions());
-    builder.Connect(traj_source->get_output_port(),
-                    q_passthrough->get_input_port());
-    auto rbt_passthrough = builder.AddSystem<multibody::ComPoseSystem>(plant);
-
-    auto ball_to_pose =
-        builder.AddSystem<MultibodyPositionToGeometryPose<double>>(*ball_plant);
-    builder.Connect(*q_passthrough, *rbt_passthrough);
-    if (com_on_ground) {
-      builder.Connect(rbt_passthrough->get_xy_com_output_port(),
-                      ball_to_pose->get_input_port());
-    } else {
-      builder.Connect(rbt_passthrough->get_com_output_port(),
-                      ball_to_pose->get_input_port());
-    }
-    builder.Connect(
-        ball_to_pose->get_output_port(),
-        scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
-  }
-  // **************************************
-
   drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   auto diagram = builder.Build();
 
@@ -1147,6 +1009,35 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   return;
 }
+
+MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,
+                                     const PiecewisePolynomial<double>& inputs,
+                                     VectorXd times) {
+  int num_states = states.value(0).size();
+  int num_inputs = inputs.value(0).size();
+  auto state_derivatives = states.MakeDerivative(1);
+  MatrixXd states_matrix = MatrixXd::Zero(num_states, times.size());
+  MatrixXd state_derivatives_matrix = MatrixXd::Zero(num_states, times.size());
+  MatrixXd inputs_matrix = MatrixXd::Zero(num_inputs, times.size());
+
+  for (int i = 0; i < times.size(); ++i) {
+    states_matrix.col(i) = states.value(times[i]);
+    state_derivatives_matrix.col(i) = state_derivatives->value(times[i]);
+    if (times.size() == 1) {
+      state_derivatives_matrix.col(i) = VectorXd::Zero(num_states);
+    }
+    inputs_matrix.col(i) = inputs.value(times[i]);
+  }
+  MatrixXd states_and_inputs(num_states + num_states + num_inputs,
+                             times.size());
+  states_and_inputs.topRows(num_states) = states_matrix;
+  states_and_inputs.block(num_states, 0, num_states, times.size()) =
+      state_derivatives_matrix;
+  states_and_inputs.bottomRows(num_inputs) = inputs_matrix;
+
+  return states_and_inputs;
+}
+
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) {
@@ -1154,5 +1045,5 @@ int main(int argc, char* argv[]) {
   dairlib::DoMain(FLAGS_duration, FLAGS_stride_length, FLAGS_ground_incline,
                   FLAGS_is_fix_time, FLAGS_n_node, FLAGS_max_iter,
                   FLAGS_data_directory, FLAGS_init_file, FLAGS_tol,
-                  FLAGS_store_data, FLAGS_scale_option);
+                  FLAGS_scale_option);
 }

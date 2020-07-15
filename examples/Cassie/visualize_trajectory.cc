@@ -24,7 +24,7 @@ using Eigen::VectorXd;
 DEFINE_double(realtime_rate, 1.0, "Relative speed to animate the trajectory");
 DEFINE_string(folder_path, "", "Folder path of the trajectory");
 DEFINE_string(trajectory_name, "", "File path to load the trajectory from");
-DEFINE_string(mode_name, "", "Base name of each trajectory");
+DEFINE_string(mode_name, "state_input_trajectory", "Base name of each trajectory");
 DEFINE_int32(num_poses, 1, "Number of poses per mode to draw");
 DEFINE_int32(num_modes, 0, "Number of contact modes in the trajectory");
 DEFINE_int32(visualize_mode, 0,

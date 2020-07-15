@@ -56,13 +56,13 @@ using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_int32(knot_points, 10, "Number of knot points per contact mode");
-DEFINE_double(height, 0.3, "Target height for jumping.");
+DEFINE_double(height, 0.2, "Target height for jumping.");
 DEFINE_double(distance, 0.0, "Target distance (x) from the initial position.");
+DEFINE_double(duration, 0.0, "Duration of the total gait");
 DEFINE_int32(scale_option, 0,
              "Scale option of SNOPT"
              "Use 2 if seeing snopta exit 40 in log file");
 DEFINE_double(tol, 1e-6, "Tolerance for constraint violation and dual gap");
-DEFINE_double(jump_height, 0.0, "Height to jump (m)");
 DEFINE_string(load_filename, "", "File to load decision vars from.");
 DEFINE_string(
     data_directory,
@@ -275,7 +275,7 @@ void DoMain() {
     vector<VectorXd> q_guess_stance =
         GetInitGuessForQStance(num_knot_points, plant);
     vector<VectorXd> q_guess_flight =
-        GetInitGuessForQFlight(num_knot_points, FLAGS_jump_height, plant);
+        GetInitGuessForQFlight(num_knot_points, FLAGS_height, plant);
     vector<VectorXd> v_guess_stance =
         GetInitGuessForV(q_guess_stance, dt, plant);
     vector<VectorXd> v_guess_flight =
@@ -351,7 +351,7 @@ void DoMain() {
       trajopt->ReconstructInputTrajectory(result);
 
   LcmTrajectory::Trajectory decision_vars;
-  decision_vars.traj_name = "cassie_jumping_decision_vars";
+  decision_vars.traj_name = "decision_vars";
   decision_vars.datapoints = result.GetSolution();
   decision_vars.time_vector = VectorXd::Zero(decision_vars.datapoints.size());
   decision_vars.datatypes = vector<string>(decision_vars.datapoints.size());
@@ -363,7 +363,7 @@ void DoMain() {
   for (int mode = 0; mode < num_modes; ++mode) {
     LcmTrajectory::Trajectory traj_block;
     traj_block.traj_name =
-        "cassie_jumping_trajectory_x_u" + std::to_string(mode);
+        "state_input_trajectory" + std::to_string(mode);
     std::vector<double> breaks_copy =
         std::vector(state_traj.get_segment_times());
     traj_block.time_vector =
@@ -461,8 +461,9 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto x = trajopt->state();
 
   // Duration Bounds
-  double min_duration = 1.0;
-  double max_duration = 1.0;
+  double min_duration = (FLAGS_duration > 0.0 ) ? FLAGS_duration : 1.0;
+  double max_duration = (FLAGS_duration > 0.0 ) ? FLAGS_duration : 1.5;
+
   trajopt->AddDurationBounds(min_duration, max_duration);
 
   // Standing constraints
@@ -481,8 +482,8 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // Jumping height constraints
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
                                     x0(pos_map.at("base_z")));
-  trajopt->AddBoundingBoxConstraint(FLAGS_jump_height + rest_height - eps,
-                                    FLAGS_jump_height + rest_height + eps,
+  trajopt->AddBoundingBoxConstraint(FLAGS_height + rest_height - eps,
+                                    FLAGS_height + rest_height + eps,
                                     x_top(pos_map.at("base_z")));
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
                                     xf(pos_map.at("base_z")));
@@ -770,7 +771,7 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
       -1.35926, 0.806192, 1.00716, -M_PI / 2, -M_PI / 2;
 
   double factor = apex_height / (num_knot_points * num_knot_points / 4.0);
-  double rest_height = 1.125;
+  double rest_height = 1.0;
 
   for (int i = 0; i < num_knot_points; i++) {
     double eps = 1e-3;
@@ -893,7 +894,7 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
 
 MatrixXd loadSavedDecisionVars(const string& filepath) {
   const LcmTrajectory& loaded_decision_vars = LcmTrajectory(filepath);
-  return loaded_decision_vars.getTrajectory("cassie_jumping_decision_vars")
+  return loaded_decision_vars.getTrajectory("decision_vars")
       .datapoints;
 }
 

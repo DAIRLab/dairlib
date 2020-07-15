@@ -223,7 +223,7 @@ vector<double> createTimeKnotsGivenTimesteps(const vector<VectorXd>& h_vec) {
   return T_breakpoint;
 }
 
-PiecewisePolynomial<double> createCubicSplineGivenSAndSdot(
+PiecewisePolynomial<double> CreateCubicSplineGivenYAndYdot(
     const vector<VectorXd>& h_vec, const vector<VectorXd>& s_vec,
     const vector<VectorXd>& ds_vec) {
   // Create time knots
@@ -241,41 +241,41 @@ PiecewisePolynomial<double> createCubicSplineGivenSAndSdot(
   return PiecewisePolynomial<double>::CubicHermite(T_breakpoint, s, s_dot);
 }
 
-void storeSplineOfS(const vector<VectorXd>& h_vec,
-                    const PiecewisePolynomial<double>& s_spline,
+void StoreSplineOfY(const vector<VectorXd>& h_vec,
+                    const PiecewisePolynomial<double>& y_spline,
                     const string& directory, const string& prefix) {
   // parameters
   int n_sample_each_seg = 3;
 
   // setup
-  int n_s = s_spline.value(0).rows();
+  int n_y = y_spline.value(0).rows();
 
   // Create time knots
   vector<double> T_breakpoint = createTimeKnotsGivenTimesteps(h_vec);
 
   // Create the matrix for csv file
-  // The first row is time, and the rest rows are s
-  MatrixXd t_and_y(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
-  MatrixXd t_and_ydot(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
-  MatrixXd t_and_yddot(1 + n_s, 1 + (n_sample_each_seg - 1) * h_vec.size());
+  // The first row is time, and the rest rows are y
+  MatrixXd t_and_y(1 + n_y, 1 + (n_sample_each_seg - 1) * h_vec.size());
+  MatrixXd t_and_ydot(1 + n_y, 1 + (n_sample_each_seg - 1) * h_vec.size());
+  MatrixXd t_and_yddot(1 + n_y, 1 + (n_sample_each_seg - 1) * h_vec.size());
   t_and_y(0, 0) = 0;
   t_and_ydot(0, 0) = 0;
   t_and_yddot(0, 0) = 0;
-  t_and_y.block(1, 0, n_s, 1) = s_spline.value(0);
-  t_and_ydot.block(1, 0, n_s, 1) = s_spline.derivative(1).value(0);
-  t_and_yddot.block(1, 0, n_s, 1) = s_spline.derivative(2).value(0);
+  t_and_y.block(1, 0, n_y, 1) = y_spline.value(0);
+  t_and_ydot.block(1, 0, n_y, 1) = y_spline.derivative(1).value(0);
+  t_and_yddot.block(1, 0, n_y, 1) = y_spline.derivative(2).value(0);
   for (unsigned int i = 0; i < h_vec.size(); i++) {
     for (int j = 1; j < n_sample_each_seg; j++) {
       double time = T_breakpoint[i] + j * h_vec[i](0) / (n_sample_each_seg - 1);
       t_and_y(0, j + i * (n_sample_each_seg - 1)) = time;
       t_and_ydot(0, j + i * (n_sample_each_seg - 1)) = time;
       t_and_yddot(0, j + i * (n_sample_each_seg - 1)) = time;
-      t_and_y.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
-          s_spline.value(time);
-      t_and_ydot.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
-          s_spline.derivative(1).value(time);
-      t_and_yddot.block(1, j + i * (n_sample_each_seg - 1), n_s, 1) =
-          s_spline.derivative(2).value(time);
+      t_and_y.block(1, j + i * (n_sample_each_seg - 1), n_y, 1) =
+          y_spline.value(time);
+      t_and_ydot.block(1, j + i * (n_sample_each_seg - 1), n_y, 1) =
+          y_spline.derivative(1).value(time);
+      t_and_yddot.block(1, j + i * (n_sample_each_seg - 1), n_y, 1) =
+          y_spline.derivative(2).value(time);
     }
   }
 
@@ -285,9 +285,9 @@ void storeSplineOfS(const vector<VectorXd>& h_vec,
   writeCSV(directory + prefix + string("t_and_yddot.csv"), t_and_yddot);
 }
 
-void checkSplineOfS(const vector<VectorXd>& h_vec,
-                    const vector<VectorXd>& dds_vec,
-                    const PiecewisePolynomial<double>& s_spline) {
+void CheckSplineOfY(const vector<VectorXd>& h_vec,
+                    const vector<VectorXd>& yddot_vec,
+                    const PiecewisePolynomial<double>& y_spline) {
   // parameters
   double tol = 1e-4;
 
@@ -296,9 +296,9 @@ void checkSplineOfS(const vector<VectorXd>& h_vec,
 
   // Compare
   for (unsigned int i = 0; i < T_breakpoint.size(); i++) {
-    VectorXd dds_by_drake = s_spline.derivative(2).value(T_breakpoint[i]);
-    VectorXd dds_by_hand = dds_vec[i];
-    DRAKE_DEMAND((dds_by_drake - dds_by_hand).norm() < tol);
+    VectorXd yddot_by_drake = y_spline.derivative(2).value(T_breakpoint[i]);
+    VectorXd yddot_by_hand = yddot_vec[i];
+    DRAKE_DEMAND((yddot_by_drake - yddot_by_hand).norm() < tol);
   }
 }
 

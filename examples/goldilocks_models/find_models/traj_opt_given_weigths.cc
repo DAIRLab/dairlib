@@ -270,9 +270,9 @@ void setInitialGuessFromFile(const string& directory, const string& init_file,
 }
 
 void augmentConstraintToFixThetaScaling(MatrixXd& B, MatrixXd& A, VectorXd& y,
-                                        VectorXd& lb, VectorXd& ub, int n_s,
+                                        VectorXd& lb, VectorXd& ub, int n_y,
                                         int n_feature_s,
-                                        const VectorXd& theta_s,
+                                        const VectorXd& theta_y,
                                         int sample_idx) {
   // sum theta over a row = const
 
@@ -281,35 +281,35 @@ void augmentConstraintToFixThetaScaling(MatrixXd& B, MatrixXd& A, VectorXd& y,
   int n_w = A.cols();
 
   MatrixXd B_old = B;
-  B.resize(n_c + n_s, n_t);
-  B = MatrixXd::Zero(n_c + n_s, n_t);
+  B.resize(n_c + n_y, n_t);
+  B = MatrixXd::Zero(n_c + n_y, n_t);
   B.block(0, 0, n_c, n_t) = B_old;
-  for (int i = 0; i < n_s; i++) {
+  for (int i = 0; i < n_y; i++) {
     B.block(n_c + i, i * n_feature_s, 1, n_feature_s) =
         VectorXd::Ones(n_feature_s).transpose();
   }
 
   MatrixXd A_old = A;
-  A.resize(n_c + n_s, n_w);
-  A = MatrixXd::Zero(n_c + n_s, n_w);
+  A.resize(n_c + n_y, n_w);
+  A = MatrixXd::Zero(n_c + n_y, n_w);
   A.block(0, 0, n_c, n_w) = A_old;
 
   MatrixXd y_old = y;
-  y.resize(n_c + n_s);
-  VectorXd y_append = VectorXd::Zero(n_s);
-  for (int i = 0; i < n_s; i++) {
+  y.resize(n_c + n_y);
+  VectorXd y_append = VectorXd::Zero(n_y);
+  for (int i = 0; i < n_y; i++) {
     for (int j = 0; j < n_feature_s; j++) {
-      y_append(i) += theta_s(j + i * n_feature_s);
+      y_append(i) += theta_y(j + i * n_feature_s);
     }
   }
   y << y_old, y_append;
 
   MatrixXd lb_old = lb;
-  lb.resize(n_c + n_s);
+  lb.resize(n_c + n_y);
   lb << lb_old, y_append;
 
   MatrixXd ub_old = ub;
-  ub.resize(n_c + n_s);
+  ub.resize(n_c + n_y);
   ub << ub_old, y_append;
 
   if (sample_idx == 0)
@@ -500,7 +500,7 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
         VectorXd tau_append_head =
           gm_traj_opt.dynamics_constraint_at_head->computeTauToExtendModel(
-            x_i_sol, x_iplus1_sol, h_i_sol, theta_s);
+            x_i_sol, x_iplus1_sol, h_i_sol, theta_y);
         cout << "tau_head = " << tau_append_head.transpose() << endl;
       }
       N_accum += num_time_samples[l];
@@ -550,12 +550,12 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
                     int n_rerun, double cost_threshold_for_update, int N_rerun,
                     int rom_option, int robot_option) {
   int n_q = plant.num_positions();
-  int n_s = rom.n_y();
-  int n_sDDot = rom.n_y();
+  int n_y = rom.n_y();
+  int n_yddot = rom.n_y();
   int n_tau = rom.n_tau();
   int n_feature_s = rom.n_feature_y();
-  const VectorXd& theta_s = rom.theta_y();
-  const VectorXd& theta_sDDot = rom.theta_yddot();
+  const VectorXd& theta_y = rom.theta_y();
+  const VectorXd& theta_yddot = rom.theta_yddot();
 
   string directory = setting.directory;
   string prefix = setting.prefix;
@@ -563,9 +563,9 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   if (is_get_nominal || !result.is_success()) {
     // Do nothing.
   } else if (extend_model && (n_rerun == N_rerun)) {  // Extending the model
-    VectorXd theta_s_append =
-        readCSV(directory + string("theta_s_append.csv")).col(0);
-    int n_extend = theta_s_append.rows() / n_feature_s;
+    VectorXd theta_y_append =
+        readCSV(directory + string("theta_y_append.csv")).col(0);
+    int n_extend = theta_y_append.rows() / n_feature_s;
 
     // Update trajectory optimization solution
     // Assume that tau is at the end of the decision variable
@@ -585,11 +585,11 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
         VectorXd tau_append_head =
             gm_traj_opt.dynamics_constraint_at_head->computeTauToExtendModel(
-                x_i_sol, x_iplus1_sol, h_i_sol, theta_s_append);
+                x_i_sol, x_iplus1_sol, h_i_sol, theta_y_append);
         // cout << "tau_append_head = " << tau_append_head.transpose() << endl;
         // VectorXd tau_append_tail =
         //   gm_traj_opt.dynamics_constraint_at_tail->computeTauToExtendModel(
-        //     x_i_sol, x_iplus1_sol, h_i_sol, theta_s_append);
+        //     x_i_sol, x_iplus1_sol, h_i_sol, theta_y_append);
         // cout << "tau_append_tail = " << tau_append_tail.transpose() << endl;
 
         // Update tau
@@ -607,9 +607,9 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     writeCSV(directory + prefix + string("w (no extension).csv"), w_sol);
     writeCSV(directory + prefix + string("w.csv"), w_sol_new);
 
-    // Create a file that shows the new index of theta_sDDot
+    // Create a file that shows the new index of theta_yddot
     // Assume that the new features include all the old features (in dynamics)
-    VectorXd prime_numbers = createPrimeNumbers(2 * (n_s + n_extend));
+    VectorXd prime_numbers = createPrimeNumbers(2 * (n_y + n_extend));
 
     int new_rom_option = 0;
     if (rom_option == 0) {
@@ -619,15 +619,15 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     } else {
       DRAKE_DEMAND(false);
     }
-    DynamicsExpression dyn_expr_old(n_sDDot, 0, rom_option, robot_option);
-    DynamicsExpression dyn_expr_new(n_sDDot + n_extend, 0, new_rom_option,
+    DynamicsExpression dyn_expr_old(n_yddot, 0, rom_option, robot_option);
+    DynamicsExpression dyn_expr_new(n_yddot + n_extend, 0, new_rom_option,
                                     robot_option);
-    VectorXd dummy_s_new = prime_numbers.head(n_s + n_extend);
-    VectorXd dummy_sDDot_new = prime_numbers.tail(n_s + n_extend);
-    VectorXd dummy_s_old = dummy_s_new.head(n_s);
-    VectorXd dummy_sDDot_old = dummy_sDDot_new.head(n_s);
-    VectorXd feat_old = dyn_expr_old.getFeature(dummy_s_old, dummy_sDDot_old);
-    VectorXd feat_new = dyn_expr_new.getFeature(dummy_s_new, dummy_sDDot_new);
+    VectorXd dummy_s_new = prime_numbers.head(n_y + n_extend);
+    VectorXd dummy_yddot_new = prime_numbers.tail(n_y + n_extend);
+    VectorXd dummy_s_old = dummy_s_new.head(n_y);
+    VectorXd dummy_yddot_old = dummy_yddot_new.head(n_y);
+    VectorXd feat_old = dyn_expr_old.getFeature(dummy_s_old, dummy_yddot_old);
+    VectorXd feat_new = dyn_expr_new.getFeature(dummy_s_new, dummy_yddot_new);
 
     VectorXd new_idx(feat_old.rows());
     for (int i = 0; i < feat_old.rows(); i++) {
@@ -640,7 +640,7 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
       DRAKE_DEMAND(idx > -1);
       new_idx(i) = idx;
     }
-    writeCSV(directory + string("theta_sDDot_new_index.csv"), new_idx);
+    writeCSV(directory + string("theta_yddot_new_index.csv"), new_idx);
 
   } else {
     if (n_rerun > N_rerun) {
@@ -663,9 +663,9 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
     // Get matrix B (~get feature vectors)
     // cout << "\nGetting B.\n";
-    int n_theta_s = theta_s.size();
-    int n_theta_sDDot = theta_sDDot.size();
-    int n_theta = n_theta_s + n_theta_sDDot;
+    int n_theta_y = theta_y.size();
+    int n_theta_yddot = theta_yddot.size();
+    int n_theta = n_theta_y + n_theta_yddot;
     MatrixXd B = MatrixXd::Zero(A.rows(), n_theta);
     // Get the row index of B matrix where dynamics constraint starts
     VectorXd ind_head = solvers::GetConstraintRows(
@@ -701,12 +701,12 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
         //     x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
 
         // Fill in B matrix
-        B.block(ind_head(0) + i * n_sDDot, 0, n_sDDot, n_theta) =
+        B.block(ind_head(0) + i * n_yddot, 0, n_yddot, n_theta) =
             dyn_gradient_head;
-        // B.block(ind_tail(0) + i * 2 * n_sDDot, 0, n_sDDot, n_theta)
+        // B.block(ind_tail(0) + i * 2 * n_yddot, 0, n_yddot, n_theta)
         //   = dyn_gradient_tail;
-        // cout << "row " << ind_head(0) + i * 2 * n_sDDot << endl;
-        // cout << "row " << ind_tail(0) + i * 2 * n_sDDot << endl << endl;
+        // cout << "row " << ind_head(0) + i * 2 * n_yddot << endl;
+        // cout << "row " << ind_tail(0) + i * 2 * n_yddot << endl << endl;
       }
       N_accum += num_time_samples[l];
       N_accum -= 1;  // due to overlaps between modes
@@ -715,7 +715,7 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     // Augment the constraint matrices and vectors (B, A, y, lb, ub)
     // so that we fix the scaling of the model parameters
     /*augmentConstraintToFixThetaScaling(B, A, y, lb, ub,
-                                       n_s, n_feature_s, theta_s, sample_idx);*/
+                                       n_y, n_feature_s, theta_y, sample_idx);*/
 
     // Store the vectors and matrices
     // cout << "\nStoring vectors and matrices into csv.\n";
@@ -751,11 +751,11 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     // It takes about 5 ms or 25 ms to store the above variables. (I guess 25ms
     // is when it needs to resize to bigger memory)
 
-    // Store s, ds, dds and tau into csv files
-    // cout << "\nStoring s, ds and dds into csv.\n";
-    std::vector<VectorXd> s_vec;
-    std::vector<VectorXd> ds_vec;
-    std::vector<VectorXd> dds_vec;
+    // Store y, ydot, yddot and tau into csv files
+    // cout << "\nStoring y, ydot and yddot into csv.\n";
+    std::vector<VectorXd> y_vec;
+    std::vector<VectorXd> ydot_vec;
+    std::vector<VectorXd> yddot_vec;
     std::vector<VectorXd> tau_vec;
     std::vector<VectorXd> h_vec;
     N_accum = 0;
@@ -769,14 +769,14 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
         VectorXd x_i_sol = result.GetSolution(x_i);
         VectorXd tau_i_sol = result.GetSolution(tau_i);
 
-        VectorXd s =
+        VectorXd y =
             gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
-        VectorXd ds = gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
-        VectorXd dds =
-            gm_traj_opt.dynamics_constraint_at_head->GetYddot(s, ds, tau_i_sol);
-        s_vec.push_back(s);
-        ds_vec.push_back(ds);
-        dds_vec.push_back(dds);
+        VectorXd ydot = gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
+        VectorXd yddot =
+            gm_traj_opt.dynamics_constraint_at_head->GetYddot(y, ydot, tau_i_sol);
+        y_vec.push_back(y);
+        ydot_vec.push_back(ydot);
+        yddot_vec.push_back(yddot);
         tau_vec.push_back(tau_i_sol);
 
         if (m < num_time_samples[l] - 1) {
@@ -789,15 +789,15 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
       N_accum -= 1;  // due to overlaps between modes
     }
     PiecewisePolynomial<double> s_spline =
-        createCubicSplineGivenSAndSdot(h_vec, s_vec, ds_vec);
-    storeSplineOfS(h_vec, s_spline, directory, prefix);
+        CreateCubicSplineGivenYAndYdot(h_vec, y_vec, ydot_vec);
+    StoreSplineOfY(h_vec, s_spline, directory, prefix);
     storeTau(h_vec, tau_vec, directory, prefix);
-    // checkSplineOfS(h_vec, dds_vec, s_spline);
+    // CheckSplineOfY(h_vec, yddot_vec, s_spline);
 
     // Below are all for debugging /////////////////////////////////////////////
 
     // Checking B
-    // BTW, the code only work in the case of s = q_1 ^2 and dds = s^3
+    // BTW, the code only work in the case of y = q_1 ^2 and yddot = y^3
     bool is_checking_matrix_B = false;
     if (is_checking_matrix_B) {
       N_accum = 0;
@@ -826,7 +826,7 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
           //   gm_traj_opt.dynamics_constraint_at_tail->getGradientWrtTheta(
           //     x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
 
-          // From hand calculation (theta_s part)
+          // From hand calculation (theta_y part)
           double phis_i = x_i_sol(1) * x_i_sol(1);
           double dphis_i = 2 * x_i_sol(1) * x_i_sol(1 + 7);
           double phis_iplus1 = x_iplus1_sol(1) * x_iplus1_sol(1);
@@ -835,15 +835,15 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
               (-6 * (phis_i - phis_iplus1) -
                2 * h_i * (2 * dphis_i + dphis_iplus1)) /
                   (h_i * h_i) -
-              theta_sDDot(0) * (3 * pow(theta_s(0), 2) * pow(phis_i, 3));
+              theta_yddot(0) * (3 * pow(theta_y(0), 2) * pow(phis_i, 3));
           // double grad_tail_exact =
           //   (6 * (phis_i - phis_iplus1) +
           //    2 * h_i * (dphis_i + 2 * dphis_iplus1)) / (h_i * h_i) -
-          //   theta_sDDot(0) * (3 * pow(theta_s(0), 2) * pow(phis_iplus1, 3));
+          //   theta_yddot(0) * (3 * pow(theta_y(0), 2) * pow(phis_iplus1, 3));
 
-          // From hand calculation (theta_sddot part)
-          double dyn_feature_i = pow(theta_s(0) * phis_i, 3);
-          // double dyn_feature_iplus1 = pow(theta_s(0) * phis_iplus1, 3);
+          // From hand calculation (theta_yddot part)
+          double dyn_feature_i = pow(theta_y(0) * phis_i, 3);
+          // double dyn_feature_iplus1 = pow(theta_y(0) * phis_iplus1, 3);
 
           // Compare the values
           cout << grad_head_byFD << " (by finite difference)" << endl;
@@ -863,10 +863,10 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
       }
     }
 
-    // Checking the accuracy of s and sdot calculation
+    // Checking the accuracy of y and ydot calculation
     // BTW, the code only work in the case of y = q_1 ^2
-    bool is_checking_s_sdot = false;
-    if (is_checking_s_sdot) {
+    bool is_checking_y_ydot = false;
+    if (is_checking_y_ydot) {
       N_accum = 0;
       for (unsigned int l = 0; l < 1; l++) {  // just look at the first mode now
         for (int m = 0; m < num_time_samples[l] - 1; m++) {
@@ -887,9 +887,9 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
           VectorXd ydot_iplus1 =
               gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_iplus1_sol);
           // cout << "ydot_i_byhand - ydot_i = " <<
-          // theta_s(0) * 2 * x_i_sol(1)*x_i_sol(1 + 7) - ydot_i(0) << endl;
+          // theta_y(0) * 2 * x_i_sol(1)*x_i_sol(1 + 7) - ydot_i(0) << endl;
           // cout << "ydot_iplus1_byhand - ydot_iplus1 = " <<
-          // theta_s(0) * 2 * x_iplus1_sol(1)*x_iplus1_sol(1 + 7) -
+          // theta_y(0) * 2 * x_iplus1_sol(1)*x_iplus1_sol(1 + 7) -
           // ydot_iplus1(0) << endl;
         }
         N_accum += num_time_samples[l];

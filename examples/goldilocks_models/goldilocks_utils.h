@@ -84,23 +84,23 @@ void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
                          int model_iter);
 
 // Create cubic splines from s and sdot
-drake::trajectories::PiecewisePolynomial<double> createCubicSplineGivenSAndSdot(
+drake::trajectories::PiecewisePolynomial<double> CreateCubicSplineGivenYAndYdot(
     const std::vector<Eigen::VectorXd>& h_vec,
     const std::vector<Eigen::VectorXd>& s_vec,
     const std::vector<Eigen::VectorXd>& ds_vec);
 
 // Store splines in csv file for plotting
 // The first row is time, and the rest rows are s
-void storeSplineOfS(
+void StoreSplineOfY(
     const std::vector<Eigen::VectorXd>& h_vec,
-    const drake::trajectories::PiecewisePolynomial<double>& s_spline,
+    const drake::trajectories::PiecewisePolynomial<double>& y_spline,
     const std::string& directory, const std::string& prefix);
 
 // Check whether your cubic spline implemented in dynamics constriant is correct
-void checkSplineOfS(
+void CheckSplineOfY(
     const std::vector<Eigen::VectorXd>& h_vec,
-    const std::vector<Eigen::VectorXd>& dds_vec,
-    const drake::trajectories::PiecewisePolynomial<double>& s_spline);
+    const std::vector<Eigen::VectorXd>& yddot_vec,
+    const drake::trajectories::PiecewisePolynomial<double>& y_spline);
 
 void storeTau(const std::vector<Eigen::VectorXd>& h_vec,
               const std::vector<Eigen::VectorXd>& tau_vec,

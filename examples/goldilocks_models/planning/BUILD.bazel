@@ -1,6 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "optimal_rom_planner",
+    srcs = ["optimal_rom_planner.cc"],
+    hdrs = ["optimal_rom_planner.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "rom_traj_opt",
     srcs = ["rom_traj_opt.cc"],
     hdrs = ["rom_traj_opt.h"],

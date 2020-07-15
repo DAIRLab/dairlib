@@ -130,7 +130,8 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     }
     initial_guess = CalculateInterpolation(weight_gamma, w_gamma);
     //    save initial guess and set init file
-    initial_file_name = prefix + string("_initial_guess.csv");
+    initial_file_name = to_string(iter) + "_" + to_string(sample) +
+                        string("_initial_guess.csv");
     writeCSV(directory + initial_file_name, initial_guess);
   } else {
     DRAKE_DEMAND(iter > 0);

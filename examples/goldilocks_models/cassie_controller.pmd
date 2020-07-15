@@ -3,8 +3,12 @@ group "1.controllers" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
         host = "localhost";
     }
-    cmd "2.rom-test-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_walking_controller_test";
+    cmd "2.rom-test-walking-controller1" {
+        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test1";
+        host = "localhost";
+    }
+    cmd "2.rom-test-walking-controller2" {
+        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2";
         host = "localhost";
     }
     cmd "3.rom-walking-controller" {
@@ -19,6 +23,10 @@ group "2.drake-simulator" {
         host = "localhost";
     }
     cmd "1.simulator for OSC controller" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
+        host = "localhost";
+    }
+    cmd "2.simulator for OSC controller (init state)" {
         exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
         host = "localhost";
     }
@@ -53,18 +61,23 @@ group "4.lcm-tools" {
 
 script "run-original-walking" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "1.simulator for OSC controller";
     start cmd "1.original-walking-controller";
-}
-script "run-rom-test-walking" {
-    run_script "start-operator-simulation-floating-base";
     start cmd "1.simulator for OSC controller";
-    start cmd "2.rom-test-walking-controller";
+}
+script "run-rom-test-walking1" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "2.rom-test-walking-controller1";
+    start cmd "1.simulator for OSC controller";
+}
+script "run-rom-test-walking2" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "2.rom-test-walking-controller2";
+    start cmd "2.simulator for OSC controller (init state)";
 }
 script "run-rom-walking" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "1.simulator for OSC controller";
     start cmd "3.rom-walking-controller";
+    start cmd "1.simulator for OSC controller";
 }
 
 script "start-operator-simulation-fixed-base" {

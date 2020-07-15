@@ -21,13 +21,13 @@ class RomMPC {
   // Open a new thread and solve if there is no MPC currently being solved
   void StartSolveIfNotBusy(const drake::VectorX<double>& init_guess);
 
-  // Read solution
-  drake::VectorX<double> ReadSolution();
+  // Getter
+  drake::VectorX<double> GetSolution() const;
 
   bool has_solution() const { return has_solution_; };
 
  private:
-  void Solve(int test, int test2);
+  void Solve(const drake::VectorX<double>& init_guess);
 
   // std::thread::join() is a blocking function, so we use is_solved_ to know
   // whether trajopt is solved and we can call join() without waiting

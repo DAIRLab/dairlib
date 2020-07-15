@@ -78,37 +78,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "reduced_order_models_test",
-    size = "small",
-    srcs = ["reduced_order_models_test.cc"],
-    deps = [
-        ":reduced_order_models",
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "@drake//:drake_shared_library",
-        "@gtest//:main",
-    ],
-)
-
-cc_binary(
-    name = "run_cassie_walking_controller_test",
-    srcs = ["run_cassie_walking_controller_test.cc"],
-    deps = [
-        ":reduced_order_models",
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie:simulator_drift",
-        "//examples/Cassie/osc",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
 cc_binary(
     name = "run_cassie_rom_controller",
     srcs = ["run_cassie_rom_controller.cc"],

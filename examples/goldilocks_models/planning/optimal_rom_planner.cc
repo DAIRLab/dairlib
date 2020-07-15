@@ -14,13 +14,13 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::VectorX;
+using drake::multibody::JacobianWrtVariable;
+using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
-using drake::multibody::JacobianWrtVariable;
-using drake::multibody::MultibodyPlant;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
@@ -45,24 +45,23 @@ void RomMPC::StartSolveIfNotBusy(const VectorX<double>& init_guess) {
 
   // Start solving if there is no active thread
   if (!is_active_) {
-    cout << "Start Solve() on a new thread\n";
     is_solved_ = false;  // Due to thread asynchrony, this flag can not be
                          // placed inside Solve() which is spawned on a new
                          // thead
-
-    int arg = 3;
-    int arg2 = 4;
-    thread_ = std::make_unique<std::thread>(&RomMPC::Solve, this, arg, arg2);
+    thread_ = std::make_unique<std::thread>(&RomMPC::Solve, this,
+                                            std::ref(init_guess));
     is_active_ = true;
   }
 }
 
-drake::VectorX<double> RomMPC::ReadSolution() {
+drake::VectorX<double> RomMPC::GetSolution() const {
   DRAKE_ASSERT(has_solution_);
   return solution_;
 }
 
-void RomMPC::Solve(int arg,int arg2) {
+void RomMPC::Solve(const VectorX<double>& init_guess) {
+  cout << "init_guess = " << init_guess.transpose() << endl;
+
   auto start = std::chrono::high_resolution_clock::now();
   // Solve trajopt here
   auto finish = std::chrono::high_resolution_clock::now();

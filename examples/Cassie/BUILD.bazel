@@ -407,6 +407,7 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
+        "//lcm:lcm_trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",

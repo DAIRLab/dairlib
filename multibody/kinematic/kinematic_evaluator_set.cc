@@ -115,16 +115,24 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalActiveSecondTimeDerivative(
 }
 
 template <typename T>
-MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
-    const Context<T>& context) const {
+void KinematicEvaluatorSet<T>::EvalFullJacobian(
+    const Context<T>& context, drake::EigenPtr<MatrixX<T>> J) const {
   const int num_velocities = plant_.num_velocities();
-  MatrixX<T> J(count_full(), num_velocities);
+  DRAKE_THROW_UNLESS(J->rows() == count_full());
+  DRAKE_THROW_UNLESS(J->cols() == num_velocities);
   int ind = 0;
   for (const auto& e : evaluators_) {
-    J.block(ind, 0, e->num_full(), num_velocities) =
-        e->EvalFullJacobian(context);
+    auto J_i = J->block(ind, 0, e->num_full(), num_velocities);
+    e->EvalFullJacobian(context, &J_i);
     ind += e->num_full();
   }
+}
+
+template <typename T>
+MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
+    const drake::systems::Context<T>& context) const {
+  MatrixX<T> J(count_full(), plant_.num_velocities());
+  EvalFullJacobian(context, &J);
   return J;
 }
 
@@ -204,8 +212,10 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivativesWithForce(
     Context<T>* context, const VectorX<T>& lambda) const {
-  VectorX<T> J_transpose_lambda =
-      EvalFullJacobian(*context).transpose() * lambda;
+  static MatrixX<T> J(count_full(), plant_.num_velocities());
+  EvalFullJacobian(*context, &J);
+  VectorX<T> J_transpose_lambda = J.transpose() * lambda;
+
   context->FixInputPort(
       plant_.get_applied_generalized_force_input_port().get_index(),
       J_transpose_lambda);

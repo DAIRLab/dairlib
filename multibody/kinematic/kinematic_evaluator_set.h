@@ -63,6 +63,10 @@ class KinematicEvaluatorSet {
   drake::MatrixX<T> EvalFullJacobian(
       const drake::systems::Context<T>& context) const;
 
+  /// Evaluates the Jacobian w.r.t. velocity v (not qdot)
+  void EvalFullJacobian(const drake::systems::Context<T>& context,
+                        drake::EigenPtr<drake::MatrixX<T>> J) const;
+
   /// Evaluates Jdot * v, useful for computing constraint second derivative,
   drake::VectorX<T> EvalFullJacobianDotTimesV(
       const drake::systems::Context<T>& context) const;

@@ -3,7 +3,9 @@
 #include "drake/math/orthonormal_basis.h"
 
 using drake::MatrixX;
+using drake::Matrix3X;
 using drake::VectorX;
+using drake::Vector3;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -30,8 +32,8 @@ template <typename T>
 VectorX<T> DistanceEvaluator<T>::EvalFull(const Context<T>& context) const {
   // Transform points A and B to world frame
   const drake::multibody::Frame<T>& world = plant().world_frame();
-  VectorX<T> pt_A_W(3);
-  VectorX<T> pt_B_W(3);
+  static Vector3<T> pt_A_W;
+  static Vector3<T> pt_B_W;
 
   plant().CalcPointsPositions(context, frame_A_, pt_A_.template cast<T>(),
                               world, &pt_A_W);
@@ -44,24 +46,25 @@ VectorX<T> DistanceEvaluator<T>::EvalFull(const Context<T>& context) const {
 }
 
 template <typename T>
-MatrixX<T> DistanceEvaluator<T>::EvalFullJacobian(
-    const Context<T>& context) const {
+void DistanceEvaluator<T>::EvalFullJacobian(
+    const Context<T>& context, drake::EigenPtr<MatrixX<T>> J) const {
   /// Jacobian of ||pt_A - pt_B||, evaluated all in world frame, is
   ///   (pt_A - pt_B)^T * (J_A - J_B) / ||pt_A - pt_B||
 
+  // Create static Jacobians and point positions for re-use. Warning: not thread
+  // safe
+  static Matrix3X<T> J_A(3, plant().num_velocities());
+  static Matrix3X<T> J_B(3, plant().num_velocities());
+  static Vector3<T> pt_A_W;;
+  static Vector3<T> pt_B_W;
+
   const drake::multibody::Frame<T>& world = plant().world_frame();
-  VectorX<T> pt_A_W(3);
-  VectorX<T> pt_B_W(3);
 
   plant().CalcPointsPositions(context, frame_A_, pt_A_.template cast<T>(),
                               world, &pt_A_W);
   plant().CalcPointsPositions(context, frame_B_, pt_B_.template cast<T>(),
                               world, &pt_B_W);
   auto rel_pos = pt_A_W - pt_B_W;
-
-  MatrixX<T> J_A(3, plant().num_velocities());
-
-  MatrixX<T> J_B(3, plant().num_velocities());
 
   // .template cast<T> converts pt_A_, as a double, into type T
   plant().CalcJacobianTranslationalVelocity(
@@ -70,8 +73,7 @@ MatrixX<T> DistanceEvaluator<T>::EvalFullJacobian(
   plant().CalcJacobianTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, frame_B_,
       pt_B_.template cast<T>(), world, world, &J_B);
-
-  return (rel_pos.transpose() * (J_A - J_B)) / rel_pos.norm();
+  *J = (rel_pos.transpose() * (J_A - J_B)) / rel_pos.norm();
 }
 
 template <typename T>
@@ -84,8 +86,10 @@ VectorX<T> DistanceEvaluator<T>::EvalFullJacobianDotTimesV(
   //   - phidot * (pt_A - pt_B)^T (J_A - J_B) *v / phi^2
   const drake::multibody::Frame<T>& world = plant().world_frame();
 
-  VectorX<T> pt_A_world(3);
-  VectorX<T> pt_B_world(3);
+  static MatrixX<T> J_A(3, plant().num_velocities());
+  static MatrixX<T> J_B(3, plant().num_velocities());
+  static VectorX<T> pt_A_world(3);
+  static VectorX<T> pt_B_world(3);
 
   auto pt_A_cast = pt_A_.template cast<T>();
   auto pt_B_cast = pt_B_.template cast<T>();
@@ -95,9 +99,6 @@ VectorX<T> DistanceEvaluator<T>::EvalFullJacobianDotTimesV(
   plant().CalcPointsPositions(context, frame_A_, pt_A_cast, world, &pt_A_world);
   plant().CalcPointsPositions(context, frame_B_, pt_B_cast, world, &pt_B_world);
   auto rel_pos = pt_A_world - pt_B_world;
-
-  MatrixX<T> J_A(3, plant().num_velocities());
-  MatrixX<T> J_B(3, plant().num_velocities());
 
   plant().CalcJacobianTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_, pt_A_cast,
@@ -127,9 +128,9 @@ VectorX<T> DistanceEvaluator<T>::EvalFullJacobianDotTimesV(
 
   // Compute all terms as scalars using dot products
   VectorX<T> J_dot_times_v(1);
-  J_dot_times_v << (J_rel_v).squaredNorm() / phi
-      + rel_pos.dot(J_rel_dot_times_v) / phi
-      - phidot * rel_pos.dot(J_rel_v) / (phi * phi);
+  J_dot_times_v << (J_rel_v).squaredNorm() / phi +
+                       rel_pos.dot(J_rel_dot_times_v) / phi -
+                       phidot * rel_pos.dot(J_rel_v) / (phi * phi);
   return J_dot_times_v;
 }
 

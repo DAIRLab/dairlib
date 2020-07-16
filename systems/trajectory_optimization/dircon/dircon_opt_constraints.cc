@@ -95,16 +95,17 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   const auto& xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
   const auto& ucol = 0.5 * (u0 + u1);
 
+  static drake::MatrixX<T> J(evaluators_.count_full(), plant_.num_velocities());
+
   // Evaluate dynamics at colocation point
   multibody::setContext<T>(plant_, xcol, ucol, context_col_.get());
   auto g = CalcTimeDerivativesWithForce(context_col_.get(), lc);
 
   // Add velocity slack contribution, J^T * gamma
+  evaluators_.EvalFullJacobian(*context_col_, &J);
   VectorX<T> gamma_in_qdot_space(plant_.num_positions());
-  plant_.MapVelocityToQDot(
-      *context_col_,
-      evaluators_.EvalFullJacobian(*context_col_).transpose() * gamma,
-      &gamma_in_qdot_space);
+  plant_.MapVelocityToQDot(*context_col_, J.transpose() * gamma,
+                           &gamma_in_qdot_space);
   g.head(plant_.num_positions()) += gamma_in_qdot_space;
 
   // Add quaternion slack contribution, quat * slack
@@ -196,11 +197,9 @@ void CachedAccelerationConstraint<T>::EvaluateConstraint(
   multibody::setContext<T>(plant_, x, u, context_);
 
   if (cache_) {
-    const auto& xdot =
-        cache_->CalcTimeDerivativesWithForce(context_, lambda);
+    const auto& xdot = cache_->CalcTimeDerivativesWithForce(context_, lambda);
     const auto& J = evaluators_.EvalActiveJacobian(*context_);
-    const auto& Jdotv =
-        evaluators_.EvalActiveJacobianDotTimesV(*context_);
+    const auto& Jdotv = evaluators_.EvalActiveJacobianDotTimesV(*context_);
     *y = J * xdot.tail(plant_.num_velocities()) + Jdotv;
   } else {
     *y = evaluators_.EvalActiveSecondTimeDerivative(context_, lambda);

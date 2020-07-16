@@ -9,7 +9,7 @@ namespace multibody {
 
 /// Virtual class to represent arbitrary kinematic evaluations
 /// Evaluations are defined by some function phi(q). Implementations
-/// must generate phi(q), J(q) (the Jacobian w.r.t. velocities v), 
+/// must generate phi(q), J(q) (the Jacobian w.r.t. velocities v),
 /// and [d/dt J] * v
 ///
 /// Evaluations call also be classified as "active" or "inactive." Inactive
@@ -29,11 +29,10 @@ template <typename T>
 class KinematicEvaluator {
  public:
   explicit KinematicEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
-      int length);  
+                              int length);
 
   /// Evaluates phi(q), limited only to active rows
-  drake::VectorX<T> EvalActive(
-      const drake::systems::Context<T>& context) const;
+  drake::VectorX<T> EvalActive(const drake::systems::Context<T>& context) const;
 
   /// Evaluates the time-derivative, d/dt phi(q), limited only to active rows
   drake::VectorX<T> EvalActiveTimeDerivative(
@@ -61,9 +60,13 @@ class KinematicEvaluator {
 
   /// Evaluates the Jacobian w.r.t. velocity v (not qdot)
   /// TODO (posa): could add an option to compute w.r.t. q
-  virtual drake::MatrixX<T> EvalFullJacobian(
-      const drake::systems::Context<T>& context) const = 0;
+  virtual void EvalFullJacobian(const drake::systems::Context<T>& context,
+                                drake::EigenPtr<drake::MatrixX<T>> J) const = 0;
 
+  /// Evaluates the Jacobian w.r.t. velocity v
+  drake::MatrixX<T> EvalFullJacobian(
+      const drake::systems::Context<T>& context) const;
+  
   /// Evaluates Jdot * v, useful for computing constraint second derivative,
   ///  which would be d^2 phi/dt^2 = J * vdot + Jdot * v
   virtual drake::VectorX<T> EvalFullJacobianDotTimesV(
@@ -73,17 +76,11 @@ class KinematicEvaluator {
 
   const std::vector<int>& active_inds() const;
 
-  int num_full() const {
-    return length_;
-  }
+  int num_full() const { return length_; }
 
-  int num_active() const {
-    return num_active_;
-  }
+  int num_active() const { return num_active_; }
 
-  const drake::multibody::MultibodyPlant<T>& plant() const {
-    return plant_;
-  }
+  const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; }
 
   const std::vector<int>& active_inds() { return active_inds_; };
 
@@ -97,13 +94,15 @@ class KinematicEvaluator {
   /// the full Jacobian). Subclasses which might be associated with frictional
   /// contact should implement this method.
   virtual std::shared_ptr<drake::solvers::Constraint>
-      CreateConicFrictionConstraint(double mu) const { return nullptr; };
+  CreateConicFrictionConstraint(double mu) const {
+    return nullptr;
+  };
 
   /// Create a friction cone constraint on the force variables (associated with
   /// the full Jacobian). Subclasses which might be associated with frictional
   /// contact should implement this method.
   virtual std::shared_ptr<drake::solvers::Constraint>
-      CreateLinearFrictionConstraint(double mu, int num_faces = 8) const {
+  CreateLinearFrictionConstraint(double mu, int num_faces = 8) const {
     return nullptr;
   };
 

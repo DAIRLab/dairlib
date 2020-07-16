@@ -9,7 +9,7 @@ namespace multibody {
 
 /// Basic contact evaluator for a point on a body w.r.t. the world
 template <typename T>
-class WorldPointEvaluator :  public KinematicEvaluator<T> {
+class WorldPointEvaluator : public KinematicEvaluator<T> {
  public:
   /// The basic constructor for WorldPointEvaluator, defined via a rotation
   /// matrix.
@@ -28,7 +28,7 @@ class WorldPointEvaluator :  public KinematicEvaluator<T> {
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
       const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
-      std::vector<int> active_directions = {0,1,2});
+      std::vector<int> active_directions = {0, 1, 2});
 
   /// Constructor for WorldPointEvaluator, defined via a normal direction
   /// This will automatically construct an appropriate rotation matrix.
@@ -45,18 +45,18 @@ class WorldPointEvaluator :  public KinematicEvaluator<T> {
   ///    the "Full" terms, but not the "Active" values
   ///    Note that this defaults to true.
 
-  WorldPointEvaluator(
-      const drake::multibody::MultibodyPlant<T>& plant,
-      const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
-      const Eigen::Vector3d normal,
-      const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
-      bool tangent_active = true);
+  WorldPointEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
+                      const Eigen::Vector3d pt_A,
+                      const drake::multibody::Frame<T>& frame_A,
+                      const Eigen::Vector3d normal,
+                      const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
+                      bool tangent_active = true);
 
   drake::VectorX<T> EvalFull(
       const drake::systems::Context<T>& context) const override;
 
-  drake::MatrixX<T> EvalFullJacobian(
-      const drake::systems::Context<T>& context) const override;
+  void EvalFullJacobian(const drake::systems::Context<T>& context,
+                        drake::EigenPtr<drake::MatrixX<T>> J) const override;
 
   drake::VectorX<T> EvalFullJacobianDotTimesV(
       const drake::systems::Context<T>& context) const override;

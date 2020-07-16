@@ -3,19 +3,6 @@
   "channelName": "CASSIE_STATE_SIMULATION",
   "channel_type":"dairlib.lcmt_robot_output",
   "data": [
-            {"name": "toe_line",
-             "info": {"source_data": {"category":"kinematic",
-                                      "frame":"toe_left",
-                                      "point":[0, 0, 0]
-                                    },
-                       "type_data" : {"color":[1, 0, 0],
-                                      "alpha": 0.5,
-                                      "type": "line",
-                                      "thickness": 0.01,
-                                      "history": -1
-                                    }
-                      }
-            },
             {"name": "toe_point",
              "info" : {"source_data" : {"category":"kinematic",
                                          "frame":"toe_left",
@@ -69,13 +56,11 @@
                                         "abstract_channel" : "CASSIE_STATE_SIMULATION",
                                         "abstract_type" : "dairlib.lcmt_robot_output",
                                         "abstract_field" : "position",
-                                        "index" : 0,
                                         "quaternion_index" : 0,
                                         "frame": "toe_right",
                                         "point": [0, 0, 0]
                                        },
-                        "type_data": {"color":[1, 0, 0],
-                                      "alpha": 0.5,
+                        "type_data": {"alpha": 0.5,
                                       "type": "axis",
                                       "thickness": 0.01,
                                       "length": 0.4
@@ -88,7 +73,6 @@
                                         "abstract_channel" : "OSC_DEBUG",
                                         "abstract_type" : "dairlib.lcmt_osc_output",
                                         "abstract_field" : "tracking_data[0].y",
-                                        "index" : 1,
                                         "x_index" : 0,
                                         "y_index" : 1,
                                         "z_index" : 2

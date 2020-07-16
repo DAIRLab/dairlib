@@ -8,17 +8,76 @@ visualization of data during a simulation:
              robot/plant. If this property does not exist then the "WeldFrames()"
              function will not be called
 
-"data": This will be a list of all the different visualizations/massages that
-        the user wants to be displayed. The 3 types of visualizations will be
-        kinematic data, the center of mass, and an LCM message. So far there
-        are 2 types of visualizations that can be shown both of which are
-        kinematic data:
+"channelName": Name of main state channel
 
-        1) A trace line which has the following properties:
+"channel_type": Type/Class of message from main channel
 
-        "name": The line's name to be displayed in the GUI
-        "frame": The name of the body part/context on which the line would be
-        "point": The location within the body part/context
+"data": This will be a list of all the different shapes/objects that
+        the user wants to be displayed. Each shape is a separate JSON object
+        consisting of a name and an info JSON. The info consists of 2 pieces of
+        information: the source data, which has information about how to draw
+        the particular shape and the type data, which contains information about
+        the what is to be drawn. The source data can be one of 3 categories:
+        kinematic, center of mass, and LCM message. Also in terms of the type
+        data there are 3 types as well: a point/sphere, a line, and a set of 3
+        axes. The following are the specific formats of the 3 source type
+        categories:
+
+        1) Kinematic:
+
+        "category":"kinematic"
+        "frame": The particular body part on which the user wants to draw the
+                 shape
+        "point": The location within the body part's context
+
+
+
+
+        2) LCM:
+
+        "category":"lcm",
+        "abstract_channel" : The secondary channel (different from the main
+                             channel) from where the user wants to listen to
+                             messages
+        "abstract_type" : Type/Class of message from the secondary channel
+        "abstract_field" : The specific field from where the information is
+                           to be extracted. This needs to contain the entire
+                           path to reach the field. It can contain both field
+                           names as well as arrays with the index number to be
+                           selected
+
+        If this is intended to be used to draw a point or a line then it
+        also contains:
+        "x_index" : The index of the x element of the location where the
+                    line/point it so be drawn
+        "y_index" : The index of the y element of the location where the
+                    line/point it so be drawn
+        "z_index" : The index of the z element of the location where the
+                    line/point it so be drawn
+
+        If this is intended to be used to draw a set of axes then it also
+        contains:
+        "quaternion_index" : The first index of the 4D array which will contain
+                             the quaternion from where the rotation matrix will
+                             be extracted. The other 3 indices will be the ones
+                             that follow this in sequance. For example, if this
+                             was 0 then the others will be 1, 2, 3.
+        "frame": The particular body part on which the user wants to draw the
+                 axis
+        "point": The location within the body part's context
+
+
+
+
+        1) Center of Mass (CoM):
+
+        "category":"com"
+
+        The 3 types of shapes that can be drawn will have the following type
+        data:
+
+        1) A trace line:
+
         "color": The line's color in the format [Red, Green, Blue]
         "alpha": The transparency as a value from 0 to 1
         "type": "line",
@@ -27,14 +86,24 @@ visualization of data during a simulation:
                    that this assumes that there is a constant rate of messages
                    coming through. However, if the messages are not coming at a
                    constant rate then the displayed line might be of varying
-                   length.
+                   length. Also note that if the history is negative then the
+                   line will be infinitely long (i.e. it will be constantly
+                   drawn as long as the simulation is running)
 
-        2) A point which has the following properties:
+        2) A point:
 
-        "name": The point's name to be displayed in the GUI
-        "frame": The name of the body part/context on which the line would be
-        "point": The location within the body part/context
         "color": The line's color in the format [Red, Green, Blue]
         "alpha": The transparency as a value from 0 to 1
         "type": "point",
         "radius": The radius of the sphere representing the point
+
+
+        3) A set of 3 axes:
+
+        "alpha": The transparency as a value from 0 to 1
+        "type": "axis",
+        "thickness": The thickness of each arrow
+        "length": The length of each arrow
+
+        Note that the axes will be color coded with red being the x-axis, green
+        the y-axis, and blue the z-axis.

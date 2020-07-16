@@ -8,7 +8,6 @@ cc_library(
     ],
     deps = [
         "//lcmtypes:lcmt_robot",
-        "//attic/multibody:utils",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

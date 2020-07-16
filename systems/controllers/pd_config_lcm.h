@@ -5,7 +5,6 @@
 
 #include "dairlib/lcmt_pd_config.hpp"
 #include "drake/systems/framework/leaf_system.h"
-#include "attic/multibody/rigidbody_utils.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/framework/timestamped_vector.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -18,8 +17,6 @@ namespace systems {
 /// and outputs the CassiePDConfig as Context
 class PDConfigReceiver : public drake::systems::LeafSystem<double> {
  public:
-  explicit PDConfigReceiver(const RigidBodyTree<double>& tree);
-
   explicit PDConfigReceiver(
     const drake::multibody::MultibodyPlant<double>& plant);
 

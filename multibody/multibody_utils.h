@@ -52,14 +52,15 @@ std::map<std::string, int> makeNameToActuatorsMap(
 
 /// Given a set of maps constructed from the above functions, construct a
 /// vector of state and actuator names in order of their index
+template <typename T>
 std::vector<std::string> createStateNameVectorFromMap(
-    const std::map<std::string, int>& pos_map,
-    const std::map<std::string, int>& vel_map);
+    const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Given a set of maps constructed from the above functions, construct a
 /// vector of state and actuator names in order of their index
+template <typename T>
 std::vector<std::string> createActuatorNameVectorFromMap(
-    const std::map<std::string, int>& act_map);
+    const drake::multibody::MultibodyPlant<T>& plant);
 
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the
@@ -91,6 +92,18 @@ int QuaternionStartIndex(
 /// TODO: this method should be deprecated
 template <typename T>
 bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
+
+/// Computes the matrix for mapping global roll-pitch-yaw angular velocity to
+/// quaternion derivatives
+/// Ref: equation 16 of https://arxiv.org/pdf/0811.2889.pdf
+/// Note: The same calculation happens in Drake's
+/// QuaternionFloatingMobilizer<T>::AngularVelocityToQuaternionRateMatrix()
+/// This matrix transforms angular velocity wrt the WORLD to d/dt quaternion
+Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q);
+
+// Converts Jacobian wrt qdot to jacobian wrt v
+Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
+                                const Eigen::MatrixXd& Jwrtqdot);
 
 }  // namespace multibody
 }  // namespace dairlib

@@ -26,12 +26,17 @@ namespace dairlib::systems::controllers {
 
 using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
+using multibody::WToQuatDotMap;
+using multibody::JwrtqdotToJwrtv;
+using goldilocks_models::ReducedOrderModel;
 
 /**** OscTrackingData ****/
-OscTrackingData::OscTrackingData(
-    const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
-    const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
-    const MultibodyPlant<double>* plant_wo_spr)
+OscTrackingData::OscTrackingData(const string& name, int n_r,
+                                 const MatrixXd& K_p, const MatrixXd& K_d,
+                                 const MatrixXd& W,
+                                 const MultibodyPlant<double>* plant_w_spr,
+                                 const MultibodyPlant<double>* plant_wo_spr,
+                                 bool use_only_plant_wo_spr_in_evaluation)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       world_w_spr_(plant_w_spr_->world_frame()),
@@ -40,7 +45,9 @@ OscTrackingData::OscTrackingData(
       n_r_(n_r),
       K_p_(K_p),
       K_d_(K_d),
-      W_(W) {}
+      W_(W),
+      use_only_plant_wo_spr_in_evaluation_(
+          use_only_plant_wo_spr_in_evaluation) {}
 
 // Update
 bool OscTrackingData::Update(
@@ -60,8 +67,13 @@ bool OscTrackingData::Update(
     yddot_des_ = traj.MakeDerivative(2)->value(t);
 
     // Update feedback output (Calling virtual methods)
-    UpdateYAndError(x_w_spr, context_w_spr);
-    UpdateYdotAndError(x_w_spr, context_w_spr);
+    if (use_only_plant_wo_spr_in_evaluation_) {
+      UpdateYAndError(x_wo_spr, context_wo_spr);
+      UpdateYdotAndError(x_wo_spr, context_wo_spr);
+    } else {
+      UpdateYAndError(x_w_spr, context_w_spr);
+      UpdateYdotAndError(x_w_spr, context_w_spr);
+    }
     UpdateYddotDes();
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
@@ -459,195 +471,44 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
     DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == 1);
   }
 }
-// AbstractTrackingData ////////////////////////////////////////////////////////
-AbstractTrackingData::AbstractTrackingData(
+
+// OptimalRomTrackingData //////////////////////////////////////////////////////
+OptimalRomTrackingData::OptimalRomTrackingData(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
-    const MultibodyPlant<double>* plant_wo_spr,
-    OscUserDefinedPos* user_defined_pos)
-    : AbstractTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr,
-                           user_defined_pos, user_defined_pos) {}
+    const MultibodyPlant<double>* plant_wo_spr, const ReducedOrderModel& rom)
+    : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr, true),
+      rom_(rom) {}
 
-AbstractTrackingData::AbstractTrackingData(
-    const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
-    const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
-    const MultibodyPlant<double>* plant_wo_spr,
-    OscUserDefinedPos* user_defined_pos_w_spr,
-    OscUserDefinedPos* user_defined_pos_wo_spr)
-    : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr),
-      user_defined_pos_wo_spr_(user_defined_pos_wo_spr),
-      user_defined_pos_w_spr_(user_defined_pos_w_spr) {
-  only_one_user_defined_pos_ =
-      user_defined_pos_w_spr == user_defined_pos_wo_spr;
-
-  if (only_one_user_defined_pos_) {
-    map_position_from_spring_to_no_spring_ =
-        PositionMapFromSpringToNoSpring(*plant_w_spr, *plant_wo_spr);
-    map_velocity_from_spring_to_no_spring_ =
-        VelocityMapFromSpringToNoSpring(*plant_w_spr, *plant_wo_spr);
-  }
-}
-
-void AbstractTrackingData::UpdateYAndError(
-    const VectorXd& x_w_spr, Context<double>& context_w_spr) {
-  VectorXd q;
-  if (only_one_user_defined_pos_) {
-    q = map_position_from_spring_to_no_spring_ *
-        x_w_spr.head(plant_w_spr_->num_positions());
-    y_ = user_defined_pos_wo_spr_->Position(q);
-  } else {
-    q = x_w_spr.head(plant_w_spr_->num_positions());
-    y_ = user_defined_pos_w_spr_->Position(q);
-  }
-
+void OptimalRomTrackingData::UpdateYAndError(const VectorXd& x_wo_spr,
+                                             Context<double>& context_wo_spr) {
+  y_ = rom_.EvalMappingFunc(x_wo_spr.head(plant_wo_spr_->num_positions()),
+                            context_wo_spr);
   error_y_ = y_des_ - y_;
 }
-void AbstractTrackingData::UpdateYdotAndError(
-    const VectorXd& x_w_spr, Context<double>& context_w_spr) {
-  VectorXd q(plant_w_spr_->num_positions());
-  VectorXd v(plant_w_spr_->num_velocities());
-  VectorXd qdot(plant_w_spr_->num_positions());
-  if (only_one_user_defined_pos_) {
-    q.resize(plant_wo_spr_->num_positions());
-    v.resize(plant_wo_spr_->num_velocities());
-    qdot.resize(plant_wo_spr_->num_positions());
-    q = map_position_from_spring_to_no_spring_ *
-        x_w_spr.head(plant_w_spr_->num_positions());
-    v = map_velocity_from_spring_to_no_spring_ *
-        x_w_spr.tail(plant_w_spr_->num_velocities());
-    VectorXd qdot_w_spr(plant_w_spr_->num_positions());
-    plant_w_spr_->MapVelocityToQDot(
-        context_w_spr, x_w_spr.tail(plant_w_spr_->num_velocities()),
-        &qdot_w_spr);
-    qdot = map_position_from_spring_to_no_spring_ * qdot_w_spr;
-  } else {
-    q = x_w_spr.head(plant_w_spr_->num_positions());
-    v = x_w_spr.tail(plant_w_spr_->num_velocities());
-    plant_w_spr_->MapVelocityToQDot(
-        context_w_spr, x_w_spr.tail(plant_w_spr_->num_velocities()),
-        &qdot);
-  }
-
-  ydot_ = JacobianOfUserDefinedPos(*user_defined_pos_w_spr_, q) * qdot;
+void OptimalRomTrackingData::UpdateYdotAndError(
+    const VectorXd& x_wo_spr, Context<double>& context_wo_spr) {
+  ydot_ = rom_.EvalMappingFuncJV(x_wo_spr.head(plant_wo_spr_->num_positions()),
+                                 x_wo_spr.tail(plant_wo_spr_->num_velocities()),
+                                 context_wo_spr);
   error_ydot_ = ydot_des_ - ydot_;
 }
-void AbstractTrackingData::UpdateYddotDes() {
+void OptimalRomTrackingData::UpdateYddotDes() {
   yddot_des_converted_ = yddot_des_;
 }
-void AbstractTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-                                   Context<double>& context_wo_spr) {
+void OptimalRomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
+                                     Context<double>& context_wo_spr) {
   VectorXd q = x_wo_spr.head(plant_wo_spr_->num_positions());
-
-  // Compute Jacobian by forward differencing
-  J_ = JwrtqdotToJwrtv(q,
-                       JacobianOfUserDefinedPos(*user_defined_pos_wo_spr_, q));
+  J_ = rom_.EvalMappingFuncJ(q, context_wo_spr);
 }
-void AbstractTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-                                       Context<double>& context_wo_spr) {
+void OptimalRomTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
+                                         Context<double>& context_wo_spr) {
   VectorXd q = x_wo_spr.head(plant_wo_spr_->num_positions());
   VectorXd v = x_wo_spr.tail(plant_wo_spr_->num_velocities());
-
-  VectorXd qdot(plant_wo_spr_->num_positions());
-  plant_wo_spr_->MapVelocityToQDot(context_wo_spr, v, &qdot);
-
-  if (is_forward_differencing_) {
-    // Forward differencing
-    VectorXd Jv_0 =
-        JacobianOfUserDefinedPos(*user_defined_pos_wo_spr_, q) * qdot;
-    VectorXd Jv_i((GetTrajDim()));
-    MatrixXd grad_Jv((GetTrajDim()), q.size());
-    for (int i = 0; i < q.size(); i++) {
-      q(i) += dx_;
-      Jv_i = JacobianOfUserDefinedPos(*user_defined_pos_wo_spr_, q) * qdot;
-      q(i) -= dx_;
-      grad_Jv.col(i) = (Jv_i - Jv_0) / dx_;
-    }
-    JdotV_ = grad_Jv * qdot;
-  } else {
-    // Central differencing
-    VectorXd Jv_0(GetTrajDim());
-    VectorXd Jv_i(GetTrajDim());
-    MatrixXd grad_Jv((GetTrajDim()), q.size());
-    for (int i = 0; i < q.size(); i++) {
-      q(i) += dx_ / 2;
-      Jv_i = JacobianOfUserDefinedPos(*user_defined_pos_wo_spr_, q) * qdot;
-      q(i) -= dx_;
-      Jv_0 = JacobianOfUserDefinedPos(*user_defined_pos_wo_spr_, q) * qdot;
-      q(i) += dx_ / 2;
-      grad_Jv.col(i) = (Jv_i - Jv_0) / dx_;
-    }
-    JdotV_ = grad_Jv * qdot;
-  }
+  JdotV_ = rom_.EvalMappingFuncJdotV(q, v, context_wo_spr);
 }
-void AbstractTrackingData::CheckDerivedOscTrackingData() {
-  if (only_one_user_defined_pos_) {
-    DRAKE_DEMAND(GetTrajDim() == user_defined_pos_wo_spr_
-                                     ->Position(VectorXd::Ones(
-                                         plant_wo_spr_->num_positions()))
-                                     .size());
-  } else {
-    DRAKE_DEMAND(GetTrajDim() == user_defined_pos_wo_spr_
-                                     ->Position(VectorXd::Ones(
-                                         plant_wo_spr_->num_positions()))
-                                     .size());
-    DRAKE_DEMAND(GetTrajDim() == user_defined_pos_w_spr_
-                                     ->Position(VectorXd::Ones(
-                                         plant_w_spr_->num_positions()))
-                                     .size());
-  }
-}
-MatrixXd AbstractTrackingData::JacobianOfUserDefinedPos(
-    const OscUserDefinedPos& user_defined_pos, VectorXd q) const {
-  if (is_forward_differencing_) {
-    // Forward differencing
-    VectorXd r_0, r_i;
-    r_0 = user_defined_pos.Position(q);
-    MatrixXd J = MatrixXd(r_0.size(), q.size());
-    for (int i = 0; i < q.size(); i++) {
-      q(i) += dx_;
-      r_i = user_defined_pos.Position(q);
-      q(i) -= dx_;
-      J.col(i) = (r_i - r_0) / dx_;
-    }
-    return J;
-  } else {
-    // Central differencing
-    VectorXd r_f, r_i;
-    MatrixXd J = MatrixXd(GetTrajDim(), q.size());
-    for (int i = 0; i < q.size(); i++) {
-      q(i) += dx_ / 2;
-      r_f = user_defined_pos.Position(q);
-      q(i) -= dx_;
-      r_i = user_defined_pos.Position(q);
-      q(i) += dx_ / 2;
-      J.col(i) = (r_f - r_i) / dx_;
-    }
-    return J;
-  }
-}
-
-MatrixXd AbstractTrackingData::WToQuatDotMap(const Eigen::Vector4d& q) const {
-  // Note: The same calculation happens in Drake's
-  // QuaternionFloatingMobilizer<T>::AngularVelocityToQuaternionRateMatrix()
-  // This matrix transforms angular velocity wrt the WORLD to d/dt quaternion
-  MatrixXd ret(4,3);
-  ret <<  -q(1), -q(2), -q(3),
-           q(0),  q(3), -q(2),
-          -q(3),  q(0),  q(1),
-           q(2), -q(1),  q(0);
-  ret *= 0.5;
-  return ret;
-}
-MatrixXd AbstractTrackingData::JwrtqdotToJwrtv(
-    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) const {
-  //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
-  //                   [      0      , I]
-  DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
-
-  MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
-  ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
-      Jwrtqdot.rightCols(q.size() - 4);
-  return ret;
+void OptimalRomTrackingData::CheckDerivedOscTrackingData() {
+  DRAKE_DEMAND(GetTrajDim() == rom_.n_y());
 }
 
 }  // namespace dairlib::systems::controllers

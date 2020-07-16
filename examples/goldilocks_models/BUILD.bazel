@@ -5,14 +5,13 @@ cc_binary(
     srcs = ["find_goldilocks_models.cc"],
     data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
     deps = [
-        ":dynamics_expression",
         ":goldilocks_utils",
-        ":kinematics_expression",
         ":task",
         "//common:eigen_utils",
+        "//common:file_utils",
+        "//examples/Cassie:cassie_utils",
         "//examples/goldilocks_models/find_models:initial_guess",
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
-        "//systems/goldilocks_models",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -24,73 +23,13 @@ cc_binary(
     srcs = ["plan_with_RoM_FoM.cc"],
     data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
     deps = [
-        ":dynamics_expression",
         ":goldilocks_utils",
-        ":kinematics_expression",
+        ":reduced_order_models",
         "//common",
-        "//examples/goldilocks_models/planning:RoM_planning_traj_opt",
-        "//systems/goldilocks_models",
+        "//common:file_utils",
+        "//examples/goldilocks_models/planning:rom_traj_opt",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-cc_library(
-    name = "kinematics_expression",
-    srcs = [
-        "kinematics_expression.cc",
-    ],
-    hdrs = [
-        "kinematics_expression.h",
-    ],
-    deps = [
-        "//multibody:utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "dynamics_expression",
-    srcs = [
-        "dynamics_expression.cc",
-    ],
-    hdrs = [
-        "dynamics_expression.h",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-# cc_binary(
-#     name = "kinematics_expression_test",
-#     srcs = ["kinematics_expression_test.cc"],
-#     deps = [
-#         ":kinematics_expression",
-#         "//common",
-#         "@drake//:drake_shared_library",
-#     ],
-# )
-
-# cc_binary(
-#     name = "dynamics_expression_test",
-#     srcs = ["dynamics_expression_test.cc"],
-#     deps = [
-#         ":dynamics_expression",
-#     ],
-# )
-
-cc_library(
-    name = "dummy_constraint",
-    srcs = [
-        "dummy_constraint.cc",
-    ],
-    hdrs = [
-        "dummy_constraint.h",
-    ],
-    deps = [
-        "//multibody:utils",
-        "@drake//:drake_shared_library",
     ],
 )
 
@@ -103,7 +42,9 @@ cc_library(
         "goldilocks_utils.h",
     ],
     deps = [
-        "//systems/goldilocks_models",
+        ":reduced_order_models",
+        "//common:file_utils",
+        "//examples/Cassie:cassie_utils",
         "@drake//:drake_shared_library",
     ],
 )
@@ -119,5 +60,38 @@ cc_library(
     deps = [
         "//common:eigen_utils",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "reduced_order_models",
+    srcs = [
+        "reduced_order_models.cc",
+    ],
+    hdrs = [
+        "reduced_order_models.h",
+    ],
+    deps = [
+        "//common:file_utils",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "run_cassie_rom_controller",
+    srcs = ["run_cassie_rom_controller.cc"],
+    deps = [
+        ":reduced_order_models",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie:simulator_drift",
+        "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

@@ -32,22 +32,10 @@ cc_library(
         "osc_tracking_data.h",
     ],
     deps = [
-        ":osc_user_defined_pos",
         ":osc_utils",
+        "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "osc_user_defined_pos",
-    srcs = [
-    ],
-    hdrs = [
-        "osc_user_defined_pos.h",
-    ],
-    deps = [
         "@drake//:drake_shared_library",
     ],
 )
@@ -63,19 +51,5 @@ cc_library(
     deps = [
         "//multibody:utils",
         "@drake//:drake_shared_library",
-    ],
-)
-
-cc_test(
-    name = "osc_tracking_data_test",
-    size = "small",
-    srcs = ["osc_tracking_data_test.cc"],
-    deps = [
-        ":osc_tracking_data",
-        ":osc_user_defined_pos",
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "@drake//:drake_shared_library",
-        "@gtest//:main",
     ],
 )

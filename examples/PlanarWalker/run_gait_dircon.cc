@@ -219,7 +219,7 @@ shared_ptr<HybridDircon<T>> runDircon(
 
   trajopt->CreateVisualizationCallback(
       dairlib::FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf"),
-      visualizer_poses, "base");
+      visualizer_poses, 0.2, "base");
 
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = Solve(*trajopt, trajopt->initial_guess());

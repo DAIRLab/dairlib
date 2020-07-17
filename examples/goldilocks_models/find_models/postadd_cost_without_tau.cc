@@ -2,7 +2,7 @@
 #include <Eigen/Dense>
 #include <string>
 
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 #include "drake/common/drake_assert.h"
 
 using Eigen::VectorXd;

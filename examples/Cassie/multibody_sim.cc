@@ -1,7 +1,16 @@
 #include <memory>
+
 #include <gflags/gflags.h>
 
-#include "drake/systems/lcm/lcm_interface_system.h"
+#include "dairlib/lcmt_robot_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_cassie_out.hpp"
+#include "examples/Cassie/cassie_fixed_point_solver.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "multibody/multibody_utils.h"
+#include "systems/primitives/subvector_pass_through.h"
+#include "systems/robot_lcm_systems.h"
+
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
@@ -10,18 +19,9 @@
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-
-#include "dairlib/lcmt_robot_input.hpp"
-#include "dairlib/lcmt_robot_output.hpp"
-
-#include "examples/Cassie/cassie_fixed_point_solver.h"
-#include "examples/Cassie/cassie_utils.h"
-#include "multibody/multibody_utils.h"
-#include "systems/primitives/subvector_pass_through.h"
-#include "systems/robot_lcm_systems.h"
-
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
@@ -63,7 +63,6 @@ DEFINE_double(init_height, .7,
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
-
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -86,7 +85,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
-      FLAGS_spring_model, true);
+                     FLAGS_spring_model, true);
   plant.Finalize();
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
@@ -112,8 +111,15 @@ int do_main(int argc, char* argv[]) {
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
+          "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
   contact_results_publisher.set_name("contact_results_publisher");
+
+  // Sensor aggregator and publisher of lcmt_cassie_out
+  const auto& sensor_aggregator = AddImuAndAggregator(
+      &builder, plant, passthrough->get_output_port());
+  auto sensor_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+          "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
 
   // connect leaf systems
   builder.Connect(*input_sub, *input_receiver);
@@ -132,6 +138,8 @@ int do_main(int argc, char* argv[]) {
                   contact_viz.get_input_port(0));
   builder.Connect(contact_viz.get_output_port(0),
                   contact_results_publisher.get_input_port());
+  builder.Connect(sensor_aggregator.get_output_port(0),
+                  sensor_pub->get_input_port());
 
   auto diagram = builder.Build();
 
@@ -150,8 +158,8 @@ int do_main(int argc, char* argv[]) {
   double min_normal_fp = 70;
   double toe_spread = .2;
   if (FLAGS_floating_base) {
-    CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp,
-        true, toe_spread, &q_init, &u_init, &lambda_init);  
+    CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp, true,
+                           toe_spread, &q_init, &u_init, &lambda_init);
   } else {
     CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
   }
@@ -176,7 +184,6 @@ int do_main(int argc, char* argv[]) {
 
   return 0;
 }
-
 
 }  // namespace dairlib
 

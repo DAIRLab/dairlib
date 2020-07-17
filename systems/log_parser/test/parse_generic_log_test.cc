@@ -9,14 +9,15 @@ int main() {
   Eigen::VectorXd t;
   Eigen::MatrixXd x;
 
-  RigidBodyTree<double> tree;
-  dairlib::buildCassieTree(tree);
+  drake::multibody::MultibodyPlant<double> plant(0.0);
+  dairlib::addCassieMultibody(&plant);
+
   std::string channel = "CASSIE_INPUT";
   std::string filename =
     "/home/nanda/DAIR/dairlib/examples/Cassie/lcmlog-2019-05-21.02";
 
   std::unique_ptr<dairlib::systems::RobotInputReceiver> system =
-      std::make_unique<dairlib::systems::RobotInputReceiver>(tree);
+      std::make_unique<dairlib::systems::RobotInputReceiver>(plant);
   dairlib::multibody::parseLcmLog<dairlib::lcmt_robot_input>(
       std::move(system), filename, channel, &t, &x, 2.0e6);
 

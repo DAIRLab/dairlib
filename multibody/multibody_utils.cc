@@ -243,8 +243,11 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   return name_to_index_map;
 }
 
+template <typename T>
 vector<string> createStateNameVectorFromMap(
-    const map<string, int>& pos_map, const map<string, int>& vel_map) {
+    const MultibodyPlant<T>& plant) {
+  map<string, int> pos_map = makeNameToPositionsMap(plant);
+  map<string, int> vel_map = makeNameToVelocitiesMap(plant);
   vector<string> state_names(pos_map.size() + vel_map.size());
 
   for (const auto& name_index_pair : pos_map) {
@@ -257,8 +260,10 @@ vector<string> createStateNameVectorFromMap(
   return state_names;
 }
 
+template <typename T>
 vector<string> createActuatorNameVectorFromMap(
-    const map<string, int>& act_map) {
+    const MultibodyPlant<T>& plant) {
+  map<string, int> act_map = makeNameToActuatorsMap(plant);
   vector<string> actuator_names(act_map.size());
 
   for (const auto& name_index_pair : act_map) {
@@ -314,6 +319,30 @@ bool isQuaternion(const MultibodyPlant<T>& plant) {
   return QuaternionStartIndex(plant) != -1;
 }
 
+Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
+  // clang-format off
+  Eigen::MatrixXd ret(4,3);
+  ret <<  -q(1), -q(2), -q(3),
+           q(0),  q(3), -q(2),
+          -q(3),  q(0),  q(1),
+           q(2), -q(1),  q(0);
+  ret *= 0.5;
+  // clang-format on
+  return ret;
+}
+
+Eigen::MatrixXd JwrtqdotToJwrtv(
+    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) {
+  //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
+  //                   [      0      , I]
+  DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
+
+  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
+  ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
+      Jwrtqdot.rightCols(q.size() - 4);
+  return ret;
+}
+
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT
@@ -326,6 +355,10 @@ template map<string, int> makeNameToVelocitiesMap<double>(const MultibodyPlant<d
 template map<string, int> makeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template vector<string> createStateNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> createStateNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT

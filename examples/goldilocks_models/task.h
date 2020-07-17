@@ -37,7 +37,7 @@ class Task {
   //Default constructor;
   Task(){};
 
-  // Getters and setters
+  // Getters and setters for task values
   double get(const string& name) const {
     return task_.at(name_to_index_map_.at(name));
   }
@@ -47,6 +47,10 @@ class Task {
     DRAKE_DEMAND(values.size() == (unsigned)task_dim_);
     task_ = values;
   }
+  // Other getters
+  const std::unordered_map<string, int>& name_to_index_map() {
+    return name_to_index_map_;
+  };
 
  private:
   int task_dim_;
@@ -80,6 +84,9 @@ class TasksGenerator {
 
   // Generator
   virtual vector<double> NewTask(int sample_idx) = 0;
+
+  // Printing message
+  virtual void PrintInfo() const {};
 
  protected:
   int task_dim_{};
@@ -117,6 +124,9 @@ class GridTasksGenerator : public TasksGenerator {
   vector<double> NewNominalTask(int sample_idx);
   vector<double> NewTask(int sample_idx) final;
 
+  // Printing message
+  void PrintInfo() const override;
+
  private:
   static void RunThroughIndex(
       const std::vector<int>& N_sample, int i_layer, vector<int> index_tuple,
@@ -144,6 +154,9 @@ class UniformTasksGenerator : public TasksGenerator {
 
   // Generator
   vector<double> NewTask(int sample_idx) final;
+
+  // Printing message
+  void PrintInfo() const override;
 };
 
 }  // namespace goldilocks_models

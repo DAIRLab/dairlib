@@ -145,7 +145,7 @@ int DoMain() {
      2 * num_iiwa_positions, num_iiwa_positions);
 
   builder.Connect(command_sub->get_output_port(),
-                  command_receiver->get_input_port());
+                  command_receiver->get_message_input_port());
 
   // Connecting iiwa input ports
   builder.Connect(iiwa_controller->get_output_port_control(),

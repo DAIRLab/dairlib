@@ -1,35 +1,27 @@
-#include <iostream>
-#include <string>
 #include "math.h"
 #include <Eigen/Dense>
 
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/solve.h"
-#include "solvers/optimization_utils.h"
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
-
-using std::cout;
-using std::endl;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using drake::solvers::MathematicalProgram;
-using drake::trajectories::PiecewisePolynomial;
+#include "drake/solvers/mathematical_program.h"
 
 using drake::MatrixX;
 using drake::VectorX;
+using drake::solvers::MathematicalProgram;
 using drake::symbolic::Expression;
+using drake::trajectories::PiecewisePolynomial;
+using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+using std::cout;
+using std::endl;
 
 int main() {
-
   // Create variables
   MathematicalProgram quadprog;
   auto w = quadprog.NewContinuousVariables(7, "w");
 
   // Create a piecewise polynomial
-  std::vector<double> T_breakpoint = { -3, -2, -1, 0, 1, 2, 3};
+  std::vector<double> T_breakpoint = {-3, -2, -1, 0, 1, 2, 3};
   std::vector<MatrixX<Expression>> Y(T_breakpoint.size(), MatrixXd::Zero(1, 1));
   Y[0](0, 0) = w(0);
   Y[1](0, 0) = w(1);
@@ -42,7 +34,8 @@ int main() {
   // PiecewisePolynomial<Expression> spline =
   //   PiecewisePolynomial<Expression>::Pchip(T_breakpoint, Y);
 
-  std::vector<MatrixX<Expression>> Y_dot(T_breakpoint.size(), MatrixXd::Zero(1, 1));
+  std::vector<MatrixX<Expression>> Y_dot(T_breakpoint.size(),
+                                         MatrixXd::Zero(1, 1));
   Y_dot[0](0, 0) = 0;
   Y_dot[1](0, 0) = 0;
   Y_dot[2](0, 0) = 0;

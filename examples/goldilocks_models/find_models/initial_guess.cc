@@ -11,7 +11,7 @@ using Eigen::VectorXd;
 namespace dairlib::goldilocks_models {
 // edited by Jianshu to try a new way of setting initial guess
 
-VectorXd GetThetaScale(const RomData& rom) {
+VectorXd GetThetaScale(const ReducedOrderModel& rom) {
   // considering the scale for theta doesn't have a significant impact on
   // improving the quality of the initial guess,set them all ones.
   return VectorXd::Ones(rom.n_y() + rom.n_yddot());
@@ -68,19 +68,18 @@ void InterpolateAmongDifferentTasks(const string& dir, string prefix,
 }
 
 // calculate interpolated initial guess using weight vector and solution matrix
-VectorXd CalculateInterpolation(VectorXd& weight_vector,
+VectorXd CalculateInterpolation(const VectorXd& weight_vector,
                                 const MatrixXd& solution_matrix) {
   DRAKE_DEMAND(weight_vector.rows() > 0);
-  // interpolation
-  weight_vector = weight_vector/weight_vector.sum();
-  VectorXd interpolated_solution = solution_matrix * weight_vector;
+  // normalize the weight vector by L1 norm and interpolate
+  VectorXd interpolated_solution = solution_matrix * weight_vector/weight_vector.sum();
   return interpolated_solution;
 }
 
 string SetInitialGuessByInterpolation(const string& directory, int iter,
                                       int sample,
                                       const TasksGenerator* task_gen,
-                                      const Task& task, const RomData& rom,
+                                      const Task& task, const ReducedOrderModel& rom,
                                       bool use_database, int robot) {
   /* define some parameters used in interpolation
    * theta_range :decide the range of theta to use in interpolation
@@ -128,7 +127,8 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     }
     initial_guess = CalculateInterpolation(weight_gamma, w_gamma);
     //    save initial guess and set init file
-    initial_file_name = prefix + string("_initial_guess.csv");
+    initial_file_name = to_string(iter) + "_" + to_string(sample) +
+                        string("_initial_guess.csv");
     writeCSV(directory + initial_file_name, initial_guess);
   } else {
     DRAKE_DEMAND(iter > 0);

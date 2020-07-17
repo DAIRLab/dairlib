@@ -1,0 +1,50 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "kinematics_expression",
+    srcs = [
+        "kinematics_expression.cc",
+    ],
+    hdrs = [
+        "kinematics_expression.h",
+    ],
+    deps = [
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+    ],
+    tags = ["manual"],
+    deprecation = "goldilocks_models/attic/kinematics_expression is deprecated."
+)
+
+cc_library(
+    name = "dynamics_expression",
+    srcs = [
+        "dynamics_expression.cc",
+    ],
+    hdrs = [
+        "dynamics_expression.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+    tags = ["manual"],
+    deprecation = "goldilocks_models/attic/dynamics_expression is deprecated."
+)
+
+# cc_binary(
+#     name = "kinematics_expression_test",
+#     srcs = ["kinematics_expression_test.cc"],
+#     deps = [
+#         ":kinematics_expression",
+#         "//common",
+#         "@drake//:drake_shared_library",
+#     ],
+# )
+
+# cc_binary(
+#     name = "dynamics_expression_test",
+#     srcs = ["dynamics_expression_test.cc"],
+#     deps = [
+#         ":dynamics_expression",
+#     ],
+# )

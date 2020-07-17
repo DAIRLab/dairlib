@@ -7,8 +7,7 @@
 #include <drake/common/trajectories/trajectory.h>
 
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/osc/osc_user_defined_pos.h"
-
+#include "examples/goldilocks_models/reduced_order_models.h"
 
 namespace dairlib {
 namespace systems {
@@ -17,12 +16,14 @@ namespace controllers {
 /// OscTrackingData is a virtual class
 
 /// Input of the constructor:
-/// - dimension of the output/trajectory
-/// - gains of PD controller
+/// - name of the trajectory
+/// - dimension of the trajectory
+/// - gains of the PD controller
 /// - cost weight
-/// - a flag indicating the trajectory is a constant
-/// - a flag indicating the trajectory has exponential term (that is, the traj
-///   is of ExponentialPlusPiecewisePolynomial class)
+/// - MBP (full model)
+/// - MBP (model without spring)
+/// - a flag for using only the model without spring in evaluation (this flag is
+///   designed for OptimalRomTrackingData)
 
 /// In OSC, the position and the velocity of the robot are given. The goal is to
 /// find the optimal
@@ -69,7 +70,8 @@ class OscTrackingData {
       const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
+      bool use_only_plant_wo_spr_in_evaluation = false);
 
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_state_
@@ -113,6 +115,12 @@ class OscTrackingData {
   std::string GetName() const { return name_; };
   int GetTrajDim() const { return n_r_; };
   bool IsActive() const { return track_at_current_state_; }
+  const drake::multibody::MultibodyPlant<double>* plant_w_spr() const {
+    return plant_w_spr_;
+  };
+  const drake::multibody::MultibodyPlant<double>* plant_wo_spr() const {
+    return plant_wo_spr_;
+  };
 
   void SaveYddotCommandSol(const Eigen::VectorXd& dv);
 
@@ -203,6 +211,9 @@ class OscTrackingData {
   // Store whether or not the tracking data is active
   bool track_at_current_state_;
   int state_idx_ = 0;
+
+  // Flag
+  bool use_only_plant_wo_spr_in_evaluation_;
 };
 
 /// ComTrackingData is used when we want to track center of mass trajectory.
@@ -391,29 +402,21 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<int> joint_vel_idx_wo_spr_;
 };
 
-// TODO(yminchen): You can probably use symbolics of drake
-//  Also, drake polynomial function can potentially help you to do derivatives
-class AbstractTrackingData final : public OscTrackingData {
+class OptimalRomTrackingData final : public OscTrackingData {
  public:
-  AbstractTrackingData(
+  OptimalRomTrackingData(
       const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
-      OscUserDefinedPos* user_defined_pos);
-  AbstractTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
-      OscUserDefinedPos* user_defined_pos_w_spr,
-      OscUserDefinedPos* user_defined_pos_wo_spr);
+      const goldilocks_models::ReducedOrderModel& rom);
 
  private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                  drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYAndError(const Eigen::VectorXd& x_wo_spr,
+                       drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_wo_spr,
+      drake::systems::Context<double>& context_wo_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                drake::systems::Context<double>& context_wo_spr) final;
@@ -422,39 +425,9 @@ class AbstractTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  // Compute Jacobian (qdot version instead of v!) by numerical differentiation
-  Eigen::MatrixXd JacobianOfUserDefinedPos(
-      const OscUserDefinedPos& user_defined_pos, Eigen::VectorXd q) const;
-
-  // Compute the matrix for mapping global roll-pitch-yaw angular velocity to
-  // quaternion derivatives
-  // Ref: equation 16 of https://arxiv.org/pdf/0811.2889.pdf
-  Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) const;
-  Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
-                                  const Eigen::MatrixXd& Jwrtqdot) const;
-
-  bool only_one_user_defined_pos_;
-
-  OscUserDefinedPos* user_defined_pos_wo_spr_;
-  OscUserDefinedPos* user_defined_pos_w_spr_;
-
-  // Map position/velocity from model with spring to without spring
-  Eigen::MatrixXd map_position_from_spring_to_no_spring_;
-  Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
-
-  // Step size for numerical differentiation
-  // It's tuned for minimizing JdotV error:
-  // (states and user-defined functions are in the osc_tracking_data_test.cc)
-  //   dx_ = 1e-5 if forward differencing.
-  //                 JdotV error norm ~ 1e-5, J error norm ~ 1e-5,
-  //                 runtime for JdotV calculation (Cassie CoM) ~ 1.6ms
-  //   dx_ = 4e-4 if central differencing.
-  //                 JdotV error norm ~ 5e-8, J error norm ~ 5e-9
-  //                 runtime for JdotV calculation (Cassie CoM) ~ 3.0ms
-  double dx_ = 1e-5;
-  // if is_forward_differencing_ = false, we use central differencing
-  bool is_forward_differencing_ = true;
+  const goldilocks_models::ReducedOrderModel& rom_;
 };
+
 
 }  // namespace controllers
 }  // namespace systems

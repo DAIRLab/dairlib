@@ -20,14 +20,12 @@ class DirconOptions {
 
   // Setters/getters for constraint scaling
   /// The impact constraint is for the impact at the beginning of the mode
-  void setQuatConstraintScaling(double s);
   void setDynConstraintScaling(int idx, double s);
   void setImpConstraintScaling(int idx, double s);
   void setKinConstraintScaling(int idx, double s);
   void setDynConstraintScaling(std::vector<int> idx_list, double s);
   void setImpConstraintScaling(std::vector<int> idx_list, double s);
   void setKinConstraintScaling(std::vector<int> idx_list, double s);
-  const std::unordered_map<int, double>& getQuatConstraintScaling();
   const std::unordered_map<int, double>& getDynConstraintScaling();
   const std::unordered_map<int, double>& getImpConstraintScaling();
   std::unordered_map<int, double> getKinConstraintScaling();
@@ -62,7 +60,6 @@ class DirconOptions {
       DirconKinConstraintType type);
 
   // Constraint scaling
-  std::unordered_map<int, double> quat_constraint_scaling_;
   std::unordered_map<int, double> dyn_constraint_scaling_;
   std::unordered_map<int, double> imp_constraint_scaling_;
   std::unordered_map<int, double> kin_constraint_scaling_;

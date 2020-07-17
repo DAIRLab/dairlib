@@ -5,6 +5,7 @@
 
 #include <gflags/gflags.h>
 
+#include "common/file_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_cassie_out.hpp"
@@ -68,6 +69,15 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  std::string dir = "../dairlib_data/goldilocks_models/planning/robot_1/data/";
+  // Read in the initial state of Cassie from the ROM planner
+  VectorXd init_robot_state = readCSV(dir + "x0_each_mode.csv").col(0);
+
+  // Read in the end time of the trajectory
+  int knots_per_foot_step = readCSV(dir + "nodes_per_step.csv")(0, 0);
+  double end_time_of_first_step =
+      readCSV(dir + "time_at_knots.csv")(knots_per_foot_step, 0);
 
   // Plant/System initialization
   DiagramBuilder<double> builder;
@@ -169,6 +179,8 @@ int do_main(int argc, char* argv[]) {
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
 
+  plant.SetPositionsAndVelocities(&plant_context, init_robot_state);
+
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
   if (!FLAGS_time_stepping) {
@@ -183,7 +195,7 @@ int do_main(int argc, char* argv[]) {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
-  simulator.AdvanceTo(FLAGS_end_time);
+  simulator.AdvanceTo(end_time_of_first_step + 0.1);
 
   return 0;
 }

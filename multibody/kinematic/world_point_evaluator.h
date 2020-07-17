@@ -61,6 +61,7 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   drake::VectorX<T> EvalFullJacobianDotTimesV(
       const drake::systems::Context<T>& context) const override;
 
+  using KinematicEvaluator<T>::EvalFullJacobian;
   using KinematicEvaluator<T>::plant;
 
   std::shared_ptr<drake::solvers::Constraint> CreateConicFrictionConstraint(

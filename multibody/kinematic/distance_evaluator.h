@@ -38,6 +38,7 @@ class DistanceEvaluator : public KinematicEvaluator<T> {
   drake::VectorX<T> EvalFullJacobianDotTimesV(
       const drake::systems::Context<T>& context) const override;
 
+  using KinematicEvaluator<T>::EvalFullJacobian;
   using KinematicEvaluator<T>::plant;
 
  private:

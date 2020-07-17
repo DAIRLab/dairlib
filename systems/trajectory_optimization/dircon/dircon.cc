@@ -62,13 +62,15 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     //
     // Set constraints on timesteps
     //
-    double min_dt = mode.min_T() / (mode.num_knotpoints() - 1);
-    double max_dt = mode.max_T() / (mode.num_knotpoints() - 1);
-    AddBoundingBoxConstraint(min_dt, max_dt, timestep(mode_start_[i_mode]));
-    for (int j = 0; j < mode.num_knotpoints() - 2; j++) {
-      // all timesteps must be equal
-      AddLinearConstraint(timestep(mode_start_[i_mode] + j) ==
-                          timestep(mode_start_[i_mode] + j + 1));
+    if (mode_length(i_mode) > 1) {
+      double min_dt = mode.min_T() / (mode.num_knotpoints() - 1);
+      double max_dt = mode.max_T() / (mode.num_knotpoints() - 1);
+      AddBoundingBoxConstraint(min_dt, max_dt, timestep(mode_start_[i_mode]));
+      for (int j = 0; j < mode.num_knotpoints() - 2; j++) {
+        // all timesteps must be equal
+        AddLinearConstraint(timestep(mode_start_[i_mode] + j) ==
+                            timestep(mode_start_[i_mode] + j + 1));
+      }
     }
 
     //

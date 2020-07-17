@@ -1,13 +1,16 @@
 #pragma once
 
 #include "systems/framework/output_vector.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace examples {
 
-enum FSM_STATE { BALANCE, CROUCH, FLIGHT, LAND};
+namespace osc_jump {
+
+enum FSM_STATE { BALANCE, CROUCH, FLIGHT, LAND };
 
 /// Event based FSM for jumping with option to change to a time-based FSM
 /// @param[plant] The MultibodyPlant that this FSM operates with
@@ -59,5 +62,6 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   const FSM_STATE init_state_;
 };
 
+}  // namespace osc_jump
 }  // namespace examples
 }  // namespace dairlib

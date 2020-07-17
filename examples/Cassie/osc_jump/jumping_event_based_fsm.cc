@@ -15,6 +15,7 @@ using std::vector;
 
 namespace dairlib {
 namespace examples {
+namespace osc_jump {
 
 JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
@@ -159,5 +160,6 @@ bool JumpingEventFsm::DetectGuardCondition(
   return guard_condition && !(bool)transition_flag(0);
 }
 
+}  // namespace osc_jump
 }  // namespace examples
 }  // namespace dairlib

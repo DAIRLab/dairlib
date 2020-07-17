@@ -27,15 +27,15 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
-namespace dairlib::examples::Cassie::osc_walk {
+namespace dairlib::examples::osc_walk {
 
 SwingFootTrajGenerator::SwingFootTrajGenerator(
-    const MultibodyPlant<double>& plant, const string& hip_name,
+    const MultibodyPlant<double>& plant, const string& stance_foot_name,
     bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj,
     double time_offset)
     : plant_(plant),
       world_(plant.world_frame()),
-      stance_foot_frame_(plant.GetFrameByName(hip_name)),
+      stance_foot_frame_(plant.GetFrameByName(stance_foot_name)),
       foot_traj_(foot_traj) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
@@ -83,7 +83,7 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::generateFootTraj(
   const PiecewisePolynomial<double>& foot_traj_segment =
       foot_traj_.slice(foot_traj_.get_segment_index(t), 1);
 
-  // Hip offset stuff
+  // offset stuff
   std::vector<double> breaks = foot_traj_segment.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd stance_foot(3, 2);
@@ -118,4 +118,4 @@ void SwingFootTrajGenerator::CalcTraj(
   }
 }
 
-}  // namespace dairlib::examples::Cassie::osc_walk
+}  // namespace dairlib::examples::osc_walk

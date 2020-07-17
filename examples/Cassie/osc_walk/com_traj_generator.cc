@@ -30,14 +30,12 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
-namespace dairlib::examples::Cassie::osc_walk {
+namespace dairlib::examples::osc_walk {
 
-COMTrajGenerator::COMTrajGenerator(
-    const MultibodyPlant<double>& plant,
-    PiecewisePolynomial<double> com_traj, double time_offset)
-    : plant_(plant),
-      world_(plant_.world_frame()),
-      com_traj_(com_traj) {
+COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
+                                   PiecewisePolynomial<double> com_traj,
+                                   double time_offset)
+    : plant_(plant), world_(plant_.world_frame()), com_traj_(com_traj) {
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ =
@@ -81,12 +79,11 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
   if (prev_fsm_state(0) != fsm_state(0)) {  // When to reset the clock
     prev_fsm_state(0) = fsm_state(0);
 
-    if(fsm_state(0) == LEFT){
+    if (fsm_state(0) == LEFT) {
       VectorXd q = robot_output->GetPositions();
       plant_.SetPositions(context_.get(), q);
       VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
-      x_offset(0) =
-          (center_of_mass(0) - com_traj_.value(0)(0));
+      x_offset(0) = (center_of_mass(0) - com_traj_.value(0)(0));
       time_shift(0) = timestamp;
     }
   }
@@ -97,8 +94,7 @@ void COMTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
-  auto time_shift =
-      context.get_discrete_state(time_shift_idx_).get_value();
+  auto time_shift = context.get_discrete_state(time_shift_idx_).get_value();
 
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
@@ -108,4 +104,4 @@ void COMTrajGenerator::CalcTraj(
   casted_traj->shiftRight(time_shift(0));
 }
 
-}  // namespace dairlib::examples::Cassie::osc_walk
+}  // namespace dairlib::examples::osc_walk

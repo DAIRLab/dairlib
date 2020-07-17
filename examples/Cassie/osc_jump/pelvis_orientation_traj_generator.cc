@@ -7,12 +7,12 @@ using drake::systems::BasicVector;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
-namespace dairlib::examples::Cassie::osc_jump {
+namespace dairlib::examples::osc_jump {
 
 PelvisOrientationTrajGenerator::PelvisOrientationTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const PiecewisePolynomial<double>& orientation_traj,
-    std::string traj_name, double time_offset)
+    const PiecewisePolynomial<double>& orientation_traj, std::string traj_name,
+    double time_offset)
     : plant_(plant), traj_(orientation_traj) {
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
@@ -36,4 +36,4 @@ void PelvisOrientationTrajGenerator::CalcTraj(
   *casted_traj = traj_;
 }
 
-}  // namespace dairlib::examples::Cassie::osc_jump
+}  // namespace dairlib::examples::osc_jump

@@ -15,6 +15,7 @@ using std::vector;
 
 namespace dairlib {
 namespace examples {
+namespace osc_walk {
 
 WalkingEventFsm::WalkingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
@@ -72,7 +73,7 @@ EventStatus WalkingEventFsm::DiscreteVariableUpdate(
   }
 
   int num_contacts = contact_info->num_point_pair_contacts;
-  if (contact_based_ && num_contacts == 0) {
+  if (timestamp > 0.001 && contact_based_ && num_contacts == 0) {
     std::cerr << "No feet are in contact with the ground!" << std::endl;
     return EventStatus::Failed(this, "No feet are in contact with the ground!");
   }
@@ -128,5 +129,6 @@ void WalkingEventFsm::SetNextFiniteState(Eigen::VectorBlock<VectorXd> fsm_state,
   }
 }
 
+}  // namespace osc_walk
 }  // namespace examples
 }  // namespace dairlib

@@ -27,7 +27,7 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
-namespace dairlib::examples::Cassie::osc_jump {
+namespace dairlib::examples::osc_jump {
 
 FlightFootTrajGenerator::FlightFootTrajGenerator(
     const MultibodyPlant<double>& plant, const string& hip_name,
@@ -114,4 +114,4 @@ void FlightFootTrajGenerator::CalcTraj(
   }
 }
 
-}  // namespace dairlib::examples::Cassie::osc_jump
+}  // namespace dairlib::examples::osc_jump

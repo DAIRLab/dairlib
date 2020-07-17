@@ -31,7 +31,7 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
-namespace dairlib::examples::Cassie::osc_jump {
+namespace dairlib::examples::osc_jump {
 
 COMTrajGenerator::COMTrajGenerator(
     const MultibodyPlant<double>& plant,
@@ -174,4 +174,4 @@ void COMTrajGenerator::CalcTraj(
     *casted_traj = generateLandingTraj(context, x, time);
 }
 
-}  // namespace dairlib::examples::Cassie::osc_jump
+}  // namespace dairlib::examples::osc_jump

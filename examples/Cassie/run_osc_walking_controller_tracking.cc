@@ -5,10 +5,10 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc_jump/com_traj_generator.h"
-#include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
-#include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/osc_jump/pelvis_orientation_traj_generator.h"
+#include "examples/Cassie/osc_walk/com_traj_generator.h"
+#include "examples/Cassie/osc_walk/swing_foot_traj_generator.h"
+#include "examples/Cassie/osc_walk/walking_event_based_fsm.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -43,10 +43,10 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
-using examples::osc_jump::COMTrajGenerator;
-using examples::osc_jump::FlightFootTrajGenerator;
-using examples::osc_jump::JumpingEventFsm;
 using examples::osc_jump::PelvisOrientationTrajGenerator;
+using examples::osc_walk::COMTrajGenerator;
+using examples::osc_walk::SwingFootTrajGenerator;
+using examples::osc_walk::WalkingEventFsm;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
@@ -62,7 +62,7 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_string(folder_path,
               "/home/yangwill/Documents/research/projects/cassie"
-              "/jumping/saved_trajs/",
+              "/walking/saved_trajs/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
 DEFINE_string(mode_name, "state_input_trajectory",
@@ -72,17 +72,14 @@ DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
 DEFINE_bool(contact_based_fsm, true,
             "The contact based fsm transitions "
             "between states using contact data.");
-DEFINE_double(transition_delay, 0.0,
-              "Time to wait after trigger to "
-              "transition between FSM states.");
-DEFINE_string(simulator, "DRAKE",
-              "Simulator used, important for determining how to interpret "
-              "contact information. Other options include MUJOCO and soon to "
-              "include GAZEBO.");
+DEFINE_string(
+    simulator, "DRAKE",
+    "Simulator used, important for determining how to interpret "
+    "contact information. Other options include MUJOCO and possibly GAZEBO.");
 DEFINE_bool(add_noise, false,
             "Whether to add gaussian noise to state "
             "inputted to controller");
-DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
+DEFINE_int32(init_fsm_state, osc_walk::LEFT, "Initial state of the FSM");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -161,44 +158,43 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.datapoints.topRows(4));
 
   // For the time-based FSM
-  double flight_time = FLAGS_delay_time + state_trajs[0].end_time();
-  double land_time = FLAGS_delay_time + state_trajs[1].end_time();
-  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
-                                          land_time};
+  double total_time = state_trajs.back().end_time();
+  double l_stance_time = state_trajs[0].end_time();
+  double ds_l_lo_time = state_trajs[1].end_time();
+  double r_stance_time = total_time + state_trajs[0].end_time();
+  double ds_r_lo_time = total_time + state_trajs[1].end_time();
+  std::vector<double> transition_times = {l_stance_time, ds_l_lo_time,
+                                          r_stance_time, ds_r_lo_time};
 
-  Vector3d support_center_offset;
-  support_center_offset << FLAGS_x_offset, 0.0, 0.0;
-  std::vector<double> breaks = com_traj.get_segment_times();
-  VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
-  MatrixXd offset_points = support_center_offset.replicate(1, breaks.size());
-  PiecewisePolynomial<double> offset_traj =
-      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
-  com_traj = com_traj + offset_traj;
+  //  Vector3d support_center_offset;
+  //  support_center_offset << FLAGS_x_offset, 0.0, 0.0;
+  //  std::vector<double> breaks = com_traj.get_segment_times();
+  //  VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(),
+  //  breaks.size()); MatrixXd offset_points =
+  //  support_center_offset.replicate(1, breaks.size());
+  //  PiecewisePolynomial<double> offset_traj =
+  //      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
+  //      offset_points);
+  //  com_traj = com_traj + offset_traj;
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm;
 
-  vector<pair<const Vector3d, const Frame<double>&>> contact_points;
-  contact_points.push_back(LeftToeFront(plant_wo_springs));
-  contact_points.push_back(RightToeFront(plant_wo_springs));
-  contact_points.push_back(LeftToeRear(plant_wo_springs));
-  contact_points.push_back(RightToeRear(plant_wo_springs));
-
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, contact_points, com_traj, FLAGS_delay_time);
-  auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, "hip_left", true, l_foot_trajectory, FLAGS_delay_time);
-  auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, "hip_right", false, r_foot_trajectory, FLAGS_delay_time);
+      plant_w_springs, com_traj, FLAGS_delay_time);
+  auto l_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
+      plant_w_springs, "toe_right", true, l_foot_trajectory, FLAGS_delay_time);
+  auto r_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
+      plant_w_springs, "toe_left", false, r_foot_trajectory, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
-          plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
+          plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_traj",
           FLAGS_delay_time);
-  auto fsm = builder.AddSystem<JumpingEventFsm>(
+  auto fsm = builder.AddSystem<WalkingEventFsm>(
       plant_w_springs, transition_times, FLAGS_contact_based_fsm,
-      FLAGS_transition_delay, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
+      (osc_walk::FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -211,22 +207,18 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
 
-  LcmSubscriberSystem* contact_results_sub = nullptr;
-  if (FLAGS_simulator == "DRAKE") {
-    contact_results_sub = builder.AddSystem(
-        LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
-            "CASSIE_CONTACT_DRAKE", &lcm));
-  } else if (FLAGS_simulator == "MUJOCO") {
-    contact_results_sub = builder.AddSystem(
-        LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
-            "CASSIE_CONTACT_MUJOCO", &lcm));
-  } else if (FLAGS_simulator == "GAZEBO") {
-    // TODO(yangwill): Set up contact results in Gazebo
-  } else {
-    std::cerr << "Unknown simulator type!" << std::endl;
+  string contact_lcm_channel = "CASSIE_CONTACT_DRAKE";
+  if (FLAGS_simulator == "MUJCOO") {
+    contact_lcm_channel = "CASSIE_CONTACT_MUJOCO";
   }
+  if (FLAGS_contact_based_fsm)
+    cout << "Listening for contact info on: " << contact_lcm_channel << endl;
 
-  /**** OSC setup ****/
+  auto contact_results_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
+          contact_lcm_channel, &lcm));
+
+  /*** OSC setup ***/
   // Cost
   MatrixXd Q_accel = 1e-6 * MatrixXd::Identity(nv, nv);
   osc->SetAccelerationCostForAllJoints(Q_accel);
@@ -250,15 +242,25 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, right_heel.first, right_heel.second,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-  vector<osc_jump::FSM_STATE> stance_modes = {osc_jump::BALANCE,
-                                              osc_jump::CROUCH, osc_jump::LAND};
-  for (auto mode : stance_modes) {
+  vector<osc_walk::FSM_STATE> double_stance_modes = {osc_walk::DOUBLE_R_LO,
+                                                     osc_walk::DOUBLE_L_LO};
+  vector<osc_walk::FSM_STATE> all_modes = {
+      osc_walk::DOUBLE_R_LO, osc_walk::LEFT, osc_walk::DOUBLE_L_LO,
+      osc_walk::RIGHT};
+
+  /*** Contact Constraints ***/
+  for (auto mode : double_stance_modes) {
     osc->AddStateAndContactPoint(mode, &left_toe_evaluator);
     osc->AddStateAndContactPoint(mode, &left_heel_evaluator);
     osc->AddStateAndContactPoint(mode, &right_toe_evaluator);
     osc->AddStateAndContactPoint(mode, &right_heel_evaluator);
   }
+  osc->AddStateAndContactPoint(osc_walk::LEFT, &left_toe_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::LEFT, &left_heel_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::RIGHT, &left_toe_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::RIGHT, &left_heel_evaluator);
 
+  /*** Four bar constraint ***/
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
   auto left_loop = LeftLoopClosureEvaluator(plant_wo_springs);
   auto right_loop = RightLoopClosureEvaluator(plant_wo_springs);
@@ -266,7 +268,7 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_loop);
   osc->AddKinematicConstraint(&evaluators);
 
-  /**** Tracking Data for OSC *****/
+  /*** Tracking Data for OSC ***/
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2000;
@@ -276,10 +278,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
   ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
                                     &plant_w_springs, &plant_wo_springs);
-  for (auto mode : stance_modes) {
+  for (auto mode : all_modes) {
     com_tracking_data.AddStateToTrack(mode);
   }
-  osc->AddTrackingData(&com_tracking_data);
 
   // Feet tracking
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
@@ -295,8 +296,8 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_foot_tracking_data(
       "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_w_springs,
       &plant_wo_springs);
-  left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
+  left_foot_tracking_data.AddStateAndPointToTrack(osc_walk::LEFT, "toe_left");
+  right_foot_tracking_data.AddStateAndPointToTrack(osc_walk::RIGHT,
                                                    "toe_right");
 
   // Pelvis orientation tracking
@@ -313,22 +314,22 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_tracking_data", 3, K_p_pelvis, K_d_pelvis, W_pelvis,
-      &plant_w_springs, &plant_wo_springs);
+      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis, W_pelvis, &plant_w_springs,
+      &plant_wo_springs);
 
-  for (auto mode : stance_modes) {
+  for (auto mode : all_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
   }
 
-  osc->AddTrackingData(&pelvis_rot_tracking_data);
+  osc->AddTrackingData(&com_tracking_data);
   osc->AddTrackingData(&left_foot_tracking_data);
   osc->AddTrackingData(&right_foot_tracking_data);
+  osc->AddTrackingData(&pelvis_rot_tracking_data);
 
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
 
-  /*****Connect ports*****/
   // State receiver connections (Connected through LCM driven loop)
   drake::systems::LeafSystem<double>* controller_state_input = state_receiver;
   std::cout << "Running with noise: " << FLAGS_add_noise << std::endl;
@@ -347,6 +348,7 @@ int DoMain(int argc, char* argv[]) {
     controller_state_input = gaussian_noise;
   }
 
+  /*** Connect ports ***/
   // OSC connections
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(controller_state_input->get_output_port(0),
@@ -357,9 +359,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("l_foot_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("r_foot_traj"));
-  builder.Connect(
-      pelvis_rot_traj_generator->get_output_port(0),
-      osc->get_tracking_data_input_port("pelvis_rot_tracking_data"));
+  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_rot_traj"));
 
   // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),
@@ -391,7 +392,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc jumping controller"));
+  owned_diagram->set_name(("osc walking controller"));
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

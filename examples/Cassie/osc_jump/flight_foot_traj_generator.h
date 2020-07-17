@@ -1,13 +1,15 @@
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
-namespace dairlib::examples::Cassie::osc_jump {
+namespace dairlib::examples::osc_jump {
 
 class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
@@ -42,4 +44,4 @@ class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
   int fsm_port_;
 };
 
-}  // namespace dairlib::examples::Cassie::osc_jump
+}  // namespace dairlib::examples::osc_jump

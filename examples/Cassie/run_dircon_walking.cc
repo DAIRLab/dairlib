@@ -79,7 +79,7 @@ DEFINE_int32(scale_option, 0,
 DEFINE_int32(knot_points, 12, "Number of nodes");
 DEFINE_bool(fix_time, true, "Whether to fix the duration of gait or not");
 DEFINE_double(duration, 0.4,
-              "Duration of the single support phase (s)."
+              "Duration of half of the walking gait (s)."
               "If is_fix_time = false, then duration is only used in initial "
               "guess calculation");
 DEFINE_double(stride_length, 0.2, "stride length of the walking");
@@ -112,10 +112,10 @@ MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,
 
 void DoMain() {
   // Dircon parameter
-  double minimum_timestep = 0.01;
+  double minimum_timestep = 0.005;
   DRAKE_DEMAND(FLAGS_duration / (FLAGS_knot_points - 1) >= minimum_timestep);
   // If the node density is too low, it's harder for SNOPT to converge well.
-  double max_distance_per_node = 0.2 / 16;
+  double max_distance_per_node = 0.2 / 8;
   DRAKE_DEMAND((FLAGS_stride_length / FLAGS_knot_points) <=
                max_distance_per_node);
 
@@ -385,6 +385,8 @@ void DoMain() {
   if (FLAGS_fix_time) {
     trajopt->AddDurationBounds(FLAGS_duration, FLAGS_duration);
   }
+
+  trajopt->AddBoundingBoxConstraint(1.1, 1.1, x0(pos_map.at("base_z")));
 
   // x position constraint
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
@@ -789,8 +791,8 @@ void DoMain() {
     }
   }
 
-  trajopt->CreateVisualizationCallback(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
+//  trajopt->CreateVisualizationCallback(
+//      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;

@@ -9,13 +9,13 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
-namespace dairlib::examples::Cassie::osc_walk {
+namespace dairlib::examples::osc_walk {
 
 class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   SwingFootTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const std::string& hip_name, bool isLeftFoot,
+      const std::string& stance_foot_name, bool isLeftFoot,
       const drake::trajectories::PiecewisePolynomial<double>& foot_traj,
       double time_offset = 0.0);
 
@@ -46,4 +46,4 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   int fsm_port_;
 };
 
-}  // namespace dairlib::examples::Cassie::osc_walk
+}  // namespace dairlib::examples::osc_walk

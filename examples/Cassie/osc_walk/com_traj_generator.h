@@ -9,14 +9,13 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
-namespace dairlib::examples::Cassie::osc_walk {
+namespace dairlib::examples::osc_walk {
 
 class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  COMTrajGenerator(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::trajectories::PiecewisePolynomial<double> com_traj,
-      double time_offset = 0.0);
+  COMTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::trajectories::PiecewisePolynomial<double> com_traj,
+                   double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -47,4 +46,4 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   int fsm_port_;
 };
 
-}  // namespace dairlib::examples::Cassie::osc_walk
+}  // namespace dairlib::examples::osc_walk

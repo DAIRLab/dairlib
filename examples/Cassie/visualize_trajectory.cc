@@ -27,6 +27,7 @@ DEFINE_string(trajectory_name, "", "File path to load the trajectory from");
 DEFINE_string(mode_name, "state_input_trajectory", "Base name of each trajectory");
 DEFINE_int32(num_poses, 1, "Number of poses per mode to draw");
 DEFINE_int32(num_modes, 0, "Number of contact modes in the trajectory");
+DEFINE_bool(use_transparency, false, "Transparency setting for the Multipose visualizer");
 DEFINE_int32(visualize_mode, 0,
              "0 - Single animation"
              "1 - Looped animation"
@@ -102,10 +103,19 @@ int DoMain() {
     for (int i = 0; i < FLAGS_num_poses; ++i) {
       poses.col(i) = optimal_traj.value(times[i * n_points / FLAGS_num_poses]);
     }
-    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
-        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
-        FLAGS_num_poses);
-    visualizer.DrawPoses(poses);
+    if(FLAGS_use_transparency){
+      VectorXd alpha_scale = VectorXd::LinSpaced(FLAGS_num_poses, 0.2, 1.0);
+      multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+          FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+          FLAGS_num_poses, alpha_scale.array().square());
+      visualizer.DrawPoses(poses);
+    }
+    else{
+      multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+          FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+          FLAGS_num_poses);
+      visualizer.DrawPoses(poses);
+    }
   }
 
   return 0;

@@ -3,12 +3,11 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "osc_jump",
+    name = "osc_walk",
     deps = [
-        "//examples/Cassie/osc_jump:com_traj_generator",
-        "//examples/Cassie/osc_jump:flight_foot_traj_generator",
-        "//examples/Cassie/osc_jump:jumping_event_based_fsm",
-        "//examples/Cassie/osc_jump:pelvis_orientation_traj_generator",
+        "//examples/Cassie/osc_walk:com_traj_generator",
+        "//examples/Cassie/osc_walk:swing_foot_traj_generator",
+        "//examples/Cassie/osc_walk:walking_event_based_fsm",
         "//systems/controllers/osc:operational_space_control",
     ],
 )
@@ -50,17 +49,17 @@ cc_library(
     ],
 )
 
-#cc_binary(
-#    name = "convert_traj_for_controller",
-#    srcs = ["convert_traj_for_controller.cc"],
-#    deps = [
-#        "//examples/Cassie:cassie_utils",
-#        "//lcm:lcm_trajectory_saver",
-#        "//multibody:utils",
-#        "@drake//:drake_shared_library",
-#        "@gflags",
-#    ],
-#)
+cc_binary(
+    name = "convert_traj_for_controller",
+    srcs = ["convert_traj_for_controller.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
 #
 #cc_binary(
 #    name = "convert_traj_for_sim",

@@ -200,7 +200,7 @@ class VisualizationGui(QWidget):
 
         name: name of corresponding shape
         '''
-        if (self.shapes[name].object != None):
+        if (self.shapes[name].object != None and self.shapes[name].object.getProperty('Visible') == False):
             self.shapes[name].object.setProperty('Visible', True)
 
     def checkBoxNotChecked(self, name):
@@ -209,7 +209,7 @@ class VisualizationGui(QWidget):
 
         name: name of corresponding shape
         '''
-        if (self.shapes[name].object != None):
+        if (self.shapes[name].object != None and self.shapes[name].object.getProperty('Visible') == True):
             self.shapes[name].object.setProperty('Visible', False)
 
     def distance(self, pt1, pt2):
@@ -288,14 +288,9 @@ class VisualizationGui(QWidget):
         '''
         if (self.checkBoxes[name].isChecked() == True):
             self.checkBoxChecked(name)
-            # if (self.checkBoxesPrevState[name] == False):
-            #     self.checkBoxesPrevState[name] = True
-            #     self.checkBoxChecked(name)
+
         else:
             self.checkBoxNotChecked(name)
-            # if (self.checkBoxesPrevState[name] == True):
-            #     self.checkBoxesPrevState[name] = False
-            #     self.checkBoxNotChecked(name)
 
     def state_handler(self, msg):
         '''

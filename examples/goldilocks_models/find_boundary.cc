@@ -1,14 +1,14 @@
-#include <gflags/gflags.h>
-#include <thread>  // multi-threading
 #include <chrono>
-#include <ctime>
-#include <queue>  // First in first out
-#include <deque>  // queue with feature of finding elements
-#include <utility>  // std::pair, std::make_pair
-#include <bits/stdc++.h>  // system call
 #include <cmath>
+#include <ctime>
+#include <deque>   // queue with feature of finding elements
+#include <queue>   // First in first out
+#include <thread>  // multi-threading
 #include <tuple>
-#include <Eigen/QR>  // CompleteOrthogonalDecomposition
+#include <utility>        // std::pair, std::make_pair
+#include <Eigen/QR>       // CompleteOrthogonalDecomposition
+#include <bits/stdc++.h>  // system call
+#include <gflags/gflags.h>
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/mathematical_program.h"
@@ -16,14 +16,14 @@
 #include "drake/solvers/solve.h"
 
 #include "common/eigen_utils.h"
+#include "common/file_utils.h"
 #include "common/find_resource.h"
-#include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "examples/goldilocks_models/find_models/initial_guess.h"
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/find_models/initial_guess.h"
-#include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/task.h"
-#include "systems/goldilocks_models/file_utils.h"
 #include "examples/goldilocks_models/find_boundary_utils/search_setting.h"
 
 using std::cin;
@@ -93,32 +93,7 @@ DEFINE_string(
     program_name, "",
 "The name of the program (to keep a record for future references)");
 
-void createMBP(MultibodyPlant<double>* plant, int robot_option) {
-  if (robot_option == 0) {
-    Parser parser(plant);
-    std::string full_name = FindResourceOrThrow(
-        "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
-    parser.AddModelFromFile(full_name);
-    plant->mutable_gravity_field().set_gravity_vector(
-        -9.81 * Eigen::Vector3d::UnitZ());
-    plant->WeldFrames(
-        plant->world_frame(), plant->GetFrameByName("base"),
-        drake::math::RigidTransform<double>());
-    plant->Finalize();
-
-  } else if (robot_option == 1) {
-    Parser parser(plant);
-    string full_name =
-        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-    parser.AddModelFromFile(full_name);
-    plant->mutable_gravity_field().set_gravity_vector(
-        -9.81 * Eigen::Vector3d::UnitZ());
-    plant->Finalize();
-  } else {
-    throw std::runtime_error("Should not reach here");
-  }
-}
-void setCostWeight(double* Q, double* R, double* all_cost_scale,
+void setCostWeight(double *Q, double *R, double *all_cost_scale,
                    int robot_option) {
   if (robot_option == 0) {
     *Q = 1;
@@ -128,76 +103,6 @@ void setCostWeight(double* Q, double* R, double* all_cost_scale,
     *Q = 5 * 0.1;
     *R = 0.1 * 0.01;
     *all_cost_scale = 0.2/* * 0.12*/;
-  }
-}
-void setRomDim(int* n_s, int* n_tau, int rom_option) {
-  if (rom_option == 0) {
-    // 2D -- lipm
-    *n_s = 2;
-    *n_tau = 0;
-  } else if (rom_option == 1) {
-    // 4D -- lipm + swing foot
-    *n_s = 4;
-    *n_tau = 2;
-  } else if (rom_option == 2) {
-    // 1D -- fix com vertical acceleration
-    *n_s = 1;
-    *n_tau = 0;
-  } else if (rom_option == 3) {
-    // 3D -- fix com vertical acceleration + swing foot
-    *n_s = 3;
-    *n_tau = 2;
-  } else {
-    throw std::runtime_error("Should not reach here");
-  }
-}
-void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
-  if ((rom_option == 0) || (rom_option == 2)) {
-    // passive rom, so we don't need B_tau
-  }
-  else if (rom_option == 1) {
-    DRAKE_DEMAND(B_tau->rows() == 4);
-    (*B_tau)(2, 0) = 1;
-    (*B_tau)(3, 1) = 1;
-  }
-  else if (rom_option == 3) {
-    DRAKE_DEMAND(B_tau->rows() == 3);
-    (*B_tau)(1, 0) = 1;
-    (*B_tau)(2, 1) = 1;
-  } else {
-    throw std::runtime_error("Should not reach here");
-  }
-}
-void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
-                     int n_feature_s, int rom_option) {
-  // // Testing intial theta
-  // theta_s = 0.25*VectorXd::Ones(n_theta_s);
-  // theta_sDDot = 0.5*VectorXd::Ones(n_theta_sDDot);
-  // theta_s = VectorXd::Random(n_theta_s);
-  // theta_sDDot = VectorXd::Random(n_theta_sDDot);
-
-  if (rom_option == 0) {
-    // 2D -- lipm
-    theta_s(0) = 1;
-    theta_s(1 + n_feature_s) = 1;
-    theta_sDDot(0) = 1;
-  } else if (rom_option == 1) {
-    // 4D -- lipm + swing foot
-    theta_s(0) = 1;
-    theta_s(1 + n_feature_s) = 1;
-    theta_s(2 + 2 * n_feature_s) = 1;
-    theta_s(3 + 3 * n_feature_s) = 1;
-    theta_sDDot(0) = 1;
-  } else if (rom_option == 2) {
-    // 1D -- fix com vertical acceleration
-    theta_s(1) = 1;
-  } else if (rom_option == 3) {
-    // 3D -- fix com vertical acceleration + swing foot
-    theta_s(1) = 1;
-    theta_s(2 + 1 * n_feature_s) = 1;
-    theta_s(3 + 2 * n_feature_s) = 1;
-  } else {
-    throw std::runtime_error("Should not reach here");
   }
 }
 
@@ -301,12 +206,16 @@ string getInitFileName(const string directory, int traj_opt_num,
 }
 
 // trajectory optimization for given task and model
-void TrajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
-    int initial_guess_idx=-1,bool turn_on_scaling=true){
+void TrajOptGivenModel(Task task,
+                       const string dir,
+                       int num,
+                       bool is_rerun,
+                       int initial_guess_idx = -1,
+                       bool turn_on_scaling = true) {
   // Create MBP
   drake::logging::set_log_level("err");  // ignore warnings about joint limits
   MultibodyPlant<double> plant(0.0);
-  createMBP(&plant, FLAGS_robot_option);
+  CreateMBP(&plant, FLAGS_robot_option);
 
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
@@ -334,55 +243,45 @@ void TrajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
   inner_loop_setting.snopt_scaling = turn_on_scaling;
   inner_loop_setting.directory = dir;
 
-  // Reduced order model parameters
-  int n_y = 0;
-  int n_tau = 0;
-  setRomDim(&n_y, &n_tau, FLAGS_rom_option);
-  int n_yddot = n_y; // Assume that are the same (no quaternion)
-  MatrixXd B_tau = MatrixXd::Zero(n_yddot, n_tau);
-  setRomBMatrix(&B_tau, FLAGS_rom_option);
-  writeCSV(dir + string("B_tau.csv"), B_tau);
+  // Construct reduced order model
+  std::unique_ptr<ReducedOrderModel> rom =
+      CreateRom(FLAGS_rom_option, FLAGS_robot_option, plant);
+  writeCSV(dir + string("rom_B.csv"), rom->B());
+  writeCSV(dir + string("rom_n_y.csv"), rom->n_y() * VectorXd::Ones(1));
+  writeCSV(dir + string("rom_n_tau.csv"), rom->n_tau() * VectorXd::Ones(1));
+  writeCSV(dir + string("rom_n_feature_y.csv"),
+           rom->n_feature_y() * VectorXd::Ones(1));
+  writeCSV(dir + string("rom_n_feature_yddot.csv"),
+           rom->n_feature_yddot() * VectorXd::Ones(1));
 
-  // Reduced order model setup
-  KinematicsExpression<double> kin_expression(n_y, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_yddot, 0, FLAGS_rom_option, FLAGS_robot_option);
-  VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
-  VectorXd dummy_s = VectorXd::Ones(n_y);
-  int n_feature_y = kin_expression.getFeature(dummy_q).size();
-  int n_feature_yddot =
-      dyn_expression.getFeature(dummy_s, dummy_s).size();
-  int n_theta_y = n_y * n_feature_y;
-  int n_theta_yddot = n_yddot * n_feature_yddot;
 
   // Initial guess of theta
-  VectorXd theta_y = VectorXd::Zero(n_theta_y);
-  VectorXd theta_yddot = VectorXd::Zero(n_theta_yddot);
-  if(FLAGS_use_optimized_model){
+  VectorXd theta_y = VectorXd::Zero(rom->n_theta_y());
+  VectorXd theta_yddot = VectorXd::Zero(rom->n_theta_yddot());
+  if (FLAGS_use_optimized_model) {
     //you have to specify the theta to use
-    DRAKE_DEMAND(FLAGS_theta_index>=0);
+    DRAKE_DEMAND(FLAGS_theta_index >= 0);
     int theta_idx = FLAGS_theta_index;
 
-    const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
-        to_string(FLAGS_robot_option) + "/";
+    const string dir_find_models =
+        "../dairlib_data/goldilocks_models/find_models/robot_" +
+            to_string(FLAGS_robot_option) + "/";
     ReadThetaFromFiles(dir_find_models, theta_idx, theta_y, theta_yddot);
+    rom->SetThetaY(theta_y);
+    rom->SetThetaYddot(theta_yddot);
   }
-  else{
-    setInitialTheta(theta_y, theta_yddot, n_feature_y, FLAGS_rom_option);
-  }
-
-  RomData rom = RomData(n_y, n_tau, n_feature_y, n_feature_yddot, B_tau,
-                        theta_y, theta_yddot);
 
   bool is_get_nominal = FLAGS_is_get_nominal;
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
 
 //  string init_file_pass_in = "";
   string init_file_pass_in = getInitFileName(dir, num, is_rerun,
-      initial_guess_idx);
+                                             initial_guess_idx);
   int sample_idx = 0;
-  string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
+  string prefix = to_string(num) + "_" + to_string(sample_idx) + "_";
 
-  inner_loop_setting.n_node = (FLAGS_n_node>0)? FLAGS_n_node : 20;//fix number of nodes
+  inner_loop_setting.n_node =
+      (FLAGS_n_node > 0) ? FLAGS_n_node : 20;//fix number of nodes
   inner_loop_setting.max_iter = max_inner_iter_pass_in;
   inner_loop_setting.prefix = prefix;
   inner_loop_setting.init_file = init_file_pass_in;
@@ -408,7 +307,7 @@ void TrajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
   trajOptGivenWeights(
       std::ref(plant),
       std::ref(plant_autoDiff),
-      std::ref(rom),
+      std::ref(*rom),
       inner_loop_setting,
       task,
       std::ref(QPs),
@@ -418,6 +317,7 @@ void TrajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
       sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
       FLAGS_rom_option, FLAGS_robot_option);
 }
+
 
 //Save boundary point information
 void SaveBoundaryPointInfor(const string dir,int boundary_point_index,

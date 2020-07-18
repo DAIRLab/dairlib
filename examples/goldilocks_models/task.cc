@@ -100,7 +100,7 @@ vector<double> GridTasksGenerator::NewNominalTask(int sample_idx) {
   return ret;
 }
 
-vector<double> GridTasksGenerator::NewTask(int sample_idx) {
+vector<double> GridTasksGenerator::NewTask(int iter,int sample_idx) {
   auto index_tuple = forward_task_idx_map_.at(sample_idx);
   /*cout << sample_idx << ", (";
   for (auto mem : index_tuple) {
@@ -162,10 +162,36 @@ void UniformTasksGenerator::PrintInfo() const {
     cout << "  max = " << task_max_range_[i] << endl;
   }
 }
-vector<double> UniformTasksGenerator::NewTask(int sample_idx) {
+vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
+//  vector<double> ret(task_dim_, 0);
+//  for (int i = 0; i < task_dim_; i++) {
+//    ret[i] = distribution_[i](random_eng_);
+//  }
+//  return ret;
+
   vector<double> ret(task_dim_, 0);
+  //decide the range of optimization by the number of iteration
   for (int i = 0; i < task_dim_; i++) {
-    ret[i] = distribution_[i](random_eng_);
+    //iter = 0
+    double new_task_max = (task_min_range_[i]+task_max_range_[i])/2
+        +0.002;
+    double new_task_min = (task_min_range_[i]+task_max_range_[i])/2
+        -0.002;
+    if(iter!=0)
+    {
+      new_task_max = (task_min_range_[i]+task_max_range_[i])/2
+          +iter*0.005;
+      new_task_min = (task_min_range_[i]+task_max_range_[i])/2
+          -iter*0.005;
+    }
+    double new_task_max_range = (new_task_max>task_max_range_[i])?
+                                task_max_range_[i]:new_task_max;
+    double new_task_min_range = (new_task_min<task_min_range_[i])?
+                                task_min_range_[i]:new_task_min;
+    // Distribution
+    std::uniform_real_distribution<double> new_distribution (new_task_min_range,
+                                                             new_task_max_range);
+    ret[i] = new_distribution(random_eng_);
   }
   return ret;
 }

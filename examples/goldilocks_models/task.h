@@ -80,7 +80,7 @@ class TasksGenerator {
   }
 
   // Generator
-  virtual vector<double> NewTask(int sample_idx) = 0;
+  virtual vector<double> NewTask(int iter,int sample_idx) = 0;
 
   // Printing message
   virtual void PrintInfo() const {};
@@ -119,7 +119,7 @@ class GridTasksGenerator : public TasksGenerator {
 
   // Generator
   vector<double> NewNominalTask(int sample_idx);
-  vector<double> NewTask(int sample_idx) final;
+  vector<double> NewTask(int iter,int sample_idx) final;
 
   // Printing message
   void PrintInfo() const override;
@@ -150,7 +150,8 @@ class UniformTasksGenerator : public TasksGenerator {
   UniformTasksGenerator()= default;
 
   // Generator
-  vector<double> NewTask(int sample_idx) final;
+  vector<double> NewTask(int sample_idx);
+  vector<double> NewTask(int iter,int sample_idx) final;
 
   // Printing message
   void PrintInfo() const override;

@@ -1989,7 +1989,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             if (is_grid_task && is_get_nominal) {
               task.set(task_gen_grid.NewNominalTask(sample_idx));
             } else {
-              task.set(task_gen->NewTask(sample_idx));
+              task.set(task_gen->NewTask(iter,sample_idx));
             }
             // Map std::vector to VectorXd and create a copy of VectorXd
             Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(

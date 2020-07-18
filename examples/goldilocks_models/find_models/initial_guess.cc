@@ -29,7 +29,7 @@ VectorXd GetGammaScale(const TasksGenerator* task_gen) {
   double max;
   for (dim = 0; dim < gamma_dimension; dim++) {
     min = task_gen->task_min(task_gen->names()[dim]);
-    max = task_gen->task_min(task_gen->names()[dim]);
+    max = task_gen->task_max(task_gen->names()[dim]);
     if (!(min == max)) {
       // coefficient is different for different dimensions
       if (task_gen->names()[dim] == "turning_rate") {

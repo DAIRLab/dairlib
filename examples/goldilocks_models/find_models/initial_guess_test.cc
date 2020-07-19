@@ -78,7 +78,7 @@ int test_initial_guess(int iter, int sample, int robot) {
   int total_sample_num = task_gen->total_sample_number();
   // create task
   Task task(task_gen->names());
-  task.set(task_gen->NewTask(sample));
+  task.set(task_gen->NewTask(iter,sample));
   // create rom
   MonomialFeatures basis(1,2,{});
   DummyRom dummy_rom(basis, basis);

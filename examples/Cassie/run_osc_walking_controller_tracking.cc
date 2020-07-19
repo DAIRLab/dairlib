@@ -180,21 +180,22 @@ int DoMain(int argc, char* argv[]) {
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm;
 
+  bool print_fsm_info = true;
+
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, com_traj, FLAGS_delay_time);
+      plant_w_springs, com_traj);
   auto l_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
-      plant_w_springs, "toe_right", true, l_foot_trajectory, FLAGS_delay_time);
+      plant_w_springs, "toe_right", true, l_foot_trajectory);
   auto r_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
-      plant_w_springs, "toe_left", false, r_foot_trajectory, FLAGS_delay_time);
+      plant_w_springs, "toe_left", false, r_foot_trajectory);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
-          plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_traj",
-          FLAGS_delay_time);
+          plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_traj");
   auto fsm = builder.AddSystem<WalkingEventFsm>(
       plant_w_springs, transition_times, FLAGS_contact_based_fsm,
-      (osc_walk::FSM_STATE)FLAGS_init_fsm_state);
+      (osc_walk::FSM_STATE)FLAGS_init_fsm_state, print_fsm_info);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

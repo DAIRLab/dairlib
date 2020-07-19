@@ -47,7 +47,16 @@ py_binary(
 
 py_library(
     name = "process_lcm_log_py",
-    srcs = ["process_lcm_log.py"],
+    srcs = ["analysis_scripts/process_lcm_log.py"],
+    deps = [
+        ":module_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_library(
+    name = "load_lcm_logs",
+    srcs = ["analysis_scripts/load_lcm_trajs.py"],
     deps = [
         ":module_py",
         "//lcmtypes:lcmtypes_robot_py",
@@ -56,7 +65,7 @@ py_library(
 
 py_binary(
     name = "cassie_log_plotter",
-    srcs = ["cassie_log_plotter.py"],
+    srcs = ["analysis_scripts/cassie_log_plotter.py"],
     data = [
         "@lcm//:lcm-python",
     ],
@@ -71,14 +80,19 @@ py_binary(
 )
 
 py_binary(
-    name = "run_terrain_parameter_study",
-    srcs = ["run_terrain_parameter_study.py"],
+    name = "walking_analysis",
+    srcs = ["analysis_scripts/walking_analysis.py"],
     data = [
         "@lcm//:lcm-python",
     ],
     deps = [
+        ":lcm_trajectory_py",
+        ":load_lcm_logs",
         ":module_py",
+        ":multibody_utils_py",
+        ":process_lcm_log_py",
         "//bindings/pydairlib/common",
+        "//lcmtypes:lcmtypes_robot_py",
     ],
 )
 

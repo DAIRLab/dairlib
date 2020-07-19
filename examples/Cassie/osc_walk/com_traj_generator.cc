@@ -33,7 +33,7 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::osc_walk {
 
 COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
-                                   PiecewisePolynomial<double> com_traj,
+                                   PiecewisePolynomial<double>& com_traj,
                                    double time_offset)
     : plant_(plant), world_(plant_.world_frame()), com_traj_(com_traj) {
   this->set_name("com_traj");

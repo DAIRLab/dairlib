@@ -128,6 +128,7 @@ int DoMain() {
   r_foot_points = r_foot_points - l_foot_points;
   l_foot_points = r_foot_points;
   l_foot_points.row(1) = -r_foot_points.row(1);
+  l_foot_points.row(4) = -r_foot_points.row(4);
 
   auto lfoot_traj_block = LcmTrajectory::Trajectory();
   lfoot_traj_block.traj_name = "left_foot_trajectory";

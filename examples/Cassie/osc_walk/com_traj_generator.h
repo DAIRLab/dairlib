@@ -14,7 +14,7 @@ namespace dairlib::examples::osc_walk {
 class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   COMTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::trajectories::PiecewisePolynomial<double> com_traj,
+                   drake::trajectories::PiecewisePolynomial<double>& com_traj,
                    double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {

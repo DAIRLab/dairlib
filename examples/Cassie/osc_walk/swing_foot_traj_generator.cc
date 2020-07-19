@@ -89,10 +89,10 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::generateFootTraj(
   MatrixXd stance_foot(3, 2);
   // Velocity estimates are generally bad
   stance_foot << stance_foot_pos, stance_foot_pos;
-  PiecewisePolynomial<double> hip_offset =
+  PiecewisePolynomial<double> stance_foot_offset =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, stance_foot);
 
-  return foot_traj_segment + hip_offset;
+  return foot_traj_segment + stance_foot_offset;
 }
 
 void SwingFootTrajGenerator::CalcTraj(

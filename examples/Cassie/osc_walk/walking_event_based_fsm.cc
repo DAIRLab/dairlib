@@ -25,6 +25,7 @@ WalkingEventFsm::WalkingEventFsm(const MultibodyPlant<double>& plant,
       contact_based_(contact_based),
       init_state_(init_state),
       print_fsm_info_(print_fsm_info) {
+  DRAKE_ASSERT(transition_times_.size() == RIGHT + 1);
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
@@ -42,10 +43,12 @@ WalkingEventFsm::WalkingEventFsm(const MultibodyPlant<double>& plant,
 
   BasicVector<double> init_prev_time = BasicVector<double>(VectorXd::Zero(1));
   BasicVector<double> init_fsm_state = BasicVector<double>(VectorXd::Zero(1));
+  BasicVector<double> time_offset = BasicVector<double>(VectorXd::Zero(1));
   init_fsm_state.get_mutable_value()(0) = init_state_;
 
   prev_time_idx_ = this->DeclareDiscreteState(init_prev_time);
   fsm_idx_ = this->DeclareDiscreteState(init_fsm_state);
+  time_offset_idx_ = this->DeclareDiscreteState(time_offset);
 }
 
 EventStatus WalkingEventFsm::DiscreteVariableUpdate(
@@ -64,21 +67,25 @@ EventStatus WalkingEventFsm::DiscreteVariableUpdate(
       discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
   auto prev_time =
       discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value();
+  auto time_offset =
+      discrete_state->get_mutable_vector(time_offset_idx_).get_mutable_value();
 
   // Simulator has restarted, reset FSM
   if (timestamp < prev_time(0)) {
     std::cout << "Simulator has restarted!" << std::endl;
+    std::cout << "Initial state is : " << init_state_ << std::endl;
     fsm_state << init_state_;
-    prev_time(0) = timestamp;
+    prev_time << timestamp;
+    time_offset << 0;
   }
 
   int num_contacts = contact_info->num_point_pair_contacts;
-  if (timestamp > 0.001 && contact_based_ && num_contacts == 0) {
-    std::cerr << "No feet are in contact with the ground!" << std::endl;
+  if (contact_based_ && num_contacts == 0) {
+    fsm_state << init_state_;
     return EventStatus::Failed(this, "No feet are in contact with the ground!");
   }
   string contact_point;
-  if (num_contacts <= 2) {
+  if (contact_based_ && num_contacts <= 2) {
     contact_point = contact_info->point_pair_contact_info[0].body2_name;
   }
 
@@ -87,23 +94,22 @@ EventStatus WalkingEventFsm::DiscreteVariableUpdate(
   // The fsm state will change transition_delay_ seconds after the guard
   // condition was first triggered.
   // This supports both contact-based and time-based guard conditions
-  // TODO(yangwill) Remove timing delays once hardware testing is finished
-  if (fsm_state(0) == LEFT) {
-    if (contact_based_ ? num_contacts >= 3
-                       : timestamp > transition_times_[LEFT])
-      SetNextFiniteState(fsm_state, timestamp);
-  } else if (fsm_state(0) == DOUBLE_L_LO) {
+  if (fsm_state(0) == DOUBLE_L_LO) {
     if (contact_based_ ? num_contacts <= 2 &&
                              contact_point.find("right") != std::string::npos
-                       : timestamp > transition_times_[LEFT])
+                       : timestamp > transition_times_[DOUBLE_L_LO])
       SetNextFiniteState(fsm_state, timestamp);
   } else if (fsm_state(0) == RIGHT) {
     if (contact_based_ ? num_contacts >= 3
-                       : timestamp > transition_times_[LEFT])
+                       : timestamp > transition_times_[RIGHT])
       SetNextFiniteState(fsm_state, timestamp);
   } else if (fsm_state(0) == DOUBLE_R_LO) {
     if (contact_based_ ? num_contacts <= 2 &&
                              contact_point.find("left") != std::string::npos
+                       : timestamp > transition_times_[DOUBLE_R_LO])
+      SetNextFiniteState(fsm_state, timestamp);
+  } else if (fsm_state(0) == LEFT) {
+    if (contact_based_ ? num_contacts >= 3
                        : timestamp > transition_times_[LEFT])
       SetNextFiniteState(fsm_state, timestamp);
   }
@@ -119,8 +125,8 @@ void WalkingEventFsm::CalcFiniteState(const Context<double>& context,
 
 void WalkingEventFsm::SetNextFiniteState(Eigen::VectorBlock<VectorXd> fsm_state,
                                          double timestamp) const {
-  if (fsm_state(0) == DOUBLE_R_LO)
-    fsm_state << LEFT;
+  if (fsm_state(0) == LEFT)
+    fsm_state << DOUBLE_L_LO;
   else
     fsm_state(0) += 1;
   if (print_fsm_info_) {

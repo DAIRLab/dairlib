@@ -2,22 +2,20 @@ import numpy as np
 import pydairlib.lcm_trajectory
 from pydrake.trajectories import PiecewisePolynomial
 
-
-def loadLcmTrajs(nx, nu, n_modes):
-  loadedStateTraj = pydairlib.lcm_trajectory.LcmTrajectory()
-  loadedStateTraj.loadFromFile(
-    "/home/yangwill/Documents/research/projects/cassie/jumping"
-    "/saved_trajs/June_5_jumping_0.2")
+def load_lcm_trajs(nx, nu, n_modes, folder_path, trajectory_name, mode_name):
+  loaded_state_traj = pydairlib.lcm_trajectory.LcmTrajectory()
+  loaded_state_traj.loadFromFile(
+    folder_path + trajectory_name)
   state_trajs = []
   t_nominal = []
   x_points_nominal = []
   x_hybrid_trajs_nominal = []
   u_hybrid_trajs_nominal = []
-  decision_vars = loadedStateTraj.getTrajectory("cassie_jumping_decision_vars")
+  decision_vars = loaded_state_traj.getTrajectory("cassie_jumping_decision_vars")
 
   for i in range(n_modes):
-    state_trajs.append(loadedStateTraj.getTrajectory(
-      "cassie_jumping_trajectory_x_u" + str(i)))
+    state_trajs.append(loaded_state_traj.getTrajectory(
+      mode_name + str(i)))
     t_nominal.append(state_trajs[i].time_vector)
     x_points_nominal.append(state_trajs[i].datapoints)
     x_hybrid_trajs_nominal.append(PiecewisePolynomial.CubicHermite(
@@ -27,6 +25,7 @@ def loadLcmTrajs(nx, nu, n_modes):
     u_hybrid_trajs_nominal.append(PiecewisePolynomial.FirstOrderHold(
       state_trajs[i].time_vector,
       state_trajs[i].datapoints[-nu:, :]))
+
 
   t_nominal = np.array(t_nominal)
   x_points_nominal = np.array(x_points_nominal)

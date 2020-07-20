@@ -14,6 +14,7 @@
 #include "pinocchio/parsers/urdf.hpp"
 
 #include "drake/math/autodiff.h"
+#include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -167,7 +168,6 @@ int do_main() {
   for (int i = 0; i < num_autodiff_reps; i++) {
     x = VectorXd::Constant(2 * nq, i);
     u = VectorXd::Constant(nu, i);
-    desired_vdot = VectorXd::Constant(nv, i);
 
     multibody_context_autodiff->FixInputPort(
         multibody_plant_autodiff->get_actuation_input_port().get_index(),
@@ -273,7 +273,11 @@ int do_main() {
   //
   x = VectorXd::Random(nq + nv);
   u = VectorXd::Random(nu);
-  x.tail(nv) *= 0;
+  VectorXd xu(nq + nv + nu);
+  xu << x, u;
+  auto xu_ad = math::initializeAutoDiff(xu);
+  auto x_ad = xu_ad.head(nq + nv);
+  auto u_ad = xu_ad.tail(nu);
 
   // Transformation from Pinocchio coordinates to MBP coordinates
   // x_mbp = T * x_pin
@@ -325,6 +329,44 @@ int do_main() {
   result.col(2) = xdot_mbp.tail(nv) - T * p_data.ddq;
 
   std::cout << "vdot_mbp, vdot_pin, diff" << std::endl << result << std::endl;
+
+  // Forward dynamics gradients
+
+  multibody_context_autodiff->FixInputPort(
+      multibody_plant_autodiff->get_actuation_input_port().get_index(), u_ad);
+  multibody_plant_autodiff->SetPositionsAndVelocities(
+      multibody_context_autodiff.get(), x_ad);
+  multibody_plant_autodiff->CalcTimeDerivatives(*multibody_context_autodiff,
+                                                derivatives_autodiff.get());
+  MatrixXd dvdot_mbp =
+      math::autoDiffToGradientMatrix(derivatives_autodiff->CopyToVector())
+          .bottomRows(nv);
+
+  // Pinocchio
+  pinocchio::computeABADerivatives(p_model, p_data, q_pin, v_pin, f);
+  MatrixXd dvdot_dq_pin = T * p_data.ddq_dq * T.inverse();
+  MatrixXd dvdot_dv_pin = T * p_data.ddq_dv * T.inverse();
+
+  // Need to add damping terms via chain rule to dvdot/dv
+  drake::multibody::MultibodyForces<AutoDiffXd> f_app_ad(
+      *multibody_plant_autodiff);
+  multibody_plant_autodiff->CalcForceElementsContribution(
+      *multibody_context_autodiff, &f_app_ad);
+
+  MatrixXd df = math::autoDiffToGradientMatrix(f_app_ad.generalized_forces());
+
+  // dvdot/df * df/dv
+  dvdot_dv_pin += T * p_data.Minv * T.inverse() * df.block(0, nq, nv, nv);
+
+  MatrixXd d_dq_diff = dvdot_mbp.leftCols(nq) - dvdot_dq_pin;
+  std::cout << "dvdot/dq difference (inf-norm: "
+            << d_dq_diff.lpNorm<Eigen::Infinity>() << ")" << std::endl;
+  std::cout << d_dq_diff << std::endl << std::endl;
+
+  MatrixXd d_dv_diff = dvdot_mbp.block(0, nq, nv, nv) - dvdot_dv_pin;
+  std::cout << "dvdot/dv difference (inf-norm: "
+            << d_dv_diff.lpNorm<Eigen::Infinity>() << ")" << std::endl;
+  std::cout << d_dv_diff << std::endl << std::endl;
 
   return 0;
 }

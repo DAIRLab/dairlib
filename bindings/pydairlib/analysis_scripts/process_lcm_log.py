@@ -4,6 +4,7 @@ import numpy as np
 
 class lcmt_osc_tracking_data_t:
     def __init__(self):
+        self.t = []
         self.y_dim = 0
         self.name = ""
         self.is_active = []
@@ -17,7 +18,8 @@ class lcmt_osc_tracking_data_t:
         self.yddot_command = []
         self.yddot_command_sol = []
 
-    def append(self, msg):
+    def append(self, msg, t):
+        self.t.append(t)
         self.is_active.append(msg.is_active)
         self.y.append(msg.y)
         self.y_des.append(msg.y_des)
@@ -30,6 +32,7 @@ class lcmt_osc_tracking_data_t:
         self.yddot_command_sol.append(msg.yddot_command_sol)
 
     def convertToNP(self):
+        self.t = np.array(self.t)
         self.is_active = np.array(self.is_active)
         self.y = np.array(self.y)
         self.y_des = np.array(self.y_des)
@@ -46,7 +49,6 @@ def process_log(log, pos_map, vel_map):
     t_state = []
     t_osc = []
     t_controller_switch = []
-    t_osc_debug = []
     t_contact_info = []
     osc_fsm = []
     q = []
@@ -54,7 +56,8 @@ def process_log(log, pos_map, vel_map):
     control_inputs = []
     estop_signal = []
     switch_signal = []
-    osc_debug = [lcmt_osc_tracking_data_t() for i in range(4)]
+    # osc_debug = [lcmt_osc_tracking_data_t() for i in range(4)]
+    osc_debug = dict()
     contact_info = [[], [], [], []]
     contact_info_locs = [[], [], [], []]
 
@@ -83,8 +86,9 @@ def process_log(log, pos_map, vel_map):
             msg = dairlib.lcmt_osc_output.decode(event.data)
             num_osc_tracking_data = len(msg.tracking_data)
             for i in range(num_osc_tracking_data):
-                osc_debug[i].append(msg.tracking_data[i])
-            t_osc_debug.append(msg.utime / 1e6)
+                if msg.tracking_data[i].name not in osc_debug:
+                    osc_debug[msg.tracking_data[i].name] = lcmt_osc_tracking_data_t()
+                osc_debug[msg.tracking_data[i].name].append(msg.tracking_data[i], msg.utime / 1e6)
             osc_fsm.append(msg.fsm_state)
         if event.channel == "CASSIE_CONTACT_RESULTS" or event.channel \
                 == "CASSIE_CONTACT_DRAKE":
@@ -133,7 +137,6 @@ def process_log(log, pos_map, vel_map):
     t_osc = np.array(t_osc)
     t_controller_switch = np.array(t_controller_switch)
     t_contact_info = np.array(t_contact_info)
-    t_osc_debug = np.array(t_osc_debug)
     osc_fsm = np.array(osc_fsm)
     q = np.array(q)
     v = np.array(v)
@@ -153,12 +156,13 @@ def process_log(log, pos_map, vel_map):
             contact_info[[2, 3], i, :] = contact_info[[3, 2], i, :]
             contact_info_locs[[2, 3], i, :] = contact_info_locs[[3, 2], i, :]
 
-    for i in range(len(osc_debug)):
-        osc_debug[i].convertToNP()
+    # for i in range(len(osc_debug)):
+    for key in osc_debug:
+        osc_debug[key].convertToNP()
 
     return contact_info, contact_info_locs, control_inputs, estop_signal, \
            osc_debug, q, switch_signal, t_contact_info, t_controller_switch, \
-           t_osc, t_osc_debug, t_state, v, osc_fsm
+           t_osc, t_state, v, osc_fsm
 
 
 def generate_wo_spring_state_map():

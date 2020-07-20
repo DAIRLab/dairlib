@@ -34,16 +34,14 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::BodyFrame<double>& world_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
-
-  int fsm_idx_;
-  int x_offset_idx_;
-  int time_shift_idx_;
-
-  drake::trajectories::PiecewisePolynomial<double> com_traj_;
 
   int state_port_;
   int fsm_port_;
+
+  int fsm_idx_;
+  int time_shift_idx_;
+
+  drake::trajectories::PiecewisePolynomial<double> com_traj_;
 };
 
 }  // namespace dairlib::examples::osc_walk

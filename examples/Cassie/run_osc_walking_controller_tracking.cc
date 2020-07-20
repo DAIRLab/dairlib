@@ -79,7 +79,7 @@ DEFINE_string(
 DEFINE_bool(add_noise, false,
             "Whether to add gaussian noise to state "
             "inputted to controller");
-DEFINE_int32(init_fsm_state, osc_walk::LEFT, "Initial state of the FSM");
+DEFINE_int32(init_fsm_state, osc_walk::DOUBLE_L_LO, "Initial state of the FSM");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -139,6 +139,15 @@ int DoMain(int argc, char* argv[]) {
         state_traj_i.datapoints.topRows(2 * nx).bottomRows(nx)));
   }
 
+  // For the time-based FSM
+  double total_time = state_trajs.back().end_time();
+  double l_stance_time = state_trajs[0].end_time();
+  double ds_l_lo_time = state_trajs[1].end_time();
+  double r_stance_time = total_time + state_trajs[0].end_time();
+  double ds_r_lo_time = total_time + state_trajs[1].end_time();
+  std::vector<double> transition_times = {l_stance_time, ds_l_lo_time,
+                                          r_stance_time, ds_r_lo_time};
+
   std::cout << "Loading output trajectories: " << std::endl;
   PiecewisePolynomial<double> com_traj =
       PiecewisePolynomial<double>::CubicHermite(
@@ -157,37 +166,18 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.time_vector,
       lcm_pelvis_rot_traj.datapoints.topRows(4));
 
-  // For the time-based FSM
-  double total_time = state_trajs.back().end_time();
-  double l_stance_time = state_trajs[0].end_time();
-  double ds_l_lo_time = state_trajs[1].end_time();
-  double r_stance_time = total_time + state_trajs[0].end_time();
-  double ds_r_lo_time = total_time + state_trajs[1].end_time();
-  std::vector<double> transition_times = {l_stance_time, ds_l_lo_time,
-                                          r_stance_time, ds_r_lo_time};
-
-  //  Vector3d support_center_offset;
-  //  support_center_offset << FLAGS_x_offset, 0.0, 0.0;
-  //  std::vector<double> breaks = com_traj.get_segment_times();
-  //  VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(),
-  //  breaks.size()); MatrixXd offset_points =
-  //  support_center_offset.replicate(1, breaks.size());
-  //  PiecewisePolynomial<double> offset_traj =
-  //      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
-  //      offset_points);
-  //  com_traj = com_traj + offset_traj;
-
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm;
 
   bool print_fsm_info = true;
 
+  double time_offset = total_time;
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
-  auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, com_traj);
+  auto com_traj_generator =
+      builder.AddSystem<COMTrajGenerator>(plant_w_springs, com_traj);
   auto l_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
-      plant_w_springs, "toe_right", true, l_foot_trajectory);
+      plant_w_springs, "toe_right", true, l_foot_trajectory, time_offset);
   auto r_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
       plant_w_springs, "toe_left", false, r_foot_trajectory);
   auto pelvis_rot_traj_generator =
@@ -246,8 +236,8 @@ int DoMain(int argc, char* argv[]) {
   vector<osc_walk::FSM_STATE> double_stance_modes = {osc_walk::DOUBLE_R_LO,
                                                      osc_walk::DOUBLE_L_LO};
   vector<osc_walk::FSM_STATE> all_modes = {
-      osc_walk::DOUBLE_R_LO, osc_walk::LEFT, osc_walk::DOUBLE_L_LO,
-      osc_walk::RIGHT};
+      osc_walk::DOUBLE_L_LO, osc_walk::RIGHT, osc_walk::DOUBLE_R_LO,
+      osc_walk::LEFT};
 
   /*** Contact Constraints ***/
   for (auto mode : double_stance_modes) {
@@ -256,10 +246,10 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(mode, &right_toe_evaluator);
     osc->AddStateAndContactPoint(mode, &right_heel_evaluator);
   }
-  osc->AddStateAndContactPoint(osc_walk::LEFT, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(osc_walk::LEFT, &left_heel_evaluator);
   osc->AddStateAndContactPoint(osc_walk::RIGHT, &left_toe_evaluator);
   osc->AddStateAndContactPoint(osc_walk::RIGHT, &left_heel_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::LEFT, &right_toe_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::LEFT, &right_heel_evaluator);
 
   /*** Four bar constraint ***/
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);

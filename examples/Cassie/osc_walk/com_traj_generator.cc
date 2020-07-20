@@ -49,13 +49,11 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("com_traj", traj_inst,
                                   &COMTrajGenerator::CalcTraj);
-  x_offset_idx_ = this->DeclareDiscreteState(1);
-  time_shift_idx_ = this->DeclareDiscreteState(1);
   fsm_idx_ = this->DeclareDiscreteState(1);
+  time_shift_idx_ = this->DeclareDiscreteState(1);
 
   DeclarePerStepDiscreteUpdateEvent(&COMTrajGenerator::DiscreteVariableUpdate);
   com_traj_.shiftRight(time_offset);
-  context_ = plant_.CreateDefaultContext();
 }
 
 EventStatus COMTrajGenerator::DiscreteVariableUpdate(
@@ -63,10 +61,8 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     DiscreteValues<double>* discrete_state) const {
   auto prev_fsm_state =
       discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
-  auto x_offset =
-      discrete_state->get_mutable_vector(x_offset_idx_).get_mutable_value();
   auto time_shift =
-      discrete_state->get_mutable_vector(x_offset_idx_).get_mutable_value();
+      discrete_state->get_mutable_vector(time_shift_idx_).get_mutable_value();
 
   const BasicVector<double>* fsm_output =
       this->EvalVectorInput(context, fsm_port_);
@@ -79,12 +75,9 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
   if (prev_fsm_state(0) != fsm_state(0)) {  // When to reset the clock
     prev_fsm_state(0) = fsm_state(0);
 
-    if (fsm_state(0) == LEFT) {
-      VectorXd q = robot_output->GetPositions();
-      plant_.SetPositions(context_.get(), q);
-      VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
-      x_offset(0) = (center_of_mass(0) - com_traj_.value(0)(0));
-      time_shift(0) = timestamp;
+    // A cycle has been reached
+    if (fsm_state(0) == DOUBLE_L_LO) {
+      time_shift << timestamp;
     }
   }
   return EventStatus::Succeeded();

@@ -27,6 +27,10 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   }
 
  private:
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
   drake::trajectories::PiecewisePolynomial<double> generateFootTraj(
       const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
       double t) const;
@@ -37,13 +41,19 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::Frame<double>& world_;
   const drake::multibody::Frame<double>& stance_foot_frame_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+
 
   drake::trajectories::PiecewisePolynomial<double> foot_traj_;
+  double time_offset_;
   // fsm state during which this trajectory describes the stance foot
   FSM_STATE active_state_;
 
   int state_port_;
   int fsm_port_;
+
+  int fsm_idx_;
+  int time_shift_idx_;
 };
 
 }  // namespace dairlib::examples::osc_walk

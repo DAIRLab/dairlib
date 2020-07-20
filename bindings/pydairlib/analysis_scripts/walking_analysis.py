@@ -57,7 +57,7 @@ def main():
   log = lcm.EventLog(filename, "r")
 
   contact_info, contact_info_locs, control_inputs, estop_signal, osc_debug, \
-  q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
+  q, switch_signal, t_contact_info, t_controller_switch, t_osc, \
   t_state, v, fsm = process_lcm_log.process_log(log, pos_map, vel_map)
 
   lcm_trajectory = pydairlib.lcm_trajectory.LcmTrajectory()
@@ -91,17 +91,24 @@ def main():
   pelvis_rot = np.array(pelvis_rot)
 
   plt.figure("Nominal Trajectories")
-  plt.plot(t_sampled, l_foot[:, :, 0])
-  plt.plot(t_sampled, r_foot[:, :, 0])
+  # plt.plot(t_sampled, l_foot[:, :, 0])
+  # plt.plot(t_sampled, r_foot[:, :, 0])
   # plt.plot(t_sampled, com[:, :, 0])
   # plt.plot(t_sampled, pelvis_rot[:, :, 0])
 
   # import pdb; pdb.set_trace()
   fig = plt.figure("OSC debug")
   # plt.plot(t_osc_debug, osc_debug[0].y_des)
-  plt.plot(t_osc_debug, osc_debug[1].y_des)
-  # plt.plot(t_osc_debug, osc_debug[2].y_des)
-
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y_des)
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y)
+  # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y_des)
+  # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y)
+  # plt.plot(osc_debug["l_foot_traj"].t , osc_debug["l_foot_traj"].y_des)
+  # plt.plot(osc_debug["l_foot_traj"].t , osc_debug["l_foot_traj"].y)
+  plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].y_des)
+  plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].y)
+  plt.plot(t_osc, fsm, 'k--')
+  # import pdb; pdb.set_trace()
   plt.show()
 
 if __name__ == "__main__":

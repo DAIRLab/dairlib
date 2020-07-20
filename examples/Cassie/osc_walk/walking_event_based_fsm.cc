@@ -95,23 +95,32 @@ EventStatus WalkingEventFsm::DiscreteVariableUpdate(
   // condition was first triggered.
   // This supports both contact-based and time-based guard conditions
   if (fsm_state(0) == DOUBLE_L_LO) {
-    if (contact_based_ ? num_contacts <= 2 &&
-                             contact_point.find("right") != std::string::npos
-                       : timestamp > transition_times_[DOUBLE_L_LO])
+    if (contact_based_
+            ? num_contacts <= 2 &&
+                  contact_point.find("right") != std::string::npos
+            : timestamp > (transition_times_[DOUBLE_L_LO] + time_offset(0))) {
       SetNextFiniteState(fsm_state, timestamp);
+    }
   } else if (fsm_state(0) == RIGHT) {
-    if (contact_based_ ? num_contacts >= 3
-                       : timestamp > transition_times_[RIGHT])
+    if (contact_based_
+            ? num_contacts >= 3
+            : timestamp > (transition_times_[RIGHT] + time_offset(0))) {
       SetNextFiniteState(fsm_state, timestamp);
+    }
   } else if (fsm_state(0) == DOUBLE_R_LO) {
-    if (contact_based_ ? num_contacts <= 2 &&
-                             contact_point.find("left") != std::string::npos
-                       : timestamp > transition_times_[DOUBLE_R_LO])
+    if (contact_based_
+            ? num_contacts <= 2 &&
+                  contact_point.find("left") != std::string::npos
+            : timestamp > (transition_times_[DOUBLE_R_LO] + time_offset(0))) {
       SetNextFiniteState(fsm_state, timestamp);
+    }
   } else if (fsm_state(0) == LEFT) {
-    if (contact_based_ ? num_contacts >= 3
-                       : timestamp > transition_times_[LEFT])
+    if (contact_based_
+            ? num_contacts >= 3
+            : timestamp > (transition_times_[LEFT] + time_offset(0))) {
       SetNextFiniteState(fsm_state, timestamp);
+      time_offset << timestamp;
+    }
   }
 
   return EventStatus::Succeeded();

@@ -36,9 +36,11 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
     : plant_(plant),
       world_(plant.world_frame()),
       stance_foot_frame_(plant.GetFrameByName(stance_foot_name)),
-      foot_traj_(foot_traj) {
+      foot_traj_(foot_traj),
+      time_offset_(time_offset){
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
+  context_ = plant_.CreateDefaultContext();
 
   if (isLeftFoot) {
     this->set_name("l_foot_traj");
@@ -60,9 +62,43 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
+  fsm_idx_ = this->DeclareDiscreteState(1);
+  time_shift_idx_ = this->DeclareDiscreteState(1);
+
   // Shift trajectory by time_offset
+  foot_traj_.shiftRight(time_offset_);
+
   // TODO(yangwill) add this shift elsewhere to make the gait periodic
-  foot_traj_.shiftRight(time_offset);
+  DeclarePerStepDiscreteUpdateEvent(&SwingFootTrajGenerator::DiscreteVariableUpdate);
+
+}
+
+
+EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  auto prev_fsm_state =
+      discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
+  auto time_shift =
+      discrete_state->get_mutable_vector(time_shift_idx_).get_mutable_value();
+
+  const BasicVector<double>* fsm_output =
+      this->EvalVectorInput(context, fsm_port_);
+  VectorXd fsm_state = fsm_output->get_value();
+
+  const auto robot_output =
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
+  double timestamp = robot_output->get_timestamp();
+
+  if (prev_fsm_state(0) != fsm_state(0)) {  // When to reset the clock
+    prev_fsm_state(0) = fsm_state(0);
+
+    // A cycle has been reached
+    if (fsm_state(0) == DOUBLE_L_LO) {
+      time_shift << timestamp + time_offset_;
+    }
+  }
+  return EventStatus::Succeeded();
 }
 
 /*
@@ -101,6 +137,7 @@ void SwingFootTrajGenerator::CalcTraj(
   // Read in current state
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
+  auto time_shift = context.get_discrete_state(time_shift_idx_).get_value();
   VectorXd x = robot_output->GetState();
   double timestamp = robot_output->get_timestamp();
 
@@ -116,6 +153,7 @@ void SwingFootTrajGenerator::CalcTraj(
   } else {
     // Do nothing to avoid bugs, maybe return a zero trajectory?
   }
+  casted_traj->shiftRight(time_shift(0));
 }
 
 }  // namespace dairlib::examples::osc_walk

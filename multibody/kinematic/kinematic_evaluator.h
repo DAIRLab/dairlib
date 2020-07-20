@@ -116,7 +116,7 @@ class KinematicEvaluator {
   int length_;
   std::vector<int> active_inds_;
   bool all_active_default_order_;
-  double mu_;
+  double mu_ = 0;
 };
 
 }  // namespace multibody

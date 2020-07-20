@@ -143,13 +143,13 @@ void DoMain(double duration, int max_iter, string data_directory,
       plant, right_toe_pair.first, right_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
   right_toe_eval.set_frictional();
-  left_heel_eval.set_mu(mu);
+  right_toe_eval.set_mu(mu);
 
   auto right_heel_eval = multibody::WorldPointEvaluator(
       plant, right_heel_pair.first, right_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
   right_heel_eval.set_frictional();
-  left_heel_eval.set_mu(mu);
+  right_heel_eval.set_mu(mu);
 
   auto evaluators = multibody::KinematicEvaluatorSet<double>(plant);
   int left_toe_eval_ind = evaluators.add_evaluator(&left_toe_eval);

@@ -173,8 +173,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
           std::vector<int> union_indices =
               get_mode(i_mode - 1)
                   .evaluators()
-                  .FindActiveUnion(mode.evaluators());
+                  .FindActiveIndicesUnion(mode.evaluators());
           for (const int union_index : union_indices) {
+            std::cout << union_index << std::endl;
             lb(union_index) = -std::numeric_limits<double>::infinity();
             ub(union_index) = std::numeric_limits<double>::infinity();
           }
@@ -258,7 +259,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     //
     auto quaternion_constraint = std::make_shared<QuaternionConstraint<T>>();
     for (int j = 0; j < mode.num_knotpoints(); j++) {
-      if (!mode.IsSkipQuaternion(j)) {
+      if (!mode.IsSkipQuaternionConstraint(j)) {
         auto start_indices = multibody::QuaternionStartIndices(plant_);
         for (auto start_index : start_indices) {
           AddConstraint(quaternion_constraint,
@@ -275,8 +276,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     int num_faces = 4;
     for (int k = 0; k < mode.evaluators().num_evaluators(); k++) {
       const auto& e = mode.evaluators().get_evaluator(k);
-      auto force_constraint =
-          e.CreateLinearFrictionConstraint(mode.mu(), num_faces);
+      auto force_constraint = e.CreateLinearFrictionConstraint(num_faces);
       if (force_constraint) {
         // Add to knot point forces
         for (int j = 0; j < mode.num_knotpoints(); j++) {
@@ -343,19 +343,19 @@ const VectorXDecisionVariable Dircon<T>::force_vars(int mode_index,
 
 template <typename T>
 const VectorXDecisionVariable Dircon<T>::collocation_force_vars(
-    int mode_index, int knotpoint_index) const {
+    int mode_index, int collocation_index) const {
   const auto& mode = get_mode(mode_index);
   return collocation_force_vars_.at(mode_index)
-      .segment(knotpoint_index * mode.evaluators().count_full(),
+      .segment(collocation_index * mode.evaluators().count_full(),
                mode.evaluators().count_full());
 }
 
 template <typename T>
 const VectorXDecisionVariable Dircon<T>::collocation_slack_vars(
-    int mode_index, int knotpoint_index) const {
+    int mode_index, int collocation_index) const {
   const auto& mode = get_mode(mode_index);
   return collocation_slack_vars_.at(mode_index)
-      .segment(knotpoint_index * mode.evaluators().count_full(),
+      .segment(collocation_index * mode.evaluators().count_full(),
                mode.evaluators().count_full());
 }
 
@@ -389,10 +389,10 @@ const VectorXDecisionVariable Dircon<T>::input_vars(int mode_index,
 
 template <typename T>
 const VectorXDecisionVariable Dircon<T>::quaternion_slack_vars(
-    int mode_index, int knotpoint_index) const {
+    int mode_index, int collocation_index) const {
   int num_quat = multibody::QuaternionStartIndices(plant_).size();
   return quaternion_slack_vars_.at(mode_index)
-      .segment(num_quat * knotpoint_index, num_quat);
+      .segment(num_quat * collocation_index, num_quat);
 }
 
 template <typename T>
@@ -667,7 +667,6 @@ void Dircon<T>::SetInitialForceTrajectory(
   // call superclass method
   SetInitialGuess(collocation_slack_vars_[mode_index], guess_collocation_slack);
 }
-
 
 template <typename T>
 void Dircon<T>::SetInitialForceTrajectory(

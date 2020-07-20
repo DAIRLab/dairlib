@@ -106,7 +106,6 @@ class CachedAccelerationConstraint : public solvers::NonlinearConstraint<T> {
  public:
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context.
-  /// If a context pointer is not provided, will create a new context.
   /// This is the simplest form of the construtor, where the lower and upper
   /// bounds are both zero.
   CachedAccelerationConstraint(

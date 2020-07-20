@@ -84,10 +84,10 @@ VectorX<T> WorldPointEvaluator<T>::EvalFullJacobianDotTimesV(
 
 template <typename T>
 std::shared_ptr<drake::solvers::Constraint>
-WorldPointEvaluator<T>::CreateConicFrictionConstraint(double mu) const {
+WorldPointEvaluator<T>::CreateConicFrictionConstraint() const {
   // The normal index is 2
   if (is_frictional_) {
-    return solvers::CreateConicFrictionConstraint(mu, 2);
+    return solvers::CreateConicFrictionConstraint(this->mu(), 2);
   } else {
     return nullptr;
   }
@@ -95,11 +95,10 @@ WorldPointEvaluator<T>::CreateConicFrictionConstraint(double mu) const {
 
 template <typename T>
 std::shared_ptr<drake::solvers::Constraint>
-WorldPointEvaluator<T>::CreateLinearFrictionConstraint(double mu,
-                                                       int num_faces) const {
+WorldPointEvaluator<T>::CreateLinearFrictionConstraint(int num_faces) const {
   // The normal index is 2
   if (is_frictional_) {
-    return solvers::CreateLinearFrictionConstraint(mu, num_faces, 2);
+    return solvers::CreateLinearFrictionConstraint(this->mu(), num_faces, 2);
   } else {
     return nullptr;
   }

@@ -51,9 +51,9 @@ class DirconMode {
   /// Declare that quaternion constraints at the given knotpoint_index are not
   /// to be included. This is useful if the quaternion configuration is already
   /// constrained via another mechanism.
-  void SkipQuaternion(int knotpoint_index);
+  void SkipQuaternionConstraint(int knotpoint_index);
 
-  bool IsSkipQuaternion(int knotpoint_index) const;
+  bool IsSkipQuaternionConstraint(int knotpoint_index) const;
 
   /// Count the number of relative constraints
   int num_relative_constraints() const { return relative_constraints_.size(); };
@@ -172,10 +172,6 @@ class DirconMode {
 
   double max_T() const { return max_T_; };
 
-  double mu() const { return mu_; };
-
-  void set_mu(double mu) { mu_ = mu; };
-
   const drake::multibody::MultibodyPlant<T>& plant() const {
     return evaluators_.plant();
   };
@@ -189,7 +185,6 @@ class DirconMode {
   const double min_T_;
   const double max_T_;
   const double force_regularization_;
-  double mu_;
   std::set<int> relative_constraints_;
   std::set<int> skip_quaternion_;
 

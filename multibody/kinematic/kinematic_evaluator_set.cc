@@ -158,34 +158,48 @@ int KinematicEvaluatorSet<T>::add_evaluator(KinematicEvaluator<T>* e) {
 }
 
 template <typename T>
-std::vector<int> KinematicEvaluatorSet<T>::FindFullUnion(
+std::vector<int> KinematicEvaluatorSet<T>::FindUnion(
     KinematicEvaluatorSet<T> other) const {
-  std::vector<int> union_index;
+  std::vector<int> union_indices;
   for (int i = 0; i < other.num_evaluators(); i++) {
     if (std::find(evaluators_.begin(), evaluators_.end(),
                   &other.get_evaluator(i)) != evaluators_.end()) {
-      union_index.push_back(i);
+      union_indices.push_back(i);
     }
   }
-  return union_index;
+  return union_indices;
 }
 
 template <typename T>
-std::vector<int> KinematicEvaluatorSet<T>::FindActiveUnion(
+std::vector<int> KinematicEvaluatorSet<T>::FindFullIndicesUnion(
     KinematicEvaluatorSet<T> other) const {
-  std::vector<int> union_index;
+  std::vector<int> row_indices;
   for (int i = 0; i < other.num_evaluators(); i++) {
-    if (other.is_active(i)) {
-      auto it = std::find(evaluators_.begin(), evaluators_.end(),
-                          &other.get_evaluator(i));
-      if (it != evaluators_.end()) {
-        if (is_active(std::distance(evaluators_.begin(), it))) {
-          union_index.push_back(i);
-        }
+    if (std::find(evaluators_.begin(), evaluators_.end(),
+                  &other.get_evaluator(i)) != evaluators_.end()) {
+      int start_index = other.evaluator_full_start(i);
+      for (int j = 0; j < other.get_evaluator(i).num_full(); j++) {
+        row_indices.push_back(start_index + j);
       }
     }
   }
-  return union_index;
+  return row_indices;
+}
+
+template <typename T>
+std::vector<int> KinematicEvaluatorSet<T>::FindActiveIndicesUnion(
+    KinematicEvaluatorSet<T> other) const {
+  std::vector<int> row_indices;
+  for (int i = 0; i < other.num_evaluators(); i++) {
+    if (std::find(evaluators_.begin(), evaluators_.end(),
+                  &other.get_evaluator(i)) != evaluators_.end()) {
+      int start_index = other.evaluator_active_start(i);
+      for (int j = 0; j < other.get_evaluator(i).num_active(); j++) {
+        row_indices.push_back(start_index + j);
+      }
+    }
+  }
+  return row_indices;
 }
 
 template <typename T>

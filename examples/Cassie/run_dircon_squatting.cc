@@ -125,25 +125,31 @@ void DoMain(double duration, int max_iter, string data_directory,
   std::vector<int> toe_active_inds{0, 1, 2};
   std::vector<int> heel_active_inds{1, 2};
 
+  double mu = 1;
+
   auto left_toe_eval = multibody::WorldPointEvaluator(
       plant, left_toe_pair.first, left_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
-  left_toe_eval.SetFrictional();
+  left_toe_eval.set_frictional();
+  left_toe_eval.set_mu(mu);
 
   auto left_heel_eval = multibody::WorldPointEvaluator(
       plant, left_heel_pair.first, left_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
-  left_heel_eval.SetFrictional();
+  left_heel_eval.set_frictional();
+  left_heel_eval.set_mu(mu);
 
   auto right_toe_eval = multibody::WorldPointEvaluator(
       plant, right_toe_pair.first, right_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
-  right_toe_eval.SetFrictional();
+  right_toe_eval.set_frictional();
+  left_heel_eval.set_mu(mu);
 
   auto right_heel_eval = multibody::WorldPointEvaluator(
       plant, right_heel_pair.first, right_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
-  right_heel_eval.SetFrictional();
+  right_heel_eval.set_frictional();
+  left_heel_eval.set_mu(mu);
 
   auto evaluators = multibody::KinematicEvaluatorSet<double>(plant);
   int left_toe_eval_ind = evaluators.add_evaluator(&left_toe_eval);
@@ -154,12 +160,11 @@ void DoMain(double duration, int max_iter, string data_directory,
   evaluators.add_evaluator(&right_loop_eval);
 
   int num_knotpoints = FLAGS_N;
-  double min_T = .01 * 19;
-  double max_T = .3 * 19;
-  double mu = 1;
+  double min_T = .2;
+  double max_T = 5;
   auto double_support =
       DirconMode<double>(evaluators, num_knotpoints, min_T, max_T);
-  double_support.set_mu(mu);
+
   // Set x-y coordinates as relative
   double_support.MakeConstraintRelative(left_toe_eval_ind, 0);    // x
   double_support.MakeConstraintRelative(left_toe_eval_ind, 1);    // y
@@ -209,7 +214,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   for (int i = 0; i < num_knotpoints; i++) {
-    double_support.SkipQuaternion(i);
+    double_support.SkipQuaternionConstraint(i);
   }
   // double_support.set_constraint_type(0, KinematicConstraintType::kAccelOnly);
   // double_support.set_constraint_type(num_knotpoints - 1,
@@ -240,7 +245,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   } else {
     // Snopt settings
     auto id = drake::solvers::SnoptSolver::id();
-    trajopt.SetSolverOption(id, "Print file", "../snopt.out");
+    // trajopt.SetSolverOption(id, "Print file", "../snopt.out");
     trajopt.SetSolverOption(id, "Major iterations limit", max_iter);
     trajopt.SetSolverOption(id, "Iterations limit", 100000);
     trajopt.SetSolverOption(id, "Verify level", 0);

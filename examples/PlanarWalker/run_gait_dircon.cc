@@ -74,14 +74,17 @@ void runDircon(
   const auto& right_lower_leg = plant.GetFrameByName("right_lower_leg");
 
   Vector3d pt(0, 0, -.5);
+  double mu = 1;
 
   auto left_foot_eval = multibody::WorldPointEvaluator<T>(plant, pt,
       left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
-  left_foot_eval.SetFrictional();
+  left_foot_eval.set_frictional();
+  left_foot_eval.set_mu(mu);
 
   auto right_foot_eval = multibody::WorldPointEvaluator<T>(plant, pt,
       right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
-  right_foot_eval.SetFrictional();
+  right_foot_eval.set_frictional();
+  right_foot_eval.set_mu(mu);
 
   auto evaluators_left = multibody::KinematicEvaluatorSet<T>(plant);
   evaluators_left.add_evaluator(&left_foot_eval);
@@ -91,17 +94,14 @@ void runDircon(
   int num_knotpoints = 10;
   double min_T = .1;
   double max_T = 3;
-  double mu = 1;
   
   auto mode_left = DirconMode<T>(evaluators_left, num_knotpoints,
       min_T, max_T);
   mode_left.MakeConstraintRelative(0, 0);  // x-coordinate
-  mode_left.set_mu(mu);
 
   auto mode_right = DirconMode<T>(evaluators_right, num_knotpoints,
       min_T, max_T);
   mode_right.MakeConstraintRelative(0, 0);  // x-coordinate
-  mode_right.set_mu(mu);
 
   auto sequence = DirconModeSequence<T>(plant);
   sequence.AddMode(&mode_left);

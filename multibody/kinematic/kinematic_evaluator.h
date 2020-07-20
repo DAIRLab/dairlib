@@ -94,7 +94,7 @@ class KinematicEvaluator {
   /// the full Jacobian). Subclasses which might be associated with frictional
   /// contact should implement this method.
   virtual std::shared_ptr<drake::solvers::Constraint>
-  CreateConicFrictionConstraint(double mu) const {
+  CreateConicFrictionConstraint() const {
     return nullptr;
   };
 
@@ -102,9 +102,13 @@ class KinematicEvaluator {
   /// the full Jacobian). Subclasses which might be associated with frictional
   /// contact should implement this method.
   virtual std::shared_ptr<drake::solvers::Constraint>
-  CreateLinearFrictionConstraint(double mu, int num_faces = 8) const {
+  CreateLinearFrictionConstraint(int num_faces = 8) const {
     return nullptr;
   };
+
+  void set_mu(double mu) { mu_ = mu; };
+
+  double mu() const { return mu_; };
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -112,6 +116,7 @@ class KinematicEvaluator {
   int length_;
   std::vector<int> active_inds_;
   bool all_active_default_order_;
+  double mu_;
 };
 
 }  // namespace multibody

@@ -185,6 +185,10 @@ class Dircon
     return mode_sequence_.mode(mode);
   }
 
+  const drake::systems::Context<T>& get_context(int mode, int knotpoint_index) {
+    return *contexts_.at(mode).at(knotpoint_index);
+  }
+
   /// Setters for variable scaling
   void ScaleTimeVariables(double scale);
   void ScaleQuaternionSlackVariables(double scale);

@@ -34,12 +34,12 @@ void DirconMode<T>::MakeConstraintRelative(int evaluator_index,
 }
 
 template <typename T>
-void DirconMode<T>::SkipQuaternion(int knotpoint_index) {
+void DirconMode<T>::SkipQuaternionConstraint(int knotpoint_index) {
   skip_quaternion_.insert(knotpoint_index);
 }
 
 template <typename T>
-bool DirconMode<T>::IsSkipQuaternion(int knotpoint_index) const {
+bool DirconMode<T>::IsSkipQuaternionConstraint(int knotpoint_index) const {
   return skip_quaternion_.find(knotpoint_index) != skip_quaternion_.end();
 }
 
@@ -171,6 +171,7 @@ DirconModeSequence<T>::DirconModeSequence(DirconMode<T>* mode)
 
 template <typename T>
 void DirconModeSequence<T>::AddMode(DirconMode<T>* mode) {
+  DRAKE_DEMAND(&mode->plant() == &plant_);
   modes_.push_back(mode);
 }
 

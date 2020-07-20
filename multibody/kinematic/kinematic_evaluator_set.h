@@ -71,22 +71,29 @@ class KinematicEvaluatorSet {
   drake::VectorX<T> EvalFullJacobianDotTimesV(
       const drake::systems::Context<T>& context) const;
 
-  /// Determines the list of evaluators contained in the union with another set
-  /// Specifically, `index` is in the returned vector if
+  /// Determines the list of evaluators objects contained in the union with
+  /// another set Specifically, `index` is in the returned vector if
   /// other.evaluators_.at(index) is an element of other.evaluators, as judged
   /// by a comparison of the KinematicEvaluator<T>* pointers.
   ///
   /// Again, note that this is an index set into the other object, not self.
-  std::vector<int> FindFullUnion(KinematicEvaluatorSet<T> other) const;
+  std::vector<int> FindUnion(KinematicEvaluatorSet<T> other) const;
 
-  /// Determines the list of active evaluators contained in the union with
-  /// another set Specifically, `index` is in the returned vector if 'index' is
-  /// active and other.evaluators_.at(index) is an active element of
-  /// other.evaluators, as judged by a comparison of the KinematicEvaluator<T>*
-  /// pointers.
-  ///
-  /// Again, note that this is an index set into the other object, not self.
-  std::vector<int> FindActiveUnion(KinematicEvaluatorSet<T> other) const;
+  /// Determines the list of evaluators, indexed by _row_, contained in the
+  /// union with another set Specifically, `index` is in the returned vector if
+  /// other.EvalFull(context)(index) is an element of other.EvalFull(context).
+  /// As with FindUnion, compares evaluator objects by a comparison of the
+  /// KinematicEvaluator<T>* pointers. Again, note that this is an index set
+  /// into the other object, not self.
+  std::vector<int> FindFullIndicesUnion(KinematicEvaluatorSet<T> other) const;
+
+  /// Determines the list of evaluators, indexed by _row_, contained in the
+  /// union with another set Specifically, `index` is in the returned vector if
+  /// other.EvalActive(context)(index) is an element of
+  /// other.EvalActive(context). As with FindUnion, compares evaluator objects
+  /// by a comparison of the KinematicEvaluator<T>* pointers. Again, note that
+  /// this is an index set into the other object, not self.
+  std::vector<int> FindActiveIndicesUnion(KinematicEvaluatorSet<T> other) const;
 
   /// Compute M(q) * d/dt v, given the state, control inputs and constraint
   /// forces. Forces are associated with the full kinematic elements.
@@ -125,10 +132,10 @@ class KinematicEvaluatorSet {
   drake::VectorX<T> CalcTimeDerivatives(
       const drake::systems::Context<T>& context, double alpha = 0) const;
 
-  /// Computes vdot given the state and control inputs, satisfying kinematic
-  /// constraints.
-  /// See CalcTimeDerivatives(context, kp, kd) for full details. This version
-  /// also returns the constraint force lambda via an input pointer.
+  /// Computes vdot and any constraint forces, given the state and control
+  /// inputs. Solution is calculated to satisfy all kinematic constraints. See
+  /// CalcTimeDerivatives(context, kp, kd) for full details. This version also
+  /// returns the constraint force lambda via an input pointer.
   drake::VectorX<T> CalcTimeDerivatives(
       const drake::systems::Context<T>& context, drake::VectorX<T>* lambda,
       double alpha = 0) const;

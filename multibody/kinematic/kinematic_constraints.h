@@ -12,7 +12,7 @@ namespace multibody {
 /// A constraint class to wrap the position component of a KinematicEvaluatorSet
 /// 
 /// In its most basic form, this constraint is of the form
-///    lb <= phi(q) <= u
+///    lb <= phi(q) <= ub
 /// corresponding to the __active__ constraints only.
 ///
 /// Constraints can also be identified as "relative", where indices are
@@ -68,7 +68,7 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
 /// A constraint class to wrap the velocity component of a KinematicEvaluatorSet
 /// 
 /// This constraint is of the form
-///    lb <= d/dt phi(q) <= u
+///    lb <= d/dt phi(q) <= ub
 /// corresponding to the __active__ constraints only.
 ///
 /// The decision variables for this constraint are q and v

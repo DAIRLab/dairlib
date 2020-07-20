@@ -64,17 +64,17 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   using KinematicEvaluator<T>::EvalFullJacobian;
   using KinematicEvaluator<T>::plant;
 
-  std::shared_ptr<drake::solvers::Constraint> CreateConicFrictionConstraint(
-      double mu) const override;
+  std::shared_ptr<drake::solvers::Constraint> CreateConicFrictionConstraint()
+      const override;
 
   std::shared_ptr<drake::solvers::Constraint> CreateLinearFrictionConstraint(
-      double mu, int num_faces = 8) const override;
+      int num_faces = 8) const override;
 
   /// Identify this evaluator as frictional, for use when calling
   /// CreateConicFrictionConstraint and CreateLinearFrictionConstraint
   /// The normal direction is always assumed to be at index 2 in this
   /// evaluator's output.
-  void SetFrictional() { is_frictional_ = true; };
+  void set_frictional() { is_frictional_ = true; };
 
  private:
   const Eigen::Vector3d pt_A_;

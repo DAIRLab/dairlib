@@ -156,7 +156,7 @@ void ImpactConstraint<T>::EvaluateConstraint(
   const auto& impulse = vars.segment(n_x_, n_l_);
   const auto& v1 = vars.segment(n_x_ + n_l_, plant_.num_velocities());
 
-  plant_.SetPositionsAndVelocities(context_, x0);
+  plant_.SetPositions(context_, x0.head(plant_.num_positions()));
   drake::MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
   plant_.CalcMassMatrix(*context_, &M);
 

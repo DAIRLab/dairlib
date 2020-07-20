@@ -179,10 +179,19 @@ vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
         -0.002;
     if(iter!=0)
     {
-      new_task_max = (task_min_range_[i]+task_max_range_[i])/2
-          +iter*0.005;
-      new_task_min = (task_min_range_[i]+task_max_range_[i])/2
-          -iter*0.005;
+      // set different speeds of increasing
+      if(iter<=50){
+        new_task_max = (task_min_range_[i]+task_max_range_[i])/2
+            +iter*0.005;
+        new_task_min = (task_min_range_[i]+task_max_range_[i])/2
+            -iter*0.005;
+      }
+      else{
+        new_task_max = (task_min_range_[i]+task_max_range_[i])/2
+            +50*0.005+(iter-50)*0.002;
+        new_task_min = (task_min_range_[i]+task_max_range_[i])/2
+            +50*0.005+(iter-50)*0.002; 
+      }
     }
     double new_task_max_range = (new_task_max>task_max_range_[i])?
                                 task_max_range_[i]:new_task_max;

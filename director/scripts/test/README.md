@@ -39,12 +39,27 @@ visualization of data during a simulation:
         "abstract_channel" : The secondary channel (different from the main
                              channel) from where the user wants to listen to
                              messages
+
         "abstract_type" : Type/Class of message from the secondary channel
+
         "abstract_field" : The specific field from where the information is
                            to be extracted. This needs to contain the entire
                            path to reach the field. It can contain both field
                            names as well as arrays with the index number to be
-                           selected
+                           selected. If this contains an array and the needed
+                           index is unknown, but the name of the element is
+                           known, then the symbol %d can be provided inside
+                           the brackets which will be followed by the two
+                           additional JSON attributes below.
+
+       "index_field": In the case the symbol %d is present in the abstract_field
+                      this will contain the name of an array with the names of
+                      all the objects/elements present in the lcm message
+
+       "index_element": In the case the symbol %d is present in the abstract_field
+                        this will contain the name of the specific object/element
+                        to be searched in the "index_field" array
+
 
         If this is intended to be used to draw a point or a line then it
         also contains:

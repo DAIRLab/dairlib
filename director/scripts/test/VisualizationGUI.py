@@ -23,6 +23,7 @@ import sys
 from collections import deque
 import re
 from pydrake.common.eigen_geometry import Quaternion
+import bot_core as lcmbot
 
 class VisualizationGui(QWidget):
 
@@ -88,11 +89,9 @@ class VisualizationGui(QWidget):
                 # if this is a shape of type lcm then create an additional separate object
                 if (newObject.category == "lcm" and (newObject.name not in self.lcmObjects)):
                     if (newObject.type == "axis"):
-                        self.lcmObjects[data['name']] = LCMMessage(newObject.source_data['abstract_channel'], newObject.source_data['abstract_type'],
-                        newObject.source_data["abstract_field"], newObject.source_data["quaternion_index"], 0, 0)
+                        self.lcmObjects[data['name']] = LCMMessage(newObject.source_data, axis = True)
                     else:
-                        self.lcmObjects[data['name']] = LCMMessage(newObject.source_data['abstract_channel'], newObject.source_data['abstract_type'],
-                        newObject.source_data["abstract_field"], newObject.source_data["x_index"], newObject.source_data["y_index"], newObject.source_data["z_index"])
+                        self.lcmObjects[data['name']] = LCMMessage(newObject.source_data)
 
                 # if there exists a shape with the given name then simply update it
                 if (newObject.name not in self.shapes):
@@ -133,11 +132,7 @@ class VisualizationGui(QWidget):
             # add more LCM subscriptions depending on the number of "lcm" data
             for name in self.lcmObjects:
                 lcmMessage = self.lcmObjects[name]
-                subscriber = None
-                if (self.shapes[name].type == "axis"):
-                    subscriber = lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg, field=lcmMessage.field, name=name, x=lcmMessage.x, y=0, z=0: self.abstract_handler(msg, field, name, x, y, z))
-                else:
-                    subscriber = lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg, field=lcmMessage.field, name=name, x=lcmMessage.x, y=lcmMessage.y, z=lcmMessage.z: self.abstract_handler(msg, field, name, x, y, z))
+                subscriber = lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg, lcmMessage=lcmMessage, name=name: self.abstract_handler(msg, name, lcmMessage))
 
                 self.subscriptions.append(subscriber)
 
@@ -225,7 +220,7 @@ class VisualizationGui(QWidget):
         return math.sqrt(sum)
 
 
-    def abstract_handler(self, msg, field, name, x, y, z):
+    def abstract_handler(self, msg, name, lcmMessage):
         '''
         Function for handling LCM messages originating from a different
         channel than the main one
@@ -240,45 +235,70 @@ class VisualizationGui(QWidget):
         '''
         self.handle_checkBox(name)
         attribute = msg
+        proceed = True
 
         # parse field to get the appropriate information. This is done by
         # recursively searching for the right attribute in the given message
-        field = field.split(".")
+        field = lcmMessage.field.split(".")
         regExpr = re.compile('.+\[\d\]')
         for part in field:
             index = None
             attName = None
-            if regExpr.match(part) is not None:
-                index = part[len(part) - 2]
-                attName = part[0:len(part) - 3:1]
-                attribute = getattr(attribute, attName)[int(index)]
+
+            # if the "[%d]" symbol is present then acces the index_field and
+            # search for the index_element
+            if ("[%d]" in part):
+                count = 0
+                for element in getattr(attribute, lcmMessage.index_field):
+                    if (element == lcmMessage.index_element):
+                        index = count
+                        attName = part.split("[%d]")[0]
+                        break
+                    count += 1
+
+                if (attName != None):
+                    attribute = getattr(attribute, attName)[int(index)]
+                    continue
+
+                else:
+                    proceed = False
+                    break
             else:
-                index = None
-                attName = part
-                attribute = getattr(attribute, attName)
+                if regExpr.match(part) is not None:
+                    index = part[len(part) - 2]
+                    attName = part[0:len(part) - 3:1]
+                    attribute = getattr(attribute, attName)[int(index)]
+                else:
+                    index = None
+                    attName = part
+                    attribute = getattr(attribute, attName)
 
-        currShape = self.shapes[name]
+        if (proceed == True):
+            currShape = self.shapes[name]
+            x = lcmMessage.x
+            y = lcmMessage.y
+            z = lcmMessage.z
 
-        # special case of an axis data
-        if (currShape.type == "axis"):
-            # get quaternion array, normalize it, and get the corresponding rotation matrix
-            quaternion = []
-            for i in range(x, x+4):
-                quaternion.append(attribute[i])
-            norm = np.linalg.norm(quaternion)
-            quaternion = [x / norm for x in quaternion]
-            rot_matrix = Quaternion(quaternion).rotation()
+            # special case of an axis data
+            if (currShape.type == "axis"):
+                # get quaternion array, normalize it, and get the corresponding rotation matrix
+                quaternion = []
+                for i in range(x, x+4):
+                    quaternion.append(attribute[i])
+                norm = np.linalg.norm(quaternion)
+                quaternion = [x / norm for x in quaternion]
+                rot_matrix = Quaternion(quaternion).rotation()
 
-            pt_world = self.plant.CalcPointsPositions(self.context,
-                self.plant.GetFrameByName(currShape.frame),
-                currShape.point, self.plant.world_frame())
-            next_loc = pt_world.transpose()[0]
+                pt_world = self.plant.CalcPointsPositions(self.context,
+                    self.plant.GetFrameByName(currShape.frame),
+                    currShape.point, self.plant.world_frame())
+                next_loc = pt_world.transpose()[0]
 
-            self.drawShape(self.shapes[name], next_loc, msg, rotation_matrix = rot_matrix)
+                self.drawShape(self.shapes[name], next_loc, msg, rotation_matrix = rot_matrix)
 
-        else:
-            next_loc = [attribute[x], attribute[y], attribute[z]]
-            self.drawShape(self.shapes[name], next_loc, msg)
+            else:
+                next_loc = [attribute[x], attribute[y], attribute[z]]
+                self.drawShape(self.shapes[name], next_loc, msg)
 
     def handle_checkBox(self, name):
         '''
@@ -546,13 +566,23 @@ class LCMMessage():
     '''
     Wrapper class for LCM messages
     '''
-    def __init__(self, channel, type, field, x_index, y_index, z_index):
-        self.channel = channel
-        self.type = type
-        self.field = field
-        self.x = x_index
-        self.y = y_index
-        self.z = z_index
+    def __init__(self, source_data, axis = False):
+        self.channel = source_data['abstract_channel']
+        self.type = source_data['abstract_type']
+        self.field = source_data['abstract_field']
+
+        if ("[%d]" in self.field):
+            self.index_field = source_data['index_field']
+            self.index_element = source_data['index_element']
+
+        if (axis == True):
+            self.x = source_data["quaternion_index"]
+            self.y = 0
+            self.z = 0
+        else:
+            self.x = source_data["x_index"]
+            self.y = source_data["y_index"]
+            self.z = source_data["z_index"]
 
 # Adding the widget
 panel = VisualizationGui()

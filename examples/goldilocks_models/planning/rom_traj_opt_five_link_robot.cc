@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/planning/rom_traj_opt.h"
+#include "examples/goldilocks_models/planning/rom_traj_opt_five_link_robot.h"
 
 #include <string>
 #include <utility>
@@ -39,7 +39,7 @@ using drake::symbolic::Expression;
 using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
-RomTrajOptWithFomImpactMap::RomTrajOptWithFomImpactMap(
+RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     vector<int> num_time_samples, vector<double> minimum_timestep,
     vector<double> maximum_timestep, MatrixXd Q, MatrixXd R,
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
@@ -47,8 +47,7 @@ RomTrajOptWithFomImpactMap::RomTrajOptWithFomImpactMap(
     VectorXd init_state, VectorXd h_guess, MatrixXd r_guess, MatrixXd dr_guess,
     MatrixXd tau_guess, VectorXd x_guess_left_in_front,
     VectorXd x_guess_right_in_front, bool with_init_guess, bool fix_duration,
-    bool fix_all_timestep, bool add_x_pose_in_cost, bool straight_leg_cost,
-    int rom_option, int robot_option)
+    bool fix_all_timestep, bool add_x_pose_in_cost, bool straight_leg_cost)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -57,7 +56,7 @@ RomTrajOptWithFomImpactMap::RomTrajOptWithFomImpactMap(
       num_modes_(num_time_samples.size()),
       mode_lengths_(num_time_samples),
       z_post_impact_vars_(NewContinuousVariables(
-          (2 * rom.n_y()) * (num_time_samples.size() - 1), "y_p")),
+          (2 * rom.n_y()) * (num_time_samples.size() - 1), "z_p")),
       x0_vars_(NewContinuousVariables(
           (plant.num_positions() + plant.num_velocities()) *
               num_time_samples.size(),
@@ -361,19 +360,19 @@ RomTrajOptWithFomImpactMap::RomTrajOptWithFomImpactMap(
 }
 
 const Eigen::VectorBlock<const VectorXDecisionVariable>
-RomTrajOptWithFomImpactMap::z_post_impact_vars_by_mode(int mode) const {
+RomTrajOptFiveLinkRobot::z_post_impact_vars_by_mode(int mode) const {
   return z_post_impact_vars_.segment(mode * n_z_, n_z_);
 }
 const Eigen::VectorBlock<const VectorXDecisionVariable>
-RomTrajOptWithFomImpactMap::x0_vars_by_mode(int mode) const {
+RomTrajOptFiveLinkRobot::x0_vars_by_mode(int mode) const {
   return x0_vars_.segment(mode * n_x_, n_x_);
 }
 const Eigen::VectorBlock<const VectorXDecisionVariable>
-RomTrajOptWithFomImpactMap::xf_vars_by_mode(int mode) const {
+RomTrajOptFiveLinkRobot::xf_vars_by_mode(int mode) const {
   return xf_vars_.segment(mode * n_x_, n_x_);
 }
 
-VectorX<Expression> RomTrajOptWithFomImpactMap::SubstitutePlaceholderVariables(
+VectorX<Expression> RomTrajOptFiveLinkRobot::SubstitutePlaceholderVariables(
     const VectorX<Expression>& f, int interval_index) const {
   VectorX<Expression> ret(f.size());
   for (int i = 0; i < f.size(); i++) {
@@ -384,9 +383,9 @@ VectorX<Expression> RomTrajOptWithFomImpactMap::SubstitutePlaceholderVariables(
 }
 
 // Eigen::VectorBlock<const VectorXDecisionVariable>
-// RomTrajOptWithFomImpactMap::state_vars_by_mode(int mode, int
+// RomTrajOptFiveLinkRobot::state_vars_by_mode(int mode, int
 // time_index)  {
-VectorXDecisionVariable RomTrajOptWithFomImpactMap::state_vars_by_mode(
+VectorXDecisionVariable RomTrajOptFiveLinkRobot::state_vars_by_mode(
     int mode, int time_index) const {
   if (time_index == 0 && mode > 0) {
     return z_post_impact_vars_by_mode(mode - 1);
@@ -401,7 +400,7 @@ VectorXDecisionVariable RomTrajOptWithFomImpactMap::state_vars_by_mode(
 }
 
 // TODO: need to configure this to handle the hybrid discontinuities properly
-void RomTrajOptWithFomImpactMap::DoAddRunningCost(
+void RomTrajOptFiveLinkRobot::DoAddRunningCost(
     const drake::symbolic::Expression& g) {
   // Trapezoidal integration:
   //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
@@ -419,7 +418,7 @@ void RomTrajOptWithFomImpactMap::DoAddRunningCost(
 }
 
 PiecewisePolynomial<double>
-RomTrajOptWithFomImpactMap::ReconstructInputTrajectory(
+RomTrajOptFiveLinkRobot::ReconstructInputTrajectory(
     const MathematicalProgramResult& result) const {
   Eigen::VectorXd times = GetSampleTimes(result);
   vector<double> times_vec(N());
@@ -432,7 +431,7 @@ RomTrajOptWithFomImpactMap::ReconstructInputTrajectory(
 }
 
 PiecewisePolynomial<double>
-RomTrajOptWithFomImpactMap::ReconstructStateTrajectory(
+RomTrajOptFiveLinkRobot::ReconstructStateTrajectory(
     const MathematicalProgramResult& result) const {
   VectorXd times_all(GetSampleTimes(result));
   VectorXd times(N() + num_modes_ - 1);

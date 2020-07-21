@@ -22,12 +22,12 @@ namespace goldilocks_models {
 // yddot = theta_yddot * phi_yddot + B * tau
 
 // Modified from HybridDircon class
-class RomTrajOptWithFomImpactMap
+class RomTrajOptFiveLinkRobot
     : public drake::systems::trajectory_optimization::MultipleShooting {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RomTrajOptWithFomImpactMap)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RomTrajOptFiveLinkRobot)
 
-  RomTrajOptWithFomImpactMap(
+  RomTrajOptFiveLinkRobot(
       std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
       std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
       Eigen::MatrixXd R, const ReducedOrderModel& rom,
@@ -38,9 +38,9 @@ class RomTrajOptWithFomImpactMap
       Eigen::MatrixXd tau_guess, Eigen::VectorXd x_guess_left_in_front,
       Eigen::VectorXd x_guess_right_in_front, bool with_init_guess,
       bool fix_duration, bool fix_all_timestep, bool add_x_pose_in_cost,
-      bool straight_leg_cost, int rom_option, int robot_option);
+      bool straight_leg_cost);
 
-  ~RomTrajOptWithFomImpactMap() override {}
+  ~RomTrajOptFiveLinkRobot() override {}
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.

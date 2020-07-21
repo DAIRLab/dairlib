@@ -4,8 +4,9 @@
 #include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
+
+#include "examples/goldilocks_models/planning/rom_traj_opt_five_link_robot.h"
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -64,9 +65,6 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
   CreateMBP(&plant, FLAGS_robot_option);
 
-  // Create autoDiff version of the plant
-  MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
-
   // Files parameters
   const string dir = "../dairlib_data/goldilocks_models/planning/robot_" +
                      to_string(FLAGS_robot_option) + "/";
@@ -98,10 +96,6 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     min_dt.push_back(.01);
     max_dt.push_back(.3);
   }
-  int N = 0;
-  for (uint i = 0; i < num_time_samples.size(); i++) N += num_time_samples[i];
-  N -= num_time_samples.size() - 1;
-  // cout << "N = " << N << endl;
 
   // Store data
   writeCSV(dir_data + string("n_step.csv"), n_step * VectorXd::Ones(1));
@@ -152,13 +146,12 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   // Construct
   cout << "\nConstructing optimization problem...\n";
   auto start = std::chrono::high_resolution_clock::now();
-  RomTrajOptWithFomImpactMap trajopt(
+  RomTrajOptFiveLinkRobot trajopt(
       num_time_samples, min_dt, max_dt, Q, R, *rom, plant,
       FLAGS_zero_touchdown_impact, FLAGS_final_position, init_state, h_guess,
       r_guess, dr_guess, tau_guess, x_guess_left_in_front,
       x_guess_right_in_front, with_init_guess, FLAGS_fix_duration,
-      FLAGS_fix_all_timestep, true, false, FLAGS_rom_option,
-      FLAGS_robot_option);
+      FLAGS_fix_all_timestep, true, false);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";

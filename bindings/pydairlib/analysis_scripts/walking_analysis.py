@@ -28,6 +28,7 @@ def main():
     FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf"))
   plant.mutable_gravity_field().set_gravity_vector(
+
     -9.81 * np.array([0, 0, 1]))
   plant.Finalize()
 
@@ -73,26 +74,30 @@ def main():
   com_trajectory = PiecewisePolynomial.CubicHermite(t_points_com, com_points[:3], com_points[3:6])
   pelvis_rot_points = lcm_trajectory.getTrajectory(pelvis_rot_mode_name).datapoints
   t_points_pelvis_rot = lcm_trajectory.getTrajectory(pelvis_rot_mode_name).time_vector
-  pelvis_rot_trajectory = PiecewisePolynomial.FirstOrderHold(t_points_pelvis_rot, pelvis_rot_points[:4])
+  # pelvis_rot_trajectory = PiecewisePolynomial.FirstOrderHold(t_points_pelvis_rot, pelvis_rot_points[:4])
+  pelvis_rot_trajectory = PiecewisePolynomial.CubicHermite(t_points_pelvis_rot, pelvis_rot_points[:4],
+                                                           pelvis_rot_points[-4:])
 
   t_sampled = np.linspace(0, t_points_l_foot[-1], 100)
   l_foot = []
   r_foot = []
   com = []
   pelvis_rot = []
+  pelvis_rot_trajectory_dot = pelvis_rot_trajectory.derivative(1)
   for t in t_sampled:
     l_foot.append(l_foot_trajectory.value(t))
     r_foot.append(r_foot_trajectory.value(t))
     com.append(com_trajectory.value(t))
-    pelvis_rot.append(pelvis_rot_trajectory.value(t))
+    # pelvis_rot.append(pelvis_rot_trajectory.value(t))
+    pelvis_rot.append(pelvis_rot_trajectory_dot.value(t))
   l_foot = np.array(l_foot)
   r_foot = np.array(r_foot)
   com = np.array(com)
   pelvis_rot = np.array(pelvis_rot)
 
   plt.figure("Nominal Trajectories")
-  # plt.plot(t_sampled, l_foot[:, :, 0])
-  # plt.plot(t_sampled, r_foot[:, :, 0])
+  plt.plot(t_sampled, l_foot[:, :, 0])
+  plt.plot(t_sampled, r_foot[:, :, 0])
   # plt.plot(t_sampled, com[:, :, 0])
   # plt.plot(t_sampled, pelvis_rot[:, :, 0])
 
@@ -101,15 +106,23 @@ def main():
   # plt.plot(t_osc_debug, osc_debug[0].y_des)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y_des)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y)
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des)
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y_des)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y)
-  # plt.plot(osc_debug["l_foot_traj"].t , osc_debug["l_foot_traj"].y_des)
-  # plt.plot(osc_debug["l_foot_traj"].t , osc_debug["l_foot_traj"].y)
-  plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].y_des)
+  # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].yddot_des)
+  # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].yddot_command_sol)
+  plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].y_des)
   plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].y)
+  # plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].ydot_des)
+  # plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].ydot)
+  plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].y_des)
+  plt.plot(osc_debug["l_foot_traj"].t , osc_debug["l_foot_traj"].y)
   plt.plot(t_osc, fsm, 'k--')
   # import pdb; pdb.set_trace()
+  plt.legend(["0", "1", "2", "3", "4", "5", "6"])
   plt.show()
+
 
 if __name__ == "__main__":
   main()

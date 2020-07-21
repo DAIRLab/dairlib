@@ -37,10 +37,23 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
       world_(plant.world_frame()),
       stance_foot_frame_(plant.GetFrameByName(stance_foot_name)),
       foot_traj_(foot_traj),
-      time_offset_(time_offset){
+      time_offset_(time_offset) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   context_ = plant_.CreateDefaultContext();
+
+
+  // Input/Output Setup
+  state_port_ =
+      this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
+                                                        plant_.num_velocities(),
+                                                        plant_.num_actuators()))
+          .get_index();
+  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+
+  fsm_idx_ = this->DeclareDiscreteState(1);
+  time_shift_idx_ = this->DeclareDiscreteState(1);
+  x_offset_idx_ = this->DeclareDiscreteState(1);
 
   if (isLeftFoot) {
     this->set_name("l_foot_traj");
@@ -53,26 +66,14 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
                                     &SwingFootTrajGenerator::CalcTraj);
     active_state_ = RIGHT;
   }
-
-  // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
-                                                        plant_.num_velocities(),
-                                                        plant_.num_actuators()))
-          .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
-
-  fsm_idx_ = this->DeclareDiscreteState(1);
-  time_shift_idx_ = this->DeclareDiscreteState(1);
-
   // Shift trajectory by time_offset
   foot_traj_.shiftRight(time_offset_);
 
   // TODO(yangwill) add this shift elsewhere to make the gait periodic
-  DeclarePerStepDiscreteUpdateEvent(&SwingFootTrajGenerator::DiscreteVariableUpdate);
-
+  DeclarePerStepDiscreteUpdateEvent(
+      &SwingFootTrajGenerator::DiscreteVariableUpdate);
+  plant_context_ = plant.CreateDefaultContext();
 }
-
 
 EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
@@ -81,6 +82,8 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
       discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
   auto time_shift =
       discrete_state->get_mutable_vector(time_shift_idx_).get_mutable_value();
+  auto x_offset =
+      discrete_state->get_mutable_vector(x_offset_idx_).get_mutable_value();
 
   const BasicVector<double>* fsm_output =
       this->EvalVectorInput(context, fsm_port_);
@@ -96,6 +99,8 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
     // A cycle has been reached
     if (fsm_state(0) == DOUBLE_L_LO) {
       time_shift << timestamp + time_offset_;
+      plant_.SetPositions(plant_context_.get(), robot_output->GetPositions());
+      x_offset << plant_.CalcCenterOfMassPosition(*plant_context_)[0];
     }
   }
   return EventStatus::Succeeded();

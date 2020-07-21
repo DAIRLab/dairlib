@@ -167,10 +167,11 @@ int DoMain() {
       state_traj_w_spr};
   std::vector<std::string> trajectory_names = {state_traj_w_spr.traj_name};
 
-  auto processed_traj = LcmTrajectory(
-      converted_trajectories, trajectory_names, "jumping_trajectory",
-      "State trajectory for cassie jumping adjusted to include "
-      "states of the plant with springs");
+  auto processed_traj =
+      LcmTrajectory(converted_trajectories, trajectory_names,
+                    "trajectory for cassie model with springs",
+                    "State trajectory for cassie adjusted to include "
+                    "states of the plant with springs");
 
   processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
                              "_for_sim");

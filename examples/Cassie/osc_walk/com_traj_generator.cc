@@ -51,9 +51,11 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
                                   &COMTrajGenerator::CalcTraj);
   fsm_idx_ = this->DeclareDiscreteState(1);
   time_shift_idx_ = this->DeclareDiscreteState(1);
+  x_offset_idx_ = this->DeclareDiscreteState(1);
 
   DeclarePerStepDiscreteUpdateEvent(&COMTrajGenerator::DiscreteVariableUpdate);
   com_traj_.shiftRight(time_offset);
+  plant_context_ = plant.CreateDefaultContext();
 }
 
 EventStatus COMTrajGenerator::DiscreteVariableUpdate(
@@ -63,6 +65,8 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
       discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
   auto time_shift =
       discrete_state->get_mutable_vector(time_shift_idx_).get_mutable_value();
+  auto x_offset =
+      discrete_state->get_mutable_vector(x_offset_idx_).get_mutable_value();
 
   const BasicVector<double>* fsm_output =
       this->EvalVectorInput(context, fsm_port_);
@@ -76,11 +80,27 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     // A cycle has been reached
-    if (fsm_state(0) == DOUBLE_L_LO) {
+    if (fsm_state(0) == DOUBLE_R_LO || fsm_state(0) == DOUBLE_L_LO) {
       time_shift << timestamp;
+      plant_.SetPositions(plant_context_.get(), robot_output->GetPositions());
+      x_offset << plant_.CalcCenterOfMassPosition(*plant_context_)[0];
     }
   }
   return EventStatus::Succeeded();
+}
+
+drake::trajectories::PiecewisePolynomial<double>
+COMTrajGenerator::GenerateTrajectory(
+    const drake::systems::Context<double>& context) const {
+  const auto& x_offset = context.get_discrete_state().get_vector(x_offset_idx_);
+
+  Vector3d offset(x_offset[0], 0, 0);
+  std::vector<double> breaks = com_traj_.get_segment_times();
+  MatrixXd offset_points = offset.replicate(1, breaks.size());
+  PiecewisePolynomial<double> com_offset =
+      PiecewisePolynomial<double>::ZeroOrderHold(
+          Eigen::Map<VectorXd>(breaks.data(), breaks.size()), offset_points);
+  return com_traj_ + com_offset;
 }
 
 void COMTrajGenerator::CalcTraj(
@@ -93,7 +113,7 @@ void COMTrajGenerator::CalcTraj(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
 
-  *casted_traj = com_traj_;
+  *casted_traj = GenerateTrajectory(context);
   casted_traj->shiftRight(time_shift(0));
 }
 

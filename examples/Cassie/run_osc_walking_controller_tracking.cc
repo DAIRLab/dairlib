@@ -165,6 +165,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
       lcm_pelvis_rot_traj.time_vector,
       lcm_pelvis_rot_traj.datapoints.topRows(4));
+  //      lcm_pelvis_rot_traj.datapoints.bottomRows(4));
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm;
@@ -233,8 +234,8 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, right_heel.first, right_heel.second,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-  vector<osc_walk::FSM_STATE> double_stance_modes = {osc_walk::DOUBLE_R_LO,
-                                                     osc_walk::DOUBLE_L_LO};
+  vector<osc_walk::FSM_STATE> double_stance_modes = {osc_walk::DOUBLE_L_LO,
+                                                     osc_walk::DOUBLE_R_LO};
   vector<osc_walk::FSM_STATE> all_modes = {
       osc_walk::DOUBLE_L_LO, osc_walk::RIGHT, osc_walk::DOUBLE_R_LO,
       osc_walk::LEFT};
@@ -292,8 +293,8 @@ int DoMain(int argc, char* argv[]) {
                                                    "toe_right");
 
   // Pelvis orientation tracking
-  double w_pelvis_balance = 20;
-  double w_heading = 10;
+  double w_pelvis_balance = 5;
+  double w_heading = 1;
   double k_p_pelvis_balance = 16;  // 100
   double k_d_pelvis_balance = 8;   // 80
   double k_p_heading = 16;         // 50

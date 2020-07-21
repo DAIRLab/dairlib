@@ -76,7 +76,7 @@ EventStatus WalkingEventFsm::DiscreteVariableUpdate(
     std::cout << "Initial state is : " << init_state_ << std::endl;
     fsm_state << init_state_;
     prev_time << timestamp;
-    time_offset << 0;
+    time_offset << 0.0;
   }
 
   int num_contacts = contact_info->num_point_pair_contacts;

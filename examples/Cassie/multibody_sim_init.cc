@@ -7,6 +7,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
@@ -65,6 +66,11 @@ DEFINE_double(init_height, .7,
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
+DEFINE_double(starting_time, 0.0, "Starting time of the simulator, useful for initializing the state at a particular configuration");
+DEFINE_string(traj_name, "", "Name of the saved trajectory");
+DEFINE_string(folder_path, "", "Local path of the saved trajectory");
+DEFINE_string(mode_name, "state_trajectory", "Name of the individual saved trajectory");
+
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -104,6 +110,8 @@ int do_main(int argc, char* argv[]) {
 
   plant.Finalize();
 
+  int nx = plant.num_positions() + plant.num_velocities();
+
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto input_sub =
@@ -120,7 +128,7 @@ int do_main(int argc, char* argv[]) {
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
-      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
+  *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
@@ -158,27 +166,31 @@ int do_main(int argc, char* argv[]) {
 
   // Create a context for this system:
   std::unique_ptr<Context<double>> diagram_context =
-      diagram->CreateDefaultContext();
+                                       diagram->CreateDefaultContext();
   diagram_context->EnableCaching();
   diagram->SetDefaultContext(diagram_context.get());
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
-  // Set initial conditions of the simulation
-  VectorXd q_init, u_init, lambda_init;
+  const LcmTrajectory& processed_trajs =
+      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name + "_for_sim");
+  const LcmTrajectory::Trajectory& lcm_state_traj =
+      processed_trajs.getTrajectory(FLAGS_mode_name);
+  const drake::trajectories::PiecewisePolynomial<double>& state_traj =
+      drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+          lcm_state_traj.time_vector, lcm_state_traj.datapoints.topRows(nx),
+          lcm_state_traj.datapoints.bottomRows(nx));
+  VectorXd x_init = state_traj.value(FLAGS_starting_time);
 
-  double mu_fp = 0;
-  double min_normal_fp = 70;
-  double toe_spread = .2;
-  if (FLAGS_floating_base) {
-    CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp, true,
-                           toe_spread, &q_init, &u_init, &lambda_init);
-  } else {
-    CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
+  if (FLAGS_terrain_height < 0.0) {
+    x_init(6) -= FLAGS_terrain_height;
   }
 
-  plant.SetPositions(&plant_context, q_init);
-  plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
+  if (FLAGS_terrain_height != 0.0) {
+    ConnectDrakeVisualizer(&builder, scene_graph);
+  }
+
+  plant.SetPositionsAndVelocities(&plant_context, x_init);
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

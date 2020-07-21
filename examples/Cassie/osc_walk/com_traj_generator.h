@@ -29,19 +29,23 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::trajectories::PiecewisePolynomial<double> GenerateTrajectory(
+      const drake::systems::Context<double>& context) const;
+
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
-
   const drake::multibody::MultibodyPlant<double>& plant_;
+
   const drake::multibody::BodyFrame<double>& world_;
-
   int state_port_;
+
   int fsm_port_;
-
   int fsm_idx_;
-  int time_shift_idx_;
 
+  int time_shift_idx_;
+  int x_offset_idx_;
   drake::trajectories::PiecewisePolynomial<double> com_traj_;
+  std::unique_ptr<drake::systems::Context<double>> plant_context_;
 };
 
 }  // namespace dairlib::examples::osc_walk

@@ -221,6 +221,21 @@ cc_binary(
 )
 
 cc_binary(
+    name = "multibody_sim_init",
+    srcs = ["multibody_sim_init.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "parse_log_test",
     srcs = ["test/parse_log_test.cc"],
     deps = [

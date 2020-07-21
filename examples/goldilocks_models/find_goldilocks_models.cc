@@ -1528,20 +1528,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
   } else {
     throw std::runtime_error("Should not reach here");
   }
-  // Increase the tolerance for restricted number
+  // Increase the tolerance for restricted number of samples
+  // Considering that the task space is gradually increased, we also need to
+  // relax the increase_rate
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     if (is_grid_task) {
       max_average_cost_increase_rate = FLAGS_is_stochastic ? 0.5 : 0.01;
     } else {
-      max_average_cost_increase_rate = 2;
+      max_average_cost_increase_rate = 5;
     }
   } else if (FLAGS_robot_option == 1) {
     if (is_grid_task) {
       max_average_cost_increase_rate =
           FLAGS_is_stochastic ? 0.2 : 0.01;  // 0.15
     } else {
-      max_average_cost_increase_rate = 1;
+      max_average_cost_increase_rate = 10;
     }
   } else {
     throw std::runtime_error("Should not reach here");

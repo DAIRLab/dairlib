@@ -78,6 +78,7 @@ class TasksGenerator {
   double task_max(const string& name) const {
     return task_max_range_[name_to_index_map_.at(name)];
   }
+  bool currently_extend_task_space(){return currently_extend_task_space_;}
 
   // Generator
   virtual vector<double> NewTask(int iter,int sample_idx) = 0;
@@ -94,6 +95,7 @@ class TasksGenerator {
   vector<double> task_max_range_;
   vector<std::uniform_real_distribution<>> distribution_;
   int N_sample_{};
+  bool currently_extend_task_space_;
 
   std::unordered_map<string, int> name_to_index_map_;
 

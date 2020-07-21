@@ -2215,7 +2215,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
       if (rerun_current_iteration) {
         iter -= 1;
       }
-    } else if (extend_model_this_iter) {  // Extend the model
+    }else if(task_gen->currently_extend_task_space()){
+      continue;
+    }
+    else if (extend_model_this_iter) {  // Extend the model
       cout << "Start extending model...\n";
       extendModel(dir, iter, *rom, prev_theta, step_direction,
                   prev_step_direction, ave_min_cost_so_far, FLAGS_rom_option,

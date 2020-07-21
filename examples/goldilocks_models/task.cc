@@ -45,6 +45,8 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
   DRAKE_DEMAND(task_0.size() == (unsigned)task_dim);
   DRAKE_DEMAND(task_delta.size() == (unsigned)task_dim);
 
+  // we don't implement the feature of extending task space for grid method
+  currently_extend_task_space_ = false;
   // Construct forward and backward index map
   int i_layer = 0;
   int sample_idx = 0;
@@ -143,7 +145,8 @@ UniformTasksGenerator::UniformTasksGenerator(
     : TasksGenerator(task_dim, names, N_sample_vec) {
   DRAKE_DEMAND(task_min.size() == (unsigned)task_dim);
   DRAKE_DEMAND(task_max.size() == (unsigned)task_dim);
-
+  // initially we extend the task space
+  currently_extend_task_space_ = true;
   task_min_range_ = task_min;
   task_max_range_ = task_max;
 
@@ -152,6 +155,9 @@ UniformTasksGenerator::UniformTasksGenerator(
     // Distribution
     distribution_.emplace_back(task_min_range_[i], task_max_range_[i]);
   }
+
+  //set the flag of extend the task space as true
+  currently_extend_task_space_ = true;
 }
 
 void UniformTasksGenerator::PrintInfo() const {
@@ -162,45 +168,47 @@ void UniformTasksGenerator::PrintInfo() const {
     cout << "  max = " << task_max_range_[i] << endl;
   }
 }
-vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
-//  vector<double> ret(task_dim_, 0);
-//  for (int i = 0; i < task_dim_; i++) {
-//    ret[i] = distribution_[i](random_eng_);
-//  }
-//  return ret;
 
+vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
+  //the task space is gradually pushed until reach the final optimization range
   vector<double> ret(task_dim_, 0);
-  //decide the range of optimization by the number of iteration
-  for (int i = 0; i < task_dim_; i++) {
-    //iter = 0
-    double new_task_max = (task_min_range_[i]+task_max_range_[i])/2
-        +0.002;
-    double new_task_min = (task_min_range_[i]+task_max_range_[i])/2
-        -0.002;
-    if(iter!=0)
-    {
-      // set different speeds of increasing
-      if(iter<=50){
-        new_task_max = (task_min_range_[i]+task_max_range_[i])/2
-            +iter*0.005;
-        new_task_min = (task_min_range_[i]+task_max_range_[i])/2
-            -iter*0.005;
+  if(iter<100){
+    //extend the task space
+    currently_extend_task_space_ = true;
+    // decide which direction to extend
+    // 1 corresponds to the direction of increasing
+    // 0 corresponds t0 the direction of decreasing
+    std::uniform_int_distribution<int> int_distribution(0,1);
+    int direction_flag = int_distribution(random_eng_);
+    //decide the range of optimization by the number of iteration
+    double central;
+    double interval;
+    double new_task_max_range;
+    double new_task_min_range;
+    for (int i = 0; i < task_dim_; i++) {
+      central = (task_max_range_[i]+task_min_range_[i])/2;
+      interval = (task_max_range_[i]-task_min_range_[i])/2;
+      if(direction_flag==1)
+      {
+        new_task_max_range = central+(iter+1)*interval/100;
+        new_task_min_range = central+iter*interval/100;
       }
       else{
-        new_task_max = (task_min_range_[i]+task_max_range_[i])/2
-            +50*0.005+(iter-50)*0.002;
-        new_task_min = (task_min_range_[i]+task_max_range_[i])/2
-            +50*0.005+(iter-50)*0.002; 
+        new_task_max_range = central-iter*interval/100;
+        new_task_min_range = central-(iter+1)*interval/100;
       }
+      // Distribution
+      std::uniform_real_distribution<double> new_distribution (new_task_min_range,
+                                                               new_task_max_range);
+      ret[i] = new_distribution(random_eng_);
     }
-    double new_task_max_range = (new_task_max>task_max_range_[i])?
-                                task_max_range_[i]:new_task_max;
-    double new_task_min_range = (new_task_min<task_min_range_[i])?
-                                task_min_range_[i]:new_task_min;
-    // Distribution
-    std::uniform_real_distribution<double> new_distribution (new_task_min_range,
-                                                             new_task_max_range);
-    ret[i] = new_distribution(random_eng_);
+  }
+  else{
+    //fix the task space range
+    currently_extend_task_space_ = false;
+    for (int i = 0; i < task_dim_; i++) {
+      ret[i] = distribution_[i](random_eng_);
+    }
   }
   return ret;
 }

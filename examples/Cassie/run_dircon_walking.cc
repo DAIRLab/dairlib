@@ -131,7 +131,7 @@ void DoMain() {
   // Cost on position
   double w_q_hip_roll = 5;
   double w_q_hip_yaw = 5;
-  double w_q_quat_xyz = 5;
+  double w_q_quat_xyz = 10;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -438,7 +438,6 @@ void DoMain() {
           u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
           -uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
     }
-    //    for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
     for (auto sym_joint_name : sym_joint_names) {
       // positions
       trajopt->AddLinearConstraint(
@@ -475,9 +474,10 @@ void DoMain() {
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_y_constraint = std::make_shared<PointPositionConstraint<double>>(
-      plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-      0.05 * VectorXd::Ones(1), 0.6 * VectorXd::Ones(1), "toe_left_y");
+  auto left_foot_y_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          0.05 * VectorXd::Ones(1), 0.6 * VectorXd::Ones(1), "toe_left_y");
   auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
@@ -509,9 +509,7 @@ void DoMain() {
   auto right_foot_constraint_z =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), T_ground_incline.row(2),
-          0.08 * VectorXd::Ones(1),
-          std::numeric_limits<double>::infinity() * VectorXd::Ones(1),
-          "toe_right_z");
+          0.15 * VectorXd::Ones(1), 0.5 * VectorXd::Ones(1), "toe_right_z");
   auto x_mid = trajopt->state(N / 2);
   trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
@@ -611,25 +609,24 @@ void DoMain() {
   trajopt->AddRunningCost(x.tail(n_v).transpose() * W_Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * W_R * u);
 
-  // add cost on force difference wrt time
-  // TODO(yangwill) fix indexing
-  //  bool diff_with_force_at_collocation = false;
-  //  if (w_lambda_diff) {
-  //    for (int i = 0; i < N - 1; i++) {
-  //      auto lambda0 = trajopt->force(0, i);
-  //      auto lambda1 = trajopt->force(0, i + 1);
-  //      auto lambdac = trajopt->collocation_force(0, i);
-  //      if (diff_with_force_at_collocation) {
-  //        trajopt->AddCost(w_lambda_diff *
-  //                         (lambda0 - lambdac).dot(lambda0 - lambdac));
-  //        trajopt->AddCost(w_lambda_diff *
-  //                         (lambdac - lambda1).dot(lambdac - lambda1));
-  //      } else {
-  //        trajopt->AddCost(w_lambda_diff *
-  //                         (lambda0 - lambda1).dot(lambda0 - lambda1));
-  //      }
-  //    }
-  //  }
+  //   add cost on force difference wrt time
+//  bool diff_with_force_at_collocation = false;
+//  if (w_lambda_diff) {
+//    for (int i = 0; i < N - 1; i++) {
+//      auto lambda0 = trajopt->force(0, i);
+//      auto lambda1 = trajopt->force(0, i + 1);
+//      auto lambdac = trajopt->collocation_force(0, i);
+//      if (diff_with_force_at_collocation) {
+//        trajopt->AddCost(w_lambda_diff *
+//                         (lambda0 - lambdac).dot(lambda0 - lambdac));
+//        trajopt->AddCost(w_lambda_diff *
+//                         (lambdac - lambda1).dot(lambdac - lambda1));
+//      } else {
+//        trajopt->AddCost(w_lambda_diff *
+//                         (lambda0 - lambda1).dot(lambda0 - lambda1));
+//      }
+//    }
+//  }
   // add cost on vel difference wrt time
   MatrixXd Q_v_diff = w_v_diff * MatrixXd::Identity(n_v, n_v);
   Q_v_diff(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
@@ -791,8 +788,8 @@ void DoMain() {
     }
   }
 
-//  trajopt->CreateVisualizationCallback(
-//      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
+  //  trajopt->CreateVisualizationCallback(
+  //      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;

@@ -93,14 +93,16 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  Parser parser(&plant, &scene_graph);
-  std::string terrain_name =
-      FindResourceOrThrow("examples/simple_examples/terrain.urdf");
-  parser.AddModelFromFile(terrain_name);
-  Vector3d offset;
-  offset << 0.15, 0, FLAGS_terrain_height;
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                   drake::math::RigidTransform<double>(offset));
+  if(FLAGS_terrain_height != 0){
+    Parser parser(&plant, &scene_graph);
+    std::string terrain_name =
+        FindResourceOrThrow("examples/simple_examples/terrain.urdf");
+    parser.AddModelFromFile(terrain_name);
+    Vector3d offset;
+    offset << 0.15, 0, FLAGS_terrain_height;
+    plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                     drake::math::RigidTransform<double>(offset));
+  }
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
@@ -192,6 +194,7 @@ int do_main(int argc, char* argv[]) {
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 
+  diagram_context->SetTime(FLAGS_starting_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
   if (!FLAGS_time_stepping) {

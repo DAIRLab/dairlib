@@ -12,7 +12,7 @@ from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.trajectories import PiecewisePolynomial
 import pydairlib.lcm_trajectory
-import pydairlib.multibody_utils
+import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 from load_lcm_trajs import load_lcm_trajs
 
@@ -38,9 +38,12 @@ def main():
   nx = plant.num_positions() + plant.num_velocities()
   nu = plant.num_actuators()
 
-  pos_map = pydairlib.multibody_utils.makeNameToPositionsMap(plant)
-  vel_map = pydairlib.multibody_utils.makeNameToVelocitiesMap(plant)
-  act_map = pydairlib.multibody_utils.makeNameToActuatorsMap(plant)
+  pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
+  vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)
+  act_map = pydairlib.multibody.makeNameToActuatorsMap(plant)
+
+  x_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
+  u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant)
 
   n_modes = 3
   folder_path = "/home/yangwill/Documents/research/projects/cassie/walking/saved_trajs/"
@@ -57,9 +60,10 @@ def main():
   filename = sys.argv[1]
   log = lcm.EventLog(filename, "r")
 
-  contact_info, contact_info_locs, control_inputs, estop_signal, osc_debug, \
-  q, switch_signal, t_contact_info, t_controller_switch, t_osc, \
-  t_state, v, fsm = process_lcm_log.process_log(log, pos_map, vel_map)
+  x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
+  switch_signal, t_controller_switch = process_lcm_log.process_log(log, pos_map, vel_map)
+
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal)
 
   lcm_trajectory = pydairlib.lcm_trajectory.LcmTrajectory()
   lcm_trajectory.loadFromFile(folder_path + trajectory_name)
@@ -78,7 +82,21 @@ def main():
   pelvis_rot_trajectory = PiecewisePolynomial.CubicHermite(t_points_pelvis_rot, pelvis_rot_points[:4],
                                                            pelvis_rot_points[-4:])
 
-  t_sampled = np.linspace(0, t_points_l_foot[-1], 100)
+  plt.figure("Contact info")
+  plt.plot(t_contact_info, contact_info[0, :, 2])
+  plt.plot(t_contact_info, contact_info[1, :, 2])
+  plt.plot(t_contact_info, contact_info[2, :, 2])
+  plt.plot(t_contact_info, contact_info[3, :, 2])
+  plt.legend(["lfoot_rear", "lfoot_front", "rfoot_rear", "rfoot_front"])
+  # plot_nominal_output_trajectories(t_points_com, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
+  #                                  r_foot_trajectory)
+  plot_osc_debug(t_u, fsm, osc_debug)
+  plt.show()
+
+
+def plot_nominal_output_trajectories(t_points, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
+                                     r_foot_trajectory):
+  t_sampled = np.linspace(0, t_points[-1], 100)
   l_foot = []
   r_foot = []
   com = []
@@ -98,30 +116,51 @@ def main():
   plt.figure("Nominal Trajectories")
   plt.plot(t_sampled, l_foot[:, :, 0])
   plt.plot(t_sampled, r_foot[:, :, 0])
-  # plt.plot(t_sampled, com[:, :, 0])
-  # plt.plot(t_sampled, pelvis_rot[:, :, 0])
+  plt.plot(t_sampled, com[:, :, 0])
+  plt.plot(t_sampled, pelvis_rot[:, :, 0])
 
-  # import pdb; pdb.set_trace()
+
+def plot_osc_debug(t_u, fsm, osc_debug):
   fig = plt.figure("OSC debug")
   # plt.plot(t_osc_debug, osc_debug[0].y_des)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y_des)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y)
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des)
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol)
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des)
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y_des)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y)
+  # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_y)
+  # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_ydot)
+  # plt.plot(osc_debug["pelvis_rot_tracking_data"].t, osc_debug["pelvis_rot_tracking_data"].error_y)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].yddot_des)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].yddot_command_sol)
-  plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].y_des)
-  plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].y)
+  # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].y_des)
+  # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].y)
+  # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].error_y)
   # plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].ydot_des)
   # plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].ydot)
-  plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].y_des)
-  plt.plot(osc_debug["l_foot_traj"].t , osc_debug["l_foot_traj"].y)
-  plt.plot(t_osc, fsm, 'k--')
-  # import pdb; pdb.set_trace()
+  # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].y_des)
+  # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].y)
+  # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].error_y)
+  plt.plot(t_u, fsm, 'k--')
   plt.legend(["0", "1", "2", "3", "4", "5", "6"])
-  plt.show()
+
+
+def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal):
+  pos_indices = slice(11, 15)
+  vel_indices = slice(33, 37)
+  u_indices = slice(4, 8)
+  plt.figure("positions")
+  plt.plot(t_x, x[:, pos_indices])
+  plt.legend(x_datatypes[pos_indices])
+  plt.figure("velocities")
+  plt.plot(t_x, x[:, vel_indices])
+  plt.legend(x_datatypes[vel_indices])
+  plt.figure("efforts")
+  plt.plot(t_u, u[:, u_indices])
+  plt.legend(u_datatypes[u_indices])
+  # plt.show()
 
 
 if __name__ == "__main__":

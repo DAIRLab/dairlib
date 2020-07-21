@@ -162,10 +162,10 @@ int DoMain(int argc, char* argv[]) {
           lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
           lcm_r_foot_traj.datapoints.bottomRows(3));
   PiecewisePolynomial<double> pelvis_rot_trajectory;
-  pelvis_rot_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
+  pelvis_rot_trajectory = PiecewisePolynomial<double>::CubicHermite(
       lcm_pelvis_rot_traj.time_vector,
-      lcm_pelvis_rot_traj.datapoints.topRows(4));
-  //      lcm_pelvis_rot_traj.datapoints.bottomRows(4));
+      lcm_pelvis_rot_traj.datapoints.topRows(4),
+        lcm_pelvis_rot_traj.datapoints.bottomRows(4));
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm;
@@ -263,9 +263,12 @@ int DoMain(int argc, char* argv[]) {
   /*** Tracking Data for OSC ***/
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2000;
-  W_com(1, 1) = 200;
-  W_com(2, 2) = 2000;
+//  W_com(0, 0) = 2000;
+//  W_com(1, 1) = 200;
+//  W_com(2, 2) = 2000;
+  W_com(0, 0) = 20;
+  W_com(1, 1) = 2;
+  W_com(2, 2) = 20;
   MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
   ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
@@ -293,8 +296,8 @@ int DoMain(int argc, char* argv[]) {
                                                    "toe_right");
 
   // Pelvis orientation tracking
-  double w_pelvis_balance = 5;
-  double w_heading = 1;
+  double w_pelvis_balance = 50;
+  double w_heading = 10;
   double k_p_pelvis_balance = 16;  // 100
   double k_d_pelvis_balance = 8;   // 80
   double k_p_heading = 16;         // 50

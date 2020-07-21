@@ -8,9 +8,13 @@ using drake::MatrixX;
 using drake::VectorX;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
+using drake::solvers::BoundingBoxConstraint;
+using drake::solvers::Constraint;
 using drake::systems::Context;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
+using std::shared_ptr;
+using std::vector;
 
 namespace dairlib {
 namespace multibody {
@@ -83,25 +87,32 @@ VectorX<T> WorldPointEvaluator<T>::EvalFullJacobianDotTimesV(
 }
 
 template <typename T>
-std::shared_ptr<drake::solvers::Constraint>
-WorldPointEvaluator<T>::CreateConicFrictionConstraint() const {
+vector<shared_ptr<Constraint>>
+WorldPointEvaluator<T>::CreateConicFrictionConstraints() const {
   // The normal index is 2
+  vector<shared_ptr<Constraint>> constraints;
   if (is_frictional_) {
-    return solvers::CreateConicFrictionConstraint(this->mu(), 2);
-  } else {
-    return nullptr;
+    constraints.push_back(
+        solvers::CreateConicFrictionConstraint(this->mu(), 2));
+    // Include redundant bounding box constraint
+    Vector3d lb = Vector3d::Constant(-std::numeric_limits<double>::infinity());
+    Vector3d ub = Vector3d::Constant(std::numeric_limits<double>::infinity());
+    lb(2) = 0;
+    constraints.push_back(std::make_shared<BoundingBoxConstraint>(lb, ub));
   }
+  return constraints;
 }
 
 template <typename T>
-std::shared_ptr<drake::solvers::Constraint>
-WorldPointEvaluator<T>::CreateLinearFrictionConstraint(int num_faces) const {
+vector<shared_ptr<Constraint>>
+WorldPointEvaluator<T>::CreateLinearFrictionConstraints(int num_faces) const {
+  vector<shared_ptr<Constraint>> constraints;
   // The normal index is 2
   if (is_frictional_) {
-    return solvers::CreateLinearFrictionConstraint(this->mu(), num_faces, 2);
-  } else {
-    return nullptr;
+    constraints.push_back(
+        solvers::CreateLinearFrictionConstraint(this->mu(), num_faces, 2));
   }
+  return constraints;
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(

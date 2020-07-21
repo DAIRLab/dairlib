@@ -170,14 +170,13 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         // constraint would be redundant. We do this here by setting bounds to
         // +/-inf.
         if (j == 0 && i_mode > 0) {
-          std::vector<int> union_indices =
+          std::vector<int> row_indices =
               get_mode(i_mode - 1)
                   .evaluators()
                   .FindActiveIndicesUnion(mode.evaluators());
-          for (const int union_index : union_indices) {
-            std::cout << union_index << std::endl;
-            lb(union_index) = -std::numeric_limits<double>::infinity();
-            ub(union_index) = std::numeric_limits<double>::infinity();
+          for (const int row_index : row_indices) {
+            lb(row_index) = -std::numeric_limits<double>::infinity();
+            ub(row_index) = std::numeric_limits<double>::infinity();
           }
         }
 
@@ -276,8 +275,8 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     int num_faces = 4;
     for (int k = 0; k < mode.evaluators().num_evaluators(); k++) {
       const auto& e = mode.evaluators().get_evaluator(k);
-      auto force_constraint = e.CreateLinearFrictionConstraint(num_faces);
-      if (force_constraint) {
+      auto force_constraints_vec = e.CreateLinearFrictionConstraints(num_faces);
+      for (auto force_constraint : force_constraints_vec) {
         // Add to knot point forces
         for (int j = 0; j < mode.num_knotpoints(); j++) {
           AddConstraint(

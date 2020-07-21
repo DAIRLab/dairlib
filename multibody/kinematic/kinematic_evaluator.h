@@ -66,7 +66,7 @@ class KinematicEvaluator {
   /// Evaluates the Jacobian w.r.t. velocity v
   drake::MatrixX<T> EvalFullJacobian(
       const drake::systems::Context<T>& context) const;
-  
+
   /// Evaluates Jdot * v, useful for computing constraint second derivative,
   ///  which would be d^2 phi/dt^2 = J * vdot + Jdot * v
   virtual drake::VectorX<T> EvalFullJacobianDotTimesV(
@@ -90,20 +90,24 @@ class KinematicEvaluator {
   /// Returns -1 if the given index is not active
   int full_index_to_active_index(int full_index) const;
 
-  /// Create a friction cone constraint on the force variables (associated with
+  /// Create friction cone constraints on the force variables (associated with
   /// the full Jacobian). Subclasses which might be associated with frictional
   /// contact should implement this method.
-  virtual std::shared_ptr<drake::solvers::Constraint>
-  CreateConicFrictionConstraint() const {
-    return nullptr;
+  /// This method returns a vector of constraints, should the friction
+  /// constraint be more naturally represented by mixed constraint types.
+  virtual std::vector<std::shared_ptr<drake::solvers::Constraint>>
+  CreateConicFrictionConstraints() const {
+    return std::vector<std::shared_ptr<drake::solvers::Constraint>>();
   };
 
-  /// Create a friction cone constraint on the force variables (associated with
+  /// Create friction cone constraints on the force variables (associated with
   /// the full Jacobian). Subclasses which might be associated with frictional
   /// contact should implement this method.
-  virtual std::shared_ptr<drake::solvers::Constraint>
-  CreateLinearFrictionConstraint(int num_faces = 8) const {
-    return nullptr;
+  /// This method returns a vector of constraints, should the friction
+  /// constraint be more naturally represented by mixed constraint types.
+  virtual std::vector<std::shared_ptr<drake::solvers::Constraint>>
+  CreateLinearFrictionConstraints(int num_faces = 8) const {
+    return std::vector<std::shared_ptr<drake::solvers::Constraint>>();
   };
 
   void set_mu(double mu) { mu_ = mu; };

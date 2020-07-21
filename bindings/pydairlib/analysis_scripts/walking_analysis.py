@@ -63,7 +63,7 @@ def main():
   x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
   switch_signal, t_controller_switch = process_lcm_log.process_log(log, pos_map, vel_map)
 
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal)
 
   lcm_trajectory = pydairlib.lcm_trajectory.LcmTrajectory()
   lcm_trajectory.loadFromFile(folder_path + trajectory_name)
@@ -82,15 +82,15 @@ def main():
   pelvis_rot_trajectory = PiecewisePolynomial.CubicHermite(t_points_pelvis_rot, pelvis_rot_points[:4],
                                                            pelvis_rot_points[-4:])
 
-  plt.figure("Contact info")
-  plt.plot(t_contact_info, contact_info[0, :, 2])
-  plt.plot(t_contact_info, contact_info[1, :, 2])
-  plt.plot(t_contact_info, contact_info[2, :, 2])
-  plt.plot(t_contact_info, contact_info[3, :, 2])
-  plt.legend(["lfoot_rear", "lfoot_front", "rfoot_rear", "rfoot_front"])
+  # plt.figure("Contact info")
+  # plt.plot(t_contact_info, contact_info[0, :, 2])
+  # plt.plot(t_contact_info, contact_info[1, :, 2])
+  # plt.plot(t_contact_info, contact_info[2, :, 2])
+  # plt.plot(t_contact_info, contact_info[3, :, 2])
+  # plt.legend(["lfoot_rear", "lfoot_front", "rfoot_rear", "rfoot_front"])
   # plot_nominal_output_trajectories(t_points_com, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
   #                                  r_foot_trajectory)
-  plot_osc_debug(t_u, fsm, osc_debug)
+  # plot_osc_debug(t_u, fsm, osc_debug)
   plt.show()
 
 

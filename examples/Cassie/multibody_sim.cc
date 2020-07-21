@@ -92,7 +92,11 @@ int do_main(int argc, char* argv[]) {
       FindResourceOrThrow("examples/simple_examples/terrain.urdf");
   parser.AddModelFromFile(terrain_name);
   Vector3d offset;
-  offset << 0.15, 0, FLAGS_terrain_height;
+  if (FLAGS_terrain_height >= 0.0) {
+    offset << 0.25, 0, FLAGS_terrain_height;
+  } else {
+    offset << -0.25, 0, -FLAGS_terrain_height;
+  }
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>(offset));
 
@@ -154,6 +158,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
+  ConnectDrakeVisualizer(&builder, scene_graph);
+
   auto diagram = builder.Build();
 
   // Create a context for this system:
@@ -175,6 +181,10 @@ int do_main(int argc, char* argv[]) {
                            toe_spread, &q_init, &u_init, &lambda_init);
   } else {
     CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
+  }
+
+  if (FLAGS_terrain_height < 0){
+    q_init(6) -= FLAGS_terrain_height;
   }
 
   plant.SetPositions(&plant_context, q_init);

@@ -1,10 +1,10 @@
 import lcm
-import threading, queue
+import threading
 
 from PythonQt.QtGui import *
 from PythonQt.QtCore import *
 
-import dairlib.lcmt_robot_output
+import dairlib
 from director import visualization as vis
 from director import lcmUtils
 import director.applogic
@@ -23,33 +23,13 @@ import sys
 from collections import deque
 import re
 from pydrake.common.eigen_geometry import Quaternion
-import bot_core as lcmbot
 
 class VisualizationGui(QWidget):
 
     def __init__(self, parent = None):
         super(VisualizationGui, self).__init__(parent)
 
-        # GUI attributes
-        self.checkBoxes = {}
-        self.checkBoxesPrevState = {}
-        self.resetBtn = None
-        self.clearBtn = None
-        self.checkBoxArea = None
-        self.reset = False
-        self.delete = False
-        self.clear = False
-        self.ready = False
-        self.lcmObjects = {}
-        self.subscriptions = []
-
-        # JSON attributes
-        self.channel = ""
-        self.data = None
-        self.modelFile = None
-        self.weldBody = None
-        self.shapes = {}
-        self.plant = None
+        self.resetGUI()
 
         # create the GUI
         self.setWindowTitle("Visualization GUI")
@@ -64,6 +44,26 @@ class VisualizationGui(QWidget):
         self.readJSON.clicked.connect(self.readJSONFile)
         hbox.addWidget(self.readJSON)
         self.vbox.addLayout(hbox)
+
+    def resetGUI(self):
+        # GUI attributes
+        self.checkBoxes = {}
+        self.resetBtn = None
+        self.clearBtn = None
+        self.checkBoxArea = None
+        self.reset = False
+        self.delete = False
+        self.clear = False
+        self.ready = False
+        self.lcmObjects = {}
+        self.subscriptions = []
+
+        # JSON attributes
+        self.data = None
+        self.modelFile = None
+        self.weldBody = None
+        self.shapes = {}
+        self.plant = None
 
     def readJSONFile(self):
         '''
@@ -87,11 +87,17 @@ class VisualizationGui(QWidget):
                 newObject = ObjectToDraw(data)
 
                 # if this is a shape of type lcm then create an additional separate object
-                if (newObject.category == "lcm" and (newObject.name not in self.lcmObjects)):
-                    if (newObject.type == "axis"):
-                        self.lcmObjects[data['name']] = LCMMessage(newObject.source_data, axis = True)
+                if (newObject.category == "lcm"):
+                    if (newObject.name not in self.lcmObjects):
+                        if (newObject.type == "axis"):
+                            self.lcmObjects[newObject.name] = LCMMessage(newObject.source_data, axis = True)
+                        else:
+                            self.lcmObjects[newObject.name] = LCMMessage(newObject.source_data)
                     else:
-                        self.lcmObjects[data['name']] = LCMMessage(newObject.source_data)
+                        if (newObject.type == "axis"):
+                            self.lcmObjects[newObject.name].update(newObject.source_data, axis = True)
+                        else:
+                            self.lcmObjects[newObject.name].update(newObject.source_data)
 
                 # if there exists a shape with the given name then simply update it
                 if (newObject.name not in self.shapes):
@@ -183,7 +189,6 @@ class VisualizationGui(QWidget):
 
                     addToList = True
                 self.checkBoxes[name].setChecked(True)
-                self.checkBoxesPrevState[name] = True
                 if (addToList == True):
                     self.checkBoxArea.addWidget(self.checkBoxes[name])
                 if (addToGUI == True):
@@ -238,14 +243,14 @@ class VisualizationGui(QWidget):
         proceed = True
 
         # parse field to get the appropriate information. This is done by
-        # recursively searching for the right attribute in the given message
+        # recursively searching for the right attribute in the given message's field
         field = lcmMessage.field.split(".")
         regExpr = re.compile('.+\[\d\]')
         for part in field:
             index = None
             attName = None
 
-            # if the "[%d]" symbol is present then acces the index_field and
+            # if the "[%d]" symbol is present then access the index_field and
             # search for the index_element
             if ("[%d]" in part):
                 count = 0
@@ -379,25 +384,7 @@ class VisualizationGui(QWidget):
                 for subscription in self.subscriptions:
                     lcmUtils.removeSubscriber(subscription)
 
-                # reset GUI variables
-                self.checkBoxes = {}
-                self.checkBoxesPrevState = {}
-                self.resetBtn = None
-                self.clearBtn = None
-                self.checkBoxArea = None
-                self.reset = False
-                self.delete = False
-                self.clear = False
-                self.ready = False
-                self.lcmObjects = {}
-                self.subscriptions = []
-
-                # reset JSON attributes
-                self.data = None
-                self.modelFile = None
-                self.weldBody = None
-                self.shapes = {}
-                self.plant = None
+                self.resetGUI()
 
     def drawShape(self, currShape, next_loc, msg, rotation_matrix = None):
         '''
@@ -425,7 +412,7 @@ class VisualizationGui(QWidget):
                     d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
 
                     if (currShape.object == None):
-                        currShape.object = vis.showPolyData(d.getPolyData(), "line")
+                        currShape.object = vis.showPolyData(d.getPolyData(), currShape.name)
                         currShape.object.setProperty('Color', currShape.color)
                     else:
                         currShape.object.setPolyData(d.getPolyData())
@@ -437,7 +424,7 @@ class VisualizationGui(QWidget):
                         d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
 
                         if (currShape.object == None):
-                            currShape.object = vis.showPolyData(d.getPolyData(), "line")
+                            currShape.object = vis.showPolyData(d.getPolyData(), currShape.name)
                         else:
                             currShape.object.setPolyData(d.getPolyData())
 
@@ -452,7 +439,7 @@ class VisualizationGui(QWidget):
                         d = DebugData()
                         d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
                         if (currShape.object == None):
-                            currShape.object = vis.showPolyData(d.getPolyData(), "line")
+                            currShape.object = vis.showPolyData(d.getPolyData(), currShape.name)
                         else:
                             currShape.object.setPolyData(d.getPolyData())
 
@@ -462,7 +449,7 @@ class VisualizationGui(QWidget):
             d.addSphere(next_loc, radius = currShape.radius)
             # create a new point
             if (currShape.created == True):
-                currShape.object = vis.showPolyData(d.getPolyData(), "sphere")
+                currShape.object = vis.showPolyData(d.getPolyData(), currShape.name)
                 # set color and transparency of point
                 currShape.object.setProperty('Color', currShape.color)
                 currShape.object.setProperty('Alpha', currShape.alpha)
@@ -485,11 +472,11 @@ class VisualizationGui(QWidget):
 
             d = DebugData()
             for i in range(3):
-                d.addArrow(next_loc, next_loc + (rot_matrix[i]/4), headRadius=0.03, color = colors[i])
+                d.addArrow(next_loc, next_loc + (rot_matrix[i]*currShape.length), headRadius=0.03, color = colors[i])
 
             # create the 3 axes
             if (currShape.created == True):
-                currShape.object = vis.showPolyData(d.getPolyData(), "axis", colorByName='RGB255')
+                currShape.object = vis.showPolyData(d.getPolyData(), currShape.name, colorByName='RGB255')
                 currShape.object.setProperty('Alpha', currShape.alpha)
                 currShape.created = False
             else:
@@ -536,6 +523,7 @@ class ObjectToDraw():
                 self.point = self.source_data['point']
                 self.quaternion_index = self.source_data['quaternion_index']
             self.thickness = type_data['thickness']
+            self.length = type_data['length']
 
     def update(self, otherObject):
         '''
@@ -549,6 +537,9 @@ class ObjectToDraw():
             self.frame = otherObject.frame
             self.point = otherObject.point
 
+        if (self.category == "lcm"):
+            self.source_data = otherObject.source_data
+
         if (self.type == "line"):
             self.color = otherObject.color
             self.thickness = otherObject.thickness
@@ -560,13 +551,38 @@ class ObjectToDraw():
 
         elif (self.type == "axis"):
             self.thickness = otherObject.thickness
-
+            self.length = otherObject.length
 
 class LCMMessage():
     '''
     Wrapper class for LCM messages
     '''
     def __init__(self, source_data, axis = False):
+        '''
+        Constructor
+        '''
+        self.channel = source_data['abstract_channel']
+        self.type = source_data['abstract_type']
+        self.field = source_data['abstract_field']
+
+        if ("[%d]" in self.field):
+            self.index_field = source_data['index_field']
+            self.index_element = source_data['index_element']
+
+        if (axis == True):
+            self.x = source_data["quaternion_index"]
+            self.y = 0
+            self.z = 0
+        else:
+            self.x = source_data["x_index"]
+            self.y = source_data["y_index"]
+            self.z = source_data["z_index"]
+
+    def update(self, source_data, axis = False):
+        '''
+        Same as constructor but is used to update an LCMMessage
+        object with new source_data
+        '''
         self.channel = source_data['abstract_channel']
         self.type = source_data['abstract_type']
         self.field = source_data['abstract_field']

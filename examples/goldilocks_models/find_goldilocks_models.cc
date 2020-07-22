@@ -197,7 +197,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   if (is_get_nominal && !rerun_current_iteration) {
     if (use_database) {
       *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, task, rom, use_database, robot_option);
+          dir, iter, sample, task_gen, task, rom);
     } else {
       *init_file = nominal_traj_init_file;
     }
@@ -205,8 +205,14 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
     if (non_grid_task) {
-      *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, task, rom, use_database, robot_option);
+      if(task_gen->currently_extend_task_space()){
+        *init_file = SetInitialGuessByExtrapolation(
+            dir, iter, sample, task_gen, task);
+      }
+      else{
+        *init_file = SetInitialGuessByInterpolation(
+            dir, iter, sample, task_gen, task, rom);
+      }
     } else {
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
@@ -218,8 +224,14 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else {
     if (non_grid_task) {
-      *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, task, rom, use_database, robot_option);
+      if(task_gen->currently_extend_task_space()){
+        *init_file = SetInitialGuessByExtrapolation(
+            dir, iter, sample, task_gen, task);
+      }
+      else{
+        *init_file = SetInitialGuessByInterpolation(
+            dir, iter, sample, task_gen, task, rom);
+      }
     } else {
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");

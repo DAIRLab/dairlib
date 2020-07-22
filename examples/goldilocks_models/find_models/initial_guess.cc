@@ -82,8 +82,11 @@ VectorXd CalculateInterpolation(const VectorXd& weight_vector,
 string SetInitialGuessByInterpolation(const string& directory, int iter,
                                       int sample,
                                       const TasksGenerator* task_gen,
-                                      const Task& task, const ReducedOrderModel& rom,
-                                      bool use_database, int robot) {
+                                      const Task& task,
+                                      const ReducedOrderModel& rom) {
+  // before iteration 100, we extend the task space and use the extrapolation to
+  // create initial guess
+  DRAKE_DEMAND(iter >= 100);
   /* define some parameters used in interpolation
    * theta_range :decide the range of theta to use in interpolation
    * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
@@ -101,40 +104,35 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
   VectorXd current_theta = rom.theta();
   VectorXd current_gamma =
       Eigen::Map<const VectorXd>(task.get().data(), task.get().size());
-  if (use_database && (iter < 2)) {
-    string data_dir;
-    // use solutions in database to calculate interpolated initial guess
-    if (iter == 0) {
-      // use nominal database
-      data_dir = "../dairlib_data/goldilocks_models/database/robot_" +
-                 to_string(robot) + "_nominal/";
-    } else {
-      // use initial database
-      data_dir = "../dairlib_data/goldilocks_models/database/robot_" +
-                 to_string(robot) + "_initial/";
-    }
+  if (iter==100) {
+    // Use the samples from iteration 0 to iteration 99
+    // Considering that the theta are all same for these iteration,
+    // we only consider task in interpolation
+
     // take out corresponding solution and store it in each column of w_gamma
     // calculate the interpolation weight and store it in weight_gamma
     MatrixXd w_gamma;
     VectorXd weight_gamma;
 
     // calculate the weighted sum of past solutions
-    int sample_num = 0;
+    int past_iter;
+    int sample_num;
     string prefix;
-    while (file_exist(data_dir + to_string(sample_num) + "_0"
-         + string("_is_success.csv"))) {
-      prefix = to_string(sample_num) + "_0";
-      InterpolateAmongDifferentTasks(data_dir, prefix, current_gamma,
-                                     gamma_scale, weight_gamma, w_gamma);
-      sample_num = sample_num + 1;
+    for (past_iter = iter - 1; past_iter > 0; past_iter--){
+      for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
+        prefix = to_string(past_iter) + string("_") + to_string(sample_num);
+        InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
+                                       gamma_scale, weight_gamma, w_gamma);
+      }
     }
+    // calculate the weighted sum of all past iterations
     initial_guess = CalculateInterpolation(weight_gamma, w_gamma);
     //    save initial guess and set init file
     initial_file_name = to_string(iter) + "_" + to_string(sample) +
                         string("_initial_guess.csv");
     writeCSV(directory + initial_file_name, initial_guess);
   } else {
-    DRAKE_DEMAND(iter > 0);
+    DRAKE_DEMAND(iter > 100);
     // There are two-stage interpolation here.
     // Get interpolated results using solutions of different tasks for each
     // theta. Then calculate interpolation using results from different theta.
@@ -142,18 +140,8 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     MatrixXd w_theta;       // each column stores a interpolated result
     int past_iter;
     int sample_num;
-    int iter_start;
+    int iter_start = 0;
     string prefix;
-    //    For iter = 1, use the solutions from iteration 0 to set the initial
-    //    guess
-    if (iter == 1) {
-      iter_start = 0;
-    }
-    // if iter > 1, use the results from past iterations to interpolate and set
-    // the initial guess
-    else {
-      iter_start = 1;
-    }
     for (past_iter = iter - 1; past_iter >= iter_start; past_iter--) {
       // find useful theta according to the difference between previous theta
       // and new theta
@@ -211,6 +199,81 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
                         string("_initial_guess.csv");
     writeCSV(directory + initial_file_name, initial_guess);
   }
+  return initial_file_name;
+}
+
+// Use extrapolation to provide initial guesses while extending the task space
+string SetInitialGuessByExtrapolation(const string& directory, int iter,
+                                      int sample,
+                                      const TasksGenerator* task_gen,
+                                      const Task& task){
+  // The algorithm here is based on the idea that the solution moves towards one
+  // direction consistently.
+  // S_n+1 = S_n+step_n
+  // To predict the solution of iteration n+1, we need a estimation of step_n.
+  // We use the results from previous iteration to estimate it.
+  // step_n = w1(S1-S0)+w2(S2-S1)+w3(S3-S2)+...+w_n(Sn-Sn-1)
+  // Si is the interpolated solution from iteration i
+  DRAKE_DEMAND(iter > 0);
+  VectorXd initial_guess;
+  string initial_file_name;
+  int past_iter;
+  int sample_num;
+  int total_sample_num = task_gen->total_sample_number();
+  VectorXd current_gamma =
+      Eigen::Map<const VectorXd>(task.get().data(), task.get().size());
+  VectorXd gamma_scale = GetGammaScale(task_gen);
+  // calculate the weighted sum of solutions from iteration 0
+  MatrixXd w_gamma;
+  VectorXd weight_gamma;
+  string prefix;
+  for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
+    prefix = to_string(0) + string("_") + to_string(sample_num);
+    InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
+                                   gamma_scale, weight_gamma, w_gamma);
+  }
+  VectorXd interpolated_solution_0 =
+      CalculateInterpolation(weight_gamma, w_gamma);
+  if(iter==1){
+    //for iteration 1 use the interpolated solution from iteration 0
+    initial_file_name = to_string(iter) + "_" + to_string(sample) +
+        string("_initial_guess.csv");
+    writeCSV(directory + initial_file_name, interpolated_solution_0);
+  }
+  else{
+    // Considering that we doesn't change the theta during the expansion,
+    // we only extrapolate using the task.
+    MatrixXd w_iteration = MatrixXd::Ones(interpolated_solution_0.rows(),iter);
+    w_iteration.col(0) = interpolated_solution_0;
+    MatrixXd w_step = MatrixXd::Ones(interpolated_solution_0.rows(),iter-1);
+    VectorXd weight_step = VectorXd::Ones(iter-1);
+    for (past_iter = iter - 1; past_iter > 0; past_iter--){
+      MatrixXd w_gamma;
+      VectorXd weight_gamma;
+      for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
+        prefix = to_string(past_iter) + string("_") + to_string(sample_num);
+        InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
+                                       gamma_scale, weight_gamma, w_gamma);
+      }
+      // calculate the weighted sum for this iteration
+      VectorXd interpolated_solution_i =
+          CalculateInterpolation(weight_gamma, w_gamma);
+      w_iteration.col(past_iter) = interpolated_solution_i;
+    }
+    //calculate the estimation of step with past interpolated solutions
+    for (int i  = 0; i<w_step.cols(); i++){
+      //calculate the difference between two adjacent interpolated solutions
+      w_step.col(i) = w_iteration.col(i+1)-w_iteration.col(i);
+      weight_step(i) = i+1;
+    }
+    VectorXd step = CalculateInterpolation(weight_step, w_step);
+    VectorXd solution_last_iter = w_iteration.col(w_iteration.cols()-1);
+    initial_guess = solution_last_iter+step;
+    initial_file_name = to_string(iter) + "_" + to_string(sample) +
+        string("_initial_guess.csv");
+    writeCSV(directory + initial_file_name, initial_guess);
+  }
+
   return initial_file_name;
 }
 

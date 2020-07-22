@@ -17,8 +17,11 @@ std::string SetInitialGuessByInterpolation(const std::string& directory,
                                            int iter, int sample,
                                            const TasksGenerator* task_gen,
                                            const Task& task,
-                                           const ReducedOrderModel& rom,
-                                           bool use_database, int robot);
+                                           const ReducedOrderModel& rom);
+std::string SetInitialGuessByExtrapolation(const string& directory, int iter,
+                                      int sample,
+                                      const TasksGenerator* task_gen,
+                                      const Task& task);
 // set scale for theta and gamma
 Eigen::VectorXd GetThetaScale(const std::string& directory, int iter);
 Eigen::VectorXd GetGammaScale(const TasksGenerator* task_gen);

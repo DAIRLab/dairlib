@@ -101,8 +101,6 @@ DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
 DEFINE_double(eps_regularization, 1e-8,
               "Weight of regularization term");  // 1e-4
 DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
-DEFINE_bool(use_database, false,
-    "use solutions from database to create initial guesses for traj opt");
 
 // outer loop
 DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
@@ -192,15 +190,9 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      bool step_size_shrinked_last_loop, int n_rerun,
                      int sample_idx_to_help, bool is_debug, const string& dir,
                      const TasksGenerator* task_gen, const Task& task,
-                     const ReducedOrderModel& rom, bool non_grid_task,
-                     bool use_database, int robot_option) {
+                     const ReducedOrderModel& rom, bool non_grid_task) {
   if (is_get_nominal && !rerun_current_iteration) {
-    if (use_database) {
-      *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, task, rom);
-    } else {
-      *init_file = nominal_traj_init_file;
-    }
+    *init_file = nominal_traj_init_file;
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
@@ -2037,7 +2029,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               current_sample_is_a_rerun, has_been_all_success,
               step_size_shrinked_last_loop, n_rerun[sample_idx],
               sample_idx_to_help, FLAGS_is_debug, dir, task_gen, task, *rom,
-              !is_grid_task, FLAGS_use_database, FLAGS_robot_option);
+              !is_grid_task);
 
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better

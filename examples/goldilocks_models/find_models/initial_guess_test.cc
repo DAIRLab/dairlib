@@ -62,7 +62,6 @@ class InitialGuessTest : public ::testing::Test {};
 
 int test_initial_guess(int iter, int sample, int robot) {
   // create test data and save it
-  bool use_database = false;
   // create task_gen
   GridTasksGenerator task_gen_grid;
   if (robot == 0) {
@@ -137,17 +136,17 @@ int test_initial_guess(int iter, int sample, int robot) {
     }
   }
   string initial_file = SetInitialGuessByInterpolation(
-      dir, iter, sample, task_gen, task, *rom, use_database, robot);
+      dir, iter, sample, task_gen, task, *rom);
   return 1;
 }
 
 TEST_F(InitialGuessTest, DifferentIter) {
-  EXPECT_EQ(1, test_initial_guess(10, 0, 0));
-  EXPECT_EQ(1, test_initial_guess(15, 0, 0));
+  EXPECT_EQ(1, test_initial_guess(110, 0, 0));
+  EXPECT_EQ(1, test_initial_guess(120, 0, 0));
 }
 TEST_F(InitialGuessTest, DifferentRobot) {
-  EXPECT_EQ(1, test_initial_guess(10, 0, 1));
-  EXPECT_EQ(1, test_initial_guess(15, 0, 1));
+  EXPECT_EQ(1, test_initial_guess(110, 0, 0));
+  EXPECT_EQ(1, test_initial_guess(120, 0, 1));
 }
 
 }  // namespace dairlib::goldilocks_models

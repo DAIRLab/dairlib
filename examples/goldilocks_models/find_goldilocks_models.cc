@@ -1770,7 +1770,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "iteration #" << iter_start << " is a rerun? "
        << rerun_current_iteration << endl;
 
-  VectorXd step_direction;
+  VectorXd step_direction = VectorXd::Zero(rom->n_theta());
   VectorXd prev_step_direction = VectorXd::Zero(
       rom->n_theta());  // must initialize this because of momentum term
   if (iter_start > 1) {

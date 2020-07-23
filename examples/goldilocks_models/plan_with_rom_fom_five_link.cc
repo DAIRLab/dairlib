@@ -4,10 +4,8 @@
 #include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/reduced_order_models.h"
-
 #include "examples/goldilocks_models/planning/rom_traj_opt_five_link_robot.h"
-
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/snopt_solver.h"
@@ -98,7 +96,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   }
 
   // Store data
-  writeCSV(dir_data + string("n_step.csv"), n_step * VectorXd::Ones(1));
+  writeCSV(dir_data + string("n_step.csv"), VectorXd::Ones(1) * n_step);
   writeCSV(dir_data + string("nodes_per_step.csv"),
            knots_per_mode * VectorXd::Ones(1));
 
@@ -143,11 +141,37 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     // cout << "x_guess_right_in_front = " << x_guess_right_in_front << endl;
   }
 
+  // Create mirror maps
+  StateMirror state_mirror(MirrorPosIndexMap(plant, FLAGS_robot_option),
+                           MirrorPosSignChangeSet(plant, FLAGS_robot_option),
+                           MirrorVelIndexMap(plant, FLAGS_robot_option),
+                           MirrorVelSignChangeSet(plant, FLAGS_robot_option));
+
+  // Get foot contacts
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      left_contacts = {FiveLinkRobotLeftContact(plant)};
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      right_contacts = {FiveLinkRobotRightContact(plant)};
+
+  // Get joint limits of the robot
+  std::vector<std::tuple<string, double, double>> joint_name_lb_ub;
+  vector<string> l_or_r{"left_", "right_"};
+  vector<string> fom_joint_names{"hip_pin", "knee_pin"};
+  vector<double> lb_for_fom_joints{-M_PI / 2.0, 5.0 / 180.0 * M_PI};
+  vector<double> ub_for_fom_joints{M_PI / 2.0, M_PI / 2.0};
+  for (unsigned int k = 0; k < l_or_r.size(); k++) {
+    for (unsigned int l = 0; l < fom_joint_names.size(); l++) {
+      joint_name_lb_ub.emplace_back(l_or_r[k] + fom_joint_names[l],
+                                    lb_for_fom_joints[l], ub_for_fom_joints[l]);
+    }
+  }
+
   // Construct
   cout << "\nConstructing optimization problem...\n";
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptFiveLinkRobot trajopt(
-      num_time_samples, min_dt, max_dt, Q, R, *rom, plant,
+      num_time_samples, min_dt, max_dt, Q, R, *rom, plant, state_mirror,
+      left_contacts, right_contacts, joint_name_lb_ub,
       FLAGS_zero_touchdown_impact, FLAGS_final_position, init_state, h_guess,
       r_guess, dr_guess, tau_guess, x_guess_left_in_front,
       x_guess_right_in_front, with_init_guess, FLAGS_fix_duration,
@@ -210,8 +234,10 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   writeCSV(dir_data + string("state_at_knots.csv"), state_at_knots);
   writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
 
-  MatrixXd x0_each_mode(2 * plant.num_positions(), num_time_samples.size());
-  MatrixXd xf_each_mode(2 * plant.num_positions(), num_time_samples.size());
+  MatrixXd x0_each_mode(plant.num_positions() + plant.num_velocities(),
+                        num_time_samples.size());
+  MatrixXd xf_each_mode(plant.num_positions() + plant.num_velocities(),
+                        num_time_samples.size());
   for (uint i = 0; i < num_time_samples.size(); i++) {
     x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
     xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));

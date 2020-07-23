@@ -3,6 +3,8 @@
 #include <vector>
 #include <memory.h>
 
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -11,8 +13,6 @@
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
-
-#include "examples/goldilocks_models/reduced_order_models.h"
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -32,6 +32,15 @@ class RomTrajOptFiveLinkRobot
       std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
       Eigen::MatrixXd R, const ReducedOrderModel& rom,
       const drake::multibody::MultibodyPlant<double>& plant,
+      const StateMirror& state_mirror,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          left_contacts,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          right_contacts,
+      const std::vector<std::tuple<std::string, double, double>>&
+      fom_joint_name_lb_ub,
       bool zero_touchdown_impact, double desired_final_position,
       Eigen::VectorXd init_state, Eigen::VectorXd h_guess,
       Eigen::MatrixXd r_guess, Eigen::MatrixXd dr_guess,
@@ -58,8 +67,7 @@ class RomTrajOptFiveLinkRobot
 
   const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
   z_post_impact_vars_by_mode(int mode) const;
-  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-  x0_vars_by_mode(int mode) const;
+  drake::solvers::VectorXDecisionVariable x0_vars_by_mode(int mode) const;
   const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
   xf_vars_by_mode(int mode) const;
 
@@ -81,8 +89,9 @@ class RomTrajOptFiveLinkRobot
   const std::vector<int> mode_lengths_;
   std::vector<int> mode_start_;
   const drake::solvers::VectorXDecisionVariable z_post_impact_vars_;
-  const drake::solvers::VectorXDecisionVariable x0_vars_;
+  const drake::solvers::VectorXDecisionVariable x0_var_;
   const drake::solvers::VectorXDecisionVariable xf_vars_;
+  const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
   const int n_z_;
   const int n_x_;
   const drake::multibody::MultibodyPlant<double>& plant_;

@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory.h>
 
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -32,15 +33,32 @@ class RomTrajOptCassie
       std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
       Eigen::MatrixXd R, const ReducedOrderModel& rom,
       const drake::multibody::MultibodyPlant<double>& plant,
-      bool zero_touchdown_impact, double desired_final_position,
-      Eigen::VectorXd init_state, Eigen::VectorXd h_guess,
-      Eigen::MatrixXd r_guess, Eigen::MatrixXd dr_guess,
-      Eigen::MatrixXd tau_guess, Eigen::VectorXd x_guess_left_in_front,
-      Eigen::VectorXd x_guess_right_in_front, bool with_init_guess,
-      bool fix_duration, bool fix_all_timestep, bool add_x_pose_in_cost,
-      bool straight_leg_cost);
+      const StateMirror& state_mirror,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          left_contacts,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          right_contacts,
+      const std::vector<std::tuple<std::string, double, double>>&
+          fom_joint_name_lb_ub,
+      Eigen::VectorXd desired_final_position, Eigen::VectorXd init_state,
+      bool fix_all_timestep, bool zero_touchdown_impact);
 
   ~RomTrajOptCassie() override {}
+
+  void AddRegularizationCost(const Eigen::VectorXd& desired_final_position,
+                             const Eigen::VectorXd& x_guess_left_in_front,
+                             const Eigen::VectorXd& x_guess_right_in_front,
+                             bool straight_leg_cost);
+
+  void SetAllInitialGuess(const Eigen::VectorXd& h_guess,
+                          const Eigen::MatrixXd& r_guess,
+                          const Eigen::MatrixXd& dr_guess,
+                          const Eigen::MatrixXd& tau_guess,
+                          const Eigen::VectorXd& x_guess_left_in_front,
+                          const Eigen::VectorXd& x_guess_right_in_front,
+                          const Eigen::VectorXd& desired_final_position);
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
@@ -58,8 +76,7 @@ class RomTrajOptCassie
 
   const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
   z_post_impact_vars_by_mode(int mode) const;
-  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-  x0_vars_by_mode(int mode) const;
+  drake::solvers::VectorXDecisionVariable x0_vars_by_mode(int mode) const;
   const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
   xf_vars_by_mode(int mode) const;
 
@@ -81,11 +98,13 @@ class RomTrajOptCassie
   const std::vector<int> mode_lengths_;
   std::vector<int> mode_start_;
   const drake::solvers::VectorXDecisionVariable z_post_impact_vars_;
-  const drake::solvers::VectorXDecisionVariable x0_vars_;
+  const drake::solvers::VectorXDecisionVariable x0_var_;
   const drake::solvers::VectorXDecisionVariable xf_vars_;
+  const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
   const int n_z_;
   const int n_x_;
   const drake::multibody::MultibodyPlant<double>& plant_;
+  const ReducedOrderModel& rom_;
 };
 
 }  // namespace goldilocks_models

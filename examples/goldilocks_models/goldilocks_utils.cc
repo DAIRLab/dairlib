@@ -105,7 +105,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   if (robot_option == 0) {
     mapping_basis = std::make_unique<MonomialFeatures>(
         2, plant.num_positions(), empty_inds, "mapping basis");
-  } else {                              // robot_option == 1
+  } else {  // robot_option == 1
+    // TODO: might need to remove qauternion completely
     vector<int> skip_inds = {3, 4, 5};  // quat_z, x, and y
     mapping_basis = std::make_unique<MonomialFeatures>(
         2, plant.num_positions(), skip_inds, "mapping basis");
@@ -186,7 +187,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom->PrintInfo();
   }
 
-  return std::move(rom);
+  return rom;
 }
 
 void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
@@ -209,6 +210,146 @@ void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
       readCSV(dir + to_string(model_iter) + string("_theta_yddot.csv")).col(0);
   rom->SetThetaY(theta_y);
   rom->SetThetaYddot(theta_yddot);
+}
+
+StateMirror::StateMirror(std::map<int, int> mirror_pos_index_map,
+                         std::set<int> mirror_pos_sign_change_set,
+                         std::map<int, int> mirror_vel_index_map,
+                         std::set<int> mirror_vel_sign_change_set)
+    : mirror_pos_index_map_(mirror_pos_index_map),
+      mirror_pos_sign_change_set_(mirror_pos_sign_change_set),
+      mirror_vel_index_map_(mirror_vel_index_map),
+      mirror_vel_sign_change_set_(mirror_vel_sign_change_set) {}
+drake::VectorX<double> StateMirror::MirrorPos(
+    const drake::VectorX<double>& q) const {
+  drake::VectorX<double> ret = q;
+  for (auto& index_pair : mirror_pos_index_map_) {
+    ret(index_pair.first) = q(index_pair.second);
+  }
+  for (auto& index : mirror_pos_sign_change_set_) {
+    ret(index) *= -1;
+  }
+  return ret;
+}
+drake::VectorX<double> StateMirror::MirrorVel(
+    const drake::VectorX<double>& v) const {
+  drake::VectorX<double> ret = v;
+  for (auto& index_pair : mirror_vel_index_map_) {
+    ret(index_pair.first) = v(index_pair.second);
+  }
+  for (auto& index : mirror_vel_sign_change_set_) {
+    ret(index) *= -1;
+  }
+  return ret;
+}
+
+std::map<int, int> MirrorPosIndexMap(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
+  std::map<int, int> ret;
+  std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+
+  if (robot_option == 0) {
+    vector<std::pair<string, string>> l_r_pairs{
+        std::pair<string, string>("left_", "right_"),
+        std::pair<string, string>("right_", "left_")};
+    std::vector<std::string> joint_names = {"hip_pin", "knee_pin"};
+
+    for (const auto& joint_name : joint_names) {
+      for (const auto& l_r_pair : l_r_pairs) {
+        ret[pos_map.at(l_r_pair.first + joint_name)] =
+            pos_map.at(l_r_pair.second + joint_name);
+      }
+    }
+  } else {
+    vector<std::pair<string, string>> l_r_pairs{
+        std::pair<string, string>("_left", "_right"),
+        std::pair<string, string>("_right", "_left")};
+    std::vector<std::string> joint_names = {
+        "hip_roll", "hip_yaw", "hip_pitch", "knee", "ankle_joint", "toe"};
+
+    for (const auto& joint_name : joint_names) {
+      for (const auto& l_r_pair : l_r_pairs) {
+        ret[pos_map.at(joint_name + l_r_pair.first)] =
+            pos_map.at(joint_name + l_r_pair.second);
+      }
+    }
+  }
+
+  return ret;
+}
+std::set<int> MirrorPosSignChangeSet(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
+  std::set<int> ret;
+  std::map<std::string, int> vel_map = multibody::makeNameToPositionsMap(plant);
+
+  if (robot_option == 0) {
+    // No sign change
+  } else {
+    std::vector<std::string> asy_joint_names = {
+        "base_qx",       "base_qz",       "base_y",      "hip_roll_right",
+        "hip_yaw_right", "hip_roll_left", "hip_yaw_left"};
+
+    for (const auto& name : asy_joint_names) {
+      ret.insert(vel_map.at(name));
+    }
+  }
+
+  return ret;
+}
+std::map<int, int> MirrorVelIndexMap(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
+  std::map<int, int> ret;
+  std::map<std::string, int> vel_map =
+      multibody::makeNameToVelocitiesMap(plant);
+
+  if (robot_option == 0) {
+    vector<std::pair<string, string>> l_r_pairs{
+        std::pair<string, string>("left_", "right_"),
+        std::pair<string, string>("right_", "left_")};
+    std::vector<std::string> joint_names = {"hip_pin", "knee_pin"};
+
+    for (const auto& joint_name : joint_names) {
+      for (const auto& l_r_pair : l_r_pairs) {
+        ret[vel_map.at(l_r_pair.first + joint_name + "dot")] =
+            vel_map.at(l_r_pair.second + joint_name + "dot");
+      }
+    }
+  } else {
+    vector<std::pair<string, string>> l_r_pairs{
+        std::pair<string, string>("_left", "_right"),
+        std::pair<string, string>("_right", "_left")};
+    std::vector<std::string> joint_names = {
+        "hip_roll", "hip_yaw", "hip_pitch", "knee", "ankle_joint", "toe"};
+
+    for (const auto& joint_name : joint_names) {
+      for (const auto& l_r_pair : l_r_pairs) {
+        ret[vel_map.at(joint_name + l_r_pair.first + "dot")] =
+            vel_map.at(joint_name + l_r_pair.second + "dot");
+      }
+    }
+  }
+
+  return ret;
+}
+std::set<int> MirrorVelSignChangeSet(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
+  std::set<int> ret;
+  std::map<std::string, int> pos_map =
+      multibody::makeNameToVelocitiesMap(plant);
+
+  if (robot_option == 0) {
+    // No sign change
+  } else {
+    std::vector<std::string> asy_joint_names = {
+        "base_wy",          "base_vy",          "hip_roll_rightdot",
+        "hip_yaw_rightdot", "hip_roll_leftdot", "hip_yaw_leftdot"};
+
+    for (const auto& name : asy_joint_names) {
+      ret.insert(pos_map.at(name));
+    }
+  }
+
+  return ret;
 }
 
 // Create time knots for creating cubic splines
@@ -410,6 +551,17 @@ void SaveStringVecToCsv(const vector<std::string>& strings,
     ofile << mem << endl;
   }
   ofile.close();
+}
+
+std::pair<const Vector3d, const Frame<double>&> FiveLinkRobotLeftContact(
+    const MultibodyPlant<double>& plant) {
+  return std::pair<const Vector3d, const Frame<double>&>(
+      Vector3d(0, 0, -0.5), plant.GetFrameByName("left_lower_leg_mass"));
+}
+std::pair<const Vector3d, const Frame<double>&> FiveLinkRobotRightContact(
+    const MultibodyPlant<double>& plant) {
+  return std::pair<const Vector3d, const Frame<double>&>(
+      Vector3d(0, 0, -0.5), plant.GetFrameByName("right_lower_leg_mass"));
 }
 
 }  // namespace goldilocks_models

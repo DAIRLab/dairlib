@@ -1,8 +1,8 @@
 #include "examples/goldilocks_models/planning/rom_traj_opt_five_link_robot.h"
 
+#include <iostream>
 #include <string>
 #include <utility>
-#include <iostream>
 #include <vector>
 
 #include "drake/math/autodiff.h"
@@ -18,9 +18,10 @@
 namespace dairlib {
 namespace goldilocks_models {
 
-using std::string;
 using std::cout;
 using std::endl;
+using std::pair;
+using std::string;
 using std::to_string;
 using std::vector;
 
@@ -29,6 +30,7 @@ using Eigen::VectorXd;
 
 using drake::AutoDiffXd;
 using drake::VectorX;
+using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
@@ -43,6 +45,10 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     vector<int> num_time_samples, vector<double> minimum_timestep,
     vector<double> maximum_timestep, MatrixXd Q, MatrixXd R,
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
+    const StateMirror& state_mirror,
+    const vector<pair<const Vector3d, const Frame<double>&>>& left_contacts,
+    const vector<pair<const Vector3d, const Frame<double>&>>& right_contacts,
+    const vector<std::tuple<std::string, double, double>>& fom_joint_name_lb_ub,
     bool zero_touchdown_impact, double desired_final_position,
     VectorXd init_state, VectorXd h_guess, MatrixXd r_guess, MatrixXd dr_guess,
     MatrixXd tau_guess, VectorXd x_guess_left_in_front,
@@ -57,14 +63,16 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
       mode_lengths_(num_time_samples),
       z_post_impact_vars_(NewContinuousVariables(
           (2 * rom.n_y()) * (num_time_samples.size() - 1), "z_p")),
-      x0_vars_(NewContinuousVariables(
-          (plant.num_positions() + plant.num_velocities()) *
-              num_time_samples.size(),
-          "x0")),
+      x0_var_(NewContinuousVariables(
+          (plant.num_positions() + plant.num_velocities()), "x0")),
       xf_vars_(NewContinuousVariables(
           (plant.num_positions() + plant.num_velocities()) *
               num_time_samples.size(),
           "xf")),
+      v_post_impact_vars_(NewContinuousVariables(
+          (plant.num_positions() + plant.num_velocities()) *
+              (num_time_samples.size() - 1),
+          "vp")),
       n_z_(2 * rom.n_y()),
       n_x_(plant.num_positions() + plant.num_velocities()),
       plant_(plant) {
@@ -73,6 +81,7 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
 
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
   int n_q = plant_.num_positions();
+  int n_v = plant_.num_velocities();
 
   MatrixXd y_guess(2 * r_guess.rows(), r_guess.cols());
   y_guess << r_guess, dr_guess;
@@ -242,86 +251,66 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     // Add RoM-FoM mapping constraints
     cout << "Adding RoM-FoM mapping constraint...\n";
     auto kin_constraint = std::make_shared<planning::KinematicsConstraint>(
-        rom, plant);
+        rom, plant, left_stance, state_mirror);
     auto z_0 = state_vars_by_mode(i, 0);
     auto z_f = state_vars_by_mode(i, mode_lengths_[i] - 1);
     auto x_0 = x0_vars_by_mode(i);
     auto x_f = xf_vars_by_mode(i);
-    if (left_stance) {
-      AddConstraint(kin_constraint, {z_0, x_0});
-      AddConstraint(kin_constraint, {z_f, x_f});
-    } else {
-      VectorXDecisionVariable x_0_swap(n_x_);
-      x_0_swap << x_0.segment(0, 3), x_0.segment(4, 1), x_0.segment(3, 1),
-          x_0.segment(6, 1), x_0.segment(5, 1), x_0.segment(0 + n_q, 3),
-          x_0.segment(4 + n_q, 1), x_0.segment(3 + n_q, 1),
-          x_0.segment(6 + n_q, 1), x_0.segment(5 + n_q, 1);
-      VectorXDecisionVariable x_f_swap(n_x_);
-      x_f_swap << x_f.segment(0, 3), x_f.segment(4, 1), x_f.segment(3, 1),
-          x_f.segment(6, 1), x_f.segment(5, 1), x_f.segment(0 + n_q, 3),
-          x_f.segment(4 + n_q, 1), x_f.segment(3 + n_q, 1),
-          x_f.segment(6 + n_q, 1), x_f.segment(5 + n_q, 1);
-      AddConstraint(kin_constraint, {z_0, x_0_swap});
-      AddConstraint(kin_constraint, {z_f, x_f_swap});
-    }
+    AddConstraint(kin_constraint, {z_0, x_0});
+    AddConstraint(kin_constraint, {z_f, x_f});
 
     // Add guard constraint
     cout << "Adding guard constraint...\n";
-    VectorXd lb = VectorXd::Zero(2);
+    const auto& swing_contacts = left_stance ? right_contacts : left_contacts;
+    const auto& stance_contacts = left_stance ? left_contacts : right_contacts;
+    VectorXd lb_per_contact = VectorXd::Zero(2);
     if (!zero_touchdown_impact)
-      lb << 0, -std::numeric_limits<double>::infinity();
-    VectorXd ub = VectorXd::Zero(2);
-    auto guard_constraint = std::make_shared<planning::FomGuardConstraint>(
-        left_stance, n_q, n_q, lb, ub);
-    AddConstraint(guard_constraint, xf_vars_by_mode(i));
-
-    // Add constraints for stitching FOM positins
-    if (i != 0) {
-      cout << "Adding (FoM position) periodicity constraint...\n";
-      AddLinearConstraint(xf_vars_by_mode(i - 1).segment(0, n_q) ==
-                          x0_vars_by_mode(i).segment(0, n_q));
+      lb_per_contact << 0, -std::numeric_limits<double>::infinity();
+    VectorXd lb(2 * swing_contacts.size());
+    for (int i = 0; i < swing_contacts.size(); i++) {
+      lb.segment<2>(2 * i) = lb_per_contact;
     }
+    VectorXd ub = VectorXd::Zero(2 * swing_contacts.size());
+    auto guard_constraint = std::make_shared<planning::FomGuardConstraint>(
+        plant, swing_contacts, lb, ub);
+    AddConstraint(guard_constraint, xf_vars_by_mode(i));
 
     // Add (impact) discrete map constraint
     if (i != 0) {
       if (zero_touchdown_impact) {
         cout << "Adding (FoM velocity) identity reset map constraint...\n";
-        AddLinearConstraint(xf_vars_by_mode(i - 1).segment(n_q, n_q) ==
-                            x0_vars_by_mode(i).segment(n_q, n_q));
+        AddLinearConstraint(xf_vars_by_mode(i - 1).segment(n_q, n_v) ==
+                            x0_vars_by_mode(i).segment(n_q, n_v));
       } else {
         cout << "Adding (FoM velocity) reset map constraint...\n";
-        int n_J = 2;
         auto reset_map_constraint =
-            std::make_shared<planning::FomResetMapConstraint>(left_stance, n_q,
-                                                              n_q, n_J, plant_);
-        auto Lambda = NewContinuousVariables(n_J, "Lambda" + to_string(i));
-        AddConstraint(reset_map_constraint,
-                      {xf_vars_by_mode(i - 1), x0_vars_by_mode(i), Lambda});
+            std::make_shared<planning::FomResetMapConstraint>(plant_,
+                                                              swing_contacts);
+        auto Lambda = NewContinuousVariables(3 * swing_contacts.size(),
+                                             "Lambda" + to_string(i));
+        AddConstraint(
+            reset_map_constraint,
+            {xf_vars_by_mode(i - 1),
+             x0_vars_by_mode(i).tail(plant.num_velocities()), Lambda});
       }
     }
 
     // Full order model joint limits
     cout << "Adding full-order model joint constraint...\n";
-    vector<string> l_or_r{"left_", "right_"};
-    vector<string> fom_joint_names{"hip_pin", "knee_pin"};
-    vector<double> lb_for_fom_joints{-M_PI / 2.0, 5.0 / 180.0 * M_PI};
-    vector<double> ub_for_fom_joints{M_PI / 2.0, M_PI / 2.0};
-    for (unsigned int k = 0; k < l_or_r.size(); k++) {
-      for (unsigned int l = 0; l < fom_joint_names.size(); l++) {
-        // TODO: Change to bounding box constraint
-        AddLinearConstraint(x0_vars_by_mode(i)(positions_map.at(
-                                l_or_r[k] + fom_joint_names[l])),
-                            lb_for_fom_joints[l], ub_for_fom_joints[l]);
-        AddLinearConstraint(xf_vars_by_mode(i)(positions_map.at(
-                                l_or_r[k] + fom_joint_names[l])),
-                            lb_for_fom_joints[l], ub_for_fom_joints[l]);
-      }
+    for (const auto& name_lb_ub : fom_joint_name_lb_ub) {
+      AddBoundingBoxConstraint(
+          std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
+          x0_vars_by_mode(i)(positions_map.at(std::get<0>(name_lb_ub))));
+      AddBoundingBoxConstraint(
+          std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
+          xf_vars_by_mode(i)(positions_map.at(std::get<0>(name_lb_ub))));
     }
 
     // Sitching x0 and xf (full-order model stance foot constraint)
     cout << "Adding full-order model stance foot constraint...\n";
     auto fom_sf_constraint =
-        std::make_shared<planning::FomStanceFootConstraint>(left_stance, n_q);
+        std::make_shared<planning::FomStanceFootConstraint>(plant_,
+                                                            stance_contacts);
     AddConstraint(fom_sf_constraint,
                   {x0_vars_by_mode(i).head(n_q), xf_vars_by_mode(i).head(n_q)});
 
@@ -363,9 +352,17 @@ const Eigen::VectorBlock<const VectorXDecisionVariable>
 RomTrajOptFiveLinkRobot::z_post_impact_vars_by_mode(int mode) const {
   return z_post_impact_vars_.segment(mode * n_z_, n_z_);
 }
-const Eigen::VectorBlock<const VectorXDecisionVariable>
-RomTrajOptFiveLinkRobot::x0_vars_by_mode(int mode) const {
-  return x0_vars_.segment(mode * n_x_, n_x_);
+VectorXDecisionVariable RomTrajOptFiveLinkRobot::x0_vars_by_mode(
+    int mode) const {
+  if (mode == 0) {
+    return x0_var_;
+  } else {
+    VectorXDecisionVariable ret(n_x_);
+    ret << xf_vars_.segment(n_x_ * (mode - 1), plant_.num_positions()),
+        v_post_impact_vars_.segment(plant_.num_velocities() * (mode - 1),
+                                    plant_.num_velocities());
+    return ret;
+  }
 }
 const Eigen::VectorBlock<const VectorXDecisionVariable>
 RomTrajOptFiveLinkRobot::xf_vars_by_mode(int mode) const {
@@ -417,8 +414,7 @@ void RomTrajOptFiveLinkRobot::DoAddRunningCost(
           h_vars()(N() - 2) / 2);
 }
 
-PiecewisePolynomial<double>
-RomTrajOptFiveLinkRobot::ReconstructInputTrajectory(
+PiecewisePolynomial<double> RomTrajOptFiveLinkRobot::ReconstructInputTrajectory(
     const MathematicalProgramResult& result) const {
   Eigen::VectorXd times = GetSampleTimes(result);
   vector<double> times_vec(N());
@@ -430,8 +426,7 @@ RomTrajOptFiveLinkRobot::ReconstructInputTrajectory(
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
 
-PiecewisePolynomial<double>
-RomTrajOptFiveLinkRobot::ReconstructStateTrajectory(
+PiecewisePolynomial<double> RomTrajOptFiveLinkRobot::ReconstructStateTrajectory(
     const MathematicalProgramResult& result) const {
   VectorXd times_all(GetSampleTimes(result));
   VectorXd times(N() + num_modes_ - 1);

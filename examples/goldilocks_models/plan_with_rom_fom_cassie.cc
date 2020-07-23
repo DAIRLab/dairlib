@@ -37,8 +37,8 @@ using std::vector;
 namespace dairlib {
 namespace goldilocks_models {
 
-DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
-DEFINE_int32(rom_option, 1, "0: LIPM. 1: LIPM with point-mass swing foot");
+DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
+DEFINE_int32(rom_option, 0, "0: LIPM. 1: LIPM with point-mass swing foot");
 DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
@@ -87,7 +87,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Prespecify the time steps
   int n_step = FLAGS_n_step;
-  int knots_per_mode = 20;
+  int knots_per_mode = 10;
   std::vector<int> num_time_samples;
   std::vector<double> min_dt;
   std::vector<double> max_dt;
@@ -128,6 +128,11 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                    .block(1, 0, n_y, knots_per_mode);
     tau_guess = readCSV(model_dir_n_pref + string("t_and_tau.csv"))
                     .block(1, 0, n_tau, knots_per_mode);
+
+    for (int i = 0; i < num_time_samples.size(); i++) {
+      bool left_stance = i % 2 == 0;
+    }
+
     x_guess_left_in_front =
         readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
     x_guess_right_in_front =
@@ -143,26 +148,73 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     // cout << "x_guess_right_in_front = " << x_guess_right_in_front << endl;
   }
 
+  // Create mirror maps
+  StateMirror state_mirror(MirrorPosIndexMap(plant, FLAGS_robot_option),
+                           MirrorPosSignChangeSet(plant, FLAGS_robot_option),
+                           MirrorVelIndexMap(plant, FLAGS_robot_option),
+                           MirrorVelSignChangeSet(plant, FLAGS_robot_option));
+
+  // Get foot contacts
+  auto left_toe = LeftToeFront(plant);
+  auto left_heel = LeftToeRear(plant);
+  auto right_toe = RightToeFront(plant);
+  auto right_heel = RightToeRear(plant);
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      left_contacts = {left_toe, left_heel};
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      right_contacts = {right_toe, right_heel};
+
+  // Get joint limits of the robot
+  std::vector<string> l_r_pair = {"_left", "_right"};
+  std::vector<std::string> joint_names = {
+      "hip_roll", "hip_yaw", "hip_pitch", "knee", "ankle_joint", "toe"};
+  std::vector<std::tuple<string, double, double>> joint_name_lb_ub;
+  for (const auto& left_right : l_r_pair) {
+    for (const auto& name : joint_names) {
+      joint_name_lb_ub.emplace_back(
+          name + left_right,
+          plant.GetJointByName(name + left_right).position_lower_limits()(0),
+          plant.GetJointByName(name + left_right).position_upper_limits()(0));
+    }
+  }
+
+  // Goal position
+  VectorXd final_position(2);
+  final_position << FLAGS_final_position, 0;
+
   // Construct
   cout << "\nConstructing optimization problem...\n";
   auto start = std::chrono::high_resolution_clock::now();
-  RomTrajOptCassie trajopt(
-      num_time_samples, min_dt, max_dt, Q, R, *rom, plant,
-      FLAGS_zero_touchdown_impact, FLAGS_final_position, init_state, h_guess,
-      r_guess, dr_guess, tau_guess, x_guess_left_in_front,
-      x_guess_right_in_front, with_init_guess, FLAGS_fix_duration,
-      FLAGS_fix_all_timestep, true, false);
+  RomTrajOptCassie trajopt(num_time_samples, min_dt, max_dt, Q, R, *rom, plant,
+                           state_mirror, left_contacts, right_contacts,
+                           joint_name_lb_ub, final_position, init_state,
+                           FLAGS_fix_all_timestep, FLAGS_zero_touchdown_impact);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
 
-  if (FLAGS_print_snopt_file) {
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                            "../snopt.out");
+  // Add_robot state in cost
+  bool add_x_pose_in_cost = true;
+  if (add_x_pose_in_cost) {
+    trajopt.AddRegularizationCost(final_position, x_guess_left_in_front,
+                                  x_guess_right_in_front,
+                                  false /*straight_leg_cost*/);
+  } else {
+    // Since there are multiple q that could be mapped to the same r, I
+    // penalize on q so it get close to a certain configuration
+    MatrixXd Id = MatrixXd::Identity(3, 3);
+    VectorXd zero_vec = VectorXd::Zero(3);
+    for (int i = 0; i < num_time_samples.size(); i++) {
+      trajopt.AddQuadraticErrorCost(Id, zero_vec,
+                                    trajopt.xf_vars_by_mode(i).segment(1, 3));
+    }
   }
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major iterations limit", 10000);
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+
+  // Duration bound
+  if (FLAGS_fix_duration) {
+    trajopt.AddDurationBounds(h_guess.tail(1)(0) * num_time_samples.size(),
+                              h_guess.tail(1)(0) * num_time_samples.size());
+  }
 
   // Initial guess for all variables
   if (!init_file.empty()) {
@@ -177,7 +229,20 @@ int planningWithRomAndFom(int argc, char* argv[]) {
       z0.head(old_z0.rows()) = old_z0;
     }
     trajopt.SetInitialGuessForAllVariables(z0);
+  } else {
+    trajopt.SetAllInitialGuess(h_guess, r_guess, dr_guess, tau_guess,
+                               x_guess_left_in_front, x_guess_right_in_front,
+                               final_position);
   }
+
+  // Snopt setting
+  if (FLAGS_print_snopt_file) {
+    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                            "../snopt_planning.out");
+  }
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major iterations limit", 10000);
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
 
   // Testing
   cout << "\nChoose the best solver: "
@@ -210,8 +275,10 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   writeCSV(dir_data + string("state_at_knots.csv"), state_at_knots);
   writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
 
-  MatrixXd x0_each_mode(2 * plant.num_positions(), num_time_samples.size());
-  MatrixXd xf_each_mode(2 * plant.num_positions(), num_time_samples.size());
+  MatrixXd x0_each_mode(plant.num_positions() + plant.num_velocities(),
+                        num_time_samples.size());
+  MatrixXd xf_each_mode(plant.num_positions() + plant.num_velocities(),
+                        num_time_samples.size());
   for (uint i = 0; i < num_time_samples.size(); i++) {
     x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
     xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));

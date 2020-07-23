@@ -771,9 +771,10 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
         VectorXd y =
             gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
-        VectorXd ydot = gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
-        VectorXd yddot =
-            gm_traj_opt.dynamics_constraint_at_head->GetYddot(y, ydot, tau_i_sol);
+        VectorXd ydot =
+            gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
+        VectorXd yddot = gm_traj_opt.dynamics_constraint_at_head->GetYddot(
+            y, ydot, tau_i_sol);
         y_vec.push_back(y);
         ydot_vec.push_back(ydot);
         yddot_vec.push_back(yddot);
@@ -1676,8 +1677,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
       std::pair<string, string>("_left", "_right"),
-      std::pair<string, string>("_right", "_left"),
-  };
+      std::pair<string, string>("_right", "_left")};
   vector<string> asy_joint_names;
   vector<string> sym_joint_names;
   if (turning_rate == 0) {

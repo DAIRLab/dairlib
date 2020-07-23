@@ -82,6 +82,32 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
 // `model_iter` is the optimization iteration # of the model with we want to use
 void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
                          int model_iter);
+class StateMirror {
+ public:
+  StateMirror(std::map<int, int> mirror_pos_index_map,
+              std::set<int> mirror_pos_sign_change_set,
+              std::map<int, int> mirror_vel_index_map,
+              std::set<int> mirror_vel_sign_change_set);
+
+  drake::VectorX<double> MirrorPos(const drake::VectorX<double>& q) const;
+  drake::VectorX<double> MirrorVel(const drake::VectorX<double>& v) const;
+
+  StateMirror() : StateMirror({}, {}, {}, {}){};
+
+ private:
+  std::map<int, int> mirror_pos_index_map_;
+  std::set<int> mirror_pos_sign_change_set_;
+  std::map<int, int> mirror_vel_index_map_;
+  std::set<int> mirror_vel_sign_change_set_;
+};
+std::map<int, int> MirrorPosIndexMap(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
+std::set<int> MirrorPosSignChangeSet(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
+std::map<int, int> MirrorVelIndexMap(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
+std::set<int> MirrorVelSignChangeSet(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
 
 // Create cubic splines from s and sdot
 drake::trajectories::PiecewisePolynomial<double> CreateCubicSplineGivenYAndYdot(
@@ -118,6 +144,13 @@ std::vector<std::string> ParseCsvToStringVec(const std::string& file_name,
                                              bool is_row_vector = true);
 void SaveStringVecToCsv(const std::vector<std::string>& strings,
                         const std::string& file_name);
+
+// Five link robot's left/right leg
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>
+FiveLinkRobotLeftContact(const drake::multibody::MultibodyPlant<double>& plant);
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>
+FiveLinkRobotRightContact(
+    const drake::multibody::MultibodyPlant<double>& plant);
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

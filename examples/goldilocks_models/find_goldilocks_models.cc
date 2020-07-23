@@ -116,6 +116,12 @@ DEFINE_double(
     "some local minima caused by step size."
     "See: https://distill.pub/2017/momentum/"
     "WARNING: beta_momentum is not used in newton's method");
+DEFINE_int32(iter_start_optimization,100,
+    "For non-grid method, we gradually extend the task space at the beginning "
+    "until the final optimization range."
+    "We didn't optimize the model before iter_start_optimization."
+    "It is recommended that using a small number for small optimization range "
+    "while using a large number for large optimization range.");
 
 // Solving for the cost gradient
 //  I didn't benchmark if method 4 to 6 get very slow when model parameter size
@@ -1415,14 +1421,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
           3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min},
-          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max});
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max},
+          FLAGS_iter_start_optimization);
     } else if (FLAGS_robot_option == 1) {
       task_gen_uniform = UniformTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min, FLAGS_tr_min},
-          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max});
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max},
+          FLAGS_iter_start_optimization);
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_uniform = UniformTasksGenerator();

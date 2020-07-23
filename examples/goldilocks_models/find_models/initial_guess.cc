@@ -84,9 +84,9 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
                                       const TasksGenerator* task_gen,
                                       const Task& task,
                                       const ReducedOrderModel& rom) {
-  // before iteration 100, we extend the task space and use the extrapolation to
+  // before iter_start_optimization, we extend the task space and use the extrapolation to
   // create initial guess
-  DRAKE_DEMAND(iter >= 100);
+  DRAKE_DEMAND(iter >= (task_gen->iter_start_optimization()));
   /* define some parameters used in interpolation
    * theta_range :decide the range of theta to use in interpolation
    * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
@@ -104,10 +104,11 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
   VectorXd current_theta = rom.theta();
   VectorXd current_gamma =
       Eigen::Map<const VectorXd>(task.get().data(), task.get().size());
-  if (iter==100) {
+
+  if (iter==(task_gen->iter_start_optimization())) {
     // Use the samples from iteration 0 to iteration 99
     // Considering that the theta are all same for these iteration,
-    // we only consider task in interpolation
+    // we only consider task in interpolation.
 
     // take out corresponding solution and store it in each column of w_gamma
     // calculate the interpolation weight and store it in weight_gamma
@@ -132,15 +133,15 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
                         string("_initial_guess.csv");
     writeCSV(directory + initial_file_name, initial_guess);
   } else {
-    DRAKE_DEMAND(iter > 100);
     // There are two-stage interpolation here.
     // Get interpolated results using solutions of different tasks for each
     // theta. Then calculate interpolation using results from different theta.
+
     VectorXd weight_theta;  // each element corresponds to a weight
     MatrixXd w_theta;       // each column stores a interpolated result
     int past_iter;
     int sample_num;
-    int iter_start = 0;
+    int iter_start = (task_gen->iter_start_optimization());
     string prefix;
     for (past_iter = iter - 1; past_iter >= iter_start; past_iter--) {
       // find useful theta according to the difference between previous theta
@@ -159,13 +160,32 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
         // weight_gamma
         MatrixXd w_gamma;
         VectorXd weight_gamma;
-        // calculate the weighted sum of solutions from one iteration
-        for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
-          prefix = to_string(past_iter) + string("_") + to_string(sample_num);
-          InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
-                                         gamma_scale, weight_gamma, w_gamma);
+        if(past_iter==(task_gen->iter_start_optimization()))
+        {
+          // Considering that theta for iteration 0 to 100 are the same,
+          // we need to use the solutions from all these iterations to
+          // create interpolated solution for this theta instead of using only
+          // solutions from one iteration
+
+          // calculate the weighted sum of past solutions
+          int iter_same_theta;
+          for (iter_same_theta = past_iter-1; past_iter > 0; past_iter--){
+            for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
+              prefix = to_string(iter_same_theta) + string("_") + to_string(sample_num);
+              InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
+                                             gamma_scale, weight_gamma, w_gamma);
+            }
+          }
         }
-        // calculate the weighted sum for this iteration
+        else {
+          // calculate the weighted sum of solutions from one iteration
+          for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
+            prefix = to_string(past_iter) + string("_") + to_string(sample_num);
+            InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
+                                           gamma_scale, weight_gamma, w_gamma);
+          }
+        }
+        // calculate the weighted sum of solutions for this theta
         VectorXd w_to_interpolate =
             CalculateInterpolation(weight_gamma, w_gamma);
         // calculate the weight for the result above using the difference
@@ -182,8 +202,8 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
           weight_theta << 1;
           break;
         }
-        // else concatenate the weighted sum of this iteration and the weight
-        // for it
+          // else concatenate the weighted sum of this iteration and the weight
+          // for it
         else {
           w_theta.conservativeResize(w_to_interpolate.rows(),
                                      w_theta.cols() + 1);

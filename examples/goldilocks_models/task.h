@@ -79,6 +79,7 @@ class TasksGenerator {
     return task_max_range_[name_to_index_map_.at(name)];
   }
   bool currently_extend_task_space() const {return currently_extend_task_space_;}
+  int iter_start_optimization() const {return iter_start_optimization_;}
 
   // Generator
   virtual vector<double> NewTask(int iter,int sample_idx) = 0;
@@ -96,6 +97,7 @@ class TasksGenerator {
   vector<std::uniform_real_distribution<>> distribution_;
   int N_sample_{};
   bool currently_extend_task_space_;
+  int iter_start_optimization_;
 
   std::unordered_map<string, int> name_to_index_map_;
 
@@ -146,7 +148,8 @@ class UniformTasksGenerator : public TasksGenerator {
   UniformTasksGenerator(int task_dim, std::vector<string> names,
                         std::vector<int> N_sample_vec,
                         const std::vector<double>& task_min,
-                        const std::vector<double>& task_max);
+                        const std::vector<double>& task_max,
+                        int iter_start_optimization);
 
   // Default constructor
   UniformTasksGenerator()= default;

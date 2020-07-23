@@ -47,6 +47,7 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
 
   // we don't implement the feature of extending task space for grid method
   currently_extend_task_space_ = false;
+  iter_start_optimization_ = 1;
   // Construct forward and backward index map
   int i_layer = 0;
   int sample_idx = 0;
@@ -141,12 +142,15 @@ void GridTasksGenerator::RunThroughIndex(
 // Tasks are randomly generated from the whole optimization space
 UniformTasksGenerator::UniformTasksGenerator(
     int task_dim, std::vector<string> names, std::vector<int> N_sample_vec,
-    const std::vector<double>& task_min, const std::vector<double>& task_max)
+    const std::vector<double>& task_min, const std::vector<double>& task_max,
+    int iter_start_optimization)
     : TasksGenerator(task_dim, names, N_sample_vec) {
   DRAKE_DEMAND(task_min.size() == (unsigned)task_dim);
   DRAKE_DEMAND(task_max.size() == (unsigned)task_dim);
+  DRAKE_DEMAND(iter_start_optimization>0);
   // initially we extend the task space
   currently_extend_task_space_ = true;
+  iter_start_optimization_ = iter_start_optimization;
   task_min_range_ = task_min;
   task_max_range_ = task_max;
 
@@ -172,7 +176,7 @@ void UniformTasksGenerator::PrintInfo() const {
 vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
   //the task space is gradually pushed until reach the final optimization range
   vector<double> ret(task_dim_, 0);
-  if(iter<100){
+  if(iter<iter_start_optimization_){
     //extend the task space
     currently_extend_task_space_ = true;
     // decide which direction to extend
@@ -190,12 +194,12 @@ vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
       interval = (task_max_range_[i]-task_min_range_[i])/2;
       if(direction_flag==1)
       {
-        new_task_max_range = central+(iter+1)*interval/100;
-        new_task_min_range = central+iter*interval/100;
+        new_task_max_range = central+(iter+1)*interval/iter_start_optimization_;
+        new_task_min_range = central+iter*interval/iter_start_optimization_;
       }
       else{
-        new_task_max_range = central-iter*interval/100;
-        new_task_min_range = central-(iter+1)*interval/100;
+        new_task_max_range = central-iter*interval/iter_start_optimization_;
+        new_task_min_range = central-(iter+1)*interval/iter_start_optimization_;
       }
       // Distribution
       std::uniform_real_distribution<double> new_distribution (new_task_min_range,

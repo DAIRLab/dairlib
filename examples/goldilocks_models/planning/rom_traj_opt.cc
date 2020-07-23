@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/planning/rom_traj_opt_five_link_robot.h"
+#include "examples/goldilocks_models/planning/rom_traj_opt.h"
 
 #include <iostream>
 #include <string>
@@ -26,6 +26,7 @@ using std::to_string;
 using std::vector;
 
 using Eigen::MatrixXd;
+using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::AutoDiffXd;
@@ -41,7 +42,7 @@ using drake::symbolic::Expression;
 using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
-RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
+RomTrajOpt::RomTrajOpt(
     vector<int> num_time_samples, vector<double> minimum_timestep,
     vector<double> maximum_timestep, MatrixXd Q, MatrixXd R,
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
@@ -49,11 +50,7 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     const vector<pair<const Vector3d, const Frame<double>&>>& left_contacts,
     const vector<pair<const Vector3d, const Frame<double>&>>& right_contacts,
     const vector<std::tuple<std::string, double, double>>& fom_joint_name_lb_ub,
-    bool zero_touchdown_impact, double desired_final_position,
-    VectorXd init_state, VectorXd h_guess, MatrixXd r_guess, MatrixXd dr_guess,
-    MatrixXd tau_guess, VectorXd x_guess_left_in_front,
-    VectorXd x_guess_right_in_front, bool with_init_guess, bool fix_duration,
-    bool fix_all_timestep, bool add_x_pose_in_cost, bool straight_leg_cost)
+    VectorXd init_state, bool fix_all_timestep, bool zero_touchdown_impact)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -62,7 +59,7 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
       num_modes_(num_time_samples.size()),
       mode_lengths_(num_time_samples),
       z_post_impact_vars_(NewContinuousVariables(
-          (2 * rom.n_y()) * (num_time_samples.size() - 1), "z_p")),
+          (2 * rom.n_y()) * (num_time_samples.size() - 1), "zp")),
       x0_var_(NewContinuousVariables(
           (plant.num_positions() + plant.num_velocities()), "x0")),
       xf_vars_(NewContinuousVariables(
@@ -75,7 +72,8 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
           "vp")),
       n_z_(2 * rom.n_y()),
       n_x_(plant.num_positions() + plant.num_velocities()),
-      plant_(plant) {
+      plant_(plant),
+      rom_(rom) {
   DRAKE_ASSERT(minimum_timestep.size() == num_modes_);
   DRAKE_ASSERT(maximum_timestep.size() == num_modes_);
 
@@ -83,137 +81,20 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
   int n_q = plant_.num_positions();
   int n_v = plant_.num_velocities();
 
-  MatrixXd y_guess(2 * r_guess.rows(), r_guess.cols());
-  y_guess << r_guess, dr_guess;
-
   // Add cost
   cout << "Adding cost...\n";
   auto y = this->state();
   auto tau = this->input();
   this->AddRunningCost(y.tail(rom.n_y()).transpose() * Q * y.tail(rom.n_y()));
   this->AddRunningCost(tau.transpose() * R * tau);
-  if (!add_x_pose_in_cost) {
-    // Since there are mulitple q that could be mapped to the same r, I penalize
-    // on q so it get close to a certain configuration
-    MatrixXd Id = MatrixXd::Identity(1, 1);
-    VectorXd zero_1d_vec = VectorXd::Zero(1);
-    for (int i = 0; i < num_modes_; i++) {
-      this->AddQuadraticErrorCost(1 * Id, zero_1d_vec,
-                                  xf_vars_by_mode(i).segment(2, 1));
-    }
-  }
-  // for (int i = 0; i < num_modes_; i++) {
-  //   this->AddQuadraticErrorCost(10*Id, zero_1d_vec,
-  //   xf_vars_by_mode(i).segment(3, 1));
-  // }
-  // for (int i = 0; i < num_modes_; i++) {
-  //   this->AddQuadraticErrorCost(10*Id, zero_1d_vec,
-  //   xf_vars_by_mode(i).segment(4, 1));
-  // }
 
-  // Duration bound
-  if (fix_duration) {
-    AddDurationBounds(h_guess.tail(1)(0) * num_modes_,
-                      h_guess.tail(1)(0) * num_modes_);
-  }
-
-  // Loop over modes to construct the problem
-  // (Regularization cost, initial guss and constraints)
+  // Loop over modes to construct the problem (Initial guss and constraints)
   int counter = 0;
   for (int i = 0; i < num_modes_; i++) {
     cout << "Mode " << i << endl;
     mode_start_.push_back(counter);
 
     bool left_stance = i % 2 == 0;
-
-    cout << "adding regularization cost ...\n";
-    // Adding cost on FOM state increases convergence rate
-    // If we only add position (not velocity) in the cost, then higher cost
-    // results in spacing out each step more evenly
-    if (add_x_pose_in_cost) {
-      int nq_or_nx = n_q;  // n_q or 2*n_q
-      MatrixXd Id_7 = 100 * MatrixXd::Identity(nq_or_nx - 1, nq_or_nx - 1);
-      // Id_7(1,1) = 10;
-      MatrixXd Id_1 = 100 * MatrixXd::Identity(1, 1);
-
-      double torso_lean_forward_angle = 0.1;
-      VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
-      // modifixed_x_guess_left_in_front(2) = torso_lean_forward_angle;
-      VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
-      // modifixed_x_guess_right_in_front(2) = torso_lean_forward_angle;
-      if (straight_leg_cost) {
-        Id_7(5, 5) = 10;
-        Id_7(6, 6) = 10;
-        modifixed_x_guess_left_in_front(5) = 0;
-        modifixed_x_guess_left_in_front(6) = 0;
-        modifixed_x_guess_right_in_front(5) = 0;
-        modifixed_x_guess_right_in_front(6) = 0;
-      }
-
-      if (left_stance) {
-        this->AddQuadraticErrorCost(
-            Id_7,
-            modifixed_x_guess_left_in_front.head(nq_or_nx).tail(nq_or_nx - 1),
-            x0_vars_by_mode(i).head(nq_or_nx).tail(nq_or_nx - 1));
-        this->AddQuadraticErrorCost(
-            Id_7,
-            modifixed_x_guess_right_in_front.head(nq_or_nx).tail(nq_or_nx - 1),
-            xf_vars_by_mode(i).head(nq_or_nx).tail(nq_or_nx - 1));
-      } else {
-        this->AddQuadraticErrorCost(
-            Id_7,
-            modifixed_x_guess_right_in_front.head(nq_or_nx).tail(nq_or_nx - 1),
-            x0_vars_by_mode(i).head(nq_or_nx).tail(nq_or_nx - 1));
-        this->AddQuadraticErrorCost(
-            Id_7,
-            modifixed_x_guess_left_in_front.head(nq_or_nx).tail(nq_or_nx - 1),
-            xf_vars_by_mode(i).head(nq_or_nx).tail(nq_or_nx - 1));
-      }
-      this->AddQuadraticErrorCost(
-          Id_1, VectorXd::Ones(1) * desired_final_position * i / num_modes_,
-          x0_vars_by_mode(i).head(1));
-      this->AddQuadraticErrorCost(
-          Id_1,
-          VectorXd::Ones(1) * desired_final_position * (i + 1) / num_modes_,
-          xf_vars_by_mode(i).head(1));
-    }
-
-    cout << "adding initial guess ...\n";
-    // Initial guess
-    if (with_init_guess) {
-      for (int j = 0; j < mode_lengths_[i] - 1; j++) {
-        SetInitialGuess(timestep(mode_start_[i] + j), h_guess.segment(1, 1));
-      }
-      for (int j = 0; j < mode_lengths_[i]; j++) {
-        SetInitialGuess(state_vars_by_mode(i, j),
-                        y_guess.block(0, j, 2 * rom.n_y(), 1));
-        int time_index = mode_start_[i] + j;
-        SetInitialGuess(u_vars().segment(time_index * rom.n_tau(), rom.n_tau()),
-                        tau_guess.col(j));
-      }
-      if (left_stance) {
-        SetInitialGuess(x0_vars_by_mode(i).tail(2 * n_q - 1),
-                        x_guess_left_in_front.tail(2 * n_q - 1));
-        SetInitialGuess(xf_vars_by_mode(i).tail(2 * n_q - 1),
-                        x_guess_right_in_front.tail(
-                            2 * n_q - 1));  // TODO: this should be preimpact
-      } else {
-        SetInitialGuess(x0_vars_by_mode(i).tail(2 * n_q - 1),
-                        x_guess_right_in_front.tail(
-                            2 * n_q - 1));  // TODO: this should be preimpact
-        SetInitialGuess(xf_vars_by_mode(i).tail(2 * n_q - 1),
-                        x_guess_left_in_front.tail(2 * n_q - 1));
-      }
-      SetInitialGuess(x0_vars_by_mode(i)(0),
-                      desired_final_position * i / num_modes_);
-      SetInitialGuess(xf_vars_by_mode(i)(0),
-                      desired_final_position * (i + 1) / num_modes_);
-    } else {
-      // Initial to avoid sigularity (which messes with gradient)
-      for (int j = 0; j < mode_lengths_[i]; j++) {
-        SetInitialGuess((state_vars_by_mode(i, j))(1), 1);
-      }
-    }
 
     // Constraints
     // Set timestep bounds
@@ -249,6 +130,7 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     }
 
     // Add RoM-FoM mapping constraints
+    // TODO: might need to rotate the local frame to align with the global
     cout << "Adding RoM-FoM mapping constraint...\n";
     auto kin_constraint = std::make_shared<planning::KinematicsConstraint>(
         rom, plant, left_stance, state_mirror);
@@ -262,7 +144,6 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     // Add guard constraint
     cout << "Adding guard constraint...\n";
     const auto& swing_contacts = left_stance ? right_contacts : left_contacts;
-    const auto& stance_contacts = left_stance ? left_contacts : right_contacts;
     VectorXd lb_per_contact = VectorXd::Zero(2);
     if (!zero_touchdown_impact)
       lb_per_contact << 0, -std::numeric_limits<double>::infinity();
@@ -306,8 +187,9 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
           xf_vars_by_mode(i)(positions_map.at(std::get<0>(name_lb_ub))));
     }
 
-    // Sitching x0 and xf (full-order model stance foot constraint)
+    // Stitching x0 and xf (full-order model stance foot constraint)
     cout << "Adding full-order model stance foot constraint...\n";
+    const auto& stance_contacts = left_stance ? left_contacts : right_contacts;
     auto fom_sf_constraint =
         std::make_shared<planning::FomStanceFootConstraint>(plant_,
                                                             stance_contacts);
@@ -317,16 +199,12 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     // Initial pose constraint for the full order model
     if (i == 0) {
       cout << "Adding initial pose constraint for full-order model...\n";
-      AddLinearConstraint(x0_vars_by_mode(i) == init_state);
+      AddBoundingBoxConstraint(init_state, init_state, x0_vars_by_mode(i));
       // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
       cout << "init_state = " << init_state << endl;
     }
 
     // Stride length constraint
-    if (i == num_modes_ - 1) {
-      cout << "Adding final position constraint for full-order model...\n";
-      AddLinearConstraint(xf_vars_by_mode(i)(0) == desired_final_position);
-    }
     // cout << "Adding stride length constraint for full-order model...\n";
     // V1
     // AddLinearConstraint(xf_vars_by_mode(i)(0) - x0_vars_by_mode(i)(0) ==
@@ -349,11 +227,10 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
 }
 
 const Eigen::VectorBlock<const VectorXDecisionVariable>
-RomTrajOptFiveLinkRobot::z_post_impact_vars_by_mode(int mode) const {
+RomTrajOpt::z_post_impact_vars_by_mode(int mode) const {
   return z_post_impact_vars_.segment(mode * n_z_, n_z_);
 }
-VectorXDecisionVariable RomTrajOptFiveLinkRobot::x0_vars_by_mode(
-    int mode) const {
+VectorXDecisionVariable RomTrajOpt::x0_vars_by_mode(int mode) const {
   if (mode == 0) {
     return x0_var_;
   } else {
@@ -365,11 +242,11 @@ VectorXDecisionVariable RomTrajOptFiveLinkRobot::x0_vars_by_mode(
   }
 }
 const Eigen::VectorBlock<const VectorXDecisionVariable>
-RomTrajOptFiveLinkRobot::xf_vars_by_mode(int mode) const {
+RomTrajOpt::xf_vars_by_mode(int mode) const {
   return xf_vars_.segment(mode * n_x_, n_x_);
 }
 
-VectorX<Expression> RomTrajOptFiveLinkRobot::SubstitutePlaceholderVariables(
+VectorX<Expression> RomTrajOpt::SubstitutePlaceholderVariables(
     const VectorX<Expression>& f, int interval_index) const {
   VectorX<Expression> ret(f.size());
   for (int i = 0; i < f.size(); i++) {
@@ -380,10 +257,10 @@ VectorX<Expression> RomTrajOptFiveLinkRobot::SubstitutePlaceholderVariables(
 }
 
 // Eigen::VectorBlock<const VectorXDecisionVariable>
-// RomTrajOptFiveLinkRobot::state_vars_by_mode(int mode, int
+// RomTrajOpt::state_vars_by_mode(int mode, int
 // time_index)  {
-VectorXDecisionVariable RomTrajOptFiveLinkRobot::state_vars_by_mode(
-    int mode, int time_index) const {
+VectorXDecisionVariable RomTrajOpt::state_vars_by_mode(int mode,
+                                                       int time_index) const {
   if (time_index == 0 && mode > 0) {
     return z_post_impact_vars_by_mode(mode - 1);
   } else {
@@ -397,8 +274,7 @@ VectorXDecisionVariable RomTrajOptFiveLinkRobot::state_vars_by_mode(
 }
 
 // TODO: need to configure this to handle the hybrid discontinuities properly
-void RomTrajOptFiveLinkRobot::DoAddRunningCost(
-    const drake::symbolic::Expression& g) {
+void RomTrajOpt::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Trapezoidal integration:
   //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
@@ -414,7 +290,7 @@ void RomTrajOptFiveLinkRobot::DoAddRunningCost(
           h_vars()(N() - 2) / 2);
 }
 
-PiecewisePolynomial<double> RomTrajOptFiveLinkRobot::ReconstructInputTrajectory(
+PiecewisePolynomial<double> RomTrajOpt::ReconstructInputTrajectory(
     const MathematicalProgramResult& result) const {
   Eigen::VectorXd times = GetSampleTimes(result);
   vector<double> times_vec(N());
@@ -426,7 +302,7 @@ PiecewisePolynomial<double> RomTrajOptFiveLinkRobot::ReconstructInputTrajectory(
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
 
-PiecewisePolynomial<double> RomTrajOptFiveLinkRobot::ReconstructStateTrajectory(
+PiecewisePolynomial<double> RomTrajOpt::ReconstructStateTrajectory(
     const MathematicalProgramResult& result) const {
   VectorXd times_all(GetSampleTimes(result));
   VectorXd times(N() + num_modes_ - 1);
@@ -460,6 +336,251 @@ PiecewisePolynomial<double> RomTrajOptFiveLinkRobot::ReconstructStateTrajectory(
   // return PiecewisePolynomial<double>::CubicHermite(times, states,
   // derivatives);
   return PiecewisePolynomial<double>::FirstOrderHold(times, states);
+}
+
+RomTrajOptCassie::RomTrajOptCassie(
+    std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
+    std::vector<double> maximum_timestep, Eigen::MatrixXd Q, Eigen::MatrixXd R,
+    const ReducedOrderModel& rom,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const StateMirror& state_mirror,
+    const std::vector<std::pair<const Eigen::Vector3d,
+                                const drake::multibody::Frame<double>&>>&
+        left_contacts,
+    const std::vector<std::pair<const Eigen::Vector3d,
+                                const drake::multibody::Frame<double>&>>&
+        right_contacts,
+    const std::vector<std::tuple<std::string, double, double>>&
+        fom_joint_name_lb_ub,
+    Eigen::VectorXd init_state, bool fix_all_timestep,
+    bool zero_touchdown_impact)
+    : RomTrajOpt(num_time_samples, minimum_timestep, maximum_timestep, Q, R,
+                 rom, plant, state_mirror, left_contacts, right_contacts,
+                 fom_joint_name_lb_ub, init_state, fix_all_timestep,
+                 zero_touchdown_impact) {}
+
+void RomTrajOptCassie::AddRegularizationCost(
+    const Eigen::VectorXd& desired_final_position,
+    const Eigen::VectorXd& x_guess_left_in_front,
+    const Eigen::VectorXd& x_guess_right_in_front, bool straight_leg_cost) {
+  cout << "adding regularization cost ...\n";
+
+  int n_q = plant_.num_positions();
+
+  for (int i = 0; i < num_modes_; i++) {
+    bool left_stance = i % 2 == 0;
+
+    // Adding cost on FOM state increases convergence rate
+    // If we only add position (not velocity) in the cost, then higher cost
+    // results in spacing out each step more evenly
+    MatrixXd Id_quat = 100 * MatrixXd::Identity(4, 4);
+    MatrixXd Id_xy = 100 * MatrixXd::Identity(2, 2);
+    MatrixXd Id_z_joints = 100 * MatrixXd::Identity(n_q - 6, n_q - 6);
+
+    VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
+    VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
+    if (straight_leg_cost) {
+      /*Id_periodic(5, 5) = 10;
+      Id_periodic(6, 6) = 10;
+      modifixed_x_guess_left_in_front(5) = 0;
+      modifixed_x_guess_left_in_front(6) = 0;
+      modifixed_x_guess_right_in_front(5) = 0;
+      modifixed_x_guess_right_in_front(6) = 0;*/
+    }
+
+    if (left_stance) {
+      this->AddQuadraticErrorCost(
+          Id_z_joints, modifixed_x_guess_left_in_front.segment(2, n_q - 2),
+          x0_vars_by_mode(i).segment(2, n_q - 2));
+      this->AddQuadraticErrorCost(
+          Id_z_joints, modifixed_x_guess_right_in_front.segment(2, n_q - 2),
+          xf_vars_by_mode(i).segment(2, n_q - 2));
+    } else {
+      this->AddQuadraticErrorCost(
+          Id_z_joints, modifixed_x_guess_right_in_front.segment(2, n_q - 2),
+          x0_vars_by_mode(i).segment(2, n_q - 2));
+      this->AddQuadraticErrorCost(
+          Id_z_joints, modifixed_x_guess_left_in_front.segment(2, n_q - 2),
+          xf_vars_by_mode(i).segment(2, n_q - 2));
+    }
+    this->AddQuadraticErrorCost(Id_xy, desired_final_position * i / num_modes_,
+                                x0_vars_by_mode(i).head(1));
+    this->AddQuadraticErrorCost(Id_xy,
+                                desired_final_position * (i + 1) / num_modes_,
+                                xf_vars_by_mode(i).head(1));
+  }
+}
+
+void RomTrajOptCassie::SetAllInitialGuess(
+    const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
+    const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
+    const Eigen::VectorXd& x_guess_left_in_front,
+    const Eigen::VectorXd& x_guess_right_in_front,
+    const Eigen::VectorXd& desired_final_position) {
+  cout << "adding initial guess ...\n";
+
+  MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
+  y_guess << r_guess, dr_guess;
+
+  for (int i = 0; i < num_modes_; i++) {
+    bool left_stance = i % 2 == 0;
+
+    // Initial guess
+    for (int j = 0; j < mode_lengths_[i] - 1; j++) {
+      SetInitialGuess(timestep(mode_start_[i] + j), h_guess.segment(1, 1));
+    }
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      SetInitialGuess(state_vars_by_mode(i, j),
+                      y_guess.block(0, j, 2 * rom_.n_y(), 1));
+      int time_index = mode_start_[i] + j;
+      SetInitialGuess(u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
+                      tau_guess.col(j));
+    }
+    if (left_stance) {
+      SetInitialGuess(x0_vars_by_mode(i).tail(n_x_ - 1),
+                      x_guess_left_in_front.tail(n_x_ - 1));
+      SetInitialGuess(xf_vars_by_mode(i).tail(n_x_ - 1),
+                      x_guess_right_in_front.tail(
+                          n_x_ - 1));  // TODO: this should be preimpact
+    } else {
+      SetInitialGuess(x0_vars_by_mode(i).tail(n_x_ - 1),
+                      x_guess_right_in_front.tail(
+                          n_x_ - 1));  // TODO: this should be preimpact
+      SetInitialGuess(xf_vars_by_mode(i).tail(n_x_ - 1),
+                      x_guess_left_in_front.tail(n_x_ - 1));
+    }
+    SetInitialGuess(x0_vars_by_mode(i).segment(4, 2),
+                    desired_final_position * i / num_modes_);
+    SetInitialGuess(xf_vars_by_mode(i).segment(4, 2),
+                    desired_final_position * (i + 1) / num_modes_);
+  }
+}
+
+RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
+    std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
+    std::vector<double> maximum_timestep, Eigen::MatrixXd Q, Eigen::MatrixXd R,
+    const ReducedOrderModel& rom,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const StateMirror& state_mirror,
+    const std::vector<std::pair<const Eigen::Vector3d,
+                                const drake::multibody::Frame<double>&>>&
+        left_contacts,
+    const std::vector<std::pair<const Eigen::Vector3d,
+                                const drake::multibody::Frame<double>&>>&
+        right_contacts,
+    const std::vector<std::tuple<std::string, double, double>>&
+        fom_joint_name_lb_ub,
+    Eigen::VectorXd init_state, bool fix_all_timestep,
+    bool zero_touchdown_impact)
+    : RomTrajOpt(num_time_samples, minimum_timestep, maximum_timestep, Q, R,
+                 rom, plant, state_mirror, left_contacts, right_contacts,
+                 fom_joint_name_lb_ub, init_state, fix_all_timestep,
+                 zero_touchdown_impact) {}
+
+void RomTrajOptFiveLinkRobot::AddRegularizationCost(
+    const Eigen::VectorXd& desired_final_position,
+    const Eigen::VectorXd& x_guess_left_in_front,
+    const Eigen::VectorXd& x_guess_right_in_front, bool straight_leg_cost) {
+  cout << "adding regularization cost ...\n";
+
+  int n_q = plant_.num_positions();
+
+  for (int i = 0; i < num_modes_; i++) {
+    bool left_stance = i % 2 == 0;
+
+    // Adding cost on FOM state increases convergence rate
+    // If we only add position (not velocity) in the cost, then higher cost
+    // results in spacing out each step more evenly
+    int nq_or_nx = n_q;  // n_q or 2*n_q
+    MatrixXd Id_7 = 100 * MatrixXd::Identity(nq_or_nx - 1, nq_or_nx - 1);
+    // Id_7(1,1) = 10;
+    MatrixXd Id_1 = 100 * MatrixXd::Identity(1, 1);
+
+    double torso_lean_forward_angle = 0.1;
+    VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
+    // modifixed_x_guess_left_in_front(2) = torso_lean_forward_angle;
+    VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
+    // modifixed_x_guess_right_in_front(2) = torso_lean_forward_angle;
+    if (straight_leg_cost) {
+      Id_7(5, 5) = 10;
+      Id_7(6, 6) = 10;
+      modifixed_x_guess_left_in_front(5) = 0;
+      modifixed_x_guess_left_in_front(6) = 0;
+      modifixed_x_guess_right_in_front(5) = 0;
+      modifixed_x_guess_right_in_front(6) = 0;
+    }
+
+    if (left_stance) {
+      this->AddQuadraticErrorCost(
+          Id_7,
+          modifixed_x_guess_left_in_front.head(nq_or_nx).tail(nq_or_nx - 1),
+          x0_vars_by_mode(i).head(nq_or_nx).tail(nq_or_nx - 1));
+      this->AddQuadraticErrorCost(
+          Id_7,
+          modifixed_x_guess_right_in_front.head(nq_or_nx).tail(nq_or_nx - 1),
+          xf_vars_by_mode(i).head(nq_or_nx).tail(nq_or_nx - 1));
+    } else {
+      this->AddQuadraticErrorCost(
+          Id_7,
+          modifixed_x_guess_right_in_front.head(nq_or_nx).tail(nq_or_nx - 1),
+          x0_vars_by_mode(i).head(nq_or_nx).tail(nq_or_nx - 1));
+      this->AddQuadraticErrorCost(
+          Id_7,
+          modifixed_x_guess_left_in_front.head(nq_or_nx).tail(nq_or_nx - 1),
+          xf_vars_by_mode(i).head(nq_or_nx).tail(nq_or_nx - 1));
+    }
+    this->AddQuadraticErrorCost(
+        Id_1, VectorXd::Ones(1) * desired_final_position * i / num_modes_,
+        x0_vars_by_mode(i).head(1));
+    this->AddQuadraticErrorCost(
+        Id_1, VectorXd::Ones(1) * desired_final_position * (i + 1) / num_modes_,
+        xf_vars_by_mode(i).head(1));
+  }
+}
+
+void RomTrajOptFiveLinkRobot::SetAllInitialGuess(
+    const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
+    const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
+    const Eigen::VectorXd& x_guess_left_in_front,
+    const Eigen::VectorXd& x_guess_right_in_front,
+    const Eigen::VectorXd& desired_final_position) {
+  cout << "adding initial guess ...\n";
+
+  MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
+  y_guess << r_guess, dr_guess;
+
+  for (int i = 0; i < num_modes_; i++) {
+    bool left_stance = i % 2 == 0;
+
+    // Initial guess
+    for (int j = 0; j < mode_lengths_[i] - 1; j++) {
+      SetInitialGuess(timestep(mode_start_[i] + j), h_guess.segment(1, 1));
+    }
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      SetInitialGuess(state_vars_by_mode(i, j),
+                      y_guess.block(0, j, 2 * rom_.n_y(), 1));
+      int time_index = mode_start_[i] + j;
+      SetInitialGuess(u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
+                      tau_guess.col(j));
+    }
+    if (left_stance) {
+      SetInitialGuess(x0_vars_by_mode(i).tail(n_x_ - 1),
+                      x_guess_left_in_front.tail(n_x_ - 1));
+      SetInitialGuess(xf_vars_by_mode(i).tail(n_x_ - 1),
+                      x_guess_right_in_front.tail(
+                          n_x_ - 1));  // TODO: this should be preimpact
+    } else {
+      SetInitialGuess(x0_vars_by_mode(i).tail(n_x_ - 1),
+                      x_guess_right_in_front.tail(
+                          n_x_ - 1));  // TODO: this should be preimpact
+      SetInitialGuess(xf_vars_by_mode(i).tail(n_x_ - 1),
+                      x_guess_left_in_front.tail(n_x_ - 1));
+    }
+    SetInitialGuess(x0_vars_by_mode(i)(0),
+                    desired_final_position(0) * i / num_modes_);
+    SetInitialGuess(xf_vars_by_mode(i)(0),
+                    desired_final_position(0) * (i + 1) / num_modes_);
+  }
 }
 
 }  // namespace goldilocks_models

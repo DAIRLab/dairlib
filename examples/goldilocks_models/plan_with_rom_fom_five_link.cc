@@ -4,7 +4,7 @@
 #include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/planning/rom_traj_opt_five_link_robot.h"
+#include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -166,27 +166,60 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     }
   }
 
+  // Goal position
+  VectorXd final_position(1);
+  final_position << FLAGS_final_position;
+
   // Construct
   cout << "\nConstructing optimization problem...\n";
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptFiveLinkRobot trajopt(
       num_time_samples, min_dt, max_dt, Q, R, *rom, plant, state_mirror,
-      left_contacts, right_contacts, joint_name_lb_ub,
-      FLAGS_zero_touchdown_impact, FLAGS_final_position, init_state, h_guess,
-      r_guess, dr_guess, tau_guess, x_guess_left_in_front,
-      x_guess_right_in_front, with_init_guess, FLAGS_fix_duration,
-      FLAGS_fix_all_timestep, true, false);
+      left_contacts, right_contacts, joint_name_lb_ub, init_state,
+      FLAGS_fix_all_timestep, FLAGS_zero_touchdown_impact);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
 
-  if (FLAGS_print_snopt_file) {
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                            "../snopt.out");
+  // Final goal position constraint
+  cout << "Adding final position constraint for full-order model...\n";
+  trajopt.AddBoundingBoxConstraint(
+      final_position, final_position,
+      trajopt.xf_vars_by_mode(num_time_samples.size() - 1).head(1));
+
+  // Add_robot state in cost
+  bool add_x_pose_in_cost = true;
+  if (add_x_pose_in_cost) {
+    trajopt.AddRegularizationCost(final_position, x_guess_left_in_front,
+                                  x_guess_right_in_front,
+                                  false /*straight_leg_cost*/);
+  } else {
+    // Since there are multiple q that could be mapped to the same r, I
+    // penalize on q so it get close to a certain configuration
+    MatrixXd Id = MatrixXd::Identity(3, 3);
+    VectorXd zero_vec = VectorXd::Zero(3);
+    for (int i = 0; i < num_time_samples.size(); i++) {
+      trajopt.AddQuadraticErrorCost(Id, zero_vec,
+                                    trajopt.xf_vars_by_mode(i).segment(1, 3));
+    }
   }
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major iterations limit", 10000);
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+
+  // Duration bound
+  if (FLAGS_fix_duration) {
+    trajopt.AddDurationBounds(h_guess.tail(1)(0) * num_time_samples.size(),
+                              h_guess.tail(1)(0) * num_time_samples.size());
+  }
+
+  // Default initial guess to avoid singularity (which messes with gradient)
+  for (int i = 0; i < num_time_samples.size(); i++) {
+    for (int j = 0; j < num_time_samples[i]; j++) {
+      if ((FLAGS_rom_option == 0) || (FLAGS_rom_option == 1)) {
+        trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
+      } else {
+        DRAKE_UNREACHABLE();
+      }
+    }
+  }
 
   // Initial guess for all variables
   if (!init_file.empty()) {
@@ -201,7 +234,20 @@ int planningWithRomAndFom(int argc, char* argv[]) {
       z0.head(old_z0.rows()) = old_z0;
     }
     trajopt.SetInitialGuessForAllVariables(z0);
+  } else {
+    trajopt.SetAllInitialGuess(h_guess, r_guess, dr_guess, tau_guess,
+                               x_guess_left_in_front, x_guess_right_in_front,
+                               final_position);
   }
+
+  // Snopt setting
+  if (FLAGS_print_snopt_file) {
+    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                            "../snopt_planning.out");
+  }
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major iterations limit", 10000);
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
 
   // Testing
   cout << "\nChoose the best solver: "

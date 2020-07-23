@@ -4,9 +4,8 @@
 #include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
-
-#include "examples/goldilocks_models/planning/rom_traj_opt_cassie.h"
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -187,11 +186,17 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(num_time_samples, min_dt, max_dt, Q, R, *rom, plant,
                            state_mirror, left_contacts, right_contacts,
-                           joint_name_lb_ub, final_position, init_state,
-                           FLAGS_fix_all_timestep, FLAGS_zero_touchdown_impact);
+                           joint_name_lb_ub, init_state, FLAGS_fix_all_timestep,
+                           FLAGS_zero_touchdown_impact);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
+
+  // Final goal position constraint
+  cout << "Adding final position constraint for full-order model...\n";
+  trajopt.AddBoundingBoxConstraint(
+      final_position, final_position,
+      trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));
 
   // Add_robot state in cost
   bool add_x_pose_in_cost = true;
@@ -214,6 +219,17 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   if (FLAGS_fix_duration) {
     trajopt.AddDurationBounds(h_guess.tail(1)(0) * num_time_samples.size(),
                               h_guess.tail(1)(0) * num_time_samples.size());
+  }
+
+  // Default initial guess to avoid singularity (which messes with gradient)
+  for (int i = 0; i < num_time_samples.size(); i++) {
+    for (int j = 0; j < num_time_samples[i]; j++) {
+      if ((FLAGS_rom_option == 0) || (FLAGS_rom_option == 1)) {
+        trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
+      } else {
+        DRAKE_UNREACHABLE();
+      }
+    }
   }
 
   // Initial guess for all variables

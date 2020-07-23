@@ -12,26 +12,9 @@ cc_library(
 )
 
 cc_library(
-    name = "rom_traj_opt_five_link_robot",
-    srcs = ["rom_traj_opt_five_link_robot.cc"],
-    hdrs = ["rom_traj_opt_five_link_robot.h"],
-    deps = [
-        ":FoM_guard_constraint",
-        ":FoM_reset_map_constraint",
-        ":FoM_stance_foot_constraint",
-        ":FoM_stride_length_constraint",
-        ":dynamics_constraint",
-        ":kinematics_constraint",
-        "//examples/goldilocks_models:goldilocks_utils",
-        "//examples/goldilocks_models:reduced_order_models",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "rom_traj_opt_cassie",
-    srcs = ["rom_traj_opt_cassie.cc"],
-    hdrs = ["rom_traj_opt_cassie.h"],
+    name = "rom_traj_opt",
+    srcs = ["rom_traj_opt.cc"],
+    hdrs = ["rom_traj_opt.h"],
     deps = [
         ":FoM_guard_constraint",
         ":FoM_reset_map_constraint",

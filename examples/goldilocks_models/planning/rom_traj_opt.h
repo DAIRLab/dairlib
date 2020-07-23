@@ -23,12 +23,12 @@ namespace goldilocks_models {
 // yddot = theta_yddot * phi_yddot + B * tau
 
 // Modified from HybridDircon class
-class RomTrajOptCassie
+class RomTrajOpt
     : public drake::systems::trajectory_optimization::MultipleShooting {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RomTrajOptCassie)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RomTrajOpt)
 
-  RomTrajOptCassie(
+  RomTrajOpt(
       std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
       std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
       Eigen::MatrixXd R, const ReducedOrderModel& rom,
@@ -42,23 +42,10 @@ class RomTrajOptCassie
           right_contacts,
       const std::vector<std::tuple<std::string, double, double>>&
           fom_joint_name_lb_ub,
-      Eigen::VectorXd desired_final_position, Eigen::VectorXd init_state,
-      bool fix_all_timestep, bool zero_touchdown_impact);
+      Eigen::VectorXd init_state, bool fix_all_timestep,
+      bool zero_touchdown_impact);
 
-  ~RomTrajOptCassie() override {}
-
-  void AddRegularizationCost(const Eigen::VectorXd& desired_final_position,
-                             const Eigen::VectorXd& x_guess_left_in_front,
-                             const Eigen::VectorXd& x_guess_right_in_front,
-                             bool straight_leg_cost);
-
-  void SetAllInitialGuess(const Eigen::VectorXd& h_guess,
-                          const Eigen::MatrixXd& r_guess,
-                          const Eigen::MatrixXd& dr_guess,
-                          const Eigen::MatrixXd& tau_guess,
-                          const Eigen::VectorXd& x_guess_left_in_front,
-                          const Eigen::VectorXd& x_guess_right_in_front,
-                          const Eigen::VectorXd& desired_final_position);
+  ~RomTrajOpt() override {}
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
@@ -91,7 +78,7 @@ class RomTrajOptCassie
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
 
- private:
+ protected:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
   const int num_modes_;
@@ -105,6 +92,72 @@ class RomTrajOptCassie
   const int n_x_;
   const drake::multibody::MultibodyPlant<double>& plant_;
   const ReducedOrderModel& rom_;
+};
+
+class RomTrajOptCassie : public RomTrajOpt {
+ public:
+  RomTrajOptCassie(
+      std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
+      std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
+      Eigen::MatrixXd R, const ReducedOrderModel& rom,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const StateMirror& state_mirror,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          left_contacts,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          right_contacts,
+      const std::vector<std::tuple<std::string, double, double>>&
+          fom_joint_name_lb_ub,
+      Eigen::VectorXd init_state, bool fix_all_timestep,
+      bool zero_touchdown_impact);
+
+  void AddRegularizationCost(const Eigen::VectorXd& desired_final_position,
+                             const Eigen::VectorXd& x_guess_left_in_front,
+                             const Eigen::VectorXd& x_guess_right_in_front,
+                             bool straight_leg_cost);
+
+  void SetAllInitialGuess(const Eigen::VectorXd& h_guess,
+                          const Eigen::MatrixXd& r_guess,
+                          const Eigen::MatrixXd& dr_guess,
+                          const Eigen::MatrixXd& tau_guess,
+                          const Eigen::VectorXd& x_guess_left_in_front,
+                          const Eigen::VectorXd& x_guess_right_in_front,
+                          const Eigen::VectorXd& desired_final_position);
+};
+
+class RomTrajOptFiveLinkRobot : public RomTrajOpt {
+ public:
+  RomTrajOptFiveLinkRobot(
+      std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
+      std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
+      Eigen::MatrixXd R, const ReducedOrderModel& rom,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const StateMirror& state_mirror,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          left_contacts,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          right_contacts,
+      const std::vector<std::tuple<std::string, double, double>>&
+          fom_joint_name_lb_ub,
+      Eigen::VectorXd init_state, bool fix_all_timestep,
+      bool zero_touchdown_impact);
+
+  void AddRegularizationCost(const Eigen::VectorXd& desired_final_position,
+                             const Eigen::VectorXd& x_guess_left_in_front,
+                             const Eigen::VectorXd& x_guess_right_in_front,
+                             bool straight_leg_cost);
+
+  void SetAllInitialGuess(const Eigen::VectorXd& h_guess,
+                          const Eigen::MatrixXd& r_guess,
+                          const Eigen::MatrixXd& dr_guess,
+                          const Eigen::MatrixXd& tau_guess,
+                          const Eigen::VectorXd& x_guess_left_in_front,
+                          const Eigen::VectorXd& x_guess_right_in_front,
+                          const Eigen::VectorXd& desired_final_position);
 };
 
 }  // namespace goldilocks_models

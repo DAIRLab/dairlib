@@ -55,11 +55,15 @@ def process_log(log, pos_map, vel_map):
   q = []
   v = []
   u = []
+  kp = []
+  kd = []
+  t_pd = []
   estop_signal = []
   switch_signal = []
   osc_debug = dict()
   contact_info = [[], [], [], []]
   contact_info_locs = [[], [], [], []]
+  cassie_out  = []
 
   # is_mujoco = False
   for event in log:
@@ -82,6 +86,14 @@ def process_log(log, pos_map, vel_map):
       msg = dairlib.lcmt_controller_switch.decode(event.data)
       switch_signal.append(msg.channel == "OSC_STANDING")
       t_controller_switch.append(msg.utime / 1e6)
+    if event.channel == "PD_CONFIG":
+      msg = dairlib.lcmt_pd_config.decode(event.data)
+      kp.append(msg.kp)
+      kd.append(msg.kd)
+      t_pd.append(msg.timestamp / 1e6)
+    if event.channel == "CASSIE_OUTPUT_ECHO":
+      msg = dairlib.lcmt_cassie_out.decode(event.data)
+      cassie_out.append(msg)
     if event.channel == "OSC_DEBUG":
       msg = dairlib.lcmt_osc_output.decode(event.data)
       num_osc_tracking_data = len(msg.tracking_data)
@@ -136,10 +148,13 @@ def process_log(log, pos_map, vel_map):
   t_u = np.array(t_u)
   t_controller_switch = np.array(t_controller_switch)
   t_contact_info = np.array(t_contact_info)
+  t_pd = np.array(t_pd)
   fsm = np.array(fsm)
   q = np.array(q)
   v = np.array(v)
   u = np.array(u)
+  kp = np.array(kp)
+  kd = np.array(kd)
   estop_signal = np.array(estop_signal)
   switch_signal = np.array(switch_signal)
   contact_info = np.array(contact_info)
@@ -162,7 +177,7 @@ def process_log(log, pos_map, vel_map):
   x = np.hstack((q, v))
 
   return x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
-         switch_signal, t_controller_switch
+         switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out
 
 
 def generate_wo_spring_state_map():

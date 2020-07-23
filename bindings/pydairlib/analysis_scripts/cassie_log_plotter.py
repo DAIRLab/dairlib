@@ -111,7 +111,7 @@ def main():
   x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
   switch_signal, t_controller_switch = process_lcm_log.process_log(log, pos_map, vel_map)
 
-  start_time = 0.0
+  start_time = 1.5
   end_time = 3.0
 
   # plot_nominal_com_traj(com_traj, lcm_com_traj)
@@ -125,7 +125,7 @@ def main():
   t_x_slice = slice(t_start_idx, t_end_idx)
 
   plot_simulation_state(x, t_x, t_x_slice, state_names_w_spr)
-  plot_nominal_state(x_traj_nominal, datatypes, start_time, end_time)
+  # plot_nominal_state(x_traj_nominal, datatypes, start_time, end_time)
 
   # For printing out osc_values at a specific time interval
   t_u_start_idx = get_index_at_time(t_u, start_time)

@@ -18,6 +18,10 @@ from load_lcm_trajs import load_lcm_trajs
 
 
 def main():
+  global t_start
+  global t_end
+  global t_slice
+  global filename
   matplotlib.rcParams["savefig.directory"] = \
     "/home/yangwill/Documents/research/projects/cassie/walking/analysis" \
     "/figures/"
@@ -61,8 +65,22 @@ def main():
   log = lcm.EventLog(filename, "r")
 
   x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
-  switch_signal, t_controller_switch = process_lcm_log.process_log(log, pos_map, vel_map)
+  switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out = process_lcm_log.process_log(log, pos_map, vel_map)
 
+
+  knee_pos = np.zeros(len(cassie_out))
+  cassie_out_t = np.zeros(len(cassie_out))
+  for i in range(len(cassie_out)):
+    knee_pos[i] = cassie_out[i].leftLeg.hipPitchDrive.velocity
+    cassie_out_t[i] = cassie_out[i].utime
+  plt.plot(cassie_out_t / 1e6, knee_pos, '.')
+  # t_start_idx = np.argwhere(np.max(np.abs(u), 1) > 5)[0][0]
+  # t_end_idx = np.argwhere(t_x > t_x[t_start_idx] + 3.0)[0][0]
+  # t_slice = slice(t_start_idx - 50, t_end_idx)
+  t_slice = slice(0, t_x.shape[0])
+
+  # plt.plot(t_pd, kp)
+  plt.plot(t_pd, kd)
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal)
 
   lcm_trajectory = pydairlib.lcm_trajectory.LcmTrajectory()
@@ -125,19 +143,19 @@ def plot_osc_debug(t_u, fsm, osc_debug):
   # plt.plot(t_osc_debug, osc_debug[0].y_des)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y_des)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y)
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des)
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol)
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des)
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y_des)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y)
-  # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_y)
+  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_y)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_ydot)
   # plt.plot(osc_debug["pelvis_rot_tracking_data"].t, osc_debug["pelvis_rot_tracking_data"].error_y)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].yddot_des)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].yddot_command_sol)
   # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].y_des)
   # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].y)
-  # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].error_y)
+  plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].error_y)
   # plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].ydot_des)
   # plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].ydot)
   # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].y_des)
@@ -148,18 +166,26 @@ def plot_osc_debug(t_u, fsm, osc_debug):
 
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal):
+
+  name = filename.split("/")[-1]
   pos_indices = slice(11, 15)
   vel_indices = slice(33, 37)
   u_indices = slice(4, 8)
-  plt.figure("positions")
-  plt.plot(t_x, x[:, pos_indices])
+  # threshold = 1e-2
+  # jumps = []
+  # for i in range(x.shape[0] - 1):
+  #   if norm(x[i + 1, pos_indices] - x[i, pos_indices]) > threshold:
+  #     jumps.append(t_x[i])
+  # jumps = np.array(jumps)
+  plt.figure("positions: " + name)
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices], '.')
   plt.legend(x_datatypes[pos_indices])
-  plt.figure("velocities")
-  plt.plot(t_x, x[:, vel_indices])
+  plt.figure("velocities: "+ name)
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices], '.')
   plt.legend(x_datatypes[vel_indices])
-  plt.figure("efforts")
-  plt.plot(t_u, u[:, u_indices])
-  plt.legend(u_datatypes[u_indices])
+  # plt.figure("efforts: " + name)
+  # plt.plot(t_u, u[:, u_indices], '.')
+  # plt.legend(u_datatypes[u_indices])
   # plt.show()
 
 

@@ -53,13 +53,13 @@ class WorldPointEvaluator :  public KinematicEvaluator<T> {
       bool tangent_active = true);
 
   drake::VectorX<T> EvalFull(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const override;
 
   drake::MatrixX<T> EvalFullJacobian(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const override;
 
   drake::VectorX<T> EvalFullJacobianDotTimesV(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const override;
 
   using KinematicEvaluator<T>::plant;
 

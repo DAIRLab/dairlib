@@ -41,7 +41,8 @@ DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
-DEFINE_int32(n_step, 3, "Number of foot steps");
+DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
+DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_bool(print_snopt_file, false, "Print snopt output file");
 DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
 DEFINE_double(final_position, 2, "The final position for the robot");
@@ -83,7 +84,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Prespecify the time steps
   int n_step = FLAGS_n_step;
-  int knots_per_mode = 20;
+  int knots_per_mode = FLAGS_knots_per_mode;
   std::vector<int> num_time_samples;
   std::vector<double> min_dt;
   std::vector<double> max_dt;
@@ -130,39 +131,59 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                                    "toe_right"};
   std::map<string, int> positions_map =
       multibody::makeNameToPositionsMap(plant);
-  for (auto name : name_list) {
+  /*for (auto name : name_list) {
     cout << name << ", " << init_state(positions_map.at(name)) << endl;
-  }
+  }*/
   // TODO: find out why the initial left knee position is not within the joint
   //  limits.
 
   bool with_init_guess = true;
   // Provide initial guess
-  VectorXd h_guess;
-  MatrixXd r_guess;
-  MatrixXd dr_guess;
-  MatrixXd tau_guess;
+  VectorXd h_guess(knots_per_mode);
+  MatrixXd r_guess(n_y, knots_per_mode);
+  MatrixXd dr_guess(n_y, knots_per_mode);
+  MatrixXd tau_guess(n_tau, knots_per_mode);
   VectorXd x_guess_left_in_front;
   VectorXd x_guess_right_in_front;
   if (with_init_guess) {
-    h_guess = readCSV(model_dir_n_pref + string("time_at_knots.csv")).col(0);
-    r_guess = readCSV(model_dir_n_pref + string("t_and_y.csv"))
-                  .block(1, 0, n_y, knots_per_mode);
-    dr_guess = readCSV(model_dir_n_pref + string("t_and_ydot.csv"))
-                   .block(1, 0, n_y, knots_per_mode);
-    tau_guess = readCSV(model_dir_n_pref + string("t_and_tau.csv"))
-                    .block(1, 0, n_tau, knots_per_mode);
-
-    x_guess_left_in_front =
+    VectorXd h_guess_raw =
+        readCSV(model_dir_n_pref + string("time_at_knots.csv")).col(0);
+    MatrixXd r_guess_raw =
+        readCSV(model_dir_n_pref + string("t_and_y.csv")).bottomRows(n_y);
+    MatrixXd dr_guess_raw =
+        readCSV(model_dir_n_pref + string("t_and_ydot.csv")).bottomRows(n_y);
+    MatrixXd tau_guess_raw =
+        readCSV(model_dir_n_pref + string("t_and_tau.csv")).bottomRows(n_tau);
+    VectorXd x_guess_left_in_front_raw =
         readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
-    x_guess_right_in_front =
-        readCSV(model_dir_n_pref + string("state_at_knots.csv"))
-            .col(knots_per_mode - 1);
-
-    DRAKE_DEMAND(knots_per_mode == r_guess.cols());
-
+    VectorXd x_guess_right_in_front_raw =
+        readCSV(model_dir_n_pref + string("state_at_knots.csv")).rightCols(1);
     cout << "\nWARNING: last column of state_at_knots.csv should be pre-impact "
             "state.\n";
+    // TODO: store both pre and post impact in rom optimization
+
+    // TODO: reconstruct cubic spline and resample
+    double duration = h_guess_raw.tail(1)(0);
+    for (int i = 0; i < knots_per_mode; i++) {
+      h_guess(i) = duration / (knots_per_mode - 1) * i;
+    }
+    for (int i = 0; i < knots_per_mode; i++) {
+      int n_mat_col_r = r_guess_raw.cols();
+      int idx_r =
+          (int)round(double(i * (n_mat_col_r - 1)) / (knots_per_mode - 1));
+      r_guess.col(i) = r_guess_raw.col(idx_r);
+      int n_mat_col_dr = dr_guess_raw.cols();
+      int idx_dr =
+          (int)round(double(i * (n_mat_col_dr - 1)) / (knots_per_mode - 1));
+      dr_guess.col(i) = dr_guess_raw.col(idx_dr);
+      int n_mat_col_tau = tau_guess_raw.cols();
+      int idx_tau =
+          (int)round(double(i * (n_mat_col_tau - 1)) / (knots_per_mode - 1));
+      tau_guess.col(i) = tau_guess_raw.col(idx_tau);
+    }
+    x_guess_left_in_front = x_guess_left_in_front_raw;
+    x_guess_right_in_front = x_guess_right_in_front_raw;
+
     // cout << "h_guess = " << h_guess << endl;
     // cout << "r_guess = " << r_guess << endl;
     // cout << "dr_guess = " << dr_guess << endl;
@@ -198,13 +219,13 @@ int planningWithRomAndFom(int argc, char* argv[]) {
           name + left_right,
           plant.GetJointByName(name + left_right).position_lower_limits()(0),
           plant.GetJointByName(name + left_right).position_upper_limits()(0));
-      cout << "name = " << name + left_right << endl;
+      /*cout << "name = " << name + left_right << endl;
       cout << "lb = "
            << plant.GetJointByName(name + left_right).position_lower_limits()(0)
            << endl;
       cout << "ub = "
            << plant.GetJointByName(name + left_right).position_upper_limits()(0)
-           << endl;
+           << endl;*/
     }
   }
 

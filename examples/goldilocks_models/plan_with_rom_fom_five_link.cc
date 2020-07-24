@@ -112,27 +112,51 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   bool with_init_guess = true;
   // Provide initial guess
-  VectorXd h_guess;
-  MatrixXd r_guess;
-  MatrixXd dr_guess;
-  MatrixXd tau_guess;
+  VectorXd h_guess(knots_per_mode);
+  MatrixXd r_guess(n_y, knots_per_mode);
+  MatrixXd dr_guess(n_y, knots_per_mode);
+  MatrixXd tau_guess(n_tau, knots_per_mode);
   VectorXd x_guess_left_in_front;
   VectorXd x_guess_right_in_front;
   if (with_init_guess) {
-    h_guess = readCSV(model_dir_n_pref + string("time_at_knots.csv")).col(0);
-    r_guess = readCSV(model_dir_n_pref + string("t_and_y.csv"))
-                  .block(1, 0, n_y, knots_per_mode);
-    dr_guess = readCSV(model_dir_n_pref + string("t_and_ydot.csv"))
-                   .block(1, 0, n_y, knots_per_mode);
-    tau_guess = readCSV(model_dir_n_pref + string("t_and_tau.csv"))
-                    .block(1, 0, n_tau, knots_per_mode);
-    x_guess_left_in_front =
+    VectorXd h_guess_raw =
+        readCSV(model_dir_n_pref + string("time_at_knots.csv")).col(0);
+    MatrixXd r_guess_raw =
+        readCSV(model_dir_n_pref + string("t_and_y.csv")).bottomRows(n_y);
+    MatrixXd dr_guess_raw =
+        readCSV(model_dir_n_pref + string("t_and_ydot.csv")).bottomRows(n_y);
+    MatrixXd tau_guess_raw =
+        readCSV(model_dir_n_pref + string("t_and_tau.csv")).bottomRows(n_tau);
+    VectorXd x_guess_left_in_front_raw =
         readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
-    x_guess_right_in_front =
-        readCSV(model_dir_n_pref + string("state_at_knots.csv"))
-            .col(knots_per_mode - 1);
+    VectorXd x_guess_right_in_front_raw =
+        readCSV(model_dir_n_pref + string("state_at_knots.csv")).rightCols(1);
     cout << "\nWARNING: last column of state_at_knots.csv should be pre-impact "
             "state.\n";
+    // TODO: store both pre and post impact in rom optimization
+
+    // TODO: reconstruct cubic spline and resample
+    double duration = h_guess_raw.tail(1)(0);
+    for (int i = 0; i < knots_per_mode; i++) {
+      h_guess(i) = duration / (knots_per_mode - 1) * i;
+    }
+    for (int i = 0; i < knots_per_mode; i++) {
+      int n_mat_col_r = r_guess_raw.cols();
+      int idx_r =
+          (int)round(double(i * (n_mat_col_r - 1)) / (knots_per_mode - 1));
+      r_guess.col(i) = r_guess_raw.col(idx_r);
+      int n_mat_col_dr = dr_guess_raw.cols();
+      int idx_dr =
+          (int)round(double(i * (n_mat_col_dr - 1)) / (knots_per_mode - 1));
+      dr_guess.col(i) = dr_guess_raw.col(idx_dr);
+      int n_mat_col_tau = tau_guess_raw.cols();
+      int idx_tau =
+          (int)round(double(i * (n_mat_col_tau - 1)) / (knots_per_mode - 1));
+      tau_guess.col(i) = tau_guess_raw.col(idx_tau);
+    }
+    x_guess_left_in_front = x_guess_left_in_front_raw;
+    x_guess_right_in_front = x_guess_right_in_front_raw;
+
     // cout << "h_guess = " << h_guess << endl;
     // cout << "r_guess = " << r_guess << endl;
     // cout << "dr_guess = " << dr_guess << endl;
@@ -240,6 +264,28 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                                final_position);
   }
 
+  // Testing
+  cout << "\nChoose the best solver: "
+       << drake::solvers::ChooseBestSolver(trajopt).name() << endl;
+
+  // Print out the scaling factor
+  for (int i = 0; i < trajopt.decision_variables().size(); i++) {
+    cout << trajopt.decision_variable(i) << ", ";
+    cout << trajopt.decision_variable(i).get_id() << ", ";
+    cout << trajopt.FindDecisionVariableIndex(trajopt.decision_variable(i))
+         << ", ";
+    auto scale_map = trajopt.GetVariableScaling();
+    auto it = scale_map.find(i);
+    if (it != scale_map.end()) {
+      cout << it->second;
+    } else {
+      cout << "none";
+    }
+    cout << ", ";
+    cout << trajopt.GetInitialGuess(trajopt.decision_variable(i));
+    cout << endl;
+  }
+
   // Snopt setting
   if (FLAGS_print_snopt_file) {
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
@@ -248,10 +294,6 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                           "Major iterations limit", 10000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
-
-  // Testing
-  cout << "\nChoose the best solver: "
-       << drake::solvers::ChooseBestSolver(trajopt).name() << endl;
 
   // Solve
   cout << "\nSolving optimization problem...\n";

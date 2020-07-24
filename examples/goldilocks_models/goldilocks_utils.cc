@@ -553,15 +553,13 @@ void SaveStringVecToCsv(const vector<std::string>& strings,
   ofile.close();
 }
 
-std::pair<const Vector3d, const Frame<double>&> FiveLinkRobotLeftContact(
-    const MultibodyPlant<double>& plant) {
-  return std::pair<const Vector3d, const Frame<double>&>(
-      Vector3d(0, 0, -0.5), plant.GetFrameByName("left_lower_leg_mass"));
+BodyPoint FiveLinkRobotLeftContact(const MultibodyPlant<double>& plant) {
+  return BodyPoint(Vector3d(0, 0, -0.5),
+                   plant.GetFrameByName("left_lower_leg_mass"));
 }
-std::pair<const Vector3d, const Frame<double>&> FiveLinkRobotRightContact(
-    const MultibodyPlant<double>& plant) {
-  return std::pair<const Vector3d, const Frame<double>&>(
-      Vector3d(0, 0, -0.5), plant.GetFrameByName("right_lower_leg_mass"));
+BodyPoint FiveLinkRobotRightContact(const MultibodyPlant<double>& plant) {
+  return BodyPoint(Vector3d(0, 0, -0.5),
+                   plant.GetFrameByName("right_lower_leg_mass"));
 }
 
 }  // namespace goldilocks_models

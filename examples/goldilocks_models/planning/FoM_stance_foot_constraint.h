@@ -33,6 +33,8 @@ class FomStanceFootConstraint : public solvers::NonlinearConstraint<double> {
   const std::vector<
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
       stance_foot_contacts_;
+
+  int n_q_;
 };
 }  // namespace planning
 }  // namespace goldilocks_models

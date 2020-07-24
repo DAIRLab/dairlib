@@ -37,7 +37,7 @@ namespace dairlib {
 namespace goldilocks_models {
 
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
-DEFINE_int32(rom_option, 0, "0: LIPM. 1: LIPM with point-mass swing foot");
+DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
@@ -55,10 +55,7 @@ DEFINE_bool(fix_all_timestep, true, "Make all timesteps the same size");
 int planningWithRomAndFom(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  DRAKE_DEMAND(FLAGS_robot_option == 0);
-  if (FLAGS_robot_option == 0) {
-    DRAKE_DEMAND(FLAGS_rom_option != 4);
-  }
+  DRAKE_DEMAND(FLAGS_robot_option == 1);
 
   // Create MBP
   MultibodyPlant<double> plant(0.0);
@@ -86,7 +83,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Prespecify the time steps
   int n_step = FLAGS_n_step;
-  int knots_per_mode = 10;
+  int knots_per_mode = 20;
   std::vector<int> num_time_samples;
   std::vector<double> min_dt;
   std::vector<double> max_dt;
@@ -111,6 +108,34 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     init_state(9) += FLAGS_disturbance / 1;  // add to floating base angle
   }
 
+  // Testing
+  std::vector<string> name_list = {"base_qw",
+                                   "base_qx",
+                                   "base_qy",
+                                   "base_qz",
+                                   "base_x",
+                                   "base_y",
+                                   "base_z",
+                                   "hip_roll_left",
+                                   "hip_roll_right",
+                                   "hip_yaw_left",
+                                   "hip_yaw_right",
+                                   "hip_pitch_left",
+                                   "hip_pitch_right",
+                                   "knee_left",
+                                   "knee_right",
+                                   "ankle_joint_left",
+                                   "ankle_joint_right",
+                                   "toe_left",
+                                   "toe_right"};
+  std::map<string, int> positions_map =
+      multibody::makeNameToPositionsMap(plant);
+  for (auto name : name_list) {
+    cout << name << ", " << init_state(positions_map.at(name)) << endl;
+  }
+  // TODO: find out why the initial left knee position is not within the joint
+  //  limits.
+
   bool with_init_guess = true;
   // Provide initial guess
   VectorXd h_guess;
@@ -128,15 +153,14 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     tau_guess = readCSV(model_dir_n_pref + string("t_and_tau.csv"))
                     .block(1, 0, n_tau, knots_per_mode);
 
-    for (int i = 0; i < num_time_samples.size(); i++) {
-      bool left_stance = i % 2 == 0;
-    }
-
     x_guess_left_in_front =
         readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
     x_guess_right_in_front =
         readCSV(model_dir_n_pref + string("state_at_knots.csv"))
             .col(knots_per_mode - 1);
+
+    DRAKE_DEMAND(knots_per_mode == r_guess.cols());
+
     cout << "\nWARNING: last column of state_at_knots.csv should be pre-impact "
             "state.\n";
     // cout << "h_guess = " << h_guess << endl;
@@ -174,6 +198,13 @@ int planningWithRomAndFom(int argc, char* argv[]) {
           name + left_right,
           plant.GetJointByName(name + left_right).position_lower_limits()(0),
           plant.GetJointByName(name + left_right).position_upper_limits()(0));
+      cout << "name = " << name + left_right << endl;
+      cout << "lb = "
+           << plant.GetJointByName(name + left_right).position_lower_limits()(0)
+           << endl;
+      cout << "ub = "
+           << plant.GetJointByName(name + left_right).position_upper_limits()(0)
+           << endl;
     }
   }
 
@@ -226,6 +257,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     for (int j = 0; j < num_time_samples[i]; j++) {
       if ((FLAGS_rom_option == 0) || (FLAGS_rom_option == 1)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
+      } else if (FLAGS_rom_option == 4) {
+        trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(2), 1);
       } else {
         DRAKE_UNREACHABLE();
       }
@@ -251,6 +284,28 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                                final_position);
   }
 
+  // Testing
+  cout << "\nChoose the best solver: "
+       << drake::solvers::ChooseBestSolver(trajopt).name() << endl;
+
+  // Print out the scaling factor
+  for (int i = 0; i < trajopt.decision_variables().size(); i++) {
+    cout << trajopt.decision_variable(i) << ", ";
+    cout << trajopt.decision_variable(i).get_id() << ", ";
+    cout << trajopt.FindDecisionVariableIndex(trajopt.decision_variable(i))
+         << ", ";
+    auto scale_map = trajopt.GetVariableScaling();
+    auto it = scale_map.find(i);
+    if (it != scale_map.end()) {
+      cout << it->second;
+    } else {
+      cout << "none";
+    }
+    cout << ", ";
+    cout << trajopt.GetInitialGuess(trajopt.decision_variable(i));
+    cout << endl;
+  }
+
   // Snopt setting
   if (FLAGS_print_snopt_file) {
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
@@ -259,10 +314,10 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                           "Major iterations limit", 10000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
-
-  // Testing
-  cout << "\nChoose the best solver: "
-       << drake::solvers::ChooseBestSolver(trajopt).name() << endl;
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major optimality tolerance", 1e-4);
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major feasibility tolerance", 1e-4);
 
   // Solve
   cout << "\nSolving optimization problem...\n";
@@ -303,7 +358,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   writeCSV(dir_data + string("xf_each_mode.csv"), xf_each_mode);
 
   return 0;
-}  // int planningWithRomAndFom
+}  // namespace goldilocks_models
 }  // namespace goldilocks_models
 }  // namespace dairlib
 

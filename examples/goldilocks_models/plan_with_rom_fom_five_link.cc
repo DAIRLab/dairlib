@@ -196,11 +196,11 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   } else {
     // Since there are multiple q that could be mapped to the same r, I
     // penalize on q so it get close to a certain configuration
-    MatrixXd Id = MatrixXd::Identity(3, 3);
-    VectorXd zero_vec = VectorXd::Zero(3);
+    MatrixXd Id = MatrixXd::Identity(1, 1);
+    VectorXd zero_1d_vec = VectorXd::Zero(1);
     for (int i = 0; i < num_time_samples.size(); i++) {
-      trajopt.AddQuadraticErrorCost(Id, zero_vec,
-                                    trajopt.xf_vars_by_mode(i).segment(1, 3));
+      trajopt.AddQuadraticErrorCost(1 * Id, zero_1d_vec,
+                                    trajopt.xf_vars_by_mode(i).segment(2, 1));
     }
   }
 

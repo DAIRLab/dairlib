@@ -52,12 +52,13 @@ FomStanceFootConstraint::FomStanceFootConstraint(
       plant_(plant),
       world_(plant.world_frame()),
       context_(plant.CreateDefaultContext()),
-      stance_foot_contacts_(stance_foot_contacts) {}
+      stance_foot_contacts_(stance_foot_contacts),
+      n_q_(plant.num_positions()) {}
 
 void FomStanceFootConstraint::EvaluateConstraint(
     const Eigen::Ref<const VectorX<double>>& x, VectorX<double>* y) const {
-  VectorX<double> q0 = x.head(7);
-  VectorX<double> qf = x.tail(7);
+  VectorX<double> q0 = x.head(n_q_);
+  VectorX<double> qf = x.tail(n_q_);
 
   drake::VectorX<double> pt_0(3);
   drake::VectorX<double> pt_f(3);

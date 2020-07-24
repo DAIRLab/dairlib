@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tuple>
 #include <vector>
 #include <memory.h>
 
@@ -28,22 +29,18 @@ class RomTrajOpt
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RomTrajOpt)
 
-  RomTrajOpt(
-      std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
-      std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
-      Eigen::MatrixXd R, const ReducedOrderModel& rom,
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const StateMirror& state_mirror,
-      const std::vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>&
-          left_contacts,
-      const std::vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>&
-          right_contacts,
-      const std::vector<std::tuple<std::string, double, double>>&
-          fom_joint_name_lb_ub,
-      Eigen::VectorXd init_state, bool fix_all_timestep,
-      bool zero_touchdown_impact);
+  RomTrajOpt(std::vector<int> num_time_samples,
+             std::vector<double> minimum_timestep,
+             std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
+             Eigen::MatrixXd R, const ReducedOrderModel& rom,
+             const drake::multibody::MultibodyPlant<double>& plant,
+             const StateMirror& state_mirror,
+             const std::vector<BodyPoint>& left_contacts,
+             const std::vector<BodyPoint>& right_contacts,
+             const std::vector<std::tuple<std::string, double, double>>&
+                 fom_joint_name_lb_ub,
+             Eigen::VectorXd init_state, bool fix_all_timestep,
+             bool zero_touchdown_impact);
 
   ~RomTrajOpt() override {}
 
@@ -96,24 +93,20 @@ class RomTrajOpt
 
 class RomTrajOptCassie : public RomTrajOpt {
  public:
-  RomTrajOptCassie(
-      std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
-      std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
-      Eigen::MatrixXd R, const ReducedOrderModel& rom,
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const StateMirror& state_mirror,
-      const std::vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>&
-          left_contacts,
-      const std::vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>&
-          right_contacts,
-      const std::vector<std::tuple<std::string, double, double>>&
-          fom_joint_name_lb_ub,
-      Eigen::VectorXd init_state, bool fix_all_timestep,
-      bool zero_touchdown_impact);
+  RomTrajOptCassie(std::vector<int> num_time_samples,
+                   std::vector<double> minimum_timestep,
+                   std::vector<double> maximum_timestep, Eigen::MatrixXd Q,
+                   Eigen::MatrixXd R, const ReducedOrderModel& rom,
+                   const drake::multibody::MultibodyPlant<double>& plant,
+                   const StateMirror& state_mirror,
+                   const std::vector<BodyPoint>& left_contacts,
+                   const std::vector<BodyPoint>& right_contacts,
+                   const std::vector<std::tuple<std::string, double, double>>&
+                       fom_joint_name_lb_ub,
+                   Eigen::VectorXd init_state, bool fix_all_timestep,
+                   bool zero_touchdown_impact);
 
-  void AddRegularizationCost(const Eigen::VectorXd& desired_final_position,
+  void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,
                              const Eigen::VectorXd& x_guess_right_in_front,
                              bool straight_leg_cost);
@@ -124,7 +117,7 @@ class RomTrajOptCassie : public RomTrajOpt {
                           const Eigen::MatrixXd& tau_guess,
                           const Eigen::VectorXd& x_guess_left_in_front,
                           const Eigen::VectorXd& x_guess_right_in_front,
-                          const Eigen::VectorXd& desired_final_position);
+                          const Eigen::VectorXd& final_position);
 };
 
 class RomTrajOptFiveLinkRobot : public RomTrajOpt {
@@ -135,18 +128,14 @@ class RomTrajOptFiveLinkRobot : public RomTrajOpt {
       Eigen::MatrixXd R, const ReducedOrderModel& rom,
       const drake::multibody::MultibodyPlant<double>& plant,
       const StateMirror& state_mirror,
-      const std::vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>&
-          left_contacts,
-      const std::vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>&
-          right_contacts,
+      const std::vector<BodyPoint>& left_contacts,
+      const std::vector<BodyPoint>& right_contacts,
       const std::vector<std::tuple<std::string, double, double>>&
           fom_joint_name_lb_ub,
       Eigen::VectorXd init_state, bool fix_all_timestep,
       bool zero_touchdown_impact);
 
-  void AddRegularizationCost(const Eigen::VectorXd& desired_final_position,
+  void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,
                              const Eigen::VectorXd& x_guess_right_in_front,
                              bool straight_leg_cost);
@@ -157,7 +146,7 @@ class RomTrajOptFiveLinkRobot : public RomTrajOpt {
                           const Eigen::MatrixXd& tau_guess,
                           const Eigen::VectorXd& x_guess_left_in_front,
                           const Eigen::VectorXd& x_guess_right_in_front,
-                          const Eigen::VectorXd& desired_final_position);
+                          const Eigen::VectorXd& final_position);
 };
 
 }  // namespace goldilocks_models

@@ -12,6 +12,9 @@
 namespace dairlib {
 namespace goldilocks_models {
 
+using BodyPoint =
+    std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>;
+
 class InnerLoopSetting {
  public:
   InnerLoopSetting(){};
@@ -146,10 +149,9 @@ void SaveStringVecToCsv(const std::vector<std::string>& strings,
                         const std::string& file_name);
 
 // Five link robot's left/right leg
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>
-FiveLinkRobotLeftContact(const drake::multibody::MultibodyPlant<double>& plant);
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>
-FiveLinkRobotRightContact(
+BodyPoint FiveLinkRobotLeftContact(
+    const drake::multibody::MultibodyPlant<double>& plant);
+BodyPoint FiveLinkRobotRightContact(
     const drake::multibody::MultibodyPlant<double>& plant);
 
 }  // namespace goldilocks_models

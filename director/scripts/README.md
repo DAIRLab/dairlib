@@ -15,8 +15,8 @@ visualization of data during a simulation:
 "data": This will be a list of all the different shapes/objects that
         the user wants to be displayed. Each shape is a separate JSON object
         consisting of a name and an info JSON. The info consists of 2 pieces of
-        information: the source data, which has information about how to draw
-        the particular shape and the type data, which contains information about
+        information: 1) the source data, which has information about how to draw
+        the particular shape and 2) the type data, which contains information about
         the what is to be drawn. The source data can be one of 3 categories:
         kinematic, center of mass, and LCM message. Also in terms of the type
         data there are 3 types as well: a point/sphere, a line, and a set of 3
@@ -36,8 +36,7 @@ visualization of data during a simulation:
         2) LCM:
 
         "category":"lcm",
-        "abstract_channel" : The secondary channel (different from the main
-                             channel) from where the user wants to listen to
+        "abstract_channel" : The channel from where the user wants to listen to
                              messages
 
         "abstract_type" : Type/Class of message from the secondary channel
@@ -53,7 +52,7 @@ visualization of data during a simulation:
                            additional JSON attributes below.
 
        "index_field": In the case the symbol %d is present in the abstract_field
-                      this will contain the name of an array with the names of
+                      this will contain the path to an array with the names of
                       all the objects/elements present in the lcm message
 
        "index_element": In the case the symbol %d is present in the abstract_field

@@ -28,7 +28,9 @@ template <typename T>
 class KinematicEvaluator {
  public:
   explicit KinematicEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
-      int length);  
+      int length);
+
+  virtual ~KinematicEvaluator() = default;
 
   /// Evaluates phi(q), limited only to active rows
   drake::VectorX<T> EvalActive(

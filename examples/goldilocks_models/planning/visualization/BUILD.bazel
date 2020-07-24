@@ -7,6 +7,7 @@ cc_binary(
     deps = [
         "//common",
         "//common:file_utils",
+        "//examples/goldilocks_models:goldilocks_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

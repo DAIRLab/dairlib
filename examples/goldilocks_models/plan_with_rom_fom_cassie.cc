@@ -49,6 +49,8 @@ DEFINE_double(final_position, 2, "The final position for the robot");
 DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
 DEFINE_bool(fix_duration, false, "Fix the total time");
 DEFINE_bool(fix_all_timestep, true, "Make all timesteps the same size");
+DEFINE_double(opt_tol, 1e-4, "Disturbance to FoM initial state");
+DEFINE_double(feas_tol, 1e-4, "Disturbance to FoM initial state");
 // DEFINE_bool(add_x_pose_in_cost, false, "Add x0 and xf in the cost function");
 
 // Planning with optimal reduced order model and full order model
@@ -336,9 +338,9 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                           "Major iterations limit", 10000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", 1e-4);
+                          "Major optimality tolerance", FLAGS_opt_tol);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", 1e-4);
+                          "Major feasibility tolerance", FLAGS_feas_tol);
 
   // Solve
   cout << "\nSolving optimization problem...\n";

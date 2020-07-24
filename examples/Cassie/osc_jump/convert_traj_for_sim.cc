@@ -141,20 +141,28 @@ int DoMain() {
   }
 
   MatrixXd x_w_spr(2 * nx_w_spr, n_points);
+  MatrixXd u_w_spr(nu, n_points);
   x_w_spr.topRows(nx_w_spr) =
       map_state_from_no_spring_to_spring * xu.topRows(nx_wo_spr);
   x_w_spr.bottomRows(nx_w_spr) =
       map_state_from_no_spring_to_spring *
       xu.topRows(2 * nx_wo_spr).bottomRows(nx_wo_spr);
+  u_w_spr = xu.bottomRows(nu);
 
   auto state_traj_w_spr = LcmTrajectory::Trajectory();
   state_traj_w_spr.traj_name = "state_trajectory";
   state_traj_w_spr.datapoints = x_w_spr;
   state_traj_w_spr.time_vector = times;
+  auto input_traj_w_spr = LcmTrajectory::Trajectory();
+  input_traj_w_spr.traj_name = "input_trajectory";
+  input_traj_w_spr.datapoints = u_w_spr;
+  input_traj_w_spr.time_vector = times;
   const std::vector<string> state_names =
       multibody::createStateNameVectorFromMap(plant_w_spr);
   const std::vector<string> state_dot_names =
       multibody::createStateNameVectorFromMap(plant_w_spr);
+  const std::vector<string> input_names =
+      multibody::createActuatorNameVectorFromMap(plant_w_spr);
 
   state_traj_w_spr.datatypes.reserve(2 * nx_w_spr);
   state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),
@@ -162,10 +170,12 @@ int DoMain() {
   state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),
                                     state_dot_names.begin(),
                                     state_dot_names.end());
+  input_traj_w_spr.datatypes = input_names;
 
   std::vector<LcmTrajectory::Trajectory> converted_trajectories = {
-      state_traj_w_spr};
-  std::vector<std::string> trajectory_names = {state_traj_w_spr.traj_name};
+      state_traj_w_spr, input_traj_w_spr};
+  std::vector<std::string> trajectory_names = {state_traj_w_spr.traj_name,
+                                               input_traj_w_spr.traj_name};
 
   auto processed_traj =
       LcmTrajectory(converted_trajectories, trajectory_names,

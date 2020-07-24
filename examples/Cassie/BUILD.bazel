@@ -166,6 +166,22 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_joint_pd_controller",
+    srcs = ["run_joint_pd_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "visualizer",
     srcs = ["visualizer.cc"],
     deps = [

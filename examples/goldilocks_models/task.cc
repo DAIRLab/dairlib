@@ -179,11 +179,7 @@ vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
   if(iter<iter_start_optimization_){
     //extend the task space
     currently_extend_task_space_ = true;
-    // decide which direction to extend
-    // 1 corresponds to the direction of increasing
-    // 0 corresponds t0 the direction of decreasing
     std::uniform_int_distribution<int> int_distribution(0,1);
-    int direction_flag = int_distribution(random_eng_);
     //decide the range of optimization by the number of iteration
     double central;
     double interval;
@@ -192,7 +188,10 @@ vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
     for (int i = 0; i < task_dim_; i++) {
       central = (task_max_range_[i]+task_min_range_[i])/2;
       interval = (task_max_range_[i]-task_min_range_[i])/2;
-      if(direction_flag==1)
+      // decide which direction to extend
+      // 1 corresponds to the direction of increasing
+      // 0 corresponds t0 the direction of decreasing
+      if(int_distribution(random_eng_)==1)
       {
         new_task_max_range = central+(iter+1)*interval/iter_start_optimization_;
         new_task_min_range = central+iter*interval/iter_start_optimization_;

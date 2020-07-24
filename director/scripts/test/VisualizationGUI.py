@@ -23,6 +23,7 @@ import sys
 from collections import deque
 import re
 from pydrake.common.eigen_geometry import Quaternion
+import os
 
 class VisualizationGui(QWidget):
 
@@ -34,18 +35,18 @@ class VisualizationGui(QWidget):
         # create the GUI
         self.setWindowTitle("Visualization GUI")
         self.vbox = QVBoxLayout()
-        hbox = QHBoxLayout()
+        self.hbox = QHBoxLayout()
 
         # create the JSON directory reader
-        hbox.addWidget(QLabel("Enter JSON file directory"))
-        self.JSONInput = QLineEdit("./director/scripts/test/testJSON.json")
-        hbox.addWidget(self.JSONInput)
-        self.readJSON = QPushButton('Read JSON')
+        self.readJSON = QPushButton("Select JSON file")
         self.readJSON.clicked.connect(self.readJSONFile)
-        hbox.addWidget(self.readJSON)
-        self.vbox.addLayout(hbox)
+        self.hbox.addWidget(self.readJSON)
+        self.vbox.addLayout(self.hbox)
 
     def resetGUI(self):
+        '''
+        Function for (re)setting the GUI and JSON attrbutes
+        '''
         # GUI attributes
         self.checkBoxes = {}
         self.resetBtn = None
@@ -65,14 +66,21 @@ class VisualizationGui(QWidget):
         self.shapes = {}
         self.plant = None
 
+
     def readJSONFile(self):
         '''
         Function for reading the JSON input file and populating the JSON
         and GUI attributes
         '''
+
+        # use dialog box to get JSON directory
+        mainWindow = director.applogic.getMainWindow()
+        fileFilters = "Data Files (*.json)";
+        filename = QtGui.QFileDialog.getOpenFileName(mainWindow, "Open...", os.getcwd(), fileFilters, "", QtGui.QFileDialog.DontUseNativeDialog)
+
         # load only if input is not empty
-        if (self.JSONInput.text != ""):
-            self.json_file = self.JSONInput.text
+        if (len(filename) != 0):
+            self.json_file = filename
             with open(self.json_file) as json_file:
                 self.data = json.load(json_file)
 
@@ -240,45 +248,21 @@ class VisualizationGui(QWidget):
         '''
         self.handle_checkBox(name)
         attribute = msg
-        proceed = True
+        field = lcmMessage.field
 
-        # parse field to get the appropriate information. This is done by
-        # recursively searching for the right attribute in the given message's field
-        field = lcmMessage.field.split(".")
-        regExpr = re.compile('.+\[\d\]')
-        for part in field:
-            index = None
-            attName = None
-
-            # if the "[%d]" symbol is present then access the index_field and
-            # search for the index_element
-            if ("[%d]" in part):
-                count = 0
-                for element in getattr(attribute, lcmMessage.index_field):
-                    if (element == lcmMessage.index_element):
-                        index = count
-                        attName = part.split("[%d]")[0]
-                        break
-                    count += 1
-
-                if (attName != None):
-                    attribute = getattr(attribute, attName)[int(index)]
-                    continue
-
-                else:
-                    proceed = False
+        # if there is a %d in the field replace it with the actual index
+        count = 0
+        if ("%d" in field):
+            for element in self.getVector(attribute, lcmMessage.index_field):
+                if (element == lcmMessage.index_element):
+                    field = field.replace("%d", str(count))
                     break
-            else:
-                if regExpr.match(part) is not None:
-                    index = part[len(part) - 2]
-                    attName = part[0:len(part) - 3:1]
-                    attribute = getattr(attribute, attName)[int(index)]
-                else:
-                    index = None
-                    attName = part
-                    attribute = getattr(attribute, attName)
+                count += 1
 
-        if (proceed == True):
+        if ("%d" not in field):
+            # parse field to get the appropriate information. This is done by
+            # recursively searching for the right attribute in the given message's field
+            attribute = self.getVector(attribute, field)
             currShape = self.shapes[name]
             x = lcmMessage.x
             y = lcmMessage.y
@@ -304,6 +288,33 @@ class VisualizationGui(QWidget):
             else:
                 next_loc = [attribute[x], attribute[y], attribute[z]]
                 self.drawShape(self.shapes[name], next_loc, msg)
+
+    def getVector(self, attribute, path):
+        '''
+        Function for getting the pointer to a specific field of a given
+        attribute using the given path
+
+        attribute: the object containing the desired field
+        path: the string path to get the attribute's field
+        '''
+        field = path.split(".")
+        regExpr = re.compile('.+\[\d\]')
+        newAtribute = attribute
+        for part in field:
+            index = None
+            attName = None
+
+            if regExpr.match(part) is not None:
+                index = part[len(part) - 2]
+                attName = part[0:len(part) - 3:1]
+                newAtribute = getattr(newAtribute, attName)[int(index)]
+            else:
+                index = None
+                attName = part
+                newAtribute = getattr(newAtribute, attName)
+
+        return newAtribute
+
 
     def handle_checkBox(self, name):
         '''
@@ -604,4 +615,5 @@ class LCMMessage():
 panel = VisualizationGui()
 panel.show()
 panel.setLayout(panel.vbox)
+print(app)
 app.addWidgetToDock(panel, QtCore.Qt.RightDockWidgetArea)

@@ -89,27 +89,31 @@ class OscTrackingData {
               int finite_state_machine_state);
 
   // Getters for debugging
-  Eigen::VectorXd GetY() { return y_; }
-  Eigen::VectorXd GetYDes() { return y_des_; }
-  Eigen::VectorXd GetErrorY() { return error_y_; }
-  Eigen::VectorXd GetYdot() { return ydot_; }
-  Eigen::VectorXd GetYdotDes() { return ydot_des_; }
-  Eigen::VectorXd GetErrorYdot() { return error_ydot_; }
-  Eigen::VectorXd GetYddotDes() { return yddot_des_; }
-  Eigen::VectorXd GetYddotDesConverted() { return yddot_des_converted_; }
-  Eigen::VectorXd GetYddotCommandSol() { return yddot_command_sol_; }
+  const Eigen::VectorXd& GetY() const { return y_; }
+  const Eigen::VectorXd& GetYDes() const { return y_des_; }
+  const Eigen::VectorXd& GetErrorY() const { return error_y_; }
+  const Eigen::VectorXd& GetYdot() const { return ydot_; }
+  const Eigen::VectorXd& GetYdotDes() const { return ydot_des_; }
+  const Eigen::VectorXd& GetErrorYdot() const { return error_ydot_; }
+  const Eigen::VectorXd& GetYddotDes() const { return yddot_des_; }
+  const Eigen::VectorXd& GetYddotDesConverted() const {
+    return yddot_des_converted_;
+  }
+  const Eigen::VectorXd& GetYddotCommandSol() const {
+    return yddot_command_sol_;
+  }
 
   // Getters used by osc block
-  const Eigen::MatrixXd& GetJ() { return J_; }
-  const Eigen::VectorXd& GetJdotTimesV() { return JdotV_; }
-  const Eigen::VectorXd& GetYddotCommand() { return yddot_command_; }
-  const Eigen::MatrixXd& GetWeight() { return W_; }
+  const Eigen::MatrixXd& GetJ() const { return J_; }
+  const Eigen::VectorXd& GetJdotTimesV() const { return JdotV_; }
+  const Eigen::VectorXd& GetYddotCommand() const { return yddot_command_; }
+  const Eigen::MatrixXd& GetWeight() const { return W_; }
 
   // Getters
-  const std::string& GetName() { return name_; };
-  int GetYDim() { return n_y_; };
-  int GetYdotDim() { return n_ydot_; };
-  bool IsActive() { return track_at_current_state_; }
+  const std::string& GetName() const { return name_; };
+  int GetYDim() const { return n_y_; };
+  int GetYdotDim() const { return n_ydot_; };
+  bool IsActive() const { return track_at_current_state_; }
 
   void SaveYddotCommandSol(const Eigen::VectorXd& dv);
 
@@ -121,7 +125,7 @@ class OscTrackingData {
   void CheckOscTrackingData();
 
  protected:
-  int GetStateIdx() { return state_idx_; };
+  int GetStateIdx() const { return state_idx_; };
   void AddState(int state);
 
   // Feedback output, Jacobian and dJ/dt * v

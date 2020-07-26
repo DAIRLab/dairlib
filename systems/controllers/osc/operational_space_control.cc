@@ -666,8 +666,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
 
   double time_since_last_state_switch =
-      state->get_timestamp() -
-      context.get_discrete_state(prev_event_time_idx_).get_value()(0);
+      used_with_finite_state_machine_
+          ? state->get_timestamp() -
+                context.get_discrete_state(prev_event_time_idx_).get_value()(0)
+          : state->get_timestamp();
 
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_output->get_value()(0);

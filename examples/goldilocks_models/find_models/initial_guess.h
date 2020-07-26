@@ -33,4 +33,10 @@ void InterpolateAmongDifferentTasks(const std::string& dir, string prefix,
                                     const Eigen::VectorXd& gamma_scale,
                                     Eigen::VectorXd& weight_vector,
                                     Eigen::MatrixXd& solution_matrix);
+double GammaDistanceCalculation(const VectorXd& past_gamma,
+                                const VectorXd& current_gamma,
+                                const VectorXd& gamma_scale);
+std::string CompareTwoTasks(const string& dir, string prefix1,string prefix2,
+                       const VectorXd& current_gamma,
+                       const VectorXd& gamma_scale);
 }  // namespace dairlib::goldilocks_models

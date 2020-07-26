@@ -42,6 +42,18 @@ VectorXd GetGammaScale(const TasksGenerator* task_gen) {
   return gamma_scale;
 }
 
+// calculate the third power of L3 norm between two gammas
+double GammaDistanceCalculation(const VectorXd& past_gamma,
+    const VectorXd& current_gamma,
+    const VectorXd& gamma_scale){
+  VectorXd dif_gamma =
+      (past_gamma - current_gamma).array().abs() * gamma_scale.array();
+  VectorXd dif_gamma2 = dif_gamma.array().pow(2);
+  double distance_gamma = (dif_gamma.transpose() * dif_gamma2)(0, 0);
+
+  return distance_gamma;
+}
+
 // calculate the interpolation weight; update weight vector and solution matrix
 void InterpolateAmongDifferentTasks(const string& dir, string prefix,
                                     const VectorXd& current_gamma,
@@ -53,11 +65,8 @@ void InterpolateAmongDifferentTasks(const string& dir, string prefix,
   if (is_success == 1) {
     // extract past gamma
     VectorXd past_gamma = readCSV(dir + prefix + string("_task.csv"));
-    // calculate the third power of L3 norm between two gammas
-    VectorXd dif_gamma =
-        (past_gamma - current_gamma).array().abs() * gamma_scale.array();
-    VectorXd dif_gamma2 = dif_gamma.array().pow(2);
-    double distance_gamma = (dif_gamma.transpose() * dif_gamma2)(0, 0);
+    double distance_gamma = GammaDistanceCalculation(past_gamma,
+        current_gamma,gamma_scale);
 
     // extract the solution
     VectorXd w_to_interpolate = readCSV(dir + prefix + string("_w.csv"));
@@ -78,6 +87,30 @@ VectorXd CalculateInterpolation(const VectorXd& weight_vector,
   VectorXd interpolated_solution = solution_matrix * weight_vector/weight_vector.sum();
   return interpolated_solution;
 }
+
+// calculate the distance between two past tasks with current tasks and return
+// the prefix of the closer task
+string CompareTwoTasks(const string& dir, string prefix1,string prefix2,
+                       const VectorXd& current_gamma,
+                       const VectorXd& gamma_scale){
+  string prefix_closer_task = prefix1;
+  int is_success = (readCSV(dir + prefix2 + string("_is_success.csv")))(0, 0);
+  if (is_success == 1){
+    // extract past tasks
+    VectorXd past_gamma1 = readCSV(dir + prefix1 + string("_task.csv"));
+    VectorXd past_gamma2 = readCSV(dir + prefix2 + string("_task.csv"));
+    // calculate the distance between two gammas
+    double distance_gamma1 = GammaDistanceCalculation(past_gamma1,
+                                                     current_gamma,gamma_scale);
+    double distance_gamma2 = GammaDistanceCalculation(past_gamma2,
+                                                     current_gamma,gamma_scale);
+    if(distance_gamma2<distance_gamma1){
+      prefix_closer_task = prefix2;
+    }
+  }
+  return prefix_closer_task;
+}
+
 
 string SetInitialGuessByInterpolation(const string& directory, int iter,
                                       int sample,
@@ -115,23 +148,36 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     MatrixXd w_gamma;
     VectorXd weight_gamma;
 
-    // calculate the weighted sum of past solutions
     int past_iter;
     int sample_num;
     string prefix;
+
+//    // calculate the weighted sum of past solutions
+//    for (past_iter = iter - 1; past_iter > 0; past_iter--){
+//      for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
+//        prefix = to_string(past_iter) + string("_") + to_string(sample_num);
+//        InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
+//                                       gamma_scale, weight_gamma, w_gamma);
+//      }
+//    }
+//    // calculate the weighted sum of all past iterations
+//    initial_guess = CalculateInterpolation(weight_gamma, w_gamma);
+//    //    save initial guess and set init file
+//    initial_file_name = to_string(iter) + "_" + to_string(sample) +
+//        string("_initial_guess.csv");
+//    writeCSV(directory + initial_file_name, initial_guess);
+
+    //find the closest sample and use it as initial guess
+    string prefix_cloest_task = to_string(iter-1) + string("_") + to_string(0);
     for (past_iter = iter - 1; past_iter > 0; past_iter--){
       for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
         prefix = to_string(past_iter) + string("_") + to_string(sample_num);
-        InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
-                                       gamma_scale, weight_gamma, w_gamma);
+        prefix_cloest_task = CompareTwoTasks(directory,prefix_cloest_task,
+            prefix,current_gamma,gamma_scale);
       }
     }
-    // calculate the weighted sum of all past iterations
-    initial_guess = CalculateInterpolation(weight_gamma, w_gamma);
-    //    save initial guess and set init file
-    initial_file_name = to_string(iter) + "_" + to_string(sample) +
-                        string("_initial_guess.csv");
-    writeCSV(directory + initial_file_name, initial_guess);
+    initial_file_name = prefix_cloest_task+string("_w.csv");
+
   } else {
     // There are two-stage interpolation here.
     // Get interpolated results using solutions of different tasks for each

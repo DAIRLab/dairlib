@@ -1785,7 +1785,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd step_direction = VectorXd::Zero(rom->n_theta());
   VectorXd prev_step_direction = VectorXd::Zero(
       rom->n_theta());  // must initialize this because of momentum term
-  if (iter_start > 1) {
+  if (iter_start > 1 && !task_gen->currently_extend_task_space()) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
     step_direction =
@@ -1796,7 +1796,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
             .col(0);
   }
   double current_iter_step_size = h_step;
-  if ((iter_start > 1) && FLAGS_read_previous_step_size) {
+  if ((iter_start > 1) && FLAGS_read_previous_step_size &&
+  !task_gen->currently_extend_task_space()) {
     cout << "Reading previous step size... (will get memory issue if the file "
             "doesn't exist)\n";
     current_iter_step_size = readCSV(dir + to_string(iter_start - 1) +

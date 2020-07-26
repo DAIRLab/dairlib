@@ -66,21 +66,23 @@ def main():
   x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
   switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out = process_lcm_log.process_log(log, pos_map, vel_map)
 
-
+  # import pdb; pdb.set_trace()
   knee_pos = np.zeros(len(cassie_out))
   cassie_out_t = np.zeros(len(cassie_out))
+  estop_signal = np.zeros(len(cassie_out))
   for i in range(len(cassie_out)):
     knee_pos[i] = cassie_out[i].leftLeg.hipPitchDrive.velocity
-    cassie_out_t[i] = cassie_out[i].utime
-  plt.plot(cassie_out_t / 1e6, knee_pos, '.')
+    cassie_out_t[i] = cassie_out[i].utime / 1e6
+    estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
+  # plt.plot(cassie_out_t / 1e6, knee_pos, '.')
   # t_start_idx = np.argwhere(np.max(np.abs(u), 1) > 5)[0][0]
   # t_end_idx = np.argwhere(t_x > t_x[t_start_idx] + 3.0)[0][0]
   # t_slice = slice(t_start_idx - 50, t_end_idx)
   t_slice = slice(0, t_x.shape[0])
 
   # plt.plot(t_pd, kp)
-  plt.plot(t_pd, kd)
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal)
+  # plt.plot(t_pd, kd)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
   lcm_trajectory = pydairlib.lcm_trajectory.LcmTrajectory()
   lcm_trajectory.loadFromFile(folder_path + trajectory_name)
@@ -107,7 +109,7 @@ def main():
   # plt.legend(["lfoot_rear", "lfoot_front", "rfoot_rear", "rfoot_front"])
   # plot_nominal_output_trajectories(t_points_com, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
   #                                  r_foot_trajectory)
-  # plot_osc_debug(t_u, fsm, osc_debug)
+  plot_osc_debug(t_u, fsm, osc_debug, cassie_out_t, estop_signal)
   plt.show()
 
 
@@ -137,39 +139,68 @@ def plot_nominal_output_trajectories(t_points, com_trajectory, pelvis_rot_trajec
   plt.plot(t_sampled, pelvis_rot[:, :, 0])
 
 
-def plot_osc_debug(t_u, fsm, osc_debug):
+def plot_osc_debug(t_u, fsm, osc_debug, cassie_out_t, estop_signal):
   fig = plt.figure("OSC debug")
   # plt.plot(t_osc_debug, osc_debug[0].y_des)
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y_des)
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y)
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
+  fig = plt.figure("COM_x errors: ")
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des[:, 0])
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command[:, 0])
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol[:, 0])
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y[:, 0])
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_ydot[:, 0])
+  plt.plot(cassie_out_t, estop_signal, 'k-')
+  plt.legend(["error y", "error ydot", "estop signal"])
+  # fig = plt.figure("COM accel y: ")
+  fig = plt.figure("COM_y errors: ")
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des[:, 1])
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command[:, 1])
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol[:, 1])
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y[:, 1])
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_ydot[:, 1])
+  plt.legend(["error y", "error ydot", "estop signal"])
+  plt.plot(cassie_out_t, estop_signal, 'k-')
+  fig = plt.figure("COM accel z: ")
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des[:, 2])
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command[:, 2])
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol[:, 2])
+  plt.plot(cassie_out_t, estop_signal, 'k-')
+  plt.legend(["yddot des", "yddot command", "yddot command sol", "estop signal"])
+  fig = plt.figure("COM positions")
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y_des)
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y)
+  plt.legend(["x_desired", "y_desired", "z_desired", "x_actual", "y_actual", "z_actual"])
+  fig = plt.figure("Pelvis Tracking")
+  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].ydot_des)
+  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].ydot)
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
+  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y_des)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y)
-  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_y)
+  # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_y)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_ydot)
   # plt.plot(osc_debug["pelvis_rot_tracking_data"].t, osc_debug["pelvis_rot_tracking_data"].error_y)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].yddot_des)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].yddot_command_sol)
   # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].y_des)
   # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].y)
-  plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].error_y)
+  # plt.plot(osc_debug["r_foot_traj"].t, osc_debug["r_foot_traj"].error_y)
   # plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].ydot_des)
   # plt.plot(osc_debug["r_foot_traj"].t , osc_debug["r_foot_traj"].ydot)
   # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].y_des)
   # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].y)
   # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].error_y)
-  plt.plot(t_u, fsm, 'k--')
+  # plt.plot(t_u, fsm, 'k--')
   plt.legend(["0", "1", "2", "3", "4", "5", "6"])
 
 
-def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal):
+def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
 
   name = filename.split("/")[-1]
-  pos_indices = slice(11, 15)
-  vel_indices = slice(33, 37)
-  u_indices = slice(4, 8)
+  pos_indices = slice(14, 15)
+  vel_indices = slice(36, 37)
+  u_indices = slice(7, 8)
   # threshold = 1e-2
   # jumps = []
   # for i in range(x.shape[0] - 1):
@@ -182,9 +213,9 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal):
   plt.figure("velocities: "+ name)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices], '.')
   plt.legend(x_datatypes[vel_indices])
-  # plt.figure("efforts: " + name)
-  # plt.plot(t_u, u[:, u_indices], '.')
-  # plt.legend(u_datatypes[u_indices])
+  plt.figure("efforts: " + name)
+  plt.plot(t_u, u[:, u_indices], '.')
+  plt.legend(u_datatypes[u_indices])
   # plt.show()
 
 

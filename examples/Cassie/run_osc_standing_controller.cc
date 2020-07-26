@@ -1,4 +1,6 @@
+#include <drake/common/yaml/yaml_read_archive.h>
 #include <gflags/gflags.h>
+
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
@@ -8,7 +10,8 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
-
+#include "yaml-cpp/yaml.h"
+//#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -46,12 +49,32 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 0.001,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .89, "The desired height (m)");
+DEFINE_string(gains_filename, "", "Filepath containing gains");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
 // Maybe we need to update the lcm driven loop to clear the queue of lcm message
 // if it's more than one message?
+
+struct OSCStandingGains {
+  int rows;
+  int cols;
+  std::vector<double> CoMKp;
+  std::vector<double> CoMKd;
+  std::vector<double> PelvisRotKp;
+  std::vector<double> PelvisRotKd;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(rows));
+    a->Visit(DRAKE_NVP(cols));
+    a->Visit(DRAKE_NVP(CoMKp));
+    a->Visit(DRAKE_NVP(CoMKd));
+    a->Visit(DRAKE_NVP(PelvisRotKp));
+    a->Visit(DRAKE_NVP(PelvisRotKd));
+  }
+};
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -81,6 +104,27 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  OSCStandingGains result;
+  const YAML::Node& root =
+      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+  drake::yaml::YamlReadArchive(root).Accept(&result);
+
+  MatrixXd K_p_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      result.CoMKp.data(), result.rows, result.cols);
+  MatrixXd K_d_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      result.CoMKd.data(), result.rows, result.cols);
+  MatrixXd K_p_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      result.PelvisRotKp.data(), result.rows, result.cols);
+  MatrixXd K_d_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      result.PelvisRotKd.data(), result.rows, result.cols);
+  std::cout << "COM Kp: \n" << K_p_com << std::endl;
+  std::cout << "COM Kd: \n" << K_d_com << std::endl;
+  std::cout << "Pelvis Rot Kp: \n" << K_p_pelvis << std::endl;
+  std::cout << "Pelvis Rot Kd: \n" << K_d_pelvis << std::endl;
 
   // Create state receiver.
   auto state_receiver =
@@ -164,11 +208,11 @@ int DoMain(int argc, char* argv[]) {
   // Kp = sqrt(g/l) * Kd - g/l
   double xy_scale = 10;
   double g_over_l = 9.81 / FLAGS_height;
-  MatrixXd K_p_com =
-      (xy_scale * sqrt(g_over_l) - g_over_l) * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = xy_scale * MatrixXd::Identity(3, 3);
-  K_p_com(2, 2) = 10;
-  K_d_com(2, 2) = 10;
+//  MatrixXd K_p_com =
+//      (xy_scale * sqrt(g_over_l) - g_over_l) * MatrixXd::Identity(3, 3);
+//  MatrixXd K_d_com = xy_scale * MatrixXd::Identity(3, 3);
+//  K_p_com(2, 2) = 10;
+//  K_d_com(2, 2) = 10;
   ComTrackingData center_of_mass_traj("com_traj", 3, K_p_com, K_d_com,
                                       W_com * FLAGS_cost_weight_multiplier,
                                       &plant_w_springs, &plant_wo_springs);
@@ -184,14 +228,14 @@ int DoMain(int argc, char* argv[]) {
   W_pelvis(0, 0) = w_pelvis_balance;
   W_pelvis(1, 1) = w_pelvis_balance;
   W_pelvis(2, 2) = w_heading;
-  Matrix3d K_p_pelvis = MatrixXd::Identity(3, 3);
-  K_p_pelvis(0, 0) = k_p_pelvis_balance * 2;
-  K_p_pelvis(1, 1) = k_p_pelvis_balance * 2;
-  K_p_pelvis(2, 2) = k_p_heading;
-  Matrix3d K_d_pelvis = MatrixXd::Identity(3, 3);
-  K_d_pelvis(0, 0) = k_d_pelvis_balance;
-  K_d_pelvis(1, 1) = k_d_pelvis_balance;
-  K_d_pelvis(2, 2) = k_d_heading;
+//  Matrix3d K_p_pelvis = MatrixXd::Identity(3, 3);
+//  K_p_pelvis(0, 0) = k_p_pelvis_balance * 2;
+//  K_p_pelvis(1, 1) = k_p_pelvis_balance * 2;
+//  K_p_pelvis(2, 2) = k_p_heading;
+//  Matrix3d K_d_pelvis = MatrixXd::Identity(3, 3);
+//  K_d_pelvis(0, 0) = k_d_pelvis_balance;
+//  K_d_pelvis(1, 1) = k_d_pelvis_balance;
+//  K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj(
       "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis,
       W_pelvis * FLAGS_cost_weight_multiplier, &plant_w_springs,

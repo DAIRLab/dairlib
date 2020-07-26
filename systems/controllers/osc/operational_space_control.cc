@@ -254,6 +254,13 @@ void OperationalSpaceControl::Build() {
     n_c_active_ += evaluator->num_active();
   }
 
+  // Initialize solution
+  dv_sol_ = std::make_unique<Eigen::VectorXd>(n_v_);
+  u_sol_ = std::make_unique<Eigen::VectorXd>(n_u_);
+  lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
+  lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
+  epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
+
   // Add decision variables
   dv_ = prog_->NewContinuousVariables(n_v_, "dv");
   u_ = prog_->NewContinuousVariables(n_u_, "u");
@@ -545,7 +552,7 @@ VectorXd OperationalSpaceControl::SolveQp(
           PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
     } else {
       // Read in traj from input port
-      string traj_name = tracking_data->GetName();
+      const string& traj_name = tracking_data->GetName();
       int port_index = traj_name_to_port_index_map_.at(traj_name);
       const drake::AbstractValue* input_traj =
           this->EvalAbstractInput(context, port_index);
@@ -561,10 +568,10 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (tracking_data->IsActive() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
-      VectorXd ddy_t = tracking_data->GetYddotCommand();
-      MatrixXd W = tracking_data->GetWeight();
-      MatrixXd J_t = tracking_data->GetJ();
-      VectorXd JdotV_t = tracking_data->GetJdotTimesV();
+      const VectorXd& ddy_t = tracking_data->GetYddotCommand();
+      const MatrixXd& W = tracking_data->GetWeight();
+      const MatrixXd& J_t = tracking_data->GetJ();
+      const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       // The tracking cost is
       // 0.5 * (J_*dv + JdotV - y_command)^T * W * (J_*dv + JdotV - y_command).
       // We ignore the constant term
@@ -580,63 +587,60 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   const MathematicalProgramResult result = Solve(*prog_);
-  SolutionResult solution_result = result.get_solution_result();
-  if (print_tracking_info_) {
-    cout << "\n" << to_string(solution_result) << endl;
-    cout << "fsm_state = " << fsm_state << endl;
-  }
 
   // Extract solutions
-  VectorXd u_sol = result.GetSolution(u_);
-  VectorXd lambda_c_sol = result.GetSolution(lambda_c_);
-  VectorXd lambda_h_sol = result.GetSolution(lambda_h_);
-  VectorXd dv_sol = result.GetSolution(dv_);
-  VectorXd epsilon_sol = result.GetSolution(epsilon_);
-  if (print_tracking_info_) {
-    cout << "**********************\n";
-    cout << "u_sol = " << u_sol.transpose() << endl;
-    cout << "lambda_c_sol = " << lambda_c_sol.transpose() << endl;
-    cout << "lambda_h_sol = " << lambda_h_sol.transpose() << endl;
-    cout << "dv_sol = " << dv_sol.transpose() << endl;
-    cout << "epsilon_sol = " << epsilon_sol.transpose() << endl;
-  }
+  *dv_sol_ = result.GetSolution(dv_);
+  *u_sol_ = result.GetSolution(u_);
+  *lambda_c_sol_ = result.GetSolution(lambda_c_);
+  *lambda_h_sol_ = result.GetSolution(lambda_h_);
+  *epsilon_sol_ = result.GetSolution(epsilon_);
 
   for (auto tracking_data : *tracking_data_vec_) {
-    if (tracking_data->IsActive()) tracking_data->SaveYddotCommandSol(dv_sol);
+    if (tracking_data->IsActive()) tracking_data->SaveYddotCommandSol(*dv_sol_);
   }
 
   // Print QP result
   if (print_tracking_info_) {
+    cout << "\n" << to_string(result.get_solution_result()) << endl;
+    cout << "fsm_state = " << fsm_state << endl;
+    cout << "**********************\n";
+    cout << "u_sol = " << u_sol_->transpose() << endl;
+    cout << "lambda_c_sol = " << lambda_c_sol_->transpose() << endl;
+    cout << "lambda_h_sol = " << lambda_h_sol_->transpose() << endl;
+    cout << "dv_sol = " << dv_sol_->transpose() << endl;
+    cout << "epsilon_sol = " << epsilon_sol_->transpose() << endl;
     cout << "**********************\n";
     // 1. input cost
     if (W_input_.size() > 0) {
-      cout << "input cost = " << 0.5 * u_sol.transpose() * W_input_ * u_sol
-           << endl;
+      cout << "input cost = "
+           << 0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_) << endl;
     }
     // 2. acceleration cost
     if (W_joint_accel_.size() > 0) {
       cout << "acceleration cost = "
-           << 0.5 * dv_sol.transpose() * W_joint_accel_ * dv_sol << endl;
+           << 0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_)
+           << endl;
     }
     // 3. Soft constraint cost
     if (w_soft_constraint_ > 0) {
       cout << "soft constraint cost = "
-           << 0.5 * w_soft_constraint_ * epsilon_sol.transpose() * epsilon_sol
+           << 0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
+                  (*epsilon_sol_)
            << endl;
     }
     // 4. Tracking cost
     for (auto tracking_data : *tracking_data_vec_) {
       if (tracking_data->IsActive()) {
-        VectorXd ddy_t = tracking_data->GetYddotCommand();
-        MatrixXd W = tracking_data->GetWeight();
-        MatrixXd J_t = tracking_data->GetJ();
-        VectorXd JdotV_t = tracking_data->GetJdotTimesV();
+        const VectorXd& ddy_t = tracking_data->GetYddotCommand();
+        const MatrixXd& W = tracking_data->GetWeight();
+        const MatrixXd& J_t = tracking_data->GetJ();
+        const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
         // Note that the following cost also includes the constant term, so that
         // the user can differentiate which error norm is bigger. The constant
         // term was not added to the QP since it doesn't change the result.
         cout << "Tracking cost (" << tracking_data->GetName() << ") = "
-             << 0.5 * (J_t * dv_sol + JdotV_t - ddy_t).transpose() * W *
-                    (J_t * dv_sol + JdotV_t - ddy_t)
+             << 0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
+                    (J_t * (*dv_sol_) + JdotV_t - ddy_t)
              << endl;
       }
     }
@@ -645,13 +649,13 @@ VectorXd OperationalSpaceControl::SolveQp(
     cout << "**********************\n";
     for (auto tracking_data : *tracking_data_vec_) {
       if (tracking_data->IsActive()) {
-        tracking_data->PrintFeedbackAndDesiredValues(dv_sol);
+        tracking_data->PrintFeedbackAndDesiredValues((*dv_sol_));
       }
     }
     cout << "**********************\n\n";
   }
 
-  return u_sol;
+  return *u_sol_;
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
@@ -661,16 +665,40 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   auto fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
 
+  double time_since_last_state_switch =
+      state->get_timestamp() -
+      context.get_discrete_state(prev_event_time_idx_).get_value()(0);
+
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_output->get_value()(0);
+  output->input_cost =
+      (W_input_.size() > 0)
+          ? (0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_))(0)
+          : 0;
+  output->acceleration_cost =
+      (W_joint_accel_.size() > 0)
+          ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
+          : 0;
+  output->soft_constraint_cost =
+      (w_soft_constraint_ > 0)
+          ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
+             (*epsilon_sol_))(0)
+          : 0;
+
   output->tracking_data_names.clear();
   output->tracking_data.clear();
+  output->tracking_cost.clear();
 
-  for (const auto& tracking_data : *tracking_data_vec_) {
-    if (tracking_data->IsActive()) {
+  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
+    auto tracking_data = tracking_data_vec_->at(i);
+
+    if (tracking_data->IsActive() &&
+        time_since_last_state_switch >= t_s_vec_.at(i) &&
+        time_since_last_state_switch <= t_e_vec_.at(i)) {
       output->tracking_data_names.push_back(tracking_data->GetName());
       lcmt_osc_tracking_data osc_output;
-      osc_output.y_dim = tracking_data->GetTrajDim();
+      osc_output.y_dim = tracking_data->GetYDim();
+      osc_output.ydot_dim = tracking_data->GetYdotDim();
       osc_output.name = tracking_data->GetName();
       // This should always be true
       osc_output.is_active = tracking_data->IsActive();
@@ -689,6 +717,14 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
       output->tracking_data.push_back(osc_output);
+
+      const VectorXd& ddy_t = tracking_data->GetYddotCommand();
+      const MatrixXd& W = tracking_data->GetWeight();
+      const MatrixXd& J_t = tracking_data->GetJ();
+      const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
+      output->tracking_cost.push_back(
+          (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
+           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0));
     }
   }
 

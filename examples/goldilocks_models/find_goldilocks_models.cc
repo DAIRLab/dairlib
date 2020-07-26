@@ -2228,6 +2228,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         iter -= 1;
       }
     }else if(task_gen->currently_extend_task_space()){
+      rerun_current_iteration = false;
       continue;
     }
     else if (extend_model_this_iter) {  // Extend the model

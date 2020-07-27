@@ -152,7 +152,9 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     int sample_num;
     string prefix;
 
-//    // calculate the weighted sum of past solutions
+    /*
+     * calculate the weighted sum of past solutions
+     */
 //    for (past_iter = iter - 1; past_iter > 0; past_iter--){
 //      for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
 //        prefix = to_string(past_iter) + string("_") + to_string(sample_num);
@@ -167,7 +169,9 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
 //        string("_initial_guess.csv");
 //    writeCSV(directory + initial_file_name, initial_guess);
 
-    //find the closest sample and use it as initial guess
+    /*
+    * find the closest sample and set it as initial guess
+    */
     string prefix_cloest_task = to_string(iter-1) + string("_") + to_string(0);
     for (past_iter = iter - 1; past_iter > 0; past_iter--){
       for (sample_num = 0; sample_num < total_sample_num; sample_num++) {

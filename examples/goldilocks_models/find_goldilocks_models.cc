@@ -203,14 +203,8 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
     if (non_grid_task) {
-      if(task_gen->currently_extend_task_space()){
-        *init_file = SetInitialGuessByExtrapolation(
-            dir, iter, sample, task_gen, task);
-      }
-      else{
-        *init_file = SetInitialGuessByInterpolation(
-            dir, iter, sample, task_gen, task, rom);
-      }
+      *init_file = SetInitialGuessByInterpolation(
+          dir, iter, sample, task_gen, task, rom);
     } else {
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
@@ -222,14 +216,8 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else {
     if (non_grid_task) {
-      if(task_gen->currently_extend_task_space()){
-        *init_file = SetInitialGuessByExtrapolation(
-            dir, iter, sample, task_gen, task);
-      }
-      else{
-        *init_file = SetInitialGuessByInterpolation(
-            dir, iter, sample, task_gen, task, rom);
-      }
+      *init_file = SetInitialGuessByInterpolation(
+          dir, iter, sample, task_gen, task, rom);
     } else {
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");

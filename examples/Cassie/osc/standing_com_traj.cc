@@ -17,6 +17,7 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 using drake::trajectories::PiecewisePolynomial;
+using drake::multibody::JacobianWrtVariable;
 
 namespace dairlib {
 namespace cassie {
@@ -52,28 +53,43 @@ void StandingComTraj::CalcDesiredTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd q = robot_output->GetPositions();
+  VectorXd x = robot_output->GetState();
 
-  plant_.SetPositions(context_.get(), q);
+  plant_.SetPositionsAndVelocities(context_.get(), x);
 
   // Get center of left/right feet contact points positions
-  Vector3d contact_position_sum = Vector3d::Zero();
+  Vector3d contact_pos_sum = Vector3d::Zero();
+  Vector3d contact_vel_sum = Vector3d::Zero();
+  Vector3d position;
+  MatrixXd J(3, plant_.num_velocities());
   for (const auto& point_and_frame : feet_contact_points_) {
-    Vector3d position;
     plant_.CalcPointsPositions(*context_, point_and_frame.second,
                                point_and_frame.first, world_, &position);
-    contact_position_sum += position;
-  }
+    contact_pos_sum += position;
 
-  Vector3d feet_center = contact_position_sum / 4;
-  Vector3d desired_com_pos(feet_center(0), feet_center(1),
-                           feet_center(2) + height_);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV,
+        point_and_frame.second, point_and_frame.first,
+        world_, world_, &J);
+    contact_vel_sum += J * x.tail(plant_.num_velocities());
+  }
+  Vector3d feet_center_pos = contact_pos_sum / 4;
+  Vector3d desired_com_pos(feet_center_pos(0), feet_center_pos(1),
+                           feet_center_pos(2) + height_);
+  Vector3d desired_com_vel = contact_vel_sum / 4;
+
+  double dt = 1;
+  const std::vector<double> breaks = {context.get_time(),
+                                      context.get_time() + dt};
+  std::vector<MatrixXd> samples(breaks.size(), MatrixXd::Zero(3, 1));
+  samples[0] = desired_com_pos;
+  samples[1] = desired_com_pos + dt * desired_com_vel;
 
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *pp_traj = PiecewisePolynomial<double>(desired_com_pos);
+  *pp_traj = PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
 }
 
 }  // namespace osc

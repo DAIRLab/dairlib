@@ -49,7 +49,7 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 0.001,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .89, "The desired height (m)");
-DEFINE_string(gains_filename, "", "Filepath containing gains");
+DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml", "Filepath containing gains");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -64,6 +64,9 @@ struct OSCStandingGains {
   std::vector<double> CoMKd;
   std::vector<double> PelvisRotKp;
   std::vector<double> PelvisRotKd;
+  std::vector<double> CoMW;
+  std::vector<double> PelvisW;
+
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -73,6 +76,8 @@ struct OSCStandingGains {
     a->Visit(DRAKE_NVP(CoMKd));
     a->Visit(DRAKE_NVP(PelvisRotKp));
     a->Visit(DRAKE_NVP(PelvisRotKd));
+    a->Visit(DRAKE_NVP(CoMW));
+    a->Visit(DRAKE_NVP(PelvisW));
   }
 };
 
@@ -121,10 +126,18 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       result.PelvisRotKd.data(), result.rows, result.cols);
+ MatrixXd W_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      result.CoMW.data(), result.rows, result.cols);
+  MatrixXd W_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      result.PelvisW.data(), result.rows, result.cols);
   std::cout << "COM Kp: \n" << K_p_com << std::endl;
   std::cout << "COM Kd: \n" << K_d_com << std::endl;
   std::cout << "Pelvis Rot Kp: \n" << K_p_pelvis << std::endl;
   std::cout << "Pelvis Rot Kd: \n" << K_d_pelvis << std::endl;
+  std::cout << "COM W: \n" << W_com << std::endl;
+  std::cout << "Pelvis W: \n" << W_pelvis << std::endl;
 
   // Create state receiver.
   auto state_receiver =
@@ -195,47 +208,11 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
-  MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2000;
-  W_com(1, 1) = 2000;
-  W_com(2, 2) = 200;
-  // Set xy PD gains so they do not effect  passive LIPM dynamics at capture
-  // point, when x = sqrt(l/g) * xdot
-  // Passive dynamics: xddot = g/l * x
-  //
-  // -Kp * x - Kd * xdot =
-  // -Kp * x + Kd * sqrt(g/l) * x = g/l * x
-  // Kp = sqrt(g/l) * Kd - g/l
-  double xy_scale = 10;
-  double g_over_l = 9.81 / FLAGS_height;
-//  MatrixXd K_p_com =
-//      (xy_scale * sqrt(g_over_l) - g_over_l) * MatrixXd::Identity(3, 3);
-//  MatrixXd K_d_com = xy_scale * MatrixXd::Identity(3, 3);
-//  K_p_com(2, 2) = 10;
-//  K_d_com(2, 2) = 10;
   ComTrackingData center_of_mass_traj("com_traj", 3, K_p_com, K_d_com,
                                       W_com * FLAGS_cost_weight_multiplier,
                                       &plant_w_springs, &plant_wo_springs);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
-  double w_pelvis_balance = 200;
-  double w_heading = 200;
-  double k_p_pelvis_balance = 10;
-  double k_d_pelvis_balance = 10;
-  double k_p_heading = 10;
-  double k_d_heading = 10;
-  Matrix3d W_pelvis = MatrixXd::Identity(3, 3);
-  W_pelvis(0, 0) = w_pelvis_balance;
-  W_pelvis(1, 1) = w_pelvis_balance;
-  W_pelvis(2, 2) = w_heading;
-//  Matrix3d K_p_pelvis = MatrixXd::Identity(3, 3);
-//  K_p_pelvis(0, 0) = k_p_pelvis_balance * 2;
-//  K_p_pelvis(1, 1) = k_p_pelvis_balance * 2;
-//  K_p_pelvis(2, 2) = k_p_heading;
-//  Matrix3d K_d_pelvis = MatrixXd::Identity(3, 3);
-//  K_d_pelvis(0, 0) = k_d_pelvis_balance;
-//  K_d_pelvis(1, 1) = k_d_pelvis_balance;
-//  K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj(
       "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis,
       W_pelvis * FLAGS_cost_weight_multiplier, &plant_w_springs,

@@ -35,7 +35,7 @@ namespace dairlib::systems::controllers {
 using multibody::makeNameToVelocitiesMap;
 using multibody::WorldPointEvaluator;
 
-static const int kSpaceDim = 3;
+int kSpaceDim = OscTrackingData::kSpaceDim;
 
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_w_spr,

@@ -24,9 +24,6 @@ namespace dairlib::systems::controllers {
 using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
 
-static const int kSpaceDim = 3;
-static const int kQuaternionDim = 4;
-
 /**** OscTrackingData ****/
 OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
                                  const MatrixXd& K_p, const MatrixXd& K_d,

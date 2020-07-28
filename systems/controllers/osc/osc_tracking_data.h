@@ -62,6 +62,9 @@ namespace controllers {
 
 class OscTrackingData {
  public:
+  static constexpr int kSpaceDim = 3;
+  static constexpr int kQuaternionDim = 4;
+
   OscTrackingData(const std::string& name, int n_y, int n_ydot,
                   const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
                   const Eigen::MatrixXd& W,

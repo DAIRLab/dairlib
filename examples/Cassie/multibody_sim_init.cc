@@ -66,11 +66,13 @@ DEFINE_double(init_height, .7,
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
-DEFINE_double(starting_time, 0.0, "Starting time of the simulator, useful for initializing the state at a particular configuration");
+DEFINE_double(starting_time, 0.0,
+              "Starting time of the simulator, useful for initializing the "
+              "state at a particular configuration");
 DEFINE_string(traj_name, "", "Name of the saved trajectory");
 DEFINE_string(folder_path, "", "Local path of the saved trajectory");
-DEFINE_string(mode_name, "state_trajectory", "Name of the individual saved trajectory");
-
+DEFINE_string(mode_name, "state_trajectory",
+              "Name of the individual saved trajectory");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -93,7 +95,7 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  if(FLAGS_terrain_height != 0){
+  if (FLAGS_terrain_height != 0) {
     Parser parser(&plant, &scene_graph);
     std::string terrain_name =
         FindResourceOrThrow("examples/simple_examples/terrain.urdf");
@@ -130,7 +132,7 @@ int do_main(int argc, char* argv[]) {
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
-  *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
+      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
@@ -168,7 +170,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create a context for this system:
   std::unique_ptr<Context<double>> diagram_context =
-                                       diagram->CreateDefaultContext();
+      diagram->CreateDefaultContext();
   diagram_context->EnableCaching();
   diagram->SetDefaultContext(diagram_context.get());
   Context<double>& plant_context =
@@ -183,6 +185,10 @@ int do_main(int argc, char* argv[]) {
           lcm_state_traj.time_vector, lcm_state_traj.datapoints.topRows(nx),
           lcm_state_traj.datapoints.bottomRows(nx));
   VectorXd x_init = state_traj.value(FLAGS_starting_time);
+
+  std::cout << "time vector" << lcm_state_traj.time_vector << std::endl;
+  std::cout << "time vector size" << lcm_state_traj.time_vector.size()
+            << std::endl;
 
   if (FLAGS_terrain_height < 0.0) {
     x_init(6) -= FLAGS_terrain_height;

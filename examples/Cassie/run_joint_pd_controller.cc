@@ -50,8 +50,8 @@ int doMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
   DiagramBuilder<double> builder_null;
 
-//  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
-//      "udpm://239.255.76.67:7667?ttl=0");
+  //  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+  //      "udpm://239.255.76.67:7667?ttl=0");
   drake::lcm::DrakeLcm lcm;
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -78,9 +78,12 @@ int doMain(int argc, char* argv[]) {
   auto input_traj = PiecewisePolynomial<double>::FirstOrderHold(
       lcm_input_traj.time_vector, lcm_input_traj.datapoints);
 
+  std::cout << "input time vector" << lcm_input_traj.time_vector << std::endl;
+  std::cout << "state time vector" << lcm_state_traj.time_vector << std::endl;
+
   const std::string channel_x = FLAGS_channel_x;
   const std::string channel_u = FLAGS_channel_u;
-//  const std::string channel_config = "PD_CONFIG";
+  //  const std::string channel_config = "PD_CONFIG";
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
@@ -146,16 +149,16 @@ int doMain(int argc, char* argv[]) {
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   /// Set realtime rate. Otherwise, runs as fast as possible
-//  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
-//      *diagram, std::move(context));
-//  stepper->set_publish_every_time_step(false);
-//  stepper->set_publish_at_initialization(false);
-//  stepper->set_target_realtime_rate(1.0);
-//  stepper->Initialize();
+  //  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
+  //      *diagram, std::move(context));
+  //  stepper->set_publish_every_time_step(false);
+  //  stepper->set_publish_at_initialization(false);
+  //  stepper->set_target_realtime_rate(1.0);
+  //  stepper->Initialize();
 
   drake::log()->info("controller started");
 
-//  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
+  //  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(diagram), state_receiver, FLAGS_channel_x, true);
   loop.Simulate();

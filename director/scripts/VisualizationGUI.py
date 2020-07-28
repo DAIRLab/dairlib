@@ -1,28 +1,29 @@
-import lcm
-import threading
-
+# PyQt library imports
 from PythonQt.QtGui import *
 from PythonQt.QtCore import *
 
+# director library imports
 import dairlib
+from pydairlib.common import FindResourceOrThrow
 from director import visualization as vis
 from director import lcmUtils
 import director.applogic
-import director.mainwindowapp
 from director.debugVis import DebugData
 import director.objectmodel as om
-from pydairlib.common import FindResourceOrThrow
+import lcm
 
+# pydrake library imports
 from pydrake.math import RigidTransform, RotationMatrix
 import pydrake.systems.framework
 import pydrake.multibody.plant
 import pydrake.multibody.parsing
+from pydrake.common.eigen_geometry import Quaternion
+
+# stadard library imports
 import numpy as np
 import json
-import sys
 from collections import deque
 import re
-from pydrake.common.eigen_geometry import Quaternion
 import os
 
 class VisualizationGui(QWidget):
@@ -52,7 +53,6 @@ class VisualizationGui(QWidget):
         self.resetBtn = None
         self.clearBtn = None
         self.checkBoxArea = None
-        self.reset = False
         self.delete = False
         self.clear = False
         self.ready = False
@@ -78,91 +78,94 @@ class VisualizationGui(QWidget):
         fileFilters = "Data Files (*.json)";
         filename = QtGui.QFileDialog.getOpenFileName(mainWindow, "Open...", os.getcwd(), fileFilters, "", QtGui.QFileDialog.DontUseNativeDialog)
 
+        if not filename:
+          return
+
         # load only if input is not empty
-        if (len(filename) != 0):
-            self.json_file = filename
-            with open(self.json_file) as json_file:
-                self.data = json.load(json_file)
+        self.json_file = filename
+        with open(self.json_file) as json_file:
+            self.data = json.load(json_file)
 
-            self.ready = True
-            self.modelFile = self.data['model_file']
+        self.modelFile = self.data['model_file']
 
-            if ('weld-body' in self.data):
-                self.weldBody = self.data['weld-body']
+        if ('weld-body' in self.data):
+            self.weldBody = self.data['weld-body']
 
-            # create each object/shape to be drawn
-            for data in self.data['data']:
-                newObject = ObjectToDraw(data)
+        # create each object/shape to be drawn
+        for data in self.data['data']:
+            newObject = ObjectToDraw(data)
 
-                # if this is a shape of type lcm then create an additional separate object
-                if (newObject.category == "lcm"):
-                    if (newObject.name not in self.lcmObjects):
-                        if (newObject.type == "axis"):
-                            self.lcmObjects[newObject.name] = LCMMessage(newObject.source_data, axis = True)
-                        else:
-                            self.lcmObjects[newObject.name] = LCMMessage(newObject.source_data)
+            # if this is a shape of type lcm then create an additional separate object
+            if (newObject.category == "lcm"):
+                if (newObject.name not in self.lcmObjects):
+                    if (newObject.type == "axes"):
+                        self.lcmObjects[newObject.name] = LCMMessage(newObject.source_data, axis = True)
                     else:
-                        if (newObject.type == "axis"):
-                            self.lcmObjects[newObject.name].update(newObject.source_data, axis = True)
-                        else:
-                            self.lcmObjects[newObject.name].update(newObject.source_data)
-
-                # if there exists a shape with the given name then simply update it
-                if (newObject.name not in self.shapes):
-                    self.shapes[newObject.name] = newObject
+                        self.lcmObjects[newObject.name] = LCMMessage(newObject.source_data)
                 else:
-                    self.shapes[newObject.name].update(newObject)
+                    if (newObject.type == "axes"):
+                        self.lcmObjects[newObject.name].update(
+                        newObject.source_data, axis = True)
+                    else:
+                        self.lcmObjects[newObject.name].update(
+                        newObject.source_data)
 
-            # fill the checkboxes for each data with its name and add the "reset" and "clear" buttons
-            self.placeCheckBoxes()
-            if (self.resetBtn == None):
-                self.resetBtn = QPushButton('Reset')
-                self.resetBtn.clicked.connect(self.deleteShapes)
-                self.vbox.addWidget(self.resetBtn)
+            # if there exists a shape with the given name then simply update it
+            if (newObject.name not in self.shapes):
+                self.shapes[newObject.name] = newObject
+            else:
+                self.shapes[newObject.name].update(newObject)
 
-            if (self.clearBtn == None):
-                self.clearBtn = QPushButton('Clear History')
-                self.clearBtn.clicked.connect(self.clearHistory)
-                self.vbox.addWidget(self.clearBtn)
+        # fill the checkboxes for each data with its name and add the "reset" and "clear" buttons
+        self.placeCheckBoxes()
+        if (self.resetBtn == None):
+            self.resetBtn = QPushButton('Reset')
+            self.resetBtn.clicked.connect(self.deleteShapes)
+            self.vbox.addWidget(self.resetBtn)
 
-            if (self.plant == None):
-                # Create the plant
-                builder = pydrake.systems.framework.DiagramBuilder()
-                self.plant, scene_graph = \
-                    pydrake.multibody.plant.AddMultibodyPlantSceneGraph(builder, 0)
-                pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(
-                FindResourceOrThrow(self.modelFile))
+        if (self.clearBtn == None):
+            self.clearBtn = QPushButton('Clear History')
+            self.clearBtn.clicked.connect(self.clearHistory)
+            self.vbox.addWidget(self.clearBtn)
 
-                # determine if there is a need to use the weld a body part
-                if (self.weldBody != None):
-                    self.plant.WeldFrames(self.plant.world_frame(),
-                        self.plant.GetFrameByName(self.weldBody), RigidTransform.Identity())
-                self.plant.Finalize()
-                self.context = self.plant.CreateDefaultContext()
+        if (self.plant == None):
+            # Create the plant
+            builder = pydrake.systems.framework.DiagramBuilder()
+            self.plant, scene_graph = \
+                pydrake.multibody.plant.AddMultibodyPlantSceneGraph(builder, 0)
+            pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(
+            FindResourceOrThrow(self.modelFile))
 
-            # start listenning to the main state LCM messages
-            lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
+            # determine if there is a need to use the weld a body part
+            if (self.weldBody != None):
+                self.plant.WeldFrames(self.plant.world_frame(),
+                    self.plant.GetFrameByName(self.weldBody), RigidTransform.Identity())
+            self.plant.Finalize()
+            self.context = self.plant.CreateDefaultContext()
 
-            # add more LCM subscriptions depending on the number of "lcm" data
-            for name in self.lcmObjects:
-                lcmMessage = self.lcmObjects[name]
-                subscriber = lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg, lcmMessage=lcmMessage, name=name: self.abstract_handler(msg, name, lcmMessage))
+        # start listenning to the main state LCM messages
+        lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
 
-                self.subscriptions.append(subscriber)
+        # add more LCM subscriptions depending on the number of "lcm" data
+        for name in self.lcmObjects:
+            lcmMessage = self.lcmObjects[name]
+            subscriber = lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg, lcmMessage=lcmMessage, name=name: self.abstract_handler(msg, name, lcmMessage))
+
+            self.subscriptions.append(subscriber)
+
+        self.ready = True
 
     def deleteShapes(self):
         '''
         Function for setting the flag for deleting all shapes currently present
         '''
-        if (self.delete == False):
-            self.delete = True
+        self.delete = True
 
     def clearHistory(self):
         '''
         Function for setting the flag for clearing the history of any line present
         '''
-        if (self.clear == False):
-            self.clear = True
+        self.clear = True
 
     def placeCheckBoxes(self):
         '''
@@ -170,68 +173,37 @@ class VisualizationGui(QWidget):
         to a shape/object that has been drawn with the corresponding color and
         extension
         '''
-        if (self.ready == True):
-            addToGUI = False
-            if (self.checkBoxArea == None):
-                self.checkBoxArea = QVBoxLayout()
-                addToGUI = True
-            for name in self.shapes:
-                # create appropriate symbol extention
+
+        addToGUI = False
+        if (self.checkBoxArea == None):
+            self.checkBoxArea = QVBoxLayout()
+            addToGUI = True
+        for name in self.shapes:
+            # create appropriate symbol extention
+            extension = " •"
+            type = self.shapes[name].type
+            if (type == "point"):
                 extension = " •"
-                type = self.shapes[name].type
-                if (type == "point"):
-                    extension = " •"
-                elif (type == "line"):
-                    extension = " ---"
-                elif (type == "axis"):
-                    extension = " |_"
+            elif (type == "line"):
+                extension = " ---"
+            elif (type == "axes"):
+                extension = " |/_"
 
-                # create each checkbox and conditionally add it to the GUI
-                addToList = False
-                if (name not in self.checkBoxes):
-                    self.checkBoxes[name] = QCheckBox(name + extension)
+            # create each checkbox and conditionally add it to the GUI
+            addToList = False
+            if (name not in self.checkBoxes):
+                self.checkBoxes[name] = QCheckBox(name + extension)
 
-                    if (self.shapes[name].type == "point" or self.shapes[name].type == "line"):
-                        color = self.shapes[name].color
-                        self.checkBoxes[name].setStyleSheet("color: rgb("+str(color[0] * 255)+", "+str(color[1] * 255)+", "+str(color[2] * 255)+")")
+                if (self.shapes[name].type == "point" or self.shapes[name].type == "line"):
+                    color = self.shapes[name].color
+                    self.checkBoxes[name].setStyleSheet("color: rgb("+str(color[0] * 255)+", "+str(color[1] * 255)+", "+str(color[2] * 255)+")")
 
-                    addToList = True
-                self.checkBoxes[name].setChecked(True)
-                if (addToList == True):
-                    self.checkBoxArea.addWidget(self.checkBoxes[name])
-                if (addToGUI == True):
-                    self.vbox.addLayout(self.checkBoxArea)
-
-    def checkBoxChecked(self, name):
-        '''
-        Function for showing a shape when its corresponding checkbox is checked
-
-        name: name of corresponding shape
-        '''
-        if (self.shapes[name].object != None and self.shapes[name].object.getProperty('Visible') == False):
-            self.shapes[name].object.setProperty('Visible', True)
-
-    def checkBoxNotChecked(self, name):
-        '''
-        Function for hiding a shape when its corresponding checkbox is unchecked
-
-        name: name of corresponding shape
-        '''
-        if (self.shapes[name].object != None and self.shapes[name].object.getProperty('Visible') == True):
-            self.shapes[name].object.setProperty('Visible', False)
-
-    def distance(self, pt1, pt2):
-        '''
-        Function for computing distance between 2 given 3D points
-
-        pt1, pt2: the 2 points whose distance will be computed
-        '''
-        sum = 0
-        for i in range(len(pt1)):
-            sum += pow(pt2[i] - pt1[i], 2)
-
-        return math.sqrt(sum)
-
+                addToList = True
+            self.checkBoxes[name].setChecked(True)
+            if (addToList == True):
+                self.checkBoxArea.addWidget(self.checkBoxes[name])
+            if (addToGUI == True):
+                self.vbox.addLayout(self.checkBoxArea)
 
     def abstract_handler(self, msg, name, lcmMessage):
         '''
@@ -251,13 +223,11 @@ class VisualizationGui(QWidget):
         field = lcmMessage.field
 
         # if there is a %d in the field replace it with the actual index
-        count = 0
         if ("%d" in field):
-            for element in self.getVector(attribute, lcmMessage.index_field):
-                if (element == lcmMessage.index_element):
-                    field = field.replace("%d", str(count))
-                    break
-                count += 1
+            arr = self.getVector(attribute, lcmMessage.index_field)
+            if (lcmMessage.index_element in arr):
+                i = arr.index(lcmMessage.index_element)
+                field = field.replace("%d", str(i))
 
         if ("%d" not in field):
             # parse field to get the appropriate information. This is done by
@@ -265,11 +235,9 @@ class VisualizationGui(QWidget):
             attribute = self.getVector(attribute, field)
             currShape = self.shapes[name]
             x = lcmMessage.x
-            y = lcmMessage.y
-            z = lcmMessage.z
 
             # special case of an axis data
-            if (currShape.type == "axis"):
+            if (currShape.type == "axes"):
                 # get quaternion array, normalize it, and get the corresponding rotation matrix
                 quaternion = []
                 for i in range(x, x+4):
@@ -286,7 +254,7 @@ class VisualizationGui(QWidget):
                 self.drawShape(self.shapes[name], next_loc, msg, rotation_matrix = rot_matrix)
 
             else:
-                next_loc = [attribute[x], attribute[y], attribute[z]]
+                next_loc = [attribute[x], attribute[x+1], attribute[x+2]]
                 self.drawShape(self.shapes[name], next_loc, msg)
 
     def getVector(self, attribute, path):
@@ -298,7 +266,7 @@ class VisualizationGui(QWidget):
         path: the string path to get the attribute's field
         '''
         field = path.split(".")
-        regExpr = re.compile('.+\[\d\]')
+        regExpr = re.compile('.+\[\d+\]')
         newAtribute = attribute
         for part in field:
             index = None
@@ -323,10 +291,12 @@ class VisualizationGui(QWidget):
         name: name of corresponding shape
         '''
         if (self.checkBoxes[name].isChecked() == True):
-            self.checkBoxChecked(name)
+            if (self.shapes[name].object != None and self.shapes[name].object.getProperty('Visible') == False):
+                self.shapes[name].object.setProperty('Visible', True)
 
         else:
-            self.checkBoxNotChecked(name)
+            if (self.shapes[name].object != None and self.shapes[name].object.getProperty('Visible') == True):
+                self.shapes[name].object.setProperty('Visible', False)
 
     def state_handler(self, msg):
         '''
@@ -381,21 +351,21 @@ class VisualizationGui(QWidget):
                     om.removeFromObjectModel(shape.object)
 
                 self.delete = False
-                self.reset = True
 
-            # handle flags for reseting the GUI
-            if (self.reset == True):
                 # delete checkboxes from GUI
                 for i in reversed(range(self.checkBoxArea.count())):
                     self.checkBoxArea.itemAt(i).widget().deleteLater()
 
+                # delete "reset" and "clear history" buttons
                 self.resetBtn.deleteLater()
                 self.clearBtn.deleteLater()
 
+                # remove all lcm channels except for the state one
                 for subscription in self.subscriptions:
                     lcmUtils.removeSubscriber(subscription)
 
                 self.resetGUI()
+
 
     def drawShape(self, currShape, next_loc, msg, rotation_matrix = None):
         '''
@@ -429,7 +399,7 @@ class VisualizationGui(QWidget):
                         currShape.object.setPolyData(d.getPolyData())
 
                 else:
-                    if (self.distance(currShape.points[-1], next_loc) >= 10e-5):
+                    if (np.linalg.norm(np.array(next_loc) -np.array(currShape.points[-1])) >= 10e-5):
                         currShape.points.append(next_loc)
                         d = DebugData()
                         d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
@@ -444,7 +414,7 @@ class VisualizationGui(QWidget):
                     currShape.duration = msg.utime / 1000000
                 else:
                     # visualize and trace line for 'history' seconds, adding points at a distance at least 10e-5
-                    if (self.distance(currShape.points[-1], next_loc) >= 10e-5):
+                    if (np.linalg.norm(np.array(next_loc) -np.array(currShape.points[-1])) >= 10e-5):
                         currShape.points.popleft()
                         currShape.points.append(next_loc)
                         d = DebugData()
@@ -470,7 +440,7 @@ class VisualizationGui(QWidget):
                 currShape.object.setPolyData(d.getPolyData())
 
         # draw a set of axes
-        elif (currShape.type == "axis"):
+        elif (currShape.type == "axes"):
             # get the rotation matrix
             rot_matrix = None
             if (currShape.category != "lcm"):
@@ -502,9 +472,8 @@ class ObjectToDraw():
         # set attributes from given data (originating from input JSON file)
         self.name = data['name']
 
-        info = data['info']
-        self.source_data = info['source_data']
-        type_data = info['type_data']
+        self.source_data = data['source_data']
+        type_data = data['type_data']
 
         self.category = self.source_data['category']
 
@@ -528,7 +497,7 @@ class ObjectToDraw():
             self.color = type_data['color']
             self.radius = type_data['radius']
 
-        elif (self.type == "axis"):
+        elif (self.type == "axes"):
             if (self.category == "lcm"):
                 self.frame = self.source_data['frame']
                 self.point = self.source_data['point']
@@ -560,7 +529,7 @@ class ObjectToDraw():
             self.color = otherObject.color
             self.radius = otherObject.radius
 
-        elif (self.type == "axis"):
+        elif (self.type == "axes"):
             self.thickness = otherObject.thickness
             self.length = otherObject.length
 
@@ -582,12 +551,8 @@ class LCMMessage():
 
         if (axis == True):
             self.x = source_data["quaternion_index"]
-            self.y = 0
-            self.z = 0
         else:
             self.x = source_data["x_index"]
-            self.y = source_data["y_index"]
-            self.z = source_data["z_index"]
 
     def update(self, source_data, axis = False):
         '''
@@ -604,16 +569,11 @@ class LCMMessage():
 
         if (axis == True):
             self.x = source_data["quaternion_index"]
-            self.y = 0
-            self.z = 0
         else:
             self.x = source_data["x_index"]
-            self.y = source_data["y_index"]
-            self.z = source_data["z_index"]
 
 # Adding the widget
 panel = VisualizationGui()
 panel.show()
 panel.setLayout(panel.vbox)
-print(app)
 app.addWidgetToDock(panel, QtCore.Qt.RightDockWidgetArea)

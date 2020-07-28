@@ -4,11 +4,11 @@ visualization of data during a simulation:
 "model_file": This is the directory containing the file for the robot/plant
               description (like an urdf file).
 
-"weld-body": This is whether the user wants "WeldFrames()" to be called on the
+"weld_body": This is whether the user wants "WeldFrames()" to be called on the
              robot/plant. If this property does not exist then the "WeldFrames()"
              function will not be called
 
-"channelName": Name of main state channel
+"channel_name": Name of the LCM channel containing state information as lcmt_robot_output.
 
 "channel_type": Type/Class of message from main channel
 
@@ -23,17 +23,15 @@ visualization of data during a simulation:
         axes. The following are the specific formats of the 3 source type
         categories:
 
-        1) Kinematic:
+        1) Kinematic: Uses robot state information to draw the position of a particular point fixed in a given frame.
 
         "category":"kinematic"
-        "frame": The particular body part on which the user wants to draw the
-                 shape
-        "point": The location within the body part's context
+        "frame": The name of the given frame.
+        "point": The constant position of the point in the given frame.
 
 
-
-
-        2) LCM:
+        2) LCM: While kinematic data is drawn from the robot state, LCM data comes directly from a specific LCM message.
+                For example, this might be used to visualize the target position of some kinematic value.
 
         "category":"lcm",
         "abstract_channel" : The channel from where the user wants to listen to
@@ -64,10 +62,8 @@ visualization of data during a simulation:
         also contains:
         "x_index" : The index of the x element of the location where the
                     line/point it so be drawn
-        "y_index" : The index of the y element of the location where the
-                    line/point it so be drawn
-        "z_index" : The index of the z element of the location where the
-                    line/point it so be drawn
+
+        The y and z indices are assumed to be sequential.
 
         If this is intended to be used to draw a set of axes then it also
         contains:
@@ -76,6 +72,13 @@ visualization of data during a simulation:
                              be extracted. The other 3 indices will be the ones
                              that follow this in sequance. For example, if this
                              was 0 then the others will be 1, 2, 3.
+
+
+         While the specified LCM message determines the orientation of the axes
+         to draw, the location of the axes needs to also be known. The origin of
+         the axes is determined in the same manner as a kinematic point, by
+         specifying "frame" and "point" fields.
+
         "frame": The particular body part on which the user wants to draw the
                  axis
         "point": The location within the body part's context
@@ -83,7 +86,7 @@ visualization of data during a simulation:
 
 
 
-        1) Center of Mass (CoM):
+        3) Center of Mass (CoM):
 
         "category":"com"
 
@@ -115,7 +118,7 @@ visualization of data during a simulation:
         3) A set of 3 axes:
 
         "alpha": The transparency as a value from 0 to 1
-        "type": "axis",
+        "type": "axes",
         "thickness": The thickness of each arrow
         "length": The length of each arrow
 

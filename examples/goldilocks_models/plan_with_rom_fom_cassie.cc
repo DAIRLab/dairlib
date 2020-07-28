@@ -201,14 +201,29 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                            MirrorVelSignChangeSet(plant, FLAGS_robot_option));
 
   // Get foot contacts
+  bool one_contact_per_foot = true;
   auto left_toe = LeftToeFront(plant);
   auto left_heel = LeftToeRear(plant);
   auto right_toe = RightToeFront(plant);
   auto right_heel = RightToeRear(plant);
+  Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
+  auto left_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
+      mid_contact_point, plant.GetFrameByName("toe_left"));
+  auto right_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
+      mid_contact_point, plant.GetFrameByName("toe_right"));
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
-      left_contacts = {left_toe, left_heel};
+      left_contacts;
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
-      right_contacts = {right_toe, right_heel};
+      right_contacts;
+  if (one_contact_per_foot) {
+    left_contacts.push_back(left_toe_mid);
+    right_contacts.push_back(right_toe_mid);
+  } else {
+    left_contacts.push_back(left_toe);
+    left_contacts.push_back(left_heel);
+    right_contacts.push_back(right_toe);
+    right_contacts.push_back(right_heel);
+  }
 
   // Get joint limits of the robot
   std::vector<string> l_r_pair = {"_left", "_right"};

@@ -216,12 +216,15 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
           // solution of this sample instead of using solutions from the
           // iteration of starting optimization
 
-          string prefix_cloest_task = to_string(iter-1) + string("_") + to_string(0);
-          for (past_iter = iter - 1; past_iter > 0; past_iter--){
+          string prefix_cloest_task = to_string(past_iter-1) + string("_") + to_string(0);
+          int iter_with_same_theta = 0;
+          for (iter_with_same_theta = 0; iter_with_same_theta <= past_iter;
+          iter_with_same_theta++){
             for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
-              prefix = to_string(past_iter) + string("_") + to_string(sample_num);
+              prefix = to_string(iter_with_same_theta) + string("_") +
+                  to_string(sample_num);
               prefix_cloest_task = CompareTwoTasks(directory,prefix_cloest_task,
-                                                   prefix,current_gamma,gamma_scale);
+                  prefix,current_gamma,gamma_scale);
             }
           }
           w_to_interpolate = readCSV(directory + prefix_cloest_task

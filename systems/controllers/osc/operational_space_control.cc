@@ -35,7 +35,7 @@ namespace dairlib::systems::controllers {
 using multibody::makeNameToVelocitiesMap;
 using multibody::WorldPointEvaluator;
 
-static const int SPACE_DIM = 3;
+static const int kSpaceDim = 3;
 
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_w_spr,
@@ -248,7 +248,7 @@ void OperationalSpaceControl::Build() {
   // Size of decision variable
   n_h_ = (kinematic_evaluators_ == nullptr)?
       0 : kinematic_evaluators_->count_full();
-  n_c_ = SPACE_DIM * all_contacts_.size();
+  n_c_ = kSpaceDim * all_contacts_.size();
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
     n_c_active_ += evaluator->num_active();
@@ -312,35 +312,35 @@ void OperationalSpaceControl::Build() {
       friction_constraints_.push_back(
           prog_->AddLinearConstraint(mu_neg1.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(SPACE_DIM * j + 2, 1),
-                                      lambda_c_.segment(SPACE_DIM * j + 0, 1)})
+                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                      lambda_c_.segment(kSpaceDim * j + 0, 1)})
                .evaluator()
                .get());
       friction_constraints_.push_back(
           prog_->AddLinearConstraint(mu_1.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(SPACE_DIM * j + 2, 1),
-                                      lambda_c_.segment(SPACE_DIM * j + 0, 1)})
+                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                      lambda_c_.segment(kSpaceDim * j + 0, 1)})
                .evaluator()
                .get());
       friction_constraints_.push_back(
           prog_->AddLinearConstraint(mu_neg1.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(SPACE_DIM * j + 2, 1),
-                                      lambda_c_.segment(SPACE_DIM * j + 1, 1)})
+                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                      lambda_c_.segment(kSpaceDim * j + 1, 1)})
                .evaluator()
                .get());
       friction_constraints_.push_back(
           prog_->AddLinearConstraint(mu_1.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(SPACE_DIM * j + 2, 1),
-                                      lambda_c_.segment(SPACE_DIM * j + 1, 1)})
+                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                      lambda_c_.segment(kSpaceDim * j + 1, 1)})
                .evaluator()
                .get());
       friction_constraints_.push_back(
           prog_->AddLinearConstraint(one.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     lambda_c_.segment(SPACE_DIM * j + 2, 1))
+                                     lambda_c_.segment(kSpaceDim * j + 2, 1))
                .evaluator()
                .get());
     }
@@ -443,7 +443,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     if (active_contact_set.find(i) != active_contact_set.end()) {
-      J_c.block(SPACE_DIM * i, 0, SPACE_DIM, n_v_) =
+      J_c.block(kSpaceDim * i, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
     }
   }
@@ -459,7 +459,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       // of the Jacobian. (J_c_active is just a stack of slices of J_c)
       for (int j = 0; j < contact_i->num_active(); j++) {
         J_c_active.row(row_idx + j) =
-            J_c.row(SPACE_DIM * i + contact_i->active_inds().at(j));
+            J_c.row(kSpaceDim * i + contact_i->active_inds().at(j));
       }
       JdotV_c_active.segment(row_idx, contact_i->num_active()) =
           contact_i->EvalActiveJacobianDotTimesV(*context_wo_spr_);

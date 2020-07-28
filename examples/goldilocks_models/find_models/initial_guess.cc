@@ -138,8 +138,11 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
   VectorXd current_gamma =
       Eigen::Map<const VectorXd>(task.get().data(), task.get().size());
 
-  if (iter<=(task_gen->iter_start_optimization())) {
-    // Use the samples from iteration 0 to last iteration
+  int past_iter;
+  int sample_num;
+  string prefix;
+  if (iter<(task_gen->iter_start_optimization())){
+    // Use the samples from iteration 0 to last iteration to interpolate
     // Considering that the theta are all same for these iteration,
     // we only consider task in interpolation.
 
@@ -147,10 +150,6 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     // calculate the interpolation weight and store it in weight_gamma
     MatrixXd w_gamma;
     VectorXd weight_gamma;
-
-    int past_iter;
-    int sample_num;
-    string prefix;
 
     /*
      * calculate the weighted sum of past solutions
@@ -169,18 +168,20 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
         string("_initial_guess.csv");
     writeCSV(directory + initial_file_name, initial_guess);
 
-//    /*
-//    * find the closest sample and set it as initial guess
-//    */
-//    string prefix_cloest_task = to_string(iter-1) + string("_") + to_string(0);
-//    for (past_iter = iter - 1; past_iter > 0; past_iter--){
-//      for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
-//        prefix = to_string(past_iter) + string("_") + to_string(sample_num);
-//        prefix_cloest_task = CompareTwoTasks(directory,prefix_cloest_task,
-//            prefix,current_gamma,gamma_scale);
-//      }
-//    }
-//    initial_file_name = prefix_cloest_task+string("_w.csv");
+  }
+  else if (iter==(task_gen->iter_start_optimization())) {
+    /*
+    * find the closest sample and set it as initial guess
+    */
+    string prefix_cloest_task = to_string(iter-1) + string("_") + to_string(0);
+    for (past_iter = iter - 1; past_iter > 0; past_iter--){
+      for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
+        prefix = to_string(past_iter) + string("_") + to_string(sample_num);
+        prefix_cloest_task = CompareTwoTasks(directory,prefix_cloest_task,
+            prefix,current_gamma,gamma_scale);
+      }
+    }
+    initial_file_name = prefix_cloest_task+string("_w.csv");
 
   } else {
     // There are two-stage interpolation here.
@@ -189,10 +190,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
 
     VectorXd weight_theta;  // each element corresponds to a weight
     MatrixXd w_theta;       // each column stores a interpolated result
-    int past_iter;
-    int sample_num;
     int iter_start = (task_gen->iter_start_optimization());
-    string prefix;
     for (past_iter = iter - 1; past_iter >= iter_start; past_iter--) {
       // find useful theta according to the difference between previous theta
       // and new theta
@@ -210,22 +208,24 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
         // weight_gamma
         MatrixXd w_gamma;
         VectorXd weight_gamma;
+        VectorXd w_to_interpolate;
         if(past_iter==(task_gen->iter_start_optimization()))
         {
-          // Considering that theta for iteration 0 to 100 are the same,
-          // we need to use the solutions from all these iterations to
-          // create interpolated solution for this theta instead of using only
-          // solutions from one iteration
+          // Considering that theta for iteration 0 to iter_start_optimization
+          // are the same, we need to find the closest sample and use the
+          // solution of this sample instead of using solutions from the
+          // iteration of starting optimization
 
-          // calculate the weighted sum of past solutions
-          int iter_same_theta;
-          for (iter_same_theta = past_iter-1; past_iter > 0; past_iter--){
+          string prefix_cloest_task = to_string(iter-1) + string("_") + to_string(0);
+          for (past_iter = iter - 1; past_iter > 0; past_iter--){
             for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
-              prefix = to_string(iter_same_theta) + string("_") + to_string(sample_num);
-              InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
-                                             gamma_scale, weight_gamma, w_gamma);
+              prefix = to_string(past_iter) + string("_") + to_string(sample_num);
+              prefix_cloest_task = CompareTwoTasks(directory,prefix_cloest_task,
+                                                   prefix,current_gamma,gamma_scale);
             }
           }
+          w_to_interpolate = readCSV(directory + prefix_cloest_task
+              + string("_w.csv"));
         }
         else {
           // calculate the weighted sum of solutions from one iteration
@@ -234,10 +234,10 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
             InterpolateAmongDifferentTasks(directory, prefix, current_gamma,
                                            gamma_scale, weight_gamma, w_gamma);
           }
+          // calculate the weighted sum of solutions for this theta
+          w_to_interpolate =
+              CalculateInterpolation(weight_gamma, w_gamma);
         }
-        // calculate the weighted sum of solutions for this theta
-        VectorXd w_to_interpolate =
-            CalculateInterpolation(weight_gamma, w_gamma);
         // calculate the weight for the result above using the difference
         // between past theta and current theta
         VectorXd dif_theta =

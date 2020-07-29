@@ -31,6 +31,7 @@ class InnerLoopSetting {
   double major_optimality_tol;
   double major_feasibility_tol;
   bool snopt_scaling;
+  bool use_ipopt;
 
   std::string directory;
   std::string prefix;

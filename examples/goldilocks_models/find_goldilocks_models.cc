@@ -100,9 +100,10 @@ DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
 // for SNOPT, but 0.3 / 16 is too high.
 DEFINE_double(eps_regularization, 1e-8,
               "Weight of regularization term");  // 1e-4
-DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
 DEFINE_bool(use_database, false,
     "use solutions from database to create initial guesses for traj opt");
+DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
+DEFINE_bool(ipopt, false, "Use IPOPT as solver instead of SNOPT");
 
 // outer loop
 DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
@@ -1667,6 +1668,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
   inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
+  inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;
 
   // Construct reduced order model

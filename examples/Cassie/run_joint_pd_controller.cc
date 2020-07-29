@@ -7,7 +7,9 @@
 #include "systems/controllers/joint_level_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+#include "yaml-cpp/yaml.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -43,6 +45,21 @@ DEFINE_string(mode_name, "state_input_trajectory",
 DEFINE_int32(num_modes, 0, "Number of modes in target trajectory");
 // Cassie model parameter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
+DEFINE_string(gains, "examples/Cassie/data/joint_gains.yaml",
+              "Filename of the yaml file containing the gains");
+
+struct JointPdGains {
+  int rows;
+  int cols;
+  std::vector<double> K;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(rows));
+    a->Visit(DRAKE_NVP(cols));
+    a->Visit(DRAKE_NVP(K));
+  }
+};
 
 int doMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -78,9 +95,6 @@ int doMain(int argc, char* argv[]) {
   auto input_traj = PiecewisePolynomial<double>::FirstOrderHold(
       lcm_input_traj.time_vector, lcm_input_traj.datapoints);
 
-  std::cout << "input time vector" << lcm_input_traj.time_vector << std::endl;
-  std::cout << "state time vector" << lcm_state_traj.time_vector << std::endl;
-
   const std::string channel_x = FLAGS_channel_x;
   const std::string channel_u = FLAGS_channel_u;
   //  const std::string channel_config = "PD_CONFIG";
@@ -101,38 +115,16 @@ int doMain(int argc, char* argv[]) {
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  MatrixXd K = MatrixXd::Zero(nu, nx);
-  MatrixXd B = plant.MakeActuationMatrix();
-  // Kp gains
-  // lhip roll pos index is 7
-  K(0, 7) = 5;
-  K(1, 8) = 5;
-  // lhip yaw pos index is 9
-  K(2, 9) = 5;
-  K(3, 10) = 5;
-  // lhip pitch pos index is 11
-  K(4, 11) = 10;
-  K(5, 12) = 10;
-  // lknee
-  K(6, 13) = 10;
-  K(7, 14) = 10;
-  K(8, 20) = 2;
-  K(9, 22) = 2;
 
-  // Kd gains
-  K(0, nq + 6) = .1;
-  K(1, nq + 7) = .1;
-  // lhip yaw pos index is 9
-  K(2, nq + 8) = .1;
-  K(3, nq + 9) = .1;
-  // lhip pitch pos index is 11
-  K(4, nq + 10) = 1;
-  K(5, nq + 11) = 1;
-  // lknee
-  K(6, nq + 12) = 1;
-  K(7, nq + 13) = 1;
-  K(8, nq + 19) = .1;
-  K(9, nq + 21) = .1;
+  JointPdGains result;
+  const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(FLAGS_gains));
+  drake::yaml::YamlReadArchive(root).Accept(&result);
+
+  MatrixXd K = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      result.K.data(), result.rows, result.cols);
+
+  std::cout << K << std::endl;
 
   auto controller = builder.AddSystem<systems::JointLevelController>(
       plant, state_traj, input_traj, K);

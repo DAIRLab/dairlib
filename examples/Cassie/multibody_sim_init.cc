@@ -186,10 +186,6 @@ int do_main(int argc, char* argv[]) {
           lcm_state_traj.datapoints.bottomRows(nx));
   VectorXd x_init = state_traj.value(FLAGS_starting_time);
 
-  std::cout << "time vector" << lcm_state_traj.time_vector << std::endl;
-  std::cout << "time vector size" << lcm_state_traj.time_vector.size()
-            << std::endl;
-
   if (FLAGS_terrain_height < 0.0) {
     x_init(6) -= FLAGS_terrain_height;
   }

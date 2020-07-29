@@ -205,39 +205,48 @@ int DoMain() {
     }
   }
 
-  for (const auto& asy_pos_index : asy_pos_indices) {
-    VectorXd l_joint = x_w_spr_reflected.row(asy_pos_index.first);
-    x_w_spr_reflected.row(asy_pos_index.first) =
-        -x_w_spr_reflected.row(asy_pos_index.second);
-    x_w_spr_reflected.row(asy_pos_index.second) = -l_joint;
-  }
-  for (const auto& asy_vel_index : asy_vel_indices) {
-    int l_index = nq_w_spr + asy_vel_index.first;
-    int r_index = nq_w_spr + asy_vel_index.second;
-    VectorXd l_joint = x_w_spr_reflected.row(l_index);
-    x_w_spr_reflected.row(l_index) = -x_w_spr_reflected.row(r_index);
-    x_w_spr_reflected.row(r_index) = -l_joint;
-  }
-  for (const auto& sym_pos_index : sym_pos_indices) {
-    VectorXd l_joint = x_w_spr_reflected.row(sym_pos_index.first);
-    x_w_spr_reflected.row(sym_pos_index.first) =
-        x_w_spr_reflected.row(sym_pos_index.second);
-    x_w_spr_reflected.row(sym_pos_index.second) = l_joint;
-  }
-  for (const auto& sym_vel_index : sym_vel_indices) {
-    int l_index = nq_w_spr + sym_vel_index.first;
-    int r_index = nq_w_spr + sym_vel_index.second;
-    VectorXd l_joint = x_w_spr_reflected.row(l_index);
-    x_w_spr_reflected.row(l_index) = x_w_spr_reflected.row(r_index);
-    x_w_spr_reflected.row(r_index) = l_joint;
-  }
-  for (const auto& sym_u_index : sym_u_indices) {
-    u_w_spr_reflected.row(sym_u_index.first) = u_w_spr.row(sym_u_index.second);
-    u_w_spr_reflected.row(sym_u_index.second) = u_w_spr.row(sym_u_index.first);
-  }
-  for (const auto& asy_u_index : asy_u_indices) {
-    u_w_spr_reflected.row(asy_u_index.first) = -u_w_spr.row(asy_u_index.second);
-    u_w_spr_reflected.row(asy_u_index.second) = -u_w_spr.row(asy_u_index.first);
+  vector<int> offset_indices = {0, nx_w_spr};
+  for (const auto& offset_idx : offset_indices) {
+    for (const auto& asy_pos_index : asy_pos_indices) {
+      VectorXd l_joint =
+          x_w_spr_reflected.row(offset_idx + asy_pos_index.first);
+      x_w_spr_reflected.row(offset_idx + asy_pos_index.first) =
+          -x_w_spr_reflected.row(offset_idx + asy_pos_index.second);
+      x_w_spr_reflected.row(offset_idx + asy_pos_index.second) = -l_joint;
+    }
+    for (const auto& asy_vel_index : asy_vel_indices) {
+      int l_index = offset_idx + nq_w_spr + asy_vel_index.first;
+      int r_index = offset_idx + nq_w_spr + asy_vel_index.second;
+      VectorXd l_joint = x_w_spr_reflected.row(l_index);
+      x_w_spr_reflected.row(l_index) = -x_w_spr_reflected.row(r_index);
+      x_w_spr_reflected.row(r_index) = -l_joint;
+    }
+    for (const auto& sym_pos_index : sym_pos_indices) {
+      VectorXd l_joint =
+          x_w_spr_reflected.row(offset_idx + sym_pos_index.first);
+      x_w_spr_reflected.row(offset_idx + sym_pos_index.first) =
+          x_w_spr_reflected.row(offset_idx + sym_pos_index.second);
+      x_w_spr_reflected.row(offset_idx + sym_pos_index.second) = l_joint;
+    }
+    for (const auto& sym_vel_index : sym_vel_indices) {
+      int l_index = offset_idx + nq_w_spr + sym_vel_index.first;
+      int r_index = offset_idx + nq_w_spr + sym_vel_index.second;
+      VectorXd l_joint = x_w_spr_reflected.row(l_index);
+      x_w_spr_reflected.row(l_index) = x_w_spr_reflected.row(r_index);
+      x_w_spr_reflected.row(r_index) = l_joint;
+    }
+    for (const auto& sym_u_index : sym_u_indices) {
+      u_w_spr_reflected.row(sym_u_index.first) =
+          u_w_spr.row(sym_u_index.second);
+      u_w_spr_reflected.row(sym_u_index.second) =
+          u_w_spr.row(sym_u_index.first);
+    }
+    for (const auto& asy_u_index : asy_u_indices) {
+      u_w_spr_reflected.row(asy_u_index.first) =
+          -u_w_spr.row(asy_u_index.second);
+      u_w_spr_reflected.row(asy_u_index.second) =
+          -u_w_spr.row(asy_u_index.first);
+    }
   }
   //  std::cout << "x_w_spr" << x_w_spr << std::endl;
   //  std::cout << "x_w_spr reflected" << x_w_spr_reflected << std::endl;

@@ -22,6 +22,7 @@ def main():
   global t_end
   global t_slice
   global filename
+  global name
   matplotlib.rcParams["savefig.directory"] = \
     "/home/yangwill/Documents/research/projects/cassie/walking/analysis" \
     "/figures/"
@@ -51,7 +52,9 @@ def main():
 
   n_modes = 3
   folder_path = "/home/yangwill/Documents/research/projects/cassie/walking/saved_trajs/"
-  trajectory_name = "walking_0.5_processed"
+  trajectory_name_processed = "walking_0.5_processed"
+  trajectory_name_sim = "walking_0.5_for_sim"
+  state_mode_name = "state_trajectory"
   left_foot_mode_name = "left_foot_trajectory"
   right_foot_mode_name = "right_foot_trajectory"
   pelvis_rot_mode_name = "pelvis_rot_trajectory"
@@ -62,6 +65,7 @@ def main():
   #   = load_lcm_trajs(37, nu, n_modes, folder_path, trajectory_name, mode_name)
 
   filename = sys.argv[1]
+  name = filename.split("/")[-1]
   log = lcm.EventLog(filename, "r")
 
   x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
@@ -79,12 +83,11 @@ def main():
   # t_slice = slice(t_start_idx - 50, t_end_idx)
   t_slice = slice(0, t_x.shape[0])
 
-  # plt.plot(t_pd, kp)
-  plt.plot(t_pd, kd)
+
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal)
 
   lcm_trajectory = pydairlib.lcm_trajectory.LcmTrajectory()
-  lcm_trajectory.loadFromFile(folder_path + trajectory_name)
+  lcm_trajectory.loadFromFile(folder_path + trajectory_name_processed)
   l_foot_points = lcm_trajectory.getTrajectory(left_foot_mode_name).datapoints
   t_points_l_foot = lcm_trajectory.getTrajectory(left_foot_mode_name).time_vector
   l_foot_trajectory = PiecewisePolynomial.CubicHermite(t_points_l_foot, l_foot_points[:3], l_foot_points[3:6])
@@ -99,18 +102,57 @@ def main():
   # pelvis_rot_trajectory = PiecewisePolynomial.FirstOrderHold(t_points_pelvis_rot, pelvis_rot_points[:4])
   pelvis_rot_trajectory = PiecewisePolynomial.CubicHermite(t_points_pelvis_rot, pelvis_rot_points[:4],
                                                            pelvis_rot_points[-4:])
+  lcm_trajectory.loadFromFile(folder_path + trajectory_name_sim)
+  x_points = lcm_trajectory.getTrajectory(state_mode_name).datapoints
+  t_points = lcm_trajectory.getTrajectory(state_mode_name).time_vector
+  state_traj = PiecewisePolynomial.CubicHermite(t_points, x_points[:nx], x_points[-nx:])
+  # print(x_points[11, :24] - x_points[12, -24:])
+  # print(x_points[13, :24] - x_points[14, -24:])
+  # print(x_points[33, :24] - x_points[34, -24:])
+  # print(x_points[35, :24] - x_points[36, -24:])
+  # state_traj = PiecewisePolynomial.CubicHermite(t_points[:24], x_points[:nx, :24], x_points[-nx:, :24])
+  # state_traj_reflected = PiecewisePolynomial.CubicHermite(t_points[:24], x_points[:nx, -24:], x_points[-nx:, -24:])
+  # plot_nominal_trajectory(t_points, state_traj, x_datatypes)
+  # plot_nominal_trajectory(t_points, state_traj_reflected, x_datatypes)
+  #
+  # plt.show()
 
-  # plt.figure("Contact info")
+  plt.figure("points")
+  # plt.plot(t_points, x_points[:nq, :].T, '.')
+  plt.plot(t_points, x_points[11:15, :].T)
+  plt.plot(t_points, x_points[33:37, :].T)
+
+# plt.figure("Contact info")
   # plt.plot(t_contact_info, contact_info[0, :, 2])
   # plt.plot(t_contact_info, contact_info[1, :, 2])
   # plt.plot(t_contact_info, contact_info[2, :, 2])
   # plt.plot(t_contact_info, contact_info[3, :, 2])
   # plt.legend(["lfoot_rear", "lfoot_front", "rfoot_rear", "rfoot_front"])
-  # plot_nominal_output_trajectories(t_points_com, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
-  #                                  r_foot_trajectory)
+  plot_nominal_output_trajectories(t_points_com, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
+                                   r_foot_trajectory)
+  plot_nominal_trajectory(t_points, state_traj, x_datatypes)
   # plot_osc_debug(t_u, fsm, osc_debug)
   plt.show()
 
+def plot_nominal_trajectory(breaks, x_traj_nominal, x_datatypes):
+  pos_indices = slice(11, 15)
+  vel_indices = slice(33, 37)
+
+  t_sampled = np.linspace(0, breaks[-1], 1000)
+  x_points = []
+  for t in t_sampled:
+    x_points.append(x_traj_nominal.value(t)[:,0])
+
+  x_points = np.array(x_points)
+  plt.figure("Nominal generalized positions")
+  plt.plot(t_sampled, x_points[:, pos_indices])
+  plt.legend(x_datatypes[pos_indices])
+  plt.figure("positions: " + name)
+  plt.plot(t_sampled, x_points[:, pos_indices])
+  plt.legend(x_datatypes[pos_indices])
+  plt.figure("Nominal generalized velocities")
+  plt.plot(t_sampled, x_points[:, vel_indices])
+  plt.legend(x_datatypes[vel_indices])
 
 def plot_nominal_output_trajectories(t_points, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
                                      r_foot_trajectory):
@@ -131,7 +173,7 @@ def plot_nominal_output_trajectories(t_points, com_trajectory, pelvis_rot_trajec
   com = np.array(com)
   pelvis_rot = np.array(pelvis_rot)
 
-  plt.figure("Nominal Trajectories")
+  plt.figure("Nominal output-space trajectories")
   plt.plot(t_sampled, l_foot[:, :, 0])
   plt.plot(t_sampled, r_foot[:, :, 0])
   plt.plot(t_sampled, com[:, :, 0])
@@ -178,10 +220,10 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, estop_signal):
   #     jumps.append(t_x[i])
   # jumps = np.array(jumps)
   plt.figure("positions: " + name)
-  plt.plot(t_x[t_slice], x[t_slice, pos_indices], '.')
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: "+ name)
-  plt.plot(t_x[t_slice], x[t_slice, vel_indices], '.')
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
   # plt.figure("efforts: " + name)
   # plt.plot(t_u, u[:, u_indices], '.')

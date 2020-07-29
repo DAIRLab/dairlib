@@ -479,22 +479,23 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
 
 // OptimalRomTrackingData //////////////////////////////////////////////////////
 OptimalRomTrackingData::OptimalRomTrackingData(
-    const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
-    const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
-    const MultibodyPlant<double>* plant_wo_spr, const ReducedOrderModel& rom)
-    : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr, true),
+    const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
+    const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
+    const MultibodyPlant<double>& plant_wo_spr, const ReducedOrderModel& rom)
+    : OscTrackingData(name, rom.n_y(), rom.n_y(), K_p, K_d, W, plant_w_spr,
+                      plant_wo_spr, true),
       rom_(rom) {}
 
-void OptimalRomTrackingData::UpdateYAndError(const VectorXd& x_wo_spr,
-                                             Context<double>& context_wo_spr) {
-  y_ = rom_.EvalMappingFunc(x_wo_spr.head(plant_wo_spr_->num_positions()),
+void OptimalRomTrackingData::UpdateYAndError(
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
+  y_ = rom_.EvalMappingFunc(x_wo_spr.head(plant_wo_spr_.num_positions()),
                             context_wo_spr);
   error_y_ = y_des_ - y_;
 }
 void OptimalRomTrackingData::UpdateYdotAndError(
-    const VectorXd& x_wo_spr, Context<double>& context_wo_spr) {
-  ydot_ = rom_.EvalMappingFuncJV(x_wo_spr.head(plant_wo_spr_->num_positions()),
-                                 x_wo_spr.tail(plant_wo_spr_->num_velocities()),
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
+  ydot_ = rom_.EvalMappingFuncJV(x_wo_spr.head(plant_wo_spr_.num_positions()),
+                                 x_wo_spr.tail(plant_wo_spr_.num_velocities()),
                                  context_wo_spr);
   error_ydot_ = ydot_des_ - ydot_;
 }
@@ -502,18 +503,18 @@ void OptimalRomTrackingData::UpdateYddotDes() {
   yddot_des_converted_ = yddot_des_;
 }
 void OptimalRomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-                                     Context<double>& context_wo_spr) {
-  VectorXd q = x_wo_spr.head(plant_wo_spr_->num_positions());
+                                     const Context<double>& context_wo_spr) {
+  VectorXd q = x_wo_spr.head(plant_wo_spr_.num_positions());
   J_ = rom_.EvalMappingFuncJ(q, context_wo_spr);
 }
-void OptimalRomTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-                                         Context<double>& context_wo_spr) {
-  VectorXd q = x_wo_spr.head(plant_wo_spr_->num_positions());
-  VectorXd v = x_wo_spr.tail(plant_wo_spr_->num_velocities());
+void OptimalRomTrackingData::UpdateJdotV(
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
+  VectorXd q = x_wo_spr.head(plant_wo_spr_.num_positions());
+  VectorXd v = x_wo_spr.tail(plant_wo_spr_.num_velocities());
   JdotV_ = rom_.EvalMappingFuncJdotV(q, v, context_wo_spr);
 }
 void OptimalRomTrackingData::CheckDerivedOscTrackingData() {
-  DRAKE_DEMAND(GetTrajDim() == rom_.n_y());
+  DRAKE_DEMAND(GetYDim() == rom_.n_y());
 }
 
 }  // namespace dairlib::systems::controllers

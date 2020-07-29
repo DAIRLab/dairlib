@@ -210,8 +210,8 @@ void OperationalSpaceControl::Build() {
   CheckConstraintSettings();
   for (auto tracking_data : *tracking_data_vec_) {
     tracking_data->CheckOscTrackingData();
-    DRAKE_DEMAND(tracking_data->plant_w_spr() == &plant_w_spr_);
-    DRAKE_DEMAND(tracking_data->plant_wo_spr() == &plant_wo_spr_);
+    DRAKE_DEMAND(&tracking_data->plant_w_spr() == &plant_w_spr_);
+    DRAKE_DEMAND(&tracking_data->plant_wo_spr() == &plant_wo_spr_);
   }
 
   // Construct QP

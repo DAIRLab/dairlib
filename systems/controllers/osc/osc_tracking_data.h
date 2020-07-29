@@ -423,23 +423,24 @@ class JointSpaceTrackingData final : public OscTrackingData {
 class OptimalRomTrackingData final : public OscTrackingData {
  public:
   OptimalRomTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
       const goldilocks_models::ReducedOrderModel& rom);
 
  private:
-  void UpdateYAndError(const Eigen::VectorXd& x_wo_spr,
-                       drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYAndError(
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateYdotAndError(
       const Eigen::VectorXd& x_wo_spr,
-      drake::systems::Context<double>& context_wo_spr) final;
+      const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   const drake::systems::Context<double>& context_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 

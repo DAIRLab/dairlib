@@ -208,15 +208,15 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
-  ComTrackingData center_of_mass_traj("com_traj", 3, K_p_com, K_d_com,
+  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
                                       W_com * FLAGS_cost_weight_multiplier,
-                                      &plant_w_springs, &plant_wo_springs);
+                                      plant_w_springs, plant_wo_springs);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   RotTaskSpaceTrackingData pelvis_rot_traj(
-      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis,
-      W_pelvis * FLAGS_cost_weight_multiplier, &plant_w_springs,
-      &plant_wo_springs);
+      "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
+      W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
+      plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;

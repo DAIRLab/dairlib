@@ -144,7 +144,7 @@ class VisualizationGui(QWidget):
             self.context = self.plant.CreateDefaultContext()
 
         # start listenning to the main state LCM messages
-        lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
+        lcmUtils.addSubscriber(self.data['channelName'], messageClass=dairlib.lcmt_robot_output, callback=self.state_handler)
 
         # add more LCM subscriptions depending on the number of "lcm" data
         for name in self.lcmObjects:
@@ -256,6 +256,9 @@ class VisualizationGui(QWidget):
             else:
                 next_loc = [attribute[x], attribute[x+1], attribute[x+2]]
                 self.drawShape(self.shapes[name], next_loc, msg)
+        else:
+            print(lcmMessage.index_element + "is not present in " + lcmMessage.index_field + " and so it cannot be visualized")
+            print("")
 
     def getVector(self, attribute, path):
         '''
@@ -273,8 +276,8 @@ class VisualizationGui(QWidget):
             attName = None
 
             if regExpr.match(part) is not None:
-                index = part[len(part) - 2]
-                attName = part[0:len(part) - 3:1]
+                index = part.split("[")[1].split("]")[0]
+                attName = part.split("[")[0]
                 newAtribute = getattr(newAtribute, attName)[int(index)]
             else:
                 index = None

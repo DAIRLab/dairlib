@@ -1,7 +1,6 @@
 {
   "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
   "channelName": "CASSIE_STATE_SIMULATION",
-  "channel_type":"dairlib.lcmt_robot_output",
   "data": [
             {"name": "toe_point",
              "source_data" : {"category":"kinematic",

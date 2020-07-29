@@ -8,9 +8,7 @@ visualization of data during a simulation:
              robot/plant. If this property does not exist then the "WeldFrames()"
              function will not be called
 
-"channel_name": Name of the LCM channel containing state information as lcmt_robot_output.
-
-"channel_type": Type/Class of message from main channel
+"channel_name": Name of the LCM channel containing state information as lcmt_robot_output
 
 "data": This will be a list of all the different shapes/objects that
         the user wants to be displayed. Each shape is a separate JSON object

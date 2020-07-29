@@ -301,9 +301,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj("cp_traj", 3, K_p_sw_ft, K_d_sw_ft,
-                                             W_swing_foot, &plant_w_springs,
-                                             &plant_wo_springs);
+  TransTaskSpaceTrackingData swing_foot_traj("cp_traj", K_p_sw_ft, K_d_sw_ft,
+                                             W_swing_foot, plant_w_springs,
+                                             plant_wo_springs);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
@@ -314,8 +314,8 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  ComTrackingData center_of_mass_traj("lipm_traj", 3, K_p_com, K_d_com, W_com,
-                                      &plant_w_springs, &plant_wo_springs);
+  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
+                                      plant_w_springs, plant_wo_springs);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
@@ -331,8 +331,8 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
   K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj(
-      "pelvis_balance_traj", 3, K_p_pelvis_balance, K_d_pelvis_balance,
-      W_pelvis_balance, &plant_w_springs, &plant_wo_springs);
+      "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
+      W_pelvis_balance, plant_w_springs, plant_wo_springs);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
@@ -346,8 +346,8 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
   K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj(
-      "pelvis_heading_traj", 3, K_p_pelvis_heading, K_d_pelvis_heading,
-      W_pelvis_heading, &plant_w_springs, &plant_wo_springs);
+      "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
+      W_pelvis_heading, plant_w_springs, plant_wo_springs);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
@@ -358,7 +358,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe,
-                                        &plant_w_springs, &plant_wo_springs);
+                                        plant_w_springs, plant_wo_springs);
   swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
@@ -370,7 +370,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_hip_yaw_traj(
       "swing_hip_yaw_traj", K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw,
-      &plant_w_springs, &plant_wo_springs);
+      plant_w_springs, plant_wo_springs);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",

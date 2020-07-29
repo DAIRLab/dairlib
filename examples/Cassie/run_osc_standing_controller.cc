@@ -169,9 +169,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_com = xy_scale * MatrixXd::Identity(3, 3);
   K_p_com(2, 2) = 10;
   K_d_com(2, 2) = 10;
-  ComTrackingData center_of_mass_traj("com_traj", 3, K_p_com, K_d_com,
+  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
                                       W_com * FLAGS_cost_weight_multiplier,
-                                      &plant_w_springs, &plant_wo_springs);
+                                      plant_w_springs, plant_wo_springs);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   double w_pelvis_balance = 200;
@@ -193,9 +193,9 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj(
-      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis,
-      W_pelvis * FLAGS_cost_weight_multiplier, &plant_w_springs,
-      &plant_wo_springs);
+      "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
+      W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
+      plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;

@@ -1,6 +1,7 @@
 #include "systems/controllers/lipm_traj_gen.h"
 
 #include <math.h>
+
 #include <string>
 
 using std::cout;
@@ -28,13 +29,14 @@ namespace dairlib {
 namespace systems {
 
 LIPMTrajGenerator::LIPMTrajGenerator(
-    const MultibodyPlant<double>& plant, double desired_com_height,
-    const vector<int>& unordered_fsm_states,
+    const MultibodyPlant<double>& plant, Context<double>& context,
+    double desired_com_height, const vector<int>& unordered_fsm_states,
     const vector<double>& unordered_state_durations,
-    const vector<vector<std::pair<
-        const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
+    const vector<vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>>&
         contact_points_in_each_state)
     : plant_(plant),
+      context_(context),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
@@ -70,9 +72,6 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   prev_td_time_idx_ = this->DeclareDiscreteState(1);
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
-
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
@@ -142,13 +141,13 @@ void LIPMTrajGenerator::CalcTraj(
   }
 
   VectorXd q = robot_output->GetPositions();
-  plant_.SetPositions(context_.get(), q);
+  plant_.SetPositions(&context_, q);
 
   // Get center of mass position and velocity
-  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d CoM = plant_.CalcCenterOfMassPosition(context_);
   MatrixXd J(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      *context_, JacobianWrtVariable::kV, world_, world_, &J);
+      context_, JacobianWrtVariable::kV, world_, world_, &J);
   Vector3d dCoM = J * v;
 
   // Stance foot position (Forward Kinematics)
@@ -158,7 +157,7 @@ void LIPMTrajGenerator::CalcTraj(
        j++) {
     Vector3d position;
     plant_.CalcPointsPositions(
-        *context_, contact_points_in_each_state_[mode_index][j].second,
+        context_, contact_points_in_each_state_[mode_index][j].second,
         contact_points_in_each_state_[mode_index][j].first, world_, &position);
     stance_foot_pos += position;
   }
@@ -176,8 +175,7 @@ void LIPMTrajGenerator::CalcTraj(
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   // Note that the start time in T_waypoint_com is also used by
   // ExponentialPlusPiecewisePolynomial.
-  vector<double> T_waypoint_com = {current_time,
-                                        end_time_of_this_fsm_state};
+  vector<double> T_waypoint_com = {current_time, end_time_of_this_fsm_state};
 
   vector<MatrixXd> Y(T_waypoint_com.size(), MatrixXd::Zero(3, 1));
   Y[0](0, 0) = stance_foot_pos(0);

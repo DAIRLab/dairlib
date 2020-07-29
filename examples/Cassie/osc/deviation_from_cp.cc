@@ -30,8 +30,10 @@ namespace cassie {
 namespace osc {
 
 DeviationFromCapturePoint::DeviationFromCapturePoint(
-    const drake::multibody::MultibodyPlant<double>& plant)
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>& context)
     : plant_(plant),
+    context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   // Input/Output Setup
@@ -44,8 +46,6 @@ DeviationFromCapturePoint::DeviationFromCapturePoint(
   this->DeclareVectorOutputPort(BasicVector<double>(2),
                                 &DeviationFromCapturePoint::CalcFootPlacement);
 
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 void DeviationFromCapturePoint::CalcFootPlacement(
@@ -61,12 +61,12 @@ void DeviationFromCapturePoint::CalcFootPlacement(
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
 
-  plant_.SetPositions(context_.get(), q);
+  plant_.SetPositions(&context_, q);
 
   // Get center of mass position and velocity
   MatrixXd J(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      *context_, JacobianWrtVariable::kV, world_, world_, &J);
+      context_, JacobianWrtVariable::kV, world_, world_, &J);
   Vector3d com_vel = J * v;
 
   // Extract quaternion from floating base position

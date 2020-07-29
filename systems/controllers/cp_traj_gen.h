@@ -44,6 +44,7 @@ namespace systems {
 class CPTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   CPTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                  drake::systems::Context<double>& context,
                   std::vector<int> left_right_support_fsm_states,
                   std::vector<double> left_right_support_durations,
                   std::vector<std::pair<const Eigen::Vector3d,
@@ -99,6 +100,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   int prev_fsm_state_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>& context_;
   std::vector<int> left_right_support_fsm_states_;
   double mid_foot_height_;
   double desired_final_foot_height_;
@@ -106,11 +108,10 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   double max_CoM_to_CP_dist_;
   bool add_extra_control_;
   bool is_feet_collision_avoid_;
-  bool is_using_predicted_com_;
 
+  bool is_using_predicted_com_;
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
 
   // Parameters
   const double cp_offset_;           // in meters

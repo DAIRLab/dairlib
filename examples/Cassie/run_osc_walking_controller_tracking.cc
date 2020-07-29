@@ -271,8 +271,8 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 20;
   MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
-  ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
-                                    &plant_w_springs, &plant_wo_springs);
+  ComTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
+                                    plant_w_springs, plant_wo_springs);
   for (auto mode : all_modes) {
     com_tracking_data.AddStateToTrack(mode);
   }
@@ -286,11 +286,11 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_sw_ft = 12 * MatrixXd::Identity(3, 3);
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_w_springs,
-      &plant_wo_springs);
+      "l_foot_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_springs,
+      plant_wo_springs);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_w_springs,
-      &plant_wo_springs);
+      "r_foot_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_springs,
+      plant_wo_springs);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_walk::LEFT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(osc_walk::RIGHT,
                                                    "toe_right");
@@ -309,8 +309,8 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis, W_pelvis, &plant_w_springs,
-      &plant_wo_springs);
+      "pelvis_rot_traj", K_p_pelvis, K_d_pelvis, W_pelvis, plant_w_springs,
+      plant_wo_springs);
 
   for (auto mode : all_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
@@ -327,7 +327,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe,
-                                        &plant_w_springs, &plant_wo_springs);
+                                        plant_w_springs, plant_wo_springs);
   swing_toe_traj.AddStateAndJointToTrack(osc_walk::LEFT, "toe_right",
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(osc_walk::RIGHT, "toe_left",

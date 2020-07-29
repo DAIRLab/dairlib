@@ -21,6 +21,9 @@ def main():
   global t_end
   global t_slice
   global filename
+  global nq
+  global nv
+  global nx
   matplotlib.rcParams["savefig.directory"] = \
     "/home/yangwill/Documents/research/projects/cassie/walking/analysis" \
     "/figures/"
@@ -64,43 +67,61 @@ def main():
   log = lcm.EventLog(filename, "r")
 
   x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
-  switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out = process_lcm_log.process_log(log, pos_map, vel_map)
+  switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+  osc_output  = process_lcm_log.process_log(log, pos_map, vel_map)
 
   # import pdb; pdb.set_trace()
-  knee_pos = np.zeros(len(cassie_out))
-  cassie_out_t = np.zeros(len(cassie_out))
-  estop_signal = np.zeros(len(cassie_out))
-  for i in range(len(cassie_out)):
-    knee_pos[i] = cassie_out[i].leftLeg.hipPitchDrive.velocity
-    cassie_out_t[i] = cassie_out[i].utime / 1e6
+  n_msgs = len(cassie_out)
+  knee_pos = np.zeros(n_msgs)
+  t_cassie_out = np.zeros(n_msgs)
+  estop_signal = np.zeros(n_msgs)
+  # motor_torques = np.zeros((n_msgs, nu))
+  motor_torques = np.zeros(n_msgs)
+  for i in range(n_msgs):
+    # knee_pos[i] = cassie_out[i].leftLeg.kneeDrive.velocity
+    t_cassie_out[i] = cassie_out[i].utime / 1e6
+    motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
     estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
-  # plt.plot(cassie_out_t / 1e6, knee_pos, '.')
+
+  plt.figure("Delay characterization")
+  # import pdb; pdb.set_trace()
+  plt.plot(t_cassie_out, motor_torques, 'b')
+  # plt.plot(t_u, u[:, 5], 'r.')
+  plt.plot(t_u_pd, u_pd[:, 7], 'g')
+  # plt.plot(t_controller_switch, switch_signal, '*')
+  plt.legend(["Motor torque", "Commanded Torque PD"])
+  # plt.plot(t_cassie_out / 1e6, knee_pos, '.')
   # t_start_idx = np.argwhere(np.max(np.abs(u), 1) > 5)[0][0]
   # t_end_idx = np.argwhere(t_x > t_x[t_start_idx] + 3.0)[0][0]
   # t_slice = slice(t_start_idx - 50, t_end_idx)
   t_slice = slice(0, t_x.shape[0])
 
+  # plt.figure("Efforts difference")
+  # plt.plot(t_u_pd, u_pd, 'b')
   # plt.plot(t_pd, kp)
   # plt.plot(t_pd, kd)
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
-  lcm_trajectory = pydairlib.lcm_trajectory.LcmTrajectory()
-  lcm_trajectory.loadFromFile(folder_path + trajectory_name)
-  l_foot_points = lcm_trajectory.getTrajectory(left_foot_mode_name).datapoints
-  t_points_l_foot = lcm_trajectory.getTrajectory(left_foot_mode_name).time_vector
-  l_foot_trajectory = PiecewisePolynomial.CubicHermite(t_points_l_foot, l_foot_points[:3], l_foot_points[3:6])
-  r_foot_points = lcm_trajectory.getTrajectory(right_foot_mode_name).datapoints
-  t_points_r_foot = lcm_trajectory.getTrajectory(right_foot_mode_name).time_vector
-  r_foot_trajectory = PiecewisePolynomial.CubicHermite(t_points_r_foot, r_foot_points[:3], r_foot_points[3:6])
-  com_points = lcm_trajectory.getTrajectory(com_mode_name).datapoints
-  t_points_com = lcm_trajectory.getTrajectory(com_mode_name).time_vector
-  com_trajectory = PiecewisePolynomial.CubicHermite(t_points_com, com_points[:3], com_points[3:6])
-  pelvis_rot_points = lcm_trajectory.getTrajectory(pelvis_rot_mode_name).datapoints
-  t_points_pelvis_rot = lcm_trajectory.getTrajectory(pelvis_rot_mode_name).time_vector
-  # pelvis_rot_trajectory = PiecewisePolynomial.FirstOrderHold(t_points_pelvis_rot, pelvis_rot_points[:4])
-  pelvis_rot_trajectory = PiecewisePolynomial.CubicHermite(t_points_pelvis_rot, pelvis_rot_points[:4],
-                                                           pelvis_rot_points[-4:])
+  l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
+  r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
+  world = plant.world_frame()
+  context = plant.CreateDefaultContext()
 
+  front_contact_disp = np.array((-0.0457, 0.112, 0))
+  rear_contact_disp = np.array((0.088, 0, 0))
+  if True:
+    plot_feet_positions(plant, context, x, l_toe_frame,
+                         front_contact_disp,
+                         world, t_x, t_slice, "left_", "_front")
+    plot_feet_positions(plant, context, x, r_toe_frame,
+                         front_contact_disp,
+                         world, t_x, t_slice, "right_", "_front")
+    plot_feet_positions(plant, context, x, l_toe_frame,
+                         rear_contact_disp,
+                         world, t_x, t_slice, "left_", "_rear")
+    plot_feet_positions(plant, context, x, r_toe_frame,
+                         rear_contact_disp,
+                         world, t_x, t_slice, "right_", "_rear")
   # plt.figure("Contact info")
   # plt.plot(t_contact_info, contact_info[0, :, 2])
   # plt.plot(t_contact_info, contact_info[1, :, 2])
@@ -109,7 +130,7 @@ def main():
   # plt.legend(["lfoot_rear", "lfoot_front", "rfoot_rear", "rfoot_front"])
   # plot_nominal_output_trajectories(t_points_com, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
   #                                  r_foot_trajectory)
-  plot_osc_debug(t_u, fsm, osc_debug, cassie_out_t, estop_signal)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
 
 
@@ -139,8 +160,29 @@ def plot_nominal_output_trajectories(t_points, com_trajectory, pelvis_rot_trajec
   plt.plot(t_sampled, pelvis_rot[:, :, 0])
 
 
-def plot_osc_debug(t_u, fsm, osc_debug, cassie_out_t, estop_signal):
-  fig = plt.figure("OSC debug")
+
+def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
+
+  input_cost = np.zeros(t_u.shape[0])
+  acceleration_cost = np.zeros(t_u.shape[0])
+  soft_constraint_cost = np.zeros(t_u.shape[0])
+  tracking_cost = np.zeros((t_u.shape[0], len(osc_debug)))
+  import pdb; pdb.set_trace()
+  for i in range(t_u.shape[0] - 1):
+    input_cost[i] = osc_output[i].input_cost
+    acceleration_cost[i] = osc_output[i].acceleration_cost
+    soft_constraint_cost[i] = osc_output[i].soft_constraint_cost
+    tracking_cost[i] = np.array(osc_output[i].tracking_cost)
+
+  plt.figure("costs")
+  plt.plot(t_u, input_cost)
+  plt.plot(t_u, acceleration_cost)
+  plt.plot(t_u, soft_constraint_cost)
+  plt.plot(t_u, tracking_cost)
+  plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost',
+              'tracking_cost 0', 'tracking_cost 1'])
+
+  # fig = plt.figure("OSC debug")
   # plt.plot(t_osc_debug, osc_debug[0].y_des)
   fig = plt.figure("COM_x errors: ")
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des[:, 0])
@@ -148,7 +190,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, cassie_out_t, estop_signal):
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol[:, 0])
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y[:, 0])
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_ydot[:, 0])
-  plt.plot(cassie_out_t, estop_signal, 'k-')
+  plt.plot(t_cassie_out, estop_signal, 'k-')
   plt.legend(["error y", "error ydot", "estop signal"])
   # fig = plt.figure("COM accel y: ")
   fig = plt.figure("COM_y errors: ")
@@ -158,20 +200,28 @@ def plot_osc_debug(t_u, fsm, osc_debug, cassie_out_t, estop_signal):
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y[:, 1])
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_ydot[:, 1])
   plt.legend(["error y", "error ydot", "estop signal"])
-  plt.plot(cassie_out_t, estop_signal, 'k-')
+  plt.plot(t_cassie_out, estop_signal, 'k-')
   fig = plt.figure("COM accel z: ")
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des[:, 2])
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command[:, 2])
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol[:, 2])
-  plt.plot(cassie_out_t, estop_signal, 'k-')
+  plt.plot(t_cassie_out, estop_signal, 'k-')
   plt.legend(["yddot des", "yddot command", "yddot command sol", "estop signal"])
   fig = plt.figure("COM positions")
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y_des)
   plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y)
   plt.legend(["x_desired", "y_desired", "z_desired", "x_actual", "y_actual", "z_actual"])
+  fig = plt.figure("COM velocities")
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].ydot_des)
+  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].ydot)
+  plt.legend(["xdot_desired", "ydot_desired", "zdot_desired", "xdot_actual", "ydot_actual", "zdot_actual"])
   fig = plt.figure("Pelvis Tracking")
   plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].ydot_des)
   plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].ydot)
+  fig = plt.figure("Pelvis Tracking Quaternoin")
+  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y_des)
+  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y)
+
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
   # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des)
@@ -192,15 +242,38 @@ def plot_osc_debug(t_u, fsm, osc_debug, cassie_out_t, estop_signal):
   # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].y)
   # plt.plot(osc_debug["l_foot_traj"].t, osc_debug["l_foot_traj"].error_y)
   # plt.plot(t_u, fsm, 'k--')
-  plt.legend(["0", "1", "2", "3", "4", "5", "6"])
+  plt.legend(["w", "x", "y", "z", "w", "x", "y", 'z'])
+
+
+def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
+                         t_x, t_x_slice, foot_type, contact_type):
+  foot_x = np.zeros((6, t_x.size))
+  for i in range(t_x.size):
+    # x = np.hstack((q[i, :], v[i, :]))
+    plant.SetPositionsAndVelocities(context, x[i, :])
+    foot_x[0:3, [i]] = plant.CalcPointsPositions(context, toe_frame,
+                                                 contact_point, world)
+    foot_x[3:6, i] = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, toe_frame, contact_point,
+      world,
+      world) @ x[i, -nv:]
+  fig = plt.figure('foot pos: ' + filename)
+  state_indices = slice(2, 3)
+  # state_indices = slice(5, 6)
+  state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
+  state_names = [foot_type + name for name in state_names]
+  state_names = [name + contact_type for name in state_names]
+  plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
+           label=state_names[state_indices])
+  plt.legend()
 
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
 
   name = filename.split("/")[-1]
-  pos_indices = slice(14, 15)
-  vel_indices = slice(36, 37)
-  u_indices = slice(7, 8)
+  pos_indices = slice(13, 15)
+  vel_indices = slice(35, 37)
+  u_indices = slice(6, 8)
   # threshold = 1e-2
   # jumps = []
   # for i in range(x.shape[0] - 1):
@@ -208,13 +281,13 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   #     jumps.append(t_x[i])
   # jumps = np.array(jumps)
   plt.figure("positions: " + name)
-  plt.plot(t_x[t_slice], x[t_slice, pos_indices], '.')
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: "+ name)
-  plt.plot(t_x[t_slice], x[t_slice, vel_indices], '.')
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
   plt.figure("efforts: " + name)
-  plt.plot(t_u, u[:, u_indices], '.')
+  plt.plot(t_u, u[:, u_indices])
   plt.legend(u_datatypes[u_indices])
   # plt.show()
 

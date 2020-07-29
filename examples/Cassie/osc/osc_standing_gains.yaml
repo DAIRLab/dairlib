@@ -9,16 +9,16 @@
 rows: 3
 cols: 3
 w_input: 0
-w_accel:  0
-w_soft_constraint: 0
+w_accel:  0.01
+w_soft_constraint: 20000
 CoMKp:
   [22, 0, 0,
    0, 22, 0,
    0, 0, 10]
 CoMKd:
-  [1, 0, 0,
-   0, 1, 0,
-   0, 0, 10]
+  [2,   0,   0,
+     0, 0.5,   0,
+     0,   0, 0.5]
 PelvisRotKp:
   [20, 0, 0,
    0, 20, 0,

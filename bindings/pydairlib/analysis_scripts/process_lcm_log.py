@@ -2,7 +2,6 @@ import dairlib
 import drake
 import numpy as np
 
-
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 class lcmt_osc_tracking_data_t:
   def __init__(self):
@@ -65,6 +64,9 @@ def process_log(log, pos_map, vel_map):
   contact_forces = [[], [], [], []]  # Allocate space for all 4 point contacts
   contact_info_locs = [[], [], [], []]
   cassie_out = []  # Cassie out types
+  osc_output = []
+  u_pd = []
+  t_u_pd = []
 
   for event in log:
     if event.channel == "CASSIE_STATE_SIMULATION" or event.channel == "CASSIE_STATE_DISPATCHER":
@@ -83,6 +85,10 @@ def process_log(log, pos_map, vel_map):
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_u.append(msg.utime / 1e6)
+    if event.channel == "PD_CONTROL":
+      msg = dairlib.lcmt_robot_input.decode(event.data)
+      u_pd.append(msg.efforts)
+      t_u_pd.append(msg.utime / 1e6)
     if event.channel == "INPUT_SWITCH":
       msg = dairlib.lcmt_controller_switch.decode(event.data)
       switch_signal.append(msg.channel == "OSC_STANDING")
@@ -97,6 +103,7 @@ def process_log(log, pos_map, vel_map):
       cassie_out.append(msg)
     if event.channel == "OSC_DEBUG":
       msg = dairlib.lcmt_osc_output.decode(event.data)
+      osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)
       for i in range(num_osc_tracking_data):
         if msg.tracking_data[i].name not in osc_debug:
@@ -145,6 +152,7 @@ def process_log(log, pos_map, vel_map):
   q = np.array(q)
   v = np.array(v)
   u = np.array(u)
+  u_pd = np.array(u_pd)
   kp = np.array(kp)
   kd = np.array(kd)
   estop_signal = np.array(estop_signal)
@@ -168,4 +176,5 @@ def process_log(log, pos_map, vel_map):
   x = np.hstack((q, v)) # combine into state vector
 
   return x, t_x, u, t_u, contact_forces, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
-         switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out
+         switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
+         t_u_pd, osc_output

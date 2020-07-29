@@ -11,7 +11,6 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
-//#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -60,6 +59,9 @@ DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml", "Fi
 struct OSCStandingGains {
   int rows;
   int cols;
+  double w_input;
+  double w_accel;
+  double w_soft_constraint;
   std::vector<double> CoMKp;
   std::vector<double> CoMKd;
   std::vector<double> PelvisRotKp;
@@ -72,6 +74,9 @@ struct OSCStandingGains {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
+    a->Visit(DRAKE_NVP(w_input));
+    a->Visit(DRAKE_NVP(w_accel));
+    a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(CoMKp));
     a->Visit(DRAKE_NVP(CoMKd));
     a->Visit(DRAKE_NVP(PelvisRotKp));
@@ -109,29 +114,29 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-  OSCStandingGains result;
+  OSCStandingGains gains;
   const YAML::Node& root =
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
-  drake::yaml::YamlReadArchive(root).Accept(&result);
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   MatrixXd K_p_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      result.CoMKp.data(), result.rows, result.cols);
+      gains.CoMKp.data(), gains.rows, gains.cols);
   MatrixXd K_d_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      result.CoMKd.data(), result.rows, result.cols);
+      gains.CoMKd.data(), gains.rows, gains.cols);
   MatrixXd K_p_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      result.PelvisRotKp.data(), result.rows, result.cols);
+      gains.PelvisRotKp.data(), gains.rows, gains.cols);
   MatrixXd K_d_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      result.PelvisRotKd.data(), result.rows, result.cols);
+      gains.PelvisRotKd.data(), gains.rows, gains.cols);
  MatrixXd W_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      result.CoMW.data(), result.rows, result.cols);
+     gains.CoMW.data(), gains.rows, gains.cols);
   MatrixXd W_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      result.PelvisW.data(), result.rows, result.cols);
+      gains.PelvisW.data(), gains.rows, gains.cols);
   std::cout << "COM Kp: \n" << K_p_com << std::endl;
   std::cout << "COM Kd: \n" << K_d_com << std::endl;
   std::cout << "Pelvis Rot Kp: \n" << K_p_pelvis << std::endl;
@@ -180,7 +185,7 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // We don't want w_contact_relax to be too big, cause we want tracking
   // error to be important
-  double w_contact_relax = 20000;
+  double w_contact_relax = gains.w_soft_constraint;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
   // Friction coefficient
   double mu = 0.8;
@@ -204,7 +209,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddContactPoint(&right_heel_evaluator);
   // Cost
   int n_v = plant_wo_springs.num_velocities();
-  MatrixXd Q_accel = 0.01 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing

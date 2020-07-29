@@ -8,6 +8,9 @@
 
 rows: 3
 cols: 3
+w_input: 0
+w_accel:  0
+w_soft_constraint: 0
 CoMKp:
   [22, 0, 0,
    0, 22, 0,

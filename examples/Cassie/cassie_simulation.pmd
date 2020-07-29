@@ -43,7 +43,7 @@ group "2.drake-simulator" {
         host = "localhost";
     }
     cmd "1.simulator for OSC controller" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=.85";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
         host = "localhost";
     }
 }

@@ -8,4 +8,9 @@ struct lcmt_osc_output
 
   lcmt_osc_tracking_data tracking_data[num_tracking_data];
   string tracking_data_names[num_tracking_data];
+
+  double input_cost;
+  double acceleration_cost;
+  double soft_constraint_cost;
+  double tracking_cost [num_tracking_data];
 }

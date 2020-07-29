@@ -11,7 +11,7 @@ iteration_start = 1
 iteration_end = 35
 iteration_spacing = 1
 name_idx = 0
-batch = 0
+sample = 0
 robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 if len(sys.argv) >= 2:
     iteration_start = int(sys.argv[1])
@@ -22,7 +22,7 @@ if len(sys.argv) >= 4:
 if len(sys.argv) >= 5:
     name_idx = int(sys.argv[4])
 if len(sys.argv) >= 6:
-    batch = int(sys.argv[5])
+    sample = int(sys.argv[5])
 if len(sys.argv) >= 7:
     robot_option = int(sys.argv[6])
 
@@ -38,8 +38,8 @@ name = name_list[name_idx]
 max_list = []
 min_list = []
 for iteration in range(iteration_start,iteration_end+1):
-    if os.path.isfile(directory+str(iteration)+'_'+str(batch)+'_t_and_'+name+'.csv'):
-        matrix = np.genfromtxt (directory+str(iteration)+'_'+str(batch)+'_t_and_'+name+'.csv', delimiter=",")
+    if os.path.isfile(directory+str(iteration)+'_'+str(sample)+'_t_and_'+name+'.csv'):
+        matrix = np.genfromtxt (directory+str(iteration)+'_'+str(sample)+'_t_and_'+name+'.csv', delimiter=",")
         n_rows = (matrix.shape)[0]
 
         for index in range(1,n_rows):
@@ -54,8 +54,8 @@ fig = plt.figure(1)
 
 for iteration in range(iteration_start,iteration_end+1,iteration_spacing):
     ax = fig.gca()
-    if os.path.isfile(directory+str(iteration)+'_'+str(batch)+'_t_and_'+name+'.csv'):
-        matrix = np.genfromtxt (directory+str(iteration)+'_'+str(batch)+'_t_and_'+name+'.csv', delimiter=",")
+    if os.path.isfile(directory+str(iteration)+'_'+str(sample)+'_t_and_'+name+'.csv'):
+        matrix = np.genfromtxt (directory+str(iteration)+'_'+str(sample)+'_t_and_'+name+'.csv', delimiter=",")
         n_rows = (matrix.shape)[0]
 
         for index in range(1,n_rows):
@@ -66,8 +66,8 @@ for iteration in range(iteration_start,iteration_end+1,iteration_spacing):
             ax.tick_params(axis='y', labelsize=15)
 
     cost = []
-    if os.path.isfile(directory+str(iteration)+'_'+str(batch)+'_c.csv'):
-        matrix = np.genfromtxt (directory+str(iteration)+'_'+str(batch)+'_c.csv', delimiter=",")
+    if os.path.isfile(directory+str(iteration)+'_'+str(sample)+'_c.csv'):
+        matrix = np.genfromtxt (directory+str(iteration)+'_'+str(sample)+'_c.csv', delimiter=",")
         cost.append(matrix)
 
     plt.xlabel('t (seconds)', fontsize=15)

@@ -382,7 +382,14 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   cout << "(sample_idx, n_rerun, N_rerun, is_success) = (" << sample_idx << ", "
        << n_rerun << ", " << N_rerun << ", " << result.is_success() << ")\n";
   if (n_rerun > N_rerun) {
-    if (!result.is_success()) {
+    if ((cost_threshold_for_update ==
+         std::numeric_limits<double>::infinity()) &&
+        (to_string(solution_result) == "IterationLimit")) {
+      // Do nothing. Continue to store the result
+      cout << "#" << sample_idx
+           << " hit iteration limit, and hasn't found a solution in this "
+              "iteration yet. Will continue solving\n";
+    } else if (!result.is_success()) {
       cout << "the rerun of idx #" << sample_idx
            << " was not successful, skip\n";
       return;
@@ -398,6 +405,8 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   VectorXd is_success(1);
   if (result.is_success())
     is_success << 1;
+  else if (to_string(solution_result) == "IterationLimit")
+    is_success << 0.5;
   else
     is_success << 0;
   writeCSV(directory + prefix + string("is_success.csv"), is_success);

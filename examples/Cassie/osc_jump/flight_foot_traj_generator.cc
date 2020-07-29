@@ -30,10 +30,11 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::osc_jump {
 
 FlightFootTrajGenerator::FlightFootTrajGenerator(
-    const MultibodyPlant<double>& plant, const string& hip_name,
-    bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj,
-    double time_offset)
+    const MultibodyPlant<double>& plant, Context<double>& context,
+    const string& hip_name, bool isLeftFoot,
+    const PiecewisePolynomial<double>& foot_traj, double time_offset)
     : plant_(plant),
+      context_(context),
       world_(plant.world_frame()),
       hip_frame_(plant.GetFrameByName(hip_name)),
       foot_traj_(foot_traj) {
@@ -68,14 +69,13 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
   foot positions as a function of COM.
 */
 PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
-    const drake::systems::Context<double>& context, const VectorXd& x,
-    double t) const {
+    const VectorXd& x, double t) const {
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
-  auto plant_context = createContext(plant_, x, zero_input);
+  plant_.SetPositionsAndVelocities(&context_, x);
 
   Vector3d zero_offset = Vector3d::Zero();
   Vector3d hip_pos = Vector3d::Zero();
-  plant_.CalcPointsPositions(*plant_context, hip_frame_, zero_offset, world_,
+  plant_.CalcPointsPositions(context_, hip_frame_, zero_offset, world_,
                              &hip_pos);
 
   const PiecewisePolynomial<double>& foot_traj_segment =
@@ -110,7 +110,7 @@ void FlightFootTrajGenerator::CalcTraj(
           traj);
   if (fsm_state[0] == FLIGHT) {
     *casted_traj =
-        generateFlightTraj(context, robot_output->GetState(), timestamp);
+        generateFlightTraj(robot_output->GetState(), timestamp);
   }
 }
 

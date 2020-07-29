@@ -102,6 +102,8 @@ int DoMain(int argc, char* argv[]) {
   plant_w_springs.Finalize();
   plant_wo_springs.Finalize();
 
+  auto context = plant_w_springs.CreateDefaultContext();
+
   int nq = plant_wo_springs.num_positions();
   int nv = plant_wo_springs.num_velocities();
   int nx = nq + nv;
@@ -178,20 +180,22 @@ int DoMain(int argc, char* argv[]) {
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm;
 
-  vector<pair<const Vector3d, const Frame<double>&>> contact_points;
-  contact_points.push_back(LeftToeFront(plant_wo_springs));
-  contact_points.push_back(RightToeFront(plant_wo_springs));
-  contact_points.push_back(LeftToeRear(plant_wo_springs));
-  contact_points.push_back(RightToeRear(plant_wo_springs));
+//  vector<pair<const Vector3d, const Frame<double>&>> contact_points;
+//  contact_points.push_back(LeftToeFront(plant_wo_springs));
+//  contact_points.push_back(RightToeFront(plant_wo_springs));
+//  contact_points.push_back(LeftToeRear(plant_wo_springs));
+//  contact_points.push_back(RightToeRear(plant_wo_springs));
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, contact_points, com_traj, FLAGS_delay_time);
+      plant_w_springs, *context, com_traj, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, "hip_left", true, l_foot_trajectory, FLAGS_delay_time);
+      plant_w_springs, *context, "hip_left", true, l_foot_trajectory,
+      FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, "hip_right", false, r_foot_trajectory, FLAGS_delay_time);
+      plant_w_springs, *context, "hip_right", false, r_foot_trajectory,
+      FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
           plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
@@ -296,7 +300,8 @@ int DoMain(int argc, char* argv[]) {
       "r_foot_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_springs,
       plant_wo_springs);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_right");
+  right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
+                                                   "toe_right");
 
   // Pelvis orientation tracking
   double w_pelvis_balance = 20;

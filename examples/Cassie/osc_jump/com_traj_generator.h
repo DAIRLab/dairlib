@@ -15,10 +15,8 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   COMTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const std::vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>&
-          feet_contact_points,
-      drake::trajectories::PiecewisePolynomial<double> crouch_traj,
+      drake::systems::Context<double>& context,
+      drake::trajectories::PiecewisePolynomial<double>& crouch_traj,
       double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -30,14 +28,12 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::trajectories::PiecewisePolynomial<double> generateBalanceTraj(
-      const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
-      double d) const;
+      const Eigen::VectorXd& x, double time) const;
   drake::trajectories::PiecewisePolynomial<double> generateCrouchTraj(
-      const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
-      double d) const;
+      const Eigen::VectorXd& x, double time) const;
   drake::trajectories::PiecewisePolynomial<double> generateLandingTraj(
       const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
-      double d) const;
+      double time) const;
 
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -47,16 +43,16 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
                 drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>& context_;
   const drake::multibody::BodyFrame<double>& world_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
 
   int fsm_idx_;
   int com_x_offset_idx_;
 
   // A list of pairs of contact body frame and contact point
-  const std::vector<
-      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
-      feet_contact_points_;
+//  const std::vector<
+//      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
+//      feet_contact_points_;
 
   drake::trajectories::PiecewisePolynomial<double> crouch_traj_;
   double time_offset_;

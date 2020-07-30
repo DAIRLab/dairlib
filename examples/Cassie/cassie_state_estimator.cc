@@ -1107,7 +1107,10 @@ EventStatus CassieStateEstimator::Update(
     int left_contact = 0;
     int right_contact = 0;
     std::vector<double> optimal_cost(3, 0.0);
-    if (test_with_ground_truth_state_) {
+     
+    // Currently hack it to not use any contact estimation
+    DRAKE_DEMAND(hardware_test_mode_==0);
+    /*if (test_with_ground_truth_state_) {
       UpdateContactEstimationCosts(
           output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
       EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
@@ -1118,7 +1121,7 @@ EventStatus CassieStateEstimator::Update(
                                    &optimal_cost);
       EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
                             &right_contact);
-    }
+    }*/
 
     // Test mode needed for hardware experiment
     // mode #0 assumes the feet are always on the ground

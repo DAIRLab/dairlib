@@ -9,6 +9,7 @@
 #include <vector>
 #include <Eigen/Dense>
 
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "drake/common/drake_assert.h"
 
 using Eigen::Matrix3Xd;
@@ -80,12 +81,25 @@ class TasksGenerator {
   }
   bool currently_extend_task_space() const {return currently_extend_task_space_;}
   int iter_start_optimization() const {return iter_start_optimization_;}
+  bool start_finding_mediate_sample() const {return start_finding_mediate_sample_;}
+  int iter_start_finding_mediate_sample() const {return iter_start_finding_mediate_sample_;}
+
+  // Setters
+  void set_start_finding_mediate_sample(bool if_start){
+    start_finding_mediate_sample_ = if_start;
+  }
+  void set_iter_start_finding_mediate_sample(int iter_start){
+    iter_start_finding_mediate_sample_ = iter_start;
+  }
 
   // Generator
-  virtual vector<double> NewTask(int iter,int sample_idx) = 0;
+  virtual vector<double> NewTask(string dir,int iter,int sample_idx) = 0;
 
   // Printing message
   virtual void PrintInfo() const {};
+
+  //get scale for tasks
+  Eigen::VectorXd GetGammaScale() const;
 
  protected:
   int task_dim_{};
@@ -98,6 +112,8 @@ class TasksGenerator {
   int N_sample_{};
   bool currently_extend_task_space_;
   int iter_start_optimization_;
+  bool start_finding_mediate_sample_;
+  int iter_start_finding_mediate_sample_;
 
   std::unordered_map<string, int> name_to_index_map_;
 
@@ -123,7 +139,7 @@ class GridTasksGenerator : public TasksGenerator {
 
   // Generator
   vector<double> NewNominalTask(int sample_idx);
-  vector<double> NewTask(int iter,int sample_idx) final;
+  vector<double> NewTask(string dir,int iter,int sample_idx) final;
 
   // Printing message
   void PrintInfo() const override;
@@ -155,12 +171,21 @@ class UniformTasksGenerator : public TasksGenerator {
   UniformTasksGenerator()= default;
 
   // Generator
-  vector<double> NewTask(int sample_idx);
-  vector<double> NewTask(int iter,int sample_idx) final;
+//  vector<double> NewTask(int sample_idx);
+  vector<double> NewTask(string dir,int iter,int sample_idx) final;
 
   // Printing message
   void PrintInfo() const override;
 };
+
+//functions related to initial guess
+//move it here to avoid cycle dependency  graph
+double GammaDistanceCalculation(const VectorXd& past_gamma,
+                                const VectorXd& current_gamma,
+                                const VectorXd& gamma_scale);
+std::string CompareTwoTasks(const string& dir, string prefix1,string prefix2,
+                            const VectorXd& current_gamma,
+                            const VectorXd& gamma_scale);
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

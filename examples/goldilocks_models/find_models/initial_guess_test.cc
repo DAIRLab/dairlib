@@ -61,6 +61,19 @@ class DummyRom : public ReducedOrderModel {
 class InitialGuessTest : public ::testing::Test {};
 
 int test_initial_guess(int iter, int sample, int robot) {
+  const string dir =
+      "../dairlib_data/goldilocks_models/find_models/robot_1_test/";
+  //create folder if it doesn't exist
+  if(!folder_exist(dir)){
+    cout<<"Test folder doesn't exist"<<endl;
+    std::string string_for_system_call = "mkdir -p " + dir;
+    if (system(string_for_system_call.c_str()) == -1) {
+      printf("Error creating directory!n");
+      return 0;
+    } else {
+      cout << "Test folder has been created: " << dir << endl;
+    }
+  }
   // create test data and save it
   // create task_gen
   GridTasksGenerator task_gen_grid;
@@ -77,7 +90,7 @@ int test_initial_guess(int iter, int sample, int robot) {
   int total_sample_num = task_gen->total_sample_number();
   // create task
   Task task(task_gen->names());
-  task.set(task_gen->NewTask(iter,sample));
+  task.set(task_gen->NewTask(dir,iter,sample));
   // create rom
   MonomialFeatures basis(1,2,{});
   DummyRom dummy_rom(basis, basis);
@@ -90,20 +103,6 @@ int test_initial_guess(int iter, int sample, int robot) {
   rom->SetThetaYddot(current_theta_yddot);
   // dummy decision variable size
   int n_w = 20;
-
-  const string dir =
-      "../dairlib_data/goldilocks_models/find_models/robot_1_test/";
-  //create folder if it doesn't exist
-  if(!folder_exist(dir)){
-    cout<<"Test folder doesn't exist"<<endl;
-    std::string string_for_system_call = "mkdir -p " + dir;
-    if (system(string_for_system_call.c_str()) == -1) {
-      printf("Error creating directory!n");
-      return 0;
-    } else {
-      cout << "Test folder has been created: " << dir << endl;
-    }
-  }
 
   // for each iteration, create theta_s and theta_sDDot
   int iteration = 0;

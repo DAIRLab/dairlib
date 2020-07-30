@@ -33,6 +33,28 @@ TasksGenerator::TasksGenerator(int task_dim, std::vector<string> names,
   }
 }
 
+VectorXd TasksGenerator::GetGammaScale() const {
+  int gamma_dimension = task_dim_;
+  VectorXd gamma_scale = VectorXd::Zero(gamma_dimension);
+  // if not fixed task, we need to scale the gamma
+  int dim = 0;
+  double min;
+  double max;
+  for (dim = 0; dim < gamma_dimension; dim++) {
+    min = task_min(names_[dim]);
+    max = task_max(names_[dim]);
+    if (!(min == max)) {
+      // coefficient is different for different dimensions
+      if (names_[dim] == "turning_rate") {
+        gamma_scale[dim] = 1.3 / (max - min);
+      } else {
+        gamma_scale[dim] = 1 / (max - min);
+      }
+    }
+  }
+  return gamma_scale;
+}
+
 GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
                                        std::vector<int> N_sample_vec,
                                        std::vector<double> task_0,
@@ -48,6 +70,9 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
   // we don't implement the feature of extending task space for grid method
   currently_extend_task_space_ = false;
   iter_start_optimization_ = 1;
+  // we don't implement the feature of trying mediate samples for failed iteration
+  start_finding_mediate_sample_ = false;
+  iter_start_finding_mediate_sample_ = -1;
   // Construct forward and backward index map
   int i_layer = 0;
   int sample_idx = 0;
@@ -103,7 +128,7 @@ vector<double> GridTasksGenerator::NewNominalTask(int sample_idx) {
   return ret;
 }
 
-vector<double> GridTasksGenerator::NewTask(int iter,int sample_idx) {
+vector<double> GridTasksGenerator::NewTask(string dir, int iter,int sample_idx) {
   auto index_tuple = forward_task_idx_map_.at(sample_idx);
   /*cout << sample_idx << ", (";
   for (auto mem : index_tuple) {
@@ -151,6 +176,10 @@ UniformTasksGenerator::UniformTasksGenerator(
   // initially we extend the task space
   currently_extend_task_space_ = true;
   iter_start_optimization_ = iter_start_optimization;
+  // initialize the parameters for finding mediate samples for failed iteration
+  start_finding_mediate_sample_ = false;
+  iter_start_finding_mediate_sample_ = -1;
+
   task_min_range_ = task_min;
   task_max_range_ = task_max;
 
@@ -173,36 +202,167 @@ void UniformTasksGenerator::PrintInfo() const {
   }
 }
 
-vector<double> UniformTasksGenerator::NewTask(int iter,int sample_idx) {
-  //the task space is gradually pushed until reach the final optimization range
+vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx) {
   vector<double> ret(task_dim_, 0);
-  if(iter<iter_start_optimization_){
-    //extend the task space
-    currently_extend_task_space_ = true;
-    //decide the range of optimization by the number of iteration
-    double central;
-    double interval;
-    double new_task_max_range;
-    double new_task_min_range;
+  if(start_finding_mediate_sample_){
+    // set the task for mediate iteration
+    DRAKE_DEMAND(iter!=iter_start_finding_mediate_sample_);
+    int is_success;
+    string prefix;
+    // check if this is the first time to try mediate sample:
+    // if true, we need to allocate samples from a nearest successful one
+    // to the failed one
+    bool choose_samples_from_cloest_to_target;
+    if(!file_exist(dir+to_string(iter)+"_"+to_string(sample_idx)+"_w.csv"))
+    {
+      choose_samples_from_cloest_to_target = true;
+    }
+    else{
+      // check if the target sample can find solution
+      // if true, it indicates that there are still samples need to help in
+      // iter_start_finding_mediate_sample_
+      // else, we should update the range of mediate samples
+      prefix = to_string(iter)+ "_" +to_string(N_sample_-1);
+      is_success = (readCSV(dir + prefix + string("_is_success.csv")))(0, 0);
+      if(is_success==1){
+        choose_samples_from_cloest_to_target = true;
+      }
+      else{
+        choose_samples_from_cloest_to_target = false;
+      }
+    }
+
+    // set tasks
+    VectorXd failed_task;
+    VectorXd closest_successful_task;
+    int sample_num = 0;
+    string prefix_closest_task;
+    if(choose_samples_from_cloest_to_target){
+      // tasks are uniformly chosen from the range of closest sample to target
+      // sample
+      // find the first failed sample first in the iteration that needs help
+      for (sample_num = 0; sample_num < N_sample_; sample_num++){
+        prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
+            to_string(sample_num);
+        is_success = (readCSV(dir + prefix + string("_is_success.csv")))(0, 0);
+        if(is_success==0)
+        {
+          failed_task = readCSV(dir + prefix +string("_task.csv"));
+          break;
+        }
+      }
+      prefix_closest_task = to_string(iter_start_finding_mediate_sample_)
+          + string("_") + to_string(0);
+      VectorXd gamma_scale = GetGammaScale();
+      for (sample_num = 0; sample_num < N_sample_; sample_num++) {
+        prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
+            to_string(sample_num);
+        prefix_closest_task = CompareTwoTasks(dir,prefix_closest_task,
+                                             prefix,failed_task,gamma_scale);
+      }
+      closest_successful_task = readCSV(dir + prefix_closest_task
+          +string("_task.csv"));
+    }
+    else{
+      // tasks are uniformly chosen from the range of closest successful mediate
+      // sample to target sample
+      for (sample_num = N_sample_-1; sample_num >= 0; sample_num--){
+        prefix_closest_task = to_string(iter) + string("_") +
+            to_string(sample_num);
+        is_success = (readCSV(dir + prefix_closest_task +
+            string("_is_success.csv")))(0, 0);
+        if(is_success==1)
+        {
+          closest_successful_task = readCSV(dir + prefix_closest_task
+              +string("_task.csv"));
+          break;
+        }
+      }
+      prefix = to_string(iter) + string("_") +to_string(N_sample_-1);
+      failed_task = readCSV(dir + prefix +string("_task.csv"));
+    }
+
+    // also save the solution of this closest sample as initial guess for
+    // mediate iteration
+    VectorXd initial_guess = readCSV(dir + prefix_closest_task
+        +string("_w.csv"));
+    string initial_file_name = to_string(iter) + "_" + to_string(sample_idx) +
+        string("_initial_guess.csv");
+    writeCSV(dir + initial_file_name, initial_guess);
+
+    // uniformly set the tasks
+    VectorXd new_task = closest_successful_task+sample_idx*
+        (failed_task-closest_successful_task)/(N_sample_-1);
     for (int i = 0; i < task_dim_; i++) {
-      central = (task_max_range_[i]+task_min_range_[i])/2;
-      interval = (task_max_range_[i]-task_min_range_[i])/2;
-      new_task_max_range = central+(iter+1)*interval/iter_start_optimization_;
-      new_task_min_range = central-(iter+1)*interval/iter_start_optimization_;
-      // Distribution
-      std::uniform_real_distribution<double> new_distribution (new_task_min_range,
-                                                               new_task_max_range);
-      ret[i] = new_distribution(random_eng_);
+      ret[i] = new_task[i];
     }
   }
   else{
-    //fix the task space range
-    currently_extend_task_space_ = false;
-    for (int i = 0; i < task_dim_; i++) {
-      ret[i] = distribution_[i](random_eng_);
+    //the task space is gradually pushed until reach the final optimization range
+    if(iter<iter_start_optimization_){
+      //extend the task space
+      currently_extend_task_space_ = true;
+      //decide the range of optimization by the number of iteration
+      double central;
+      double interval;
+      double new_task_max_range;
+      double new_task_min_range;
+      for (int i = 0; i < task_dim_; i++) {
+        central = (task_max_range_[i]+task_min_range_[i])/2;
+        interval = (task_max_range_[i]-task_min_range_[i])/2;
+        new_task_max_range = central+(iter+1)*interval/iter_start_optimization_;
+        new_task_min_range = central-(iter+1)*interval/iter_start_optimization_;
+        // Distribution
+        std::uniform_real_distribution<double> new_distribution (new_task_min_range,
+                                                                 new_task_max_range);
+        ret[i] = new_distribution(random_eng_);
+      }
+    }
+    else{
+      //fix the task space range
+      currently_extend_task_space_ = false;
+      for (int i = 0; i < task_dim_; i++) {
+        ret[i] = distribution_[i](random_eng_);
+      }
     }
   }
   return ret;
+}
+
+
+// calculate the third power of L3 norm between two gammas
+double GammaDistanceCalculation(const VectorXd& past_gamma,
+                                const VectorXd& current_gamma,
+                                const VectorXd& gamma_scale){
+  VectorXd dif_gamma =
+      (past_gamma - current_gamma).array().abs() * gamma_scale.array();
+  VectorXd dif_gamma2 = dif_gamma.array().pow(2);
+  double distance_gamma = (dif_gamma.transpose() * dif_gamma2)(0, 0);
+
+  return distance_gamma;
+}
+
+// calculate the distance between two past tasks with current tasks and return
+// the prefix of the closer task
+string CompareTwoTasks(const string& dir, string prefix1,string prefix2,
+                       const VectorXd& current_gamma,
+                       const VectorXd& gamma_scale){
+  string prefix_closer_task = prefix1;
+  int is_success = (readCSV(dir + prefix2 + string("_is_success.csv")))(0, 0);
+  if (is_success == 1){
+    // extract past tasks
+    VectorXd past_gamma1 = readCSV(dir + prefix1 + string("_task.csv"));
+    VectorXd past_gamma2 = readCSV(dir + prefix2 + string("_task.csv"));
+    // calculate the distance between two gammas
+    double distance_gamma1 = GammaDistanceCalculation(past_gamma1,
+                                                      current_gamma,gamma_scale);
+    double distance_gamma2 = GammaDistanceCalculation(past_gamma2,
+                                                      current_gamma,gamma_scale);
+    if(distance_gamma2<distance_gamma1){
+      prefix_closer_task = prefix2;
+    }
+  }
+  return prefix_closer_task;
 }
 
 }  // namespace goldilocks_models

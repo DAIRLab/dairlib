@@ -20,40 +20,6 @@ VectorXd GetThetaScale(const ReducedOrderModel& rom) {
   return VectorXd::Ones(rom.n_y() + rom.n_yddot());
 }
 
-VectorXd GetGammaScale(const TasksGenerator* task_gen) {
-  int gamma_dimension = task_gen->dim();
-  VectorXd gamma_scale = VectorXd::Zero(gamma_dimension);
-  // if not fixed task, we need to scale the gamma
-  int dim = 0;
-  double min;
-  double max;
-  for (dim = 0; dim < gamma_dimension; dim++) {
-    min = task_gen->task_min(task_gen->names()[dim]);
-    max = task_gen->task_max(task_gen->names()[dim]);
-    if (!(min == max)) {
-      // coefficient is different for different dimensions
-      if (task_gen->names()[dim] == "turning_rate") {
-        gamma_scale[dim] = 1.3 / (max - min);
-      } else {
-        gamma_scale[dim] = 1 / (max - min);
-      }
-    }
-  }
-  return gamma_scale;
-}
-
-// calculate the third power of L3 norm between two gammas
-double GammaDistanceCalculation(const VectorXd& past_gamma,
-    const VectorXd& current_gamma,
-    const VectorXd& gamma_scale){
-  VectorXd dif_gamma =
-      (past_gamma - current_gamma).array().abs() * gamma_scale.array();
-  VectorXd dif_gamma2 = dif_gamma.array().pow(2);
-  double distance_gamma = (dif_gamma.transpose() * dif_gamma2)(0, 0);
-
-  return distance_gamma;
-}
-
 // calculate the interpolation weight; update weight vector and solution matrix
 void InterpolateAmongDifferentTasks(const string& dir, string prefix,
                                     const VectorXd& current_gamma,
@@ -88,29 +54,6 @@ VectorXd CalculateInterpolation(const VectorXd& weight_vector,
   return interpolated_solution;
 }
 
-// calculate the distance between two past tasks with current tasks and return
-// the prefix of the closer task
-string CompareTwoTasks(const string& dir, string prefix1,string prefix2,
-                       const VectorXd& current_gamma,
-                       const VectorXd& gamma_scale){
-  string prefix_closer_task = prefix1;
-  int is_success = (readCSV(dir + prefix2 + string("_is_success.csv")))(0, 0);
-  if (is_success == 1){
-    // extract past tasks
-    VectorXd past_gamma1 = readCSV(dir + prefix1 + string("_task.csv"));
-    VectorXd past_gamma2 = readCSV(dir + prefix2 + string("_task.csv"));
-    // calculate the distance between two gammas
-    double distance_gamma1 = GammaDistanceCalculation(past_gamma1,
-                                                     current_gamma,gamma_scale);
-    double distance_gamma2 = GammaDistanceCalculation(past_gamma2,
-                                                     current_gamma,gamma_scale);
-    if(distance_gamma2<distance_gamma1){
-      prefix_closer_task = prefix2;
-    }
-  }
-  return prefix_closer_task;
-}
-
 
 string SetInitialGuessByInterpolation(const string& directory, int iter,
                                       int sample,
@@ -129,7 +72,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
   int total_sample_num = task_gen->total_sample_number();
 
   VectorXd theta_scale = GetThetaScale(rom);
-  VectorXd gamma_scale = GetGammaScale(task_gen);
+  VectorXd gamma_scale = task_gen->GetGammaScale();
   //    initialize variables used for setting initial guess
   VectorXd initial_guess;
   string initial_file_name;
@@ -174,7 +117,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     * find the closest sample and set it as initial guess
     */
     string prefix_cloest_task = to_string(iter-1) + string("_") + to_string(0);
-    for (past_iter = iter - 1; past_iter > 0; past_iter--){
+    for (past_iter = iter - 1; past_iter >= 0; past_iter--){
       for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
         prefix = to_string(past_iter) + string("_") + to_string(sample_num);
         prefix_cloest_task = CompareTwoTasks(directory,prefix_cloest_task,
@@ -275,6 +218,24 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
   return initial_file_name;
 }
 
+string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
+                                      int sample,const TasksGenerator* task_gen){
+  string prefix_cloest_task;
+  int is_success = false;
+  for (int sample_num = task_gen->total_sample_number()-1;sample_num >= 0;
+  sample_num--){
+    prefix_cloest_task = to_string(iter+1) + string("_") +
+        to_string(sample_num);
+    is_success = (readCSV(directory + prefix_cloest_task +
+        string("_is_success.csv")))(0, 0);
+    if(is_success==1)
+    {
+      break;
+    }
+  }
+  return prefix_cloest_task;
+}
+
 // Use extrapolation to provide initial guesses while extending the task space
 string SetInitialGuessByExtrapolation(const string& directory, int iter,
                                       int sample,
@@ -295,7 +256,7 @@ string SetInitialGuessByExtrapolation(const string& directory, int iter,
   int total_sample_num = task_gen->total_sample_number();
   VectorXd current_gamma =
       Eigen::Map<const VectorXd>(task.get().data(), task.get().size());
-  VectorXd gamma_scale = GetGammaScale(task_gen);
+  VectorXd gamma_scale = task_gen->GetGammaScale();
   // calculate the weighted sum of solutions from iteration 0
   MatrixXd w_gamma;
   VectorXd weight_gamma;

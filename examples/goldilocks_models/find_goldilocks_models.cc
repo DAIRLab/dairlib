@@ -209,9 +209,18 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
     }
+  } else if(task_gen->start_finding_mediate_sample()){
+    if(iter==task_gen->iter_start_finding_mediate_sample()) {
+      *init_file = ChooseInitialGuessFromMediateIteration(dir,iter,sample,
+          task_gen);
+    }
+    else{
+      *init_file = to_string(iter) + "_" + to_string(sample) +
+          string("_initial_guess.csv");
+    }
   } else if (sample_idx_to_help >= 0) {
-    *init_file = to_string(iter) + "_" + to_string(sample_idx_to_help) +
-                 string("_w.csv");
+      *init_file = to_string(iter) + "_" + to_string(sample_idx_to_help) +
+          string("_w.csv");
   } else if (rerun_current_iteration) {
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else {
@@ -1857,6 +1866,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int iter;
   int n_shrink_step = 0;
   auto iter_start_time = std::chrono::system_clock::now();
+
   for (iter = iter_start; iter <= max_outer_iter; iter++) {
     bool is_get_nominal = iter == 0;
 
@@ -1988,11 +1998,26 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // program with shrinking step size)
           if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
             task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
-          } else {
+          }
+          else if(task_gen->start_finding_mediate_sample()){
+            if(iter==task_gen->iter_start_finding_mediate_sample()){
+              // rerun the target samples with solutions from mediate iteration
+              Eigen::VectorXd target_task_vectorxd = readCSV(dir + prefix +
+                  string("task.csv"));
+              // set the task
+              vector<double> target_task_vector(target_task_vectorxd.data(),
+                  target_task_vectorxd.data()+target_task_vectorxd.size());
+              task.set(target_task_vector);
+            }
+            else{
+              task.set(task_gen->NewTask(dir,iter,sample_idx));
+            }
+          }
+          else {
             if (is_grid_task && is_get_nominal) {
               task.set(task_gen_grid.NewNominalTask(sample_idx));
             } else {
-              task.set(task_gen->NewTask(iter,sample_idx));
+              task.set(task_gen->NewTask(dir,iter,sample_idx));
             }
             // Map std::vector to VectorXd and create a copy of VectorXd
             Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
@@ -2210,6 +2235,21 @@ int findGoldilocksModels(int argc, char* argv[]) {
       DRAKE_DEMAND(iter > 1);        // shouldn't be iter 0 or 1
     }
 
+    // set the parameter of starting and stopping to find mediate samples
+    // for failed samples
+    if(n_shrink_step>5){
+      //start to find mediate sample for the failed samples
+      task_gen->set_iter_start_finding_mediate_sample(iter);
+      task_gen->set_start_finding_mediate_sample(true);
+      n_shrink_step=0;
+    }
+    else if( (iter==task_gen->iter_start_finding_mediate_sample()) &&
+    (!rerun_current_iteration) ){
+      // stop searching mediate samples
+      task_gen->set_iter_start_finding_mediate_sample(-1);
+      task_gen->set_start_finding_mediate_sample(false);
+    }
+
     // Update parameters, adjusting step size or extend model
     step_size_shrinked_last_loop = false;
     if (is_get_nominal) {
@@ -2236,7 +2276,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Never extend model again (we just extend it once)
       extend_model = false;
       continue;
-    }                                    // end if extend_model_this_iter
+    }  // end if extend_model_this_iter
+    else if(task_gen->start_finding_mediate_sample()){
+      if(iter == task_gen->iter_start_finding_mediate_sample()){
+        // the mediate iteration doesn't successfully provide good initial guess
+        // for this iteration, we continue to search
+        continue;
+      }
+      else{
+        // go back to the iteration to help
+        iter = task_gen->iter_start_finding_mediate_sample()-1;
+        continue;
+      }
+    } //end if start_finding_mediate_sample
     else if (rerun_current_iteration) {  // rerun the current iteration
       // We only shrink step if it's iteration 2 or higher
       if (iter != 1) {

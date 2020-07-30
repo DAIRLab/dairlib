@@ -59,6 +59,7 @@ cc_library(
     ],
     deps = [
         "//common:eigen_utils",
+        ":goldilocks_utils",
         "@drake//:drake_shared_library",
     ],
 )

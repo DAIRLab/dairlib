@@ -18,13 +18,15 @@ std::string SetInitialGuessByInterpolation(const std::string& directory,
                                            const TasksGenerator* task_gen,
                                            const Task& task,
                                            const ReducedOrderModel& rom);
+// this is used in the feature of trying mediate samples to help failed samples;
+std::string ChooseInitialGuessFromMediateIteration(const string& directory,
+    int iter,int sample,const TasksGenerator* task_gen);
 std::string SetInitialGuessByExtrapolation(const string& directory, int iter,
                                       int sample,
                                       const TasksGenerator* task_gen,
                                       const Task& task);
-// set scale for theta and gamma
+// set scale for theta
 Eigen::VectorXd GetThetaScale(const std::string& directory, int iter);
-Eigen::VectorXd GetGammaScale(const TasksGenerator* task_gen);
 // utility functions
 Eigen::VectorXd CalculateInterpolation(const Eigen::VectorXd& weight_vector,
                                        const Eigen::MatrixXd& solution_matrix);
@@ -33,10 +35,4 @@ void InterpolateAmongDifferentTasks(const std::string& dir, string prefix,
                                     const Eigen::VectorXd& gamma_scale,
                                     Eigen::VectorXd& weight_vector,
                                     Eigen::MatrixXd& solution_matrix);
-double GammaDistanceCalculation(const VectorXd& past_gamma,
-                                const VectorXd& current_gamma,
-                                const VectorXd& gamma_scale);
-std::string CompareTwoTasks(const string& dir, string prefix1,string prefix2,
-                       const VectorXd& current_gamma,
-                       const VectorXd& gamma_scale);
 }  // namespace dairlib::goldilocks_models

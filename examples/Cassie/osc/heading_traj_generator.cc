@@ -29,7 +29,7 @@ namespace osc {
 
 HeadingTrajGenerator::HeadingTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>& context)
+    drake::systems::Context<double>* context)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -62,11 +62,11 @@ void HeadingTrajGenerator::CalcHeadingTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q = robotOutput->GetPositions();
 
-  plant_.SetPositions(&context_, q);
+  plant_.SetPositions(context_, q);
 
   // Get approximated heading angle of pelvis
   Vector3d pelvis_heading_vec =
-      plant_.EvalBodyPoseInWorld(context_, pelvis_).rotation().col(0);
+      plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
   double approx_pelvis_yaw_i =
       atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 

@@ -31,7 +31,7 @@ namespace systems {
 
 CPTrajGenerator::CPTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>& context,
+    drake::systems::Context<double>* context,
     std::vector<int> left_right_support_fsm_states,
     std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
@@ -148,11 +148,11 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     prev_td_time(0) = current_time;
 
     VectorXd q = robot_output->GetPositions();
-    plant_.SetPositions(&context_, q);
+    plant_.SetPositions(context_, q);
 
     // Swing foot position (Forward Kinematics) at touchdown
     auto swing_foot = swing_foot_map_.at(int(fsm_state(0)));
-    plant_.CalcPointsPositions(context_, swing_foot.second, swing_foot.first,
+    plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_td);
   }
 
@@ -169,12 +169,12 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
   VectorXd fsm_state = fsm_output->get_value();
 
   VectorXd q = robot_output->GetPositions();
-  plant_.SetPositions(&context_, q);
+  plant_.SetPositions(context_, q);
 
   // Stance foot position
   auto stance_foot = stance_foot_map_.at(int(fsm_state(0)));
   Vector3d stance_foot_pos;
-  plant_.CalcPointsPositions(context_, stance_foot.second, stance_foot.first,
+  plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
                              world_, &stance_foot_pos);
 
   // Get CoM or predicted CoM
@@ -194,9 +194,9 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
 
     MatrixXd J_com(3, plant_.num_velocities());
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+        *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
     VectorXd v = robot_output->GetVelocities();
-    CoM = plant_.CalcCenterOfMassPosition(context_);
+    CoM = plant_.CalcCenterOfMassPosition(*context_);
     dCoM = J_com * v;
   }
 
@@ -216,7 +216,7 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
   if (is_feet_collision_avoid_) {
     // Get approximated heading angle of pelvis
     Vector3d pelvis_heading_vec =
-        plant_.EvalBodyPoseInWorld(context_, pelvis_).rotation().col(0);
+        plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
     double approx_pelvis_yaw =
         atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 

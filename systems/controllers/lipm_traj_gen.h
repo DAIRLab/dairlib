@@ -34,7 +34,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   LIPMTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>& context,
+      drake::systems::Context<double>* context,
       double desired_com_height, const std::vector<int>& unordered_fsm_states,
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
@@ -66,7 +66,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   int prev_fsm_state_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>& context_;
+  drake::systems::Context<double>* context_;
 
   double desired_com_height_;
   std::vector<int> unordered_fsm_states_;

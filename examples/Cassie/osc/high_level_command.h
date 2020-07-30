@@ -40,7 +40,7 @@ namespace osc {
 class HighLevelCommand : public drake::systems::LeafSystem<double> {
  public:
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::systems::Context<double>& context,
+                   drake::systems::Context<double>* context,
                    const Eigen::Vector2d& global_target_position,
                    const Eigen::Vector2d& params_of_no_turning);
 
@@ -68,7 +68,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
       drake::systems::BasicVector<double>* output) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>& context_;
+  drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
   Eigen::Vector2d global_target_position_;

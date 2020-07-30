@@ -29,7 +29,7 @@ namespace dairlib {
 namespace systems {
 
 LIPMTrajGenerator::LIPMTrajGenerator(
-    const MultibodyPlant<double>& plant, Context<double>& context,
+    const MultibodyPlant<double>& plant, Context<double>* context,
     double desired_com_height, const vector<int>& unordered_fsm_states,
     const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
@@ -141,13 +141,13 @@ void LIPMTrajGenerator::CalcTraj(
   }
 
   VectorXd q = robot_output->GetPositions();
-  plant_.SetPositions(&context_, q);
+  plant_.SetPositions(context_, q);
 
   // Get center of mass position and velocity
-  Vector3d CoM = plant_.CalcCenterOfMassPosition(context_);
+  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
   MatrixXd J(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context_, JacobianWrtVariable::kV, world_, world_, &J);
+      *context_, JacobianWrtVariable::kV, world_, world_, &J);
   Vector3d dCoM = J * v;
 
   // Stance foot position (Forward Kinematics)
@@ -157,7 +157,7 @@ void LIPMTrajGenerator::CalcTraj(
        j++) {
     Vector3d position;
     plant_.CalcPointsPositions(
-        context_, contact_points_in_each_state_[mode_index][j].second,
+        *context_, contact_points_in_each_state_[mode_index][j].second,
         contact_points_in_each_state_[mode_index][j].first, world_, &position);
     stance_foot_pos += position;
   }

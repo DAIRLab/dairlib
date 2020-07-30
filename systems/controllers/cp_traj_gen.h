@@ -1,13 +1,13 @@
 #pragma once
 
+#include "multibody/multibody_utils.h"
+#include "systems/controllers/control_utils.h"
+#include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-
-#include "multibody/multibody_utils.h"
-#include "systems/controllers/control_utils.h"
-#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -44,7 +44,7 @@ namespace systems {
 class CPTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   CPTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
-                  drake::systems::Context<double>& context,
+                  drake::systems::Context<double>* context,
                   std::vector<int> left_right_support_fsm_states,
                   std::vector<double> left_right_support_durations,
                   std::vector<std::pair<const Eigen::Vector3d,
@@ -100,7 +100,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   int prev_fsm_state_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>& context_;
+  drake::systems::Context<double>* context_;
   std::vector<int> left_right_support_fsm_states_;
   double mid_foot_height_;
   double desired_final_foot_height_;

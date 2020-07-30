@@ -144,14 +144,14 @@ int DoMain(int argc, char* argv[]) {
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, *context_w_spr, global_target_position,
+      plant_w_spr, context_w_spr.get(), global_target_position,
       params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
-      plant_w_spr, *context_w_spr);
+      plant_w_spr, context_w_spr.get());
   builder.Connect(simulator_drift->get_output_port(0),
                   head_traj_gen->get_state_input_port());
   builder.Connect(high_level_command->get_yaw_output_port(),
@@ -201,8 +201,9 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
   }
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
-      plant_w_spr, *context_w_spr, desired_com_height, unordered_fsm_states,
-      unordered_state_durations, contact_points_in_each_state);
+      plant_w_spr, context_w_spr.get(), desired_com_height,
+      unordered_fsm_states, unordered_state_durations,
+      contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -210,8 +211,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create velocity control by foot placement
   auto deviation_from_cp =
-      builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(plant_w_spr,
-                                                                *context_w_spr);
+      builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
+          plant_w_spr, context_w_spr.get());
   builder.Connect(high_level_command->get_xy_output_port(),
                   deviation_from_cp->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -237,7 +238,7 @@ int DoMain(int argc, char* argv[]) {
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
   auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
-      plant_w_spr, *context_w_spr, left_right_support_fsm_states,
+      plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
       left_right_support_state_durations, left_right_foot, "pelvis",
       mid_foot_height, desired_final_foot_height,
       desired_final_vertical_foot_velocity, max_CoM_to_CP_dist, true, true,

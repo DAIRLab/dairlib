@@ -1,9 +1,11 @@
 #include "examples/Cassie/osc/high_level_command.h"
 
 #include <math.h>
+
 #include <string>
 
 #include "multibody/multibody_utils.h"
+
 #include "drake/math/quaternion.h"
 
 using std::cout;
@@ -36,11 +38,11 @@ namespace osc {
 
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>& context,
+    drake::systems::Context<double>* context,
     const Vector2d& global_target_position,
     const Vector2d& params_of_no_turning)
     : plant_(plant),
-    context_(context),
+      context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")),
       global_target_position_(global_target_position),
@@ -70,7 +72,6 @@ HighLevelCommand::HighLevelCommand(
 
   // Discrete state which stores the desired horizontal velocity
   des_horizontal_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(2));
-
 }
 
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
@@ -89,19 +90,19 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     VectorXd q = robotOutput->GetPositions();
     VectorXd v = robotOutput->GetVelocities();
 
-    plant_.SetPositions(&context_, q);
+    plant_.SetPositions(context_, q);
 
     // Get center of mass position and velocity
-    Vector3d com_pos = plant_.CalcCenterOfMassPosition(context_);
+    Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);
     MatrixXd J(3, plant_.num_velocities());
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        context_, JacobianWrtVariable::kV, world_, world_, &J);
+        *context_, JacobianWrtVariable::kV, world_, world_, &J);
     Vector3d com_vel = J * v;
 
     //////////// Get desired yaw velocity ////////////
     // Get approximated heading angle of pelvis
     Vector3d pelvis_heading_vec =
-        plant_.EvalBodyPoseInWorld(context_, pelvis_).rotation().col(0);
+        plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
     double approx_pelvis_yaw =
         atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 

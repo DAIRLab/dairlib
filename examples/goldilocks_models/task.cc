@@ -212,10 +212,10 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
     // check if this is the first time to try mediate sample:
     // if true, we need to allocate samples from a nearest successful one
     // to the failed one
-    bool choose_samples_from_cloest_to_target;
+    bool choose_samples_from_closest_to_target;
     if(!file_exist(dir+to_string(iter)+"_"+to_string(sample_idx)+"_w.csv"))
     {
-      choose_samples_from_cloest_to_target = true;
+      choose_samples_from_closest_to_target = true;
     }
     else{
       // check if the target sample can find solution
@@ -225,10 +225,10 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
       prefix = to_string(iter)+ "_" +to_string(N_sample_-1);
       is_success = (readCSV(dir + prefix + string("_is_success.csv")))(0, 0);
       if(is_success==1){
-        choose_samples_from_cloest_to_target = true;
+        choose_samples_from_closest_to_target = true;
       }
       else{
-        choose_samples_from_cloest_to_target = false;
+        choose_samples_from_closest_to_target = false;
       }
     }
 
@@ -237,7 +237,7 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
     VectorXd closest_successful_task;
     int sample_num = 0;
     string prefix_closest_task;
-    if(choose_samples_from_cloest_to_target){
+    if(choose_samples_from_closest_to_target){
       // tasks are uniformly chosen from the range of closest sample to target
       // sample
       // find the first failed sample first in the iteration that needs help
@@ -251,8 +251,16 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
           break;
         }
       }
-      prefix_closest_task = to_string(iter_start_finding_mediate_sample_)
-          + string("_") + to_string(0);
+      // make sure that the prefix_closest_task is not initialized with the
+      // failed sample
+      if(sample_num==0){
+        prefix_closest_task = to_string(iter_start_finding_mediate_sample_)
+            + string("_") + to_string(N_sample_-1);
+      }
+      else{
+        prefix_closest_task = to_string(iter_start_finding_mediate_sample_)
+            + string("_") + to_string(0);
+      }
       VectorXd gamma_scale = GetGammaScale();
       for (sample_num = 0; sample_num < N_sample_; sample_num++) {
         prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
@@ -350,16 +358,23 @@ string CompareTwoTasks(const string& dir, string prefix1,string prefix2,
   string prefix_closer_task = prefix1;
   int is_success = (readCSV(dir + prefix2 + string("_is_success.csv")))(0, 0);
   if (is_success == 1){
-    // extract past tasks
-    VectorXd past_gamma1 = readCSV(dir + prefix1 + string("_task.csv"));
-    VectorXd past_gamma2 = readCSV(dir + prefix2 + string("_task.csv"));
-    // calculate the distance between two gammas
-    double distance_gamma1 = GammaDistanceCalculation(past_gamma1,
-                                                      current_gamma,gamma_scale);
-    double distance_gamma2 = GammaDistanceCalculation(past_gamma2,
-                                                      current_gamma,gamma_scale);
-    if(distance_gamma2<distance_gamma1){
-      prefix_closer_task = prefix2;
+    is_success = (readCSV(dir + prefix1 + string("_is_success.csv")))(0, 0);
+    if(is_success == 0)
+    {
+      string prefix_closer_task = prefix2;
+    }
+    else{
+      // extract past tasks
+      VectorXd past_gamma1 = readCSV(dir + prefix1 + string("_task.csv"));
+      VectorXd past_gamma2 = readCSV(dir + prefix2 + string("_task.csv"));
+      // calculate the distance between two gammas
+      double distance_gamma1 = GammaDistanceCalculation(past_gamma1,
+                                                        current_gamma,gamma_scale);
+      double distance_gamma2 = GammaDistanceCalculation(past_gamma2,
+                                                        current_gamma,gamma_scale);
+      if(distance_gamma2<distance_gamma1){
+        prefix_closer_task = prefix2;
+      }
     }
   }
   return prefix_closer_task;

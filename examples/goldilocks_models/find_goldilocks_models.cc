@@ -2001,13 +2001,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
           else if(task_gen->start_finding_mediate_sample()){
             if(iter==task_gen->iter_start_finding_mediate_sample()){
-              // rerun the target samples with solutions from mediate iteration
+              // rerun the target samples
+              // we couldn't use the variable previous_task, because
+              // previous_task here corresponds to the mediate iteration
               Eigen::VectorXd target_task_vectorxd = readCSV(dir + prefix +
                   string("task.csv"));
               // set the task
-              vector<double> target_task_vector(target_task_vectorxd.data(),
-                  target_task_vectorxd.data()+target_task_vectorxd.size());
-              task.set(target_task_vector);
+              task.set(CopyVectorXdToStdVector(target_task_vectorxd));
             }
             else{
               task.set(task_gen->NewTask(dir,iter,sample_idx));
@@ -2279,13 +2279,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if extend_model_this_iter
     else if(task_gen->start_finding_mediate_sample()){
       if(iter == task_gen->iter_start_finding_mediate_sample()){
-        // the mediate iteration doesn't successfully provide good initial guess
-        // for this iteration, we continue to search
+        // we need the mediate iteration to evaluate mediate samples
+        // next iteration is the mediate iteration
+        rerun_current_iteration = false;
         continue;
       }
       else{
         // go back to the iteration to help
         iter = task_gen->iter_start_finding_mediate_sample()-1;
+        rerun_current_iteration = false;
         continue;
       }
     } //end if start_finding_mediate_sample

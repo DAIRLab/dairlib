@@ -220,20 +220,41 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
 
 string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
                                       int sample,const TasksGenerator* task_gen){
-  string prefix_cloest_task;
+  // this method is used to provide initial guess for the first failed sample
+  // other samples should still use previous solution as initial guess
+
+  int sample_num;
   int is_success = false;
-  for (int sample_num = task_gen->total_sample_number()-1;sample_num >= 0;
-  sample_num--){
-    prefix_cloest_task = to_string(iter+1) + string("_") +
-        to_string(sample_num);
-    is_success = (readCSV(directory + prefix_cloest_task +
-        string("_is_success.csv")))(0, 0);
-    if(is_success==1)
+  string prefix;
+  //find the first failed sample
+  for (sample_num = 0;sample_num < task_gen->total_sample_number();sample_num--)
+  {
+    prefix = to_string(iter) + string("_") + to_string(sample_num);
+    is_success = (readCSV(directory + prefix +string("_is_success.csv")))(0, 0);
+    if(is_success==0)
     {
       break;
     }
   }
-  return prefix_cloest_task;
+  string prefix_closest_task;
+  if(sample==sample_num){
+    //this is exactly the sample to help
+    for (int sample_num = task_gen->total_sample_number()-1;sample_num >= 0;
+         sample_num--){
+      prefix_closest_task = to_string(iter+1) + string("_") +
+          to_string(sample_num);
+      is_success = (readCSV(directory + prefix_closest_task +
+          string("_is_success.csv")))(0, 0);
+      if(is_success==1)
+      {
+        break;
+      }
+    }
+  }
+  else{
+    prefix_closest_task = to_string(iter) + string("_") + to_string(sample_num);
+  }
+  return prefix_closest_task+"_w.csv";
 }
 
 // Use extrapolation to provide initial guesses while extending the task space

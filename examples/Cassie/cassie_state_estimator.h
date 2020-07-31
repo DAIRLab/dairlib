@@ -60,7 +60,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
       bool test_with_ground_truth_state = false,
-      bool print_info_to_terminal = false, int hardware_test_mode = -1);
+      bool print_info_to_terminal = false, int hardware_test_mode = -1,
+      bool discrete_time_filter = false);
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -84,6 +85,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const systems::OutputVector<double>& output,
       const std::vector<double>&  optimal_cost,
       int* left_contact, int* right_contact) const;
+  void EstimateContactForces(
+      const drake::systems::Context<double>& context,
+      const systems::OutputVector<double>& output) const;
 
   void setPreviousTime(drake::systems::Context<double>* context, double time);
   void setInitialPelvisPose(drake::systems::Context<double>* context,
@@ -112,6 +116,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int n_q_;
   int n_v_;
   int n_u_;
+  int n_fb_vel_; // number of joints
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator_;
@@ -119,6 +124,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator_;
   const drake::multibody::BodyFrame<double>& world_;
   const bool is_floating_base_;
+  const bool discrete_time_filter_;
   std::unique_ptr<drake::systems::Context<double>> context_;
 
   std::map<std::string, int> position_idx_map_;
@@ -129,6 +135,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::vector<const drake::multibody::Frame<double>*> toe_frames_;
   const drake::multibody::Frame<double>& pelvis_frame_;
   const drake::multibody::Body<double>& pelvis_;
+  std::vector<Eigen::MatrixXd> leg_joint_matrices_;
 
   // Input/output port indices
   int cassie_out_input_port_;

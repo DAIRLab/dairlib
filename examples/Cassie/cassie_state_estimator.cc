@@ -1,6 +1,7 @@
 #include "examples/Cassie/cassie_state_estimator.h"
 
 #include <math.h>
+
 #include <chrono>
 #include <fstream>
 #include <utility>
@@ -43,7 +44,7 @@ CassieStateEstimator::CassieStateEstimator(
     const KinematicEvaluatorSet<double>* left_contact_evaluator,
     const KinematicEvaluatorSet<double>* right_contact_evaluator,
     bool test_with_ground_truth_state, bool print_info_to_terminal,
-    int hardware_test_mode)
+    int hardware_test_mode, bool discrete_time_filter)
     : plant_(plant),
       fourbar_evaluator_(fourbar_evaluator),
       left_contact_evaluator_(left_contact_evaluator),
@@ -61,7 +62,8 @@ CassieStateEstimator::CassieStateEstimator(
       context_gt_(plant_.CreateDefaultContext()),
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
-      hardware_test_mode_(hardware_test_mode) {
+      hardware_test_mode_(hardware_test_mode),
+      discrete_time_filter_(discrete_time_filter){
   DRAKE_DEMAND(&fourbar_evaluator->plant() == &plant);
   DRAKE_DEMAND(&left_contact_evaluator->plant() == &plant);
   DRAKE_DEMAND(&right_contact_evaluator->plant() == &plant);
@@ -69,7 +71,7 @@ CassieStateEstimator::CassieStateEstimator(
   n_q_ = plant.num_positions();
   n_v_ = plant.num_velocities();
   n_u_ = plant.num_actuators();
-
+  n_fb_vel_ = 2 * SPACE_DIM;
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
@@ -529,8 +531,7 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
 
   // J_b - Jacobian for fourbar linkage
   MatrixXd J_b = fourbar_evaluator_->EvalFullJacobian(*context_);
-  VectorXd JdotV_b =
-      fourbar_evaluator_->EvalFullJacobianDotTimesV(*context_);
+  VectorXd JdotV_b = fourbar_evaluator_->EvalFullJacobianDotTimesV(*context_);
 
   // J_c{l, r} - contact Jacobians and JdotV
   // l - left; r - right
@@ -602,7 +603,7 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
   drake::solvers::EqualityConstrainedQPSolver solver;
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
-                           "FeasibilityTol", 1e-6); // default 1e-12
+                           "FeasibilityTol", 1e-6);  // default 1e-12
   drake::solvers::MathematicalProgramResult result_double =
       solver.Solve(*quadprog_, {}, solver_options);
 
@@ -1118,6 +1119,7 @@ EventStatus CassieStateEstimator::Update(
                                    &optimal_cost);
       EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
                             &right_contact);
+      EstimateContactForces(context, filtered_output);
     }
 
     // Test mode needed for hardware experiment
@@ -1303,7 +1305,8 @@ void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
                                                 Eigen::Vector4d quat,
                                                 Vector3d pelvis_pos) {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(7)
-      << quat, pelvis_pos;
+      << quat,
+      pelvis_pos;
 
   // Update EKF state
   // The imu's and pelvis's frames share the same rotation.
@@ -1324,6 +1327,57 @@ void CassieStateEstimator::setPreviousImuMeasurement(
     Context<double>* context, const VectorXd& imu_value) {
   context->get_mutable_discrete_state(prev_imu_idx_).get_mutable_value()
       << imu_value;
+}
+void CassieStateEstimator::EstimateContactForces(
+    const Context<double>& context,
+    const systems::OutputVector<double>& output) const {
+  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
+  VectorXd v_prev =
+      context.get_discrete_state(previous_velocity_idx_).get_value();
+  plant_.SetPositionsAndVelocities(context_.get(), output.GetState());
+  MatrixXd M = MatrixXd(n_v_, n_v_);
+  plant_.CalcMassMatrix(*context_, &M);
+  VectorXd C(n_v_);
+  plant_.CalcBiasTerm(*context_, &C);
+  MatrixXd B = plant_.MakeActuationMatrix();
+//  double cutoff_freq = 0.005;
+  double gamma = 0.005;
+  double Delta_t = output.get_timestamp() - prev_time;
+  double beta = (1 - gamma) / gamma / Delta_t;
+
+  VectorXd v = output.GetVelocities();
+  VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
+  VectorXd tau_d  = gamma * M * v_prev -
+      (1 - gamma) * (M * v + B * output.GetEfforts() +
+          C - g);
+
+  // Simplifying to 2 feet contacts, might need to change it to two contacts per
+  // foot and sum them up
+  MatrixXd lambda_est = MatrixXd::Zero(2, 3);
+
+  MatrixXd joint_selection_matrix = MatrixXd::Zero(n_v_, n_v_);
+  joint_selection_matrix(6, 6) = 1;
+  joint_selection_matrix(8, 8) = 1;
+  joint_selection_matrix(10, 10) = 1;
+  joint_selection_matrix(12, 12) = 1;
+  joint_selection_matrix(14, 14) = 1;
+  joint_selection_matrix(16, 16) = 1;
+  joint_selection_matrix(18, 18) = 1;
+  joint_selection_matrix(20, 20) = 1;
+  joint_selection_matrix(22, 22) = 1;
+  joint_selection_matrix(24, 24) = 1;
+
+  for (int i = 0; i < 2; ++i) {
+    MatrixXd J_contact(3, n_v_);
+    plant_.CalcJacobianTranslationalVelocity(*context_, JacobianWrtVariable::kV,
+                                             *toe_frames_[i], VectorXd::Zero(3),
+                                             world_, world_, &J_contact);
+    lambda_est.row(i) =
+        J_contact.transpose().fullPivHouseholderQr().solve(tau_d).transpose();
+  }
+
+  std::cout << "lambda: " << std::endl;
+  std::cout << lambda_est << std::endl;
 }
 
 }  // namespace systems

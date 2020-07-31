@@ -59,9 +59,10 @@ void StandingComTraj::CalcDesiredTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  const auto& target_height =
+  double target_height =
       this->EvalInputValue<dairlib::lcmt_target_standing_height>(
-          context, target_height_port_);
+          context, target_height_port_)->target_height;
+  target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
   VectorXd x = robot_output->GetState();
 
   plant_.SetPositionsAndVelocities(context_.get(), x);
@@ -83,7 +84,7 @@ void StandingComTraj::CalcDesiredTraj(
   }
   Vector3d feet_center_pos = contact_pos_sum / 4;
   Vector3d desired_com_pos(feet_center_pos(0), feet_center_pos(1),
-                           feet_center_pos(2) + target_height->target_height);
+                           feet_center_pos(2) + target_height);
   Vector3d desired_com_vel = contact_vel_sum / 4;
 
   double dt = 1;

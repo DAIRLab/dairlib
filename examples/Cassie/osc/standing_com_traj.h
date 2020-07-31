@@ -12,6 +12,9 @@ namespace dairlib {
 namespace cassie {
 namespace osc {
 
+static constexpr double kMaxHeight = 1.2;
+static constexpr double kMinHeight = 0.5;
+
 class StandingComTraj : public drake::systems::LeafSystem<double> {
  public:
   StandingComTraj(

@@ -11,9 +11,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using dairlib::systems::OutputVector;
-using dairlib::systems::TimestampedVector;
 using drake::multibody::Frame;
-using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -26,10 +24,12 @@ namespace osc {
 
 StandingComTraj::StandingComTraj(
     const MultibodyPlant<double>& plant,
+    Context<double>& context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
     double height)
     : plant_(plant),
+      context_(context),
       world_(plant_.world_frame()),
       feet_contact_points_(feet_contact_points),
       height_(height) {
@@ -49,8 +49,6 @@ StandingComTraj::StandingComTraj(
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("com_traj", traj_inst,
                                   &StandingComTraj::CalcDesiredTraj);
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 void StandingComTraj::CalcDesiredTraj(
@@ -63,9 +61,9 @@ void StandingComTraj::CalcDesiredTraj(
       this->EvalInputValue<dairlib::lcmt_target_standing_height>(
           context, target_height_port_)->target_height;
   target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
-  VectorXd x = robot_output->GetState();
+  VectorXd q = robot_output->GetPositions();
 
-  plant_.SetPositionsAndVelocities(context_.get(), x);
+  plant_.SetPositions(&context_, q);
 
   // Get center of left/right feet contact points positions
   Vector3d contact_pos_sum = Vector3d::Zero();
@@ -73,32 +71,19 @@ void StandingComTraj::CalcDesiredTraj(
   Vector3d position;
   MatrixXd J(3, plant_.num_velocities());
   for (const auto& point_and_frame : feet_contact_points_) {
-    plant_.CalcPointsPositions(*context_, point_and_frame.second,
+    Vector3d position;
+    plant_.CalcPointsPositions(context_, point_and_frame.second,
                                point_and_frame.first, world_, &position);
     contact_pos_sum += position;
-
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, point_and_frame.second,
-        point_and_frame.first, world_, world_, &J);
-    contact_vel_sum += J * x.tail(plant_.num_velocities());
   }
   Vector3d feet_center_pos = contact_pos_sum / 4;
   Vector3d desired_com_pos(feet_center_pos(0), feet_center_pos(1),
                            feet_center_pos(2) + target_height);
-  Vector3d desired_com_vel = contact_vel_sum / 4;
-
-  double dt = 1;
-  const std::vector<double> breaks = {context.get_time(),
-                                      context.get_time() + dt};
-  std::vector<MatrixXd> samples(breaks.size(), MatrixXd::Zero(3, 1));
-  samples[0] = desired_com_pos;
-  samples[1] = desired_com_pos + dt * desired_com_vel;
 
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *pp_traj = PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
   *pp_traj = PiecewisePolynomial<double>(desired_com_pos);
 }
 

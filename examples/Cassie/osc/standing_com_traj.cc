@@ -11,13 +11,14 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using dairlib::systems::OutputVector;
+using dairlib::systems::TimestampedVector;
 using drake::multibody::Frame;
+using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 using drake::trajectories::PiecewisePolynomial;
-using drake::multibody::JacobianWrtVariable;
 
 namespace dairlib {
 namespace cassie {
@@ -38,6 +39,11 @@ StandingComTraj::StandingComTraj(
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
+  target_height_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_target_standing_height",
+              drake::Value<dairlib::lcmt_target_standing_height>{})
+          .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
@@ -53,6 +59,9 @@ void StandingComTraj::CalcDesiredTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const auto& target_height =
+      this->EvalInputValue<dairlib::lcmt_target_standing_height>(
+          context, target_height_port_);
   VectorXd x = robot_output->GetState();
 
   plant_.SetPositionsAndVelocities(context_.get(), x);
@@ -68,14 +77,13 @@ void StandingComTraj::CalcDesiredTraj(
     contact_pos_sum += position;
 
     plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV,
-        point_and_frame.second, point_and_frame.first,
-        world_, world_, &J);
+        *context_, JacobianWrtVariable::kV, point_and_frame.second,
+        point_and_frame.first, world_, world_, &J);
     contact_vel_sum += J * x.tail(plant_.num_velocities());
   }
   Vector3d feet_center_pos = contact_pos_sum / 4;
   Vector3d desired_com_pos(feet_center_pos(0), feet_center_pos(1),
-                           feet_center_pos(2) + height_);
+                           feet_center_pos(2) + target_height->target_height);
   Vector3d desired_com_vel = contact_vel_sum / 4;
 
   double dt = 1;

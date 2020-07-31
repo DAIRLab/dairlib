@@ -3,6 +3,7 @@
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_target_standing_height.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/standing_com_traj.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -11,6 +12,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
+
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -48,7 +50,8 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 0.001,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .89, "The desired height (m)");
-DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml", "Filepath containing gains");
+DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
+              "Filepath containing gains");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -68,7 +71,6 @@ struct OSCStandingGains {
   std::vector<double> PelvisRotKd;
   std::vector<double> CoMW;
   std::vector<double> PelvisW;
-
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -131,9 +133,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisRotKd.data(), gains.rows, gains.cols);
- MatrixXd W_com = Eigen::Map<
+  MatrixXd W_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-     gains.CoMW.data(), gains.rows, gains.cols);
+      gains.CoMW.data(), gains.rows, gains.cols);
   MatrixXd W_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisW.data(), gains.rows, gains.cols);
@@ -150,6 +152,9 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
+  auto target_height_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_target_standing_height>(
+  "TARGET_HEIGHT", &lcm_local));
 
   // Create command sender.
   auto command_pub =
@@ -173,6 +178,8 @@ int DoMain(int argc, char* argv[]) {
       plant_w_springs, feet_contact_points, FLAGS_height);
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
+  builder.Connect(target_height_receiver->get_output_port(),
+                  com_traj_generator->get_input_port_target_height());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(

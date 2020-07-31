@@ -93,6 +93,8 @@ class ControllerGui(QWidget):
 
         self.setState_button = QPushButton('Set from State')
 
+        self.publishHeight_button = QPushButton('Set height')
+
         #Grid and widget locations
         self.widget = QWidget()
 
@@ -125,8 +127,9 @@ class ControllerGui(QWidget):
         for ledit in self.ledits:
             self.connect(ledit, SIGNAL("editingFinished()"), self.value_change)
 
-        grid.addWidget(self.publish_button, len(joint_names) + 2, 0)
-        grid.addWidget(self.setState_button, len(joint_names) + 2, 3)
+        grid.addWidget(self.publish_button, len(joint_names) + 4, 0)
+        grid.addWidget(self.setState_button, len(joint_names) + 4, 3)
+        grid.addWidget(self.publishHeight_button, len(joint_names) + 4, 6)
 
         # Box for ramp up time
         self.ramp_up_time_box = QDoubleSpinBox();
@@ -134,7 +137,12 @@ class ControllerGui(QWidget):
         grid.addWidget(self.ramp_up_time_box, 11, 1)
         self.ramp_up_time = 5.0
 
-        #Initializing the text boxes to the initial values and set the value variables
+        self.target_height_box = QDoubleSpinBox();
+        grid.addWidget(QLabel("Target height"), 13, 0)
+        grid.addWidget(self.target_height_box, 13, 1)
+        self.target_height = 3.0
+
+        #Initializing the text boxes to the initial values
         self.initialize_default()
         for idx, ledit in enumerate(self.ledits):
             self.values[idx] = self.ledits[idx].value
@@ -143,6 +151,8 @@ class ControllerGui(QWidget):
         self.connect(self.publish_button, SIGNAL("clicked()"), self.publish_clicked)
 
         self.connect(self.setState_button, SIGNAL("clicked()"), self.setState_clicked)
+
+        self.connect(self.publishHeight_button, SIGNAL("clicked()"), self.publishHeight_clicked)
 
         self.setLayout(grid)
         #self.setWindowTitle("Controller GUI")
@@ -169,6 +179,12 @@ class ControllerGui(QWidget):
             self.ledits[idx + 2*len(joint_names)].setValue(kd_default[idx])
         self.ramp_up_time_box.setValue(5.0)
 
+    def publishHeight_clicked(self):
+        self.target_height = self.target_height_box.value
+        height_msg = dairlib.lcmt_target_standing_height()
+        height_msg.timestamp = int(time.time() * 1e6)
+        height_msg.target_height = self.target_height
+        self.lc.publish("TARGET_HEIGHT", height_msg.encode())
 
     #Storing in a file once the move button is clicked 	
     def publish_clicked(self):
@@ -198,11 +214,11 @@ class ControllerGui(QWidget):
 
 	        self.lc.publish("PD_CONFIG", msg.encode())
 	        time.sleep(self.ramp_up_time / 100.0)
-
 	    # store previous kp kd gains
         self.kp_ = msg.kp
         self.kd_ = msg.kd
         self.prev_pos_ = msg.desired_position
+
 
     def setState_clicked(self):
         self.lc.handle_timeout(100)

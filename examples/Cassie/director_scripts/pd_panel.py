@@ -134,8 +134,11 @@ class ControllerGui(QWidget):
         grid.addWidget(self.ramp_up_time_box, 11, 1)
         self.ramp_up_time = 5.0
 
-        #Initializing the text boxes to the initial values
+        #Initializing the text boxes to the initial values and set the value variables
         self.initialize_default()
+        for idx, ledit in enumerate(self.ledits):
+            self.values[idx] = self.ledits[idx].value
+        
 
         self.connect(self.publish_button, SIGNAL("clicked()"), self.publish_clicked)
 
@@ -149,8 +152,8 @@ class ControllerGui(QWidget):
         self.prev_pos_ = []
 
         # previous kp and kd gain set by the user
-        self.kp_ = kp_default
-        self.kd_ = kd_default
+        self.kp_ = [0,0,0,0,0,0,0,0,0,0]
+        self.kd_ = [0,0,0,0,0,0,0,0,0,0]
 
     def value_change(self):
         for idx, ledit in enumerate(self.ledits):

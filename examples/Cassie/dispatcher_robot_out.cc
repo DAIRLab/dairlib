@@ -2,6 +2,9 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
+#include "drake/solvers/choose_best_solver.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -17,9 +20,11 @@
 #include "examples/Cassie/networking/simple_cassie_udp_subscriber.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
+#include "multibody/multibody_solvers.h"
 #include "multibody/multibody_utils.h"
-#include "systems/robot_lcm_systems.h"
+#include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "systems/robot_lcm_systems.h"
 
 namespace dairlib {
 
@@ -57,21 +62,79 @@ DEFINE_int64(test_mode, -1,
              "-1: Regular EKF (not testing mode). "
              "0: both feet always in contact with ground. "
              "1: both feet never in contact with ground. ");
-DEFINE_double(
-    init_pelvis_height, 0.969223,
-    "The height of pelvis origin that we used to initialize the ekf with");
 
+// Run inverse kinematics to get initial pelvis height (assume both feet are
+// on the ground), and set the initial state for the EKF.
+// Note that we assume the ground is flat in the IK.
 void setInitialEkfState(const drake::systems::Diagram<double>& diagram,
                         systems::CassieStateEstimator* state_estimator,
-                        drake::systems::Context<double>& diagram_context,
-                        double t0) {
+                        drake::systems::Context<double>* diagram_context,
+                        double t0,
+                        const drake::multibody::MultibodyPlant<double>& plant,
+                        const cassie_out_t& cassie_output) {
+  // Copy the joint positions from cassie_out_t to OutputVector
+  systems::OutputVector<double> robot_output(
+      plant.num_positions(), plant.num_velocities(), plant.num_actuators());
+  state_estimator->AssignNonFloatingBaseStateToOutputVector(cassie_output,
+                                                            &robot_output);
+
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
+  auto left_toe = LeftToeFront(plant);
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, left_toe.first, left_toe.second, Eigen::Vector3d(0, 0, 1),
+      Eigen::Vector3d::Zero(), false);
+  evaluators.add_evaluator(&left_toe_evaluator);
+  auto left_heel = LeftToeRear(plant);
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, left_heel.first, left_heel.second, Eigen::Vector3d(0, 0, 1),
+      Eigen::Vector3d::Zero(), false);
+  evaluators.add_evaluator(&left_heel_evaluator);
+  auto right_toe = RightToeFront(plant);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, right_toe.first, right_toe.second, Eigen::Vector3d(0, 0, 1),
+      Eigen::Vector3d::Zero(), false);
+  evaluators.add_evaluator(&right_toe_evaluator);
+  auto right_heel = RightToeRear(plant);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, right_heel.first, right_heel.second, Eigen::Vector3d(0, 0, 1),
+      Eigen::Vector3d::Zero(), false);
+  evaluators.add_evaluator(&right_heel_evaluator);
+
+  auto program = multibody::MultibodyProgram(plant);
+  auto q = program.AddPositionVariables();
+  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+
+  // Soft constraint on the joint positions
+  int n_joints = plant.num_positions() - 7;
+  program.AddQuadraticErrorCost(Eigen::MatrixXd::Identity(n_joints, n_joints),
+                                robot_output.GetPositions().tail(n_joints),
+                                q.tail(n_joints));
+
+  Eigen::VectorXd q_guess(plant.num_positions());
+  q_guess << 1, 0, 0, 0, 0, 0, 1, robot_output.GetPositions().tail(n_joints);
+  program.SetInitialGuess(q, q_guess);
+
+  std::cout << "Solving inverse kinematics to get initial robot height\n";
+  std::cout << "Choose the best solver: "
+            << drake::solvers::ChooseBestSolver(program).name() << std::endl;
+  auto start = std::chrono::high_resolution_clock::now();
+  const auto result = drake::solvers::Solve(program, program.initial_guess());
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  auto q_sol = result.GetSolution(q);
+  std::cout << to_string(result.get_solution_result()) << std::endl;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+  std::cout << "q sol = " << q_sol.transpose() << "\n\n";
+
+  // Set initial time and floating base position
   auto& state_estimator_context =
-      diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
+      diagram.GetMutableSubsystemContext(*state_estimator, diagram_context);
   state_estimator->setPreviousTime(&state_estimator_context, t0);
-  state_estimator->setInitialPelvisPose(
-      &state_estimator_context, Eigen::Vector4d(1, 0, 0, 0),
-      Eigen::Vector3d(0.0318638, 0, FLAGS_init_pelvis_height));
-  // Initial imu values are all 0 if the robot is dropped from the air.
+  state_estimator->setInitialPelvisPose(&state_estimator_context, q_sol.head(4),
+                                        q_sol.segment<3>(4));
+  // Set initial imu value
+  // Note that initial imu values are all 0 if the robot is dropped from the air
   Eigen::VectorXd init_prev_imu_value = Eigen::VectorXd::Zero(6);
   init_prev_imu_value << 0, 0, 0, 0, 0, 9.81;
   state_estimator->setPreviousImuMeasurement(&state_estimator_context,
@@ -224,9 +287,17 @@ int do_main(int argc, char* argv[]) {
     auto& input_value = input_receiver->get_input_port(0).FixValue(
         &input_receiver_context, input_sub.message());
 
-    // Set EKF previous time
+    // Set EKF time and initial states
     if (FLAGS_floating_base) {
-      setInitialEkfState(diagram, state_estimator, diagram_context, t0);
+      // To read cassie_out_t from the output port of CassieOutputReceiver(), we
+      // force-publish to update the diagram context and read it from the the port
+      diagram.Publish(diagram_context);
+      const cassie_out_t& simulated_message =
+          input_receiver->get_output_port(0).Eval<cassie_out_t>(
+              input_receiver_context);
+
+      setInitialEkfState(diagram, state_estimator, &diagram_context, t0, plant,
+                         simulated_message);
     }
 
     drake::log()->info("dispatcher_robot_out started");
@@ -268,8 +339,9 @@ int do_main(int argc, char* argv[]) {
     // Initialize the context based on the first message.
     const double t0 = udp_sub.message_time();
     if (FLAGS_floating_base) {
-      // Set EKF initial states
-      setInitialEkfState(diagram, state_estimator, diagram_context, t0);
+      // Set EKF time and initial states
+      setInitialEkfState(diagram, state_estimator, &diagram_context, t0, plant,
+                         udp_sub.message());
     }
     diagram_context.SetTime(t0);
     auto& output_sender_value = output_sender->get_input_port(0).FixValue(

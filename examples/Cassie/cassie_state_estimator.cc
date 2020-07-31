@@ -106,6 +106,7 @@ CassieStateEstimator::CassieStateEstimator(
     // 1. estimated floating base state (pelvis)
     VectorXd init_floating_base_state = VectorXd::Zero(7 + 6);
     init_floating_base_state(0) = 1;
+    init_floating_base_state(6) = 1;
     fb_state_idx_ = DeclareDiscreteState(init_floating_base_state);
 
     // initialize ekf state mean and covariance

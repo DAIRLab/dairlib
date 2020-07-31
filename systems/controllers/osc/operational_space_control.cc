@@ -34,6 +34,8 @@ namespace dairlib::systems::controllers {
 
 using multibody::makeNameToVelocitiesMap;
 using multibody::WorldPointEvaluator;
+using multibody::SetPositionsIfNew;
+using multibody::SetVelocitiesIfNew;
 
 int kSpaceDim = OscTrackingData::kSpaceDim;
 
@@ -418,6 +420,14 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Update context
+  VectorXd q_w_spr = x_w_spr.head(plant_w_spr_.num_positions());
+  VectorXd v_w_spr = x_w_spr.tail(plant_w_spr_.num_velocities());
+  VectorXd q_wo_spr = x_wo_spr.head(plant_wo_spr_.num_positions());
+  VectorXd v_wo_spr = x_wo_spr.tail(plant_wo_spr_.num_velocities());
+  SetPositionsIfNew<double>(plant_w_spr_, q_w_spr, context_w_spr_.get());
+  SetVelocitiesIfNew<double>(plant_w_spr_, v_w_spr, context_w_spr_.get());
+  SetPositionsIfNew<double>(plant_wo_spr_, q_wo_spr, context_wo_spr_.get());
+  SetVelocitiesIfNew<double>(plant_wo_spr_, v_wo_spr, context_wo_spr_.get());
   plant_w_spr_.SetPositionsAndVelocities(context_w_spr_.get(), x_w_spr);
   plant_wo_spr_.SetPositionsAndVelocities(context_wo_spr_.get(), x_wo_spr);
 

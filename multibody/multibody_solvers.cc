@@ -17,8 +17,11 @@ using solvers::NonlinearConstraint;
 template <typename T>
 MultibodyProgram<T>::MultibodyProgram(const MultibodyPlant<T>& plant)
     : drake::solvers::MathematicalProgram(),
-    plant_(plant),
-    context_(plant_.CreateDefaultContext().release()) {}
+      plant_(plant),
+      context_(plant_.CreateDefaultContext().release()) {
+  context_->FixInputPort(plant.get_actuation_input_port().get_index(),
+                         drake::VectorX<T>::Zero(plant.num_actuators()));
+}
 
 template <typename T>
 VectorXDecisionVariable MultibodyProgram<T>::AddPositionVariables() {
@@ -134,6 +137,8 @@ FixedPointConstraint<T>::FixedPointConstraint(
   if (context == nullptr) {
     owned_context_ = plant_.CreateDefaultContext();
     context_ = owned_context_.get();
+    context_->FixInputPort(plant.get_actuation_input_port().get_index(),
+                           drake::VectorX<T>::Zero(plant.num_actuators()));
   } else {
     context_ = context;
   }

@@ -140,7 +140,8 @@ class ControllerGui(QWidget):
         self.target_height_box = QDoubleSpinBox();
         grid.addWidget(QLabel("Target height"), 13, 0)
         grid.addWidget(self.target_height_box, 13, 1)
-        self.target_height = 3.0
+        self.target_height_box.value = 1.0
+        self.target_height = 1.0
 
         #Initializing the text boxes to the initial values
         self.initialize_default()

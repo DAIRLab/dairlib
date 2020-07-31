@@ -1633,6 +1633,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "major_optimality_tol = " << FLAGS_major_optimality_tol << endl;
   cout << "major_feasibility_tol = " << FLAGS_major_feasibility_tol << endl;
   cout << "use SNOPT built-in scaling? " << FLAGS_snopt_scaling << endl;
+  cout << "use Ipopt instead of Snopt?" << FLAGS_ipopt << endl;
   cout << "Fix number of nodes in traj opt? " << FLAGS_fix_node_number << endl;
   if (!FLAGS_fix_node_number)
     cout << "node_density = " << FLAGS_node_density << endl;

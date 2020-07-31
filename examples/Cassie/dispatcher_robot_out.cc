@@ -288,9 +288,7 @@ int do_main(int argc, char* argv[]) {
 
     // Set EKF time and initial states
     if (FLAGS_floating_base) {
-      // To read cassie_out_t from the output port of CassieOutputReceiver(), we
-      // force-publish to update the diagram context and read it from the the port
-      diagram.Publish(diagram_context);
+      // Read cassie_out_t from the output port of CassieOutputReceiver()
       const cassie_out_t& simulated_message =
           input_receiver->get_output_port(0).Eval<cassie_out_t>(
               input_receiver_context);

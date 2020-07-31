@@ -66,16 +66,15 @@ DEFINE_int64(test_mode, -1,
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
 // Note that we assume the ground is flat in the IK.
-void setInitialEkfState(const drake::systems::Diagram<double>& diagram,
-                        systems::CassieStateEstimator* state_estimator,
-                        drake::systems::Context<double>* diagram_context,
-                        double t0,
+void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
                         const drake::multibody::MultibodyPlant<double>& plant,
-                        const cassie_out_t& cassie_output) {
+                        const drake::systems::Diagram<double>& diagram,
+                        const systems::CassieStateEstimator& state_estimator,
+                        drake::systems::Context<double>* diagram_context) {
   // Copy the joint positions from cassie_out_t to OutputVector
   systems::OutputVector<double> robot_output(
       plant.num_positions(), plant.num_velocities(), plant.num_actuators());
-  state_estimator->AssignNonFloatingBaseStateToOutputVector(cassie_output,
+  state_estimator.AssignNonFloatingBaseStateToOutputVector(cassie_output,
                                                             &robot_output);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
@@ -129,15 +128,15 @@ void setInitialEkfState(const drake::systems::Diagram<double>& diagram,
 
   // Set initial time and floating base position
   auto& state_estimator_context =
-      diagram.GetMutableSubsystemContext(*state_estimator, diagram_context);
-  state_estimator->setPreviousTime(&state_estimator_context, t0);
-  state_estimator->setInitialPelvisPose(&state_estimator_context, q_sol.head(4),
+      diagram.GetMutableSubsystemContext(state_estimator, diagram_context);
+  state_estimator.setPreviousTime(&state_estimator_context, t0);
+  state_estimator.setInitialPelvisPose(&state_estimator_context, q_sol.head(4),
                                         q_sol.segment<3>(4));
   // Set initial imu value
   // Note that initial imu values are all 0 if the robot is dropped from the air
   Eigen::VectorXd init_prev_imu_value = Eigen::VectorXd::Zero(6);
   init_prev_imu_value << 0, 0, 0, 0, 0, 9.81;
-  state_estimator->setPreviousImuMeasurement(&state_estimator_context,
+  state_estimator.setPreviousImuMeasurement(&state_estimator_context,
                                              init_prev_imu_value);
 }
 
@@ -296,8 +295,8 @@ int do_main(int argc, char* argv[]) {
           input_receiver->get_output_port(0).Eval<cassie_out_t>(
               input_receiver_context);
 
-      setInitialEkfState(diagram, state_estimator, &diagram_context, t0, plant,
-                         simulated_message);
+      setInitialEkfState(t0, simulated_message, plant, diagram,
+                         *state_estimator, &diagram_context);
     }
 
     drake::log()->info("dispatcher_robot_out started");
@@ -340,8 +339,8 @@ int do_main(int argc, char* argv[]) {
     const double t0 = udp_sub.message_time();
     if (FLAGS_floating_base) {
       // Set EKF time and initial states
-      setInitialEkfState(diagram, state_estimator, &diagram_context, t0, plant,
-                         udp_sub.message());
+      setInitialEkfState(t0, udp_sub.message(), plant, diagram,
+                         *state_estimator, &diagram_context);
     }
     diagram_context.SetTime(t0);
     auto& output_sender_value = output_sender->get_input_port(0).FixValue(

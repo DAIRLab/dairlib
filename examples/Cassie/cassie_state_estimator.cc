@@ -1297,12 +1297,12 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
 }
 
 void CassieStateEstimator::setPreviousTime(Context<double>* context,
-                                           double time) {
+                                           double time) const {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
 }
 void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
                                                 Eigen::Vector4d quat,
-                                                Vector3d pelvis_pos) {
+                                                Vector3d pelvis_pos) const {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(7)
       << quat, pelvis_pos;
 
@@ -1322,7 +1322,7 @@ void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
        << filter.getState().getRotation() << endl;
 }
 void CassieStateEstimator::setPreviousImuMeasurement(
-    Context<double>* context, const VectorXd& imu_value) {
+    Context<double>* context, const VectorXd& imu_value) const {
   context->get_mutable_discrete_state(prev_imu_idx_).get_mutable_value()
       << imu_value;
 }

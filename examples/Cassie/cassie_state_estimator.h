@@ -86,12 +86,13 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       int* left_contact, int* right_contact) const;
 
   // Setters for initial values
-  void setPreviousTime(drake::systems::Context<double>* context, double time);
+  void setPreviousTime(drake::systems::Context<double>* context,
+                       double time) const;
   void setInitialPelvisPose(drake::systems::Context<double>* context,
                             Eigen::Vector4d quat,
-                            Eigen::Vector3d position);
+                            Eigen::Vector3d position) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
-                                 const Eigen::VectorXd& imu_value);
+                                 const Eigen::VectorXd& imu_value) const;
 
   // Copy joint state from cassie_out_t to an OutputVector
   void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,

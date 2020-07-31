@@ -71,6 +71,12 @@ def main():
   x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
   switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out = process_lcm_log.process_log(log, pos_map, vel_map)
 
+  print("Average control loop time: ")
+  print(t_u[-1] / u.shape[0])
+  print("OSC frequency")
+  print(u.shape[0] / t_u[-1])
+  print("n_samples: " )
+  print(u.shape[0])
 
   knee_pos = np.zeros(len(cassie_out))
   cassie_out_t = np.zeros(len(cassie_out))

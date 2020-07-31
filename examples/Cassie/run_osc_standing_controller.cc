@@ -142,6 +142,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "w input (not used): \n" << gains.w_input << std::endl;
   std::cout << "w accel: \n" << gains.w_accel << std::endl;
   std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
+  std::cout << "COM Kp: \n" << K_p_com << std::endl;
   std::cout << "COM Kd: \n" << K_d_com << std::endl;
   std::cout << "Pelvis Rot Kp: \n" << K_p_pelvis << std::endl;
   std::cout << "Pelvis Rot Kd: \n" << K_d_pelvis << std::endl;

@@ -106,6 +106,7 @@ CassieStateEstimator::CassieStateEstimator(
     // 1. estimated floating base state (pelvis)
     VectorXd init_floating_base_state = VectorXd::Zero(7 + 6);
     init_floating_base_state(0) = 1;
+    init_floating_base_state(6) = 1;
     fb_state_idx_ = DeclareDiscreteState(init_floating_base_state);
 
     // initialize ekf state mean and covariance
@@ -1299,12 +1300,12 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
 }
 
 void CassieStateEstimator::setPreviousTime(Context<double>* context,
-                                           double time) {
+                                           double time) const {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
 }
 void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
                                                 Eigen::Vector4d quat,
-                                                Vector3d pelvis_pos) {
+                                                Vector3d pelvis_pos) const {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(7)
       << quat, pelvis_pos;
 
@@ -1324,7 +1325,7 @@ void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
        << filter.getState().getRotation() << endl;
 }
 void CassieStateEstimator::setPreviousImuMeasurement(
-    Context<double>* context, const VectorXd& imu_value) {
+    Context<double>* context, const VectorXd& imu_value) const {
   context->get_mutable_discrete_state(prev_imu_idx_).get_mutable_value()
       << imu_value;
 }

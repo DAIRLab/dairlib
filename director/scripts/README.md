@@ -122,3 +122,5 @@ visualization of data during a simulation:
 
         Note that the axes will be color coded with red being the x-axis, green
         the y-axis, and blue the z-axis.
+        
+You can find a video demo of the GUI here: https://youtu.be/8OKmzrIGjVg

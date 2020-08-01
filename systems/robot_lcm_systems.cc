@@ -200,8 +200,12 @@ for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
 
 void RobotCommandSender::OutputCommand(const Context<double>& context,
     dairlib::lcmt_robot_input* input_msg) const {
+  auto start = std::chrono::high_resolution_clock::now();
   const TimestampedVector<double>* command = (TimestampedVector<double>*)
       this->EvalVectorInput(context, 0);
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "t = " << elapsed.count() << std::endl;
 
   input_msg->utime = command->get_timestamp() * 1e6;
   input_msg->num_efforts = num_actuators_;

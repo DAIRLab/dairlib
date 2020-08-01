@@ -2243,10 +2243,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
     // set the parameter of starting and stopping to find mediate samples
     // for failed samples
-    if(n_shrink_step>5){
+    if(n_shrink_step>2){
       //start to find mediate sample for the failed samples
       task_gen->set_iter_start_finding_mediate_sample(iter);
       task_gen->set_start_finding_mediate_sample(true);
+      task_gen->set_is_first_time_to_try_mediate_sample(true);
       n_shrink_step=0;
     }
     else if( (iter==task_gen->iter_start_finding_mediate_sample()) &&

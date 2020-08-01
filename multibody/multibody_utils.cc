@@ -75,8 +75,6 @@ void setContext(const MultibodyPlant<T>& plant,
                 const Eigen::Ref<const VectorX<T>>& state,
                 const Eigen::Ref<const VectorX<T>>& input,
                 Context<T>* context) {
-  // plant.SetPositionsAndVelocities(context, state);
-  // context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
   SetPositionsIfNew<T>(plant, state.head(plant.num_positions()), context);
   SetVelocitiesIfNew<T>(plant, state.tail(plant.num_velocities()), context);
   SetInputsIfNew<T>(plant, input, context);

@@ -279,6 +279,11 @@ void OperationalSpaceControl::Build() {
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
+  dv_sol_->setZero();
+  u_sol_->setZero();
+  lambda_c_sol_->setZero();
+  lambda_h_sol_->setZero();
+  epsilon_sol_->setZero();
 
   // Add decision variables
   dv_ = prog_->NewContinuousVariables(n_v_, "dv");
@@ -614,9 +619,16 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
-  // Solve the QP
-  const MathematicalProgramResult result = Solve(*prog_);
+  prog_->SetInitialGuess(dv_, *dv_sol_);
+  prog_->SetInitialGuess(u_, *u_sol_);
+  prog_->SetInitialGuess(lambda_c_, *lambda_c_sol_);
+  prog_->SetInitialGuess(lambda_h_, *lambda_h_sol_);
+  prog_->SetInitialGuess(epsilon_, *epsilon_sol_);
 
+  // Solve the QP
+  const MathematicalProgramResult result =
+      Solve(*prog_, prog_->initial_guess());
+  
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);
   *u_sol_ = result.GetSolution(u_);

@@ -2008,9 +2008,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   string("task.csv"));
               // set the task
               task.set(CopyVectorXdToStdVector(target_task_vectorxd));
+              previous_task[sample_idx] = target_task_vectorxd;
             }
             else{
               task.set(task_gen->NewTask(dir,iter,sample_idx));
+              Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
+                  task.get().data(), task.get().size());
+              previous_task[sample_idx] = task_vectorxd;
+              // Store task in files
+              writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
             }
           }
           else {

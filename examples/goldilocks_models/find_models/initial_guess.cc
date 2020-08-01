@@ -227,7 +227,7 @@ string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
   int is_success = false;
   string prefix;
   //find the first failed sample
-  for (sample_num = 0;sample_num < task_gen->total_sample_number();sample_num--)
+  for (sample_num = 0;sample_num < task_gen->total_sample_number();sample_num++)
   {
     prefix = to_string(iter) + string("_") + to_string(sample_num);
     is_success = (readCSV(directory + prefix +string("_is_success.csv")))(0, 0);

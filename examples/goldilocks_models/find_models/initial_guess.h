@@ -20,7 +20,8 @@ std::string SetInitialGuessByInterpolation(const std::string& directory,
                                            const ReducedOrderModel& rom);
 // this is used in the feature of trying mediate samples to help failed samples;
 std::string ChooseInitialGuessFromMediateIteration(const string& directory,
-    int iter,int sample,const TasksGenerator* task_gen);
+    int iter,int sample,const TasksGenerator* task_gen,const Task& task,
+    const ReducedOrderModel& rom);
 std::string SetInitialGuessByExtrapolation(const string& directory, int iter,
                                       int sample,
                                       const TasksGenerator* task_gen,

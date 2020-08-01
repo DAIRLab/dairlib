@@ -212,7 +212,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   } else if(task_gen->start_finding_mediate_sample()){
     if(iter==task_gen->iter_start_finding_mediate_sample()) {
       *init_file = ChooseInitialGuessFromMediateIteration(dir,iter,sample,
-          task_gen);
+          task_gen, task, rom);
     }
     else{
       *init_file = to_string(iter) + "_" + to_string(sample) +

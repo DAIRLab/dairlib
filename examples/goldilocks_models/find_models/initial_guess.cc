@@ -219,13 +219,16 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
 }
 
 string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
-                                      int sample,const TasksGenerator* task_gen){
+                                      int sample,const TasksGenerator* task_gen,
+                                      const Task& task,
+                                      const ReducedOrderModel& rom){
   // this method is used to provide initial guess for the first failed sample
   // other samples should still use previous solution as initial guess
 
   int sample_num;
   int is_success = false;
   string prefix;
+  string initial_file_name;
   //find the first failed sample
   for (sample_num = 0;sample_num < task_gen->total_sample_number();sample_num++)
   {
@@ -239,7 +242,7 @@ string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
   string prefix_closest_task;
   if(sample==sample_num){
     //this is exactly the sample to help
-    for (int sample_num = task_gen->total_sample_number()-1;sample_num >= 0;
+    for (sample_num = task_gen->total_sample_number()-1;sample_num >= 0;
          sample_num--){
       prefix_closest_task = to_string(iter+1) + string("_") +
           to_string(sample_num);
@@ -250,11 +253,20 @@ string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
         break;
       }
     }
+    initial_file_name = prefix_closest_task+"_w.csv";
   }
   else{
-    prefix_closest_task = to_string(iter) + string("_") + to_string(sample_num);
+    prefix = to_string(iter) + string("_") + to_string(sample);
+    if(file_exist(directory+prefix+"_w.csv")){
+      //we can use previous solutions
+      initial_file_name = prefix+"_w.csv";
+    }
+    else{
+      initial_file_name = SetInitialGuessByInterpolation(
+          directory, iter, sample, task_gen, task, rom);
+    }
   }
-  return prefix_closest_task+"_w.csv";
+  return initial_file_name;
 }
 
 // Use extrapolation to provide initial guesses while extending the task space

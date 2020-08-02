@@ -70,10 +70,19 @@ CassieStateEstimator::CassieStateEstimator(
   n_v_ = plant.num_velocities();
   n_u_ = plant.num_actuators();
 
-  // Declare input/output ports
+  // Declare input port for cassie_out_t
   cassie_out_input_port_ = this->DeclareAbstractInputPort(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
                                .get_index();
+  // Declare input port for lcm message time
+  // Note that we cannot read the time from the context.time because
+  // DiscreteUpdates function calls use the old context time.
+  // Pseudocode from Drake's documentation for class Simulator:
+  //   xd⁺(tₛ) ← DoAnyDiscreteUpdates(tₛ, x*(tₛ))
+  // where tₛ is the start time of the step.
+  incoming_message_time_input_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  // Declare output port
   this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
                                 &CassieStateEstimator::CopyStateOut);
 
@@ -944,21 +953,14 @@ EventStatus CassieStateEstimator::Update(
       this->EvalAbstractInput(context, cassie_out_input_port_)
           ->get_value<cassie_out_t>();
 
-  // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // Testing
-  // cout << "\nIn per-step update: lcm_time = " <<
-  //      cassie_out.pelvis.targetPc.taskExecutionTime << endl;
-  // cout << "In per-step update: context_time = " << context.get_time() <<
-  // endl;
+  // Get incoming message time
+  const BasicVector<double>* message_time =
+      this->EvalVectorInput(context, incoming_message_time_input_port_);
 
   // Get current time and previous time
-  double current_time = context.get_time();
+  double current_time = message_time->get_value()(0);
   double prev_t =
       state->get_discrete_state().get_vector(time_idx_).get_value()(0);
-
-  // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // Testing
-  // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
 
   if (current_time > prev_t) {
     double dt = current_time - prev_t;
@@ -1287,13 +1289,6 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
            << endl;
     }
   }
-
-  // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // auto state_time = context.get_discrete_state(time_idx_).get_value();
-  // cout << "  In copyStateOut: lcm_time = " <<
-  // cassie_out.pelvis.targetPc.taskExecutionTime << endl; cout << "  In
-  // copyStateOut: state_time = " << state_time << endl; cout << "  In
-  // copyStateOut: context_time = " << context.get_time() << endl;
 }
 
 void CassieStateEstimator::setPreviousTime(Context<double>* context,

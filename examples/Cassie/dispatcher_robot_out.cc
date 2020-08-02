@@ -207,7 +207,7 @@ int do_main(int argc, char* argv[]) {
     input_receiver = builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
     builder.Connect(input_receiver->get_output_port(0),
-                    state_estimator->get_input_port(0));
+                    state_estimator->get_cassie_out_input_port());
 
     // Adding "CASSIE_STATE_SIMULATION" and "CASSIE_INPUT" ports for testing
     // estimator
@@ -221,7 +221,7 @@ int do_main(int argc, char* argv[]) {
       builder.Connect(state_sub->get_output_port(),
                       state_receiver->get_input_port(0));
       builder.Connect(state_receiver->get_output_port(0),
-                      state_estimator->get_input_port(1));
+                      state_estimator->get_state_input_port());
     }
   }
 
@@ -268,6 +268,8 @@ int do_main(int argc, char* argv[]) {
   const auto& diagram = *owned_diagram;
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& diagram_context = simulator.get_mutable_context();
+  auto& state_estimator_context =
+      diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
 
   if (FLAGS_simulation) {
     auto& input_receiver_context =
@@ -283,6 +285,8 @@ int do_main(int argc, char* argv[]) {
     // Initialize the context based on the first message.
     const double t0 = input_sub.message().utime * 1e-6;
     diagram_context.SetTime(t0);
+    state_estimator->get_message_time_input_port().FixValue(
+        &state_estimator_context, drake::systems::BasicVector({t0}));
     auto& input_value = input_receiver->get_input_port(0).FixValue(
         &input_receiver_context, input_sub.message());
 
@@ -306,6 +310,8 @@ int do_main(int argc, char* argv[]) {
       // Write the lcmt_robot_input message into the context and advance.
       input_value.GetMutableData()->set_value(input_sub.message());
       const double time = input_sub.message().utime * 1e-6;
+      state_estimator->get_message_time_input_port().FixValue(
+          &state_estimator_context, drake::systems::BasicVector({time}));
 
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)
@@ -325,8 +331,6 @@ int do_main(int argc, char* argv[]) {
   } else {
     auto& output_sender_context =
         diagram.GetMutableSubsystemContext(*output_sender, &diagram_context);
-    auto& state_estimator_context =
-        diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
 
     // Wait for the first message.
     SimpleCassieUdpSubscriber udp_sub(FLAGS_address, FLAGS_port);
@@ -341,10 +345,13 @@ int do_main(int argc, char* argv[]) {
                          *state_estimator, &diagram_context);
     }
     diagram_context.SetTime(t0);
+    state_estimator->get_message_time_input_port().FixValue(
+        &state_estimator_context, drake::systems::BasicVector({t0}));
     auto& output_sender_value = output_sender->get_input_port(0).FixValue(
         &output_sender_context, udp_sub.message());
-    auto& state_estimator_value = state_estimator->get_input_port(0).FixValue(
-        &state_estimator_context, udp_sub.message());
+    auto& state_estimator_value =
+        state_estimator->get_cassie_out_input_port().FixValue(
+            &state_estimator_context, udp_sub.message());
     drake::log()->info("dispatcher_robot_out started");
 
     while (true) {
@@ -352,6 +359,8 @@ int do_main(int argc, char* argv[]) {
       output_sender_value.GetMutableData()->set_value(udp_sub.message());
       state_estimator_value.GetMutableData()->set_value(udp_sub.message());
       const double time = udp_sub.message_time();
+      state_estimator->get_message_time_input_port().FixValue(
+          &state_estimator_context, drake::systems::BasicVector({time}));
 
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)

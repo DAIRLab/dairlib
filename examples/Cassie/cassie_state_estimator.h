@@ -61,6 +61,19 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
       bool test_with_ground_truth_state = false,
       bool print_info_to_terminal = false, int hardware_test_mode = -1);
+
+  // Getters for input ports
+  const drake::systems::InputPort<double>& get_cassie_out_input_port() const {
+    return this->get_input_port(cassie_out_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_message_time_input_port() const {
+    return this->get_input_port(incoming_message_time_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_state_input_port() const {
+    return this->get_input_port(state_input_port_);
+  }
+
+  // A function that solves for heel spring deflection (unmeasured joint)
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -136,6 +149,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   // Input/output port indices
   int cassie_out_input_port_;
+  int incoming_message_time_input_port_;
   int state_input_port_;
 
   // Below are indices of system states:

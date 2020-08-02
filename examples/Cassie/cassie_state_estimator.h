@@ -135,7 +135,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::vector<const drake::multibody::Frame<double>*> toe_frames_;
   const drake::multibody::Frame<double>& pelvis_frame_;
   const drake::multibody::Body<double>& pelvis_;
-  std::vector<Eigen::MatrixXd> leg_joint_matrices_;
+  std::vector<Eigen::MatrixXd> joint_selection_matrices;
 
   // Input/output port indices
   int cassie_out_input_port_;

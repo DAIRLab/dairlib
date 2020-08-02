@@ -63,7 +63,7 @@ CassieStateEstimator::CassieStateEstimator(
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
       hardware_test_mode_(hardware_test_mode),
-      discrete_time_filter_(discrete_time_filter){
+      discrete_time_filter_(discrete_time_filter) {
   DRAKE_DEMAND(&fourbar_evaluator->plant() == &plant);
   DRAKE_DEMAND(&left_contact_evaluator->plant() == &plant);
   DRAKE_DEMAND(&right_contact_evaluator->plant() == &plant);
@@ -103,6 +103,29 @@ CassieStateEstimator::CassieStateEstimator(
 
     // a state which stores previous timestamp
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
+
+    // Joint selection matrices initialization
+    joint_selection_matrices.push_back(MatrixXd::Zero(n_v_, n_v_));
+    joint_selection_matrices.push_back(MatrixXd::Zero(n_v_, n_v_));
+    vector<string> leg_names = {"left, right"};
+    for (const auto& joint_name : velocity_idx_map_) {
+      std::cout << joint_name.first << std::endl;
+      std::cout << joint_name.second << std::endl;
+      if (joint_name.first.find("left") != std::string::npos) {
+        joint_selection_matrices[0](joint_name.second, joint_name.second) = 1;
+      }
+      if (joint_name.first.find("right") != std::string::npos) {
+        joint_selection_matrices[1](joint_name.second, joint_name.second) = 1;
+      }
+    }
+    joint_selection_matrices[0].block(0, 0, n_fb_vel_, n_fb_vel_) =
+        MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
+    joint_selection_matrices[1].block(0, 0, n_fb_vel_, n_fb_vel_) =
+        MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
+    std::cout << "left joint sel matrix: " << joint_selection_matrices[0]
+              << std::endl;
+    std::cout << "right joint sel matrix: " << joint_selection_matrices[1]
+              << std::endl;
 
     // states related to EKF
     // 1. estimated floating base state (pelvis)
@@ -1331,7 +1354,7 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context,
     const systems::OutputVector<double>& output) const {
-  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
+//  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
   plant_.SetPositionsAndVelocities(context_.get(), output.GetState());
@@ -1340,40 +1363,29 @@ void CassieStateEstimator::EstimateContactForces(
   VectorXd C(n_v_);
   plant_.CalcBiasTerm(*context_, &C);
   MatrixXd B = plant_.MakeActuationMatrix();
-//  double cutoff_freq = 0.005;
-  double gamma = 0.005;
-  double Delta_t = output.get_timestamp() - prev_time;
-  double beta = (1 - gamma) / gamma / Delta_t;
+  //  double cutoff_freq = 0.005;
+  double gamma = 0.015;
+//  double Delta_t = output.get_timestamp() - prev_time;
+//  double beta = (1 - gamma) / gamma / Delta_t;
 
   VectorXd v = output.GetVelocities();
   VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
-  VectorXd tau_d  = gamma * M * v_prev -
-      (1 - gamma) * (M * v + B * output.GetEfforts() +
-          C - g);
+  VectorXd tau_d = gamma * M * v_prev -
+                   (1 - gamma) * (M * v + B * output.GetEfforts() + C - g);
 
   // Simplifying to 2 feet contacts, might need to change it to two contacts per
   // foot and sum them up
   MatrixXd lambda_est = MatrixXd::Zero(2, 3);
-
-  MatrixXd joint_selection_matrix = MatrixXd::Zero(n_v_, n_v_);
-  joint_selection_matrix(6, 6) = 1;
-  joint_selection_matrix(8, 8) = 1;
-  joint_selection_matrix(10, 10) = 1;
-  joint_selection_matrix(12, 12) = 1;
-  joint_selection_matrix(14, 14) = 1;
-  joint_selection_matrix(16, 16) = 1;
-  joint_selection_matrix(18, 18) = 1;
-  joint_selection_matrix(20, 20) = 1;
-  joint_selection_matrix(22, 22) = 1;
-  joint_selection_matrix(24, 24) = 1;
-
-  for (int i = 0; i < 2; ++i) {
+  std::cout << "tau: " << tau_d << std::endl;
+  for (int leg = 0; leg < 2; ++leg) {
     MatrixXd J_contact(3, n_v_);
     plant_.CalcJacobianTranslationalVelocity(*context_, JacobianWrtVariable::kV,
-                                             *toe_frames_[i], VectorXd::Zero(3),
+                                             *toe_frames_[leg], VectorXd::Zero(3),
                                              world_, world_, &J_contact);
-    lambda_est.row(i) =
-        J_contact.transpose().fullPivHouseholderQr().solve(tau_d).transpose();
+    lambda_est.row(leg) = (joint_selection_matrices[leg] * J_contact.transpose())
+                            .colPivHouseholderQr()
+                            .solve(joint_selection_matrices[leg] * tau_d)
+                            .transpose();
   }
 
   std::cout << "lambda: " << std::endl;

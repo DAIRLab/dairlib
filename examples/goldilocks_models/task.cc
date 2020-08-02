@@ -180,7 +180,7 @@ UniformTasksGenerator::UniformTasksGenerator(
   // initialize the parameters for finding mediate samples for failed iteration
   start_finding_mediate_sample_ = false;
   iter_start_finding_mediate_sample_ = -1;
-  is_first_time_to_try_mediate_sample_ = false;
+  is_first_time_to_try_mediate_sample_ = true;
 
   task_min_range_ = task_min;
   task_max_range_ = task_max;

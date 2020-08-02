@@ -229,31 +229,19 @@ string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
   int is_success = false;
   string prefix;
   string initial_file_name;
-  //find the first failed sample
-  for (sample_num = 0;sample_num < task_gen->total_sample_number();sample_num++)
-  {
-    prefix = to_string(iter) + string("_") + to_string(sample_num);
-    is_success = (readCSV(directory + prefix +string("_is_success.csv")))(0, 0);
-    if(is_success==0)
-    {
-      break;
-    }
-  }
-  string prefix_closest_task;
-  if(sample==sample_num){
+  if(sample==task_gen->sample_index_to_help()){
     //this is exactly the sample to help
     for (sample_num = task_gen->total_sample_number()-1;sample_num >= 0;
          sample_num--){
-      prefix_closest_task = to_string(iter+1) + string("_") +
+      prefix = to_string(iter+1) + string("_") +
           to_string(sample_num);
-      is_success = (readCSV(directory + prefix_closest_task +
-          string("_is_success.csv")))(0, 0);
+      is_success = (readCSV(directory + prefix +string("_is_success.csv")))(0, 0);
       if(is_success==1)
       {
         break;
       }
     }
-    initial_file_name = prefix_closest_task+"_w.csv";
+    initial_file_name = prefix+"_w.csv";
   }
   else{
     prefix = to_string(iter) + string("_") + to_string(sample);

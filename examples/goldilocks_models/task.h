@@ -83,6 +83,7 @@ class TasksGenerator {
   int iter_start_optimization() const {return iter_start_optimization_;}
   bool start_finding_mediate_sample() const {return start_finding_mediate_sample_;}
   int iter_start_finding_mediate_sample() const {return iter_start_finding_mediate_sample_;}
+  int sample_index_to_help() const {return sample_index_to_help_;}
 
   // Setters
   void set_start_finding_mediate_sample(bool if_start){

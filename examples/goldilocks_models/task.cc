@@ -245,7 +245,7 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
     if(choose_samples_from_closest_to_target){
       // tasks are uniformly chosen from the range of closest sample to target
       // sample
-      // find the first failed sample first in the iteration that needs help
+      // find the first failed sample in the iteration that needs help
       for (sample_num = 0; sample_num < N_sample_; sample_num++){
         prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
             to_string(sample_num);
@@ -257,6 +257,8 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
           break;
         }
       }
+      cout<<"sample index to help: "<<sample_index_to_help_<<endl;
+      cout<<"corresponding prefix: "<<prefix<<endl;
 
       // make sure that the prefix_closest_task is not initialized with the
       // failed sample
@@ -296,7 +298,7 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
       prefix = to_string(iter) + string("_") +to_string(N_sample_-1);
       failed_task = readCSV(dir + prefix +string("_task.csv"));
     }
-
+    cout<<"closest sample prefix: "<<prefix_closest_task<<endl;
     // also save the solution of this closest sample as initial guess for
     // mediate iteration
     VectorXd initial_guess = readCSV(dir + prefix_closest_task

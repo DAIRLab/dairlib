@@ -1,4 +1,4 @@
-#include <drake/common/yaml/yaml_read_archive.h>
+#include "drake/common/yaml/yaml_read_archive.h"
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"

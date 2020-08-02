@@ -16,6 +16,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -50,7 +51,8 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
-
+DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains.yaml",
+              "Filepath containing gains");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
@@ -63,6 +65,45 @@ DEFINE_bool(is_two_phase, false,
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
 // Maybe we need to update the lcm driven loop to clear the queue of lcm message
 // if it's more than one message?
+
+struct OSCWalkingGains {
+  int rows;
+  int cols;
+  double w_accel;
+  double w_soft_constraint;
+  std::vector<double> CoMW;
+  std::vector<double> CoMKp;
+  std::vector<double> CoMKd;
+  std::vector<double> PelvisHeadingW;
+  std::vector<double> PelvisHeadingKp;
+  std::vector<double> PelvisHeadingKd;
+  std::vector<double> PelvisBalanceW;
+  std::vector<double> PelvisBalanceKp;
+  std::vector<double> PelvisBalanceKd;
+  std::vector<double> SwingFootW;
+  std::vector<double> SwingFootKp;
+  std::vector<double> SwingFootKd;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(rows));
+    a->Visit(DRAKE_NVP(cols));
+    a->Visit(DRAKE_NVP(w_accel));
+    a->Visit(DRAKE_NVP(w_soft_constraint));
+    a->Visit(DRAKE_NVP(CoMW));
+    a->Visit(DRAKE_NVP(CoMKp));
+    a->Visit(DRAKE_NVP(CoMKd));
+    a->Visit(DRAKE_NVP(PelvisHeadingW));
+    a->Visit(DRAKE_NVP(PelvisHeadingKp));
+    a->Visit(DRAKE_NVP(PelvisHeadingKd));
+    a->Visit(DRAKE_NVP(PelvisBalanceW));
+    a->Visit(DRAKE_NVP(PelvisBalanceKp));
+    a->Visit(DRAKE_NVP(PelvisBalanceKd));
+    a->Visit(DRAKE_NVP(SwingFootW));
+    a->Visit(DRAKE_NVP(SwingFootKp));
+    a->Visit(DRAKE_NVP(SwingFootKd));
+  }
+};
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -86,6 +127,62 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+
+  OSCWalkingGains gains;
+  const YAML::Node& root =
+      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
+
+  MatrixXd W_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.CoMW.data(), gains.rows, gains.cols);
+  MatrixXd K_p_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.CoMKp.data(), gains.rows, gains.cols);
+  MatrixXd K_d_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.CoMKd.data(), gains.rows, gains.cols);
+  MatrixXd W_pelvis_heading = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisHeadingW.data(), gains.rows, gains.cols);
+  MatrixXd K_p_pelvis_heading = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisHeadingKp.data(), gains.rows, gains.cols);
+  MatrixXd K_d_pelvis_heading = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisHeadingKd.data(), gains.rows, gains.cols);
+  MatrixXd W_pelvis_balance = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisBalanceW.data(), gains.rows, gains.cols);
+  MatrixXd K_p_pelvis_balance = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisBalanceKp.data(), gains.rows, gains.cols);
+  MatrixXd K_d_pelvis_balance = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisBalanceKd.data(), gains.rows, gains.cols);
+  MatrixXd W_swing_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.SwingFootW.data(), gains.rows, gains.cols);
+  MatrixXd K_p_swing_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.SwingFootKp.data(), gains.rows, gains.cols);
+  MatrixXd K_d_swing_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.SwingFootKd.data(), gains.rows, gains.cols);
+  std::cout << "w accel: \n" << gains.w_accel << std::endl;
+  std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
+  std::cout << "COM W: \n" << W_com << std::endl;
+  std::cout << "COM Kp: \n" << K_p_com << std::endl;
+  std::cout << "COM Kd: \n" << K_d_com << std::endl;
+  std::cout << "Pelvis Heading W: \n" << W_pelvis_heading << std::endl;
+  std::cout << "Pelvis Heading Kp: \n" << K_p_pelvis_heading << std::endl;
+  std::cout << "Pelvis Heading Kd: \n" << K_d_pelvis_heading << std::endl;
+  std::cout << "Pelvis Balance W: \n" << W_pelvis_balance << std::endl;
+  std::cout << "Pelvis Balance Kp: \n" << K_p_pelvis_balance << std::endl;
+  std::cout << "Pelvis Balance Kd: \n" << K_d_pelvis_balance << std::endl;
+  std::cout << "Swing Foot W: \n" << W_swing_foot << std::endl;
+  std::cout << "Swing Foot Kp: \n" << K_p_swing_foot << std::endl;
+  std::cout << "Swing Foot Kd: \n" << K_d_swing_foot << std::endl;
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_spr or plant_wo_spr because the contact frames exit in both
@@ -258,7 +355,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Cost
   int n_v = plant_wo_spr.num_velocities();
-  MatrixXd Q_accel = 2 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
   // Distance constraint
@@ -272,8 +369,7 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  double w_contact_relax = 2000;
-  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
   // Friction coefficient
   double mu = 0.4;
   osc->SetContactFriction(mu);
@@ -302,52 +398,23 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Swing foot tracking
-  MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
-  MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj(
-      "cp_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_spr, plant_wo_spr);
+  TransTaskSpaceTrackingData swing_foot_traj("cp_traj", K_p_swing_foot,
+                                             K_d_swing_foot, W_swing_foot,
+                                             plant_w_spr, plant_wo_spr);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
-  MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2;
-  W_com(1, 1) = 2;
-  W_com(2, 2) = 2000;
-  MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
                                       plant_w_spr, plant_wo_spr);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
-  double w_pelvis_balance = 200;
-  double k_p_pelvis_balance = 200;
-  double k_d_pelvis_balance = 80;
-  Matrix3d W_pelvis_balance = MatrixXd::Zero(3, 3);
-  W_pelvis_balance(0, 0) = w_pelvis_balance;
-  W_pelvis_balance(1, 1) = w_pelvis_balance;
-  Matrix3d K_p_pelvis_balance = MatrixXd::Zero(3, 3);
-  K_p_pelvis_balance(0, 0) = k_p_pelvis_balance;
-  K_p_pelvis_balance(1, 1) = k_p_pelvis_balance;
-  Matrix3d K_d_pelvis_balance = MatrixXd::Zero(3, 3);
-  K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
-  K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj(
       "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
       W_pelvis_balance, plant_w_spr, plant_wo_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
-  double w_heading = 200;
-  double k_p_heading = 50;
-  double k_d_heading = 40;
-  Matrix3d W_pelvis_heading = MatrixXd::Zero(3, 3);
-  W_pelvis_heading(2, 2) = w_heading;
-  Matrix3d K_p_pelvis_heading = MatrixXd::Zero(3, 3);
-  K_p_pelvis_heading(2, 2) = k_p_heading;
-  Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
-  K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj(
       "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
       W_pelvis_heading, plant_w_spr, plant_wo_spr);

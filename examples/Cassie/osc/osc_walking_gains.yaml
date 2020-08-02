@@ -1,0 +1,52 @@
+rows: 3
+cols: 3
+w_accel: 2
+w_soft_constraint: 2000
+CoMW:
+  [   2,    0,     0,
+      0,    2,     0,
+      0,    0,  2000]
+CoMKp:
+  [  50,    0,     0,
+      0,   50,     0,
+      0,    0,    50]
+CoMKd:
+  [  10,    0,     0,
+      0,   10,     0,
+      0,    0,    10]
+PelvisHeadingW:
+  [ 200,    0,     0,
+    0,    200,     0,
+    0,      0,     0]
+PelvisBalanceW:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,   200]
+PelvisHeadingKp:
+  [200,      0,    0,
+     0,    200,    0,
+     0,      0,    0]
+PelvisHeadingKd:
+  [  80,     0,    0,
+      0,    80,    0,
+      0,     0,    0]
+PelvisBalanceKp:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,   50]
+PelvisBalanceKd:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,   40]
+SwingFootW:
+  [ 400,    0,     0,
+      0,  400,     0,
+      0,    0,   400]
+SwingFootKp:
+  [ 100,    0,     0,
+      0,  100,     0,
+      0,    0,   100]
+SwingFootKd:
+  [  10,    0,     0,
+      0,   10,     0,
+      0,    0,    10]

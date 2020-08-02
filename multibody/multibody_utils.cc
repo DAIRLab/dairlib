@@ -75,8 +75,6 @@ void setContext(const MultibodyPlant<T>& plant,
                 const Eigen::Ref<const VectorX<T>>& state,
                 const Eigen::Ref<const VectorX<T>>& input,
                 Context<T>* context) {
-  // plant.SetPositionsAndVelocities(context, state);
-  // context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
   SetPositionsIfNew<T>(plant, state.head(plant.num_positions()), context);
   SetVelocitiesIfNew<T>(plant, state.tail(plant.num_velocities()), context);
   SetInputsIfNew<T>(plant, input, context);
@@ -311,8 +309,11 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   return name_to_index_map;
 }
 
-vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
-                                            const map<string, int>& vel_map) {
+template <typename T>
+vector<string> createStateNameVectorFromMap(
+    const MultibodyPlant<T>& plant) {
+  map<string, int> pos_map = makeNameToPositionsMap(plant);
+  map<string, int> vel_map = makeNameToVelocitiesMap(plant);
   vector<string> state_names(pos_map.size() + vel_map.size());
 
   for (const auto& name_index_pair : pos_map) {
@@ -325,8 +326,10 @@ vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
   return state_names;
 }
 
+template <typename T>
 vector<string> createActuatorNameVectorFromMap(
-    const map<string, int>& act_map) {
+    const MultibodyPlant<T>& plant) {
+  map<string, int> act_map = makeNameToActuatorsMap(plant);
   vector<string> actuator_names(act_map.size());
 
   for (const auto& name_index_pair : act_map) {
@@ -395,6 +398,10 @@ template map<string, int> makeNameToVelocitiesMap<double>(const MultibodyPlant<d
 template map<string, int> makeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template vector<string> createStateNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> createStateNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT

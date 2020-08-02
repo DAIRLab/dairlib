@@ -85,22 +85,26 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const std::vector<double>&  optimal_cost,
       int* left_contact, int* right_contact) const;
 
-  void setPreviousTime(drake::systems::Context<double>* context, double time);
+  // Setters for initial values
+  void setPreviousTime(drake::systems::Context<double>* context,
+                       double time) const;
   void setInitialPelvisPose(drake::systems::Context<double>* context,
                             Eigen::Vector4d quat,
-                            Eigen::Vector3d position);
+                            Eigen::Vector3d position) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
-                                 const Eigen::VectorXd& imu_value);
+                                 const Eigen::VectorXd& imu_value) const;
+
+  // Copy joint state from cassie_out_t to an OutputVector
+  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
+      systems::OutputVector<double>* output) const;
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
   void AssignActuationFeedbackToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
-  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
   void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
       systems::OutputVector<double>* output) const;
-
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,

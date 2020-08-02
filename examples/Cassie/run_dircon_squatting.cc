@@ -476,9 +476,10 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
 
+  double alpha = .2;
   int num_poses = std::min(num_knotpoints, 5);
   trajopt.CreateVisualizationCallback(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf", num_poses);
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf", num_poses, alpha);
 
   drake::solvers::SolverId solver_id("");
 

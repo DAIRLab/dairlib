@@ -414,7 +414,7 @@ const VectorXDecisionVariable Dircon<T>::impulse_vars(
 template <typename T>
 void Dircon<T>::CreateVisualizationCallback(
     std::string model_file, std::vector<unsigned int> poses_per_mode,
-    std::string weld_frame_to_world) {
+    double alpha, std::string weld_frame_to_world) {
   DRAKE_DEMAND(!callback_visualizer_);  // Cannot be set twice
   DRAKE_DEMAND(poses_per_mode.size() == (uint)num_modes());
 
@@ -454,9 +454,13 @@ void Dircon<T>::CreateVisualizationCallback(
       state_vars(num_modes() - 1, last_mode.num_knotpoints() - 1)
           .head(plant_.num_positions());
 
+  VectorXd alpha_vec = VectorXd::Constant(num_poses, alpha);
+  alpha_vec(0) = 1;
+  alpha_vec(num_poses - 1) = 1;
+
   // Create visualizer
   callback_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-      model_file, num_poses, weld_frame_to_world);
+      model_file, num_poses, alpha_vec, weld_frame_to_world);
 
   // Callback lambda function
   auto my_callback = [this, num_poses](const Eigen::Ref<const VectorXd>& vars) {
@@ -473,6 +477,7 @@ void Dircon<T>::CreateVisualizationCallback(
 template <typename T>
 void Dircon<T>::CreateVisualizationCallback(std::string model_file,
                                             unsigned int num_poses,
+                                            double alpha,
                                             std::string weld_frame_to_world) {
   // Check that there is an appropriate number of poses
   DRAKE_DEMAND(num_poses >= (uint)num_modes() + 1);
@@ -526,14 +531,15 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
     assigned_sum++;
   }
 
-  CreateVisualizationCallback(model_file, num_poses_per_mode,
+  CreateVisualizationCallback(model_file, num_poses_per_mode, alpha,
                               weld_frame_to_world);
 }
 
 template <typename T>
 void Dircon<T>::CreateVisualizationCallback(std::string model_file,
+                                            double alpha,
                                             std::string weld_frame_to_world) {
-  CreateVisualizationCallback(model_file, N(), weld_frame_to_world);
+  CreateVisualizationCallback(model_file, N(), alpha, weld_frame_to_world);
 }
 
 template <typename T>

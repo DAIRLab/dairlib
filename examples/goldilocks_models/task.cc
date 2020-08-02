@@ -226,7 +226,8 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
       // if true, it indicates that there are still samples need to help in
       // iter_start_finding_mediate_sample_
       // else, we should update the range of mediate samples
-      prefix = to_string(iter)+ "_" +to_string(N_sample_-1);
+      prefix = to_string(iter_start_finding_mediate_sample_)+ "_"
+          +to_string(sample_index_to_help_);
       is_success = (readCSV(dir + prefix + string("_is_success.csv")))(0, 0);
       if(is_success==1){
         choose_samples_from_closest_to_target = true;
@@ -252,9 +253,11 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
         if(is_success==0)
         {
           failed_task = readCSV(dir + prefix +string("_task.csv"));
+          sample_index_to_help_ = sample_num;
           break;
         }
       }
+
       // make sure that the prefix_closest_task is not initialized with the
       // failed sample
       if(sample_num==0){

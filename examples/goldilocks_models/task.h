@@ -118,6 +118,7 @@ class TasksGenerator {
   bool start_finding_mediate_sample_;
   int iter_start_finding_mediate_sample_;
   bool is_first_time_to_try_mediate_sample_;
+  int sample_index_to_help_;
 
   std::unordered_map<string, int> name_to_index_map_;
 

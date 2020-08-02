@@ -96,6 +96,9 @@ class TasksGenerator {
   void set_N_trying_mediate_sample(int number){
     N_trying_mediate_sample_ = number;
   }
+  void set_sample_index_to_help(int index){
+    sample_index_to_help_ = index;
+  };
 
   // Generator
   virtual vector<double> NewTask(string dir,int iter,int sample_idx) = 0;

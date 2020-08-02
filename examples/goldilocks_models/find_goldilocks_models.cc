@@ -2292,6 +2292,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
         rerun_current_iteration = false;
         task_gen->set_N_trying_mediate_sample(
             task_gen->N_trying_mediate_sample()+1);
+        //find the sample to help
+        for (int sample_num = 0; sample_num < task_gen->total_sample_number();
+        sample_num++){
+          prefix = to_string(task_gen->iter_start_finding_mediate_sample())
+              + string("_") + to_string(sample_num);
+          int is_success = (readCSV(dir + prefix +
+              string("_is_success.csv")))(0, 0);
+          if(is_success==0)
+          {
+            task_gen->set_sample_index_to_help(sample_num);
+            break;
+          }
+        }
         continue;
       }
       else{

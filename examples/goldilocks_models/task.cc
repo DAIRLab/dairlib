@@ -240,27 +240,17 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
     VectorXd closest_successful_task;
     int sample_num = 0;
     string prefix_closest_task;
+
+    prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
+        to_string(sample_index_to_help_);
+    failed_task = readCSV(dir + prefix +string("_task.csv"));
     if(choose_samples_from_closest_to_target){
-      // tasks are uniformly chosen from the range of closest sample to target
-      // sample
-      // find the first failed sample in the iteration that needs help
-      for (sample_num = 0; sample_num < N_sample_; sample_num++){
-        prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
-            to_string(sample_num);
-        is_success = (readCSV(dir + prefix + string("_is_success.csv")))(0, 0);
-        if(is_success==0)
-        {
-          failed_task = readCSV(dir + prefix +string("_task.csv"));
-          sample_index_to_help_ = sample_num;
-          break;
-        }
-      }
-      cout<<"sample index to help: "<<sample_index_to_help_<<endl;
-      cout<<"corresponding prefix: "<<prefix<<endl;
+      // tasks are uniformly chosen from the range of closest successful sample
+      // to failed sample
 
       // make sure that the prefix_closest_task is not initialized with the
       // failed sample
-      if(sample_num==0){
+      if(sample_index_to_help_==0){
         prefix_closest_task = to_string(iter_start_finding_mediate_sample_)
             + string("_") + to_string(N_sample_-1);
       }
@@ -293,9 +283,8 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
           break;
         }
       }
-      prefix = to_string(iter) + string("_") +to_string(N_sample_-1);
-      failed_task = readCSV(dir + prefix +string("_task.csv"));
     }
+    cout<<"sample index to help: "<<sample_index_to_help_<<endl;
     cout<<"closest sample prefix: "<<prefix_closest_task<<endl;
     // also save the solution of this closest sample as initial guess for
     // mediate iteration

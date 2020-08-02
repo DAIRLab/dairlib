@@ -73,7 +73,7 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
   // we don't implement the feature of trying mediate samples for failed iteration
   start_finding_mediate_sample_ = false;
   iter_start_finding_mediate_sample_ = -1;
-  is_first_time_to_try_mediate_sample_ = false;
+  N_trying_mediate_sample_ = 0;
   // Construct forward and backward index map
   int i_layer = 0;
   int sample_idx = 0;
@@ -180,7 +180,7 @@ UniformTasksGenerator::UniformTasksGenerator(
   // initialize the parameters for finding mediate samples for failed iteration
   start_finding_mediate_sample_ = false;
   iter_start_finding_mediate_sample_ = -1;
-  is_first_time_to_try_mediate_sample_ = true;
+  N_trying_mediate_sample_ = 0;
 
   task_min_range_ = task_min;
   task_max_range_ = task_max;
@@ -215,11 +215,9 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
     // if true, we need to allocate samples from a nearest successful one
     // to the failed one
     bool choose_samples_from_closest_to_target;
-    if(is_first_time_to_try_mediate_sample_)
+    if(N_trying_mediate_sample_<=1)
     {
       choose_samples_from_closest_to_target = true;
-      //reset the flag
-      is_first_time_to_try_mediate_sample_ = false;
     }
     else{
       // check if the target sample can find solution

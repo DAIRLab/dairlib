@@ -2247,7 +2247,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       //start to find mediate sample for the failed samples
       task_gen->set_iter_start_finding_mediate_sample(iter);
       task_gen->set_start_finding_mediate_sample(true);
-      task_gen->set_is_first_time_to_try_mediate_sample(true);
+      task_gen->set_N_trying_mediate_sample(0);
       n_shrink_step=0;
     }
     else if( (iter==task_gen->iter_start_finding_mediate_sample()) &&
@@ -2255,6 +2255,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // stop searching mediate samples
       task_gen->set_iter_start_finding_mediate_sample(-1);
       task_gen->set_start_finding_mediate_sample(false);
+      task_gen->set_N_trying_mediate_sample(0);
     }
 
     // Update parameters, adjusting step size or extend model
@@ -2289,6 +2290,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
         // we need the mediate iteration to evaluate mediate samples
         // next iteration is the mediate iteration
         rerun_current_iteration = false;
+        task_gen->set_N_trying_mediate_sample(
+            task_gen->N_trying_mediate_sample()+1);
         continue;
       }
       else{

@@ -797,7 +797,7 @@ void CassieStateEstimator::EstimateContactForEkf(
   *left_contact = 0;
   *right_contact = 0;
 
-  // Estimate contact based on optimization results
+  /*// Estimate contact based on optimization results
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
@@ -814,7 +814,7 @@ void CassieStateEstimator::EstimateContactForEkf(
                           (optimal_cost.at(2) >= cost_threshold_ekf_));
   bool double_contact_qp = (min_index == 0);
   bool left_contact_qp = (min_index == 1);
-  bool right_contact_qp = (min_index == 2);
+  bool right_contact_qp = (min_index == 2);*/
 
   // Use spring as a necessary guard to determine the contact (that is, in the
   // case where QP says right stance but left spring deflection is not big
@@ -839,19 +839,19 @@ void CassieStateEstimator::EstimateContactForEkf(
                                right_heel_spring < heel_spring_threshold_ekf_);
 
   // Determine contacts based on both spring deflation and QP cost
-  if (qp_informative && (double_contact_qp || left_contact_qp) &&
+  if (/*qp_informative && (double_contact_qp || left_contact_qp) &&*/
       left_contact_spring) {
     *left_contact = 1;
   }
-  if (qp_informative && (double_contact_qp || right_contact_qp) &&
+  if (/*qp_informative && (double_contact_qp || right_contact_qp) &&*/
       right_contact_spring) {
     *right_contact = 1;
   }
 
-  if (print_info_to_terminal_) {
-    cout << "optimal_cost[0][1][2], threshold = " << optimal_cost.at(0) << ", "
+  // if (print_info_to_terminal_) {
+    /*cout << "optimal_cost[0][1][2], threshold = " << optimal_cost.at(0) << ", "
          << optimal_cost.at(1) << ", " << optimal_cost.at(2) << ", "
-         << cost_threshold_ekf_ << endl;
+         << cost_threshold_ekf_ << endl;*/
 
     cout << "left/right knee spring, threshold = " << left_knee_spring << ", "
          << right_knee_spring << ", " << knee_spring_threshold_ekf_ << endl;
@@ -859,7 +859,7 @@ void CassieStateEstimator::EstimateContactForEkf(
          << right_heel_spring << ", " << heel_spring_threshold_ekf_ << endl;
     cout << "left/right contacts = " << *left_contact << ", " << *right_contact
          << endl;
-  }
+  // }
 }
 
 /// EstimateContactForController(). Less conservative.
@@ -1109,20 +1109,20 @@ EventStatus CassieStateEstimator::Update(
     int right_contact = 0;
     std::vector<double> optimal_cost(3, 0.0);
      
-    // Currently hack it to not use any contact estimation
-    DRAKE_DEMAND(hardware_test_mode_==0);
-    /*if (test_with_ground_truth_state_) {
-      UpdateContactEstimationCosts(
-          output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
+    // Currently we are only using springs in contact estimiation 
+    // TODO: remove QPs contact estimiation or implement a faster one
+    if (test_with_ground_truth_state_) {
+      // UpdateContactEstimationCosts(
+      //     output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
       EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
                             &right_contact);
     } else {
-      UpdateContactEstimationCosts(filtered_output, dt,
-                                   &(state->get_mutable_discrete_state()),
-                                   &optimal_cost);
+      // UpdateContactEstimationCosts(filtered_output, dt,
+      //                              &(state->get_mutable_discrete_state()),
+      //                              &optimal_cost);
       EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
                             &right_contact);
-    }*/
+    }
 
     // Test mode needed for hardware experiment
     // mode #0 assumes the feet are always on the ground

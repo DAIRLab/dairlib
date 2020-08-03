@@ -83,6 +83,17 @@ struct OSCWalkingGains {
   std::vector<double> SwingFootW;
   std::vector<double> SwingFootKp;
   std::vector<double> SwingFootKd;
+  double w_swing_toe;
+  double swing_toe_kp;
+  double swing_toe_kd;
+  double w_hip_yaw;
+  double hip_yaw_kp;
+  double hip_yaw_kd;
+  double center_line_offset;
+  double cp_offset;
+  double mid_foot_height;
+  double final_foot_height;
+  double final_foot_velocity_z;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -102,6 +113,18 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(SwingFootW));
     a->Visit(DRAKE_NVP(SwingFootKp));
     a->Visit(DRAKE_NVP(SwingFootKd));
+    a->Visit(DRAKE_NVP(w_swing_toe));
+    a->Visit(DRAKE_NVP(swing_toe_kp));
+    a->Visit(DRAKE_NVP(swing_toe_kd));
+    a->Visit(DRAKE_NVP(w_hip_yaw));
+    a->Visit(DRAKE_NVP(hip_yaw_kp));
+    a->Visit(DRAKE_NVP(hip_yaw_kd));
+    // swing foot heuristics
+    a->Visit(DRAKE_NVP(mid_foot_height));
+    a->Visit(DRAKE_NVP(center_line_offset));
+    a->Visit(DRAKE_NVP(cp_offset));
+    a->Visit(DRAKE_NVP(final_foot_height));
+    a->Visit(DRAKE_NVP(final_foot_velocity_z));
   }
 };
 
@@ -316,18 +339,13 @@ int DoMain(int argc, char* argv[]) {
                   deviation_from_cp->get_input_port_state());
 
   // Create swing leg trajectory generator (capture point)
-  double mid_foot_height = 0.1;
   // Since the ground is soft in the simulation, we raise the desired final
   // foot height by 1 cm. The controller is sensitive to this number, should
   // tune this every time we change the simulation parameter or when we move
   // to the hardware testing.
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
-  double desired_final_foot_height = 0.01;
-  double desired_final_vertical_foot_velocity = 0;  //-1;
-  double max_CoM_to_CP_dist = 0.4;
-  double cp_offset = 0.06;
-  double center_line_offset = 0.06;
+  double max_CoM_to_CP_dist = 0.5;
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
@@ -337,9 +355,9 @@ int DoMain(int argc, char* argv[]) {
   auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
       plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
       left_right_support_state_durations, left_right_foot, "pelvis",
-      mid_foot_height, desired_final_foot_height,
-      desired_final_vertical_foot_velocity, max_CoM_to_CP_dist, true, true,
-      true, cp_offset, center_line_offset);
+      gains.mid_foot_height, gains.final_foot_height,
+      gains.final_foot_velocity_z, max_CoM_to_CP_dist, true, true,
+      true, gains.cp_offset, gains.center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   cp_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -423,9 +441,9 @@ int DoMain(int argc, char* argv[]) {
   // Swing toe joint tracking (Currently use fix position)
   // The desired position, -1.5, was derived heuristically. It is roughly the
   // toe angle when Cassie stands on the ground.
-  MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
+  MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe, plant_w_spr,
                                         plant_wo_spr);
@@ -435,9 +453,9 @@ int DoMain(int argc, char* argv[]) {
                                          "toe_leftdot");
   osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
   // Swing hip yaw joint tracking
-  MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
+  MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
                                             K_d_hip_yaw, W_hip_yaw, plant_w_spr,
                                             plant_wo_spr);

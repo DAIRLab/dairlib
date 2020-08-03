@@ -44,9 +44,10 @@ InputSupervisor::InputSupervisor(
 
   // Create error flag as discrete state
   // Store both values in single discrete vector
-  DeclareDiscreteState(2);
+  status_vars_index_ = DeclareDiscreteState(2);
   n_fails_index_ = 0;
   status_index_ = 1;
+  prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
@@ -86,6 +87,16 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     output->set_timestamp(command->get_timestamp());
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
   }
+  if ((context.get_discrete_state(prev_efforts_index_).get_value() -
+       output->get_data())
+          .norm() > kInputThreshold) {
+    Eigen::VectorXd blended_effort =
+        (1 - kCutoffFreq) *
+            context.get_discrete_state(prev_efforts_index_).get_value() +
+            kCutoffFreq * output->get_data();
+    output->SetDataVector(blended_effort);
+  }
+//  context.get_discrete_state(prev_efforts_index_).set_value(output->get_data());
 }
 
 void InputSupervisor::SetStatus(const Context<double>& context,
@@ -143,6 +154,9 @@ void InputSupervisor::UpdateErrorFlag(
       (*discrete_state)[status_index_] = false;
     }
   }
+
+  discrete_state->get_mutable_vector(prev_efforts_index_)
+      .set_value(state->GetEfforts());
 }
 
 }  // namespace dairlib

@@ -848,7 +848,7 @@ void CassieStateEstimator::EstimateContactForEkf(
     *right_contact = 1;
   }
 
-  // if (print_info_to_terminal_) {
+  if (print_info_to_terminal_) {
     /*cout << "optimal_cost[0][1][2], threshold = " << optimal_cost.at(0) << ", "
          << optimal_cost.at(1) << ", " << optimal_cost.at(2) << ", "
          << cost_threshold_ekf_ << endl;*/
@@ -859,7 +859,7 @@ void CassieStateEstimator::EstimateContactForEkf(
          << right_heel_spring << ", " << heel_spring_threshold_ekf_ << endl;
     cout << "left/right contacts = " << *left_contact << ", " << *right_contact
          << endl;
-  // }
+  }
 }
 
 /// EstimateContactForController(). Less conservative.

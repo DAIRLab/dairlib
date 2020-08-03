@@ -94,6 +94,8 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   int command_input_port_;
   int command_output_port_;
   int status_output_port_;
+
+  mutable Eigen::VectorXd prev_commanded_effort_;
 };
 
 }  // namespace dairlib

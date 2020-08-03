@@ -21,6 +21,9 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
+
+  prev_commanded_effort_ = Eigen::VectorXd::Zero(num_actuators_);
+
   // Create input ports
   command_input_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
@@ -87,15 +90,22 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     output->set_timestamp(command->get_timestamp());
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
   }
-  if ((context.get_discrete_state(prev_efforts_index_).get_value() -
-       output->get_data())
-          .norm() > kInputThreshold) {
+  // if ((context.get_discrete_state(prev_efforts_index_).get_value() -
+  //      output->get_data())
+  //         .norm() > kInputThreshold) {
+  //   Eigen::VectorXd blended_effort =
+  //       (1 - kCutoffFreq) *
+  //           context.get_discrete_state(prev_efforts_index_).get_value() +
+  //           kCutoffFreq * output->get_data();
+  //   output->SetDataVector(blended_effort);
+  // }
+  if ((prev_commanded_effort_ -
+       output->get_data()).norm() > kInputThreshold) {
     Eigen::VectorXd blended_effort =
-        (1 - kCutoffFreq) *
-            context.get_discrete_state(prev_efforts_index_).get_value() +
-            kCutoffFreq * output->get_data();
+        (1 - kCutoffFreq) * prev_commanded_effort_ + kCutoffFreq * output->get_data();
     output->SetDataVector(blended_effort);
   }
+  prev_commanded_effort_ = output->get_data();
 //  context.get_discrete_state(prev_efforts_index_).set_value(output->get_data());
 }
 
@@ -155,8 +165,8 @@ void InputSupervisor::UpdateErrorFlag(
     }
   }
 
-  discrete_state->get_mutable_vector(prev_efforts_index_)
-      .set_value(state->GetEfforts());
+  // discrete_state->get_mutable_vector(prev_efforts_index_)
+  //     .set_value(state->GetEfforts());
 }
 
 }  // namespace dairlib

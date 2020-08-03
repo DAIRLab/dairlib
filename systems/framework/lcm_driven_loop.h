@@ -250,6 +250,8 @@ class LcmDrivenLoop {
         // not we do not update the active channel name.
         if (name_to_input_sub_map_.count(switch_sub_->message().channel) == 1) {
           active_channel_ = switch_sub_->message().channel;
+          std::cout << "switch to " << switch_sub_->message().channel << std::endl;
+
         } else {
           std::cout << switch_sub_->message().channel << " doesn't exist\n";
         }

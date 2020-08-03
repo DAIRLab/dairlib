@@ -42,16 +42,19 @@ position_names = [
 # kp_default = [20,20,20,20,20,20,20,20,2,2]
 # kd_default = [5,5,5,5,5,5,5,5,1,1]
 
-# standing (could be unstable)
-joint_default = [0.2,-.2,0,0,0.35,0.35,-0.9,-0.9,-1.8,-1.8]
-kp_default = [i for i in [20,20,10,10,20,20,100,100,10,10]]
-kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
-# kp_default = [0,0,0,0,0,0,0,0,0,0]
-# kd_default = [0,0,0,0,0,0,0,0,0,0]
-
 # joint_default = [0,0,0,0,0,0,0,0,0,0]
 # kp_default = [0,0,0,0,0,0,0,0,0,0]
 # kd_default = [0,0,0,0,0,0,0,0,0,0]
+
+# Set of gains with which Cassie can stand:
+# joint_default = [0.2,-.2,0,0,0.35,0.35,-0.9,-0.9,-1.8,-1.8]
+# kp_default = [i for i in [20,20,10,10,20,20,100,100,10,10]]
+# kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
+
+# Set of gains with which COM is within support polygon when we lower the hoist 
+joint_default = [0.2,-.2,0,0,0.35,0.35,-1.5,-1.5,-1.8,-1.8]
+kp_default = [i for i in [20,20,10,10,20,20,50,50,10,10]]
+kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
 
 
 class ControllerGui(QWidget):

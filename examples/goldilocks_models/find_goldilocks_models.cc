@@ -2247,7 +2247,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       //start to find mediate sample for the failed samples
       task_gen->set_iter_start_finding_mediate_sample(iter);
       task_gen->set_start_finding_mediate_sample(true);
-      task_gen->set_N_trying_mediate_sample(0);
+      task_gen->set_choose_sample_from_iter_to_help(true);
+      task_gen->set_sample_index_to_help(-1);
       n_shrink_step=0;
     }
     else if( (iter==task_gen->iter_start_finding_mediate_sample()) &&
@@ -2255,7 +2256,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // stop searching mediate samples
       task_gen->set_iter_start_finding_mediate_sample(-1);
       task_gen->set_start_finding_mediate_sample(false);
-      task_gen->set_N_trying_mediate_sample(0);
     }
 
     // Update parameters, adjusting step size or extend model
@@ -2290,11 +2290,29 @@ int findGoldilocksModels(int argc, char* argv[]) {
         // we need the mediate iteration to evaluate mediate samples
         // next iteration is the mediate iteration
         rerun_current_iteration = false;
-        task_gen->set_N_trying_mediate_sample(
-            task_gen->N_trying_mediate_sample()+1);
+        int is_success;
+        if(task_gen->sample_index_to_help()==-1){
+          //this is the first time to use mediate iteration for current iteration
+          task_gen->set_choose_sample_from_iter_to_help(true);
+        }
+        else{
+          prefix = to_string(task_gen->iter_start_finding_mediate_sample())
+              + string("_") + to_string(task_gen->sample_index_to_help());
+          is_success = (readCSV(dir + prefix +
+              string("_is_success.csv")))(0, 0);
+          if(is_success==1){
+            // the sample which needs help has found a solution
+            // we should find another failed sample in this iteration
+            task_gen->set_choose_sample_from_iter_to_help(true);
+          }
+          else{
+            // update the range of tasks in mediate iteration
+            task_gen->set_choose_sample_from_iter_to_help(false);
+          }
+        }
         //find the sample to help
         for (int sample_num = 0; sample_num < task_gen->total_sample_number();
-        sample_num++){
+             sample_num++){
           prefix = to_string(task_gen->iter_start_finding_mediate_sample())
               + string("_") + to_string(sample_num);
           int is_success = (readCSV(dir + prefix +

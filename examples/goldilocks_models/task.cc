@@ -73,7 +73,6 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
   // we don't implement the feature of trying mediate samples for failed iteration
   start_finding_mediate_sample_ = false;
   iter_start_finding_mediate_sample_ = -1;
-  N_trying_mediate_sample_ = 0;
   // Construct forward and backward index map
   int i_layer = 0;
   int sample_idx = 0;
@@ -180,7 +179,7 @@ UniformTasksGenerator::UniformTasksGenerator(
   // initialize the parameters for finding mediate samples for failed iteration
   start_finding_mediate_sample_ = false;
   iter_start_finding_mediate_sample_ = -1;
-  N_trying_mediate_sample_ = 0;
+  choose_sample_from_iter_to_help_ = true;
 
   task_min_range_ = task_min;
   task_max_range_ = task_max;
@@ -211,42 +210,20 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
     DRAKE_DEMAND(iter!=iter_start_finding_mediate_sample_);
     int is_success;
     string prefix;
-    // check if this is the first time to try mediate sample:
-    // if true, we need to allocate samples from a nearest successful one
-    // to the failed one
-    bool choose_samples_from_closest_to_target;
-    if(N_trying_mediate_sample_<=1)
-    {
-      choose_samples_from_closest_to_target = true;
-    }
-    else{
-      // check if the target sample can find solution
-      // if true, it indicates that there are still samples need to help in
-      // iter_start_finding_mediate_sample_
-      // else, we should update the range of mediate samples
-      prefix = to_string(iter_start_finding_mediate_sample_)+ "_"
-          +to_string(sample_index_to_help_);
-      is_success = (readCSV(dir + prefix + string("_is_success.csv")))(0, 0);
-      if(is_success==1){
-        choose_samples_from_closest_to_target = true;
-      }
-      else{
-        choose_samples_from_closest_to_target = false;
-      }
-    }
-
-    // set tasks
     VectorXd failed_task;
     VectorXd closest_successful_task;
     int sample_num = 0;
     string prefix_closest_task;
 
+    // get the sample that needs help
     prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
         to_string(sample_index_to_help_);
     failed_task = readCSV(dir + prefix +string("_task.csv"));
-    if(choose_samples_from_closest_to_target){
-      // tasks are uniformly chosen from the range of closest successful sample
-      // to failed sample
+    // tasks are uniformly chosen from the range of closest successful sample
+    // to failed sample
+    if(choose_sample_from_iter_to_help_){
+      // the closest successful sample is chosen from the iteration which needs
+      // help
 
       // make sure that the prefix_closest_task is not initialized with the
       // failed sample
@@ -258,6 +235,7 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
         prefix_closest_task = to_string(iter_start_finding_mediate_sample_)
             + string("_") + to_string(0);
       }
+      // find the closest sample
       VectorXd gamma_scale = GetGammaScale();
       for (sample_num = 0; sample_num < N_sample_; sample_num++) {
         prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
@@ -269,8 +247,7 @@ vector<double> UniformTasksGenerator::NewTask(string dir,int iter,int sample_idx
           +string("_task.csv"));
     }
     else{
-      // tasks are uniformly chosen from the range of closest successful mediate
-      // sample to target sample
+      // the closest successful sample is chosen from the mediate iteration
       for (sample_num = N_sample_-1; sample_num >= 0; sample_num--){
         prefix_closest_task = to_string(iter) + string("_") +
             to_string(sample_num);

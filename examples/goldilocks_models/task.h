@@ -83,7 +83,7 @@ class TasksGenerator {
   int iter_start_optimization() const {return iter_start_optimization_;}
   bool start_finding_mediate_sample() const {return start_finding_mediate_sample_;}
   int iter_start_finding_mediate_sample() const {return iter_start_finding_mediate_sample_;}
-  int N_trying_mediate_sample() const {return N_trying_mediate_sample_;}
+  bool choose_sample_from_iter_to_help() const {return choose_sample_from_iter_to_help_;}
   int sample_index_to_help() const {return sample_index_to_help_;}
 
   // Setters
@@ -93,8 +93,8 @@ class TasksGenerator {
   void set_iter_start_finding_mediate_sample(int iter_start){
     iter_start_finding_mediate_sample_ = iter_start;
   }
-  void set_N_trying_mediate_sample(int number){
-    N_trying_mediate_sample_ = number;
+  void set_choose_sample_from_iter_to_help(bool if_choose){
+    choose_sample_from_iter_to_help_ = if_choose;
   }
   void set_sample_index_to_help(int index){
     sample_index_to_help_ = index;
@@ -122,7 +122,7 @@ class TasksGenerator {
   int iter_start_optimization_;
   bool start_finding_mediate_sample_;
   int iter_start_finding_mediate_sample_;
-  int N_trying_mediate_sample_;
+  bool choose_sample_from_iter_to_help_;
   int sample_index_to_help_;
 
   std::unordered_map<string, int> name_to_index_map_;

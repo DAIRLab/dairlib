@@ -61,7 +61,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
                                                         command_input_port_);
 
   bool is_error =
-      context.get_discrete_state()[n_fails_index_] >= min_consecutive_failures_;
+      context.get_discrete_state(0)[n_fails_index_] >= min_consecutive_failures_;
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros
@@ -105,7 +105,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  output->get_mutable_value()(0) = context.get_discrete_state()[status_index_];
+  output->get_mutable_value()(0) = context.get_discrete_state(0)[status_index_];
   if (input_limit_ != std::numeric_limits<double>::max()) {
     for (int i = 0; i < command->get_data().size(); i++) {
       double command_value = command->get_data()(i);
@@ -119,7 +119,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
   // Shutdown is/will soon be active (the status flag is set in a separate loop
   // from the actual motor torques so the update of the status bit could be
   // slightly off
-  if (context.get_discrete_state()[n_fails_index_] >=
+  if (context.get_discrete_state(0)[n_fails_index_] >=
       min_consecutive_failures_) {
     output->get_mutable_value()(0) += 4;
   }

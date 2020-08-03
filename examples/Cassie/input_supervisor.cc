@@ -133,25 +133,25 @@ void InputSupervisor::UpdateErrorFlag(
 
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
-  if ((*discrete_state)[n_fails_index_] < min_consecutive_failures_) {
+  if (discrete_state->get_data()[0]->get_value()[n_fails_index_] < min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
                              (velocities.array() < -max_joint_velocity_).any();
     if (is_velocity_error) {
       // Increment counter
-      (*discrete_state)[n_fails_index_]++;
-      (*discrete_state)[status_index_] = true;
+      discrete_state->get_data()[0]->get_mutable_value()[n_fails_index_] += 1;
+      discrete_state->get_data()[0]->get_mutable_value()[status_index_] = true;
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
-      std::cout << "Consecutive error " << (*discrete_state)[n_fails_index_]
+      std::cout << "Consecutive error " << discrete_state->get_data()[0]->get_value()[n_fails_index_]
                 << " of " << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
                 << std::endl;
     } else {
       // Reset counter
-      (*discrete_state)[n_fails_index_] = 0;
-      (*discrete_state)[status_index_] = false;
+      discrete_state->get_data()[0]->get_mutable_value()[n_fails_index_] = 0;
+      discrete_state->get_data()[0]->get_mutable_value()[status_index_] = false;
     }
   }
 

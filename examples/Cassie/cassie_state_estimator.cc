@@ -938,6 +938,10 @@ void CassieStateEstimator::EstimateContactForController(
 EventStatus CassieStateEstimator::Update(
     const Context<double>& context,
     drake::systems::State<double>* state) const {
+  // Clear next_message_time_ so that this callback function only runs once per
+  // message
+  next_message_time_ = std::numeric_limits<double>::infinity();
+
   // Get cassie output
   const auto& cassie_out =
       this->EvalAbstractInput(context, cassie_out_input_port_)
@@ -1322,8 +1326,6 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
   auto& uu_events = events->get_mutable_unrestricted_update_events();
   uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
         drake::systems::TriggerType::kTimed, callback));
-
-  next_message_time_ = std::numeric_limits<double>::infinity();
 }
 
 }  // namespace systems

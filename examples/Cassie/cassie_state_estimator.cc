@@ -31,6 +31,8 @@ using drake::solvers::Solve;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
+using drake::systems::LeafSystem;
+using drake::systems::UnrestrictedUpdateEvent;
 
 using multibody::KinematicEvaluatorSet;
 using systems::OutputVector;
@@ -95,9 +97,6 @@ CassieStateEstimator::CassieStateEstimator(
           this->DeclareVectorInputPort(OutputVector<double>(n_q_, n_v_, n_u_))
               .get_index();
     }
-
-    // Declare update event for EKF
-    DeclarePerStepUnrestrictedUpdateEvent(&CassieStateEstimator::Update);
 
     // a state which stores previous timestamp
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
@@ -946,10 +945,9 @@ EventStatus CassieStateEstimator::Update(
 
   // TODO(yminchen): delete the testing code when you fix the time delay issue
   // Testing
-  // cout << "\nIn per-step update: lcm_time = " <<
-  //      cassie_out.pelvis.targetPc.taskExecutionTime << endl;
-  // cout << "In per-step update: context_time = " << context.get_time() <<
-  // endl;
+//   cout << "\nIn per-step update: lcm_time = "
+//        << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
+//   cout << "In per-step update: context_time = " << context.get_time() << endl;
 
   // Get current time and previous time
   double current_time = context.get_time();
@@ -1289,11 +1287,11 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
   }
 
   // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // auto state_time = context.get_discrete_state(time_idx_).get_value();
-  // cout << "  In copyStateOut: lcm_time = " <<
-  // cassie_out.pelvis.targetPc.taskExecutionTime << endl; cout << "  In
-  // copyStateOut: state_time = " << state_time << endl; cout << "  In
-  // copyStateOut: context_time = " << context.get_time() << endl;
+//   auto state_time = context.get_discrete_state(time_idx_).get_value();
+//   cout << "  In copyStateOut: lcm_time = "
+//        << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
+//   cout << "  In copyStateOut: state_time = " << state_time << endl;
+//   cout << "  In copyStateOut: context_time = " << context.get_time() << endl;
 }
 
 void CassieStateEstimator::setPreviousTime(Context<double>* context,
@@ -1325,6 +1323,30 @@ void CassieStateEstimator::setPreviousImuMeasurement(
     Context<double>* context, const VectorXd& imu_value) const {
   context->get_mutable_discrete_state(prev_imu_idx_).get_mutable_value()
       << imu_value;
+}
+
+void CassieStateEstimator::DoCalcNextUpdateTime(
+    const Context<double>& context,
+    drake::systems::CompositeEventCollection<double>* events,
+    double* time) const {
+  LeafSystem<double>::DoCalcNextUpdateTime(context, events, time);
+  // If next_message_time_  has been set, declare an Update event for that time
+  if (std::isinf(next_message_time_)) {
+    return;
+  }
+
+  // Subtract a small epsilon value so this event triggers before the publish
+  *time = next_message_time_ - 1e-12;
+
+  UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
+      [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
+             drake::systems::State<double>* s) { this->Update(c, s); };
+
+  auto& uu_events = events->get_mutable_unrestricted_update_events();
+  uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+        drake::systems::TriggerType::kTimed, callback));
+
+  next_message_time_ = std::numeric_limits<double>::infinity();
 }
 
 }  // namespace systems

@@ -98,6 +98,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
 
+  void DoCalcNextUpdateTime(
+      const drake::systems::Context<double>& context,
+      drake::systems::CompositeEventCollection<double>* events,
+      double* time) const final;
+
+  // Set the time of the next received message. Is used to trigger update events
+  void set_next_message_time(double t) { next_message_time_ = t; };
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
@@ -228,6 +236,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int hardware_test_mode_;
   std::unique_ptr<int> counter_for_testing_ =
       std::make_unique<int>(0);
+
+  // Timestamp from unprocessed message
+  mutable double next_message_time_ = std::numeric_limits<double>::infinity();
 };
 
 }  // namespace systems

@@ -1315,9 +1315,9 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
   // event. We set `next_message_time_ - eps_` to be the update time for our
   // callback function, because we want the event triggers before the publish
   // event at time `next_message_time_`.
-  // Note that we don't need to worry about declaring multiple events at a
-  // message time, because the events that are not at the next update time are
-  // cleared here:
+  // Note that we don't need to worry about declaring multiple events at the
+  // same message time, because the events that happen after the next update
+  // time of the Simulator are cleared here:
   // https://github.com/RobotLocomotion/drake/blob/5f0ac26e7bf7dc6f86c773c77b2c9926fb67a9d5/systems/framework/diagram.cc#L850
   if (context.get_time() < next_message_time_ - eps_) {
     // Subtract a small epsilon value so this event triggers before the publish

@@ -938,10 +938,6 @@ void CassieStateEstimator::EstimateContactForController(
 EventStatus CassieStateEstimator::Update(
     const Context<double>& context,
     drake::systems::State<double>* state) const {
-  // Clear next_message_time_ so that this callback function only runs once per
-  // message
-  next_message_time_ = std::numeric_limits<double>::infinity();
-
   // Get cassie output
   const auto& cassie_out =
       this->EvalAbstractInput(context, cassie_out_input_port_)
@@ -1310,22 +1306,31 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
     const Context<double>& context,
     drake::systems::CompositeEventCollection<double>* events,
     double* time) const {
+  // Call Leafsystem's DoCalcNextUpdateTime to add events other than our own
+  // kTimed events
   LeafSystem<double>::DoCalcNextUpdateTime(context, events, time);
-  // If next_message_time_  has been set, declare an Update event for that time
-  if (std::isinf(next_message_time_)) {
-    return;
-  }
 
-  // Subtract a small epsilon value so this event triggers before the publish
-  *time = next_message_time_ - 1e-12;
+  // If `context.get_time() < next_message_time_ - eps_`, it means our callback
+  // function hasn't been called in the Simulator loop, so we add/declare an
+  // event. We set `next_message_time_ - eps_` to be the update time for our
+  // callback function, because we want the event triggers before the publish
+  // event at time `next_message_time_`.
+  // Note that we don't need to worry about declaring multiple events at a
+  // message time, because the events that are not at the next update time are
+  // cleared here:
+  // https://github.com/RobotLocomotion/drake/blob/5f0ac26e7bf7dc6f86c773c77b2c9926fb67a9d5/systems/framework/diagram.cc#L850
+  if (context.get_time() < next_message_time_ - eps_) {
+    // Subtract a small epsilon value so this event triggers before the publish
+    *time = next_message_time_ - eps_;
 
-  UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
-      [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
-             drake::systems::State<double>* s) { this->Update(c, s); };
+    UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
+        [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
+               drake::systems::State<double>* s) { this->Update(c, s); };
 
-  auto& uu_events = events->get_mutable_unrestricted_update_events();
-  uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+    auto& uu_events = events->get_mutable_unrestricted_update_events();
+    uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
         drake::systems::TriggerType::kTimed, callback));
+  }
 }
 
 }  // namespace systems

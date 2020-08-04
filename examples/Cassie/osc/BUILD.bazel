@@ -32,6 +32,7 @@ cc_library(
     srcs = ["high_level_command.cc"],
     hdrs = ["high_level_command.h"],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",

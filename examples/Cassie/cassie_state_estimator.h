@@ -244,6 +244,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   // Timestamp from unprocessed message
   mutable double next_message_time_ = std::numeric_limits<double>::infinity();
+  double eps_ = 1e-12;
 };
 
 }  // namespace systems

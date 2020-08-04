@@ -318,6 +318,8 @@ int do_main(int argc, char* argv[]) {
         simulator.get_mutable_context().SetTime(time);
       }
 
+      state_estimator->set_next_message_time(time);
+
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
       diagram.Publish(diagram_context);
@@ -363,6 +365,8 @@ int do_main(int argc, char* argv[]) {
                   << std::endl;
         simulator.get_mutable_context().SetTime(time);
       }
+
+      state_estimator->set_next_message_time(time);
 
       simulator.AdvanceTo(time);
       // Force-publish via the diagram

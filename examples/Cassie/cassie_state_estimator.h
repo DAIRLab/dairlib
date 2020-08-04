@@ -98,6 +98,19 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
 
+  // Currently, `DoCalcNextUpdateTime` seems to be the only gateway of adding
+  // kTimed events
+  void DoCalcNextUpdateTime(
+      const drake::systems::Context<double>& context,
+      drake::systems::CompositeEventCollection<double>* events,
+      double* time) const final;
+
+  // Set the time of the next received message. Is used to trigger update
+  // events.
+  // Note that the real trigger/update time is `next_message_time_ - eps`,
+  // because we want the discrete update to happen before Publish
+  void set_next_message_time(double t) { next_message_time_ = t; };
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
@@ -228,6 +241,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int hardware_test_mode_;
   std::unique_ptr<int> counter_for_testing_ =
       std::make_unique<int>(0);
+
+  // Timestamp from unprocessed message
+  double next_message_time_ = -std::numeric_limits<double>::infinity();
+  double eps_ = 1e-12;
 };
 
 }  // namespace systems

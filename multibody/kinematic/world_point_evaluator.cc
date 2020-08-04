@@ -111,6 +111,11 @@ WorldPointEvaluator<T>::CreateLinearFrictionConstraints(int num_faces) const {
   if (is_frictional_) {
     constraints.push_back(
         solvers::CreateLinearFrictionConstraint(this->mu(), num_faces, 2));
+    // Include redundant bounding box constraint
+    Vector3d lb = Vector3d::Constant(-std::numeric_limits<double>::infinity());
+    Vector3d ub = Vector3d::Constant(std::numeric_limits<double>::infinity());
+    lb(2) = 0;
+    constraints.push_back(std::make_shared<BoundingBoxConstraint>(lb, ub));
   }
   return constraints;
 }

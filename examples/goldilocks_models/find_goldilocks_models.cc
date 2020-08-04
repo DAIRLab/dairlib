@@ -2243,19 +2243,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
     // set the parameter of starting and stopping to find mediate samples
     // for failed samples
-    if(n_shrink_step>2){
-      //start to find mediate sample for the failed samples
-      task_gen->set_iter_start_finding_mediate_sample(iter);
-      task_gen->set_start_finding_mediate_sample(true);
-      task_gen->set_choose_sample_from_iter_to_help(true);
-      task_gen->set_sample_index_to_help(-1);
-      n_shrink_step=0;
-    }
-    else if( (iter==task_gen->iter_start_finding_mediate_sample()) &&
-    (!rerun_current_iteration) ){
-      // stop searching mediate samples
-      task_gen->set_iter_start_finding_mediate_sample(-1);
-      task_gen->set_start_finding_mediate_sample(false);
+    if(!is_grid_task){
+      //this feature only applies to non-grid method
+      if(n_shrink_step>2&&rerun_current_iteration){
+        //start to find mediate sample for the failed samples
+        task_gen->set_iter_start_finding_mediate_sample(iter);
+        task_gen->set_start_finding_mediate_sample(true);
+        task_gen->set_choose_sample_from_iter_to_help(true);
+        task_gen->set_sample_index_to_help(-1);
+        n_shrink_step=0;
+      }
+      else if( (iter==task_gen->iter_start_finding_mediate_sample()) &&
+          (!rerun_current_iteration) ){
+        // stop searching mediate samples
+        task_gen->set_iter_start_finding_mediate_sample(-1);
+        task_gen->set_start_finding_mediate_sample(false);
+      }
     }
 
     // Update parameters, adjusting step size or extend model

@@ -19,6 +19,23 @@ cc_library(
         "distance_evaluator.h",
     ],
     deps = [
+        "//solvers:constraint_factory",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "constraints",
+    srcs = [
+        "kinematic_constraints.cc",
+    ],
+    hdrs = [
+        "kinematic_constraints.h",
+    ],
+    deps = [
+        ":kinematic",
+        "//multibody:utils",
+        "//solvers:constraints",
         "@drake//:drake_shared_library",
     ],
 )

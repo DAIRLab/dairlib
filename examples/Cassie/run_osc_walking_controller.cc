@@ -51,6 +51,11 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
+DEFINE_bool(use_radio, false,
+            "Set to true if sending high level commands from radio controller");
+DEFINE_string(
+    cassie_out_channel, "CASSIE_OUTPUT_ECHO",
+    "The name of the channel to receive the cassie out structure from.");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains.yaml",
               "Filepath containing gains");
 DEFINE_bool(publish_osc_data, true,
@@ -237,6 +242,10 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
 
+  auto cassie_out_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+          FLAGS_cassie_out_channel, &lcm_local));
+
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
@@ -263,9 +272,20 @@ int DoMain(int argc, char* argv[]) {
   // The function ouputs 0.0007 when x = 0
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
-  auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), global_target_position,
-      params_of_no_turning);
+  cassie::osc::HighLevelCommand* high_level_command;
+  if (FLAGS_use_radio) {
+    double vel_scale_rot = 0.5;
+    double vel_scale_trans = 1.0;
+    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+        plant_w_spr, context_w_spr.get(), vel_scale_rot, vel_scale_trans);
+    builder.Connect(cassie_out_receiver->get_output_port(),
+                    high_level_command->get_cassie_output_port());
+  }
+  else{
+    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+        plant_w_spr, context_w_spr.get(), global_target_position,
+        params_of_no_turning);
+  }
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
@@ -356,8 +376,8 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
       left_right_support_state_durations, left_right_foot, "pelvis",
       gains.mid_foot_height, gains.final_foot_height,
-      gains.final_foot_velocity_z, max_CoM_to_CP_dist, true, true,
-      true, gains.cp_offset, gains.center_line_offset);
+      gains.final_foot_velocity_z, max_CoM_to_CP_dist, true, true, true,
+      gains.cp_offset, gains.center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   cp_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),

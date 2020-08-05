@@ -36,7 +36,7 @@ DirconTrajectory::DirconTrajectory(
   dircon.GetStateAndDerivativeSamples(result, x_, xdot_, state_breaks_);
 
   has_data_ = true;
-  constructMetadataObject(name, description);
+  ConstructMetadataObject(name, description);
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory() {
@@ -64,42 +64,40 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory() {
   return input_traj;
 }
 
-void DirconTrajectory::loadFromFile(const std::string& filepath) {
-  LcmTrajectory::loadFromFile(filepath);
+void DirconTrajectory::LoadFromFile(const std::string& filepath) {
+  LcmTrajectory::LoadFromFile(filepath);
 
   // Find all the state trajectories
-  for (const auto& traj_name : getTrajectoryNames()) {
+  for (const auto& traj_name : GetTrajectoryNames()) {
     if (traj_name.find("state_traj") != std::string::npos) {
       ++num_modes_;
     }
-    std::cout << traj_name << std::endl;
   }
-  std::cout << num_modes_ << std::endl;
   mode_lengths_.resize(num_modes_);
   for (int mode = 0; mode < num_modes_; ++mode) {
-    x_.push_back(getTrajectory("state_traj" + std::to_string(mode)).datapoints);
+    x_.push_back(GetTrajectory("state_traj" + std::to_string(mode)).datapoints);
     xdot_.push_back(
-        getTrajectory("state_derivative_traj" + std::to_string(mode))
+        GetTrajectory("state_derivative_traj" + std::to_string(mode))
             .datapoints);
     state_breaks_.push_back(
-        getTrajectory("state_traj" + std::to_string(mode)).time_vector);
+        GetTrajectory("state_traj" + std::to_string(mode)).time_vector);
     mode_lengths_[mode] = state_breaks_[mode].size();
   }
-  u_ = getTrajectory("input_traj").datapoints;
-  h_ = getTrajectory("input_traj").time_vector;
-  decision_vars_ = getTrajectory("decision_vars").datapoints;
+  u_ = GetTrajectory("input_traj").datapoints;
+  h_ = GetTrajectory("input_traj").time_vector;
+  decision_vars_ = GetTrajectory("decision_vars").datapoints;
 
   has_data_ = true;
 }
 
-void DirconTrajectory::writeToFile(const std::string& filepath) {
+void DirconTrajectory::WriteToFile(const std::string& filepath) {
   // Decision variables
   LcmTrajectory::Trajectory decision_vars;
   decision_vars.traj_name = "decision_vars";
   decision_vars.datapoints = decision_vars_;
   decision_vars.time_vector = VectorXd::Zero(decision_vars.datapoints.size());
   decision_vars.datatypes = vector<string>(decision_vars.datapoints.size());
-  addTrajectory(decision_vars.traj_name, decision_vars);
+  AddTrajectory(decision_vars.traj_name, decision_vars);
 
   // State trajectory
   for (int mode = 0; mode < num_modes_; ++mode) {
@@ -115,8 +113,8 @@ void DirconTrajectory::writeToFile(const std::string& filepath) {
     state_derivative_traj.time_vector = state_breaks_[mode];
     state_derivative_traj.datatypes =
         multibody::createStateNameVectorFromMap(plant_);
-    addTrajectory(state_traj.traj_name, state_traj);
-    addTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
+    AddTrajectory(state_traj.traj_name, state_traj);
+    AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
   }
 
   // Input trajectory
@@ -125,10 +123,10 @@ void DirconTrajectory::writeToFile(const std::string& filepath) {
   input_traj.datapoints = u_;
   input_traj.time_vector = h_;
   input_traj.datatypes = multibody::createActuatorNameVectorFromMap(plant_);
-  addTrajectory(input_traj.traj_name, input_traj);
+  AddTrajectory(input_traj.traj_name, input_traj);
 
   // Final write
-  LcmTrajectory::writeToFile(filepath);
+  LcmTrajectory::WriteToFile(filepath);
 }
 
 }  // namespace dairlib

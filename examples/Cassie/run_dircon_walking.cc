@@ -1083,12 +1083,14 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   cout << "total_cost = " << total_cost << endl;
 
+  // Save trajectory to file
   DirconTrajectory saved_traj(plant, *trajopt, result, "walking_trajectory",
                               "Decision variables and state/input trajectories "
                               "for walking");
-  saved_traj.writeToFile(FLAGS_data_directory + FLAGS_save_filename);
+  saved_traj.WriteToFile(FLAGS_data_directory + FLAGS_save_filename);
   std::cout << "Wrote to file: " << FLAGS_data_directory + FLAGS_save_filename
             << std::endl;
+
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =
       trajopt->ReconstructStateTrajectory(result);

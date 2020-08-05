@@ -13,16 +13,18 @@
 
 namespace dairlib {
 
-/// Used for saving/loading trajectories.
-/// To save a LcmTrajectory object, create one or multiple
-/// LcmTrajectory::Trajectory structs and wrap them using the LcmTrajectory
-/// constructor. Finally call writeToFile() with the desired relative filepath
+/// Used for saving/loading DIRCON trajectories.
+/// To save a DirconTrajectory, create a DirconTrajectory object (second
+/// constructor) with the solution from dircon, then call WriteToFile() with the
+/// desired filepath
 ///
-/// To load a saved LcmTrajectory object, call the loadFromFile() with relative
-/// filepath of the previously saved LcmTrajectory object
+/// To load a saved DirconTrajectory object, create an empty DirconTrajectory
+/// object (first constructor) and call the LoadFromFile() with relative
+/// filepath of the previously saved DirconTrajectory object
 
-/// DirconTrajectory contains three Trajectory objects: the state trajectory,
-/// the input trajectory, and the decision variables
+/// DirconTrajectory by default contains three Trajectory objects: the state
+/// trajectory, the input trajectory, and the decision variables. Additional
+/// trajectories can be added using the  AddTrajectory() function
 
 class DirconTrajectory : LcmTrajectory {
  public:
@@ -37,11 +39,13 @@ class DirconTrajectory : LcmTrajectory {
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory();
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory();
 
-  void loadFromFile(const std::string& filepath);
+  /// Loads the saved state and input trajectory as well as the decision
+  /// variables
+  void LoadFromFile(const std::string& filepath);
 
-  /// Write this trajectory to the specified file, add any additional
+  /// Write this trajectory to the specified filepath, add any additional
   /// trajectories BEFORE calling this method
-  void writeToFile(const std::string& filepath);
+  void WriteToFile(const std::string& filepath);
 
   Eigen::MatrixXd GetStateSamples(int mode) {
     DRAKE_ASSERT(mode >= 0);

@@ -111,9 +111,9 @@ int DoMain() {
 
   const LcmTrajectory& loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
-  auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
-  auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
+  auto traj_mode0 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u0");
+  auto traj_mode1 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u1");
+  auto traj_mode2 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u2");
 
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
                  traj_mode2.datapoints.cols();
@@ -156,7 +156,7 @@ int DoMain() {
                     "State trajectory for cassie jumping adjusted to include "
                     "states of the plant with springs");
 
-  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
                              "_for_sim");
   return 0;
 }

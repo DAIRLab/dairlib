@@ -345,10 +345,11 @@ void DoMain() {
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "Solve result: " << result.get_solution_result() << std::endl;
 
+  // Save trajectory to file
   DirconTrajectory saved_traj(plant, *trajopt, result, "jumping_trajectory",
                               "Decision variables and state/input trajectories "
                               "for jumping");
-  saved_traj.writeToFile(FLAGS_data_directory + FLAGS_save_filename);
+  saved_traj.WriteToFile(FLAGS_data_directory + FLAGS_save_filename);
   std::cout << "Wrote to file: " << FLAGS_data_directory + FLAGS_save_filename
             << std::endl;
   drake::trajectories::PiecewisePolynomial<double> optimal_traj =
@@ -845,7 +846,7 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
 
 MatrixXd loadSavedDecisionVars(const string& filepath) {
   const LcmTrajectory& loaded_decision_vars = LcmTrajectory(filepath);
-  return loaded_decision_vars.getTrajectory("decision_vars").datapoints;
+  return loaded_decision_vars.GetTrajectory("decision_vars").datapoints;
 }
 
 MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,

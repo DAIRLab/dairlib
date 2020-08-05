@@ -22,10 +22,10 @@ PYBIND11_MODULE(lcm_trajectory, m) {
 
   py::class_<LcmTrajectory>(m, "LcmTrajectory")
       .def(py::init<>())
-      .def("loadFromFile", &LcmTrajectory::loadFromFile,
+      .def("LoadFromFile", &LcmTrajectory::LoadFromFile,
            py::arg("trajectory_name"))
-      .def("getTrajectoryNames", &LcmTrajectory::getTrajectoryNames)
-      .def("getTrajectory", &LcmTrajectory::getTrajectory,
+      .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)
+      .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
            py::arg("trajectory_name"));
 }
 

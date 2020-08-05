@@ -84,14 +84,14 @@ class LcmTrajectoryTest : public ::testing::Test {
 };
 
 TEST_F(LcmTrajectoryTest, TestConstructorFromLcmTObject) {
-  lcm_traj_.writeToFile(TEST_FILEPATH);
+  lcm_traj_.WriteToFile(TEST_FILEPATH);
 
   LcmTrajectory loaded_traj = LcmTrajectory(
       TEST_FILEPATH);
 
   // Test the LcmTrajectory fields first
-  EXPECT_EQ(loaded_traj.getTrajectoryNames().size(), NUM_TRAJECTORIES);
-  lcmt_metadata metadata = loaded_traj.getMetadata();
+  EXPECT_EQ(loaded_traj.GetTrajectoryNames().size(), NUM_TRAJECTORIES);
+  lcmt_metadata metadata = loaded_traj.GetMetadata();
   EXPECT_NE(metadata.datetime, metadata_.datetime);
   EXPECT_EQ(metadata.name, TEST_NAME);
   EXPECT_EQ(metadata.description, TEST_DESCRIPTION);
@@ -99,24 +99,18 @@ TEST_F(LcmTrajectoryTest, TestConstructorFromLcmTObject) {
       metadata_.git_dirty_flag);
 
   // Test the individual LcmTrajectory::Trajectory objects
-  EXPECT_TRUE(
-      loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).time_vector.isApprox(
-          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).time_vector));
-  EXPECT_TRUE(
-      loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).datapoints.isApprox(
-          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).datapoints));
-  EXPECT_TRUE(
-      loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).datatypes ==
-          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).datatypes);
-  EXPECT_TRUE(
-      loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).time_vector.isApprox(
-          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).time_vector));
-  EXPECT_TRUE(
-      loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).datapoints.isApprox(
-          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).datapoints));
-  EXPECT_TRUE(
-      loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).datatypes ==
-          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).datatypes);
+  EXPECT_TRUE(loaded_traj.GetTrajectory(TEST_TRAJ_NAME_1).time_vector.isApprox(
+                      lcm_traj_.GetTrajectory(TEST_TRAJ_NAME_1).time_vector));
+  EXPECT_TRUE(loaded_traj.GetTrajectory(TEST_TRAJ_NAME_1).datapoints.isApprox(
+                      lcm_traj_.GetTrajectory(TEST_TRAJ_NAME_1).datapoints));
+  EXPECT_TRUE(loaded_traj.GetTrajectory(TEST_TRAJ_NAME_1).datatypes ==
+              lcm_traj_.GetTrajectory(TEST_TRAJ_NAME_1).datatypes);
+  EXPECT_TRUE(loaded_traj.GetTrajectory(TEST_TRAJ_NAME_2).time_vector.isApprox(
+                      lcm_traj_.GetTrajectory(TEST_TRAJ_NAME_2).time_vector));
+  EXPECT_TRUE(loaded_traj.GetTrajectory(TEST_TRAJ_NAME_2).datapoints.isApprox(
+                      lcm_traj_.GetTrajectory(TEST_TRAJ_NAME_2).datapoints));
+  EXPECT_TRUE(loaded_traj.GetTrajectory(TEST_TRAJ_NAME_2).datatypes ==
+              lcm_traj_.GetTrajectory(TEST_TRAJ_NAME_2).datatypes);
 
 
 }

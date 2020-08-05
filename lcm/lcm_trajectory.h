@@ -15,9 +15,9 @@ namespace dairlib {
 /// Used for saving/loading trajectories.
 /// To save a LcmTrajectory object, create one or multiple
 /// LcmTrajectory::Trajectory structs and wrap them using the LcmTrajectory
-/// constructor. Finally call writeToFile() with the desired relative filepath
+/// constructor. Finally call WriteToFile() with the desired relative filepath
 ///
-/// To load a saved LcmTrajectory object, call the loadFromFile() with relative
+/// To load a saved LcmTrajectory object, call the LoadFromFile() with relative
 /// filepath of the previously saved LcmTrajectory object
 
 class LcmTrajectory {
@@ -44,31 +44,32 @@ class LcmTrajectory {
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
   explicit LcmTrajectory(const std::string& filepath) {
-    loadFromFile(filepath);
+    LoadFromFile(filepath);
   }
 
   /// Writes this LcmTrajectory object to a file specified by filepath
   /// @throws std::exception along with the invalid filepath if unable to open
   /// the file
-  virtual void writeToFile(const std::string& filepath);
+  virtual void WriteToFile(const std::string& filepath);
 
   /// Loads a previously saved LcmTrajectory object from the file specified by
   /// filepath
   /// @throws std::exception along with the invalid filepath if error
   /// reading/opening the file
-  virtual void loadFromFile(const std::string& filepath);
+  virtual void LoadFromFile(const std::string& filepath);
 
-  lcmt_metadata getMetadata() const { return metadata_; }
+  lcmt_metadata GetMetadata() const { return metadata_; }
 
-  Trajectory getTrajectory(const std::string& trajectory_name) const {
+  Trajectory GetTrajectory(const std::string& trajectory_name) const {
     return trajectories_.at(trajectory_name);
   }
 
   /// Add additional LcmTrajectory::Trajectory objects
-  void addTrajectory(const std::string& trajectory_name,
+  void AddTrajectory(const std::string& trajectory_name,
                      const Trajectory& trajectory);
 
-  const std::vector<std::string>& getTrajectoryNames() const {
+  /// Returns a vector of the names of the stored Trajectory objects
+  const std::vector<std::string>& GetTrajectoryNames() const {
     return trajectory_names_;
   }
 
@@ -76,10 +77,10 @@ class LcmTrajectory {
   /// Constructs a lcmt_metadata object with a specified name and description
   /// Other relevant metadata details such as datatime and git status are
   /// automatically generated
-  void constructMetadataObject(std::string name, std::string description);
+  void ConstructMetadataObject(std::string name, std::string description);
 
  private:
-  lcmt_saved_traj generateLcmObject() const;
+  lcmt_saved_traj GenerateLcmObject() const;
 
   lcmt_metadata metadata_;
   std::unordered_map<std::string, Trajectory> trajectories_;

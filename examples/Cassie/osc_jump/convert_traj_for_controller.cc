@@ -61,9 +61,9 @@ int DoMain() {
 
   const LcmTrajectory& loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
-  auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
-  auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
+  auto traj_mode0 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u0");
+  auto traj_mode1 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u1");
+  auto traj_mode2 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u2");
 
   DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
@@ -180,7 +180,7 @@ int DoMain() {
                     "Feet trajectories "
                     "for Cassie jumping");
 
-  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
                              "_processed");
   return 0;
 }

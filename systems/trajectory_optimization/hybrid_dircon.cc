@@ -337,7 +337,7 @@ void HybridDircon<T>::GetStateAndDerivativeSamples(
   DRAKE_ASSERT(derivative_samples.empty());
   DRAKE_ASSERT(state_breaks.empty());
 
-  VectorXd times_all(GetSampleTimes(result));
+  VectorXd times(GetSampleTimes(result));
 
   for (int i = 0; i < num_modes_; i++) {
     MatrixXd states_i(num_states(), mode_lengths_[i]);
@@ -354,7 +354,7 @@ void HybridDircon<T>::GetStateAndDerivativeSamples(
       states_i.col(j) = drake::math::DiscardGradient(xk);
       derivatives_i.col(j) =
           drake::math::DiscardGradient(constraints_[i]->getXDot());
-      times_i(j) = times_all(k_data);
+      times_i(j) = times(k_data);
     }
     state_samples.push_back(states_i);
     derivative_samples.push_back(derivatives_i);
@@ -369,19 +369,18 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory(
                                                      GetInputSamples(result));
 }
 
-// TODO(mposa)
-// need to configure this to handle the hybrid discontinuities properly
 template <typename T>
 PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
     const MathematicalProgramResult& result) const {
-  std::vector<VectorXd> times;
   std::vector<MatrixXd> states;
   std::vector<MatrixXd> derivatives;
+  std::vector<VectorXd> times;
   GetStateAndDerivativeSamples(result, states, derivatives, times);
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(times[0], states[0],
                                                 derivatives[0]);
   for (int mode = 1; mode < num_modes_; ++mode) {
+    // Cannot form trajectory with only a single break
     if(mode_lengths_[mode] < 2){
       continue;
     }

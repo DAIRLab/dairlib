@@ -56,8 +56,8 @@ class HybridDircon
 
   ~HybridDircon() override {}
 
-  /// Returns a matrix containing the state values (arranged in columns) at
-  /// each breakpoint at the solution.
+  /// Returns a vector of matrices containing the state and derivative values at
+  /// each breakpoint at the solution for each mode of the trajectory.
   void GetStateAndDerivativeSamples(
       const drake::solvers::MathematicalProgramResult& result,
       std::vector<Eigen::MatrixXd>& state_samples,

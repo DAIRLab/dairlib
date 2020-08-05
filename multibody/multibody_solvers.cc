@@ -87,37 +87,6 @@ void MultibodyProgram<T>::AddJointLimitConstraints(VectorXDecisionVariable q) {
 }
 
 template <typename T>
-KinematicPositionConstraint<T>::KinematicPositionConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
-    Context<T>* context, const std::string& description)
-    : NonlinearConstraint<T>(evaluators.count_active(), plant.num_positions(),
-          VectorXd::Zero(evaluators.count_active()),
-          VectorXd::Zero(evaluators.count_active()),
-          description),
-      plant_(plant), 
-      evaluators_(evaluators) {
-  // Create a new context if one was not provided
-  if (context == nullptr) {
-    owned_context_ = plant_.CreateDefaultContext();
-    context_ = owned_context_.get();
-  } else {
-    context_ = context;
-  }
-}
-
-template <typename T>
-void KinematicPositionConstraint<T>::EvaluateConstraint(
-    const Eigen::Ref<const VectorX<T>>& q, VectorX<T>* y) const {
-  // Verifying the size of the input vector
-  DRAKE_DEMAND(q.size() == plant_.num_positions());
-
-  plant_.SetPositions(context_, q);
-
-  *y = evaluators_.EvalActive(*context_);
-}
-
-template <typename T>
 FixedPointConstraint<T>::FixedPointConstraint(
     const MultibodyPlant<T>& plant,
     const KinematicEvaluatorSet<T>& evaluators,

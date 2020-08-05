@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "multibody/multibody_utils.h"
+
 #include "drake/math/autodiff.h"
 #include "drake/solvers/decision_variable.h"
 
@@ -327,16 +328,45 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
 }
 
 template <typename T>
+void HybridDircon<T>::GetStateAndDerivativeSamples(
+    const drake::solvers::MathematicalProgramResult& result,
+    std::vector<Eigen::MatrixXd>& state_samples,
+    std::vector<Eigen::MatrixXd>& derivative_samples,
+    std::vector<Eigen::VectorXd>& state_breaks) const {
+  DRAKE_ASSERT(state_samples.empty());
+  DRAKE_ASSERT(derivative_samples.empty());
+  DRAKE_ASSERT(state_breaks.empty());
+
+  VectorXd times_all(GetSampleTimes(result));
+
+  for (int i = 0; i < num_modes_; i++) {
+    MatrixXd states_i(num_states(), mode_lengths_[i]);
+    MatrixXd derivatives_i(num_states(), mode_lengths_[i]);
+    VectorXd times_i(mode_lengths_[i]);
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      int k_data = mode_start_[i] + j;
+
+      VectorX<T> xk = result.GetSolution(state_vars_by_mode(i, j));
+      VectorX<T> uk = result.GetSolution(input(k_data));
+      auto context = multibody::createContext(plant_, xk, uk);
+      constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
+
+      states_i.col(j) = drake::math::DiscardGradient(xk);
+      derivatives_i.col(j) =
+          drake::math::DiscardGradient(constraints_[i]->getXDot());
+      times_i(j) = times_all(k_data);
+    }
+    state_samples.push_back(states_i);
+    derivative_samples.push_back(derivatives_i);
+    state_breaks.push_back(times_i);
+  }
+}
+
+template <typename T>
 PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory(
     const MathematicalProgramResult& result) const {
-  Eigen::VectorXd times = GetSampleTimes(result);
-  vector<double> times_vec(N());
-  vector<Eigen::MatrixXd> inputs(N());
-  for (int i = 0; i < N(); i++) {
-    times_vec[i] = times(i);
-    inputs[i] = result.GetSolution(input(i));
-  }
-  return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
+  return PiecewisePolynomial<double>::FirstOrderHold(GetSampleTimes(result),
+                                                     GetInputSamples(result));
 }
 
 // TODO(mposa)
@@ -344,34 +374,21 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory(
 template <typename T>
 PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
     const MathematicalProgramResult& result) const {
-  VectorXd times_all(GetSampleTimes(result));
-  VectorXd times(N() + num_modes_ - 1);
-
-  MatrixXd states(num_states(), N() + num_modes_ - 1);
-  MatrixXd inputs(num_inputs(), N() + num_modes_ - 1);
-  MatrixXd derivatives(num_states(), N() + num_modes_ - 1);
-
-  for (int i = 0; i < num_modes_; i++) {
-    for (int j = 0; j < mode_lengths_[i]; j++) {
-      int k = mode_start_[i] + j + i;
-      int k_data = mode_start_[i] + j;
-      times(k) = times_all(k_data);
-
-      // False timestep to match velocities
-      if (i > 0 && j == 0) {
-        times(k) += +1e-6;
-      }
-      VectorX<T> xk = result.GetSolution(state_vars_by_mode(i, j));
-      VectorX<T> uk = result.GetSolution(input(k_data));
-      states.col(k) = drake::math::DiscardGradient(xk);
-      inputs.col(k) = drake::math::DiscardGradient(uk);
-      auto context = multibody::createContext(plant_, xk, uk);
-      constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
-      derivatives.col(k) =
-          drake::math::DiscardGradient(constraints_[i]->getXDot());
+  std::vector<VectorXd> times;
+  std::vector<MatrixXd> states;
+  std::vector<MatrixXd> derivatives;
+  GetStateAndDerivativeSamples(result, states, derivatives, times);
+  PiecewisePolynomial<double> state_traj =
+      PiecewisePolynomial<double>::CubicHermite(times[0], states[0],
+                                                derivatives[0]);
+  for (int mode = 1; mode < num_modes_; ++mode) {
+    if(mode_lengths_[mode] < 2){
+      continue;
     }
+    state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        times[mode], states[mode], derivatives[mode]));
   }
-  return PiecewisePolynomial<double>::CubicHermite(times, states, derivatives);
+  return state_traj;
 }
 
 template <typename T>
@@ -549,47 +566,46 @@ void HybridDircon<T>::ScaleKinConstraintSlackVariables(
 }
 
 template <typename T>
-void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
-    std::vector<unsigned int> poses_per_mode, double alpha,
-    std::string weld_frame_to_world) {
+void HybridDircon<T>::CreateVisualizationCallback(
+    std::string model_file, std::vector<unsigned int> poses_per_mode,
+    double alpha, std::string weld_frame_to_world) {
   DRAKE_DEMAND(!callback_visualizer_);  // Cannot be set twice
-  DRAKE_DEMAND(poses_per_mode.size() == (uint) num_modes_);
+  DRAKE_DEMAND(poses_per_mode.size() == (uint)num_modes_);
 
   // Count number of total poses
-  int num_poses = num_modes_ + 1; // start and finish of every mode
+  int num_poses = num_modes_ + 1;  // start and finish of every mode
   for (int i = 0; i < num_modes_; i++) {
-    DRAKE_DEMAND(poses_per_mode.at(i) == 0 || 
-        (poses_per_mode.at(i) + 2 <= (uint) mode_lengths_.at(i)));
+    DRAKE_DEMAND(poses_per_mode.at(i) == 0 ||
+                 (poses_per_mode.at(i) + 2 <= (uint)mode_lengths_.at(i)));
     num_poses += poses_per_mode.at(i);
   }
 
   // Assemble variable list
-  drake::solvers::VectorXDecisionVariable vars(
-      num_poses * plant_.num_positions());
+  drake::solvers::VectorXDecisionVariable vars(num_poses *
+                                               plant_.num_positions());
 
   int index = 0;
   for (int i = 0; i < num_modes_; i++) {
     // Set variable block, extracting positions only
-    vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
-      state_vars_by_mode(i, 0).head(plant_.num_positions());
+    vars.segment(index * plant_.num_positions(), plant_.num_positions()) =
+        state_vars_by_mode(i, 0).head(plant_.num_positions());
     index++;
 
     for (uint j = 0; j < poses_per_mode.at(i); j++) {
-
       // The jth element in mode i, counting in between the start/end poses
       int modei_index =
-          (j + 1) * (mode_lengths_.at(i) - 1)/(poses_per_mode.at(i) + 1);
+          (j + 1) * (mode_lengths_.at(i) - 1) / (poses_per_mode.at(i) + 1);
 
-      vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
+      vars.segment(index * plant_.num_positions(), plant_.num_positions()) =
           state_vars_by_mode(i, modei_index).head(plant_.num_positions());
       index++;
-    } 
+    }
   }
 
   // Final state
-  vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
-      state_vars_by_mode(num_modes_ - 1, mode_lengths_.at(num_modes_ - 1) - 1).
-          head(plant_.num_positions());
+  vars.segment(index * plant_.num_positions(), plant_.num_positions()) =
+      state_vars_by_mode(num_modes_ - 1, mode_lengths_.at(num_modes_ - 1) - 1)
+          .head(plant_.num_positions());
 
   // Create transparency vector
   VectorXd alpha_vec = VectorXd::Constant(num_poses, alpha);
@@ -598,13 +614,13 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
 
   // Create visualizer
   callback_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-    model_file, num_poses, alpha_vec, weld_frame_to_world);
+      model_file, num_poses, alpha_vec, weld_frame_to_world);
 
   // Callback lambda function
   auto my_callback = [this, num_poses](const Eigen::Ref<const VectorXd>& vars) {
     VectorXd vars_copy = vars;
     Eigen::Map<MatrixXd> states(vars_copy.data(), this->plant_.num_positions(),
-        num_poses);
+                                num_poses);
 
     this->callback_visualizer_->DrawPoses(states);
   };
@@ -613,11 +629,12 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
 }
 
 template <typename T>
-void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
-      unsigned int num_poses, double alpha, std::string weld_frame_to_world) {
+void HybridDircon<T>::CreateVisualizationCallback(
+    std::string model_file, unsigned int num_poses, double alpha,
+    std::string weld_frame_to_world) {
   // Check that there is an appropriate number of poses
-  DRAKE_DEMAND(num_poses >= (uint) num_modes_ + 1);
-  DRAKE_DEMAND(num_poses <= (uint) N());
+  DRAKE_DEMAND(num_poses >= (uint)num_modes_ + 1);
+  DRAKE_DEMAND(num_poses <= (uint)N());
 
   // sum of mode lengths, excluding ends
   int mode_sum = 0;
@@ -630,7 +647,7 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
   // Split up num_poses per modes, rounding down
   // If NP is the total number of  poses to visualize, excluding ends (interior)
   //   S is mode_sum, the total number of the interior knot points
-  //   and N the number of interior knot points for a particular mode, then 
+  //   and N the number of interior knot points for a particular mode, then
   //
   //   poses = (NP * N )/S
   unsigned int num_poses_without_ends = num_poses - num_modes_ - 1;
@@ -652,8 +669,8 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
     double value = 0;
     for (int i = 0; i < num_modes_; i++) {
       double fractional_value =
-          num_poses_without_ends * (mode_lengths_.at(i) - 2) - 
-              num_poses_per_mode.at(i) * mode_sum;
+          num_poses_without_ends * (mode_lengths_.at(i) - 2) -
+          num_poses_per_mode.at(i) * mode_sum;
 
       if (fractional_value > value) {
         value = fractional_value;
@@ -665,15 +682,14 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
     assigned_sum++;
   }
 
-  for (auto& n : num_poses_per_mode)
-    std::cout << n << std::endl;
+  for (auto& n : num_poses_per_mode) std::cout << n << std::endl;
   CreateVisualizationCallback(model_file, num_poses_per_mode, alpha,
-      weld_frame_to_world);
+                              weld_frame_to_world);
 }
 
 template <typename T>
-void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
-      double alpha, std::string weld_frame_to_world) {
+void HybridDircon<T>::CreateVisualizationCallback(
+    std::string model_file, double alpha, std::string weld_frame_to_world) {
   CreateVisualizationCallback(model_file, N(), alpha, weld_frame_to_world);
 }
 

@@ -3,10 +3,12 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include <Eigen/Dense>
-#include "drake/systems/lcm/serializer.h"
 
 #include "dairlib/lcmt_saved_traj.hpp"
+
+#include "drake/systems/lcm/serializer.h"
 
 namespace dairlib {
 
@@ -48,31 +50,36 @@ class LcmTrajectory {
   /// Writes this LcmTrajectory object to a file specified by filepath
   /// @throws std::exception along with the invalid filepath if unable to open
   /// the file
-  void writeToFile(const std::string& filepath);
+  virtual void writeToFile(const std::string& filepath);
 
   /// Loads a previously saved LcmTrajectory object from the file specified by
   /// filepath
   /// @throws std::exception along with the invalid filepath if error
   /// reading/opening the file
-  void loadFromFile(const std::string& filepath);
+  virtual void loadFromFile(const std::string& filepath);
 
-  const lcmt_metadata getMetadata() const { return metadata_; }
+  lcmt_metadata getMetadata() const { return metadata_; }
 
   Trajectory getTrajectory(const std::string& trajectory_name) const {
     return trajectories_.at(trajectory_name);
   }
 
+  /// Add additional LcmTrajectory::Trajectory objects
+  void addTrajectory(const std::string& trajectory_name,
+                     const Trajectory& trajectory);
+
   const std::vector<std::string>& getTrajectoryNames() const {
     return trajectory_names_;
   }
 
- private:
-  lcmt_saved_traj generateLcmObject() const;
+ protected:
   /// Constructs a lcmt_metadata object with a specified name and description
   /// Other relevant metadata details such as datatime and git status are
   /// automatically generated
-  lcmt_metadata constructMetadataObject(std::string name,
-                                        std::string description) const;
+  void constructMetadataObject(std::string name, std::string description);
+
+ private:
+  lcmt_saved_traj generateLcmObject() const;
 
   lcmt_metadata metadata_;
   std::unordered_map<std::string, Trajectory> trajectories_;

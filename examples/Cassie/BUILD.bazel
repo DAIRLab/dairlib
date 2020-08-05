@@ -392,6 +392,7 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
+        "//lcm:dircon_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
@@ -408,6 +409,7 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
+        "//lcm:dircon_trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
@@ -432,6 +434,7 @@ cc_binary(
     srcs = ["visualize_trajectory.cc"],
     deps = [
         ":cassie_utils",
+        "//lcm:dircon_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
         "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",

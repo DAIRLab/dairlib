@@ -619,16 +619,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
-  prog_->SetInitialGuess(dv_, *dv_sol_);
-  prog_->SetInitialGuess(u_, *u_sol_);
-  prog_->SetInitialGuess(lambda_c_, *lambda_c_sol_);
-  prog_->SetInitialGuess(lambda_h_, *lambda_h_sol_);
-  prog_->SetInitialGuess(epsilon_, *epsilon_sol_);
-
   // Solve the QP
-  const MathematicalProgramResult result =
-      Solve(*prog_, prog_->initial_guess());
-  
+  const MathematicalProgramResult result = Solve(*prog_);
+
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);
   *u_sol_ = result.GetSolution(u_);

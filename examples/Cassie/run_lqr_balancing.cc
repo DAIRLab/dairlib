@@ -150,7 +150,8 @@ int do_main(int argc, char* argv[]) {
   AutoDiffVecXd u_ad = xul_ad.segment(plant.num_positions()
       + plant.num_velocities(), plant.num_actuators());
 
-  auto context_autodiff = multibody::createContext(*plant_ad, x_ad, u_ad);
+  auto context_autodiff =
+      multibody::createContext<AutoDiffXd>(*plant_ad, x_ad, u_ad);
 
   // controller gains
   Eigen::MatrixXd Q =

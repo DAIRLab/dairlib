@@ -34,6 +34,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   LIPMTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context,
       double desired_com_height, const std::vector<int>& unordered_fsm_states,
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
@@ -65,19 +66,18 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   int prev_fsm_state_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
 
   double desired_com_height_;
-
   std::vector<int> unordered_fsm_states_;
+
   std::vector<double> unordered_state_durations_;
 
   // A list of pairs of contact body frame and contact point in each FSM state
   const std::vector<std::vector<std::pair<
       const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
       contact_points_in_each_state_;
-
   const drake::multibody::BodyFrame<double>& world_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
 };
 
 }  // namespace systems

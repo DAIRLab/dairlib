@@ -55,7 +55,7 @@ DEFINE_bool(use_radio, false,
             "Set to true if sending high level commands from radio controller");
 DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
-    "The name of the channel which publishes the cassie out structure.");
+    "The name of the channel to receive the cassie out structure from.");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains.yaml",
               "Filepath containing gains");
 DEFINE_bool(publish_osc_data, true,

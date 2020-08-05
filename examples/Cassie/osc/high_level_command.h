@@ -39,9 +39,22 @@ namespace osc {
 /// Requirement: quaternion floating-based Cassie only
 class HighLevelCommand : public drake::systems::LeafSystem<double> {
  public:
+  /// Constructor that computes the desired yaw and translational velocities
+  /// according to radio commands
+  /// @param vel_scale_rot Scaling factor that scales the range of commanded yaw
+  /// velocities according to [-vel_scale_rot, vel_scale_rot]
+  /// @param vel_scale_trans Scaling factor that scales the range of commanded
+  /// translational velocities  (saggital and lateral)according to
+  /// [-vel_scale_trans, vel_scale_trans]
+  ///
+  /// Designed to be used with hardware
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    double vel_scale_rot, double vel_scale_trans);
+  /// Constructor that computes the desired yaw and translational velocities
+  /// according to a global target position
+  ///
+  /// Designed to be used in simulation
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    const Eigen::Vector2d& global_target_position,
@@ -92,12 +105,10 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   int state_port_;
   int yaw_port_;
   int xy_port_;
-  int cassie_out_port_ = -1; // Only set for radio commands
+  int cassie_out_port_ = -1;  // Only set for radio commands
 
   // Indices for the discrete states of this leafsystem
-//  drake::systems::DiscreteStateIndex prev_time_idx_;
   drake::systems::DiscreteStateIndex des_vel_idx_;
-  //  drake::systems::DiscreteStateIndex des_horizontal_vel_idx_;
 
   // Rotation control (yaw) parameters
   double kp_yaw_ = 1;

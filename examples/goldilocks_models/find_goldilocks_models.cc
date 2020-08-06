@@ -196,7 +196,8 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      bool step_size_shrinked_last_loop, int n_rerun,
                      int sample_idx_to_help, bool is_debug, const string& dir,
                      const TasksGenerator* task_gen, const Task& task,
-                     const ReducedOrderModel& rom, bool non_grid_task) {
+                     const ReducedOrderModel& rom, bool non_grid_task,
+                     const MediateTasksGenerator& task_gen_mediate) {
   if (is_get_nominal && !rerun_current_iteration) {
     *init_file = nominal_traj_init_file;
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
@@ -209,10 +210,10 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
     }
-  } else if(task_gen->start_finding_mediate_sample()){
-    if(iter==task_gen->iter_start_finding_mediate_sample()) {
+  } else if(task_gen_mediate.start_finding_mediate_sample()){
+    if(iter==task_gen_mediate.iter_start_finding_mediate_sample()) {
       *init_file = ChooseInitialGuessFromMediateIteration(dir,iter,sample,
-          task_gen, task, rom);
+          task_gen, task, rom,task_gen_mediate);
     }
     else{
       *init_file = to_string(iter) + "_" + to_string(sample) +
@@ -1434,6 +1435,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
     task_gen = &task_gen_uniform;
   }
+  /// we should modify the code later so that the number of samples in the
+  /// mediate iteration can be manually changed
+  MediateTasksGenerator task_gen_mediate = MediateTasksGenerator
+      (task_gen->total_sample_number(),task_gen->dim());
 
   // Tasks setup
   task_gen->PrintInfo();
@@ -1999,8 +2004,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
             task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
           }
-          else if(task_gen->start_finding_mediate_sample()){
-            if(iter==task_gen->iter_start_finding_mediate_sample()){
+          else if(task_gen_mediate.start_finding_mediate_sample()){
+            if(iter==task_gen_mediate.iter_start_finding_mediate_sample()){
               // rerun the target samples
               // we couldn't use the variable previous_task, because
               // previous_task here corresponds to the mediate iteration
@@ -2011,7 +2016,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               previous_task[sample_idx] = target_task_vectorxd;
             }
             else{
-              task.set(task_gen->NewTask(dir,iter,sample_idx));
+              task.set(task_gen_mediate.NewTask(dir,iter,sample_idx,task_gen));
               Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
                   task.get().data(), task.get().size());
               previous_task[sample_idx] = task_vectorxd;
@@ -2057,7 +2062,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               current_sample_is_a_rerun, has_been_all_success,
               step_size_shrinked_last_loop, n_rerun[sample_idx],
               sample_idx_to_help, FLAGS_is_debug, dir, task_gen, task, *rom,
-              !is_grid_task);
+              !is_grid_task,task_gen_mediate);
 
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better
@@ -2245,19 +2250,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // for failed samples
     if(!is_grid_task){
       //this feature only applies to non-grid method
-      if(n_shrink_step>2&&rerun_current_iteration){
+      if(n_shrink_step>0&&rerun_current_iteration){
         //start to find mediate sample for the failed samples
-        task_gen->set_iter_start_finding_mediate_sample(iter);
-        task_gen->set_start_finding_mediate_sample(true);
-        task_gen->set_choose_sample_from_iter_to_help(true);
-        task_gen->set_sample_index_to_help(-1);
+        task_gen_mediate.set_iter_start_finding_mediate_sample(iter);
+        task_gen_mediate.set_start_finding_mediate_sample(true);
+        task_gen_mediate.set_choose_sample_from_iter_to_help(true);
+        task_gen_mediate.set_sample_index_to_help(-1);
         n_shrink_step=0;
       }
-      else if( (iter==task_gen->iter_start_finding_mediate_sample()) &&
+      else if( (iter==task_gen_mediate.iter_start_finding_mediate_sample()) &&
           (!rerun_current_iteration) ){
         // stop searching mediate samples
-        task_gen->set_iter_start_finding_mediate_sample(-1);
-        task_gen->set_start_finding_mediate_sample(false);
+        task_gen_mediate.set_iter_start_finding_mediate_sample(-1);
+        task_gen_mediate.set_start_finding_mediate_sample(false);
       }
     }
 
@@ -2288,41 +2293,41 @@ int findGoldilocksModels(int argc, char* argv[]) {
       extend_model = false;
       continue;
     }  // end if extend_model_this_iter
-    else if(task_gen->start_finding_mediate_sample()){
-      if(iter == task_gen->iter_start_finding_mediate_sample()){
+    else if(task_gen_mediate.start_finding_mediate_sample()){
+      if(iter == task_gen_mediate.iter_start_finding_mediate_sample()){
         // we need the mediate iteration to evaluate mediate samples
         // next iteration is the mediate iteration
         rerun_current_iteration = false;
         int is_success;
-        if(task_gen->sample_index_to_help()==-1){
+        if(task_gen_mediate.sample_index_to_help()==-1){
           //this is the first time to use mediate iteration for current iteration
-          task_gen->set_choose_sample_from_iter_to_help(true);
+          task_gen_mediate.set_choose_sample_from_iter_to_help(true);
         }
         else{
-          prefix = to_string(task_gen->iter_start_finding_mediate_sample())
-              + string("_") + to_string(task_gen->sample_index_to_help());
+          prefix = to_string(task_gen_mediate.iter_start_finding_mediate_sample())
+              + string("_") + to_string(task_gen_mediate.sample_index_to_help());
           is_success = (readCSV(dir + prefix +
               string("_is_success.csv")))(0, 0);
           if(is_success==1){
             // the sample which needs help has found a solution
             // we should find another failed sample in this iteration
-            task_gen->set_choose_sample_from_iter_to_help(true);
+            task_gen_mediate.set_choose_sample_from_iter_to_help(true);
           }
           else{
             // update the range of tasks in mediate iteration
-            task_gen->set_choose_sample_from_iter_to_help(false);
+            task_gen_mediate.set_choose_sample_from_iter_to_help(false);
           }
         }
         //find the sample to help
-        for (int sample_num = 0; sample_num < task_gen->total_sample_number();
+        for (int sample_num = 0; sample_num < task_gen_mediate.total_sample_number();
              sample_num++){
-          prefix = to_string(task_gen->iter_start_finding_mediate_sample())
+          prefix = to_string(task_gen_mediate.iter_start_finding_mediate_sample())
               + string("_") + to_string(sample_num);
           int is_success = (readCSV(dir + prefix +
               string("_is_success.csv")))(0, 0);
           if(is_success==0)
           {
-            task_gen->set_sample_index_to_help(sample_num);
+            task_gen_mediate.set_sample_index_to_help(sample_num);
             break;
           }
         }
@@ -2330,7 +2335,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
       else{
         // go back to the iteration to help
-        iter = task_gen->iter_start_finding_mediate_sample()-1;
+        iter = task_gen_mediate.iter_start_finding_mediate_sample()-1;
         rerun_current_iteration = false;
         continue;
       }

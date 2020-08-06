@@ -81,24 +81,7 @@ class TasksGenerator {
   }
   bool currently_extend_task_space() const {return currently_extend_task_space_;}
   int iter_start_optimization() const {return iter_start_optimization_;}
-  bool start_finding_mediate_sample() const {return start_finding_mediate_sample_;}
-  int iter_start_finding_mediate_sample() const {return iter_start_finding_mediate_sample_;}
-  bool choose_sample_from_iter_to_help() const {return choose_sample_from_iter_to_help_;}
-  int sample_index_to_help() const {return sample_index_to_help_;}
 
-  // Setters
-  void set_start_finding_mediate_sample(bool if_start){
-    start_finding_mediate_sample_ = if_start;
-  }
-  void set_iter_start_finding_mediate_sample(int iter_start){
-    iter_start_finding_mediate_sample_ = iter_start;
-  }
-  void set_choose_sample_from_iter_to_help(bool if_choose){
-    choose_sample_from_iter_to_help_ = if_choose;
-  }
-  void set_sample_index_to_help(int index){
-    sample_index_to_help_ = index;
-  };
 
   // Generator
   virtual vector<double> NewTask(string dir,int iter,int sample_idx) = 0;
@@ -107,7 +90,7 @@ class TasksGenerator {
   virtual void PrintInfo() const {};
 
   //get scale for tasks
-  Eigen::VectorXd GetGammaScale() const;
+  Eigen::VectorXd GetTaskScale() const;
 
  protected:
   int task_dim_{};
@@ -120,10 +103,6 @@ class TasksGenerator {
   int N_sample_{};
   bool currently_extend_task_space_;
   int iter_start_optimization_;
-  bool start_finding_mediate_sample_;
-  int iter_start_finding_mediate_sample_;
-  bool choose_sample_from_iter_to_help_;
-  int sample_index_to_help_;
 
   std::unordered_map<string, int> name_to_index_map_;
 
@@ -188,14 +167,51 @@ class UniformTasksGenerator : public TasksGenerator {
   void PrintInfo() const override;
 };
 
+class MediateTasksGenerator{
+ public:
+  MediateTasksGenerator(int N_sample,int task_dim);
+  MediateTasksGenerator(){};
+
+  vector<double> NewTask(string dir,int iter,int sample_idx,
+      const TasksGenerator* task_gen);
+  // Getters
+  int total_sample_number() const { return N_sample_; }
+  bool start_finding_mediate_sample() const {return start_finding_mediate_sample_;}
+  int iter_start_finding_mediate_sample() const {return iter_start_finding_mediate_sample_;}
+  bool choose_sample_from_iter_to_help() const {return choose_sample_from_iter_to_help_;}
+  int sample_index_to_help() const {return sample_index_to_help_;}
+
+  // Setters
+  void set_start_finding_mediate_sample(bool if_start){
+    start_finding_mediate_sample_ = if_start;
+  }
+  void set_iter_start_finding_mediate_sample(int iter_start){
+    iter_start_finding_mediate_sample_ = iter_start;
+  }
+  void set_choose_sample_from_iter_to_help(bool if_choose){
+    choose_sample_from_iter_to_help_ = if_choose;
+  }
+  void set_sample_index_to_help(int index){
+    sample_index_to_help_ = index;
+  };
+
+ private:
+  int N_sample_;
+  int task_dim_;
+  bool start_finding_mediate_sample_;
+  int iter_start_finding_mediate_sample_;
+  bool choose_sample_from_iter_to_help_;
+  int sample_index_to_help_;
+};
+
 //functions related to initial guess
-//move it here to avoid cycle dependency  graph
-double GammaDistanceCalculation(const VectorXd& past_gamma,
-                                const VectorXd& current_gamma,
-                                const VectorXd& gamma_scale);
+//move it here to avoid cycle dependency graph
+double  TaskDistanceCalculation(const VectorXd& past_task,
+                                const VectorXd& current_task,
+                                const VectorXd& task_scale);
 std::string CompareTwoTasks(const string& dir, string prefix1,string prefix2,
-                            const VectorXd& current_gamma,
-                            const VectorXd& gamma_scale);
+                            const VectorXd& current_task,
+                            const VectorXd& task_scale);
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

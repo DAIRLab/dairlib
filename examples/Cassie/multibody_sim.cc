@@ -153,15 +153,25 @@ int do_main(int argc, char* argv[]) {
 
   // Set initial conditions of the simulation
   VectorXd q_init, u_init, lambda_init;
-
   double mu_fp = 0;
   double min_normal_fp = 70;
   double toe_spread = .2;
+  // Create a plant for CassieFixedPointSolver.
+  // Note that we cannot use the plant from the above diagram, because after the
+  // diagram is built, plant.get_actuation_input_port().HasValue(*context)
+  // throws a segfault error
+  drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+  addCassieMultibody(&plant_for_solver, nullptr,
+                     FLAGS_floating_base /*floating base*/, urdf,
+                     FLAGS_spring_model, true);
+  plant_for_solver.Finalize();
   if (FLAGS_floating_base) {
-    CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp, true,
-                           toe_spread, &q_init, &u_init, &lambda_init);
+    CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
+                           min_normal_fp, true, toe_spread, &q_init, &u_init,
+                           &lambda_init);
   } else {
-    CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
+    CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
+                                    &lambda_init);
   }
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));

@@ -121,40 +121,40 @@ int DoMain(int argc, char* argv[]) {
       "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
       FLAGS_traj_name + "_processed");
 
-  const LcmTrajectory::Trajectory& lcm_com_traj =
+  const LcmTrajectory::Trajectory* lcm_com_traj =
       processed_trajs.GetTrajectory("center_of_mass_trajectory");
-  const LcmTrajectory::Trajectory& lcm_l_foot_traj =
+  const LcmTrajectory::Trajectory* lcm_l_foot_traj =
       processed_trajs.GetTrajectory("left_foot_trajectory");
-  const LcmTrajectory::Trajectory& lcm_r_foot_traj =
+  const LcmTrajectory::Trajectory* lcm_r_foot_traj =
       processed_trajs.GetTrajectory("right_foot_trajectory");
-  const LcmTrajectory::Trajectory& lcm_pelvis_rot_traj =
+  const LcmTrajectory::Trajectory* lcm_pelvis_rot_traj =
       processed_trajs.GetTrajectory("pelvis_rot_trajectory");
   vector<PiecewisePolynomial<double>> state_trajs;
   for (int i = 0; i < n_modes; ++i) {
-    const LcmTrajectory::Trajectory& state_traj_i = original_traj.GetTrajectory(
+    const LcmTrajectory::Trajectory* state_traj_i = original_traj.GetTrajectory(
         "cassie_jumping_trajectory_x_u" + std::to_string(i));
     state_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
-        state_traj_i.time_vector, state_traj_i.datapoints.topRows(nx),
-        state_traj_i.datapoints.topRows(2 * nx).bottomRows(nx)));
+        state_traj_i->time_vector, state_traj_i->datapoints.topRows(nx),
+        state_traj_i->datapoints.topRows(2 * nx).bottomRows(nx)));
   }
 
   PiecewisePolynomial<double> com_traj =
       PiecewisePolynomial<double>::CubicHermite(
-          lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
-          lcm_com_traj.datapoints.bottomRows(3));
+          lcm_com_traj->time_vector, lcm_com_traj->datapoints.topRows(3),
+          lcm_com_traj->datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& l_foot_trajectory =
       PiecewisePolynomial<double>::CubicHermite(
-          lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
-          lcm_l_foot_traj.datapoints.bottomRows(3));
+          lcm_l_foot_traj->time_vector, lcm_l_foot_traj->datapoints.topRows(3),
+          lcm_l_foot_traj->datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& r_foot_trajectory =
       PiecewisePolynomial<double>::CubicHermite(
-          lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
-          lcm_r_foot_traj.datapoints.bottomRows(3));
+          lcm_r_foot_traj->time_vector, lcm_r_foot_traj->datapoints.topRows(3),
+          lcm_r_foot_traj->datapoints.bottomRows(3));
   PiecewisePolynomial<double> pelvis_rot_trajectory;
   pelvis_rot_trajectory = PiecewisePolynomial<double>::CubicHermite(
-      lcm_pelvis_rot_traj.time_vector,
-      lcm_pelvis_rot_traj.datapoints.topRows(4),
-      lcm_pelvis_rot_traj.datapoints.bottomRows(4));
+      lcm_pelvis_rot_traj->time_vector,
+      lcm_pelvis_rot_traj->datapoints.topRows(4),
+      lcm_pelvis_rot_traj->datapoints.bottomRows(4));
 
   // For the time-based FSM
   double flight_time = FLAGS_delay_time + state_trajs[0].end_time();

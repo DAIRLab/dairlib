@@ -329,12 +329,12 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
 template <typename T>
 void HybridDircon<T>::GetStateAndDerivativeSamples(
     const drake::solvers::MathematicalProgramResult& result,
-    std::vector<Eigen::MatrixXd>& state_samples,
-    std::vector<Eigen::MatrixXd>& derivative_samples,
-    std::vector<Eigen::VectorXd>& state_breaks) const {
-  DRAKE_ASSERT(state_samples.empty());
-  DRAKE_ASSERT(derivative_samples.empty());
-  DRAKE_ASSERT(state_breaks.empty());
+    std::vector<Eigen::MatrixXd>* state_samples,
+    std::vector<Eigen::MatrixXd>* derivative_samples,
+    std::vector<Eigen::VectorXd>* state_breaks) const {
+  DRAKE_ASSERT(state_samples->empty());
+  DRAKE_ASSERT(derivative_samples->empty());
+  DRAKE_ASSERT(state_breaks->empty());
 
   VectorXd times(GetSampleTimes(result));
 
@@ -355,9 +355,9 @@ void HybridDircon<T>::GetStateAndDerivativeSamples(
           drake::math::DiscardGradient(constraints_[i]->getXDot());
       times_i(j) = times(k_data);
     }
-    state_samples.push_back(states_i);
-    derivative_samples.push_back(derivatives_i);
-    state_breaks.push_back(times_i);
+    state_samples->push_back(states_i);
+    derivative_samples->push_back(derivatives_i);
+    state_breaks->push_back(times_i);
   }
 }
 
@@ -374,7 +374,7 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
   std::vector<MatrixXd> states;
   std::vector<MatrixXd> derivatives;
   std::vector<VectorXd> times;
-  GetStateAndDerivativeSamples(result, states, derivatives, times);
+  GetStateAndDerivativeSamples(result, &states, &derivatives, &times);
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(times[0], states[0],
                                                 derivatives[0]);

@@ -60,9 +60,9 @@ class HybridDircon
   /// each breakpoint at the solution for each mode of the trajectory.
   void GetStateAndDerivativeSamples(
       const drake::solvers::MathematicalProgramResult& result,
-      std::vector<Eigen::MatrixXd>& state_samples,
-      std::vector<Eigen::MatrixXd>& derivative_samples,
-      std::vector<Eigen::VectorXd>& state_breaks) const;
+      std::vector<Eigen::MatrixXd>* state_samples,
+      std::vector<Eigen::MatrixXd>* derivative_samples,
+      std::vector<Eigen::VectorXd>* state_breaks) const;
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.

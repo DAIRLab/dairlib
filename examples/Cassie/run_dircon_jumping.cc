@@ -845,8 +845,8 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
 }
 
 MatrixXd loadSavedDecisionVars(const string& filepath) {
-  const LcmTrajectory& loaded_decision_vars = LcmTrajectory(filepath);
-  return loaded_decision_vars.GetTrajectory("decision_vars").datapoints;
+  DirconTrajectory loaded_decision_vars = DirconTrajectory(filepath);
+  return loaded_decision_vars.GetDecisionVariables();
 }
 
 MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,

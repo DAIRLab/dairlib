@@ -26,9 +26,9 @@ namespace dairlib {
 /// trajectory, the input trajectory, and the decision variables. Additional
 /// trajectories can be added using the  AddTrajectory() function
 
-class DirconTrajectory : LcmTrajectory {
+class DirconTrajectory : public LcmTrajectory {
  public:
-  DirconTrajectory(const drake::multibody::MultibodyPlant<double>& plant);
+  DirconTrajectory(const std::string& filepath) { LoadFromFile(filepath); }
 
   DirconTrajectory(
       const drake::multibody::MultibodyPlant<double>& plant,
@@ -41,48 +41,38 @@ class DirconTrajectory : LcmTrajectory {
 
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
-  void LoadFromFile(const std::string& filepath);
-
-  /// Write this trajectory to the specified filepath, add any additional
-  /// trajectories BEFORE calling this method
-  void WriteToFile(const std::string& filepath);
+  void LoadFromFile(const std::string& filepath) override;
 
   Eigen::MatrixXd GetStateSamples(int mode) {
-    DRAKE_ASSERT(mode >= 0);
-    DRAKE_ASSERT(mode < num_modes_);
-    return x_[mode];
+    DRAKE_DEMAND(mode >= 0);
+    DRAKE_DEMAND(mode < num_modes_);
+    return x_[mode]->datapoints;
   }
   Eigen::MatrixXd GetStateDerivativeSamples(int mode) {
-    DRAKE_ASSERT(mode >= 0);
-    DRAKE_ASSERT(mode < num_modes_);
-    return xdot_[mode];
+    DRAKE_DEMAND(mode >= 0);
+    DRAKE_DEMAND(mode < num_modes_);
+    return xdot_[mode]->datapoints;
   }
   Eigen::MatrixXd GetStateBreaks(int mode) {
-    DRAKE_ASSERT(mode >= 0);
-    DRAKE_ASSERT(mode < num_modes_);
-    return state_breaks_[mode];
+    DRAKE_DEMAND(mode >= 0);
+    DRAKE_DEMAND(mode < num_modes_);
+    return x_[mode]->time_vector;
   }
-  Eigen::MatrixXd GetInputSamples() { return u_; }
-  Eigen::MatrixXd GetBreaks() { return h_; }
+  Eigen::MatrixXd GetInputSamples() { return u_->datapoints; }
+  Eigen::MatrixXd GetBreaks() { return u_->time_vector; }
   Eigen::VectorXd GetDecisionVariables() {
-    DRAKE_ASSERT(has_data_);
-    return decision_vars_;
+    DRAKE_DEMAND(has_data_);
+    return decision_vars_->datapoints;
   }
 
  private:
-  const drake::multibody::MultibodyPlant<double>& plant_;
-
-  const int n_x_;
-  const int n_u_;
 
   int num_modes_ = 0;
-  std::vector<int> mode_lengths_;
   bool has_data_;
-  Eigen::VectorXd decision_vars_;
-  Eigen::VectorXd h_;
-  Eigen::MatrixXd u_;
-  std::vector<Eigen::MatrixXd> x_;
-  std::vector<Eigen::MatrixXd> xdot_;
-  std::vector<Eigen::VectorXd> state_breaks_;
+
+  const Trajectory* decision_vars_;
+  const Trajectory* u_;
+  std::vector<const Trajectory*> x_;
+  std::vector<const Trajectory*> xdot_;
 };
 }  // namespace dairlib

@@ -47,8 +47,7 @@ int DoMain() {
   int nq = plant.num_positions();
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 
-  DirconTrajectory saved_traj(plant);
-  saved_traj.LoadFromFile(FLAGS_folder_path + FLAGS_trajectory_name);
+  DirconTrajectory saved_traj(FLAGS_folder_path + FLAGS_trajectory_name);
   VectorXd time_vector = saved_traj.GetBreaks();
 
   PiecewisePolynomial<double> optimal_traj =

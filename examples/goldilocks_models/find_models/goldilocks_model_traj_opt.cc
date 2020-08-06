@@ -246,7 +246,7 @@ void GoldilocksModelTrajOpt::ConstructStateCubicSplineInfo(
       VectorX<double> uk = result.GetSolution(dircon->input(k_data));
       states->col(k) = xk;
       inputs.col(k) = uk;
-      auto context = multibody::createContext(plant, xk, uk);
+      auto context = multibody::createContext<double>(plant, xk, uk);
       constraints[i]->updateData(*context,
                                  result.GetSolution(dircon->force(i, j)));
       derivatives->col(k) =

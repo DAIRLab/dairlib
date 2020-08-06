@@ -96,6 +96,9 @@ int DoMain(int argc, char* argv[]) {
   plant_w_springs.Finalize();
   plant_wo_springs.Finalize();
 
+  auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
+
   int nq = plant_wo_springs.num_positions();
   int nv = plant_wo_springs.num_velocities();
   int nx = nq + nv;
@@ -201,8 +204,8 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, nullptr, nullptr, true,
-      FLAGS_print_osc); /*print_tracking_info*/
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      context_wo_spr.get(), true, FLAGS_print_osc); /*print_tracking_info*/
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));

@@ -94,14 +94,14 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
 
   // Position control (sagital plane) parameters
   double kp_pos_sagital_ = 1.0;
-  double kd_pos_sagital_ = 0.2;
+  double kd_pos_sagital_ = 0.2 * 5;
   double vel_max_sagital_ = 1;
   double vel_min_sagital_ = -1;       // TODO(yminchen): need to test this
   double target_pos_offset_ = -0.16;  // Due to steady state error
 
   // Position control (frontal plane) parameters
-  double kp_pos_lateral_ = 0.5;
-  double kd_pos_lateral_ = 0.1;
+  double kp_pos_lateral_ = 0.5 * 0.5;
+  double kd_pos_lateral_ = 0.1 * 10;
   double vel_max_lateral_ = 0.5;
   double vel_min_lateral_ = -0.5;
 };

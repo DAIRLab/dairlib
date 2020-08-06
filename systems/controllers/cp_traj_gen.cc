@@ -200,10 +200,17 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
     dCoM = J_com * v;
   }
 
-  double pred_omega = sqrt(9.81 / CoM(2));
+  double omega = sqrt(9.81 / CoM(2));
 
   Vector2d CP;
-  CP << (CoM(0) + dCoM(0) / pred_omega), (CoM(1) + dCoM(1) / pred_omega);
+//  CP << (CoM(0) + dCoM(0) / omega), (CoM(1) + dCoM(1) / omega);
+  // Use LIPM to derive neutral point
+  double T = duration_map_.at(0);
+  Vector2d com_wrt_foot = dCoM.head(2) *
+                          ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
+                           (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
+                          omega;
+  CP = CoM.head(2) - com_wrt_foot;
 
   // Walking position control
   if (add_extra_control_) {

@@ -73,14 +73,22 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
   int state_port_;
   int xy_port_;
 
-  // Foot placement control (Sagital) parameters
-  double k_fp_ff_sagital_ = 0.16;  // TODO(yminchen): these are for going forward.
-  // Should have parameters for going backward
+  // TODO(yminchen): these are for going forward. Should have parameters for going backward
+  // For CP
+  /*// Foot placement control (Sagital) parameters
+  double k_fp_ff_sagital_ = 0.16;
   double k_fp_fb_sagital_ = 0.04;
-
   // Foot placement control (Lateral) parameters
   double k_fp_ff_lateral_ = 0.08;
-  double k_fp_fb_lateral_ = 0.02;
+  double k_fp_fb_lateral_ = 0.02;*/
+
+  // For LIPM neutral point
+  // Foot placement control (Sagital) parameters
+  double k_fp_ff_sagital_ = 0;
+  double k_fp_fb_sagital_ = 0.06;
+  // Foot placement control (Lateral) parameters
+  double k_fp_ff_lateral_ = 0;
+  double k_fp_fb_lateral_ = 0.12;
 };
 
 }  // namespace osc

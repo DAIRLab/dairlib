@@ -232,6 +232,13 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
 
+  // Create and connect contact estimation publisher.
+  auto contact_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
+          "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+  builder.Connect(state_estimator->get_contact_output_port(),
+                  contact_pub->get_input_port());
+
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
@@ -240,21 +247,21 @@ int do_main(int argc, char* argv[]) {
 
   // Pass through to drop all but positions and velocities
   auto state_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
-      state_estimator->get_output_port(0).size(), 0,
+      state_estimator->get_robot_output_port().size(), 0,
       robot_output_sender->get_input_port_state().size());
 
   // Passthrough to pass efforts
   auto effort_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
-      state_estimator->get_output_port(0).size(),
+      state_estimator->get_robot_output_port().size(),
       robot_output_sender->get_input_port_state().size(),
       robot_output_sender->get_input_port_effort().size());
 
-  builder.Connect(state_estimator->get_output_port(0),
+  builder.Connect(state_estimator->get_robot_output_port(),
                   state_passthrough->get_input_port());
   builder.Connect(state_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_state());
 
-  builder.Connect(state_estimator->get_output_port(0),
+  builder.Connect(state_estimator->get_robot_output_port(),
                   effort_passthrough->get_input_port());
   builder.Connect(effort_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_effort());

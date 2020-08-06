@@ -141,7 +141,7 @@ void LIPMTrajGenerator::CalcTraj(
   }
 
   VectorXd q = robot_output->GetPositions();
-  plant_.SetPositions(context_, q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
   Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);

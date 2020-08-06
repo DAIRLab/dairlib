@@ -121,7 +121,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   VectorXd q = robotOutput->GetPositions();
   VectorXd v = robotOutput->GetVelocities();
 
-  plant_.SetPositions(context_, q);
+    multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
   Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);

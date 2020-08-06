@@ -58,6 +58,7 @@ cc_library(
     hdrs = ["standing_com_traj.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

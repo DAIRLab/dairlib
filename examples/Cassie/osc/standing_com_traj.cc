@@ -2,6 +2,8 @@
 
 #include <math.h>
 
+#include "multibody/multibody_utils.h"
+
 using std::cout;
 using std::endl;
 
@@ -24,7 +26,7 @@ namespace osc {
 
 StandingComTraj::StandingComTraj(
     const MultibodyPlant<double>& plant,
-    Context<double>& context,
+    Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
     double height)
@@ -63,7 +65,7 @@ void StandingComTraj::CalcDesiredTraj(
   target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
   VectorXd q = robot_output->GetPositions();
 
-  plant_.SetPositions(&context_, q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of left/right feet contact points positions
   Vector3d contact_pos_sum = Vector3d::Zero();
@@ -72,7 +74,7 @@ void StandingComTraj::CalcDesiredTraj(
   MatrixXd J(3, plant_.num_velocities());
   for (const auto& point_and_frame : feet_contact_points_) {
     Vector3d position;
-    plant_.CalcPointsPositions(context_, point_and_frame.second,
+    plant_.CalcPointsPositions(*context_, point_and_frame.second,
                                point_and_frame.first, world_, &position);
     contact_pos_sum += position;
   }

@@ -62,7 +62,7 @@ void HeadingTrajGenerator::CalcHeadingTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q = robotOutput->GetPositions();
 
-  plant_.SetPositions(context_, q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get approximated heading angle of pelvis
   Vector3d pelvis_heading_vec =

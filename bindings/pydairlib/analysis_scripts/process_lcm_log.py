@@ -2,6 +2,7 @@ import dairlib
 import drake
 import numpy as np
 
+
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 class lcmt_osc_tracking_data_t:
   def __init__(self):
@@ -68,7 +69,27 @@ def process_log(log, pos_map, vel_map):
   u_pd = []
   t_u_pd = []
 
+  full_log = dict()
+  channel_to_type_map = dict()
+  unknown_types = set()
+  known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
+                     dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
+                     drake.lcmt_contact_results_for_viz]
+
   for event in log:
+    if event.channel not in full_log and event.channel not in unknown_types:
+      for lcmtype in known_lcm_types:
+        try:
+          lcmtype.decode(event.data)
+          channel_to_type_map[event.channel] = lcmtype
+        except ValueError:
+          continue
+      if event.channel in channel_to_type_map:
+        full_log[event.channel] = []
+      else:
+        unknown_types.add(event.channel)
+    if event.channel in full_log:
+      full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
     if event.channel == "CASSIE_STATE_SIMULATION" or event.channel == "CASSIE_STATE_DISPATCHER":
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]
@@ -173,8 +194,8 @@ def process_log(log, pos_map, vel_map):
   for key in osc_debug:
     osc_debug[key].convertToNP()
 
-  x = np.hstack((q, v)) # combine into state vector
+  x = np.hstack((q, v))  # combine into state vector
 
   return x, t_x, u, t_u, contact_forces, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
          switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
-         t_u_pd, osc_output
+         t_u_pd, osc_output, full_log

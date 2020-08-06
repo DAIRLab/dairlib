@@ -20,16 +20,14 @@ def main():
   global t_start
   global t_end
   global t_slice
+  global t_u_slice
   global filename
   global nq
   global nv
   global nx
-  # matplotlib.rcParams["savefig.directory"] = \
-  #   "/home/yangwill/Documents/research/projects/cassie/walking/analysis" \
-  #   "/figures/"
   matplotlib.rcParams["savefig.directory"] = \
-    "/home/yangwill/Documents/research/projects/cassie/hardware/logs" \
-    "/walking/gain_tuning_sim/figures/"
+    "/home/yangwill/Documents/research/projects/cassie/walking/analysis" \
+    "/figures/"
 
   builder = DiagramBuilder()
   plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
@@ -54,6 +52,11 @@ def main():
   x_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
   u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant)
 
+  # for i in range(len(x_datatypes)):
+  #   print(i)
+  #   print(x_datatypes[i])
+
+
   n_modes = 3
   folder_path = "/home/yangwill/Documents/research/projects/cassie/walking/saved_trajs/"
   trajectory_name = "walking_0.5_processed"
@@ -69,9 +72,11 @@ def main():
   filename = sys.argv[1]
   log = lcm.EventLog(filename, "r")
 
-  x, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
+  x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
+  osc_debug, fsm, estop_signal, \
   switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map)
+  osc_output, full_log  = process_lcm_log.process_log(log, pos_map, vel_map,
+                                                  act_map)
 
 
   compare_ekf(full_log, pos_map, vel_map)
@@ -88,26 +93,31 @@ def main():
     motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
     estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
 
-
   # plt.figure("Delay characterization")
   # import pdb; pdb.set_trace()
   # plt.plot(t_cassie_out, motor_torques, 'b')
-  # plt.plot(t_u, u[:, 5], 'r.')
+  # plt.plot(t_u, u[t_u_slice, 5], 'r.')
   # plt.plot(t_u_pd, u_pd[:, 7], 'g')
   # plt.plot(t_controller_switch, switch_signal, '*')
-  # plt.legend(["Motor torque", "Commanded Torque PD"])
+  plt.legend(["Motor torque", "Commanded Torque PD"])
   # plt.plot(t_cassie_out / 1e6, knee_pos, '.')
-  # t_start_idx = np.argwhere(np.max(np.abs(u), 1) > 5)[0][0]
-  # t_end_idx = np.argwhere(t_x > t_x[t_start_idx] + 3.0)[0][0]
-  # t_slice = slice(t_start_idx - 50, t_end_idx)
-  t_slice = slice(0, t_x.shape[0])
+
+  t_start = t_x[10]
+  t_end = t_x[-50]
+  t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
+  t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
+  t_slice = slice(t_start_idx, t_end_idx)
+  start_time_idx = np.argwhere(np.abs(t_u  - t_start) < 1e-3)[0][0]
+  end_time_idx = np.argwhere(np.abs(t_u  - t_end) < 1e-3)[0][0]
+  t_u_slice = slice(start_time_idx, end_time_idx)
+  # t_slice = slice(0, t_x.shape[0])
 
   # plt.figure("Efforts difference")
   # plt.plot(t_u_pd, u_pd, 'b')
   # plt.plot(t_pd, kp)
   # plt.plot(t_pd, kd)
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
-
+  plot_state(x, u_meas, t_x, u, t_u, x_datatypes, u_datatypes)
+  plt.show()
   l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
   world = plant.world_frame()
@@ -167,6 +177,8 @@ def plot_nominal_output_trajectories(t_points, com_trajectory, pelvis_rot_trajec
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
+
+
   input_cost = np.zeros(t_u.shape[0])
   acceleration_cost = np.zeros(t_u.shape[0])
   soft_constraint_cost = np.zeros(t_u.shape[0])
@@ -189,6 +201,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     print(name)
     print(tracking_cost_map[name])
 
+
   plt.figure("costs")
   plt.plot(t_u, input_cost)
   plt.plot(t_u, acceleration_cost)
@@ -200,47 +213,57 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # fig = plt.figure("OSC debug")
   # plt.plot(t_osc_debug, osc_debug[0].y_des)
   fig = plt.figure("COM_x errors: ")
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des[:, 0])
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command[:, 0])
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol[:, 0])
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y[:, 0])
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_ydot[:, 0])
-  plt.plot(t_cassie_out, estop_signal, 'k-')
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_des[t_u_slice, 0])
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_command[t_u_slice, 0])
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_command_sol[t_u_slice, 0])
+  # import pdb; pdb.set_trace()
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].error_y[t_u_slice, 0])
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].error_ydot[t_u_slice, 0])
+  # plt.plot(t_cassie_out, estop_signal, 'k-')
   plt.legend(["error y", "error ydot", "estop signal"])
   # fig = plt.figure("COM accel y: ")
   fig = plt.figure("COM_y errors: ")
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des[:, 1])
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command[:, 1])
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol[:, 1])
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y[:, 1])
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_ydot[:, 1])
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_des[t_u_slice, 1])
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_command[t_u_slice, 1])
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_command_sol[t_u_slice, 1])
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].error_y[t_u_slice, 1])
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].error_ydot[t_u_slice, 1])
+
+
+
+  plt.show() #######****
+
+
+
+
+
   plt.legend(["error y", "error ydot", "estop signal"])
-  plt.plot(t_cassie_out, estop_signal, 'k-')
+  # plt.plot(t_cassie_out, estop_signal, 'k-')
   fig = plt.figure("COM accel z: ")
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des[:, 2])
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command[:, 2])
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol[:, 2])
-  plt.plot(t_cassie_out, estop_signal, 'k-')
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_des[t_u_slice, 2])
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_command[t_u_slice, 2])
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_command_sol[t_u_slice, 2])
+  # plt.plot(t_cassie_out, estop_signal, 'k-')
   plt.legend(["yddot des", "yddot command", "yddot command sol", "estop signal"])
   fig = plt.figure("COM positions")
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y_des)
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].y)
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].y_des[t_u_slice])
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].y[t_u_slice])
   plt.legend(["x_desired", "y_desired", "z_desired", "x_actual", "y_actual", "z_actual"])
   fig = plt.figure("COM velocities")
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].ydot_des)
-  plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].ydot)
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].ydot_des[t_u_slice])
+  plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].ydot[t_u_slice])
   plt.legend(["xdot_desired", "ydot_desired", "zdot_desired", "xdot_actual", "ydot_actual", "zdot_actual"])
   fig = plt.figure("Pelvis Tracking")
-  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].ydot_des)
-  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].ydot)
+  plt.plot(osc_debug["pelvis_rot_traj"].t[t_u_slice], osc_debug["pelvis_rot_traj"].ydot_des[t_u_slice])
+  plt.plot(osc_debug["pelvis_rot_traj"].t[t_u_slice], osc_debug["pelvis_rot_traj"].ydot[t_u_slice])
   fig = plt.figure("Pelvis Tracking Quaternoin")
-  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y_des)
-  plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y)
+  plt.plot(osc_debug["pelvis_rot_traj"].t[t_u_slice], osc_debug["pelvis_rot_traj"].y_des[t_u_slice])
+  plt.plot(osc_debug["pelvis_rot_traj"].t[t_u_slice], osc_debug["pelvis_rot_traj"].y[t_u_slice])
 
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].error_y)
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_des)
-  # plt.plot(osc_debug["com_traj"].t, osc_debug["com_traj"].yddot_command_sol)
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].error_y)
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].error_y)
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_des)
+  # plt.plot(osc_debug["com_traj"].t[t_u_slice], osc_debug["com_traj"].yddot_command_sol)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y_des)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].y)
   # plt.plot(osc_debug["pelvis_rot_traj"].t, osc_debug["pelvis_rot_traj"].error_y)
@@ -327,10 +350,11 @@ def compare_ekf(log, pos_map, vel_map):
   plt.plot(t_x, v[:, vel_indices], '-')
   plt.plot(t_x_est, v_est[:, vel_indices], '--')
 
-def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
+def plot_state(x, u_meas, t_x, u, t_u, x_datatypes, u_datatypes):
+
   name = filename.split("/")[-1]
-  pos_indices = slice(13, 15)
-  vel_indices = slice(35, 37)
+  pos_indices = slice(19, 22, 2)
+  vel_indices = slice(33, 37)
   u_indices = slice(6, 8)
   # threshold = 1e-2
   # jumps = []
@@ -344,8 +368,12 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   plt.figure("velocities: " + name)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
-  plt.figure("efforts: " + name)
-  plt.plot(t_u, u[:, u_indices])
+  plt.figure("efforts meas: " + name)
+  # plt.figure("Delay characterization")
+  plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
+  plt.legend(u_datatypes[u_indices])
+  # plt.figure("efforts meas: " + name)
+  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
   plt.legend(u_datatypes[u_indices])
   # plt.show()
 

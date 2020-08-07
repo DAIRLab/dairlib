@@ -78,8 +78,8 @@ def main():
   osc_output, full_log  = process_lcm_log.process_log(log, pos_map, vel_map,
                                                   act_map)
 
-
-  compare_ekf(full_log, pos_map, vel_map)
+  if("CASSIE_STATE_DISPATCHER" in full_log):
+    compare_ekf(full_log, pos_map, vel_map)
   # import pdb; pdb.set_trace()
   n_msgs = len(cassie_out)
   knee_pos = np.zeros(n_msgs)
@@ -99,7 +99,7 @@ def main():
   # plt.plot(t_u, u[t_u_slice, 5], 'r.')
   # plt.plot(t_u_pd, u_pd[:, 7], 'g')
   # plt.plot(t_controller_switch, switch_signal, '*')
-  plt.legend(["Motor torque", "Commanded Torque PD"])
+  # plt.legend(["Motor torque", "Commanded Torque PD"])
   # plt.plot(t_cassie_out / 1e6, knee_pos, '.')
 
   t_start = t_x[10]
@@ -116,8 +116,8 @@ def main():
   # plt.plot(t_u_pd, u_pd, 'b')
   # plt.plot(t_pd, kp)
   # plt.plot(t_pd, kd)
-  plot_state(x, u_meas, t_x, u, t_u, x_datatypes, u_datatypes)
-  plt.show()
+  # plot_state(x, u_meas, t_x, u, t_u, x_datatypes, u_datatypes)
+  # plt.show()
   l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
   world = plant.world_frame()
@@ -209,6 +209,12 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.plot(t_u, tracking_cost)
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
+
+  fig = plt.figure("Swing foot tracking: ")
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].yddot_des[t_u_slice, 2])
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].yddot_command[t_u_slice, 2])
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].yddot_command_sol[t_u_slice, 2])
+  plt.legend(["yddot des", "yddot command", "yddot command sol", "estop signal"])
   plt.show()
   # fig = plt.figure("OSC debug")
   # plt.plot(t_osc_debug, osc_debug[0].y_des)

@@ -1088,27 +1088,26 @@ EventStatus CassieStateEstimator::Update(
   AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
   AssignFloatingBaseStateToOutputVector(estimated_fb_state, &filtered_output);
 
-  // Step 3 - Estimate which foot/feet are in contact with the ground
-  // Estimate feet contacts
-  int left_contact = 0;
-  int right_contact = 0;
-  std::vector<double> optimal_cost(3, 0.0);
+    // Step 3 - Estimate which foot/feet are in contact with the ground
+    // Estimate feet contacts
+    int left_contact = 0;
+    int right_contact = 0;
+    std::vector<double> optimal_cost(3, 0.0);
 
-  // Currently we are only using springs in contact estimiation
-  // TODO: remove QPs contact estimiation or implement a faster one
-  if (test_with_ground_truth_state_) {
-    // UpdateContactEstimationCosts(
-    //     output_gt, dt, &(state->get_mutable_discrete_state()),
-    //     &optimal_cost);
-    EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
-                          &right_contact);
-  } else {
-    // UpdateContactEstimationCosts(filtered_output, dt,
-    //                              &(state->get_mutable_discrete_state()),
-    //                              &optimal_cost);
-    EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
-                          &right_contact);
-  }
+    // Currently we are only using springs in contact estimiation
+    // TODO: remove QPs contact estimiation or implement a faster one
+    if (test_with_ground_truth_state_) {
+      // UpdateContactEstimationCosts(
+      //     output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
+      EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
+                            &right_contact);
+    } else {
+      // UpdateContactEstimationCosts(filtered_output, dt,
+      //                              &(state->get_mutable_discrete_state()),
+      //                              &optimal_cost);
+      EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
+                            &right_contact);
+    }
 
   // Test mode needed for hardware experiment
   // mode #0 assumes the feet are always on the ground
@@ -1125,6 +1124,7 @@ EventStatus CassieStateEstimator::Update(
     left_contact = 0;
     right_contact = 0;
   }
+
 
   // Add a filter to EKF contacts
   // We only set contact for EKF to be active after the contact has happen for
@@ -1148,15 +1148,20 @@ EventStatus CassieStateEstimator::Update(
 
   std::vector<std::pair<int, bool>> contacts;
   contacts.push_back(std::pair<int, bool>(0, left_contact));
-  contacts.push_back(std::pair<int, bool>(1, right_contact));
+  contacts.push_back(std::pair<int, bool>(1, left_contact));
+  contacts.push_back(std::pair<int, bool>(2, right_contact));
+  contacts.push_back(std::pair<int, bool>(3, right_contact));
   ekf.setContacts(contacts);
 
   // Step 4 - EKF (measurement step)
-  plant_.SetPositionsAndVelocities(context_.get(), filtered_output.GetState());
+  plant_.SetPositionsAndVelocities(context_.get(),
+                                   filtered_output.GetState());
 
   // rotation part of pose and covariance is unused in EKF
-  Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
-  Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
+  Eigen::Matrix4d rear_toe_pose = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d front_toe_pose = Eigen::Matrix4d::Identity();
+  Eigen::Matrix<double, 6, 6> rear_covariance = MatrixXd::Identity(6, 6);
+  Eigen::Matrix<double, 6, 6> front_covariance = MatrixXd::Identity(6, 6);
 
   if (test_with_ground_truth_state_) {
     // Print for debugging
@@ -1179,27 +1184,39 @@ EventStatus CassieStateEstimator::Update(
   for (int i = 0; i < 2; i++) {
     plant_.CalcPointsPositions(*context_, *toe_frames_[i], rear_contact_disp_,
                                pelvis_frame_, &toe_pos);
-    pose.block<3, 3>(0, 0) = Matrix3d::Identity();
-    pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
+    rear_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
+    rear_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
+    plant_.CalcPointsPositions(*context_, *toe_frames_[i],
+                               front_contact_disp_, pelvis_frame_, &toe_pos);
+    front_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
+    front_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
 
     if (print_info_to_terminal_) {
       // Print for debugging
       // cout << "Pose: " << endl;
-      // cout << pose.block<3, 1>(0, 3).transpose() << endl;
+      // cout << rear_toe_pose.block<3, 1>(0, 3).transpose() << endl;
     }
 
     plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, *toe_frames_[i], rear_contact_disp_,
-        pelvis_frame_, pelvis_frame_, &J);
+        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
+        rear_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
     MatrixXd J_wrt_joints = J.block(0, 6, 3, 16);
-    covariance.block<3, 3>(3, 3) =
+    rear_covariance.block<3, 3>(3, 3) =
         J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-    inekf::Kinematics frame(i, pose, covariance);
-    measured_kinematics.push_back(frame);
+    inekf::Kinematics rear_frame(i, rear_toe_pose, rear_covariance);
+    measured_kinematics.push_back(rear_frame);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
+        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
+    J_wrt_joints = J.block(0, 6, 3, 16);
+    front_covariance.block<3, 3>(3, 3) =
+        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
+    inekf::Kinematics front_frame(i + 1, front_toe_pose, front_covariance);
+    measured_kinematics.push_back(front_frame);
 
     if (print_info_to_terminal_) {
       cout << "covariance.block<3, 3>(3, 3) = \n"
-           << covariance.block<3, 3>(3, 3) << endl;
+           << rear_covariance.block<3, 3>(3, 3) << endl;
     }
   }
   ekf.CorrectKinematics(measured_kinematics);

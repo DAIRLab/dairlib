@@ -8,16 +8,11 @@ namespace dairlib {
 namespace cassie {
 namespace osc {
 
-// TODO(yminchen): we can replace cp with raibert style control. (feedforward
-//  term is v*T/2)
-// TODO(yminchen): we can make global target position an input port of the
-//  the system if it's needed in the future.
-
-/// DeviationFromCapturePoint calculates and outputs the deviation from capture
-/// point in order to track a desired velocity of center of mass.
+/// WalkingSpeedControl calculates and outputs the deviation from the nominal
+/// footstep location in order to track a desired velocity of center of mass.
 ///
-/// Controller desciprtion:
-///  Let delta_r (2 dimensional) be the output of DeviationFromCapturePoint.
+/// Controller description:
+///  Let delta_r (2 dimensional) be the output of WalkingSpeedControl.
 ///  Since we apply the same control law to both sagital and lateral plane, we
 ///  will only explain for the case of sagital plane. I.e., consider delta_r is
 ///  1D here.
@@ -45,11 +40,11 @@ namespace osc {
 ///  - A 2D vector, delta_r.
 ///
 /// Requirement: quaternion floating-based Cassie only
-class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
+class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
  public:
-  DeviationFromCapturePoint(
+  WalkingSpeedControl(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context);
+      drake::systems::Context<double>* context, int footstep_option);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -66,21 +61,19 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
-  Eigen::Vector2d global_target_position_;
 
+  Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
 
   int state_port_;
   int xy_port_;
 
   // Foot placement control (Sagital) parameters
-  double k_fp_ff_sagital_ = 0.16;  // TODO(yminchen): these are for going forward.
-  // Should have parameters for going backward
-  double k_fp_fb_sagital_ = 0.04;
-
+  double k_fp_ff_sagital_;
+  double k_fp_fb_sagital_;
   // Foot placement control (Lateral) parameters
-  double k_fp_ff_lateral_ = 0.08;
-  double k_fp_fb_lateral_ = 0.02;
+  double k_fp_ff_lateral_;
+  double k_fp_fb_lateral_;
 };
 
 }  // namespace osc

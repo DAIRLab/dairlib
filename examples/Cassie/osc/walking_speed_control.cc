@@ -1,4 +1,4 @@
-#include "examples/Cassie/osc/deviation_from_cp.h"
+#include "examples/Cassie/osc/walking_speed_control.h"
 
 #include <math.h>
 #include <string>
@@ -29,13 +29,15 @@ namespace dairlib {
 namespace cassie {
 namespace osc {
 
-DeviationFromCapturePoint::DeviationFromCapturePoint(
+WalkingSpeedControl::WalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
-    Context<double>* context)
+    Context<double>* context, int footstep_option)
     : plant_(plant),
     context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
+  DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
+
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -44,11 +46,27 @@ DeviationFromCapturePoint::DeviationFromCapturePoint(
           .get_index();
   xy_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(2),
-                                &DeviationFromCapturePoint::CalcFootPlacement);
+                                &WalkingSpeedControl::CalcFootPlacement);
 
+  // TODO(yminchen): Gains are not tuned yet. Do we need two sets of gains for
+  //  moving forward and backward?
+  // Control gains
+  if (footstep_option == 0) {
+    // For Capture point
+    k_fp_ff_sagital_ = 0.16;
+    k_fp_fb_sagital_ = 0.04;
+    k_fp_ff_lateral_ = 0.08;
+    k_fp_fb_lateral_ = 0.02;
+  } else if (footstep_option == 1) {
+    // For LIPM neutral point
+    k_fp_ff_sagital_ = 0;
+    k_fp_fb_sagital_ = 0.06;
+    k_fp_ff_lateral_ = 0;
+    k_fp_fb_lateral_ = 0.12;
+  }
 }
 
-void DeviationFromCapturePoint::CalcFootPlacement(
+void WalkingSpeedControl::CalcFootPlacement(
     const Context<double>& context, BasicVector<double>* output) const {
   // Read in finite state machine
   const BasicVector<double>* des_hor_vel_output =
@@ -80,38 +98,38 @@ void DeviationFromCapturePoint::CalcFootPlacement(
   Vector3d local_com_vel = drake::math::quatRotateVec(quad_conj, com_vel);
 
   //////////////////// Sagital ////////////////////
-  Vector3d delta_CP_sagital_3D_global(0, 0, 0);
+  Vector3d delta_x_fs_sagital_3D_global(0, 0, 0);
 
   // Position Control
   double com_vel_sagital = local_com_vel(0);
   double des_sagital_vel = des_hor_vel(0);
 
   // Velocity control
-  double delta_CP_sagital =
+  double delta_x_fs_sagital =
       -k_fp_ff_sagital_ * des_sagital_vel -
       k_fp_fb_sagital_ * (des_sagital_vel - com_vel_sagital);
-  Vector3d delta_CP_sagital_3D_local(delta_CP_sagital, 0, 0);
-  delta_CP_sagital_3D_global =
-      drake::math::quatRotateVec(quat, delta_CP_sagital_3D_local);
+  Vector3d delta_x_fs_sagital_3D_local(delta_x_fs_sagital, 0, 0);
+  delta_x_fs_sagital_3D_global =
+      drake::math::quatRotateVec(quat, delta_x_fs_sagital_3D_local);
 
   //////////////////// Lateral ////////////////////  TODO(yminchen): tune this
-  Vector3d delta_CP_lateral_3D_global(0, 0, 0);
+  Vector3d delta_x_fs_lateral_3D_global(0, 0, 0);
 
   // Position Control
   double com_vel_lateral = local_com_vel(1);
   double des_lateral_vel = des_hor_vel(1);
 
   // Velocity control
-  double delta_CP_lateral =
+  double delta_x_fs_lateral =
       -k_fp_ff_lateral_ * des_lateral_vel -
       k_fp_fb_lateral_ * (des_lateral_vel - com_vel_lateral);
-  Vector3d delta_CP_lateral_3D_local(0, delta_CP_lateral, 0);
-  delta_CP_lateral_3D_global =
-      drake::math::quatRotateVec(quat, delta_CP_lateral_3D_local);
+  Vector3d delta_x_fs_lateral_3D_local(0, delta_x_fs_lateral, 0);
+  delta_x_fs_lateral_3D_global =
+      drake::math::quatRotateVec(quat, delta_x_fs_lateral_3D_local);
 
   // Assign foot placement
   output->get_mutable_value() =
-      (delta_CP_sagital_3D_global + delta_CP_lateral_3D_global).head(2);
+      (delta_x_fs_sagital_3D_global + delta_x_fs_lateral_3D_global).head(2);
 }
 
 }  // namespace osc

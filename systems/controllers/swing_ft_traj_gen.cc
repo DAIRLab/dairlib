@@ -185,16 +185,16 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
 
   // Get com or predicted com
   Vector3d com;
-  Vector3d dcom;
+  Vector3d com_dot;
   if (is_using_predicted_com_) {
-    // com and dcom at the end of the step (predicted)
+    // com and com_dot at the end of the step (predicted)
     const drake::AbstractValue* com_traj_output =
         this->EvalAbstractInput(context, com_port_);
     DRAKE_ASSERT(com_traj_output != nullptr);
     const auto& com_traj =
         com_traj_output->get_value<drake::trajectories::Trajectory<double>>();
     com = com_traj.value(end_time_of_this_interval);
-    dcom = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
+    com_dot = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
   } else {
     // Get the current center of mass position and velocity
 
@@ -203,18 +203,18 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
         *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
     VectorXd v = robot_output->GetVelocities();
     com = plant_.CalcCenterOfMassPosition(*context_);
-    dcom = J_com * v;
+    com_dot = J_com * v;
   }
 
   // Compute footstep location
   double omega = sqrt(9.81 / com(2));
   if (footstep_option_ == 0) {
-    *x_fs << (com(0) + dcom(0) / omega), (com(1) + dcom(1) / omega);
+    *x_fs << (com(0) + com_dot(0) / omega), (com(1) + com_dot(1) / omega);
   } else if (footstep_option_ == 1) {
     // Use LIPM to derive neutral point
     double T = duration_map_.at(int(fsm_state(0)));
     Vector2d com_wrt_foot =
-        dcom.head(2) *
+        com_dot.head(2) *
         ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
          (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
         omega;

@@ -9,6 +9,7 @@
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
+#include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
@@ -40,17 +41,22 @@ DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
-DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
+
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
-DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
-DEFINE_bool(print_snopt_file, false, "Print snopt output file");
-DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
 DEFINE_double(final_position, 2, "The final position for the robot");
+
+DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
+DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
+DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
 DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
 DEFINE_bool(fix_duration, false, "Fix the total time");
 DEFINE_bool(fix_all_timestep, true, "Make all timesteps the same size");
 DEFINE_double(opt_tol, 1e-4, "Disturbance to FoM initial state");
 DEFINE_double(feas_tol, 1e-4, "Disturbance to FoM initial state");
+
+DEFINE_bool(log_solver_info, false,
+            "Log snopt output to a file or ipopt to terminal");
+DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
 // DEFINE_bool(add_x_pose_in_cost, false, "Add x0 and xf in the cost function");
 
 // Planning with optimal reduced order model and full order model
@@ -345,23 +351,66 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   }
 
   // Snopt setting
-  if (FLAGS_print_snopt_file) {
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                            "../snopt_planning.out");
+  int max_iter = 10000;
+
+  if (FLAGS_use_ipopt) {
+    // Ipopt settings adapted from CaSaDi and FROST
+    auto id = drake::solvers::IpoptSolver::id();
+    trajopt.SetSolverOption(id, "tol", FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "dual_inf_tol", FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "constr_viol_tol",
+                             FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "compl_inf_tol",
+                             FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "max_iter", max_iter);
+    trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
+    trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
+    if (FLAGS_log_solver_info) {
+      trajopt.SetSolverOption(id, "print_timing_statistics", "yes");
+      trajopt.SetSolverOption(id, "print_level", 5);
+    } else {
+      trajopt.SetSolverOption(id, "print_timing_statistics", "no");
+      trajopt.SetSolverOption(id, "print_level", 0);
+    }
+
+    // Set to ignore overall tolerance/dual infeasibility, but terminate when
+    // primal feasible and objective fails to increase over 5 iterations.
+    trajopt.SetSolverOption(id, "acceptable_compl_inf_tol",
+                             FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "acceptable_constr_viol_tol",
+                             FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
+    trajopt.SetSolverOption(id, "acceptable_tol", 1e2);
+    trajopt.SetSolverOption(id, "acceptable_iter", 5);
+  } else {
+    if (FLAGS_log_solver_info) {
+      trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                              "../snopt_planning.out");
+    }
+    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                            "Major iterations limit", max_iter);
+    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                            "Major optimality tolerance", FLAGS_opt_tol);
+    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                            "Major feasibility tolerance", FLAGS_feas_tol);
   }
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major iterations limit", 10000);
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", FLAGS_opt_tol);
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", FLAGS_feas_tol);
+
+  // Pick solver
+  drake::solvers::SolverId solver_id("");
+  if (FLAGS_use_ipopt) {
+    solver_id = drake::solvers::IpoptSolver().id();
+  } else {
+    solver_id = drake::solvers::ChooseBestSolver(trajopt);
+  }
+  auto solver = drake::solvers::MakeSolver(solver_id);
 
   // Solve
   cout << "\nSolving optimization problem...\n";
   start = std::chrono::high_resolution_clock::now();
-  const MathematicalProgramResult result =
-      Solve(trajopt, trajopt.initial_guess());
+  drake::solvers::MathematicalProgramResult result;
+  solver->Solve(trajopt, trajopt.initial_guess(),
+                trajopt.solver_options(), &result);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   cout << "    Solve time:" << elapsed.count() << " | ";

@@ -1,0 +1,20 @@
+group "0.cassie planner (2 steps)" {
+    cmd "1.0.ipopt (wo init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=29 --sample=19 --n_step=2 --final_position=1 --knots_per_mode=10 --init_file=\"\" --use_ipopt=true";
+        host = "localhost";
+    }
+    cmd "0.0.snopt (wo init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=29 --sample=19 --n_step=2 --final_position=1 --knots_per_mode=10 --init_file=\"\" --use_ipopt=false";
+        host = "localhost";
+    }
+    cmd "0.1.snopt (w init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=29 --sample=19 --n_step=2 --final_position=1 --knots_per_mode=10 --init_file=\"z.csv\" --use_ipopt=false";
+        host = "localhost";
+    }
+    cmd "1.1. ipopt (w init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=29 --sample=19 --n_step=2 --final_position=1 --knots_per_mode=10 --init_file=\"z.csv\" --use_ipopt=true";
+        host = "localhost";
+    }
+}
+
+

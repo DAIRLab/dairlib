@@ -125,7 +125,8 @@ def main():
 
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
-  if False:
+  if True:
+    plot_contact_est(full_log)
     plot_feet_positions(plant, context, x, l_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "left_", "_front")
@@ -146,7 +147,7 @@ def main():
   # plt.legend(["lfoot_rear", "lfoot_front", "rfoot_rear", "rfoot_front"])
   # plot_nominal_output_trajectories(t_points_com, com_trajectory, pelvis_rot_trajectory, l_foot_trajectory,
   #                                  r_foot_trajectory)
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
 
 
@@ -175,9 +176,32 @@ def plot_nominal_output_trajectories(t_points, com_trajectory, pelvis_rot_trajec
   plt.plot(t_sampled, com[:, :, 0])
   plt.plot(t_sampled, pelvis_rot[:, :, 0])
 
+def plot_contact_est(log):
+  t_contact = []
+  t_filtered_contact = []
+  contact = []
+  contact_filtered = []
+  for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
+    msg = log["CASSIE_CONTACT_DISPATCHER"][i]
+    t_contact.append(msg.utime / 1e6)
+    contact.append(list(msg.contact))
+  for i in range(len(log["CASSIE_FILTERED_CONTACT_DISPATCHER"])):
+    msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
+    t_filtered_contact.append(msg.utime / 1e6)
+    contact_filtered.append(list(msg.contact))
+  t_contact = np.array(t_contact)
+  t_filtered_contact = np.array(t_filtered_contact)
+  contact = np.array(contact)
+  contact_filtered = np.array(contact_filtered)
+
+  # plt.figure("Contact estimation")
+  fig = plt.figure('foot pos: ' + filename)
+
+  plt.plot(t_contact, contact, '-')
+  plt.plot(t_filtered_contact, contact_filtered, '-')
+  plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt"])
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
-
 
   input_cost = np.zeros(t_u.shape[0])
   acceleration_cost = np.zeros(t_u.shape[0])
@@ -210,7 +234,31 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
-  fig = plt.figure("Swing foot tracking: ")
+  fig = plt.figure("Swing foot tracking x: ")
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].y_des[t_u_slice, 0], '-')
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].y[t_u_slice, 0], '-')
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_y[t_u_slice, 0], '-')
+  # plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_y[t_u_slice, 0], '-')
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_ydot[t_u_slice, 0], '.')
+  plt.legend(["error y", "error ydot", "estop signal"])
+  fig = plt.figure("Swing foot tracking y: ")
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].y_des[t_u_slice, 1], '-')
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].y[t_u_slice, 1], '-')
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_y[t_u_slice, 1], '-')
+  # plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].ydot_des[t_u_slice, 1], '-')
+  # plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].ydot[t_u_slice, 1], '-')
+  # plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_ydot[t_u_slice, 1], '-')
+  # plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_ydot[t_u_slice, 1], '.')
+  plt.legend(["error y", "error ydot", "estop signal"])
+  fig = plt.figure("Swing foot tracking z: ")
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].y_des[t_u_slice, 2], '-')
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].y[t_u_slice, 2], '-')
+  plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_y[t_u_slice, 2], '-')
+  # plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_y[t_u_slice, 2], '-')
+  # plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].error_ydot[t_u_slice, 2], '.')
+  plt.legend(["error y", "error ydot", "estop signal"])
+  # plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].yddot_command_sol[t_u_slice, 2])
+  fig = plt.figure("Swing foot accel tracking: ")
   plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].yddot_des[t_u_slice, 2])
   plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].yddot_command[t_u_slice, 2])
   plt.plot(osc_debug["swing_ft_traj"].t[t_u_slice], osc_debug["swing_ft_traj"].yddot_command_sol[t_u_slice, 2])
@@ -302,7 +350,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world,
       world) @ x[i, -nv:]
   fig = plt.figure('foot pos: ' + filename)
-  state_indices = slice(2, 3)
+  state_indices = slice(1, 2)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
@@ -316,6 +364,7 @@ def compare_ekf(log, pos_map, vel_map):
   t_x_est = []
   q = []
   v = []
+  imu = []
   q_est = []
   v_est = []
   for i in range(len(log["CASSIE_STATE_SIMULATION"])):
@@ -328,6 +377,7 @@ def compare_ekf(log, pos_map, vel_map):
       v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
     q.append(q_temp)
     v.append(v_temp)
+    imu.append(msg.imu_accel)
     t_x.append(msg.utime / 1e6)
   for i in range(len(log["CASSIE_STATE_DISPATCHER"])):
     msg = log["CASSIE_STATE_DISPATCHER"][i]
@@ -344,17 +394,20 @@ def compare_ekf(log, pos_map, vel_map):
   t_x_est = np.array(t_x_est)
   q = np.array(q)
   v = np.array(v)
+  imu = np.array(imu)
   q_est = np.array(q_est)
   v_est = np.array(v_est)
 
   pos_indices = slice(4, 7)
-  vel_indices = slice(3, 6)
+  vel_indices = slice(4, 5)
   plt.figure("Positions")
   plt.plot(t_x, q[:, pos_indices], '-')
-  plt.plot(t_x_est, q_est[:, pos_indices], '--')
-  plt.figure("Velocities")
+  plt.plot(t_x_est, q_est[:, pos_indices], '-')
+  # plt.figure("Velocities")
+  fig = plt.figure('foot pos: ' + filename)
   plt.plot(t_x, v[:, vel_indices], '-')
   plt.plot(t_x_est, v_est[:, vel_indices], '--')
+  plt.plot(t_x, imu, 'k-')
 
 def plot_state(x, u_meas, t_x, u, t_u, x_datatypes, u_datatypes):
 

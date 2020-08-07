@@ -1226,7 +1226,7 @@ EventStatus CassieStateEstimator::Update(
     MatrixXd J_wrt_joints = J.block(0, 6, 3, 16);
     rear_covariance.block<3, 3>(3, 3) =
         J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-    inekf::Kinematics rear_frame(i, rear_toe_pose, rear_covariance);
+    inekf::Kinematics rear_frame(2*i, rear_toe_pose, rear_covariance);
     measured_kinematics.push_back(rear_frame);
     plant_.CalcJacobianTranslationalVelocity(
         *context_, JacobianWrtVariable::kV, *toe_frames_[i],
@@ -1234,7 +1234,7 @@ EventStatus CassieStateEstimator::Update(
     J_wrt_joints = J.block(0, 6, 3, 16);
     front_covariance.block<3, 3>(3, 3) =
         J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-    inekf::Kinematics front_frame(i + 1, front_toe_pose, front_covariance);
+    inekf::Kinematics front_frame(2*i + 1, front_toe_pose, front_covariance);
     measured_kinematics.push_back(front_frame);
 
     if (print_info_to_terminal_) {

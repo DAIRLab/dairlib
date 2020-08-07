@@ -83,6 +83,10 @@ CassieStateEstimator::CassieStateEstimator(
   contact_output_port_ =
       this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
           .get_index();
+  filtered_contact_output_port_ =
+      this->DeclareAbstractOutputPort(
+              &CassieStateEstimator::CopyFilteredContact)
+          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -148,6 +152,7 @@ CassieStateEstimator::CassieStateEstimator(
 
     // states related to contact estimation
     contact_idx_ = DeclareDiscreteState(VectorXd::Zero(num_contacts_));
+    filtered_contact_idx_ = DeclareDiscreteState(VectorXd::Zero(num_contacts_));
 
     previous_velocity_idx_ = DeclareDiscreteState(VectorXd::Zero(n_v_, 1));
 
@@ -1132,6 +1137,11 @@ EventStatus CassieStateEstimator::Update(
     right_contact = 0;
   }
 
+  // Assign contacts
+  state->get_mutable_discrete_state()
+      .get_mutable_vector(contact_idx_)
+      .get_mutable_value()
+      << left_contact, right_contact;
 
   // Add a filter to EKF contacts
   // We only set contact for EKF to be active after the contact has happen for
@@ -1152,6 +1162,12 @@ EventStatus CassieStateEstimator::Update(
   } else {
     right_contact_start_time_ = current_time;
   }
+
+  // Assign contacts
+  state->get_mutable_discrete_state()
+      .get_mutable_vector(filtered_contact_idx_)
+      .get_mutable_value()
+      << left_contact, right_contact;
 
   std::vector<std::pair<int, bool>> contacts;
   contacts.push_back(std::pair<int, bool>(0, left_contact));
@@ -1290,12 +1306,6 @@ EventStatus CassieStateEstimator::Update(
           .get_mutable_value()
       << current_time;
 
-  // Assign contacts
-  state->get_mutable_discrete_state()
-          .get_mutable_vector(contact_idx_)
-          .get_mutable_value()
-      << left_contact, right_contact;
-
   return EventStatus::Succeeded();
 }
 
@@ -1336,6 +1346,19 @@ void CassieStateEstimator::CopyContact(
     contact_msg->contact_names[i] = contact_names_[i];
     contact_msg->contact[i] =
         (bool)context.get_discrete_state(contact_idx_).get_value()[i];
+  }
+}
+
+void CassieStateEstimator::CopyFilteredContact(
+    const Context<double>& context, dairlib::lcmt_contact* contact_msg) const {
+  contact_msg->utime = context.get_time() * 1e6;
+  contact_msg->num_contacts = num_contacts_;
+  contact_msg->contact_names.resize(num_contacts_);
+  contact_msg->contact.resize(num_contacts_);
+  for (int i = 0; i < num_contacts_; i++) {
+    contact_msg->contact_names[i] = contact_names_[i];
+    contact_msg->contact[i] =
+        (bool)context.get_discrete_state(filtered_contact_idx_).get_value()[i];
   }
 }
 

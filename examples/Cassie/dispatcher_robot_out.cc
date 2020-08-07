@@ -238,6 +238,13 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_contact_output_port(),
                   contact_pub->get_input_port());
+  // Create and connect contact estimation publisher.
+  auto filtered_contact_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
+          "CASSIE_FILTERED_CONTACT_DISPATCHER", &lcm_local,
+          {TriggerType::kForced}));
+  builder.Connect(state_estimator->get_filtered_contact_output_port(),
+                  filtered_contact_pub->get_input_port());
 
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_pub =

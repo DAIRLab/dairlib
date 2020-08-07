@@ -1088,26 +1088,27 @@ EventStatus CassieStateEstimator::Update(
   AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
   AssignFloatingBaseStateToOutputVector(estimated_fb_state, &filtered_output);
 
-    // Step 3 - Estimate which foot/feet are in contact with the ground
-    // Estimate feet contacts
-    int left_contact = 0;
-    int right_contact = 0;
-    std::vector<double> optimal_cost(3, 0.0);
+  // Step 3 - Estimate which foot/feet are in contact with the ground
+  // Estimate feet contacts
+  int left_contact = 0;
+  int right_contact = 0;
+  std::vector<double> optimal_cost(3, 0.0);
 
-    // Currently we are only using springs in contact estimiation
-    // TODO: remove QPs contact estimiation or implement a faster one
-    if (test_with_ground_truth_state_) {
-      // UpdateContactEstimationCosts(
-      //     output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
-      EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
-                            &right_contact);
-    } else {
-      // UpdateContactEstimationCosts(filtered_output, dt,
-      //                              &(state->get_mutable_discrete_state()),
-      //                              &optimal_cost);
-      EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
-                            &right_contact);
-    }
+  // Currently we are only using springs in contact estimiation
+  // TODO: remove QPs contact estimiation or implement a faster one
+  if (test_with_ground_truth_state_) {
+    // UpdateContactEstimationCosts(
+    //     output_gt, dt, &(state->get_mutable_discrete_state()),
+    //     &optimal_cost);
+    EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
+                          &right_contact);
+  } else {
+    // UpdateContactEstimationCosts(filtered_output, dt,
+    //                              &(state->get_mutable_discrete_state()),
+    //                              &optimal_cost);
+    EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
+                          &right_contact);
+  }
 
   // Test mode needed for hardware experiment
   // mode #0 assumes the feet are always on the ground
@@ -1123,6 +1124,26 @@ EventStatus CassieStateEstimator::Update(
   } else if (hardware_test_mode_ == 1) {
     left_contact = 0;
     right_contact = 0;
+  }
+
+  // Add a filter to EKF contacts
+  // We only set contact for EKF to be active after the contact has happen for
+  // `persistent_contact_threshold_` seconds
+  if (left_contact) {
+    if (current_time - left_contact_start_time_ <
+        persistent_contact_threshold_) {
+      left_contact = 0;
+    }
+  } else {
+    left_contact_start_time_ = current_time;
+  }
+  if (right_contact) {
+    if (current_time - right_contact_start_time_ <
+        persistent_contact_threshold_) {
+      right_contact = 0;
+    }
+  } else {
+    right_contact_start_time_ = current_time;
   }
 
   std::vector<std::pair<int, bool>> contacts;

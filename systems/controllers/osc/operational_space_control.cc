@@ -47,6 +47,8 @@ OperationalSpaceControl::OperationalSpaceControl(
     bool used_with_finite_state_machine, bool print_tracking_info)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
+      context_w_spr_(context_w_spr),
+      context_wo_spr_(context_wo_spr),
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
@@ -132,25 +134,6 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
   u_min_ = u_min;
   u_max_ = u_max;
-
-  // Create MBP context if there is no external MBP context
-  if (context_w_spr == nullptr) {
-    owned_context_w_spr_ = plant_w_spr_.CreateDefaultContext();
-    context_w_spr_ = owned_context_w_spr_.get();
-  } else {
-    context_w_spr_ = context_w_spr;
-  }
-  if (context_wo_spr == nullptr) {
-    // Only create a new context if the two plants are different
-    if (&plant_w_spr == &plant_wo_spr) {
-      context_wo_spr_ = owned_context_w_spr_.get();
-    } else {
-      owned_context_wo_spr_ = plant_wo_spr_.CreateDefaultContext();
-      context_wo_spr_ = owned_context_wo_spr_.get();
-    }
-  } else {
-    context_wo_spr_ = context_wo_spr;
-  }
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);

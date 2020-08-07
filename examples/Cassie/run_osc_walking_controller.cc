@@ -81,6 +81,7 @@ int DoMain(int argc, char* argv[]) {
   plant_wo_spr.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_spr.CreateDefaultContext();
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -254,8 +255,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_wo_spr, context_w_spr.get(), nullptr, true,
-      FLAGS_print_osc /*print_tracking_info*/);
+      plant_w_spr, plant_wo_spr, context_w_spr.get(), context_wo_spr.get(),
+      true, FLAGS_print_osc /*print_tracking_info*/);
 
   // Cost
   int n_v = plant_wo_spr.num_velocities();

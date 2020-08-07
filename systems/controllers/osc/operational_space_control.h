@@ -93,8 +93,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   OperationalSpaceControl(
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      drake::systems::Context<double>* context_w_spr = nullptr,
-      drake::systems::Context<double>* context_wo_spr = nullptr,
+      drake::systems::Context<double>* context_w_spr,
+      drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
       bool print_tracking_info = false);
 
@@ -204,8 +204,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
   // MBP context's
-  std::unique_ptr<drake::systems::Context<double>> owned_context_w_spr_;
-  std::unique_ptr<drake::systems::Context<double>> owned_context_wo_spr_;
   drake::systems::Context<double>* context_w_spr_;
   drake::systems::Context<double>* context_wo_spr_;
 

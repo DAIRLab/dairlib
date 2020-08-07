@@ -273,6 +273,8 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::CreateSplineForSwingFoot(
       (start_time_of_this_interval + end_time_of_this_interval) / 2,
       end_time_of_this_interval};
 
+
+  //TODO(yangwill): make the acceleration continuous
   std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
   Y[0](0, 0) = init_swing_foot_pos(0);

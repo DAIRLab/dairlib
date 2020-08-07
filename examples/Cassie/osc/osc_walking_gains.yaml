@@ -1,21 +1,21 @@
 rows: 3
 cols: 3
-w_accel: 0.00000001
+w_accel: 0.001
 w_soft_constraint: 8000
-w_swing_toe: 300
+w_swing_toe: 200
 swing_toe_kp: 20
 swing_toe_kd: 1
 w_hip_yaw: 60
 hip_yaw_kp: 100
 hip_yaw_kd: 10
-cp_offset: 0.06
+footstep_offset: 0.06
 center_line_offset: 0.10
-final_foot_height: 0.01
+final_foot_height: 0.0
 final_foot_velocity_z: 0
 mid_foot_height: 0.1
 CoMW:
   [  40,    0,     0,
-      0,   40,     0,
+      0,  100,     0,
       0,    0,  1000]
 CoMKp:
   [  50,    0,     0,
@@ -27,7 +27,7 @@ CoMKd:
       0,    0,     4]
 PelvisBalanceW:
   [ 200,    0,     0,
-    0,    360,     0,
+    0,    400,     0,
     0,      0,     0]
 PelvisBalanceKp:
   [200,      0,    0,
@@ -35,7 +35,7 @@ PelvisBalanceKp:
      0,      0,    0]
 PelvisBalanceKd:
   [  20,     0,    0,
-      0,     5,    0,
+      0,    10,    0,
       0,     0,    0]
 PelvisHeadingW:
   [   0,    0,     0,
@@ -54,10 +54,10 @@ SwingFootW:
       0,  400,     0,
       0,    0,   400]
 SwingFootKp:
-  [ 100,    0,     0,
-      0,  100,     0,
-      0,    0,   100]
+  [ 200,    0,     0,
+      0,  200,     0,
+      0,    0,   200]
 SwingFootKd:
-  [  10,    0,     0,
-      0,   10,     0,
-      0,    0,    10]
+  [  20,    0,     0,
+      0,   20,     0,
+      0,    0,    20]

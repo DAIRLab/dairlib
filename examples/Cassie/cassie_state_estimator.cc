@@ -76,8 +76,13 @@ CassieStateEstimator::CassieStateEstimator(
   cassie_out_input_port_ = this->DeclareAbstractInputPort(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
                                .get_index();
-  this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
-                                &CassieStateEstimator::CopyStateOut);
+  output_vector_output_port_ =
+      this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
+                                    &CassieStateEstimator::CopyStateOut)
+          .get_index();
+  contact_output_port_ =
+      this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
+          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -142,6 +147,8 @@ CassieStateEstimator::CassieStateEstimator(
     prev_imu_idx_ = DeclareDiscreteState(init_prev_imu_value);
 
     // states related to contact estimation
+    contact_idx_ = DeclareDiscreteState(VectorXd::Zero(num_contacts_));
+
     previous_velocity_idx_ = DeclareDiscreteState(VectorXd::Zero(n_v_, 1));
 
     filtered_residual_double_idx_ =
@@ -1282,6 +1289,13 @@ EventStatus CassieStateEstimator::Update(
           .get_mutable_vector(time_idx_)
           .get_mutable_value()
       << current_time;
+
+  // Assign contacts
+  state->get_mutable_discrete_state()
+          .get_mutable_vector(contact_idx_)
+          .get_mutable_value()
+      << left_contact, right_contact;
+
   return EventStatus::Succeeded();
 }
 
@@ -1309,6 +1323,19 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
            << context.get_discrete_state(fb_state_idx_).get_value().transpose()
            << endl;
     }
+  }
+}
+
+void CassieStateEstimator::CopyContact(
+    const Context<double>& context, dairlib::lcmt_contact* contact_msg) const {
+  contact_msg->utime = context.get_time() * 1e6;
+  contact_msg->num_contacts = num_contacts_;
+  contact_msg->contact_names.resize(num_contacts_);
+  contact_msg->contact.resize(num_contacts_);
+  for (int i = 0; i < num_contacts_; i++) {
+    contact_msg->contact_names[i] = contact_names_[i];
+    contact_msg->contact[i] =
+        (bool)context.get_discrete_state(contact_idx_).get_value()[i];
   }
 }
 

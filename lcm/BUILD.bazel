@@ -32,6 +32,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/trajectory_optimization:dircon",
+        "//systems/trajectory_optimization/dircon:dircon",
         "@drake//common/trajectories",
         "@lcm",
     ],

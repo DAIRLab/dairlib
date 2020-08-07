@@ -10,6 +10,7 @@
 
 #include "lcm/lcm_trajectory.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
+#include "systems/trajectory_optimization/dircon/dircon.h"
 
 namespace dairlib {
 
@@ -29,6 +30,12 @@ namespace dairlib {
 class DirconTrajectory : public LcmTrajectory {
  public:
   DirconTrajectory(const std::string& filepath) { LoadFromFile(filepath); }
+
+  DirconTrajectory(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const systems::trajectory_optimization::Dircon<double>& dircon,
+      const drake::solvers::MathematicalProgramResult& result,
+      const std::string& name, const std::string& description);
 
   DirconTrajectory(
       const drake::multibody::MultibodyPlant<double>& plant,
@@ -61,14 +68,12 @@ class DirconTrajectory : public LcmTrajectory {
   Eigen::MatrixXd GetInputSamples() { return u_->datapoints; }
   Eigen::MatrixXd GetBreaks() { return u_->time_vector; }
   Eigen::VectorXd GetDecisionVariables() {
-    DRAKE_DEMAND(has_data_);
     return decision_vars_->datapoints;
   }
 
  private:
 
   int num_modes_ = 0;
-  bool has_data_;
 
   const Trajectory* decision_vars_;
   const Trajectory* u_;

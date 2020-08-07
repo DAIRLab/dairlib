@@ -10,24 +10,15 @@ using std::string;
 using std::vector;
 
 namespace dairlib {
+using systems::trajectory_optimization::Dircon;
 using systems::trajectory_optimization::HybridDircon;
 
 DirconTrajectory::DirconTrajectory(
     const MultibodyPlant<double>& plant,
-    const systems::trajectory_optimization::HybridDircon<double>& dircon,
+    const systems::trajectory_optimization::Dircon<double>& dircon,
     const drake::solvers::MathematicalProgramResult& result,
     const std::string& name, const std::string& description) {
   num_modes_ = dircon.num_modes();
-
-  LcmTrajectory::Trajectory decision_var_traj;
-  decision_var_traj.traj_name = "decision_vars";
-  decision_var_traj.datapoints = result.GetSolution();
-  decision_var_traj.time_vector =
-      VectorXd::Zero(decision_var_traj.datapoints.size());
-  decision_var_traj.datatypes =
-      vector<string>(decision_var_traj.datapoints.size());
-  AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
-  decision_vars_ = &decision_var_traj;
 
   // State trajectory
   std::vector<Eigen::MatrixXd> x;
@@ -63,12 +54,77 @@ DirconTrajectory::DirconTrajectory(
   AddTrajectory(input_traj.traj_name, input_traj);
   u_ = &input_traj;
 
-  has_data_ = true;
+  // Decision variables
+  LcmTrajectory::Trajectory decision_var_traj;
+  decision_var_traj.traj_name = "decision_vars";
+  decision_var_traj.datapoints = result.GetSolution();
+  decision_var_traj.time_vector =
+      VectorXd::Zero(decision_var_traj.datapoints.size());
+  decision_var_traj.datatypes =
+      vector<string>(decision_var_traj.datapoints.size());
+  AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
+  decision_vars_ = &decision_var_traj;
+
+  ConstructMetadataObject(name, description);
+}
+
+//TODO(yangwill): Duplicate code, delete when we transition to a single Dircon
+DirconTrajectory::DirconTrajectory(
+    const MultibodyPlant<double>& plant,
+    const systems::trajectory_optimization::HybridDircon<double>& dircon,
+    const drake::solvers::MathematicalProgramResult& result,
+    const std::string& name, const std::string& description) {
+  num_modes_ = dircon.num_modes();
+
+  // State trajectory
+  std::vector<Eigen::MatrixXd> x;
+  std::vector<Eigen::MatrixXd> xdot;
+  std::vector<Eigen::VectorXd> state_breaks;
+  dircon.GetStateAndDerivativeSamples(result, &x, &xdot, &state_breaks);
+  for (int mode = 0; mode < num_modes_; ++mode) {
+    LcmTrajectory::Trajectory state_traj;
+    LcmTrajectory::Trajectory state_derivative_traj;
+    state_traj.traj_name = "state_traj" + std::to_string(mode);
+    state_traj.datapoints = x[mode];
+    state_traj.time_vector = state_breaks[mode];
+    state_traj.datatypes = multibody::createStateNameVectorFromMap(plant);
+    state_derivative_traj.traj_name =
+        "state_derivative_traj" + std::to_string(mode);
+    state_derivative_traj.datapoints = xdot[mode];
+    state_derivative_traj.time_vector = state_breaks[mode];
+    state_derivative_traj.datatypes =
+        multibody::createStateNameVectorFromMap(plant);
+    AddTrajectory(state_traj.traj_name, state_traj);
+    AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
+
+    x_.push_back(&state_traj);
+    xdot_.push_back(&state_derivative_traj);
+  }
+
+  // Input trajectory
+  LcmTrajectory::Trajectory input_traj;
+  input_traj.traj_name = "input_traj";
+  input_traj.datapoints = dircon.GetInputSamples(result);
+  input_traj.time_vector = dircon.GetSampleTimes(result);
+  input_traj.datatypes = multibody::createActuatorNameVectorFromMap(plant);
+  AddTrajectory(input_traj.traj_name, input_traj);
+  u_ = &input_traj;
+
+  // Decision variables
+  LcmTrajectory::Trajectory decision_var_traj;
+  decision_var_traj.traj_name = "decision_vars";
+  decision_var_traj.datapoints = result.GetSolution();
+  decision_var_traj.time_vector =
+      VectorXd::Zero(decision_var_traj.datapoints.size());
+  decision_var_traj.datatypes =
+      vector<string>(decision_var_traj.datapoints.size());
+  AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
+  decision_vars_ = &decision_var_traj;
+
   ConstructMetadataObject(name, description);
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory() {
-  DRAKE_DEMAND(has_data_);
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(
           x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
@@ -85,7 +141,6 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory() {
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory() {
-  DRAKE_DEMAND(has_data_);
   PiecewisePolynomial<double> input_traj =
       PiecewisePolynomial<double>::FirstOrderHold(u_->time_vector,
                                                   u_->datapoints);
@@ -109,8 +164,6 @@ void DirconTrajectory::LoadFromFile(const std::string& filepath) {
   }
   u_ = GetTrajectory("input_traj");
   decision_vars_ = GetTrajectory("decision_vars");
-
-  has_data_ = true;
 }
 
 }  // namespace dairlib

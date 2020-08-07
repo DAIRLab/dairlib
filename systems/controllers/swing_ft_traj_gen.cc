@@ -40,7 +40,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
     double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
     double max_com_to_footstep_dist, double footstep_offset,
-    double center_line_offset, bool add_extra_control,
+    double center_line_offset, bool add_speed_regularization,
     bool is_feet_collision_avoid, bool is_using_predicted_com,
     int footstep_option)
     : plant_(plant),
@@ -55,7 +55,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
       max_com_to_footstep_dist_(max_com_to_footstep_dist),
       footstep_offset_(footstep_offset),
       center_line_offset_(center_line_offset),
-      add_extra_control_(add_extra_control),
+      add_speed_regularization_(add_speed_regularization),
       is_feet_collision_avoid_(is_feet_collision_avoid),
       is_using_predicted_com_(is_using_predicted_com),
       footstep_option_(footstep_option) {
@@ -83,7 +83,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
                 drake::Value<drake::trajectories::Trajectory<double>>(pp))
             .get_index();
   }
-  if (add_extra_control) {
+  if (add_speed_regularization) {
     speed_control_port_ =
         this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   }
@@ -222,7 +222,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   }
 
   // Walking position control
-  if (add_extra_control_) {
+  if (add_speed_regularization_) {
     // Read in speed regularization term
     auto speed_control_output = (BasicVector<double>*)this->EvalVectorInput(
         context, speed_control_port_);

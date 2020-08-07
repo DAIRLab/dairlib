@@ -233,9 +233,18 @@ int DoMain(int argc, char* argv[]) {
   // instability around state transition.
   double desired_final_foot_height = 0.01;
   double desired_final_vertical_foot_velocity = 0;  //-1;
-  double max_CoM_to_footstep_dist = 0.4;
-  double footstep_offset = 0.06;
-  double center_line_offset = 0.06;
+  double max_CoM_to_footstep_dist;
+  double footstep_offset;
+  double center_line_offset;
+  if (FLAGS_footstep_option == 0) {
+    max_CoM_to_footstep_dist = 0.4;
+    footstep_offset = 0.06;
+    center_line_offset = 0.06;
+  } else if (FLAGS_footstep_option == 1) {
+    max_CoM_to_footstep_dist = 0.55;
+    footstep_offset = 0;
+    center_line_offset = 0.06;
+  }
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,

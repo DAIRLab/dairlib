@@ -79,13 +79,19 @@ HighLevelCommand::HighLevelCommand(
   if (footstep_option == 0) {
     kp_pos_sagital_ = 1.0;
     kd_pos_sagital_ = 0.2;
+
     kp_pos_lateral_ = 0.5;
     kd_pos_lateral_ = 0.1;
+    vel_max_lateral_ = 0.5;
+    vel_min_lateral_ = -0.5;
   } else if (footstep_option == 1) {
     kp_pos_sagital_ = 1.0;
     kd_pos_sagital_ = 1.0;
-    kp_pos_lateral_ = 0.25;
-    kd_pos_lateral_ = 1;
+
+    kp_pos_lateral_ = 0.5;
+    kd_pos_lateral_ = 1.5;
+    vel_max_lateral_ = 0.8;
+    vel_min_lateral_ = -0.8;
   }
 }
 
@@ -175,7 +181,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
       des_sagital_vel = std::min(vel_max_sagital_,
                                  std::max(vel_min_sagital_, des_sagital_vel));
 
-      // Frontal plane position PD control.  TODO(yminchen): tune this
+      // Frontal plane position PD control.
       double com_vel_lateral = local_com_vel(1);
       double des_lateral_vel =
           kp_pos_lateral_ * (local_com_pos_to_target_pos(1)) +

@@ -20,7 +20,7 @@ namespace systems {
 /// swing foot position before it leaves the ground, and the mid point and end
 /// point are both specified by the user. The footstep location, x_fs, can be
 /// modified with two flags
-///  - `add_extra_control`
+///  - `add_speed_regularization`
 ///  - `is_feet_collision_avoid`
 ///
 /// Arguments of the constructor:
@@ -58,7 +58,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       double desired_final_foot_height,
       double desired_final_vertical_foot_velocity,
       double max_com_to_x_footstep_dist, double footstep_offset,
-      double center_line_offset, bool add_extra_control,
+      double center_line_offset, bool add_speed_regularization,
       bool is_feet_collision_avoid, bool is_using_predicted_com,
       int footstep_option = 0);
 
@@ -129,7 +129,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   std::map<int, double> duration_map_;
 
   // options
-  bool add_extra_control_;
+  bool add_speed_regularization_;
   bool is_feet_collision_avoid_;
   bool is_using_predicted_com_;
   int footstep_option_;

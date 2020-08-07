@@ -70,6 +70,7 @@ int DoMain(int argc, char* argv[]) {
   plant_wo_springs.Finalize();
 
   auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_springs or plant_wo_springs because the contact frames exit in both
@@ -107,13 +108,14 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      plant_w_springs, *context_w_spr, feet_contact_points, FLAGS_height);
+      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height);
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, false, FLAGS_print_osc);
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      context_wo_spr.get(), false, FLAGS_print_osc);
 
   // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);

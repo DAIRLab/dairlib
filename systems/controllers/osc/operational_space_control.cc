@@ -35,15 +35,21 @@ namespace dairlib::systems::controllers {
 
 using multibody::makeNameToVelocitiesMap;
 using multibody::WorldPointEvaluator;
+using multibody::SetPositionsIfNew;
+using multibody::SetVelocitiesIfNew;
 
 int kSpaceDim = OscTrackingData::kSpaceDim;
 
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr,
+    drake::systems::Context<double>* context_w_spr,
+    drake::systems::Context<double>* context_wo_spr,
     bool used_with_finite_state_machine, bool print_tracking_info)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
+      context_w_spr_(context_w_spr),
+      context_wo_spr_(context_wo_spr),
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
@@ -98,10 +104,6 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
   u_min_ = u_min;
   u_max_ = u_max;
-
-  // Set the default contexts for both MBPs
-  context_w_spr_ = plant_w_spr_.CreateDefaultContext();
-  context_wo_spr_ = plant_wo_spr_.CreateDefaultContext();
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
@@ -232,6 +234,11 @@ void OperationalSpaceControl::Build() {
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
+  dv_sol_->setZero();
+  u_sol_->setZero();
+  lambda_c_sol_->setZero();
+  lambda_h_sol_->setZero();
+  epsilon_sol_->setZero();
 
   // Add decision variables
   dv_ = prog_->NewContinuousVariables(n_v_, "dv");
@@ -390,8 +397,18 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Update context
-  plant_w_spr_.SetPositionsAndVelocities(context_w_spr_.get(), x_w_spr);
-  plant_wo_spr_.SetPositionsAndVelocities(context_wo_spr_.get(), x_wo_spr);
+  SetPositionsIfNew<double>(plant_w_spr_,
+                            x_w_spr.head(plant_w_spr_.num_positions()),
+                            context_w_spr_);
+  SetVelocitiesIfNew<double>(plant_w_spr_,
+                             x_w_spr.tail(plant_w_spr_.num_velocities()),
+                             context_w_spr_);
+  SetPositionsIfNew<double>(plant_wo_spr_,
+                            x_wo_spr.head(plant_wo_spr_.num_positions()),
+                            context_wo_spr_);
+  SetVelocitiesIfNew<double>(plant_wo_spr_,
+                             x_wo_spr.tail(plant_wo_spr_.num_velocities()),
+                             context_wo_spr_);
 
   // Get M, f_cg, B matrices of the manipulator equation
   MatrixXd B = plant_wo_spr_.MakeActuationMatrix();

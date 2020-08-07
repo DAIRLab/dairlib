@@ -61,7 +61,7 @@ void DeviationFromCapturePoint::CalcFootPlacement(
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
 
-  plant_.SetPositions(context_, q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
   MatrixXd J(3, plant_.num_velocities());

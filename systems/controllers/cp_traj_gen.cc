@@ -148,7 +148,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     prev_td_time(0) = current_time;
 
     VectorXd q = robot_output->GetPositions();
-    plant_.SetPositions(context_, q);
+    multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
     // Swing foot position (Forward Kinematics) at touchdown
     auto swing_foot = swing_foot_map_.at(int(fsm_state(0)));
@@ -169,7 +169,7 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
   VectorXd fsm_state = fsm_output->get_value();
 
   VectorXd q = robot_output->GetPositions();
-  plant_.SetPositions(context_, q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Stance foot position
   auto stance_foot = stance_foot_map_.at(int(fsm_state(0)));

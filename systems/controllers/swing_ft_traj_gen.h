@@ -12,14 +12,14 @@
 namespace dairlib {
 namespace systems {
 
-/// CPTrajGenerator generates a desired 3D trajectory of swing foot.
+/// SwingFootTrajGenerator generates a desired 3D trajectory of swing foot.
 /// The trajectory is a cubic spline (two segments of cubic polynomials).
 /// In the x-y plane, the start point of the traj is the swing foot position
-/// before it leaves the ground, and the end point is the capture point (CP).
-/// In the z direction, the start point is the swing foot position before it
-/// leaves the ground, and the mid point and end point are both specified by
-/// the user.
-/// The CP can be modified according to two flags
+/// at lift-off, and the end point is either the capture point (CP) or the
+/// neutral point derived from LIPM. In the z direction, the start point is the
+/// swing foot position before it leaves the ground, and the mid point and end
+/// point are both specified by the user. The footstep location, x_fs, can be
+/// modified with two flags
 ///  - `add_extra_control`
 ///  - `is_feet_collision_avoid`
 ///
@@ -32,30 +32,35 @@ namespace systems {
 /// - desired height of the swing foot during mid swing phase
 /// - desired height of the swing foot at the end of swing phase
 /// - desired vertical velocity of the swing foot at the end of swing phase
-/// - maximum distance between center of mass and CP
-///     (used to restrict the CP within an area)
-/// - a flag enabling CP modification (e.g. walking speed control)
+/// - maximum distance between center of mass and x_fs
+///     (used to restrict the footstep within an area)
+/// - footstep offset (to avoid foot collision)
+/// - center line offset (used to restrict the footstep within an area)
+/// - a flag enabling footstep modification (e.g. walking speed regularization)
 /// - a flag enabling feet collision avoidance
 /// - a flag enabling the usage of prediction of center of mass
-///     (use predicted center of mass position at touchdown to calculate CP)
-/// - CP offset (to avoid foot collision)
-/// - center line offset (used to restrict the CP within an area)
+///     (use predicted center of mass position at touchdown to calculate x_fs)
+/// - an integer indicates which foot step algorithm to use:
+///     0 is the capture point
+///     1 is the neutral point derived from LIPM given the stance duration
 
-class CPTrajGenerator : public drake::systems::LeafSystem<double> {
+class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  CPTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
-                  drake::systems::Context<double>* context,
-                  std::vector<int> left_right_support_fsm_states,
-                  std::vector<double> left_right_support_durations,
-                  std::vector<std::pair<const Eigen::Vector3d,
-                                        const drake::multibody::Frame<double>&>>
-                      left_right_foot,
-                  std::string floating_base_body_name, double mid_foot_height,
-                  double desired_final_foot_height,
-                  double desired_final_vertical_foot_velocity,
-                  double max_CoM_to_CP_dist, bool add_extra_control,
-                  bool is_feet_collision_avoid, bool is_using_predicted_com,
-                  double cp_offset, double center_line_offset);
+  SwingFootTrajGenerator(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context,
+      std::vector<int> left_right_support_fsm_states,
+      std::vector<double> left_right_support_durations,
+      std::vector<std::pair<const Eigen::Vector3d,
+                            const drake::multibody::Frame<double>&>>
+          left_right_foot,
+      std::string floating_base_body_name, double mid_foot_height,
+      double desired_final_foot_height,
+      double desired_final_vertical_foot_velocity,
+      double max_com_to_x_footstep_dist, double footstep_offset,
+      double center_line_offset, bool add_extra_control,
+      bool is_feet_collision_avoid, bool is_using_predicted_com,
+      int footstep_option = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -66,8 +71,8 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_com() const {
     return this->get_input_port(com_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_fp() const {
-    return this->get_input_port(fp_port_);
+  const drake::systems::InputPort<double>& get_input_port_sc() const {
+    return this->get_input_port(speed_control_port_);
   }
 
  private:
@@ -75,17 +80,17 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  void calcCpAndStanceFootHeight(const drake::systems::Context<double>& context,
-                                 const OutputVector<double>* robot_output,
-                                 const double end_time_of_this_interval,
-                                 Eigen::Vector2d* final_CP,
-                                 Eigen::VectorXd* stance_foot_height) const;
+  void CalcFootStepAndStanceFootHeight(
+      const drake::systems::Context<double>& context,
+      const OutputVector<double>* robot_output,
+      const double end_time_of_this_interval, Eigen::Vector2d* x_fs,
+      double* stance_foot_height) const;
 
-  drake::trajectories::PiecewisePolynomial<double> createSplineForSwingFoot(
+  drake::trajectories::PiecewisePolynomial<double> CreateSplineForSwingFoot(
       const double start_time_of_this_interval,
       const double end_time_of_this_interval, const double stance_duration,
-      const Eigen::Vector3d& init_swing_foot_pos, const Eigen::Vector2d& CP,
-      const Eigen::VectorXd& stance_foot_height) const;
+      const Eigen::Vector3d& init_swing_foot_pos, const Eigen::Vector2d& x_fs,
+      double stance_foot_height) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;
@@ -93,7 +98,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   int state_port_;
   int fsm_port_;
   int com_port_;
-  int fp_port_;
+  int speed_control_port_;
 
   int prev_td_swing_foot_idx_;
   int prev_td_time_idx_;
@@ -101,20 +106,17 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  std::vector<int> left_right_support_fsm_states_;
-  double mid_foot_height_;
-  double desired_final_foot_height_;
-  double desired_final_vertical_foot_velocity_;
-  double max_CoM_to_CP_dist_;
-  bool add_extra_control_;
-  bool is_feet_collision_avoid_;
-
-  bool is_using_predicted_com_;
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
 
+  std::vector<int> left_right_support_fsm_states_;
+
   // Parameters
-  const double cp_offset_;           // in meters
+  double mid_foot_height_;
+  double desired_final_foot_height_;
+  double desired_final_vertical_foot_velocity_;
+  double max_com_to_footstep_dist_;
+  const double footstep_offset_;     // in meters
   const double center_line_offset_;  // in meters
 
   // Maps
@@ -125,6 +127,12 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
                           const drake::multibody::Frame<double>&>>
       swing_foot_map_;
   std::map<int, double> duration_map_;
+
+  // options
+  bool add_extra_control_;
+  bool is_feet_collision_avoid_;
+  bool is_using_predicted_com_;
+  int footstep_option_;
 };
 
 }  // namespace systems

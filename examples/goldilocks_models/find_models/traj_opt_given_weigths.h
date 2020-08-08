@@ -17,7 +17,7 @@ void trajOptGivenWeights(
     const vector<std::shared_ptr<int>>& thread_finished_vec,
     bool is_get_nominal, bool extend_model, int sample_idx, int n_rerun,
     double cost_threshold_for_update, int N_rerun, int rom_option,
-    int robot_option);
+    int robot_option,bool currently_find_mediate_sample,int total_number_sample);
 
 void addRegularization(bool is_get_nominal, double eps_reg,
                        GoldilocksModelTrajOpt& gm_traj_opt);

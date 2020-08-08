@@ -216,8 +216,8 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
           task_gen, task, rom,task_gen_mediate);
     }
     else{
-      *init_file = to_string(iter) + "_" + to_string(sample) +
-          string("_initial_guess.csv");
+      *init_file = to_string(iter) + "_" + to_string(sample+
+          task_gen->total_sample_number()) + string("_initial_guess.csv");
     }
   } else if (sample_idx_to_help >= 0) {
       *init_file = to_string(iter) + "_" + to_string(sample_idx_to_help) +
@@ -2097,7 +2097,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
               std::ref(thread_finished_vec), is_get_nominal,
               extend_model_this_iter, sample_idx, n_rerun[sample_idx],
               cost_threshold_for_update[sample_idx], N_rerun, FLAGS_rom_option,
-              FLAGS_robot_option);
+              FLAGS_robot_option,task_gen_mediate.currently_find_mediate_sample(),
+              task_gen->total_sample_number());
           // string_to_be_print = "Finished adding sample #" +
           //  to_string(sample_idx) +
           //  " to thread # " + to_string(available_thread_idx.front()) + ".\n";
@@ -2261,10 +2262,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // for failed samples
     if(!is_grid_task){
       //this feature only applies to non-grid method
-      if(n_shrink_step>0&&rerun_current_iteration){
+      if(n_shrink_step>2&&rerun_current_iteration){
         //start to find mediate sample for the failed samples
-        task_gen_mediate.set_currently_find_mediate_sample(false);
         task_gen_mediate.set_start_finding_mediate_sample(true);
+        task_gen_mediate.set_currently_find_mediate_sample(false);
         task_gen_mediate.set_choose_sample_from_iter_to_help(true);
         task_gen_mediate.set_sample_index_to_help(-1);
         n_shrink_step=0;

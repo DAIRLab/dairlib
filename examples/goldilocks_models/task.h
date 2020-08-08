@@ -177,7 +177,7 @@ class MediateTasksGenerator{
   // Getters
   int total_sample_number() const { return N_sample_; }
   bool start_finding_mediate_sample() const {return start_finding_mediate_sample_;}
-  int iter_start_finding_mediate_sample() const {return iter_start_finding_mediate_sample_;}
+  bool currently_find_mediate_sample() const {return currently_find_mediate_sample_;}
   bool choose_sample_from_iter_to_help() const {return choose_sample_from_iter_to_help_;}
   int sample_index_to_help() const {return sample_index_to_help_;}
 
@@ -185,8 +185,8 @@ class MediateTasksGenerator{
   void set_start_finding_mediate_sample(bool if_start){
     start_finding_mediate_sample_ = if_start;
   }
-  void set_iter_start_finding_mediate_sample(int iter_start){
-    iter_start_finding_mediate_sample_ = iter_start;
+  void set_currently_find_mediate_sample(bool currently_find){
+    currently_find_mediate_sample_ = currently_find;
   }
   void set_choose_sample_from_iter_to_help(bool if_choose){
     choose_sample_from_iter_to_help_ = if_choose;
@@ -199,7 +199,7 @@ class MediateTasksGenerator{
   int N_sample_;
   int task_dim_;
   bool start_finding_mediate_sample_;
-  int iter_start_finding_mediate_sample_;
+  bool currently_find_mediate_sample_;
   bool choose_sample_from_iter_to_help_;
   int sample_index_to_help_;
 };

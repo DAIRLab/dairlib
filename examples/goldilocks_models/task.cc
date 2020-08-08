@@ -235,7 +235,7 @@ MediateTasksGenerator::MediateTasksGenerator(int N_sample,
   N_sample_ = N_sample;
   task_dim_ = task_dim;
   start_finding_mediate_sample_ = false;
-  iter_start_finding_mediate_sample_ = -1;
+  currently_find_mediate_sample_ = false;
   choose_sample_from_iter_to_help_ = true;
   sample_index_to_help_= -1;
 }
@@ -245,7 +245,6 @@ vector<double> MediateTasksGenerator::NewTask(string dir,int iter,int sample_idx
   DRAKE_DEMAND(start_finding_mediate_sample_);
   vector<double> ret(task_dim_, 0);
   // set the task for mediate iteration
-  DRAKE_DEMAND(iter!=iter_start_finding_mediate_sample_);
   int is_success;
   string prefix;
   VectorXd failed_task;
@@ -254,22 +253,20 @@ vector<double> MediateTasksGenerator::NewTask(string dir,int iter,int sample_idx
   string prefix_closest_task;
 
   // get the sample that needs help
-  prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
-      to_string(sample_index_to_help_);
+  prefix = to_string(iter) + string("_") + to_string(sample_index_to_help_);
   failed_task = readCSV(dir + prefix +string("_task.csv"));
   // tasks are uniformly chosen from the range of closest successful sample
   // to failed sample
+  int total_sample_number = task_gen->total_sample_number();
   if(choose_sample_from_iter_to_help_){
-    // the closest successful sample is chosen from the iteration which needs
-    // help
+    // the closest successful sample is chosen from the normal tasks
 
-    prefix_closest_task = to_string(iter_start_finding_mediate_sample_)
+    prefix_closest_task = to_string(iter)
         + string("_") + to_string(0);
     // find the closest sample
     VectorXd task_scale = task_gen->GetTaskScale();
-    for (sample_num = 0; sample_num < N_sample_; sample_num++) {
-      prefix = to_string(iter_start_finding_mediate_sample_) + string("_") +
-          to_string(sample_num);
+    for (sample_num = 0; sample_num < total_sample_number;sample_num++) {
+      prefix = to_string(iter) + string("_") + to_string(sample_num);
       prefix_closest_task = CompareTwoTasks(dir,prefix_closest_task,
                                             prefix,failed_task,task_scale);
     }
@@ -277,8 +274,9 @@ vector<double> MediateTasksGenerator::NewTask(string dir,int iter,int sample_idx
                                           +string("_task.csv"));
   }
   else{
-    // the closest successful sample is chosen from the mediate iteration
-    for (sample_num = N_sample_-1; sample_num >= 0; sample_num--){
+    // the closest successful sample is chosen from the mediate samples
+    for (sample_num = N_sample_-1+total_sample_number;
+    sample_num >= total_sample_number; sample_num--){
       prefix_closest_task = to_string(iter) + string("_") +
           to_string(sample_num);
       is_success = (readCSV(dir + prefix_closest_task +
@@ -301,8 +299,8 @@ vector<double> MediateTasksGenerator::NewTask(string dir,int iter,int sample_idx
   // mediate iteration
   VectorXd initial_guess = readCSV(dir + prefix_closest_task
                                        +string("_w.csv"));
-  string initial_file_name = to_string(iter) + "_" + to_string(sample_idx) +
-      string("_initial_guess.csv");
+  string initial_file_name = to_string(iter) + "_" +
+      to_string(sample_idx+total_sample_number) + string("_initial_guess.csv");
   writeCSV(dir + initial_file_name, initial_guess);
 
   // uniformly set the tasks

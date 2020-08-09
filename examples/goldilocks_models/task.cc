@@ -240,10 +240,31 @@ MediateTasksGenerator::MediateTasksGenerator(int N_sample,
   sample_index_to_help_= -1;
 }
 
-vector<double> MediateTasksGenerator::NewTask(string dir,int iter,int sample_idx,
-    const TasksGenerator* task_gen) {
+vector<double> MediateTasksGenerator::NewTask(string dir,int iter,
+    int sample_idx) {
   DRAKE_DEMAND(start_finding_mediate_sample_);
+  // set the task for mediate iteration
   vector<double> ret(task_dim_, 0);
+
+  // get the sample that needs help
+  string failed_task_name = to_string(iter) + "_mediate_failed_task.csv";
+  string successful_task_name = to_string(iter) + "_mediate_successful_task.csv";
+  VectorXd failed_task = readCSV(dir + failed_task_name);
+  VectorXd closest_successful_task = readCSV(dir + failed_task_name);
+
+  // uniformly set the tasks
+  VectorXd new_task = closest_successful_task+sample_idx*
+      (failed_task-closest_successful_task)/(N_sample_-1);
+  for (int i = 0; i < task_dim_; i++) {
+    ret[i] = new_task[i];
+  }
+
+  return ret;
+}
+
+void MediateTasksGenerator::set_mediate_samples(string dir,int iter,
+    const TasksGenerator* task_gen){
+  DRAKE_DEMAND(start_finding_mediate_sample_);
   // set the task for mediate iteration
   int is_success;
   string prefix;
@@ -252,7 +273,18 @@ vector<double> MediateTasksGenerator::NewTask(string dir,int iter,int sample_idx
   int sample_num = 0;
   string prefix_closest_task;
 
-  // get the sample that needs help
+  //find the sample to help
+  for (int sample_num = 0; sample_num < task_gen->total_sample_number();
+       sample_num++){
+    prefix = to_string(iter)+ string("_") + to_string(sample_num);
+    int is_success = (readCSV(dir + prefix +
+        string("_is_success.csv")))(0, 0);
+    if(is_success==0)
+    {
+      sample_index_to_help_ = sample_num;
+      break;
+    }
+  }
   prefix = to_string(iter) + string("_") + to_string(sample_index_to_help_);
   failed_task = readCSV(dir + prefix +string("_task.csv"));
   // tasks are uniformly chosen from the range of closest successful sample
@@ -276,7 +308,7 @@ vector<double> MediateTasksGenerator::NewTask(string dir,int iter,int sample_idx
   else{
     // the closest successful sample is chosen from the mediate samples
     for (sample_num = N_sample_-1+total_sample_number;
-    sample_num >= total_sample_number; sample_num--){
+         sample_num >= total_sample_number; sample_num--){
       prefix_closest_task = to_string(iter) + string("_") +
           to_string(sample_num);
       is_success = (readCSV(dir + prefix_closest_task +
@@ -295,22 +327,16 @@ vector<double> MediateTasksGenerator::NewTask(string dir,int iter,int sample_idx
   is_success = (readCSV(dir + prefix_closest_task +
       string("_is_success.csv")))(0, 0);
   DRAKE_DEMAND(is_success==1);
-  // also save the solution of this closest sample as initial guess for
-  // mediate iteration
+  // save the failed task, successful task and
+  // solution of this closest sample as initial guess for mediate samples
   VectorXd initial_guess = readCSV(dir + prefix_closest_task
                                        +string("_w.csv"));
-  string initial_file_name = to_string(iter) + "_" +
-      to_string(sample_idx+total_sample_number) + string("_initial_guess.csv");
+  string initial_file_name = to_string(iter) + "_mediate_initial_guess.csv";
+  string failed_task_name = to_string(iter) + "_mediate_failed_task.csv";
+  string successful_task_name = to_string(iter) + "_mediate_successful_task.csv";
   writeCSV(dir + initial_file_name, initial_guess);
-
-  // uniformly set the tasks
-  VectorXd new_task = closest_successful_task+sample_idx*
-      (failed_task-closest_successful_task)/(N_sample_-1);
-  for (int i = 0; i < task_dim_; i++) {
-    ret[i] = new_task[i];
-  }
-
-  return ret;
+  writeCSV(dir + failed_task_name, failed_task);
+  writeCSV(dir + successful_task_name, closest_successful_task);
 }
 
 // calculate the third power of L3 norm between two tasks

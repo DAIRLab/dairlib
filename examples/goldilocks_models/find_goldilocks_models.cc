@@ -216,8 +216,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
           task_gen, task, rom,task_gen_mediate);
     }
     else{
-      *init_file = to_string(iter) + "_" + to_string(sample+
-          task_gen->total_sample_number()) + string("_initial_guess.csv");
+      *init_file = to_string(iter) + "_mediate_initial_guess.csv";
     }
   } else if (sample_idx_to_help >= 0) {
       *init_file = to_string(iter) + "_" + to_string(sample_idx_to_help) +
@@ -1439,8 +1438,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   /// mediate iteration can be manually changed
 //  MediateTasksGenerator task_gen_mediate = MediateTasksGenerator
 //      (task_gen->total_sample_number(),task_gen->dim());
+  int mediate_sample_number = 10;
   MediateTasksGenerator task_gen_mediate = MediateTasksGenerator
-      (10,task_gen->dim());
+      (mediate_sample_number,task_gen->dim());
 
   // Tasks setup
   task_gen->PrintInfo();
@@ -2025,7 +2025,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               previous_task[sample_idx] = target_task_vectorxd;
             }
             else{
-              task.set(task_gen_mediate.NewTask(dir,iter,sample_idx,task_gen));
+              task.set(task_gen_mediate.NewTask(dir,iter,sample_idx));
               Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
                   task.get().data(), task.get().size());
               previous_task[sample_idx] = task_vectorxd;
@@ -2267,7 +2267,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // for failed samples
     if(!is_grid_task){
       //this feature only applies to non-grid method
-      if(n_shrink_step>2&&rerun_current_iteration){
+      if(n_shrink_step>3&&rerun_current_iteration){
         //start to find mediate sample for the failed samples
         task_gen_mediate.set_start_finding_mediate_sample(true);
         task_gen_mediate.set_currently_find_mediate_sample(false);
@@ -2333,18 +2333,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             task_gen_mediate.set_choose_sample_from_iter_to_help(false);
           }
         }
-        //find the sample to help
-        for (int sample_num = 0; sample_num < task_gen->total_sample_number();
-             sample_num++){
-          prefix = to_string(iter)+ string("_") + to_string(sample_num);
-          int is_success = (readCSV(dir + prefix +
-              string("_is_success.csv")))(0, 0);
-          if(is_success==0)
-          {
-            task_gen_mediate.set_sample_index_to_help(sample_num);
-            break;
-          }
-        }
+        task_gen_mediate.set_mediate_samples(dir,iter,task_gen);
         iter = iter-1;
         // evaluate mediate samples
         task_gen_mediate.set_currently_find_mediate_sample(true);

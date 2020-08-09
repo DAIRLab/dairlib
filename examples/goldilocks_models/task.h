@@ -172,8 +172,8 @@ class MediateTasksGenerator{
   MediateTasksGenerator(int N_sample,int task_dim);
   MediateTasksGenerator(){};
 
-  vector<double> NewTask(string dir,int iter,int sample_idx,
-      const TasksGenerator* task_gen);
+  vector<double> NewTask(string dir,int iter,int sample_idx);
+  void set_mediate_samples(string dir,int iter,const TasksGenerator* task_gen);
   // Getters
   int total_sample_number() const { return N_sample_; }
   bool start_finding_mediate_sample() const {return start_finding_mediate_sample_;}

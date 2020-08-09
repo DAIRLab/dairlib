@@ -327,9 +327,7 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
                    const SubQpData& QPs, int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
                    vector<DirconKinematicDataSet<double>*> dataset_list,
-                   bool is_print_for_debugging,
-                   bool currently_find_mediate_sample,
-                   int total_number_sample) {
+                   bool is_print_for_debugging) {
   string directory = setting.directory;
   string prefix = setting.prefix;
 
@@ -401,12 +399,6 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     is_success << 1;
   else
     is_success << 0;
-  if(currently_find_mediate_sample){
-    prefix = prefix.substr(0,2)+to_string(sample_idx+total_number_sample)+"_";
-  }
-  else{
-    prefix = setting.prefix;
-  }
   writeCSV(directory + prefix + string("is_success.csv"), is_success);
 
   *(QPs.is_success_vec[sample_idx]) = result.is_success() ? 1 : 0;
@@ -1260,9 +1252,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
                           const SubQpData& QPs, bool is_get_nominal,
                           bool extend_model, int sample_idx, int n_rerun,
                           double cost_threshold_for_update, int N_rerun,
-                          int rom_option, int robot_option,
-                          bool currently_find_mediate_sample,
-                          int total_number_sample) {
+                          int rom_option, int robot_option) {
   double stride_length = task.get("stride length");
   double ground_incline = task.get("ground incline");
   double walking_vel = task.get("velocity");
@@ -1601,8 +1591,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
                 plant_autoDiff, setting, rom, task, QPs, sample_idx, n_rerun,
                 cost_threshold_for_update, N_rerun, dataset_list,
-                is_print_for_debugging,currently_find_mediate_sample,
-                total_number_sample);
+                is_print_for_debugging);
   postProcessing(w_sol, gm_traj_opt, result, num_time_samples, N, plant,
                  plant_autoDiff, setting, rom, QPs, is_get_nominal,
                  extend_model, sample_idx, n_rerun, cost_threshold_for_update,
@@ -1616,9 +1605,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                    const SubQpData& QPs, bool is_get_nominal, bool extend_model,
                    int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
-                   int rom_option, int robot_option,
-                   bool currently_find_mediate_sample,
-                   int total_number_sample) {
+                   int rom_option, int robot_option) {
   double stride_length = task.get("stride length");
   double ground_incline = task.get("ground incline");
   double walking_vel = task.get("velocity");
@@ -2419,8 +2406,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
                 plant_autoDiff, setting, rom, task, QPs, sample_idx, n_rerun,
                 cost_threshold_for_update, N_rerun, dataset_list,
-                is_print_for_debugging,currently_find_mediate_sample,
-                total_number_sample);
+                is_print_for_debugging);
   postProcessing(w_sol, gm_traj_opt, result, num_time_samples, N, plant,
                  plant_autoDiff, setting, rom, QPs, is_get_nominal,
                  extend_model, sample_idx, n_rerun, cost_threshold_for_update,
@@ -2560,20 +2546,16 @@ void trajOptGivenWeights(
     const vector<std::shared_ptr<int>>& thread_finished_vec,
     bool is_get_nominal, bool extend_model, int sample_idx, int n_rerun,
     double cost_threshold_for_update, int N_rerun, int rom_option,
-    int robot_option,bool currently_find_mediate_sample,
-    int total_number_sample) {
+    int robot_option) {
   if (robot_option == 0) {
     fiveLinkRobotTrajOpt(plant, plant_autoDiff, rom, inner_loop_setting, task,
                          QPs, is_get_nominal, extend_model, sample_idx, n_rerun,
                          cost_threshold_for_update, N_rerun, rom_option,
-                         robot_option,currently_find_mediate_sample,
-                         total_number_sample);
+                         robot_option);
   } else if (robot_option == 1) {
     cassieTrajOpt(plant, plant_autoDiff, rom, inner_loop_setting, task, QPs,
                   is_get_nominal, extend_model, sample_idx, n_rerun,
-                  cost_threshold_for_update, N_rerun, rom_option, robot_option,
-                  currently_find_mediate_sample,
-                  total_number_sample);
+                  cost_threshold_for_update, N_rerun, rom_option, robot_option);
   }
 
   // For multithreading purpose. Indicate this function has ended.

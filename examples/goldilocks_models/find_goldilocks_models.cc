@@ -2078,7 +2078,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better
           //  solution?
-
+          if(task_gen_mediate.currently_find_mediate_sample()){
+            prefix = to_string(iter)+"_"+
+                to_string(sample_idx+task_gen->total_sample_number())+"_";
+          }
+          else{
+            prefix = to_string(iter)+"_"+to_string(sample_idx)+"_";
+          }
           // Some inner loop setting
           inner_loop_setting.n_node = n_node_vec[sample_idx];
           inner_loop_setting.max_iter = max_inner_iter_pass_in;
@@ -2097,8 +2103,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               std::ref(thread_finished_vec), is_get_nominal,
               extend_model_this_iter, sample_idx, n_rerun[sample_idx],
               cost_threshold_for_update[sample_idx], N_rerun, FLAGS_rom_option,
-              FLAGS_robot_option,task_gen_mediate.currently_find_mediate_sample(),
-              task_gen->total_sample_number());
+              FLAGS_robot_option);
           // string_to_be_print = "Finished adding sample #" +
           //  to_string(sample_idx) +
           //  " to thread # " + to_string(available_thread_idx.front()) + ".\n";

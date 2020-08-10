@@ -250,7 +250,7 @@ vector<double> MediateTasksGenerator::NewTask(string dir,int iter,
   string failed_task_name = to_string(iter) + "_mediate_failed_task.csv";
   string successful_task_name = to_string(iter) + "_mediate_successful_task.csv";
   VectorXd failed_task = readCSV(dir + failed_task_name);
-  VectorXd closest_successful_task = readCSV(dir + failed_task_name);
+  VectorXd closest_successful_task = readCSV(dir + successful_task_name);
 
   // uniformly set the tasks
   VectorXd new_task = closest_successful_task+sample_idx*

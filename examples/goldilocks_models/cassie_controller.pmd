@@ -27,7 +27,7 @@ group "2.drake-simulator" {
         host = "localhost";
     }
     cmd "2.simulator for OSC controller (init state)" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
+        exec = "bazel-bin/examples/goldilocks_models/test/multibody_sim_for_test --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0";
         host = "localhost";
     }
 }
@@ -64,16 +64,19 @@ script "run-original-walking" {
     start cmd "1.original-walking-controller";
     start cmd "1.simulator for OSC controller";
 }
+
 script "run-rom-test-walking1" {
     run_script "start-operator-simulation-floating-base";
     start cmd "2.rom-test-walking-controller1";
     start cmd "1.simulator for OSC controller";
 }
+
 script "run-rom-test-walking2" {
     run_script "start-operator-simulation-floating-base";
     start cmd "2.rom-test-walking-controller2";
     start cmd "2.simulator for OSC controller (init state)";
 }
+
 script "run-rom-walking" {
     run_script "start-operator-simulation-floating-base";
     start cmd "3.rom-walking-controller";

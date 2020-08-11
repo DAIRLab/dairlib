@@ -17,11 +17,13 @@ std::string SetInitialGuessByInterpolation(const std::string& directory,
                                            int iter, int sample,
                                            const TasksGenerator* task_gen,
                                            const Task& task,
-                                           const ReducedOrderModel& rom);
+                                           const ReducedOrderModel& rom,
+                                           const ExpansionTasksGenerator& task_gen_expansion);
 // this is used in the feature of trying mediate samples to help failed samples;
 std::string ChooseInitialGuessFromMediateIteration(const string& directory,
     int iter,int sample,const TasksGenerator* task_gen,const Task& task,
-    const ReducedOrderModel& rom,const MediateTasksGenerator& task_gen_mediate);
+    const ReducedOrderModel& rom,const MediateTasksGenerator& task_gen_mediate,
+    const ExpansionTasksGenerator& task_gen_expansion);
 
 /// Notes: this is not used currently because this method didn't provide
 /// a better initial guess than the interpolation method. We might change the

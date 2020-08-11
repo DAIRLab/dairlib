@@ -198,7 +198,8 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      int sample_idx_to_help, bool is_debug, const string& dir,
                      const TasksGenerator* task_gen, const Task& task,
                      const ReducedOrderModel& rom, bool non_grid_task,
-                     const MediateTasksGenerator& task_gen_mediate) {
+                     const MediateTasksGenerator& task_gen_mediate,
+                     const ExpansionTasksGenerator& task_gen_expansion) {
   if (is_get_nominal && !rerun_current_iteration) {
     *init_file = nominal_traj_init_file;
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
@@ -206,7 +207,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
     // (n_rerun == 0)
     if (non_grid_task) {
       *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, task, rom);
+          dir, iter, sample, task_gen, task, rom,task_gen_expansion);
     } else {
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
@@ -214,7 +215,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   } else if(task_gen_mediate.start_finding_mediate_sample()){
     if(!task_gen_mediate.currently_find_mediate_sample()) {
       *init_file = ChooseInitialGuessFromMediateIteration(dir,iter,sample,
-          task_gen, task, rom,task_gen_mediate);
+          task_gen, task, rom,task_gen_mediate,task_gen_expansion);
     }
     else{
       *init_file = to_string(iter) + "_mediate_initial_guess.csv";
@@ -227,7 +228,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   } else {
     if (non_grid_task) {
       *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, task, rom);
+          dir, iter, sample, task_gen, task, rom,task_gen_expansion);
     } else {
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
@@ -1419,29 +1420,33 @@ int findGoldilocksModels(int argc, char* argv[]) {
           3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min},
-          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max},
-          FLAGS_max_num_extending_task_space);
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max});
     } else if (FLAGS_robot_option == 1) {
       task_gen_uniform = UniformTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min, FLAGS_tr_min},
-          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max},
-          FLAGS_max_num_extending_task_space);
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max});
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_uniform = UniformTasksGenerator();
     }
     task_gen = &task_gen_uniform;
   }
-  /// we should modify the code later so that the number of samples in the
-  /// mediate iteration can be manually changed
-//  MediateTasksGenerator task_gen_mediate = MediateTasksGenerator
-//      (task_gen->total_sample_number(),task_gen->dim());
+
   int mediate_sample_number = 10;
   MediateTasksGenerator task_gen_mediate = MediateTasksGenerator
       (mediate_sample_number,task_gen->dim());
+  ExpansionTasksGenerator task_gen_expansion ;
+  if(is_grid_task) {
+    task_gen_expansion= ExpansionTasksGenerator
+        (0,false);
+  }
+  else{
+    task_gen_expansion= ExpansionTasksGenerator
+        (FLAGS_max_num_extending_task_space,true);
+  }
 
   // Tasks setup
   task_gen->PrintInfo();
@@ -1790,7 +1795,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd step_direction = VectorXd::Zero(rom->n_theta());
   VectorXd prev_step_direction = VectorXd::Zero(
       rom->n_theta());  // must initialize this because of momentum term
-  if (iter_start > 1 && !task_gen->currently_extend_task_space()) {
+  if (iter_start > 1 && !task_gen_expansion.currently_extend_task_space()) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
     step_direction =
@@ -1802,7 +1807,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   double current_iter_step_size = h_step;
   if ((iter_start > 1) && FLAGS_read_previous_step_size &&
-  !task_gen->currently_extend_task_space()) {
+  !task_gen_expansion.currently_extend_task_space()) {
     cout << "Reading previous step size... (will get memory issue if the file "
             "doesn't exist)\n";
     current_iter_step_size = readCSV(dir + to_string(iter_start - 1) +
@@ -2036,25 +2041,32 @@ int findGoldilocksModels(int argc, char* argv[]) {
               writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
             }
           }
+          else if(task_gen_expansion.currently_extend_task_space()){
+            task.set(task_gen_expansion.NewTask(dir,sample_idx,task_gen));
+            // Map std::vector to VectorXd and create a copy of VectorXd
+            Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
+                task.get().data(), task.get().size());
+            previous_task[sample_idx] = task_vectorxd;
+            // Store task in file
+            prefix = to_string(iter)+"_"+
+                to_string(sample_idx+
+                    task_gen_expansion.num_extending_task_space()*
+                        task_gen->total_sample_number())+"_";
+            writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
+          }
           else {
             if (is_grid_task && is_get_nominal) {
               task.set(task_gen_grid.NewNominalTask(sample_idx));
-            } else {
+            }
+            else{
               task.set(task_gen->NewTask(dir,sample_idx));
             }
             // Map std::vector to VectorXd and create a copy of VectorXd
             Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
                 task.get().data(), task.get().size());
             previous_task[sample_idx] = task_vectorxd;
-            // Store task in files
-            if(task_gen->currently_extend_task_space()){
-              prefix = to_string(iter)+"_"+
-                  to_string(sample_idx+task_gen->num_extending_task_space()*
-                  task_gen->total_sample_number())+"_";
-            }
-            else{
-              prefix = to_string(iter)+"_"+to_string(sample_idx)+"_";
-            }
+            // Store task in file
+            prefix = to_string(iter)+"_"+to_string(sample_idx)+"_";
             writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
           }
 
@@ -2082,7 +2094,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               current_sample_is_a_rerun, has_been_all_success,
               step_size_shrinked_last_loop, n_rerun[sample_idx],
               sample_idx_to_help, FLAGS_is_debug, dir, task_gen, task, *rom,
-              !is_grid_task,task_gen_mediate);
+              !is_grid_task,task_gen_mediate,task_gen_expansion);
 
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better
@@ -2093,9 +2105,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
             prefix = to_string(iter)+"_"+
                 to_string(sample_idx+task_gen->total_sample_number())+"_";
           }
-          else if (task_gen->currently_extend_task_space()){
+          else if (task_gen_expansion.currently_extend_task_space()){
             prefix = to_string(iter)+"_"+
-                to_string(sample_idx+task_gen->num_extending_task_space()*
+                to_string(sample_idx+
+                task_gen_expansion.num_extending_task_space()*
                     task_gen->total_sample_number())+"_";
           }
           else{
@@ -2304,14 +2317,20 @@ int findGoldilocksModels(int argc, char* argv[]) {
       if (rerun_current_iteration) {
         iter -= 1;
       }
-    }else if(task_gen->currently_extend_task_space()){
+    }else if(task_gen_expansion.currently_extend_task_space()){
       rerun_current_iteration = false;
       // expansion process is restricted in iteration 1
       if(iter==1)
       {
         iter=iter-1;
       }
-      task_gen->set_num_extending_task_space(task_gen->num_extending_task_space()+1);
+      task_gen_expansion.set_num_extending_task_space(
+          task_gen_expansion.num_extending_task_space()+1);
+      if(task_gen_expansion.num_extending_task_space()==
+          task_gen_expansion.max_num_extending_task_space())
+      {
+        task_gen_expansion.set_currently_extend_task_space(false);
+      }
       continue;
     }
     else if (extend_model_this_iter) {  // Extend the model

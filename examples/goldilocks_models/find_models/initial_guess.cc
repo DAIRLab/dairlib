@@ -59,7 +59,8 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
                                       int sample,
                                       const TasksGenerator* task_gen,
                                       const Task& task,
-                                      const ReducedOrderModel& rom) {
+                                      const ReducedOrderModel& rom,
+                                      const ExpansionTasksGenerator& task_gen_expansion) {
   DRAKE_DEMAND(iter > 0);
   /* define some parameters used in interpolation
    * theta_range :decide the range of theta to use in interpolation
@@ -88,7 +89,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     // Considering that the theta are all same for these iteration,
     // we only consider task in interpolation.
 
-    if(task_gen->num_extending_task_space()==1){
+    if(task_gen_expansion.num_extending_task_space()==1){
       // we ca only use the solution in iteration 0
       past_iter = 0;
       num_sample_in_iteration = total_sample_num;
@@ -96,7 +97,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     else{
       past_iter = 1;
       num_sample_in_iteration = total_sample_num*
-          (task_gen->num_extending_task_space()-1);
+          (task_gen_expansion.num_extending_task_space()-1);
     }
 
     // take out corresponding solution and store it in each column of w_task
@@ -215,7 +216,8 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
 string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
     int sample,const TasksGenerator* task_gen,
     const Task& task,const ReducedOrderModel& rom,
-    const MediateTasksGenerator& task_gen_mediate){
+    const MediateTasksGenerator& task_gen_mediate,
+    const ExpansionTasksGenerator& task_gen_expansion){
   // this method is used to provide initial guess for the first failed sample
   // other samples should still use previous solution as initial guess
 
@@ -247,7 +249,7 @@ string ChooseInitialGuessFromMediateIteration(const string& directory, int iter,
     }
     else{
       initial_file_name = SetInitialGuessByInterpolation(
-          directory, iter, sample, task_gen, task, rom);
+          directory, iter, sample, task_gen, task, rom,task_gen_expansion);
     }
   }
   return initial_file_name;

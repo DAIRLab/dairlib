@@ -79,11 +79,6 @@ class TasksGenerator {
   double task_max(const string& name) const {
     return task_max_range_[name_to_index_map_.at(name)];
   }
-  bool currently_extend_task_space() const {return currently_extend_task_space_;}
-  int num_extending_task_space() const {return num_extending_task_space_;}
-
-  //Setter
-  void set_num_extending_task_space(int num) {num_extending_task_space_ = num;}
 
 
   // Generator
@@ -104,9 +99,6 @@ class TasksGenerator {
   vector<double> task_max_range_;
   vector<std::uniform_real_distribution<>> distribution_;
   int N_sample_{};
-  bool currently_extend_task_space_;
-  int num_extending_task_space_;
-  int max_num_extending_task_space_;
 
   std::unordered_map<string, int> name_to_index_map_;
 
@@ -157,18 +149,45 @@ class UniformTasksGenerator : public TasksGenerator {
   UniformTasksGenerator(int task_dim, std::vector<string> names,
                         std::vector<int> N_sample_vec,
                         const std::vector<double>& task_min,
-                        const std::vector<double>& task_max,
-                        int iter_start_optimization);
+                        const std::vector<double>& task_max);
 
   // Default constructor
   UniformTasksGenerator()= default;
 
   // Generator
-//  vector<double> NewTask(int sample_idx);
   vector<double> NewTask(string dir,int sample_idx) final;
 
   // Printing message
   void PrintInfo() const override;
+};
+
+
+class ExpansionTasksGenerator{
+ public:
+  ExpansionTasksGenerator(int max_num,bool extend){
+    currently_extend_task_space_ = extend;
+    num_extending_task_space_ = 0;
+    max_num_extending_task_space_ = max_num;
+  };
+  ExpansionTasksGenerator(){};
+
+  vector<double> NewTask(string dir,int sample_idx,const TasksGenerator* task_gen);
+
+  bool currently_extend_task_space() const {return currently_extend_task_space_;}
+  int num_extending_task_space() const {return num_extending_task_space_;}
+  int max_num_extending_task_space() const {return max_num_extending_task_space_;}
+
+  //Setter
+  void set_num_extending_task_space(int num) {num_extending_task_space_ = num;}
+  void set_currently_extend_task_space(bool extend)
+  {currently_extend_task_space_ = extend;}
+
+ private:
+  bool currently_extend_task_space_;
+  int num_extending_task_space_;
+  int max_num_extending_task_space_;
+
+  std::default_random_engine random_eng_;
 };
 
 class MediateTasksGenerator{

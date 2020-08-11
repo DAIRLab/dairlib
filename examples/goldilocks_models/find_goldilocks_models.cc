@@ -116,10 +116,11 @@ DEFINE_double(
     "some local minima caused by step size."
     "See: https://distill.pub/2017/momentum/"
     "WARNING: beta_momentum is not used in newton's method");
-DEFINE_int32(iter_start_optimization,100,
+DEFINE_int32(max_num_extending_task_space,100,
     "For non-grid method, we gradually extend the task space at the beginning "
     "until the final optimization range."
-    "We didn't optimize the model before iter_start_optimization."
+    "In iteration 1, we will rerun several times which is decided by this flag"
+    "to get enough samples in the whole task space."
     "It is recommended that using a small number for small optimization range "
     "while using a large number for large optimization range.");
 
@@ -1419,7 +1420,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min},
           {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max},
-          FLAGS_iter_start_optimization);
+          FLAGS_max_num_extending_task_space);
     } else if (FLAGS_robot_option == 1) {
       task_gen_uniform = UniformTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
@@ -1427,7 +1428,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
            FLAGS_N_sample_tr},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min, FLAGS_tr_min},
           {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max},
-          FLAGS_iter_start_optimization);
+          FLAGS_max_num_extending_task_space);
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_uniform = UniformTasksGenerator();
@@ -2039,13 +2040,21 @@ int findGoldilocksModels(int argc, char* argv[]) {
             if (is_grid_task && is_get_nominal) {
               task.set(task_gen_grid.NewNominalTask(sample_idx));
             } else {
-              task.set(task_gen->NewTask(dir,iter,sample_idx));
+              task.set(task_gen->NewTask(dir,sample_idx));
             }
             // Map std::vector to VectorXd and create a copy of VectorXd
             Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
                 task.get().data(), task.get().size());
             previous_task[sample_idx] = task_vectorxd;
             // Store task in files
+            if(task_gen->currently_extend_task_space()){
+              prefix = to_string(iter)+"_"+
+                  to_string(sample_idx+task_gen->num_extending_task_space()*
+                  task_gen->total_sample_number())+"_";
+            }
+            else{
+              prefix = to_string(iter)+"_"+to_string(sample_idx)+"_";
+            }
             writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
           }
 
@@ -2078,9 +2087,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better
           //  solution?
+
+          //set the index of saving the trajectory optimization results
           if(task_gen_mediate.currently_find_mediate_sample()){
             prefix = to_string(iter)+"_"+
                 to_string(sample_idx+task_gen->total_sample_number())+"_";
+          }
+          else if (task_gen->currently_extend_task_space()){
+            prefix = to_string(iter)+"_"+
+                to_string(sample_idx+task_gen->num_extending_task_space()*
+                    task_gen->total_sample_number())+"_";
           }
           else{
             prefix = to_string(iter)+"_"+to_string(sample_idx)+"_";
@@ -2290,6 +2306,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
     }else if(task_gen->currently_extend_task_space()){
       rerun_current_iteration = false;
+      // expansion process is restricted in iteration 1
+      if(iter==1)
+      {
+        iter=iter-1;
+      }
+      task_gen->set_num_extending_task_space(task_gen->num_extending_task_space()+1);
       continue;
     }
     else if (extend_model_this_iter) {  // Extend the model

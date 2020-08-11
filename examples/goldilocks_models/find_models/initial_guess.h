@@ -22,6 +22,10 @@ std::string SetInitialGuessByInterpolation(const std::string& directory,
 std::string ChooseInitialGuessFromMediateIteration(const string& directory,
     int iter,int sample,const TasksGenerator* task_gen,const Task& task,
     const ReducedOrderModel& rom,const MediateTasksGenerator& task_gen_mediate);
+
+/// Notes: this is not used currently because this method didn't provide
+/// a better initial guess than the interpolation method. We might change the
+/// algorithm in this part to improve the initial guess.
 std::string SetInitialGuessByExtrapolation(const string& directory, int iter,
                                       int sample,
                                       const TasksGenerator* task_gen,

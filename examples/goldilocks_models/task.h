@@ -80,11 +80,14 @@ class TasksGenerator {
     return task_max_range_[name_to_index_map_.at(name)];
   }
   bool currently_extend_task_space() const {return currently_extend_task_space_;}
-  int iter_start_optimization() const {return iter_start_optimization_;}
+  int num_extending_task_space() const {return num_extending_task_space_;}
+
+  //Setter
+  void set_num_extending_task_space(int num) {num_extending_task_space_ = num;}
 
 
   // Generator
-  virtual vector<double> NewTask(string dir,int iter,int sample_idx) = 0;
+  virtual vector<double> NewTask(string dir,int sample_idx) = 0;
 
   // Printing message
   virtual void PrintInfo() const {};
@@ -102,7 +105,8 @@ class TasksGenerator {
   vector<std::uniform_real_distribution<>> distribution_;
   int N_sample_{};
   bool currently_extend_task_space_;
-  int iter_start_optimization_;
+  int num_extending_task_space_;
+  int max_num_extending_task_space_;
 
   std::unordered_map<string, int> name_to_index_map_;
 
@@ -128,7 +132,7 @@ class GridTasksGenerator : public TasksGenerator {
 
   // Generator
   vector<double> NewNominalTask(int sample_idx);
-  vector<double> NewTask(string dir,int iter,int sample_idx) final;
+  vector<double> NewTask(string dir,int sample_idx) final;
 
   // Printing message
   void PrintInfo() const override;
@@ -161,7 +165,7 @@ class UniformTasksGenerator : public TasksGenerator {
 
   // Generator
 //  vector<double> NewTask(int sample_idx);
-  vector<double> NewTask(string dir,int iter,int sample_idx) final;
+  vector<double> NewTask(string dir,int sample_idx) final;
 
   // Printing message
   void PrintInfo() const override;

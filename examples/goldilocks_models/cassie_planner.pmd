@@ -1,4 +1,4 @@
-group "0.cassie planner (2 steps)" {
+group "0.cassie planner (2 foot steps)" {
     cmd "1.0.ipopt (wo init file)" {
         exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=29 --sample=19 --n_step=2 --final_position=1 --knots_per_mode=10 --init_file=\"\" --use_ipopt=true";
         host = "localhost";

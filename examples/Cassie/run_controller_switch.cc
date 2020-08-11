@@ -22,13 +22,14 @@ DEFINE_string(switch_channel, "INPUT_SWITCH",
 DEFINE_string(new_channel, "PD_CONTROLLER",
               "The name of the new lcm channel that dispatcher_in listens to "
               "after switch");
+DEFINE_int32(n_publishes, 10,
+             "The simulation gets updated until it publishes the channel name "
+             "n_publishes times");
+
 DEFINE_int32(n_period_delay, -1,
              "the number of periods before we start publishing the new channel "
              "name. If the value is non-positive, the channel name is published"
              "right after the start of the program.");
-DEFINE_int32(n_publishes, 10,
-             "The simulation gets updated until it publishes the channel name "
-             "n_publishes times");
 DEFINE_double(fsm_period, -1.0, " the period of TimeBasedFiniteStateMachine");
 DEFINE_double(fsm_offset, 0.0,
               "a constant that's used to determined the publish time see the "
@@ -122,6 +123,8 @@ int do_main(int argc, char* argv[]) {
     // Get message time from the input channel
     double t_current = input_sub.message().utime * 1e-6;
     if (t_current >= t_threshold) {
+      std::cout << "publish at t = " << t_current << std::endl;
+
       msg.utime = (int)input_sub.message().utime;
       name_pub->get_input_port().FixValue(
           &(diagram_ptr->GetMutableSubsystemContext(*name_pub,

@@ -17,4 +17,15 @@ group "0.cassie planner (2 steps)" {
     }
 }
 
+group "1. visualization" {
+    cmd "0. drake visualizer" {
+        exec = "../drake/bazel-bin/tools/drake_visualizer";
+        host = "localhost";
+    }
+    cmd "1. cassie pose" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1";
+        host = "localhost";
+    }
+}
+
 

@@ -144,6 +144,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   }*/
   // TODO: find out why the initial left knee position is not within the joint
   //  limits.
+  //  Could be that the constraint tolerance is too high in rom optimization
 
   bool with_init_guess = true;
   // Provide initial guess
@@ -267,6 +268,27 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
 
+  // Constraints for fourbar linkage
+  // Note that if the initial pose in the constraint doesn't obey the fourbar
+  // linkage relationship. You shouldn't add constraint to the initial pose here
+  /*double fourbar_angle = 13.0 / 180.0 * M_PI;
+  auto q0_var = trajopt.x0_vars_by_mode(0).head(plant.num_positions());
+  trajopt.AddLinearEqualityConstraint(
+      q0_var(positions_map.at("knee_left")) +
+      q0_var(positions_map.at("ankle_joint_left")), fourbar_angle);
+  trajopt.AddLinearEqualityConstraint(
+      q0_var(positions_map.at("knee_right")) +
+      q0_var(positions_map.at("ankle_joint_right")), fourbar_angle);*/
+  /*for (int i = 0; i < num_time_samples.size(); i++) {
+    auto qf_var = trajopt.xf_vars_by_mode(i);
+    trajopt.AddLinearEqualityConstraint(
+        qf_var(positions_map.at("knee_left")) +
+        qf_var(positions_map.at("ankle_joint_left")), fourbar_angle);
+    trajopt.AddLinearEqualityConstraint(
+        qf_var(positions_map.at("knee_right")) +
+        qf_var(positions_map.at("ankle_joint_right")), fourbar_angle);
+  }*/
+
   // Final goal position constraint
   cout << "Adding final position constraint for full-order model...\n";
   trajopt.AddBoundingBoxConstraint(
@@ -279,6 +301,13 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     trajopt.AddRegularizationCost(final_position, x_guess_left_in_front,
                                   x_guess_right_in_front,
                                   false /*straight_leg_cost*/);
+
+    // Add more regularization cost
+    /*auto qf_var = trajopt.xf_vars_by_mode(num_time_samples.size()-1);
+    VectorXd quat_unity(4);
+    quat_unity << 1, 0, 0, 0;
+    trajopt.AddQuadraticErrorCost(100*MatrixXd::Identity(4, 4), quat_unity,
+                                  qf_var.head(4));*/
   } else {
     // Since there are multiple q that could be mapped to the same r, I
     // penalize on q so it get close to a certain configuration

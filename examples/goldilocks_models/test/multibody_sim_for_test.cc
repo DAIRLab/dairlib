@@ -284,7 +284,7 @@ int do_main(int argc, char* argv[]) {
       SolveForFeasibleConfiguration(
           init_robot_state_w_springs.head(plant.num_positions()), plant);
 
-  std::cout << "init_robot_state = " << init_robot_state.transpose() << std::endl;
+  std::cout << "init_robot_state (from planner) = " << init_robot_state.transpose() << std::endl;
   std::cout << "init_robot_state_w_springs = " << init_robot_state_w_springs.transpose() << std::endl;
   plant.SetPositionsAndVelocities(&plant_context, init_robot_state_w_springs);
 

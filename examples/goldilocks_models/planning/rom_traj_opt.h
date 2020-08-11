@@ -37,7 +37,7 @@ class RomTrajOpt
              const std::vector<BodyPoint>& right_contacts,
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
-             Eigen::VectorXd init_state, bool zero_touchdown_impact);
+             Eigen::VectorXd x_init, bool zero_touchdown_impact);
 
   ~RomTrajOpt() override {}
 
@@ -103,7 +103,7 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const std::vector<BodyPoint>& right_contacts,
                    const std::vector<std::tuple<std::string, double, double>>&
                        fom_joint_name_lb_ub,
-                   Eigen::VectorXd init_state, bool zero_touchdown_impact);
+                   Eigen::VectorXd x_init, bool zero_touchdown_impact);
 
   void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,
@@ -116,7 +116,8 @@ class RomTrajOptCassie : public RomTrajOpt {
                           const Eigen::MatrixXd& tau_guess,
                           const Eigen::VectorXd& x_guess_left_in_front,
                           const Eigen::VectorXd& x_guess_right_in_front,
-                          const Eigen::VectorXd& final_position);
+                          const Eigen::VectorXd& final_position,
+                          int fisrt_mode_phase_index);
 };
 
 class RomTrajOptFiveLinkRobot : public RomTrajOpt {
@@ -130,7 +131,7 @@ class RomTrajOptFiveLinkRobot : public RomTrajOpt {
       const std::vector<BodyPoint>& right_contacts,
       const std::vector<std::tuple<std::string, double, double>>&
           fom_joint_name_lb_ub,
-      Eigen::VectorXd init_state, bool zero_touchdown_impact);
+      Eigen::VectorXd x_init, bool zero_touchdown_impact);
 
   void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,

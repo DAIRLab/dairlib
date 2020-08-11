@@ -50,9 +50,13 @@ DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_bool(fix_duration, false, "Fix the total time");
 DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
 DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
+DEFINE_double(opt_tol, 1e-4, "");
+DEFINE_double(feas_tol, 1e-4, "");
+
+DEFINE_double(init_phase, 0,
+              "The phase where the initial FOM pose is throughout the single "
+              "support period. This is used to test MPC");
 DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
-DEFINE_double(opt_tol, 1e-4, "Disturbance to FoM initial state");
-DEFINE_double(feas_tol, 1e-4, "Disturbance to FoM initial state");
 
 DEFINE_bool(log_solver_info, false,
             "Log snopt output to a file or ipopt to terminal");
@@ -65,6 +69,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DRAKE_DEMAND(FLAGS_robot_option == 1);
+  DRAKE_DEMAND(0 <= FLAGS_init_phase && FLAGS_init_phase <= 1);
 
   // Create MBP
   MultibodyPlant<double> plant(0.0);
@@ -101,6 +106,10 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     min_dt.push_back(.01);
     max_dt.push_back(.3);
   }
+  int knots_first_mode = int(knots_per_mode * FLAGS_init_phase);
+  num_time_samples[0] = knots_first_mode;
+  cout << "init_phase = " << FLAGS_init_phase << endl;
+  cout << "knots_first_mode = " << knots_first_mode << endl;
 
   // Store data
   writeCSV(dir_data + string("n_step.csv"), n_step * VectorXd::Ones(1));
@@ -111,11 +120,16 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   string model_dir_n_pref = dir_model + to_string(FLAGS_iter) + string("_") +
                             to_string(FLAGS_sample) + string("_");
   cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
-  VectorXd init_state =
-      readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
+  int n_sample_raw =
+      readCSV(model_dir_n_pref + string("time_at_knots.csv")).size();
+  VectorXd x_init;  // assume this is left in front
+  x_init = readCSV(model_dir_n_pref + string("state_at_knots.csv"))
+               .col(int(n_sample_raw * FLAGS_init_phase));
   if (FLAGS_disturbance != 0) {
-    init_state(9) += FLAGS_disturbance / 1;  // add to floating base angle
+    //    x_init(9) += FLAGS_disturbance / 1;
   }
+  int fisrt_mode_phase_index =
+      n_sample_raw - int(n_sample_raw * FLAGS_init_phase);
 
   // Testing
   std::vector<string> name_list = {"base_qw",
@@ -263,7 +277,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(num_time_samples, Q, R, *rom, plant, state_mirror,
                            left_contacts, right_contacts, joint_name_lb_ub,
-                           init_state, FLAGS_zero_touchdown_impact);
+                           x_init, FLAGS_zero_touchdown_impact);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
@@ -353,7 +367,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   } else {
     trajopt.SetAllInitialGuess(h_guess, r_guess, dr_guess, tau_guess,
                                x_guess_left_in_front, x_guess_right_in_front,
-                               final_position);
+                               final_position, fisrt_mode_phase_index);
   }
 
   // Testing

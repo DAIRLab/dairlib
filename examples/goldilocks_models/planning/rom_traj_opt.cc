@@ -48,7 +48,7 @@ RomTrajOpt::RomTrajOpt(
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    VectorXd init_state, bool zero_touchdown_impact)
+    VectorXd x_init, bool zero_touchdown_impact)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -83,9 +83,9 @@ RomTrajOpt::RomTrajOpt(
 
   // Initial pose constraint for the full order model
   cout << "Adding initial pose constraint for full-order model...\n";
-  AddBoundingBoxConstraint(init_state, init_state, x0_vars_by_mode(0));
+  AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
   // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
-  cout << "init_state = " << init_state.transpose() << endl;
+  cout << "x_init = " << x_init.transpose() << endl;
 
   // Loop over modes to add more constraints
   int counter = 0;
@@ -362,10 +362,10 @@ RomTrajOptCassie::RomTrajOptCassie(
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd init_state, bool zero_touchdown_impact)
+    Eigen::VectorXd x_init, bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
-                 left_contacts, right_contacts, fom_joint_name_lb_ub,
-                 init_state, zero_touchdown_impact) {}
+                 left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
+                 zero_touchdown_impact) {}
 
 void RomTrajOptCassie::AddRegularizationCost(
     const Eigen::VectorXd& final_position,
@@ -399,9 +399,11 @@ void RomTrajOptCassie::AddRegularizationCost(
     auto x_0 = x0_vars_by_mode(i);
     auto x_f = xf_vars_by_mode(i);
     if (left_stance) {
-      this->AddQuadraticErrorCost(
-          Id_z_joints, modifixed_x_guess_left_in_front.segment(6, n_q - 6),
-          x_0.segment(6, n_q - 6));
+      if (i != 0) {
+        this->AddQuadraticErrorCost(
+            Id_z_joints, modifixed_x_guess_left_in_front.segment(6, n_q - 6),
+            x_0.segment(6, n_q - 6));
+      }
       this->AddQuadraticErrorCost(
           Id_z_joints, modifixed_x_guess_right_in_front.segment(6, n_q - 6),
           x_f.segment(6, n_q - 6));
@@ -412,9 +414,11 @@ void RomTrajOptCassie::AddRegularizationCost(
       //          Id_quat, modifixed_x_guess_right_in_front.head(4),
       //          x_f.head(4));
     } else {
-      this->AddQuadraticErrorCost(
-          Id_z_joints, modifixed_x_guess_right_in_front.segment(6, n_q - 6),
-          x_0.segment(6, n_q - 6));
+      if (i != 0) {
+        this->AddQuadraticErrorCost(
+            Id_z_joints, modifixed_x_guess_right_in_front.segment(6, n_q - 6),
+            x_0.segment(6, n_q - 6));
+      }
       this->AddQuadraticErrorCost(
           Id_z_joints, modifixed_x_guess_left_in_front.segment(6, n_q - 6),
           x_f.segment(6, n_q - 6));
@@ -425,13 +429,17 @@ void RomTrajOptCassie::AddRegularizationCost(
       //          Id_quat, modifixed_x_guess_left_in_front.head(4),
       //          x_f.head(4));
     }
-    this->AddQuadraticErrorCost(Id_xy, final_position * i / num_modes_,
-                                x_0.segment<2>(4));
+    if (i != 0) {
+      this->AddQuadraticErrorCost(Id_xy, final_position * i / num_modes_,
+                                  x_0.segment<2>(4));
+    }
     this->AddQuadraticErrorCost(Id_xy, final_position * (i + 1) / num_modes_,
                                 x_f.segment<2>(4));
     VectorX<double> quat_identity(4);
     quat_identity << 1, 0, 0, 0;
-    this->AddQuadraticErrorCost(Id_quat, quat_identity, x_0.head(4));
+    if (i != 0) {
+      this->AddQuadraticErrorCost(Id_quat, quat_identity, x_0.head(4));
+    }
     this->AddQuadraticErrorCost(Id_quat, quat_identity, x_f.head(4));
   }
 }
@@ -441,7 +449,7 @@ void RomTrajOptCassie::SetAllInitialGuess(
     const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
     const Eigen::VectorXd& x_guess_left_in_front,
     const Eigen::VectorXd& x_guess_right_in_front,
-    const Eigen::VectorXd& final_position) {
+    const Eigen::VectorXd& final_position, int fisrt_mode_phase_index) {
   cout << "Adding initial guess ...\n";
 
   MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
@@ -456,11 +464,21 @@ void RomTrajOptCassie::SetAllInitialGuess(
     }
     // Rom states and inputs
     for (int j = 0; j < mode_lengths_[i]; j++) {
-      SetInitialGuess(state_vars_by_mode(i, j),
-                      y_guess.block(0, j, 2 * rom_.n_y(), 1));
-      int time_index = mode_start_[i] + j;
-      SetInitialGuess(u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
-                      tau_guess.col(j));
+      // The intial state might start in the middle of the stride
+      if (i == 0) {
+        SetInitialGuess(state_vars_by_mode(i, j),
+                        y_guess.col(fisrt_mode_phase_index + j));
+        int time_index = mode_start_[i] + j;
+        SetInitialGuess(
+            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
+            tau_guess.col(fisrt_mode_phase_index + j));
+      } else {
+        SetInitialGuess(state_vars_by_mode(i, j), y_guess.col(j));
+        int time_index = mode_start_[i] + j;
+        SetInitialGuess(
+            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
+            tau_guess.col(j));
+      }
     }
     // FOM states
     auto x_0 = x0_vars_by_mode(i);
@@ -492,10 +510,10 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd init_state, bool zero_touchdown_impact)
+    Eigen::VectorXd x_init, bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
-                 left_contacts, right_contacts, fom_joint_name_lb_ub,
-                 init_state, zero_touchdown_impact) {}
+                 left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
+                 zero_touchdown_impact) {}
 
 void RomTrajOptFiveLinkRobot::AddRegularizationCost(
     const Eigen::VectorXd& final_position,

@@ -1,28 +1,7 @@
-// This file is modified from examples/Cassie/run_osc_walking_controller.cc
-// We use this file to test OptimalRomTrackingData
+// (This file is modified from examples/Cassie/run_osc_walking_controller.cc)
 
-// Benchmark on computation time on 8750H CPU
-//   (commit number for reference: 2a9023265ca20d6eb5201225d4a3051ed8029f76)
-//   (benchmark data size: 399 number of samples)
-// UpdateYdotAndError::UpdateJdotV()
-//   min: 0.077 ms
-//   ave: 0.12 ms
-//   max: 0.27 ms
-// UpdateYdotAndError::UpdateJ()
-//   min: 0.038 ms
-//   ave: 0.06 ms
-//   max: 0.15 ms
-
-// After using the MBP's context from OSC
-//   (commit number for reference: a664bc7554e790ca842e7c051cd333601700a8f1)
-// UpdateYdotAndError::UpdateJdotV()
-//   min: 0.068 ms
-//   ave: 0.09 ms
-//   max: 0.14 ms
-// UpdateYdotAndError::UpdateJ()
-//   min: 0.030 ms
-//   ave: 0.044 ms
-//   max: 0.33 ms
+// TODO(yminchen): this file will be the main file that publish OSC output for
+//  ROM MPC
 
 #include <string>
 #include <gflags/gflags.h>

@@ -1,4 +1,4 @@
-// This file is modified from examples/Cassie/run_osc_walking_controller.cc
+// (This file is modified from examples/Cassie/run_osc_walking_controller.cc)
 // We use this file to test OptimalRomTrackingData
 
 // Benchmark on computation time on 8750H CPU

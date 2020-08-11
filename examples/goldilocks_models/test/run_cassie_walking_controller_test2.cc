@@ -1,4 +1,4 @@
-// This file is modified from examples/Cassie/run_osc_walking_controller.cc
+// (This file is modified from examples/Cassie/run_osc_walking_controller.cc)
 // We use this script to test the performance of tracking a planned traj
 // We only track for the first step
 
@@ -12,6 +12,7 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -20,7 +21,9 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -46,7 +49,9 @@ using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
+using drake::trajectories::PiecewisePolynomial;
 
+using systems::OutputVector;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::OptimalRomTrackingData;
@@ -55,7 +60,7 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
+DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -67,9 +72,36 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
+
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
+
+DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
+
+class OptimalRoMTrajGen : public drake::systems::LeafSystem<double> {
+ public:
+  OptimalRoMTrajGen(PiecewisePolynomial<double> desired_traj)
+      : desired_traj_(desired_traj) {
+    // Provide an instance to allocate the memory first (for the output)
+    PiecewisePolynomial<double> pp(VectorXd(0));
+    drake::trajectories::Trajectory<double>& traj_inst = pp;
+    this->DeclareAbstractOutputPort("rom_lipm_traj", traj_inst,
+                                    &OptimalRoMTrajGen::CalcDesiredTraj);
+  };
+
+ private:
+  void CalcDesiredTraj(const drake::systems::Context<double>& context,
+                       drake::trajectories::Trajectory<double>* traj) const {
+    // Copy traj
+    PiecewisePolynomial<double>* pp_traj =
+        (PiecewisePolynomial<double>*)dynamic_cast<
+            PiecewisePolynomial<double>*>(traj);
+    *pp_traj = desired_traj_;
+  };
+
+  PiecewisePolynomial<double> desired_traj_;
+};
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -103,25 +135,17 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant_wo_springs);
   auto right_heel = RightToeRear(plant_wo_springs);
 
-  // Build COM reduced-order model
-  // Basis for mapping function (dependent on the robot)
-  MonomialFeatures mapping_basis(2, plant_wo_springs.num_positions(), {3, 4, 5},
-                                 "mapping basis");
-  mapping_basis.PrintInfo();
-  // Basis for dynamic function
-  MonomialFeatures dynamic_basis(2, 2 * testing::Com::kDimension, {},
-                                 "dynamic basis");
-  dynamic_basis.PrintInfo();
-  // Construct reduced-order model
-  testing::Com com(plant_wo_springs, mapping_basis, dynamic_basis);
-  ReducedOrderModel* rom = &com;
-  cout << "Construct reduced-order model (" << rom->name()
-       << ") with parameters\n";
-  cout << "n_y = " << rom->n_y() << ", n_tau = " << rom->n_tau() << endl;
-  cout << "B_tau = \n" << rom->B() << "\n";
-  cout << "n_feature_y = " << rom->n_feature_y() << endl;
-  cout << "n_feature_yddot = " << rom->n_feature_yddot() << endl;
+  // Reduced order model
+  const std::string dir_model =
+      "../dairlib_data/goldilocks_models/planning/robot_1/models/";
+  std::unique_ptr<ReducedOrderModel> rom =
+      CreateRom(4 /*rom_option*/, 1 /*robot_option*/, plant_wo_springs, true);
+  ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
 
+  // Get desired traj from ROM planner result
+  // TODO(yminchen): re-constructor the traj
+  PiecewisePolynomial<double> desired_rom_traj;
+  
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
@@ -284,6 +308,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(deviation_from_cp->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
 
+  // Create optimal rom trajectory generator
+  auto optimal_rom_traj_gen =
+      builder.AddSystem<OptimalRoMTrajGen>(desired_rom_traj);
+
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_wo_springs, context_w_spr.get(),
@@ -420,7 +448,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(lipm_traj_generator->get_output_port(0),
+  builder.Connect(optimal_rom_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("rom_lipm_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));

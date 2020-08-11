@@ -35,6 +35,7 @@ cc_binary(
     name = "run_cassie_walking_controller_test2",
     srcs = ["run_cassie_walking_controller_test2.cc"],
     deps = [
+        "//common:eigen_utils",
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie:simulator_drift",

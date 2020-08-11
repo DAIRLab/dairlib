@@ -8,7 +8,7 @@ group "1.controllers" {
         host = "localhost";
     }
     cmd "2.rom-test-walking-controller2" {
-        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2";
+        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2 --iter=29";
         host = "localhost";
     }
     cmd "3.rom-walking-controller" {

@@ -109,7 +109,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // TODO: we completely remove the quaternion for now. We want to have
     //  roll and pitch, so add this component later (need to map quat to roll
     //  pitch yaw)
-    vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
+//    vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
+    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     mapping_basis = std::make_unique<MonomialFeatures>(
         2, plant.num_positions(), skip_inds, "mapping basis");
   }

@@ -23,8 +23,9 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "common/eigen_utils.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -60,7 +61,7 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
+DEFINE_int32(iter, 29, "The iteration # of the theta that you use");
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -143,9 +144,27 @@ int DoMain(int argc, char* argv[]) {
   ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
 
   // Get desired traj from ROM planner result
-  // TODO(yminchen): re-constructor the traj
-  PiecewisePolynomial<double> desired_rom_traj;
-  
+  const std::string dir_data =
+      "../dairlib_data/goldilocks_models/planning/robot_1/data/";
+  VectorXd time_at_knots =
+      readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
+  MatrixXd state_at_knots =
+      readCSV(dir_data + std::string("state_at_knots.csv"));
+  std::vector<double> T_waypoint = CopyVectorXdToStdVector(time_at_knots);
+  std::vector<MatrixXd> y(T_waypoint.size(), MatrixXd::Zero(rom->n_y(), 1));
+  std::vector<MatrixXd> y_dot(T_waypoint.size(), MatrixXd::Zero(rom->n_y(), 1));
+  for (int i = 0; i < T_waypoint.size(); i++) {
+    y.at(i) = state_at_knots.col(i).head(rom->n_y());
+    y_dot.at(i) = state_at_knots.col(i).tail(rom->n_y());
+  }
+  PiecewisePolynomial<double> desired_rom_traj =
+      PiecewisePolynomial<double>::CubicHermite(T_waypoint, y, y_dot);
+
+  // Read in the end time of the trajectory
+  int knots_per_foot_step = readCSV(dir_data + "nodes_per_step.csv")(0, 0);
+  double end_time_of_first_step =
+      readCSV(dir_data + "time_at_knots.csv")(knots_per_foot_step, 0);
+
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
@@ -217,8 +236,8 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  double left_support_duration = 0.35;
-  double right_support_duration = 0.35;
+  double left_support_duration = end_time_of_first_step;
+  double right_support_duration = end_time_of_first_step;
   double double_support_duration = 0.02;
   vector<int> fsm_states;
   vector<double> state_durations;

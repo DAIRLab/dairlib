@@ -43,13 +43,12 @@ using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
 RomTrajOpt::RomTrajOpt(
-    vector<int> num_time_samples, vector<double> minimum_timestep,
-    vector<double> maximum_timestep, MatrixXd Q, MatrixXd R,
+    vector<int> num_time_samples, MatrixXd Q, MatrixXd R,
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    VectorXd init_state, bool fix_all_timestep, bool zero_touchdown_impact)
+    VectorXd init_state, bool zero_touchdown_impact)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -71,9 +70,6 @@ RomTrajOpt::RomTrajOpt(
       n_x_(plant.num_positions() + plant.num_velocities()),
       plant_(plant),
       rom_(rom) {
-  DRAKE_ASSERT(minimum_timestep.size() == num_modes_);
-  DRAKE_ASSERT(maximum_timestep.size() == num_modes_);
-
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
   int n_q = plant_.num_positions();
   int n_v = plant_.num_velocities();
@@ -98,22 +94,6 @@ RomTrajOpt::RomTrajOpt(
     mode_start_.push_back(counter);
 
     bool left_stance = i % 2 == 0;
-
-    // Set timestep bounds
-    for (int j = 0; j < mode_lengths_[i] - 1; j++) {
-      AddBoundingBoxConstraint(minimum_timestep[i], maximum_timestep[i],
-                               timestep(mode_start_[i] + j));
-    }
-    for (int j = 0; j < mode_lengths_[i] - 2; j++) {
-      // all timesteps must be equal
-      AddLinearConstraint(timestep(mode_start_[i] + j) ==
-                          timestep(mode_start_[i] + j + 1));
-    }
-    // make the timesteps in each mode the same
-    if (fix_all_timestep && i != 0) {
-      AddLinearConstraint(timestep(mode_start_[i] - 1) ==
-                          timestep(mode_start_[i]));
-    }
 
     // Add dynamics constraints at collocation points
     cout << "Adding dynamics constraint...\n";
@@ -221,6 +201,45 @@ RomTrajOpt::RomTrajOpt(
     }*/
 
     counter += mode_lengths_[i] - 1;
+  }
+}
+
+void RomTrajOpt::AddTimeStepConstraint(std::vector<double> minimum_timestep,
+                                       std::vector<double> maximum_timestep,
+                                       bool equalize_timestep_size,
+                                       bool fix_duration, double duration) {
+  if (equalize_timestep_size && fix_duration) {
+    double dt_value = duration / (N() - 1);
+    cout << "Fix all timestep size to " << dt_value << std::endl;
+    for (int i = 0; i < this->N() - 1; i++) {
+      AddBoundingBoxConstraint(dt_value, dt_value, timestep(i));
+    }
+  } else {
+    // Duration bound
+    if (fix_duration) {
+      cout << "Fix time duration: total duration = " << duration << endl;
+      AddDurationBounds(duration, duration);
+    }
+
+    for (int i = 0; i < num_modes_; i++) {
+      // Set timestep bounds
+      for (int j = 0; j < mode_lengths_[i] - 1; j++) {
+        AddBoundingBoxConstraint(minimum_timestep[i], maximum_timestep[i],
+                                 timestep(mode_start_[i] + j));
+      }
+
+      // all timesteps within a mode must be equal
+      for (int j = 0; j < mode_lengths_[i] - 2; j++) {
+        AddLinearConstraint(timestep(mode_start_[i] + j) ==
+                            timestep(mode_start_[i] + j + 1));
+      }
+
+      // make the timesteps between modes the same
+      if (equalize_timestep_size && i != 0) {
+        AddLinearConstraint(timestep(mode_start_[i] - 1) ==
+                            timestep(mode_start_[i]));
+      }
+    }
   }
 }
 
@@ -337,19 +356,16 @@ PiecewisePolynomial<double> RomTrajOpt::ReconstructStateTrajectory(
 }
 
 RomTrajOptCassie::RomTrajOptCassie(
-    vector<int> num_time_samples, vector<double> minimum_timestep,
-    vector<double> maximum_timestep, Eigen::MatrixXd Q, Eigen::MatrixXd R,
+    vector<int> num_time_samples, Eigen::MatrixXd Q, Eigen::MatrixXd R,
     const ReducedOrderModel& rom,
     const drake::multibody::MultibodyPlant<double>& plant,
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd init_state, bool fix_all_timestep,
-    bool zero_touchdown_impact)
-    : RomTrajOpt(num_time_samples, minimum_timestep, maximum_timestep, Q, R,
-                 rom, plant, state_mirror, left_contacts, right_contacts,
-                 fom_joint_name_lb_ub, init_state, fix_all_timestep,
-                 zero_touchdown_impact) {}
+    Eigen::VectorXd init_state, bool zero_touchdown_impact)
+    : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
+                 left_contacts, right_contacts, fom_joint_name_lb_ub,
+                 init_state, zero_touchdown_impact) {}
 
 void RomTrajOptCassie::AddRegularizationCost(
     const Eigen::VectorXd& final_position,
@@ -470,19 +486,16 @@ void RomTrajOptCassie::SetAllInitialGuess(
 }
 
 RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
-    vector<int> num_time_samples, vector<double> minimum_timestep,
-    vector<double> maximum_timestep, Eigen::MatrixXd Q, Eigen::MatrixXd R,
+    vector<int> num_time_samples, Eigen::MatrixXd Q, Eigen::MatrixXd R,
     const ReducedOrderModel& rom,
     const drake::multibody::MultibodyPlant<double>& plant,
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd init_state, bool fix_all_timestep,
-    bool zero_touchdown_impact)
-    : RomTrajOpt(num_time_samples, minimum_timestep, maximum_timestep, Q, R,
-                 rom, plant, state_mirror, left_contacts, right_contacts,
-                 fom_joint_name_lb_ub, init_state, fix_all_timestep,
-                 zero_touchdown_impact) {}
+    Eigen::VectorXd init_state, bool zero_touchdown_impact)
+    : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
+                 left_contacts, right_contacts, fom_joint_name_lb_ub,
+                 init_state, zero_touchdown_impact) {}
 
 void RomTrajOptFiveLinkRobot::AddRegularizationCost(
     const Eigen::VectorXd& final_position,

@@ -47,10 +47,10 @@ DEFINE_double(final_position, 2, "The final position for the robot");
 
 DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
+DEFINE_bool(fix_duration, false, "Fix the total time");
+DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
 DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
 DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
-DEFINE_bool(fix_duration, false, "Fix the total time");
-DEFINE_bool(fix_all_timestep, true, "Make all timesteps the same size");
 DEFINE_double(opt_tol, 1e-4, "Disturbance to FoM initial state");
 DEFINE_double(feas_tol, 1e-4, "Disturbance to FoM initial state");
 
@@ -261,13 +261,17 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   // Construct
   cout << "\nConstructing optimization problem...\n";
   auto start = std::chrono::high_resolution_clock::now();
-  RomTrajOptCassie trajopt(num_time_samples, min_dt, max_dt, Q, R, *rom, plant,
-                           state_mirror, left_contacts, right_contacts,
-                           joint_name_lb_ub, init_state, FLAGS_fix_all_timestep,
-                           FLAGS_zero_touchdown_impact);
+  RomTrajOptCassie trajopt(num_time_samples, Q, R, *rom, plant, state_mirror,
+                           left_contacts, right_contacts, joint_name_lb_ub,
+                           init_state, FLAGS_zero_touchdown_impact);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
+
+  // Time step cosntraints
+  trajopt.AddTimeStepConstraint(min_dt, max_dt, FLAGS_equalize_timestep_size,
+                                FLAGS_fix_duration,
+                                h_guess.tail(1)(0) * num_time_samples.size());
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar
@@ -318,14 +322,6 @@ int planningWithRomAndFom(int argc, char* argv[]) {
       trajopt.AddQuadraticErrorCost(Id, zero_vec,
                                     trajopt.xf_vars_by_mode(i).segment(1, 3));
     }
-  }
-
-  // Duration bound
-  if (FLAGS_fix_duration) {
-    cout << "Fix time duration: total duration = "
-         << h_guess.tail(1)(0) * num_time_samples.size() << endl;
-    trajopt.AddDurationBounds(h_guess.tail(1)(0) * num_time_samples.size(),
-                              h_guess.tail(1)(0) * num_time_samples.size());
   }
 
   // Default initial guess to avoid singularity (which messes with gradient)
@@ -390,10 +386,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     auto id = drake::solvers::IpoptSolver::id();
     trajopt.SetSolverOption(id, "tol", FLAGS_feas_tol);
     trajopt.SetSolverOption(id, "dual_inf_tol", FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "constr_viol_tol",
-                             FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "compl_inf_tol",
-                             FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "constr_viol_tol", FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "compl_inf_tol", FLAGS_feas_tol);
     trajopt.SetSolverOption(id, "max_iter", max_iter);
     trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
     trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
@@ -407,10 +401,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
     // Set to ignore overall tolerance/dual infeasibility, but terminate when
     // primal feasible and objective fails to increase over 5 iterations.
-    trajopt.SetSolverOption(id, "acceptable_compl_inf_tol",
-                             FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "acceptable_constr_viol_tol",
-                             FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "acceptable_compl_inf_tol", FLAGS_feas_tol);
+    trajopt.SetSolverOption(id, "acceptable_constr_viol_tol", FLAGS_feas_tol);
     trajopt.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
     trajopt.SetSolverOption(id, "acceptable_tol", 1e2);
     trajopt.SetSolverOption(id, "acceptable_iter", 5);
@@ -421,7 +413,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     }
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                             "Major iterations limit", max_iter);
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
+                            0);
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                             "Major optimality tolerance", FLAGS_opt_tol);
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -441,8 +434,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   cout << "\nSolving optimization problem...\n";
   start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result;
-  solver->Solve(trajopt, trajopt.initial_guess(),
-                trajopt.solver_options(), &result);
+  solver->Solve(trajopt, trajopt.initial_guess(), trajopt.solver_options(),
+                &result);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   cout << "    Solve time:" << elapsed.count() << " | ";

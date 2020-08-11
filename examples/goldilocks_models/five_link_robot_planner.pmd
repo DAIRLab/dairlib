@@ -1,0 +1,23 @@
+group "0.five-link-robot planner (2 foot steps)" {
+    cmd "0.0.(wo init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_five_link --rom_option=0 --iter=100 --sample=0 --n_step=2 --final_position=1 --init_file=\"\" --fix_duration=false";
+        host = "localhost";
+    }
+    cmd "0.1.(w init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_five_link --rom_option=0 --iter=100 --sample=0 --n_step=2 --final_position=1 --init_file=\"z.csv\" --fix_duration=false";
+        host = "localhost";
+    }
+}
+
+group "1. visualization" {
+    cmd "0. drake visualizer" {
+        exec = "../drake/bazel-bin/tools/drake_visualizer";
+        host = "localhost";
+    }
+    cmd "1. cassie pose" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=0";
+        host = "localhost";
+    }
+}
+
+

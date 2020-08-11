@@ -39,14 +39,16 @@ DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, 1, "0: LIPM. 1: LIPM with point-mass swing foot");
 DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
-DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
+
 DEFINE_int32(n_step, 3, "Number of foot steps");
+DEFINE_double(final_position, 2, "The final position for the robot");
+
+DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
 DEFINE_bool(print_snopt_file, false, "Print snopt output file");
 DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
-DEFINE_double(final_position, 2, "The final position for the robot");
 DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
 DEFINE_bool(fix_duration, false, "Fix the total time");
-DEFINE_bool(fix_all_timestep, true, "Make all timesteps the same size");
+DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
 // DEFINE_bool(add_x_pose_in_cost, false, "Add x0 and xf in the cost function");
 
 // Planning with optimal reduced order model and full order model
@@ -197,13 +199,18 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   // Construct
   cout << "\nConstructing optimization problem...\n";
   auto start = std::chrono::high_resolution_clock::now();
-  RomTrajOptFiveLinkRobot trajopt(
-      num_time_samples, min_dt, max_dt, Q, R, *rom, plant, state_mirror,
-      left_contacts, right_contacts, joint_name_lb_ub, init_state,
-      FLAGS_fix_all_timestep, FLAGS_zero_touchdown_impact);
+  RomTrajOptFiveLinkRobot trajopt(num_time_samples, Q, R, *rom, plant,
+                                  state_mirror, left_contacts, right_contacts,
+                                  joint_name_lb_ub, init_state,
+                                  FLAGS_zero_touchdown_impact);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
+
+  // Time step cosntraints
+  trajopt.AddTimeStepConstraint(min_dt, max_dt, FLAGS_equalize_timestep_size,
+                                FLAGS_fix_duration,
+                                h_guess.tail(1)(0) * num_time_samples.size());
 
   // Final goal position constraint
   cout << "Adding final position constraint for full-order model...\n";
@@ -226,12 +233,6 @@ int planningWithRomAndFom(int argc, char* argv[]) {
       trajopt.AddQuadraticErrorCost(1 * Id, zero_1d_vec,
                                     trajopt.xf_vars_by_mode(i).segment(2, 1));
     }
-  }
-
-  // Duration bound
-  if (FLAGS_fix_duration) {
-    trajopt.AddDurationBounds(h_guess.tail(1)(0) * num_time_samples.size(),
-                              h_guess.tail(1)(0) * num_time_samples.size());
   }
 
   // Default initial guess to avoid singularity (which messes with gradient)

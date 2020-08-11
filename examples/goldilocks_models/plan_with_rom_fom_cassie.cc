@@ -193,6 +193,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     x_guess_left_in_front = x_guess_left_in_front_raw;
     x_guess_right_in_front = x_guess_right_in_front_raw;
 
+    cout << "initial guess duration = " << duration << endl;
     // cout << "h_guess = " << h_guess << endl;
     // cout << "r_guess = " << r_guess << endl;
     // cout << "dr_guess = " << dr_guess << endl;
@@ -321,6 +322,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Duration bound
   if (FLAGS_fix_duration) {
+    cout << "Fix time duration: total duration = "
+         << h_guess.tail(1)(0) * num_time_samples.size() << endl;
     trajopt.AddDurationBounds(h_guess.tail(1)(0) * num_time_samples.size(),
                               h_guess.tail(1)(0) * num_time_samples.size());
   }

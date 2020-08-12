@@ -129,15 +129,10 @@ int DoMain(int argc, char* argv[]) {
       readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
   MatrixXd state_at_knots =
       readCSV(dir_data + std::string("state_at_knots.csv"));
-  std::vector<double> T_waypoint = CopyVectorXdToStdVector(time_at_knots);
-  std::vector<MatrixXd> y(T_waypoint.size(), MatrixXd::Zero(rom->n_y(), 1));
-  std::vector<MatrixXd> y_dot(T_waypoint.size(), MatrixXd::Zero(rom->n_y(), 1));
-  for (int i = 0; i < T_waypoint.size(); i++) {
-    y.at(i) = state_at_knots.col(i).head(rom->n_y());
-    y_dot.at(i) = state_at_knots.col(i).tail(rom->n_y());
-  }
   PiecewisePolynomial<double> desired_rom_traj =
-      PiecewisePolynomial<double>::CubicHermite(T_waypoint, y, y_dot);
+      PiecewisePolynomial<double>::CubicHermite(
+          time_at_knots, state_at_knots.topRows(rom->n_y()),
+          state_at_knots.bottomRows(rom->n_y()));
 
   // Read in the end time of the trajectory
   int knots_per_foot_step = readCSV(dir_data + "nodes_per_step.csv")(0, 0);

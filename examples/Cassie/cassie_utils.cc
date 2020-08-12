@@ -7,6 +7,7 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/tree/linear_spring_damper.h"
 #include "drake/multibody/tree/revolute_spring.h"
+#include "drake/systems/primitives/first_order_low_pass_filter.h"
 #include "drake/systems/sensors/accelerometer_sensor.h"
 #include "drake/systems/sensors/gyroscope_sensor.h"
 
@@ -176,13 +177,19 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
   const auto& accelerometer = Accelerometer<double>::AddToDiagram(
       body, X_BS, plant.gravity_field().gravity_vector(), plant, builder);
 
+  double time_constant = 0.005;
+  const auto& low_pass_filter =
+      builder->AddSystem<drake::systems::FirstOrderLowPassFilter<double>>(
+          time_constant, accelerometer.get_measurement_output_port().size());
+
   auto sensor_aggregator =
       builder->AddSystem<systems::SimCassieSensorAggregator>(plant);
-  builder->Connect(actuation_port,
-                   sensor_aggregator->get_input_port_input());
+  builder->Connect(actuation_port, sensor_aggregator->get_input_port_input());
   builder->Connect(plant.get_state_output_port(),
                    sensor_aggregator->get_input_port_state());
   builder->Connect(accelerometer.get_measurement_output_port(),
+                   low_pass_filter->get_input_port());
+  builder->Connect(low_pass_filter->get_output_port(),
                    sensor_aggregator->get_input_port_acce());
   builder->Connect(gyroscope.get_measurement_output_port(),
                    sensor_aggregator->get_input_port_gyro());

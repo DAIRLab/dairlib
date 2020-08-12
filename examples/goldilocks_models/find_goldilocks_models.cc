@@ -2048,10 +2048,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
                 task.get().data(), task.get().size());
             previous_task[sample_idx] = task_vectorxd;
             // Store task in file
-            prefix = to_string(iter)+"_"+
-                to_string(sample_idx+
-                    task_gen_expansion.num_extending_task_space()*
-                        task_gen->total_sample_number())+"_";
+            if(iter==0){
+              prefix = to_string(iter)+"_"+ to_string(sample_idx)+"_";
+            }
+            else{
+              prefix = to_string(iter)+"_"+
+                  to_string(sample_idx+
+                      (task_gen_expansion.num_extending_task_space()-1)*
+                          task_gen->total_sample_number())+"_";
+            }
             writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
           }
           else {
@@ -2099,21 +2104,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better
           //  solution?
-
-          //set the index of saving the trajectory optimization results
-          if(task_gen_mediate.currently_find_mediate_sample()){
-            prefix = to_string(iter)+"_"+
-                to_string(sample_idx+task_gen->total_sample_number())+"_";
-          }
-          else if (task_gen_expansion.currently_extend_task_space()){
-            prefix = to_string(iter)+"_"+
-                to_string(sample_idx+
-                task_gen_expansion.num_extending_task_space()*
-                    task_gen->total_sample_number())+"_";
-          }
-          else{
-            prefix = to_string(iter)+"_"+to_string(sample_idx)+"_";
-          }
           // Some inner loop setting
           inner_loop_setting.n_node = n_node_vec[sample_idx];
           inner_loop_setting.max_iter = max_inner_iter_pass_in;

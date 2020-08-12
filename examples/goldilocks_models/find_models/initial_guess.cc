@@ -93,11 +93,15 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
       // we ca only use the solution in iteration 0
       past_iter = 0;
       num_sample_in_iteration = total_sample_num;
+      initial_file_name = to_string(iter) + "_" +
+          to_string(sample)+string("_initial_guess.csv");
     }
     else{
       past_iter = 1;
       num_sample_in_iteration = total_sample_num*
           (task_gen_expansion.num_extending_task_space()-1);
+      initial_file_name = to_string(iter) + "_" +
+          to_string(num_sample_in_iteration+sample)+string("_initial_guess.csv");
     }
 
     // take out corresponding solution and store it in each column of w_task
@@ -116,8 +120,6 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     // calculate the weighted sum of all past iterations
     initial_guess = CalculateInterpolation(weight_task, w_task);
     //    save initial guess and set init file
-    initial_file_name = to_string(iter) + "_" +
-        to_string(num_sample_in_iteration+sample)+string("_initial_guess.csv");
     writeCSV(directory + initial_file_name, initial_guess);
   }
   else{

@@ -13,3 +13,15 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "rom_traj_receiver",
+    srcs = ["rom_traj_receiver.cc"],
+    hdrs = ["rom_traj_receiver.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

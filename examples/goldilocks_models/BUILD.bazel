@@ -102,6 +102,7 @@ cc_binary(
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie:simulator_drift",
         "//examples/Cassie/osc",
+        "//examples/goldilocks_models/controller:rom_traj_receiver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",

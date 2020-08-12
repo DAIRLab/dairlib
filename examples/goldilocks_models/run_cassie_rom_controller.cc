@@ -6,6 +6,7 @@
 #include <string>
 #include <gflags/gflags.h>
 
+#include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
@@ -13,6 +14,8 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/goldilocks_models/controller/rom_traj_receiver.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -21,8 +24,10 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -47,7 +52,9 @@ using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
+using drake::trajectories::PiecewisePolynomial;
 
+using systems::OutputVector;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::OptimalRomTrackingData;
@@ -56,7 +63,8 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
+DEFINE_int32(iter, 29, "The iteration # of the theta that you use");
+DEFINE_bool(start_with_right_stance, false, "");
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -68,9 +76,12 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
+
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
+
+DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -104,24 +115,34 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant_wo_springs);
   auto right_heel = RightToeRear(plant_wo_springs);
 
-  // Build COM reduced-order model
-  // Basis for mapping function (dependent on the robot)
-  MonomialFeatures mapping_basis(2, plant_wo_springs.num_positions(), {3, 4, 5},
-                                 "mapping basis");
-  mapping_basis.PrintInfo();
-  // Basis for dynamic function
-  MonomialFeatures dynamic_basis(2, 2 * testing::Com::kDimension, {},
-                                 "dynamic basis");
-  dynamic_basis.PrintInfo();
-  // Construct reduced-order model
-  testing::Com com(plant_wo_springs, mapping_basis, dynamic_basis);
-  ReducedOrderModel* rom = &com;
-  cout << "Construct reduced-order model (" << rom->name()
-       << ") with parameters\n";
-  cout << "n_y = " << rom->n_y() << ", n_tau = " << rom->n_tau() << endl;
-  cout << "B_tau = \n" << rom->B() << "\n";
-  cout << "n_feature_y = " << rom->n_feature_y() << endl;
-  cout << "n_feature_yddot = " << rom->n_feature_yddot() << endl;
+  // Reduced order model
+  const std::string dir_model =
+      "../dairlib_data/goldilocks_models/planning/robot_1/models/";
+  std::unique_ptr<ReducedOrderModel> rom =
+      CreateRom(4 /*rom_option*/, 1 /*robot_option*/, plant_wo_springs, true);
+  ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
+
+  // Get desired traj from ROM planner result
+  const std::string dir_data =
+      "../dairlib_data/goldilocks_models/planning/robot_1/data/";
+  VectorXd time_at_knots =
+      readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
+  MatrixXd state_at_knots =
+      readCSV(dir_data + std::string("state_at_knots.csv"));
+  std::vector<double> T_waypoint = CopyVectorXdToStdVector(time_at_knots);
+  std::vector<MatrixXd> y(T_waypoint.size(), MatrixXd::Zero(rom->n_y(), 1));
+  std::vector<MatrixXd> y_dot(T_waypoint.size(), MatrixXd::Zero(rom->n_y(), 1));
+  for (int i = 0; i < T_waypoint.size(); i++) {
+    y.at(i) = state_at_knots.col(i).head(rom->n_y());
+    y_dot.at(i) = state_at_knots.col(i).tail(rom->n_y());
+  }
+  PiecewisePolynomial<double> desired_rom_traj =
+      PiecewisePolynomial<double>::CubicHermite(T_waypoint, y, y_dot);
+
+  // Read in the end time of the trajectory
+  int knots_per_foot_step = readCSV(dir_data + "nodes_per_step.csv")(0, 0);
+  double end_time_of_first_step =
+      readCSV(dir_data + "time_at_knots.csv")(knots_per_foot_step, 0);
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -170,7 +191,7 @@ int DoMain(int argc, char* argv[]) {
                   simulator_drift->get_input_port_state());
 
   // Create human high-level control
-  Eigen::Vector2d global_target_position(5, 0);
+  Eigen::Vector2d global_target_position(1, 0);
   Eigen::Vector2d params_of_no_turning(5, 1);
   // Logistic function 1/(1+5*exp(x-1))
   // The function ouputs 0.0007 when x = 0
@@ -194,19 +215,31 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  double left_support_duration = 0.35;
-  double right_support_duration = 0.35;
+  double left_support_duration = end_time_of_first_step;
+  double right_support_duration = end_time_of_first_step;
   double double_support_duration = 0.02;
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {
-    fsm_states = {left_stance_state, right_stance_state};
-    state_durations = {left_support_duration, right_support_duration};
+    if (FLAGS_start_with_right_stance) {
+      fsm_states = {right_stance_state, left_stance_state};
+      state_durations = {right_support_duration, left_support_duration};
+    } else {
+      fsm_states = {left_stance_state, right_stance_state};
+      state_durations = {left_support_duration, right_support_duration};
+    }
   } else {
-    fsm_states = {left_stance_state, double_support_state, right_stance_state,
-                  double_support_state};
-    state_durations = {left_support_duration, double_support_duration,
-                       right_support_duration, double_support_duration};
+    if (FLAGS_start_with_right_stance) {
+      fsm_states = {right_stance_state, double_support_state, left_stance_state,
+                    double_support_state};
+      state_durations = {right_support_duration, double_support_duration,
+                         left_support_duration, double_support_duration};
+    } else {
+      fsm_states = {left_stance_state, double_support_state, right_stance_state,
+                    double_support_state};
+      state_durations = {left_support_duration, double_support_duration,
+                         right_support_duration, double_support_duration};
+    }
   }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_springs, fsm_states, state_durations);
@@ -285,6 +318,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(deviation_from_cp->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
 
+  // Create optimal rom trajectory generator
+  auto optimal_rom_traj_gen =
+      builder.AddSystem<OptimalRoMTrajReceiver>();
+
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_wo_springs, context_w_spr.get(),
@@ -352,9 +389,15 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  OptimalRomTrackingData center_of_mass_traj("rom_lipm_traj", K_p_com, K_d_com,
-                                             W_com, plant_w_springs,
-                                             plant_wo_springs, *rom);
+  int robot_option = 1;
+  StateMirror state_mirror(
+      MirrorPosIndexMap(plant_wo_springs, robot_option),
+      MirrorPosSignChangeSet(plant_wo_springs, robot_option),
+      MirrorVelIndexMap(plant_wo_springs, robot_option),
+      MirrorVelSignChangeSet(plant_wo_springs, robot_option));
+  OptimalRomTrackingData center_of_mass_traj(
+      "rom_lipm_traj", K_p_com, K_d_com, W_com, plant_w_springs,
+      plant_wo_springs, *rom, FLAGS_start_with_right_stance, state_mirror);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
@@ -421,7 +464,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(lipm_traj_generator->get_output_port(0),
+  builder.Connect(optimal_rom_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("rom_lipm_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));

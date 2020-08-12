@@ -88,7 +88,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
     // In this iteration, the task space is gradually extended
     // Considering that the theta are all same for these iteration,
     // we only consider task in interpolation.
-
+    DRAKE_DEMAND(task_gen_expansion.num_extending_task_space()>0);
     if(task_gen_expansion.num_extending_task_space()==1){
       // we ca only use the solution in iteration 0
       past_iter = 0;

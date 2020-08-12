@@ -1439,7 +1439,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   MediateTasksGenerator task_gen_mediate = MediateTasksGenerator
       (mediate_sample_number,task_gen->dim());
   ExpansionTasksGenerator task_gen_expansion ;
-  if(is_grid_task) {
+  if(is_grid_task||(FLAGS_iter_start>1)) {
     task_gen_expansion= ExpansionTasksGenerator
         (0,false);
   }
@@ -1795,7 +1795,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd step_direction = VectorXd::Zero(rom->n_theta());
   VectorXd prev_step_direction = VectorXd::Zero(
       rom->n_theta());  // must initialize this because of momentum term
-  if (iter_start > 1 && !task_gen_expansion.currently_extend_task_space()) {
+  if (iter_start > 1) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
     step_direction =
@@ -1806,8 +1806,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             .col(0);
   }
   double current_iter_step_size = h_step;
-  if ((iter_start > 1) && FLAGS_read_previous_step_size &&
-  !task_gen_expansion.currently_extend_task_space()) {
+  if ((iter_start > 1) && FLAGS_read_previous_step_size) {
     cout << "Reading previous step size... (will get memory issue if the file "
             "doesn't exist)\n";
     current_iter_step_size = readCSV(dir + to_string(iter_start - 1) +
@@ -2300,7 +2299,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
         task_gen_mediate.set_start_finding_mediate_sample(false);
       }
     }
-
+    //set the parameter of starting and stopping to expand task space;
+    if(task_gen_expansion.currently_extend_task_space()){
+      task_gen_expansion.set_num_extending_task_space(
+          task_gen_expansion.num_extending_task_space()+1);
+      if(task_gen_expansion.num_extending_task_space()>
+          task_gen_expansion.max_num_extending_task_space())
+      {
+        task_gen_expansion.set_currently_extend_task_space(false);
+      }
+    }
     // Update parameters, adjusting step size or extend model
     step_size_shrinked_last_loop = false;
     if (is_get_nominal) {
@@ -2310,17 +2318,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }else if(task_gen_expansion.currently_extend_task_space()){
       rerun_current_iteration = false;
       // expansion process is restricted in iteration 1
-      if(iter==1)
-      {
-        iter=iter-1;
-      }
-      task_gen_expansion.set_num_extending_task_space(
-          task_gen_expansion.num_extending_task_space()+1);
-      if(task_gen_expansion.num_extending_task_space()==
-          task_gen_expansion.max_num_extending_task_space())
-      {
-        task_gen_expansion.set_currently_extend_task_space(false);
-      }
+      DRAKE_DEMAND(iter==1);
+      iter=iter-1;
       continue;
     }
     else if (extend_model_this_iter) {  // Extend the model

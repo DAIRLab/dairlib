@@ -173,11 +173,12 @@ class ExpansionTasksGenerator{
 
   vector<double> NewTask(string dir,int sample_idx,const TasksGenerator* task_gen);
 
+  // Getter
   bool currently_extend_task_space() const {return currently_extend_task_space_;}
   int num_extending_task_space() const {return num_extending_task_space_;}
   int max_num_extending_task_space() const {return max_num_extending_task_space_;}
 
-  //Setter
+  // Setter
   void set_num_extending_task_space(int num) {num_extending_task_space_ = num;}
   void set_currently_extend_task_space(bool extend)
   {currently_extend_task_space_ = extend;}

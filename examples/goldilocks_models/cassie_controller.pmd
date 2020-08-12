@@ -82,6 +82,12 @@ script "run-rom-walking" {
     start cmd "1.simulator for OSC controller";
 }
 
+script "run-rom-walking-test-const-traj-mirrored" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "2.rom-walking-controller (const traj, mirrored robot)";
+    start cmd "2.simulator for OSC controller (with init state, mirrored robot)";
+}
+
 script "run-rom-walking-test-const-traj" {
     run_script "start-operator-simulation-floating-base";
     start cmd "1.rom-walking-controller (const traj)";

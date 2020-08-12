@@ -3,16 +3,31 @@ group "1.controllers" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
         host = "localhost";
     }
-    cmd "2.rom-test-walking-controller1" {
+    cmd "2.rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller";
+        host = "localhost";
+    }
+}
+
+group "3.test rom traj tracking" {
+    cmd "0.rom-walking-controller (with lipm)" {
         exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test1";
         host = "localhost";
     }
-    cmd "2.rom-test-walking-controller2" {
+    cmd "1.rom-walking-controller (const traj)" {
         exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2 --iter=29";
         host = "localhost";
     }
-    cmd "3.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller";
+    cmd "1.simulator for OSC controller (with init state)" {
+        exec = "bazel-bin/examples/goldilocks_models/test/multibody_sim_for_test --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0";
+        host = "localhost";
+    }
+    cmd "2.simulator for OSC controller (with init state, mirrored robot)" {
+        exec = "bazel-bin/examples/goldilocks_models/test/multibody_sim_for_test --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0 --start_with_right_stance=true";
+        host = "localhost";
+    }
+    cmd "2.rom-walking-controller (const traj, mirrored robot)" {
+        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2 --iter=29 --start_with_right_stance=true";
         host = "localhost";
     }
 }
@@ -24,10 +39,6 @@ group "2.drake-simulator" {
     }
     cmd "1.simulator for OSC controller" {
         exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
-        host = "localhost";
-    }
-    cmd "2.simulator for OSC controller (init state)" {
-        exec = "bazel-bin/examples/goldilocks_models/test/multibody_sim_for_test --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0";
         host = "localhost";
     }
 }
@@ -65,21 +76,21 @@ script "run-original-walking" {
     start cmd "1.simulator for OSC controller";
 }
 
-script "run-rom-test-walking1" {
+script "run-rom-walking" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "2.rom-test-walking-controller1";
+    start cmd "2.rom-walking-controller";
     start cmd "1.simulator for OSC controller";
 }
 
-script "run-rom-test-walking2" {
+script "run-rom-walking-test-const-traj" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "2.rom-test-walking-controller2";
-    start cmd "2.simulator for OSC controller (init state)";
+    start cmd "1.rom-walking-controller (const traj)";
+    start cmd "1.simulator for OSC controller (with init state)";
 }
 
-script "run-rom-walking" {
+script "run-rom-walking-test-w-lipm" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "3.rom-walking-controller";
+    start cmd "0.rom-walking-controller (with lipm)";
     start cmd "1.simulator for OSC controller";
 }
 

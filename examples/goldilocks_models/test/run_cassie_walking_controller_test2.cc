@@ -2,6 +2,9 @@
 // We use this script to test the performance of tracking a planned traj
 // We only track for the first step
 
+// This script also test the tracking for the mirror configuration (that is,
+// when the robot is in right support phase)
+
 #include <string>
 #include <gflags/gflags.h>
 
@@ -62,6 +65,7 @@ using systems::controllers::TransTaskSpaceTrackingData;
 using multibody::JwrtqdotToJwrtv;
 
 DEFINE_int32(iter, 29, "The iteration # of the theta that you use");
+DEFINE_bool(start_with_right_stance, false, "");
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "

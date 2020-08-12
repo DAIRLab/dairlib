@@ -6,8 +6,9 @@
 #include <drake/common/trajectories/trajectory.h>
 #include <drake/multibody/plant/multibody_plant.h>
 
-#include "systems/framework/output_vector.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -427,7 +428,10 @@ class OptimalRomTrackingData final : public OscTrackingData {
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      const goldilocks_models::ReducedOrderModel& rom);
+      const goldilocks_models::ReducedOrderModel& rom,
+      bool mirror_robot_state = false,
+      goldilocks_models::StateMirror state_mirror =
+          goldilocks_models::StateMirror());
 
  private:
   void UpdateYAndError(
@@ -444,9 +448,16 @@ class OptimalRomTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  const goldilocks_models::ReducedOrderModel& rom_;
-};
+  void MirrorStateAndSetContextIfNew(const Eigen::VectorXd& x_wo_spr);
 
+  const goldilocks_models::ReducedOrderModel& rom_;
+  bool mirror_robot_state_;
+  goldilocks_models::StateMirror state_mirror_;
+
+  Eigen::VectorXd x_wo_spr_;  // key
+  Eigen::VectorXd x_wo_spr_mirrored_;
+  std::unique_ptr<drake::systems::Context<double>> context_wo_spr_mirrored_;
+};
 
 }  // namespace controllers
 }  // namespace systems

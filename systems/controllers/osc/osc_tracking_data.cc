@@ -1,8 +1,8 @@
 #include "systems/controllers/osc/osc_tracking_data.h"
 
-#include <chrono>
 #include <math.h>
 #include <algorithm>
+#include <chrono>
 #include <drake/multibody/plant/multibody_plant.h>
 #include "multibody/multibody_utils.h"
 
@@ -24,11 +24,11 @@ using std::vector;
 
 namespace dairlib::systems::controllers {
 
+using goldilocks_models::ReducedOrderModel;
+using multibody::JwrtqdotToJwrtv;
 using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
 using multibody::WToQuatDotMap;
-using multibody::JwrtqdotToJwrtv;
-using goldilocks_models::ReducedOrderModel;
 
 /**** OscTrackingData ****/
 OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
@@ -145,7 +145,6 @@ void OscTrackingData::CheckOscTrackingData() {
 void OscTrackingData::UpdateJAndJdotVForUnitTest(
     const Eigen::VectorXd& x_wo_spr,
     drake::systems::Context<double>& context_wo_spr) {
-
   auto start = std::chrono::high_resolution_clock::now();
   UpdateJ(x_wo_spr, context_wo_spr);
   auto finish = std::chrono::high_resolution_clock::now();
@@ -481,22 +480,45 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
 OptimalRomTrackingData::OptimalRomTrackingData(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
-    const MultibodyPlant<double>& plant_wo_spr, const ReducedOrderModel& rom)
+    const MultibodyPlant<double>& plant_wo_spr, const ReducedOrderModel& rom,
+    bool mirror_robot_state, goldilocks_models::StateMirror state_mirror)
     : OscTrackingData(name, rom.n_y(), rom.n_y(), K_p, K_d, W, plant_w_spr,
                       plant_wo_spr, true),
-      rom_(rom) {}
+      rom_(rom),
+      state_mirror_(state_mirror) {
+  if (mirror_robot_state) {
+    x_wo_spr_ = VectorXd::Zero(plant_wo_spr.num_positions() +
+                               plant_wo_spr.num_velocities());
+    x_wo_spr_mirrored_ = VectorXd::Zero(plant_wo_spr.num_positions() +
+                                        plant_wo_spr.num_velocities());
+    context_wo_spr_mirrored_ = plant_wo_spr.CreateDefaultContext();
+  }
+}
 
 void OptimalRomTrackingData::UpdateYAndError(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
-  y_ = rom_.EvalMappingFunc(x_wo_spr.head(plant_wo_spr_.num_positions()),
-                            context_wo_spr);
+  if (mirror_robot_state_) {
+    MirrorStateAndSetContextIfNew(x_wo_spr);
+    y_ = rom_.EvalMappingFunc(x_wo_spr_mirrored_, *context_wo_spr_mirrored_);
+  } else {
+    y_ = rom_.EvalMappingFunc(x_wo_spr.head(plant_wo_spr_.num_positions()),
+                              context_wo_spr);
+  }
   error_y_ = y_des_ - y_;
 }
 void OptimalRomTrackingData::UpdateYdotAndError(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
-  ydot_ = rom_.EvalMappingFuncJV(x_wo_spr.head(plant_wo_spr_.num_positions()),
-                                 x_wo_spr.tail(plant_wo_spr_.num_velocities()),
-                                 context_wo_spr);
+  if (mirror_robot_state_) {
+    MirrorStateAndSetContextIfNew(x_wo_spr);
+    ydot_ = rom_.EvalMappingFuncJV(
+        x_wo_spr_mirrored_.head(plant_wo_spr_.num_positions()),
+        x_wo_spr_mirrored_.tail(plant_wo_spr_.num_velocities()),
+        *context_wo_spr_mirrored_);
+  } else {
+    ydot_ = rom_.EvalMappingFuncJV(
+        x_wo_spr.head(plant_wo_spr_.num_positions()),
+        x_wo_spr.tail(plant_wo_spr_.num_velocities()), context_wo_spr);
+  }
   error_ydot_ = ydot_des_ - ydot_;
 }
 void OptimalRomTrackingData::UpdateYddotDes() {
@@ -504,17 +526,57 @@ void OptimalRomTrackingData::UpdateYddotDes() {
 }
 void OptimalRomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                      const Context<double>& context_wo_spr) {
-  VectorXd q = x_wo_spr.head(plant_wo_spr_.num_positions());
-  J_ = rom_.EvalMappingFuncJ(q, context_wo_spr);
+  if (mirror_robot_state_) {
+    MirrorStateAndSetContextIfNew(x_wo_spr);
+    J_ = rom_.EvalMappingFuncJ(
+        x_wo_spr_mirrored_.head(plant_wo_spr_.num_positions()),
+        *context_wo_spr_mirrored_);
+
+    // Mirror and negate columns of J instead of rows of vdot (to avoid changing
+    // OSC code, although operating on J is more computational expensive)
+    drake::MatrixX<double> original_J = J_;
+    for (auto& index_pair : state_mirror_.get_mirror_vel_index_map()) {
+      J_.col(index_pair.first) = original_J.col(index_pair.second);
+    }
+    for (auto& index : state_mirror_.get_mirror_vel_sign_change_set()) {
+      J_.col(index) *= -1;
+    }
+  } else {
+    J_ = rom_.EvalMappingFuncJ(x_wo_spr.head(plant_wo_spr_.num_positions()),
+                               context_wo_spr);
+  }
 }
 void OptimalRomTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
-  VectorXd q = x_wo_spr.head(plant_wo_spr_.num_positions());
-  VectorXd v = x_wo_spr.tail(plant_wo_spr_.num_velocities());
-  JdotV_ = rom_.EvalMappingFuncJdotV(q, v, context_wo_spr);
+  if (mirror_robot_state_) {
+    MirrorStateAndSetContextIfNew(x_wo_spr);
+    JdotV_ = rom_.EvalMappingFuncJdotV(
+        x_wo_spr_mirrored_.head(plant_wo_spr_.num_positions()),
+        x_wo_spr_mirrored_.tail(plant_wo_spr_.num_velocities()),
+        *context_wo_spr_mirrored_);
+  } else {
+    JdotV_ = rom_.EvalMappingFuncJdotV(
+        x_wo_spr.head(plant_wo_spr_.num_positions()),
+        x_wo_spr.tail(plant_wo_spr_.num_velocities()), context_wo_spr);
+  }
 }
 void OptimalRomTrackingData::CheckDerivedOscTrackingData() {
   DRAKE_DEMAND(GetYDim() == rom_.n_y());
+}
+
+void OptimalRomTrackingData::MirrorStateAndSetContextIfNew(
+    const Eigen::VectorXd& x_wo_spr) {
+  if (!(x_wo_spr == x_wo_spr_)) {
+    // Update key
+    x_wo_spr_ = x_wo_spr;
+    // Update mirrored state
+    x_wo_spr_mirrored_ << state_mirror_.MirrorPos(
+        x_wo_spr.head(plant_wo_spr_.num_positions())),
+        state_mirror_.MirrorVel(x_wo_spr.tail(plant_wo_spr_.num_velocities()));
+    // Update mirrored context
+    plant_wo_spr_.SetPositionsAndVelocities(context_wo_spr_mirrored_.get(),
+                                            x_wo_spr_mirrored_);
+  }
 }
 
 }  // namespace dairlib::systems::controllers

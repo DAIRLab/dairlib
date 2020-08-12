@@ -8,6 +8,7 @@
 #include <string>
 #include <gflags/gflags.h>
 
+#include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
@@ -26,7 +27,6 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
-#include "common/eigen_utils.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -86,7 +86,7 @@ DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
 class OptimalRoMTrajGen : public drake::systems::LeafSystem<double> {
  public:
-  OptimalRoMTrajGen(PiecewisePolynomial<double> desired_traj)
+  OptimalRoMTrajGen(const PiecewisePolynomial<double>& desired_traj)
       : desired_traj_(desired_traj) {
     // Provide an instance to allocate the memory first (for the output)
     PiecewisePolynomial<double> pp(VectorXd(0));
@@ -246,13 +246,25 @@ int DoMain(int argc, char* argv[]) {
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {
-    fsm_states = {left_stance_state, right_stance_state};
-    state_durations = {left_support_duration, right_support_duration};
+    if (FLAGS_start_with_right_stance) {
+      fsm_states = {right_stance_state, left_stance_state};
+      state_durations = {right_support_duration, left_support_duration};
+    } else {
+      fsm_states = {left_stance_state, right_stance_state};
+      state_durations = {left_support_duration, right_support_duration};
+    }
   } else {
-    fsm_states = {left_stance_state, double_support_state, right_stance_state,
-                  double_support_state};
-    state_durations = {left_support_duration, double_support_duration,
-                       right_support_duration, double_support_duration};
+    if (FLAGS_start_with_right_stance) {
+      fsm_states = {right_stance_state, double_support_state, left_stance_state,
+                    double_support_state};
+      state_durations = {right_support_duration, double_support_duration,
+                         left_support_duration, double_support_duration};
+    } else {
+      fsm_states = {left_stance_state, double_support_state, right_stance_state,
+                    double_support_state};
+      state_durations = {left_support_duration, double_support_duration,
+                         right_support_duration, double_support_duration};
+    }
   }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_springs, fsm_states, state_durations);
@@ -402,9 +414,15 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  OptimalRomTrackingData center_of_mass_traj("rom_lipm_traj", K_p_com, K_d_com,
-                                             W_com, plant_w_springs,
-                                             plant_wo_springs, *rom);
+  int robot_option = 1;
+  StateMirror state_mirror(
+      MirrorPosIndexMap(plant_wo_springs, robot_option),
+      MirrorPosSignChangeSet(plant_wo_springs, robot_option),
+      MirrorVelIndexMap(plant_wo_springs, robot_option),
+      MirrorVelSignChangeSet(plant_wo_springs, robot_option));
+  OptimalRomTrackingData center_of_mass_traj(
+      "rom_lipm_traj", K_p_com, K_d_com, W_com, plant_w_springs,
+      plant_wo_springs, *rom, FLAGS_start_with_right_stance, state_mirror);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;

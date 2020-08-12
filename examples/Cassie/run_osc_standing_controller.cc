@@ -174,7 +174,7 @@ int DoMain(int argc, char* argv[]) {
   // Create osc debug sender.
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+          "OSC_DEBUG_STANDING", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
   // Create desired center of mass traj
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>

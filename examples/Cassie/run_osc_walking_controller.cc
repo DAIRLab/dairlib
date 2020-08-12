@@ -277,9 +277,20 @@ int DoMain(int argc, char* argv[]) {
   // The function ouputs 0.0007 when x = 0
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
-  auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), global_target_position,
-      params_of_no_turning, FLAGS_footstep_option);
+  cassie::osc::HighLevelCommand* high_level_command;
+  if (FLAGS_use_radio) {
+    double vel_scale_rot = 0.5;
+    double vel_scale_trans = 1.0;
+    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+        plant_w_spr, context_w_spr.get(), vel_scale_rot, vel_scale_trans,
+        FLAGS_footstep_option);
+    builder.Connect(cassie_out_receiver->get_output_port(),
+                    high_level_command->get_cassie_output_port());
+  } else {
+    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+        plant_w_spr, context_w_spr.get(), global_target_position,
+        params_of_no_turning, FLAGS_footstep_option);
+  }
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
@@ -315,6 +326,8 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_input_port_state());
 
   // Create CoM trajectory generator
+  // Note that we are tracking COM acceleration instead of position and velocity
+  // because we construct the LIPM traj which starts from the current state
   double desired_com_height = 0.89;
   vector<int> unordered_fsm_states;
   vector<double> unordered_state_durations;
@@ -502,7 +515,8 @@ int DoMain(int argc, char* argv[]) {
     // Create osc debug sender.
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-            "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+            "OSC_DEBUG_WALKING", &lcm_local,
+            TriggerTypeSet({TriggerType::kForced})));
     builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   }
 

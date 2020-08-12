@@ -90,7 +90,7 @@ RomTrajOpt::RomTrajOpt(
   // Loop over modes to add more constraints
   int counter = 0;
   for (int i = 0; i < num_modes_; i++) {
-    cout << "Mode " << i << endl;
+    cout << "Mode " << i << "============================\n";
     mode_start_.push_back(counter);
 
     bool left_stance = i % 2 == 0;
@@ -236,8 +236,10 @@ void RomTrajOpt::AddTimeStepConstraint(std::vector<double> minimum_timestep,
 
       // make the timesteps between modes the same
       if (equalize_timestep_size && i != 0) {
-        AddLinearConstraint(timestep(mode_start_[i] - 1) ==
-                            timestep(mode_start_[i]));
+        if (mode_start_[i] > 0) {
+          AddLinearConstraint(timestep(mode_start_[i] - 1) ==
+              timestep(mode_start_[i]));
+        }
       }
     }
   }

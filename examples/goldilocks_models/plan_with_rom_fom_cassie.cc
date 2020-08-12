@@ -106,10 +106,12 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     min_dt.push_back(.01);
     max_dt.push_back(.3);
   }
-  int knots_first_mode = int(knots_per_mode * FLAGS_init_phase);
+  int fisrt_mode_phase_index = int(knots_per_mode * FLAGS_init_phase);
+  int knots_first_mode = knots_per_mode - fisrt_mode_phase_index;
   num_time_samples[0] = knots_first_mode;
   cout << "init_phase = " << FLAGS_init_phase << endl;
   cout << "knots_first_mode = " << knots_first_mode << endl;
+  cout << "fisrt_mode_phase_index = " << fisrt_mode_phase_index << endl;
 
   // Store data
   writeCSV(dir_data + string("n_step.csv"), n_step * VectorXd::Ones(1));
@@ -128,8 +130,6 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   if (FLAGS_disturbance != 0) {
     //    x_init(9) += FLAGS_disturbance / 1;
   }
-  int fisrt_mode_phase_index =
-      n_sample_raw - int(n_sample_raw * FLAGS_init_phase);
 
   // Testing
   std::vector<string> name_list = {"base_qw",
@@ -278,14 +278,15 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   RomTrajOptCassie trajopt(num_time_samples, Q, R, *rom, plant, state_mirror,
                            left_contacts, right_contacts, joint_name_lb_ub,
                            x_init, FLAGS_zero_touchdown_impact);
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  cout << "Construction time:" << elapsed.count() << "\n";
 
+  cout << "Other constraints/costs and initial guess=============\n";
   // Time step cosntraints
+  int n_time_samples =
+      std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
+      num_time_samples.size() + 1;
   trajopt.AddTimeStepConstraint(min_dt, max_dt, FLAGS_equalize_timestep_size,
                                 FLAGS_fix_duration,
-                                h_guess.tail(1)(0) * num_time_samples.size());
+                                h_guess(1) * (n_time_samples - 1));
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar
@@ -369,6 +370,10 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                                x_guess_left_in_front, x_guess_right_in_front,
                                final_position, fisrt_mode_phase_index);
   }
+
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  cout << "Construction time:" << elapsed.count() << "\n";
 
   // Testing
   cout << "\nChoose the best solver: "

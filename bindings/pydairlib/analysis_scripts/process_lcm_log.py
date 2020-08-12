@@ -91,7 +91,7 @@ def process_log(log, pos_map, vel_map, act_map):
         unknown_types.add(event.channel)
     if event.channel in full_log:
       full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
-    if event.channel == "CASSIE_STATE_SIMULATION":
+    if event.channel == "CASSIE_STATE_DISPATCHER":
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]
       v_temp = [[] for i in range(len(msg.velocity))]
@@ -107,7 +107,7 @@ def process_log(log, pos_map, vel_map, act_map):
       u_meas.append(u_temp)
       t_x.append(msg.utime / 1e6)
     # if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
-    if event.channel == "CASSIE_INPUT" or event.channel == "OSC_STANDING":
+    if event.channel == "CASSIE_INPUT" or event.channel == "OSC_WALKING":
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_u.append(msg.utime / 1e6)
@@ -127,7 +127,7 @@ def process_log(log, pos_map, vel_map, act_map):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    if event.channel == "OSC_DEBUG":
+    if event.channel == "OSC_DEBUG_WALKING":
       msg = dairlib.lcmt_osc_output.decode(event.data)
       osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)

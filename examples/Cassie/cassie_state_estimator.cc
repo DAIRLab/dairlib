@@ -118,10 +118,10 @@ CassieStateEstimator::CassieStateEstimator(
         joint_selection_matrices[1](joint_name.second, joint_name.second) = 1;
       }
     }
-    joint_selection_matrices[0].block(0, 0, n_fb_vel_, n_fb_vel_) =
-        MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
-    joint_selection_matrices[1].block(0, 0, n_fb_vel_, n_fb_vel_) =
-        MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
+//    joint_selection_matrices[0].block(0, 0, n_fb_vel_, n_fb_vel_) =
+//        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
+//    joint_selection_matrices[1].block(0, 0, n_fb_vel_, n_fb_vel_) =
+//        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
     std::cout << "left joint sel matrix: " << joint_selection_matrices[0]
               << std::endl;
     std::cout << "right joint sel matrix: " << joint_selection_matrices[1]

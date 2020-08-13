@@ -55,7 +55,10 @@ DEFINE_double(feas_tol, 1e-4, "");
 
 DEFINE_double(init_phase, 0,
               "The phase where the initial FOM pose is throughout the single "
-              "support period. This is used to test MPC");
+              "support period. This is used to prepare ourselves for MPC");
+DEFINE_bool(start_with_right_stance, false,
+            "The starting stance of the robot. This is used to prepare "
+            "ourselves for MPC");
 DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
 
 DEFINE_bool(log_solver_info, false,
@@ -83,6 +86,13 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   string init_file = FLAGS_init_file;
   if (!CreateFolderIfNotExist(dir_model)) return 0;
   if (!CreateFolderIfNotExist(dir_data)) return 0;
+
+
+  // TODO(yminchen): work on start_with_right_stance
+
+
+
+
 
   // Reduced order model
   std::unique_ptr<ReducedOrderModel> rom =

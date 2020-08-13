@@ -11,15 +11,15 @@
 namespace dairlib {
 namespace goldilocks_models {
 
+/// Assumption:
+/// - we assume that there is no x, y and yaw dependency in the ROM (the mapping
+/// function), because we rotate the robot state at touchdown to the origin in
+/// MPC
+
 class OptimalRomPlanner : public drake::systems::LeafSystem<double> {
  public:
-  OptimalRomPlanner(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      double desired_com_height, const std::vector<int>& unordered_fsm_states,
-      const std::vector<double>& unordered_state_durations,
-      const std::vector<std::vector<std::pair<
-          const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-          contact_points_in_each_state);
+  OptimalRomPlanner(const drake::multibody::MultibodyPlant<double>& plant,
+                    const std::vector<int>& unordered_fsm_states);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -29,36 +29,16 @@ class OptimalRomPlanner : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  // Discrete update calculates and stores the previous state transition time
-  drake::systems::EventStatus DiscreteVariableUpdate(
-      const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
-
-  void CalcTraj(const drake::systems::Context<double>& context,
+  void SolveMPC(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 
   // Port indices
   int state_port_;
+  int touchdown_state_port_;
   int fsm_port_;
 
-  // Discrete state indices
-  int prev_td_time_idx_;
-  int prev_fsm_state_idx_;
-
-  const drake::multibody::MultibodyPlant<double>& plant_;
-
-  double desired_com_height_;
-
+//  const drake::multibody::MultibodyPlant<double>& plant_;
   std::vector<int> unordered_fsm_states_;
-  std::vector<double> unordered_state_durations_;
-
-  // A list of pairs of contact body frame and contact point in each FSM state
-  const std::vector<std::vector<std::pair<
-      const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-      contact_points_in_each_state_;
-
-  const drake::multibody::BodyFrame<double>& world_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
 };
 
 }  // namespace goldilocks_models

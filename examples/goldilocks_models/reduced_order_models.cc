@@ -232,8 +232,7 @@ VectorX<double> MonomialFeatures::EvalFeatureTimeDerivatives(
   return ret;
 }
 
-drake::MatrixX<double> MonomialFeatures::EvalJwrtqdot(
-    const drake::VectorX<double>& q) const {
+MatrixX<double> MonomialFeatures::EvalJwrtqdot(const VectorX<double>& q) const {
   DRAKE_DEMAND(q.size() == n_q_);
 
   MatrixX<double> ret = MatrixX<double>::Zero(features_.size(), n_q_);
@@ -254,8 +253,8 @@ drake::MatrixX<double> MonomialFeatures::EvalJwrtqdot(
 
 /// Constructors of ReducedOrderModel
 ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
-                                     const drake::MatrixX<double>& B,
-                                     int n_feature_y, int n_feature_yddot,
+                                     const MatrixX<double>& B, int n_feature_y,
+                                     int n_feature_yddot,
                                      const MonomialFeatures& mapping_basis,
                                      const MonomialFeatures& dynamic_basis,
                                      const std::string& name)
@@ -352,8 +351,8 @@ VectorX<double> ReducedOrderModel::EvalMappingFuncJdotV(
   }
   return JdotV;
 }
-drake::MatrixX<double> ReducedOrderModel::EvalMappingFuncJ(
-    const drake::VectorX<double>& q, const Context<double>& context) const {
+MatrixX<double> ReducedOrderModel::EvalMappingFuncJ(
+    const VectorX<double>& q, const Context<double>& context) const {
   MatrixX<double> J_feat = EvalMappingFeatJ(q, context);
 
   MatrixX<double> J(n_y_, J_feat.cols());
@@ -472,8 +471,8 @@ VectorX<double> Lipm::EvalMappingFeatJV(const VectorX<double>& q,
   }
   return ret;
 }
-drake::MatrixX<double> Lipm::EvalMappingFeatJ(
-    const drake::VectorX<double>& q, const Context<double>& context) const {
+MatrixX<double> Lipm::EvalMappingFeatJ(const VectorX<double>& q,
+                                       const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
@@ -635,8 +634,8 @@ VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJV(
       mapping_basis().EvalJV(q, qdot);
   return ret;
 }
-drake::MatrixX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJ(
-    const drake::VectorX<double>& q, const Context<double>& context) const {
+MatrixX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJ(
+    const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
@@ -770,8 +769,8 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJV(
   ret << JV_st_to_CoM(2), mapping_basis().EvalJV(q, qdot);
   return ret;
 }
-drake::MatrixX<double> FixHeightAccel::EvalMappingFeatJ(
-    const drake::VectorX<double>& q, const Context<double>& context) const {
+MatrixX<double> FixHeightAccel::EvalMappingFeatJ(
+    const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
@@ -911,8 +910,8 @@ VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJV(
       mapping_basis().EvalJV(q, qdot);
   return ret;
 }
-drake::MatrixX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJ(
-    const drake::VectorX<double>& q, const Context<double>& context) const {
+MatrixX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJ(
+    const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
@@ -964,6 +963,141 @@ VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJdotV(
   return ret;
 }
 
+/// State Mirror
+StateMirror::StateMirror(std::map<int, int> mirror_pos_index_map,
+                         std::set<int> mirror_pos_sign_change_set,
+                         std::map<int, int> mirror_vel_index_map,
+                         std::set<int> mirror_vel_sign_change_set)
+    : mirror_pos_index_map_(mirror_pos_index_map),
+      mirror_pos_sign_change_set_(mirror_pos_sign_change_set),
+      mirror_vel_index_map_(mirror_vel_index_map),
+      mirror_vel_sign_change_set_(mirror_vel_sign_change_set) {}
+VectorX<double> StateMirror::MirrorPos(const VectorX<double>& q) const {
+  VectorX<double> ret = q;
+  for (auto& index_pair : mirror_pos_index_map_) {
+    ret(index_pair.first) = q(index_pair.second);
+  }
+  for (auto& index : mirror_pos_sign_change_set_) {
+    ret(index) *= -1;
+  }
+  return ret;
+}
+VectorX<double> StateMirror::MirrorVel(const VectorX<double>& v) const {
+  VectorX<double> ret = v;
+  for (auto& index_pair : mirror_vel_index_map_) {
+    ret(index_pair.first) = v(index_pair.second);
+  }
+  for (auto& index : mirror_vel_sign_change_set_) {
+    ret(index) *= -1;
+  }
+  return ret;
+}
+
+/// MirroredReducedOrderModel
+MirroredReducedOrderModel::MirroredReducedOrderModel(
+    const MultibodyPlant<double>& plant, const ReducedOrderModel& original_rom,
+    const StateMirror& state_mirror)
+    : ReducedOrderModel(original_rom),
+      plant_(plant),
+      original_rom_(original_rom),
+      state_mirror_(state_mirror),
+      x_(VectorX<double>::Zero(plant.num_positions() + plant.num_velocities())),
+      x_mirrored_(VectorX<double>::Zero(plant.num_positions() +
+                                        plant.num_velocities())),
+      context_mirrored_(plant.CreateDefaultContext()) {}
+// Copy constructor
+MirroredReducedOrderModel::MirroredReducedOrderModel(
+    const MirroredReducedOrderModel& old_obj)
+    : ReducedOrderModel(old_obj),
+      plant_(old_obj.plant()),
+      original_rom_(old_obj.original_rom()),
+      state_mirror_(old_obj.state_mirror()),
+      x_(VectorX<double>::Zero(plant_.num_positions() +
+                               plant_.num_velocities())),
+      x_mirrored_(VectorX<double>::Zero(plant_.num_positions() +
+                                        plant_.num_velocities())),
+      context_mirrored_(plant_.CreateDefaultContext()) {}
+
+MatrixX<double> MirroredReducedOrderModel::EvalMappingFuncJ(
+    const drake::VectorX<double>& q,
+    const drake::systems::Context<double>&) const {
+  MirrorPositionAndSetContextIfNew(q);
+
+  MatrixX<double> J_wrt_vm = original_rom_.EvalMappingFuncJ(
+      x_mirrored_.head(plant_.num_positions()), *context_mirrored_);
+
+  // Apply chain rules on Jacobian (wrt the original robot state instead of wrt
+  // the mirrored robot state).
+  // For computational efficiency, we don't multiple J by the second term
+  // in chain rule (which is a parse matrix containing 0, 1 and -1). Instead we
+  // swap the columns and negate columns (I think this is faster...)
+  drake::MatrixX<double> J_wrt_v = J_wrt_vm;
+  for (auto& index_pair : state_mirror_.get_mirror_vel_index_map()) {
+    J_wrt_v.col(index_pair.first) = J_wrt_vm.col(index_pair.second);
+  }
+  for (auto& index : state_mirror_.get_mirror_vel_sign_change_set()) {
+    J_wrt_v.col(index) *= -1;
+  }
+  return J_wrt_v;
+}
+
+VectorX<double> MirroredReducedOrderModel::EvalMappingFeat(
+    const VectorX<double>& q, const Context<double>&) const {
+  MirrorPositionAndSetContextIfNew(q);
+
+  return original_rom_.EvalMappingFeat(x_mirrored_.head(plant_.num_positions()),
+                                       *context_mirrored_);
+}
+VectorX<double> MirroredReducedOrderModel::EvalDynamicFeat(
+    const VectorX<double>& y, const VectorX<double>& ydot) const {
+  return original_rom_.EvalDynamicFeat(y, ydot);
+}
+VectorX<double> MirroredReducedOrderModel::EvalMappingFeatJV(
+    const VectorX<double>& q, const VectorX<double>& v,
+    const Context<double>&) const {
+  VectorX<double> x(plant_.num_positions() + plant_.num_velocities());
+  x << q, v;
+  MirrorStateAndSetContextIfNew(x);
+
+  return original_rom_.EvalMappingFeatJV(
+      x_mirrored_.head(plant_.num_positions()),
+      x_mirrored_.tail(plant_.num_velocities()), *context_mirrored_);
+}
+VectorX<double> MirroredReducedOrderModel::EvalMappingFeatJdotV(
+    const VectorX<double>& q, const VectorX<double>& v,
+    const Context<double>&) const {
+  VectorX<double> x(plant_.num_positions() + plant_.num_velocities());
+  x << q, v;
+  MirrorStateAndSetContextIfNew(x);
+
+  return original_rom_.EvalMappingFeatJdotV(
+      x_mirrored_.head(plant_.num_positions()),
+      x_mirrored_.tail(plant_.num_velocities()), *context_mirrored_);
+}
+void MirroredReducedOrderModel::MirrorPositionAndSetContextIfNew(
+    const Eigen::VectorXd& q) const {
+  if (!(q == x_.head(plant_.num_positions()))) {
+    // Update key
+    x_.head(plant_.num_positions()) = q;
+    // Update mirrored state
+    x_mirrored_.head(plant_.num_positions()) = state_mirror_.MirrorPos(q);
+    // Update mirrored context
+    plant_.SetPositionsAndVelocities(context_mirrored_.get(), x_mirrored_);
+  }
+}
+void MirroredReducedOrderModel::MirrorStateAndSetContextIfNew(
+    const Eigen::VectorXd& x) const {
+  if (!(x == x_)) {
+    // Update key
+    x_ = x;
+    // Update mirrored state
+    x_mirrored_ << state_mirror_.MirrorPos(x.head(plant_.num_positions())),
+        state_mirror_.MirrorVel(x.tail(plant_.num_velocities()));
+    // Update mirrored context
+    plant_.SetPositionsAndVelocities(context_mirrored_.get(), x_mirrored_);
+  }
+}
+
 /// 3D Center of mass model (only for testing)
 /// Note that this is not LIPM. The COM is not wrt stance foot.
 testing::Com::Com(const drake::multibody::MultibodyPlant<double>& plant,
@@ -1000,8 +1134,8 @@ testing::Com::Com(const testing::Com& old_obj)
       world_(old_obj.world()){};
 
 // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
-drake::VectorX<double> testing::Com::EvalMappingFeat(
-    const drake::VectorX<double>& q,
+VectorX<double> testing::Com::EvalMappingFeat(
+    const VectorX<double>& q,
     const drake::systems::Context<double>& context) const {
   // Get CoM position
   VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
@@ -1010,14 +1144,14 @@ drake::VectorX<double> testing::Com::EvalMappingFeat(
   feature << CoM, mapping_basis().Eval(q);
   return feature;
 };
-drake::VectorX<double> testing::Com::EvalDynamicFeat(
-    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot) const {
+VectorX<double> testing::Com::EvalDynamicFeat(
+    const VectorX<double>& y, const VectorX<double>& ydot) const {
   VectorX<double> feature(n_feature_yddot());
   cout << "Warning: EvalDynamicFeat is not implemented\n";
   return feature;
 };
-drake::VectorX<double> testing::Com::EvalMappingFeatJV(
-    const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+VectorX<double> testing::Com::EvalMappingFeatJV(
+    const VectorX<double>& q, const VectorX<double>& v,
     const drake::systems::Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
@@ -1033,8 +1167,8 @@ drake::VectorX<double> testing::Com::EvalMappingFeatJV(
   ret << JV_CoM, mapping_basis().EvalJV(q, qdot);
   return ret;
 };
-drake::VectorX<double> testing::Com::EvalMappingFeatJdotV(
-    const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+VectorX<double> testing::Com::EvalMappingFeatJdotV(
+    const VectorX<double>& q, const VectorX<double>& v,
     const drake::systems::Context<double>& context) const {
   // Get CoM JdotV
   VectorX<double> JdotV_com =
@@ -1049,8 +1183,8 @@ drake::VectorX<double> testing::Com::EvalMappingFeatJdotV(
   ret << JdotV_com, mapping_basis().EvalJdotV(q, qdot);
   return ret;
 };
-drake::MatrixX<double> testing::Com::EvalMappingFeatJ(
-    const drake::VectorX<double>& q,
+MatrixX<double> testing::Com::EvalMappingFeatJ(
+    const VectorX<double>& q,
     const drake::systems::Context<double>& context) const {
   // Get CoM J
   MatrixX<double> J_com(3, plant_.num_velocities());

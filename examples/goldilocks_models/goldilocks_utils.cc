@@ -215,37 +215,6 @@ void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
   rom->SetThetaYddot(theta_yddot);
 }
 
-StateMirror::StateMirror(std::map<int, int> mirror_pos_index_map,
-                         std::set<int> mirror_pos_sign_change_set,
-                         std::map<int, int> mirror_vel_index_map,
-                         std::set<int> mirror_vel_sign_change_set)
-    : mirror_pos_index_map_(mirror_pos_index_map),
-      mirror_pos_sign_change_set_(mirror_pos_sign_change_set),
-      mirror_vel_index_map_(mirror_vel_index_map),
-      mirror_vel_sign_change_set_(mirror_vel_sign_change_set) {}
-drake::VectorX<double> StateMirror::MirrorPos(
-    const drake::VectorX<double>& q) const {
-  drake::VectorX<double> ret = q;
-  for (auto& index_pair : mirror_pos_index_map_) {
-    ret(index_pair.first) = q(index_pair.second);
-  }
-  for (auto& index : mirror_pos_sign_change_set_) {
-    ret(index) *= -1;
-  }
-  return ret;
-}
-drake::VectorX<double> StateMirror::MirrorVel(
-    const drake::VectorX<double>& v) const {
-  drake::VectorX<double> ret = v;
-  for (auto& index_pair : mirror_vel_index_map_) {
-    ret(index_pair.first) = v(index_pair.second);
-  }
-  for (auto& index : mirror_vel_sign_change_set_) {
-    ret(index) *= -1;
-  }
-  return ret;
-}
-
 std::map<int, int> MirrorPosIndexMap(
     const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
   std::map<int, int> ret;

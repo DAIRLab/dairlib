@@ -86,37 +86,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
 // `model_iter` is the optimization iteration # of the model with we want to use
 void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
                          int model_iter);
-class StateMirror {
- public:
-  StateMirror(std::map<int, int> mirror_pos_index_map,
-              std::set<int> mirror_pos_sign_change_set,
-              std::map<int, int> mirror_vel_index_map,
-              std::set<int> mirror_vel_sign_change_set);
 
-  StateMirror() : StateMirror({}, {}, {}, {}){};
-
-  drake::VectorX<double> MirrorPos(const drake::VectorX<double>& q) const;
-  drake::VectorX<double> MirrorVel(const drake::VectorX<double>& v) const;
-
-  const std::map<int, int>& get_mirror_pos_index_map() {
-    return mirror_pos_index_map_;
-  };
-  const std::set<int>& get_mirror_pos_sign_change_set() {
-    return mirror_pos_sign_change_set_;
-  };
-  const std::map<int, int>& get_mirror_vel_index_map() {
-    return mirror_vel_index_map_;
-  };
-  const std::set<int>& get_mirror_vel_sign_change_set() {
-    return mirror_vel_sign_change_set_;
-  };
-
- private:
-  std::map<int, int> mirror_pos_index_map_;
-  std::set<int> mirror_pos_sign_change_set_;
-  std::map<int, int> mirror_vel_index_map_;
-  std::set<int> mirror_vel_sign_change_set_;
-};
+// Functions for constructing goldilocks::StateMirror
 std::map<int, int> MirrorPosIndexMap(
     const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
 std::set<int> MirrorPosSignChangeSet(

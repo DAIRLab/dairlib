@@ -82,9 +82,6 @@ class MonomialFeatures {
       second_ord_partial_diff_;
 };
 
-// TODO(yminchen): pass context into ReducedOrderModel's eval methods in order
-//  to utilize drake's caching system
-
 /// ReducedOrderModel assumes the following structures of mapping function and
 /// dynamics function
 ///   y = r(q) = Theta_r * phi_r(q)
@@ -146,11 +143,12 @@ class ReducedOrderModel {
       const drake::systems::Context<double>& context) const;
   // Recommend using EvalMappingFuncJV instead of EvalMappingFuncJ to exploit
   // the sparsity of Jacobian
-  drake::MatrixX<double> EvalMappingFuncJ(
+  virtual drake::MatrixX<double> EvalMappingFuncJ(
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const;
 
-  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+  // Pure virtual functions:
+  // evaluators for features of y, yddot, y's Jacobian and y's JdotV
   virtual drake::VectorX<double> EvalMappingFeat(
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const = 0;
@@ -168,7 +166,6 @@ class ReducedOrderModel {
       const drake::systems::Context<double>& context) const = 0;
 
   void PrintInfo() const;
-
   void CheckModelConsistency() const;
 
  private:
@@ -181,6 +178,12 @@ class ReducedOrderModel {
   int n_feature_y_;
   int n_feature_yddot_;
 
+  // TODO(yminchen): is there is reason why we cannot use reference for
+  //  MonomialFeatures? I think it's because previously I wanted to assign
+  //  defualt value in the constructor, but this is not the case anymore. I'm
+  //  making it a reference again. (pay attention to future bug)
+  //  Ok, I found why. It's because MonomialFeatures goes out of scope after we
+  //  call CreateRom()
   const MonomialFeatures mapping_basis_;
   const MonomialFeatures dynamic_basis_;
 
@@ -202,6 +205,9 @@ class Lipm : public ReducedOrderModel {
        const MonomialFeatures& dynamic_basis, int world_dim);
 
   // Copy constructor for the Clone() method
+  // TODO(yminchen): Do we need to explicitly define the copy constructor here?
+  //  (same questions to other classes in this file)
+  //  It looks like we don't, but I'm not sure why I added it
   Lipm(const Lipm&);
 
   std::unique_ptr<ReducedOrderModel> Clone() const override {
@@ -393,6 +399,114 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   // contact body frame and contact point of the swing foot
   const BodyPoint swing_contact_point_;
   bool is_quaternion_;
+};
+
+/// A class used to mirror the robot state
+class StateMirror {
+ public:
+  StateMirror(std::map<int, int> mirror_pos_index_map,
+              std::set<int> mirror_pos_sign_change_set,
+              std::map<int, int> mirror_vel_index_map,
+              std::set<int> mirror_vel_sign_change_set);
+
+  StateMirror() : StateMirror({}, {}, {}, {}){};
+
+  drake::VectorX<double> MirrorPos(const drake::VectorX<double>& q) const;
+  drake::VectorX<double> MirrorVel(const drake::VectorX<double>& v) const;
+
+  const std::map<int, int>& get_mirror_pos_index_map() const {
+    return mirror_pos_index_map_;
+  };
+  const std::set<int>& get_mirror_pos_sign_change_set() const {
+    return mirror_pos_sign_change_set_;
+  };
+  const std::map<int, int>& get_mirror_vel_index_map() const {
+    return mirror_vel_index_map_;
+  };
+  const std::set<int>& get_mirror_vel_sign_change_set() const {
+    return mirror_vel_sign_change_set_;
+  };
+
+ private:
+  std::map<int, int> mirror_pos_index_map_;
+  std::set<int> mirror_pos_sign_change_set_;
+  std::map<int, int> mirror_vel_index_map_;
+  std::set<int> mirror_vel_sign_change_set_;
+};
+
+/// A unique type of reduced order model. It is a ROM (given as an input to the
+/// constructor) but the robot's state is mirrored about the x-z plane. The
+/// mirroring is applied right before the calling the mapping function.
+/// Mathematically, let the mirror state be
+///     x_m = [q_m; v_m],
+/// and the mirror function M is defined such that (with overloaded notation)
+///     q_m = M(q), v_m = M(v) and x_m = M(x).
+/// The mirrored ROM configuration becomes
+///     y = r(q_m) = r(M(q))
+/// and the Jacobian wrt the original robot configuration becomes
+///     J = dy/dq = dr/dq_m * dq_m/dq = J * dq_m/dq
+/// where dq_m/dq is a sparse matrix containing 0, 1 and -1
+class MirroredReducedOrderModel : public ReducedOrderModel {
+ public:
+  MirroredReducedOrderModel(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const ReducedOrderModel& original_rom, const StateMirror& state_mirror);
+
+  // Copy constructor for the Clone() method
+  MirroredReducedOrderModel(const MirroredReducedOrderModel&);
+
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<MirroredReducedOrderModel>(*this);
+  }
+
+  // We override EvalMappingFuncJ for computation efficiency.
+  // We need to swap columns of Jacobian for mirroring robot state, and it's not
+  // efficient to swap cols of J_feature compared this J.
+  drake::MatrixX<double> EvalMappingFuncJ(
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>&) const final;
+
+  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+  drake::VectorX<double> EvalMappingFeat(
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>&) const final;
+  drake::VectorX<double> EvalDynamicFeat(
+      const drake::VectorX<double>& y,
+      const drake::VectorX<double>& ydot) const final;
+  drake::VectorX<double> EvalMappingFeatJV(
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>&) const final;
+  drake::VectorX<double> EvalMappingFeatJdotV(
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>&) const final;
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>&) const final {
+    // We override EvalMappingFuncJ so we don't need this function.
+    DRAKE_UNREACHABLE();
+  };
+
+  // Getters for copy constructor
+  const drake::multibody::MultibodyPlant<double>& plant() const {
+    return plant_;
+  };
+  const ReducedOrderModel& original_rom() const { return original_rom_; };
+  const StateMirror& state_mirror() const { return state_mirror_; };
+
+ private:
+  // We make MirrorXXXAndSetContextIfNew a const function because we have to
+  // call it in the EvalXXX() functions.
+  void MirrorPositionAndSetContextIfNew(const Eigen::VectorXd& q) const;
+  void MirrorStateAndSetContextIfNew(const Eigen::VectorXd& x) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const ReducedOrderModel& original_rom_;
+  const StateMirror& state_mirror_;
+
+  // We need a local context because the state are different
+  mutable Eigen::VectorXd x_;  // key
+  mutable Eigen::VectorXd x_mirrored_;
+  std::unique_ptr<drake::systems::Context<double>> context_mirrored_;
 };
 
 namespace testing {

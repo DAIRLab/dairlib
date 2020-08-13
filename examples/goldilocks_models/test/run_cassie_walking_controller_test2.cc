@@ -147,6 +147,16 @@ int DoMain(int argc, char* argv[]) {
       CreateRom(4 /*rom_option*/, 1 /*robot_option*/, plant_wo_springs, true);
   ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
 
+  // Mirrored reduced order model
+  int robot_option = 1;
+  StateMirror state_mirror(
+      MirrorPosIndexMap(plant_wo_springs, robot_option),
+      MirrorPosSignChangeSet(plant_wo_springs, robot_option),
+      MirrorVelIndexMap(plant_wo_springs, robot_option),
+      MirrorVelSignChangeSet(plant_wo_springs, robot_option));
+  MirroredReducedOrderModel mirrored_rom(plant_wo_springs, *rom,
+                                               state_mirror);
+
   // Get desired traj from ROM planner result
   const std::string dir_data =
       "../dairlib_data/goldilocks_models/planning/robot_1/data/";
@@ -409,15 +419,9 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  int robot_option = 1;
-  StateMirror state_mirror(
-      MirrorPosIndexMap(plant_wo_springs, robot_option),
-      MirrorPosSignChangeSet(plant_wo_springs, robot_option),
-      MirrorVelIndexMap(plant_wo_springs, robot_option),
-      MirrorVelSignChangeSet(plant_wo_springs, robot_option));
   OptimalRomTrackingData center_of_mass_traj(
       "rom_lipm_traj", K_p_com, K_d_com, W_com, plant_w_springs,
-      plant_wo_springs, *rom, FLAGS_start_with_right_stance, state_mirror);
+      plant_wo_springs, FLAGS_start_with_right_stance ? mirrored_rom : *rom);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;

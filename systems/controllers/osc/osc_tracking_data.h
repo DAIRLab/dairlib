@@ -428,10 +428,7 @@ class OptimalRomTrackingData final : public OscTrackingData {
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      const goldilocks_models::ReducedOrderModel& rom,
-      bool mirror_robot_state = false,
-      goldilocks_models::StateMirror state_mirror =
-          goldilocks_models::StateMirror());
+      const goldilocks_models::ReducedOrderModel& rom);
 
  private:
   void UpdateYAndError(
@@ -448,15 +445,7 @@ class OptimalRomTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  void MirrorStateAndSetContextIfNew(const Eigen::VectorXd& x_wo_spr);
-
   const goldilocks_models::ReducedOrderModel& rom_;
-  bool mirror_robot_state_;
-  goldilocks_models::StateMirror state_mirror_;
-
-  Eigen::VectorXd x_wo_spr_;  // key
-  Eigen::VectorXd x_wo_spr_mirrored_;
-  std::unique_ptr<drake::systems::Context<double>> context_wo_spr_mirrored_;
 };
 
 }  // namespace controllers

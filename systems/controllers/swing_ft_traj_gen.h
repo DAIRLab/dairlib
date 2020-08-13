@@ -105,7 +105,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   int com_port_;
   int speed_control_port_;
 
-  int prev_td_swing_foot_idx_;
+  int prev_liftoff_swing_foot_idx_;
   int prev_fsm_state_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;

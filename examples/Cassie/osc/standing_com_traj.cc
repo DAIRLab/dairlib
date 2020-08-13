@@ -69,7 +69,6 @@ void StandingComTraj::CalcDesiredTraj(
 
   // Get center of left/right feet contact points positions
   Vector3d contact_pos_sum = Vector3d::Zero();
-  Vector3d contact_vel_sum = Vector3d::Zero();
   Vector3d position;
   MatrixXd J(3, plant_.num_velocities());
   for (const auto& point_and_frame : feet_contact_points_) {

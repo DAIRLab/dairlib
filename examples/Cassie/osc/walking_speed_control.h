@@ -3,6 +3,7 @@
 #include "systems/framework/output_vector.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 
 namespace dairlib {
 namespace cassie {
@@ -42,15 +43,22 @@ namespace osc {
 /// Requirement: quaternion floating-based Cassie only
 class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
  public:
-  WalkingSpeedControl(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context, int footstep_option);
+  WalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
+                      drake::systems::Context<double>* context,
+                      int footstep_option, double swing_phase_duration = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_des_hor_vel() const {
     return this->get_input_port(xy_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
+      const {
+    return this->get_input_port(fsm_switch_time_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_com() const {
+    return this->get_input_port(com_port_);
   }
 
  private:
@@ -62,11 +70,16 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
 
+  double swing_phase_duration_;
+  bool is_using_predicted_com_;
+
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
 
   int state_port_;
   int xy_port_;
+  int fsm_switch_time_port_;
+  int com_port_;
 
   // Foot placement control (Sagital) parameters
   double k_fp_ff_sagital_;

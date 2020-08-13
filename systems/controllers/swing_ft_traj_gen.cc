@@ -74,6 +74,8 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
                                                         plant.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_switch_time_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
   if (is_using_predicted_com) {
@@ -96,11 +98,10 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
   DeclarePerStepDiscreteUpdateEvent(
       &SwingFootTrajGenerator::DiscreteVariableUpdate);
   // The swing foot position in the beginning of the swing phase
-  prev_td_swing_foot_idx_ = this->DeclareDiscreteState(3);
-  // The time of the last touch down
-  prev_td_time_idx_ = this->DeclareDiscreteState(1);
+  prev_liftoff_swing_foot_idx_ = this->DeclareDiscreteState(3);
   // The last state of FSM
-  prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
+  prev_fsm_state_idx_ = this->DeclareDiscreteState(
+      -std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
 
   // Construct maps
   duration_map_.insert({left_right_support_fsm_states.at(0),
@@ -138,20 +139,13 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
   if ((fsm_state(0) != prev_fsm_state(0)) && is_single_support_phase) {
     prev_fsm_state(0) = fsm_state(0);
 
-    auto swing_foot_pos_td =
-        discrete_state->get_mutable_vector(prev_td_swing_foot_idx_)
+    auto swing_foot_pos_at_liftoff =
+        discrete_state->get_mutable_vector(prev_liftoff_swing_foot_idx_)
             .get_mutable_value();
-    auto prev_td_time = discrete_state->get_mutable_vector(prev_td_time_idx_)
-                            .get_mutable_value();
 
     // Read in current state
     const OutputVector<double>* robot_output =
         (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-
-    // Get time
-    double timestamp = robot_output->get_timestamp();
-    double current_time = static_cast<double>(timestamp);
-    prev_td_time(0) = current_time;
 
     VectorXd q = robot_output->GetPositions();
     multibody::SetPositionsIfNew<double>(plant_, q, context_);
@@ -159,7 +153,7 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
     // Swing foot position (Forward Kinematics) at touchdown
     auto swing_foot = swing_foot_map_.at(int(fsm_state(0)));
     plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
-                               world_, &swing_foot_pos_td);
+                               world_, &swing_foot_pos_at_liftoff);
   }
 
   return EventStatus::Succeeded();
@@ -320,10 +314,11 @@ void SwingFootTrajGenerator::CalcTrajs(
           traj);
 
   // Get discrete states
-  const auto swing_foot_pos_td =
-      context.get_discrete_state(prev_td_swing_foot_idx_).get_value();
-  const auto prev_td_time =
-      context.get_discrete_state(prev_td_time_idx_).get_value();
+  const auto swing_foot_pos_at_liftoff =
+      context.get_discrete_state(prev_liftoff_swing_foot_idx_).get_value();
+  // Read in finite state machine switch time
+  VectorXd prev_lift_off_time =
+      this->EvalVectorInput(context, fsm_switch_time_port_)->get_value();
 
   // Read in finite state machine
   auto fsm_output =
@@ -349,9 +344,9 @@ void SwingFootTrajGenerator::CalcTrajs(
     auto current_time = static_cast<double>(timestamp);
 
     // Get the start time and the end time of the current stance phase
-    double start_time_of_this_interval = prev_td_time(0);
+    double start_time_of_this_interval = prev_lift_off_time(0);
     double end_time_of_this_interval =
-        prev_td_time(0) + duration_map_.at(int(fsm_state(0)));
+        prev_lift_off_time(0) + duration_map_.at(int(fsm_state(0)));
 
     // Ensure current_time < end_time_of_this_interval to avoid error in
     // creating trajectory.
@@ -367,7 +362,7 @@ void SwingFootTrajGenerator::CalcTrajs(
                                     &stance_foot_height);
 
     // Swing foot position at touchdown
-    Vector3d init_swing_foot_pos = swing_foot_pos_td;
+    Vector3d init_swing_foot_pos = swing_foot_pos_at_liftoff;
 
     // Assign traj
     *pp_traj = CreateSplineForSwingFoot(

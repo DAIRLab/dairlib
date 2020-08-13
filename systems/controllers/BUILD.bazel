@@ -105,6 +105,15 @@ cc_library(
 )
 
 cc_library(
+    name = "fsm_event_time",
+    srcs = ["fsm_event_time.cc"],
+    hdrs = ["fsm_event_time.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "lipm_traj_gen",
     srcs = ["lipm_traj_gen.cc"],
     hdrs = ["lipm_traj_gen.h"],

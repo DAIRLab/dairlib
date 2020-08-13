@@ -9,6 +9,7 @@
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
@@ -325,6 +326,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 
+  // Create leafsystem that record the switching time of the FSM
+  std::vector<int> single_support_states = {left_stance_state,
+                                            right_stance_state};
+  auto event_time = builder.AddSystem<systems::FiniteStateMachineEventTime>(
+      single_support_states);
+  builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
+
   // Create CoM trajectory generator
   // Note that we are tracking COM acceleration instead of position and velocity
   // because we construct the LIPM traj which starts from the current state
@@ -353,17 +361,27 @@ int DoMain(int argc, char* argv[]) {
       contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
+  builder.Connect(event_time->get_output_port_event_time(),
+                  lipm_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
+  bool use_predicted_com_vel = true;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
-          plant_w_spr, context_w_spr.get(), FLAGS_footstep_option);
+          plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
+          use_predicted_com_vel ? left_support_duration : 0);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
                   walking_speed_control->get_input_port_state());
+  if (use_predicted_com_vel) {
+    builder.Connect(lipm_traj_generator->get_output_port(0),
+                    walking_speed_control->get_input_port_com());
+    builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                    walking_speed_control->get_input_port_fsm_switch_time());
+  }
 
   // Create swing leg trajectory generator (capture point)
   // Since the ground is soft in the simulation, we raise the desired final
@@ -372,7 +390,6 @@ int DoMain(int argc, char* argv[]) {
   // to the hardware testing.
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
-  double max_CoM_to_CP_dist = 0.5;
   double max_CoM_to_footstep_dist = 0.4;
 
   vector<int> left_right_support_fsm_states = {left_stance_state,
@@ -391,6 +408,8 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_footstep_option);
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                  swing_ft_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port(0),

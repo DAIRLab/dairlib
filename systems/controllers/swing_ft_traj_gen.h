@@ -68,6 +68,10 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
+      const {
+    return this->get_input_port(fsm_switch_time_port_);
+  }
   const drake::systems::InputPort<double>& get_input_port_com() const {
     return this->get_input_port(com_port_);
   }
@@ -97,11 +101,11 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
 
   int state_port_;
   int fsm_port_;
+  int fsm_switch_time_port_;
   int com_port_;
   int speed_control_port_;
 
-  int prev_td_swing_foot_idx_;
-  int prev_td_time_idx_;
+  int prev_liftoff_swing_foot_idx_;
   int prev_fsm_state_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;

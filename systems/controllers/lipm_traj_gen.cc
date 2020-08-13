@@ -56,6 +56,9 @@ LIPMTrajGenerator::LIPMTrajGenerator(
                                                         plant.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_switch_time_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp_part(VectorXd(0));
   MatrixXd K = MatrixXd::Ones(0, 0);
@@ -65,40 +68,6 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   this->DeclareAbstractOutputPort("lipm_traj", traj_inst,
                                   &LIPMTrajGenerator::CalcTraj);
-
-  // Discrete state event
-  DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);
-  // The time of the last touch down
-  prev_td_time_idx_ = this->DeclareDiscreteState(1);
-  // The last state of FSM
-  prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
-}
-
-EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
-    const Context<double>& context,
-    DiscreteValues<double>* discrete_state) const {
-  // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
-
-  auto prev_td_time =
-      discrete_state->get_mutable_vector(prev_td_time_idx_).get_mutable_value();
-  auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-                            .get_mutable_value();
-
-  if (fsm_state(0) != prev_fsm_state(0)) {  // if at touchdown
-    prev_fsm_state(0) = fsm_state(0);
-
-    // Get time
-    const OutputVector<double>* robot_output =
-        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-    double timestamp = robot_output->get_timestamp();
-    double current_time = static_cast<double>(timestamp);
-    prev_td_time(0) = current_time;
-  }
-
-  return EventStatus::Succeeded();
 }
 
 void LIPMTrajGenerator::CalcTraj(
@@ -113,6 +82,9 @@ void LIPMTrajGenerator::CalcTraj(
   const BasicVector<double>* fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
+  // Read in finite state machine switch time
+  VectorXd prev_event_time =
+      this->EvalVectorInput(context, fsm_switch_time_port_)->get_value();
 
   // Find fsm_state in unordered_fsm_states_
   auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
@@ -124,16 +96,12 @@ void LIPMTrajGenerator::CalcTraj(
     mode_index = 0;
   }
 
-  // Get discrete states
-  const auto prev_td_time =
-      context.get_discrete_state(prev_td_time_idx_).get_value();
-
   // Get time
   double timestamp = robot_output->get_timestamp();
   auto current_time = static_cast<double>(timestamp);
 
   double end_time_of_this_fsm_state =
-      prev_td_time(0) + unordered_state_durations_[mode_index];
+      prev_event_time(0) + unordered_state_durations_[mode_index];
   // Ensure "current_time < end_time_of_this_fsm_state" to avoid error in
   // creating trajectory.
   if ((end_time_of_this_fsm_state <= current_time + 0.001)) {

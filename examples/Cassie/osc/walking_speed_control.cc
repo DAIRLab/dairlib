@@ -24,6 +24,7 @@ using drake::multibody::JacobianWrtVariable;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
+using drake::trajectories::PiecewisePolynomial;
 
 namespace dairlib {
 namespace cassie {
@@ -31,11 +32,13 @@ namespace osc {
 
 WalkingSpeedControl::WalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
-    Context<double>* context, int footstep_option)
+    Context<double>* context, int footstep_option, double swing_phase_duration)
     : plant_(plant),
-    context_(context),
+      context_(context),
       world_(plant_.world_frame()),
-      pelvis_(plant_.GetBodyByName("pelvis")) {
+      pelvis_(plant_.GetBodyByName("pelvis")),
+      swing_phase_duration_(swing_phase_duration),
+      is_using_predicted_com_(swing_phase_duration > 0) {
   DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
 
   // Input/Output Setup
@@ -47,6 +50,18 @@ WalkingSpeedControl::WalkingSpeedControl(
   xy_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(2),
                                 &WalkingSpeedControl::CalcFootPlacement);
+
+  PiecewisePolynomial<double> pp(VectorXd::Zero(0));
+  if (is_using_predicted_com_) {
+    fsm_switch_time_port_ =
+        this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+
+    com_port_ =
+        this->DeclareAbstractInputPort(
+                "com_traj",
+                drake::Value<drake::trajectories::Trajectory<double>>(pp))
+            .get_index();
+  }
 
   // TODO(yminchen): Gains are not tuned yet. Do we need two sets of gains for
   //  moving forward and backward?
@@ -66,8 +81,8 @@ WalkingSpeedControl::WalkingSpeedControl(
   }
 }
 
-void WalkingSpeedControl::CalcFootPlacement(
-    const Context<double>& context, BasicVector<double>* output) const {
+void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
+                                            BasicVector<double>* output) const {
   // Read in finite state machine
   const BasicVector<double>* des_hor_vel_output =
       (BasicVector<double>*)this->EvalVectorInput(context, xy_port_);
@@ -81,11 +96,27 @@ void WalkingSpeedControl::CalcFootPlacement(
 
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
-  // Get center of mass position and velocity
-  MatrixXd J(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      *context_, JacobianWrtVariable::kV, world_, world_, &J);
-  Vector3d com_vel = J * v;
+  Vector3d com_vel;
+  if (is_using_predicted_com_) {
+    // Get the predicted center of mass velocity
+    VectorXd prev_lift_off_time =
+        this->EvalVectorInput(context, fsm_switch_time_port_)->get_value();
+    double end_time_of_swing_phase =
+        prev_lift_off_time(0) + swing_phase_duration_;
+
+    const drake::AbstractValue* com_traj_output =
+        this->EvalAbstractInput(context, com_port_);
+    DRAKE_ASSERT(com_traj_output != nullptr);
+    const auto& com_traj =
+        com_traj_output->get_value<drake::trajectories::Trajectory<double>>();
+    com_vel = com_traj.MakeDerivative(1)->value(end_time_of_swing_phase);
+  } else {
+    // Get the current center of mass velocity
+    MatrixXd J(3, plant_.num_velocities());
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    com_vel = J * v;
+  }
 
   // Extract quaternion from floating base position
   Quaterniond Quat(q(0), q(1), q(2), q(3));

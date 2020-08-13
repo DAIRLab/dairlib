@@ -220,11 +220,17 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
     else{
       *init_file = to_string(iter) + "_mediate_initial_guess.csv";
     }
-  } else if (sample_idx_to_help >= 0) {
+  }else if (sample_idx_to_help >= 0) {
       *init_file = to_string(iter) + "_" + to_string(sample_idx_to_help) +
           string("_w.csv");
   } else if (rerun_current_iteration) {
-    *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
+    if(iter==1){
+      //currently extend the task space
+      *init_file = to_string(iter) + "_" + to_string(
+          task_gen_expansion.expansion_sample_index(sample))+ string("_w.csv");
+    }else{
+      *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
+    }
   } else {
     if (non_grid_task) {
       *init_file = SetInitialGuessByInterpolation(
@@ -1441,11 +1447,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   ExpansionTasksGenerator task_gen_expansion ;
   if(is_grid_task||(FLAGS_iter_start>1)) {
     task_gen_expansion= ExpansionTasksGenerator
-        (0,false);
+        (0,false,task_gen->total_sample_number());
   }
   else{
     task_gen_expansion= ExpansionTasksGenerator
-        (FLAGS_max_num_extending_task_space,true);
+        (FLAGS_max_num_extending_task_space,true,task_gen->total_sample_number());
   }
 
   // Tasks setup
@@ -2051,10 +2057,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
               prefix = to_string(iter)+"_"+ to_string(sample_idx)+"_";
             }
             else{
-              prefix = to_string(iter)+"_"+
-                  to_string(sample_idx+
-                      (task_gen_expansion.num_extending_task_space()-1)*
-                          task_gen->total_sample_number())+"_";
+              prefix = to_string(iter)+"_"+to_string
+                  (task_gen_expansion.expansion_sample_index(sample_idx))+"_";
             }
             writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
           }

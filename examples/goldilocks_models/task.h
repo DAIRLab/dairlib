@@ -164,10 +164,11 @@ class UniformTasksGenerator : public TasksGenerator {
 
 class ExpansionTasksGenerator{
  public:
-  ExpansionTasksGenerator(int max_num,bool extend){
+  ExpansionTasksGenerator(int max_num,bool extend,int total_sample_number){
     currently_extend_task_space_ = extend;
     num_extending_task_space_ = 0;
     max_num_extending_task_space_ = max_num;
+    total_sample_number_ = total_sample_number;
   };
   ExpansionTasksGenerator(){};
 
@@ -177,6 +178,8 @@ class ExpansionTasksGenerator{
   bool currently_extend_task_space() const {return currently_extend_task_space_;}
   int num_extending_task_space() const {return num_extending_task_space_;}
   int max_num_extending_task_space() const {return max_num_extending_task_space_;}
+  int expansion_sample_index(int sample) const {return sample+
+        (num_extending_task_space_-1)*total_sample_number_;}
 
   // Setter
   void set_num_extending_task_space(int num) {num_extending_task_space_ = num;}
@@ -187,6 +190,7 @@ class ExpansionTasksGenerator{
   bool currently_extend_task_space_;
   int num_extending_task_space_;
   int max_num_extending_task_space_;
+  int total_sample_number_;
 
   std::default_random_engine random_eng_;
 };

@@ -113,9 +113,9 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
   stance_foot_map_.insert(
       {left_right_support_fsm_states.at(1), left_right_foot.at(1)});
   swing_foot_map_.insert(
-      {left_right_support_fsm_states.at(1), left_right_foot.at(1)});
+      {left_right_support_fsm_states.at(0), left_right_foot.at(1)});
   swing_foot_map_.insert(
-      {left_right_support_fsm_states.at(0), left_right_foot.at(0)});
+      {left_right_support_fsm_states.at(1), left_right_foot.at(0)});
 }
 
 EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(

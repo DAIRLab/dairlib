@@ -42,6 +42,10 @@ using drake::symbolic::Expression;
 using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
+// Note: In the zero foot impact case, adding post impact vel into decision
+// variables (the so-called "slack variable") with linear constraint actually
+// solves faster than without the variable
+
 RomTrajOpt::RomTrajOpt(
     vector<int> num_time_samples, MatrixXd Q, MatrixXd R,
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
@@ -238,7 +242,7 @@ void RomTrajOpt::AddTimeStepConstraint(std::vector<double> minimum_timestep,
       if (equalize_timestep_size && i != 0) {
         if (mode_start_[i] > 0) {
           AddLinearConstraint(timestep(mode_start_[i] - 1) ==
-              timestep(mode_start_[i]));
+                              timestep(mode_start_[i]));
         }
       }
     }

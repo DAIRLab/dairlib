@@ -252,8 +252,8 @@ int DoMain(int argc, char* argv[]) {
     footstep_offset = 0.06;
     center_line_offset = 0.06;
   } else if (FLAGS_footstep_option == 1) {
-    max_CoM_to_footstep_dist = 0.55;
-    footstep_offset = 0;
+    max_CoM_to_footstep_dist = 0.4;
+    footstep_offset = 0.06;
     center_line_offset = 0.06;
   }
   vector<int> left_right_support_fsm_states = {left_stance_state,

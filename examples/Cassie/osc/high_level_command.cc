@@ -88,10 +88,10 @@ HighLevelCommand::HighLevelCommand(
     kp_pos_sagital_ = 1.0;
     kd_pos_sagital_ = 1.0;
 
-    kp_pos_lateral_ = 0.5;
-    kd_pos_lateral_ = 1.5;
-    vel_max_lateral_ = 0.8;
-    vel_min_lateral_ = -0.8;
+    kp_pos_lateral_ = 0.25;
+    kd_pos_lateral_ = 1;
+    vel_max_lateral_ = 0.5;
+    vel_min_lateral_ = -0.5;
   }
 }
 

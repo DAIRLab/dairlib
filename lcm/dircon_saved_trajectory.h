@@ -9,8 +9,8 @@
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "lcm/lcm_trajectory.h"
-#include "systems/trajectory_optimization/hybrid_dircon.h"
 #include "systems/trajectory_optimization/dircon/dircon.h"
+#include "systems/trajectory_optimization/hybrid_dircon.h"
 
 namespace dairlib {
 
@@ -23,9 +23,10 @@ namespace dairlib {
 /// object (first constructor) and call the LoadFromFile() with relative
 /// filepath of the previously saved DirconTrajectory object
 
-/// DirconTrajectory by default contains three Trajectory objects: the state
-/// trajectory, the input trajectory, and the decision variables. Additional
-/// trajectories can be added using the  AddTrajectory() function
+/// DirconTrajectory by default contains four Trajectory objects: the state
+/// trajectory, the input trajectory, the force trajectory, and the decision
+/// variables. Additional trajectories can be added using the AddTrajectory()
+/// function
 
 class DirconTrajectory : public LcmTrajectory {
  public:
@@ -66,17 +67,26 @@ class DirconTrajectory : public LcmTrajectory {
     return x_[mode]->time_vector;
   }
   Eigen::MatrixXd GetInputSamples() { return u_->datapoints; }
-  Eigen::MatrixXd GetBreaks() { return u_->time_vector; }
-  Eigen::VectorXd GetDecisionVariables() {
-    return decision_vars_->datapoints;
+  Eigen::MatrixXd GetForceSamples(int mode) {
+    return lambda_[mode]->datapoints;
   }
+  Eigen::MatrixXd GetBreaks() { return u_->time_vector; }
+  Eigen::MatrixXd GetCollocationForceSamples(int mode) {
+    return lambda_c_[mode]->datapoints;
+  }
+  Eigen::MatrixXd GetCollocationBreaks(int mode) {
+    return lambda_c_[mode]->time_vector;
+  }
+  Eigen::VectorXd GetDecisionVariables() { return decision_vars_->datapoints; }
 
  private:
-
+  static Eigen::VectorXd GetCollocationPoints(Eigen::VectorXd& time_vector);
   int num_modes_ = 0;
 
   const Trajectory* decision_vars_;
   const Trajectory* u_;
+  std::vector<const Trajectory*> lambda_;
+  std::vector<const Trajectory*> lambda_c_;
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 };

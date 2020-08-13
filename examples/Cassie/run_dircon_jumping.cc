@@ -846,6 +846,9 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
 
 MatrixXd loadSavedDecisionVars(const string& filepath) {
   DirconTrajectory loaded_decision_vars = DirconTrajectory(filepath);
+  for (auto& name : loaded_decision_vars.GetTrajectoryNames()) {
+    std::cout << name << std::endl;
+  }
   return loaded_decision_vars.GetDecisionVariables();
 }
 

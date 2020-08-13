@@ -14,6 +14,7 @@ load(
 pybind_py_library(
     name = "lcm_trajectory_py",
     cc_deps = [
+        "//lcm:dircon_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
     ],
@@ -29,6 +30,18 @@ py_binary(
     deps = [
         ":lcm_trajectory_py",
         ":module_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "dircon_trajectory_plotter",
+    srcs = ["dircon_trajectory_plotter.py"],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
@@ -58,5 +71,5 @@ PY_LIBRARIES = [
 py_library(
     name = "pydairlib",
     visibility = ["//visibility:public"],
-    deps =  PY_LIBRARIES,
+    deps = PY_LIBRARIES,
 )

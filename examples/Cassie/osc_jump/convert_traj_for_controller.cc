@@ -68,16 +68,16 @@ int DoMain() {
   auto traj_mode2 = loadedTrajs.GetTrajectory
       ("cassie_jumping_trajectory_x_u2");
 
-  DRAKE_ASSERT(nx == traj_mode0->datapoints.rows());
-  int n_points = traj_mode0->datapoints.cols() + traj_mode1->datapoints.cols() +
-                 traj_mode2->datapoints.cols();
+  DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
+  int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
+                 traj_mode2.datapoints.cols();
 
   MatrixXd xu(nx + nx + nu, n_points);
   VectorXd times(n_points);
 
-  xu << traj_mode0->datapoints, traj_mode1->datapoints, traj_mode2->datapoints;
-  times << traj_mode0->time_vector, traj_mode1->time_vector,
-      traj_mode2->time_vector;
+  xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
+  times << traj_mode0.time_vector, traj_mode1.time_vector,
+      traj_mode2.time_vector;
 
   MatrixXd l_foot_points(6, n_points);
   MatrixXd r_foot_points(6, n_points);

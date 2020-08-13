@@ -30,6 +30,7 @@ DEFINE_int32(visualize_mode, 0,
              "0 - Single animation"
              "1 - Looped animation"
              "2 - Multipose visualizer");
+DEFINE_bool(use_transparency, false, "Transparency setting for the Multipose visualizer");
 
 namespace dairlib {
 
@@ -72,10 +73,19 @@ int DoMain() {
       poses.col(i) = optimal_traj.value(
           time_vector[i * time_vector.size() / FLAGS_num_poses]);
     }
-    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
-        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
-        FLAGS_num_poses);
-    visualizer.DrawPoses(poses);
+    if(FLAGS_use_transparency){
+      VectorXd alpha_scale = VectorXd::LinSpaced(FLAGS_num_poses, 0.2, 1.0);
+      multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+          FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+          FLAGS_num_poses, alpha_scale.array().square());
+      visualizer.DrawPoses(poses);
+    }
+    else{
+      multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+          FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+          FLAGS_num_poses);
+      visualizer.DrawPoses(poses);
+    }
   }
 
   return 0;

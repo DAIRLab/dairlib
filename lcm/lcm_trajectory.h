@@ -47,6 +47,8 @@ class LcmTrajectory {
     LoadFromFile(filepath);
   }
 
+  virtual ~LcmTrajectory() = default;
+
   /// Writes this LcmTrajectory object to a file specified by filepath
   /// @throws std::exception along with the invalid filepath if unable to open
   /// the file
@@ -60,8 +62,8 @@ class LcmTrajectory {
 
   lcmt_metadata GetMetadata() const { return metadata_; }
 
-  const Trajectory* GetTrajectory(const std::string& trajectory_name) const {
-    return &trajectories_.at(trajectory_name);
+  const Trajectory& GetTrajectory(const std::string& trajectory_name) const {
+    return trajectories_.at(trajectory_name);
   }
 
   /// Add additional LcmTrajectory::Trajectory objects

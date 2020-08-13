@@ -117,15 +117,15 @@ int DoMain() {
   auto traj_mode1 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u1");
   auto traj_mode2 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u2");
 
-  int n_points = traj_mode0->datapoints.cols() + traj_mode1->datapoints.cols() +
-                 traj_mode2->datapoints.cols();
+  int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
+                 traj_mode2.datapoints.cols();
 
   MatrixXd xu(2 * nx_wo_spr + nu, n_points);
   VectorXd times(n_points);
 
-  xu << traj_mode0->datapoints, traj_mode1->datapoints, traj_mode2->datapoints;
-  times << traj_mode0->time_vector, traj_mode1->time_vector,
-      traj_mode2->time_vector;
+  xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
+  times << traj_mode0.time_vector, traj_mode1.time_vector,
+      traj_mode2.time_vector;
   MatrixXd x_w_spr(2 * nx_w_spr, n_points);
   x_w_spr.topRows(nx_w_spr) =
       map_state_from_no_spring_to_spring * xu.topRows(nx_wo_spr);

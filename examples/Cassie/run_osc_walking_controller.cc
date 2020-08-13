@@ -3,15 +3,16 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/swing_ft_traj_gen.h"
+#include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -56,7 +57,8 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
-DEFINE_int32(footstep_option, 1,
+DEFINE_int32(
+    footstep_option, 1,
     "0 uses the capture point\n"
     "1 uses the neutral point derived from LIPM given the stance duration");
 
@@ -185,6 +187,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 
+  // Create leafsystem that record the switching time of the FSM
+  std::vector<int> single_support_states = {left_stance_state,
+                                            right_stance_state};
+  auto event_time = builder.AddSystem<systems::FiniteStateMachineEventTime>(
+      single_support_states);
+  builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
+
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
   vector<int> unordered_fsm_states;
@@ -211,6 +220,8 @@ int DoMain(int argc, char* argv[]) {
       contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
+  builder.Connect(event_time->get_output_port_event_time(),
+                  lipm_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
@@ -261,6 +272,8 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_footstep_option);
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                  swing_ft_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port(0),
@@ -322,8 +335,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj(
-      "swing_ft_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_spr, plant_wo_spr);
+  TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_sw_ft,
+                                             K_d_sw_ft, W_swing_foot,
+                                             plant_w_spr, plant_wo_spr);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);

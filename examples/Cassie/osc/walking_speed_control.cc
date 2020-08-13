@@ -33,7 +33,7 @@ WalkingSpeedControl::WalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
     Context<double>* context, int footstep_option)
     : plant_(plant),
-    context_(context),
+      context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
@@ -45,6 +45,8 @@ WalkingSpeedControl::WalkingSpeedControl(
                                                         plant.num_actuators()))
           .get_index();
   xy_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
+  fsm_switch_time_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(2),
                                 &WalkingSpeedControl::CalcFootPlacement);
 
@@ -66,8 +68,8 @@ WalkingSpeedControl::WalkingSpeedControl(
   }
 }
 
-void WalkingSpeedControl::CalcFootPlacement(
-    const Context<double>& context, BasicVector<double>* output) const {
+void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
+                                            BasicVector<double>* output) const {
   // Read in finite state machine
   const BasicVector<double>* des_hor_vel_output =
       (BasicVector<double>*)this->EvalVectorInput(context, xy_port_);

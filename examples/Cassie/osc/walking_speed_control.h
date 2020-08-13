@@ -42,15 +42,19 @@ namespace osc {
 /// Requirement: quaternion floating-based Cassie only
 class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
  public:
-  WalkingSpeedControl(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context, int footstep_option);
+  WalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
+                      drake::systems::Context<double>* context,
+                      int footstep_option);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_des_hor_vel() const {
     return this->get_input_port(xy_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
+      const {
+    return this->get_input_port(fsm_switch_time_port_);
   }
 
  private:
@@ -67,6 +71,7 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
 
   int state_port_;
   int xy_port_;
+  int fsm_switch_time_port_;
 
   // Foot placement control (Sagital) parameters
   double k_fp_ff_sagital_;

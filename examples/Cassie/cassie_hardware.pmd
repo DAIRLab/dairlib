@@ -1,37 +1,3 @@
-group "0.operator" {
-    cmd "0.drake-director-real-robot" {
-        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py --script examples/Cassie/director_scripts/set_channel_network.py";
-        host = "localhost";
-    }
-    cmd "1.state-visualizer-real-robot" {
-        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel NETWORK_CASSIE_STATE_DISPATCHER";
-        host = "localhost";
-    }
-}
-
-group "1.cassie-robot" {
-    cmd "1.dispatcher-robot-in-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true";
-        host = "dair-cassie";
-    }
-    cmd "2.pd-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
-        host = "dair-cassie";
-    }
-    cmd "4.walking-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel=CASSIE_STATE_DISPATCHER";
-        host = "dair-cassie";
-    }
-    cmd "3.standing-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
-        host = "dair-cassie";
-    }
-    cmd "0.dispatcher-robot-out-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0";
-        host = "dair-cassie";
-    }
-}
-
 group "2.lcm-tools" {
     cmd "1.signal-scope" {
         exec = "bazel-bin/signalscope/signal-scope";
@@ -43,6 +9,106 @@ group "2.lcm-tools" {
     }
 }
 
+group "0.operator" {
+    cmd "2.drake-director-real-robot" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/set_channel_network.py --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+    cmd "3.state-visualizer-real-robot" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel NETWORK_CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "controller-switch-to-standing" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER";
+        host = "dair-cassie";
+    }
+    cmd "controller-switch-to-pd" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=PD_CONTROL --channel_x=CASSIE_STATE_DISPATCHER";
+        host = "dair-cassie";
+    }
+    cmd "controller-switch-to-walking (3 phase walking)" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.37 --n_period_delay=2";
+        host = "dair-cassie";
+    }
+}
+
+group "3.cassie-robot" {
+    cmd "4.osc-walking-real-robot (w radio)" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING --use_radio=true";
+        host = "dair-cassie";
+    }
+    cmd "0.dispatcher-robot-out-real-robot" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --floating_base=true";
+        host = "dair-cassie";
+    }
+    cmd "2.pd-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller --channel_u=PD_CONTROL";
+        host = "dair-cassie";
+    }
+    cmd "3.osc-standing-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_u=OSC_STANDING --channel_x=CASSIE_STATE_DISPATCHER --cost_weight_multiplier=1 --height=0.35";
+        host = "dair-cassie";
+    }
+    cmd "1.dispatcher-robot-in-real-robot" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true  --control_channel_name_1=\"PD_CONTROL\" --state_channel_name=\"CASSIE_STATE_DISPATCHER\"";
+        host = "dair-cassie";
+    }
+    cmd "4.0 osc-walking-real-robot (wo radio)" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING --use_radio=false";
+        host = "dair-cassie";
+    }
+}
+
+
+script "mujoco-osc-standing" {
+    start cmd "2.cassie-mujoco";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "4.osc-standing-controller";
+}
+
+script "run-drake-osc-standing-control" {
+    run_script "start-operator-RBP";
+    start cmd "1.simulator (no dispatcher) for OSC controller";
+    start cmd "4.osc-standing-controller";
+}
+
+script "run-drake-osc-walking-control" {
+    run_script "start-operator-RBP";
+    start cmd "1.simulator (no dispatcher) for OSC controller";
+    start cmd "4.osc-walking-controller";
+}
+
+script "run-drake-pd-control" {
+    run_script "start-operator-MBP";
+    start cmd "1.simulator (dispatched)";
+    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "0.pd-controller";
+}
+
+script "run-gazebo-lcm-pd-control" {
+    run_script "start-operator-MBP";
+    start cmd "1.launch-gazebo-fixed-base";
+    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "0.pd-controller";
+}
+
+script "run-gazebo-pd-control" {
+    run_script "start-operator-MBP";
+    start cmd "1.launch-gazebo-fixed-base";
+    start cmd "2.b.dispatcher-robot-out (gazebo)";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "0.pd-controller";
+}
+
+script "run-mujoco-lcm-pd-control" {
+    run_script "start-operator-MBP";
+    start cmd "3.cassie-mujoco-fixed-base";
+    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "0.pd-controller";
+}
+
 script "run-real-robot-pd-control" {
     run_script "start-operator-real-robot";
     start cmd "0.dispatcher-robot-out-real-robot";
@@ -50,10 +116,32 @@ script "run-real-robot-pd-control" {
     start cmd "2.pd-controller-real-robot";
 }
 
+script "start-operator-MBP" {
+    stop cmd "1.state-visualizer";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "1.state-visualizer";
+}
+
+script "start-operator-RBP" {
+    stop cmd "4.state-visualizer-floating";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "4.state-visualizer-floating";
+}
+
 script "start-operator-real-robot" {
-    stop cmd "1.state-visualizer-real-robot";
+    stop cmd "3.state-visualizer-real-robot";
     stop cmd "2.drake-director-real-robot";
     start cmd "2.drake-director-real-robot";
     wait ms 3000;
-    start cmd "1.state-visualizer-real-robot";
+    start cmd "3.state-visualizer-real-robot";
+}
+
+script "switch from standing to walking" {
+    start cmd "controller-switch-to-walking (3 phase walking)";
+    wait ms 1000;
+    stop cmd "3.osc-standing-real-robot";
 }

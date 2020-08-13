@@ -5,6 +5,10 @@
 namespace dairlib {
 namespace systems {
 
+/// FiniteStateMachineEventTime outputs the latest switching time of a finite
+/// state machine. If the user provides `fsm_states_of_interest` to the
+/// constructor, FiniteStateMachineEventTime creates a second output port that
+/// sends out the start time of the state that the user is interested in.
 class FiniteStateMachineEventTime : public drake::systems::LeafSystem<double> {
  public:
   FiniteStateMachineEventTime(std::vector<int> fsm_states_of_interest = {});

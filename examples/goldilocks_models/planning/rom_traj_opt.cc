@@ -44,7 +44,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 // Note: In the zero foot impact case, adding post impact vel into decision
 // variables (the so-called "slack variable") with linear constraint actually
-// solves faster than without the variable
+// solves faster than without the variable. About 20% faster...
 
 RomTrajOpt::RomTrajOpt(
     vector<int> num_time_samples, MatrixXd Q, MatrixXd R,

@@ -49,7 +49,7 @@ DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_bool(fix_duration, false, "Fix the total time");
 DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
-DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
+DEFINE_bool(zero_touchdown_impact, true, "Zero impact at foot touchdown");
 DEFINE_double(opt_tol, 1e-4, "");
 DEFINE_double(feas_tol, 1e-4, "");
 

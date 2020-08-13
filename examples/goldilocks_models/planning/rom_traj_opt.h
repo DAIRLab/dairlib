@@ -37,7 +37,7 @@ class RomTrajOpt
              const std::vector<BodyPoint>& right_contacts,
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
-             Eigen::VectorXd x_init, bool zero_touchdown_impact);
+             Eigen::VectorXd x_init, bool zero_touchdown_impact = true);
 
   ~RomTrajOpt() override {}
 

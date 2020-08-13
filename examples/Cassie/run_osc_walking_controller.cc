@@ -226,18 +226,21 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
+  bool use_predicted_com_vel = true;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
-          left_support_duration);
+          use_predicted_com_vel ? left_support_duration : 0);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
                   walking_speed_control->get_input_port_state());
-  builder.Connect(lipm_traj_generator->get_output_port(0),
-                  walking_speed_control->get_input_port_com());
-  builder.Connect(event_time->get_output_port_event_time_of_interest(),
-                  walking_speed_control->get_input_port_fsm_switch_time());
+  if (use_predicted_com_vel) {
+    builder.Connect(lipm_traj_generator->get_output_port(0),
+                    walking_speed_control->get_input_port_com());
+    builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                    walking_speed_control->get_input_port_fsm_switch_time());
+  }
 
   // Create swing leg trajectory generator
   double mid_foot_height = 0.1;

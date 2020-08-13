@@ -28,16 +28,18 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)
       .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
            py::arg("trajectory_name"));
-
   py::class_<DirconTrajectory>(m, "DirconTrajectory")
       .def(py::init<const std::string&>())
+      .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
+           py::arg("trajectory_name"))
       .def("GetStateSamples", &DirconTrajectory::GetStateSamples)
       .def("GetStateDerivativeSamples",
            &DirconTrajectory::GetStateDerivativeSamples)
       .def("GetStateBreaks", &DirconTrajectory::GetStateBreaks)
       .def("GetInputSamples", &DirconTrajectory::GetInputSamples)
-      .def("GetForceSamples", &DirconTrajectory::GetForceSamples)
       .def("GetBreaks", &DirconTrajectory::GetBreaks)
+      .def("GetForceSamples", &DirconTrajectory::GetForceSamples)
+      .def("GetForceBreaks", &DirconTrajectory::GetForceBreaks)
       .def("GetCollocationForceSamples",
            &DirconTrajectory::GetCollocationForceSamples)
       .def("GetCollocationBreaks", &DirconTrajectory::GetCollocationBreaks)
@@ -46,6 +48,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
            &DirconTrajectory::ReconstructStateTrajectory)
       .def("ReconstructInputTrajectory",
            &DirconTrajectory::ReconstructInputTrajectory);
+
 }
 
 }  // namespace pydairlib

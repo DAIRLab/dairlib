@@ -46,11 +46,12 @@ void DynamicsConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& ztzth,
     drake::VectorX<double>* y) const {
   // Extract elements
-  VectorX<double> z_i = ztzth.head(n_z_);
-  VectorX<double> tau_i = ztzth.segment(n_z_, n_tau_);
-  VectorX<double> z_iplus1 = ztzth.segment(n_z_ + n_tau_, n_z_);
-  VectorX<double> tau_iplus1 = ztzth.segment(2 * (n_z_) + n_tau_, n_tau_);
-  VectorX<double> h_i = ztzth.tail(1);
+  const VectorX<double>& z_i = ztzth.head(n_z_);
+  const VectorX<double>& tau_i = ztzth.segment(n_z_, n_tau_);
+  const VectorX<double>& z_iplus1 = ztzth.segment(n_z_ + n_tau_, n_z_);
+  const VectorX<double>& tau_iplus1 =
+      ztzth.segment(2 * (n_z_) + n_tau_, n_tau_);
+  const VectorX<double>& h_i = ztzth.tail(1);
 
   // Evaluate derivatives at knot points
   VectorX<double> g_i = g(z_i, tau_i);

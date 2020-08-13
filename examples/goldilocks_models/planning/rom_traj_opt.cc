@@ -448,6 +448,14 @@ void RomTrajOptCassie::AddRegularizationCost(
     }
     this->AddQuadraticErrorCost(Id_quat, quat_identity, x_f.head(4));
   }
+
+  // Note: Cassie can exploit the "one-contact per foot" constraint to lean
+  // forward at the end pose, so we add a hard constraint on quaternion here
+  cout << "Adding quaternion constraint on the final pose..." << endl;
+  VectorX<double> quat_identity(4);
+  quat_identity << 1, 0, 0, 0;
+  AddBoundingBoxConstraint(quat_identity, quat_identity,
+                           xf_vars_by_mode(num_modes_ - 1).head(4));
 }
 
 void RomTrajOptCassie::SetAllInitialGuess(

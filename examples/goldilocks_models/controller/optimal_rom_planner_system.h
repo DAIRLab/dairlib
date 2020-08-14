@@ -19,13 +19,15 @@ namespace goldilocks_models {
 class OptimalRomPlanner : public drake::systems::LeafSystem<double> {
  public:
   OptimalRomPlanner(const drake::multibody::MultibodyPlant<double>& plant,
-                    const std::vector<int>& unordered_fsm_states);
+                    const std::vector<int>& unordered_fsm_states,
+                    double stride_period);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_fsm() const {
-    return this->get_input_port(fsm_port_);
+  const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
+      const {
+    return this->get_input_port(fsm_and_lo_time_port_);
   }
 
  private:
@@ -34,11 +36,11 @@ class OptimalRomPlanner : public drake::systems::LeafSystem<double> {
 
   // Port indices
   int state_port_;
-  int touchdown_state_port_;
-  int fsm_port_;
+  int fsm_and_lo_time_port_;
 
-//  const drake::multibody::MultibodyPlant<double>& plant_;
+  //  const drake::multibody::MultibodyPlant<double>& plant_;
   std::vector<int> unordered_fsm_states_;
+  double stride_period_;
 };
 
 }  // namespace goldilocks_models

@@ -31,8 +31,9 @@ namespace goldilocks_models {
 
 OptimalRomPlanner::OptimalRomPlanner(
     const MultibodyPlant<double>& plant_feedback,
-    const std::vector<int>& unordered_fsm_states)
-    : unordered_fsm_states_(unordered_fsm_states) {
+    const std::vector<int>& unordered_fsm_states, double stride_period)
+    : unordered_fsm_states_(unordered_fsm_states),
+      stride_period_(stride_period) {
   this->set_name("mpc_traj");
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -40,13 +41,8 @@ OptimalRomPlanner::OptimalRomPlanner(
                                              plant_feedback.num_velocities(),
                                              plant_feedback.num_actuators()))
                     .get_index();
-  touchdown_state_port_ =
-      this
-          ->DeclareVectorInputPort(OutputVector<double>(
-              plant_feedback.num_positions(), plant_feedback.num_velocities(),
-              plant_feedback.num_actuators()))
-          .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_and_lo_time_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
@@ -65,7 +61,8 @@ void OptimalRomPlanner::SolveMPC(
 
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+      (BasicVector<double>*)this->EvalVectorInput(context,
+                                                  fsm_and_lo_time_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
   // Find fsm_state in unordered_fsm_states_

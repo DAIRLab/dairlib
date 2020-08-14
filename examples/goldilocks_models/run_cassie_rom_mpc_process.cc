@@ -25,6 +25,7 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/lcmt_drake_signal.hpp"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -66,8 +67,9 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
-DEFINE_string(channel_x_td, "CASSIE_STATE_TD",
-              "LCM channel for receiving state of previous touchdown. ");
+DEFINE_string(
+    channel_fsm_t, "FSM_T",
+    "LCM channel for receiving fsm and time of latest liftoff event. ");
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which publishes command");
 
@@ -96,10 +98,10 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_feedback);
 
-  // Create Lcm subsriber for lcmt_target_standing_height
-  auto touchdown_state_receiver =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          FLAGS_channel_x_td, &lcm_local));
+  // Create Lcm subscriber for fsm and latest lift off time
+  auto fsm_and_liftoff_time_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_drake_signal>(
+          FLAGS_channel_fsm_t, &lcm_local));
 
   // Create mpc traj publisher
   auto traj_publisher = builder.AddSystem(
@@ -107,14 +109,17 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_y, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
   // Create optimal rom trajectory generator
-  int LEFT_STANCE = 0;  // TODO(yminchen): need to add this to a header file in
-                        // rom/controller/
-  int RIGHT_STANCE = 1;
-  std::vector<int> unordered_fsm_states = {LEFT_STANCE, RIGHT_STANCE};
-  auto rom_planner = builder.AddSystem<OptimalRomPlanner>(plant_feedback,
-                                                          unordered_fsm_states);
-
-  // TODO(yminchen): connect ports here
+  // TODO(yminchen): need to centralize the fsm state
+  int left_stance_state = 0;
+  int right_stance_state = 1;
+  double stride_period = 0.37;  // TODO(yminchen): this value should change
+  std::vector<int> ss_fsm_states = {left_stance_state, right_stance_state};
+  auto rom_planner = builder.AddSystem<OptimalRomPlanner>(
+      plant_feedback, ss_fsm_states, stride_period);
+  builder.Connect(state_receiver->get_output_port(0),
+                  rom_planner->get_input_port_state());
+  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(),
+                  rom_planner->get_input_port_fsm_and_lo_time());
   builder.Connect(rom_planner->get_output_port(0),
                   traj_publisher->get_input_port());
 

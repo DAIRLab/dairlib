@@ -10,6 +10,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_timestamped_vector.hpp"
+#include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/deviation_from_cp.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
@@ -77,6 +78,8 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
+DEFINE_string(channel_y, "MPC_OUTPUT",
+              "The name of the channel which receives MPC output");
 
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
@@ -271,7 +274,7 @@ int DoMain(int argc, char* argv[]) {
                   mux->get_input_port(1));
   std::vector<std::string> singal_names = {"fsm", "t_lo"};
   auto fsm_and_liftoff_time_sender =
-      builder.AddSystem<systems::DrakeSignalSender>(plant_w_springs);
+      builder.AddSystem<systems::DrakeSignalSender>(singal_names);
   builder.Connect(mux->get_output_port(0),
                   fsm_and_liftoff_time_sender->get_input_port(0));
   auto fsm_and_liftoff_time_publisher =
@@ -279,6 +282,15 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
                   fsm_and_liftoff_time_publisher->get_input_port());
+
+  // Create Lcm subscriber for MPC's output and create
+  auto mpc_output_subscriber = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_trajectory_block>(FLAGS_channel_y,
+                                                                &lcm_local));
+  // Create a system that translate MPC lcm into trajectory
+  auto optimal_rom_traj_gen = builder.AddSystem<OptimalRoMTrajReceiver>();
+  builder.Connect(mpc_output_subscriber->get_output_port(),
+                  optimal_rom_traj_gen->get_input_port(0));
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
@@ -351,9 +363,6 @@ int DoMain(int argc, char* argv[]) {
                   cp_traj_generator->get_input_port_com());
   builder.Connect(deviation_from_cp->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
-
-  // Create optimal rom trajectory generator
-  auto optimal_rom_traj_gen = builder.AddSystem<OptimalRoMTrajReceiver>();
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(

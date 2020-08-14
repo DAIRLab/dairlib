@@ -9,6 +9,7 @@
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_timestamped_vector.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/deviation_from_cp.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
@@ -20,16 +21,20 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/cp_traj_gen.h"
+#include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
+#include "systems/drake_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/lcmt_drake_signal.hpp"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/primitives/multiplexer.h"
 
 namespace dairlib::goldilocks_models {
 
@@ -249,6 +254,31 @@ int DoMain(int argc, char* argv[]) {
       plant_w_springs, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
+
+  // Create leafsystem that record the switching time of the FSM
+  std::vector<int> single_support_states = {left_stance_state,
+                                            right_stance_state};
+  auto event_time = builder.AddSystem<systems::FiniteStateMachineEventTime>(
+      single_support_states);
+  builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
+
+  // Create a multiplexer which combines current finite state machine state and
+  // the latest lift-off event time, and create publisher for this combined
+  // vector
+  auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(2);
+  builder.Connect(fsm->get_output_port(0), mux->get_input_port(0));
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                  mux->get_input_port(1));
+  std::vector<std::string> singal_names = {"fsm", "t_lo"};
+  auto fsm_and_liftoff_time_sender =
+      builder.AddSystem<systems::DrakeSignalSender>(plant_w_springs);
+  builder.Connect(mux->get_output_port(0),
+                  fsm_and_liftoff_time_sender->get_input_port(0));
+  auto fsm_and_liftoff_time_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_drake_signal>(
+          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
+                  fsm_and_liftoff_time_publisher->get_input_port());
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;

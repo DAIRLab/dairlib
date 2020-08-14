@@ -523,31 +523,49 @@ VectorX<double> Lipm::EvalMappingFeatJdotV(
   return ret;
 }
 
-/// 2D LIPM with a 2D swing foot
-const int TwoDimLipmWithSwingFoot::kDimension = 4;
-
-TwoDimLipmWithSwingFoot::TwoDimLipmWithSwingFoot(
-    const MultibodyPlant<double>& plant, const BodyPoint& stance_contact_point,
-    const BodyPoint& swing_contact_point, const MonomialFeatures& mapping_basis,
-    const MonomialFeatures& dynamic_basis)
-    : ReducedOrderModel(
-          kDimension, 2,
-          (MatrixX<double>(kDimension, 2) << 0, 0, 0, 0, 1, 0, 0, 1).finished(),
-          4 + mapping_basis.length(), 1 + dynamic_basis.length(), mapping_basis,
-          dynamic_basis, "2D lipm with 2D swing foot"),
+/// LIPM with a point-mass swing foot
+LipmWithSwingFoot::LipmWithSwingFoot(const MultibodyPlant<double>& plant,
+                                     const BodyPoint& stance_contact_point,
+                                     const BodyPoint& swing_contact_point,
+                                     const MonomialFeatures& mapping_basis,
+                                     const MonomialFeatures& dynamic_basis,
+                                     int world_dim)
+    : ReducedOrderModel(2 * world_dim, world_dim,
+                        (MatrixX<double>(2 * world_dim, world_dim)
+                             << MatrixX<double>::Zero(world_dim, world_dim),
+                         MatrixX<double>::Identity(world_dim, world_dim))
+                            .finished(),
+                        2 * world_dim + mapping_basis.length(),
+                        (world_dim - 1) + dynamic_basis.length(), mapping_basis,
+                        dynamic_basis,
+                        to_string(world_dim) + "D lipm with swing foot"),
       plant_(plant),
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
-      swing_contact_point_(swing_contact_point) {
+      swing_contact_point_(swing_contact_point),
+      world_dim_(world_dim) {
+  DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+
   // Initialize model parameters (dependant on the feature vectors)
   VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
   VectorX<double> theta_yddot =
       VectorX<double>::Zero(n_yddot() * n_feature_yddot());
-  theta_y(0) = 1;
-  theta_y(1 + n_feature_y()) = 1;
-  theta_y(2 + 2 * n_feature_y()) = 1;
-  theta_y(3 + 3 * n_feature_y()) = 1;
-  theta_yddot(0) = 1;
+  if (world_dim == 2) {
+    theta_y(0) = 1;
+    theta_y(1 + n_feature_y()) = 1;
+    theta_y(2 + 2 * n_feature_y()) = 1;
+    theta_y(3 + 3 * n_feature_y()) = 1;
+    theta_yddot(0) = 1;
+  } else if (world_dim == 3) {
+    theta_y(0) = 1;
+    theta_y(1 + n_feature_y()) = 1;
+    theta_y(2 + 2 * n_feature_y()) = 1;
+    theta_y(3 + 3 * n_feature_y()) = 1;
+    theta_y(4 + 4 * n_feature_y()) = 1;
+    theta_y(5 + 5 * n_feature_y()) = 1;
+    theta_yddot(0) = 1;
+    theta_yddot(1 + n_feature_yddot()) = 1;
+  }
   SetThetaY(theta_y);
   SetThetaYddot(theta_yddot);
 
@@ -557,15 +575,15 @@ TwoDimLipmWithSwingFoot::TwoDimLipmWithSwingFoot(
   CheckModelConsistency();
 };
 // Copy constructor
-TwoDimLipmWithSwingFoot::TwoDimLipmWithSwingFoot(
-    const TwoDimLipmWithSwingFoot& old_obj)
+LipmWithSwingFoot::LipmWithSwingFoot(const LipmWithSwingFoot& old_obj)
     : ReducedOrderModel(old_obj),
       plant_(old_obj.plant()),
       world_(old_obj.world()),
       stance_contact_point_(old_obj.stance_foot()),
-      swing_contact_point_(old_obj.swing_foot()) {}
+      swing_contact_point_(old_obj.swing_foot()),
+      world_dim_(old_obj.world_dim()) {}
 
-VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeat(
+VectorX<double> LipmWithSwingFoot::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM position
   VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
@@ -583,29 +601,33 @@ VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeat(
   VectorX<double> CoM_to_sw = right_foot_pos - CoM;
 
   VectorX<double> feature(n_feature_y());
-  feature << st_to_CoM(0), st_to_CoM(2), CoM_to_sw(0), CoM_to_sw(2),
-      mapping_basis().Eval(q);
-
+  if (world_dim_ == 2) {
+    feature << st_to_CoM(0), st_to_CoM(2), CoM_to_sw(0), CoM_to_sw(2),
+        mapping_basis().Eval(q);
+  } else {
+    feature << st_to_CoM, CoM_to_sw, mapping_basis().Eval(q);
+  }
   return feature;
 }
-VectorX<double> TwoDimLipmWithSwingFoot::EvalDynamicFeat(
+VectorX<double> LipmWithSwingFoot::EvalDynamicFeat(
     const VectorX<double>& y, const VectorX<double>& ydot) const {
-  VectorX<double> feature_extension(1);
-  if (y(1) == 0) {
+  VectorX<double> feature_extension = y.head(world_dim_ - 1);
+  double z = y(world_dim_ - 1);
+  if (z == 0) {
     cout << "avoid singularity in dynamics_expression\n";
-    feature_extension << (9.80665 / (y(1) + 1e-8)) * y(0);  // avoid singularity
+    feature_extension *= 9.80665 / (1e-8);
   } else {
-    feature_extension << (9.80665 / y(1)) * y(0);
+    feature_extension *= 9.80665 / z;
   }
 
-  VectorX<double> y_and_ydot(2 * kDimension);
+  VectorX<double> y_and_ydot(2 * n_y());
   y_and_ydot << y, ydot;
 
   VectorX<double> feature(n_feature_yddot());
-  feature << feature_extension(0), dynamic_basis().Eval(y_and_ydot);
+  feature << feature_extension, dynamic_basis().Eval(y_and_ydot);
   return feature;
 }
-VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJV(
+VectorX<double> LipmWithSwingFoot::EvalMappingFeatJV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM velocity
@@ -630,11 +652,15 @@ VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJV(
   plant_.MapVelocityToQDot(context, v, &qdot);
 
   VectorX<double> ret(n_feature_y());
-  ret << JV_st_to_CoM(0), JV_st_to_CoM(2), JV_CoM_to_sw(0), JV_CoM_to_sw(2),
-      mapping_basis().EvalJV(q, qdot);
+  if (world_dim_ == 2) {
+    ret << JV_st_to_CoM(0), JV_st_to_CoM(2), JV_CoM_to_sw(0), JV_CoM_to_sw(2),
+        mapping_basis().EvalJV(q, qdot);
+  } else {
+    ret << JV_st_to_CoM(0), JV_CoM_to_sw(0), mapping_basis().EvalJV(q, qdot);
+  }
   return ret;
 }
-MatrixX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJ(
+MatrixX<double> LipmWithSwingFoot::EvalMappingFeatJ(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
@@ -654,13 +680,19 @@ MatrixX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJ(
   MatrixX<double> J_CoM_to_sw = J_sw - J_com;
 
   MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
-  ret << J_st_to_CoM.row(0), J_st_to_CoM.row(2), J_CoM_to_sw.row(0),
-      J_CoM_to_sw.row(2),
-      is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
-                     : mapping_basis().EvalJwrtqdot(q);
+  if (world_dim_ == 2) {
+    ret << J_st_to_CoM.row(0), J_st_to_CoM.row(2), J_CoM_to_sw.row(0),
+        J_CoM_to_sw.row(2),
+        is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                       : mapping_basis().EvalJwrtqdot(q);
+  } else {
+    ret << J_st_to_CoM, J_CoM_to_sw,
+        is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                       : mapping_basis().EvalJwrtqdot(q);
+  }
   return ret;
 }
-VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJdotV(
+VectorX<double> LipmWithSwingFoot::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM JdotV
@@ -683,8 +715,12 @@ VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJdotV(
   plant_.MapVelocityToQDot(context, v, &qdot);
 
   VectorX<double> ret(n_feature_y());
-  ret << JdotV_st_to_com(0), JdotV_st_to_com(2), JdotV_com_to_sw(0),
-      JdotV_com_to_sw(2), mapping_basis().EvalJdotV(q, qdot);
+  if (world_dim_ == 2) {
+    ret << JdotV_st_to_com(0), JdotV_st_to_com(2), JdotV_com_to_sw(0),
+        JdotV_com_to_sw(2), mapping_basis().EvalJdotV(q, qdot);
+  } else {
+    ret << JdotV_st_to_com, JdotV_com_to_sw, mapping_basis().EvalJdotV(q, qdot);
+  }
   return ret;
 }
 

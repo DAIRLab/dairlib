@@ -110,7 +110,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     //  roll and pitch, so add this component later (need to map quat to roll
     //  pitch yaw)
     vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
-//    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
+    //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     mapping_basis = std::make_unique<MonomialFeatures>(
         2, plant.num_positions(), skip_inds, "mapping basis");
   }
@@ -124,8 +124,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         2, 2 * Lipm::kDimension(2), empty_inds, "dynamic basis");
   } else if (rom_option == 1) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * TwoDimLipmWithSwingFoot::kDimension, empty_inds,
-        "dynamic basis");
+        2, 2 * LipmWithSwingFoot::kDimension(2), empty_inds, "dynamic basis");
   } else if (rom_option == 2) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * FixHeightAccel::kDimension, empty_inds, "dynamic basis");
@@ -136,6 +135,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 4) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+  } else if (rom_option == 5) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -172,8 +174,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 2);
   } else if (rom_option == 1) {
-    rom = std::make_unique<TwoDimLipmWithSwingFoot>(
-        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
+    rom = std::make_unique<LipmWithSwingFoot>(
+        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis, 2);
   } else if (rom_option == 2) {
     rom = std::make_unique<FixHeightAccel>(plant, stance_foot, *mapping_basis,
                                            *dynamic_basis);
@@ -183,6 +185,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 4) {
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3);
+  } else if (rom_option == 5) {
+    rom = std::make_unique<LipmWithSwingFoot>(
+        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis, 3);
   } else {
     throw std::runtime_error("Not implemented");
   }

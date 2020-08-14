@@ -248,21 +248,26 @@ class Lipm : public ReducedOrderModel {
   int world_dim_;
 };
 
-class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
+/// Linear inverted pendulum model with swing foot (either 2D or 3D, determined
+/// by `world_dim`)
+class LipmWithSwingFoot : public ReducedOrderModel {
  public:
-  static const int kDimension;
+  static int kDimension(int world_dim) {
+    DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+    return 2 * world_dim;
+  };
 
-  TwoDimLipmWithSwingFoot(const drake::multibody::MultibodyPlant<double>& plant,
+  LipmWithSwingFoot(const drake::multibody::MultibodyPlant<double>& plant,
                           const BodyPoint& stance_contact_point,
                           const BodyPoint& swing_contact_point,
                           const MonomialFeatures& mapping_basis,
-                          const MonomialFeatures& dynamic_basis);
+                          const MonomialFeatures& dynamic_basis, int world_dim);
 
   // Copy constructor for the Clone() method
-  TwoDimLipmWithSwingFoot(const TwoDimLipmWithSwingFoot&);
+  LipmWithSwingFoot(const LipmWithSwingFoot&);
 
   std::unique_ptr<ReducedOrderModel> Clone() const override {
-    return std::make_unique<TwoDimLipmWithSwingFoot>(*this);
+    return std::make_unique<LipmWithSwingFoot>(*this);
   }
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
@@ -289,6 +294,7 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   const drake::multibody::BodyFrame<double>& world() const { return world_; };
   const BodyPoint& stance_foot() const { return stance_contact_point_; };
   const BodyPoint& swing_foot() const { return swing_contact_point_; };
+  int world_dim() const { return world_dim_; };
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -298,6 +304,7 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   // contact body frame and contact point of the swing foot
   const BodyPoint swing_contact_point_;
   bool is_quaternion_;
+  int world_dim_;
 };
 
 class FixHeightAccel : public ReducedOrderModel {

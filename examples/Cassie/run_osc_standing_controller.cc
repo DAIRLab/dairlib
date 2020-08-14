@@ -6,6 +6,7 @@
 #include "dairlib/lcmt_target_standing_height.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/standing_com_traj.h"
+#include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -181,8 +182,14 @@ int DoMain(int argc, char* argv[]) {
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
       plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height);
+  auto pelvis_rot_traj_generator =
+      builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
+          plant_w_springs, context_w_spr.get(), feet_contact_points,
+          "pelvis_rot_traj");
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(0),
+                  pelvis_rot_traj_generator->get_input_port_state());
   builder.Connect(target_height_receiver->get_output_port(),
                   com_traj_generator->get_input_port_target_height());
 
@@ -239,26 +246,8 @@ int DoMain(int argc, char* argv[]) {
       W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
-  VectorXd pelvis_desired_quat(4);
-  pelvis_desired_quat << 1, 0, 0, 0;
-  osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
-  /*// Left hip yaw joint tracking
-  MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData left_hip_yaw_traj(
-      "left_hip_yaw_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, &plant_w_springs,
-      &plant_wo_springs);
-  left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
-  // right hip yaw joint tracking
-  JointSpaceTrackingData right_hip_yaw_traj(
-      "right_hip_yaw_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, &plant_w_springs,
-      &plant_wo_springs);
-  right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));*/
+  osc->AddTrackingData(&pelvis_rot_traj);
+
   // Build OSC problem
   osc->Build();
   // Connect ports
@@ -269,6 +258,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
+  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_rot_traj"));
 
   // Create the diagram
   auto owned_diagram = builder.Build();

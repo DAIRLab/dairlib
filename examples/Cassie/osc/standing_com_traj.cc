@@ -72,7 +72,6 @@ void StandingComTraj::CalcDesiredTraj(
   Vector3d position;
   MatrixXd J(3, plant_.num_velocities());
   for (const auto& point_and_frame : feet_contact_points_) {
-    Vector3d position;
     plant_.CalcPointsPositions(*context_, point_and_frame.second,
                                point_and_frame.first, world_, &position);
     contact_pos_sum += position;

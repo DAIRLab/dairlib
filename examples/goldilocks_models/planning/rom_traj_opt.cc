@@ -52,7 +52,7 @@ RomTrajOpt::RomTrajOpt(
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    VectorXd x_init, bool zero_touchdown_impact)
+    VectorXd x_init, bool start_with_left_stance, bool zero_touchdown_impact)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -73,7 +73,8 @@ RomTrajOpt::RomTrajOpt(
       n_z_(2 * rom.n_y()),
       n_x_(plant.num_positions() + plant.num_velocities()),
       plant_(plant),
-      rom_(rom) {
+      rom_(rom),
+      start_with_left_stance_(start_with_left_stance){
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
   int n_q = plant_.num_positions();
   int n_v = plant_.num_velocities();
@@ -93,11 +94,10 @@ RomTrajOpt::RomTrajOpt(
 
   // Loop over modes to add more constraints
   int counter = 0;
+  bool left_stance = start_with_left_stance;
   for (int i = 0; i < num_modes_; i++) {
     cout << "Mode " << i << "============================\n";
     mode_start_.push_back(counter);
-
-    bool left_stance = i % 2 == 0;
 
     // Add dynamics constraints at collocation points
     cout << "Adding dynamics constraint...\n";
@@ -205,6 +205,7 @@ RomTrajOpt::RomTrajOpt(
     }*/
 
     counter += mode_lengths_[i] - 1;
+    left_stance = !left_stance;
   }
 }
 
@@ -368,10 +369,11 @@ RomTrajOptCassie::RomTrajOptCassie(
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd x_init, bool zero_touchdown_impact)
+    Eigen::VectorXd x_init, bool start_with_left_stance,
+    bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
-                 zero_touchdown_impact) {}
+                 start_with_left_stance, zero_touchdown_impact) {}
 
 void RomTrajOptCassie::AddRegularizationCost(
     const Eigen::VectorXd& final_position,
@@ -381,9 +383,8 @@ void RomTrajOptCassie::AddRegularizationCost(
 
   int n_q = plant_.num_positions();
 
+  bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
-    bool left_stance = i % 2 == 0;
-
     // Adding cost on FOM state increases convergence rate
     // If we only add position (not velocity) in the cost, then higher cost
     // results in spacing out each step more evenly
@@ -447,6 +448,8 @@ void RomTrajOptCassie::AddRegularizationCost(
       this->AddQuadraticErrorCost(Id_quat, quat_identity, x_0.head(4));
     }
     this->AddQuadraticErrorCost(Id_quat, quat_identity, x_f.head(4));
+
+    left_stance = !left_stance;
   }
 
   // Note: Cassie can exploit the "one-contact per foot" constraint to lean
@@ -469,9 +472,8 @@ void RomTrajOptCassie::SetAllInitialGuess(
   MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
   y_guess << r_guess, dr_guess;
 
+  bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
-    bool left_stance = i % 2 == 0;
-
     // Time steps
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       SetInitialGuess(timestep(mode_start_[i] + j), h_guess.segment(1, 1));
@@ -514,6 +516,8 @@ void RomTrajOptCassie::SetAllInitialGuess(
     quat_identity << 1, 0, 0, 0;
     SetInitialGuess(x_0.head(4), quat_identity);
     SetInitialGuess(x_f.head(4), quat_identity);
+
+    left_stance = !left_stance;
   }
 }
 
@@ -524,10 +528,11 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd x_init, bool zero_touchdown_impact)
+    Eigen::VectorXd x_init, bool start_with_left_stance,
+    bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
-                 zero_touchdown_impact) {}
+                 start_with_left_stance, zero_touchdown_impact) {}
 
 void RomTrajOptFiveLinkRobot::AddRegularizationCost(
     const Eigen::VectorXd& final_position,
@@ -537,9 +542,8 @@ void RomTrajOptFiveLinkRobot::AddRegularizationCost(
 
   int n_q = plant_.num_positions();
 
+  bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
-    bool left_stance = i % 2 == 0;
-
     // Adding cost on FOM state increases convergence rate
     // If we only add position (not velocity) in the cost, then higher cost
     // results in spacing out each step more evenly
@@ -582,6 +586,8 @@ void RomTrajOptFiveLinkRobot::AddRegularizationCost(
     this->AddQuadraticErrorCost(
         Id_1, VectorXd::Ones(1) * final_position * (i + 1) / num_modes_,
         xf_vars_by_mode(i).head(1));
+
+    left_stance = !left_stance;
   }
 }
 
@@ -596,9 +602,8 @@ void RomTrajOptFiveLinkRobot::SetAllInitialGuess(
   MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
   y_guess << r_guess, dr_guess;
 
+  bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
-    bool left_stance = i % 2 == 0;
-
     // Initial guess
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       SetInitialGuess(timestep(mode_start_[i] + j), h_guess.segment(1, 1));
@@ -626,6 +631,8 @@ void RomTrajOptFiveLinkRobot::SetAllInitialGuess(
     SetInitialGuess(x0_vars_by_mode(i)(0), final_position(0) * i / num_modes_);
     SetInitialGuess(xf_vars_by_mode(i)(0),
                     final_position(0) * (i + 1) / num_modes_);
+
+    left_stance = !left_stance;
   }
 }
 

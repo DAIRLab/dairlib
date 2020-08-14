@@ -37,7 +37,8 @@ class RomTrajOpt
              const std::vector<BodyPoint>& right_contacts,
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
-             Eigen::VectorXd x_init, bool zero_touchdown_impact = true);
+             Eigen::VectorXd x_init, bool start_with_left_stance,
+             bool zero_touchdown_impact = true);
 
   ~RomTrajOpt() override {}
 
@@ -91,6 +92,7 @@ class RomTrajOpt
   const int n_x_;
   const drake::multibody::MultibodyPlant<double>& plant_;
   const ReducedOrderModel& rom_;
+  bool start_with_left_stance_;
 };
 
 class RomTrajOptCassie : public RomTrajOpt {
@@ -103,7 +105,8 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const std::vector<BodyPoint>& right_contacts,
                    const std::vector<std::tuple<std::string, double, double>>&
                        fom_joint_name_lb_ub,
-                   Eigen::VectorXd x_init, bool zero_touchdown_impact);
+                   Eigen::VectorXd x_init, bool start_with_left_stance,
+                   bool zero_touchdown_impact);
 
   void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,
@@ -131,7 +134,8 @@ class RomTrajOptFiveLinkRobot : public RomTrajOpt {
       const std::vector<BodyPoint>& right_contacts,
       const std::vector<std::tuple<std::string, double, double>>&
           fom_joint_name_lb_ub,
-      Eigen::VectorXd x_init, bool zero_touchdown_impact);
+      Eigen::VectorXd x_init, bool start_with_left_stance,
+      bool zero_touchdown_impact);
 
   void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,

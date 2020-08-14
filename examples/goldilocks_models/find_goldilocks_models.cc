@@ -1355,7 +1355,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_rom_option != 5);
   }
 
-  cout << "Trail name: " << FLAGS_program_name << endl;
+  cout << "\nTrail name: " << FLAGS_program_name << endl;
   std::time_t current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   cout << "Current time: " << std::ctime(&current_time);
@@ -2531,7 +2531,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << '\a';  // making noise to notify the user the end of an iteration
   current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  cout << "Current time: " << std::ctime(&current_time);
+  cout << "Current time: " << std::ctime(&current_time) << "\n\n";
 
   // store parameter values
   prefix = to_string(iter + 1) + "_";

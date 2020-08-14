@@ -56,7 +56,7 @@ DEFINE_double(feas_tol, 1e-4, "");
 DEFINE_double(init_phase, 0,
               "The phase where the initial FOM pose is throughout the single "
               "support period. This is used to prepare ourselves for MPC");
-DEFINE_bool(start_with_right_stance, false,
+DEFINE_bool(start_with_left_stance, true,
             "The starting stance of the robot. This is used to prepare "
             "ourselves for MPC");
 DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
@@ -87,17 +87,16 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   if (!CreateFolderIfNotExist(dir_model)) return 0;
   if (!CreateFolderIfNotExist(dir_data)) return 0;
 
-
-  // TODO(yminchen): work on start_with_right_stance
-
-
-
-
-
   // Reduced order model
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(FLAGS_rom_option, FLAGS_robot_option, plant, false);
   ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
+
+  // Create mirror maps
+  StateMirror state_mirror(MirrorPosIndexMap(plant, FLAGS_robot_option),
+                           MirrorPosSignChangeSet(plant, FLAGS_robot_option),
+                           MirrorVelIndexMap(plant, FLAGS_robot_option),
+                           MirrorVelSignChangeSet(plant, FLAGS_robot_option));
 
   // Optimization parameters
   int n_y = rom->n_y();
@@ -134,9 +133,17 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
   int n_sample_raw =
       readCSV(model_dir_n_pref + string("time_at_knots.csv")).size();
-  VectorXd x_init;  // assume this is left in front
+  VectorXd x_init;  // we assume that solution from files are in left stance
   x_init = readCSV(model_dir_n_pref + string("state_at_knots.csv"))
                .col(int(n_sample_raw * FLAGS_init_phase));
+  // Mirror x_init if it's right stance
+  if (!FLAGS_start_with_left_stance) {
+    x_init.head(plant.num_positions()) =
+        state_mirror.MirrorPos(x_init.head(plant.num_positions()));
+    x_init.tail(plant.num_velocities()) =
+        state_mirror.MirrorVel(x_init.tail(plant.num_velocities()));
+  }
+
   if (FLAGS_disturbance != 0) {
     //    x_init(9) += FLAGS_disturbance / 1;
   }
@@ -226,12 +233,6 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     // cout << "x_guess_right_in_front = " << x_guess_right_in_front << endl;
   }
 
-  // Create mirror maps
-  StateMirror state_mirror(MirrorPosIndexMap(plant, FLAGS_robot_option),
-                           MirrorPosSignChangeSet(plant, FLAGS_robot_option),
-                           MirrorVelIndexMap(plant, FLAGS_robot_option),
-                           MirrorVelSignChangeSet(plant, FLAGS_robot_option));
-
   // Get foot contacts
   bool one_contact_per_foot = true;
   auto left_toe = LeftToeFront(plant);
@@ -287,7 +288,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(num_time_samples, Q, R, *rom, plant, state_mirror,
                            left_contacts, right_contacts, joint_name_lb_ub,
-                           x_init, FLAGS_zero_touchdown_impact);
+                           x_init, FLAGS_start_with_left_stance,
+                           FLAGS_zero_touchdown_impact);
 
   cout << "Other constraints/costs and initial guess=============\n";
   // Time step cosntraints

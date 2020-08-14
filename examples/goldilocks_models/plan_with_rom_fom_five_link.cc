@@ -201,7 +201,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptFiveLinkRobot trajopt(num_time_samples, Q, R, *rom, plant,
                                   state_mirror, left_contacts, right_contacts,
-                                  joint_name_lb_ub, init_state,
+                                  joint_name_lb_ub, init_state, true,
                                   FLAGS_zero_touchdown_impact);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;

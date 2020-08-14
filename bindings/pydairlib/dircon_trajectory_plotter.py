@@ -22,6 +22,8 @@ def main():
   force_traj = PiecewisePolynomial.ZeroOrderHold(dircon_traj.GetForceBreaks(0), dircon_traj.GetForceSamples(0))
   force_datatypes = dircon_traj.GetTrajectory("force_vars0").datatypes
 
+  collocation_force_points = dircon_traj.GetCollocationForceSamples(0)
+
   n_points = 500
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
   state_samples = np.zeros((n_points, state_traj.value(0).shape[0]))

@@ -42,13 +42,14 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("GetForceBreaks", &DirconTrajectory::GetForceBreaks)
       .def("GetCollocationForceSamples",
            &DirconTrajectory::GetCollocationForceSamples)
-      .def("GetCollocationBreaks", &DirconTrajectory::GetCollocationBreaks)
+      .def("GetCollocationForceBreaks",
+           &DirconTrajectory::GetCollocationForceBreaks)
       .def("GetDecisionVariables", &DirconTrajectory::GetDecisionVariables)
+      .def("GetNumModes", &DirconTrajectory::GetNumModes)
       .def("ReconstructStateTrajectory",
            &DirconTrajectory::ReconstructStateTrajectory)
       .def("ReconstructInputTrajectory",
            &DirconTrajectory::ReconstructInputTrajectory);
-
 }
 
 }  // namespace pydairlib

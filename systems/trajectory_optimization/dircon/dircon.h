@@ -187,11 +187,11 @@ class Dircon
   /// Get the number of knotpoints in a specified mode
   int mode_length(int mode_index) const; 
 
-  const multibody::KinematicEvaluatorSet<T> get_evaluator_set(int mode) const {
+  const multibody::KinematicEvaluatorSet<T>& get_evaluator_set(int mode) const {
     return mode_sequence_.mode(mode).evaluators();
   }
 
-  const DirconMode<T> get_mode(int mode) const {
+  const DirconMode<T>& get_mode(int mode) const {
     return mode_sequence_.mode(mode);
   }
 

@@ -77,10 +77,12 @@ class DirconTrajectory : public LcmTrajectory {
   Eigen::MatrixXd GetCollocationForceSamples(int mode) {
     return lambda_c_[mode]->datapoints;
   }
-  Eigen::MatrixXd GetCollocationBreaks(int mode) {
+  Eigen::MatrixXd GetCollocationForceBreaks(int mode) {
     return lambda_c_[mode]->time_vector;
   }
   Eigen::VectorXd GetDecisionVariables() { return decision_vars_->datapoints; }
+
+  int GetNumModes() const { return num_modes_; }
 
  private:
   static Eigen::VectorXd GetCollocationPoints(Eigen::VectorXd& time_vector);

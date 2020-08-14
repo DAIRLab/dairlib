@@ -162,10 +162,6 @@ void DoMain(double duration, int max_iter, string data_directory,
   evaluators.add_evaluator(&left_loop_eval);
   evaluators.add_evaluator(&right_loop_eval);
 
-  for (auto e : evaluators.get_evaluators()) {
-    std::cout << "num_full evaluator set: " << e->num_full() << std::endl;
-  }
-
   int num_knotpoints = FLAGS_N;
   double min_T = .2;
   double max_T = 5;
@@ -228,10 +224,6 @@ void DoMain(double duration, int max_iter, string data_directory,
   //                                   KinematicConstraintType::kAccelOnly);
 
   auto trajopt = Dircon<double>(&double_support);
-
-  for (const auto& evaluator : trajopt.get_evaluator_set(0).get_evaluators()) {
-    std::cout << "num full: " << evaluator->num_full() << std::endl;
-  }
 
   if (FLAGS_ipopt) {
     // Ipopt settings adapted from CaSaDi and FROST

@@ -27,7 +27,6 @@ DirconTrajectory::DirconTrajectory(
   std::vector<Eigen::VectorXd> state_breaks;
   dircon.GetStateAndDerivativeSamples(result, &x, &xdot, &state_breaks);
 
-  std::cout << num_modes_ << std::endl;
   for (int mode = 0; mode < num_modes_; ++mode) {
     LcmTrajectory::Trajectory state_traj;
     LcmTrajectory::Trajectory state_derivative_traj;

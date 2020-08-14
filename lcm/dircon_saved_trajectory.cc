@@ -26,6 +26,8 @@ DirconTrajectory::DirconTrajectory(
   std::vector<Eigen::MatrixXd> xdot;
   std::vector<Eigen::VectorXd> state_breaks;
   dircon.GetStateAndDerivativeSamples(result, &x, &xdot, &state_breaks);
+
+  std::cout << num_modes_ << std::endl;
   for (int mode = 0; mode < num_modes_; ++mode) {
     LcmTrajectory::Trajectory state_traj;
     LcmTrajectory::Trajectory state_derivative_traj;
@@ -47,14 +49,11 @@ DirconTrajectory::DirconTrajectory(
     force_traj.traj_name = "force_vars" + std::to_string(mode);
     std::vector<std::string> force_names;
     std::vector<std::string> collocation_force_names;
-    int num_forces = 0;
-    for (const auto& evaluator :
-         dircon.get_evaluator_set(mode).get_evaluators()) {
-      for (int i = 0; i < evaluator->num_full(); ++i) {
-        force_names.push_back("lambda_" + std::to_string(num_forces++));
-        collocation_force_names.push_back("lambda_c_" +
-                                          std::to_string(num_forces++));
-      }
+
+    int num_forces = dircon.get_evaluator_set(mode).count_full();
+    for (int i = 0; i < num_forces; ++i) {
+      force_names.push_back("lambda_" + std::to_string(i));
+      collocation_force_names.push_back("lambda_c_" + std::to_string(i));
     }
     force_traj.datatypes = force_names;
     force_traj.time_vector = state_breaks[mode];
@@ -148,9 +147,10 @@ DirconTrajectory::DirconTrajectory(
     std::vector<std::string> collocation_force_names;
     int num_forces = 0;
     for (int i = 0; i < dircon.num_kinematic_constraints(mode); ++i) {
-      force_names.push_back("lambda_" + std::to_string(num_forces++));
+      force_names.push_back("lambda_" + std::to_string(num_forces));
       collocation_force_names.push_back("lambda_c_" +
-                                        std::to_string(num_forces++));
+                                        std::to_string(num_forces));
+      ++num_forces;
     }
     force_traj.traj_name = "force_vars" + std::to_string(mode);
     force_traj.time_vector = state_breaks[mode];

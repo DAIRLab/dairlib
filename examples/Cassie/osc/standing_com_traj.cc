@@ -2,6 +2,8 @@
 
 #include <math.h>
 
+#include "multibody/multibody_utils.h"
+
 using std::cout;
 using std::endl;
 
@@ -23,27 +25,30 @@ namespace cassie {
 namespace osc {
 
 StandingComTraj::StandingComTraj(
-    const MultibodyPlant<double>& plant,
+    const MultibodyPlant<double>& plant, Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
     double height)
     : plant_(plant),
+      context_(context),
       world_(plant_.world_frame()),
-      feet_contact_points_(feet_contact_points),
-      height_(height) {
+      feet_contact_points_(feet_contact_points){
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
+  target_height_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_target_standing_height",
+              drake::Value<dairlib::lcmt_target_standing_height>{})
+          .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("com_traj", traj_inst,
                                   &StandingComTraj::CalcDesiredTraj);
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 void StandingComTraj::CalcDesiredTraj(
@@ -52,25 +57,30 @@ void StandingComTraj::CalcDesiredTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double target_height =
+      this->EvalInputValue<dairlib::lcmt_target_standing_height>(
+              context, target_height_port_)
+          ->target_height;
+  target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
   VectorXd q = robot_output->GetPositions();
 
-  plant_.SetPositions(context_.get(), q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of left/right feet contact points positions
-  Vector3d contact_position_sum = Vector3d::Zero();
+  Vector3d contact_pos_sum = Vector3d::Zero();
+  Vector3d position;
+  MatrixXd J(3, plant_.num_velocities());
   for (const auto& point_and_frame : feet_contact_points_) {
-    Vector3d position;
     plant_.CalcPointsPositions(*context_, point_and_frame.second,
                                point_and_frame.first, world_, &position);
-    contact_position_sum += position;
+    contact_pos_sum += position;
   }
-
-  Vector3d feet_center = contact_position_sum / 4;
-  Vector3d desired_com_pos(feet_center(0), feet_center(1),
-                           feet_center(2) + height_);
+  Vector3d feet_center_pos = contact_pos_sum / 4;
+  Vector3d desired_com_pos(feet_center_pos(0), feet_center_pos(1),
+                           feet_center_pos(2) + target_height);
 
   // Assign traj
-  PiecewisePolynomial<double>* pp_traj =
+  auto* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   *pp_traj = PiecewisePolynomial<double>(desired_com_pos);

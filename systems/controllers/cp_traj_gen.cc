@@ -31,6 +31,7 @@ namespace systems {
 
 CPTrajGenerator::CPTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* context,
     std::vector<int> left_right_support_fsm_states,
     std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
@@ -41,6 +42,7 @@ CPTrajGenerator::CPTrajGenerator(
     bool add_extra_control, bool is_feet_collision_avoid,
     bool is_using_predicted_com, double cp_offset, double center_line_offset)
     : plant_(plant),
+    context_(context),
       left_right_support_fsm_states_(left_right_support_fsm_states),
       mid_foot_height_(mid_foot_height),
       desired_final_foot_height_(desired_final_foot_height),
@@ -107,8 +109,6 @@ CPTrajGenerator::CPTrajGenerator(
   swing_foot_map_.insert(
       {left_right_support_fsm_states.at(0), left_right_foot.at(0)});
 
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 EventStatus CPTrajGenerator::DiscreteVariableUpdate(
@@ -148,7 +148,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     prev_td_time(0) = current_time;
 
     VectorXd q = robot_output->GetPositions();
-    plant_.SetPositions(context_.get(), q);
+    multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
     // Swing foot position (Forward Kinematics) at touchdown
     auto swing_foot = swing_foot_map_.at(int(fsm_state(0)));
@@ -169,7 +169,7 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
   VectorXd fsm_state = fsm_output->get_value();
 
   VectorXd q = robot_output->GetPositions();
-  plant_.SetPositions(context_.get(), q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Stance foot position
   auto stance_foot = stance_foot_map_.at(int(fsm_state(0)));

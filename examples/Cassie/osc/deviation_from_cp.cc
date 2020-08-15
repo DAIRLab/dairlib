@@ -30,8 +30,10 @@ namespace cassie {
 namespace osc {
 
 DeviationFromCapturePoint::DeviationFromCapturePoint(
-    const drake::multibody::MultibodyPlant<double>& plant)
+    const drake::multibody::MultibodyPlant<double>& plant,
+    Context<double>* context)
     : plant_(plant),
+    context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   // Input/Output Setup
@@ -44,8 +46,6 @@ DeviationFromCapturePoint::DeviationFromCapturePoint(
   this->DeclareVectorOutputPort(BasicVector<double>(2),
                                 &DeviationFromCapturePoint::CalcFootPlacement);
 
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 void DeviationFromCapturePoint::CalcFootPlacement(
@@ -61,7 +61,7 @@ void DeviationFromCapturePoint::CalcFootPlacement(
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
 
-  plant_.SetPositions(context_.get(), q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
   MatrixXd J(3, plant_.num_velocities());

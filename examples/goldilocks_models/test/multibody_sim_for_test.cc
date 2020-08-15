@@ -5,12 +5,18 @@
 
 #include <gflags/gflags.h>
 
+#include "common/file_utils.h"
+#include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_cassie_out.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/kinematic/world_point_evaluator.h"
+#include "multibody/multibody_solvers.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/osc/osc_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -18,6 +24,9 @@
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
+#include "drake/solvers/choose_best_solver.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -41,6 +50,8 @@ using drake::math::RotationMatrix;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+
+DEFINE_bool(start_with_right_stance, false, "");
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -66,8 +77,109 @@ DEFINE_double(init_height, .7,
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
+// Solve for the configuration which respects the forbar linkage constraint and
+// joint limit constraints.
+// The reason why we do this here is because the planner's constraint on Cassie
+// might be too loose
+VectorXd SolveForFeasibleConfiguration(
+    const VectorXd& q_goal,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    bool left_stance = true) {
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
+  auto left_loop = LeftLoopClosureEvaluator(plant);
+  auto right_loop = RightLoopClosureEvaluator(plant);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
+  auto left_toe = LeftToeFront(plant);
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, left_toe.first, left_toe.second, Eigen::Vector3d(0, 0, 1),
+      Eigen::Vector3d::Zero(), false);
+  auto left_heel = LeftToeRear(plant);
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, left_heel.first, left_heel.second, Eigen::Vector3d(0, 0, 1),
+      Eigen::Vector3d::Zero(), false);
+  auto right_toe = RightToeFront(plant);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, right_toe.first, right_toe.second, Eigen::Vector3d(0, 0, 1),
+      Eigen::Vector3d::Zero(), false);
+  auto right_heel = RightToeRear(plant);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, right_heel.first, right_heel.second, Eigen::Vector3d(0, 0, 1),
+      Eigen::Vector3d::Zero(), false);
+  if (left_stance) {
+    evaluators.add_evaluator(&left_toe_evaluator);
+    evaluators.add_evaluator(&left_heel_evaluator);
+  } else {
+    evaluators.add_evaluator(&right_toe_evaluator);
+    evaluators.add_evaluator(&right_heel_evaluator);
+  }
+
+  auto program = multibody::MultibodyProgram(plant);
+  auto q = program.AddPositionVariables();
+  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+  program.AddJointLimitConstraints(q);
+
+  // Soft constraint on the joint positions
+  int n_q = plant.num_positions();
+  program.AddQuadraticErrorCost(Eigen::MatrixXd::Identity(n_q, n_q), q_goal, q);
+
+  program.SetInitialGuess(q, q_goal);
+
+  std::cout << "Solving...\n";
+  std::cout << "Choose the best solver: "
+            << drake::solvers::ChooseBestSolver(program).name() << std::endl;
+  auto start = std::chrono::high_resolution_clock::now();
+  const auto result = drake::solvers::Solve(program, program.initial_guess());
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  auto q_sol = result.GetSolution(q);
+  std::cout << to_string(result.get_solution_result()) << std::endl;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+  std::cout << "q sol = " << q_sol.transpose() << "\n\n";
+
+  return q_sol;
+}
+
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  // Construct plant without springs
+  drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
+  addCassieMultibody(
+      &plant_wo_springs, nullptr, FLAGS_floating_base /*floating base*/,
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false, true);
+  plant_wo_springs.Finalize();
+
+  std::string dir = "../dairlib_data/goldilocks_models/planning/robot_1/data/";
+
+  // Read in the initial state of Cassie from the ROM planner
+  VectorXd init_robot_state = readCSV(dir + "x0_each_mode.csv").col(0);
+  if (FLAGS_start_with_right_stance) {
+    using namespace goldilocks_models;
+    int robot_option = 1;  // Cassie
+    StateMirror state_mirror(
+        MirrorPosIndexMap(plant_wo_springs, robot_option),
+        MirrorPosSignChangeSet(plant_wo_springs, robot_option),
+        MirrorVelIndexMap(plant_wo_springs, robot_option),
+        MirrorVelSignChangeSet(plant_wo_springs, robot_option));
+    std::cout << "before mirroring, init_robot_state = "
+              << init_robot_state.transpose() << std::endl;
+    init_robot_state << state_mirror.MirrorPos(
+        init_robot_state.head(plant_wo_springs.num_positions())),
+        state_mirror.MirrorVel(
+            init_robot_state.tail(plant_wo_springs.num_velocities()));
+    std::cout << "after mirroring, init_robot_state = "
+              << init_robot_state.transpose() << std::endl;
+  }
+
+  // Read in the end time of the trajectory
+  int knots_per_foot_step = readCSV(dir + "nodes_per_step.csv")(0, 0);
+  double end_time_of_first_step =
+      readCSV(dir + "time_at_knots.csv")(knots_per_foot_step, 0);
+  std::cout << "knots_per_foot_step = " << knots_per_foot_step << std::endl;
+  std::cout << "end_time_of_first_step = " << end_time_of_first_step
+            << std::endl;
 
   // Plant/System initialization
   DiagramBuilder<double> builder;
@@ -118,8 +230,8 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
-  const auto& sensor_aggregator = AddImuAndAggregator(
-      &builder, plant, passthrough->get_output_port());
+  const auto& sensor_aggregator =
+      AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
@@ -155,19 +267,53 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   // Set initial conditions of the simulation
-  VectorXd q_init, u_init, lambda_init;
-
+  /*VectorXd q_init, u_init, lambda_init;
   double mu_fp = 0;
   double min_normal_fp = 70;
   double toe_spread = .2;
+  // Create a plant for CassieFixedPointSolver.
+  // Note that we cannot use the plant from the above diagram, because after the
+  // diagram is built, plant.get_actuation_input_port().HasValue(*context)
+  // throws a segfault error
+  drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+  addCassieMultibody(&plant_for_solver, nullptr,
+                     FLAGS_floating_base, urdf,
+                     FLAGS_spring_model, true);
+  plant_for_solver.Finalize();
   if (FLAGS_floating_base) {
-    CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp, true,
-                           toe_spread, &q_init, &u_init, &lambda_init);
+    CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
+                           min_normal_fp, true, toe_spread, &q_init, &u_init,
+                           &lambda_init);
   } else {
-    CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
+    CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
+                                    &lambda_init);
   }
   plant.SetPositions(&plant_context, q_init);
-  plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
+  plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));*/
+
+  // Map state of plant_wo_springs to plant_w_springs
+  Eigen::MatrixXd map_position_from_spring_to_no_spring =
+      systems::controllers::PositionMapFromSpringToNoSpring(plant,
+                                                            plant_wo_springs);
+  Eigen::MatrixXd map_velocity_from_spring_to_no_spring =
+      systems::controllers::VelocityMapFromSpringToNoSpring(plant,
+                                                            plant_wo_springs);
+  VectorXd init_robot_state_w_springs(plant.num_positions() +
+                                      plant.num_velocities());
+  init_robot_state_w_springs
+      << map_position_from_spring_to_no_spring.transpose() *
+             init_robot_state.head(plant_wo_springs.num_positions()),
+      map_velocity_from_spring_to_no_spring.transpose() *
+          init_robot_state.tail(plant_wo_springs.num_velocities());
+  init_robot_state_w_springs.head(plant.num_positions()) =
+      SolveForFeasibleConfiguration(
+          init_robot_state_w_springs.head(plant.num_positions()), plant);
+
+  std::cout << "init_robot_state (from planner) = "
+            << init_robot_state.transpose() << std::endl;
+  std::cout << "init_robot_state_w_springs = "
+            << init_robot_state_w_springs.transpose() << std::endl;
+  plant.SetPositionsAndVelocities(&plant_context, init_robot_state_w_springs);
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
@@ -183,7 +329,7 @@ int do_main(int argc, char* argv[]) {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
-  simulator.AdvanceTo(FLAGS_end_time);
+  simulator.AdvanceTo(end_time_of_first_step);
 
   return 0;
 }

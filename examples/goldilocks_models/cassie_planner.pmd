@@ -1,0 +1,31 @@
+group "0.cassie planner (2 foot steps)" {
+    cmd "1.0.ipopt (wo init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=30 --sample=19 --init_file=\"\" --use_ipopt=true --knots_per_mode=10 --n_step=2 --final_position=1  ";
+        host = "localhost";
+    }
+    cmd "0.0.snopt (wo init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=30 --sample=19 --init_file=\"\" --use_ipopt=false --knots_per_mode=10 --n_step=2 --final_position=1";
+        host = "localhost";
+    }
+    cmd "0.1.snopt (w init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=30 --sample=19 --init_file=\"z.csv\" --use_ipopt=false --knots_per_mode=10 --n_step=2 --final_position=1";
+        host = "localhost";
+    }
+    cmd "1.1. ipopt (w init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/plan_with_rom_fom_cassie --iter=30 --sample=19 --init_file=\"z.csv\" --use_ipopt=true --knots_per_mode=10 --n_step=2 --final_position=1  ";
+        host = "localhost";
+    }
+}
+
+group "1. visualization" {
+    cmd "0. drake visualizer" {
+        exec = "../drake/bazel-bin/tools/drake_visualizer";
+        host = "localhost";
+    }
+    cmd "1. cassie pose" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1";
+        host = "localhost";
+    }
+}
+
+

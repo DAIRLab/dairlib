@@ -96,6 +96,9 @@ int DoMain(int argc, char* argv[]) {
   plant_w_springs.Finalize();
   plant_wo_springs.Finalize();
 
+  auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
+
   int nq = plant_wo_springs.num_positions();
   int nv = plant_wo_springs.num_velocities();
   int nx = nq + nv;
@@ -201,8 +204,8 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, true,
-      FLAGS_print_osc); /*print_tracking_info*/
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      context_wo_spr.get(), true, FLAGS_print_osc); /*print_tracking_info*/
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -269,8 +272,8 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
-  ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
-                                    &plant_w_springs, &plant_wo_springs);
+  ComTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
+                                    plant_w_springs, plant_wo_springs);
   for (FSM_STATE mode : stance_modes) {
     com_tracking_data.AddStateToTrack(mode);
   }
@@ -285,11 +288,11 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_sw_ft = 12 * MatrixXd::Identity(3, 3);
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_w_springs,
-      &plant_wo_springs);
+      "l_foot_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_springs,
+      plant_wo_springs);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_w_springs,
-      &plant_wo_springs);
+      "r_foot_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_springs,
+      plant_wo_springs);
   left_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_right");
 
@@ -307,8 +310,8 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_tracking_data", 3, K_p_pelvis, K_d_pelvis, W_pelvis,
-      &plant_w_springs, &plant_wo_springs);
+      "pelvis_rot_tracking_data", K_p_pelvis, K_d_pelvis, W_pelvis,
+      plant_w_springs, plant_wo_springs);
 
   for (FSM_STATE mode : stance_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");

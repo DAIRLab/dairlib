@@ -188,6 +188,7 @@ class LcmDrivenLoop {
       bool is_new_switch_message = false;
       LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
         if (name_to_input_sub_map_.at(active_channel_).count() > 0) {
+          std::cout << "start of lcmdrivenloop, message count = " << name_to_input_sub_map_.at(active_channel_).count() << std::endl;
           is_new_input_message = true;
         }
         if (switch_sub_ != nullptr) {
@@ -231,6 +232,7 @@ class LcmDrivenLoop {
         }
 
         // Clear messages in the current input channel
+        std::cout << "end of lcmdrivenloop, message count = " << name_to_input_sub_map_.at(active_channel_).count() << std::endl;
         name_to_input_sub_map_.at(active_channel_).clear();
       }
 

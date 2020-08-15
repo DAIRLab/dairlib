@@ -71,7 +71,7 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
     const drake::systems::Context<double>& context, const VectorXd& x,
     double t) const {
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
-  auto plant_context = createContext(plant_, x, zero_input);
+  auto plant_context = createContext<double>(plant_, x, zero_input);
 
   Vector3d zero_offset = Vector3d::Zero();
   Vector3d hip_pos = Vector3d::Zero();

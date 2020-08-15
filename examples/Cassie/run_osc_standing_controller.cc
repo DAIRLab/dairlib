@@ -69,6 +69,9 @@ int DoMain(int argc, char* argv[]) {
                      false);
   plant_wo_springs.Finalize();
 
+  auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
+
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_springs or plant_wo_springs because the contact frames exit in both
   // plants)
@@ -105,13 +108,14 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      plant_w_springs, feet_contact_points, FLAGS_height);
+      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height);
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, false, FLAGS_print_osc);
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      context_wo_spr.get(), false, FLAGS_print_osc);
 
   // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
@@ -169,9 +173,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_com = xy_scale * MatrixXd::Identity(3, 3);
   K_p_com(2, 2) = 10;
   K_d_com(2, 2) = 10;
-  ComTrackingData center_of_mass_traj("com_traj", 3, K_p_com, K_d_com,
+  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
                                       W_com * FLAGS_cost_weight_multiplier,
-                                      &plant_w_springs, &plant_wo_springs);
+                                      plant_w_springs, plant_wo_springs);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   double w_pelvis_balance = 200;
@@ -193,9 +197,9 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj(
-      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis,
-      W_pelvis * FLAGS_cost_weight_multiplier, &plant_w_springs,
-      &plant_wo_springs);
+      "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
+      W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
+      plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;

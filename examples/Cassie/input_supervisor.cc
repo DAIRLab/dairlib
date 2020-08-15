@@ -1,4 +1,5 @@
 #include "examples/Cassie/input_supervisor.h"
+
 #include "systems/framework/output_vector.h"
 
 using drake::systems::Context;
@@ -24,7 +25,8 @@ InputSupervisor::InputSupervisor(
   command_input_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
           .get_index();
-  state_input_port_ = this->DeclareVectorInputPort(OutputVector<double>(
+  state_input_port_ = this
+                          ->DeclareVectorInputPort(OutputVector<double>(
                               num_positions_, num_velocities_, num_actuators_))
                           .get_index();
 
@@ -41,8 +43,10 @@ InputSupervisor::InputSupervisor(
           .get_index();
 
   // Create error flag as discrete state
-  n_consecutive_fails_index_ = DeclareDiscreteState(1);
-  status_index_ = DeclareDiscreteState(1);
+  // Store both values in single discrete vector
+  DeclareDiscreteState(2);
+  n_fails_index_ = 0;
+  status_index_ = 1;
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
@@ -55,7 +59,8 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  bool is_error = context.get_discrete_state(0)[0] >= min_consecutive_failures_;
+  bool is_error =
+      context.get_discrete_state()[n_fails_index_] >= min_consecutive_failures_;
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros
@@ -89,7 +94,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  output->get_mutable_value()(0) = context.get_discrete_state(status_index_)[0];
+  output->get_mutable_value()(0) = context.get_discrete_state()[status_index_];
   if (input_limit_ != std::numeric_limits<double>::max()) {
     for (int i = 0; i < command->get_data().size(); i++) {
       double command_value = command->get_data()(i);
@@ -103,7 +108,8 @@ void InputSupervisor::SetStatus(const Context<double>& context,
   // Shutdown is/will soon be active (the status flag is set in a separate loop
   // from the actual motor torques so the update of the status bit could be
   // slightly off
-  if (context.get_discrete_state(0)[0] >= min_consecutive_failures_) {
+  if (context.get_discrete_state()[n_fails_index_] >=
+      min_consecutive_failures_) {
     output->get_mutable_value()(0) += 4;
   }
 }
@@ -116,25 +122,25 @@ void InputSupervisor::UpdateErrorFlag(
 
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
-  if ((*discrete_state)[0] < min_consecutive_failures_) {
+  if ((*discrete_state)[n_fails_index_] < min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
                              (velocities.array() < -max_joint_velocity_).any();
     if (is_velocity_error) {
       // Increment counter
-      (*discrete_state)[0]++;
-      discrete_state->get_mutable_vector(status_index_)[0] = true;
+      (*discrete_state)[n_fails_index_]++;
+      (*discrete_state)[status_index_] = true;
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
-      std::cout << "Consecutive error " << (*discrete_state)[0] << " of "
-                << min_consecutive_failures_ << std::endl;
+      std::cout << "Consecutive error " << (*discrete_state)[n_fails_index_]
+                << " of " << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
                 << std::endl;
     } else {
       // Reset counter
-      (*discrete_state)[0] = 0;
-      discrete_state->get_mutable_vector(status_index_)[0] = false;
+      (*discrete_state)[n_fails_index_] = 0;
+      (*discrete_state)[status_index_] = false;
     }
   }
 }

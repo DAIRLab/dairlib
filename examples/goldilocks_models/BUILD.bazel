@@ -19,8 +19,23 @@ cc_binary(
 )
 
 cc_binary(
-    name = "plan_with_RoM_FoM",
-    srcs = ["plan_with_RoM_FoM.cc"],
+    name = "plan_with_rom_fom_five_link",
+    srcs = ["plan_with_rom_fom_five_link.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        ":goldilocks_utils",
+        ":reduced_order_models",
+        "//common",
+        "//common:file_utils",
+        "//examples/goldilocks_models/planning:rom_traj_opt",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "plan_with_rom_fom_cassie",
+    srcs = ["plan_with_rom_fom_cassie.cc"],
     data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
     deps = [
         ":goldilocks_utils",
@@ -88,6 +103,30 @@ cc_binary(
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie:simulator_drift",
         "//examples/Cassie/osc",
+        "//examples/goldilocks_models/controller:rom_traj_receiver",
+        "//multibody:utils",
+        "//systems:drake_signal_lcm_systems",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_cassie_rom_planner_process",
+    srcs = ["run_cassie_rom_planner_process.cc"],
+    deps = [
+        ":reduced_order_models",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie:simulator_drift",
+        "//examples/Cassie/osc",
+        "//examples/goldilocks_models/controller:cassie_rom_planner_system",
+        "//examples/goldilocks_models/controller:rom_traj_receiver",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",

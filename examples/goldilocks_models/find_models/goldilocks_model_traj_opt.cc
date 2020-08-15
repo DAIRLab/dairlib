@@ -105,6 +105,14 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 3200.0 * rom_scale));
+      } else if (rom_option == 5) {
+        // TODO: The scaling hasn't been tuned yet. These are just guessings
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 3200.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(3, constraint_scale * 1.0 / 26000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(4, constraint_scale * 1.0 / 26000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(5, constraint_scale * 1.0 / 4000.0 * rom_scale));
       } else {
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);
@@ -137,6 +145,14 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
           dircon->SetVariableScaling(tau_i(0), tau1_scale);
           dircon->SetVariableScaling(tau_i(1), tau2_scale);
         }
+      } else if (rom_option == 5) {
+        for (int i = 0; i < N; i++) {
+          auto tau_i = reduced_model_input(i, n_tau);
+          // TODO: The scaling hasn't been tuned yet
+          dircon->SetVariableScaling(tau_i(0), tau1_scale);
+          dircon->SetVariableScaling(tau_i(1), tau1_scale);
+          dircon->SetVariableScaling(tau_i(2), tau2_scale);
+        }
       }
     }
 
@@ -154,6 +170,11 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
             // TODO: hasn't added
             W(0, 0) /= (tau1_scale * tau1_scale);
             W(1, 1) /= (tau2_scale * tau2_scale);
+          } else if (rom_option == 5) {
+            // TODO: hasn't added
+            W(0, 0) /= (tau1_scale * tau1_scale);
+            W(1, 1) /= (tau1_scale * tau1_scale);
+            W(2, 2) /= (tau2_scale * tau2_scale);
           }
         }
 
@@ -246,7 +267,7 @@ void GoldilocksModelTrajOpt::ConstructStateCubicSplineInfo(
       VectorX<double> uk = result.GetSolution(dircon->input(k_data));
       states->col(k) = xk;
       inputs.col(k) = uk;
-      auto context = multibody::createContext(plant, xk, uk);
+      auto context = multibody::createContext<double>(plant, xk, uk);
       constraints[i]->updateData(*context,
                                  result.GetSolution(dircon->force(i, j)));
       derivatives->col(k) =

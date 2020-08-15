@@ -1,9 +1,11 @@
 #include "examples/Cassie/osc/high_level_command.h"
 
 #include <math.h>
+
 #include <string>
 
 #include "multibody/multibody_utils.h"
+
 #include "drake/math/quaternion.h"
 
 using std::cout;
@@ -36,9 +38,11 @@ namespace osc {
 
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* context,
     const Vector2d& global_target_position,
     const Vector2d& params_of_no_turning)
     : plant_(plant),
+      context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")),
       global_target_position_(global_target_position),
@@ -68,9 +72,6 @@ HighLevelCommand::HighLevelCommand(
 
   // Discrete state which stores the desired horizontal velocity
   des_horizontal_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(2));
-
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
@@ -89,7 +90,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     VectorXd q = robotOutput->GetPositions();
     VectorXd v = robotOutput->GetVelocities();
 
-    plant_.SetPositions(context_.get(), q);
+    multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
     // Get center of mass position and velocity
     Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);

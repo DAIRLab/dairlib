@@ -24,7 +24,8 @@ namespace osc {
 /// Requirement: quaternion floating-based Cassie only
 class HeadingTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  HeadingTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant);
+  HeadingTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -39,9 +40,9 @@ class HeadingTrajGenerator : public drake::systems::LeafSystem<double> {
                        drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
 
   int state_port_;
   int des_yaw_port_;

@@ -2,6 +2,8 @@
 
 #include <math.h>
 
+#include "multibody/multibody_utils.h"
+
 using std::cout;
 using std::endl;
 
@@ -24,10 +26,12 @@ namespace osc {
 
 StandingComTraj::StandingComTraj(
     const MultibodyPlant<double>& plant,
+    Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
     double height)
     : plant_(plant),
+      context_(context),
       world_(plant_.world_frame()),
       feet_contact_points_(feet_contact_points),
       height_(height) {
@@ -42,8 +46,6 @@ StandingComTraj::StandingComTraj(
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("com_traj", traj_inst,
                                   &StandingComTraj::CalcDesiredTraj);
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 void StandingComTraj::CalcDesiredTraj(
@@ -54,7 +56,7 @@ void StandingComTraj::CalcDesiredTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q = robot_output->GetPositions();
 
-  plant_.SetPositions(context_.get(), q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of left/right feet contact points positions
   Vector3d contact_position_sum = Vector3d::Zero();

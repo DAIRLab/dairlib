@@ -97,6 +97,8 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   // Read in some parameters
   int n_step = readCSV(data_directory + string("n_step.csv"))(0, 0);
   int n_nodes = readCSV(data_directory + string("nodes_per_step.csv"))(0, 0);
+  cout << "n_step = " << n_step << endl;
+  cout << "n_nodes = " << n_nodes << endl;
 
   // Setup
   bool left_stance = start_with_left_stance;
@@ -118,34 +120,46 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   MatrixXd x0_each_mode = readCSV(data_directory + string("x0_each_mode.csv"));
   MatrixXd xf_each_mode = readCSV(data_directory + string("xf_each_mode.csv"));
   DRAKE_DEMAND(x0_each_mode.cols() == n_step);
+  cout << "x0_each_mode = \n" << x0_each_mode << endl;
+  cout << "xf_each_mode = \n" << xf_each_mode << endl;
 
   // Read in states
   MatrixXd states = readCSV(data_directory + string("state_at_knots.csv"));
   DRAKE_DEMAND(states.cols() == n_step * n_nodes - (n_step - 1));
   DRAKE_DEMAND(n_y * 2 == states.rows());
 
+  // Get foot contacts
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      left_contacts = {FiveLinkRobotLeftContact(plant)};
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      right_contacts = {FiveLinkRobotRightContact(plant)};
+  // Create context
+  auto context = plant.CreateDefaultContext();
+
   // Get the stance foot positions
   MatrixXd stance_foot_pos_each_mode(2, x0_each_mode.cols());
   for (int i = 0; i < n_step; i++) {
     if (start_with_left_stance)
-      left_stance = (i % 2) ? false : true;
+      left_stance = i % 2 == 0;
     else
-      left_stance = (i % 2) ? true : false;
+      left_stance = i % 2 != 0;
 
     VectorX<double> q0 = x0_each_mode.col(i).head(7);
     // clang-format off
     if (left_stance) {
-      VectorX<double> left_foot_pos_xz_0(2);
-      left_foot_pos_xz_0 <<
-          q0(0) - 0.5 * sin(q0(2) + q0(3)) - 0.5 * sin(q0(2) + q0(3) + q0(5)),
-          q0(1) - 0.5 * cos(q0(2) + q0(3)) - 0.5 * cos(q0(2) + q0(3) + q0(5));
-      stance_foot_pos_each_mode.col(i) = left_foot_pos_xz_0;
+      plant.SetPositions(context.get(), q0);
+      drake::VectorX<double> pt(3);
+      const auto& contact = left_contacts.at(0);
+      plant.CalcPointsPositions(*context, contact.second, contact.first,
+                                plant.world_frame(), &pt);
+      stance_foot_pos_each_mode.col(i) << pt(0), pt(2);
     } else {
-      VectorX<double> right_foot_pos_xz_0(2);
-      right_foot_pos_xz_0 <<
-          q0(0) - 0.5 * sin(q0(2) + q0(4)) - 0.5 * sin(q0(2) + q0(4) + q0(6)),
-          q0(1) - 0.5 * cos(q0(2) + q0(4)) - 0.5 * cos(q0(2) + q0(4) + q0(6));
-      stance_foot_pos_each_mode.col(i) = right_foot_pos_xz_0;
+      plant.SetPositions(context.get(), q0);
+      drake::VectorX<double> pt(3);
+      const auto& contact = right_contacts.at(0);
+      plant.CalcPointsPositions(*context, contact.second, contact.first,
+                                plant.world_frame(), &pt);
+      stance_foot_pos_each_mode.col(i) << pt(0), pt(2);
     }
     // clang-format on
   }

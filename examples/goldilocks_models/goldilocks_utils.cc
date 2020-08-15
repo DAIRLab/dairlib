@@ -105,8 +105,12 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   if (robot_option == 0) {
     mapping_basis = std::make_unique<MonomialFeatures>(
         2, plant.num_positions(), empty_inds, "mapping basis");
-  } else {                              // robot_option == 1
-    vector<int> skip_inds = {3, 4, 5};  // quat_z, x, and y
+  } else {  // robot_option == 1
+    // TODO: we completely remove the quaternion for now. We want to have
+    //  roll and pitch, so add this component later (need to map quat to roll
+    //  pitch yaw)
+    vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
+    //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     mapping_basis = std::make_unique<MonomialFeatures>(
         2, plant.num_positions(), skip_inds, "mapping basis");
   }
@@ -120,8 +124,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         2, 2 * Lipm::kDimension(2), empty_inds, "dynamic basis");
   } else if (rom_option == 1) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * TwoDimLipmWithSwingFoot::kDimension, empty_inds,
-        "dynamic basis");
+        2, 2 * LipmWithSwingFoot::kDimension(2), empty_inds, "dynamic basis");
   } else if (rom_option == 2) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * FixHeightAccel::kDimension, empty_inds, "dynamic basis");
@@ -132,6 +135,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 4) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+  } else if (rom_option == 5) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -168,8 +174,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 2);
   } else if (rom_option == 1) {
-    rom = std::make_unique<TwoDimLipmWithSwingFoot>(
-        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
+    rom = std::make_unique<LipmWithSwingFoot>(
+        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis, 2);
   } else if (rom_option == 2) {
     rom = std::make_unique<FixHeightAccel>(plant, stance_foot, *mapping_basis,
                                            *dynamic_basis);
@@ -179,6 +185,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 4) {
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3);
+  } else if (rom_option == 5) {
+    rom = std::make_unique<LipmWithSwingFoot>(
+        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis, 3);
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -186,7 +195,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom->PrintInfo();
   }
 
-  return std::move(rom);
+  return rom;
 }
 
 void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
@@ -209,6 +218,115 @@ void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
       readCSV(dir + to_string(model_iter) + string("_theta_yddot.csv")).col(0);
   rom->SetThetaY(theta_y);
   rom->SetThetaYddot(theta_yddot);
+}
+
+std::map<int, int> MirrorPosIndexMap(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
+  std::map<int, int> ret;
+  std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+
+  if (robot_option == 0) {
+    vector<std::pair<string, string>> l_r_pairs{
+        std::pair<string, string>("left_", "right_"),
+        std::pair<string, string>("right_", "left_")};
+    std::vector<std::string> joint_names = {"hip_pin", "knee_pin"};
+
+    for (const auto& joint_name : joint_names) {
+      for (const auto& l_r_pair : l_r_pairs) {
+        ret[pos_map.at(l_r_pair.first + joint_name)] =
+            pos_map.at(l_r_pair.second + joint_name);
+      }
+    }
+  } else {
+    vector<std::pair<string, string>> l_r_pairs{
+        std::pair<string, string>("_left", "_right"),
+        std::pair<string, string>("_right", "_left")};
+    std::vector<std::string> joint_names = {
+        "hip_roll", "hip_yaw", "hip_pitch", "knee", "ankle_joint", "toe"};
+
+    for (const auto& joint_name : joint_names) {
+      for (const auto& l_r_pair : l_r_pairs) {
+        ret[pos_map.at(joint_name + l_r_pair.first)] =
+            pos_map.at(joint_name + l_r_pair.second);
+      }
+    }
+  }
+
+  return ret;
+}
+std::set<int> MirrorPosSignChangeSet(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
+  std::set<int> ret;
+  std::map<std::string, int> vel_map = multibody::makeNameToPositionsMap(plant);
+
+  if (robot_option == 0) {
+    // No sign change
+  } else {
+    std::vector<std::string> asy_joint_names = {
+        "base_qx",       "base_qz",       "base_y",      "hip_roll_right",
+        "hip_yaw_right", "hip_roll_left", "hip_yaw_left"};
+
+    for (const auto& name : asy_joint_names) {
+      ret.insert(vel_map.at(name));
+    }
+  }
+
+  return ret;
+}
+std::map<int, int> MirrorVelIndexMap(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
+  std::map<int, int> ret;
+  std::map<std::string, int> vel_map =
+      multibody::makeNameToVelocitiesMap(plant);
+
+  if (robot_option == 0) {
+    vector<std::pair<string, string>> l_r_pairs{
+        std::pair<string, string>("left_", "right_"),
+        std::pair<string, string>("right_", "left_")};
+    std::vector<std::string> joint_names = {"hip_pin", "knee_pin"};
+
+    for (const auto& joint_name : joint_names) {
+      for (const auto& l_r_pair : l_r_pairs) {
+        ret[vel_map.at(l_r_pair.first + joint_name + "dot")] =
+            vel_map.at(l_r_pair.second + joint_name + "dot");
+      }
+    }
+  } else {
+    vector<std::pair<string, string>> l_r_pairs{
+        std::pair<string, string>("_left", "_right"),
+        std::pair<string, string>("_right", "_left")};
+    std::vector<std::string> joint_names = {
+        "hip_roll", "hip_yaw", "hip_pitch", "knee", "ankle_joint", "toe"};
+
+    for (const auto& joint_name : joint_names) {
+      for (const auto& l_r_pair : l_r_pairs) {
+        ret[vel_map.at(joint_name + l_r_pair.first + "dot")] =
+            vel_map.at(joint_name + l_r_pair.second + "dot");
+      }
+    }
+  }
+
+  return ret;
+}
+std::set<int> MirrorVelSignChangeSet(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
+  std::set<int> ret;
+  std::map<std::string, int> pos_map =
+      multibody::makeNameToVelocitiesMap(plant);
+
+  if (robot_option == 0) {
+    // No sign change
+  } else {
+    std::vector<std::string> asy_joint_names = {
+        "base_wy",          "base_vy",          "hip_roll_rightdot",
+        "hip_yaw_rightdot", "hip_roll_leftdot", "hip_yaw_leftdot"};
+
+    for (const auto& name : asy_joint_names) {
+      ret.insert(pos_map.at(name));
+    }
+  }
+
+  return ret;
 }
 
 // Create time knots for creating cubic splines
@@ -410,6 +528,15 @@ void SaveStringVecToCsv(const vector<std::string>& strings,
     ofile << mem << endl;
   }
   ofile.close();
+}
+
+BodyPoint FiveLinkRobotLeftContact(const MultibodyPlant<double>& plant) {
+  return BodyPoint(Vector3d(0, 0, -0.5),
+                   plant.GetFrameByName("left_lower_leg_mass"));
+}
+BodyPoint FiveLinkRobotRightContact(const MultibodyPlant<double>& plant) {
+  return BodyPoint(Vector3d(0, 0, -0.5),
+                   plant.GetFrameByName("right_lower_leg_mass"));
 }
 
 }  // namespace goldilocks_models

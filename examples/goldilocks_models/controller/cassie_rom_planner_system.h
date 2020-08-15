@@ -52,11 +52,11 @@ struct PlannerSetting {
 /// function), because we rotate the robot state at touchdown to the origin in
 /// MPC
 
-class OptimalRomPlanner : public drake::systems::LeafSystem<double> {
+class CassieOptimalRomPlanner : public drake::systems::LeafSystem<double> {
  public:
   static const int ROBOT = 1;  // robot index for Cassie
 
-  OptimalRomPlanner(
+  CassieOptimalRomPlanner(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
       const drake::multibody::MultibodyPlant<double>& plant_controls,
       const std::vector<int>& left_right_support_fsm_states,

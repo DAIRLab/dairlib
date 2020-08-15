@@ -145,10 +145,10 @@ int DoMain(int argc, char* argv[]) {
     if (!FLAGS_start_with_left_stance) {
       // Create mirror maps
       StateMirror state_mirror(
-          MirrorPosIndexMap(plant_controls, OptimalRomPlanner::ROBOT),
-          MirrorPosSignChangeSet(plant_controls, OptimalRomPlanner::ROBOT),
-          MirrorVelIndexMap(plant_controls, OptimalRomPlanner::ROBOT),
-          MirrorVelSignChangeSet(plant_controls, OptimalRomPlanner::ROBOT));
+          MirrorPosIndexMap(plant_controls, CassieOptimalRomPlanner::ROBOT),
+          MirrorPosSignChangeSet(plant_controls, CassieOptimalRomPlanner::ROBOT),
+          MirrorVelIndexMap(plant_controls, CassieOptimalRomPlanner::ROBOT),
+          MirrorVelSignChangeSet(plant_controls, CassieOptimalRomPlanner::ROBOT));
       // Mirror the state
       x_init.head(plant_controls.num_positions()) =
           state_mirror.MirrorPos(x_init.head(plant_controls.num_positions()));
@@ -215,7 +215,7 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = 1;
   double stride_period = 0.37;  // TODO(yminchen): this value should change
   std::vector<int> ss_fsm_states = {left_stance_state, right_stance_state};
-  auto rom_planner = builder.AddSystem<OptimalRomPlanner>(
+  auto rom_planner = builder.AddSystem<CassieOptimalRomPlanner>(
       plant_feedback, plant_controls, ss_fsm_states, stride_period, param,
       FLAGS_debug_mode);
   builder.Connect(state_receiver->get_output_port(0),

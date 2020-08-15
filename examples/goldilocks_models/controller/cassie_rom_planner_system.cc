@@ -42,7 +42,7 @@ using dairlib::systems::OutputVector;
 namespace dairlib {
 namespace goldilocks_models {
 
-OptimalRomPlanner::OptimalRomPlanner(
+CassieOptimalRomPlanner::CassieOptimalRomPlanner(
     const MultibodyPlant<double>& plant_feedback,
     const MultibodyPlant<double>& plant_controls,
     const std::vector<int>& left_right_support_fsm_states, double stride_period,
@@ -62,7 +62,7 @@ OptimalRomPlanner::OptimalRomPlanner(
                     .get_index();
   fsm_and_lo_time_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
-  this->DeclareAbstractOutputPort(&OptimalRomPlanner::SolveTrajOpt);
+  this->DeclareAbstractOutputPort(&CassieOptimalRomPlanner::SolveTrajOpt);
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
@@ -177,7 +177,7 @@ OptimalRomPlanner::OptimalRomPlanner(
   R_ = param_.w_R * MatrixXd::Identity(n_tau, n_tau);
 }
 
-void OptimalRomPlanner::SolveTrajOpt(
+void CassieOptimalRomPlanner::SolveTrajOpt(
     const Context<double>& context,
     dairlib::lcmt_trajectory_block* traj_msg) const {
   // Read in current robot state

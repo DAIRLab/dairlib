@@ -331,13 +331,6 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     trajopt.AddRegularizationCost(final_position, x_guess_left_in_front,
                                   x_guess_right_in_front,
                                   false /*straight_leg_cost*/);
-
-    // Add more regularization cost
-    /*auto qf_var = trajopt.xf_vars_by_mode(num_time_samples.size()-1);
-    VectorXd quat_unity(4);
-    quat_unity << 1, 0, 0, 0;
-    trajopt.AddQuadraticErrorCost(100*MatrixXd::Identity(4, 4), quat_unity,
-                                  qf_var.head(4));*/
   } else {
     // Since there are multiple q that could be mapped to the same r, I
     // penalize on q so it get close to a certain configuration

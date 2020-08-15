@@ -19,6 +19,7 @@ namespace dairlib::goldilocks_models {
 
 using std::cout;
 using std::endl;
+using std::string;
 using std::to_string;
 using std::vector;
 
@@ -42,8 +43,30 @@ using systems::OutputVector;
 
 using multibody::JwrtqdotToJwrtv;
 
-//DEFINE_int32(iter, 29, "The iteration # of the model parameter that you use");
+// Planner settings
+DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
+DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
+DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
+DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 
+DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
+DEFINE_double(final_position, 2, "The final position for the robot");
+
+DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
+DEFINE_bool(fix_duration, false, "Fix the total time");
+DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
+DEFINE_bool(zero_touchdown_impact, true, "Zero impact at foot touchdown");
+DEFINE_double(opt_tol, 1e-4, "");
+DEFINE_double(feas_tol, 1e-4, "");
+
+DEFINE_bool(log_solver_info, false,
+            "Log snopt output to a file or ipopt to terminal");
+DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
+
+// Flag for debugging
+DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
+
+// LCM channels (non debug mode)
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
@@ -53,6 +76,16 @@ DEFINE_string(
     "LCM channel for receiving fsm and time of latest liftoff event. ");
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which publishes command");
+
+// (for non debug mode)
+DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
+DEFINE_double(init_phase, 0,
+              "The phase where the initial FOM pose is throughout the single "
+              "support period. This is used to prepare ourselves for MPC");
+DEFINE_bool(start_with_left_stance, true,
+            "The starting stance of the robot. This is used to prepare "
+            "ourselves for MPC");
+DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -69,6 +102,93 @@ int DoMain(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false);
   plant_controls.Finalize();
+
+  // Parameters for the traj opt
+  PlannerSetting param;
+  param.rom_option = FLAGS_rom_option;
+  param.iter = FLAGS_iter;
+  param.sample = FLAGS_sample;
+  param.n_step = FLAGS_n_step;
+  param.knots_per_mode = FLAGS_knots_per_mode;
+  param.final_position_x = FLAGS_final_position;
+  param.zero_touchdown_impact = FLAGS_zero_touchdown_impact;
+  param.equalize_timestep_size = FLAGS_equalize_timestep_size;
+  param.fix_duration = FLAGS_fix_duration;
+  param.feas_tol = FLAGS_feas_tol;
+  param.opt_tol = FLAGS_opt_tol;
+  param.use_ipopt = FLAGS_use_ipopt;
+  param.log_solver_info = FLAGS_log_solver_info;
+  param.w_Q = 1;
+  param.w_R = 1;
+  param.dir_model =
+      "../dairlib_data/goldilocks_models/planning/robot_1/models/";
+  param.dir_data = "../dairlib_data/goldilocks_models/planning/robot_1/data/";
+  param.init_file = FLAGS_init_file;
+
+  if (FLAGS_debug_mode) {
+    if (!CreateFolderIfNotExist(param.dir_model)) return 0;
+    if (!CreateFolderIfNotExist(param.dir_data)) return 0;
+  }
+
+  // Read in initial robot state
+  VectorXd x_init;  // we assume that solution from files are in left stance
+  if (FLAGS_debug_mode) {
+    string model_dir_n_pref = param.dir_model + to_string(FLAGS_iter) +
+                              string("_") + to_string(FLAGS_sample) +
+                              string("_");
+    cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
+    int n_sample_raw =
+        readCSV(model_dir_n_pref + string("time_at_knots.csv")).size();
+    x_init = readCSV(model_dir_n_pref + string("state_at_knots.csv"))
+                 .col(int(n_sample_raw * FLAGS_init_phase));
+    // Mirror x_init if it's right stance
+    if (!FLAGS_start_with_left_stance) {
+      // Create mirror maps
+      StateMirror state_mirror(
+          MirrorPosIndexMap(plant_controls, OptimalRomPlanner::ROBOT),
+          MirrorPosSignChangeSet(plant_controls, OptimalRomPlanner::ROBOT),
+          MirrorVelIndexMap(plant_controls, OptimalRomPlanner::ROBOT),
+          MirrorVelSignChangeSet(plant_controls, OptimalRomPlanner::ROBOT));
+      // Mirror the state
+      x_init.head(plant_controls.num_positions()) =
+          state_mirror.MirrorPos(x_init.head(plant_controls.num_positions()));
+      x_init.tail(plant_controls.num_velocities()) =
+          state_mirror.MirrorVel(x_init.tail(plant_controls.num_velocities()));
+    }
+
+    if (FLAGS_disturbance != 0) {
+      //    x_init(9) += FLAGS_disturbance / 1;
+    }
+
+    // Testing
+    std::vector<string> name_list = {"base_qw",
+                                     "base_qx",
+                                     "base_qy",
+                                     "base_qz",
+                                     "base_x",
+                                     "base_y",
+                                     "base_z",
+                                     "hip_roll_left",
+                                     "hip_roll_right",
+                                     "hip_yaw_left",
+                                     "hip_yaw_right",
+                                     "hip_pitch_left",
+                                     "hip_pitch_right",
+                                     "knee_left",
+                                     "knee_right",
+                                     "ankle_joint_left",
+                                     "ankle_joint_right",
+                                     "toe_left",
+                                     "toe_right"};
+    std::map<string, int> positions_map =
+        multibody::makeNameToPositionsMap(plant_controls);
+    /*for (auto name : name_list) {
+      cout << name << ", " << init_state(positions_map.at(name)) << endl;
+    }*/
+    // TODO: find out why the initial left knee position is not within the joint
+    //  limits.
+    //  Could be that the constraint tolerance is too high in rom optimization
+  }
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -96,7 +216,8 @@ int DoMain(int argc, char* argv[]) {
   double stride_period = 0.37;  // TODO(yminchen): this value should change
   std::vector<int> ss_fsm_states = {left_stance_state, right_stance_state};
   auto rom_planner = builder.AddSystem<OptimalRomPlanner>(
-      plant_feedback, plant_controls, ss_fsm_states, stride_period);
+      plant_feedback, plant_controls, ss_fsm_states, stride_period, param,
+      FLAGS_debug_mode);
   builder.Connect(state_receiver->get_output_port(0),
                   rom_planner->get_input_port_state());
   builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(),
@@ -112,7 +233,18 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
-  loop.Simulate();
+  if (!FLAGS_debug_mode) {
+    loop.Simulate();
+  } else {
+    // TODO: finish this
+    //...
+
+    // Store data
+    writeCSV(param.dir_data + string("n_step.csv"),
+             param.n_step * VectorXd::Ones(1));
+    writeCSV(param.dir_data + string("nodes_per_step.csv"),
+             param.knots_per_mode * VectorXd::Ones(1));
+  }
 
   return 0;
 }

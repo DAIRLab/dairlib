@@ -110,6 +110,7 @@ cc_binary(
         "//examples/Cassie/osc",
         "//examples/goldilocks_models/controller:cassie_rom_planner_system",
         "//examples/goldilocks_models/controller:rom_traj_receiver",
+        "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems:drake_signal_lcm_systems",

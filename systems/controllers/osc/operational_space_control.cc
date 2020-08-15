@@ -83,6 +83,7 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   osc_output_port_ =
       this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
+
                                     &OperationalSpaceControl::CalcOptimalInput)
           .get_index();
   osc_debug_port_ = this->DeclareAbstractOutputPort(

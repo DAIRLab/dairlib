@@ -6,6 +6,7 @@
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
+#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/osc_utils.h"
 #include "systems/drake_signal_lcm_systems.h"
@@ -43,8 +44,6 @@ using drake::trajectories::PiecewisePolynomial;
 
 using systems::OutputVector;
 
-using multibody::JwrtqdotToJwrtv;
-
 // Planner settings
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
@@ -60,6 +59,7 @@ DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
 DEFINE_bool(zero_touchdown_impact, true, "Zero impact at foot touchdown");
 DEFINE_double(opt_tol, 1e-4, "");
 DEFINE_double(feas_tol, 1e-4, "");
+DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
 DEFINE_bool(log_solver_info, false,
             "Log snopt output to a file or ipopt to terminal");
@@ -118,6 +118,7 @@ int DoMain(int argc, char* argv[]) {
   param.fix_duration = FLAGS_fix_duration;
   param.feas_tol = FLAGS_feas_tol;
   param.opt_tol = FLAGS_opt_tol;
+  param.max_iter = FLAGS_max_iter;
   param.use_ipopt = FLAGS_use_ipopt;
   param.log_solver_info = FLAGS_log_solver_info;
   param.w_Q = 1;
@@ -147,10 +148,12 @@ int DoMain(int argc, char* argv[]) {
     if (!FLAGS_start_with_left_stance) {
       // Create mirror maps
       StateMirror state_mirror(
-          MirrorPosIndexMap(plant_controls, CassiePlannerWithMixedRomFom::ROBOT),
+          MirrorPosIndexMap(plant_controls,
+                            CassiePlannerWithMixedRomFom::ROBOT),
           MirrorPosSignChangeSet(plant_controls,
                                  CassiePlannerWithMixedRomFom::ROBOT),
-          MirrorVelIndexMap(plant_controls, CassiePlannerWithMixedRomFom::ROBOT),
+          MirrorVelIndexMap(plant_controls,
+                            CassiePlannerWithMixedRomFom::ROBOT),
           MirrorVelSignChangeSet(plant_controls,
                                  CassiePlannerWithMixedRomFom::ROBOT));
       // Mirror the state
@@ -262,8 +265,8 @@ int DoMain(int argc, char* argv[]) {
   if (!FLAGS_debug_mode) {
     loop.Simulate();
   } else {
-    // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate the
-    // output (we do not simulate the LcmDrivenLoop)
+    // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate
+    // the output (we do not simulate the LcmDrivenLoop)
     double current_time = FLAGS_init_phase * stride_period;
     double prev_lift_off_time = 0;
 
@@ -298,10 +301,13 @@ int DoMain(int argc, char* argv[]) {
              param.knots_per_mode * VectorXd::Ones(1));
 
     // Testing
-    /*const auto* abstract_value = output->get_data(0);
+    const auto* abstract_value = output->get_data(0);
     const dairlib::lcmt_trajectory_block& traj_msg =
         abstract_value->get_value<dairlib::lcmt_trajectory_block>();
-    //...*/
+    LcmTrajectory::Trajectory traj_data("" /*tra_name*/, traj_msg);
+    cout << "traj_data.time_vector = \n"
+         << traj_data.time_vector.transpose() << endl;
+    cout << "traj_data.datapoints = \n" << traj_data.datapoints << endl;
   }
 
   return 0;

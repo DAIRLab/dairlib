@@ -1,5 +1,6 @@
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 
+#include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "systems/controllers/osc/osc_utils.h"
 
@@ -204,7 +205,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   double init_phase = (current_time - lift_off_time) / stride_period_;
   if (init_phase > 1) {
     cout << "WARNING: phase is larger than 1. There might be a bug somewhere\n";
-    init_phase = 1;
+    init_phase = 1 - 1e-8;
   }
 
   // TODO: Move the touchdown state to the origin
@@ -240,7 +241,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   num_time_samples[0] = knots_first_mode;
   cout << "init_phase = " << init_phase << endl;
   cout << "knots_first_mode = " << knots_first_mode << endl;
-  cout << "fisrt_mode_phase_index = " << fisrt_mode_phase_index << endl;
+  cout << "first_mode_phase_index = " << fisrt_mode_phase_index << endl;
 
   // Goal position
   VectorXd final_position(2);
@@ -378,7 +379,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Snopt setting
-  int max_iter = 10000;
   if (param_.use_ipopt) {
     // Ipopt settings adapted from CaSaDi and FROST
     auto id = drake::solvers::IpoptSolver::id();
@@ -386,7 +386,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     trajopt.SetSolverOption(id, "dual_inf_tol", param_.feas_tol);
     trajopt.SetSolverOption(id, "constr_viol_tol", param_.feas_tol);
     trajopt.SetSolverOption(id, "compl_inf_tol", param_.feas_tol);
-    trajopt.SetSolverOption(id, "max_iter", max_iter);
+    trajopt.SetSolverOption(id, "max_iter", param_.max_iter);
     trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
     trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
     if (param_.log_solver_info) {
@@ -410,7 +410,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                               "../snopt_planning.out");
     }
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                            "Major iterations limit", max_iter);
+                            "Major iterations limit", param_.max_iter);
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                             0);
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -440,18 +440,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   SolutionResult solution_result = result.get_solution_result();
   cout << solution_result << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";
-
-  // Check which solver we are using
   cout << "Solver: " << result.get_solver_id().name() << endl;
+
+  // Get solution
+  VectorXd time_at_knots = trajopt.GetSampleTimes(result);
+  MatrixXd state_at_knots = trajopt.GetStateSamples(result);
 
   // Extract and save solution into files
   if (debug_mode_) {
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
-    // writeCSV(param_.dir_data + string("z.csv"), z_sol);
+    writeCSV(param_.dir_data + string("z.csv"), z_sol);
     // cout << trajopt.decision_variables() << endl;
 
-    VectorXd time_at_knots = trajopt.GetSampleTimes(result);
-    MatrixXd state_at_knots = trajopt.GetStateSamples(result);
     MatrixXd input_at_knots = trajopt.GetInputSamples(result);
     writeCSV(param_.dir_data + string("time_at_knots.csv"), time_at_knots);
     writeCSV(param_.dir_data + string("state_at_knots.csv"), state_at_knots);
@@ -472,9 +472,24 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   ///
-  /// Pack the traj into lcm (traj_msg)
+  /// Pack traj into lcm message (traj_msg)
   ///
-  // TODO: finish this
+  traj_msg->trajectory_name = "";
+  traj_msg->num_points = time_at_knots.size();
+  traj_msg->num_datatypes = 2 * rom_->n_y();
+
+  // Reserve space for vectors
+  traj_msg->time_vec.resize(traj_msg->num_points);
+  traj_msg->datatypes.resize(traj_msg->num_datatypes);
+  traj_msg->datapoints.clear();
+
+  // Copy Eigentypes to std::vector
+  traj_msg->time_vec = CopyVectorXdToStdVector(time_at_knots);
+  traj_msg->datatypes = vector<string>(2 * rom_->n_y());
+  for (int i = 0; i < traj_msg->num_datatypes; ++i) {
+    traj_msg->datapoints.push_back(
+        CopyVectorXdToStdVector(state_at_knots.row(i)));
+  }
 }
 
 }  // namespace goldilocks_models

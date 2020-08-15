@@ -30,6 +30,7 @@ struct PlannerSetting {
 
   double feas_tol;
   double opt_tol;
+  int max_iter;
 
   bool use_ipopt;
   bool log_solver_info;

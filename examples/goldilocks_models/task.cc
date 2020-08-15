@@ -310,6 +310,11 @@ void MediateTasksGenerator::set_mediate_samples(string dir,int iter,
         break;
       }
     }
+    // Avoid being stuck here. We will increase the number of intermediate
+    // samples when the closest sample doesn't help
+    if(sample_num==total_sample_number){
+      N_sample_++;
+    }
   }
   cout<<"sample index to help: "<<sample_index_to_help_<<endl;
   cout<<"closest sample prefix: "<<prefix_closest_task<<endl;

@@ -142,6 +142,14 @@ class LcmDrivenLoop {
                       std::vector<std::string>(1, input_channel), input_channel,
                       "", is_forced_publish){};
 
+  // Getters for diagram and its context
+  drake::systems::Diagram<double>* get_diagram() {
+    return diagram_ptr_;
+  }
+  drake::systems::Context<double>& get_diagram_mutable_context() {
+    return simulator_->get_mutable_context();
+  }
+
   // Start simulating the diagram
   void Simulate(double end_time = std::numeric_limits<double>::infinity()) {
     // Get mutable contexts

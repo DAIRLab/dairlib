@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/controller/optimal_rom_planner_system.h"
+#include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 
 #include <math.h>
 #include <string>

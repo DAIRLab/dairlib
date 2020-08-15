@@ -2,26 +2,12 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc/deviation_from_cp.h"
-#include "examples/Cassie/osc/heading_traj_generator.h"
-#include "examples/Cassie/osc/high_level_command.h"
-#include "examples/Cassie/simulator_drift.h"
-#include "examples/goldilocks_models/controller/optimal_rom_planner_system.h"
-#include "examples/goldilocks_models/controller/rom_traj_receiver.h"
-#include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/reduced_order_models.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/cp_traj_gen.h"
-#include "systems/controllers/lipm_traj_gen.h"
-#include "systems/controllers/osc/operational_space_control.h"
-#include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -53,11 +39,6 @@ using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
 
 using systems::OutputVector;
-using systems::controllers::ComTrackingData;
-using systems::controllers::JointSpaceTrackingData;
-using systems::controllers::OptimalRomTrackingData;
-using systems::controllers::RotTaskSpaceTrackingData;
-using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::JwrtqdotToJwrtv;
 

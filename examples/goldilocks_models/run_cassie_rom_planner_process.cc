@@ -7,6 +7,8 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/osc/osc_utils.h"
+#include "systems/drake_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -145,16 +147,33 @@ int DoMain(int argc, char* argv[]) {
     if (!FLAGS_start_with_left_stance) {
       // Create mirror maps
       StateMirror state_mirror(
-          MirrorPosIndexMap(plant_controls, CassieOptimalRomPlanner::ROBOT),
-          MirrorPosSignChangeSet(plant_controls, CassieOptimalRomPlanner::ROBOT),
-          MirrorVelIndexMap(plant_controls, CassieOptimalRomPlanner::ROBOT),
-          MirrorVelSignChangeSet(plant_controls, CassieOptimalRomPlanner::ROBOT));
+          MirrorPosIndexMap(plant_controls, CassiePlannerWithMixedRomFom::ROBOT),
+          MirrorPosSignChangeSet(plant_controls,
+                                 CassiePlannerWithMixedRomFom::ROBOT),
+          MirrorVelIndexMap(plant_controls, CassiePlannerWithMixedRomFom::ROBOT),
+          MirrorVelSignChangeSet(plant_controls,
+                                 CassiePlannerWithMixedRomFom::ROBOT));
       // Mirror the state
       x_init.head(plant_controls.num_positions()) =
           state_mirror.MirrorPos(x_init.head(plant_controls.num_positions()));
       x_init.tail(plant_controls.num_velocities()) =
           state_mirror.MirrorVel(x_init.tail(plant_controls.num_velocities()));
     }
+
+    // Map x_init from plant_controls to plant_feedback
+    MatrixXd map_position_from_spring_to_no_spring =
+        systems::controllers::PositionMapFromSpringToNoSpring(plant_feedback,
+                                                              plant_controls);
+    MatrixXd map_velocity_from_spring_to_no_spring =
+        systems::controllers::VelocityMapFromSpringToNoSpring(plant_feedback,
+                                                              plant_controls);
+    VectorXd x_init_controls = x_init;
+    x_init.resize(plant_feedback.num_positions() +
+                  plant_feedback.num_velocities());
+    x_init << map_position_from_spring_to_no_spring.transpose() *
+                  x_init_controls.head(plant_controls.num_positions()),
+        map_velocity_from_spring_to_no_spring.transpose() *
+            x_init_controls.tail(plant_controls.num_velocities());
 
     if (FLAGS_disturbance != 0) {
       //    x_init(9) += FLAGS_disturbance / 1;
@@ -199,10 +218,16 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_feedback);
 
-  // Create Lcm subscriber for fsm and latest lift off time
-  auto fsm_and_liftoff_time_receiver =
+  // Create Lcm subscriber for fsm and latest lift off time and a translator
+  // from this lcm into BasicVector
+  auto fsm_and_liftoff_time_subscriber =
       builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_drake_signal>(
           FLAGS_channel_fsm_t, &lcm_local));
+  int lcm_vector_size = 2;
+  auto fsm_and_liftoff_time_receiver =
+      builder.AddSystem<systems::DrakeSignalReceiver>(lcm_vector_size);
+  builder.Connect(fsm_and_liftoff_time_subscriber->get_output_port(),
+                  fsm_and_liftoff_time_receiver->get_input_port(0));
 
   // Create mpc traj publisher
   auto traj_publisher = builder.AddSystem(
@@ -213,14 +238,15 @@ int DoMain(int argc, char* argv[]) {
   // TODO(yminchen): need to centralize the fsm state
   int left_stance_state = 0;
   int right_stance_state = 1;
-  double stride_period = 0.37;  // TODO(yminchen): this value should change
   std::vector<int> ss_fsm_states = {left_stance_state, right_stance_state};
-  auto rom_planner = builder.AddSystem<CassieOptimalRomPlanner>(
+  // TODO(yminchen): stride_period value should change
+  double stride_period = 0.37;
+  auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
       plant_feedback, plant_controls, ss_fsm_states, stride_period, param,
       FLAGS_debug_mode);
   builder.Connect(state_receiver->get_output_port(0),
                   rom_planner->get_input_port_state());
-  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(),
+  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
                   rom_planner->get_input_port_fsm_and_lo_time());
   builder.Connect(rom_planner->get_output_port(0),
                   traj_publisher->get_input_port());
@@ -236,14 +262,46 @@ int DoMain(int argc, char* argv[]) {
   if (!FLAGS_debug_mode) {
     loop.Simulate();
   } else {
-    // TODO: finish this
-    //...
+    // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate the
+    // output (we do not simulate the LcmDrivenLoop)
+    double current_time = FLAGS_init_phase * stride_period;
+    double prev_lift_off_time = 0;
+
+    // Get contexts
+    auto diagram_ptr = loop.get_diagram();
+    auto& diagram_context = loop.get_diagram_mutable_context();
+    auto& planner_context =
+        diagram_ptr->GetMutableSubsystemContext(*rom_planner, &diagram_context);
+
+    // Set input port value and current time
+    OutputVector<double> robot_output(
+        x_init.head(plant_feedback.num_positions()),
+        x_init.tail(plant_feedback.num_velocities()),
+        VectorXd::Zero(plant_feedback.num_actuators()));
+    robot_output.set_timestamp(current_time);
+    rom_planner->get_input_port_state().FixValue(&planner_context,
+                                                 robot_output);
+    rom_planner->get_input_port_fsm_and_lo_time().FixValue(
+        &planner_context,
+        drake::systems::BasicVector({FLAGS_start_with_left_stance
+                                         ? double(left_stance_state)
+                                         : double(right_stance_state),
+                                     prev_lift_off_time}));
+    // Calc output
+    auto output = rom_planner->AllocateOutput();
+    rom_planner->CalcOutput(planner_context, output.get());
 
     // Store data
     writeCSV(param.dir_data + string("n_step.csv"),
              param.n_step * VectorXd::Ones(1));
     writeCSV(param.dir_data + string("nodes_per_step.csv"),
              param.knots_per_mode * VectorXd::Ones(1));
+
+    // Testing
+    /*const auto* abstract_value = output->get_data(0);
+    const dairlib::lcmt_trajectory_block& traj_msg =
+        abstract_value->get_value<dairlib::lcmt_trajectory_block>();
+    //...*/
   }
 
   return 0;

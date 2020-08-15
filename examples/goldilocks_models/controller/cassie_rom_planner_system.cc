@@ -42,7 +42,7 @@ using dairlib::systems::OutputVector;
 namespace dairlib {
 namespace goldilocks_models {
 
-CassieOptimalRomPlanner::CassieOptimalRomPlanner(
+CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_feedback,
     const MultibodyPlant<double>& plant_controls,
     const std::vector<int>& left_right_support_fsm_states, double stride_period,
@@ -62,7 +62,7 @@ CassieOptimalRomPlanner::CassieOptimalRomPlanner(
                     .get_index();
   fsm_and_lo_time_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
-  this->DeclareAbstractOutputPort(&CassieOptimalRomPlanner::SolveTrajOpt);
+  this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
@@ -177,7 +177,7 @@ CassieOptimalRomPlanner::CassieOptimalRomPlanner(
   R_ = param_.w_R * MatrixXd::Identity(n_tau, n_tau);
 }
 
-void CassieOptimalRomPlanner::SolveTrajOpt(
+void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     const Context<double>& context,
     dairlib::lcmt_trajectory_block* traj_msg) const {
   // Read in current robot state
@@ -233,6 +233,8 @@ void CassieOptimalRomPlanner::SolveTrajOpt(
     min_dt.push_back(.01);
     max_dt.push_back(.3);
   }
+  // TODO(yminchen): improve this. int rounds down the number
+  //  also need to fix the bug when init_phase = 1
   int fisrt_mode_phase_index = int(param_.knots_per_mode * init_phase);
   int knots_first_mode = param_.knots_per_mode - fisrt_mode_phase_index;
   num_time_samples[0] = knots_first_mode;

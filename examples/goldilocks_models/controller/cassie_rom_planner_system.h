@@ -44,19 +44,16 @@ struct PlannerSetting {
   std::string init_file;
 };
 
-/// This system is basically solving the same problem as
-/// plan_with_rom_fom_cassie.cc
-
 /// Assumption:
 /// - we assume that there is no x, y and yaw dependency in the ROM (the mapping
 /// function), because we rotate the robot state at touchdown to the origin in
 /// MPC
 
-class CassieOptimalRomPlanner : public drake::systems::LeafSystem<double> {
+class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
  public:
   static const int ROBOT = 1;  // robot index for Cassie
 
-  CassieOptimalRomPlanner(
+  CassiePlannerWithMixedRomFom(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
       const drake::multibody::MultibodyPlant<double>& plant_controls,
       const std::vector<int>& left_right_support_fsm_states,

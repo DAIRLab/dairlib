@@ -33,21 +33,6 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "plan_with_rom_fom_cassie",
-    srcs = ["plan_with_rom_fom_cassie.cc"],
-    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
-    deps = [
-        ":goldilocks_utils",
-        ":reduced_order_models",
-        "//common",
-        "//common:file_utils",
-        "//examples/goldilocks_models/planning:rom_traj_opt",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
 cc_library(
     name = "goldilocks_utils",
     srcs = [
@@ -127,7 +112,9 @@ cc_binary(
         "//examples/goldilocks_models/controller:rom_traj_receiver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
+        "//systems:drake_signal_lcm_systems",
         "//systems:robot_lcm_systems",
+        "//systems/controllers/osc:osc_utils",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

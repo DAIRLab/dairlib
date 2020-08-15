@@ -9,6 +9,27 @@ using drake::systems::LeafSystem;
 using std::string;
 
 /*--------------------------------------------------------------------------*/
+// methods implementation for DrakeSignalReceiver.
+
+DrakeSignalReceiver::DrakeSignalReceiver(int signal_size)
+    : signal_size_(signal_size) {
+  this->DeclareAbstractInputPort("lcmt_drake_signal",
+                                 drake::Value<drake::lcmt_drake_signal>{});
+  this->DeclareVectorOutputPort(BasicVector<double>(signal_size),
+                                &DrakeSignalReceiver::UnpackLcmIntoVector);
+}
+
+void DrakeSignalReceiver::UnpackLcmIntoVector(
+    const Context<double>& context, BasicVector<double>* output) const {
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& input_msg = input->get_value<drake::lcmt_drake_signal>();
+  for (int i = 0; i < signal_size_; i++) {
+    output->get_mutable_value()(i) = input_msg.val[i];
+  }
+}
+
+/*--------------------------------------------------------------------------*/
 // methods implementation for DrakeSignalSender.
 
 DrakeSignalSender::DrakeSignalSender(

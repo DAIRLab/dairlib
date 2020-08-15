@@ -176,6 +176,57 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Cost weight
   Q_ = param_.w_Q * MatrixXd::Identity(n_y, n_y);
   R_ = param_.w_R * MatrixXd::Identity(n_tau, n_tau);
+
+  // Pick solver
+  drake::solvers::SolverId solver_id("");
+  if (param_.use_ipopt) {
+    solver_id = drake::solvers::IpoptSolver().id();
+  } else {
+    solver_id = drake::solvers::SnoptSolver().id();
+  }
+  cout << "Solver: " << solver_id.name() << endl;
+  solver_ = drake::solvers::MakeSolver(solver_id);
+
+  // Set solver option
+  if (param_.use_ipopt) {
+    // Ipopt settings adapted from CaSaDi and FROST
+    auto id = drake::solvers::IpoptSolver::id();
+    solver_option_.SetOption(id, "tol", param_.feas_tol);
+    solver_option_.SetOption(id, "dual_inf_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "constr_viol_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "compl_inf_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "max_iter", param_.max_iter);
+    solver_option_.SetOption(id, "nlp_lower_bound_inf", -1e6);
+    solver_option_.SetOption(id, "nlp_upper_bound_inf", 1e6);
+    if (param_.log_solver_info) {
+      solver_option_.SetOption(id, "print_timing_statistics", "yes");
+      solver_option_.SetOption(id, "print_level", 5);
+    } else {
+      solver_option_.SetOption(id, "print_timing_statistics", "no");
+      solver_option_.SetOption(id, "print_level", 0);
+    }
+
+    // Set to ignore overall tolerance/dual infeasibility, but terminate when
+    // primal feasible and objective fails to increase over 5 iterations.
+    solver_option_.SetOption(id, "acceptable_compl_inf_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "acceptable_constr_viol_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "acceptable_obj_change_tol", 1e-3);
+    solver_option_.SetOption(id, "acceptable_tol", 1e2);
+    solver_option_.SetOption(id, "acceptable_iter", 5);
+  } else {
+    if (param_.log_solver_info) {
+      solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
+                               "../snopt_planning.out");
+    }
+    solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
+                             "Major iterations limit", param_.max_iter);
+    solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Verify level",
+                             0);
+    solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
+                             "Major optimality tolerance", param_.opt_tol);
+    solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
+                             "Major feasibility tolerance", param_.feas_tol);
+  }
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
@@ -205,6 +256,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   double init_phase = (current_time - lift_off_time) / stride_period_;
   if (init_phase > 1) {
     cout << "WARNING: phase is larger than 1. There might be a bug somewhere\n";
+    init_phase = 1;
+  }
+
+  // Testing  // TODO(yminchen): fix the bug runtime error when phase = 1
+  if (init_phase == 1) {
     init_phase = 1 - 1e-8;
   }
 
@@ -356,9 +412,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Testing
   if (debug_mode_) {
-    cout << "\nChoose the best solver: "
-         << drake::solvers::ChooseBestSolver(trajopt).name() << endl;
-
     // Print out the scaling factor
     for (int i = 0; i < trajopt.decision_variables().size(); i++) {
       cout << trajopt.decision_variable(i) << ", ";
@@ -378,69 +431,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     }
   }
 
-  // Snopt setting
-  if (param_.use_ipopt) {
-    // Ipopt settings adapted from CaSaDi and FROST
-    auto id = drake::solvers::IpoptSolver::id();
-    trajopt.SetSolverOption(id, "tol", param_.feas_tol);
-    trajopt.SetSolverOption(id, "dual_inf_tol", param_.feas_tol);
-    trajopt.SetSolverOption(id, "constr_viol_tol", param_.feas_tol);
-    trajopt.SetSolverOption(id, "compl_inf_tol", param_.feas_tol);
-    trajopt.SetSolverOption(id, "max_iter", param_.max_iter);
-    trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
-    trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
-    if (param_.log_solver_info) {
-      trajopt.SetSolverOption(id, "print_timing_statistics", "yes");
-      trajopt.SetSolverOption(id, "print_level", 5);
-    } else {
-      trajopt.SetSolverOption(id, "print_timing_statistics", "no");
-      trajopt.SetSolverOption(id, "print_level", 0);
-    }
-
-    // Set to ignore overall tolerance/dual infeasibility, but terminate when
-    // primal feasible and objective fails to increase over 5 iterations.
-    trajopt.SetSolverOption(id, "acceptable_compl_inf_tol", param_.feas_tol);
-    trajopt.SetSolverOption(id, "acceptable_constr_viol_tol", param_.feas_tol);
-    trajopt.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
-    trajopt.SetSolverOption(id, "acceptable_tol", 1e2);
-    trajopt.SetSolverOption(id, "acceptable_iter", 5);
-  } else {
-    if (param_.log_solver_info) {
-      trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                              "../snopt_planning.out");
-    }
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                            "Major iterations limit", param_.max_iter);
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
-                            0);
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                            "Major optimality tolerance", param_.opt_tol);
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                            "Major feasibility tolerance", param_.feas_tol);
-  }
-
-  // Pick solver
-  drake::solvers::SolverId solver_id("");
-  if (param_.use_ipopt) {
-    solver_id = drake::solvers::IpoptSolver().id();
-  } else {
-    solver_id = drake::solvers::ChooseBestSolver(trajopt);
-  }
-  auto solver = drake::solvers::MakeSolver(solver_id);
-
   // Solve
   cout << "\nSolving optimization problem...\n";
   start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result;
-  solver->Solve(trajopt, trajopt.initial_guess(), trajopt.solver_options(),
-                &result);
+  solver_->Solve(trajopt, trajopt.initial_guess(), solver_option_, &result);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   cout << "    Solve time:" << elapsed.count() << " | ";
   SolutionResult solution_result = result.get_solution_result();
   cout << solution_result << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";
-  cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // Get solution
   VectorXd time_at_knots = trajopt.GetSampleTimes(result);

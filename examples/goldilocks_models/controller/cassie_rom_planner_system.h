@@ -3,6 +3,8 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/solver_interface.h"
+#include "drake/solvers/solver_options.h"
 #include "drake/systems/framework/leaf_system.h"
 
 #include "dairlib/lcmt_trajectory_block.hpp"
@@ -91,6 +93,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   std::vector<BodyPoint> left_contacts_;
   std::vector<BodyPoint> right_contacts_;
   std::vector<std::tuple<std::string, double, double>> joint_name_lb_ub_;
+  drake::solvers::SolverOptions solver_option_;
+  std::unique_ptr<drake::solvers::SolverInterface> solver_;
 
   //
   mutable bool start_with_left_stance_ = true;

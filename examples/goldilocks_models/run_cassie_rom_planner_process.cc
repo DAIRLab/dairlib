@@ -42,7 +42,7 @@ using systems::OutputVector;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_int32(iter, 29, "The iteration # of the model parameter that you use");
+//DEFINE_int32(iter, 29, "The iteration # of the model parameter that you use");
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -96,7 +96,7 @@ int DoMain(int argc, char* argv[]) {
   double stride_period = 0.37;  // TODO(yminchen): this value should change
   std::vector<int> ss_fsm_states = {left_stance_state, right_stance_state};
   auto rom_planner = builder.AddSystem<OptimalRomPlanner>(
-      plant_feedback, ss_fsm_states, stride_period);
+      plant_feedback, plant_controls, ss_fsm_states, stride_period);
   builder.Connect(state_receiver->get_output_port(0),
                   rom_planner->get_input_port_state());
   builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(),

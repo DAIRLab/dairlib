@@ -125,6 +125,7 @@ cc_binary(
         "//examples/Cassie/osc",
         "//examples/goldilocks_models/controller:cassie_rom_planner_system",
         "//examples/goldilocks_models/controller:rom_traj_receiver",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",

@@ -240,14 +240,12 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant);
   auto right_heel = RightToeRear(plant);
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
-  auto left_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
-      mid_contact_point, plant.GetFrameByName("toe_left"));
-  auto right_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
-      mid_contact_point, plant.GetFrameByName("toe_right"));
-  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
-      left_contacts;
-  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
-      right_contacts;
+  auto left_toe_mid =
+      BodyPoint(mid_contact_point, plant.GetFrameByName("toe_left"));
+  auto right_toe_mid =
+      BodyPoint(mid_contact_point, plant.GetFrameByName("toe_right"));
+  std::vector<BodyPoint> left_contacts;
+  std::vector<BodyPoint> right_contacts;
   if (one_contact_per_foot) {
     left_contacts.push_back(left_toe_mid);
     right_contacts.push_back(right_toe_mid);

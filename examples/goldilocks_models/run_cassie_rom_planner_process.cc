@@ -48,7 +48,6 @@ using drake::trajectories::PiecewisePolynomial;
 using systems::OutputVector;
 
 // Planner settings
-DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
@@ -57,7 +56,9 @@ DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
-DEFINE_bool(fix_duration, true, "Fix the total time");
+DEFINE_bool(fix_duration, true,
+            "Fix the total time. (could lead to faster solve but possibly "
+            "worse solution)");
 DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
 DEFINE_bool(zero_touchdown_impact, true, "Zero impact at foot touchdown");
 DEFINE_double(opt_tol, 1e-3, "");
@@ -97,6 +98,10 @@ DEFINE_double(yaw_disturbance, 0,
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  DRAKE_DEMAND(0 <= FLAGS_init_phase && FLAGS_init_phase <= 1);
+  DRAKE_DEMAND(0 <= FLAGS_xy_disturbance && FLAGS_xy_disturbance <= 1);
+  DRAKE_DEMAND(0 <= FLAGS_yaw_disturbance && FLAGS_yaw_disturbance <= 1);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_feedback(0.0);

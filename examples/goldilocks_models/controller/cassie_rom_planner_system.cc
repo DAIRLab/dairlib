@@ -236,12 +236,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Read in current robot state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd q_init =
-      map_position_from_spring_to_no_spring_ * robot_output->GetPositions();
-  VectorXd v_init =
+  VectorXd x_init(map_position_from_spring_to_no_spring_.rows() +
+                  map_velocity_from_spring_to_no_spring_.rows());
+  x_init << map_position_from_spring_to_no_spring_ *
+                robot_output->GetPositions(),
       map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
-  VectorXd x_init(q_init.size() + v_init.size());
-  x_init << q_init, v_init;
 
   // Read in fsm state and lift-off time
   const BasicVector<double>* fsm_and_lo_time_port =
@@ -277,7 +276,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
   // frame is in the world’s x-z plane and toward world’s x axis.
-  /*Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
+  Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
   Vector3d pelvis_x = quat.toRotationMatrix().col(0);
   pelvis_x(2) = 0;
   Vector3d world_x(1, 0, 0);
@@ -285,11 +284,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   Quaterniond rotated_quat = relative_qaut * quat;
   x_init.head(4) << rotated_quat.w(), rotated_quat.vec();
   cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
-  cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() << endl;*/
+  cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() << endl;
 
   // Shift pelvis in x, y direction
-  /*x_init(positions_map_.at("base_x")) = init_phase * param_.final_position_x;
-  x_init(positions_map_.at("base_y")) = 0;*/
+  x_init(positions_map_.at("base_x")) = init_phase * param_.final_position_x;
+  x_init(positions_map_.at("base_y")) = 0;
   cout << "x(\"base_x\") = " << x_init(positions_map_.at("base_x")) << endl;
   cout << "x(\"base_y\") = " << x_init(positions_map_.at("base_y")) << endl;
 
@@ -328,7 +327,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Goal position
   VectorXd final_position(2);
-  final_position << q_init(positions_map_.at("base_x")) +
+  final_position << x_init(positions_map_.at("base_x")) +
                         param_.final_position_x,
       0;
 

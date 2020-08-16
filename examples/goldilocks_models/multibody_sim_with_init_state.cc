@@ -1,5 +1,4 @@
 // This is modified from exmaples/Cassie/multibody_sim
-// I hard-coded the initial state for testing
 
 #include <memory>
 
@@ -52,6 +51,8 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 DEFINE_bool(start_with_right_stance, false, "");
+DEFINE_bool(simulate_about_one_step_time, false,
+            "if true, we run the simulation for about one foot step");
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -77,7 +78,7 @@ DEFINE_double(init_height, .7,
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
-// Solve for the configuration which respects the forbar linkage constraint and
+// Solve for the configuration which respects the fourbar linkage constraint and
 // joint limit constraints.
 // The reason why we do this here is because the planner's constraint on Cassie
 // might be too loose
@@ -329,7 +330,9 @@ int do_main(int argc, char* argv[]) {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
-  simulator.AdvanceTo(end_time_of_first_step);
+  simulator.AdvanceTo(FLAGS_simulate_about_one_step_time
+                          ? end_time_of_first_step
+                          : std::numeric_limits<double>::infinity());
 
   return 0;
 }

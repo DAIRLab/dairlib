@@ -260,9 +260,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Testing  // TODO(yminchen): fix the bug runtime error when phase = 1
-  if (init_phase == 1) {
+  /*if (init_phase == 1) {
     init_phase = 1 - 1e-8;
-  }
+  }*/
 
   ///
   /// Rotate Cassie's floating base configuration
@@ -316,8 +316,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     min_dt.push_back(.01);
     max_dt.push_back(.3);
   }
-  // TODO(yminchen): improve this. int rounds down the number
-  //  also need to fix the bug when init_phase = 1
+  // We always round down the index because we need to have at least one
+  // timestep in the first mode
   int fisrt_mode_phase_index = int(param_.knots_per_mode * init_phase);
   int knots_first_mode = param_.knots_per_mode - fisrt_mode_phase_index;
   num_time_samples[0] = knots_first_mode;
@@ -341,6 +341,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   cout << "Other constraints/costs and initial guess=============\n";
   // Time step cosntraints
+  // TODO: the timestep size of the first mode should be different from the rest
+  //  because the robot could be very close to the touchdown
   int n_time_samples =
       std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
       num_time_samples.size() + 1;

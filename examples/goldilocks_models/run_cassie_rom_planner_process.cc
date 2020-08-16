@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>  // sleep/usleep
-#include <string>
 #include <cmath>
+#include <string>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
@@ -80,7 +80,7 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(
     channel_fsm_t, "FSM_T",
-    "LCM channel for receiving fsm and time of latest liftoff event. ");
+    "LCM channel for receiving fsm and time of latest liftoff event.");
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which publishes command");
 

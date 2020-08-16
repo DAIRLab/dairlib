@@ -69,7 +69,7 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_int32(iter, 29, "The iteration # of the theta that you use");
+DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
 DEFINE_bool(start_with_right_stance, false, "");
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -78,6 +78,8 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
+DEFINE_string(channel_fsm_t, "FSM_T",
+              "LCM channel for sending fsm and time of latest liftoff event. ");
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which receives MPC output");
 
@@ -279,7 +281,8 @@ int DoMain(int argc, char* argv[]) {
                   fsm_and_liftoff_time_sender->get_input_port(0));
   auto fsm_and_liftoff_time_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_drake_signal>(
-          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+          FLAGS_channel_fsm_t, &lcm_local,
+          TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
                   fsm_and_liftoff_time_publisher->get_input_port());
 

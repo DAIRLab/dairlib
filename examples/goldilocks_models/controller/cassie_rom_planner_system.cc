@@ -338,14 +338,19 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       0;*/
 
   // Construct
-  cout << "\nConstructing optimization problem...\n";
+  if (debug_mode_) {
+    cout << "\nConstructing optimization problem...\n";
+  }
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
                            state_mirror_, left_contacts_, right_contacts_,
                            joint_name_lb_ub_, x_init, start_with_left_stance_,
-                           param_.zero_touchdown_impact);
+                           param_.zero_touchdown_impact,
+                           debug_mode_ /*print_status*/);
 
-  cout << "Other constraints/costs and initial guess=============\n";
+  if (debug_mode_) {
+    cout << "Other constraints/costs and initial guess===============\n";
+  }
   // Time step constraints
   int n_time_samples =
       std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -390,7 +395,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }*/
 
   // Final goal position constraint
-  cout << "Adding final position constraint for full-order model...\n";
+  if (debug_mode_) {
+    cout << "Adding final position constraint for full-order model...\n";
+  }
   trajopt.AddBoundingBoxConstraint(
       final_position, final_position,
       trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));
@@ -483,7 +490,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   solver_->Solve(trajopt, trajopt.initial_guess(), solver_option_, &result);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
-  cout << "    Solve time:" << elapsed.count() << " | ";
+  cout << "    Current time: " << current_time << " | ";
+  cout << "Solve time:" << elapsed.count() << " | ";
   SolutionResult solution_result = result.get_solution_result();
   cout << solution_result << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";

@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <unistd.h>  // sleep/usleep
 #include <string>
 #include <gflags/gflags.h>
 
@@ -8,6 +10,7 @@
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/multipose_visualizer.h"
 #include "systems/controllers/osc/osc_utils.h"
 #include "systems/drake_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -54,14 +57,14 @@ DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
-DEFINE_bool(fix_duration, false, "Fix the total time");
+DEFINE_bool(fix_duration, true, "Fix the total time");
 DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
 DEFINE_bool(zero_touchdown_impact, true, "Zero impact at foot touchdown");
-DEFINE_double(opt_tol, 1e-4, "");
-DEFINE_double(feas_tol, 1e-4, "");
+DEFINE_double(opt_tol, 1e-3, "");
+DEFINE_double(feas_tol, 1e-3, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
-DEFINE_bool(log_solver_info, false,
+DEFINE_bool(log_solver_info, true,
             "Log snopt output to a file or ipopt to terminal");
 DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
 
@@ -87,7 +90,10 @@ DEFINE_double(init_phase, 0,
 DEFINE_bool(start_with_left_stance, true,
             "The starting stance of the robot. This is used to prepare "
             "ourselves for MPC");
-DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
+DEFINE_double(xy_disturbance, 0,
+              "Disturbance to FoM initial state. Range from 0 to 1");
+DEFINE_double(yaw_disturbance, 0,
+              "Disturbance to FoM initial state. Range from 0 to 1");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -178,9 +184,17 @@ int DoMain(int argc, char* argv[]) {
         map_velocity_from_spring_to_no_spring.transpose() *
             x_init_controls.tail(plant_controls.num_velocities());
 
-    if (FLAGS_disturbance != 0) {
-      //    x_init(9) += FLAGS_disturbance / 1;
-    }
+    // Perturbing the initial floating base configuration for testing trajopt
+    srand((unsigned int)time(0));
+    double theta = M_PI * VectorXd::Random(1)(0) * FLAGS_yaw_disturbance;
+    Vector3d vec(0, 0, 1);
+    x_init.head(4) << cos(theta / 2), sin(theta / 2) * vec.normalized();
+    x_init.segment<2>(4) = 10 * VectorXd::Random(2) * FLAGS_xy_disturbance;
+
+    // Visualize the initial pose
+    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+        FindResourceOrThrow("examples/Cassie/urdf/cassie_v2.urdf"), 1);
+    visualizer.DrawPoses(x_init);
 
     // Testing
     std::vector<string> name_list = {"base_qw",
@@ -266,7 +280,7 @@ int DoMain(int argc, char* argv[]) {
     loop.Simulate();
   } else {
     // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate
-    // the output (we do not simulate the LcmDrivenLoop)
+    // the output (we do not run the LcmDrivenLoop)
     double current_time = FLAGS_init_phase * stride_period;
     double prev_lift_off_time = 0;
 
@@ -300,7 +314,7 @@ int DoMain(int argc, char* argv[]) {
     writeCSV(param.dir_data + string("nodes_per_step.csv"),
              param.knots_per_mode * VectorXd::Ones(1));
 
-    // Testing
+    // Testing - checking the planner output
     const auto* abstract_value = output->get_data(0);
     const dairlib::lcmt_trajectory_block& traj_msg =
         abstract_value->get_value<dairlib::lcmt_trajectory_block>();

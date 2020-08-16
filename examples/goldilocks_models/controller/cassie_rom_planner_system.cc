@@ -19,6 +19,7 @@ using std::to_string;
 using std::vector;
 
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -264,7 +265,33 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     init_phase = 1 - 1e-8;
   }
 
-  // TODO: Move the touchdown state to the origin
+  ///
+  /// Rotate Cassie's floating base configuration
+  ///
+  // Rotate Cassie's floating base configuration to face toward world's x
+  // direction and translate the x and y position to the origin
+
+  // TODO: Our original plan was to move the touchdown state to the origin.
+  //  But right now we move the current state (instead of touchdown state) to
+  //  the corresponding x-y position based on init phase and desired traj
+
+  // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
+  // frame is in the world’s x-z plane and toward world’s x axis.
+  Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
+  Vector3d pelvis_x = quat.toRotationMatrix().col(0);
+  pelvis_x(2) = 0;
+  Vector3d world_x(1, 0, 0);
+  Quaterniond relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
+  Quaterniond rotated_quat = relative_qaut * quat;
+  x_init.head(4) << rotated_quat.w(), rotated_quat.vec();
+  cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
+  cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() << endl;
+
+  // Shift pelvis in x, y direction
+  /*x_init(positions_map_.at("base_x")) = init_phase * param_.final_position_x;
+  x_init(positions_map_.at("base_y")) = 0;*/
+  cout << "x(\"base_x\") = " << x_init(positions_map_.at("base_x")) << endl;
+  cout << "x(\"base_y\") = " << x_init(positions_map_.at("base_y")) << endl;
 
   ///
   /// Construct rom traj opt

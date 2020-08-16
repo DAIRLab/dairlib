@@ -112,6 +112,7 @@ cc_binary(
         "//examples/goldilocks_models/controller:rom_traj_receiver",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
+        "//multibody:multipose_visualizer",
         "//multibody:utils",
         "//systems:drake_signal_lcm_systems",
         "//systems:robot_lcm_systems",

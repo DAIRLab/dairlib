@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>  // sleep/usleep
 #include <string>
+#include <cmath>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
@@ -99,7 +100,10 @@ DEFINE_double(yaw_disturbance, 0,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  // Note that 0 <= phase < 1, but we allows the phase to be 1 here for testing
+  // purposes
   DRAKE_DEMAND(0 <= FLAGS_init_phase && FLAGS_init_phase <= 1);
+
   DRAKE_DEMAND(0 <= FLAGS_xy_disturbance && FLAGS_xy_disturbance <= 1);
   DRAKE_DEMAND(0 <= FLAGS_yaw_disturbance && FLAGS_yaw_disturbance <= 1);
 
@@ -154,7 +158,7 @@ int DoMain(int argc, char* argv[]) {
     int n_sample_raw =
         readCSV(model_dir_n_pref + string("time_at_knots.csv")).size();
     x_init = readCSV(model_dir_n_pref + string("state_at_knots.csv"))
-                 .col(int(n_sample_raw * FLAGS_init_phase));
+                 .col(int(round((n_sample_raw - 1) * FLAGS_init_phase)));
     // Mirror x_init if it's right stance
     if (!FLAGS_start_with_left_stance) {
       // Create mirror maps

@@ -74,7 +74,7 @@ RomTrajOpt::RomTrajOpt(
       n_x_(plant.num_positions() + plant.num_velocities()),
       plant_(plant),
       rom_(rom),
-      start_with_left_stance_(start_with_left_stance){
+      start_with_left_stance_(start_with_left_stance) {
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
   int n_q = plant_.num_positions();
   int n_v = plant_.num_velocities();
@@ -211,13 +211,24 @@ RomTrajOpt::RomTrajOpt(
 
 void RomTrajOpt::AddTimeStepConstraint(std::vector<double> minimum_timestep,
                                        std::vector<double> maximum_timestep,
+                                       bool fix_duration, double duration,
                                        bool equalize_timestep_size,
-                                       bool fix_duration, double duration) {
+                                       double dt_0) {
   if (equalize_timestep_size && fix_duration) {
-    double dt_value = duration / (N() - 1);
-    cout << "Fix all timestep size to " << dt_value << std::endl;
-    for (int i = 0; i < this->N() - 1; i++) {
-      AddBoundingBoxConstraint(dt_value, dt_value, timestep(i));
+    if (dt_0 > 0) {
+      double dt_value = (duration - dt_0) / (N() - 2);
+      cout << "Fix all timestep size (except the first one) to " << dt_value
+           << std::endl;
+      AddBoundingBoxConstraint(dt_0, dt_0, timestep(0));
+      for (int i = 1; i < this->N() - 1; i++) {
+        AddBoundingBoxConstraint(dt_value, dt_value, timestep(i));
+      }
+    } else {
+      double dt_value = duration / (N() - 1);
+      cout << "Fix all timestep size to " << dt_value << std::endl;
+      for (int i = 0; i < this->N() - 1; i++) {
+        AddBoundingBoxConstraint(dt_value, dt_value, timestep(i));
+      }
     }
   } else {
     // Duration bound
@@ -238,12 +249,22 @@ void RomTrajOpt::AddTimeStepConstraint(std::vector<double> minimum_timestep,
         AddLinearConstraint(timestep(mode_start_[i] + j) ==
                             timestep(mode_start_[i] + j + 1));
       }
+    }
 
-      // make the timesteps between modes the same
-      if (equalize_timestep_size && i != 0) {
+    // Make the timesteps between modes the same
+    if (equalize_timestep_size) {
+      cout << "Equalize time steps between modes\n";
+      for (int i = 1; i < num_modes_; i++) {
         if (mode_start_[i] > 0) {
-          AddLinearConstraint(timestep(mode_start_[i] - 1) ==
-                              timestep(mode_start_[i]));
+          if (i == 1) {
+            if (dt_0 <= 0) {
+              AddLinearConstraint(timestep(mode_start_[i] - 1) ==
+                                  timestep(mode_start_[i]));
+            }
+          } else {
+            AddLinearConstraint(timestep(mode_start_[i] - 1) ==
+                                timestep(mode_start_[i]));
+          }
         }
       }
     }

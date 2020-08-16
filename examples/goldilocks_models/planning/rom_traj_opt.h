@@ -42,10 +42,13 @@ class RomTrajOpt
 
   ~RomTrajOpt() override {}
 
+  // The argument `dt_0` is the first time step size which we don't want to
+  // equalize to the rest of the time step. Default to negative (the argument is
+  // not used)
   void AddTimeStepConstraint(std::vector<double> minimum_timestep,
                              std::vector<double> maximum_timestep,
-                             bool equalize_timestep_size, bool fix_duration,
-                             double duration);
+                             bool fix_duration, double duration,
+                             bool equalize_timestep_size, double dt_0 = -1);
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.

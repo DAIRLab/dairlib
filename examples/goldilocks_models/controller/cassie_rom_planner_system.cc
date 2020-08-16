@@ -1,5 +1,7 @@
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 
+#include <algorithm>  // std::max
+
 #include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "systems/controllers/osc/osc_utils.h"
@@ -55,6 +57,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       param_(param),
       debug_mode_(debug_mode) {
   this->set_name("planner_traj");
+
+  DRAKE_DEMAND(param_.knots_per_mode > 0);
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -137,7 +141,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     x_guess_left_in_front_ = x_guess_left_in_front_raw;
     x_guess_right_in_front_ = x_guess_right_in_front_raw;
 
-    cout << "initial guess duration = " << duration << endl;
+    cout << "initial guess duration ~ " << duration << endl;
     // cout << "h_guess = " << h_guess << endl;
     // cout << "r_guess = " << r_guess << endl;
     // cout << "dr_guess = " << dr_guess << endl;
@@ -254,15 +258,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Calc phase
   double init_phase = (current_time - lift_off_time) / stride_period_;
-  if (init_phase > 1) {
-    cout << "WARNING: phase is larger than 1. There might be a bug somewhere\n";
-    init_phase = 1;
-  }
-
-  // Testing  // TODO(yminchen): fix the bug runtime error when phase = 1
-  /*if (init_phase == 1) {
+  if (init_phase >= 1) {
+    cout << "WARNING: phase >= 1. There might be a bug somewhere, "
+            "since we are using a time-based fsm\n";
     init_phase = 1 - 1e-8;
-  }*/
+  }
 
   ///
   /// Rotate Cassie's floating base configuration
@@ -283,14 +283,16 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   Quaterniond relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
   Quaterniond rotated_quat = relative_qaut * quat;
   x_init.head(4) << rotated_quat.w(), rotated_quat.vec();
-  cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
-  cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() << endl;
+  // cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
+  // cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() <<
+  // endl;
 
   // Shift pelvis in x, y direction
-  x_init(positions_map_.at("base_x")) = init_phase * param_.final_position_x;
+  x_init(positions_map_.at("base_x")) =
+      init_phase * param_.final_position_x / param_.n_step;
   x_init(positions_map_.at("base_y")) = 0;
-  cout << "x(\"base_x\") = " << x_init(positions_map_.at("base_x")) << endl;
-  cout << "x(\"base_y\") = " << x_init(positions_map_.at("base_y")) << endl;
+  // cout << "x(\"base_x\") = " << x_init(positions_map_.at("base_x")) << endl;
+  // cout << "x(\"base_y\") = " << x_init(positions_map_.at("base_y")) << endl;
 
   ///
   /// Construct rom traj opt
@@ -307,7 +309,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     start_with_left_stance_ = fsm_state == left_right_support_fsm_states_.at(0);
   }
 
-  // Prespecify the time steps
+  // Prespecify the number of knot points
   std::vector<int> num_time_samples;
   std::vector<double> min_dt;
   std::vector<double> max_dt;
@@ -316,20 +318,24 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     min_dt.push_back(.01);
     max_dt.push_back(.3);
   }
-  // We always round down the index because we need to have at least one
-  // timestep in the first mode
-  int fisrt_mode_phase_index = int(param_.knots_per_mode * init_phase);
-  int knots_first_mode = param_.knots_per_mode - fisrt_mode_phase_index;
+  // We use int() to round down the index because we need to have at least one
+  // timestep in the first mode, i.e. 2 knot points.
+  int first_mode_phase_index = int((param_.knots_per_mode - 1) * init_phase);
+  int knots_first_mode = param_.knots_per_mode - first_mode_phase_index;
   num_time_samples[0] = knots_first_mode;
+  if (knots_first_mode == 2) {
+    min_dt[0] = 1e-3;
+  }
   cout << "init_phase = " << init_phase << endl;
   cout << "knots_first_mode = " << knots_first_mode << endl;
-  cout << "first_mode_phase_index = " << fisrt_mode_phase_index << endl;
+  cout << "first_mode_phase_index = " << first_mode_phase_index << endl;
 
   // Goal position
   VectorXd final_position(2);
-  final_position << x_init(positions_map_.at("base_x")) +
+  final_position << param_.final_position_x, 0;
+  /*final_position << x_lift_off(positions_map_.at("base_x")) +
                         param_.final_position_x,
-      0;
+      0;*/
 
   // Construct
   cout << "\nConstructing optimization problem...\n";
@@ -340,15 +346,24 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                            param_.zero_touchdown_impact);
 
   cout << "Other constraints/costs and initial guess=============\n";
-  // Time step cosntraints
-  // TODO: the timestep size of the first mode should be different from the rest
-  //  because the robot could be very close to the touchdown
+  // Time step constraints
   int n_time_samples =
       std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
       num_time_samples.size() + 1;
-  trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.equalize_timestep_size,
-                                param_.fix_duration,
-                                h_guess_(1) * (n_time_samples - 1));
+  if (knots_first_mode == 2) {
+    // Note that the timestep size of the first mode should be different from
+    // the rest because the robot could be very close to the touchdown
+    double remaining_time_of_first_mode =
+        std::max(stride_period_ - current_time, min_dt[0]);
+    trajopt.AddTimeStepConstraint(
+        min_dt, max_dt, param_.fix_duration,
+        remaining_time_of_first_mode + h_guess_(1) * (n_time_samples - 2),
+        param_.equalize_timestep_size, remaining_time_of_first_mode);
+  } else {
+    trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
+                                  h_guess_(1) * (n_time_samples - 1),
+                                  param_.equalize_timestep_size);
+  }
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar
@@ -425,18 +440,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     } else {
       trajopt.SetAllInitialGuess(
           h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-          x_guess_right_in_front_, final_position, fisrt_mode_phase_index);
+          x_guess_right_in_front_, final_position, first_mode_phase_index);
     }
   } else {
     // TODO: try warm start the problem with previous solution
     trajopt.SetAllInitialGuess(h_guess_, r_guess_, dr_guess_, tau_guess_,
                                x_guess_left_in_front_, x_guess_right_in_front_,
-                               final_position, fisrt_mode_phase_index);
+                               final_position, first_mode_phase_index);
   }
 
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  cout << "Construction time:" << elapsed.count() << "\n";
+  cout << "\nConstruction time:" << elapsed.count() << "\n";
 
   // Testing
   if (debug_mode_) {

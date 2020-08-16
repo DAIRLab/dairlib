@@ -475,6 +475,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   VectorXd time_at_knots = trajopt.GetSampleTimes(result);
   MatrixXd state_at_knots = trajopt.GetStateSamples(result);
 
+  // Shift the timestamps by lift-off time
+  time_at_knots.array() += lift_off_time;
+
   // Extract and save solution into files
   if (debug_mode_) {
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());

@@ -30,7 +30,7 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::osc_jump {
 
 FlightFootTrajGenerator::FlightFootTrajGenerator(
-    const MultibodyPlant<double>& plant, Context<double>& context,
+    const MultibodyPlant<double>& plant, Context<double>* context,
     const string& hip_name, bool isLeftFoot,
     const PiecewisePolynomial<double>& foot_traj, double time_offset)
     : plant_(plant),
@@ -71,11 +71,11 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
 PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
     const VectorXd& x, double t) const {
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
-  plant_.SetPositionsAndVelocities(&context_, x);
+  plant_.SetPositionsAndVelocities(context_, x);
 
   Vector3d zero_offset = Vector3d::Zero();
   Vector3d hip_pos = Vector3d::Zero();
-  plant_.CalcPointsPositions(context_, hip_frame_, zero_offset, world_,
+  plant_.CalcPointsPositions(*context_, hip_frame_, zero_offset, world_,
                              &hip_pos);
 
   const PiecewisePolynomial<double>& foot_traj_segment =

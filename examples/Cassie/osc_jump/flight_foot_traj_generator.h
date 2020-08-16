@@ -15,7 +15,7 @@ class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   FlightFootTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>& context, const std::string& hip_name,
+      drake::systems::Context<double>* context, const std::string& hip_name,
       bool isLeftFoot,
       const drake::trajectories::PiecewisePolynomial<double>& foot_traj,
       double time_offset = 0.0);
@@ -35,7 +35,7 @@ class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
                 drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>& context_;
+  drake::systems::Context<double>* context_;
   const drake::multibody::Frame<double>& world_;
   const drake::multibody::Frame<double>& hip_frame_;
 

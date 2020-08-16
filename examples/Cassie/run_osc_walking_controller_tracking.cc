@@ -99,6 +99,9 @@ int DoMain(int argc, char* argv[]) {
   plant_w_springs.Finalize();
   plant_wo_springs.Finalize();
 
+  auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
+
   int nq = plant_wo_springs.num_positions();
   int nv = plant_wo_springs.num_velocities();
   int nx = nq + nv;
@@ -165,7 +168,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_trajectory = PiecewisePolynomial<double>::CubicHermite(
       lcm_pelvis_rot_traj.time_vector,
       lcm_pelvis_rot_traj.datapoints.topRows(4),
-        lcm_pelvis_rot_traj.datapoints.bottomRows(4));
+      lcm_pelvis_rot_traj.datapoints.bottomRows(4));
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm;
@@ -178,9 +181,11 @@ int DoMain(int argc, char* argv[]) {
   auto com_traj_generator =
       builder.AddSystem<COMTrajGenerator>(plant_w_springs, com_traj);
   auto l_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
-      plant_w_springs, "toe_right", true, l_foot_trajectory, time_offset);
+      plant_w_springs, context_w_spr.get(), "toe_right", true,
+      l_foot_trajectory, time_offset);
   auto r_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
-      plant_w_springs, "toe_left", false, r_foot_trajectory);
+      plant_w_springs, context_w_spr.get(), "toe_left", false,
+      r_foot_trajectory);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
           plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_traj");
@@ -193,8 +198,8 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, true,
-      FLAGS_print_osc); /*print_tracking_info*/
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      context_wo_spr.get(), true, FLAGS_print_osc); /*print_tracking_info*/
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -263,9 +268,9 @@ int DoMain(int argc, char* argv[]) {
   /*** Tracking Data for OSC ***/
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
-//  W_com(0, 0) = 2000;
-//  W_com(1, 1) = 200;
-//  W_com(2, 2) = 2000;
+  //  W_com(0, 0) = 2000;
+  //  W_com(1, 1) = 200;
+  //  W_com(2, 2) = 2000;
   W_com(0, 0) = 20;
   W_com(1, 1) = 2;
   W_com(2, 2) = 20;
@@ -300,7 +305,7 @@ int DoMain(int argc, char* argv[]) {
   double w_heading = 10;
   double k_p_pelvis_balance = 100;  // 100
   double k_d_pelvis_balance = 80;   // 80
-  double k_p_heading = 50;         // 50
+  double k_p_heading = 50;          // 50
   double k_d_heading = 40;          // 40
   Matrix3d W_pelvis = w_pelvis_balance * MatrixXd::Identity(3, 3);
   W_pelvis(2, 2) = w_heading;
@@ -316,10 +321,10 @@ int DoMain(int argc, char* argv[]) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
   }
 
-//  pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
-//  VectorXd pelvis_desired_quat(4);
-//  pelvis_desired_quat << 1, 0, 0, 0;
-//  osc->AddConstTrackingData(&pelvis_rot_tracking_data, pelvis_desired_quat);
+  //  pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
+  //  VectorXd pelvis_desired_quat(4);
+  //  pelvis_desired_quat << 1, 0, 0, 0;
+  //  osc->AddConstTrackingData(&pelvis_rot_tracking_data, pelvis_desired_quat);
 
   // Swing toe tracking
   MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);

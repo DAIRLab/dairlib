@@ -15,6 +15,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   SwingFootTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context,
       const std::string& stance_foot_name, bool isLeftFoot,
       const drake::trajectories::PiecewisePolynomial<double>& foot_traj,
       double time_offset = 0.0);
@@ -39,6 +40,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
                 drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context;
   const drake::multibody::Frame<double>& world_;
   const drake::multibody::Frame<double>& stance_foot_frame_;
   std::unique_ptr<drake::systems::Context<double>> context_;

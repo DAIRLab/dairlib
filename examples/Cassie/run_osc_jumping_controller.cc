@@ -102,7 +102,8 @@ int DoMain(int argc, char* argv[]) {
   plant_w_springs.Finalize();
   plant_wo_springs.Finalize();
 
-  auto context = plant_w_springs.CreateDefaultContext();
+  auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
 
   int nq = plant_wo_springs.num_positions();
   int nv = plant_wo_springs.num_velocities();
@@ -189,12 +190,12 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, *context, com_traj, FLAGS_delay_time);
+      plant_w_springs, context_w_spr.get(), com_traj, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, *context, "hip_left", true, l_foot_trajectory,
+      plant_w_springs, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
       FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, *context, "hip_right", false, r_foot_trajectory,
+      plant_w_springs, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
       FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
@@ -209,7 +210,7 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, true,
+      plant_w_springs, plant_wo_springs, context_w_spr.get(), context_wo_spr.get(), true,
       FLAGS_print_osc); /*print_tracking_info*/
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(

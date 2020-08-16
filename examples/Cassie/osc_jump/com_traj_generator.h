@@ -15,7 +15,7 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   COMTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>& context,
+      drake::systems::Context<double>* context,
       drake::trajectories::PiecewisePolynomial<double>& crouch_traj,
       double time_offset = 0.0);
 
@@ -43,7 +43,7 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
                 drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>& context_;
+  drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
 
   int fsm_idx_;

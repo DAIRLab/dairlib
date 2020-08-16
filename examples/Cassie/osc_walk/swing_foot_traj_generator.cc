@@ -12,7 +12,6 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using std::string;
 
-using dairlib::multibody::createContext;
 using dairlib::systems::OutputVector;
 using drake::multibody::BodyFrame;
 using drake::multibody::Frame;
@@ -30,18 +29,17 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::osc_walk {
 
 SwingFootTrajGenerator::SwingFootTrajGenerator(
-    const MultibodyPlant<double>& plant, const string& stance_foot_name,
-    bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj,
-    double time_offset)
+    const MultibodyPlant<double>& plant, Context<double>* context,
+    const string& stance_foot_name, bool isLeftFoot,
+    const PiecewisePolynomial<double>& foot_traj, double time_offset)
     : plant_(plant),
+      context_(context),
       world_(plant.world_frame()),
       stance_foot_frame_(plant.GetFrameByName(stance_foot_name)),
       foot_traj_(foot_traj),
       time_offset_(time_offset) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
-  context_ = plant_.CreateDefaultContext();
-
 
   // Input/Output Setup
   state_port_ =
@@ -72,7 +70,6 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
   // TODO(yangwill) add this shift elsewhere to make the gait periodic
   DeclarePerStepDiscreteUpdateEvent(
       &SwingFootTrajGenerator::DiscreteVariableUpdate);
-  plant_context_ = plant.CreateDefaultContext();
 }
 
 EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
@@ -114,12 +111,11 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::generateFootTraj(
     const drake::systems::Context<double>& context, const VectorXd& x,
     double t) const {
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
-  auto plant_context = createContext(plant_, x, zero_input);
 
   Vector3d zero_offset = Vector3d::Zero();
   Vector3d stance_foot_pos = Vector3d::Zero();
-  plant_.CalcPointsPositions(*plant_context, stance_foot_frame_, zero_offset,
-                             world_, &stance_foot_pos);
+  plant_.CalcPointsPositions(*context_, stance_foot_frame_, zero_offset, world_,
+                             &stance_foot_pos);
 
   const PiecewisePolynomial<double>& foot_traj_segment =
       foot_traj_.slice(foot_traj_.get_segment_index(t), 1);

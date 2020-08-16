@@ -34,7 +34,7 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::osc_jump {
 
 COMTrajGenerator::COMTrajGenerator(
-    const MultibodyPlant<double>& plant, Context<double>& context,
+    const MultibodyPlant<double>& plant, Context<double>* context,
     PiecewisePolynomial<double>& crouch_traj, double time_offset)
     : plant_(plant),
       context_(context),
@@ -82,8 +82,8 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     VectorXd q = robot_output->GetPositions();
-    plant_.SetPositions(&context_, q);
-    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(context_);
+    plant_.SetPositions(context_, q);
+    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
     com_x_offset(0) =
         kLandingOffset + (center_of_mass(0) - crouch_traj_.value(timestamp)(0));
     // TODO(yangwill) Remove this or calculate it based on the robot's state.
@@ -96,10 +96,10 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
 drake::trajectories::PiecewisePolynomial<double>
 COMTrajGenerator::generateBalanceTraj(const Eigen::VectorXd& x,
                                       double time) const {
-  plant_.SetPositionsAndVelocities(&context_, x);
+  plant_.SetPositionsAndVelocities(context_, x);
 
   Vector3d target_com = crouch_traj_.value(time_offset_);
-  Vector3d curr_com = plant_.CalcCenterOfMassPosition(context_);
+  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
 
   // generate a trajectory from current position to target position
   MatrixXd centerOfMassPoints(3, 2);

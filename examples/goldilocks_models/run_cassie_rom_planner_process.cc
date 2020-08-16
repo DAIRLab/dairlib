@@ -250,6 +250,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Lcm subscriber for fsm and latest lift off time and a translator
   // from this lcm into BasicVector
+  // TODO(yminchen): does lcm subscriber discard the old messages?
   auto fsm_and_liftoff_time_subscriber =
       builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_drake_signal>(
           FLAGS_channel_fsm_t, &lcm_local));
@@ -290,6 +291,29 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
   if (!FLAGS_debug_mode) {
+    // Get context and initialize the lcm message of LcmSubsriber for
+    // lcmt_drake_signal
+    auto& diagram_context = loop.get_diagram_mutable_context();
+    auto& fsm_and_liftoff_time_subscriber_context =
+        loop.get_diagram()->GetMutableSubsystemContext(
+            *fsm_and_liftoff_time_subscriber, &diagram_context);
+    // Note that currently the LcmSubscriber stores the lcm message in the first
+    // state of the leaf system (we hard coded index 0 here)
+    auto& mutable_state =
+        fsm_and_liftoff_time_subscriber_context
+            .get_mutable_abstract_state<drake::lcmt_drake_signal>(0);
+    drake::lcmt_drake_signal initial_message;
+    initial_message.dim = lcm_vector_size;
+    initial_message.val.resize(lcm_vector_size);
+    initial_message.val = {FLAGS_start_with_left_stance
+                               ? double(left_stance_state)
+                               : double(right_stance_state),
+                           0};
+    initial_message.coord.resize(lcm_vector_size);
+    initial_message.coord = std::vector<std::string>(2);
+    initial_message.timestamp = 0;
+    mutable_state = initial_message;
+
     loop.Simulate();
   } else {
     // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate

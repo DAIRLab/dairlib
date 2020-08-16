@@ -350,6 +350,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   int n_time_samples =
       std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
       num_time_samples.size() + 1;
+  // TODO: play with dt_value. Also don't hard-coded dt_value
+  double dt_value = 0.37 / (param_.knots_per_mode - 1);  // h_guess_(1);
   if (knots_first_mode == 2) {
     // Note that the timestep size of the first mode should be different from
     // the rest because the robot could be very close to the touchdown
@@ -357,11 +359,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         std::max(stride_period_ - current_time, min_dt[0]);
     trajopt.AddTimeStepConstraint(
         min_dt, max_dt, param_.fix_duration,
-        remaining_time_of_first_mode + h_guess_(1) * (n_time_samples - 2),
+        remaining_time_of_first_mode + dt_value * (n_time_samples - 2),
         param_.equalize_timestep_size, remaining_time_of_first_mode);
   } else {
     trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
-                                  h_guess_(1) * (n_time_samples - 1),
+                                  dt_value * (n_time_samples - 1),
                                   param_.equalize_timestep_size);
   }
 

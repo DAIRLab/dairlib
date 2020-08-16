@@ -141,17 +141,31 @@ int DoMain(int argc, char* argv[]) {
       MirrorVelSignChangeSet(plant_wo_springs, robot_option));
   MirroredReducedOrderModel mirrored_rom(plant_wo_springs, *rom, state_mirror);
 
-  // Get desired traj from ROM planner result
+  // Get init traj from ROM planner result
   const std::string dir_data =
       "../dairlib_data/goldilocks_models/planning/robot_1/data/";
   VectorXd time_at_knots =
       readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
   MatrixXd state_at_knots =
       readCSV(dir_data + std::string("state_at_knots.csv"));
-  PiecewisePolynomial<double> desired_rom_traj =
-      PiecewisePolynomial<double>::CubicHermite(
-          time_at_knots, state_at_knots.topRows(rom->n_y()),
-          state_at_knots.bottomRows(rom->n_y()));
+
+  // Initial message for the LCM subscriber. In the first timestep, the
+  // subscriber might not receive a solution yet
+  dairlib::lcmt_trajectory_block traj_msg;
+  traj_msg.trajectory_name = "";
+  traj_msg.num_points = time_at_knots.size();
+  traj_msg.num_datatypes = 2 * rom->n_y();
+  // Reserve space for vectors
+  traj_msg.time_vec.resize(traj_msg.num_points);
+  traj_msg.datatypes.resize(traj_msg.num_datatypes);
+  traj_msg.datapoints.clear();
+  // Copy Eigentypes to std::vector
+  traj_msg.time_vec = CopyVectorXdToStdVector(time_at_knots);
+  traj_msg.datatypes = vector<std::string>(2 * rom->n_y());
+  for (int i = 0; i < traj_msg.num_datatypes; ++i) {
+    traj_msg.datapoints.push_back(
+        CopyVectorXdToStdVector(state_at_knots.row(i)));
+  }
 
   // Read in the end time of the trajectory
   int knots_per_foot_step = readCSV(dir_data + "nodes_per_step.csv")(0, 0);
@@ -229,8 +243,8 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  double left_support_duration = end_time_of_first_step;
-  double right_support_duration = end_time_of_first_step;
+  double left_support_duration = 0.35; //end_time_of_first_step;
+  double right_support_duration = 0.35; //end_time_of_first_step;
   double double_support_duration = 0.02;
   vector<int> fsm_states;
   vector<double> state_durations;
@@ -286,13 +300,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
                   fsm_and_liftoff_time_publisher->get_input_port());
 
-  // Create Lcm subscriber for MPC's output and create
-  auto mpc_output_subscriber = builder.AddSystem(
+  // Create Lcm subscriber for MPC's output
+  auto planner_output_subscriber = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_trajectory_block>(FLAGS_channel_y,
                                                                 &lcm_local));
   // Create a system that translate MPC lcm into trajectory
   auto optimal_rom_traj_gen = builder.AddSystem<OptimalRoMTrajReceiver>();
-  builder.Connect(mpc_output_subscriber->get_output_port(),
+  builder.Connect(planner_output_subscriber->get_output_port(),
                   optimal_rom_traj_gen->get_input_port(0));
 
   // Create CoM trajectory generator
@@ -528,6 +542,20 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
+
+  // Get context and initialize the lcm message of LcmSubsriber for
+  // lcmt_trajectory_block
+  auto& diagram_context = loop.get_diagram_mutable_context();
+  auto& planner_subscriber_context =
+      loop.get_diagram()->GetMutableSubsystemContext(*planner_output_subscriber,
+                                                     &diagram_context);
+  // Note that currently the LcmSubscriber stores the lcm message in the first
+  // state of the leaf system (we hard coded index 0 here)
+  auto& mutable_state =
+      planner_subscriber_context
+          .get_mutable_abstract_state<dairlib::lcmt_trajectory_block>(0);
+  mutable_state = traj_msg;
+
   loop.Simulate();
 
   return 0;

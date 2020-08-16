@@ -277,7 +277,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
   // frame is in the world’s x-z plane and toward world’s x axis.
-  Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
+  /*Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
   Vector3d pelvis_x = quat.toRotationMatrix().col(0);
   pelvis_x(2) = 0;
   Vector3d world_x(1, 0, 0);
@@ -285,7 +285,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   Quaterniond rotated_quat = relative_qaut * quat;
   x_init.head(4) << rotated_quat.w(), rotated_quat.vec();
   cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
-  cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() << endl;
+  cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() << endl;*/
 
   // Shift pelvis in x, y direction
   /*x_init(positions_map_.at("base_x")) = init_phase * param_.final_position_x;
@@ -440,7 +440,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Testing
   if (debug_mode_) {
     // Print out the scaling factor
-    for (int i = 0; i < trajopt.decision_variables().size(); i++) {
+    /*for (int i = 0; i < trajopt.decision_variables().size(); i++) {
       cout << trajopt.decision_variable(i) << ", ";
       cout << trajopt.decision_variable(i).get_id() << ", ";
       cout << trajopt.FindDecisionVariableIndex(trajopt.decision_variable(i))
@@ -455,7 +455,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       cout << ", ";
       cout << trajopt.GetInitialGuess(trajopt.decision_variable(i));
       cout << endl;
-    }
+    }*/
   }
 
   // Solve

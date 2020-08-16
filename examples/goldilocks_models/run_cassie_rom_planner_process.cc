@@ -184,12 +184,16 @@ int DoMain(int argc, char* argv[]) {
         map_velocity_from_spring_to_no_spring.transpose() *
             x_init_controls.tail(plant_controls.num_velocities());
 
+    cout << "x_init = " << x_init.transpose() << endl;
+
     // Perturbing the initial floating base configuration for testing trajopt
     srand((unsigned int)time(0));
     double theta = M_PI * VectorXd::Random(1)(0) * FLAGS_yaw_disturbance;
     Vector3d vec(0, 0, 1);
     x_init.head(4) << cos(theta / 2), sin(theta / 2) * vec.normalized();
     x_init.segment<2>(4) = 10 * VectorXd::Random(2) * FLAGS_xy_disturbance;
+
+    cout << "x_init = " << x_init.transpose() << endl;
 
     // Visualize the initial pose
     multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(

@@ -4,11 +4,11 @@ group "1.controllers" {
         host = "localhost";
     }
     cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true";
         host = "localhost";
     }
     cmd "2.2.rom-planner" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=30 --sample=19 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --final_position=1 ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=1 --sample=19 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --final_position=1 ";
         host = "localhost";
     }
 }
@@ -74,6 +74,12 @@ group "4.lcm-tools" {
 }
 
 
+script "run-original-walking" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "1.original-walking-controller";
+    start cmd "1.simulator for OSC controller";
+}
+
 script "run-rom-walking" {
     run_script "start-operator-simulation-floating-base";
     start cmd "2.2.rom-planner";
@@ -97,12 +103,6 @@ script "run-rom-walking-test-const-traj-mirrored" {
 script "run-rom-walking-test-w-lipm" {
     run_script "start-operator-simulation-floating-base";
     start cmd "0.rom-walking-controller (with lipm)";
-    start cmd "1.simulator for OSC controller";
-}
-
-script "run-original-walking" {
-    run_script "start-operator-simulation-floating-base";
-    start cmd "1.original-walking-controller";
     start cmd "1.simulator for OSC controller";
 }
 

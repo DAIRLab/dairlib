@@ -71,7 +71,10 @@ using multibody::JwrtqdotToJwrtv;
 
 DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
 DEFINE_bool(start_with_right_stance, false, "");
+DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
+DEFINE_double(const_walking_speed_x, 0.8, "Walking speed in local x axis");
 
+//
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
@@ -220,6 +223,10 @@ int DoMain(int argc, char* argv[]) {
 
   // Create human high-level control
   Eigen::Vector2d global_target_position(1, 0);
+  if (FLAGS_const_walking_speed) {
+    // So that the desired yaw angle always points at x direction)
+    global_target_position(0) = std::numeric_limits<double>::infinity();
+  }
   Eigen::Vector2d params_of_no_turning(5, 1);
   // Logistic function 1/(1+5*exp(x-1))
   // The function ouputs 0.0007 when x = 0
@@ -243,8 +250,8 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  double left_support_duration = 0.35; //end_time_of_first_step;
-  double right_support_duration = 0.35; //end_time_of_first_step;
+  double left_support_duration = 0.35;   // end_time_of_first_step;
+  double right_support_duration = 0.35;  // end_time_of_first_step;
   double double_support_duration = 0.02;
   vector<int> fsm_states;
   vector<double> state_durations;
@@ -342,8 +349,10 @@ int DoMain(int argc, char* argv[]) {
   auto deviation_from_cp =
       builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
           plant_w_springs, context_w_spr.get());
-  builder.Connect(high_level_command->get_xy_output_port(),
-                  deviation_from_cp->get_input_port_des_hor_vel());
+  if (!FLAGS_const_walking_speed) {
+    builder.Connect(high_level_command->get_xy_output_port(),
+                    deviation_from_cp->get_input_port_des_hor_vel());
+  }
   builder.Connect(simulator_drift->get_output_port(0),
                   deviation_from_cp->get_input_port_state());
 
@@ -555,6 +564,16 @@ int DoMain(int argc, char* argv[]) {
       planner_subscriber_context
           .get_mutable_abstract_state<dairlib::lcmt_trajectory_block>(0);
   mutable_state = traj_msg;
+
+  // Set constant walking speed
+  if (FLAGS_const_walking_speed) {
+    auto& deviation_from_cp_context =
+        loop.get_diagram()->GetMutableSubsystemContext(*deviation_from_cp,
+                                                       &diagram_context);
+    deviation_from_cp->get_input_port_des_hor_vel().FixValue(
+        &deviation_from_cp_context,
+        drake::systems::BasicVector<double>({FLAGS_const_walking_speed_x, 0}));
+  }
 
   loop.Simulate();
 

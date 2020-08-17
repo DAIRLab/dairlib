@@ -208,6 +208,7 @@ class MediateTasksGenerator{
   bool currently_find_mediate_sample() const {return currently_find_mediate_sample_;}
   bool choose_sample_from_iter_to_help() const {return choose_sample_from_iter_to_help_;}
   int sample_index_to_help() const {return sample_index_to_help_;}
+  bool try_ipopt_to_help() const{return try_ipopt_to_help_;}
 
   // Setters
   void set_start_finding_mediate_sample(bool if_start){
@@ -222,6 +223,9 @@ class MediateTasksGenerator{
   void set_sample_index_to_help(int index){
     sample_index_to_help_ = index;
   };
+  void set_try_ipopt_to_help(bool try_ipopt){
+    try_ipopt_to_help_ = try_ipopt;
+  }
 
  private:
   int N_sample_;
@@ -230,6 +234,7 @@ class MediateTasksGenerator{
   bool currently_find_mediate_sample_;
   bool choose_sample_from_iter_to_help_;
   int sample_index_to_help_;
+  bool try_ipopt_to_help_;
 };
 
 //functions related to initial guess

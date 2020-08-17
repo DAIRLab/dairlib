@@ -228,6 +228,7 @@ MediateTasksGenerator::MediateTasksGenerator(int N_sample,
   currently_find_mediate_sample_ = false;
   choose_sample_from_iter_to_help_ = true;
   sample_index_to_help_= -1;
+  try_ipopt_to_help_=false;
 }
 
 vector<double> MediateTasksGenerator::NewTask(string dir,int iter,

@@ -215,8 +215,13 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
     }
   } else if(task_gen_mediate.start_finding_mediate_sample()){
     if(!task_gen_mediate.currently_find_mediate_sample()) {
-      *init_file = ChooseInitialGuessFromMediateIteration(dir,iter,sample,
-          task_gen, task, rom,task_gen_mediate,task_gen_expansion);
+      if(task_gen_mediate.try_ipopt_to_help()){
+        *init_file =
+            to_string(iter) + "_" + to_string(sample) + string("_w.csv");
+      }else{
+        *init_file = ChooseInitialGuessFromMediateIteration(dir,iter,sample,
+            task_gen, task, rom,task_gen_mediate,task_gen_expansion);
+      }
     }
     else{
       *init_file = to_string(iter) + "_mediate_initial_guess.csv";
@@ -2117,6 +2122,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
           inner_loop_setting.prefix = prefix;
           inner_loop_setting.init_file = init_file_pass_in;
 
+          //set the flag of using ipopt to true
+          if(task_gen_mediate.try_ipopt_to_help()&&(sample_idx==
+          task_gen_mediate.sample_index_to_help())){
+            inner_loop_setting.use_ipopt=true;
+          }else{
+            inner_loop_setting.use_ipopt = FLAGS_ipopt;
+          }
+
           // Trajectory optimization with fixed model parameters
           // string string_to_be_print = "Adding sample #" +
           // to_string(sample_idx) +
@@ -2301,6 +2314,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         task_gen_mediate.set_currently_find_mediate_sample(false);
         task_gen_mediate.set_choose_sample_from_iter_to_help(true);
         task_gen_mediate.set_sample_index_to_help(-1);
+        task_gen_mediate.set_try_ipopt_to_help(false);
         n_shrink_step=0;
       }
       else if( (!task_gen_mediate.currently_find_mediate_sample()) &&
@@ -2357,7 +2371,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         int is_success;
         if(task_gen_mediate.sample_index_to_help()==-1){
           //this is the first time to use mediate iteration for current iteration
-          task_gen_mediate.set_choose_sample_from_iter_to_help(true);
+          task_gen_mediate.set_try_ipopt_to_help(true);
         }
         else{
           prefix = to_string(iter)+ string("_")
@@ -2367,17 +2381,23 @@ int findGoldilocksModels(int argc, char* argv[]) {
           if(is_success==1){
             // the sample which needs help has found a solution
             // we should find another failed sample in this iteration
-            task_gen_mediate.set_choose_sample_from_iter_to_help(true);
+            task_gen_mediate.set_try_ipopt_to_help(true);
           }
           else{
-            // update the range of tasks in mediate iteration
-            task_gen_mediate.set_choose_sample_from_iter_to_help(false);
+            //we should try mediate samples to help
+            if(task_gen_mediate.try_ipopt_to_help()){
+              task_gen_mediate.set_try_ipopt_to_help(false);
+              task_gen_mediate.set_choose_sample_from_iter_to_help(true);
+            }else{
+              // update the range of tasks in mediate iteration
+              task_gen_mediate.set_choose_sample_from_iter_to_help(false);
+            }
+            // evaluate mediate samples
+            task_gen_mediate.set_currently_find_mediate_sample(true);
           }
         }
         task_gen_mediate.set_mediate_samples(dir,iter,task_gen);
         iter = iter-1;
-        // evaluate mediate samples
-        task_gen_mediate.set_currently_find_mediate_sample(true);
         continue;
       }
       else{

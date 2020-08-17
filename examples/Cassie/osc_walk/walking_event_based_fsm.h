@@ -10,7 +10,7 @@ namespace examples {
 namespace osc_walk {
 
 /// DOUBLE_L_LO (Double stance left foot liftoff)
-enum FSM_STATE { DOUBLE_L_LO, RIGHT, DOUBLE_R_LO, LEFT };
+enum FSM_STATE { DOUBLE_R_LO, LEFT_STANCE, DOUBLE_L_LO, RIGHT_STANCE };
 
 /// Event based FSM for jumping with option to change to a time-based FSM
 /// @param[plant] The MultibodyPlant that this FSM operates with
@@ -24,7 +24,7 @@ class WalkingEventFsm : public drake::systems::LeafSystem<double> {
  public:
   WalkingEventFsm(const drake::multibody::MultibodyPlant<double>& plant,
                   const std::vector<double>& transition_times,
-                  bool contact_based = true, FSM_STATE init_state = DOUBLE_L_LO,
+                  bool contact_based = true, FSM_STATE init_state = DOUBLE_R_LO,
                   bool print_fsm_info = false);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {

@@ -33,9 +33,10 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::osc_walk {
 
 COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
+                                   Context<double>* context,
                                    PiecewisePolynomial<double>& com_traj,
                                    double time_offset)
-    : plant_(plant), world_(plant_.world_frame()), com_traj_(com_traj) {
+    : plant_(plant), context_(context), world_(plant_.world_frame()), com_traj_(com_traj) {
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ =
@@ -55,7 +56,6 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
 
   DeclarePerStepDiscreteUpdateEvent(&COMTrajGenerator::DiscreteVariableUpdate);
   com_traj_.shiftRight(time_offset);
-  plant_context_ = plant.CreateDefaultContext();
 }
 
 EventStatus COMTrajGenerator::DiscreteVariableUpdate(
@@ -82,8 +82,9 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     // A cycle has been reached
     if (fsm_state(0) == DOUBLE_R_LO || fsm_state(0) == DOUBLE_L_LO) {
       time_shift << timestamp;
-      plant_.SetPositions(plant_context_.get(), robot_output->GetPositions());
-      x_offset << plant_.CalcCenterOfMassPosition(*plant_context_)[0];
+      plant_.SetPositions(context_, robot_output->GetPositions());
+      x_offset << plant_.CalcCenterOfMassPosition(*context_)[0];
+      std::cout << "cycle" << std::endl;
     }
   }
   return EventStatus::Succeeded();

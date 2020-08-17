@@ -25,7 +25,10 @@ WalkingEventFsm::WalkingEventFsm(const MultibodyPlant<double>& plant,
       contact_based_(contact_based),
       init_state_(init_state),
       print_fsm_info_(print_fsm_info) {
-  DRAKE_ASSERT(transition_times_.size() == RIGHT + 1);
+  DRAKE_ASSERT(transition_times_.size() == RIGHT_STANCE + 1);
+  for(auto& t : transition_times_){
+    std::cout << "fsm time: " << t << std::endl;
+  }
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
@@ -94,34 +97,35 @@ EventStatus WalkingEventFsm::DiscreteVariableUpdate(
   // The fsm state will change transition_delay_ seconds after the guard
   // condition was first triggered.
   // This supports both contact-based and time-based guard conditions
-  if (fsm_state(0) == DOUBLE_L_LO) {
+  if (fsm_state(0) == DOUBLE_R_LO) {
     if (contact_based_
             ? num_contacts <= 2 &&
                   contact_point.find("right") != std::string::npos
-            : timestamp > (transition_times_[DOUBLE_L_LO] + time_offset(0))) {
-      SetNextFiniteState(fsm_state, timestamp);
-    }
-  } else if (fsm_state(0) == RIGHT) {
-    if (contact_based_
-            ? num_contacts >= 3
-            : timestamp > (transition_times_[RIGHT] + time_offset(0))) {
-      SetNextFiniteState(fsm_state, timestamp);
-    }
-  } else if (fsm_state(0) == DOUBLE_R_LO) {
-    if (contact_based_
-            ? num_contacts <= 2 &&
-                  contact_point.find("left") != std::string::npos
             : timestamp > (transition_times_[DOUBLE_R_LO] + time_offset(0))) {
       SetNextFiniteState(fsm_state, timestamp);
     }
-  } else if (fsm_state(0) == LEFT) {
+  } else if (fsm_state(0) == LEFT_STANCE) {
     if (contact_based_
             ? num_contacts >= 3
-            : timestamp > (transition_times_[LEFT] + time_offset(0))) {
+            : timestamp > (transition_times_[LEFT_STANCE] + time_offset(0))) {
+      SetNextFiniteState(fsm_state, timestamp);
+    }
+  } else if (fsm_state(0) == DOUBLE_L_LO) {
+    if (contact_based_
+            ? num_contacts <= 2 &&
+                  contact_point.find("left") != std::string::npos
+            : timestamp > (transition_times_[DOUBLE_L_LO] + time_offset(0))) {
+      SetNextFiniteState(fsm_state, timestamp);
+    }
+  } else if (fsm_state(0) == RIGHT_STANCE) {
+    if (contact_based_
+            ? num_contacts >= 3
+            : timestamp > (transition_times_[RIGHT_STANCE] + time_offset(0))) {
       SetNextFiniteState(fsm_state, timestamp);
       time_offset << timestamp;
     }
   }
+  prev_time(0) = timestamp;
 
   return EventStatus::Succeeded();
 }  // namespace examples
@@ -134,8 +138,8 @@ void WalkingEventFsm::CalcFiniteState(const Context<double>& context,
 
 void WalkingEventFsm::SetNextFiniteState(Eigen::VectorBlock<VectorXd> fsm_state,
                                          double timestamp) const {
-  if (fsm_state(0) == LEFT)
-    fsm_state << DOUBLE_L_LO;
+  if (fsm_state(0) == RIGHT_STANCE)
+    fsm_state << DOUBLE_R_LO;
   else
     fsm_state(0) += 1;
   if (print_fsm_info_) {

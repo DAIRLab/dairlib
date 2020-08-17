@@ -144,12 +144,12 @@ int DoMain(int argc, char* argv[]) {
 
   // For the time-based FSM
   double total_time = state_trajs.back().end_time();
-  double l_stance_time = state_trajs[0].end_time();
-  double ds_l_lo_time = state_trajs[1].end_time();
-  double r_stance_time = total_time + state_trajs[0].end_time();
-  double ds_r_lo_time = total_time + state_trajs[1].end_time();
-  std::vector<double> transition_times = {l_stance_time, ds_l_lo_time,
-                                          r_stance_time, ds_r_lo_time};
+  double ds_r_lo_time = state_trajs[0].end_time();
+  double l_stance_time = state_trajs[1].end_time();
+  double ds_l_lo_time = total_time + state_trajs[0].end_time();
+  double r_stance_time = total_time + state_trajs[1].end_time();
+  std::vector<double> transition_times = {ds_r_lo_time, l_stance_time,
+                                          ds_l_lo_time, r_stance_time};
 
   std::cout << "Loading output trajectories: " << std::endl;
   PiecewisePolynomial<double> com_traj =
@@ -178,8 +178,8 @@ int DoMain(int argc, char* argv[]) {
   double time_offset = total_time;
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
-  auto com_traj_generator =
-      builder.AddSystem<COMTrajGenerator>(plant_w_springs, com_traj);
+  auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
+      plant_w_springs, context_w_spr.get(), com_traj);
   auto l_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
       plant_w_springs, context_w_spr.get(), "toe_right", true,
       l_foot_trajectory, time_offset);
@@ -239,11 +239,11 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, right_heel.first, right_heel.second,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-  vector<osc_walk::FSM_STATE> double_stance_modes = {osc_walk::DOUBLE_L_LO,
-                                                     osc_walk::DOUBLE_R_LO};
+  vector<osc_walk::FSM_STATE> double_stance_modes = {osc_walk::DOUBLE_R_LO,
+                                                     osc_walk::DOUBLE_L_LO};
   vector<osc_walk::FSM_STATE> all_modes = {
-      osc_walk::DOUBLE_L_LO, osc_walk::RIGHT, osc_walk::DOUBLE_R_LO,
-      osc_walk::LEFT};
+      osc_walk::DOUBLE_R_LO, osc_walk::LEFT_STANCE, osc_walk::DOUBLE_L_LO,
+      osc_walk::RIGHT_STANCE};
 
   /*** Contact Constraints ***/
   for (auto mode : double_stance_modes) {
@@ -252,10 +252,10 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(mode, &right_toe_evaluator);
     osc->AddStateAndContactPoint(mode, &right_heel_evaluator);
   }
-  osc->AddStateAndContactPoint(osc_walk::RIGHT, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(osc_walk::RIGHT, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(osc_walk::LEFT, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(osc_walk::LEFT, &right_heel_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::RIGHT_STANCE, &right_toe_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::RIGHT_STANCE, &right_heel_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::LEFT_STANCE, &left_toe_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::LEFT_STANCE, &left_heel_evaluator);
 
   /*** Four bar constraint ***/
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
@@ -296,9 +296,10 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_foot_tracking_data(
       "r_foot_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_springs,
       plant_wo_springs);
-  left_foot_tracking_data.AddStateAndPointToTrack(osc_walk::LEFT, "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(osc_walk::RIGHT,
+  right_foot_tracking_data.AddStateAndPointToTrack(osc_walk::LEFT_STANCE,
                                                    "toe_right");
+  left_foot_tracking_data.AddStateAndPointToTrack(osc_walk::RIGHT_STANCE,
+                                                  "toe_left");
 
   // Pelvis orientation tracking
   double w_pelvis_balance = 200;
@@ -327,15 +328,15 @@ int DoMain(int argc, char* argv[]) {
   //  osc->AddConstTrackingData(&pelvis_rot_tracking_data, pelvis_desired_quat);
 
   // Swing toe tracking
-  MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
+  MatrixXd W_swing_toe = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = 200 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe,
                                         plant_w_springs, plant_wo_springs);
-  swing_toe_traj.AddStateAndJointToTrack(osc_walk::LEFT, "toe_right",
+  swing_toe_traj.AddStateAndJointToTrack(osc_walk::LEFT_STANCE, "toe_right",
                                          "toe_rightdot");
-  swing_toe_traj.AddStateAndJointToTrack(osc_walk::RIGHT, "toe_left",
+  swing_toe_traj.AddStateAndJointToTrack(osc_walk::RIGHT_STANCE, "toe_left",
                                          "toe_leftdot");
   osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
 

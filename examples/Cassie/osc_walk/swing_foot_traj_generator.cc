@@ -57,12 +57,12 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
     this->set_name("l_foot_traj");
     this->DeclareAbstractOutputPort("l_foot_traj", traj_inst,
                                     &SwingFootTrajGenerator::CalcTraj);
-    active_state_ = LEFT;
+    active_state_ = RIGHT_STANCE;
   } else {
     this->set_name("r_foot_traj");
     this->DeclareAbstractOutputPort("r_foot_traj", traj_inst,
                                     &SwingFootTrajGenerator::CalcTraj);
-    active_state_ = RIGHT;
+    active_state_ = LEFT_STANCE;
   }
   // Shift trajectory by time_offset
   foot_traj_.shiftRight(time_offset_);
@@ -96,8 +96,8 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
     // A cycle has been reached
     if (fsm_state(0) == DOUBLE_L_LO) {
       time_shift << timestamp + time_offset_;
-      plant_.SetPositions(plant_context_.get(), robot_output->GetPositions());
-      x_offset << plant_.CalcCenterOfMassPosition(*plant_context_)[0];
+      plant_.SetPositions(context_, robot_output->GetPositions());
+      x_offset << plant_.CalcCenterOfMassPosition(*context_)[0];
     }
   }
   return EventStatus::Succeeded();
@@ -114,6 +114,7 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::generateFootTraj(
 
   Vector3d zero_offset = Vector3d::Zero();
   Vector3d stance_foot_pos = Vector3d::Zero();
+  plant_.SetPositions(context_, x.head(plant_.num_positions()));
   plant_.CalcPointsPositions(*context_, stance_foot_frame_, zero_offset, world_,
                              &stance_foot_pos);
 

@@ -14,6 +14,7 @@ namespace dairlib::examples::osc_walk {
 class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   COMTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::systems::Context<double>* context,
                    drake::trajectories::PiecewisePolynomial<double>& com_traj,
                    double time_offset = 0.0);
 
@@ -35,6 +36,7 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
 
   const drake::multibody::BodyFrame<double>& world_;
   int state_port_;
@@ -45,7 +47,6 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   int time_shift_idx_;
   int x_offset_idx_;
   drake::trajectories::PiecewisePolynomial<double> com_traj_;
-  std::unique_ptr<drake::systems::Context<double>> plant_context_;
 };
 
 }  // namespace dairlib::examples::osc_walk

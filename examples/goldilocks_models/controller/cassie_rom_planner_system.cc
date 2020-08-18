@@ -532,6 +532,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
+//  if (true) {
+//  if (!result.is_success() || !start_with_left_stance_) {
   if (!result.is_success()) {
     // If the solution failed, send an empty-size data. This tells the
     // controller thread to fall back to LIPM traj

@@ -55,7 +55,10 @@ void PlannedTrajGuard::ApplyGuard(
   // Apply the guard condition
   // If the solve time is longer than max_solve_time or the solution was not
   // found, then use the backup trajs
-  if (planner_timeout || planner_no_solution) {
+  // TODO: currently always use LIPM traj to debug the controller. (there is a
+  //  bug in the original LIPM control)
+  if (true) {
+    //  if (planner_timeout || planner_no_solution) {
     // Read in lipm traj
     const auto& lipm_traj =
         this->EvalAbstractInput(context, lipm_port_)

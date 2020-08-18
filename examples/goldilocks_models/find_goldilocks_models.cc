@@ -216,8 +216,13 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   } else if(task_gen_mediate.start_finding_mediate_sample()){
     if(!task_gen_mediate.currently_find_mediate_sample()) {
       if(task_gen_mediate.try_ipopt_to_help()){
-        *init_file =
-            to_string(iter) + "_" + to_string(sample) + string("_w.csv");
+        if(sample==task_gen_mediate.sample_index_to_help()){
+          *init_file = to_string(iter) + "_" + to_string(sample)
+              + string("_initial_guess.csv");
+        }else{
+          *init_file =
+              to_string(iter) + "_" + to_string(sample) + string("_w.csv");
+        }
       }else{
         *init_file = ChooseInitialGuessFromMediateIteration(dir,iter,sample,
             task_gen, task, rom,task_gen_mediate,task_gen_expansion);

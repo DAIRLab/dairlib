@@ -87,6 +87,7 @@ cc_binary(
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie:simulator_drift",
         "//examples/Cassie/osc",
+        "//examples/goldilocks_models/controller:planned_traj_guard",
         "//examples/goldilocks_models/controller:rom_traj_receiver",
         "//multibody:utils",
         "//systems:drake_signal_lcm_systems",

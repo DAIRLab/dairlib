@@ -16,6 +16,7 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/goldilocks_models/controller/planned_traj_guard.h"
 #include "examples/goldilocks_models/controller/rom_traj_receiver.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
@@ -69,10 +70,14 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
-DEFINE_bool(start_with_right_stance, false, "");
+DEFINE_double(
+    max_solve_time, 0.2,
+    "Maximum solve time for the planner before we switch to backup trajs");
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_double(const_walking_speed_x, 0.8, "Walking speed in local x axis");
+
+DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
+DEFINE_bool(start_with_right_stance, false, "");
 
 //
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -390,6 +395,16 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(deviation_from_cp->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
 
+  // Create a guard for the planner in case it doesn't finish solving in time
+  auto optimal_traj_planner_guard =
+      builder.AddSystem<goldilocks_models::PlannedTrajGuard>(
+          FLAGS_max_solve_time);
+  builder.Connect(
+      optimal_rom_traj_gen->get_output_port(0),
+      optimal_traj_planner_guard->get_input_port_optimal_rom_traj());
+  builder.Connect(lipm_traj_generator->get_output_port(0),
+                  optimal_traj_planner_guard->get_input_port_lipm_traj());
+
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_wo_springs, context_w_spr.get(),
@@ -526,7 +541,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(optimal_rom_traj_gen->get_output_port(0),
+  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
                   osc->get_tracking_data_input_port("rom_lipm_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));

@@ -19,7 +19,7 @@ class PlannedTrajGuard : public drake::systems::LeafSystem<double> {
 
   const drake::systems::InputPort<double>& get_input_port_optimal_rom_traj()
       const {
-    return this->get_input_port(optimal_traj_port_);
+    return this->get_input_port(optimal_rom_traj_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_lipm_traj() const {
     return this->get_input_port(lipm_port_);
@@ -29,10 +29,18 @@ class PlannedTrajGuard : public drake::systems::LeafSystem<double> {
   void ApplyGuard(const drake::systems::Context<double>& context,
                   drake::trajectories::Trajectory<double>* traj) const;
 
-  int optimal_traj_port_;
+  int optimal_rom_traj_port_;
   int lipm_port_;
 
   double max_solve_time_;
+
+  mutable double prev_message_arrival_time_ = 0;
+  mutable double prev_traj_start_time_ = 0;  // used to identify a new traj
+
+  // Debugging
+  mutable int previous_traj_ = 0;
+  const int OPTIMAL_ROM_TRAJ_INDEX = 0;
+  const int LIPM_TRAJ_INDEX = 1;
 };
 
 }  // namespace goldilocks_models

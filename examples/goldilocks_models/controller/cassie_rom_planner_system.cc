@@ -531,9 +531,21 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
+  if (!result.is_success()) {
+    // If the solution failed, send an empty-size data. This tells the
+    // controller thread to fall back to LIPM traj
+    // Note that we cannot really send an empty traj because we use CubicHermite
+    // in construction in rom_traj_receiver. We need at least one segment
+    // TODO(yminchen): you can create lcmt_planner_traj which contains a flag
+    //  solutino_found and a lcmt_trajectory_block
+    time_at_knots.resize(2);
+    time_at_knots << -std::numeric_limits<double>::infinity(), 0;
+    state_at_knots.resize(state_at_knots.rows(), 2);
+  }
+
   traj_msg->trajectory_name = "";
   traj_msg->num_points = time_at_knots.size();
-  traj_msg->num_datatypes = 2 * rom_->n_y();
+  traj_msg->num_datatypes = state_at_knots.rows();
 
   // Reserve space for vectors
   traj_msg->time_vec.resize(traj_msg->num_points);
@@ -542,7 +554,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Copy Eigentypes to std::vector
   traj_msg->time_vec = CopyVectorXdToStdVector(time_at_knots);
-  traj_msg->datatypes = vector<string>(2 * rom_->n_y());
+  traj_msg->datatypes = vector<string>(traj_msg->num_datatypes, "");
   for (int i = 0; i < traj_msg->num_datatypes; ++i) {
     traj_msg->datapoints.push_back(
         CopyVectorXdToStdVector(state_at_knots.row(i)));

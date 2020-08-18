@@ -2123,7 +2123,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
           //  solution?
           // Some inner loop setting
           inner_loop_setting.n_node = n_node_vec[sample_idx];
-          inner_loop_setting.max_iter = max_inner_iter_pass_in;
           inner_loop_setting.prefix = prefix;
           inner_loop_setting.init_file = init_file_pass_in;
 
@@ -2131,8 +2130,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
           if(task_gen_mediate.try_ipopt_to_help()&&(sample_idx==
           task_gen_mediate.sample_index_to_help())){
             inner_loop_setting.use_ipopt=true;
+            inner_loop_setting.max_iter = max_inner_iter_pass_in*2;
           }else{
             inner_loop_setting.use_ipopt = FLAGS_ipopt;
+            inner_loop_setting.max_iter = max_inner_iter_pass_in;
           }
 
           // Trajectory optimization with fixed model parameters
@@ -2313,7 +2314,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // for failed samples
     if(!is_grid_task){
       //this feature only applies to non-grid method
-      if(n_shrink_step>3&&rerun_current_iteration){
+      if(n_shrink_step>2&&rerun_current_iteration){
         //start to find mediate sample for the failed samples
         task_gen_mediate.set_start_finding_mediate_sample(true);
         task_gen_mediate.set_currently_find_mediate_sample(false);

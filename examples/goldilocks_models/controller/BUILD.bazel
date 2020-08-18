@@ -44,3 +44,10 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "control_parameters",
+    hdrs = ["control_parameters.h"],
+    deps = [
+    ],
+)

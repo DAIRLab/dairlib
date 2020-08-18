@@ -9,6 +9,7 @@
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
+#include "examples/goldilocks_models/controller/control_parameters.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
@@ -127,7 +128,9 @@ int DoMain(int argc, char* argv[]) {
   param.sample = FLAGS_sample;
   param.n_step = FLAGS_n_step;
   param.knots_per_mode = FLAGS_knots_per_mode;
-  param.final_position_x = FLAGS_final_position;
+  // TODO: temporarily commented out FLAGS_final_position for testing
+  //  param.final_position_x = FLAGS_final_position;
+  param.final_position_x = STRIDE_LENGTH * FLAGS_n_step;
   param.zero_touchdown_impact = FLAGS_zero_touchdown_impact;
   param.equalize_timestep_size = FLAGS_equalize_timestep_size;
   param.fix_duration = FLAGS_fix_duration;
@@ -266,12 +269,9 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_y, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
   // Create optimal rom trajectory generator
-  // TODO(yminchen): need to centralize the fsm state
-  int left_stance_state = 0;
-  int right_stance_state = 1;
-  std::vector<int> ss_fsm_states = {left_stance_state, right_stance_state};
+  std::vector<int> ss_fsm_states = {LEFT_STANCE, RIGHT_STANCE};
   // TODO(yminchen): stride_period value should change
-  double stride_period = 0.37;
+  double stride_period = LEFT_SUPPORT_DURATION + DOUBLE_SUPPORT_DURATION;
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
       plant_feedback, plant_controls, ss_fsm_states, stride_period, param,
       FLAGS_debug_mode);
@@ -305,9 +305,8 @@ int DoMain(int argc, char* argv[]) {
     drake::lcmt_drake_signal initial_message;
     initial_message.dim = lcm_vector_size;
     initial_message.val.resize(lcm_vector_size);
-    initial_message.val = {FLAGS_start_with_left_stance
-                               ? double(left_stance_state)
-                               : double(right_stance_state),
+    initial_message.val = {FLAGS_start_with_left_stance ? double(LEFT_STANCE)
+                                                        : double(RIGHT_STANCE),
                            0};
     initial_message.coord.resize(lcm_vector_size);
     initial_message.coord = std::vector<std::string>(2);
@@ -338,8 +337,8 @@ int DoMain(int argc, char* argv[]) {
     rom_planner->get_input_port_fsm_and_lo_time().FixValue(
         &planner_context,
         drake::systems::BasicVector({FLAGS_start_with_left_stance
-                                         ? double(left_stance_state)
-                                         : double(right_stance_state),
+                                         ? double(LEFT_STANCE)
+                                         : double(RIGHT_STANCE),
                                      prev_lift_off_time}));
     // Calc output
     auto output = rom_planner->AllocateOutput();

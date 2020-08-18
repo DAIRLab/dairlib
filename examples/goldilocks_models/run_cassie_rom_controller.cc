@@ -16,6 +16,7 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/goldilocks_models/controller/control_parameters.h"
 #include "examples/goldilocks_models/controller/planned_traj_guard.h"
 #include "examples/goldilocks_models/controller/rom_traj_receiver.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
@@ -74,7 +75,7 @@ DEFINE_double(
     max_solve_time, 0.2,
     "Maximum solve time for the planner before we switch to backup trajs");
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
-DEFINE_double(const_walking_speed_x, 0.8, "Walking speed in local x axis");
+DEFINE_double(const_walking_speed_x, 0.5, "Walking speed in local x axis");
 
 DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
 DEFINE_bool(start_with_right_stance, false, "");
@@ -252,12 +253,14 @@ int DoMain(int argc, char* argv[]) {
                   head_traj_gen->get_yaw_input_port());
 
   // Create finite state machine
-  int left_stance_state = 0;
-  int right_stance_state = 1;
-  int double_support_state = 2;
-  double left_support_duration = 0.35;   // end_time_of_first_step;
-  double right_support_duration = 0.35;  // end_time_of_first_step;
-  double double_support_duration = 0.02;
+  int left_stance_state = LEFT_STANCE;
+  int right_stance_state = RIGHT_STANCE;
+  int double_support_state = DOUBLE_STANCE;
+  double left_support_duration =
+      LEFT_SUPPORT_DURATION;  // end_time_of_first_step;
+  double right_support_duration =
+      RIGHT_SUPPORT_DURATION;  // end_time_of_first_step;
+  double double_support_duration = DOUBLE_SUPPORT_DURATION;
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {

@@ -304,7 +304,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
            left_right_support_fsm_states_.end(),
            fsm_state) != left_right_support_fsm_states_.end();
   if (!is_single_support_phase) {
-    // do nothing
+    // do nothing here to use the previous start_with_left_stance_
   } else {
     start_with_left_stance_ = fsm_state == left_right_support_fsm_states_.at(0);
   }

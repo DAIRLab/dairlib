@@ -475,10 +475,19 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  OptimalRomTrackingData center_of_mass_traj(
-      "rom_lipm_traj", K_p_com, K_d_com, W_com, plant_w_springs,
-      plant_wo_springs, FLAGS_start_with_right_stance ? mirrored_rom : *rom);
-  osc->AddTrackingData(&center_of_mass_traj);
+  OptimalRomTrackingData optimal_rom_traj("optimal_rom_traj", rom->n_y(),
+                                          K_p_com, K_d_com, W_com,
+                                          plant_w_springs, plant_wo_springs);
+  // TODO(yminchen): we need four fsm states to make this symmetric
+  /*optimal_rom_traj.AddStateAndRom(double_support_state, *rom);
+  optimal_rom_traj.AddStateAndRom(left_stance_state, *rom);
+  optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);*/
+  // TODO(yminchen): currently an issue of using ROM and mirrored ROM with the
+  //  secondary LIPM (e.g. LIPM).
+  //  Probably need to change OSC API to have an option to disable a traj track
+  //  online (an external flag to disable tracking).
+  optimal_rom_traj.AddRom(*rom);
+  osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
   double k_p_pelvis_balance = 200;
@@ -545,7 +554,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(optimal_traj_planner_guard->get_output_port(0),
-                  osc->get_tracking_data_input_port("rom_lipm_traj"));
+                  osc->get_tracking_data_input_port("optimal_rom_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),

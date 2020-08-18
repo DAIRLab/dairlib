@@ -424,11 +424,14 @@ class JointSpaceTrackingData final : public OscTrackingData {
 class OptimalRomTrackingData final : public OscTrackingData {
  public:
   OptimalRomTrackingData(
-      const std::string& name, const Eigen::MatrixXd& K_p,
+      const std::string& name, int n_y, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      const goldilocks_models::ReducedOrderModel& rom);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+
+  void AddRom(const goldilocks_models::ReducedOrderModel& rom);
+  void AddStateAndRom(int state,
+                      const goldilocks_models::ReducedOrderModel& rom);
 
  private:
   void UpdateYAndError(
@@ -445,7 +448,9 @@ class OptimalRomTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  const goldilocks_models::ReducedOrderModel& rom_;
+  // TODO: not sure why compile error when I used ReducedOrderModel reference
+  //  instead of pointer
+  std::vector<const goldilocks_models::ReducedOrderModel*> rom_;
 };
 
 }  // namespace controllers

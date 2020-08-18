@@ -373,9 +373,10 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  OptimalRomTrackingData center_of_mass_traj("rom_lipm_traj", K_p_com, K_d_com,
-                                             W_com, plant_w_springs,
-                                             plant_wo_springs, *rom);
+  OptimalRomTrackingData center_of_mass_traj("rom_lipm_traj", rom->n_y(),
+                                             K_p_com, K_d_com, W_com,
+                                             plant_w_springs, plant_wo_springs);
+  center_of_mass_traj.AddRom(*rom);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;

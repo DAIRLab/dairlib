@@ -38,7 +38,7 @@ group "3.cassie-robot" {
         host = "dair-cassie";
     }
     cmd "0.dispatcher-robot-out-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --floating_base=true";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --floating_base=true --test_mode=2";
         host = "dair-cassie";
     }
     cmd "2.pd-controller-real-robot" {

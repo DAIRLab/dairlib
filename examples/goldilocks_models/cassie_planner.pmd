@@ -4,7 +4,7 @@ group "0.cassie planner (2 foot steps)" {
         host = "localhost";
     }
     cmd "0.0.snopt (wo init file)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=1 --sample=1 --init_file=\"\" --debug_mode=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=1 --sample=1 --init_file=\"\" --debug_mode=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=5";
         host = "localhost";
     }
     cmd "0.1.snopt (w init file)" {
@@ -24,6 +24,10 @@ group "1. visualization" {
     }
     cmd "1. cassie pose" {
         exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1";
+        host = "localhost";
+    }
+    cmd "2. cassie pose (multi-pose)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false";
         host = "localhost";
     }
 }

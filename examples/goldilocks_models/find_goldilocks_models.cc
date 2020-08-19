@@ -218,7 +218,12 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
       //currently extend the task space
       *init_file = to_string(iter) + "_" + to_string(
           task_gen_expansion.expansion_sample_index(sample))+ string("_w.csv");
-    }else{
+    }else if(task_gen_mediate.currently_find_mediate_sample()){
+      //the index for mediate samples are different
+      *init_file = to_string(iter) + "_" + to_string(
+          sample+task_gen->total_sample_number())+ string("_w.csv");
+    }
+    else{
       *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
     }
   }else if(task_gen_mediate.start_finding_mediate_sample()){
@@ -2134,6 +2139,35 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }else{
             inner_loop_setting.use_ipopt = FLAGS_ipopt;
             inner_loop_setting.max_iter = max_inner_iter_pass_in;
+          }
+
+          // if using snopt scaling, turn on the scaling after running without
+          // scaling first
+          if(FLAGS_snopt_scaling){
+            if((N_rerun>0)&&(n_rerun[sample_idx]==0)){
+              //run without scaling first
+              inner_loop_setting.snopt_scaling = false;
+            }else{
+              inner_loop_setting.snopt_scaling = true;
+            }
+          }else{
+            inner_loop_setting.snopt_scaling = false;
+          }
+
+          //set the prefix for saving the results of traj opt
+          if(task_gen_mediate.start_finding_mediate_sample()){
+            if(task_gen_mediate.currently_find_mediate_sample()){
+              prefix = to_string(iter) + "_" +
+                  to_string(sample_idx+task_gen->total_sample_number()) + "_";
+            }
+          }else if(task_gen_expansion.currently_extend_task_space()){
+            if(iter==0){
+              prefix = to_string(iter)+"_"+ to_string(sample_idx)+"_";
+            }
+            else{
+              prefix = to_string(iter)+"_"+to_string
+                  (task_gen_expansion.expansion_sample_index(sample_idx))+"_";
+            }
           }
 
           // Trajectory optimization with fixed model parameters

@@ -263,7 +263,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::unique_ptr<drake::systems::Context<double>> context_gt_;
   bool test_with_ground_truth_state_;
   bool print_info_to_terminal_;
-  int hardware_test_mode_;
+  mutable int hardware_test_mode_ = 0;
   std::unique_ptr<int> counter_for_testing_ =
       std::make_unique<int>(0);
 

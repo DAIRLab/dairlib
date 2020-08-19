@@ -1,6 +1,6 @@
 group "2.visualizers" {
     cmd "0.visualize cassie" {
-        exec = "bazel-bin/examples/goldilocks_models/find_models/visualize_gait_MBP --robot_option=1 --n_step=7 --sample=19 --iter_start=29";
+        exec = "bazel-bin/examples/goldilocks_models/find_models/visualize_gait_MBP --robot_option=1 --n_step=1 --sample=38 --iter_start=1";
         host = "localhost";
     }
 }
@@ -8,6 +8,10 @@ group "2.visualizers" {
 group "3.plotters" {
     cmd "0.plot cost" {
         exec = "python2.7 examples/goldilocks_models/find_models/plot_cost.py";
+        host = "localhost";
+    }
+    cmd "1. plot rom pos/vel/accel" {
+        exec = "python2.7 examples/goldilocks_models/find_models/plot_rom.py 1 1 1 2";
         host = "localhost";
     }
 }

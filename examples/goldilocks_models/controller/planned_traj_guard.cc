@@ -57,6 +57,9 @@ void PlannedTrajGuard::ApplyGuard(
   // found, then use the backup trajs
   // TODO: currently always use LIPM traj to debug the controller. (there is a
   //  bug in the original LIPM control)
+  //  The bug could be that we are using RomTrackingData to tracking LIPM traj,
+  //  but the ROM is actually using COM wrt feet. Therefore, we just need to not
+  //  use this RomTrackingData LIPM
   if (true) {
     //  if (planner_timeout || planner_no_solution) {
     // Read in lipm traj

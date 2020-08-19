@@ -99,13 +99,13 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   //           kCutoffFreq * output->get_data();
   //   output->SetDataVector(blended_effort);
   // }
-  if ((prev_commanded_effort_ -
-       output->get_data()).norm() > kInputThreshold) {
-    Eigen::VectorXd blended_effort =
-        (1 - kCutoffFreq) * prev_commanded_effort_ + kCutoffFreq * output->get_data();
-    output->SetDataVector(blended_effort);
-  }
-  prev_commanded_effort_ = output->get_data();
+//  if ((prev_commanded_effort_ -
+//       output->get_data()).norm() > kInputThreshold) {
+//    Eigen::VectorXd blended_effort =
+//        (1 - kCutoffFreq) * prev_commanded_effort_ + kCutoffFreq * output->get_data();
+//    output->SetDataVector(blended_effort);
+//  }
+//  prev_commanded_effort_ = output->get_data();
 //  context.get_discrete_state(prev_efforts_index_).set_value(output->get_data());
 }
 

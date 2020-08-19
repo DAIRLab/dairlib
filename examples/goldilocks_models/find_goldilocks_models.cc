@@ -213,7 +213,15 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
     }
-  } else if(task_gen_mediate.start_finding_mediate_sample()){
+  }else if (rerun_current_iteration) {
+    if(iter==1){
+      //currently extend the task space
+      *init_file = to_string(iter) + "_" + to_string(
+          task_gen_expansion.expansion_sample_index(sample))+ string("_w.csv");
+    }else{
+      *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
+    }
+  }else if(task_gen_mediate.start_finding_mediate_sample()){
     if(!task_gen_mediate.currently_find_mediate_sample()) {
       if(task_gen_mediate.try_ipopt_to_help()){
         if(sample==task_gen_mediate.sample_index_to_help()){
@@ -234,15 +242,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   }else if (sample_idx_to_help >= 0) {
       *init_file = to_string(iter) + "_" + to_string(sample_idx_to_help) +
           string("_w.csv");
-  } else if (rerun_current_iteration) {
-    if(iter==1){
-      //currently extend the task space
-      *init_file = to_string(iter) + "_" + to_string(
-          task_gen_expansion.expansion_sample_index(sample))+ string("_w.csv");
-    }else{
-      *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
-    }
-  } else {
+  }else {
     if (non_grid_task) {
       *init_file = SetInitialGuessByInterpolation(
           dir, iter, sample, task_gen, task, rom,task_gen_expansion);

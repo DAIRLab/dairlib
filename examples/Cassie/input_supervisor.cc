@@ -22,7 +22,7 @@ InputSupervisor::InputSupervisor(
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
 
-  prev_commanded_effort_ = Eigen::VectorXd::Zero(num_actuators_);
+//  prev_commanded_effort_ = Eigen::VectorXd::Zero(num_actuators_);
 
   // Create input ports
   command_input_port_ =

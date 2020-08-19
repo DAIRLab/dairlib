@@ -86,10 +86,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   double max_joint_velocity_;
 
   double input_limit_;
-//  int status_vars_index_;
+  int status_vars_index_;
   int n_fails_index_;
   int status_index_;
-//  int prev_efforts_index_;
+  int prev_efforts_index_;
   int state_input_port_;
   int command_input_port_;
   int command_output_port_;

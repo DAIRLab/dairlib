@@ -221,8 +221,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const double cost_threshold_ekf_ = 200;
   const double knee_spring_threshold_ctrl_ = -0.015;
   const double knee_spring_threshold_ekf_ = -0.015;
-  const double heel_spring_threshold_ctrl_ = -0.03;
-  const double heel_spring_threshold_ekf_ = -0.03;
+  const double heel_spring_threshold_ctrl_ = -0.01;
+  const double heel_spring_threshold_ekf_ = -0.01;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double w_soft_constraint_ = 100;  // Soft constraint cost
   const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration

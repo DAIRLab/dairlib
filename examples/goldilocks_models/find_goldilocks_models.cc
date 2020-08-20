@@ -1588,7 +1588,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       max_average_cost_increase_rate =
           FLAGS_is_stochastic ? 0.2 : 0.01;  // 0.15
     } else {
-      max_average_cost_increase_rate = 10;
+      max_average_cost_increase_rate = 5;
     }
   } else {
     throw std::runtime_error("Should not reach here");
@@ -2135,7 +2135,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           if(task_gen_mediate.try_ipopt_to_help()&&(sample_idx==
           task_gen_mediate.sample_index_to_help())){
             inner_loop_setting.use_ipopt=true;
-            inner_loop_setting.max_iter = max_inner_iter_pass_in*2;
+            // ipopt needs more iteration to find solution
+            inner_loop_setting.max_iter = max_inner_iter_pass_in*3;
           }else{
             inner_loop_setting.use_ipopt = FLAGS_ipopt;
             inner_loop_setting.max_iter = max_inner_iter_pass_in;

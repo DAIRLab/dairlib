@@ -1,15 +1,6 @@
 #include <memory>
 
 #include <gflags/gflags.h>
-#include "drake/lcm/drake_lcm.h"
-#include "drake/solvers/choose_best_solver.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/solve.h"
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -25,6 +16,16 @@
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+
+#include "drake/lcm/drake_lcm.h"
+#include "drake/solvers/choose_best_solver.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 namespace dairlib {
 
@@ -46,8 +47,7 @@ DEFINE_bool(simulation, false,
             "Simulated or real robot (default=false, real robot)");
 DEFINE_bool(test_with_ground_truth_state, false,
             "Get floating base from ground truth state for testing");
-DEFINE_bool(print_ekf_info, false,
-            "Print ekf information to the terminal");
+DEFINE_bool(print_ekf_info, false, "Print ekf information to the terminal");
 
 // TODO(yminchen): delete the flag state_channel_name after finishing testing
 // cassie_state_estimator
@@ -77,7 +77,7 @@ void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
   systems::OutputVector<double> robot_output(
       plant.num_positions(), plant.num_velocities(), plant.num_actuators());
   state_estimator.AssignNonFloatingBaseStateToOutputVector(cassie_output,
-                                                            &robot_output);
+                                                           &robot_output);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
   auto left_toe = LeftToeFront(plant);
@@ -133,13 +133,13 @@ void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
       diagram.GetMutableSubsystemContext(state_estimator, diagram_context);
   state_estimator.setPreviousTime(&state_estimator_context, t0);
   state_estimator.setInitialPelvisPose(&state_estimator_context, q_sol.head(4),
-                                        q_sol.segment<3>(4));
+                                       q_sol.segment<3>(4));
   // Set initial imu value
   // Note that initial imu values are all 0 if the robot is dropped from the air
   Eigen::VectorXd init_prev_imu_value = Eigen::VectorXd::Zero(6);
   init_prev_imu_value << 0, 0, 0, 0, 0, 9.81;
   state_estimator.setPreviousImuMeasurement(&state_estimator_context,
-                                             init_prev_imu_value);
+                                            init_prev_imu_value);
 }
 
 int do_main(int argc, char* argv[]) {
@@ -245,8 +245,13 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
           "CASSIE_FILTERED_CONTACT_DISPATCHER", &lcm_local,
           {TriggerType::kForced}));
+  auto gm_contact_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
+          "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_filtered_contact_output_port(),
                   filtered_contact_pub->get_input_port());
+  builder.Connect(state_estimator->get_gm_contact_output_port(),
+                  gm_contact_pub->get_input_port());
 
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_pub =

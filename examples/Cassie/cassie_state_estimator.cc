@@ -88,6 +88,10 @@ CassieStateEstimator::CassieStateEstimator(
       this->DeclareAbstractOutputPort(
               &CassieStateEstimator::CopyFilteredContact)
           .get_index();
+  gm_contact_output_port_ =
+      this->DeclareAbstractOutputPort(
+              &CassieStateEstimator::CopyEstimatedContactForces)
+          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -112,8 +116,8 @@ CassieStateEstimator::CassieStateEstimator(
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
 
     // Joint selection matrices initialization
-    joint_selection_matrices.push_back(MatrixXd::Zero(n_v_, n_v_));
-    joint_selection_matrices.push_back(MatrixXd::Zero(n_v_, n_v_));
+    joint_selection_matrices.emplace_back(MatrixXd::Zero(n_v_, n_v_));
+    joint_selection_matrices.emplace_back(MatrixXd::Zero(n_v_, n_v_));
     vector<string> leg_names = {"left, right"};
     for (const auto& joint_name : velocity_idx_map_) {
       std::cout << joint_name.first << std::endl;
@@ -125,14 +129,14 @@ CassieStateEstimator::CassieStateEstimator(
         joint_selection_matrices[1](joint_name.second, joint_name.second) = 1;
       }
     }
-//    joint_selection_matrices[0].block(0, 0, n_fb_vel_, n_fb_vel_) =
-//        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
-//    joint_selection_matrices[1].block(0, 0, n_fb_vel_, n_fb_vel_) =
-//        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
-    std::cout << "left joint sel matrix: " << joint_selection_matrices[0]
-              << std::endl;
-    std::cout << "right joint sel matrix: " << joint_selection_matrices[1]
-              << std::endl;
+    //    joint_selection_matrices[0].block(0, 0, n_fb_vel_, n_fb_vel_) =
+    //        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
+    //    joint_selection_matrices[1].block(0, 0, n_fb_vel_, n_fb_vel_) =
+    //        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
+    //    std::cout << "left joint sel matrix: " << joint_selection_matrices[0]
+    //              << std::endl;
+    //    std::cout << "right joint sel matrix: " << joint_selection_matrices[1]
+    //              << std::endl;
 
     // states related to EKF
     // 1. estimated floating base state (pelvis)
@@ -177,6 +181,8 @@ CassieStateEstimator::CassieStateEstimator(
     // states related to contact estimation
     contact_idx_ = DeclareDiscreteState(VectorXd::Zero(num_contacts_));
     filtered_contact_idx_ = DeclareDiscreteState(VectorXd::Zero(num_contacts_));
+    gm_contact_forces_idx_ =
+        DeclareDiscreteState(VectorXd::Zero(num_contacts_ * SPACE_DIM));
 
     previous_velocity_idx_ = DeclareDiscreteState(VectorXd::Zero(n_v_, 1));
 
@@ -1130,7 +1136,8 @@ EventStatus CassieStateEstimator::Update(
   int right_contact = 0;
   std::vector<double> optimal_cost(3, 0.0);
 
-  // Currently we are only using springs in contact estimiation
+  VectorXd lambda_est = VectorXd::Zero(num_contacts_ * 3);
+  // Currently we are only using springs in contact estimation
   // TODO: remove QPs contact estimiation or implement a faster one
   if (test_with_ground_truth_state_) {
     // UpdateContactEstimationCosts(
@@ -1144,13 +1151,15 @@ EventStatus CassieStateEstimator::Update(
     //                              &optimal_cost);
     EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
                           &right_contact);
-    EstimateContactForces(context, filtered_output);
+    EstimateContactForces(context, filtered_output, lambda_est);
   }
+  state->get_mutable_discrete_state(gm_contact_forces_idx_).get_mutable_value()
+      << lambda_est;
 
   // Override hardware_test_mode_ if test mode is 2 and we detect contact
   // Useful for preventing drift when the feet are not fully in contact - i.e
   // when running the PD controller with external support
-  if(left_contact && right_contact && hardware_test_mode_ == 2){
+  if (left_contact && right_contact && hardware_test_mode_ == 2) {
     hardware_test_mode_ = -1;
   }
 
@@ -1396,6 +1405,20 @@ void CassieStateEstimator::CopyFilteredContact(
   }
 }
 
+void CassieStateEstimator::CopyEstimatedContactForces(
+    const Context<double>& context, dairlib::lcmt_contact* contact_msg) const {
+  contact_msg->utime = context.get_time() * 1e6;
+  contact_msg->num_contacts = num_contacts_;
+  contact_msg->contact_names.resize(num_contacts_);
+  contact_msg->contact.resize(num_contacts_);
+  for (int i = 0; i < num_contacts_; i++) {
+    contact_msg->contact_names[i] = contact_names_[i];
+    contact_msg->contact[i] =
+        (bool)(context.get_discrete_state(gm_contact_forces_idx_)
+                   .get_value()[i * 3 + 2] > 0);
+  }
+}
+
 void CassieStateEstimator::setPreviousTime(Context<double>* context,
                                            double time) const {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
@@ -1428,9 +1451,9 @@ void CassieStateEstimator::setPreviousImuMeasurement(
       << imu_value;
 }
 void CassieStateEstimator::EstimateContactForces(
-    const Context<double>& context,
-    const systems::OutputVector<double>& output) const {
-//  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
+    const Context<double>& context, const systems::OutputVector<double>& output,
+    VectorXd& lambda) const {
+  //  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
   plant_.SetPositionsAndVelocities(context_.get(), output.GetState());
@@ -1441,8 +1464,8 @@ void CassieStateEstimator::EstimateContactForces(
   MatrixXd B = plant_.MakeActuationMatrix();
   //  double cutoff_freq = 0.005;
   double gamma = 0.015;
-//  double Delta_t = output.get_timestamp() - prev_time;
-//  double beta = (1 - gamma) / gamma / Delta_t;
+  //  double Delta_t = output.get_timestamp() - prev_time;
+  //  double beta = (1 - gamma) / gamma / Delta_t;
 
   VectorXd v = output.GetVelocities();
   VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
@@ -1451,21 +1474,17 @@ void CassieStateEstimator::EstimateContactForces(
 
   // Simplifying to 2 feet contacts, might need to change it to two contacts per
   // foot and sum them up
-  MatrixXd lambda_est = MatrixXd::Zero(2, 3);
-  std::cout << "tau: " << tau_d << std::endl;
-  for (int leg = 0; leg < 2; ++leg) {
+  for (int leg = 0; leg < num_contacts_; ++leg) {
     MatrixXd J_contact(3, n_v_);
-    plant_.CalcJacobianTranslationalVelocity(*context_, JacobianWrtVariable::kV,
-                                             *toe_frames_[leg], VectorXd::Zero(3),
-                                             world_, world_, &J_contact);
-    lambda_est.row(leg) = (joint_selection_matrices[leg] * J_contact.transpose())
-                            .colPivHouseholderQr()
-                            .solve(joint_selection_matrices[leg] * tau_d)
-                            .transpose();
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[leg],
+        VectorXd::Zero(3), world_, world_, &J_contact);
+    lambda.segment(3 * leg, SPACE_DIM) =
+        (joint_selection_matrices[leg] * J_contact.transpose())
+            .colPivHouseholderQr()
+            .solve(joint_selection_matrices[leg] * tau_d)
+            .transpose();
   }
-
-  std::cout << "lambda: " << std::endl;
-  std::cout << lambda_est << std::endl;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

@@ -72,6 +72,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_filtered_contact_output_port() const {
     return this->get_output_port(filtered_contact_output_port_);
   }
+  const drake::systems::OutputPort<double>& get_gm_contact_output_port() const {
+    return this->get_output_port(gm_contact_output_port_);
+  }
 
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
@@ -98,7 +101,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       int* left_contact, int* right_contact) const;
   void EstimateContactForces(
       const drake::systems::Context<double>& context,
-      const systems::OutputVector<double>& output) const;
+      const systems::OutputVector<double>& output,
+      Eigen::VectorXd& lambda) const;
 
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,
@@ -144,6 +148,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
                    dairlib::lcmt_contact* contact_msg) const;
   void CopyFilteredContact(const drake::systems::Context<double>& context,
                            dairlib::lcmt_contact* contact_msg) const;
+  void CopyEstimatedContactForces(
+      const drake::systems::Context<double>& context,
+      dairlib::lcmt_contact* contact_msg) const;
 
   int n_q_;
   int n_v_;
@@ -174,6 +181,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int output_vector_output_port_;
   int contact_output_port_;
   int filtered_contact_output_port_;
+  int gm_contact_output_port_;
 
   // Below are indices of system states:
   // A state which stores previous timestamp
@@ -184,6 +192,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex prev_imu_idx_;
   drake::systems::DiscreteStateIndex contact_idx_;
   drake::systems::DiscreteStateIndex filtered_contact_idx_;
+  drake::systems::DiscreteStateIndex gm_contact_forces_idx_;
   // A state related to contact estimation
   // This state store the previous generalized velocity
   drake::systems::DiscreteStateIndex previous_velocity_idx_;

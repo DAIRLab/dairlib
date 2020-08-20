@@ -32,6 +32,8 @@ using drake::solvers::Solve;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
+using drake::systems::LeafSystem;
+using drake::systems::UnrestrictedUpdateEvent;
 
 using multibody::KinematicEvaluatorSet;
 using systems::OutputVector;
@@ -44,7 +46,7 @@ CassieStateEstimator::CassieStateEstimator(
     const KinematicEvaluatorSet<double>* left_contact_evaluator,
     const KinematicEvaluatorSet<double>* right_contact_evaluator,
     bool test_with_ground_truth_state, bool print_info_to_terminal,
-    int hardware_test_mode, bool discrete_time_filter)
+    int hardware_test_mode)
     : plant_(plant),
       fourbar_evaluator_(fourbar_evaluator),
       left_contact_evaluator_(left_contact_evaluator),
@@ -62,8 +64,7 @@ CassieStateEstimator::CassieStateEstimator(
       context_gt_(plant_.CreateDefaultContext()),
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
-      hardware_test_mode_(hardware_test_mode),
-      discrete_time_filter_(discrete_time_filter) {
+      hardware_test_mode_(hardware_test_mode) {
   DRAKE_DEMAND(&fourbar_evaluator->plant() == &plant);
   DRAKE_DEMAND(&left_contact_evaluator->plant() == &plant);
   DRAKE_DEMAND(&right_contact_evaluator->plant() == &plant);
@@ -76,8 +77,17 @@ CassieStateEstimator::CassieStateEstimator(
   cassie_out_input_port_ = this->DeclareAbstractInputPort(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
                                .get_index();
-  this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
-                                &CassieStateEstimator::CopyStateOut);
+  output_vector_output_port_ =
+      this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
+                                    &CassieStateEstimator::CopyStateOut)
+          .get_index();
+  contact_output_port_ =
+      this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
+          .get_index();
+  filtered_contact_output_port_ =
+      this->DeclareAbstractOutputPort(
+              &CassieStateEstimator::CopyFilteredContact)
+          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -97,9 +107,6 @@ CassieStateEstimator::CassieStateEstimator(
           this->DeclareVectorInputPort(OutputVector<double>(n_q_, n_v_, n_u_))
               .get_index();
     }
-
-    // Declare update event for EKF
-    DeclarePerStepUnrestrictedUpdateEvent(&CassieStateEstimator::Update);
 
     // a state which stores previous timestamp
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
@@ -131,6 +138,7 @@ CassieStateEstimator::CassieStateEstimator(
     // 1. estimated floating base state (pelvis)
     VectorXd init_floating_base_state = VectorXd::Zero(7 + 6);
     init_floating_base_state(0) = 1;
+    init_floating_base_state(6) = 1;
     fb_state_idx_ = DeclareDiscreteState(init_floating_base_state);
 
     // initialize ekf state mean and covariance
@@ -167,6 +175,9 @@ CassieStateEstimator::CassieStateEstimator(
     prev_imu_idx_ = DeclareDiscreteState(init_prev_imu_value);
 
     // states related to contact estimation
+    contact_idx_ = DeclareDiscreteState(VectorXd::Zero(num_contacts_));
+    filtered_contact_idx_ = DeclareDiscreteState(VectorXd::Zero(num_contacts_));
+
     previous_velocity_idx_ = DeclareDiscreteState(VectorXd::Zero(n_v_, 1));
 
     filtered_residual_double_idx_ =
@@ -820,7 +831,7 @@ void CassieStateEstimator::EstimateContactForEkf(
   *left_contact = 0;
   *right_contact = 0;
 
-  // Estimate contact based on optimization results
+  /*// Estimate contact based on optimization results
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
@@ -837,7 +848,7 @@ void CassieStateEstimator::EstimateContactForEkf(
                           (optimal_cost.at(2) >= cost_threshold_ekf_));
   bool double_contact_qp = (min_index == 0);
   bool left_contact_qp = (min_index == 1);
-  bool right_contact_qp = (min_index == 2);
+  bool right_contact_qp = (min_index == 2);*/
 
   // Use spring as a necessary guard to determine the contact (that is, in the
   // case where QP says right stance but left spring deflection is not big
@@ -862,19 +873,20 @@ void CassieStateEstimator::EstimateContactForEkf(
                                right_heel_spring < heel_spring_threshold_ekf_);
 
   // Determine contacts based on both spring deflation and QP cost
-  if (qp_informative && (double_contact_qp || left_contact_qp) &&
+  if (/*qp_informative && (double_contact_qp || left_contact_qp) &&*/
       left_contact_spring) {
     *left_contact = 1;
   }
-  if (qp_informative && (double_contact_qp || right_contact_qp) &&
+  if (/*qp_informative && (double_contact_qp || right_contact_qp) &&*/
       right_contact_spring) {
     *right_contact = 1;
   }
 
   if (print_info_to_terminal_) {
-    cout << "optimal_cost[0][1][2], threshold = " << optimal_cost.at(0) << ", "
+    /*cout << "optimal_cost[0][1][2], threshold = " << optimal_cost.at(0) << ",
+       "
          << optimal_cost.at(1) << ", " << optimal_cost.at(2) << ", "
-         << cost_threshold_ekf_ << endl;
+         << cost_threshold_ekf_ << endl;*/
 
     cout << "left/right knee spring, threshold = " << left_knee_spring << ", "
          << right_knee_spring << ", " << knee_spring_threshold_ekf_ << endl;
@@ -967,322 +979,367 @@ EventStatus CassieStateEstimator::Update(
       this->EvalAbstractInput(context, cassie_out_input_port_)
           ->get_value<cassie_out_t>();
 
-  // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // Testing
-  // cout << "\nIn per-step update: lcm_time = " <<
-  //      cassie_out.pelvis.targetPc.taskExecutionTime << endl;
-  // cout << "In per-step update: context_time = " << context.get_time() <<
-  // endl;
-
   // Get current time and previous time
   double current_time = context.get_time();
   double prev_t =
       state->get_discrete_state().get_vector(time_idx_).get_value()(0);
 
-  // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // Testing
-  // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
+  double dt = current_time - prev_t;
+  if (print_info_to_terminal_) {
+    cout << "current_time = " << current_time << endl;
+    cout << "dt: " << dt << endl;
+  }
 
-  if (current_time > prev_t) {
-    double dt = current_time - prev_t;
-    if (print_info_to_terminal_) {
-      cout << "current_time = " << current_time << endl;
-      cout << "dt: " << dt << endl;
+  // Get ground truth information
+  OutputVector<double> output_gt(n_q_, n_v_, n_u_);
+  VectorXd imu_pos_wrt_world_gt(7);
+  VectorXd imu_vel_wrt_world_gt(6);
+  if (test_with_ground_truth_state_) {
+    const OutputVector<double>* cassie_state =
+        (OutputVector<double>*)this->EvalVectorInput(context,
+                                                     state_input_port_);
+
+    AssignImuValueToOutputVector(cassie_out, &output_gt);
+    AssignActuationFeedbackToOutputVector(cassie_out, &output_gt);
+    AssignNonFloatingBaseStateToOutputVector(cassie_out, &output_gt);
+    VectorXd fb_state_gt(13);
+    fb_state_gt.head(7) = cassie_state->GetPositions().head(7);
+    fb_state_gt.tail(6) = cassie_state->GetVelocities().head(6);
+    AssignFloatingBaseStateToOutputVector(fb_state_gt, &output_gt);
+
+    // We get 0's cassie_state in the beginning because dispatcher_robot_out
+    // is not triggered by CASSIE_STATE_SIMULATION message.
+    // This wouldn't be an issue when you don't use ground truth state.
+    if (output_gt.GetPositions().head(7).norm() == 0) {
+      output_gt.SetPositionAtIndex(position_idx_map_.at("base_qw"), 1);
     }
 
-    // Get ground truth information
-    OutputVector<double> output_gt(n_q_, n_v_, n_u_);
-    VectorXd imu_pos_wrt_world_gt(7);
-    VectorXd imu_vel_wrt_world_gt(6);
-    if (test_with_ground_truth_state_) {
-      const OutputVector<double>* cassie_state =
-          (OutputVector<double>*)this->EvalVectorInput(context,
-                                                       state_input_port_);
-
-      AssignImuValueToOutputVector(cassie_out, &output_gt);
-      AssignActuationFeedbackToOutputVector(cassie_out, &output_gt);
-      AssignNonFloatingBaseStateToOutputVector(cassie_out, &output_gt);
-      VectorXd fb_state_gt(13);
-      fb_state_gt.head(7) = cassie_state->GetPositions().head(7);
-      fb_state_gt.tail(6) = cassie_state->GetVelocities().head(6);
-      AssignFloatingBaseStateToOutputVector(fb_state_gt, &output_gt);
-
-      // We get 0's cassie_state in the beginning because dispatcher_robot_out
-      // is not triggered by CASSIE_STATE_SIMULATION message.
-      // This wouldn't be an issue when you don't use ground truth state.
-      if (output_gt.GetPositions().head(7).norm() == 0) {
-        output_gt.SetPositionAtIndex(position_idx_map_.at("base_qw"), 1);
-      }
-
-      // Get kinematics cache for ground truth
-      plant_.SetPositionsAndVelocities(context_gt_.get(), output_gt.GetState());
-      // rotational position
-      Eigen::Vector4d quat = output_gt.GetPositions().segment<4>(0);
-      imu_pos_wrt_world_gt.head(4) = quat;
-      // translational position
-      VectorXd pos(3);
-      plant_.CalcPointsPositions(*context_gt_, pelvis_frame_, imu_pos_, world_,
-                                 &pos);
-      imu_pos_wrt_world_gt.tail(3) = pos;
-      // rotational velocity
-      imu_vel_wrt_world_gt.head(3) =
-          Quaterniond(quat(0), quat(1), quat(2), quat(3)).toRotationMatrix() *
-          output_gt.GetVelocities().head(3);
-      // translational velocity
-      MatrixXd J(3, n_v_);
-      plant_.CalcJacobianTranslationalVelocity(
-          *context_gt_, JacobianWrtVariable::kV, pelvis_frame_, imu_pos_,
-          world_, world_, &J);
-      imu_vel_wrt_world_gt.tail(3) = J * output_gt.GetVelocities();
-      if (print_info_to_terminal_) {
-        // Print for debugging
-        cout << "Ground Truth: " << endl;
-        cout << "Positions: " << endl;
-        cout << imu_pos_wrt_world_gt.transpose() << endl;
-        cout << "Orientation (quaternion) : " << endl;
-        cout << quat.transpose() << endl;
-        cout << "Velocities: " << endl;
-        cout << imu_vel_wrt_world_gt.transpose() << endl;
-
-        // cout << "Leg positions: " << endl;
-        // cout << plant_.transformPoints(
-        //     cache_gt, Vector3d::Zero(), left_toe_idx_, 0).transpose() <<
-        //     endl;
-        // cout << plant_.transformPoints(
-        //     cache_gt, Vector3d::Zero(), right_toe_idx_, 0).transpose() <<
-        //     endl;
-        // cout << endl;
-      }
-    }
-
-    // Extract imu measurement
-    VectorXd imu_measurement(6);
-    const double* imu_linear_acceleration =
-        cassie_out.pelvis.vectorNav.linearAcceleration;
-    const double* imu_angular_velocity =
-        cassie_out.pelvis.vectorNav.angularVelocity;
-    imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
-        imu_angular_velocity[2], imu_linear_acceleration[0],
-        imu_linear_acceleration[1], imu_linear_acceleration[2];
+    // Get kinematics cache for ground truth
+    plant_.SetPositionsAndVelocities(context_gt_.get(), output_gt.GetState());
+    // rotational position
+    Eigen::Vector4d quat = output_gt.GetPositions().segment<4>(0);
+    imu_pos_wrt_world_gt.head(4) = quat;
+    // translational position
+    VectorXd pos(3);
+    plant_.CalcPointsPositions(*context_gt_, pelvis_frame_, imu_pos_, world_,
+                               &pos);
+    imu_pos_wrt_world_gt.tail(3) = pos;
+    // rotational velocity
+    imu_vel_wrt_world_gt.head(3) =
+        Quaterniond(quat(0), quat(1), quat(2), quat(3)).toRotationMatrix() *
+        output_gt.GetVelocities().head(3);
+    // translational velocity
+    MatrixXd J(3, n_v_);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_gt_, JacobianWrtVariable::kV, pelvis_frame_, imu_pos_, world_,
+        world_, &J);
+    imu_vel_wrt_world_gt.tail(3) = J * output_gt.GetVelocities();
     if (print_info_to_terminal_) {
-      // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
-    }
-
-    // Perform State Estimation (in several steps)
-    // Step 1 - Solve for the unknown joint angle
-    // This step is done in AssignNonFloatingBaseStateToOutputVector()
-
-    // Step 2 - EKF (Propagate step)
-    auto& ekf = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
-    ekf.Propagate(context.get_discrete_state(prev_imu_idx_).get_value(), dt);
-
-    // Print for debugging
-    if (print_info_to_terminal_) {
-      cout << "Prediction: " << endl;
-      // cout << "Orientation (quaternion) : " << endl;
-      // Quaterniond q_prop = Quaterniond(ekf.getState().getRotation());
-      // q_prop.normalize();
-      // cout << q_prop.w() << " ";
-      // cout << q_prop.vec().transpose() << endl;
-      cout << "Velocities: " << endl;
-      cout << ekf.getState().getVelocity().transpose() << endl;
+      // Print for debugging
+      cout << "Ground Truth: " << endl;
       cout << "Positions: " << endl;
-      cout << ekf.getState().getPosition().transpose() << endl;
-      // cout << "X: " << endl;
-      // cout << ekf.getState().getX() << endl;
-      // cout << "P: " << endl;
-      // cout << ekf.getState().getP() << endl;
-      if (test_with_ground_truth_state_) {
-        cout << "z difference: "
-             << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[6]
-             << endl;
-      }
+      cout << imu_pos_wrt_world_gt.transpose() << endl;
+      cout << "Orientation (quaternion) : " << endl;
+      cout << quat.transpose() << endl;
+      cout << "Velocities: " << endl;
+      cout << imu_vel_wrt_world_gt.transpose() << endl;
+
+      // cout << "Leg positions: " << endl;
+      // cout << plant_.transformPoints(
+      //     cache_gt, Vector3d::Zero(), left_toe_idx_, 0).transpose() <<
+      //     endl;
+      // cout << plant_.transformPoints(
+      //     cache_gt, Vector3d::Zero(), right_toe_idx_, 0).transpose() <<
+      //     endl;
+      // cout << endl;
     }
+  }
 
-    // Estimated floating base state (pelvis)
-    VectorXd estimated_fb_state(13);
-    Vector3d r_imu_to_pelvis_global =
-        ekf.getState().getRotation() * (-imu_pos_);
-    // Rotational position
-    Quaterniond q(ekf.getState().getRotation());
-    q.normalize();
-    estimated_fb_state[0] = q.w();
-    estimated_fb_state.segment<3>(1) = q.vec();
-    // Translational position
-    estimated_fb_state.segment<3>(4) =
-        ekf.getState().getPosition() + r_imu_to_pelvis_global;
-    // Rotational velocity
-    Vector3d omega_global =
-        ekf.getState().getRotation() * imu_measurement.head(3);
-    estimated_fb_state.segment<3>(7) = omega_global;
-    // Translational velocity
-    estimated_fb_state.tail(3) = ekf.getState().getVelocity() +
-                                 omega_global.cross(r_imu_to_pelvis_global);
+  // Extract imu measurement
+  VectorXd imu_measurement(6);
+  const double* imu_linear_acceleration =
+      cassie_out.pelvis.vectorNav.linearAcceleration;
+  const double* imu_angular_velocity =
+      cassie_out.pelvis.vectorNav.angularVelocity;
+  imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
+      imu_angular_velocity[2], imu_linear_acceleration[0],
+      imu_linear_acceleration[1], imu_linear_acceleration[2];
+  if (print_info_to_terminal_) {
+    // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
+  }
 
-    // Estimated robot output
-    OutputVector<double> filtered_output(n_q_, n_v_, n_u_);
-    AssignImuValueToOutputVector(cassie_out, &filtered_output);
-    AssignActuationFeedbackToOutputVector(cassie_out, &filtered_output);
-    AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
-    AssignFloatingBaseStateToOutputVector(estimated_fb_state, &filtered_output);
+  // Perform State Estimation (in several steps)
+  // Step 1 - Solve for the unknown joint angle
+  // This step is done in AssignNonFloatingBaseStateToOutputVector()
 
-    // Step 3 - Estimate which foot/feet are in contact with the ground
-    // Estimate feet contacts
-    int left_contact = 0;
-    int right_contact = 0;
-    std::vector<double> optimal_cost(3, 0.0);
+  // Step 2 - EKF (Propagate step)
+  auto& ekf = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
+  ekf.Propagate(context.get_discrete_state(prev_imu_idx_).get_value(), dt);
+
+  // Print for debugging
+  if (print_info_to_terminal_) {
+    cout << "Prediction: " << endl;
+    // cout << "Orientation (quaternion) : " << endl;
+    // Quaterniond q_prop = Quaterniond(ekf.getState().getRotation());
+    // q_prop.normalize();
+    // cout << q_prop.w() << " ";
+    // cout << q_prop.vec().transpose() << endl;
+    cout << "Velocities: " << endl;
+    cout << ekf.getState().getVelocity().transpose() << endl;
+    cout << "Positions: " << endl;
+    cout << ekf.getState().getPosition().transpose() << endl;
+    // cout << "X: " << endl;
+    // cout << ekf.getState().getX() << endl;
+    // cout << "P: " << endl;
+    // cout << ekf.getState().getP() << endl;
     if (test_with_ground_truth_state_) {
-      UpdateContactEstimationCosts(
-          output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
-      EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
-                            &right_contact);
-    } else {
-      UpdateContactEstimationCosts(filtered_output, dt,
-                                   &(state->get_mutable_discrete_state()),
-                                   &optimal_cost);
-      EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
-                            &right_contact);
-      EstimateContactForces(context, filtered_output);
+      cout << "z difference: "
+           << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[6] << endl;
     }
+  }
 
-    // Test mode needed for hardware experiment
-    // mode #0 assumes the feet are always on the ground
-    // mode #1 assumes the feet are always in the air
-    if (hardware_test_mode_ == 0) {
-      left_contact = 1;
-      right_contact = 1;
+  // Estimated floating base state (pelvis)
+  VectorXd estimated_fb_state(13);
+  Vector3d r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
+  // Rotational position
+  Quaterniond q(ekf.getState().getRotation());
+  q.normalize();
+  estimated_fb_state[0] = q.w();
+  estimated_fb_state.segment<3>(1) = q.vec();
+  // Translational position
+  estimated_fb_state.segment<3>(4) =
+      ekf.getState().getPosition() + r_imu_to_pelvis_global;
+  // Rotational velocity
+  Vector3d omega_global =
+      ekf.getState().getRotation() * imu_measurement.head(3);
+  estimated_fb_state.segment<3>(7) = omega_global;
+  // Translational velocity
+  estimated_fb_state.tail(3) =
+      ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
 
-      if ((*counter_for_testing_) % 5000 == 0) {
-        cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
-      }
-      *counter_for_testing_ = *counter_for_testing_ + 1;
-    } else if (hardware_test_mode_ == 1) {
+  // Estimated robot output
+  OutputVector<double> filtered_output(n_q_, n_v_, n_u_);
+  AssignImuValueToOutputVector(cassie_out, &filtered_output);
+  AssignActuationFeedbackToOutputVector(cassie_out, &filtered_output);
+  AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
+  AssignFloatingBaseStateToOutputVector(estimated_fb_state, &filtered_output);
+
+  // Step 3 - Estimate which foot/feet are in contact with the ground
+  // Estimate feet contacts
+  int left_contact = 0;
+  int right_contact = 0;
+  std::vector<double> optimal_cost(3, 0.0);
+
+  // Currently we are only using springs in contact estimiation
+  // TODO: remove QPs contact estimiation or implement a faster one
+  if (test_with_ground_truth_state_) {
+    // UpdateContactEstimationCosts(
+    //     output_gt, dt, &(state->get_mutable_discrete_state()),
+    //     &optimal_cost);
+    EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
+                          &right_contact);
+  } else {
+    // UpdateContactEstimationCosts(filtered_output, dt,
+    //                              &(state->get_mutable_discrete_state()),
+    //                              &optimal_cost);
+    EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
+                          &right_contact);
+    EstimateContactForces(context, filtered_output);
+  }
+
+  // Override hardware_test_mode_ if test mode is 2 and we detect contact
+  // Useful for preventing drift when the feet are not fully in contact - i.e
+  // when running the PD controller with external support
+  if(left_contact && right_contact && hardware_test_mode_ == 2){
+    hardware_test_mode_ = -1;
+  }
+
+  // Test mode needed for hardware experiment
+  // mode #0 assumes the feet are always on the ground
+  // mode #1 assumes the feet are always in the air
+  if (hardware_test_mode_ == 0 || hardware_test_mode_ == 2) {
+    left_contact = 1;
+    right_contact = 1;
+
+    if ((*counter_for_testing_) % 5000 == 0) {
+      cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
+    }
+    *counter_for_testing_ = *counter_for_testing_ + 1;
+  } else if (hardware_test_mode_ == 1) {
+    left_contact = 0;
+    right_contact = 0;
+  }
+
+  // Assign contacts
+  state->get_mutable_discrete_state()
+          .get_mutable_vector(contact_idx_)
+          .get_mutable_value()
+      << left_contact,
+      right_contact;
+
+  // Add a filter to EKF contacts
+  // We only set contact for EKF to be active after the contact has happen for
+  // `persistent_contact_threshold_` seconds
+  if (left_contact) {
+    if (current_time - left_contact_start_time_ <
+        persistent_contact_threshold_) {
       left_contact = 0;
+    }
+  } else {
+    left_contact_start_time_ = current_time;
+  }
+  if (right_contact) {
+    if (current_time - right_contact_start_time_ <
+        persistent_contact_threshold_) {
       right_contact = 0;
     }
-
-    std::vector<std::pair<int, bool>> contacts;
-    contacts.push_back(std::pair<int, bool>(0, left_contact));
-    contacts.push_back(std::pair<int, bool>(1, right_contact));
-    ekf.setContacts(contacts);
-
-    // Step 4 - EKF (measurement step)
-    plant_.SetPositionsAndVelocities(context_.get(),
-                                     filtered_output.GetState());
-
-    // rotation part of pose and covariance is unused in EKF
-    Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
-    Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
-
-    if (test_with_ground_truth_state_) {
-      // Print for debugging
-      if (print_info_to_terminal_) {
-        cout << "Rotation differences: " << endl;
-        cout << "Rotation matrix from EKF: " << endl;
-        cout << ekf.getState().getRotation() << endl;
-        cout << "Ground truth rotation: " << endl;
-        Quaterniond q_real;
-        q_real.w() = output_gt.GetPositions()[0];
-        q_real.vec() = output_gt.GetPositions().segment<3>(1);
-        MatrixXd R_actual = q_real.toRotationMatrix();
-        cout << R_actual << endl;
-      }
-    }
-
-    inekf::vectorKinematics measured_kinematics;
-    Vector3d toe_pos = Vector3d::Zero();
-    MatrixXd J = MatrixXd::Zero(3, n_v_);
-    for (int i = 0; i < 2; i++) {
-      plant_.CalcPointsPositions(*context_, *toe_frames_[i], rear_contact_disp_,
-                                 pelvis_frame_, &toe_pos);
-      pose.block<3, 3>(0, 0) = Matrix3d::Identity();
-      pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
-
-      if (print_info_to_terminal_) {
-        // Print for debugging
-        // cout << "Pose: " << endl;
-        // cout << pose.block<3, 1>(0, 3).transpose() << endl;
-      }
-
-      plant_.CalcJacobianTranslationalVelocity(
-          *context_, JacobianWrtVariable::kV, *toe_frames_[i],
-          rear_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
-      MatrixXd J_wrt_joints = J.block(0, 6, 3, 16);
-      covariance.block<3, 3>(3, 3) =
-          J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-      inekf::Kinematics frame(i, pose, covariance);
-      measured_kinematics.push_back(frame);
-
-      if (print_info_to_terminal_) {
-        cout << "covariance.block<3, 3>(3, 3) = \n"
-             << covariance.block<3, 3>(3, 3) << endl;
-      }
-    }
-    ekf.CorrectKinematics(measured_kinematics);
-
-    if (print_info_to_terminal_) {
-      // Print for debugging
-      q = Quaterniond(ekf.getState().getRotation()).normalized();
-      cout << "Update: " << endl;
-      // cout << "Orientation (quaternion) : " << endl;
-      // cout << q.w() << " ";
-      // cout << q.vec().transpose() << endl;
-      cout << "Velocities: " << endl;
-      cout << ekf.getState().getVelocity().transpose() << endl;
-      cout << "Positions: " << endl;
-      cout << ekf.getState().getPosition().transpose() << endl;
-      // cout << "X: " << endl;
-      // cout << ekf.getState().getX() << endl;
-      // cout << "Theta: " << endl;
-      // cout << ekf.getState().getTheta() << endl;
-      // cout << "P: " << endl;
-      // cout << ekf.getState().getP() << endl;
-    }
-    if (test_with_ground_truth_state_) {
-      if (print_info_to_terminal_) {
-        cout << "z difference: "
-             << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[6]
-             << endl;
-      }
-    }
-    if (print_info_to_terminal_) {
-      cout << "------------------------------\n";
-      cout << endl;
-    }
-
-    // Step 5 - Assign values to floating base state (pelvis)
-    // We get the angular velocity directly from the IMU without filtering
-    // because the magnitude of noise is about 2e-3.
-    // Rotational position
-    q = Quaterniond(ekf.getState().getRotation()).normalized();
-    estimated_fb_state[0] = q.w();
-    estimated_fb_state.segment<3>(1) = q.vec();
-    // Translational position
-    r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
-    estimated_fb_state.segment<3>(4) =
-        ekf.getState().getPosition() + r_imu_to_pelvis_global;
-    // Rotational velocity
-    omega_global = ekf.getState().getRotation() * imu_measurement.head(3);
-    estimated_fb_state.segment<3>(7) = omega_global;
-    // Translational velocity
-    estimated_fb_state.tail(3) = ekf.getState().getVelocity() +
-                                 omega_global.cross(r_imu_to_pelvis_global);
-    state->get_mutable_discrete_state()
-            .get_mutable_vector(fb_state_idx_)
-            .get_mutable_value()
-        << estimated_fb_state;
-
-    // Store imu measurement
-    state->get_mutable_discrete_state()
-            .get_mutable_vector(prev_imu_idx_)
-            .get_mutable_value()
-        << imu_measurement;
-    // Store current time
-    state->get_mutable_discrete_state()
-            .get_mutable_vector(time_idx_)
-            .get_mutable_value()
-        << current_time;
+  } else {
+    right_contact_start_time_ = current_time;
   }
+
+  // Assign contacts
+  state->get_mutable_discrete_state()
+          .get_mutable_vector(filtered_contact_idx_)
+          .get_mutable_value()
+      << left_contact,
+      right_contact;
+
+  std::vector<std::pair<int, bool>> contacts;
+  contacts.push_back(std::pair<int, bool>(0, left_contact));
+  contacts.push_back(std::pair<int, bool>(1, left_contact));
+  contacts.push_back(std::pair<int, bool>(2, right_contact));
+  contacts.push_back(std::pair<int, bool>(3, right_contact));
+  ekf.setContacts(contacts);
+
+  // Step 4 - EKF (measurement step)
+  plant_.SetPositionsAndVelocities(context_.get(), filtered_output.GetState());
+
+  // rotation part of pose and covariance is unused in EKF
+  Eigen::Matrix4d rear_toe_pose = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d front_toe_pose = Eigen::Matrix4d::Identity();
+  Eigen::Matrix<double, 6, 6> rear_covariance = MatrixXd::Identity(6, 6);
+  Eigen::Matrix<double, 6, 6> front_covariance = MatrixXd::Identity(6, 6);
+
+  if (test_with_ground_truth_state_) {
+    // Print for debugging
+    if (print_info_to_terminal_) {
+      cout << "Rotation differences: " << endl;
+      cout << "Rotation matrix from EKF: " << endl;
+      cout << ekf.getState().getRotation() << endl;
+      cout << "Ground truth rotation: " << endl;
+      Quaterniond q_real;
+      q_real.w() = output_gt.GetPositions()[0];
+      q_real.vec() = output_gt.GetPositions().segment<3>(1);
+      MatrixXd R_actual = q_real.toRotationMatrix();
+      cout << R_actual << endl;
+    }
+  }
+
+  inekf::vectorKinematics measured_kinematics;
+  Vector3d toe_pos = Vector3d::Zero();
+  MatrixXd J = MatrixXd::Zero(3, n_v_);
+  for (int i = 0; i < 2; i++) {
+    plant_.CalcPointsPositions(*context_, *toe_frames_[i], rear_contact_disp_,
+                               pelvis_frame_, &toe_pos);
+    rear_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
+    rear_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
+    plant_.CalcPointsPositions(*context_, *toe_frames_[i], front_contact_disp_,
+                               pelvis_frame_, &toe_pos);
+    front_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
+    front_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
+
+    if (print_info_to_terminal_) {
+      // Print for debugging
+      // cout << "Pose: " << endl;
+      // cout << rear_toe_pose.block<3, 1>(0, 3).transpose() << endl;
+    }
+
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[i], rear_contact_disp_,
+        pelvis_frame_, pelvis_frame_, &J);
+    MatrixXd J_wrt_joints = J.block(0, 6, 3, 16);
+    rear_covariance.block<3, 3>(3, 3) =
+        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
+    inekf::Kinematics rear_frame(2 * i, rear_toe_pose, rear_covariance);
+    measured_kinematics.push_back(rear_frame);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
+        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
+    J_wrt_joints = J.block(0, 6, 3, 16);
+    front_covariance.block<3, 3>(3, 3) =
+        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
+    inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
+    measured_kinematics.push_back(front_frame);
+
+    if (print_info_to_terminal_) {
+      cout << "covariance.block<3, 3>(3, 3) = \n"
+           << rear_covariance.block<3, 3>(3, 3) << endl;
+    }
+  }
+  ekf.CorrectKinematics(measured_kinematics);
+
+  if (print_info_to_terminal_) {
+    // Print for debugging
+    q = Quaterniond(ekf.getState().getRotation()).normalized();
+    cout << "Update: " << endl;
+    // cout << "Orientation (quaternion) : " << endl;
+    // cout << q.w() << " ";
+    // cout << q.vec().transpose() << endl;
+    cout << "Velocities: " << endl;
+    cout << ekf.getState().getVelocity().transpose() << endl;
+    cout << "Positions: " << endl;
+    cout << ekf.getState().getPosition().transpose() << endl;
+    // cout << "X: " << endl;
+    // cout << ekf.getState().getX() << endl;
+    // cout << "Theta: " << endl;
+    // cout << ekf.getState().getTheta() << endl;
+    // cout << "P: " << endl;
+    // cout << ekf.getState().getP() << endl;
+  }
+  if (test_with_ground_truth_state_) {
+    if (print_info_to_terminal_) {
+      cout << "z difference: "
+           << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[6] << endl;
+    }
+  }
+  if (print_info_to_terminal_) {
+    cout << "------------------------------\n";
+    cout << endl;
+  }
+
+  // Step 5 - Assign values to floating base state (pelvis)
+  // We get the angular velocity directly from the IMU without filtering
+  // because the magnitude of noise is about 2e-3.
+  // Rotational position
+  q = Quaterniond(ekf.getState().getRotation()).normalized();
+  estimated_fb_state[0] = q.w();
+  estimated_fb_state.segment<3>(1) = q.vec();
+  // Translational position
+  r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
+  estimated_fb_state.segment<3>(4) =
+      ekf.getState().getPosition() + r_imu_to_pelvis_global;
+  // Rotational velocity
+  omega_global = ekf.getState().getRotation() * imu_measurement.head(3);
+  estimated_fb_state.segment<3>(7) = omega_global;
+  // Translational velocity
+  estimated_fb_state.tail(3) =
+      ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
+  state->get_mutable_discrete_state()
+          .get_mutable_vector(fb_state_idx_)
+          .get_mutable_value()
+      << estimated_fb_state;
+
+  // Store imu measurement
+  state->get_mutable_discrete_state()
+          .get_mutable_vector(prev_imu_idx_)
+          .get_mutable_value()
+      << imu_measurement;
+  // Store current time
+  state->get_mutable_discrete_state()
+          .get_mutable_vector(time_idx_)
+          .get_mutable_value()
+      << current_time;
+
   return EventStatus::Succeeded();
 }
 
@@ -1311,22 +1368,41 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
            << endl;
     }
   }
+}
 
-  // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // auto state_time = context.get_discrete_state(time_idx_).get_value();
-  // cout << "  In copyStateOut: lcm_time = " <<
-  // cassie_out.pelvis.targetPc.taskExecutionTime << endl; cout << "  In
-  // copyStateOut: state_time = " << state_time << endl; cout << "  In
-  // copyStateOut: context_time = " << context.get_time() << endl;
+void CassieStateEstimator::CopyContact(
+    const Context<double>& context, dairlib::lcmt_contact* contact_msg) const {
+  contact_msg->utime = context.get_time() * 1e6;
+  contact_msg->num_contacts = num_contacts_;
+  contact_msg->contact_names.resize(num_contacts_);
+  contact_msg->contact.resize(num_contacts_);
+  for (int i = 0; i < num_contacts_; i++) {
+    contact_msg->contact_names[i] = contact_names_[i];
+    contact_msg->contact[i] =
+        (bool)context.get_discrete_state(contact_idx_).get_value()[i];
+  }
+}
+
+void CassieStateEstimator::CopyFilteredContact(
+    const Context<double>& context, dairlib::lcmt_contact* contact_msg) const {
+  contact_msg->utime = context.get_time() * 1e6;
+  contact_msg->num_contacts = num_contacts_;
+  contact_msg->contact_names.resize(num_contacts_);
+  contact_msg->contact.resize(num_contacts_);
+  for (int i = 0; i < num_contacts_; i++) {
+    contact_msg->contact_names[i] = contact_names_[i];
+    contact_msg->contact[i] =
+        (bool)context.get_discrete_state(filtered_contact_idx_).get_value()[i];
+  }
 }
 
 void CassieStateEstimator::setPreviousTime(Context<double>* context,
-                                           double time) {
+                                           double time) const {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
 }
 void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
                                                 Eigen::Vector4d quat,
-                                                Vector3d pelvis_pos) {
+                                                Vector3d pelvis_pos) const {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(7)
       << quat,
       pelvis_pos;
@@ -1347,7 +1423,7 @@ void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
        << filter.getState().getRotation() << endl;
 }
 void CassieStateEstimator::setPreviousImuMeasurement(
-    Context<double>* context, const VectorXd& imu_value) {
+    Context<double>* context, const VectorXd& imu_value) const {
   context->get_mutable_discrete_state(prev_imu_idx_).get_mutable_value()
       << imu_value;
 }
@@ -1390,6 +1466,37 @@ void CassieStateEstimator::EstimateContactForces(
 
   std::cout << "lambda: " << std::endl;
   std::cout << lambda_est << std::endl;
+}
+
+void CassieStateEstimator::DoCalcNextUpdateTime(
+    const Context<double>& context,
+    drake::systems::CompositeEventCollection<double>* events,
+    double* time) const {
+  // Call Leafsystem's DoCalcNextUpdateTime to add events other than our own
+  // kTimed events
+  LeafSystem<double>::DoCalcNextUpdateTime(context, events, time);
+
+  // If `context.get_time() < next_message_time_ - eps_`, it means our callback
+  // function hasn't been called in the Simulator loop, so we add/declare an
+  // event. We set `next_message_time_ - eps_` to be the update time for our
+  // callback function, because we want the event triggers before the publish
+  // event at time `next_message_time_`.
+  // Note that we don't need to worry about declaring multiple events at the
+  // same message time, because the events that happen after the next update
+  // time of the Simulator are cleared here:
+  // https://github.com/RobotLocomotion/drake/blob/5f0ac26e7bf7dc6f86c773c77b2c9926fb67a9d5/systems/framework/diagram.cc#L850
+  if (context.get_time() < next_message_time_ - eps_) {
+    // Subtract a small epsilon value so this event triggers before the publish
+    *time = next_message_time_ - eps_;
+
+    UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
+        [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
+               drake::systems::State<double>* s) { this->Update(c, s); };
+
+    auto& uu_events = events->get_mutable_unrestricted_update_events();
+    uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+        drake::systems::TriggerType::kTimed, callback));
+  }
 }
 
 }  // namespace systems

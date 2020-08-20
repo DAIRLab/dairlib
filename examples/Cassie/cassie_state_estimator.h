@@ -17,6 +17,7 @@
 #include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "dairlib/lcmt_contact.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -60,8 +61,18 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
       bool test_with_ground_truth_state = false,
-      bool print_info_to_terminal = false, int hardware_test_mode = -1,
-      bool discrete_time_filter = false);
+      bool print_info_to_terminal = false, int hardware_test_mode = -1);
+
+  const drake::systems::OutputPort<double>& get_robot_output_port() const {
+    return this->get_output_port(output_vector_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_contact_output_port() const {
+    return this->get_output_port(contact_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_filtered_contact_output_port() const {
+    return this->get_output_port(filtered_contact_output_port_);
+  }
+
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -89,22 +100,39 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       const systems::OutputVector<double>& output) const;
 
-  void setPreviousTime(drake::systems::Context<double>* context, double time);
+  // Setters for initial values
+  void setPreviousTime(drake::systems::Context<double>* context,
+                       double time) const;
   void setInitialPelvisPose(drake::systems::Context<double>* context,
                             Eigen::Vector4d quat,
-                            Eigen::Vector3d position);
+                            Eigen::Vector3d position) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
-                                 const Eigen::VectorXd& imu_value);
+                                 const Eigen::VectorXd& imu_value) const;
+
+  // Copy joint state from cassie_out_t to an OutputVector
+  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
+      systems::OutputVector<double>* output) const;
+
+  // Currently, `DoCalcNextUpdateTime` seems to be the only gateway of adding
+  // kTimed events
+  void DoCalcNextUpdateTime(
+      const drake::systems::Context<double>& context,
+      drake::systems::CompositeEventCollection<double>* events,
+      double* time) const final;
+
+  // Set the time of the next received message. Is used to trigger update
+  // events.
+  // Note that the real trigger/update time is `next_message_time_ - eps`,
+  // because we want the discrete update to happen before Publish
+  void set_next_message_time(double t) { next_message_time_ = t; };
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
   void AssignActuationFeedbackToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
-  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
   void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
       systems::OutputVector<double>* output) const;
-
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,
@@ -112,6 +140,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
+  void CopyContact(const drake::systems::Context<double>& context,
+                   dairlib::lcmt_contact* contact_msg) const;
+  void CopyFilteredContact(const drake::systems::Context<double>& context,
+                           dairlib::lcmt_contact* contact_msg) const;
 
   int n_q_;
   int n_v_;
@@ -124,7 +156,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator_;
   const drake::multibody::BodyFrame<double>& world_;
   const bool is_floating_base_;
-  const bool discrete_time_filter_;
   std::unique_ptr<drake::systems::Context<double>> context_;
 
   std::map<std::string, int> position_idx_map_;
@@ -140,6 +171,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Input/output port indices
   int cassie_out_input_port_;
   int state_input_port_;
+  int output_vector_output_port_;
+  int contact_output_port_;
+  int filtered_contact_output_port_;
 
   // Below are indices of system states:
   // A state which stores previous timestamp
@@ -148,6 +182,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::AbstractStateIndex ekf_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;
+  drake::systems::DiscreteStateIndex contact_idx_;
+  drake::systems::DiscreteStateIndex filtered_contact_idx_;
   // A state related to contact estimation
   // This state store the previous generalized velocity
   drake::systems::DiscreteStateIndex previous_velocity_idx_;
@@ -190,8 +226,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const double cost_threshold_ekf_ = 200;
   const double knee_spring_threshold_ctrl_ = -0.015;
   const double knee_spring_threshold_ekf_ = -0.015;
-  const double heel_spring_threshold_ctrl_ = -0.03;
-  const double heel_spring_threshold_ekf_ = -0.015;
+  const double heel_spring_threshold_ctrl_ = -0.01;
+  const double heel_spring_threshold_ekf_ = -0.01;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double w_soft_constraint_ = 100;  // Soft constraint cost
   const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration
@@ -223,14 +259,26 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable eps_cl_;
   drake::solvers::VectorXDecisionVariable eps_cr_;
   drake::solvers::VectorXDecisionVariable eps_imu_;
+  // Other variables for contacts
+  const double persistent_contact_threshold_ = 0.02; // in seconds
+  mutable double left_contact_start_time_ = 0;
+  mutable double right_contact_start_time_ = 0;
 
   // flag for testing and tuning
   std::unique_ptr<drake::systems::Context<double>> context_gt_;
   bool test_with_ground_truth_state_;
   bool print_info_to_terminal_;
-  int hardware_test_mode_;
+  mutable int hardware_test_mode_ = 0;
   std::unique_ptr<int> counter_for_testing_ =
       std::make_unique<int>(0);
+
+  // Timestamp from unprocessed message
+  double next_message_time_ = -std::numeric_limits<double>::infinity();
+  double eps_ = 1e-12;
+
+  // Contacts
+  const int num_contacts_ = 2;
+  const std::vector<std::string> contact_names_ = {"left", "right"};
 };
 
 }  // namespace systems

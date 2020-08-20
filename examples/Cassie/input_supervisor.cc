@@ -21,6 +21,9 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
+
+//  prev_commanded_effort_ = Eigen::VectorXd::Zero(num_actuators_);
+
   // Create input ports
   command_input_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
@@ -44,9 +47,10 @@ InputSupervisor::InputSupervisor(
 
   // Create error flag as discrete state
   // Store both values in single discrete vector
-  DeclareDiscreteState(2);
+  status_vars_index_ = DeclareDiscreteState(2);
   n_fails_index_ = 0;
   status_index_ = 1;
+  prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
@@ -60,7 +64,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
                                                         command_input_port_);
 
   bool is_error =
-      context.get_discrete_state()[n_fails_index_] >= min_consecutive_failures_;
+      context.get_discrete_state(0)[n_fails_index_] >= min_consecutive_failures_;
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros
@@ -86,6 +90,23 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     output->set_timestamp(command->get_timestamp());
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
   }
+  // if ((context.get_discrete_state(prev_efforts_index_).get_value() -
+  //      output->get_data())
+  //         .norm() > kInputThreshold) {
+  //   Eigen::VectorXd blended_effort =
+  //       (1 - kCutoffFreq) *
+  //           context.get_discrete_state(prev_efforts_index_).get_value() +
+  //           kCutoffFreq * output->get_data();
+  //   output->SetDataVector(blended_effort);
+  // }
+//  if ((prev_commanded_effort_ -
+//       output->get_data()).norm() > kInputThreshold) {
+//    Eigen::VectorXd blended_effort =
+//        (1 - kCutoffFreq) * prev_commanded_effort_ + kCutoffFreq * output->get_data();
+//    output->SetDataVector(blended_effort);
+//  }
+//  prev_commanded_effort_ = output->get_data();
+//  context.get_discrete_state(prev_efforts_index_).set_value(output->get_data());
 }
 
 void InputSupervisor::SetStatus(const Context<double>& context,
@@ -94,7 +115,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  output->get_mutable_value()(0) = context.get_discrete_state()[status_index_];
+  output->get_mutable_value()(0) = context.get_discrete_state(0)[status_index_];
   if (input_limit_ != std::numeric_limits<double>::max()) {
     for (int i = 0; i < command->get_data().size(); i++) {
       double command_value = command->get_data()(i);
@@ -108,7 +129,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
   // Shutdown is/will soon be active (the status flag is set in a separate loop
   // from the actual motor torques so the update of the status bit could be
   // slightly off
-  if (context.get_discrete_state()[n_fails_index_] >=
+  if (context.get_discrete_state(0)[n_fails_index_] >=
       min_consecutive_failures_) {
     output->get_mutable_value()(0) += 4;
   }
@@ -122,27 +143,30 @@ void InputSupervisor::UpdateErrorFlag(
 
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
-  if ((*discrete_state)[n_fails_index_] < min_consecutive_failures_) {
+  if (discrete_state->get_data()[0]->get_value()[n_fails_index_] < min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
                              (velocities.array() < -max_joint_velocity_).any();
     if (is_velocity_error) {
       // Increment counter
-      (*discrete_state)[n_fails_index_]++;
-      (*discrete_state)[status_index_] = true;
+      discrete_state->get_data()[0]->get_mutable_value()[n_fails_index_] += 1;
+      discrete_state->get_data()[0]->get_mutable_value()[status_index_] = true;
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
-      std::cout << "Consecutive error " << (*discrete_state)[n_fails_index_]
+      std::cout << "Consecutive error " << discrete_state->get_data()[0]->get_value()[n_fails_index_]
                 << " of " << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
                 << std::endl;
     } else {
       // Reset counter
-      (*discrete_state)[n_fails_index_] = 0;
-      (*discrete_state)[status_index_] = false;
+      discrete_state->get_data()[0]->get_mutable_value()[n_fails_index_] = 0;
+      discrete_state->get_data()[0]->get_mutable_value()[status_index_] = false;
     }
   }
+
+  // discrete_state->get_mutable_vector(prev_efforts_index_)
+  //     .set_value(state->GetEfforts());
 }
 
 }  // namespace dairlib

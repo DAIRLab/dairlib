@@ -21,10 +21,10 @@ class NonlinearConstraint : public drake::solvers::Constraint {
   /// @param lb lower bound
   /// @param ub lower bound
   /// @param description (default blank)
-  /// @param eps step size for numerical gradient (default 1e-8)
+  /// @param eps step size for numerical gradient (default 1e-7)
   NonlinearConstraint(int num_constraints, int num_vars,
       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-      const std::string& description = "", double eps=1e-8);
+      const std::string& description = "", double eps=1e-7);
 
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
               Eigen::VectorXd* y) const override;

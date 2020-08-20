@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_contact
+{
+  int64_t utime;
+
+  int32_t num_contacts;
+
+  string contact_names [num_contacts];
+  boolean contact [num_contacts];
+}

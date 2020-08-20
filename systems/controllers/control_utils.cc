@@ -76,8 +76,8 @@ Vector2d ImposeStepLengthGuard(Vector2d foot_placement_pos,
     Vector2d CoM, double max_dist){
   Vector2d com_to_fp = foot_placement_pos - CoM.head(2);
   if ( com_to_fp.norm() > max_dist ) {
-    std::cout << "Step length limit reached. It's " <<
-        com_to_fp.norm() - max_dist << " (m) more than max.\n";
+    //std::cout << "Step length limit reached. It's " <<
+    //    com_to_fp.norm() - max_dist << " (m) more than max.\n";
     Vector2d normalized_com_to_fp = com_to_fp.normalized();
     foot_placement_pos = CoM + normalized_com_to_fp * max_dist;
   }

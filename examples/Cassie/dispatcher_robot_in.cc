@@ -36,7 +36,7 @@ using std::string;
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
-DEFINE_double(max_joint_velocity, 10,
+DEFINE_double(max_joint_velocity, 30,
               "Maximum joint velocity before error is triggered");
 DEFINE_double(input_limit,
               -1,

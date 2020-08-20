@@ -1,18 +1,17 @@
 #include "multibody/kinematic/kinematic_evaluator.h"
 
-using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
 using drake::MatrixX;
 using drake::VectorX;
+using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
 
 namespace dairlib {
 namespace multibody {
 
 template <typename T>
 KinematicEvaluator<T>::KinematicEvaluator(const MultibodyPlant<T>& plant,
-    int length)
-    : plant_(plant),
-      length_(length) {
+                                          int length)
+    : plant_(plant), length_(length) {
   std::vector<int> all_inds;
   all_active_default_order_ = true;
   for (int i = 0; i < length; i++) {
@@ -22,8 +21,15 @@ KinematicEvaluator<T>::KinematicEvaluator(const MultibodyPlant<T>& plant,
 }
 
 template <typename T>
-VectorX<T> KinematicEvaluator<T>::EvalActive(
-    const Context<T>& context) const {
+MatrixX<T> KinematicEvaluator<T>::EvalFullJacobian(
+    const drake::systems::Context<T>& context) const {
+  drake::MatrixX<T> J(length_, plant_.num_velocities());
+  EvalFullJacobian(context, &J);
+  return J;
+}
+
+template <typename T>
+VectorX<T> KinematicEvaluator<T>::EvalActive(const Context<T>& context) const {
   // TODO: With Eigen 3.4, can slice by (active_inds_);
 
   auto phi_full = EvalFull(context);
@@ -56,7 +62,7 @@ VectorX<T> KinematicEvaluator<T>::EvalActiveTimeDerivative(
 
 template <typename T>
 MatrixX<T> KinematicEvaluator<T>::EvalActiveJacobian(
-      const Context<T>& context) const {
+    const Context<T>& context) const {
   // TODO: With Eigen 3.4, can slice by (active_inds_, all);
   auto J_full = EvalFullJacobian(context);
   if (all_active_default_order_) {
@@ -74,7 +80,7 @@ MatrixX<T> KinematicEvaluator<T>::EvalActiveJacobian(
 
 template <typename T>
 VectorX<T> KinematicEvaluator<T>::EvalActiveJacobianDotTimesV(
-      const Context<T>& context) const {
+    const Context<T>& context) const {
   // TODO: With Eigen 3.4, can slice by (active_inds_);
   auto Jdot_v_full = EvalFullJacobianDotTimesV(context);
   if (all_active_default_order_) {
@@ -119,6 +125,22 @@ void KinematicEvaluator<T>::set_active_inds(std::vector<int> active_inds) {
   } else {
     all_active_default_order_ = false;
   }
+}
+
+template <typename T>
+bool KinematicEvaluator<T>::is_active(int index) const {
+  return std::find(active_inds_.begin(), active_inds_.end(), index) !=
+         active_inds_.end();
+}
+
+template <typename T>
+int KinematicEvaluator<T>::full_index_to_active_index(int full_index) const {
+  for (size_t i = 0; i < active_inds_.size(); i++) {
+    if (active_inds_.at(i) == full_index) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 template <typename T>

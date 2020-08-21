@@ -49,8 +49,6 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   const std::vector<
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
       feet_contact_points_;
-
-  double height_;
 };
 
 }  // namespace osc

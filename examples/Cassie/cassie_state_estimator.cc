@@ -1407,6 +1407,8 @@ void CassieStateEstimator::CopyFilteredContact(
 
 void CassieStateEstimator::CopyEstimatedContactForces(
     const Context<double>& context, dairlib::lcmt_contact* contact_msg) const {
+  // TODO (yangwill) fuse residual based contact estimation with heel spring
+  // deflection and phase of gait cycle
   contact_msg->utime = context.get_time() * 1e6;
   contact_msg->num_contacts = num_contacts_;
   contact_msg->contact_names.resize(num_contacts_);
@@ -1453,7 +1455,8 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
     VectorXd& lambda) const {
-  //  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
+  // TODO(yangwill) add a discrete time filter to the force estimate
+  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
   plant_.SetPositionsAndVelocities(context_.get(), output.GetState());

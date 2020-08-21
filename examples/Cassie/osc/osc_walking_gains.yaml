@@ -12,10 +12,10 @@ hip_yaw_kp: 10
 hip_yaw_kd: 2.5
 
 footstep_offset: 0.06
-center_line_offset: 0.10
-final_foot_height: 0.02
+center_line_offset: 0.06
+final_foot_height: -0.025
 final_foot_velocity_z: 0.0
-mid_foot_height: 0.1
+mid_foot_height: 0.05
 
 CoMW:
   [  50,    0,     0,

@@ -68,6 +68,8 @@ def main():
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log  = process_lcm_log.process_log(log, pos_map, vel_map, act_map)
 
+  plot_contact_est(full_log)
+  plt.show()
   if("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
 
@@ -121,8 +123,10 @@ def main():
 def plot_contact_est(log):
   t_contact = []
   t_filtered_contact = []
+  t_gm_contact = []
   contact = []
   contact_filtered = []
+  gm_contact = []
   for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
     msg = log["CASSIE_CONTACT_DISPATCHER"][i]
     t_contact.append(msg.utime / 1e6)
@@ -131,15 +135,23 @@ def plot_contact_est(log):
     msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
     t_filtered_contact.append(msg.utime / 1e6)
     contact_filtered.append(list(msg.contact))
+  for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
+    msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
+    t_gm_contact.append(msg.utime / 1e6)
+    gm_contact.append(list(msg.contact))
   t_contact = np.array(t_contact)
   t_filtered_contact = np.array(t_filtered_contact)
+  t_gm_contact = np.array(t_filtered_contact)
   contact = np.array(contact)
+  gm_contact = np.array(contact)
   contact_filtered = np.array(contact_filtered)
 
   plt.figure("Contact estimation")
   plt.plot(t_contact, contact, '-')
-  plt.plot(t_filtered_contact, contact_filtered, '-')
-  plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt"])
+  # plt.plot(t_filtered_contact, contact_filtered, '-')
+  plt.plot(t_gm_contact, gm_contact, '*')
+  # plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt", "l_gm_contact", "r_gm_contact"])
+  plt.legend(["l_contact", "r_contact", "l_gm_contact", "r_gm_contact"])
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 

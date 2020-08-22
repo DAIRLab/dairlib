@@ -203,7 +203,6 @@ void RobotCommandSender::OutputCommand(const Context<double>& context,
   const TimestampedVector<double>* command = (TimestampedVector<double>*)
       this->EvalVectorInput(context, 0);
 
-
   input_msg->utime = command->get_timestamp() * 1e6;
   input_msg->num_efforts = num_actuators_;
   input_msg->effort_names.resize(num_actuators_);

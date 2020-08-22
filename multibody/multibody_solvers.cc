@@ -17,8 +17,8 @@ using solvers::NonlinearConstraint;
 template <typename T>
 MultibodyProgram<T>::MultibodyProgram(const MultibodyPlant<T>& plant)
     : drake::solvers::MathematicalProgram(),
-    plant_(plant),
-    context_(plant_.CreateDefaultContext().release()) {}
+      plant_(plant),
+      context_(plant_.CreateDefaultContext().release()) {}
 
 template <typename T>
 VectorXDecisionVariable MultibodyProgram<T>::AddPositionVariables() {

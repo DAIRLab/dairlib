@@ -124,6 +124,11 @@ DEFINE_int32(max_num_extending_task_space,100,
     "to get enough samples in the whole task space."
     "It is recommended that using a small number for small optimization range "
     "while using a large number for large optimization range.");
+DEFINE_int32(max_num_shrinking_step,4,
+    "For non-grid method, we will use intermediate samples to help failed "
+    "samples after shrinking step size for several times. This flag is used to"
+    "decide the max number of shrinking step size before trying intermediate "
+    "samples to help");
 
 // Solving for the cost gradient
 //  I didn't benchmark if method 4 to 6 get very slow when model parameter size
@@ -2349,7 +2354,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // for failed samples
     if(!is_grid_task){
       //this feature only applies to non-grid method
-      if(n_shrink_step>2&&rerun_current_iteration){
+      if((n_shrink_step>FLAGS_max_num_shrinking_step)&&rerun_current_iteration){
         //start to find mediate sample for the failed samples
         task_gen_mediate.set_start_finding_mediate_sample(true);
         task_gen_mediate.set_currently_find_mediate_sample(false);

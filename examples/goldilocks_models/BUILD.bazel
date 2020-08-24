@@ -135,20 +135,3 @@ cc_binary(
         "@gflags",
     ],
 )
-
-cc_binary(
-    name = "test",
-    srcs = ["test.cc"],
-    deps = [
-        ":goldilocks_utils",
-        ":task",
-        "//common:eigen_utils",
-        "//common:file_utils",
-        "//examples/Cassie:cassie_utils",
-        "//examples/goldilocks_models/find_models:initial_guess",
-        "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
-        "//systems/trajectory_optimization:dircon",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)

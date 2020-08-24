@@ -34,20 +34,24 @@ LIPMTrajGenerator::LIPMTrajGenerator(
     const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
-        contact_points_in_each_state)
+        contact_points_in_each_state,
+    std::vector<int> left_right_support_fsm_states, bool use_com_at_touchdown)
     : plant_(plant),
+      world_(plant_.world_frame()),
       context_(context),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
-      world_(plant_.world_frame()) {
+      left_right_support_fsm_states_(left_right_support_fsm_states),
+      use_com_at_touchdown_(use_com_at_touchdown) {
   this->set_name("lipm_traj");
 
   // Checking vector dimension
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() ==
                contact_points_in_each_state.size());
+  DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
 
   // Input/Output Setup
   state_port_ =
@@ -68,6 +72,86 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   this->DeclareAbstractOutputPort("lipm_traj", traj_inst,
                                   &LIPMTrajGenerator::CalcTraj);
+
+  // State variables inside this controller block
+  DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);
+  // The swing foot position in the beginning of the swing phase
+  prev_com_pos_liftoff_idx_ = this->DeclareDiscreteState(3);
+  prev_com_vel_liftoff_idx_ = this->DeclareDiscreteState(3);
+  prev_stance_foot_pos_liftoff_idx_ = this->DeclareDiscreteState(3);
+  // The last state of FSM
+  prev_fsm_state_idx_ = this->DeclareDiscreteState(
+      -std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
+}
+
+EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  // Read in finite state machine
+  auto fsm_output =
+      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+  VectorXd fsm_state = fsm_output->get_value();
+
+  auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
+                            .get_mutable_value();
+
+  // Find fsm_state in left_right_support_fsm_states
+  auto it = find(left_right_support_fsm_states_.begin(),
+                 left_right_support_fsm_states_.end(), int(fsm_state(0)));
+  // swing phase if current state is in left_right_support_fsm_states_
+  bool is_single_support_phase = it != left_right_support_fsm_states_.end();
+
+  // when entering a new state which is in left_right_support_fsm_states
+  if ((fsm_state(0) != prev_fsm_state(0)) && is_single_support_phase) {
+    prev_fsm_state(0) = fsm_state(0);
+
+    // Read in current state and set context
+    const OutputVector<double>* robot_output =
+        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+    VectorXd q = robot_output->GetPositions();
+    multibody::SetPositionsIfNew<double>(plant_, q, context_);
+
+    // Get COM pos
+    discrete_state->get_mutable_vector(prev_com_pos_liftoff_idx_)
+            .get_mutable_value()
+        << plant_.CalcCenterOfMassPosition(*context_);
+
+    // Get COM vel
+    MatrixXd J(3, plant_.num_velocities());
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    discrete_state->get_mutable_vector(prev_com_vel_liftoff_idx_)
+            .get_mutable_value()
+        << J * robot_output->GetVelocities();
+
+    // Get stance foot pos at touchdown
+    // Find fsm_state in unordered_fsm_states_
+    auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
+                   int(fsm_state(0)));
+    int mode_index = std::distance(unordered_fsm_states_.begin(), it);
+    if (it == unordered_fsm_states_.end()) {
+      mode_index = 0;
+    }
+    // Stance foot position (Forward Kinematics)
+    // Take the average of all the points
+    Vector3d stance_foot_pos = Vector3d::Zero();
+    for (unsigned int j = 0;
+         j < contact_points_in_each_state_[mode_index].size(); j++) {
+      Vector3d position;
+      plant_.CalcPointsPositions(
+          *context_, contact_points_in_each_state_[mode_index][j].second,
+          contact_points_in_each_state_[mode_index][j].first, world_,
+          &position);
+      stance_foot_pos += position;
+    }
+    stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
+
+    discrete_state->get_mutable_vector(prev_stance_foot_pos_liftoff_idx_)
+            .get_mutable_value()
+        << stance_foot_pos;
+  }
+
+  return EventStatus::Succeeded();
 }
 
 void LIPMTrajGenerator::CalcTraj(
@@ -83,7 +167,7 @@ void LIPMTrajGenerator::CalcTraj(
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
   // Read in finite state machine switch time
-  VectorXd prev_event_time =
+  VectorXd prev_liftoff_time =
       this->EvalVectorInput(context, fsm_switch_time_port_)->get_value();
 
   // Find fsm_state in unordered_fsm_states_
@@ -101,49 +185,67 @@ void LIPMTrajGenerator::CalcTraj(
   auto current_time = static_cast<double>(timestamp);
 
   double end_time_of_this_fsm_state =
-      prev_event_time(0) + unordered_state_durations_[mode_index];
+      prev_liftoff_time(0) + unordered_state_durations_[mode_index];
   // Ensure "current_time < end_time_of_this_fsm_state" to avoid error in
   // creating trajectory.
   if ((end_time_of_this_fsm_state <= current_time + 0.001)) {
     end_time_of_this_fsm_state = current_time + 0.002;
   }
 
-  VectorXd q = robot_output->GetPositions();
-  multibody::SetPositionsIfNew<double>(plant_, q, context_);
+  Vector3d CoM;
+  Vector3d dCoM;
+  Vector3d stance_foot_pos;
+  if (use_com_at_touchdown_) {
+    CoM = context.get_discrete_state(prev_com_pos_liftoff_idx_).get_value();
+    dCoM = context.get_discrete_state(prev_com_vel_liftoff_idx_).get_value();
+    stance_foot_pos =
+        context.get_discrete_state(prev_stance_foot_pos_liftoff_idx_)
+            .get_value();
+  } else {
+    VectorXd q = robot_output->GetPositions();
+    multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
-  // Get center of mass position and velocity
-  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
-  MatrixXd J(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      *context_, JacobianWrtVariable::kV, world_, world_, &J);
-  Vector3d dCoM = J * v;
+    // Get center of mass position and velocity
+    CoM = plant_.CalcCenterOfMassPosition(*context_);
+    MatrixXd J(3, plant_.num_velocities());
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    dCoM = J * v;
 
-  // Stance foot position (Forward Kinematics)
-  // Take the average of all the points
-  Vector3d stance_foot_pos = Vector3d::Zero();
-  for (unsigned int j = 0; j < contact_points_in_each_state_[mode_index].size();
-       j++) {
-    Vector3d position;
-    plant_.CalcPointsPositions(
-        *context_, contact_points_in_each_state_[mode_index][j].second,
-        contact_points_in_each_state_[mode_index][j].first, world_, &position);
-    stance_foot_pos += position;
+    // Stance foot position (Forward Kinematics)
+    // Take the average of all the points
+    stance_foot_pos = Vector3d::Zero();
+    for (unsigned int j = 0;
+         j < contact_points_in_each_state_[mode_index].size(); j++) {
+      Vector3d position;
+      plant_.CalcPointsPositions(
+          *context_, contact_points_in_each_state_[mode_index][j].second,
+          contact_points_in_each_state_[mode_index][j].first, world_,
+          &position);
+      stance_foot_pos += position;
+    }
+    stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
   }
-  stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
   // Get CoM_wrt_foot for LIPM
-  const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
-  const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
-  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  const double dCoM_wrt_foot_x = dCoM(0);
-  const double dCoM_wrt_foot_y = dCoM(1);
-  // const double dCoM_wrt_foot_z = dCoM(2);
+  double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
+  double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
+  double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
+  double dCoM_wrt_foot_x = dCoM(0);
+  double dCoM_wrt_foot_y = dCoM(1);
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   // Note that the start time in T_waypoint_com is also used by
   // ExponentialPlusPiecewisePolynomial.
-  vector<double> T_waypoint_com = {current_time, end_time_of_this_fsm_state};
+  vector<double> T_waypoint_com(2);
+  if (use_com_at_touchdown_) {
+    T_waypoint_com[0] = prev_liftoff_time(0);
+    T_waypoint_com[1] = std::numeric_limits<double>::infinity();
+  } else {
+    T_waypoint_com[0] = current_time;
+    T_waypoint_com[1] = std::numeric_limits<double>::infinity();
+  }
 
   vector<MatrixXd> Y(T_waypoint_com.size(), MatrixXd::Zero(3, 1));
   Y[0](0, 0) = stance_foot_pos(0);
@@ -155,12 +257,8 @@ void LIPMTrajGenerator::CalcTraj(
   Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
   Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
 
-  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
-
   PiecewisePolynomial<double> pp_part =
-      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          T_waypoint_com, Y, Y_dot_start, Y_dot_end);
+      PiecewisePolynomial<double>::ZeroOrderHold(T_waypoint_com, Y);
 
   // Dynamics of LIPM
   // ddy = 9.81/CoM_wrt_foot_z*y, which has an analytical solution.

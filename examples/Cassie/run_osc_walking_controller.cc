@@ -321,6 +321,10 @@ int DoMain(int argc, char* argv[]) {
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
   }
+  vector<int> left_right_support_fsm_states = {left_stance_state,
+                                               right_stance_state};
+  vector<double> left_right_support_state_durations = {left_support_duration,
+                                                       right_support_duration};
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
@@ -336,6 +340,7 @@ int DoMain(int argc, char* argv[]) {
   // Create CoM trajectory generator
   // Note that we are tracking COM acceleration instead of position and velocity
   // because we construct the LIPM traj which starts from the current state
+  bool use_com_at_touchdown = true;
   double desired_com_height = 0.89;
   vector<int> unordered_fsm_states;
   vector<double> unordered_state_durations;
@@ -358,10 +363,11 @@ int DoMain(int argc, char* argv[]) {
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state);
+      contact_points_in_each_state, left_right_support_fsm_states,
+      use_com_at_touchdown);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
-  builder.Connect(event_time->get_output_port_event_time(),
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
                   lipm_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
@@ -391,11 +397,6 @@ int DoMain(int argc, char* argv[]) {
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
   double max_CoM_to_footstep_dist = 0.4;
-
-  vector<int> left_right_support_fsm_states = {left_stance_state,
-                                               right_stance_state};
-  vector<double> left_right_support_state_durations = {left_support_duration,
-                                                       right_support_duration};
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
   auto swing_ft_traj_generator =

@@ -39,7 +39,9 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-          contact_points_in_each_state);
+          contact_points_in_each_state,
+      std::vector<int> left_right_support_fsm_states,
+      bool use_com_at_touchdown);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -53,6 +55,10 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   }
 
  private:
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 
@@ -61,7 +67,13 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   int fsm_port_;
   int fsm_switch_time_port_;
 
+  int prev_com_pos_liftoff_idx_;
+  int prev_com_vel_liftoff_idx_;
+  int prev_stance_foot_pos_liftoff_idx_;
+  int prev_fsm_state_idx_;
+
   const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
   drake::systems::Context<double>* context_;
 
   double desired_com_height_;
@@ -73,7 +85,10 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   const std::vector<std::vector<std::pair<
       const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
       contact_points_in_each_state_;
-  const drake::multibody::BodyFrame<double>& world_;
+
+  std::vector<int> left_right_support_fsm_states_;
+
+  bool use_com_at_touchdown_;
 };
 
 }  // namespace systems

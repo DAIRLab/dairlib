@@ -482,7 +482,9 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
       W_pelvis_balance, plant_w_spr, plant_wo_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_balance_traj);
+  VectorXd pelvis_desired_quat(4);
+  pelvis_desired_quat << 1, 0, 0, 0;
+  osc->AddConstTrackingData(&pelvis_balance_traj, pelvis_desired_quat);
   // Pelvis rotation tracking (yaw)
   RotTaskSpaceTrackingData pelvis_heading_traj(
       "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
@@ -525,8 +527,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("lipm_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
-  builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));

@@ -72,7 +72,6 @@ CassieStateEstimator::CassieStateEstimator(
   n_q_ = plant.num_positions();
   n_v_ = plant.num_velocities();
   n_u_ = plant.num_actuators();
-  n_fb_vel_ = 2 * SPACE_DIM;
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
@@ -129,14 +128,6 @@ CassieStateEstimator::CassieStateEstimator(
         joint_selection_matrices[1](joint_name.second, joint_name.second) = 1;
       }
     }
-    //    joint_selection_matrices[0].block(0, 0, n_fb_vel_, n_fb_vel_) =
-    //        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
-    //    joint_selection_matrices[1].block(0, 0, n_fb_vel_, n_fb_vel_) =
-    //        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
-    //    std::cout << "left joint sel matrix: " << joint_selection_matrices[0]
-    //              << std::endl;
-    //    std::cout << "right joint sel matrix: " << joint_selection_matrices[1]
-    //              << std::endl;
 
     // states related to EKF
     // 1. estimated floating base state (pelvis)

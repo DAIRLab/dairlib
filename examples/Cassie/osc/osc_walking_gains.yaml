@@ -16,6 +16,7 @@ center_line_offset: 0.10
 final_foot_height: 0.02
 final_foot_velocity_z: 0.0
 mid_foot_height: 0.1
+lipm_height: 0.8
 
 CoMW:
   [  50,    0,     0,

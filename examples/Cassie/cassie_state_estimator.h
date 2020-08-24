@@ -155,7 +155,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int n_q_;
   int n_v_;
   int n_u_;
-  int n_fb_vel_; // number of joints
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator_;

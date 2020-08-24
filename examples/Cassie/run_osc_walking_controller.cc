@@ -104,6 +104,7 @@ struct OSCWalkingGains {
   double mid_foot_height;
   double final_foot_height;
   double final_foot_velocity_z;
+  double lipm_height;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -135,6 +136,8 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(footstep_offset));
     a->Visit(DRAKE_NVP(final_foot_height));
     a->Visit(DRAKE_NVP(final_foot_velocity_z));
+    // lipm heursitics
+    a->Visit(DRAKE_NVP(lipm_height));
   }
 };
 
@@ -336,7 +339,7 @@ int DoMain(int argc, char* argv[]) {
   // Create CoM trajectory generator
   // Note that we are tracking COM acceleration instead of position and velocity
   // because we construct the LIPM traj which starts from the current state
-  double desired_com_height = 0.89;
+  double desired_com_height = gains.lipm_height;
   vector<int> unordered_fsm_states;
   vector<double> unordered_state_durations;
   vector<vector<std::pair<const Vector3d, const Frame<double>&>>>

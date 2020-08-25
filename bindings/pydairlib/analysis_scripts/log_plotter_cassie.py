@@ -126,7 +126,8 @@ def plot_contact_est(log):
   t_gm_contact = []
   contact = []
   contact_filtered = []
-  gm_contact = []
+  l_gm_contact = []
+  r_gm_contact = []
   for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
     msg = log["CASSIE_CONTACT_DISPATCHER"][i]
     t_contact.append(msg.utime / 1e6)
@@ -137,19 +138,22 @@ def plot_contact_est(log):
     contact_filtered.append(list(msg.contact))
   for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
     msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_gm_contact.append(msg.utime / 1e6)
-    gm_contact.append(list(msg.contact))
+    t_gm_contact.append(msg.timestamp / 1e6)
+    l_gm_contact.append(list(msg.point_pair_contact_info[0].contact_force))
+    r_gm_contact.append(list(msg.point_pair_contact_info[1].contact_force))
   t_contact = np.array(t_contact)
   t_filtered_contact = np.array(t_filtered_contact)
   t_gm_contact = np.array(t_filtered_contact)
   contact = np.array(contact)
-  gm_contact = np.array(contact)
+  l_gm_contact = np.array(l_gm_contact)
+  r_gm_contact = np.array(r_gm_contact)
   contact_filtered = np.array(contact_filtered)
 
   plt.figure("Contact estimation")
-  plt.plot(t_contact, contact, '-')
+  plt.plot(t_contact, 75 * contact, '-')
   # plt.plot(t_filtered_contact, contact_filtered, '-')
-  plt.plot(t_gm_contact, gm_contact, '*')
+  plt.plot(t_gm_contact, l_gm_contact[:, 2], '-')
+  plt.plot(t_gm_contact, r_gm_contact[:, 2], '-')
   # plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt", "l_gm_contact", "r_gm_contact"])
   plt.legend(["l_contact", "r_contact", "l_gm_contact", "r_gm_contact"])
 

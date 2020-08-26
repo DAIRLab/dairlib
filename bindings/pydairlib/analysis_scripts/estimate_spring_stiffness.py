@@ -94,6 +94,7 @@ def main():
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
   # plt.show()
   sample_times = [46.0, 55.6, 65.0, 69.9, 74.8, 82.7, 83.15, 92.6]
+  # sample_times = [46.0]
 
   solve_for_k(x, t_x, u, t_u)
   solve_with_lambda(x, t_x, u, t_u)
@@ -136,19 +137,20 @@ def solve_for_k(x, t_x, u, t_u):
       row_start = i * (nv * n_samples_per_iter) + nv * j
       row_end = i * (nv * n_samples_per_iter) + nv * (j + 1)
 
-      A[row_start:row_end, 0] = M_inv[:, l_knee_spring_idx - 1] * x[x_ind, l_knee_spring_idx]
-      A[row_start:row_end, 1] = M_inv[:, r_knee_spring_idx - 1] * x[x_ind, r_knee_spring_idx]
-      A[row_start:row_end, 2] = M_inv[:, l_heel_spring_idx - 1] * x[x_ind, l_heel_spring_idx]
-      A[row_start:row_end, 3] = M_inv[:, r_heel_spring_idx - 1] * x[x_ind, r_heel_spring_idx]
+      lambda_i_wo_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv @ B @ u[u_ind] + J @ M_inv @ g)
+      lambda_i_w_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
+
+      A[l_knee_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
+      A[r_knee_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
+      A[l_heel_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
+      A[r_heel_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
 
       print("i: ", i)
       print("j: ", j)
-      lambda_i_wo_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv @ B @ u[u_ind] + J @ M_inv @ g)
-      lambda_i_w_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
-      A[row_start:row_end, 0] += (M_inv @ J.T @ lambda_i_w_k)[l_knee_spring_idx - 1] * x[x_ind, l_knee_spring_idx]
-      A[row_start:row_end, 1] += (M_inv @ J.T @ lambda_i_w_k)[r_knee_spring_idx - 1] * x[x_ind, r_knee_spring_idx]
-      A[row_start:row_end, 2] += (M_inv @ J.T @ lambda_i_w_k)[l_heel_spring_idx - 1] * x[x_ind, l_heel_spring_idx]
-      A[row_start:row_end, 3] += (M_inv @ J.T @ lambda_i_w_k)[r_heel_spring_idx - 1] * x[x_ind, r_heel_spring_idx]
+      A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_spring_idx - 1] * x[x_ind, l_knee_spring_idx]
+      A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_spring_idx - 1] * x[x_ind, r_knee_spring_idx]
+      A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_spring_idx - 1] * x[x_ind, l_heel_spring_idx]
+      A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_spring_idx - 1] * x[x_ind, r_heel_spring_idx]
       # A[row_start:row_end, 1] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, r_knee_spring_idx] * x[
       #   x_ind, r_knee_spring_idx]
       # A[row_start:row_end, 2] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_heel_spring_idx] * x[
@@ -175,8 +177,9 @@ def solve_for_k(x, t_x, u, t_u):
   print("K: ", K)
   print("lambdas: ", lambdas)
 
+
 def solve_with_lambda(x, t_x, u, t_u):
-  n_samples = 7
+  n_samples = len(sample_times)
   n_samples_per_iter = 10
   n_lambda_vars = 12
   # K is a diagonal matrix, do the springs act directly on the knees? If so the non-zero values will not
@@ -213,10 +216,10 @@ def solve_with_lambda(x, t_x, u, t_u):
       row_start = i * (nv * n_samples_per_iter) + nv * j
       row_end = i * (nv * n_samples_per_iter) + nv * (j + 1)
 
-      A[row_start:row_end, 0] = M_inv[:, l_knee_spring_idx] * x[x_ind, l_knee_spring_idx]
-      A[row_start:row_end, 1] = M_inv[:, r_knee_spring_idx] * x[x_ind, r_knee_spring_idx]
-      A[row_start:row_end, 2] = M_inv[:, l_heel_spring_idx] * x[x_ind, l_heel_spring_idx]
-      A[row_start:row_end, 3] = M_inv[:, l_knee_spring_idx] * x[x_ind, r_heel_spring_idx]
+      A[row_start:row_end, 0] = M_inv[:, l_knee_spring_idx - 1] * x[x_ind, l_knee_spring_idx]
+      A[row_start:row_end, 1] = M_inv[:, r_knee_spring_idx - 1] * x[x_ind, r_knee_spring_idx]
+      A[row_start:row_end, 2] = M_inv[:, l_heel_spring_idx - 1] * x[x_ind, l_heel_spring_idx]
+      A[row_start:row_end, 3] = M_inv[:, l_knee_spring_idx - 1] * x[x_ind, r_heel_spring_idx]
       A[row_start:row_end, n_k + i * n_lambda_vars: n_k + (i + 1) * n_lambda_vars] = M_inv @ J.T
       b[row_start:row_end] = M_inv @ (- B @ u[u_ind] - g)
 

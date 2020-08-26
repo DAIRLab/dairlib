@@ -60,6 +60,13 @@ group "3.cassie-robot" {
 }
 
 
+script "initialize_standing" {
+    stop group "3.cassie-robot";
+    start cmd "0.dispatcher-robot-out-real-robot";
+    start cmd "1.dispatcher-robot-in-real-robot";
+    start cmd "2.pd-controller-real-robot";
+}
+
 script "mujoco-osc-standing" {
     start cmd "2.cassie-mujoco";
     start cmd "3.dispatcher-robot-in";
@@ -144,4 +151,9 @@ script "switch from standing to walking" {
     start cmd "controller-switch-to-walking (3 phase walking)";
     wait ms 1000;
     stop cmd "3.osc-standing-real-robot";
+}
+
+script "switch_from_pd_to_osc_standing" {
+    restart cmd "0.dispatcher-robot-out-real-robot";
+    start cmd "3.osc-standing-real-robot";
 }

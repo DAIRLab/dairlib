@@ -27,6 +27,11 @@ def main():
   global pos_map
   global vel_map
   global act_map
+  global pos_map_spr_to_wo_spr
+  global vel_map_spr_to_wo_spr
+  global world
+  global plant_w_spr
+  global context_w_spr
 
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
@@ -36,10 +41,9 @@ def main():
       "examples/Cassie/urdf/cassie_v2.urdf"))
   Parser(plant_wo_spr).AddModelFromFile(
     FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
-  plant_w_spr.mutable_gravity_field().set_gravity_vector(
-    -9.81 * np.array([0, 0, 1]))
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf"))
   plant_w_spr.Finalize()
+  plant_wo_spr.Finalize()
 
   # relevant MBP parameters
   nq = plant_w_spr.num_positions()
@@ -50,7 +54,8 @@ def main():
   l_toe_frame = plant_w_spr.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant_w_spr.GetBodyByName("toe_right").body_frame()
   world = plant_w_spr.world_frame()
-  context = plant_w_spr.CreateDefaultContext()
+  context_w_spr = plant_w_spr.CreateDefaultContext()
+  context_wo_spr = plant_wo_spr.CreateDefaultContext()
 
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
@@ -59,8 +64,48 @@ def main():
   vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant_w_spr)
   act_map = pydairlib.multibody.makeNameToActuatorsMap(plant_w_spr)
 
+  pos_map_spr_to_wo_spr = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
+  vel_map_spr_to_wo_spr = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
   x_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant_w_spr)
   u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant_w_spr)
+
+  x_datatypes_wo_spr = pydairlib.multibody.createStateNameVectorFromMap(plant_wo_spr)
+  u_datatypes_wo_spr = pydairlib.multibody.createActuatorNameVectorFromMap(plant_wo_spr)
 
   filename = sys.argv[1]
   log = lcm.EventLog(filename, "r")
@@ -91,8 +136,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  t_start = 205
-  t_end = 208
+  # t_start = 205
+  # t_end = 208
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -101,25 +146,54 @@ def main():
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
 
-  ### All plotting scripts here
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  x_wo_spr = np.zeros((t_x.shape[0], plant_wo_spr.num_positions() + plant_wo_spr.num_velocities()))
+  for i in range(t_x.shape[0]):
+    x_wo_spr[i, :] = np.hstack((pos_map_spr_to_wo_spr @ x[i, :nq], vel_map_spr_to_wo_spr @ x[i, -nv:]))
 
-  plot_contact_est(full_log)
+  # yddot_w_spr = get_yddot(plant_w_spr, context_w_spr, t_x, x, l_toe_frame)
+  # yddot_wo_spr = get_yddot(plant_wo_spr, context_wo_spr, t_x, x_wo_spr, l_toe_frame)
+
+  # plt.plot(t_x, yddot_w_spr[:, 0])
+  # plt.plot(t_x, yddot_wo_spr[:, 0])
+  # plt.plot(t_u[t_u_slice], 500*fsm[t_u_slice])
+  # plt.legend(['0', '1', '2', '3', '4', '5', 'fsm'])
+  # plt.show()
+  ### All plotting scripts here
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+
   if False:
-    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
-                        front_contact_disp,
-                        world, t_x, t_slice, "left_", "_front")
-    plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
-                        front_contact_disp,
-                        world, t_x, t_slice, "right_", "_front")
-    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+    plot_contact_est(full_log)
+    # plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+    #                     front_contact_disp,
+    #                     world, t_x, t_slice, "left_", "_front")
+    # plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
+    #                     front_contact_disp,
+    #                     world, t_x, t_slice, "right_", "_front")
+    # plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+    #                     rear_contact_disp,
+    #                     world, t_x, t_slice, "left_", "_rear")
+    plot_feet_positions(plant_w_spr, context_w_spr, x, r_toe_frame,
                         rear_contact_disp,
-                        world, t_x, t_slice, "left_", "_rear")
-    plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
+                        world, t_x, t_slice, "right_", "_rear")
+
+    # plot_feet_positions(plant_wo_spr, context_wo_spr, x, l_toe_frame,
+    #                     front_contact_disp,
+    #                     world, t_x, t_slice, "left_", "_front")
+    # plot_feet_positions(plant_wo_spr, context_wo_spr, x, r_toe_frame,
+    #                     front_contact_disp,
+    #                     world, t_x, t_slice, "right_", "_front")
+    # plot_feet_positions(plant_wo_spr, context_wo_spr, x, l_toe_frame,
+    #                     rear_contact_disp,
+    #                     world, t_x, t_slice, "left_", "_rear")
+    plot_feet_positions(plant_wo_spr, context_wo_spr, x, r_toe_frame,
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  yddot_w_spr = get_yddot(plant_w_spr, context_w_spr, t_x, x, l_toe_frame)
+  yddot_wo_spr = get_yddot(plant_wo_spr, context_wo_spr, t_x, x_wo_spr, l_toe_frame)
+  plt.plot(t_x, yddot_w_spr[:, 0])
+  plt.plot(t_x, yddot_wo_spr[:, 0])
   plt.show()
 
 
@@ -156,6 +230,27 @@ def plot_contact_est(log):
   plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt",
               "l_gm_contact", "r_gm_contact"])
 
+
+def get_yddot(plant, context, t, x, toe_frame):
+  dim = 3
+  vdot = np.diff(x[:, -plant.num_velocities():], axis=0)
+  dt = np.diff(t, axis=0)
+  for i in range(plant.num_velocities()):
+    vdot[:, i] = vdot[:, i] / dt
+
+  yddot = np.zeros((t.shape[0], dim))
+  for i in range(dt.shape[0]):
+    plant.SetPositionsAndVelocities(context, x[i, :])
+    J = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, toe_frame, np.zeros(3), world, world)
+    JdotV = plant.CalcBiasTranslationalAcceleration(context, JacobianWrtVariable.kV, toe_frame, np.zeros(3),
+                                                           world, world)
+    yddot[i, :] = J@vdot[i, :] + JdotV[:, 0]
+  filter = 200
+  idx = int(filter / 2)
+  for i in range(idx, dt.shape[0] - idx):
+    yddot[i, :] = np.average(yddot[i - idx:i+idx, :])
+  return yddot
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   input_cost = np.zeros(t_u.shape[0])
@@ -196,52 +291,23 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   osc_traj3 = "swing_hip_yaw_traj"
 
   #
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
-  plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
-  #
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # #
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # #
   plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
-
-  # plot_osc(osc_debug, osc_traj1, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  # plot_osc(osc_debug, osc_traj1, 2, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  #
-  # plot_osc(osc_debug, osc_traj1, 0, "vel")
-  # plot_osc(osc_debug, osc_traj1, 1, "vel")
-  # plot_osc(osc_debug, osc_traj1, 2, "vel")
-
-  # plot_osc(osc_debug, osc_traj2, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  # plot_osc(osc_debug, osc_traj2, 2, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  #
-  # plot_osc(osc_debug, osc_traj2, 0, "vel")
-  # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
-
-  # plot_osc(osc_debug, osc_traj1, 0, "accel")
-  # plot_osc(osc_debug, osc_traj1, 1, "accel")
-  # plot_osc(osc_debug, osc_traj1, 2, "accel")
-
-  # plot_osc(osc_debug, osc_traj2, 0, "accel")
-  # plot_osc(osc_debug, osc_traj2, 1, "accel")
-  # plot_osc(osc_debug, osc_traj2, 2, "accel")
-
-  plot_osc(osc_debug, osc_traj3, 0, "accel")
-  plot_osc(osc_debug, osc_traj3, 0, "pos")
   plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj3, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  #
+  # plot_osc(osc_debug, osc_traj3, 0, "accel")
+  # plot_osc(osc_debug, osc_traj3, 0, "pos")
+  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj3, 0, "vel")
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
@@ -268,15 +334,20 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
                         t_x, t_x_slice, foot_type, contact_type):
   foot_x = np.zeros((6, t_x.size))
   for i in range(t_x.size):
-    plant.SetPositionsAndVelocities(context, x[i, :])
+    x_i = x[i, :]
+    if (plant.num_positions() != nq):
+      x_i = np.hstack((pos_map_spr_to_wo_spr @ x[i, :nq], vel_map_spr_to_wo_spr @ x[i, -nv:]))
+      # plant is fixed spring
+    plant.SetPositionsAndVelocities(context, x_i)
     foot_x[0:3, [i]] = plant.CalcPointsPositions(context, toe_frame,
                                                  contact_point, world)
     foot_x[3:6, i] = plant.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable.kV, toe_frame, contact_point,
       world,
-      world) @ x[i, -nv:]
+      world) @ x_i[-plant.num_velocities():]
   fig = plt.figure('foot pos: ' + filename)
-  state_indices = slice(4, 5)
+  # state_indices = slice(0, 3)
+  state_indices = slice(3, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]

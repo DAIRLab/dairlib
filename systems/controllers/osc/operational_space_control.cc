@@ -1,7 +1,10 @@
 #include "systems/controllers/osc/operational_space_control.h"
+
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
+
 #include "drake/common/text_logging.h"
 
 using std::cout;
@@ -33,11 +36,13 @@ using drake::solvers::Solve;
 namespace dairlib::systems::controllers {
 
 using multibody::makeNameToVelocitiesMap;
-using multibody::WorldPointEvaluator;
 using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
+using multibody::WorldPointEvaluator;
 
 int kSpaceDim = OscTrackingData::kSpaceDim;
+
+Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_w_spr,
@@ -125,6 +130,10 @@ OperationalSpaceControl::OperationalSpaceControl(
     DRAKE_DEMAND(successfully_added);
   }
 
+  std::cout << map_position_from_spring_to_no_spring_.format(CleanFmt)
+            << std::endl;
+  std::cout << map_velocity_from_spring_to_no_spring_.format(CleanFmt)
+            << std::endl;
   // Get input limits
   VectorXd u_min(n_u_);
   VectorXd u_max(n_u_);
@@ -248,8 +257,9 @@ void OperationalSpaceControl::Build() {
   prog_ = std::make_unique<MathematicalProgram>();
 
   // Size of decision variable
-  n_h_ = (kinematic_evaluators_ == nullptr)?
-      0 : kinematic_evaluators_->count_full();
+  n_h_ = (kinematic_evaluators_ == nullptr)
+             ? 0
+             : kinematic_evaluators_->count_full();
   n_c_ = kSpaceDim * all_contacts_.size();
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
@@ -278,33 +288,37 @@ void OperationalSpaceControl::Build() {
   // Add constraints
   // 1. Dynamics constraint
   dynamics_constraint_ =
-      prog_->AddLinearEqualityConstraint(
-               MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
-               VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
-           .evaluator()
-           .get();
+      prog_
+          ->AddLinearEqualityConstraint(
+              MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
+              VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
+          .evaluator()
+          .get();
   // 2. Holonomic constraint
   holonomic_constraint_ =
-      prog_->AddLinearEqualityConstraint(MatrixXd::Zero(n_h_, n_v_),
-                                         VectorXd::Zero(n_h_), dv_)
-           .evaluator()
-           .get();
+      prog_
+          ->AddLinearEqualityConstraint(MatrixXd::Zero(n_h_, n_v_),
+                                        VectorXd::Zero(n_h_), dv_)
+          .evaluator()
+          .get();
   // 3. Contact constraint
   if (all_contacts_.size() > 0) {
     if (w_soft_constraint_ <= 0) {
       contact_constraints_ =
-          prog_->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_active_, n_v_),
-                                             VectorXd::Zero(n_c_active_), dv_)
-               .evaluator()
-               .get();
+          prog_
+              ->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_active_, n_v_),
+                                            VectorXd::Zero(n_c_active_), dv_)
+              .evaluator()
+              .get();
     } else {
       // Relaxed version:
       contact_constraints_ =
-          prog_->AddLinearEqualityConstraint(
-                   MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_),
-                   VectorXd::Zero(n_c_active_), {dv_, epsilon_})
-               .evaluator()
-               .get();
+          prog_
+              ->AddLinearEqualityConstraint(
+                  MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_),
+                  VectorXd::Zero(n_c_active_), {dv_, epsilon_})
+              .evaluator()
+              .get();
     }
   }
   // 4. Friction constraint (approximated friction cone)
@@ -317,39 +331,44 @@ void OperationalSpaceControl::Build() {
     one << 1;
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_neg1.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                      lambda_c_.segment(kSpaceDim * j + 0, 1)})
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(mu_neg1.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                     lambda_c_.segment(kSpaceDim * j + 0, 1)})
+              .evaluator()
+              .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_1.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                      lambda_c_.segment(kSpaceDim * j + 0, 1)})
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(mu_1.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                     lambda_c_.segment(kSpaceDim * j + 0, 1)})
+              .evaluator()
+              .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_neg1.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                      lambda_c_.segment(kSpaceDim * j + 1, 1)})
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(mu_neg1.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                     lambda_c_.segment(kSpaceDim * j + 1, 1)})
+              .evaluator()
+              .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_1.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                      lambda_c_.segment(kSpaceDim * j + 1, 1)})
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(mu_1.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                     lambda_c_.segment(kSpaceDim * j + 1, 1)})
+              .evaluator()
+              .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(one.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     lambda_c_.segment(kSpaceDim * j + 2, 1))
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(one.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    lambda_c_.segment(kSpaceDim * j + 2, 1))
+              .evaluator()
+              .get());
     }
   }
   // 5. Input constraint
@@ -376,10 +395,11 @@ void OperationalSpaceControl::Build() {
   }
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    tracking_cost_.push_back(prog_->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
-                                                     VectorXd::Zero(n_v_), dv_)
-                                  .evaluator()
-                                  .get());
+    tracking_cost_.push_back(prog_
+                                 ->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
+                                                    VectorXd::Zero(n_v_), dv_)
+                                 .evaluator()
+                                 .get());
   }
 }
 
@@ -425,9 +445,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Update context
-  SetPositionsIfNew<double>(plant_w_spr_,
-                            x_w_spr.head(plant_w_spr_.num_positions()),
-                            context_w_spr_);
+  SetPositionsIfNew<double>(
+      plant_w_spr_, x_w_spr.head(plant_w_spr_.num_positions()), context_w_spr_);
   SetVelocitiesIfNew<double>(plant_w_spr_,
                              x_w_spr.tail(plant_w_spr_.num_velocities()),
                              context_w_spr_);

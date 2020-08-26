@@ -90,7 +90,7 @@ int test_initial_guess(int iter, int sample, int robot) {
   int total_sample_num = task_gen->total_sample_number();
   // create task
   Task task(task_gen->names());
-  task.set(task_gen->NewTask(dir,iter,sample));
+  task.set(task_gen->NewTask(dir,sample));
   // create rom
   MonomialFeatures basis(1,2,{});
   DummyRom dummy_rom(basis, basis);
@@ -134,8 +134,10 @@ int test_initial_guess(int iter, int sample, int robot) {
       writeCSV(dir + prefix + string("w.csv"), w);
     }
   }
+  ExpansionTasksGenerator task_gen_expansion =
+      ExpansionTasksGenerator(0,false,task_gen->total_sample_number());
   string initial_file = SetInitialGuessByInterpolation(
-      dir, iter, sample, task_gen, task, *rom);
+      dir, iter, sample, task_gen, task, *rom,task_gen_expansion);
   return 1;
 }
 

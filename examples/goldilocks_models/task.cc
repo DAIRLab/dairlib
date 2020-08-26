@@ -270,7 +270,7 @@ void MediateTasksGenerator::set_mediate_samples(string dir,int iter,
     prefix = to_string(iter)+ string("_") + to_string(sample_num);
     int is_success = (readCSV(dir + prefix +
         string("_is_success.csv")))(0, 0);
-    if(is_success==0)
+    if(is_success!=1)
     {
       sample_index_to_help_ = sample_num;
       break;
@@ -278,8 +278,8 @@ void MediateTasksGenerator::set_mediate_samples(string dir,int iter,
   }
   prefix = to_string(iter) + string("_") + to_string(sample_index_to_help_);
   failed_task = readCSV(dir + prefix +string("_task.csv"));
-  // tasks are uniformly chosen from the range of closest successful sample
-  // to failed sample
+  // tasks are uniformly chosen within the range starting from the closest
+  // successful sample to the failed sample
   int total_sample_number = task_gen->total_sample_number();
   if(choose_sample_from_iter_to_help_){
     // the closest successful sample is chosen from the normal tasks

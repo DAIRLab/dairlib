@@ -199,14 +199,14 @@ void setCostWeight(double* Q, double* R, double* all_cost_scale,
 
 void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
-                     bool rerun_current_iteration, bool has_been_all_success,
+                     bool rerun_current_sample, bool has_been_all_success,
                      bool step_size_shrinked_last_loop, int n_rerun,
                      int sample_idx_to_help, bool is_debug, const string& dir,
                      const TasksGenerator* task_gen, const Task& task,
                      const ReducedOrderModel& rom, bool non_grid_task,
                      const MediateTasksGenerator& task_gen_mediate,
                      const ExpansionTasksGenerator& task_gen_expansion) {
-  if (is_get_nominal && !rerun_current_iteration) {
+  if (is_get_nominal && !rerun_current_sample) {
     *init_file = nominal_traj_init_file;
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
     // the step size was shrink in previous iter and it's not a local rerun
@@ -218,7 +218,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
     }
-  }else if (rerun_current_iteration) {
+  }else if (rerun_current_sample) {
     if(iter==1){
       //currently extend the task space
       *init_file = to_string(iter) + "_" + to_string(
@@ -1911,7 +1911,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   for (iter = iter_start; iter <= max_outer_iter; iter++) {
     //different number of samples for mediate iteration
-    if(task_gen_mediate.start_finding_mediate_sample()){
+    if(task_gen_mediate.currently_find_mediate_sample()){
       N_sample = task_gen_mediate.total_sample_number();
     }
     else{
@@ -2053,11 +2053,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
               // rerun the target samples
               // we couldn't use the variable previous_task, because
               // previous_task here corresponds to the mediate samples
-              Eigen::VectorXd target_task_vectorxd = readCSV(dir + prefix +
+              Eigen::VectorXd task_vectorxd = readCSV(dir + prefix +
                   string("task.csv"));
               // set the task
-              task.set(CopyVectorXdToStdVector(target_task_vectorxd));
-              previous_task[sample_idx] = target_task_vectorxd;
+              task.set(CopyVectorXdToStdVector(task_vectorxd));
+              previous_task[sample_idx] = task_vectorxd;
             }
             else{
               task.set(task_gen_mediate.NewTask(dir,iter,sample_idx));
@@ -2133,7 +2133,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
           //  solution?
           // Some inner loop setting
           inner_loop_setting.n_node = n_node_vec[sample_idx];
-          inner_loop_setting.prefix = prefix;
           inner_loop_setting.init_file = init_file_pass_in;
 
           //set the flag of using ipopt to true
@@ -2175,6 +2174,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   (task_gen_expansion.expansion_sample_index(sample_idx))+"_";
             }
           }
+          inner_loop_setting.prefix = prefix;
 
           // Trajectory optimization with fixed model parameters
           // string string_to_be_print = "Adding sample #" +

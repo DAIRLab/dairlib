@@ -42,8 +42,6 @@ using multibody::WorldPointEvaluator;
 
 int kSpaceDim = OscTrackingData::kSpaceDim;
 
-Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr,
@@ -130,10 +128,6 @@ OperationalSpaceControl::OperationalSpaceControl(
     DRAKE_DEMAND(successfully_added);
   }
 
-  std::cout << map_position_from_spring_to_no_spring_.format(CleanFmt)
-            << std::endl;
-  std::cout << map_velocity_from_spring_to_no_spring_.format(CleanFmt)
-            << std::endl;
   // Get input limits
   VectorXd u_min(n_u_);
   VectorXd u_max(n_u_);

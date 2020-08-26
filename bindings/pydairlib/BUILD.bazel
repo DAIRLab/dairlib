@@ -58,6 +58,22 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "estimate_spring_stiffness",
+    srcs = ["analysis_scripts/estimate_spring_stiffness.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        ":process_lcm_log_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

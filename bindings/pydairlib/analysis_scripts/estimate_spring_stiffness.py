@@ -82,8 +82,8 @@ def main():
   osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map)
 
   # Will need to manually select the data range
-  t_start = t_x[10]
-  t_end = t_x[-10]
+  t_start = t_x[100]
+  t_end = t_x[-100]
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
   t_slice = slice(t_start_idx, t_end_idx)
@@ -140,27 +140,45 @@ def solve_for_k(x, t_x, u, t_u):
       lambda_i_wo_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv @ B @ u[u_ind] + J @ M_inv @ g)
       lambda_i_w_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
 
-      A[l_knee_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
-      A[r_knee_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
-      A[l_heel_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
-      A[r_heel_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
+      """ 
+      Manual indexing version
+      """
 
-      print("i: ", i)
-      print("j: ", j)
-      A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_spring_idx - 1] * x[x_ind, l_knee_spring_idx]
-      A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_spring_idx - 1] * x[x_ind, r_knee_spring_idx]
-      A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_spring_idx - 1] * x[x_ind, l_heel_spring_idx]
-      A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_spring_idx - 1] * x[x_ind, r_heel_spring_idx]
-      # A[row_start:row_end, 1] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, r_knee_spring_idx] * x[
-      #   x_ind, r_knee_spring_idx]
-      # A[row_start:row_end, 2] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_heel_spring_idx] * x[
-      #   x_ind, l_heel_spring_idx]
-      # A[row_start:row_end, 3] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_knee_spring_idx] * x[
-      #   x_ind, r_heel_spring_idx]
-      b[row_start:row_end] = M_inv @ (
-          - B @ u[u_ind] - g - J.T @ lambda_i_wo_k)
-      # import pdb;
-      # pdb.set_trace()
+      # A[row_start + l_knee_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
+      # A[row_start + r_knee_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
+      # A[row_start + l_heel_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
+      # A[row_start + r_heel_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
+      #
+      # print("i: ", i)
+      # print("j: ", j)
+      # A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_spring_idx - 1] * x[x_ind, l_knee_spring_idx]
+      # A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_spring_idx - 1] * x[x_ind, r_knee_spring_idx]
+      # A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_spring_idx - 1] * x[x_ind, l_heel_spring_idx]
+      # A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_spring_idx - 1] * x[x_ind, r_heel_spring_idx]
+      # # A[row_start:row_end, 1] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, r_knee_spring_idx] * x[
+      # #   x_ind, r_knee_spring_idx]
+      # # A[row_start:row_end, 2] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_heel_spring_idx] * x[
+      # #   x_ind, l_heel_spring_idx]
+      # # A[row_start:row_end, 3] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_knee_spring_idx] * x[
+      # #   x_ind, r_heel_spring_idx]
+      # b[row_start:row_end] = (- B @ u[u_ind] - g - J.T @ lambda_i_wo_k)
+      # # import pdb;
+      # # pdb.set_trace()
+
+      """ 
+      Matrix version
+      """
+
+      I_nv = np.eye(nv, nv)
+      Q_tilde = np.zeros((nv, n_k))
+      Q_tilde[l_knee_spring_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
+      Q_tilde[r_knee_spring_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
+      Q_tilde[l_heel_spring_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
+      Q_tilde[r_heel_spring_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
+      A[row_start:row_end, :] = (I_nv + J.T @ lambda_i_w_k) @ Q_tilde
+      b[row_start:row_end] = - B @ u[u_ind] - g - J.T @ lambda_i_wo_k
+
+
 
   x = prog.NewContinuousVariables(nvars, "sigma")
 

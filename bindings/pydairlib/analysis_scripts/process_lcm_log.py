@@ -107,7 +107,7 @@ def process_log(log, pos_map, vel_map, act_map):
       u_meas.append(u_temp)
       t_x.append(msg.utime / 1e6)
     # if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
-    if event.channel == "CASSIE_INPUT" or event.channel == "OSC_WALKING":
+    if event.channel == "CASSIE_INPUT" or event.channel == "OSC_STANDING":
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_u.append(msg.utime / 1e6)

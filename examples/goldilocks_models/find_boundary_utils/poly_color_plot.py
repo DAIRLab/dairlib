@@ -75,7 +75,6 @@ def polycolorplot(x1, y1, z1, x2, y2, z2):
             i = i+1
 
 
-
 def extractadjacentline(dir):
     adj_direction = np.zeros([n_direction])
     for i in range(n_direction):
@@ -164,7 +163,14 @@ def generateplot(dir1, dir2, adj_index):
         # process data on adjacent line
         x2, y2, z2 = process_data_from_direction(adj_index[i], dir1, dir2)
         # plot
-        polycolorplot(x1, y1, z1, x2, y2, z2)
+        # continuous color map
+        fig, ax = plt.subplots()
+        surf = ax.tricontourf(x, y, z)
+        fig.colorbar(surf, shrink=0.5, aspect=6)
+        ax.set_xlabel('Stride length')
+        ax.set_ylabel('Turning rate')
+        ax.set_title('cost landscape')
+        # polycolorplot(x1, y1, z1, x2, y2, z2)
 
 
 fig1 = plt.figure(num=1, figsize=(6.4, 4.8))
@@ -173,26 +179,6 @@ adjacent = extractadjacentline(dir1)
 print(adjacent)
 generateplot(dir1, dir2, adjacent)
 plt.show()
-
-[0,-1,-0.5,0.5,1]
-[0,-1,-0.5,0.5,1]
-
-0,-1
-0,1
--1,0
--1,-1
--1,-0.5
--1,0.5
--1,1
--0.5,-1
--0.5,1
-0.5,0
-0.5,-1
-0.5,-0.5
-0.5,0.5
-0.5,1
-1,-0.5
-1,0.5
 
 
 

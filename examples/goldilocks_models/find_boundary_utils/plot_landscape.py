@@ -3,7 +3,8 @@ import numpy as np
 import os
 
 robot_option = 1
-file_dir = '/Users/jason-hu/'
+file_dir = "/home/jianshu/workspace/dairlib_data/goldilocks_models/find_boundary/"
+# file_dir = "../dairlib_data/goldilocks_models/find_boundary/"
 
 # optimization setting
 # large range
@@ -21,49 +22,16 @@ plot_small_range = 0
 
 if robot_option == 0:
     robot = 'five_link/'
-    dir1 = file_dir+'dairlib_data/find_boundary/' + robot + 'robot_' + str(robot_option) + \
-           '_nominal/'
-    dir2 = file_dir+'dairlib_data/find_boundary/' + robot + 'robot_' + str(robot_option) + \
-           '_initial_model/'
-    dir3 = file_dir+'dairlib_data/find_boundary/' + robot + 'robot_' + str(robot_option) + \
-           '_large_task_space_iter1000/'
-    dir4 = file_dir+'dairlib_data/find_boundary/' + robot + 'robot_' + str(robot_option) + \
-           '_large_task_space_iter2000/'
-    dir5 = file_dir+'dairlib_data/find_boundary/' + robot + 'robot_' + str(robot_option) + \
-           '_large_task_space_iter3000_with_scaling/'
-    dir6 = file_dir+'dairlib_data/find_boundary/' + robot + 'robot_' + str(robot_option) + \
-           '_small_task_space_iter500/'
-    dir7 = file_dir+'dairlib_data/find_boundary/' + robot + 'robot_' + str(robot_option) + \
-           '_small_task_space_iter1000/'
-    dir8 = file_dir+'dairlib_data/find_boundary/' + robot + 'robot_' + str(robot_option) + \
-           '_small_task_space_iter2000_with_scaling/'
+    dir = file_dir + robot + 'robot_' + str(robot_option) + '_nominal/'
 if robot_option == 1:
     robot = 'cassie/'
-    dir1 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-           '_2d_nominal/'
-    dir2 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-           '_2d_initial_model/'
-    dir3 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-           '_small_iter300/'
-    dir4 = file_dir + 'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-           '_large_iter150/'
-    dir5 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-           '_2d_initial_model/'
-    dir6 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-           '_small_iter200/'
-    dir7 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-           '_large_iter100/'
-    dir8 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/4D_task_space/' + 'robot_' + str(robot_option) + \
-           '_grid_iter50_sl_tr/'
-    dir9 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/4D_task_space/' + 'robot_' + str(robot_option) + \
-           '_nominal_sl_tr/'
+    dir = file_dir + robot + '2D_rom/4D_task_space/' + 'robot_' + str(robot_option) + '_grid_iter50_sl_tr/'
 
 
 i = 0
 x = []
 y = []
 z = []
-dir = dir9
 while os.path.isfile(dir+str(i)+'_'+str(0)+'_task.csv'):
     gamma = np.genfromtxt(dir + str(i) + '_' + str(0) + '_task.csv', delimiter=",")
     cost = float(np.genfromtxt(dir + str(i) + '_' + str(0) + '_c.csv', delimiter=","))
@@ -79,6 +47,9 @@ fig, ax = plt.subplots()
 print(np.shape(x))
 print(np.shape(y))
 print(np.shape(z))
+
+# scatter
+# surf = ax.scatter(x, y, z)
 
 # continuous color map
 surf = ax.tricontourf(x, y, z)

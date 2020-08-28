@@ -65,7 +65,7 @@ def process_data_from_direction(i, dir1):
 
 def generateplot(dir1, adj_index):
     for i in range(n_direction):
-    # process data on one line
+        # process data on one line
         x1, y1, z1 = process_data_from_direction(i, dir1)
         # process data on adjacent line
         x2, y2, z2 = process_data_from_direction(adj_index[i], dir1)
@@ -73,7 +73,7 @@ def generateplot(dir1, adj_index):
         x = x1+x2
         y = y1+y2
         z = z1+z2
-        surf = ax.tricontourf(x, y, z)
+        surf = ax.tricontourf(x, y, z, levels=[0, 4, 8, 12, 16, 20, 24, 28, 32])
     fig.colorbar(surf, shrink=0.5, aspect=6)
 
 

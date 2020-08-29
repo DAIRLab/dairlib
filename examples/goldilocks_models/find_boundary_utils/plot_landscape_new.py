@@ -17,19 +17,19 @@ n_direction = 16
 
 # Note: we need to decide which column of the searching direction to use
 # Eg. column index 0 corresponds to stride length
-task = ['Stride length', 'Ground incline', 'Velocity', 'Turning rate']
-dim1 = 0
-dim2 = 3
+task_name = ['Stride length', 'Ground incline', 'Velocity', 'Turning rate']
+task_1_idx = 0
+task_2_idx = 3
 
 def ExtractAdjacentLine(dir):
     adj_direction = np.zeros([n_direction]).astype(int)
     for i in range(n_direction):
         min_sin = 1
         line1 = np.genfromtxt(dir + str(i + 1) + '_searching_direction.csv', delimiter=",")
-        vec1 = np.array([line1[dim1], line1[dim2]])
+        vec1 = np.array([line1[task_1_idx], line1[task_2_idx]])
         for j in range(n_direction):
             line2 = np.genfromtxt(dir + str(j+1) + '_searching_direction.csv', delimiter=",")
-            vec2 = np.array([line2[dim1], line2[dim2]])
+            vec2 = np.array([line2[task_1_idx], line2[task_2_idx]])
             sin = np.cross(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
             cos = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
             # restrict the direction
@@ -47,8 +47,8 @@ def process_data_from_direction(i, dir1):
 
     # need to add central point on the points list
     task0 = np.genfromtxt(dir1 + str(0) + '_' + str(0) + '_task.csv', delimiter=",")
-    x = [task0[dim1]]
-    y = [task0[dim2]]
+    x = [task0[task_1_idx]]
+    y = [task0[task_2_idx]]
     z = [float(np.genfromtxt(dir1 + str(0) + '_' + str(0) + '_c.csv', delimiter=","))]
 
     # process the points on the line
@@ -56,8 +56,8 @@ def process_data_from_direction(i, dir1):
         gamma = np.genfromtxt(dir1 + str(int(data_dir[i, 0])) + '_' + str(0) + '_task.csv', delimiter=",")
         cost = data_dir[i, 1]
         if cost < 35:
-            x.append(gamma[dim1])
-            y.append(gamma[dim2])
+            x.append(gamma[task_1_idx])
+            y.append(gamma[task_2_idx])
             z.append(cost)
 
     return x,y,z
@@ -78,8 +78,8 @@ def generateplot(dir1, adj_index):
 
 
 fig, ax = plt.subplots()
-ax.set_xlabel(task[dim1])
-ax.set_ylabel(task[dim2])
+ax.set_xlabel(task_name[task_1_idx])
+ax.set_ylabel(task_name[task_2_idx])
 ax.set_title('cost landscape')
 adjacent = ExtractAdjacentLine(dir1)
 print(adjacent)

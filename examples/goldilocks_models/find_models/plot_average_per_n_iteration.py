@@ -23,6 +23,7 @@ else:
 # plot setting
 rom1 = '1D_rom/'
 rom2 = '2D_rom/'
+rom3 = '3D_LIP/'
 task_space1 = '2D_task_space/'
 task_space2 = '3D_task_space/'
 task_space5 = '4D_task_space/'
@@ -47,7 +48,7 @@ file_dir = "../dairlib_data/goldilocks_models/find_models/"
 file_dir2 = "../dairlib_data/goldilocks_models/find_boundary/"
 
 
-dir1 = file_dir+robot+rom2+task_space5+'robot_' + str(robot_option)+'_range_2_iter400/'
+dir1 = file_dir+robot+rom2+task_space5+'robot_' + str(robot_option)+'_range_2_iter90/'
 label1 = 'optimizing 2D ROM over large task space'
 line_type1 = 'k-'
 
@@ -103,7 +104,7 @@ def average_cost_several_iter(iter_start, iter_end, n, dir, line_type, label_nam
     for i in range(iter_start, iter_end+1):
         cost = []
         j = 0
-        while os.path.isfile(dir+str(i)+'_'+str(j)+'_'+item+'.csv'):
+        whilegit  os.path.isfile(dir+str(i)+'_'+str(j)+'_'+item+'.csv'):
             if plot_successful_sample:
                 if float(np.genfromtxt(dir+str(i)+'_'+str(j)+'_is_success.csv', delimiter=","))==1:
                     if float(np.genfromtxt(dir+str(i)+'_'+str(j)+'_'+item+'.csv', delimiter=","))<15:
@@ -128,7 +129,7 @@ def average_cost_several_iter(iter_start, iter_end, n, dir, line_type, label_nam
 
 fig1 = plt.figure(num=1, figsize=(6.4, 4.8))
 ax1 = fig1.gca()
-average_cost_several_iter(1, 400, 1, dir1, line_type1, label1, normalized_cost, use_landscape_for_nominal, dir1)
+average_cost_several_iter(2, 89, 1, dir1, line_type1, label1, normalized_cost, use_landscape_for_nominal, dir1)
 # average_cost_several_iter(1, 2000, 20, dir2, line_type2, label2, normalized_cost, use_landscape_for_nominal, dir2)
 # average_cost_several_iter(1, 100, 10, dir3, line_type3, label3, normalized_cost, use_landscape_for_nominal, dir_landscape)
 plt.xlabel('Iteration')

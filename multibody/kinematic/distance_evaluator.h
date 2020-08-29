@@ -18,26 +18,27 @@ class DistanceEvaluator : public KinematicEvaluator<T> {
  public:
   /// Constructor for DistanceEvaluator
   /// @param plant
-  /// @param pt_A 
-  /// @param frame_A 
+  /// @param pt_A
+  /// @param frame_A
   /// @param pt_B
-  /// @param frame_B 
+  /// @param frame_B
 
-  DistanceEvaluator(
-      const drake::multibody::MultibodyPlant<T>& plant,
-      const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
-      const Eigen::Vector3d pt_B, const drake::multibody::Frame<T>& frame_B,
-      double distance);
+  DistanceEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
+                    const Eigen::Vector3d pt_A,
+                    const drake::multibody::Frame<T>& frame_A,
+                    const Eigen::Vector3d pt_B,
+                    const drake::multibody::Frame<T>& frame_B, double distance);
 
   drake::VectorX<T> EvalFull(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const override;
 
-  drake::MatrixX<T> EvalFullJacobian(
-      const drake::systems::Context<T>& context) const;
+  void EvalFullJacobian(const drake::systems::Context<T>& context,
+                        drake::EigenPtr<drake::MatrixX<T>> J) const override;
 
   drake::VectorX<T> EvalFullJacobianDotTimesV(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const override;
 
+  using KinematicEvaluator<T>::EvalFullJacobian;
   using KinematicEvaluator<T>::plant;
 
  private:

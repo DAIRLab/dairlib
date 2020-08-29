@@ -38,7 +38,7 @@ namespace goldilocks_models {
 
 DEFINE_int32(iter_start, 1, "The iter #");
 DEFINE_int32(iter_end, -1, "The iter #");
-DEFINE_int32(batch, 0, "The batch #");
+DEFINE_int32(sample, 0, "The sample #");
 DEFINE_double(realtime_factor, 1, "Rate of which the traj is played back");
 DEFINE_int32(n_step, 3, "# of foot steps");
 
@@ -81,7 +81,7 @@ void visualizeGait(int argc, char* argv[]) {
   for (int iter = iter_start; iter <= iter_end; iter++) {
     // Read in ground incline
     double ground_incline = readCSV(
-        directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
+        directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
         string("_task.csv"))(ground_incline_idx, 0);
 
     // Read in trajecotry
@@ -90,20 +90,20 @@ void visualizeGait(int argc, char* argv[]) {
     MatrixXd statedot_mat;
     if (!FLAGS_construct_cubic) {
       time_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
+          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
           string("_time_at_knots.csv"));
       state_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
+          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
           string("_state_at_knots.csv"));
     } else {
       time_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
+          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
           string("_t_cubic_spline.csv"));
       state_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
+          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
           string("_x_cubic_spline.csv"));
       statedot_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
+          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
           string("_xdot_cubic_spline.csv"));
     }
 

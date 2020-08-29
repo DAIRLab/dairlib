@@ -3,11 +3,12 @@
 #include <string>
 #include <vector>
 #include <Eigen/Dense>
-#include <drake/multibody/plant/multibody_plant.h>
 #include <drake/common/trajectories/trajectory.h>
+#include <drake/multibody/plant/multibody_plant.h>
 
-#include "systems/framework/output_vector.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -16,9 +17,9 @@ namespace controllers {
 /// OscTrackingData is a virtual class
 
 /// Input of the constructor:
-/// - name of the trajectory
-/// - dimension of the trajectory
-/// - gains of the PD controller
+/// - dimension of the trajectory (need to specify both position and velocity
+///   dimension, because they are different in the case of quaternion)
+/// - gains of PD controller
 /// - cost weight
 /// - MBP (full model)
 /// - MBP (model without spring)
@@ -33,7 +34,8 @@ namespace controllers {
 /// with which the controller can track the trajectory the best.
 /// In this class, we let
 ///   - y_ (ydot_) be the position (velocity) output of the robot
-///   - y_des_ (ydot_des_) be the desired value of the position (velocity) output
+///   - y_des_ (ydot_des_) be the desired value of the position (velocity)
+///   output
 ///   - error_y_ (error_ydot_) be the error between the desired and the real
 ///     value of the position (velocity) output
 /// Additionally, we let yddot_des_ be the desired acceleration for the output
@@ -44,7 +46,7 @@ namespace controllers {
 /// the rotational acceleration.
 
 /// In OSC, the cost function used for tracking a trajectory is
-///   (J_*dv + JdotV - yddot_command)^T * W_ * (J_*dv + JdotV - yddot_command) / 2,
+///   (J_*dv+JdotV - yddot_command)^T * W_ * (J_*dv+JdotV - yddot_command) / 2,
 ///   where
 ///   dv is the decision variable of QP, and
 ///   yddot_command = K_p_ * error_y_ + K_d_ * error_ydot_ + yddot_des_ with
@@ -66,12 +68,15 @@ namespace controllers {
 
 class OscTrackingData {
  public:
-  OscTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
-      bool use_only_plant_wo_spr_in_evaluation = false);
+  static constexpr int kSpaceDim = 3;
+  static constexpr int kQuaternionDim = 4;
+
+  OscTrackingData(const std::string& name, int n_y, int n_ydot,
+                  const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
+                  const Eigen::MatrixXd& W,
+                  const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+                  bool use_only_plant_wo_spr_in_evaluation = false);
 
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_state_
@@ -87,38 +92,42 @@ class OscTrackingData {
   //  - `t`, current time
   //  - `finite_state_machine_state`, current finite state machine state
   bool Update(const Eigen::VectorXd& x_w_spr,
-              drake::systems::Context<double>& context_w_spr,
+              const drake::systems::Context<double>& context_w_spr,
               const Eigen::VectorXd& x_wo_spr,
-              drake::systems::Context<double>& context_wo_spr,
+              const drake::systems::Context<double>& context_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
               int finite_state_machine_state);
 
   // Getters for debugging
-  Eigen::VectorXd GetY() const { return y_; }
-  Eigen::VectorXd GetYDes() const { return y_des_; }
-  Eigen::VectorXd GetErrorY() const { return error_y_; }
-  Eigen::VectorXd GetYdot() const { return ydot_; }
-  Eigen::VectorXd GetYdotDes() const { return ydot_des_; }
-  Eigen::VectorXd GetErrorYdot() const { return error_ydot_; }
-  Eigen::VectorXd GetYddotDes() const { return yddot_des_; }
-  Eigen::VectorXd GetYddotDesConverted() const { return yddot_des_converted_; }
-  Eigen::VectorXd GetYddotCommandSol() const { return yddot_command_sol_; }
+  const Eigen::VectorXd& GetY() const { return y_; }
+  const Eigen::VectorXd& GetYDes() const { return y_des_; }
+  const Eigen::VectorXd& GetErrorY() const { return error_y_; }
+  const Eigen::VectorXd& GetYdot() const { return ydot_; }
+  const Eigen::VectorXd& GetYdotDes() const { return ydot_des_; }
+  const Eigen::VectorXd& GetErrorYdot() const { return error_ydot_; }
+  const Eigen::VectorXd& GetYddotDes() const { return yddot_des_; }
+  const Eigen::VectorXd& GetYddotDesConverted() const {
+    return yddot_des_converted_;
+  }
+  const Eigen::VectorXd& GetYddotCommandSol() const {
+    return yddot_command_sol_;
+  }
 
   // Getters used by osc block
-  Eigen::VectorXd GetOutput() const { return y_; }
-  Eigen::MatrixXd GetJ() const { return J_; }
-  Eigen::VectorXd GetJdotTimesV() const { return JdotV_; }
-  Eigen::VectorXd GetYddotCommand() const { return yddot_command_; }
-  Eigen::MatrixXd GetWeight() const { return W_; }
+  const Eigen::MatrixXd& GetJ() const { return J_; }
+  const Eigen::VectorXd& GetJdotTimesV() const { return JdotV_; }
+  const Eigen::VectorXd& GetYddotCommand() const { return yddot_command_; }
+  const Eigen::MatrixXd& GetWeight() const { return W_; }
 
   // Getters
-  std::string GetName() const { return name_; };
-  int GetTrajDim() const { return n_r_; };
+  const std::string& GetName() const { return name_; };
+  int GetYDim() const { return n_y_; };
+  int GetYdotDim() const { return n_ydot_; };
   bool IsActive() const { return track_at_current_state_; }
-  const drake::multibody::MultibodyPlant<double>* plant_w_spr() const {
+  const drake::multibody::MultibodyPlant<double>& plant_w_spr() const {
     return plant_w_spr_;
   };
-  const drake::multibody::MultibodyPlant<double>* plant_wo_spr() const {
+  const drake::multibody::MultibodyPlant<double>& plant_wo_spr() const {
     return plant_wo_spr_;
   };
 
@@ -137,7 +146,7 @@ class OscTrackingData {
       drake::systems::Context<double>& context_wo_spr);
 
  protected:
-  int GetStateIdx() { return state_idx_; };
+  int GetStateIdx() const { return state_idx_; };
   void AddState(int state);
 
   // Feedback output, Jacobian and dJ/dt * v
@@ -167,8 +176,8 @@ class OscTrackingData {
   /// but in the optimization it uses `plant_wo_spr_`. The reason of using
   /// MultibodyPlant without springs is that the OSC cannot track desired
   /// acceleration instantaneously when springs exist. (relative degrees of 4)
-  const drake::multibody::MultibodyPlant<double>* plant_w_spr_;
-  const drake::multibody::MultibodyPlant<double>* plant_wo_spr_;
+  const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
+  const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
 
   // World frames
   const drake::multibody::BodyFrame<double>& world_w_spr_;
@@ -181,15 +190,17 @@ class OscTrackingData {
   // Updaters of feedback output, jacobian and dJ/dt * v
   virtual void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
-      drake::systems::Context<double>& context_w_spr) = 0;
+      const drake::systems::Context<double>& context_w_spr) = 0;
   virtual void UpdateYdotAndError(
       const Eigen::VectorXd& x_w_spr,
-      drake::systems::Context<double>& context_w_spr) = 0;
+      const drake::systems::Context<double>& context_w_spr) = 0;
   virtual void UpdateYddotDes() = 0;
-  virtual void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-                       drake::systems::Context<double>& context_wo_spr) = 0;
-  virtual void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                           drake::systems::Context<double>& context_wo_spr) = 0;
+  virtual void UpdateJ(
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr) = 0;
+  virtual void UpdateJdotV(
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr) = 0;
 
   // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.
@@ -199,7 +210,8 @@ class OscTrackingData {
   std::string name_;
 
   // Dimension of the traj
-  int n_r_;
+  int n_y_;
+  int n_ydot_;
 
   // PD control gains
   Eigen::MatrixXd K_p_;
@@ -219,11 +231,10 @@ class OscTrackingData {
 /// ComTrackingData is used when we want to track center of mass trajectory.
 class ComTrackingData final : public OscTrackingData {
  public:
-  ComTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+  ComTrackingData(const std::string& name, const Eigen::MatrixXd& K_p,
+                  const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
+                  const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
   //  ComTrackingData() {}  // Default constructor
 
@@ -231,15 +242,17 @@ class ComTrackingData final : public OscTrackingData {
   void AddStateToTrack(int state);
 
  private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   const drake::systems::Context<double>& context_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 };
@@ -248,10 +261,10 @@ class ComTrackingData final : public OscTrackingData {
 class TaskSpaceTrackingData : public OscTrackingData {
  public:
   TaskSpaceTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const std::string& name, int n_y, int n_ydot, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
  protected:
   // `body_index_w_spr` is the index of the body
@@ -279,10 +292,10 @@ class TaskSpaceTrackingData : public OscTrackingData {
 class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
   TransTaskSpaceTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
   void AddPointToTrack(
       const std::string& body_name,
@@ -292,15 +305,17 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
 
  private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   const drake::systems::Context<double>& context_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 
@@ -325,10 +340,10 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
 class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
   RotTaskSpaceTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
   void AddFrameToTrack(
       const std::string& body_name,
@@ -338,15 +353,17 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
  private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   const drake::systems::Context<double>& context_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 
@@ -373,8 +390,8 @@ class JointSpaceTrackingData final : public OscTrackingData {
   JointSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
   void AddJointToTrack(const std::string& joint_pos_name,
                        const std::string& joint_vel_name);
@@ -382,15 +399,17 @@ class JointSpaceTrackingData final : public OscTrackingData {
                                const std::string& joint_vel_name);
 
  private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   const drake::systems::Context<double>& context_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 
@@ -405,29 +424,34 @@ class JointSpaceTrackingData final : public OscTrackingData {
 class OptimalRomTrackingData final : public OscTrackingData {
  public:
   OptimalRomTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const std::string& name, int n_y, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
-      const goldilocks_models::ReducedOrderModel& rom);
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+
+  void AddRom(const goldilocks_models::ReducedOrderModel& rom);
+  void AddStateAndRom(int state,
+                      const goldilocks_models::ReducedOrderModel& rom);
 
  private:
-  void UpdateYAndError(const Eigen::VectorXd& x_wo_spr,
-                       drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYAndError(
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateYdotAndError(
       const Eigen::VectorXd& x_wo_spr,
-      drake::systems::Context<double>& context_wo_spr) final;
+      const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   const drake::systems::Context<double>& context_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 
-  const goldilocks_models::ReducedOrderModel& rom_;
+  // TODO: not sure why compile error when I used ReducedOrderModel reference
+  //  instead of pointer
+  std::vector<const goldilocks_models::ReducedOrderModel*> rom_;
 };
-
 
 }  // namespace controllers
 }  // namespace systems

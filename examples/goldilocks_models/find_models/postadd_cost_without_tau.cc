@@ -20,7 +20,7 @@ DEFINE_int32(iter_start, 1, "start from which iteration");
 DEFINE_int32(iter_end, -1, "end at which iteration");
 
 DEFINE_int32(num_traj_opt_knots, 20, "# of traj opt knot points");
-DEFINE_int32(num_batch, 9, "total number of batch");
+DEFINE_int32(num_sample, 9, "total number of sample");
 
 DEFINE_double(weight_tau, 0.5, "The cost weight for tau");
 
@@ -38,7 +38,7 @@ int doMain(int argc, char* argv[]) {
   cout << "iter_start = " << FLAGS_iter_start << endl;
   cout << "iter_end = " << FLAGS_iter_end << endl;
   cout << "num_traj_opt_knots = " << FLAGS_num_traj_opt_knots << endl;
-  cout << "num_batch = " << FLAGS_num_batch << endl;
+  cout << "num_sample = " << FLAGS_num_sample << endl;
   cout << "The cost weight for tau = " << FLAGS_weight_tau << endl;
 
   cout << "Warning: be careful that when you add cost, there is a 1/2 factor.\n";
@@ -55,7 +55,7 @@ int doMain(int argc, char* argv[]) {
   const string directory = "examples/goldilocks_models/find_models/data/";
 
   for (int i = FLAGS_iter_start; i <= FLAGS_iter_end; i++) {
-    for (int j = 0; j < FLAGS_num_batch; j++) {
+    for (int j = 0; j < FLAGS_num_sample; j++) {
       string prefix = directory + to_string(i) + "_" + to_string(j) + "_";
       // Read in cost
       VectorXd c = readCSV(prefix + string("c.csv")).col(0);

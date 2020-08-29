@@ -1,6 +1,6 @@
 FROM ros:melodic-ros-base-bionic
 WORKDIR /dairlib
-ENV DAIRLIB_DOCKER_VERSION=1
+ENV DAIRLIB_DOCKER_VERSION=2
 COPY . .
 RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
 RUN set -eux \

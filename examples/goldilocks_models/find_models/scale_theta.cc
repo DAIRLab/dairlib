@@ -36,7 +36,7 @@ DEFINE_double(scaling_factor, -1, "Scaling factor");
 DEFINE_bool(is_active_model, true, "Model has input?");
 DEFINE_int32(n_tau, 2, "dimension of the input of the RoM");
 DEFINE_int32(num_traj_opt_knots, 20, "# of traj opt knot points");
-DEFINE_int32(num_batch, 1, "total number of batch");
+DEFINE_int32(num_sample, 1, "total number of sample");
 
 // Terminal command samples:
 //  ./bazel-bin/examples/goldilocks_models/scale_theta --iter=211
@@ -70,7 +70,7 @@ int doMain(int argc, char* argv[]) {
     cout << "The model has input.\n";
     cout << "n_tau = " << FLAGS_n_tau << endl;
     cout << "num_traj_opt_knots = " << FLAGS_num_traj_opt_knots << endl;
-    cout << "num_batch = " << FLAGS_num_batch << endl;
+    cout << "num_sample = " << FLAGS_num_sample << endl;
 
     // Read in B_tau
     B_tau.resize(FLAGS_n_s, FLAGS_n_tau);
@@ -213,8 +213,8 @@ int doMain(int argc, char* argv[]) {
     }  // end for (each row of s)
 
     // Update t_and_s, t_and_ds, t_and_dds
-    for (int batch = 0; batch < FLAGS_num_batch; batch++) {
-      prefix = directory + to_string(iter) + "_" + to_string(batch);
+    for (int sample = 0; sample < FLAGS_num_sample; sample++) {
+      prefix = directory + to_string(iter) + "_" + to_string(sample);
       MatrixXd t_s = readCSV(prefix + string("_t_and_s.csv"));
       MatrixXd t_ds = readCSV(prefix + string("_t_and_ds.csv"));
       MatrixXd t_dds = readCSV(prefix + string("_t_and_dds.csv"));
@@ -230,8 +230,8 @@ int doMain(int argc, char* argv[]) {
 
     // Input part
     if (FLAGS_is_active_model) {
-      for (int batch = 0; batch < FLAGS_num_batch; batch++) {
-        prefix = directory + to_string(iter) + "_" + to_string(batch);
+      for (int sample = 0; sample < FLAGS_num_sample; sample++) {
+        prefix = directory + to_string(iter) + "_" + to_string(sample);
         VectorXd w = readCSV(prefix + string("_w.csv")).col(0);
 
         // Read in inputs
@@ -270,7 +270,7 @@ int doMain(int argc, char* argv[]) {
 
         writeCSV(prefix + string("_w_new.csv"), w);
         writeCSV(prefix + string("_t_and_tau_new.csv"), t_tau);
-      }  // end for (batch)
+      }  // end for (sample)
     }    // end if (FLAGS_is_active_model)
 
   }  // end for (iter)

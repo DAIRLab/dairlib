@@ -3,13 +3,51 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "optimal_rom_planner_system",
-    srcs = ["optimal_rom_planner_system.cc"],
-    hdrs = ["optimal_rom_planner_system.h"],
+    name = "cassie_rom_planner_system",
+    srcs = ["cassie_rom_planner_system.cc"],
+    hdrs = ["cassie_rom_planner_system.h"],
     deps = [
+        "//common:eigen_utils",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:reduced_order_models",
+        "//examples/goldilocks_models/planning:rom_traj_opt",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/controllers/osc:osc_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "rom_traj_receiver",
+    srcs = ["rom_traj_receiver.cc"],
+    hdrs = ["rom_traj_receiver.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )
 
+cc_library(
+    name = "planned_traj_guard",
+    srcs = ["planned_traj_guard.cc"],
+    hdrs = ["planned_traj_guard.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "control_parameters",
+    hdrs = ["control_parameters.h"],
+    deps = [
+    ],
+)

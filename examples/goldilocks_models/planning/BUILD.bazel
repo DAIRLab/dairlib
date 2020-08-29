@@ -22,6 +22,7 @@ cc_library(
         ":FoM_stride_length_constraint",
         ":dynamics_constraint",
         ":kinematics_constraint",
+        "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:reduced_order_models",
         "@drake//:drake_shared_library",
     ],
@@ -54,6 +55,7 @@ cc_library(
         "kinematics_constraint.h",
     ],
     deps = [
+        "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
         "//solvers:nonlinear_constraint",
@@ -71,6 +73,7 @@ cc_library(
     ],
     deps = [
         "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )
@@ -85,6 +88,7 @@ cc_library(
     ],
     deps = [
         "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )
@@ -99,6 +103,7 @@ cc_library(
     ],
     deps = [
         "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )
@@ -113,6 +118,7 @@ cc_library(
     ],
     deps = [
         "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )

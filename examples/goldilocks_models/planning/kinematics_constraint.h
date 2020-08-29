@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/nonlinear_constraint.h"
@@ -19,6 +20,8 @@ class KinematicsConstraint : public solvers::NonlinearConstraint<double> {
  public:
   KinematicsConstraint(const ReducedOrderModel& rom,
                        const drake::multibody::MultibodyPlant<double>& plant,
+                       bool left_stance,
+                       const StateMirror& state_mirror = StateMirror(),
                        const std::string& description = "");
 
  private:
@@ -28,6 +31,8 @@ class KinematicsConstraint : public solvers::NonlinearConstraint<double> {
   const ReducedOrderModel& rom_;
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
+  bool left_stance_;
+  const StateMirror& state_mirror_;
   int n_y_;
   int n_z_;
   int n_q_;

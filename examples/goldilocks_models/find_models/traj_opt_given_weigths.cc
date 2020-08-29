@@ -21,6 +21,7 @@
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/gurobi_solver.h"
+#include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
@@ -381,7 +382,14 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   cout << "(sample_idx, n_rerun, N_rerun, is_success) = (" << sample_idx << ", "
        << n_rerun << ", " << N_rerun << ", " << result.is_success() << ")\n";
   if (n_rerun > N_rerun) {
-    if (!result.is_success()) {
+    if ((cost_threshold_for_update ==
+         std::numeric_limits<double>::infinity()) &&
+        (to_string(solution_result) == "IterationLimit")) {
+      // Do nothing. Continue to store the result
+      cout << "#" << sample_idx
+           << " hit iteration limit, and hasn't found a solution in this "
+              "iteration yet. Will continue solving\n";
+    } else if (!result.is_success()) {
       cout << "the rerun of idx #" << sample_idx
            << " was not successful, skip\n";
       return;
@@ -397,6 +405,8 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   VectorXd is_success(1);
   if (result.is_success())
     is_success << 1;
+  else if (to_string(solution_result) == "IterationLimit")
+    is_success << 0.5;
   else
     is_success << 0;
   writeCSV(directory + prefix + string("is_success.csv"), is_success);
@@ -433,6 +443,7 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   }
 
   // Store the time, state, and input at knot points
+  // TODO: store states from different modes into different files
   VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
   MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
   MatrixXd input_at_knots = gm_traj_opt.dircon->GetInputSamples(result);
@@ -771,9 +782,10 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
         VectorXd y =
             gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
-        VectorXd ydot = gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
-        VectorXd yddot =
-            gm_traj_opt.dynamics_constraint_at_head->GetYddot(y, ydot, tau_i_sol);
+        VectorXd ydot =
+            gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
+        VectorXd yddot = gm_traj_opt.dynamics_constraint_at_head->GetYddot(
+            y, ydot, tau_i_sol);
         y_vec.push_back(y);
         ydot_vec.push_back(ydot);
         yddot_vec.push_back(yddot);
@@ -1390,26 +1402,53 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   // However, we need it now, since we add the running cost by hand
   trajopt->AddDurationBounds(duration, duration);
 
-  //  cout << "WARNING: you are printing snopt log.\n for five-link model";
-  //  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-  //                           "../snopt_sample#"+to_string(sample_idx)+".out");
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", setting.max_iter);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Iterations limit", 100000);  // QP subproblems
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
-                           0);
-  trajopt->SetSolverOption(
-      drake::solvers::SnoptSolver::id(), "Scale option",
-      setting.snopt_scaling
-          ? 2
-          : 0);  // snopt doc said try 2 if seeing snopta exit 40
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major optimality tolerance",
-                           setting.major_optimality_tol);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major feasibility tolerance",
-                           setting.major_feasibility_tol);
+  if (setting.use_ipopt) {
+    // Ipopt settings adapted from CaSaDi and FROST
+    auto id = drake::solvers::IpoptSolver::id();
+    trajopt->SetSolverOption(id, "tol", setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "dual_inf_tol", setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "constr_viol_tol",
+                             setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "compl_inf_tol",
+                             setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "max_iter", setting.max_iter);
+    trajopt->SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
+    trajopt->SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
+    trajopt->SetSolverOption(id, "print_timing_statistics", "no");
+    trajopt->SetSolverOption(id, "print_level", 0);
+
+    // Set to ignore overall tolerance/dual infeasibility, but terminate when
+    // primal feasible and objective fails to increase over 5 iterations.
+    trajopt->SetSolverOption(id, "acceptable_compl_inf_tol",
+                             setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "acceptable_constr_viol_tol",
+                             setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
+    trajopt->SetSolverOption(id, "acceptable_tol", 1e2);
+    trajopt->SetSolverOption(id, "acceptable_iter", 5);
+  } else {
+    // Snopt settings
+    // cout << "WARNING: you are printing snopt log.\n for Cassie";
+    // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+    //                         "../snopt_sample#"+to_string(sample_idx)+".out");
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Major iterations limit", setting.max_iter);
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Iterations limit", 100000);  // QP subproblems
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
+                             0);  // 0
+    trajopt->SetSolverOption(
+        drake::solvers::SnoptSolver::id(), "Scale option",
+        setting.snopt_scaling
+            ? 2
+            : 0);  // snopt doc said try 2 if seeing snopta exit 40
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Major optimality tolerance",
+                             setting.major_optimality_tol);
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Major feasibility tolerance",
+                             setting.major_feasibility_tol);
+  }
 
   // Periodicity constraints
   auto x0 = trajopt->initial_state();
@@ -1579,10 +1618,22 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   //       drake::solvers::ChooseBestSolver(*(gm_traj_opt.dircon)).name() <<
   //       endl;
 
+  drake::solvers::SolverId solver_id("");
+
+  if (setting.use_ipopt) {
+    solver_id = drake::solvers::IpoptSolver().id();
+//    cout << "\nChose manually: " << solver_id.name() << endl;
+  } else {
+    solver_id = drake::solvers::ChooseBestSolver(*gm_traj_opt.dircon);
+//    cout << "\nChose the best solver: " << solver_id.name() << endl;
+  }
+
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
   auto start = std::chrono::high_resolution_clock::now();
-  const MathematicalProgramResult result =
-      Solve(*gm_traj_opt.dircon, gm_traj_opt.dircon->initial_guess());
+  auto solver = drake::solvers::MakeSolver(solver_id);
+  drake::solvers::MathematicalProgramResult result;
+  solver->Solve(*gm_traj_opt.dircon, gm_traj_opt.dircon->initial_guess(),
+                gm_traj_opt.dircon->solver_options(), &result);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
 
@@ -1676,8 +1727,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
       std::pair<string, string>("_left", "_right"),
-      std::pair<string, string>("_right", "_left"),
-  };
+      std::pair<string, string>("_right", "_left")};
   vector<string> asy_joint_names;
   vector<string> sym_joint_names;
   if (turning_rate == 0) {
@@ -1875,27 +1925,53 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   auto trajopt = std::make_unique<HybridDircon<double>>(
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
-  // Snopt settings
-  //  cout << "WARNING: you are printing snopt log.\n for Cassie";
-  //  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-  //                           "../snopt_sample#"+to_string(sample_idx)+".out");
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", setting.max_iter);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Iterations limit", 100000);  // QP subproblems
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
-                           0);  // 0
-  trajopt->SetSolverOption(
-      drake::solvers::SnoptSolver::id(), "Scale option",
-      setting.snopt_scaling
-          ? 2
-          : 0);  // snopt doc said try 2 if seeing snopta exit 40
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major optimality tolerance",
-                           setting.major_optimality_tol);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major feasibility tolerance",
-                           setting.major_feasibility_tol);
+  if (setting.use_ipopt) {
+    // Ipopt settings adapted from CaSaDi and FROST
+    auto id = drake::solvers::IpoptSolver::id();
+    trajopt->SetSolverOption(id, "tol", setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "dual_inf_tol", setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "constr_viol_tol",
+                             setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "compl_inf_tol",
+                             setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "max_iter", setting.max_iter);
+    trajopt->SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
+    trajopt->SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
+    trajopt->SetSolverOption(id, "print_timing_statistics", "no");
+    trajopt->SetSolverOption(id, "print_level", 0);
+
+    // Set to ignore overall tolerance/dual infeasibility, but terminate when
+    // primal feasible and objective fails to increase over 5 iterations.
+    trajopt->SetSolverOption(id, "acceptable_compl_inf_tol",
+                             setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "acceptable_constr_viol_tol",
+                             setting.major_feasibility_tol);
+    trajopt->SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
+    trajopt->SetSolverOption(id, "acceptable_tol", 1e2);
+    trajopt->SetSolverOption(id, "acceptable_iter", 5);
+  } else {
+    // Snopt settings
+    // cout << "WARNING: you are printing snopt log.\n for Cassie";
+    // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+    //                         "../snopt_sample#"+to_string(sample_idx)+".out");
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Major iterations limit", setting.max_iter);
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Iterations limit", 100000);  // QP subproblems
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
+                             0);  // 0
+    trajopt->SetSolverOption(
+        drake::solvers::SnoptSolver::id(), "Scale option",
+        setting.snopt_scaling
+            ? 2
+            : 0);  // snopt doc said try 2 if seeing snopta exit 40
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Major optimality tolerance",
+                             setting.major_optimality_tol);
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Major feasibility tolerance",
+                             setting.major_feasibility_tol);
+  }
 
   int N = 0;
   for (uint i = 0; i < num_time_samples.size(); i++) N += num_time_samples[i];
@@ -2388,6 +2464,16 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //        drake::solvers::ChooseBestSolver(*(gm_traj_opt.dircon)).name() <<
   //        endl;
 
+  drake::solvers::SolverId solver_id("");
+
+  if (setting.use_ipopt) {
+    solver_id = drake::solvers::IpoptSolver().id();
+//    cout << "\nChose manually: " << solver_id.name() << endl;
+  } else {
+    solver_id = drake::solvers::ChooseBestSolver(*gm_traj_opt.dircon);
+//    cout << "\nChose the best solver: " << solver_id.name() << endl;
+  }
+
   // Testing -- visualize poses
   if (sample_idx == 0) {
     //    gm_traj_opt.dircon->CreateVisualizationCallback(
@@ -2396,8 +2482,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
   auto start = std::chrono::high_resolution_clock::now();
-  const MathematicalProgramResult result =
-      Solve(*gm_traj_opt.dircon, gm_traj_opt.dircon->initial_guess());
+  auto solver = drake::solvers::MakeSolver(solver_id);
+  drake::solvers::MathematicalProgramResult result;
+  solver->Solve(*gm_traj_opt.dircon, gm_traj_opt.dircon->initial_guess(),
+                gm_traj_opt.dircon->solver_options(), &result);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
 

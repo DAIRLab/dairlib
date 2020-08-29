@@ -1,4 +1,4 @@
-// This file is modified from examples/Cassie/run_osc_walking_controller.cc
+// (This file is modified from examples/Cassie/run_osc_walking_controller.cc)
 // We use this file to test OptimalRomTrackingData
 
 // Benchmark on computation time on 8750H CPU
@@ -24,8 +24,8 @@
 //   ave: 0.044 ms
 //   max: 0.33 ms
 
-#include <gflags/gflags.h>
 #include <string>
+#include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -51,8 +51,8 @@ namespace dairlib::goldilocks_models {
 
 using std::cout;
 using std::endl;
-using std::vector;
 using std::to_string;
+using std::vector;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -61,8 +61,8 @@ using Eigen::VectorXd;
 
 using drake::MatrixX;
 using drake::VectorX;
-using drake::multibody::JacobianWrtVariable;
 using drake::multibody::Frame;
+using drake::multibody::JacobianWrtVariable;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
@@ -113,6 +113,9 @@ int DoMain(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false);
   plant_wo_springs.Finalize();
+
+  auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_springs or plant_wo_springs because the contact frames exit in both
@@ -195,13 +198,14 @@ int DoMain(int argc, char* argv[]) {
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_springs, global_target_position, params_of_no_turning);
+      plant_w_springs, context_w_spr.get(), global_target_position,
+      params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
   // Create heading traj generator
-  auto head_traj_gen =
-      builder.AddSystem<cassie::osc::HeadingTrajGenerator>(plant_w_springs);
+  auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
+      plant_w_springs, context_w_spr.get());
   builder.Connect(simulator_drift->get_output_port(0),
                   head_traj_gen->get_state_input_port());
   builder.Connect(high_level_command->get_yaw_output_port(),
@@ -251,8 +255,9 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
   }
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
-      plant_w_springs, desired_com_height, unordered_fsm_states,
-      unordered_state_durations, contact_points_in_each_state);
+      plant_w_springs, context_w_spr.get(), desired_com_height,
+      unordered_fsm_states, unordered_state_durations,
+      contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -261,7 +266,7 @@ int DoMain(int argc, char* argv[]) {
   // Create velocity control by foot placement
   auto deviation_from_cp =
       builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
-          plant_w_springs);
+          plant_w_springs, context_w_spr.get());
   builder.Connect(high_level_command->get_xy_output_port(),
                   deviation_from_cp->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -287,10 +292,11 @@ int DoMain(int argc, char* argv[]) {
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
   auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
-      plant_w_springs, left_right_support_fsm_states,
-      left_right_support_state_durations, left_right_foot, "pelvis", mid_foot_height,
-      desired_final_foot_height, desired_final_vertical_foot_velocity,
-      max_CoM_to_CP_dist, true, true, true, cp_offset, center_line_offset);
+      plant_w_springs, context_w_spr.get(), left_right_support_fsm_states,
+      left_right_support_state_durations, left_right_foot, "pelvis",
+      mid_foot_height, desired_final_foot_height,
+      desired_final_vertical_foot_velocity, max_CoM_to_CP_dist, true, true,
+      true, cp_offset, center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   cp_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -302,8 +308,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, true,
-      FLAGS_print_osc /*print_tracking_info*/);
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/);
 
   // Cost
   int n_v = plant_wo_springs.num_velocities();
@@ -354,9 +360,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj("cp_traj", 3, K_p_sw_ft, K_d_sw_ft,
-                                             W_swing_foot, &plant_w_springs,
-                                             &plant_wo_springs);
+  TransTaskSpaceTrackingData swing_foot_traj("cp_traj", K_p_sw_ft, K_d_sw_ft,
+                                             W_swing_foot, plant_w_springs,
+                                             plant_wo_springs);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
@@ -367,9 +373,10 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  OptimalRomTrackingData center_of_mass_traj("rom_lipm_traj", 3, K_p_com,
-                                             K_d_com, W_com, &plant_w_springs,
-                                             &plant_wo_springs, *rom);
+  OptimalRomTrackingData center_of_mass_traj("rom_lipm_traj", rom->n_y(),
+                                             K_p_com, K_d_com, W_com,
+                                             plant_w_springs, plant_wo_springs);
+  center_of_mass_traj.AddRom(*rom);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
@@ -385,8 +392,8 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
   K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj(
-      "pelvis_balance_traj", 3, K_p_pelvis_balance, K_d_pelvis_balance,
-      W_pelvis_balance, &plant_w_springs, &plant_wo_springs);
+      "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
+      W_pelvis_balance, plant_w_springs, plant_wo_springs);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
@@ -400,8 +407,8 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
   K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj(
-      "pelvis_heading_traj", 3, K_p_pelvis_heading, K_d_pelvis_heading,
-      W_pelvis_heading, &plant_w_springs, &plant_wo_springs);
+      "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
+      W_pelvis_heading, plant_w_springs, plant_wo_springs);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
@@ -412,7 +419,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe,
-                                        &plant_w_springs, &plant_wo_springs);
+                                        plant_w_springs, plant_wo_springs);
   swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
@@ -422,9 +429,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_hip_yaw_traj(
-      "swing_hip_yaw_traj", K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw,
-      &plant_w_springs, &plant_wo_springs);
+  JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
+                                            K_d_hip_yaw, W_hip_yaw,
+                                            plant_w_springs, plant_wo_springs);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",

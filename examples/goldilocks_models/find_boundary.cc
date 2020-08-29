@@ -211,7 +211,8 @@ void TrajOptGivenModel(Task task,
                        int num,
                        bool is_rerun,
                        int initial_guess_idx = -1,
-                       bool turn_on_scaling = true) {
+                       bool turn_on_scaling = true,
+                       bool use_ipopt = false) {
   // Create MBP
   drake::logging::set_log_level("err");  // ignore warnings about joint limits
   MultibodyPlant<double> plant(0.0);
@@ -241,6 +242,7 @@ void TrajOptGivenModel(Task task,
   inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
   inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
   inner_loop_setting.snopt_scaling = turn_on_scaling;
+  inner_loop_setting.use_ipopt = use_ipopt;
   inner_loop_setting.directory = dir;
 
   // Construct reduced order model
@@ -339,15 +341,16 @@ void SaveBoundaryPointInfor(const string dir,int boundary_point_index,
 }
 
 //rerun unsuccessful trajectory optimization
-void RerunTrajOpt(const Task& task, const string dir, int traj_num){
+void RerunTrajOpt(const Task& task, const string dir, int traj_num,
+    bool use_ipopt=false){
   int rerun = 0;
-  int max_rerun_num = 5;
+  int max_rerun_num = 4;
   int is_success;
   for(rerun=0;rerun<max_rerun_num;rerun++){
     is_success = (readCSV(dir + to_string(traj_num) +
         string("_0_is_success.csv")))(0, 0);
-    if(is_success==0){
-      TrajOptGivenModel(task, dir, traj_num,true);
+    if(is_success!=1){
+      TrajOptGivenModel(task, dir, traj_num,true,-1,true,use_ipopt);
     }
     else{
       break;
@@ -366,7 +369,7 @@ void CheckSolution(const Task& task, const string dir, int traj_num,
   //if snopt still can't find a solution, try to use adjacent sample to help
   is_success = (readCSV(dir + to_string(traj_num) +
       string("_0_is_success.csv")))(0, 0);
-  if(is_success==0){
+  if(is_success!=1){
     if(iteration==1)
     {
       //if number of iteration is 1, we should use the central point to help
@@ -382,10 +385,26 @@ void CheckSolution(const Task& task, const string dir, int traj_num,
   // and try again
   is_success = (readCSV(dir + to_string(traj_num) +
       string("_0_is_success.csv")))(0, 0);
-  if(is_success==0){
+  if(is_success!=1){
     TrajOptGivenModel(task, dir, traj_num,true,-1,false);
   }
   RerunTrajOpt(task,dir,traj_num);
+
+  // if snopt still failed to find a solution,try ipopt and use adjacent sample
+  // as initial guess
+  is_success = (readCSV(dir + to_string(traj_num) +
+      string("_0_is_success.csv")))(0, 0);
+  if(is_success!=1){
+    if(iteration==1)
+    {
+      //if number of iteration is 1, we should use the central point to help
+      TrajOptGivenModel(task, dir, traj_num,true,0,true,true);
+    }
+    else{
+      TrajOptGivenModel(task, dir, traj_num,true,traj_num-1,true,true);
+    }
+  }
+  RerunTrajOpt(task,dir,traj_num,true);
 }
 
 //search the boundary point along one direction

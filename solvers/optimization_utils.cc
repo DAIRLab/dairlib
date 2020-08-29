@@ -118,20 +118,22 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
     ub->segment(constraint_index, n) = c->upper_bound();
 
     auto variables = binding.variables();
-
     // Initialize AutoDiff vector for result
     // Warning: there is a bug in initializeAutoDiff.
     // You cannot use it if gradient.rows() > gradient.cols(). (it'll write outside the range)
-    // AutoDiffVecXd y_val = initializeAutoDiff(
-    //     VectorXd::Zero(c->num_constraints()), variables.size());
-    // if (c->num_constraints() > variables.size()) {
-    //   cout << c->get_description() << " has thin-tall jacobian matrix.\n";
-    // }
-    AutoDiffVecXd y_val = initializeAutoDiff(
-        VectorXd::Zero(c->num_constraints()));
-    MatrixXd grad = MatrixXd::Zero(c->num_constraints(),variables.size());
-    drake::math::initializeAutoDiffGivenGradientMatrix(
-        VectorXd::Zero(c->num_constraints()), grad, y_val);
+    //   AutoDiffVecXd y_val = initializeAutoDiff(
+    //       VectorXd::Zero(c->num_constraints()), variables.size());
+    //   if (c->num_constraints() > variables.size()) {
+    //     cout << c->get_description() << " has thin-tall jacobian matrix.\n";
+    //   }
+    // You can modify it to this way
+    //   AutoDiffVecXd y_val = initializeAutoDiff(
+    //       VectorXd::Zero(c->num_constraints()));
+    //   MatrixXd grad = MatrixXd::Zero(c->num_constraints(),variables.size());
+    //   drake::math::initializeAutoDiffGivenGradientMatrix(
+    //       VectorXd::Zero(c->num_constraints()), grad, y_val);
+    // Not sure if declaration in the next line also has the issue
+    AutoDiffVecXd y_val;
 
     // Extract subset of decision variable vector
     VectorXd x_binding(variables.size());
@@ -139,7 +141,6 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
       x_binding(i) = x(prog.FindDecisionVariableIndex(variables(i)));
     }
     AutoDiffVecXd x_val = initializeAutoDiff(x_binding);
-
     // Evaluate constraint and extract gradient
     binding.evaluator()->Eval(x_val, &y_val);
     MatrixXd dx = autoDiffToGradientMatrix(y_val);
@@ -149,7 +150,6 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
       A->block(constraint_index,
           prog.FindDecisionVariableIndex(variables(i)), n, 1) = dx.col(i);
     }
-
     constraint_index += n;
     i++;
   }

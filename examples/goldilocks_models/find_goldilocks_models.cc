@@ -50,7 +50,7 @@ using drake::solvers::MathematicalProgramResult;
 
 namespace dairlib::goldilocks_models {
 
-// clang-format on
+// clang-format off
 
 // Robot models
 DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
@@ -100,9 +100,10 @@ DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
 // for SNOPT, but 0.3 / 16 is too high.
 DEFINE_double(eps_regularization, 1e-8,
               "Weight of regularization term");  // 1e-4
-DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
 DEFINE_bool(use_database, false,
     "use solutions from database to create initial guesses for traj opt");
+DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
+DEFINE_bool(ipopt, false, "Use IPOPT as solver instead of SNOPT");
 
 // outer loop
 DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
@@ -171,7 +172,7 @@ DEFINE_string(program_name, "",
     "The name of the program (to keep a record for future references)");
 DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 
-// clang-format off
+// clang-format on
 
 void setCostWeight(double* Q, double* R, double* all_cost_scale,
                    int robot_option) {
@@ -815,7 +816,7 @@ void RecordSolutionQualityAndQueueList(
     const MatrixXi& adjacent_sample_indices,
     double max_cost_increase_rate_before_ask_for_help,
     double max_adj_cost_diff_rate_before_ask_for_help,
-    bool is_limit_difference_of_two_adjacent_costs, int sample_success,
+    bool is_limit_difference_of_two_adjacent_costs, bool sample_success,
     bool current_sample_is_queued, int task_dim, const vector<int>& n_rerun,
     int N_rerun, vector<double>& each_min_cost_so_far,
     vector<int>& is_good_solution, MatrixXi& sample_idx_waiting_to_help,
@@ -878,7 +879,7 @@ void RecordSolutionQualityAndQueueList(
   // 2. the cost didn't increase too much compared to that of the
   // previous iteration
   // 3. (optional) the cost is not too high above the adjacent costs
-  if ((sample_success == 1) &&
+  if (sample_success &&
       (sample_cost <= (1 + max_cost_increase_rate_before_ask_for_help) *
                           each_min_cost_so_far[sample_idx]) &&
       !too_high_above_adjacent_cost) {
@@ -1110,7 +1111,7 @@ void RecordSolutionQualityAndQueueList(
                << ", so add #" << sample_idx << " to queue\n";
         } else {
           cout << "idx #" << sample_idx << " got bad sol ";
-          if (sample_success == 0) {
+          if (!sample_success) {
             cout << "(snopt didn't find an optimal sol)";
           } else {
             cout << "(cost increased too much)";
@@ -1348,12 +1349,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DRAKE_DEMAND((FLAGS_robot_option == 0) || FLAGS_robot_option == 1);
-  DRAKE_DEMAND((FLAGS_rom_option >= 0) && FLAGS_rom_option <= 4);
+  DRAKE_DEMAND((FLAGS_rom_option >= 0) && FLAGS_rom_option <= 5);
   if (FLAGS_robot_option == 0) {
     DRAKE_DEMAND(FLAGS_rom_option != 4);
+    DRAKE_DEMAND(FLAGS_rom_option != 5);
   }
 
-  cout << "Trail name: " << FLAGS_program_name << endl;
+  cout << "\nTrail name: " << FLAGS_program_name << endl;
   std::time_t current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   cout << "Current time: " << std::ctime(&current_time);
@@ -1632,6 +1634,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "major_optimality_tol = " << FLAGS_major_optimality_tol << endl;
   cout << "major_feasibility_tol = " << FLAGS_major_feasibility_tol << endl;
   cout << "use SNOPT built-in scaling? " << FLAGS_snopt_scaling << endl;
+  cout << "use Ipopt instead of Snopt?" << FLAGS_ipopt << endl;
   cout << "Fix number of nodes in traj opt? " << FLAGS_fix_node_number << endl;
   if (!FLAGS_fix_node_number)
     cout << "node_density = " << FLAGS_node_density << endl;
@@ -1667,6 +1670,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
   inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
+  inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;
 
   // Construct reduced order model
@@ -1900,8 +1904,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Run trajectory optimization for different tasks first
-    bool all_samples_are_success = true;
-    bool a_sample_is_success = false;
+    bool all_samples_succeeded = true;
+    bool no_sample_failed = true;
     bool success_rate_is_high_enough = true;
     if (start_iterations_with_shrinking_stepsize) {
       // skip the sample evaluation
@@ -2090,11 +2094,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Record success history
           prefix = to_string(iter) + "_" + to_string(sample_idx) + "_";
-          int sample_success =
-              (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+          bool sample_success =
+              ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) == 1);
+          bool sample_iteration_limit =
+              ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) == 0.5);
+          bool sample_fail = !sample_success && !sample_iteration_limit;
 
           // Update cost_threshold_for_update
-          if ((sample_success == 1) && (n_rerun[sample_idx] >= N_rerun)) {
+          if (sample_success && (n_rerun[sample_idx] >= N_rerun)) {
             auto sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
             if (sample_cost < cost_threshold_for_update[sample_idx]) {
               cost_threshold_for_update[sample_idx] = sample_cost;
@@ -2124,11 +2131,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
           auto it = find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
                          sample_idx);
           if (it != awaiting_sample_idx.end()) {
-            sample_success = 1;
+            sample_success = true;
           }
 
           // Accumulate failed samples
-          if (sample_success != 1) {
+          if (sample_fail) {
             // TODO: there might be a bug here. If a sample keeps failing even
             // after the help from adjacent samples, it might over-count this
             // failed sample
@@ -2136,9 +2143,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // Logic of fail or success
-          all_samples_are_success =
-              (all_samples_are_success & (sample_success == 1));
-          a_sample_is_success = (a_sample_is_success | (sample_success == 1));
+          all_samples_succeeded = (all_samples_succeeded & sample_success);
+          no_sample_failed = no_sample_failed & sample_fail;
           double fail_rate = double(n_failed_sample) / double(N_sample);
           if (fail_rate > FLAGS_fail_threshold) {
             success_rate_is_high_enough = false;
@@ -2150,7 +2156,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // 1. any sample failed after a all-success iteration
           // 2. fail rate higher than threshold before seeing all-success
           // iteration
-          if ((has_been_all_success && (!all_samples_are_success)) ||
+          if ((has_been_all_success && no_sample_failed) ||
               (!has_been_all_success && (!success_rate_is_high_enough))) {
             // Wait for the assigned threads to join, and then break;
             cout << n_failed_sample
@@ -2186,13 +2192,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
     if (start_iterations_with_shrinking_stepsize) {
       rerun_current_iteration = true;
     } else {
-      if (all_samples_are_success && !is_get_nominal) {
+      if (all_samples_succeeded && !is_get_nominal) {
         has_been_all_success = true;
       }
       // If all samples have been evaluated successfully in previous iteration,
       // we don't allow any failure in the following iterations
       bool current_iter_is_success = has_been_all_success
-                                         ? all_samples_are_success
+                                         ? all_samples_succeeded
                                          : success_rate_is_high_enough;
 
       // Rerun the current iteration when the iteration was not successful
@@ -2299,7 +2305,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
            << " (min so far: " << ave_min_cost_so_far << ")\n\n";
 
       // Update each cost when all samples are successful
-      if (all_samples_are_success) {
+      if (all_samples_succeeded) {
         for (int idx = 0; idx < N_sample; idx++) {
           if ((*(QPs.c_vec[idx]))(0) < each_min_cost_so_far[idx]) {
             each_min_cost_so_far[idx] = (*(QPs.c_vec[idx]))(0);
@@ -2318,7 +2324,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // goes up from iteration 1 to 2 (somehow).
       // - We require that ALL the samples were evaluated successfully when
       // shrinking the step size based on cost.
-      if ((iter > 1) && all_samples_are_success) {
+      if ((iter > 1) && all_samples_succeeded) {
         // 1. average cost
         if (total_cost > ave_min_cost_so_far) {
           cout << "Average cost went up by "
@@ -2525,7 +2531,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << '\a';  // making noise to notify the user the end of an iteration
   current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  cout << "Current time: " << std::ctime(&current_time);
+  cout << "Current time: " << std::ctime(&current_time) << "\n\n";
 
   // store parameter values
   prefix = to_string(iter + 1) + "_";

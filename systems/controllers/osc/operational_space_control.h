@@ -32,6 +32,10 @@ namespace dairlib::systems::controllers {
 ///    plant does not have spring, then plant_w_spr and plant_wo_spr should
 ///    refer to the same plant.
 ///  - `plant_wo_spr` a MultibodyPlant without springs
+///  - `context_w_spr` a pointer to Context for plant_w_spr. If it's nullptr,
+///    OSC will create its own Context for the plant
+///  - `context_wo_spr` a pointer to Context for plant_wo_spr. If it's nullptr,
+///    OSC will create its own Context for the plant
 ///  - `used_with_finite_state_machine` a flag indicating whehter using osc with
 ///    finite state machine or not
 /// The springs here refer to the compliant components in the robots.
@@ -89,6 +93,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   OperationalSpaceControl(
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      drake::systems::Context<double>* context_w_spr,
+      drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
       bool print_tracking_info = false);
 
@@ -198,8 +204,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
   // MBP context's
-  std::unique_ptr<drake::systems::Context<double>> context_w_spr_;
-  std::unique_ptr<drake::systems::Context<double>> context_wo_spr_;
+  drake::systems::Context<double>* context_w_spr_;
+  drake::systems::Context<double>* context_wo_spr_;
 
   // Size of position, velocity and input of the MBP without spring
   int n_q_;
@@ -241,6 +247,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+
+  // OSC solution
+  std::unique_ptr<Eigen::VectorXd> dv_sol_;
+  std::unique_ptr<Eigen::VectorXd> u_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
+  std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user

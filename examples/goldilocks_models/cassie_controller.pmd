@@ -3,46 +3,61 @@ group "1.controllers" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
         host = "localhost";
     }
-    cmd "2.rom-test-walking-controller1" {
+    cmd "2.1.rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true";
+        host = "localhost";
+    }
+    cmd "2.2.rom-planner" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=1 --sample=1 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 ";
+        host = "localhost";
+    }
+}
+
+group "3.test rom traj tracking" {
+    cmd "0.rom-walking-controller (with lipm)" {
         exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test1";
         host = "localhost";
     }
-    cmd "2.rom-test-walking-controller2" {
-        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2";
+    cmd "1.rom-walking-controller (const traj)" {
+        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2 --iter=30";
         host = "localhost";
     }
-    cmd "3.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller";
+    cmd "1.simulator for OSC controller (with init state)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true";
+        host = "localhost";
+    }
+    cmd "2.simulator for OSC controller (with init state, mirrored robot)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true --start_with_right_stance=true";
+        host = "localhost";
+    }
+    cmd "2.rom-walking-controller (const traj, mirrored robot)" {
+        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2 --iter=30 --start_with_right_stance=true";
         host = "localhost";
     }
 }
 
 group "2.drake-simulator" {
-    cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=false";
+    cmd "0.simulator" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0";
         host = "localhost";
     }
     cmd "1.simulator for OSC controller" {
         exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
         host = "localhost";
     }
-    cmd "2.simulator for OSC controller (init state)" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
+    cmd "2.simulator for MPC (with init state)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --target_realtime_rate=0.1";
         host = "localhost";
     }
 }
 
 group "0.operator" {
-    cmd "2.state-visualizer-floating (from simulation)" {
+    cmd "1.state-visualizer-floating (from simulation)" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION";
         host = "localhost";
     }
     cmd "0.drake-director" {
-        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
-        host = "localhost";
-    }
-    cmd "1.state-visualizer-fixed-base (from simulation)" {
-        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false --channel=CASSIE_STATE_SIMULATION";
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image   --script examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
 }
@@ -64,34 +79,37 @@ script "run-original-walking" {
     start cmd "1.original-walking-controller";
     start cmd "1.simulator for OSC controller";
 }
-script "run-rom-test-walking1" {
-    run_script "start-operator-simulation-floating-base";
-    start cmd "2.rom-test-walking-controller1";
-    start cmd "1.simulator for OSC controller";
-}
-script "run-rom-test-walking2" {
-    run_script "start-operator-simulation-floating-base";
-    start cmd "2.rom-test-walking-controller2";
-    start cmd "2.simulator for OSC controller (init state)";
-}
+
 script "run-rom-walking" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "3.rom-walking-controller";
-    start cmd "1.simulator for OSC controller";
+    start cmd "2.2.rom-planner";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "2.simulator for MPC (with init state)";
 }
 
-script "start-operator-simulation-fixed-base" {
-    stop cmd "1.state-visualizer-fixed-base (from simulation)";
-    stop cmd "0.drake-director";
-    start cmd "0.drake-director";
-    wait ms 3000;
-    start cmd "1.state-visualizer-fixed-base (from simulation)";
+script "run-rom-walking-test-const-traj" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "1.rom-walking-controller (const traj)";
+    start cmd "1.simulator for OSC controller (with init state)";
+}
+
+script "run-rom-walking-test-const-traj-mirrored" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "2.rom-walking-controller (const traj, mirrored robot)";
+    start cmd "2.simulator for OSC controller (with init state, mirrored robot)";
+}
+
+script "run-rom-walking-test-w-lipm" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "0.rom-walking-controller (with lipm)";
+    start cmd "1.simulator for OSC controller";
 }
 
 script "start-operator-simulation-floating-base" {
-    stop cmd "2.state-visualizer-floating (from simulation)";
+    stop cmd "1.state-visualizer-floating (from simulation)";
     stop cmd "0.drake-director";
     start cmd "0.drake-director";
     wait ms 3000;
-    start cmd "2.state-visualizer-floating (from simulation)";
+    start cmd "1.state-visualizer-floating (from simulation)";
 }

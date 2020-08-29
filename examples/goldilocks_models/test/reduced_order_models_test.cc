@@ -21,6 +21,8 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace {
 
+// TODO: Need to add a unit test for MirroredReducedOrderModel
+
 // TODO: Need a unit test for B matrix in find_model::DynamicsConstraint
 //  Example in traj_opt_given_weigths.cc
 

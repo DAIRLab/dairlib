@@ -68,9 +68,9 @@ class DynamicsConstraint : public solvers::NonlinearConstraint<double> {
   bool is_head_;
 
   // Finite differencing to get gradient of feature wrt q
-  double eps_fd_feature_ = 1e-8;  // this is tuned. difference norm = 1e-8
-  double eps_cd_feature_ = 1e-5;  // this is tuned. difference norm = 1e-11
-  double eps_ho_feature_ = 1e-3;  // this is tuned. difference norm = 1e-12
+  // double eps_fd_feature_ = 1e-8;  // this is tuned. difference norm = 1e-8
+  // double eps_cd_feature_ = 1e-5;  // this is tuned. difference norm = 1e-11
+  // double eps_ho_feature_ = 1e-3;  // this is tuned. difference norm = 1e-12
 
   // Finite differencing to get gradient of constraints wrt theta
   double eps_fd_ = 1e-6;

@@ -12,6 +12,9 @@
 namespace dairlib {
 namespace goldilocks_models {
 
+using BodyPoint =
+    std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>;
+
 class InnerLoopSetting {
  public:
   InnerLoopSetting(){};
@@ -28,6 +31,7 @@ class InnerLoopSetting {
   double major_optimality_tol;
   double major_feasibility_tol;
   bool snopt_scaling;
+  bool use_ipopt;
 
   std::string directory;
   std::string prefix;
@@ -83,6 +87,16 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
 void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
                          int model_iter);
 
+// Functions for constructing goldilocks::StateMirror
+std::map<int, int> MirrorPosIndexMap(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
+std::set<int> MirrorPosSignChangeSet(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
+std::map<int, int> MirrorVelIndexMap(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
+std::set<int> MirrorVelSignChangeSet(
+    const drake::multibody::MultibodyPlant<double>& plant, int robot_option);
+
 // Create cubic splines from s and sdot
 drake::trajectories::PiecewisePolynomial<double> CreateCubicSplineGivenYAndYdot(
     const std::vector<Eigen::VectorXd>& h_vec,
@@ -118,6 +132,12 @@ std::vector<std::string> ParseCsvToStringVec(const std::string& file_name,
                                              bool is_row_vector = true);
 void SaveStringVecToCsv(const std::vector<std::string>& strings,
                         const std::string& file_name);
+
+// Five link robot's left/right leg
+BodyPoint FiveLinkRobotLeftContact(
+    const drake::multibody::MultibodyPlant<double>& plant);
+BodyPoint FiveLinkRobotRightContact(
+    const drake::multibody::MultibodyPlant<double>& plant);
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

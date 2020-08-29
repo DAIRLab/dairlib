@@ -1,58 +1,50 @@
-// This file is modified from examples/Cassie/run_osc_walking_controller.cc
-// We use this file to test OptimalRomTrackingData
+// (This file is modified from examples/Cassie/run_osc_walking_controller.cc)
 
-// Benchmark on computation time on 8750H CPU
-//   (commit number for reference: 2a9023265ca20d6eb5201225d4a3051ed8029f76)
-//   (benchmark data size: 399 number of samples)
-// UpdateYdotAndError::UpdateJdotV()
-//   min: 0.077 ms
-//   ave: 0.12 ms
-//   max: 0.27 ms
-// UpdateYdotAndError::UpdateJ()
-//   min: 0.038 ms
-//   ave: 0.06 ms
-//   max: 0.15 ms
+// TODO(yminchen): this file will be the main file that publish OSC output for
+//  ROM MPC
 
-// After using the MBP's context from OSC
-//   (commit number for reference: a664bc7554e790ca842e7c051cd333601700a8f1)
-// UpdateYdotAndError::UpdateJdotV()
-//   min: 0.068 ms
-//   ave: 0.09 ms
-//   max: 0.14 ms
-// UpdateYdotAndError::UpdateJ()
-//   min: 0.030 ms
-//   ave: 0.044 ms
-//   max: 0.33 ms
-
-#include <gflags/gflags.h>
 #include <string>
+#include <gflags/gflags.h>
 
+#include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_timestamped_vector.hpp"
+#include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/deviation_from_cp.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/goldilocks_models/controller/control_parameters.h"
+#include "examples/goldilocks_models/controller/planned_traj_guard.h"
+#include "examples/goldilocks_models/controller/rom_traj_receiver.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/cp_traj_gen.h"
+#include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
+#include "systems/drake_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/lcmt_drake_signal.hpp"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/primitives/multiplexer.h"
 
 namespace dairlib::goldilocks_models {
 
 using std::cout;
 using std::endl;
-using std::vector;
 using std::to_string;
+using std::vector;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -61,14 +53,16 @@ using Eigen::VectorXd;
 
 using drake::MatrixX;
 using drake::VectorX;
-using drake::multibody::JacobianWrtVariable;
 using drake::multibody::Frame;
+using drake::multibody::JacobianWrtVariable;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
+using drake::trajectories::PiecewisePolynomial;
 
+using systems::OutputVector;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::OptimalRomTrackingData;
@@ -77,21 +71,36 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
+DEFINE_double(
+    max_solve_time, 0.2,
+    "Maximum solve time for the planner before we switch to backup trajs");
+DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
+DEFINE_double(const_walking_speed_x, 0.5, "Walking speed in local x axis");
 
+DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
+DEFINE_bool(start_with_right_stance, false, "");
+
+//
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
+DEFINE_string(channel_fsm_t, "FSM_T",
+              "LCM channel for sending fsm and time of latest liftoff event. ");
+DEFINE_string(channel_y, "MPC_OUTPUT",
+              "The name of the channel which receives MPC output");
 
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
+
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
+
+DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -114,6 +123,9 @@ int DoMain(int argc, char* argv[]) {
                      false);
   plant_wo_springs.Finalize();
 
+  auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
+
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_springs or plant_wo_springs because the contact frames exit in both
   // plants)
@@ -122,24 +134,52 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant_wo_springs);
   auto right_heel = RightToeRear(plant_wo_springs);
 
-  // Build COM reduced-order model
-  // Basis for mapping function (dependent on the robot)
-  MonomialFeatures mapping_basis(2, plant_wo_springs.num_positions(), {3, 4, 5},
-                                 "mapping basis");
-  mapping_basis.PrintInfo();
-  // Basis for dynamic function
-  MonomialFeatures dynamic_basis(2, 2 * testing::Com::kDimension, {},
-                                 "dynamic basis");
-  dynamic_basis.PrintInfo();
-  // Construct reduced-order model
-  testing::Com com(plant_wo_springs, mapping_basis, dynamic_basis);
-  ReducedOrderModel* rom = &com;
-  cout << "Construct reduced-order model (" << rom->name()
-       << ") with parameters\n";
-  cout << "n_y = " << rom->n_y() << ", n_tau = " << rom->n_tau() << endl;
-  cout << "B_tau = \n" << rom->B() << "\n";
-  cout << "n_feature_y = " << rom->n_feature_y() << endl;
-  cout << "n_feature_yddot = " << rom->n_feature_yddot() << endl;
+  // Reduced order model
+  const std::string dir_model =
+      "../dairlib_data/goldilocks_models/planning/robot_1/models/";
+  std::unique_ptr<ReducedOrderModel> rom =
+      CreateRom(4 /*rom_option*/, 1 /*robot_option*/, plant_wo_springs, true);
+  ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
+
+  // Mirrored reduced order model
+  int robot_option = 1;
+  StateMirror state_mirror(
+      MirrorPosIndexMap(plant_wo_springs, robot_option),
+      MirrorPosSignChangeSet(plant_wo_springs, robot_option),
+      MirrorVelIndexMap(plant_wo_springs, robot_option),
+      MirrorVelSignChangeSet(plant_wo_springs, robot_option));
+  MirroredReducedOrderModel mirrored_rom(plant_wo_springs, *rom, state_mirror);
+
+  // Get init traj from ROM planner result
+  const std::string dir_data =
+      "../dairlib_data/goldilocks_models/planning/robot_1/data/";
+  VectorXd time_at_knots =
+      readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
+  MatrixXd state_at_knots =
+      readCSV(dir_data + std::string("state_at_knots.csv"));
+
+  // Initial message for the LCM subscriber. In the first timestep, the
+  // subscriber might not receive a solution yet
+  dairlib::lcmt_trajectory_block traj_msg;
+  traj_msg.trajectory_name = "";
+  traj_msg.num_points = time_at_knots.size();
+  traj_msg.num_datatypes = 2 * rom->n_y();
+  // Reserve space for vectors
+  traj_msg.time_vec.resize(traj_msg.num_points);
+  traj_msg.datatypes.resize(traj_msg.num_datatypes);
+  traj_msg.datapoints.clear();
+  // Copy Eigentypes to std::vector
+  traj_msg.time_vec = CopyVectorXdToStdVector(time_at_knots);
+  traj_msg.datatypes = vector<std::string>(2 * rom->n_y());
+  for (int i = 0; i < traj_msg.num_datatypes; ++i) {
+    traj_msg.datapoints.push_back(
+        CopyVectorXdToStdVector(state_at_knots.row(i)));
+  }
+
+  // Read in the end time of the trajectory
+  int knots_per_foot_step = readCSV(dir_data + "nodes_per_step.csv")(0, 0);
+  double end_time_of_first_step =
+      readCSV(dir_data + "time_at_knots.csv")(knots_per_foot_step, 0);
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -188,47 +228,101 @@ int DoMain(int argc, char* argv[]) {
                   simulator_drift->get_input_port_state());
 
   // Create human high-level control
-  Eigen::Vector2d global_target_position(5, 0);
+  Eigen::Vector2d global_target_position(1, 0);
+  if (FLAGS_const_walking_speed) {
+    // So that the desired yaw angle always points at x direction)
+    global_target_position(0) = std::numeric_limits<double>::infinity();
+  }
   Eigen::Vector2d params_of_no_turning(5, 1);
   // Logistic function 1/(1+5*exp(x-1))
   // The function ouputs 0.0007 when x = 0
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_springs, global_target_position, params_of_no_turning);
+      plant_w_springs, context_w_spr.get(), global_target_position,
+      params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
   // Create heading traj generator
-  auto head_traj_gen =
-      builder.AddSystem<cassie::osc::HeadingTrajGenerator>(plant_w_springs);
+  auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
+      plant_w_springs, context_w_spr.get());
   builder.Connect(simulator_drift->get_output_port(0),
                   head_traj_gen->get_state_input_port());
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
 
   // Create finite state machine
-  int left_stance_state = 0;
-  int right_stance_state = 1;
-  int double_support_state = 2;
-  double left_support_duration = 0.35;
-  double right_support_duration = 0.35;
-  double double_support_duration = 0.02;
+  int left_stance_state = LEFT_STANCE;
+  int right_stance_state = RIGHT_STANCE;
+  int double_support_state = DOUBLE_STANCE;
+  double left_support_duration =
+      LEFT_SUPPORT_DURATION;  // end_time_of_first_step;
+  double right_support_duration =
+      RIGHT_SUPPORT_DURATION;  // end_time_of_first_step;
+  double double_support_duration = DOUBLE_SUPPORT_DURATION;
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {
-    fsm_states = {left_stance_state, right_stance_state};
-    state_durations = {left_support_duration, right_support_duration};
+    if (FLAGS_start_with_right_stance) {
+      fsm_states = {right_stance_state, left_stance_state};
+      state_durations = {right_support_duration, left_support_duration};
+    } else {
+      fsm_states = {left_stance_state, right_stance_state};
+      state_durations = {left_support_duration, right_support_duration};
+    }
   } else {
-    fsm_states = {left_stance_state, double_support_state, right_stance_state,
-                  double_support_state};
-    state_durations = {left_support_duration, double_support_duration,
-                       right_support_duration, double_support_duration};
+    if (FLAGS_start_with_right_stance) {
+      fsm_states = {right_stance_state, double_support_state, left_stance_state,
+                    double_support_state};
+      state_durations = {right_support_duration, double_support_duration,
+                         left_support_duration, double_support_duration};
+    } else {
+      fsm_states = {left_stance_state, double_support_state, right_stance_state,
+                    double_support_state};
+      state_durations = {left_support_duration, double_support_duration,
+                         right_support_duration, double_support_duration};
+    }
   }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_springs, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
+
+  // Create leafsystem that record the switching time of the FSM
+  std::vector<int> single_support_states = {left_stance_state,
+                                            right_stance_state};
+  auto event_time = builder.AddSystem<systems::FiniteStateMachineEventTime>(
+      single_support_states);
+  builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
+
+  // Create a multiplexer which combines current finite state machine state and
+  // the latest lift-off event time, and create publisher for this combined
+  // vector
+  auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(2);
+  builder.Connect(fsm->get_output_port(0), mux->get_input_port(0));
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                  mux->get_input_port(1));
+  std::vector<std::string> singal_names = {"fsm", "t_lo"};
+  auto fsm_and_liftoff_time_sender =
+      builder.AddSystem<systems::DrakeSignalSender>(singal_names);
+  builder.Connect(mux->get_output_port(0),
+                  fsm_and_liftoff_time_sender->get_input_port(0));
+  auto fsm_and_liftoff_time_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_drake_signal>(
+          FLAGS_channel_fsm_t, &lcm_local,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
+                  fsm_and_liftoff_time_publisher->get_input_port());
+
+  // Create Lcm subscriber for MPC's output
+  auto planner_output_subscriber = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_trajectory_block>(FLAGS_channel_y,
+                                                                &lcm_local));
+  // Create a system that translate MPC lcm into trajectory
+  auto optimal_rom_traj_gen = builder.AddSystem<OptimalRoMTrajReceiver>();
+  builder.Connect(planner_output_subscriber->get_output_port(),
+                  optimal_rom_traj_gen->get_input_port(0));
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
@@ -251,8 +345,9 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
   }
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
-      plant_w_springs, desired_com_height, unordered_fsm_states,
-      unordered_state_durations, contact_points_in_each_state);
+      plant_w_springs, context_w_spr.get(), desired_com_height,
+      unordered_fsm_states, unordered_state_durations,
+      contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -261,9 +356,11 @@ int DoMain(int argc, char* argv[]) {
   // Create velocity control by foot placement
   auto deviation_from_cp =
       builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
-          plant_w_springs);
-  builder.Connect(high_level_command->get_xy_output_port(),
-                  deviation_from_cp->get_input_port_des_hor_vel());
+          plant_w_springs, context_w_spr.get());
+  if (!FLAGS_const_walking_speed) {
+    builder.Connect(high_level_command->get_xy_output_port(),
+                    deviation_from_cp->get_input_port_des_hor_vel());
+  }
   builder.Connect(simulator_drift->get_output_port(0),
                   deviation_from_cp->get_input_port_state());
 
@@ -287,10 +384,11 @@ int DoMain(int argc, char* argv[]) {
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
   auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
-      plant_w_springs, left_right_support_fsm_states,
-      left_right_support_state_durations, left_right_foot, "pelvis", mid_foot_height,
-      desired_final_foot_height, desired_final_vertical_foot_velocity,
-      max_CoM_to_CP_dist, true, true, true, cp_offset, center_line_offset);
+      plant_w_springs, context_w_spr.get(), left_right_support_fsm_states,
+      left_right_support_state_durations, left_right_foot, "pelvis",
+      mid_foot_height, desired_final_foot_height,
+      desired_final_vertical_foot_velocity, max_CoM_to_CP_dist, true, true,
+      true, cp_offset, center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   cp_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -300,10 +398,20 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(deviation_from_cp->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
 
+  // Create a guard for the planner in case it doesn't finish solving in time
+  auto optimal_traj_planner_guard =
+      builder.AddSystem<goldilocks_models::PlannedTrajGuard>(
+          FLAGS_max_solve_time);
+  builder.Connect(
+      optimal_rom_traj_gen->get_output_port(0),
+      optimal_traj_planner_guard->get_input_port_optimal_rom_traj());
+  builder.Connect(lipm_traj_generator->get_output_port(0),
+                  optimal_traj_planner_guard->get_input_port_lipm_traj());
+
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, true,
-      FLAGS_print_osc /*print_tracking_info*/);
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/);
 
   // Cost
   int n_v = plant_wo_springs.num_velocities();
@@ -354,9 +462,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj("cp_traj", 3, K_p_sw_ft, K_d_sw_ft,
-                                             W_swing_foot, &plant_w_springs,
-                                             &plant_wo_springs);
+  TransTaskSpaceTrackingData swing_foot_traj("cp_traj", K_p_sw_ft, K_d_sw_ft,
+                                             W_swing_foot, plant_w_springs,
+                                             plant_wo_springs);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
@@ -367,10 +475,19 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  OptimalRomTrackingData center_of_mass_traj("rom_lipm_traj", 3, K_p_com,
-                                             K_d_com, W_com, &plant_w_springs,
-                                             &plant_wo_springs, *rom);
-  osc->AddTrackingData(&center_of_mass_traj);
+  OptimalRomTrackingData optimal_rom_traj("optimal_rom_traj", rom->n_y(),
+                                          K_p_com, K_d_com, W_com,
+                                          plant_w_springs, plant_wo_springs);
+  // TODO(yminchen): we need four fsm states to make this symmetric
+  /*optimal_rom_traj.AddStateAndRom(double_support_state, *rom);
+  optimal_rom_traj.AddStateAndRom(left_stance_state, *rom);
+  optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);*/
+  // TODO(yminchen): currently an issue of using ROM and mirrored ROM with the
+  //  secondary LIPM (e.g. LIPM).
+  //  Probably need to change OSC API to have an option to disable a traj track
+  //  online (an external flag to disable tracking).
+  optimal_rom_traj.AddRom(*rom);
+  osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
   double k_p_pelvis_balance = 200;
@@ -385,8 +502,8 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
   K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj(
-      "pelvis_balance_traj", 3, K_p_pelvis_balance, K_d_pelvis_balance,
-      W_pelvis_balance, &plant_w_springs, &plant_wo_springs);
+      "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
+      W_pelvis_balance, plant_w_springs, plant_wo_springs);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
@@ -400,8 +517,8 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
   K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj(
-      "pelvis_heading_traj", 3, K_p_pelvis_heading, K_d_pelvis_heading,
-      W_pelvis_heading, &plant_w_springs, &plant_wo_springs);
+      "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
+      W_pelvis_heading, plant_w_springs, plant_wo_springs);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
@@ -412,7 +529,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe,
-                                        &plant_w_springs, &plant_wo_springs);
+                                        plant_w_springs, plant_wo_springs);
   swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
@@ -422,9 +539,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_hip_yaw_traj(
-      "swing_hip_yaw_traj", K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw,
-      &plant_w_springs, &plant_wo_springs);
+  JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
+                                            K_d_hip_yaw, W_hip_yaw,
+                                            plant_w_springs, plant_wo_springs);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
@@ -436,8 +553,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(lipm_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("rom_lipm_traj"));
+  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
+                  osc->get_tracking_data_input_port("optimal_rom_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
@@ -461,6 +578,30 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
+
+  // Get context and initialize the lcm message of LcmSubsriber for
+  // lcmt_trajectory_block
+  auto& diagram_context = loop.get_diagram_mutable_context();
+  auto& planner_subscriber_context =
+      loop.get_diagram()->GetMutableSubsystemContext(*planner_output_subscriber,
+                                                     &diagram_context);
+  // Note that currently the LcmSubscriber stores the lcm message in the first
+  // state of the leaf system (we hard coded index 0 here)
+  auto& mutable_state =
+      planner_subscriber_context
+          .get_mutable_abstract_state<dairlib::lcmt_trajectory_block>(0);
+  mutable_state = traj_msg;
+
+  // Set constant walking speed
+  if (FLAGS_const_walking_speed) {
+    auto& deviation_from_cp_context =
+        loop.get_diagram()->GetMutableSubsystemContext(*deviation_from_cp,
+                                                       &diagram_context);
+    deviation_from_cp->get_input_port_des_hor_vel().FixValue(
+        &deviation_from_cp_context,
+        drake::systems::BasicVector<double>({FLAGS_const_walking_speed_x, 0}));
+  }
+
   loop.Simulate();
 
   return 0;

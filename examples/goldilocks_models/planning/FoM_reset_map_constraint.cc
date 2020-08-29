@@ -1,149 +1,94 @@
 #include "examples/goldilocks_models/planning/FoM_reset_map_constraint.h"
 
+using std::isinf;
+using std::isnan;
+using std::list;
+using std::make_shared;
+using std::make_unique;
+using std::map;
+using std::string;
+using std::unique_ptr;
+using std::vector;
+using std::cout;
+using std::endl;
+
+using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
+using drake::MatrixX;
+using drake::VectorX;
+using drake::math::autoDiffToGradientMatrix;
+using drake::math::autoDiffToValueMatrix;
+using drake::math::DiscardGradient;
+using drake::math::initializeAutoDiff;
+using drake::multibody::MultibodyPlant;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::to_string;
+using drake::solvers::VariableRefList;
+using drake::solvers::VectorXDecisionVariable;
+using drake::symbolic::Expression;
+using drake::symbolic::Variable;
+using Eigen::AutoDiffScalar;
+using Eigen::Dynamic;
+using Eigen::Matrix;
+using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 namespace dairlib {
 namespace goldilocks_models {
 namespace planning {
 
 FomResetMapConstraint::FomResetMapConstraint(
-  bool left_stance, int n_q, int n_v, int n_J,
-  const MultibodyPlant<double> & plant,
-  const std::string& description):
-  Constraint(n_v + n_J,
-             2 * (n_q + n_v) + n_J,
-             VectorXd::Zero(n_v + n_J),
-             VectorXd::Zero(n_v + n_J),
-             description),
-  left_stance_(left_stance),
-  plant_(plant),
-  n_J_(n_J),
-  n_q_(n_q) {
-}
-
-void FomResetMapConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                                   Eigen::VectorXd* y) const {
-  EvaluateConstraint(x, y);
-}
-
-void FomResetMapConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-                                   AutoDiffVecXd* y) const {
-  // forward differencing
-  /*double dx = 1e-8;
-
-  VectorXd x_val = autoDiffToValueMatrix(x);
-  VectorXd y0, yi;
-  EvaluateConstraint(x_val, &y0);
-
-  MatrixXd dy = MatrixXd(y0.size(), x_val.size());
-  for (int i = 0; i < x_val.size(); i++) {
-    x_val(i) += dx;
-    EvaluateConstraint(x_val, &yi);
-    x_val(i) -= dx;
-    dy.col(i) = (yi - y0) / dx;
-  }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy, *y);*/
-
-  // central differencing
-  double dx = 1e-8;
-
-  VectorXd x_val = autoDiffToValueMatrix(x);
-  VectorXd y0, yi;
-  EvaluateConstraint(x_val, &y0);
-
-  MatrixXd dy = MatrixXd(y0.size(), x_val.size());
-  for (int i = 0; i < x_val.size(); i++) {
-    x_val(i) -= dx / 2;
-    EvaluateConstraint(x_val, &y0);
-    x_val(i) += dx;
-    EvaluateConstraint(x_val, &yi);
-    x_val(i) -= dx / 2;
-    dy.col(i) = (yi - y0) / dx;
-  }
-  EvaluateConstraint(x_val, &y0);
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy, *y);
-}
-
-void FomResetMapConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x,
-                                   VectorX<Expression>*y) const {
-  throw std::logic_error(
-    "This constraint class does not support symbolic evaluation.");
-}
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::vector<std::pair<const Eigen::Vector3d,
+                                const drake::multibody::Frame<double>&>>&
+        impact_foot_contacts,
+    const std::string& description)
+    : NonlinearConstraint<double>(
+          plant.num_velocities() + 3 * impact_foot_contacts.size(),
+          2 * plant.num_velocities() + plant.num_positions() +
+              3 * impact_foot_contacts.size(),
+          VectorXd::Zero(plant.num_velocities() +
+                         3 * impact_foot_contacts.size()),
+          VectorXd::Zero(plant.num_velocities() +
+                         3 * impact_foot_contacts.size()),
+          description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      impact_foot_contacts_(impact_foot_contacts),
+      n_q_(plant.num_positions()),
+      n_v_(plant.num_velocities()),
+      n_lambda_(3 * impact_foot_contacts.size()) {}
 
 void FomResetMapConstraint::EvaluateConstraint(
-  const Eigen::Ref<const VectorX<double>>& x, VectorX<double>* y) const {
-  VectorX<double> qm = x.segment(0, 7);  // m stands for minus (pre-impact)
-  VectorX<double> vm = x.segment(7, 7);
-  VectorX<double> qp = x.segment(14, 7);  // p stands for plus (post-impact)
-  VectorX<double> vp = x.segment(21, 7);
-  VectorX<double> Lambda = x.tail(n_J_);
+    const Eigen::Ref<const VectorX<double>>& x, VectorX<double>* y) const {
+  // m stands for minus (pre-impact)
+  // p stands for plus (post-impact)
+  VectorX<double> qm = x.head(n_q_);
+  VectorX<double> vm = x.segment(n_q_, n_v_);
+  VectorX<double> vp = x.segment(n_q_ + n_v_, n_v_);
+  VectorX<double> Lambda = x.tail(n_lambda_);
 
-  MatrixXd M = MatrixXd(n_q_, n_q_);
-  MatrixXd M_ext = MatrixXd(n_q_ + n_J_, n_q_ + n_J_);
-  std::unique_ptr<drake::systems::Context<double>> context =
-        plant_.CreateDefaultContext();
-  plant_.SetPositions(context.get(), qm);
-  plant_.CalcMassMatrixViaInverseDynamics(*context, &M);
+  MatrixXd M = MatrixXd(n_v_, n_v_);
+  plant_.SetPositions(context_.get(), qm);
+  plant_.CalcMassMatrixViaInverseDynamics(*context_, &M);
 
-  M_ext.block(0, 0, n_q_, n_q_) = M;
-  VectorXd vm_ext(n_q_ + n_J_);
-  vm_ext << -M*vm, VectorXd::Zero(n_J_);
-  VectorXd vp_ext(n_q_ + n_J_);
-  vp_ext << vp, Lambda;
-
-  if (left_stance_) {
-    // VectorX<double> left_foot_pos_xz(2);
-    // left_foot_pos_xz <<
-    //                  qm(0) - 0.5 * sin(qm(2) + qm(3)) - 0.5 * sin(qm(2) + qm(3) + qm(5)),
-    //                  qm(1) - 0.5 * cos(qm(2) + qm(3)) - 0.5 * cos(qm(2) + qm(3) + qm(5));
-    MatrixX<double> J_left_foot_pos_xz(2, 7);
-    J_left_foot_pos_xz << 1,
-                       0,
-                       - 0.5 * cos(qm(2) + qm(3)) - 0.5 * cos(qm(2) + qm(3) + qm(5)),
-                       - 0.5 * cos(qm(2) + qm(3)) - 0.5 * cos(qm(2) + qm(3) + qm(5)),
-                       0,
-                       - 0.5 * cos(qm(2) + qm(3) + qm(5)),
-                       0,
-                       0,
-                       1,
-                       0.5 * sin(qm(2) + qm(3)) + 0.5 * sin(qm(2) + qm(3) + qm(5)),
-                       0.5 * sin(qm(2) + qm(3)) + 0.5 * sin(qm(2) + qm(3) + qm(5)),
-                       0,
-                       0.5 * sin(qm(2) + qm(3) + qm(5)),
-                       0;
-
-    M_ext.block(0, n_q_, n_q_, n_J_) = -J_left_foot_pos_xz.transpose();
-    M_ext.block(n_q_, 0, n_J_, n_q_) = J_left_foot_pos_xz;
-
-    *y = M_ext * vp_ext + vm_ext;
-
-  } else {
-    // VectorX<double> right_foot_pos_xz(2);
-    // right_foot_pos_xz <<
-    //                   qm(0) - 0.5 * sin(qm(2) + qm(4)) - 0.5 * sin(qm(2) + qm(4) + qm(6)),
-    //                   qm(1) - 0.5 * cos(qm(2) + qm(4)) - 0.5 * cos(qm(2) + qm(4) + qm(6));
-    MatrixX<double> J_right_foot_pos_xz(2, 7);
-    J_right_foot_pos_xz << 1,
-                        0,
-                        - 0.5 * cos(qm(2) + qm(4)) - 0.5 * cos(qm(2) + qm(4) + qm(6)),
-                        0,
-                        - 0.5 * cos(qm(2) + qm(4)) - 0.5 * cos(qm(2) + qm(4) + qm(6)),
-                        0,
-                        - 0.5 * cos(qm(2) + qm(4) + qm(6)),
-                        0,
-                        1,
-                        0.5 * sin(x(2) + x(4)) + 0.5 * sin(x(2) + x(4) + x(6)),
-                        0,
-                        0.5 * sin(x(2) + x(4)) + 0.5 * sin(x(2) + x(4) + x(6)),
-                        0,
-                        0.5 * sin(x(2) + x(4) + x(6));
-
-    M_ext.block(0, n_q_, n_q_, n_J_) = -J_right_foot_pos_xz.transpose();
-    M_ext.block(n_q_, 0, n_J_, n_q_) = J_right_foot_pos_xz;
-
-    *y = M_ext * vp_ext + vm_ext;
+  MatrixX<double> J_impact_foot(n_lambda_, n_v_);
+  MatrixX<double> J_per_contact(3, n_v_);
+  for (int i = 0; i < impact_foot_contacts_.size(); i++) {
+    const auto& contact = impact_foot_contacts_.at(i);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, drake::multibody::JacobianWrtVariable::kV, contact.second,
+        contact.first, world_, world_, &J_per_contact);
+    J_impact_foot.block(3 * i, 0, 3, n_v_) = J_per_contact;
   }
-}
 
+  *y = VectorX<double>(n_v_ + n_lambda_);
+  *y << M * (vp - vm) - J_impact_foot.transpose() * Lambda, J_impact_foot * vp;
+}
 
 }  // namespace planning
 }  // namespace goldilocks_models

@@ -1,0 +1,33 @@
+group "2.visualizers" {
+    cmd "0.visualize cassie" {
+        exec = "bazel-bin/examples/goldilocks_models/find_models/visualize_gait_MBP --robot_option=1 --n_step=1 --sample=38 --iter_start=1";
+        host = "localhost";
+    }
+}
+
+group "3.plotters" {
+    cmd "0.plot cost" {
+        exec = "python2.7 examples/goldilocks_models/find_models/plot_cost.py";
+        host = "localhost";
+    }
+    cmd "1. plot rom pos/vel/accel" {
+        exec = "python2.7 examples/goldilocks_models/find_models/plot_rom.py 1 1 1 2";
+        host = "localhost";
+    }
+}
+
+group "0.operator" {
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+}
+
+group "1. model optimization" {
+    cmd "find optimal model" {
+        exec = "sh examples/goldilocks_models/find_goldilocks_models.sh ";
+        host = "localhost";
+    }
+}
+
+

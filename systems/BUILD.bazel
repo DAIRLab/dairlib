@@ -23,3 +23,15 @@ cc_library(
         "@drake//:drake_shared_library",
     ]
 )
+
+cc_library(
+    name = "drake_signal_lcm_systems",
+    srcs = ["drake_signal_lcm_systems.cc"],
+    hdrs = [
+        "drake_signal_lcm_systems.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)

@@ -387,6 +387,8 @@ void CheckSolution(const Task& task, const string dir, int traj_num,
       string("_0_is_success.csv")))(0, 0);
   if(is_success!=1){
     TrajOptGivenModel(task, dir, traj_num,true,-1,false);
+    //must rerun with snopt scaling again
+    TrajOptGivenModel(task, dir, traj_num,true,-1,true);
   }
   RerunTrajOpt(task,dir,traj_num);
 

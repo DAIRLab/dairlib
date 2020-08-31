@@ -18,25 +18,21 @@ group "0.operator" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel NETWORK_CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
-    cmd "controller-switch-to-standing" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER";
+    cmd "controller-switch-to-walking (3 phase walking)" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.37 --n_period_delay=2";
         host = "dair-cassie";
     }
     cmd "controller-switch-to-pd" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=PD_CONTROL --channel_x=CASSIE_STATE_DISPATCHER";
         host = "dair-cassie";
     }
-    cmd "controller-switch-to-walking (3 phase walking)" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.37 --n_period_delay=2";
+    cmd "controller-switch-to-standing" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER";
         host = "dair-cassie";
     }
 }
 
 group "3.cassie-robot" {
-    cmd "4.osc-walking-real-robot (w radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING --use_radio=true";
-        host = "dair-cassie";
-    }
     cmd "0.dispatcher-robot-out-real-robot" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --floating_base=true --test_mode=2";
         host = "dair-cassie";
@@ -55,6 +51,10 @@ group "3.cassie-robot" {
     }
     cmd "4.0 osc-walking-real-robot (wo radio)" {
         exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING --use_radio=false";
+        host = "dair-cassie";
+    }
+    cmd "4.osc-walking-real-robot (w radio)" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING --use_radio=true";
         host = "dair-cassie";
     }
 }
@@ -123,6 +123,11 @@ script "run-real-robot-pd-control" {
     start cmd "2.pd-controller-real-robot";
 }
 
+script "set_up_from_pd_to_osc_standing" {
+    restart cmd "0.dispatcher-robot-out-real-robot";
+    start cmd "3.osc-standing-real-robot";
+}
+
 script "start-operator-MBP" {
     stop cmd "1.state-visualizer";
     stop cmd "0.drake-director";
@@ -151,9 +156,4 @@ script "switch from standing to walking" {
     start cmd "controller-switch-to-walking (3 phase walking)";
     wait ms 1000;
     stop cmd "3.osc-standing-real-robot";
-}
-
-script "switch_from_pd_to_osc_standing" {
-    restart cmd "0.dispatcher-robot-out-real-robot";
-    start cmd "3.osc-standing-real-robot";
 }

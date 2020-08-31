@@ -47,7 +47,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_command_sol = np.array(self.yddot_command_sol)
 
 
-def process_log(log, pos_map, vel_map, act_map):
+def process_log(log, pos_map, vel_map, act_map, controller_channel):
   t_x = []
   t_u = []
   t_controller_switch = []
@@ -107,7 +107,7 @@ def process_log(log, pos_map, vel_map, act_map):
       u_meas.append(u_temp)
       t_x.append(msg.utime / 1e6)
     # if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
-    if event.channel == "CASSIE_INPUT" or event.channel == "OSC_STANDING":
+    if event.channel == "CASSIE_INPUT" or event.channel == controller_channel:
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_u.append(msg.utime / 1e6)

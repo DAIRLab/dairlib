@@ -108,6 +108,7 @@ def main():
   u_datatypes_wo_spr = pydairlib.multibody.createActuatorNameVectorFromMap(plant_wo_spr)
 
   filename = sys.argv[1]
+  controller_channel = sys.argv[2]
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
@@ -116,7 +117,7 @@ def main():
 
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map)
+  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
@@ -189,11 +190,15 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
-  yddot_w_spr = get_yddot(plant_w_spr, context_w_spr, t_x, x, l_toe_frame)
-  yddot_wo_spr = get_yddot(plant_wo_spr, context_wo_spr, t_x, x_wo_spr, l_toe_frame)
-  plt.plot(t_x, yddot_w_spr[:, 0])
-  plt.plot(t_x, yddot_wo_spr[:, 0])
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  yddot_w_spr, JdotV_w_spr, Jvdot_w_spr = get_yddot(plant_w_spr, context_w_spr, t_x, x, r_toe_frame)
+  # yddot_wo_spr, JdotV_wo_spr, Jvdot_wo_spr = get_yddot(plant_wo_spr, context_wo_spr, t_x, x_wo_spr, r_toe_frame)
+  plt.figure()
+  plt.plot(t_x, yddot_w_spr[:, 2],label="yddot")
+  plt.plot(t_x, JdotV_w_spr[:, 2],label="jdotv")
+  plt.plot(t_x, Jvdot_w_spr[:, 2],label="jvdot")
+  plt.legend()
+  # plt.plot(t_x, yddot_wo_spr[:, 2])
   plt.show()
 
 
@@ -239,18 +244,24 @@ def get_yddot(plant, context, t, x, toe_frame):
     vdot[:, i] = vdot[:, i] / dt
 
   yddot = np.zeros((t.shape[0], dim))
+  JdotV = np.zeros((t.shape[0], dim))
+  Jvdot = np.zeros((t.shape[0], dim))
   for i in range(dt.shape[0]):
     plant.SetPositionsAndVelocities(context, x[i, :])
     J = plant.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable.kV, toe_frame, np.zeros(3), world, world)
-    JdotV = plant.CalcBiasTranslationalAcceleration(context, JacobianWrtVariable.kV, toe_frame, np.zeros(3),
+    JdotV_i = plant.CalcBiasTranslationalAcceleration(context, JacobianWrtVariable.kV, toe_frame, np.zeros(3),
                                                            world, world)
-    yddot[i, :] = J@vdot[i, :] + JdotV[:, 0]
-  filter = 200
+    yddot[i, :] = J@vdot[i, :] + JdotV_i[:, 0]
+    JdotV[i, :] = JdotV_i[:, 0]  
+    Jvdot[i, :] = J@vdot[i, :]  
+  filter = 100
   idx = int(filter / 2)
   for i in range(idx, dt.shape[0] - idx):
     yddot[i, :] = np.average(yddot[i - idx:i+idx, :])
-  return yddot
+    JdotV[i, :] = np.average(JdotV[i - idx:i+idx, :])
+    Jvdot[i, :] = np.average(Jvdot[i - idx:i+idx, :])
+  return yddot, JdotV, Jvdot
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   input_cost = np.zeros(t_u.shape[0])
@@ -263,7 +274,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   for i in range(t_u.shape[0] - 1 - 2):
     # import pdb;
     # pdb.set_trace()
-    print(i)
     input_cost[i] = osc_output[i].input_cost
     acceleration_cost[i] = osc_output[i].acceleration_cost
     soft_constraint_cost[i] = osc_output[i].soft_constraint_cost
@@ -299,7 +309,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
   # plot_osc(osc_debug, osc_traj0, 2, "vel")
   # #
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
+  plot_osc(osc_debug, osc_traj0, 2, "accel")
   plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   # plot_osc(osc_debug, osc_traj0, 1, "accel")
   # plot_osc(osc_debug, osc_traj0, 2, "accel")
@@ -347,7 +357,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world) @ x_i[-plant.num_velocities():]
   fig = plt.figure('foot pos: ' + filename)
   # state_indices = slice(0, 3)
-  state_indices = slice(3, 6)
+  state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]

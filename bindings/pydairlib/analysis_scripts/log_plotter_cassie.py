@@ -63,6 +63,7 @@ def main():
   u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant_w_spr)
 
   filename = sys.argv[1]
+  controller_channel = sys.argv[2]
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
@@ -71,7 +72,7 @@ def main():
 
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map)
+  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
@@ -91,8 +92,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  t_start = 205
-  t_end = 208
+  # t_start = 205
+  # t_end = 208
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -105,7 +106,8 @@ def main():
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
   plot_contact_est(full_log)
-  if False:
+  plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+  if True:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "left_", "_front")
@@ -166,9 +168,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   num_tracking_cost = 0
 
   for i in range(t_u.shape[0] - 1 - 2):
-    # import pdb;
-    # pdb.set_trace()
-    print(i)
     input_cost[i] = osc_output[i].input_cost
     acceleration_cost[i] = osc_output[i].acceleration_cost
     soft_constraint_cost[i] = osc_output[i].soft_constraint_cost
@@ -191,24 +190,25 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   osc_traj0 = "swing_ft_traj"
+  # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
   osc_traj2 = "pelvis_balance_traj"
   osc_traj3 = "swing_hip_yaw_traj"
 
   #
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
-  plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
   #
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
@@ -238,10 +238,10 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 1, "accel")
   # plot_osc(osc_debug, osc_traj2, 2, "accel")
 
-  plot_osc(osc_debug, osc_traj3, 0, "accel")
-  plot_osc(osc_debug, osc_traj3, 0, "pos")
-  plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj3, 0, "vel")
+  # plot_osc(osc_debug, osc_traj3, 0, "accel")
+  # plot_osc(osc_debug, osc_traj3, 0, "pos")
+  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj3, 0, "vel")
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
@@ -276,7 +276,9 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world,
       world) @ x[i, -nv:]
   fig = plt.figure('foot pos: ' + filename)
-  state_indices = slice(4, 5)
+  # state_indices = slice(4, 5)
+  state_indices = slice(2, 3)
+  # state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
@@ -338,17 +340,19 @@ def compare_ekf(log, pos_map, vel_map):
 
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
-  pos_indices = slice(0 + 7, 23, 2)
+  # pos_indices = slice(0 + 7, 23, 2)
   vel_indices = slice(23 + 6, 45, 2)
+  pos_indices = slice(0,7)
+  # vel_indices = slice(23, 23 + 6)
   u_indices = slice(6, 8)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
 
   plt.figure("positions: " + filename)
-  # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
-  # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
-  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
+  plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])

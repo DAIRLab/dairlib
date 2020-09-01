@@ -1395,13 +1395,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
       task_gen_grid = GridTasksGenerator(
           3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
-          {0.25, 0, 0.4}, {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
+          {0.25, 0, 0.4}, {0.015, 0.05, 0.02},
+          std::vector<bool>(3, FLAGS_is_stochastic));
     } else if (FLAGS_robot_option == 1) {
+      std::vector<bool> is_stochastic(4);
+      is_stochastic[0] = (FLAGS_N_sample_sl > 1) & FLAGS_is_stochastic;
+      is_stochastic[1] = (FLAGS_N_sample_gi > 1) & FLAGS_is_stochastic;
+      is_stochastic[2] = (FLAGS_N_sample_v > 1) & FLAGS_is_stochastic;
+      is_stochastic[3] = (FLAGS_N_sample_tr > 1) & FLAGS_is_stochastic;
       task_gen_grid = GridTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
-          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
+          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, is_stochastic);
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_grid = GridTasksGenerator();

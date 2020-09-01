@@ -37,7 +37,7 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
                                        std::vector<int> N_sample_vec,
                                        std::vector<double> task_0,
                                        std::vector<double> task_delta,
-                                       bool is_stochastic)
+                                       std::vector<bool> is_stochastic)
     : TasksGenerator(task_dim, names, N_sample_vec),
       task_0_(task_0),
       task_delta_(task_delta),
@@ -63,12 +63,12 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
       sub_task_grid.push_back(j * task_delta[i]);
     task_grid_.push_back(sub_task_grid);
     // Min
-    task_min_range_.push_back((is_stochastic && (N_sample_vec[i] > 0))
+    task_min_range_.push_back((is_stochastic[i] && (N_sample_vec[i] > 0))
                                   ? task_0[i] + sub_task_grid.front() -
                                         task_delta[i] * 0.5
                                   : task_0[i] + sub_task_grid.front());
     // Max
-    task_max_range_.push_back((is_stochastic && (N_sample_vec[i] > 0))
+    task_max_range_.push_back((is_stochastic[i] && (N_sample_vec[i] > 0))
                                   ? task_0[i] + sub_task_grid.back() +
                                         task_delta[i] * 0.5
                                   : task_0[i] + sub_task_grid.back());
@@ -110,7 +110,7 @@ vector<double> GridTasksGenerator::NewTask(int sample_idx) {
   vector<double> ret(task_dim_, 0);
   for (int i = 0; i < task_dim_; i++) {
     ret[i] = task_0_[i] + task_grid_[i][index_tuple[i]];
-    if (is_stochastic_) {
+    if (is_stochastic_[i]) {
       if (N_sample_vec_[i] > 0) {
         ret[i] += distribution_[i](random_eng_);
       }

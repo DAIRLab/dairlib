@@ -104,10 +104,11 @@ class GridTasksGenerator : public TasksGenerator {
  public:
   GridTasksGenerator(int task_dim, std::vector<string> names,
                      std::vector<int> N_sample_vec, std::vector<double> task_0,
-                     std::vector<double> task_delta, bool is_stochastic);
+                     std::vector<double> task_delta,
+                     std::vector<bool> is_stochastic);
 
   // Default constructor
-  GridTasksGenerator()= default;
+  GridTasksGenerator() = default;
 
   // Getters
   const std::map<int, std::vector<int>>& get_forward_map() {
@@ -133,7 +134,7 @@ class GridTasksGenerator : public TasksGenerator {
   vector<double> task_0_;
   vector<double> task_delta_;
   vector<vector<double>> task_grid_;
-  bool is_stochastic_{};
+  std::vector<bool> is_stochastic_{};
 
   std::map<int, vector<int>> forward_task_idx_map_;
   std::map<vector<int>, int> inverse_task_idx_map_;
@@ -147,7 +148,7 @@ class UniformTasksGenerator : public TasksGenerator {
                         const std::vector<double>& task_max);
 
   // Default constructor
-  UniformTasksGenerator()= default;
+  UniformTasksGenerator() = default;
 
   // Generator
   vector<double> NewTask(int sample_idx) final;

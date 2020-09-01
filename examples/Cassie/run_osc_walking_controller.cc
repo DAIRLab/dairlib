@@ -5,6 +5,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -26,9 +27,9 @@ namespace dairlib {
 
 using std::cout;
 using std::endl;
-using std::vector;
 using std::map;
 using std::string;
+using std::vector;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -390,8 +391,8 @@ int DoMain(int argc, char* argv[]) {
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
-          use_predicted_com_vel ? left_support_duration : 0, gains
-          .fb_lateral, gains.fb_sagittal);
+          use_predicted_com_vel ? left_support_duration : 0, gains.fb_lateral,
+          gains.fb_sagittal);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -517,16 +518,16 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
-//  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-//                                      plant_w_spr, plant_w_spr);
+  //  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
+  //                                      plant_w_spr, plant_w_spr);
   W_com(0, 0) = 0;
   W_com(1, 1) = 0;
-  TransTaskSpaceTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-                                      plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData center_of_mass_traj(
+      "lipm_traj", K_p_com, K_d_com, W_com, plant_w_spr, plant_w_spr);
   center_of_mass_traj.AddPointToTrack("pelvis");
-//  VectorXd pelvis_target(3);
-//  pelvis_target << 0, 0, gains.lipm_height;
-//  osc->AddConstTrackingData(&center_of_mass_traj, pelvis_target);
+  //  VectorXd pelvis_target(3);
+  //  pelvis_target << 0, 0, gains.lipm_height;
+  //  osc->AddConstTrackingData(&center_of_mass_traj, pelvis_target);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(

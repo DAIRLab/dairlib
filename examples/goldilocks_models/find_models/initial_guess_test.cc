@@ -62,7 +62,7 @@ class InitialGuessTest : public ::testing::Test {};
 
 int test_initial_guess(int iter, int sample, int robot) {
   // create test data and save it
-  int use_database = false;
+  bool use_database = false;
   // create task_gen
   GridTasksGenerator task_gen_grid;
   if (robot == 0) {
@@ -94,7 +94,17 @@ int test_initial_guess(int iter, int sample, int robot) {
 
   const string dir =
       "../dairlib_data/goldilocks_models/find_models/robot_1_test/";
-  if (!CreateFolderIfNotExist(dir, false)) return 0;
+  //create folder if it doesn't exist
+  if(!folder_exist(dir)){
+    cout<<"Test folder doesn't exist"<<endl;
+    std::string string_for_system_call = "mkdir -p " + dir;
+    if (system(string_for_system_call.c_str()) == -1) {
+      printf("Error creating directory!n");
+      return 0;
+    } else {
+      cout << "Test folder has been created: " << dir << endl;
+    }
+  }
 
   // for each iteration, create theta_s and theta_sDDot
   int iteration = 0;
@@ -126,7 +136,6 @@ int test_initial_guess(int iter, int sample, int robot) {
       writeCSV(dir + prefix + string("w.csv"), w);
     }
   }
-
   string initial_file = SetInitialGuessByInterpolation(
       dir, iter, sample, task_gen, task, *rom, use_database, robot);
   return 1;

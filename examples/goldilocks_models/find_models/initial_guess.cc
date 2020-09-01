@@ -1,6 +1,3 @@
-//
-// Created by jianshu on 3/25/20.
-//
 #include "examples/goldilocks_models/find_models/initial_guess.h"
 
 using std::cout;
@@ -74,8 +71,8 @@ void InterpolateAmongDifferentTasks(const string& dir, string prefix,
 VectorXd CalculateInterpolation(const VectorXd& weight_vector,
                                 const MatrixXd& solution_matrix) {
   DRAKE_DEMAND(weight_vector.rows() > 0);
-  // interpolation
-  VectorXd interpolated_solution = solution_matrix * weight_vector.normalized();
+  // normalize the weight vector by L1 norm and interpolate
+  VectorXd interpolated_solution = solution_matrix * weight_vector/weight_vector.sum();
   return interpolated_solution;
 }
 
@@ -120,15 +117,18 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
 
     // calculate the weighted sum of past solutions
     int sample_num = 0;
-    string prefix = to_string(sample_num) + "_0";
-    while (file_exist(data_dir + prefix + string("_is_success.csv"))) {
+    string prefix;
+    while (file_exist(data_dir + to_string(sample_num) + "_0"
+         + string("_is_success.csv"))) {
+      prefix = to_string(sample_num) + "_0";
       InterpolateAmongDifferentTasks(data_dir, prefix, current_gamma,
                                      gamma_scale, weight_gamma, w_gamma);
       sample_num = sample_num + 1;
     }
     initial_guess = CalculateInterpolation(weight_gamma, w_gamma);
     //    save initial guess and set init file
-    initial_file_name = prefix + string("_initial_guess.csv");
+    initial_file_name = to_string(iter) + "_" + to_string(sample) +
+                        string("_initial_guess.csv");
     writeCSV(directory + initial_file_name, initial_guess);
   } else {
     DRAKE_DEMAND(iter > 0);
@@ -162,7 +162,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
       past_theta << past_theta_s, past_theta_sDDot;
       double theta_diff =
           (past_theta - current_theta).norm() / current_theta.norm();
-      if ((theta_diff < theta_range)) {
+      if ( (theta_diff < theta_range) ) {
         // take out corresponding solution and store it in each column of
         // w_gamma calculate the interpolation weight and store it in
         // weight_gamma

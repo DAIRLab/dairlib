@@ -1401,7 +1401,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
-          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
+          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.005, 0.125}, FLAGS_is_stochastic);
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_grid = GridTasksGenerator();

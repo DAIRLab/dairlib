@@ -1,0 +1,15 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "search_setting",
+    srcs = [
+        "search_setting.cc",
+    ],
+    hdrs = [
+        "search_setting.h",
+    ],
+    deps = [
+        "//common",
+        "@drake//:drake_shared_library",
+    ],
+)

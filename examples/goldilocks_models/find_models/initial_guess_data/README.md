@@ -4,7 +4,7 @@
 ```
 robot option: 1 
 
-rom_option: 2 
+rom_option: 0
 
 stride length: 0.3
 

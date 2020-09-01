@@ -357,8 +357,31 @@ void RerunTrajOpt(const Task& task, const string dir, int traj_num,
     }
   }
 }
+// check the cost increase rate compared to adjacent sample to avoid being
+// stuck in the local minimum
+void CheckCost(const Task& task,const string dir,int traj_num,int iteration){
+  int adjacent_sample_idx = (iteration==1) ? 0:traj_num-1;
+  double adjacent_sample_cost =
+      (readCSV(dir + to_string(adjacent_sample_idx) + string("_0_c.csv")))(0, 0);
+  double sample_cost =
+      (readCSV(dir + to_string(traj_num) + string("_0_c.csv")))(0, 0);
+  if(sample_cost>1.5*adjacent_sample_cost){
+    // run intermediate sample
+    Task task_mediate;
+    VectorXd current_task_vectorxd = Eigen::Map<const VectorXd>(
+        task.get().data(), task.get().size());
+    VectorXd adjacent_task_vectorxd = readCSV(
+        dir + to_string(adjacent_sample_idx) + string("_0_task.csv"));
+    task_mediate.set(CopyVectorXdToStdVector(
+        (current_task_vectorxd+adjacent_task_vectorxd)/2 ));
+    // run intermediate sample with adjacent sample solution as the initial guess
+    TrajOptGivenModel(task_mediate, dir, traj_num,true,adjacent_sample_idx);
+    // run current task with intermediate sample solution as the initial guess
+    TrajOptGivenModel(task, dir, traj_num,true);
+  }
+}
 
-//check the solution of trajectory optimization and rerun if necessary
+// check the solution of trajectory optimization and rerun if necessary
 void CheckSolution(const Task& task, const string dir, int traj_num,
     int iteration){
   int is_success;
@@ -407,6 +430,11 @@ void CheckSolution(const Task& task, const string dir, int traj_num,
     }
   }
   RerunTrajOpt(task,dir,traj_num,true);
+
+  // TODO: successful solution might be local minimum sometimes,
+  //  we need to check the cost increase again to make sure it
+  //  was a reasonable sample
+  //  CheckCost(task,dir,traj_num,iteration);
 }
 
 //search the boundary point along one direction
@@ -474,12 +502,17 @@ void BoundaryForOneDirection(const string dir,int max_iteration,
     cost_list.conservativeResize(cost_list.rows()+1, 2);
     cost_list.row(cost_list.rows()-1)<<traj_num,sample_cost;
 
-    if(sample_cost>max_cost){
-      boundary_point_idx += 1;
-      boundary_point = new_task-step;
-      SaveBoundaryPointInfor(dir,boundary_point_idx,
-                             traj_num,boundary_point);
-      break;
+    // to break the loop, we must confirm that we have found the boundary
+    // instead of easily passing the condition by local minimum solution
+    if(cost_list.rows()!=1){
+      if( (sample_cost > max_cost) &&
+      (sample_cost < 1.5*cost_list(cost_list.rows()-2,1)) ){
+        boundary_point_idx += 1;
+        boundary_point = new_task-step;
+        SaveBoundaryPointInfor(dir,boundary_point_idx,
+                               traj_num,boundary_point);
+        break;
+      }
     }
   }
 

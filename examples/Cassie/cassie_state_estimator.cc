@@ -1397,18 +1397,28 @@ void CassieStateEstimator::CopyFilteredContact(
 }
 
 void CassieStateEstimator::CopyEstimatedContactForces(
-    const Context<double>& context, dairlib::lcmt_contact* contact_msg) const {
+    const Context<double>& context,
+    drake::lcmt_contact_results_for_viz* contact_msg) const {
   // TODO (yangwill) fuse residual based contact estimation with heel spring
   // deflection and phase of gait cycle
-  contact_msg->utime = context.get_time() * 1e6;
-  contact_msg->num_contacts = num_contacts_;
-  contact_msg->contact_names.resize(num_contacts_);
-  contact_msg->contact.resize(num_contacts_);
+  contact_msg->timestamp = context.get_time() * 1e6;
+  contact_msg->num_point_pair_contacts = num_contacts_;
+  contact_msg->num_hydroelastic_contacts = 0;
+  //  contact_msg->contact_names.resize(num_contacts_);
+  //  contact_msg->contact.resize(num_contacts_);
+  contact_msg->point_pair_contact_info.clear();
   for (int i = 0; i < num_contacts_; i++) {
-    contact_msg->contact_names[i] = contact_names_[i];
-    contact_msg->contact[i] =
-        (bool)(context.get_discrete_state(gm_contact_forces_idx_)
-                   .get_value()[i * 3 + 2] > 0);
+    auto contact_info = drake::lcmt_point_pair_contact_info_for_viz();
+    contact_info.timestamp = contact_msg->timestamp;
+    contact_info.body1_name = toe_frames_[i]->body().name();
+    contact_info.body2_name = world_.name();
+    memcpy(contact_info.contact_force,
+           context.get_discrete_state(gm_contact_forces_idx_)
+               .get_value()
+               .segment(i * SPACE_DIM, (i + 1) * SPACE_DIM)
+               .data(),
+           SPACE_DIM * sizeof(double));
+    contact_msg->point_pair_contact_info.push_back(contact_info);
   }
 }
 

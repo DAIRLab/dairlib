@@ -367,7 +367,7 @@ void CheckCost(const Task& task,const string dir,int traj_num,int iteration){
       (readCSV(dir + to_string(traj_num) + string("_0_c.csv")))(0, 0);
   if(sample_cost>1.5*adjacent_sample_cost){
     // run intermediate sample
-    Task task_mediate;
+    Task task_mediate = task;
     VectorXd current_task_vectorxd = Eigen::Map<const VectorXd>(
         task.get().data(), task.get().size());
     VectorXd adjacent_task_vectorxd = readCSV(

@@ -11,13 +11,13 @@ file_dir = '../dairlib_data/goldilocks_models/find_boundary/'
 if robot_option == 1:
     robot = 'cassie/'
     dir1 = file_dir + robot + '2D_LIP/4D_task_space/' + 'robot_' + str(robot_option) + \
-           '_grid_iter50_sl_tr/'
+           '_nominal_sl_tr/'
     dir2 = file_dir + robot + '2D_LIP/4D_task_space/' + 'robot_' + str(robot_option) + \
            '_initial_sl_tr/'
     dir3 = file_dir + robot + '2D_LIP/4D_task_space/' + 'robot_' + str(robot_option) + \
-           '_large_iter100/'
+           '_range1_iter300/'
     dir4 = file_dir + robot + '2D_LIP/4D_task_space/' + 'robot_' + str(robot_option) + \
-           '_small_iter200/'
+           '_range2_iter200/'
     dir5 = file_dir+'robot_1/'
 
 # number of searching directions
@@ -30,7 +30,7 @@ n_direction = 16
 # task_name = f.read().splitlines()
 task_name = ['Stride length', 'Ground incline', 'Velocity', 'Turning rate']
 task_1_idx = 0
-task_2_idx = 1
+task_2_idx = 3
 
 
 def ExtractAdjacentLine(dir):
@@ -89,10 +89,10 @@ def generateplot(dir1, adj_index):
             z = z1+z2
             # surf = ax.scatter(x, y, z)
             surf = ax.tricontourf(x, y, z, levels=[0, 4, 8, 12, 16, 20, 24, 28, 32])
-    # fig.colorbar(surf, shrink=0.5, aspect=6)
+    fig.colorbar(surf, shrink=0.5, aspect=6)
 
 
-adjacent = ExtractAdjacentLine(dir5)
+adjacent = ExtractAdjacentLine(dir3)
 # np.savetxt('adjacent.csv', adjacent, delimiter=',')
 
 fig, ax = plt.subplots()
@@ -100,5 +100,5 @@ ax.set_xlabel(task_name[task_1_idx])
 ax.set_ylabel(task_name[task_2_idx])
 ax.set_title('cost landscape')
 # adjacent = np.genfromtxt('adjacent.csv', delimiter=",").astype(int)
-generateplot(dir5, adjacent)
+generateplot(dir1, adjacent)
 plt.show()

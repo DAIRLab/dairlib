@@ -431,10 +431,10 @@ void CheckSolution(const Task& task, const string dir, int traj_num,
   }
   RerunTrajOpt(task,dir,traj_num,true);
 
-  // TODO: successful solution might be local minimum sometimes,
-  //  we need to check the cost increase again to make sure it
-  //  was a reasonable sample
-  //  CheckCost(task,dir,traj_num,iteration);
+  // successful solution might be local minimum sometimes,
+  // we need to check the cost increase again to make sure it
+  // was a reasonable sample
+  CheckCost(task,dir,traj_num,iteration);
 }
 
 //search the boundary point along one direction
@@ -625,10 +625,10 @@ int find_boundary(int argc, char* argv[]){
       FLAGS_search_sl ? search_elements : non_search_elements,
       FLAGS_search_gi ? search_elements : non_search_elements,
       FLAGS_search_v ? search_elements : non_search_elements};
-    task = Task({"stride length", "ground incline",
-                 "velocity"});
-    search_setting = SearchSetting(3,{"stride length", "ground incline",
-                                      "velocity"},{0.25,0,0.4},
+    vector<string> task_names{"stride length", "ground incline","velocity"};
+    SaveStringVecToCsv(task_names, dir + string("task_names.csv"));
+    task = Task(task_names);
+    search_setting = SearchSetting(3,task_names,{0.25,0,0.4},
                                           {0.01,0.01,0.02},elements);
   }
   else if(robot_option==1){
@@ -637,11 +637,12 @@ int find_boundary(int argc, char* argv[]){
       FLAGS_search_gi ? search_elements : non_search_elements,
       FLAGS_search_v ? search_elements : non_search_elements,
       FLAGS_search_tr ? search_elements : non_search_elements};
-    task = Task({"stride length", "ground incline",
-                 "velocity", "turning rate"});
-    search_setting = SearchSetting(4,{"stride length", "ground incline",
-                                      "velocity","turning rate"},
-                                   {0.3,0,0.5,0},{0.01,0.01,0.01,0.02},elements);
+    vector<string> task_names{"stride length", "ground incline",
+                 "velocity", "turning rate"};
+    SaveStringVecToCsv(task_names, dir + string("task_names.csv"));
+    task = Task(task_names);
+    search_setting = SearchSetting(4,task_names,{0.3,0,0.5,0},
+        {0.01,0.01,0.01,0.02},elements);
   }
   //cout initial point information
   int dim = 0;

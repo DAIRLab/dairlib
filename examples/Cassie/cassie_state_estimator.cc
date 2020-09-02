@@ -1142,7 +1142,7 @@ EventStatus CassieStateEstimator::Update(
     //                              &optimal_cost);
     EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
                           &right_contact);
-    EstimateContactForces(context, filtered_output, lambda_est);
+    EstimateContactForces(context, filtered_output, lambda_est, left_contact, right_contact);
   }
   state->get_mutable_discrete_state(gm_contact_forces_idx_).get_mutable_value()
       << lambda_est;
@@ -1445,9 +1445,8 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 }
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
-    VectorXd& lambda) const {
+    VectorXd& lambda, int& left_contact, int& right_contact) const {
   // TODO(yangwill) add a discrete time filter to the force estimate
-  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
   plant_.SetPositionsAndVelocities(context_.get(), output.GetState());
@@ -1479,6 +1478,8 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
+  left_contact = lambda[2] > 0;
+  right_contact = lambda[5] > 0;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

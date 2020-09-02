@@ -99,10 +99,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const systems::OutputVector<double>& output,
       const std::vector<double>&  optimal_cost,
       int* left_contact, int* right_contact) const;
-  void EstimateContactForces(
-      const drake::systems::Context<double>& context,
-      const systems::OutputVector<double>& output,
-      Eigen::VectorXd& lambda) const;
+  void EstimateContactForces(const drake::systems::Context<double>& context,
+                             const systems::OutputVector<double>& output,
+                             Eigen::VectorXd& lambda, int& left_contact,
+                             int& right_contact) const;
 
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,

@@ -19,10 +19,10 @@ if robot_option == 1:
     robot = 'cassie/'
 else:
     robot = 'five_link/'
-dir1 = file_dir + robot + '2D_LIP/2D_task_space/' + 'robot_' + str(robot_option) + \
-        '_large_iter100/'
-dir2 = file_dir + robot + '2D_LIP/2D_task_space/' + 'robot_' + str(robot_option) + \
-       '_small_iter200/'
+dir1 = file_dir + robot + '2D_LIP/4D_task_space/' + 'robot_' + str(robot_option) + \
+        '_range2_iter200/'
+dir2 = file_dir + robot + '2D_LIP/4D_task_space/' + 'robot_' + str(robot_option) + \
+       '_nominal_sl_tr/'
 
 # number of searching directions
 n_direction = 16
@@ -38,7 +38,7 @@ plot_optimization_range = 0
 # Eg. column index 0 corresponds to stride length
 task_name = ['Stride length', 'Ground incline', 'Velocity', 'Turning rate']
 task_1_idx = 0
-task_2_idx = 1
+task_2_idx = 3
 
 
 def process_data_from_direction(i, dir1, dir_nominal):
@@ -59,6 +59,10 @@ def process_data_from_direction(i, dir1, dir_nominal):
     else:
         num_small = data_dir1.shape[0]
         num_large = data_dir2.shape[0]
+
+    # discard this line if the data is not reasonable
+    if num_small < 10:
+        return x, y, z
 
     # process the points on the line
     # set the value for intersected parts

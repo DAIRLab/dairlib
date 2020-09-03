@@ -76,14 +76,24 @@ def process_data_from_direction(i, dir1):
     return x, y, z
 
 
+def find_adjacent_line(dir1, adj_index, i):
+    # process data on adjacent line
+    x2, y2, z2 = process_data_from_direction(adj_index[i], dir1)
+    if len(x2) > 10:
+        return x2, y2, z2
+    else:
+        x2, y2, z2 = find_adjacent_line(dir1, adj_index, adj_index[i])
+        return x2, y2, z2
+
+
 def generateplot(dir1, adj_index):
     for i in range(n_direction):
         # process data on one line
         x1, y1, z1 = process_data_from_direction(i, dir1)
         # process data on adjacent line
-        x2, y2, z2 = process_data_from_direction(adj_index[i], dir1)
-        # plot
-        if (len(x1) > 1) & (len(x2) > 1):
+        if len(x1) > 10:
+            x2, y2, z2 = find_adjacent_line(dir1, adj_index, i)
+            # plot
             x = x1+x2
             y = y1+y2
             z = z1+z2
@@ -92,13 +102,13 @@ def generateplot(dir1, adj_index):
     fig.colorbar(surf, shrink=0.5, aspect=6)
 
 
-adjacent = ExtractAdjacentLine(dir3)
-# np.savetxt('adjacent.csv', adjacent, delimiter=',')
+# adjacent = ExtractAdjacentLine(dir3)
+# np.savetxt('examples/goldilocks_models/find_boundary_utils/adjacent.csv', adjacent, delimiter=',')
 
 fig, ax = plt.subplots()
 ax.set_xlabel(task_name[task_1_idx])
 ax.set_ylabel(task_name[task_2_idx])
 ax.set_title('cost landscape')
-# adjacent = np.genfromtxt('adjacent.csv', delimiter=",").astype(int)
-generateplot(dir1, adjacent)
+adjacent = np.genfromtxt('examples/goldilocks_models/find_boundary_utils/adjacent.csv', delimiter=",").astype(int)
+generateplot(dir2, adjacent)
 plt.show()

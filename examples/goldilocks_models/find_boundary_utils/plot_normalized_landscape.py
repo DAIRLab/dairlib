@@ -81,20 +81,31 @@ def process_data_from_direction(i, dir1, dir_nominal):
     return x, y, z
 
 
+def find_adjacent_line(dir1, dir2, adj_index, i):
+    # process data on adjacent line
+    x2, y2, z2 = process_data_from_direction(adj_index[i], dir1, dir2)
+    if len(x2) > 10:
+        return x2, y2, z2
+    else:
+        x2, y2, z2 = find_adjacent_line(dir1, dir2, adj_index, adj_index[i])
+        return x2, y2, z2
+
+
 def generateplot(dir1, dir_nominal, adj_index, levels, ticks):
     total_max = 0
     for i in range(n_direction):
         # process data on one line
         x1, y1, z1 = process_data_from_direction(i, dir1, dir_nominal)
-        # process data on adjacent line
-        x2, y2, z2 = process_data_from_direction(adj_index[i], dir1,dir_nominal)
-        # plot
-        x = x1+x2
-        y = y1+y2
-        z = z1+z2
-        surf = ax.tricontourf(x, y, z, levels=levels)
-        if max(z) > total_max:
-            total_max = max(z)
+        if len(x1) > 10:
+            # process data on adjacent line
+            x2, y2, z2 = find_adjacent_line(dir1, dir_nominal, adj_index, i)
+            # plot
+            x = x1+x2
+            y = y1+y2
+            z = z1+z2
+            surf = ax.tricontourf(x, y, z, levels=levels)
+            if max(z) > total_max:
+                total_max = max(z)
     print('max', total_max)
     fig.colorbar(surf, shrink=0.9, aspect=10, spacing='proportional', ticks=ticks)
 
@@ -107,7 +118,7 @@ fig, ax = plt.subplots()
 levels = [0.0, 0.5, 1, 1.5, 2] # manual specify level sets
 ticks = [0.0, 0.5, 1, 1.5, 2] # manual specify ticker values (it seems 0 is ignored)
 print(levels)
-adjacent = np.genfromtxt('adjacent.csv', delimiter=",")
+adjacent = np.genfromtxt('examples/goldilocks_models/find_boundary_utils/adjacent.csv', delimiter=",").astype(int)
 generateplot(dir1,dir2, adjacent, levels, ticks)
 ax.set_xlabel(task_name[task_1_idx])
 ax.set_ylabel(task_name[task_2_idx])

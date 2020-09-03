@@ -19,9 +19,9 @@ if robot_option == 1:
     robot = 'cassie/'
 else:
     robot = 'five_link/'
-dir1 = file_dir + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
+dir1 = file_dir + robot + '2D_LIP/2D_task_space/' + 'robot_' + str(robot_option) + \
         '_large_iter100/'
-dir2 = file_dir + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
+dir2 = file_dir + robot + '2D_LIP/2D_task_space/' + 'robot_' + str(robot_option) + \
        '_small_iter200/'
 
 # number of searching directions
@@ -39,6 +39,7 @@ plot_optimization_range = 0
 task_name = ['Stride length', 'Ground incline', 'Velocity', 'Turning rate']
 task_1_idx = 0
 task_2_idx = 1
+
 
 def process_data_from_direction(i, dir1, dir_nominal):
     # need to add central point on the points list
@@ -85,6 +86,16 @@ def process_data_from_direction(i, dir1, dir_nominal):
     return x, y, z
 
 
+def find_adjacent_line(dir1, dir2, adj_index, i):
+    # process data on adjacent line
+    x2, y2, z2 = process_data_from_direction(adj_index[i], dir1, dir2)
+    if len(x2) > 10:
+        return x2, y2, z2
+    else:
+        x2, y2, z2 = find_adjacent_line(dir1, dir2, adj_index, adj_index[i])
+        return x2, y2, z2
+
+
 def generateplot(dir1, dir_nominal, adj_index):
     # discrete color map
     levels = [0, 0.7, 0.8, 0.9, 1, 2]
@@ -97,15 +108,16 @@ def generateplot(dir1, dir_nominal, adj_index):
     for i in range(n_direction):
         # process data on one line
         x1, y1, z1 = process_data_from_direction(i, dir1, dir_nominal)
-        # process data on adjacent line
-        x2, y2, z2 = process_data_from_direction(adj_index[i], dir1,dir_nominal)
-        # plot
-        x = x1+x2
-        y = y1+y2
-        z = z1+z2
-        surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
-        if max(z) > total_max:
-            total_max = max(z)
+        if len(x1) > 10:
+            # process data on adjacent line
+            x2, y2, z2 = find_adjacent_line(dir1, dir_nominal, adj_index, i)
+            # plot
+            x = x1+x2
+            y = y1+y2
+            z = z1+z2
+            surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
+            if max(z) > total_max:
+                total_max = max(z)
     print('max', total_max)
     cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
     cbar.ax.set_yticklabels(['0', '0.7', '0.8', '0.9', '1', 'Inf'])
@@ -115,7 +127,7 @@ def generateplot(dir1, dir_nominal, adj_index):
 # fig, ax = plt.subplots(figsize=(11,5.5))
 fig, ax = plt.subplots()
 # ax.scatter(x, y)
-adjacent = np.genfromtxt('adjacent.csv', delimiter=",")
+adjacent = np.genfromtxt('examples/goldilocks_models/find_boundary_utils/adjacent.csv', delimiter=",").astype(int)
 generateplot(dir1, dir2, adjacent)
 ax.set_xlabel(task_name[task_1_idx])
 ax.set_ylabel(task_name[task_2_idx])

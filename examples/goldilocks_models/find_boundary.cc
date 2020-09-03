@@ -68,9 +68,7 @@ DEFINE_int32(
 "resolve again.");
 DEFINE_int32(n_node, -1, "# of nodes for traj opt");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
-DEFINE_bool(is_get_nominal,false,"is calculating the cost without ROM constraints");
-DEFINE_bool(use_optimized_model,false,"read theta from files to apply optimized model");
-DEFINE_int32(theta_index,-1,"# of optimized model to use");
+DEFINE_int32(theta_index,-1,"# of model to use");
 
 //tasks
 DEFINE_bool(is_zero_touchdown_impact, false,
@@ -159,9 +157,9 @@ string getInitFileName(const string directory, int traj_opt_num,
     string prefix;
     // initial guess for initial point
     if(traj_opt_num==0){
-      //specify initial guess if using optimized model
+      //specify initial guess if using data from optimizing models
       //use solutions during ROM optimization process to calculate the initial guess
-      if(FLAGS_use_optimized_model){
+      if(FLAGS_theta_index>=0){
         const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
             to_string(FLAGS_robot_option) + "/";
         //calculate the weighted sum of solutions
@@ -260,9 +258,8 @@ void TrajOptGivenModel(Task task,
   // Initial guess of theta
   VectorXd theta_y = VectorXd::Zero(rom->n_theta_y());
   VectorXd theta_yddot = VectorXd::Zero(rom->n_theta_yddot());
-  if (FLAGS_use_optimized_model) {
+  if (FLAGS_theta_index >= 0) {
     //you have to specify the theta to use
-    DRAKE_DEMAND(FLAGS_theta_index >= 0);
     int theta_idx = FLAGS_theta_index;
 
     const string dir_find_models =
@@ -273,7 +270,7 @@ void TrajOptGivenModel(Task task,
     rom->SetThetaYddot(theta_yddot);
   }
 
-  bool is_get_nominal = FLAGS_is_get_nominal;
+  bool is_get_nominal = (FLAGS_theta_index==0);
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
 
 //  string init_file_pass_in = "";
@@ -386,6 +383,9 @@ void CheckSolution(const Task& task, const string dir, int traj_num,
     int iteration){
   int is_success;
 
+  // check the cost increase first
+  CheckCost(task,dir,traj_num,iteration);
+
   //check if snopt find a solution successfully. If not, rerun the Traj Opt
   RerunTrajOpt(task,dir,traj_num);
 
@@ -431,10 +431,6 @@ void CheckSolution(const Task& task, const string dir, int traj_num,
   }
   RerunTrajOpt(task,dir,traj_num,true);
 
-  // successful solution might be local minimum sometimes,
-  // we need to check the cost increase again to make sure it
-  // was a reasonable sample
-  CheckCost(task,dir,traj_num,iteration);
 }
 
 //search the boundary point along one direction
@@ -656,15 +652,18 @@ int find_boundary(int argc, char* argv[]){
    * Iteration setting
    */
   cout << "\nIteration setting:\n";
-  cout<<"get nominal cost: "<<FLAGS_is_get_nominal<<endl;
-  cout<<"use optimized model: "<<FLAGS_use_optimized_model<<endl;
-  cout<<"optimized model index: "<<FLAGS_theta_index<<endl;
+  DRAKE_DEMAND(FLAGS_theta_index>=0);
+  bool get_nominal = (FLAGS_theta_index==0);
+  bool use_optimized_model = (FLAGS_theta_index>1);
+  cout<<"model index: "<<FLAGS_theta_index<<endl;
+  cout<<"get nominal cost: "<<get_nominal<<endl;
+  cout<<"use optimized model: "<<use_optimized_model<<endl;
   int max_iter = FLAGS_max_outer_iter;
   //TODO:decide the threshold under different situation
   double cost_threshold = 30;
   if(robot_option==0)
   {
-    if(FLAGS_is_get_nominal){
+    if(get_nominal){
       cost_threshold = 30;
     }
     else{
@@ -672,7 +671,7 @@ int find_boundary(int argc, char* argv[]){
     }
   }
   else if(robot_option==1){
-    if(FLAGS_is_get_nominal){
+    if(get_nominal){
       cost_threshold = 30;
     }
     else{

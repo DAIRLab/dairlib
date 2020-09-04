@@ -1,12 +1,7 @@
 """
-This function is used for plotting normalized cost landscape.
-Considering we search along several directions, we process the data along those directions
-1.
-For each direction, we compare the cost at each point on the searching line both in cost landscape 1 and
-cost landscape and set the value of reasonable point with the normalized cost.
-2.
-For those points which exist in the cost landscape we want to normalize but not in the nominal cost landscape,
-we set the value of this point 0.5.
+This function is used for normalized cost landscape with another cost landscape and plot the landscape with
+continuous color map.
+The algorithm is similar to plot_landscape while we process the data on a ray from two data sets.
 """
 import matplotlib.pyplot as plt
 import numpy as np

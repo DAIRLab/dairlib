@@ -1,12 +1,6 @@
 """
 This function is used for comparing two cost landscape and plot the landscape with discrete color map.
-Considering we search along several directions, we process the data along those directions
-1.
-For each direction, we compare the cost at each point on the searching line both in cost landscape 1 (C1) and
-cost landscape. Set the value of the point according the cost.
-2.
-For those points which are not in two landscape, if it exists in C1, we set the value of this point -0.5,
-else we set the value of this point 2
+The algorithm is similar to plot_landscape while we process the data on a ray from two data sets.
 """
 import matplotlib.pyplot as plt
 import matplotlib

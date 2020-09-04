@@ -1,23 +1,25 @@
 #pragma once
 
-#include <string>
-#include <map>
-#include <vector>
 #include <fstream>
+#include <map>
 #include <memory>
+#include <string>
+#include <vector>
+
+#include <drake/lcmt_contact_results_for_viz.hpp>
+
+#include "dairlib/lcmt_contact.hpp"
+#include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/datatypes/cassie_out_t.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/multibody_utils.h"
+#include "src/InEKF.h"
+#include "systems/framework/output_vector.h"
+#include "systems/framework/timestamped_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "src/InEKF.h"
-
-#include "multibody/multibody_utils.h"
-#include "systems/framework/output_vector.h"
-#include "systems/framework/timestamped_vector.h"
-#include "examples/Cassie/datatypes/cassie_out_t.h"
-#include "examples/Cassie/cassie_utils.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "dairlib/lcmt_contact.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -99,10 +101,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const systems::OutputVector<double>& output,
       const std::vector<double>&  optimal_cost,
       int* left_contact, int* right_contact) const;
-  void EstimateContactForces(
-      const drake::systems::Context<double>& context,
-      const systems::OutputVector<double>& output,
-      Eigen::VectorXd& lambda) const;
+  void EstimateContactForces(const drake::systems::Context<double>& context,
+                             const systems::OutputVector<double>& output,
+                             Eigen::VectorXd& lambda, int& left_contact,
+                             int& right_contact) const;
 
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,
@@ -150,7 +152,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
                            dairlib::lcmt_contact* contact_msg) const;
   void CopyEstimatedContactForces(
       const drake::systems::Context<double>& context,
-      dairlib::lcmt_contact* contact_msg) const;
+      drake::lcmt_contact_results_for_viz* contact_msg) const;
 
   int n_q_;
   int n_v_;

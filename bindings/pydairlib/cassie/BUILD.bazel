@@ -12,44 +12,19 @@ load(
 )
 
 pybind_py_library(
-    name = "multibody_py",
+    name = "cassie_utils_py",
     cc_deps = [
-        "//multibody:multipose_visualizer",
-        "//multibody:utils",
+        "//examples/Cassie:cassie_utils",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "multibody",
-    cc_srcs = ["multibody_py.cc"],
+    cc_so_name = "cassie_utils",
+    cc_srcs = ["cassie_utils_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
+        "//bindings/pydairlib/multibody:kinematic_py",
         ":module_py",
     ],
     py_imports = ["."],
-)
-
-pybind_py_library(
-    name = "kinematic_py",
-    cc_deps = [
-        "//multibody/kinematic",
-        "@drake//:drake_shared_library",
-    ],
-    cc_so_name = "kinematic",
-    cc_srcs = ["kinematic_py.cc"],
-    py_deps = [
-        "@drake//bindings/pydrake",
-        ":module_py",
-    ],
-    py_imports = ["."],
-)
-
-py_binary(
-    name = "multipose_visualizer_test",
-    srcs = ["test/multipose_visualizer_test.py"],
-    deps = [
-        ":module_py",
-        ":multibody_py",
-        "//bindings/pydairlib/common",
-    ],
 )
 
 # This determines how `PYTHONPATH` is configured, and how to install the
@@ -68,13 +43,12 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":multibody_py",
-    ":kinematic_py",
+    ":cassie_utils_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "multibody",
+    name = "cassie_utils",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

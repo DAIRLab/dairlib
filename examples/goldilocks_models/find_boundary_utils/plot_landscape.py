@@ -18,6 +18,13 @@ if robot_option == 1:
 # number of searching directions
 n_direction = 16
 
+# optimization range
+min1 = 0.2775
+max1 = 0.3075
+min2 = -0.1875
+max2 = 0.0625
+plot_optimization_range = 0
+
 # Note: we need to decide which column of the task to use
 # Eg. column index 0 corresponds to stride length
 # Currently we manually specify the task names, we will save the task name when generating the data in the future.
@@ -121,6 +128,10 @@ adjacent = extract_adjacent_line(dir1)
 
 fig, ax = plt.subplots()
 generate_plot(dir1, adjacent)
+if plot_optimization_range == 1:
+    x_line = np.array([min1, max1, max1, min1, min1])
+    y_line = np.array([min2, min2, max2, max2, min2])
+    ax.plot(x_line, y_line, 'black', linewidth=3)
 ax.set_xlabel(task_name[task_1_idx])
 ax.set_ylabel(task_name[task_2_idx])
 ax.set_title('cost landscape')

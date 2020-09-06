@@ -43,6 +43,7 @@ DEFINE_double(realtime_factor, 1, "Rate of which the traj is played back");
 DEFINE_int32(n_step, 3, "# of foot steps");
 
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
+DEFINE_int32(data_dir,0,"0: data from find_models. 1: data from find_boundary");
 
 DEFINE_bool(construct_cubic, false,
             "True if you want to construct cubic spline. Old files (before "
@@ -68,9 +69,15 @@ void visualizeGait(int argc, char* argv[]) {
   /*const string directory =
      "examples/goldilocks_models/find_models/data/robot_"
                            + to_string(FLAGS_robot_option) + "/";*/
-  const string directory =
-      "../dairlib_data/goldilocks_models/find_models/robot_" +
-      to_string(FLAGS_robot_option) + "/";
+  string folder_name;
+  if(FLAGS_data_dir==0){
+    folder_name = "find_models";
+  }
+  else if(FLAGS_data_dir==1){
+    folder_name = "find_boundary";
+  }
+  const string directory = "../dairlib_data/goldilocks_models/"+folder_name+"/robot_" +
+  to_string(FLAGS_robot_option) + "/";
 
   // Read in task name
   vector<string> task_name = ParseCsvToStringVec(directory + "task_names.csv");

@@ -91,6 +91,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   int prev_touchdown_stance_foot_idx_;
   int prev_touchdown_com_pos_idx_;
   int prev_touchdown_com_vel_idx_;
+  int prev_fsm_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;

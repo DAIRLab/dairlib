@@ -59,9 +59,10 @@ DEFINE_int32(n_step, 1,
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 
 DEFINE_bool(construct_cubic, false,
-            "True if you want to construct cubic spline. Old files (before "
-            "2019.12.31) didn't store derivatives information, so this option "
-            "cannot be used on those files.");
+            "By default, we construct trajectories using first order hold."
+            "Set this flag to true if you want to construct cubic spline. Old "
+            "files (before 2019.12.31) didn't store derivatives information, "
+            "so this option cannot be used on those files.");
 
 void swapTwoBlocks(MatrixXd* mat, int i_1, int j_1, int i_2, int j_2, int n_row,
                    int n_col) {
@@ -78,14 +79,16 @@ void visualizeGait(int argc, char* argv[]) {
   /*string directory =
      "examples/goldilocks_models/find_models/data/robot_"
                            + to_string(FLAGS_robot_option) + "/";*/
-//  string directory = "../dairlib_data/goldilocks_models/find_models/robot_" +
-//                     to_string(FLAGS_robot_option) + "/";
-//  string directory = "../dairlib_data/goldilocks_models/find_boundary/robot_" +
-//                     to_string(FLAGS_robot_option) + "/";
-//  string directory =
-//      "../dairlib_data/goldilocks_models/find_boundary_sl_gi_not_optimized/"
-//      "robot_" +
-//      to_string(FLAGS_robot_option) + "/";
+  //  string directory = "../dairlib_data/goldilocks_models/find_models/robot_"
+  //  +
+  //                     to_string(FLAGS_robot_option) + "/";
+  //  string directory =
+  //  "../dairlib_data/goldilocks_models/find_boundary/robot_" +
+  //                     to_string(FLAGS_robot_option) + "/";
+  //  string directory =
+  //      "../dairlib_data/goldilocks_models/find_boundary_sl_gi_not_optimized/"
+  //      "robot_" +
+  //      to_string(FLAGS_robot_option) + "/";
   string directory =
       "../dairlib_data/goldilocks_models/find_boundary_sl_gi_optimized/robot_" +
       to_string(FLAGS_robot_option) + "/";

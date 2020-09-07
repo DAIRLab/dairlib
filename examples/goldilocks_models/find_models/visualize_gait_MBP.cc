@@ -36,6 +36,8 @@ using std::vector;
 namespace dairlib {
 namespace goldilocks_models {
 
+// Reminder: Drake visualizer should be running in parallel with this script
+
 // If iter_end > iter_start, the program visualizes gaits for
 // (iteration index, sample index) = (iter_start, sample),
 //                                   (iter_start + 1, sample),

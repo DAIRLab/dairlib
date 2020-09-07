@@ -2,12 +2,12 @@
 #include <string>
 #include <gflags/gflags.h>
 
+#include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/task.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "common/file_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/multibody/parsing/parser.h"
@@ -36,11 +36,23 @@ using std::vector;
 namespace dairlib {
 namespace goldilocks_models {
 
-DEFINE_int32(iter_start, 1, "The iter #");
-DEFINE_int32(iter_end, -1, "The iter #");
-DEFINE_int32(sample, 0, "The sample #");
+// If iter_end > iter_start, the program visualizes gaits for
+// (iteration index, sample index) = (iter_start, sample),
+//                                   (iter_start + 1, sample),
+//                                   (iter_start + 2, sample),
+//                                             ...
+//                                   (iter_end - 1, sample),
+//                                   (iter_end, sample).
+// By default, iter_end = -1, and we only visualize
+// (iteration index, sample index) = (iter_start, sample).
+DEFINE_int32(iter_start, 1, "The iter idx");
+DEFINE_int32(iter_end, -1, "The iter idx");
+DEFINE_int32(sample, 0, "The sample idx");
+
 DEFINE_double(realtime_factor, 1, "Rate of which the traj is played back");
-DEFINE_int32(n_step, 3, "# of foot steps");
+DEFINE_int32(n_step, 1,
+             "# of foot steps. "
+             "(multi-steps only works when the gait is periodic)");
 
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 
@@ -60,51 +72,66 @@ void swapTwoBlocks(MatrixXd* mat, int i_1, int j_1, int i_2, int j_2, int n_row,
 void visualizeGait(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // parameters
+  // User settings
+  /*string directory =
+     "examples/goldilocks_models/find_models/data/robot_"
+                           + to_string(FLAGS_robot_option) + "/";*/
+//  string directory = "../dairlib_data/goldilocks_models/find_models/robot_" +
+//                     to_string(FLAGS_robot_option) + "/";
+//  string directory = "../dairlib_data/goldilocks_models/find_boundary/robot_" +
+//                     to_string(FLAGS_robot_option) + "/";
+//  string directory =
+//      "../dairlib_data/goldilocks_models/find_boundary_sl_gi_not_optimized/"
+//      "robot_" +
+//      to_string(FLAGS_robot_option) + "/";
+  string directory =
+      "../dairlib_data/goldilocks_models/find_boundary_sl_gi_optimized/robot_" +
+      to_string(FLAGS_robot_option) + "/";
+
+  // Other settings
   int iter_start = FLAGS_iter_start;
   int iter_end =
       (FLAGS_iter_end >= FLAGS_iter_start) ? FLAGS_iter_end : FLAGS_iter_start;
   int n_step = FLAGS_n_step;  // Should be > 0
-  /*const string directory =
-     "examples/goldilocks_models/find_models/data/robot_"
-                           + to_string(FLAGS_robot_option) + "/";*/
-  const string directory =
-      "../dairlib_data/goldilocks_models/find_models/robot_" +
-      to_string(FLAGS_robot_option) + "/";
 
   // Read in task name
   vector<string> task_name = ParseCsvToStringVec(directory + "task_names.csv");
   Task task(task_name);
   int ground_incline_idx = task.name_to_index_map().at("ground incline");
 
-  // Looping through the iterations
+  // Construct a list of (iteration #, sample #) pairs to visualize for
+  std::vector<std::pair<int, int>> iter_sample_pair_list;
   for (int iter = iter_start; iter <= iter_end; iter++) {
-    // Read in ground incline
-    double ground_incline = readCSV(
-        directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
-        string("_task.csv"))(ground_incline_idx, 0);
+    iter_sample_pair_list.emplace_back(iter, FLAGS_sample);
+  }
 
-    // Read in trajecotry
+  // Loop through each (iteration #, sample #) pair and visualize the gait
+  for (const auto& iter_sample_pair : iter_sample_pair_list) {
+    int iter = iter_sample_pair.first;
+    int sample = iter_sample_pair.second;
+
+    // Read in ground incline
+    double ground_incline =
+        readCSV(directory + to_string(iter) + string("_") + to_string(sample) +
+                string("_task.csv"))(ground_incline_idx, 0);
+
+    // Read in trajectory
     VectorXd time_mat;
     MatrixXd state_mat;
     MatrixXd statedot_mat;
     if (!FLAGS_construct_cubic) {
-      time_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
-          string("_time_at_knots.csv"));
-      state_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
-          string("_state_at_knots.csv"));
+      time_mat = readCSV(directory + to_string(iter) + string("_") +
+                         to_string(sample) + string("_time_at_knots.csv"));
+      state_mat = readCSV(directory + to_string(iter) + string("_") +
+                          to_string(sample) + string("_state_at_knots.csv"));
     } else {
-      time_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
-          string("_t_cubic_spline.csv"));
-      state_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
-          string("_x_cubic_spline.csv"));
-      statedot_mat = readCSV(
-          directory + to_string(iter) + string("_") + to_string(FLAGS_sample) +
-          string("_xdot_cubic_spline.csv"));
+      time_mat = readCSV(directory + to_string(iter) + string("_") +
+                         to_string(sample) + string("_t_cubic_spline.csv"));
+      state_mat = readCSV(directory + to_string(iter) + string("_") +
+                          to_string(sample) + string("_x_cubic_spline.csv"));
+      statedot_mat =
+          readCSV(directory + to_string(iter) + string("_") +
+                  to_string(sample) + string("_xdot_cubic_spline.csv"));
     }
 
     int n_state = state_mat.rows();
@@ -257,6 +284,7 @@ void visualizeGait(int argc, char* argv[]) {
             : PiecewisePolynomial<double>::FirstOrderHold(T_breakpoint, Y);
 
     // Create MBP
+    drake::logging::set_log_level("err");  // ignore warnings about joint limits
     drake::systems::DiagramBuilder<double> builder;
     MultibodyPlant<double> plant(0.0);
     SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -291,8 +319,6 @@ void visualizeGait(int argc, char* argv[]) {
       simulator.AdvanceTo(pp_xtraj.end_time());
     }
   }  // end for(int iter...)
-
-  return;
 }
 }  // namespace goldilocks_models
 }  // namespace dairlib

@@ -205,7 +205,8 @@ DirconTrajectory::DirconTrajectory(
   ConstructMetadataObject(name, description);
 }
 
-PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory() {
+PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
+    const {
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(
           x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
@@ -221,7 +222,8 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory() {
   return state_traj;
 }
 
-PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory() {
+PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory()
+    const {
   PiecewisePolynomial<double> input_traj =
       PiecewisePolynomial<double>::FirstOrderHold(u_->time_vector,
                                                   u_->datapoints);

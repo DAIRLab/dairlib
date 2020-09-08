@@ -44,43 +44,47 @@ class DirconTrajectory : public LcmTrajectory {
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& name, const std::string& description);
 
-  drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory();
-  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory();
+  drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
+      const;
+  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
+      const;
 
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
   void LoadFromFile(const std::string& filepath) override;
 
-  Eigen::MatrixXd GetStateSamples(int mode) {
+  Eigen::MatrixXd GetStateSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
     return x_[mode]->datapoints;
   }
-  Eigen::MatrixXd GetStateDerivativeSamples(int mode) {
+  Eigen::MatrixXd GetStateDerivativeSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
     return xdot_[mode]->datapoints;
   }
-  Eigen::MatrixXd GetStateBreaks(int mode) {
+  Eigen::MatrixXd GetStateBreaks(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
     return x_[mode]->time_vector;
   }
-  Eigen::MatrixXd GetInputSamples() { return u_->datapoints; }
-  Eigen::MatrixXd GetBreaks() { return u_->time_vector; }
-  Eigen::MatrixXd GetForceSamples(int mode) {
+  Eigen::MatrixXd GetInputSamples() const { return u_->datapoints; }
+  Eigen::MatrixXd GetBreaks() const { return u_->time_vector; }
+  Eigen::MatrixXd GetForceSamples(int mode) const {
     return lambda_[mode]->datapoints;
   }
-  Eigen::MatrixXd GetForceBreaks(int mode) {
+  Eigen::MatrixXd GetForceBreaks(int mode) const {
     return lambda_[mode]->time_vector;
   }
-  Eigen::MatrixXd GetCollocationForceSamples(int mode) {
+  Eigen::MatrixXd GetCollocationForceSamples(int mode) const {
     return lambda_c_[mode]->datapoints;
   }
-  Eigen::MatrixXd GetCollocationForceBreaks(int mode) {
+  Eigen::MatrixXd GetCollocationForceBreaks(int mode) const {
     return lambda_c_[mode]->time_vector;
   }
-  Eigen::VectorXd GetDecisionVariables() { return decision_vars_->datapoints; }
+  Eigen::VectorXd GetDecisionVariables() const {
+    return decision_vars_->datapoints;
+  }
 
   int GetNumModes() const { return num_modes_; }
 

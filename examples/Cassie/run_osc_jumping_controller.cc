@@ -268,8 +268,7 @@ int DoMain(int argc, char* argv[]) {
       r_foot_trajectory, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
-          plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
-          FLAGS_delay_time);
+          pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_springs, transition_times, FLAGS_contact_based_fsm,
       FLAGS_transition_delay, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);

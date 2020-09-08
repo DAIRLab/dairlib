@@ -247,7 +247,7 @@ int do_main(int argc, char* argv[]) {
           {TriggerType::kForced}));
   auto gm_contact_pub =
       builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+          "CASSIE_CONTACT_GM_OBSERVER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_filtered_contact_output_port(),
                   filtered_contact_pub->get_input_port());
   builder.Connect(state_estimator->get_gm_contact_output_port(),

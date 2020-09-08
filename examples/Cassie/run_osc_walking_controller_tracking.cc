@@ -188,7 +188,7 @@ int DoMain(int argc, char* argv[]) {
       r_foot_trajectory);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
-          plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_traj");
+          pelvis_rot_trajectory, "pelvis_rot_traj");
   auto fsm = builder.AddSystem<WalkingEventFsm>(
       plant_w_springs, transition_times, FLAGS_contact_based_fsm,
       (osc_walk::FSM_STATE)FLAGS_init_fsm_state, print_fsm_info);

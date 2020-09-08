@@ -10,10 +10,9 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::osc_jump {
 
 PelvisOrientationTrajGenerator::PelvisOrientationTrajGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant,
     const PiecewisePolynomial<double>& orientation_traj, std::string traj_name,
     double time_offset)
-    : plant_(plant), traj_(orientation_traj) {
+    : traj_(orientation_traj) {
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
 

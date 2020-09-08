@@ -40,9 +40,9 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
                 drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
   const drake::multibody::Frame<double>& world_;
   const drake::multibody::Frame<double>& stance_foot_frame_;
-  drake::systems::Context<double>* context_;
 
 
   drake::trajectories::PiecewisePolynomial<double> foot_traj_;

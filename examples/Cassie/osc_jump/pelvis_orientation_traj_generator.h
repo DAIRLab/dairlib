@@ -17,7 +17,6 @@ class PelvisOrientationTrajGenerator
     : public drake::systems::LeafSystem<double> {
  public:
   PelvisOrientationTrajGenerator(
-      const drake::multibody::MultibodyPlant<double>& plant,
       const drake::trajectories::PiecewisePolynomial<double>& orientation_traj,
       std::string traj_name, double time_offset = 0.0);
 
@@ -25,10 +24,7 @@ class PelvisOrientationTrajGenerator
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 
-  const drake::multibody::MultibodyPlant<double>& plant_;
   drake::trajectories::PiecewisePolynomial<double> traj_;
-
-  int state_port_;
 };
 
 }  // namespace dairlib::examples::osc_jump

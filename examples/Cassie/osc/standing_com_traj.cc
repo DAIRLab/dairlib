@@ -25,14 +25,16 @@ namespace cassie {
 namespace osc {
 
 StandingComTraj::StandingComTraj(
-    const MultibodyPlant<double>& plant, Context<double>* context,
+    const MultibodyPlant<double>& plant,
+    Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
     double height)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
-      feet_contact_points_(feet_contact_points){
+      feet_contact_points_(feet_contact_points),
+      height_(height) {
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -59,8 +61,7 @@ void StandingComTraj::CalcDesiredTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double target_height =
       this->EvalInputValue<dairlib::lcmt_target_standing_height>(
-              context, target_height_port_)
-          ->target_height;
+          context, target_height_port_)->target_height;
   target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
   VectorXd q = robot_output->GetPositions();
 
@@ -80,7 +81,7 @@ void StandingComTraj::CalcDesiredTraj(
                            feet_center_pos(2) + target_height);
 
   // Assign traj
-  auto* pp_traj =
+  PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   *pp_traj = PiecewisePolynomial<double>(desired_com_pos);

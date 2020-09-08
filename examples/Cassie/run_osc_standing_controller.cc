@@ -1,3 +1,4 @@
+#include "drake/common/yaml/yaml_read_archive.h"
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -5,6 +6,7 @@
 #include "dairlib/lcmt_target_standing_height.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/standing_com_traj.h"
+#include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -12,7 +14,6 @@
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
 
-#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -49,7 +50,7 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 0.001,
               "A cosntant times with cost weight of OSC traj tracking");
-DEFINE_double(height, .89, "The initial COM height (m)");
+DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
 
@@ -174,15 +175,21 @@ int DoMain(int argc, char* argv[]) {
   // Create osc debug sender.
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+          "OSC_DEBUG_STANDING", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
   // Create desired center of mass traj
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
       plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height);
+  auto pelvis_rot_traj_generator =
+      builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
+          plant_w_springs, context_w_spr.get(), feet_contact_points,
+          "pelvis_rot_traj");
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(0),
+                  pelvis_rot_traj_generator->get_input_port_state());
   builder.Connect(target_height_receiver->get_output_port(),
                   com_traj_generator->get_input_port_target_height());
 
@@ -239,9 +246,7 @@ int DoMain(int argc, char* argv[]) {
       W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
-  VectorXd pelvis_desired_quat(4);
-  pelvis_desired_quat << 1, 0, 0, 0;
-  osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
+  osc->AddTrackingData(&pelvis_rot_traj);
 
   // Build OSC problem
   osc->Build();
@@ -253,6 +258,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
+  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_rot_traj"));
 
   // Create the diagram
   auto owned_diagram = builder.Build();
@@ -263,14 +270,14 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
 
-  //   Get context and initialize the input port of LcmSubsriber for
-  //   lcmt_target_standing_height
+  // Get context and initialize the input port of LcmSubsriber for
+  // lcmt_target_standing_height
   auto diagram_ptr = loop.get_diagram();
   auto& diagram_context = loop.get_diagram_mutable_context();
   auto& target_receiver_context = diagram_ptr->GetMutableSubsystemContext(
       *target_height_receiver, &diagram_context);
-  //   Note that currently the LcmSubscriber stores the lcm message in the first
-  //   state of the leaf system (we hard coded index 0 here)
+  // Note that currently the LcmSubsriber store the lcm message in the first
+  // state of the leaf system (we hard coded index 0 here)
   auto& mutable_state =
       target_receiver_context
           .get_mutable_abstract_state<dairlib::lcmt_target_standing_height>(0);
@@ -278,7 +285,7 @@ int DoMain(int argc, char* argv[]) {
   initial_message.target_height = FLAGS_height;
   mutable_state = initial_message;
 
-  //   Run lcm-driven simulation
+  // Run lcm-driven simulation
   loop.Simulate();
 
   return 0;

@@ -39,10 +39,28 @@ namespace osc {
 /// Requirement: quaternion floating-based Cassie only
 class HighLevelCommand : public drake::systems::LeafSystem<double> {
  public:
+  /// Constructor that computes the desired yaw and translational velocities
+  /// according to radio commands
+  /// @param vel_scale_rot Scaling factor that scales the range of commanded yaw
+  /// velocities according to [-vel_scale_rot, vel_scale_rot]
+  /// @param vel_scale_trans Scaling factor that scales the range of commanded
+  /// translational velocities  (saggital and lateral)according to
+  /// [-vel_scale_trans, vel_scale_trans]
+  ///
+  /// Designed to be used with hardware
+  HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::systems::Context<double>* context,
+                   double vel_scale_rot, double vel_scale_trans,
+                   int footstep_option);
+  /// Constructor that computes the desired yaw and translational velocities
+  /// according to a global target position
+  ///
+  /// Designed to be used in simulation
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    const Eigen::Vector2d& global_target_position,
-                   const Eigen::Vector2d& params_of_no_turning);
+                   const Eigen::Vector2d& params_of_no_turning,
+                   int footstep_option);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -51,14 +69,24 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_yaw_output_port() const {
     return this->get_output_port(yaw_port_);
   }
+  const drake::systems::InputPort<double>& get_cassie_output_port() const {
+    return this->get_input_port(cassie_out_port_);
+  }
   const drake::systems::OutputPort<double>& get_xy_output_port() const {
     return this->get_output_port(xy_port_);
   }
 
  private:
+  HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::systems::Context<double>* context,
+                   int footstep_option);
+
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  Eigen::VectorXd CalcCommandFromTargetPosition(
+      const drake::systems::Context<double>& context) const;
 
   void CopyHeadingAngle(const drake::systems::Context<double>& context,
                         drake::systems::BasicVector<double>* output) const;
@@ -71,39 +99,37 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
+  bool use_radio_command_;
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
 
-//  std::unique_ptr<drake::systems::Context<double>> context_;
+  double vel_scale_rot_ = 0.5;
+  double vel_scale_trans_ = 1.0;
 
   // Port index
   int state_port_;
   int yaw_port_;
   int xy_port_;
+  int cassie_out_port_ = -1;
 
   // Indices for the discrete states of this leafsystem
-  drake::systems::DiscreteStateIndex prev_time_idx_;
-  drake::systems::DiscreteStateIndex des_yaw_vel_idx_;
-  drake::systems::DiscreteStateIndex des_horizontal_vel_idx_;
+  drake::systems::DiscreteStateIndex des_vel_idx_;
 
   // Rotation control (yaw) parameters
   double kp_yaw_ = 1;
   double kd_yaw_ = 0.2;
   double vel_max_yaw_ = 0.5;
-  double vel_min_yaw_ = -0.5;
 
   // Position control (sagital plane) parameters
-  double kp_pos_sagital_ = 1.0;
-  double kd_pos_sagital_ = 0.2;
+  double kp_pos_sagital_;
+  double kd_pos_sagital_;
   double vel_max_sagital_ = 1;
-  double vel_min_sagital_ = -1;       // TODO(yminchen): need to test this
   double target_pos_offset_ = -0.16;  // Due to steady state error
 
   // Position control (frontal plane) parameters
-  double kp_pos_lateral_ = 0.5;
-  double kd_pos_lateral_ = 0.1;
-  double vel_max_lateral_ = 0.5;
-  double vel_min_lateral_ = -0.5;
+  double kp_pos_lateral_;
+  double kd_pos_lateral_;
+  double vel_max_lateral_;
 };
 
 }  // namespace osc

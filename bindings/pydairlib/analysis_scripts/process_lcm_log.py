@@ -47,7 +47,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_command_sol = np.array(self.yddot_command_sol)
 
 
-def process_log(log, pos_map, vel_map):
+def process_log(log, pos_map, vel_map, act_map):
   t_x = []
   t_u = []
   t_controller_switch = []
@@ -55,6 +55,7 @@ def process_log(log, pos_map, vel_map):
   fsm = []
   q = []
   v = []
+  u_meas = []
   u = []
   kp = []
   kd = []
@@ -65,23 +66,55 @@ def process_log(log, pos_map, vel_map):
   contact_forces = [[], [], [], []]  # Allocate space for all 4 point contacts
   contact_info_locs = [[], [], [], []]
   cassie_out = []  # Cassie out types
+  osc_output = []
+  u_pd = []
+  t_u_pd = []
+
+  full_log = dict()
+  channel_to_type_map = dict()
+  unknown_types = set()
+  known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
+                     dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
+                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
 
   for event in log:
-    if event.channel == "CASSIE_STATE_SIMULATION" or event.channel == "CASSIE_STATE_DISPATCHER":
+    if event.channel not in full_log and event.channel not in unknown_types:
+      for lcmtype in known_lcm_types:
+        try:
+          lcmtype.decode(event.data)
+          channel_to_type_map[event.channel] = lcmtype
+        except ValueError:
+          continue
+      if event.channel in channel_to_type_map:
+        full_log[event.channel] = []
+      else:
+        unknown_types.add(event.channel)
+    if event.channel in full_log:
+      full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
+    if event.channel == "CASSIE_STATE_DISPATCHER":
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]
       v_temp = [[] for i in range(len(msg.velocity))]
+      u_temp = [[] for i in range(len(msg.effort))]
       for i in range(len(q_temp)):
         q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
       for i in range(len(v_temp)):
         v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
+      for i in range(len(u_temp)):
+        u_temp[act_map[msg.effort_names[i]]] = msg.effort[i]
       q.append(q_temp)
       v.append(v_temp)
+      u_meas.append(u_temp)
       t_x.append(msg.utime / 1e6)
-    if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
+    # if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
+    if event.channel == "CASSIE_INPUT" or event.channel == "OSC_WALKING":
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_u.append(msg.utime / 1e6)
+    if event.channel == "PD_CONTROL":
+      msg = dairlib.lcmt_robot_input.decode(event.data)
+      u_pd.append(msg.efforts)
+      t_u_pd.append(msg.utime / 1e6)
     if event.channel == "INPUT_SWITCH":
       msg = dairlib.lcmt_controller_switch.decode(event.data)
       switch_signal.append(msg.channel == "OSC_STANDING")
@@ -94,8 +127,9 @@ def process_log(log, pos_map, vel_map):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    if event.channel == "OSC_DEBUG":
+    if event.channel == "OSC_DEBUG_WALKING":
       msg = dairlib.lcmt_osc_output.decode(event.data)
+      osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)
       for i in range(num_osc_tracking_data):
         if msg.tracking_data[i].name not in osc_debug:
@@ -143,7 +177,9 @@ def process_log(log, pos_map, vel_map):
   fsm = np.array(fsm)
   q = np.array(q)
   v = np.array(v)
+  u_meas = np.array(u_meas)
   u = np.array(u)
+  u_pd = np.array(u_pd)
   kp = np.array(kp)
   kd = np.array(kd)
   estop_signal = np.array(estop_signal)
@@ -164,7 +200,9 @@ def process_log(log, pos_map, vel_map):
   for key in osc_debug:
     osc_debug[key].convertToNP()
 
-  x = np.hstack((q, v)) # combine into state vector
+  x = np.hstack((q, v))  # combine into state vector
 
-  return x, t_x, u, t_u, contact_forces, contact_info_locs, t_contact_info, osc_debug, fsm, estop_signal, \
-         switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out
+  return x, u_meas, t_x, u, t_u, contact_forces, contact_info_locs, \
+         t_contact_info, osc_debug, fsm, estop_signal, \
+         switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
+         t_u_pd, osc_output, full_log

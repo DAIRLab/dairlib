@@ -32,11 +32,9 @@ namespace dairlib::systems::controllers {
 ///    plant does not have spring, then plant_w_spr and plant_wo_spr should
 ///    refer to the same plant.
 ///  - `plant_wo_spr` a MultibodyPlant without springs
-///  - `context_w_spr` a pointer to Context for plant_w_spr. If it's nullptr,
-///    OSC will create its own Context for the plant
-///  - `context_wo_spr` a pointer to Context for plant_wo_spr. If it's nullptr,
-///    OSC will create its own Context for the plant
-///  - `used_with_finite_state_machine` a flag indicating whehter using osc with
+///  - `context_w_spr` a pointer to Context for plant_w_spr
+///  - `context_wo_spr` a pointer to Context for plant_wo_spr
+///  - `used_with_finite_state_machine` a flag indicating whether using osc with
 ///    finite state machine or not
 /// The springs here refer to the compliant components in the robots.
 

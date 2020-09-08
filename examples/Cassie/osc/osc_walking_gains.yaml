@@ -1,0 +1,70 @@
+rows: 3
+cols: 3
+w_accel: 0.000025
+w_soft_constraint: 8000
+
+w_swing_toe: 200
+swing_toe_kp: 20
+swing_toe_kd: 1
+
+w_hip_yaw: 60
+hip_yaw_kp: 10
+hip_yaw_kd: 2.5
+
+footstep_offset: 0.06
+center_line_offset: 0.06
+final_foot_height: -0.025
+final_foot_velocity_z: 0.0
+mid_foot_height: 0.05
+
+CoMW:
+  [  50,    0,     0,
+      0,   50,     0,
+      0,    0,  1000]
+CoMKp:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,    50]
+CoMKd:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,    5]
+
+PelvisBalanceW:
+  [ 200,    0,     0,
+    0,    400,     0,
+    0,      0,     0]
+PelvisBalanceKp:
+  [ 20,      0,    0,
+     0,    100,    0,
+     0,      0,    0]
+PelvisBalanceKd:
+  [  2,     0,    0,
+      0,    10,    0,
+      0,     0,    0]
+
+PelvisHeadingW:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,    10]
+PelvisHeadingKp:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,   10]
+PelvisHeadingKd:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,    2]
+
+SwingFootW:
+  [ 400,    0,     0,
+      0,  400,     0,
+      0,    0,   400]
+SwingFootKp:
+  [  200,    0,     0,
+      0,   200,     0,
+      0,    0,    200]
+SwingFootKd:
+  [   5,    0,     0,
+      0,    5,     0,
+      0,    0,     5]

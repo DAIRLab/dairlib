@@ -5,21 +5,22 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "osc",
     deps = [
-        "//examples/Cassie/osc:deviation_from_cp",
         "//examples/Cassie/osc:heading_traj_generator",
         "//examples/Cassie/osc:high_level_command",
         "//examples/Cassie/osc:standing_com_traj",
-        "//systems/controllers:cp_traj_gen",
+        "//examples/Cassie/osc:standing_pelvis_traj",
+        "//examples/Cassie/osc:walking_speed_control",
         "//systems/controllers:lipm_traj_gen",
+        "//systems/controllers:swing_ft_traj_gen",
         "//systems/controllers:time_based_fsm",
         "//systems/controllers/osc:operational_space_control",
     ],
 )
 
 cc_library(
-    name = "deviation_from_cp",
-    srcs = ["deviation_from_cp.cc"],
-    hdrs = ["deviation_from_cp.h"],
+    name = "walking_speed_control",
+    srcs = ["walking_speed_control.cc"],
+    hdrs = ["walking_speed_control.h"],
     deps = [
         "//multibody:utils",
         "//systems/framework:vector",
@@ -32,6 +33,7 @@ cc_library(
     srcs = ["high_level_command.cc"],
     hdrs = ["high_level_command.h"],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
@@ -58,6 +60,18 @@ cc_library(
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "standing_pelvis_traj",
+    srcs = ["standing_pelvis_orientation_traj.cc"],
+    hdrs = ["standing_pelvis_orientation_traj.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

@@ -38,6 +38,18 @@ cc_library(
 )
 
 cc_library(
+    name = "cassie_hardware",
+    deps = [
+        "//examples/Cassie:dispatcher_robot_in",
+        "//examples/Cassie:dispatcher_robot_out",
+        "//examples/Cassie:multibody_sim",
+        "//examples/Cassie:run_osc_standing_controller",
+        "//examples/Cassie:run_osc_walking_controller",
+        "//examples/Cassie/osc",
+    ],
+)
+
+cc_library(
     name = "cassie_urdf",
     data = glob(["urdf/**"]),
 )
@@ -378,6 +390,7 @@ cc_binary(
         "//examples/Cassie/osc",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -424,14 +437,14 @@ cc_binary(
     srcs = ["run_dircon_squatting.cc"],
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
-        ":cassie_utils",
         ":cassie_fixed_point_solver",
+        ":cassie_utils",
         "//common",
         "//multibody/kinematic",
         "//solvers:optimization_utils",
         "//systems/primitives",
-        "//systems/trajectory_optimization/dircon",
         "//systems/trajectory_optimization:dircon",
+        "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

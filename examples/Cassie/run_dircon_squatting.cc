@@ -10,6 +10,7 @@
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -66,6 +67,8 @@ using dairlib::systems::SubvectorPassThrough;
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
+DEFINE_string(save_filename, "default_filename",
+              "Filename to save decision vars to.");
 DEFINE_bool(store_data, false, "To store solution or not");
 DEFINE_int32(max_iter, 100, "Iteration limit");
 DEFINE_int32(N, 20, "Number of knotpoints");
@@ -507,6 +510,17 @@ void DoMain(double duration, int max_iter, string data_directory,
   cout << "\n" << to_string(solution_result) << endl;
   cout << "Solve time:" << elapsed.count() << std::endl;
   cout << "Cost:" << result.get_optimal_cost() << std::endl;
+
+  // Save trajectory to file
+  if (!FLAGS_save_filename.empty()) {
+    DirconTrajectory saved_traj(
+        plant, trajopt, result, "walking_trajectory",
+        "Decision variables and state/input trajectories "
+        "for walking");
+    saved_traj.WriteToFile(FLAGS_data_directory + FLAGS_save_filename);
+    std::cout << "Wrote to file: " << FLAGS_data_directory + FLAGS_save_filename
+              << std::endl;
+  }
 
   // Check which solver was used
   cout << "Solver: " << result.get_solver_id().name() << endl;

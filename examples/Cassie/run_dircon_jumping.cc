@@ -10,6 +10,7 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -312,23 +313,24 @@ void DoMain() {
     }
   }
 
-  // Printing
-//  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
-//    cout << trajopt->decision_variable(i) << ", ";
-//    cout << trajopt->decision_variable(i).get_id() << ", ";
-//    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
-//         << ", ";
-//    auto scale_map = trajopt->GetVariableScaling();
-//    auto it = scale_map.find(i);
-//    if (it != scale_map.end()) {
-//      cout << it->second;
-//    } else {
-//      cout << "none";
-//    }
-//    cout << ", ";
-//    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
-//    cout << endl;
-//  }
+  //   Printing
+  //  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
+  //    cout << trajopt->decision_variable(i) << ", ";
+  //    cout << trajopt->decision_variable(i).get_id() << ", ";
+  //    cout <<
+  //    trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
+  //         << ", ";
+  //    auto scale_map = trajopt->GetVariableScaling();
+  //    auto it = scale_map.find(i);
+  //    if (it != scale_map.end()) {
+  //      cout << it->second;
+  //    } else {
+  //      cout << "none";
+  //    }
+  //    cout << ", ";
+  //    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
+  //    cout << endl;
+  //  }
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
@@ -343,63 +345,13 @@ void DoMain() {
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "Solve result: " << result.get_solution_result() << std::endl;
 
-//  printConstraint(trajopt, result);
-
-  const PiecewisePolynomial<double>& state_traj =
-      trajopt->ReconstructStateTrajectory(result);
-  const PiecewisePolynomial<double>& input_traj =
-      trajopt->ReconstructInputTrajectory(result);
-
-  LcmTrajectory::Trajectory decision_vars;
-  decision_vars.traj_name = "decision_vars";
-  decision_vars.datapoints = result.GetSolution();
-  decision_vars.time_vector = VectorXd::Zero(decision_vars.datapoints.size());
-  decision_vars.datatypes = vector<string>(decision_vars.datapoints.size());
-
-  int num_modes = 3;
-  std::vector<LcmTrajectory::Trajectory> trajectories;
-  std::vector<std::string> trajectory_names;
-
-  for (int mode = 0; mode < num_modes; ++mode) {
-    LcmTrajectory::Trajectory traj_block;
-    traj_block.traj_name =
-        "state_input_trajectory" + std::to_string(mode);
-    std::vector<double> breaks_copy =
-        std::vector(state_traj.get_segment_times());
-    traj_block.time_vector =
-        Eigen::Map<Eigen::VectorXd>(breaks_copy.data(), breaks_copy.size())
-            .segment(FLAGS_knot_points * mode, FLAGS_knot_points);
-    traj_block.datapoints = generateStateAndInputMatrix(state_traj, input_traj,
-                                                        traj_block.time_vector);
-    // To store x and xdot at the knot points
-    const vector<string>& state_datatypes =
-        multibody::createStateNameVectorFromMap(plant);
-    const vector<string>& input_datatypes =
-        multibody::createActuatorNameVectorFromMap(plant);
-    traj_block.datatypes.reserve(state_datatypes.size() +
-        state_datatypes.size() +
-        input_datatypes.size());
-    traj_block.datatypes.insert(traj_block.datatypes.end(),
-                                state_datatypes.begin(),
-                                state_datatypes.end());
-    traj_block.datatypes.insert(traj_block.datatypes.end(),
-                                state_datatypes.begin(),
-                                state_datatypes.end());
-    traj_block.datatypes.insert(traj_block.datatypes.end(),
-                                input_datatypes.begin(),
-                                input_datatypes.end());
-//    std::cout << "datatypes size: " << traj_block.datatypes.size() << std::endl;
-    trajectories.push_back(traj_block);
-    trajectory_names.push_back(traj_block.traj_name);
-  }
-
-  trajectories.push_back(decision_vars);
-  trajectory_names.push_back(decision_vars.traj_name);
-  LcmTrajectory saved_traj(trajectories, trajectory_names, "jumping_trajectory",
-                           "Decision variables and state/input trajectories "
-                           "for jumping");
-  saved_traj.writeToFile(FLAGS_data_directory + FLAGS_save_filename);
-
+  // Save trajectory to file
+  DirconTrajectory saved_traj(plant, *trajopt, result, "jumping_trajectory",
+                              "Decision variables and state/input trajectories "
+                              "for jumping");
+  saved_traj.WriteToFile(FLAGS_data_directory + FLAGS_save_filename);
+  std::cout << "Wrote to file: " << FLAGS_data_directory + FLAGS_save_filename
+            << std::endl;
   drake::trajectories::PiecewisePolynomial<double> optimal_traj =
       trajopt->ReconstructStateTrajectory(result);
   multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
@@ -461,8 +413,8 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto x = trajopt->state();
 
   // Duration Bounds
-  double min_duration = (FLAGS_duration > 0.0 ) ? FLAGS_duration : 1.0;
-  double max_duration = (FLAGS_duration > 0.0 ) ? FLAGS_duration : 1.5;
+  double min_duration = (FLAGS_duration > 0.0) ? FLAGS_duration : 1.0;
+  double max_duration = (FLAGS_duration > 0.0) ? FLAGS_duration : 1.5;
 
   trajopt->AddDurationBounds(min_duration, max_duration);
 
@@ -596,12 +548,12 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto left_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-          (0.75*FLAGS_height - eps) * VectorXd::Ones(1),
+          (0.75 * FLAGS_height - eps) * VectorXd::Ones(1),
           (FLAGS_height + eps) * VectorXd::Ones(1));
   auto right_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-          (0.75*FLAGS_height - eps) * VectorXd::Ones(1),
+          (0.75 * FLAGS_height - eps) * VectorXd::Ones(1),
           (FLAGS_height + eps) * VectorXd::Ones(1));
   trajopt->AddConstraint(left_foot_z_constraint, x_top.head(n_q));
   trajopt->AddConstraint(right_foot_z_constraint, x_top.head(n_q));
@@ -893,9 +845,11 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
 }
 
 MatrixXd loadSavedDecisionVars(const string& filepath) {
-  const LcmTrajectory& loaded_decision_vars = LcmTrajectory(filepath);
-  return loaded_decision_vars.getTrajectory("decision_vars")
-      .datapoints;
+  DirconTrajectory loaded_decision_vars = DirconTrajectory(filepath);
+  for (auto& name : loaded_decision_vars.GetTrajectoryNames()) {
+    std::cout << name << std::endl;
+  }
+  return loaded_decision_vars.GetDecisionVariables();
 }
 
 MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,

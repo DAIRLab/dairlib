@@ -24,10 +24,9 @@ DEFINE_bool(are_feet_relative, true,
 DEFINE_string(trajectory_name, "",
               "File name where the optimal trajectory is stored.");
 DEFINE_string(folder_path,
-              "",
+              "/home/yangwill/Documents/research/projects/cassie"
+              "/jumping/saved_trajs/",
               "Folder path for where the trajectory names are stored");
-DEFINE_int32(num_modes, 0, "Number of contact modes in the trajectory");
-DEFINE_string(mode_name, "state_input_trajectory", "Base name of each trajectory");
 
 namespace dairlib {
 
@@ -62,33 +61,23 @@ int DoMain() {
   auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
   auto world = &plant.world_frame();
 
-  const LcmTrajectory& loadedTrajs =
+  LcmTrajectory loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
+  auto traj_mode0 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u0");
+  auto traj_mode1 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u1");
+  auto traj_mode2 = loadedTrajs.GetTrajectory
+      ("cassie_jumping_trajectory_x_u2");
 
-  int n_points = 0;
-  std::vector<int> knot_points;
-  std::vector<LcmTrajectory::Trajectory> trajectories;
-  for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
-    trajectories.push_back(
-        loadedTrajs.getTrajectory(FLAGS_mode_name + std::to_string(mode)));
-    knot_points.push_back(trajectories[mode].time_vector.size());
-
-    n_points += knot_points[mode];
-  }
+  DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
+  int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
+                 traj_mode2.datapoints.cols();
 
   MatrixXd xu(nx + nx + nu, n_points);
   VectorXd times(n_points);
 
-  int start_idx = 0;
-  for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
-    if (mode != 0) start_idx += knot_points[mode - 1];
-    xu.block(0, start_idx, nx + nx + nu, knot_points[mode]) =
-        trajectories[mode].datapoints;
-    times.segment(start_idx, knot_points[mode]) =
-        trajectories[mode].time_vector;
-  }
-
-  std::cout << "knot points: " << n_points << std::endl;
+  xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
+  times << traj_mode0.time_vector, traj_mode1.time_vector,
+      traj_mode2.time_vector;
 
   MatrixXd l_foot_points(6, n_points);
   MatrixXd r_foot_points(6, n_points);
@@ -181,7 +170,7 @@ int DoMain() {
       "pelvis_rotw",    "pelvis_rotx",    "pelvis_roty",    "pelvis_rotz",
       "pelvis_rotwdot", "pelvis_rotxdot", "pelvis_rotydot", "pelvis_rotzdot"};
 
-  std::vector<LcmTrajectory::Trajectory> converted_trajectories = {
+  std::vector<LcmTrajectory::Trajectory> trajectories = {
       lfoot_traj_block, rfoot_traj_block, com_traj_block,
       pelvis_orientation_block};
   std::vector<std::string> trajectory_names = {
@@ -189,11 +178,11 @@ int DoMain() {
       com_traj_block.traj_name, pelvis_orientation_block.traj_name};
 
   auto processed_traj =
-      LcmTrajectory(converted_trajectories, trajectory_names, "jumping_trajectory",
+      LcmTrajectory(trajectories, trajectory_names, "jumping_trajectory",
                     "Feet trajectories "
                     "for Cassie jumping");
 
-  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
                              "_processed");
   return 0;
 }

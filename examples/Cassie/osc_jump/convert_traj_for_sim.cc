@@ -25,9 +25,6 @@ DEFINE_string(folder_path,
               "/home/yangwill/Documents/research/projects/cassie"
               "/jumping/saved_trajs/",
               "Folder path for where the trajectory names are stored");
-DEFINE_int32(num_modes, 0, "Number of contact modes in the trajectory");
-DEFINE_string(mode_name, "state_input_trajectory",
-              "Base name of each trajectory");
 
 namespace dairlib {
 
@@ -114,55 +111,36 @@ int DoMain() {
                                            nv_wo_spr) =
       map_velocity_from_no_spring_to_spring;
 
-  const LcmTrajectory& loadedTrajs =
+  LcmTrajectory loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
+  auto traj_mode0 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u0");
+  auto traj_mode1 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u1");
+  auto traj_mode2 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u2");
 
-  int n_points = 0;
-  std::vector<int> knot_points;
-  std::vector<LcmTrajectory::Trajectory> trajectories;
-  for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
-    trajectories.push_back(
-        loadedTrajs.getTrajectory(FLAGS_mode_name + std::to_string(mode)));
-    knot_points.push_back(trajectories[mode].time_vector.size());
+  int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
+                 traj_mode2.datapoints.cols();
 
-    n_points += knot_points[mode];
-  }
-
-  MatrixXd xu(nx_wo_spr + nx_wo_spr + nu, n_points);
+  MatrixXd xu(2 * nx_wo_spr + nu, n_points);
   VectorXd times(n_points);
 
-  int start_idx = 0;
-  for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
-    if (mode != 0) start_idx += knot_points[mode - 1];
-    xu.block(0, start_idx, nx_wo_spr + nx_wo_spr + nu, knot_points[mode]) =
-        trajectories[mode].datapoints;
-    times.segment(start_idx, knot_points[mode]) =
-        trajectories[mode].time_vector;
-  }
-
+  xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
+  times << traj_mode0.time_vector, traj_mode1.time_vector,
+      traj_mode2.time_vector;
   MatrixXd x_w_spr(2 * nx_w_spr, n_points);
-  MatrixXd u_w_spr(nu, n_points);
   x_w_spr.topRows(nx_w_spr) =
       map_state_from_no_spring_to_spring * xu.topRows(nx_wo_spr);
   x_w_spr.bottomRows(nx_w_spr) =
       map_state_from_no_spring_to_spring *
       xu.topRows(2 * nx_wo_spr).bottomRows(nx_wo_spr);
-  u_w_spr = xu.bottomRows(nu);
 
   auto state_traj_w_spr = LcmTrajectory::Trajectory();
-  state_traj_w_spr.traj_name = "state_trajectory";
+  state_traj_w_spr.traj_name = "cassie_jumping_trajectory_x";
   state_traj_w_spr.datapoints = x_w_spr;
   state_traj_w_spr.time_vector = times;
-  auto input_traj_w_spr = LcmTrajectory::Trajectory();
-  input_traj_w_spr.traj_name = "input_trajectory";
-  input_traj_w_spr.datapoints = u_w_spr;
-  input_traj_w_spr.time_vector = times;
   const std::vector<string> state_names =
       multibody::createStateNameVectorFromMap(plant_w_spr);
   const std::vector<string> state_dot_names =
       multibody::createStateNameVectorFromMap(plant_w_spr);
-  const std::vector<string> input_names =
-      multibody::createActuatorNameVectorFromMap(plant_w_spr);
 
   state_traj_w_spr.datatypes.reserve(2 * nx_w_spr);
   state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),
@@ -170,20 +148,16 @@ int DoMain() {
   state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),
                                     state_dot_names.begin(),
                                     state_dot_names.end());
-  input_traj_w_spr.datatypes = input_names;
 
-  std::vector<LcmTrajectory::Trajectory> converted_trajectories = {
-      state_traj_w_spr, input_traj_w_spr};
-  std::vector<std::string> trajectory_names = {state_traj_w_spr.traj_name,
-                                               input_traj_w_spr.traj_name};
+  std::vector<LcmTrajectory::Trajectory> trajectories = {state_traj_w_spr};
+  std::vector<std::string> trajectory_names = {state_traj_w_spr.traj_name};
 
   auto processed_traj =
-      LcmTrajectory(converted_trajectories, trajectory_names,
-                    "trajectory for cassie model with springs",
-                    "State trajectory for cassie adjusted to include "
+      LcmTrajectory(trajectories, trajectory_names, "jumping_trajectory",
+                    "State trajectory for cassie jumping adjusted to include "
                     "states of the plant with springs");
 
-  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
                              "_for_sim");
   return 0;
 }

@@ -3,6 +3,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -12,6 +13,7 @@ using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::Context;
+using drake::trajectories::PiecewisePolynomial;
 using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -27,6 +29,8 @@ DEFINE_string(folder_path,
               "/home/yangwill/Documents/research/projects/cassie"
               "/jumping/saved_trajs/",
               "Folder path for where the trajectory names are stored");
+DEFINE_string(mode_name, "state_input_trajectory",
+              "Base name of each trajectory");
 
 namespace dairlib {
 
@@ -61,23 +65,14 @@ int DoMain() {
   auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
   auto world = &plant.world_frame();
 
-  LcmTrajectory loadedTrajs =
-      LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  auto traj_mode0 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u0");
-  auto traj_mode1 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u1");
-  auto traj_mode2 = loadedTrajs.GetTrajectory
-      ("cassie_jumping_trajectory_x_u2");
+  DirconTrajectory dircon_traj(FLAGS_folder_path + FLAGS_trajectory_name);
+  PiecewisePolynomial<double> state_traj =
+      dircon_traj.ReconstructStateTrajectory();
 
-  DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
-  int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
-                 traj_mode2.datapoints.cols();
+  VectorXd times = dircon_traj.GetBreaks();
+  int n_points = times.size();
 
-  MatrixXd xu(nx + nx + nu, n_points);
-  VectorXd times(n_points);
-
-  xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
-  times << traj_mode0.time_vector, traj_mode1.time_vector,
-      traj_mode2.time_vector;
+  std::cout << "knot points: " << n_points << std::endl;
 
   MatrixXd l_foot_points(6, n_points);
   MatrixXd r_foot_points(6, n_points);
@@ -88,7 +83,8 @@ int DoMain() {
   Vector3d zero_offset = Vector3d::Zero();
 
   for (unsigned int i = 0; i < times.size(); ++i) {
-    plant.SetPositionsAndVelocities(context.get(), xu.block(0, i, nx, 1));
+    VectorXd x_i = state_traj.value(times[i]);
+    plant.SetPositionsAndVelocities(context.get(), x_i);
     center_of_mass_points.block(0, i, 3, 1) =
         plant.CalcCenterOfMassPosition(*context);
     Eigen::Ref<Eigen::MatrixXd> l_foot_pos_block =
@@ -108,8 +104,8 @@ int DoMain() {
     plant.CalcPointsPositions(*context, *hip_right_frame, zero_offset, *world,
                               &r_hip_pos_block);
 
-    pelvis_orientation.block(0, i, 4, 1) = xu.block(0, i, 4, 1);
-    pelvis_orientation.block(4, i, 4, 1) = xu.block(nx, i, 4, 1);
+    pelvis_orientation.block(0, i, 4, 1) = x_i.head(4);
+    pelvis_orientation.block(4, i, 4, 1) = x_i.segment(nq, 4);
 
     MatrixXd J_CoM(3, nv);
     MatrixXd J_l_foot(3, nv);
@@ -131,11 +127,12 @@ int DoMain() {
     plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                             *hip_right_frame, zero_offset,
                                             *world, *world, &J_r_hip);
-    center_of_mass_points.block(3, i, 3, 1) = J_CoM * xu.block(nq, i, nv, 1);
-    l_foot_points.block(3, i, 3, 1) = J_l_foot * xu.block(nq, i, nv, 1);
-    r_foot_points.block(3, i, 3, 1) = J_r_foot * xu.block(nq, i, nv, 1);
-    l_hip_points.block(3, i, 3, 1) = J_l_hip * xu.block(nq, i, nv, 1);
-    r_hip_points.block(3, i, 3, 1) = J_r_hip * xu.block(nq, i, nv, 1);
+    VectorXd v_i = x_i.tail(nv);
+    center_of_mass_points.block(3, i, 3, 1) = J_CoM * v_i;
+    l_foot_points.block(3, i, 3, 1) = J_l_foot * v_i;
+    r_foot_points.block(3, i, 3, 1) = J_r_foot * v_i;
+    l_hip_points.block(3, i, 3, 1) = J_l_hip * v_i;
+    r_hip_points.block(3, i, 3, 1) = J_r_hip * v_i;
   }
 
   l_foot_points = l_foot_points - l_hip_points;

@@ -1,7 +1,7 @@
 w_input: 0
 w_accel: 0.000001
 w_soft_constraint: 20000
-x_offset: 0.09
+x_offset: 0.05
 CoMW:
   [2000, 0, 0,
    0, 200, 0,
@@ -21,7 +21,7 @@ CoMKp:
 CoMKd:
   [10,   0,   0,
     0,  5,   0,
-    0,   0,  5]
+    0,   0,  10]
 PelvisRotKp:
   [20, 0, 0,
    0, 20, 0,

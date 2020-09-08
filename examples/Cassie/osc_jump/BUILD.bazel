@@ -69,6 +69,7 @@ cc_binary(
     deps = [
         "//examples/Cassie:cassie_utils",
         "//lcm:lcm_trajectory_saver",
+        "//lcm:dircon_trajectory_saver",
         "//multibody:utils",
         "@drake//:drake_shared_library",
         "@gflags",

@@ -85,9 +85,9 @@ int doMain(int argc, char* argv[]) {
   const LcmTrajectory& original_traj =
       LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name);
   const LcmTrajectory::Trajectory& lcm_state_traj =
-      original_traj.getTrajectory("state_trajectory");
+      original_traj.GetTrajectory("state_trajectory");
   const LcmTrajectory::Trajectory& lcm_input_traj =
-      original_traj.getTrajectory("input_trajectory");
+      original_traj.GetTrajectory("input_trajectory");
 
   auto state_traj = PiecewisePolynomial<double>::CubicHermite(
       lcm_state_traj.time_vector, lcm_state_traj.datapoints.topRows(nx),

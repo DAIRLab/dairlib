@@ -3,6 +3,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -12,6 +13,7 @@ using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::Context;
+using drake::trajectories::PiecewisePolynomial;
 using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -19,11 +21,11 @@ using Eigen::VectorXd;
 
 DEFINE_string(trajectory_name, "",
               "File name where the optimal trajectory is stored.");
-DEFINE_string(folder_path,
-              "",
+DEFINE_string(folder_path, "",
               "Folder path for where the trajectory names are stored");
 DEFINE_int32(num_modes, 0, "Number of contact modes in the trajectory");
-DEFINE_string(mode_name, "state_input_trajectory", "Base name of each trajectory");
+DEFINE_string(mode_name, "state_input_trajectory",
+              "Base name of each trajectory");
 
 namespace dairlib {
 
@@ -42,7 +44,7 @@ int DoMain() {
   parser.AddModelFromFile(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
   plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-      Eigen::Vector3d::UnitZ());
+                                                   Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
@@ -56,31 +58,12 @@ int DoMain() {
   auto r_toe_frame = &plant.GetBodyByName("toe_right").body_frame();
   auto world = &plant.world_frame();
 
-  const LcmTrajectory& loadedTrajs =
-      LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
+  DirconTrajectory dircon_traj(FLAGS_folder_path + FLAGS_trajectory_name);
+  PiecewisePolynomial<double> state_traj =
+      dircon_traj.ReconstructStateTrajectory();
 
-  int n_points = 0;
-  std::vector<int> knot_points;
-  std::vector<LcmTrajectory::Trajectory> trajectories;
-  for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
-    trajectories.push_back(
-        loadedTrajs.getTrajectory(FLAGS_mode_name + std::to_string(mode)));
-    knot_points.push_back(trajectories[mode].time_vector.size());
-
-    n_points += knot_points[mode];
-  }
-
-  MatrixXd xu(nx + nx + nu, n_points);
-  VectorXd times(n_points);
-
-  int start_idx = 0;
-  for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
-    if (mode != 0) start_idx += knot_points[mode - 1];
-    xu.block(0, start_idx, nx + nx + nu, knot_points[mode]) =
-        trajectories[mode].datapoints;
-    times.segment(start_idx, knot_points[mode]) =
-        trajectories[mode].time_vector;
-  }
+  VectorXd times = dircon_traj.GetBreaks();
+  int n_points = times.size();
 
   std::cout << "knot points: " << n_points << std::endl;
 
@@ -93,7 +76,8 @@ int DoMain() {
   Vector3d zero_offset = Vector3d::Zero();
 
   for (unsigned int i = 0; i < times.size(); ++i) {
-    plant.SetPositionsAndVelocities(context.get(), xu.block(0, i, nx, 1));
+    VectorXd x_i = state_traj.value(times[i]);
+    plant.SetPositionsAndVelocities(context.get(), x_i);
     center_of_mass_points.block(0, i, 3, 1) =
         plant.CalcCenterOfMassPosition(*context);
     Eigen::Ref<Eigen::MatrixXd> l_foot_pos_block =
@@ -105,8 +89,8 @@ int DoMain() {
     plant.CalcPointsPositions(*context, *r_toe_frame, zero_offset, *world,
                               &r_foot_pos_block);
 
-    pelvis_orientation.block(0, i, 4, 1) = xu.block(0, i, 4, 1);
-    pelvis_orientation.block(4, i, 4, 1) = xu.block(nx, i, 4, 1);
+    pelvis_orientation.block(0, i, 4, 1) = x_i.head(4);
+    pelvis_orientation.block(4, i, 4, 1) = x_i.segment(nq, 4);
 
     MatrixXd J_CoM(3, nv);
     MatrixXd J_l_foot(3, nv);
@@ -120,9 +104,10 @@ int DoMain() {
     plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                             *r_toe_frame, zero_offset, *world,
                                             *world, &J_r_foot);
-    center_of_mass_points.block(3, i, 3, 1) = J_CoM * xu.block(nq, i, nv, 1);
-    l_foot_points.block(3, i, 3, 1) = J_l_foot * xu.block(nq, i, nv, 1);
-    r_foot_points.block(3, i, 3, 1) = J_r_foot * xu.block(nq, i, nv, 1);
+    VectorXd v_i = x_i.tail(nv);
+    center_of_mass_points.block(3, i, 3, 1) = J_CoM * v_i;
+    l_foot_points.block(3, i, 3, 1) = J_l_foot * v_i;
+    r_foot_points.block(3, i, 3, 1) = J_r_foot * v_i;
   }
 
   r_foot_points = r_foot_points - l_foot_points;
@@ -166,13 +151,13 @@ int DoMain() {
       lfoot_traj_block.traj_name, rfoot_traj_block.traj_name,
       com_traj_block.traj_name, pelvis_orientation_block.traj_name};
 
-  auto processed_traj =
-      LcmTrajectory(converted_trajectories, trajectory_names, "walking_trajectory",
-                    "Output trajectories "
-                    "for Cassie walking");
+  auto processed_traj = LcmTrajectory(converted_trajectories, trajectory_names,
+                                      "walking_trajectory",
+                                      "Output trajectories "
+                                      "for Cassie walking");
 
-  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
-      "_processed");
+  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+                             "_processed");
   return 0;
 }
 

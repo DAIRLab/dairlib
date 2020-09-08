@@ -125,7 +125,7 @@ int DoMain() {
   std::vector<LcmTrajectory::Trajectory> trajectories;
   for (int mode = 0; mode < FLAGS_num_modes; ++mode) {
     trajectories.push_back(
-        loadedTrajs.getTrajectory(FLAGS_mode_name + std::to_string(mode)));
+        loadedTrajs.GetTrajectory(FLAGS_mode_name + std::to_string(mode)));
     knot_points.push_back(trajectories[mode].time_vector.size());
 
     n_points += knot_points[mode];
@@ -296,7 +296,7 @@ int DoMain() {
                     "State trajectory for cassie adjusted to include "
                     "states of the plant with springs");
 
-  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
                              "_for_sim");
   return 0;
 }

@@ -179,7 +179,7 @@ int do_main(int argc, char* argv[]) {
   const LcmTrajectory& processed_trajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name + "_for_sim");
   const LcmTrajectory::Trajectory& lcm_state_traj =
-      processed_trajs.getTrajectory(FLAGS_mode_name);
+      processed_trajs.GetTrajectory(FLAGS_mode_name);
   const drake::trajectories::PiecewisePolynomial<double>& state_traj =
       drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
           lcm_state_traj.time_vector, lcm_state_traj.datapoints.topRows(nx),

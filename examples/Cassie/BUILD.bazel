@@ -351,6 +351,7 @@ cc_binary(
         ":cassie_utils",
         "//examples/Cassie/osc_jump",
         "//lcm:lcm_trajectory_saver",
+        "//lcm:dircon_trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",

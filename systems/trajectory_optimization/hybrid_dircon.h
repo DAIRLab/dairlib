@@ -128,8 +128,6 @@ class HybridDircon
 
   int num_modes() const { return num_modes_; }
 
-  std::vector<int> mode_lengths() const { return mode_lengths_; }
-
   const drake::solvers::VectorXDecisionVariable& force_vars(int mode) const {
     return force_vars_[mode];
   }
@@ -161,7 +159,7 @@ class HybridDircon
     return impulse_vars_[mode];
   }
 
-  const std::vector<int> mode_lengths() const {
+  std::vector<int> mode_lengths() const {
     return this->mode_lengths_;
   }
 

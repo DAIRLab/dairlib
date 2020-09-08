@@ -9,6 +9,7 @@
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/osc_jump/pelvis_orientation_traj_generator.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -198,8 +199,8 @@ int DoMain(int argc, char* argv[]) {
       gains.FlightFootKd.data(), 3, 3);
 
   /**** Get trajectory from optimization ****/
-  const LcmTrajectory& original_traj =
-      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name);
+  const DirconTrajectory& dircon_trajectory =
+      DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
   const LcmTrajectory& processed_trajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name + "_processed");
 
@@ -211,14 +212,7 @@ int DoMain(int argc, char* argv[]) {
       processed_trajs.GetTrajectory("right_foot_trajectory");
   const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
       processed_trajs.GetTrajectory("pelvis_rot_trajectory");
-  vector<PiecewisePolynomial<double>> state_trajs;
-  for (int i = 0; i < n_modes; ++i) {
-    const LcmTrajectory::Trajectory state_traj_i = original_traj.GetTrajectory(
-        "cassie_jumping_trajectory_x_u" + std::to_string(i));
-    state_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
-        state_traj_i.time_vector, state_traj_i.datapoints.topRows(nx),
-        state_traj_i.datapoints.topRows(2 * nx).bottomRows(nx)));
-  }
+
 
   std::cout << "Loading output trajectories: " << std::endl;
   PiecewisePolynomial<double> com_traj =
@@ -239,8 +233,8 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.datapoints.topRows(4));
 
   // For the time-based FSM
-  double flight_time = FLAGS_delay_time + state_trajs[0].end_time();
-  double land_time = FLAGS_delay_time + state_trajs[1].end_time();
+  double flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
+  double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
   std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
                                           land_time};
 

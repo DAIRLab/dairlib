@@ -58,6 +58,8 @@ DEFINE_int32(n_step, 1,
 
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 
+DEFINE_double(pause_duration, 0.5,
+              "pause duration in the beginning and the end of the gait");
 DEFINE_bool(construct_cubic, false,
             "By default, we construct trajectories using first order hold."
             "Set this flag to true if you want to construct cubic spline. Old "
@@ -79,9 +81,8 @@ void visualizeGait(int argc, char* argv[]) {
   /*string directory =
      "examples/goldilocks_models/find_models/data/robot_"
                            + to_string(FLAGS_robot_option) + "/";*/
-  //  string directory = "../dairlib_data/goldilocks_models/find_models/robot_"
-  //  +
-  //                     to_string(FLAGS_robot_option) + "/";
+  string directory = "../dairlib_data/goldilocks_models/find_models/robot_" +
+                     to_string(FLAGS_robot_option) + "/";
   //  string directory =
   //  "../dairlib_data/goldilocks_models/find_boundary/robot_" +
   //                     to_string(FLAGS_robot_option) + "/";
@@ -89,9 +90,6 @@ void visualizeGait(int argc, char* argv[]) {
   //      "../dairlib_data/goldilocks_models/find_boundary_sl_gi_not_optimized/"
   //      "robot_" +
   //      to_string(FLAGS_robot_option) + "/";
-  string directory =
-      "../dairlib_data/goldilocks_models/find_boundary_sl_gi_optimized/robot_" +
-      to_string(FLAGS_robot_option) + "/";
 
   // Other settings
   int iter_start = FLAGS_iter_start;
@@ -273,11 +271,13 @@ void visualizeGait(int argc, char* argv[]) {
 
     // Create a testing piecewise polynomial
     std::vector<double> T_breakpoint;
-    for (int i = 0; i < time_mat_cat.size(); i++)
-      T_breakpoint.push_back(time_mat_cat(i));
+    for (int i = 0; i < time_mat_cat.size(); i++) {
+      T_breakpoint.push_back(time_mat_cat(i) + FLAGS_pause_duration);
+    }
     std::vector<MatrixXd> Y;
-    for (int i = 0; i < time_mat_cat.size(); i++)
+    for (int i = 0; i < time_mat_cat.size(); i++) {
       Y.push_back(mat_cat[0].col(i));
+    }
     std::vector<MatrixXd> Y_dot;
     if (FLAGS_construct_cubic) {
       for (int i = 0; i < time_mat_cat.size(); i++)
@@ -321,7 +321,7 @@ void visualizeGait(int argc, char* argv[]) {
       drake::systems::Simulator<double> simulator(*diagram);
       simulator.set_target_realtime_rate(FLAGS_realtime_factor);
       simulator.Initialize();
-      simulator.AdvanceTo(pp_xtraj.end_time());
+      simulator.AdvanceTo(pp_xtraj.end_time() + FLAGS_pause_duration);
     }
   }  // end for(int iter...)
 }

@@ -130,7 +130,7 @@ COMTrajGenerator::generateLandingTraj(
       context.get_discrete_state().get_vector(com_x_offset_idx_);
 
   // Only offset the x-position
-  Vector3d offset(com_x_offset[0], 0, 0);
+  Vector3d offset(com_x_offset[0], 0, -0.1);
 
   auto traj_segment =
       crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);

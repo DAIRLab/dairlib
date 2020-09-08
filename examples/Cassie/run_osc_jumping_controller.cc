@@ -15,7 +15,9 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/gaussian_noise_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+#include "yaml-cpp/yaml.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -83,6 +85,45 @@ DEFINE_bool(add_noise, false,
             "Whether to add gaussian noise to state "
             "inputted to controller");
 DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
+DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
+              "Filepath containing gains");
+
+struct OSCJumpingGains {
+  // costs
+  double w_input;
+  double w_accel;
+  double w_soft_constraint;
+  double x_offset;
+  // center of mass tracking
+  std::vector<double> CoMW;
+  std::vector<double> CoMKp;
+  std::vector<double> CoMKd;
+  // pelvis orientation tracking
+  std::vector<double> PelvisRotW;
+  std::vector<double> PelvisRotKp;
+  std::vector<double> PelvisRotKd;
+  // flight foot tracking
+  std::vector<double> FlightFootW;
+  std::vector<double> FlightFootKp;
+  std::vector<double> FlightFootKd;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(w_input));
+    a->Visit(DRAKE_NVP(w_accel));
+    a->Visit(DRAKE_NVP(w_soft_constraint));
+    a->Visit(DRAKE_NVP(x_offset));
+    a->Visit(DRAKE_NVP(CoMW));
+    a->Visit(DRAKE_NVP(CoMKp));
+    a->Visit(DRAKE_NVP(CoMKd));
+    a->Visit(DRAKE_NVP(PelvisRotW));
+    a->Visit(DRAKE_NVP(PelvisRotKp));
+    a->Visit(DRAKE_NVP(PelvisRotKd));
+    a->Visit(DRAKE_NVP(FlightFootW));
+    a->Visit(DRAKE_NVP(FlightFootKp));
+    a->Visit(DRAKE_NVP(FlightFootKd));
+  }
+};
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -121,6 +162,40 @@ int DoMain(int argc, char* argv[]) {
   auto left_heel = LeftToeRear(plant_wo_springs);
   auto right_toe = RightToeFront(plant_wo_springs);
   auto right_heel = RightToeRear(plant_wo_springs);
+
+  /**** Convert the gains from the yaml struct to Eigen Matrices ****/
+  OSCJumpingGains gains;
+  const YAML::Node& root =
+      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
+
+  MatrixXd W_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.CoMW.data(), 3, 3);
+  MatrixXd K_p_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.CoMKp.data(), 3, 3);
+  MatrixXd K_d_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.CoMKd.data(), 3, 3);
+  MatrixXd W_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisRotW.data(), 3, 3);
+  MatrixXd K_p_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisRotKp.data(), 3, 3);
+  MatrixXd K_d_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.PelvisRotKd.data(), 3, 3);
+  MatrixXd W_flight_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.FlightFootW.data(), 3, 3);
+  MatrixXd K_p_flight_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.FlightFootKp.data(), 3, 3);
+  MatrixXd K_d_flight_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      gains.FlightFootKd.data(), 3, 3);
 
   /**** Get trajectory from optimization ****/
   const LcmTrajectory& original_traj =
@@ -170,7 +245,7 @@ int DoMain(int argc, char* argv[]) {
                                           land_time};
 
   Vector3d support_center_offset;
-  support_center_offset << FLAGS_x_offset, 0.0, 0.0;
+  support_center_offset << gains.x_offset, 0.0, 0.0;
   std::vector<double> breaks = com_traj.get_segment_times();
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd offset_points = support_center_offset.replicate(1, breaks.size());
@@ -181,12 +256,6 @@ int DoMain(int argc, char* argv[]) {
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm;
 
-//  vector<pair<const Vector3d, const Frame<double>&>> contact_points;
-//  contact_points.push_back(LeftToeFront(plant_wo_springs));
-//  contact_points.push_back(RightToeFront(plant_wo_springs));
-//  contact_points.push_back(LeftToeRear(plant_wo_springs));
-//  contact_points.push_back(RightToeRear(plant_wo_springs));
-
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
@@ -195,8 +264,8 @@ int DoMain(int argc, char* argv[]) {
       plant_w_springs, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
       FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
-      FLAGS_delay_time);
+      plant_w_springs, context_w_spr.get(), "hip_right", false,
+      r_foot_trajectory, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
           plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
@@ -210,8 +279,8 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, context_w_spr.get(), context_wo_spr.get(), true,
-      FLAGS_print_osc); /*print_tracking_info*/
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      context_wo_spr.get(), true, FLAGS_print_osc); /*print_tracking_info*/
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -225,18 +294,22 @@ int DoMain(int argc, char* argv[]) {
     contact_results_sub = builder.AddSystem(
         LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
             "CASSIE_CONTACT_MUJOCO", &lcm));
-  } else if (FLAGS_simulator == "GAZEBO") {
-    // TODO(yangwill): Set up contact results in Gazebo
+  } else if (FLAGS_simulator == "DISPATCHER") {
+    contact_results_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
+            "CASSIE_CONTACT_GM_OBSERVER", &lcm));
+    // TODO(yangwill): Add PR for GM contact observer, currently in
+    // gm_contact_estimator branch
   } else {
     std::cerr << "Unknown simulator type!" << std::endl;
   }
 
   /**** OSC setup ****/
   // Cost
-  MatrixXd Q_accel = 1e-6 * MatrixXd::Identity(nv, nv);
+  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(nv, nv);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Soft constraint on contacts
-  double w_contact_relax = 20000;
+  double w_contact_relax = gains.w_soft_constraint;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
 
   // Contact information for OSC
@@ -273,12 +346,12 @@ int DoMain(int argc, char* argv[]) {
 
   /**** Tracking Data for OSC *****/
   // Center of mass tracking
-  MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2000;
-  W_com(1, 1) = 200;
-  W_com(2, 2) = 2000;
-  MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
+  //  MatrixXd W_com = MatrixXd::Identity(3, 3);
+  //  W_com(0, 0) = 2000;
+  //  W_com(1, 1) = 200;
+  //  W_com(2, 2) = 2000;
+  //  MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
+  //  MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
   ComTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
                                     plant_w_springs, plant_wo_springs);
   for (auto mode : stance_modes) {
@@ -287,36 +360,36 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&com_tracking_data);
 
   // Feet tracking
-  MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
-  W_swing_foot(0, 0) = 1000;
-  W_swing_foot(1, 1) = 1000;
-  W_swing_foot(2, 2) = 1000;
-  MatrixXd K_p_sw_ft = 36 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_sw_ft = 12 * MatrixXd::Identity(3, 3);
+  //  MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
+  //  W_swing_foot(0, 0) = 1000;
+  //  W_swing_foot(1, 1) = 1000;
+  //  W_swing_foot(2, 2) = 1000;
+  //  MatrixXd K_p_sw_ft = 36 * MatrixXd::Identity(3, 3);
+  //  MatrixXd K_d_sw_ft = 12 * MatrixXd::Identity(3, 3);
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "l_foot_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_springs,
-      plant_wo_springs);
+      "l_foot_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
+      plant_w_springs, plant_wo_springs);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "r_foot_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_springs,
-      plant_wo_springs);
+      "r_foot_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
+      plant_w_springs, plant_wo_springs);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");
 
   // Pelvis orientation tracking
-  double w_pelvis_balance = 20;
-  double w_heading = 10;
-  double k_p_pelvis_balance = 16;  // 100
-  double k_d_pelvis_balance = 8;   // 80
-  double k_p_heading = 16;         // 50
-  double k_d_heading = 8;          // 40
-  Matrix3d W_pelvis = w_pelvis_balance * MatrixXd::Identity(3, 3);
-  W_pelvis(2, 2) = w_heading;
-  Matrix3d K_p_pelvis = k_p_pelvis_balance * 2 * MatrixXd::Identity(3, 3);
-  K_p_pelvis(2, 2) = k_p_heading;
-  Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
-  K_d_pelvis(2, 2) = k_d_heading;
+  //  double w_pelvis_balance = 20;
+  //  double w_heading = 10;
+  //  double k_p_pelvis_balance = 16;  // 100
+  //  double k_d_pelvis_balance = 8;   // 80
+  //  double k_p_heading = 16;         // 50
+  //  double k_d_heading = 8;          // 40
+  //  Matrix3d W_pelvis = w_pelvis_balance * MatrixXd::Identity(3, 3);
+  //  W_pelvis(2, 2) = w_heading;
+  //  Matrix3d K_p_pelvis = k_p_pelvis_balance * 2 * MatrixXd::Identity(3, 3);
+  //  K_p_pelvis(2, 2) = k_p_heading;
+  //  Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
+  //  K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
       "pelvis_rot_tracking_data", K_p_pelvis, K_d_pelvis, W_pelvis,
       plant_w_springs, plant_wo_springs);

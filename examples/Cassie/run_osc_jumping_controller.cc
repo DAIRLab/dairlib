@@ -60,7 +60,7 @@ namespace examples {
 DEFINE_double(publish_rate, 1000.0, "Target publish rate for OSC");
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "The name of the channel which receives state");
-DEFINE_string(channel_u, "CASSIE_INPUT",
+DEFINE_string(channel_u, "OSC_JUMPING",
               "The name of the channel which publishes command");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_string(folder_path,

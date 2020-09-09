@@ -74,9 +74,9 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   const auto& contact_info =
       this->EvalInputValue<drake::lcmt_contact_results_for_viz>(context,
                                                                 contact_port_);
-//  const auto switch_signal =
-//      this->EvalInputValue<dairlib::lcmt_controller_switch>(
-//          context, switch_signal_port_);
+  //  const auto switch_signal =
+  //      this->EvalInputValue<dairlib::lcmt_controller_switch>(
+  //          context, switch_signal_port_);
   // Get the discrete states
   auto fsm_state =
       discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
@@ -100,10 +100,15 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
     std::cout << "Simulator has restarted!" << std::endl;
     fsm_state << init_state_;
     transition_flag(0) = false;
-//    prev_switch_time << switch_signal->utime;
+    //    prev_switch_time << switch_signal->utime;
   }
   prev_time << timestamp;
 
+  if (abs(transition_times_[BALANCE] - timestamp -
+          round(transition_times_[BALANCE] - timestamp)) < 2e-3) {
+    std::cout << "Time until crouch: "
+              << round(transition_times_[BALANCE] - timestamp) << std::endl;
+  }
   // To test delayed switching times, there is an "intermediate" state
   // between each state change when the guard condition is first triggered
   // The fsm state will change transition_delay_ seconds after the guard

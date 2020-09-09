@@ -51,6 +51,7 @@ DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
+DEFINE_string(channel_u, "CASSIE_INPUT", "LCM channel to receive inputs on");
 DEFINE_double(dt, 8e-5,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
@@ -112,7 +113,7 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", lcm));
+          FLAGS_channel_u, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,

@@ -272,11 +272,14 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   // height constraint
   trajopt.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
-  trajopt.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
+  trajopt.AddBoundingBoxConstraint(0.8, 0.8, xmid(positions_map.at("base_z")));
+  trajopt.AddBoundingBoxConstraint(1, 1, xf(positions_map.at("base_z")));
 
   // initial pelvis position
   trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
   trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(0, 0, xf(positions_map.at("base_x")));
+  trajopt.AddBoundingBoxConstraint(0, 0, xf(positions_map.at("base_y")));
 
   // pelvis pose constraints
   for (int i = 0; i < num_knotpoints; i++) {
@@ -317,6 +320,17 @@ void DoMain(double duration, int max_iter, string data_directory,
       }
     }
   }
+
+  // hip yaw constraint
+  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_yaw_left")) ==
+                                       0);
+  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_yaw_right")) ==
+                                       0);
+
+  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_roll_left")) ==
+                                       0);
+  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_roll_right")) ==
+                                       0);
 
   // joint limits
   for (const auto& member : joint_names) {
@@ -368,7 +382,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // add cost
-  const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
+  const MatrixXd Q = 1000 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose() * R * u);
@@ -424,8 +438,8 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   // initial guess
   if (!init_file.empty()) {
-    MatrixXd z0 = readCSV(data_directory + init_file);
-    trajopt.SetInitialGuessForAllVariables(z0);
+    DirconTrajectory init_traj(data_directory + init_file);
+    trajopt.SetInitialGuessForAllVariables(init_traj.GetDecisionVariables());
   } else {
     // Add random initial guess first (the seed for RNG is fixed)
     trajopt.SetInitialGuessForAllVariables(
@@ -433,9 +447,9 @@ void DoMain(double duration, int max_iter, string data_directory,
 
     VectorXd q0, qf, u0, uf, lambda0, lambdaf;
     double min_normal_force = 70;
-    double toe_spread = .3;
+    double toe_spread = .1;
     double init_height = 1.0;
-    double final_height = 1.1;
+    double final_height = 0.8;
     double init_time = .5;
     CassieFixedPointSolver(plant, init_height, 0, min_normal_force, true,
                            toe_spread, &q0, &u0, &lambda0);

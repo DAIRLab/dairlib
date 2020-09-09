@@ -233,10 +233,12 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.datapoints.topRows(4));
 
   // For the time-based FSM
-  double flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
-  double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
-  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
-                                          land_time};
+//  double flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
+//  double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
+//  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
+//                                          land_time};
+  std::vector<double> transition_times = {FLAGS_delay_time, 5.0,
+                                          10.0};
 
   Vector3d support_center_offset;
   support_center_offset << gains.x_offset, 0.0, 0.0;

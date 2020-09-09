@@ -118,7 +118,10 @@ COMTrajGenerator::generateCrouchTraj(const Eigen::VectorXd& x,
   // This assumes that the crouch is starting at the exact position as the
   // start of the target trajectory which should be handled by balance
   // trajectory
-
+//  std::cout << "end time: "
+//            << crouch_traj_.slice(0, crouch_traj_.get_number_of_segments() / 4)
+//                   .end_time();
+//  return crouch_traj_.slice(0, crouch_traj_.get_number_of_segments() / 4);
   return crouch_traj_;
 }
 

@@ -1,5 +1,6 @@
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 
+#include <dairlib/lcmt_controller_switch.hpp>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 using dairlib::systems::OutputVector;
@@ -36,8 +37,18 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                           "lcmt_contact_info",
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
-  this->DeclareVectorOutputPort(BasicVector<double>(1),
-                                &JumpingEventFsm::CalcFiniteState);
+  switch_signal_port_ = this->DeclareAbstractInputPort(
+                                "lcmt_controller_switch",
+                                drake::Value<dairlib::lcmt_controller_switch>{})
+                            .get_index();
+  fsm_output_port_ =
+      this->DeclareVectorOutputPort(BasicVector<double>(1),
+                                    &JumpingEventFsm::CalcFiniteState)
+          .get_index();
+  clock_output_port_ =
+      this->DeclareVectorOutputPort(BasicVector<double>(1),
+                                    &JumpingEventFsm::CalcClockTime)
+          .get_index();
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
 
   BasicVector<double> init_prev_time = BasicVector<double>(VectorXd::Zero(1));
@@ -49,6 +60,7 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
 
   prev_time_idx_ = this->DeclareDiscreteState(init_prev_time);
   guard_trigger_time_idx_ = this->DeclareDiscreteState(init_state_trigger_time);
+  switching_time_idx_ = this->DeclareDiscreteState(0.0);
   fsm_idx_ = this->DeclareDiscreteState(init_fsm_state);
   transition_flag_idx_ = this->DeclareDiscreteState(1);
 }
@@ -62,6 +74,9 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   const auto& contact_info =
       this->EvalInputValue<drake::lcmt_contact_results_for_viz>(context,
                                                                 contact_port_);
+//  const auto switch_signal =
+//      this->EvalInputValue<dairlib::lcmt_controller_switch>(
+//          context, switch_signal_port_);
   // Get the discrete states
   auto fsm_state =
       discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
@@ -73,6 +88,9 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   auto transition_flag =
       discrete_state->get_mutable_vector(transition_flag_idx_)
           .get_mutable_value();
+  auto prev_switch_time =
+      discrete_state->get_mutable_vector(switching_time_idx_)
+          .get_mutable_value();
 
   int num_contacts = contact_info->num_point_pair_contacts;
   double timestamp = state_feedback->get_timestamp();
@@ -81,9 +99,10 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   if (timestamp < prev_time(0)) {
     std::cout << "Simulator has restarted!" << std::endl;
     fsm_state << init_state_;
-    prev_time(0) = timestamp;
     transition_flag(0) = false;
+//    prev_switch_time << switch_signal->utime;
   }
+  prev_time << timestamp;
 
   // To test delayed switching times, there is an "intermediate" state
   // between each state change when the guard condition is first triggered
@@ -98,7 +117,6 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       std::cout << "Setting fsm to CROUCH" << std::endl;
       std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
       transition_flag(0) = false;
-      prev_time(0) = timestamp;
     }
   } else if (fsm_state(0) == CROUCH) {
     if (DetectGuardCondition(contact_based_
@@ -116,7 +134,6 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       std::cout << "Setting fsm to FLIGHT" << std::endl;
       std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
       transition_flag(0) = false;
-      prev_time(0) = timestamp;
     }
   } else if (fsm_state(0) == FLIGHT) {
     if (DetectGuardCondition(contact_based_
@@ -135,7 +152,6 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
                 << "\n";
       std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
       transition_flag(0) = false;
-      prev_time(0) = timestamp;
     }
   } else if (fsm_state(0) == LAND) {
     // no more transitions
@@ -148,6 +164,17 @@ void JumpingEventFsm::CalcFiniteState(const Context<double>& context,
                                       BasicVector<double>* fsm_state) const {
   fsm_state->get_mutable_value() =
       context.get_discrete_state().get_vector(fsm_idx_).get_value();
+}
+
+void JumpingEventFsm::CalcClockTime(const Context<double>& context,
+                                    BasicVector<double>* clock) const {
+  double robot_time =
+      this->template EvalVectorInput<OutputVector>(context, state_port_)
+          ->get_timestamp();
+  clock->get_mutable_value()
+      << robot_time - context.get_discrete_state()
+                          .get_vector(switching_time_idx_)
+                          .get_value()(0);
 }
 
 bool JumpingEventFsm::DetectGuardCondition(

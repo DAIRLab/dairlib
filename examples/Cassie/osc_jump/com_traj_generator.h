@@ -59,6 +59,7 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   int state_port_;
   int fsm_port_;
+  int clock_port_;
 
   static constexpr double kTransitionSpeed = 20.0;  // 20 m/s
   // The trajectory optimization solution sets the final CoM very close to

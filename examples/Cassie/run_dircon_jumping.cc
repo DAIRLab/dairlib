@@ -313,24 +313,10 @@ void DoMain() {
     }
   }
 
-  //   Printing
-  //  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
-  //    cout << trajopt->decision_variable(i) << ", ";
-  //    cout << trajopt->decision_variable(i).get_id() << ", ";
-  //    cout <<
-  //    trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
-  //         << ", ";
-  //    auto scale_map = trajopt->GetVariableScaling();
-  //    auto it = scale_map.find(i);
-  //    if (it != scale_map.end()) {
-  //      cout << it->second;
-  //    } else {
-  //      cout << "none";
-  //    }
-  //    cout << ", ";
-  //    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
-  //    cout << endl;
-  //  }
+  double alpha = .2;
+  int num_poses = std::min(FLAGS_knot_points, 5);
+  trajopt->CreateVisualizationCallback(
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf", num_poses, alpha);
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;

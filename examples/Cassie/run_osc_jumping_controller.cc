@@ -213,7 +213,6 @@ int DoMain(int argc, char* argv[]) {
   const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
       processed_trajs.GetTrajectory("pelvis_rot_trajectory");
 
-
   std::cout << "Loading output trajectories: " << std::endl;
   PiecewisePolynomial<double> com_traj =
       PiecewisePolynomial<double>::CubicHermite(
@@ -233,12 +232,13 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.datapoints.topRows(4));
 
   // For the time-based FSM
-//  double flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
-//  double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
-//  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
-//                                          land_time};
-  std::vector<double> transition_times = {FLAGS_delay_time, 5.0,
-                                          10.0};
+  //  double flight_time = FLAGS_delay_time +
+  //  dircon_trajectory.GetStateBreaks(1)(0); double land_time =
+  //  FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
+  //  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
+  //                                          land_time};
+  std::vector<double> transition_times = {
+      FLAGS_delay_time, FLAGS_delay_time + 300.0, FLAGS_delay_time + 600.0};
 
   Vector3d support_center_offset;
   support_center_offset << gains.x_offset, 0.0, 0.0;
@@ -279,6 +279,9 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto controller_switch_receiver = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>("INPUT_SWITCH",
+                                                                 &lcm));
 
   LcmSubscriberSystem* contact_results_sub = nullptr;
   if (FLAGS_simulator == "DRAKE") {
@@ -439,6 +442,8 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_contact_input_port());
   builder.Connect(controller_state_input->get_output_port(0),
                   fsm->get_state_input_port());
+  builder.Connect(controller_switch_receiver->get_output_port(0),
+                  fsm->get_switch_input_port());
 
   // Trajectory generator connections
   builder.Connect(controller_state_input->get_output_port(0),

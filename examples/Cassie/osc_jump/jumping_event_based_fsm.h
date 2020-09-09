@@ -35,6 +35,18 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
     return this->get_input_port(contact_port_);
   }
 
+  const drake::systems::InputPort<double>& get_switch_input_port() const {
+    return this->get_input_port(switch_signal_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_fsm_output_port() const{
+    return this->get_output_port(fsm_output_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_clock_output_port() const{
+    return this->get_output_port(clock_output_port_);
+  }
+
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -43,12 +55,18 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   void CalcFiniteState(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* fsm_state) const;
 
+  void CalcClockTime(const drake::systems::Context<double>& context,
+                       drake::systems::BasicVector<double>* clock) const;
+
   bool DetectGuardCondition(
       bool guard_condition, double current_time,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   int state_port_;
   int contact_port_;
+  int switch_signal_port_;
+  int fsm_output_port_;
+  int clock_output_port_;
   std::vector<double> transition_times_;
 
   bool contact_based_;
@@ -56,6 +74,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   double transition_delay_;
   int fsm_idx_;
   int prev_time_idx_;
+  int switching_time_idx_;
   int guard_trigger_time_idx_;
   int transition_flag_idx_;
 

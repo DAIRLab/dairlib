@@ -276,7 +276,7 @@ int DoMain(int argc, char* argv[]) {
   auto& diagram_context = loop.get_diagram_mutable_context();
   auto& target_receiver_context = diagram_ptr->GetMutableSubsystemContext(
       *target_height_receiver, &diagram_context);
-  // Note that currently the LcmSubsriber store the lcm message in the first
+  // Note that currently the LcmSubscriber store the lcm message in the first
   // state of the leaf system (we hard coded index 0 here)
   auto& mutable_state =
       target_receiver_context

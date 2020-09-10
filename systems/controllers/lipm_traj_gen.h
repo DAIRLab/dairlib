@@ -1,13 +1,13 @@
 #pragma once
 
+#include "multibody/multibody_utils.h"
+#include "systems/controllers/control_utils.h"
+#include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-
-#include "multibody/multibody_utils.h"
-#include "systems/controllers/control_utils.h"
-#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -41,6 +41,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
           contact_points_in_each_state);
 
+  // Input port getters
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
@@ -51,15 +52,46 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
       const {
     return this->get_input_port(fsm_switch_time_port_);
   }
+  // Output port getters
+  const drake::systems::OutputPort<double>& get_output_port_lipm_from_current()
+      const {
+    return this->get_output_port(output_port_lipm_from_current_);
+  }
+  const drake::systems::OutputPort<double>&
+  get_output_port_lipm_from_touchdown() const {
+    return this->get_output_port(output_port_lipm_from_touchdown_);
+  }
 
  private:
-  void CalcTraj(const drake::systems::Context<double>& context,
-                drake::trajectories::Trajectory<double>* traj) const;
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
+  ConstructLipmTraj(const Eigen::VectorXd& CoM, const Eigen::VectorXd& dCoM,
+                    const Eigen::VectorXd& stance_foot_pos, double start_time,
+                    double end_time_of_this_fsm_state,
+                    bool fix_init_height = true) const;
+
+  void CalcTrajFromCurrent(const drake::systems::Context<double>& context,
+                           drake::trajectories::Trajectory<double>* traj) const;
+  void CalcTrajFromTouchdown(
+      const drake::systems::Context<double>& context,
+      drake::trajectories::Trajectory<double>* traj) const;
 
   // Port indices
   int state_port_;
   int fsm_port_;
   int fsm_switch_time_port_;
+
+  int output_port_lipm_from_current_;
+  int output_port_lipm_from_touchdown_;
+
+  int prev_fsm_event_idx_;
+  int prev_touchdown_stance_foot_idx_;
+  int prev_touchdown_com_pos_idx_;
+  int prev_touchdown_com_vel_idx_;
+  int prev_fsm_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;

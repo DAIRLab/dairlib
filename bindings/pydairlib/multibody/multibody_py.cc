@@ -36,6 +36,8 @@ PYBIND11_MODULE(multibody, m) {
       .def("createActuatorNameVectorFromMap",
            &dairlib::multibody::createActuatorNameVectorFromMap<double>,
            py::arg("plant"));
+
+
 }
 
 }  // namespace pydairlib

@@ -72,7 +72,6 @@ CassieStateEstimator::CassieStateEstimator(
   n_q_ = plant.num_positions();
   n_v_ = plant.num_velocities();
   n_u_ = plant.num_actuators();
-  n_fb_vel_ = 2 * SPACE_DIM;
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
@@ -129,14 +128,6 @@ CassieStateEstimator::CassieStateEstimator(
         joint_selection_matrices[1](joint_name.second, joint_name.second) = 1;
       }
     }
-    //    joint_selection_matrices[0].block(0, 0, n_fb_vel_, n_fb_vel_) =
-    //        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
-    //    joint_selection_matrices[1].block(0, 0, n_fb_vel_, n_fb_vel_) =
-    //        0.5 * MatrixXd::Identity(n_fb_vel_, n_fb_vel_);
-    //    std::cout << "left joint sel matrix: " << joint_selection_matrices[0]
-    //              << std::endl;
-    //    std::cout << "right joint sel matrix: " << joint_selection_matrices[1]
-    //              << std::endl;
 
     // states related to EKF
     // 1. estimated floating base state (pelvis)
@@ -1151,7 +1142,7 @@ EventStatus CassieStateEstimator::Update(
     //                              &optimal_cost);
     EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
                           &right_contact);
-    EstimateContactForces(context, filtered_output, lambda_est);
+    EstimateContactForces(context, filtered_output, lambda_est, left_contact, right_contact);
   }
   state->get_mutable_discrete_state(gm_contact_forces_idx_).get_mutable_value()
       << lambda_est;
@@ -1464,9 +1455,8 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 }
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
-    VectorXd& lambda) const {
+    VectorXd& lambda, int& left_contact, int& right_contact) const {
   // TODO(yangwill) add a discrete time filter to the force estimate
-  double prev_time = context.get_discrete_state(time_idx_).get_value()[0];
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
   plant_.SetPositionsAndVelocities(context_.get(), output.GetState());
@@ -1498,6 +1488,8 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
+  left_contact = lambda[2] > 0;
+  right_contact = lambda[5] > 0;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

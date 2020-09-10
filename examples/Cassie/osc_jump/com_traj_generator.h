@@ -68,7 +68,7 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex fsm_port_;
   drake::systems::InputPortIndex clock_port_;
 
-  static constexpr double kTransitionSpeed = 20.0;  // 20 s/m
+  static constexpr double kTransitionSpeed = 200.0;  // 20 s/m
   // The trajectory optimization solution sets the final CoM very close to
   // rear toe contacts - this is an offset to move it closer to the center of
   // the support polygon

@@ -144,14 +144,16 @@ COMTrajGenerator::generateBalanceTraj(
 
   // generate a trajectory from current position to target position
   MatrixXd centerOfMassPoints(3, 2);
-  centerOfMassPoints << initial_com, target_com + 0.25 * contact_pos_sum;
+  centerOfMassPoints << initial_com, target_com + 0.5 * contact_pos_sum;
 
   VectorXd breaks_vector(2);
+//  breaks_vector << switch_time,
+//      switch_time + kTransitionSpeed * (curr_com - target_com).norm();
   breaks_vector << switch_time,
-      switch_time + kTransitionSpeed * (curr_com - target_com).norm();
+      switch_time + 5.0;
 
-  return PiecewisePolynomial<double>::FirstOrderHold(breaks_vector,
-                                                     centerOfMassPoints);
+  return PiecewisePolynomial<double>::CubicHermite(breaks_vector,
+                                                     centerOfMassPoints, MatrixXd::Zero(3, 2));
 }
 
 drake::trajectories::PiecewisePolynomial<double>

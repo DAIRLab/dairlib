@@ -31,6 +31,10 @@ def main():
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
+  # Parser(plant_w_spr).AddModelFromFile(
+  #     "/home/yangwill/workspace/dairlib/examples/Cassie/urdf/cassie_v2.urdf")
+  # Parser(plant_wo_spr).AddModelFromFile(
+  #     "/home/yangwill/workspace/dairlib/examples/Cassie/urdf/cassie_v2.urdf")
   Parser(plant_w_spr).AddModelFromFile(
     FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf"))
@@ -91,6 +95,7 @@ def main():
   # Default time window values, can override
   t_start = t_u[10]
   t_end = t_u[-10]
+  # import pdb; pdb.set_trace()
   # Override here #
   # t_start = 205
   # t_end = 208
@@ -105,8 +110,8 @@ def main():
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
-  plot_contact_est(full_log)
-  plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+  # plot_contact_est(full_log)
+  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
   if True:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -191,7 +196,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
              list(tracking_cost_map))
   osc_traj0 = "swing_ft_traj"
   # osc_traj0 = "lipm_traj"
-  osc_traj1 = "lipm_traj"
+  osc_traj1 = "com_traj"
   osc_traj2 = "pelvis_balance_traj"
   osc_traj3 = "swing_hip_yaw_traj"
 
@@ -210,15 +215,15 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 1, "accel")
   # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "pos")
+  plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  # plot_osc(osc_debug, osc_traj1, 2, "pos")
+  plot_osc(osc_debug, osc_traj1, 1, "pos")
+  plot_osc(osc_debug, osc_traj1, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
-  # plot_osc(osc_debug, osc_traj1, 0, "vel")
-  # plot_osc(osc_debug, osc_traj1, 1, "vel")
-  # plot_osc(osc_debug, osc_traj1, 2, "vel")
+  plot_osc(osc_debug, osc_traj1, 0, "vel")
+  plot_osc(osc_debug, osc_traj1, 1, "vel")
+  plot_osc(osc_debug, osc_traj1, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
@@ -230,9 +235,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "accel")
-  # plot_osc(osc_debug, osc_traj1, 1, "accel")
-  # plot_osc(osc_debug, osc_traj1, 2, "accel")
+  plot_osc(osc_debug, osc_traj1, 0, "accel")
+  plot_osc(osc_debug, osc_traj1, 1, "accel")
+  plot_osc(osc_debug, osc_traj1, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj2, 0, "accel")
   # plot_osc(osc_debug, osc_traj2, 1, "accel")

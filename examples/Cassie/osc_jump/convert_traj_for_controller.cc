@@ -135,6 +135,8 @@ int DoMain() {
     r_hip_points.block(3, i, 3, 1) = J_r_hip * v_i;
   }
 
+  center_of_mass_points =
+      center_of_mass_points - 0.5 * (l_foot_points + r_foot_points);
   l_foot_points = l_foot_points - l_hip_points;
   r_foot_points = r_foot_points - r_hip_points;
 

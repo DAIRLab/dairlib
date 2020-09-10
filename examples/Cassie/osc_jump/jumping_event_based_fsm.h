@@ -10,7 +10,7 @@ namespace examples {
 
 namespace osc_jump {
 
-enum FSM_STATE { BALANCE, CROUCH, FLIGHT, LAND };
+enum FSM_STATE {READY, BALANCE, CROUCH, FLIGHT, LAND };
 
 /// Event based FSM for jumping with option to change to a time-based FSM
 /// @param[plant] The MultibodyPlant that this FSM operates with

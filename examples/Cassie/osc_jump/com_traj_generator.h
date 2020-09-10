@@ -17,7 +17,10 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
       drake::trajectories::PiecewisePolynomial<double>& crouch_traj,
-      double time_offset = 0.0);
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          feet_contact_points,
+      double time_offset = 0.0, FSM_STATE init_fsm_state = BALANCE);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -28,7 +31,8 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::trajectories::PiecewisePolynomial<double> generateBalanceTraj(
-      const Eigen::VectorXd& x, double time) const;
+      const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
+      double time) const;
   drake::trajectories::PiecewisePolynomial<double> generateCrouchTraj(
       const Eigen::VectorXd& x, double time) const;
   drake::trajectories::PiecewisePolynomial<double> generateLandingTraj(
@@ -46,22 +50,25 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
 
-  int fsm_idx_;
-  int com_x_offset_idx_;
+  drake::systems::DiscreteStateIndex prev_fsm_idx_;
+  drake::systems::DiscreteStateIndex com_x_offset_idx_;
+  drake::systems::DiscreteStateIndex initial_com_idx_;
+  drake::systems::DiscreteStateIndex switch_time_idx_;
+
+  // Center of mass trajectory
+  drake::trajectories::PiecewisePolynomial<double> crouch_traj_;
 
   // A list of pairs of contact body frame and contact point
-//  const std::vector<
-//      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
-//      feet_contact_points_;
-
-  drake::trajectories::PiecewisePolynomial<double> crouch_traj_;
+  const std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
+      feet_contact_points_;
   double time_offset_;
 
-  int state_port_;
-  int fsm_port_;
-  int clock_port_;
+  drake::systems::InputPortIndex state_port_;
+  drake::systems::InputPortIndex fsm_port_;
+  drake::systems::InputPortIndex clock_port_;
 
-  static constexpr double kTransitionSpeed = 20.0;  // 20 m/s
+  static constexpr double kTransitionSpeed = 20.0;  // 20 s/m
   // The trajectory optimization solution sets the final CoM very close to
   // rear toe contacts - this is an offset to move it closer to the center of
   // the support polygon

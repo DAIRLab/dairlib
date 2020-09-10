@@ -81,7 +81,7 @@ DEFINE_double(transition_delay, 0.0,
 DEFINE_string(simulator, "DRAKE",
               "Simulator used, important for determining how to interpret "
               "contact information. Other options include MUJOCO and soon to "
-              "include GAZEBO.");
+              "include contact results from the GM contact estimator.");
 DEFINE_bool(add_noise, false,
             "Whether to add gaussian noise to state "
             "inputted to controller");
@@ -147,10 +147,18 @@ int DoMain(int argc, char* argv[]) {
   auto context_w_spr = plant_w_springs.CreateDefaultContext();
   auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
 
+  // Get contact frames and position (doesn't matter whether we use
+  // plant_w_springs or plant_wo_springs because the contact frames exit in both
+  // plants)
+  auto left_toe = LeftToeFront(plant_wo_springs);
+  auto left_heel = LeftToeRear(plant_wo_springs);
+  auto right_toe = RightToeFront(plant_wo_springs);
+  auto right_heel = RightToeRear(plant_wo_springs);
+
   int nq = plant_wo_springs.num_positions();
   int nv = plant_wo_springs.num_velocities();
   int nx = nq + nv;
-  int n_modes = 3;
+
   // Create maps for joints
   map<string, int> pos_map =
       multibody::makeNameToPositionsMap(plant_wo_springs);
@@ -159,10 +167,8 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> act_map =
       multibody::makeNameToActuatorsMap(plant_wo_springs);
 
-  auto left_toe = LeftToeFront(plant_wo_springs);
-  auto left_heel = LeftToeRear(plant_wo_springs);
-  auto right_toe = RightToeFront(plant_wo_springs);
-  auto right_heel = RightToeRear(plant_wo_springs);
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      feet_contact_points = {left_toe, right_toe};
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
   OSCJumpingGains gains;
@@ -238,7 +244,7 @@ int DoMain(int argc, char* argv[]) {
   //  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
   //                                          land_time};
   std::vector<double> transition_times = {
-      FLAGS_delay_time, FLAGS_delay_time + 300.0, FLAGS_delay_time + 600.0};
+      0.0, FLAGS_delay_time, FLAGS_delay_time + 300.0, FLAGS_delay_time + 600.0};
 
   Vector3d support_center_offset;
   support_center_offset << gains.x_offset, 0.0, 0.0;
@@ -255,7 +261,8 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, context_w_spr.get(), com_traj, FLAGS_delay_time);
+      plant_w_springs, context_w_spr.get(), com_traj, feet_contact_points,
+      FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_springs, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
       FLAGS_delay_time);
@@ -278,7 +285,7 @@ int DoMain(int argc, char* argv[]) {
       context_wo_spr.get(), true, FLAGS_print_osc); /*print_tracking_info*/
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
+          "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto controller_switch_receiver = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>("INPUT_SWITCH",
                                                                  &lcm));

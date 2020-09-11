@@ -92,6 +92,10 @@ CassieStateEstimator::CassieStateEstimator(
       this->DeclareAbstractOutputPort(
               &CassieStateEstimator::CopyEstimatedContactForces)
           .get_index();
+  gm_contact_for_fsm_output_port_ =
+      this->DeclareAbstractOutputPort(
+              &CassieStateEstimator::CopyEstimatedContactForcesForFsm)
+          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -1428,6 +1432,33 @@ void CassieStateEstimator::CopyEstimatedContactForces(
                .data(),
            SPACE_DIM * sizeof(double));
     contact_msg->point_pair_contact_info.push_back(contact_info);
+  }
+}
+
+void CassieStateEstimator::CopyEstimatedContactForcesForFsm(
+    const Context<double>& context,
+    drake::lcmt_contact_results_for_viz* contact_msg) const {
+  contact_msg->timestamp = context.get_time() * 1e6;
+  contact_msg->num_point_pair_contacts = 0;
+  contact_msg->num_hydroelastic_contacts = 0;
+  contact_msg->point_pair_contact_info.clear();
+  for (int i = 0; i < num_contacts_; i++) {
+    auto contact_info = drake::lcmt_point_pair_contact_info_for_viz();
+    contact_info.timestamp = contact_msg->timestamp;
+    contact_info.body1_name = toe_frames_[i]->body().name();
+    contact_info.body2_name = world_.name();
+    memcpy(contact_info.contact_force,
+           context.get_discrete_state(gm_contact_forces_idx_)
+               .get_value()
+               .segment(i * SPACE_DIM, (i + 1) * SPACE_DIM)
+               .data(),
+           SPACE_DIM * sizeof(double));
+    if(context.get_discrete_state(gm_contact_forces_idx_)
+        .get_value()
+        .segment(i * SPACE_DIM, (i + 1) * SPACE_DIM)(2) > 0){
+      contact_msg->point_pair_contact_info.push_back(contact_info);
+      contact_msg->num_point_pair_contacts += 1;
+    }
   }
 }
 

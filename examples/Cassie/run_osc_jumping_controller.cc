@@ -449,7 +449,7 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_contact_input_port());
   builder.Connect(controller_state_input->get_output_port(0),
                   fsm->get_state_input_port());
-  builder.Connect(controller_switch_receiver->get_output_port(0),
+  builder.Connect(controller_switch_receiver->get_output_port(),
                   fsm->get_switch_input_port());
 
   // Trajectory generator connections

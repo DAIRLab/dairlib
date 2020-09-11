@@ -140,7 +140,7 @@ COMTrajGenerator::generateBalanceTraj(
   }
 
   Vector3d target_com = crouch_traj_.value(time_offset_);
-  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
+//  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
 
   // generate a trajectory from current position to target position
   MatrixXd centerOfMassPoints(3, 2);
@@ -150,7 +150,7 @@ COMTrajGenerator::generateBalanceTraj(
 //  breaks_vector << switch_time,
 //      switch_time + kTransitionSpeed * (curr_com - target_com).norm();
   breaks_vector << switch_time,
-      switch_time + 5.0;
+      switch_time + time_offset_;
 
   return PiecewisePolynomial<double>::CubicHermite(breaks_vector,
                                                      centerOfMassPoints, MatrixXd::Zero(3, 2));
@@ -189,7 +189,7 @@ COMTrajGenerator::generateLandingTraj(
       context.get_discrete_state().get_vector(com_x_offset_idx_);
 
   // Only offset the x-position
-  Vector3d offset(com_x_offset[0], 0, -0.1);
+  Vector3d offset(com_x_offset[0], 0, 0);
 
   auto traj_segment =
       crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);

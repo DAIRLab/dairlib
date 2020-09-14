@@ -66,6 +66,8 @@ int DoMain() {
   auto world = &plant.world_frame();
 
   DirconTrajectory dircon_traj(FLAGS_folder_path + FLAGS_trajectory_name);
+
+//  MatrixXd state_points = dircon_traj.G
   PiecewisePolynomial<double> state_traj =
       dircon_traj.ReconstructStateTrajectory();
 
@@ -84,6 +86,7 @@ int DoMain() {
 
   for (unsigned int i = 0; i < times.size(); ++i) {
     VectorXd x_i = state_traj.value(times[i]);
+    VectorXd xdot_i = state_traj.derivative(1).value(times[i]);
     plant.SetPositionsAndVelocities(context.get(), x_i);
     center_of_mass_points.block(0, i, 3, 1) =
         plant.CalcCenterOfMassPosition(*context);
@@ -105,7 +108,7 @@ int DoMain() {
                               &r_hip_pos_block);
 
     pelvis_orientation.block(0, i, 4, 1) = x_i.head(4);
-    pelvis_orientation.block(4, i, 4, 1) = x_i.segment(nq, 4);
+    pelvis_orientation.block(4, i, 4, 1) = xdot_i.head(4);
 
     MatrixXd J_CoM(3, nv);
     MatrixXd J_l_foot(3, nv);

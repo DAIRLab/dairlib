@@ -55,8 +55,8 @@ bool OscTrackingData::Update(
     // Careful: must update y_des_ before calling UpdateYAndError()
     // Update desired output
     y_des_ = traj.value(t);
-    ydot_des_ = traj.MakeDerivative(1)->value(t);
-    yddot_des_ = traj.MakeDerivative(2)->value(t);
+    ydot_des_ = traj.EvalDerivative(t, 1);
+    yddot_des_ = traj.EvalDerivative(t, 2);
 
     // Update feedback output (Calling virtual methods)
     UpdateYAndError(x_w_spr, context_w_spr);

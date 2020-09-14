@@ -243,8 +243,9 @@ int DoMain(int argc, char* argv[]) {
   //  FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
   //  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
   //                                          land_time};
-  std::vector<double> transition_times = {
-      0.0, FLAGS_delay_time, FLAGS_delay_time + 300.0, FLAGS_delay_time + 600.0};
+  std::vector<double> transition_times = {0.0, FLAGS_delay_time,
+                                          FLAGS_delay_time + 300.0,
+                                          FLAGS_delay_time + 600.0};
 
   Vector3d support_center_offset;
   support_center_offset << gains.x_offset, 0.0, 0.0;
@@ -302,7 +303,7 @@ int DoMain(int argc, char* argv[]) {
   } else if (FLAGS_simulator == "DISPATCHER") {
     contact_results_sub = builder.AddSystem(
         LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
-            "CASSIE_CONTACT_GM_OBSERVER", &lcm));
+            "CASSIE_CONTACT_FOR_FSM_DISPATCHER", &lcm));
     // TODO(yangwill): Add PR for GM contact observer, currently in
     // gm_contact_estimator branch
   } else {
@@ -449,7 +450,7 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_contact_input_port());
   builder.Connect(controller_state_input->get_output_port(0),
                   fsm->get_state_input_port());
-  builder.Connect(controller_switch_receiver->get_output_port(0),
+  builder.Connect(controller_switch_receiver->get_output_port(),
                   fsm->get_switch_input_port());
 
   // Trajectory generator connections

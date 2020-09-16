@@ -35,7 +35,7 @@ group "0.operator" {
         host = "dair-cassie";
     }
     cmd "controller-switch-to-jumping" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_JUMPING --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_JUMPING --channel_x=CASSIE_STATE_DISPATCHER --n_publishes=1";
         host = "dair-cassie";
     }
 }
@@ -66,7 +66,7 @@ group "3.cassie-robot" {
         host = "dair-cassie";
     }
     cmd "5. osc-jumping-controller-real-robot" {
-        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --folder_path=\"/home/dair/workspace/dairlib/examples/Cassie/saved_trajectories/\" --traj_name=\"squatting\" --delay_time=30.0 --channel_x=CASSIE_STATE_DISPATCHER --contact_based_fsm=0";
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --folder_path=\"examples/Cassie/saved_trajectories/\" --traj_name=\"squatting\" --delay_time=20.0 --channel_x=CASSIE_STATE_DISPATCHER --contact_based_fsm=0 --print_osc=0";
         host = "dair-cassie";
     }
 }

@@ -248,7 +248,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   } else {
     // Snopt settings
     auto id = drake::solvers::SnoptSolver::id();
-    // trajopt.SetSolverOption(id, "Print file", "../snopt.out");
+    trajopt.SetSolverOption(id, "Print file", "../snopt.out");
     trajopt.SetSolverOption(id, "Major iterations limit", max_iter);
     trajopt.SetSolverOption(id, "Iterations limit", 100000);
     trajopt.SetSolverOption(id, "Verify level", 0);
@@ -268,6 +268,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto x = trajopt.state();
   auto x0 = trajopt.initial_state();
   auto xf = trajopt.state_vars(0, num_knotpoints - 1);
+  auto xf_m1 = trajopt.state_vars(0, num_knotpoints - 2);
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
 
   // height constraint
@@ -293,6 +294,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   // start/end velocity constraints
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    x0.tail(n_v));
+  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+                                   xf_m1.tail(n_v));
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    xf.tail(n_v));
 
@@ -492,6 +495,8 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt.SetInitialGuess(xi(3), 0);
     }
   }
+
+  trajopt.AddDurationBounds(duration, duration);
 
   double alpha = .2;
   int num_poses = std::min(num_knotpoints, 5);

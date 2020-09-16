@@ -64,8 +64,7 @@ DEFINE_string(channel_u, "OSC_JUMPING",
               "The name of the channel which publishes command");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_string(folder_path,
-              "/home/yangwill/Documents/research/projects/cassie"
-              "/jumping/saved_trajs/",
+              "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
 DEFINE_string(mode_name, "state_input_trajectory",
@@ -206,9 +205,9 @@ int DoMain(int argc, char* argv[]) {
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory =
-      DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
+      DirconTrajectory(FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
   const LcmTrajectory& processed_trajs =
-      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name + "_processed");
+      LcmTrajectory(FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name + "_processed"));
 
   const LcmTrajectory::Trajectory lcm_com_traj =
       processed_trajs.GetTrajectory("center_of_mass_trajectory");
@@ -287,9 +286,9 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  auto controller_switch_receiver = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>("INPUT_SWITCH",
-                                                                 &lcm));
+//  auto controller_switch_receiver = builder.AddSystem(
+//      LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>("INPUT_SWITCH",
+//                                                                 &lcm));
 
   LcmSubscriberSystem* contact_results_sub = nullptr;
   if (FLAGS_simulator == "DRAKE") {
@@ -450,8 +449,8 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_contact_input_port());
   builder.Connect(controller_state_input->get_output_port(0),
                   fsm->get_state_input_port());
-  builder.Connect(controller_switch_receiver->get_output_port(),
-                  fsm->get_switch_input_port());
+//  builder.Connect(controller_switch_receiver->get_output_port(),
+//                  fsm->get_switch_input_port());
 
   // Trajectory generator connections
   builder.Connect(controller_state_input->get_output_port(0),

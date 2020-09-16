@@ -78,6 +78,8 @@ def main():
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
+  import pdb; pdb.set_trace()
+
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
 
@@ -110,7 +112,7 @@ def main():
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
-  # plot_contact_est(full_log)
+  plot_contact_est(full_log)
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
   if True:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
@@ -145,17 +147,16 @@ def plot_contact_est(log):
     msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
     t_filtered_contact.append(msg.utime / 1e6)
     contact_filtered.append(list(msg.contact))
-  for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_gm_contact.append(msg.utime / 1e6)
-    gm_contact.append(list(msg.contact))
+  for i in range(len(log["CASSIE_CONTACT_GM_OBSERVER"])):
+    msg = log["CASSIE_CONTACT_GM_OBSERVER"][i]
+    t_gm_contact.append(msg.timestamp / 1e6)
+    # gm_contact.append(list(msg.contact))
   t_contact = np.array(t_contact)
   t_filtered_contact = np.array(t_filtered_contact)
   t_gm_contact = np.array(t_gm_contact)
   contact = np.array(contact)
   contact_filtered = np.array(contact_filtered)
   gm_contact = np.array(gm_contact)
-
   plt.figure("Contact estimation")
   # plt.plot(t_contact[t_slice], contact[t_slice], '-')
   plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')

@@ -57,7 +57,6 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 namespace examples {
 
-DEFINE_double(publish_rate, 1000.0, "Target publish rate for OSC");
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "OSC_JUMPING",
@@ -70,7 +69,6 @@ DEFINE_string(traj_name, "", "File to load saved trajectories from");
 DEFINE_string(mode_name, "state_input_trajectory",
               "Base name of each trajectory");
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
-DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
 DEFINE_bool(contact_based_fsm, true,
             "The contact based fsm transitions "
             "between states using contact data.");
@@ -81,9 +79,6 @@ DEFINE_string(simulator, "DRAKE",
               "Simulator used, important for determining how to interpret "
               "contact information. Other options include MUJOCO and soon to "
               "include contact results from the GM contact estimator.");
-DEFINE_bool(add_noise, false,
-            "Whether to add gaussian noise to state "
-            "inputted to controller");
 DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
 DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
               "Filepath containing gains");
@@ -350,27 +345,12 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  // Center of mass tracking
-  //  MatrixXd W_com = MatrixXd::Identity(3, 3);
-  //  W_com(0, 0) = 2000;
-  //  W_com(1, 1) = 200;
-  //  W_com(2, 2) = 2000;
-  //  MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
-  //  MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
   ComTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
                                     plant_w_springs, plant_wo_springs);
   for (auto mode : stance_modes) {
     com_tracking_data.AddStateToTrack(mode);
   }
   osc->AddTrackingData(&com_tracking_data);
-
-  // Feet tracking
-  //  MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
-  //  W_swing_foot(0, 0) = 1000;
-  //  W_swing_foot(1, 1) = 1000;
-  //  W_swing_foot(2, 2) = 1000;
-  //  MatrixXd K_p_sw_ft = 36 * MatrixXd::Identity(3, 3);
-  //  MatrixXd K_d_sw_ft = 12 * MatrixXd::Identity(3, 3);
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
       "l_foot_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
@@ -382,19 +362,6 @@ int DoMain(int argc, char* argv[]) {
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");
 
-  // Pelvis orientation tracking
-  //  double w_pelvis_balance = 20;
-  //  double w_heading = 10;
-  //  double k_p_pelvis_balance = 16;  // 100
-  //  double k_d_pelvis_balance = 8;   // 80
-  //  double k_p_heading = 16;         // 50
-  //  double k_d_heading = 8;          // 40
-  //  Matrix3d W_pelvis = w_pelvis_balance * MatrixXd::Identity(3, 3);
-  //  W_pelvis(2, 2) = w_heading;
-  //  Matrix3d K_p_pelvis = k_p_pelvis_balance * 2 * MatrixXd::Identity(3, 3);
-  //  K_p_pelvis(2, 2) = k_p_heading;
-  //  Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
-  //  K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
       "pelvis_rot_tracking_data", K_p_pelvis, K_d_pelvis, W_pelvis,
       plant_w_springs, plant_wo_springs);
@@ -412,27 +379,10 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/
-  // State receiver connections (Connected through LCM driven loop)
-  drake::systems::LeafSystem<double>* controller_state_input = state_receiver;
-  std::cout << "Running with noise: " << FLAGS_add_noise << std::endl;
-  if (FLAGS_add_noise) {
-    MatrixXd pos_cov = MatrixXd::Zero(plant_w_springs.num_positions(),
-                                      plant_w_springs.num_positions());
-    pos_cov(4, 4) = 0.0;
-    MatrixXd vel_cov = MatrixXd::Zero(plant_w_springs.num_velocities(),
-                                      plant_w_springs.num_velocities());
-    vel_cov(5, 5) = 0.0;
-    auto gaussian_noise = builder.AddSystem<systems::GaussianNoisePassThrough>(
-        plant_w_springs.num_positions(), plant_w_springs.num_velocities(),
-        plant_w_springs.num_actuators(), pos_cov, vel_cov);
-    builder.Connect(state_receiver->get_output_port(0),
-                    gaussian_noise->get_input_port());
-    controller_state_input = gaussian_noise;
-  }
 
   // OSC connections
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
@@ -447,17 +397,17 @@ int DoMain(int argc, char* argv[]) {
   // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),
                   fsm->get_contact_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_state_input_port());
 //  builder.Connect(controller_switch_receiver->get_output_port(),
 //                  fsm->get_switch_input_port());
 
   // Trajectory generator connections
-  builder.Connect(controller_state_input->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_state_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   l_foot_traj_generator->get_state_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
                   com_traj_generator->get_fsm_input_port());

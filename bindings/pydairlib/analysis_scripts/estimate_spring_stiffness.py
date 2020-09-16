@@ -131,11 +131,11 @@ def solve_for_k(x, t_x, u, t_u):
       B = plant.MakeActuationMatrix()
       g = plant.CalcGravityGeneralizedForces(context)
       J_lh = plant.CalcJacobianTranslationalVelocity(
-        context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
+        context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)[1:3, :]
       J_lt = plant.CalcJacobianTranslationalVelocity(
         context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
       J_rh = plant.CalcJacobianTranslationalVelocity(
-        context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
+        context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)[1:3, :]
       J_rt = plant.CalcJacobianTranslationalVelocity(
         context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
 
@@ -149,21 +149,38 @@ def solve_for_k(x, t_x, u, t_u):
       lambda_i_wo_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv @ B @ u[u_ind] + J @ M_inv @ g)
       lambda_i_w_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
 
-      A[row_start + l_knee_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
-      A[row_start + r_knee_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
-      A[row_start + l_heel_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
-      A[row_start + r_heel_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
+      """ 
+      Manual indexing version
+      """
 
-      A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_idx - 1] * x[x_ind, l_knee_spring_idx]
-      A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_idx - 1] * x[x_ind, r_knee_spring_idx]
-      A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_idx - 1] * x[x_ind, l_heel_spring_idx]
-      A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_idx - 1] * x[x_ind, r_heel_spring_idx]
-      # A[row_start:row_end, 1] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, r_knee_spring_idx] * x[
-      #   x_ind, r_knee_spring_idx]
-      # A[row_start:row_end, 2] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_heel_spring_idx] * x[
-      #   x_ind, l_heel_spring_idx]
-      # A[row_start:row_end, 3] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_knee_spring_idx] * x[
-      #   x_ind, r_heel_spring_idx]
+      # A[row_start + l_knee_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
+      # A[row_start + r_knee_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
+      # A[row_start + l_heel_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
+      # A[row_start + r_heel_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
+
+      # A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_idx - 1] * x[x_ind, l_knee_spring_idx]
+      # A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_idx - 1] * x[x_ind, r_knee_spring_idx]
+      # A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_idx - 1] * x[x_ind, l_heel_spring_idx]
+      # A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_idx - 1] * x[x_ind, r_heel_spring_idx]
+      # # A[row_start:row_end, 1] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, r_knee_spring_idx] * x[
+      # #   x_ind, r_knee_spring_idx]
+      # # A[row_start:row_end, 2] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_heel_spring_idx] * x[
+      # #   x_ind, l_heel_spring_idx]
+      # # A[row_start:row_end, 3] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_knee_spring_idx] * x[
+      # #   x_ind, r_heel_spring_idx]
+      # b[row_start:row_end] = - B @ u[u_ind] - g - J.T @ lambda_i_wo_k
+
+      """ 
+      Matrix version
+      """
+
+      I_nv = np.eye(nv, nv)
+      Q_tilde = np.zeros((nv, n_k))
+      Q_tilde[l_knee_spring_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
+      Q_tilde[r_knee_spring_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
+      Q_tilde[l_heel_spring_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
+      Q_tilde[r_heel_spring_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
+      A[row_start:row_end, :] = (I_nv + J.T @ lambda_i_w_k) @ Q_tilde
       b[row_start:row_end] = - B @ u[u_ind] - g - J.T @ lambda_i_wo_k
 
   x = prog.NewContinuousVariables(nvars, "sigma")
@@ -185,7 +202,7 @@ def solve_for_k(x, t_x, u, t_u):
 def solve_with_lambda(x, t_x, u, t_u):
   n_samples = len(sample_times)
   n_samples_per_iter = 10
-  n_lambda_vars = 14
+  n_lambda_vars = 12
   # K is a diagonal matrix, do the springs act directly on the knees? If so the non-zero values will not
   # be on the diagonals
   n_k = 4
@@ -207,11 +224,11 @@ def solve_with_lambda(x, t_x, u, t_u):
       B = plant.MakeActuationMatrix()
       g = plant.CalcGravityGeneralizedForces(context)
       J_lh = plant.CalcJacobianTranslationalVelocity(
-        context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
+        context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)[1:3, :]
       J_lt = plant.CalcJacobianTranslationalVelocity(
         context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
       J_rh = plant.CalcJacobianTranslationalVelocity(
-        context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
+        context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)[1:3, :]
       J_rt = plant.CalcJacobianTranslationalVelocity(
         context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
 

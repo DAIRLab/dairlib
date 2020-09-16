@@ -99,8 +99,8 @@ def main():
   t_end = t_u[-10]
   # import pdb; pdb.set_trace()
   # Override here #
-  # t_start = 205
-  # t_end = 208
+  # t_start = 8.7
+  # t_end = 10.5
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -112,8 +112,14 @@ def main():
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
+<<<<<<< Updated upstream
   plot_contact_est(full_log)
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+=======
+  # plot_contact_est(full_log)
+  plt.figure("FSM")
+  plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+>>>>>>> Stashed changes
   if True:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -128,7 +134,7 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
 
 
@@ -198,7 +204,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   osc_traj0 = "swing_ft_traj"
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "com_traj"
-  osc_traj2 = "pelvis_balance_traj"
+  # osc_traj1 = "pelvis_rot_tracking_data"
+  # osc_traj1 = "pelvis_balance_traj"
   osc_traj3 = "swing_hip_yaw_traj"
 
   #
@@ -283,7 +290,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world) @ x[i, -nv:]
   fig = plt.figure('foot pos: ' + filename)
   # state_indices = slice(4, 5)
-  state_indices = slice(2, 3)
+  state_indices = slice(0, 1)
   # state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
@@ -346,25 +353,25 @@ def compare_ekf(log, pos_map, vel_map):
 
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
-  # pos_indices = slice(0 + 7, 23, 2)
-  vel_indices = slice(23 + 6, 45, 2)
-  pos_indices = slice(0,7)
-  # vel_indices = slice(23, 23 + 6)
-  u_indices = slice(6, 8)
+  pos_indices = slice(0 + 7, 23)
+  # vel_indices = slice(23 + 6, 45, 2)
+  # pos_indices = slice(0,7)
+  vel_indices = slice(23, 23 + 6)
+  u_indices = slice(0, 10)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
 
   plt.figure("positions: " + filename)
-  plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
-  plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
-  # plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: " + filename)
-  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices], '.')
   plt.legend(x_datatypes[vel_indices])
   plt.figure("efforts: " + filename)
-  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices], '.')
   plt.legend(u_datatypes[u_indices])
   # plt.figure("efforts meas: " + filename)
   # plt.figure("Delay characterization")

@@ -5,16 +5,21 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/linear_config_mux.h"
+#include "examples/Cassie/osc/v_spr_to_no_spr.h"
+#include "examples/Cassie/osc/vdot_integrator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/fsm_event_time.h"
+#include "systems/controllers/linear_controller.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
@@ -39,6 +44,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 
+using systems::SubvectorPassThrough;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
@@ -143,6 +149,10 @@ struct OSCWalkingGains {
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  // Controller flags
+  bool use_predicted_com_vel = true;
+  bool use_joint_pd_control = true;
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -379,7 +389,6 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
-  bool use_predicted_com_vel = true;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
@@ -542,7 +551,35 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
-  builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+
+  // Use joint pd controller after OSC
+  // Linear config (desired state and gains) creator
+  auto config_mux =
+      builder.AddSystem<cassie::osc::LinearConfigMux>(plant_w_spr);
+  if (use_joint_pd_control) {
+    // State integrator
+    auto vdot_integrator = builder.AddSystem<cassie::osc::VdotIntegrator>(
+        plant_w_spr, plant_wo_spr);
+    builder.Connect(osc->get_osc_optimal_vdot_port(),
+                    vdot_integrator->get_input_port(0));
+    builder.Connect(vdot_integrator->get_output_port(0),
+                    config_mux->get_desired_state_input_port());
+
+    // pd controller
+    auto pd_controller = builder.AddSystem<systems::LinearController>(
+        plant_w_spr.num_positions(), plant_w_spr.num_velocities(),
+        plant_w_spr.num_actuators());
+    builder.Connect(state_receiver->get_output_port(0),
+                    pd_controller->get_input_port_output());
+    builder.Connect(pd_controller->get_output_port(0),
+                    command_sender->get_input_port(0));
+
+  } else {
+    builder.Connect(osc->get_osc_optimal_u_port(),
+                    command_sender->get_input_port(0));
+  }
+
+  // OSC debug data
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.
     auto osc_debug_pub =
@@ -560,6 +597,11 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
+
+  if (use_joint_pd_control) {
+    // TODO: Set the initial time and state for VdotIntegrator
+  }
+
   loop.Simulate();
 
   return 0;

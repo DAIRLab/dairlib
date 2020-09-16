@@ -70,26 +70,33 @@ OperationalSpaceControl::OperationalSpaceControl(
   state_port_ = this->DeclareVectorInputPort(
                         OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
                     .get_index();
-  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
-                                &OperationalSpaceControl::CalcOptimalInput);
   if (used_with_finite_state_machine) {
     fsm_port_ =
         this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
     // Discrete update to record the last state event time
-    DeclarePerStepDiscreteUpdateEvent(
-        &OperationalSpaceControl::DiscreteVariableUpdate);
+    DeclarePerStepDiscreteUpdateEvent(&OperationalSpaceControl::FsmTimeUpdate);
     prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
-  osc_output_port_ =
+  osc_optimal_u_port_ =
       this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
-                                    &OperationalSpaceControl::CalcOptimalInput)
+                                    &OperationalSpaceControl::CopyOptimalInput)
+          .get_index();
+  osc_optimal_vdot_port_ =
+      this->DeclareVectorOutputPort(TimestampedVector<double>(n_v_),
+                                    &OperationalSpaceControl::CopyOptimalVdot)
           .get_index();
   osc_debug_port_ = this->DeclareAbstractOutputPort(
                             &OperationalSpaceControl::AssignOscLcmOutput)
                         .get_index();
+
+  // PerStep update for the OSC
+  DeclarePerStepDiscreteUpdateEvent(&OperationalSpaceControl::OscUpdate);
+  // The timestamp for the last QP update
+  prev_qp_update_time_idx_ = this->DeclareDiscreteState(
+      -std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
 
   const std::map<string, int>& pos_map_w_spr =
       multibody::makeNameToPositionsMap(plant_w_spr);
@@ -261,16 +268,11 @@ void OperationalSpaceControl::Build() {
   }
 
   // Initialize solution
-  dv_sol_ = std::make_unique<Eigen::VectorXd>(n_v_);
-  u_sol_ = std::make_unique<Eigen::VectorXd>(n_u_);
-  lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
-  lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
-  epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
-  dv_sol_->setZero();
-  u_sol_->setZero();
-  lambda_c_sol_->setZero();
-  lambda_h_sol_->setZero();
-  epsilon_sol_->setZero();
+  dv_sol_idx_ = this->DeclareDiscreteState(VectorXd::Zero(n_v_));
+  u_sol_idx_ = this->DeclareDiscreteState(VectorXd::Zero(n_u_));
+  lambda_c_sol_idx_ = this->DeclareDiscreteState(VectorXd::Zero(n_c_));
+  lambda_h_sol_idx_ = this->DeclareDiscreteState(VectorXd::Zero(n_h_));
+  epsilon_sol_idx_ = this->DeclareDiscreteState(VectorXd::Zero(n_c_active_));
 
   // Add decision variables
   dv_ = prog_->NewContinuousVariables(n_v_, "dv");
@@ -397,7 +399,7 @@ void OperationalSpaceControl::Build() {
   }
 }
 
-drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
+drake::systems::EventStatus OperationalSpaceControl::FsmTimeUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const BasicVector<double>* fsm_output =
@@ -418,10 +420,22 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
-VectorXd OperationalSpaceControl::SolveQp(
+void OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
-    double time_since_last_state_switch) const {
+    double time_since_last_state_switch,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+  auto dv_sol =
+      discrete_state->get_mutable_vector(dv_sol_idx_).get_mutable_value();
+  auto u_sol =
+      discrete_state->get_mutable_vector(u_sol_idx_).get_mutable_value();
+  auto lambda_c_sol =
+      discrete_state->get_mutable_vector(lambda_c_sol_idx_).get_mutable_value();
+  auto lambda_h_sol =
+      discrete_state->get_mutable_vector(lambda_h_sol_idx_).get_mutable_value();
+  auto epsilon_sol =
+      discrete_state->get_mutable_vector(epsilon_sol_idx_).get_mutable_value();
+
   // Get active contact indices
   std::set<int> active_contact_set = {};
   if (single_contact_mode_) {
@@ -619,14 +633,14 @@ VectorXd OperationalSpaceControl::SolveQp(
   const MathematicalProgramResult result = Solve(*prog_);
 
   // Extract solutions
-  *dv_sol_ = result.GetSolution(dv_);
-  *u_sol_ = result.GetSolution(u_);
-  *lambda_c_sol_ = result.GetSolution(lambda_c_);
-  *lambda_h_sol_ = result.GetSolution(lambda_h_);
-  *epsilon_sol_ = result.GetSolution(epsilon_);
+  dv_sol = result.GetSolution(dv_);
+  u_sol = result.GetSolution(u_);
+  lambda_c_sol = result.GetSolution(lambda_c_);
+  lambda_h_sol = result.GetSolution(lambda_h_);
+  epsilon_sol = result.GetSolution(epsilon_);
 
   for (auto tracking_data : *tracking_data_vec_) {
-    if (tracking_data->IsActive()) tracking_data->SaveYddotCommandSol(*dv_sol_);
+    if (tracking_data->IsActive()) tracking_data->SaveYddotCommandSol(dv_sol);
   }
 
   // Print QP result
@@ -634,28 +648,27 @@ VectorXd OperationalSpaceControl::SolveQp(
     cout << "\n" << to_string(result.get_solution_result()) << endl;
     cout << "fsm_state = " << fsm_state << endl;
     cout << "**********************\n";
-    cout << "u_sol = " << u_sol_->transpose() << endl;
-    cout << "lambda_c_sol = " << lambda_c_sol_->transpose() << endl;
-    cout << "lambda_h_sol = " << lambda_h_sol_->transpose() << endl;
-    cout << "dv_sol = " << dv_sol_->transpose() << endl;
-    cout << "epsilon_sol = " << epsilon_sol_->transpose() << endl;
+    cout << "u_sol = " << u_sol.transpose() << endl;
+    cout << "lambda_c_sol = " << lambda_c_sol.transpose() << endl;
+    cout << "lambda_h_sol = " << lambda_h_sol.transpose() << endl;
+    cout << "dv_sol = " << dv_sol.transpose() << endl;
+    cout << "epsilon_sol = " << epsilon_sol.transpose() << endl;
     cout << "**********************\n";
     // 1. input cost
     if (W_input_.size() > 0) {
-      cout << "input cost = "
-           << 0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_) << endl;
+      cout << "input cost = " << 0.5 * (u_sol).transpose() * W_input_ * (u_sol)
+           << endl;
     }
     // 2. acceleration cost
     if (W_joint_accel_.size() > 0) {
       cout << "acceleration cost = "
-           << 0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_)
-           << endl;
+           << 0.5 * (dv_sol).transpose() * W_joint_accel_ * (dv_sol) << endl;
     }
     // 3. Soft constraint cost
     if (w_soft_constraint_ > 0) {
       cout << "soft constraint cost = "
-           << 0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
-                  (*epsilon_sol_)
+           << 0.5 * w_soft_constraint_ * (epsilon_sol).transpose() *
+                  (epsilon_sol)
            << endl;
     }
     // 4. Tracking cost
@@ -669,8 +682,8 @@ VectorXd OperationalSpaceControl::SolveQp(
         // the user can differentiate which error norm is bigger. The constant
         // term was not added to the QP since it doesn't change the result.
         cout << "Tracking cost (" << tracking_data->GetName() << ") = "
-             << 0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-                    (J_t * (*dv_sol_) + JdotV_t - ddy_t)
+             << 0.5 * (J_t * (dv_sol) + JdotV_t - ddy_t).transpose() * W *
+                    (J_t * (dv_sol) + JdotV_t - ddy_t)
              << endl;
       }
     }
@@ -679,13 +692,62 @@ VectorXd OperationalSpaceControl::SolveQp(
     cout << "**********************\n";
     for (auto tracking_data : *tracking_data_vec_) {
       if (tracking_data->IsActive()) {
-        tracking_data->PrintFeedbackAndDesiredValues((*dv_sol_));
+        tracking_data->PrintFeedbackAndDesiredValues((dv_sol));
       }
     }
     cout << "**********************\n\n";
   }
+}
 
-  return *u_sol_;
+drake::systems::EventStatus OperationalSpaceControl::OscUpdate(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+  // Get current time
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double timestamp = robot_output->get_timestamp();
+
+  auto prev_qp_update_time =
+      discrete_state->get_mutable_vector(prev_qp_update_time_idx_)
+          .get_mutable_value();
+  if (timestamp != prev_qp_update_time(0)) {
+    prev_qp_update_time(0) = timestamp;
+
+    // Read in current state
+    VectorXd q_w_spr = robot_output->GetPositions();
+    VectorXd v_w_spr = robot_output->GetVelocities();
+    VectorXd x_w_spr(plant_w_spr_.num_positions() +
+                     plant_w_spr_.num_velocities());
+    x_w_spr << q_w_spr, v_w_spr;
+
+    auto current_time = static_cast<double>(timestamp);
+    if (print_tracking_info_) {
+      cout << "\n\ncurrent_time = " << current_time << endl;
+    }
+
+    VectorXd x_wo_spr(n_q_ + n_v_);
+    x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
+        map_velocity_from_spring_to_no_spring_ * v_w_spr;
+
+    if (used_with_finite_state_machine_) {
+      // Read in finite state machine
+      const BasicVector<double>* fsm_output =
+          (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+      VectorXd fsm_state = fsm_output->get_value();
+
+      // Get discrete states
+      const auto prev_event_time =
+          context.get_discrete_state(prev_event_time_idx_).get_value();
+
+      SolveQp(x_w_spr, x_wo_spr, context, current_time, fsm_state(0),
+              current_time - prev_event_time(0), discrete_state);
+    } else {
+      SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time,
+              discrete_state);
+    }
+  }
+
+  return drake::systems::EventStatus::Succeeded();
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
@@ -695,6 +757,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   auto fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
 
+  auto u_sol = context.get_discrete_state(u_sol_idx_).get_value();
+  auto dv_sol = context.get_discrete_state(dv_sol_idx_).get_value();
+  auto epsilon_sol = context.get_discrete_state(epsilon_sol_idx_).get_value();
+
   double time_since_last_state_switch =
       used_with_finite_state_machine_
           ? state->get_timestamp() -
@@ -703,19 +769,17 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_output->get_value()(0);
-  output->input_cost =
-      (W_input_.size() > 0)
-          ? (0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_))(0)
-          : 0;
+  output->input_cost = (W_input_.size() > 0)
+                           ? (0.5 * (u_sol).transpose() * W_input_ * (u_sol))(0)
+                           : 0;
   output->acceleration_cost =
       (W_joint_accel_.size() > 0)
-          ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
+          ? (0.5 * (dv_sol).transpose() * W_joint_accel_ * (dv_sol))(0)
           : 0;
   output->soft_constraint_cost =
-      (w_soft_constraint_ > 0)
-          ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
-             (*epsilon_sol_))(0)
-          : 0;
+      (w_soft_constraint_ > 0) ? (0.5 * w_soft_constraint_ *
+                                  (epsilon_sol).transpose() * (epsilon_sol))(0)
+                               : 0;
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
@@ -755,55 +819,39 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       output->tracking_cost.push_back(
-          (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0));
+          (0.5 * (J_t * (dv_sol) + JdotV_t - ddy_t).transpose() * W *
+           (J_t * (dv_sol) + JdotV_t - ddy_t))(0));
     }
   }
 
   output->num_tracking_data = output->tracking_data_names.size();
 }
 
-void OperationalSpaceControl::CalcOptimalInput(
+void OperationalSpaceControl::CopyOptimalInput(
     const drake::systems::Context<double>& context,
     systems::TimestampedVector<double>* control) const {
   // Read in current state and time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd q_w_spr = robot_output->GetPositions();
-  VectorXd v_w_spr = robot_output->GetVelocities();
-  VectorXd x_w_spr(plant_w_spr_.num_positions() +
-                   plant_w_spr_.num_velocities());
-  x_w_spr << q_w_spr, v_w_spr;
 
-  double timestamp = robot_output->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
-  if (print_tracking_info_) {
-    cout << "\n\ncurrent_time = " << current_time << endl;
-  }
-
-  VectorXd x_wo_spr(n_q_ + n_v_);
-  x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
-      map_velocity_from_spring_to_no_spring_ * v_w_spr;
-
-  VectorXd u_sol(n_u_);
-  if (used_with_finite_state_machine_) {
-    // Read in finite state machine
-    const BasicVector<double>* fsm_output =
-        (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-    VectorXd fsm_state = fsm_output->get_value();
-
-    // Get discrete states
-    const auto prev_event_time =
-        context.get_discrete_state(prev_event_time_idx_).get_value();
-
-    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, fsm_state(0),
-                    current_time - prev_event_time(0));
-  } else {
-    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time);
-  }
+  auto u_sol = context.get_discrete_state(u_sol_idx_).get_value();
 
   // Assign the control input
   control->SetDataVector(u_sol);
+  control->set_timestamp(robot_output->get_timestamp());
+}
+
+void OperationalSpaceControl::CopyOptimalVdot(
+    const drake::systems::Context<double>& context,
+    systems::TimestampedVector<double>* control) const {
+  // Read in current state and time
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
+  auto dv_sol = context.get_discrete_state(dv_sol_idx_).get_value();
+
+  // Assign the control input
+  control->SetDataVector(dv_sol);
   control->set_timestamp(robot_output->get_timestamp());
 }
 

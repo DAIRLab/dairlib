@@ -1,10 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
 #include <drake/multibody/plant/multibody_plant.h>
 #include "dairlib/lcmt_osc_output.hpp"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
@@ -96,8 +96,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       bool used_with_finite_state_machine = true,
       bool print_tracking_info = false);
 
-  const drake::systems::OutputPort<double>& get_osc_output_port() const {
-    return this->get_output_port(osc_output_port_);
+  const drake::systems::OutputPort<double>& get_osc_optimal_u_port() const {
+    return this->get_output_port(osc_optimal_u_port_);
+  }
+  const drake::systems::OutputPort<double>& get_osc_optimal_vdot_port() const {
+    return this->get_output_port(osc_optimal_vdot_port_);
   }
   const drake::systems::OutputPort<double>& get_osc_debug_port() const {
     return this->get_output_port(osc_debug_port_);
@@ -158,14 +161,16 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void CheckConstraintSettings();
 
   // Get solution of OSC
-  Eigen::VectorXd SolveQp(const Eigen::VectorXd& x_w_spr,
-                          const Eigen::VectorXd& x_wo_spr,
-                          const drake::systems::Context<double>& context,
-                          double t, int fsm_state,
-                          double time_since_last_state_switch) const;
+  void SolveQp(const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
+               const drake::systems::Context<double>& context, double t,
+               int fsm_state, double time_since_last_state_switch,
+               drake::systems::DiscreteValues<double>* discrete_state) const;
 
   // Discrete update that stores the previous state transition time
-  drake::systems::EventStatus DiscreteVariableUpdate(
+  drake::systems::EventStatus FsmTimeUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+  drake::systems::EventStatus OscUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
@@ -173,18 +178,28 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           dairlib::lcmt_osc_output* output) const;
 
   // Output function
-  void CalcOptimalInput(const drake::systems::Context<double>& context,
+  void CopyOptimalInput(const drake::systems::Context<double>& context,
+                        systems::TimestampedVector<double>* control) const;
+  void CopyOptimalVdot(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
 
   // Input/Output ports
-  int osc_debug_port_;
-  int osc_output_port_;
   int state_port_;
   int fsm_port_;
+  int osc_optimal_u_port_;
+  int osc_optimal_vdot_port_;
+  int osc_debug_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
   int prev_event_time_idx_;
+  int prev_qp_update_time_idx_;
+  // OSC solution index
+  int dv_sol_idx_;
+  int u_sol_idx_;
+  int lambda_c_sol_idx_;
+  int lambda_h_sol_idx_;
+  int epsilon_sol_idx_;
 
   // Map position/velocity from model with spring to without spring
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;
@@ -245,13 +260,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
-
-  // OSC solution
-  std::unique_ptr<Eigen::VectorXd> dv_sol_;
-  std::unique_ptr<Eigen::VectorXd> u_sol_;
-  std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
-  std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
-  std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user

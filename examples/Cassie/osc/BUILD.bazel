@@ -54,6 +54,30 @@ cc_library(
     ],
 )
 
+
+cc_library(
+    name = "linear_config_mux",
+    srcs = ["linear_config_mux.cc"],
+    hdrs = ["linear_config_mux.h"],
+    deps = [
+        "//systems/controllers",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "vdot_integrator",
+    srcs = ["vdot_integrator.cc"],
+    hdrs = ["vdot_integrator.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_library(
     name = "standing_com_traj",
     srcs = ["standing_com_traj.cc"],

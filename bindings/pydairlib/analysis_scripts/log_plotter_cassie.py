@@ -78,8 +78,6 @@ def main():
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
-  import pdb; pdb.set_trace()
-
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
 
@@ -112,14 +110,8 @@ def main():
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
-<<<<<<< Updated upstream
-  plot_contact_est(full_log)
-  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
-=======
   # plot_contact_est(full_log)
-  plt.figure("FSM")
-  plt.plot(t_u[t_u_slice], fsm[t_u_slice])
->>>>>>> Stashed changes
+  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
   if True:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -134,9 +126,8 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
-
 
 def plot_contact_est(log):
   t_contact = []

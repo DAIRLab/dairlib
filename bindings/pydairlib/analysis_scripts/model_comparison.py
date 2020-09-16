@@ -10,8 +10,10 @@ from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
+from pydrake.systems.framework import DiagramBuilder
 import pydairlib.lcm_trajectory
 import pydairlib.multibody
+from pydairlib.cassie.cassie_utils import *
 from pydairlib.common import FindResourceOrThrow
 
 
@@ -34,14 +36,12 @@ def main():
   global context_w_spr
 
   builder = DiagramBuilder()
-  plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  plant_wo_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant_w_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
-  Parser(plant_wo_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf"))
+  # scene_graph = SceneGraph()
+  plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
+  plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
+  addCassieMultibody(plant_w_spr, scene_graph_w_spr, True, "examples/Cassie/urdf/cassie_v2.urdf", True, True)
+  addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True, "examples/Cassie/urdf/cassie_fixed_springs.urdf", False,
+                     True)
   plant_w_spr.Finalize()
   plant_wo_spr.Finalize()
 
@@ -137,8 +137,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 205
-  # t_end = 208
+  # t_start = 50
+  # t_end = 52
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -190,15 +190,22 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   yddot_w_spr, JdotV_w_spr, Jvdot_w_spr = get_yddot(plant_w_spr, context_w_spr, t_x, x, r_toe_frame)
-  # yddot_wo_spr, JdotV_wo_spr, Jvdot_wo_spr = get_yddot(plant_wo_spr, context_wo_spr, t_x, x_wo_spr, r_toe_frame)
-  plt.figure()
-  plt.plot(t_x, yddot_w_spr[:, 2],label="yddot")
-  plt.plot(t_x, JdotV_w_spr[:, 2],label="jdotv")
-  plt.plot(t_x, Jvdot_w_spr[:, 2],label="jvdot")
+  yddot_wo_spr, JdotV_wo_spr, Jvdot_wo_spr = get_yddot(plant_wo_spr, context_wo_spr, t_x, x_wo_spr, r_toe_frame)
+  plt.plot(t_x[t_slice], yddot_w_spr[t_slice, 2], label="w_spr")
+  plt.plot(t_x[t_slice], yddot_wo_spr[t_slice, 2], label="wo_spr")
   plt.legend()
-  # plt.plot(t_x, yddot_wo_spr[:, 2])
+
+  plt.figure()
+  plt.plot(t_x[t_slice], yddot_w_spr[t_slice, 2], label="yddot")
+  plt.plot(t_x[t_slice], JdotV_w_spr[t_slice, 2], label="jdotv")
+  plt.plot(t_x[t_slice], Jvdot_w_spr[t_slice, 2], label="jvdot")
+  plt.legend()
+
+  plt.figure()
+  plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+
   plt.show()
 
 
@@ -242,6 +249,10 @@ def get_yddot(plant, context, t, x, toe_frame):
   dt = np.diff(t, axis=0)
   for i in range(plant.num_velocities()):
     vdot[:, i] = vdot[:, i] / dt
+  ave_dt = np.average(dt)
+  print("ave_dt = " + str(ave_dt) + "seconds")
+
+  # TODO: we can apply gaussian filter to vdot here
 
   yddot = np.zeros((t.shape[0], dim))
   JdotV = np.zeros((t.shape[0], dim))
@@ -251,17 +262,18 @@ def get_yddot(plant, context, t, x, toe_frame):
     J = plant.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable.kV, toe_frame, np.zeros(3), world, world)
     JdotV_i = plant.CalcBiasTranslationalAcceleration(context, JacobianWrtVariable.kV, toe_frame, np.zeros(3),
-                                                           world, world)
-    yddot[i, :] = J@vdot[i, :] + JdotV_i[:, 0]
-    JdotV[i, :] = JdotV_i[:, 0]  
-    Jvdot[i, :] = J@vdot[i, :]  
-  filter = 100
+                                                      world, world)
+    yddot[i, :] = J @ vdot[i, :] + JdotV_i[:, 0]
+    JdotV[i, :] = JdotV_i[:, 0]
+    Jvdot[i, :] = J @ vdot[i, :]
+  filter = 200
   idx = int(filter / 2)
   for i in range(idx, dt.shape[0] - idx):
-    yddot[i, :] = np.average(yddot[i - idx:i+idx, :])
-    JdotV[i, :] = np.average(JdotV[i - idx:i+idx, :])
-    Jvdot[i, :] = np.average(Jvdot[i - idx:i+idx, :])
+    yddot[i, :] = np.average(yddot[i - idx:i + idx, :])
+    JdotV[i, :] = np.average(JdotV[i - idx:i + idx, :])
+    Jvdot[i, :] = np.average(Jvdot[i - idx:i + idx, :])
   return yddot, JdotV, Jvdot
+
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   input_cost = np.zeros(t_u.shape[0])
@@ -303,11 +315,11 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   #
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
-  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  plot_osc(osc_debug, osc_traj0, 2, "pos")
   # #
   # plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
   # #
   plot_osc(osc_debug, osc_traj0, 2, "accel")
   plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])

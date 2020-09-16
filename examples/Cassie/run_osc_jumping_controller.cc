@@ -251,7 +251,7 @@ int DoMain(int argc, char* argv[]) {
   com_traj = com_traj + offset_traj;
 
   /**** Initialize all the leaf systems ****/
-  drake::lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);

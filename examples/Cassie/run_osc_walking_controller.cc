@@ -6,7 +6,6 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/linear_config_mux.h"
-#include "examples/Cassie/osc/v_spr_to_no_spr.h"
 #include "examples/Cassie/osc/vdot_integrator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
@@ -19,6 +18,7 @@
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -556,10 +556,10 @@ int DoMain(int argc, char* argv[]) {
   // Linear config (desired state and gains) creator
   auto config_mux =
       builder.AddSystem<cassie::osc::LinearConfigMux>(plant_w_spr);
+  // State integrator
+  auto vdot_integrator =
+      builder.AddSystem<cassie::osc::VdotIntegrator>(plant_w_spr, plant_wo_spr);
   if (use_joint_pd_control) {
-    // State integrator
-    auto vdot_integrator = builder.AddSystem<cassie::osc::VdotIntegrator>(
-        plant_w_spr, plant_wo_spr);
     builder.Connect(osc->get_osc_optimal_vdot_port(),
                     vdot_integrator->get_input_port(0));
     builder.Connect(vdot_integrator->get_output_port(0),
@@ -599,7 +599,28 @@ int DoMain(int argc, char* argv[]) {
       true);
 
   if (use_joint_pd_control) {
-    // TODO: Set the initial time and state for VdotIntegrator
+    // TODO: Set Gain for Config
+    auto diagram_ptr = loop.get_diagram();
+    auto& diagram_context = loop.get_diagram_mutable_context();
+    auto& config_mux_context =
+        diagram_ptr->GetMutableSubsystemContext(*config_mux, &diagram_context);
+    //    config_mux->get_gains_input_port().FixValue(
+    //        &config_mux_context, );
+
+    // Set the initial time and state for VdotIntegrator
+    // Read OutputVector from the output port of RobotOutputReceiver()
+    auto& state_receiver_context = diagram_ptr->GetMutableSubsystemContext(
+        *state_receiver, &diagram_context);
+    const systems::OutputVector<double>& robot_output =
+        state_receiver->get_output_port(0).Eval<systems::OutputVector<double>>(
+            state_receiver_context);
+    // Set time and state
+    auto& vdot_integrator_context = diagram_ptr->GetMutableSubsystemContext(
+        *vdot_integrator, &diagram_context);
+    vdot_integrator->SetInitialTime(&vdot_integrator_context,
+                                    robot_output.get_timestamp());
+    vdot_integrator->SetInitialState(&vdot_integrator_context,
+                                     robot_output.GetState());
   }
 
   loop.Simulate();

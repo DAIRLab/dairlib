@@ -12,9 +12,12 @@ namespace osc {
 
 class VdotIntegrator : public drake::systems::LeafSystem<double> {
  public:
-  VdotIntegrator(
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+  VdotIntegrator(const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+                 const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+
+  void SetInitialTime(Context<double>* context, double time) const;
+  void SetInitialState(Context<double>* context,
+                       const VectorXd& state) const;
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -22,7 +25,7 @@ class VdotIntegrator : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void CopyState(const drake::systems::Context<double>& context,
-               systems::TimestampedVector<double>* output) const;
+                 systems::TimestampedVector<double>* output) const;
 
   int vdot_port_;
 
@@ -30,7 +33,12 @@ class VdotIntegrator : public drake::systems::LeafSystem<double> {
   int actuated_q_idx_;
   int actuated_v_idx_;
 
+  int nq_spr_;
+  int nv_spr_;
   int nx_spr_;
+
+  Eigen::MatrixXd map_from_q_spring_to_q_actuated_joints_;
+  Eigen::MatrixXd map_from_v_spring_to_v_actuated_joints_;
 
   Eigen::MatrixXd map_from_v_no_spring_to_v_actuated_joints_;
   Eigen::MatrixXd map_from_q_actuated_joints_to_q_spring_;

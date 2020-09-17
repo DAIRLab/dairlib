@@ -36,6 +36,9 @@ class InnerLoopSetting {
   std::string directory;
   std::string prefix;
   std::string init_file;
+
+  // For testing
+  bool cubic_spline_in_rom_constraint;
 };
 
 // SubQpData stores all the data about the QPs in the SQP algorithm

@@ -363,7 +363,7 @@ void StoreSplineOfY(const vector<VectorXd>& h_vec,
                     const PiecewisePolynomial<double>& y_spline,
                     const string& directory, const string& prefix) {
   // parameters
-  int n_sample_each_seg = 3;
+  int n_sample_each_seg = 2;
 
   // setup
   int n_y = y_spline.value(0).rows();

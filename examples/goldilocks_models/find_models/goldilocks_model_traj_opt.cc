@@ -37,9 +37,15 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     const ReducedOrderModel& rom,
     std::unique_ptr<HybridDircon<double>> dircon_in,
     const MultibodyPlant<double>& plant,
-    const std::vector<int>& num_time_samples, bool is_get_nominal,
-    bool is_add_tau_in_cost, int rom_option, int robot_option,
-    double constraint_scale) {
+    const std::vector<int>& num_time_samples,
+    std::vector<DirconKinematicDataSet<double>*> constraints,
+    bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
+    int robot_option, double constraint_scale) {
+  // Parameters
+  bool is_add_tau_in_cost = setting.is_add_tau_in_cost;
+  bool cubic_spline_in_rom_constraint =
+      setting.cubic_spline_in_rom_constraint;  // for testing
+
   int n_tau = rom.n_tau();
 
   // Get total sample ponits
@@ -57,14 +63,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
   tau_vars_ = dircon->NewContinuousVariables(n_tau * N, "tau");
 
   // Constraints
+  // clang-format off
   if (!is_get_nominal) {
-    // Create dynamics constraint (pointer)
-    dynamics_constraint_at_head =
-        std::make_shared<find_models::DynamicsConstraint>(rom, plant, true);
-    dynamics_constraint_at_tail =
-        std::make_shared<find_models::DynamicsConstraint>(rom, plant, false);
-
-    // Constraint scaling
+    // Create constraint scaling
     // TODO: re-tune this after you remove at_head and at_tail
     std::unordered_map<int, double> constraint_scale_map;
     if (rom.n_yddot() == 0) {
@@ -122,10 +123,74 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       // The scaling of others hasn't tuned yet
       DRAKE_DEMAND(false);
     }
-    dynamics_constraint_at_head->SetConstraintScaling(constraint_scale_map);
-    // Not sure if scaling constraint for the tail should be the same (not
-    // tuned)
-    dynamics_constraint_at_tail->SetConstraintScaling(constraint_scale_map);
+    // clang-format on
+
+    // Create dynamics constraint (pointer) and set the scaling
+    if (cubic_spline_in_rom_constraint) {
+      dynamics_constraint_at_head =
+          std::make_shared<find_models::DynamicsConstraint>(rom, plant, true);
+      dynamics_constraint_at_tail =
+          std::make_shared<find_models::DynamicsConstraint>(rom, plant, false);
+      // Scaling
+      dynamics_constraint_at_head->SetConstraintScaling(constraint_scale_map);
+      // Not sure if scaling constraint for the tail should be the same (not
+      // tuned)
+      dynamics_constraint_at_tail->SetConstraintScaling(constraint_scale_map);
+    } else {
+      for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+        dynamics_constraint_at_knot.push_back(
+            std::make_shared<find_models::DynamicsConstraintV2>(
+                rom, plant, constraints[i]));
+        // Scaling
+        dynamics_constraint_at_knot.at(i)->SetConstraintScaling(
+            constraint_scale_map);
+      }
+    }
+
+    // Impose dynamics constraints
+    if (cubic_spline_in_rom_constraint) {
+      // (For V1) Add dynamics constraint for all segments (between knots)
+      int N_accum = 0;
+      for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+        for (int j = 0; j < num_time_samples[i] - 1; j++) {
+          auto x_at_knot_k = dircon->state_vars_by_mode(i, j);
+          auto tau_at_knot_k = reduced_model_input(N_accum + j, n_tau);
+          auto x_at_knot_kplus1 = dircon->state_vars_by_mode(i, j + 1);
+          auto tau_at_knot_kplus1 = reduced_model_input(N_accum + j + 1, n_tau);
+          auto h_btwn_knot_k_iplus1 = dircon->timestep(N_accum + j);
+          dynamics_constraint_at_head_bindings.push_back(dircon->AddConstraint(
+              dynamics_constraint_at_head,
+              {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1, tau_at_knot_kplus1,
+               h_btwn_knot_k_iplus1}));
+          if (j == num_time_samples[i] - 2) {
+            // Add constraint to the end of the last segment
+            dynamics_constraint_at_tail_bindings.push_back(
+                dircon->AddConstraint(
+                    dynamics_constraint_at_tail,
+                    {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1,
+                     tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));
+          }
+        }
+        N_accum += num_time_samples[i];
+        N_accum -= 1;  // due to overlaps between modes
+      }
+    } else {
+      // (For V2) Add dynamics constraint at knot points
+      int N_accum = 0;
+      for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+        for (int j = 0; j < num_time_samples[i]; j++) {
+          int time_index = N_accum + j;
+          auto x_k = dircon->state_vars_by_mode(i, j);
+          auto u_k = dircon->input(time_index);
+          auto lambda_k = dircon->force(i, j);
+          auto tau_k = reduced_model_input(time_index, n_tau);
+          dynamics_constraint_at_knot_bindings.push_back(dircon->AddConstraint(
+              dynamics_constraint_at_knot[i], {x_k, u_k, lambda_k, tau_k}));
+        }
+        N_accum += num_time_samples[i];
+        N_accum -= 1;  // due to overlaps between modes
+      }
+    }
 
     // variable scaling
     // TODO: need to tune variable as well.
@@ -182,34 +247,6 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         tau_cost_bindings.push_back(
             dircon->AddQuadraticCost(W, VectorXd::Zero(n_tau), tau_i));
       }
-    }
-
-    // Add dynamics constraint for all segments (between knots)
-    int N_accum = 0;
-    for (unsigned int i = 0; i < num_time_samples.size(); i++) {
-      // cout << "i = " << i << endl;
-      // cout << "N_accum = " << N_accum << endl;
-      for (int j = 0; j < num_time_samples[i] - 1; j++) {
-        // cout << "    j = " << j << endl;
-        auto x_at_knot_k = dircon->state_vars_by_mode(i, j);
-        auto tau_at_knot_k = reduced_model_input(N_accum + j, n_tau);
-        auto x_at_knot_kplus1 = dircon->state_vars_by_mode(i, j + 1);
-        auto tau_at_knot_kplus1 = reduced_model_input(N_accum + j + 1, n_tau);
-        auto h_btwn_knot_k_iplus1 = dircon->timestep(N_accum + j);
-        dynamics_constraint_at_head_bindings.push_back(
-            dircon->AddConstraint(dynamics_constraint_at_head,
-                                  {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1,
-                                   tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));
-        if (j == num_time_samples[i] - 2) {
-          // Add constraint to the end of the last segment
-          dynamics_constraint_at_tail_bindings.push_back(dircon->AddConstraint(
-              dynamics_constraint_at_tail,
-              {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1, tau_at_knot_kplus1,
-               h_btwn_knot_k_iplus1}));
-        }
-      }
-      N_accum += num_time_samples[i];
-      N_accum -= 1;  // due to overlaps between modes
     }
   }
 

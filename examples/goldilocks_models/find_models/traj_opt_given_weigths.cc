@@ -678,49 +678,84 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     int n_theta_yddot = theta_yddot.size();
     int n_theta = n_theta_y + n_theta_yddot;
     MatrixXd B = MatrixXd::Zero(A.rows(), n_theta);
-    // Get the row index of B matrix where dynamics constraint starts
-    VectorXd ind_head = solvers::GetConstraintRows(
-        *gm_traj_opt.dircon,
-        gm_traj_opt.dynamics_constraint_at_head_bindings[0]);
-    // cout << "ind_head = " << ind_head(0) << endl;
-    // VectorXd ind_tail = solvers::GetConstraintRows(
-    //                     *gm_traj_opt.dircon.get(),
-    //                     gm_traj_opt.dynamics_constraint_at_tail_bindings[0]);
-    // cout << "ind_tail = " << ind_tail(0) << endl;
-    int N_accum = 0;
-    for (unsigned int l = 0; l < num_time_samples.size(); l++) {
-      for (int m = 0; m < num_time_samples[l] - 1; m++) {
-        int i = N_accum + m;
-        // cout << "i = " << i << endl;
-        // Get the gradient value first
-        auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-        auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
-        auto x_iplus1 = gm_traj_opt.dircon->state_vars_by_mode(l, m + 1);
-        auto tau_iplus1 = gm_traj_opt.reduced_model_input(i + 1, n_tau);
-        auto h_btwn_knot_i_iplus1 = gm_traj_opt.dircon->timestep(i);
-        VectorXd x_i_sol = result.GetSolution(x_i);
-        VectorXd tau_i_sol = result.GetSolution(tau_i);
-        VectorXd x_iplus1_sol = result.GetSolution(x_iplus1);
-        VectorXd tau_iplus1_sol = result.GetSolution(tau_iplus1);
-        VectorXd h_i_sol = result.GetSolution(h_btwn_knot_i_iplus1);
+    if (setting.cubic_spline_in_rom_constraint) {
+      // Get the row index of B matrix where dynamics constraint starts
+      VectorXd ind_head = solvers::GetConstraintRows(
+          *gm_traj_opt.dircon,
+          gm_traj_opt.dynamics_constraint_at_head_bindings[0]);
+      // cout << "ind_head = " << ind_head(0) << endl;
+      // VectorXd ind_tail = solvers::GetConstraintRows(
+      //                     *gm_traj_opt.dircon.get(),
+      //                     gm_traj_opt.dynamics_constraint_at_tail_bindings[0]);
+      // cout << "ind_tail = " << ind_tail(0) << endl;
+      int N_accum = 0;
+      for (unsigned int l = 0; l < num_time_samples.size(); l++) {
+        for (int m = 0; m < num_time_samples[l] - 1; m++) {
+          int i = N_accum + m;
+          // cout << "i = " << i << endl;
+          // Get the gradient value first
+          auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
+          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          auto x_iplus1 = gm_traj_opt.dircon->state_vars_by_mode(l, m + 1);
+          auto tau_iplus1 = gm_traj_opt.reduced_model_input(i + 1, n_tau);
+          auto h_btwn_knot_i_iplus1 = gm_traj_opt.dircon->timestep(i);
+          VectorXd x_i_sol = result.GetSolution(x_i);
+          VectorXd tau_i_sol = result.GetSolution(tau_i);
+          VectorXd x_iplus1_sol = result.GetSolution(x_iplus1);
+          VectorXd tau_iplus1_sol = result.GetSolution(tau_iplus1);
+          VectorXd h_i_sol = result.GetSolution(h_btwn_knot_i_iplus1);
 
-        MatrixXd dyn_gradient_head =
-            gm_traj_opt.dynamics_constraint_at_head->getGradientWrtTheta(
-                x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
-        // MatrixXd dyn_gradient_tail =
-        //   gm_traj_opt.dynamics_constraint_at_tail->getGradientWrtTheta(
-        //     x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
+          MatrixXd dyn_gradient_head =
+              gm_traj_opt.dynamics_constraint_at_head->getGradientWrtTheta(
+                  x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
+          // MatrixXd dyn_gradient_tail =
+          //   gm_traj_opt.dynamics_constraint_at_tail->getGradientWrtTheta(
+          //     x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
 
-        // Fill in B matrix
-        B.block(ind_head(0) + i * n_yddot, 0, n_yddot, n_theta) =
-            dyn_gradient_head;
-        // B.block(ind_tail(0) + i * 2 * n_yddot, 0, n_yddot, n_theta)
-        //   = dyn_gradient_tail;
-        // cout << "row " << ind_head(0) + i * 2 * n_yddot << endl;
-        // cout << "row " << ind_tail(0) + i * 2 * n_yddot << endl << endl;
+          // Fill in B matrix
+          B.block(ind_head(0) + i * n_yddot, 0, n_yddot, n_theta) =
+              dyn_gradient_head;
+          // B.block(ind_tail(0) + i * 2 * n_yddot, 0, n_yddot, n_theta)
+          //   = dyn_gradient_tail;
+          // cout << "row " << ind_head(0) + i * 2 * n_yddot << endl;
+          // cout << "row " << ind_tail(0) + i * 2 * n_yddot << endl << endl;
+        }
+        N_accum += num_time_samples[l];
+        N_accum -= 1;  // due to overlaps between modes
       }
-      N_accum += num_time_samples[l];
-      N_accum -= 1;  // due to overlaps between modes
+    } else {
+      // Get the row index of B matrix where dynamics constraint starts
+      VectorXd ind_start = solvers::GetConstraintRows(
+          *gm_traj_opt.dircon,
+          gm_traj_opt.dynamics_constraint_at_knot_bindings[0]);
+      // cout << "ind_start = " << ind_start(0) << endl;
+      int N_accum = 0;
+      for (unsigned int l = 0; l < num_time_samples.size(); l++) {
+        for (int m = 0; m < num_time_samples[l]; m++) {
+          int time_index = N_accum + m;
+          // cout << "i = " << i << endl;
+          // Get the gradient value first
+          auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
+          auto u_i = gm_traj_opt.dircon->input(time_index);
+          auto lambda_i = gm_traj_opt.dircon->force(l, m);
+          auto tau_i = gm_traj_opt.reduced_model_input(time_index, n_tau);
+          VectorXd x_i_sol = result.GetSolution(x_i);
+          VectorXd u_i_sol = result.GetSolution(u_i);
+          VectorXd lambda_i_sol = result.GetSolution(lambda_i);
+          VectorXd tau_i_sol = result.GetSolution(tau_i);
+
+          MatrixXd dyn_gradient =
+              gm_traj_opt.dynamics_constraint_at_knot[l]->getGradientWrtTheta(
+                  x_i_sol, u_i_sol, lambda_i_sol, tau_i_sol);
+
+          // Fill in B matrix
+          B.block(ind_start(0) + time_index * n_yddot, 0, n_yddot, n_theta) =
+              dyn_gradient;
+          // cout << "row " << ind_start(0) + i * 2 * n_yddot << endl;
+        }
+        N_accum += num_time_samples[l];
+        N_accum -= 1;  // due to overlaps between modes
+      }
     }
 
     // Augment the constraint matrices and vectors (B, A, y, lb, ub)
@@ -769,7 +804,7 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     std::vector<VectorXd> yddot_vec;
     std::vector<VectorXd> tau_vec;
     std::vector<VectorXd> h_vec;
-    N_accum = 0;
+    int N_accum = 0;
     // for (unsigned int l = 0; l < num_time_samples.size() ; l++) {
     for (unsigned int l = 0; l < 1; l++) {  // just look at the first mode now
       for (int m = 0; m < num_time_samples[l]; m++) {
@@ -1599,8 +1634,9 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   // Move the trajectory optmization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
-      rom, std::move(trajopt), plant, num_time_samples, is_get_nominal,
-      setting.is_add_tau_in_cost, rom_option, robot_option, 1 /*temporary*/);
+      rom, std::move(trajopt), plant, num_time_samples, dataset_list,
+      is_get_nominal, setting, rom_option,
+      robot_option, 1 /*temporary*/);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -1622,10 +1658,10 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
 
   if (setting.use_ipopt) {
     solver_id = drake::solvers::IpoptSolver().id();
-//    cout << "\nChose manually: " << solver_id.name() << endl;
+    //    cout << "\nChose manually: " << solver_id.name() << endl;
   } else {
     solver_id = drake::solvers::ChooseBestSolver(*gm_traj_opt.dircon);
-//    cout << "\nChose the best solver: " << solver_id.name() << endl;
+    //    cout << "\nChose the best solver: " << solver_id.name() << endl;
   }
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
@@ -2404,8 +2440,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Move the trajectory optimization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
-      rom, std::move(trajopt), plant, num_time_samples, is_get_nominal,
-      setting.is_add_tau_in_cost, rom_option, robot_option, s);
+      rom, std::move(trajopt), plant, num_time_samples, dataset_list,
+      is_get_nominal, setting, rom_option,
+      robot_option, s);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -2468,10 +2505,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   if (setting.use_ipopt) {
     solver_id = drake::solvers::IpoptSolver().id();
-//    cout << "\nChose manually: " << solver_id.name() << endl;
+    //    cout << "\nChose manually: " << solver_id.name() << endl;
   } else {
     solver_id = drake::solvers::ChooseBestSolver(*gm_traj_opt.dircon);
-//    cout << "\nChose the best solver: " << solver_id.name() << endl;
+    //    cout << "\nChose the best solver: " << solver_id.name() << endl;
   }
 
   // Testing -- visualize poses

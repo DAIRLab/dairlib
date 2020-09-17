@@ -21,7 +21,7 @@ fi
 
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_v=$n_v --fix_node_number=true --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log
 
-cp ../dairlib_data/goldilocks_models/find_models/robot_1/0_* ../dairlib_data/goldilocks_models/find_models/robot_1/nominal_no_constraint_traj/
+cp ../dairlib_data/goldilocks_models/find_models/robot_$robot/0_* ../dairlib_data/goldilocks_models/find_models/robot_$robot/nominal_no_constraint_traj/
 
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_v=$n_v --fix_node_number=true --iter_start=0 --max_outer_iter=1 --snopt_scaling=false --start_current_iter_as_rerun=true | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log
 

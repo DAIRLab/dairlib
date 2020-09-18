@@ -105,13 +105,13 @@ group "4.lcm-tools" {
 script "run-drake-osc-standing-w-ekf" {
     run_script "start-operator-simulation-floating-base";
     start cmd "0.a.dispatcher-robot-out (lcm, floating-base)";
-    start cmd "1.simulator for OSC controller";
+    start cmd "1.simulator-floating";
     start cmd "3.osc-standing-controller (dispatched)";
 }
 
 script "run-drake-osc-standing-wo-ekf" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "1.simulator for OSC controller";
+    start cmd "1.simulator-floating";
     start cmd "3.osc-standing-controller (no dispatcher)";
 }
 
@@ -121,12 +121,12 @@ script "run-drake-osc-walking-w-ekf" {
     wait ms 200;
     start cmd "3.osc-walking-controller (dispatched)";
     wait ms 200;
-    start cmd "1.simulator for OSC controller";
+    start cmd "1.simulator-floating";
 }
 
 script "run-drake-osc-walking-wo-ekf" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "1.simulator for OSC controller";
+    start cmd "1.simulator-floating";
     start cmd "3.osc-walking-controller (no dispatcher)";
 }
 

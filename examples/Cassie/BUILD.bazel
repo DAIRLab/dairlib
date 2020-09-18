@@ -341,6 +341,7 @@ cc_binary(
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
+        "//systems/controllers:pd_config_lcm",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

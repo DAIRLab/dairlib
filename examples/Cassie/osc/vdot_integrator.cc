@@ -36,6 +36,10 @@ VdotIntegrator::VdotIntegrator(
   vdot_port_ = this->DeclareVectorInputPort(systems::TimestampedVector<double>(
                                                 plant_wo_spr.num_velocities()))
                    .get_index();
+  feddback_state_port_ = this
+                             ->DeclareVectorInputPort(OutputVector<double>(
+                                 nq_spr_, nv_spr_, plant_w_spr.num_actuators()))
+                             .get_index();
   this->DeclareVectorOutputPort(
       systems::TimestampedVector<double>(plant_w_spr.num_positions() +
                                          plant_w_spr.num_velocities()),
@@ -153,6 +157,21 @@ void VdotIntegrator::SetInitialState(Context<double>* context,
 EventStatus VdotIntegrator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+  // Initialize the desired state
+  auto robot_output = (OutputVector<double>*)this->EvalVectorInput(
+      context, feddback_state_port_);
+  if (!has_been_initialized_ && (robot_output->GetVelocities().norm() != 0)) {
+    discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value()
+        << robot_output->get_timestamp();
+    discrete_state->get_mutable_vector(actuated_q_idx_).get_mutable_value()
+        << map_from_q_spring_to_q_actuated_joints_ *
+               robot_output->GetPositions();
+    discrete_state->get_mutable_vector(actuated_v_idx_).get_mutable_value()
+        << map_from_v_spring_to_v_actuated_joints_ *
+               robot_output->GetVelocities();
+    has_been_initialized_ = true;
+  }
+
   // Read in current vdot
   auto vdot =
       (TimestampedVector<double>*)this->EvalVectorInput(context, vdot_port_);

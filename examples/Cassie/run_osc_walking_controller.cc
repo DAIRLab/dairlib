@@ -113,6 +113,27 @@ struct OSCWalkingGains {
   double final_foot_velocity_z;
   double lipm_height;
 
+  double kp_hip_roll_left;
+  double kd_hip_roll_left;
+  double kp_hip_yaw_left;
+  double kd_hip_yaw_left;
+  double kp_hip_pitch_left;
+  double kd_hip_pitch_left;
+  double kp_knee_left;
+  double kd_knee_left;
+  double kp_toe_left;
+  double kd_toe_left;
+  double kp_hip_roll_right;
+  double kd_hip_roll_right;
+  double kp_hip_yaw_right;
+  double kd_hip_yaw_right;
+  double kp_hip_pitch_right;
+  double kd_hip_pitch_right;
+  double kp_knee_right;
+  double kd_knee_right;
+  double kp_toe_right;
+  double kd_toe_right;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
@@ -145,6 +166,27 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(final_foot_velocity_z));
     // lipm heursitics
     a->Visit(DRAKE_NVP(lipm_height));
+    // pd control gains
+    a->Visit(DRAKE_NVP(kp_hip_roll_left));
+    a->Visit(DRAKE_NVP(kd_hip_roll_left));
+    a->Visit(DRAKE_NVP(kp_hip_yaw_left));
+    a->Visit(DRAKE_NVP(kd_hip_yaw_left));
+    a->Visit(DRAKE_NVP(kp_hip_pitch_left));
+    a->Visit(DRAKE_NVP(kd_hip_pitch_left));
+    a->Visit(DRAKE_NVP(kp_knee_left));
+    a->Visit(DRAKE_NVP(kd_knee_left));
+    a->Visit(DRAKE_NVP(kp_toe_left));
+    a->Visit(DRAKE_NVP(kd_toe_left));
+    a->Visit(DRAKE_NVP(kp_hip_roll_right));
+    a->Visit(DRAKE_NVP(kd_hip_roll_right));
+    a->Visit(DRAKE_NVP(kp_hip_yaw_right));
+    a->Visit(DRAKE_NVP(kd_hip_yaw_right));
+    a->Visit(DRAKE_NVP(kp_hip_pitch_right));
+    a->Visit(DRAKE_NVP(kd_hip_pitch_right));
+    a->Visit(DRAKE_NVP(kp_knee_right));
+    a->Visit(DRAKE_NVP(kd_knee_right));
+    a->Visit(DRAKE_NVP(kp_toe_right));
+    a->Visit(DRAKE_NVP(kd_toe_right));
   }
 };
 
@@ -231,6 +273,28 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Swing Foot W: \n" << W_swing_foot << std::endl;
   std::cout << "Swing Foot Kp: \n" << K_p_swing_foot << std::endl;
   std::cout << "Swing Foot Kd: \n" << K_d_swing_foot << std::endl;
+
+  std::map<std::string, std::pair<double, double>> actuator_pd_gain_map;
+  actuator_pd_gain_map["hip_roll_left_motor"] =
+      std::pair<double, double>(gains.kp_hip_roll_left, gains.kd_hip_roll_left);
+  actuator_pd_gain_map["hip_yaw_left_motor"] =
+      std::pair<double, double>(gains.kp_hip_yaw_left, gains.kd_hip_yaw_left);
+  actuator_pd_gain_map["hip_pitch_left_motor"] = std::pair<double, double>(
+      gains.kp_hip_pitch_left, gains.kd_hip_pitch_left);
+  actuator_pd_gain_map["knee_left_motor"] =
+      std::pair<double, double>(gains.kp_knee_left, gains.kd_knee_left);
+  actuator_pd_gain_map["toe_left_motor"] =
+      std::pair<double, double>(gains.kp_toe_left, gains.kd_toe_left);
+  actuator_pd_gain_map["hip_roll_right_motor"] = std::pair<double, double>(
+      gains.kp_hip_roll_right, gains.kd_hip_roll_right);
+  actuator_pd_gain_map["hip_yaw_right_motor"] =
+      std::pair<double, double>(gains.kp_hip_yaw_right, gains.kd_hip_yaw_right);
+  actuator_pd_gain_map["hip_pitch_right_motor"] = std::pair<double, double>(
+      gains.kp_hip_pitch_right, gains.kd_hip_pitch_right);
+  actuator_pd_gain_map["knee_right_motor"] =
+      std::pair<double, double>(gains.kp_knee_right, gains.kd_knee_right);
+  actuator_pd_gain_map["toe_right_motor"] =
+      std::pair<double, double>(gains.kp_toe_right, gains.kd_toe_right);
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_spr or plant_wo_spr because the contact frames exit in both
@@ -561,9 +625,16 @@ int DoMain(int argc, char* argv[]) {
   auto vdot_integrator =
       builder.AddSystem<cassie::osc::VdotIntegrator>(plant_w_spr, plant_wo_spr);
   if (use_joint_pd_control) {
+    auto passthrough = builder.AddSystem<SubvectorPassThrough>(
+        vdot_integrator->get_output_port(0).size(), 0,
+        config_mux->get_desired_state_input_port().size());
+    builder.Connect(simulator_drift->get_output_port(0),
+                    vdot_integrator->get_robot_output_input_port());
     builder.Connect(osc->get_osc_optimal_vdot_port(),
-                    vdot_integrator->get_input_port(0));
+                    vdot_integrator->get_osc_vdot_input_port());
     builder.Connect(vdot_integrator->get_output_port(0),
+                    passthrough->get_input_port());
+    builder.Connect(passthrough->get_output_port(),
                     config_mux->get_desired_state_input_port());
 
     // pd controller
@@ -600,33 +671,51 @@ int DoMain(int argc, char* argv[]) {
       true);
 
   if (use_joint_pd_control) {
-    // TODO: Set Gain for Config
     auto diagram_ptr = loop.get_diagram();
     auto& diagram_context = loop.get_diagram_mutable_context();
     auto& config_mux_context =
         diagram_ptr->GetMutableSubsystemContext(*config_mux, &diagram_context);
-    systems::PDConfigReceiver pd_config_receiver(plant_w_spr);
-    auto pos_index_map = pd_config_receiver.GetActuatorToPositionIndexMap();
-    auto vel_index_map = pd_config_receiver.GetActuatorToVelocityIndexMap();
+    systems::PDConfigReceiver pd_config_rec(plant_w_spr);
+    auto act_to_pos_idx_map = pd_config_rec.GetActuatorToPositionIndexMap();
+    auto act_to_vel_idx_map = pd_config_rec.GetActuatorToVelocityIndexMap();
     auto act_index_map = multibody::makeNameToActuatorsMap(plant_w_spr);
-
-    //    config_mux->get_gains_input_port().FixValue(
-    //        &config_mux_context, );
+    std::vector<std::string> actuated_joint_names{"hip_roll", "hip_yaw",
+                                                  "hip_pitch", "knee", "toe"};
+    std::vector<std::string> left_right_names{"_left", "_right"};
+    MatrixXd K = MatrixXd::Zero(
+        plant_w_spr.num_actuators(),
+        plant_w_spr.num_positions() + plant_w_spr.num_velocities());
+    for (auto joint_name : actuated_joint_names) {
+      for (auto l_r : left_right_names) {
+        std::string name = joint_name + l_r + "_motor";
+        cout << name << endl;
+        int u_ind = act_index_map.at(name);
+        int q_ind = act_to_pos_idx_map.at(u_ind);
+        int v_ind = act_to_vel_idx_map.at(u_ind);
+        K(u_ind, q_ind) = actuator_pd_gain_map.at(name).first;
+        K(u_ind, plant_w_spr.num_positions() + v_ind) =
+            actuator_pd_gain_map.at(name).second;
+      }
+    }
+    VectorXd K_vec(Eigen::Map<VectorXd>(K.data(), K.cols() * K.rows()));
+    config_mux->get_gains_input_port().FixValue(&config_mux_context, K_vec);
 
     // Set the initial time and state for VdotIntegrator
     // Read OutputVector from the output port of RobotOutputReceiver()
     auto& state_receiver_context = diagram_ptr->GetMutableSubsystemContext(
         *state_receiver, &diagram_context);
-    const systems::OutputVector<double>& robot_output =
-        state_receiver->get_output_port(0).Eval<systems::OutputVector<double>>(
-            state_receiver_context);
-    // Set time and state
-    auto& vdot_integrator_context = diagram_ptr->GetMutableSubsystemContext(
-        *vdot_integrator, &diagram_context);
-    vdot_integrator->SetInitialTime(&vdot_integrator_context,
-                                    robot_output.get_timestamp());
-    vdot_integrator->SetInitialState(&vdot_integrator_context,
-                                     robot_output.GetState());
+    // Currently the next line throw a segfualt because we have not received a
+    // message yet
+//    const systems::OutputVector<double>& robot_output =
+//        state_receiver->get_output_port(0).Eval<systems::OutputVector<double>>(
+//            state_receiver_context);
+//    // Set time and state
+//    auto& vdot_integrator_context = diagram_ptr->GetMutableSubsystemContext(
+//        *vdot_integrator, &diagram_context);
+//    vdot_integrator->SetInitialTime(&vdot_integrator_context,
+//                                    robot_output.get_timestamp());
+//    vdot_integrator->SetInitialState(&vdot_integrator_context,
+//                                     robot_output.GetState());
   }
 
   loop.Simulate();

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "systems/controllers/control_utils.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/framework/output_vector.h"
 #include "drake/multibody/parsing/parser.h"

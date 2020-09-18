@@ -379,7 +379,7 @@ int DoMain(int argc, char* argv[]) {
                   r_foot_traj_generator->get_fsm_input_port());
 
   // Publisher connections
-  builder.Connect(osc->get_osc_output_port(),
+  builder.Connect(osc->get_osc_optimal_u_port(),
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());

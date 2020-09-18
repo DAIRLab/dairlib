@@ -77,6 +77,9 @@ DEFINE_int32(
     "0 uses the capture point\n"
     "1 uses the neutral point derived from LIPM given the stance duration");
 
+// Testing
+DEFINE_bool(use_joint_pd_control, true, "");
+
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
@@ -195,7 +198,6 @@ int DoMain(int argc, char* argv[]) {
 
   // Controller flags
   bool use_predicted_com_vel = true;
-  bool use_joint_pd_control = true;
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -624,7 +626,7 @@ int DoMain(int argc, char* argv[]) {
   // State integrator
   auto vdot_integrator =
       builder.AddSystem<cassie::osc::VdotIntegrator>(plant_w_spr, plant_wo_spr);
-  if (use_joint_pd_control) {
+  if (FLAGS_use_joint_pd_control) {
     auto passthrough = builder.AddSystem<SubvectorPassThrough>(
         vdot_integrator->get_output_port(0).size(), 0,
         config_mux->get_desired_state_input_port().size());
@@ -670,7 +672,7 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
 
-  if (use_joint_pd_control) {
+  if (FLAGS_use_joint_pd_control) {
     auto diagram_ptr = loop.get_diagram();
     auto& diagram_context = loop.get_diagram_mutable_context();
     auto& config_mux_context =
@@ -702,8 +704,8 @@ int DoMain(int argc, char* argv[]) {
 
     // Set the initial time and state for VdotIntegrator
     // Read OutputVector from the output port of RobotOutputReceiver()
-    auto& state_receiver_context = diagram_ptr->GetMutableSubsystemContext(
-        *state_receiver, &diagram_context);
+//    auto& state_receiver_context = diagram_ptr->GetMutableSubsystemContext(
+//        *state_receiver, &diagram_context);
     // Currently the next line throw a segfualt because we have not received a
     // message yet
 //    const systems::OutputVector<double>& robot_output =

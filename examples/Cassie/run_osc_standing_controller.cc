@@ -253,7 +253,7 @@ int DoMain(int argc, char* argv[]) {
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(osc->get_osc_output_port(),
+  builder.Connect(osc->get_osc_optimal_u_port(),
                   command_sender->get_input_port(0));
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),

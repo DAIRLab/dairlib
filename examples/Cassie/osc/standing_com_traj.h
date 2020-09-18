@@ -34,6 +34,11 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
     return this->get_input_port(target_height_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_radio()
+      const {
+    return this->get_input_port(radio_port_);
+  }
+
  private:
   void CalcDesiredTraj(const drake::systems::Context<double>& context,
                        drake::trajectories::Trajectory<double>* traj) const;
@@ -44,6 +49,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
 
   int state_port_;
   int target_height_port_;
+  int radio_port_;
 
   // A list of pairs of contact body frame and contact point
   const std::vector<
@@ -51,6 +57,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
       feet_contact_points_;
 
   double height_;
+  static constexpr double kHeightScale_ = 0.2;
 };
 
 }  // namespace osc

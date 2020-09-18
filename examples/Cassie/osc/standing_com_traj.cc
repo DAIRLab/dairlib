@@ -2,6 +2,8 @@
 
 #include <math.h>
 
+#include <dairlib/lcmt_cassie_out.hpp>
+
 #include "multibody/multibody_utils.h"
 
 using std::cout;
@@ -46,6 +48,9 @@ StandingComTraj::StandingComTraj(
               "lcmt_target_standing_height",
               drake::Value<dairlib::lcmt_target_standing_height>{})
           .get_index();
+  radio_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(3))
+          .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
@@ -62,7 +67,10 @@ void StandingComTraj::CalcDesiredTraj(
   double target_height =
       this->EvalInputValue<dairlib::lcmt_target_standing_height>(
           context, target_height_port_)->target_height;
+  const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
+      context, radio_port_);
   target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
+  target_height += kHeightScale_ * cassie_out->pelvis.radio.channel[0];
   VectorXd q = robot_output->GetPositions();
 
   multibody::SetPositionsIfNew<double>(plant_, q, context_);

@@ -11,10 +11,10 @@ min_dist = 0.24
 delta_dist = 0.03
 
 iteration_start = 1
-iteration_end = 34
+iteration_end = 1
 sample_idx = 0;
-state_idx_start = 0;
-state_idx_end = 6;
+state_idx_start = 7;
+state_idx_end = 19;  # doesn't include
 if len(sys.argv) >= 2:
     iteration_start = int(sys.argv[1])
 if len(sys.argv) >= 3:

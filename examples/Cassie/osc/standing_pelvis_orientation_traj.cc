@@ -35,7 +35,9 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
                                                         plant.num_actuators()))
           .get_index();
   radio_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(3)).get_index();
+      this->DeclareAbstractInputPort("lcmt_cassie_output",
+                                     drake::Value<dairlib::lcmt_cassie_out>{})
+          .get_index();
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->set_name(traj_name);

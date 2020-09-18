@@ -49,7 +49,8 @@ StandingComTraj::StandingComTraj(
               drake::Value<dairlib::lcmt_target_standing_height>{})
           .get_index();
   radio_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(3))
+      this->DeclareAbstractInputPort("lcmt_cassie_output",
+                                     drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));

@@ -15,6 +15,7 @@
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/pd_config_lcm.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -604,6 +605,11 @@ int DoMain(int argc, char* argv[]) {
     auto& diagram_context = loop.get_diagram_mutable_context();
     auto& config_mux_context =
         diagram_ptr->GetMutableSubsystemContext(*config_mux, &diagram_context);
+    systems::PDConfigReceiver pd_config_receiver(plant_w_spr);
+    auto pos_index_map = pd_config_receiver.GetActuatorToPositionIndexMap();
+    auto vel_index_map = pd_config_receiver.GetActuatorToVelocityIndexMap();
+    auto act_index_map = multibody::makeNameToActuatorsMap(plant_w_spr);
+
     //    config_mux->get_gains_input_port().FixValue(
     //        &config_mux_context, );
 

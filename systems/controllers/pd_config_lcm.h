@@ -20,6 +20,13 @@ class PDConfigReceiver : public drake::systems::LeafSystem<double> {
   explicit PDConfigReceiver(
     const drake::multibody::MultibodyPlant<double>& plant);
 
+  const std::map<int, int>& GetActuatorToPositionIndexMap() const {
+    return actuatorToPositionIndexMap_;
+  };
+  const std::map<int, int>& GetActuatorToVelocityIndexMap() const {
+    return actuatorToVelocityIndexMap_;
+  };
+
  private:
   void CopyConfig(const drake::systems::Context<double>& context,
                   LinearConfig* output) const;

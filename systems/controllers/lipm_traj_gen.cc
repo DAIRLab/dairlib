@@ -63,7 +63,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   PiecewisePolynomial<double> pp_part(VectorXd(0));
   MatrixXd K = MatrixXd::Ones(0, 0);
   MatrixXd A = MatrixXd::Identity(0, 0);
-  MatrixXd alpha = MatrixXd::Ones(0, 0);
+  MatrixXd alpha = MatrixXd::Ones(0, 1);
   ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   output_port_lipm_from_current_ =
@@ -104,8 +104,6 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
   auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
   // when entering a new stance phase
-  cout << "fsm_state= " << fsm_state << endl;
-  cout << "discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)= " << discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0) << endl;
   if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
     old_prev_fsm_event_time << new_prev_event_time;
 
@@ -129,12 +127,10 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // Stance foot position (Forward Kinematics)
     // Take the average of all the points
     Vector3d stance_foot_pos = Vector3d::Zero();
-    for (const auto & j : contact_points_in_each_state_[mode_index]) {
+    for (const auto& j : contact_points_in_each_state_[mode_index]) {
       Vector3d position;
-      plant_.CalcPointsPositions(
-          *context_, j.second,
-          j.first, world_,
-          &position);
+      plant_.CalcPointsPositions(*context_, j.second, j.first, world_,
+                                 &position);
       stance_foot_pos += position;
     }
     stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
@@ -155,15 +151,9 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     discrete_state->get_mutable_vector(prev_touchdown_com_vel_idx_)
             .get_mutable_value()
         << dCoM;
-
-    cout << "stance_foot_pos = " << stance_foot_pos.transpose() << endl;
-    cout << "CoM = " << CoM.transpose() << endl;
   }
 
   discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;
-
-  cout << "In discreate_update: prev_touchdown_stance_foot = " << discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_).get_mutable_value().transpose() << endl;
-  cout << "In discreate_update: prev_touchdown_com_pos = " << discrete_state->get_mutable_vector(prev_touchdown_com_pos_idx_).get_mutable_value().transpose() << endl;
 
   return EventStatus::Succeeded();
 }
@@ -236,7 +226,6 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd v = robot_output->GetVelocities();
 
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
@@ -269,6 +258,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   }
 
   VectorXd q = robot_output->GetPositions();
+  VectorXd v = robot_output->GetVelocities();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
@@ -281,16 +271,13 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Stance foot position (Forward Kinematics)
   // Take the average of all the points
   Vector3d stance_foot_pos = Vector3d::Zero();
-  for (const auto & stance_foot : contact_points_in_each_state_[mode_index]) {
+  for (const auto& stance_foot : contact_points_in_each_state_[mode_index]) {
     Vector3d position;
-    plant_.CalcPointsPositions(
-        *context_, stance_foot.second, stance_foot.first, world_, &position);
+    plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
+                               world_, &position);
     stance_foot_pos += position;
   }
   stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
-
-  cout << "In Publish: prev_touchdown_com_pos (current) = " << context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value().transpose() << endl;
-  cout << "In Publish: prev_touchdown_stance_foot (current) = " << context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value().transpose() << endl;
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
@@ -322,21 +309,48 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
   double end_time_of_this_fsm_state =
       prev_event_time(0) + unordered_state_durations_[mode_index];
 
-  // Get center of mass position and velocity
-  const auto CoM_at_touchdown =
-      context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value();
-  const auto dCoM_at_touchdown =
-      context.get_discrete_state(prev_touchdown_com_vel_idx_).get_value();
-
-  // Stance foot position
-  const auto stance_foot_pos_at_touchdown =
-      context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value();
-
-  cout << "In Publish: prev_touchdown_com_pos (td) = " << context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value().transpose() << endl;
-  cout << "In Publish: prev_touchdown_stance_foot (td) = " << context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value().transpose() << endl;
-
+  // Get previous touchdown time
   double prev_touchdown_time =
       this->EvalVectorInput(context, fsm_switch_time_port_)->get_value()(0);
+
+  // Get center of mass position and velocity and stance foot position from
+  // discrete state
+  Vector3d CoM_at_touchdown =
+      context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value();
+  Vector3d dCoM_at_touchdown =
+      context.get_discrete_state(prev_touchdown_com_vel_idx_).get_value();
+  Vector3d stance_foot_pos_at_touchdown =
+      context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value();
+
+  // The discrete state could be 0 (e.g. when this is called by a downstream
+  // per-step event handler)
+  if (CoM_at_touchdown.norm() == 0) {
+    // Read in current state
+    const OutputVector<double>* robot_output =
+        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+    VectorXd q = robot_output->GetPositions();
+    VectorXd v = robot_output->GetVelocities();
+    multibody::SetPositionsIfNew<double>(plant_, q, context_);
+
+    // Get center of mass position and velocity
+    CoM_at_touchdown = plant_.CalcCenterOfMassPosition(*context_);
+    MatrixXd J(3, plant_.num_velocities());
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    dCoM_at_touchdown = J * v;
+
+    // Stance foot position (Forward Kinematics)
+    // Take the average of all the points
+    stance_foot_pos_at_touchdown = Vector3d::Zero();
+    for (const auto& stance_foot : contact_points_in_each_state_[mode_index]) {
+      Vector3d position;
+      plant_.CalcPointsPositions(*context_, stance_foot.second,
+                                 stance_foot.first, world_, &position);
+      stance_foot_pos_at_touchdown += position;
+    }
+    stance_foot_pos_at_touchdown /=
+        contact_points_in_each_state_[mode_index].size();
+  }
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<

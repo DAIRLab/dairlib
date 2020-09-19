@@ -63,6 +63,7 @@ cc_library(
     deps = [
         "//multibody:utils",
         "//systems/controllers",
+        "//systems/controllers:pd_config_lcm",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

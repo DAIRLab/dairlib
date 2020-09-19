@@ -67,7 +67,7 @@ VdotIntegrator::VdotIntegrator(
 
   // Get mappings
   map_from_q_spring_to_q_actuated_joints_ =
-      MatrixXd::Zero(plant_w_spr.num_actuators(), plant_w_spr.num_velocities());
+      MatrixXd::Zero(plant_w_spr.num_actuators(), plant_w_spr.num_positions());
   map_from_v_spring_to_v_actuated_joints_ =
       MatrixXd::Zero(plant_w_spr.num_actuators(), plant_w_spr.num_velocities());
   map_from_v_no_spring_to_v_actuated_joints_ = MatrixXd::Zero(
@@ -85,8 +85,8 @@ VdotIntegrator::VdotIntegrator(
       bool successfully_added = false;
       for (const auto& map_element : pos_map_w_spr) {
         if (map_element.first == joint_name) {
-          map_from_v_no_spring_to_v_actuated_joints_(joint_idx,
-                                                     map_element.second) = 1;
+          map_from_q_spring_to_q_actuated_joints_(joint_idx,
+                                                  map_element.second) = 1;
           successfully_added = true;
         }
       }
@@ -96,8 +96,8 @@ VdotIntegrator::VdotIntegrator(
       successfully_added = false;
       for (const auto& map_element : vel_map_w_spr) {
         if (map_element.first == joint_name + "dot") {
-          map_from_v_no_spring_to_v_actuated_joints_(joint_idx,
-                                                     map_element.second) = 1;
+          map_from_v_spring_to_v_actuated_joints_(joint_idx,
+                                                  map_element.second) = 1;
           successfully_added = true;
         }
       }

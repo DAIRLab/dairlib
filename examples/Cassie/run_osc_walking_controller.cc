@@ -620,23 +620,44 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
 
   // Use joint pd controller after OSC
-  // Linear config (desired state and gains) creator
-  auto config_mux =
-      builder.AddSystem<cassie::osc::LinearConfigMux>(plant_w_spr);
-  // State integrator
-  auto vdot_integrator =
-      builder.AddSystem<cassie::osc::VdotIntegrator>(plant_w_spr, plant_wo_spr);
   if (FLAGS_use_joint_pd_control) {
-    auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-        vdot_integrator->get_output_port(0).size(), 0,
-        config_mux->get_desired_state_input_port().size());
+    // Set constant gains
+    systems::PDConfigReceiver pd_config_rec(plant_w_spr);
+    auto act_to_pos_idx_map = pd_config_rec.GetActuatorToPositionIndexMap();
+    auto act_to_vel_idx_map = pd_config_rec.GetActuatorToVelocityIndexMap();
+    auto act_index_map = multibody::makeNameToActuatorsMap(plant_w_spr);
+    std::vector<std::string> actuated_joint_names{"hip_roll", "hip_yaw",
+                                                  "hip_pitch", "knee", "toe"};
+    std::vector<std::string> left_right_names{"_left", "_right"};
+    MatrixXd K = MatrixXd::Zero(
+        plant_w_spr.num_actuators(),
+        plant_w_spr.num_positions() + plant_w_spr.num_velocities());
+    for (auto joint_name : actuated_joint_names) {
+      for (auto l_r : left_right_names) {
+        std::string name = joint_name + l_r + "_motor";
+        cout << name << endl;
+        int u_ind = act_index_map.at(name);
+        int q_ind = act_to_pos_idx_map.at(u_ind);
+        int v_ind = act_to_vel_idx_map.at(u_ind);
+        K(u_ind, q_ind) = actuator_pd_gain_map.at(name).first;
+        K(u_ind, plant_w_spr.num_positions() + v_ind) =
+            actuator_pd_gain_map.at(name).second;
+      }
+    }
+    cout << "K = " << K << endl;
+
+    // Linear config (desired state and gains) multiplexer
+    auto config_mux =
+        builder.AddSystem<cassie::osc::LinearConfigMux>(plant_w_spr, K);
+
+    // State integrator
+    auto vdot_integrator = builder.AddSystem<cassie::osc::VdotIntegrator>(
+        plant_w_spr, plant_wo_spr);
     builder.Connect(simulator_drift->get_output_port(0),
                     vdot_integrator->get_robot_output_input_port());
     builder.Connect(osc->get_osc_optimal_vdot_port(),
                     vdot_integrator->get_osc_vdot_input_port());
     builder.Connect(vdot_integrator->get_output_port(0),
-                    passthrough->get_input_port());
-    builder.Connect(passthrough->get_output_port(),
                     config_mux->get_desired_state_input_port());
 
     // pd controller
@@ -645,6 +666,8 @@ int DoMain(int argc, char* argv[]) {
         plant_w_spr.num_actuators());
     builder.Connect(state_receiver->get_output_port(0),
                     pd_controller->get_input_port_output());
+    builder.Connect(config_mux->get_output_port(0),
+                    pd_controller->get_input_port_config());
     builder.Connect(pd_controller->get_output_port(0),
                     command_sender->get_input_port(0));
 
@@ -673,51 +696,58 @@ int DoMain(int argc, char* argv[]) {
       true);
 
   if (FLAGS_use_joint_pd_control) {
-    auto diagram_ptr = loop.get_diagram();
-    auto& diagram_context = loop.get_diagram_mutable_context();
-    auto& config_mux_context =
-        diagram_ptr->GetMutableSubsystemContext(*config_mux, &diagram_context);
-    systems::PDConfigReceiver pd_config_rec(plant_w_spr);
-    auto act_to_pos_idx_map = pd_config_rec.GetActuatorToPositionIndexMap();
-    auto act_to_vel_idx_map = pd_config_rec.GetActuatorToVelocityIndexMap();
-    auto act_index_map = multibody::makeNameToActuatorsMap(plant_w_spr);
-    std::vector<std::string> actuated_joint_names{"hip_roll", "hip_yaw",
-                                                  "hip_pitch", "knee", "toe"};
-    std::vector<std::string> left_right_names{"_left", "_right"};
-    MatrixXd K = MatrixXd::Zero(
-        plant_w_spr.num_actuators(),
-        plant_w_spr.num_positions() + plant_w_spr.num_velocities());
-    for (auto joint_name : actuated_joint_names) {
-      for (auto l_r : left_right_names) {
-        std::string name = joint_name + l_r + "_motor";
-        cout << name << endl;
-        int u_ind = act_index_map.at(name);
-        int q_ind = act_to_pos_idx_map.at(u_ind);
-        int v_ind = act_to_vel_idx_map.at(u_ind);
-        K(u_ind, q_ind) = actuator_pd_gain_map.at(name).first;
-        K(u_ind, plant_w_spr.num_positions() + v_ind) =
-            actuator_pd_gain_map.at(name).second;
-      }
-    }
-    VectorXd K_vec(Eigen::Map<VectorXd>(K.data(), K.cols() * K.rows()));
-    config_mux->get_gains_input_port().FixValue(&config_mux_context, K_vec);
+    //    auto diagram_ptr = loop.get_diagram();
+    //    auto& diagram_context = loop.get_diagram_mutable_context();
+    //    auto& config_mux_context =
+    //       diagram_ptr->GetMutableSubsystemContext(*config_mux,
+    //       &diagram_context);
+    //    systems::PDConfigReceiver pd_config_rec(plant_w_spr);
+    //    auto act_to_pos_idx_map =
+    //    pd_config_rec.GetActuatorToPositionIndexMap(); auto act_to_vel_idx_map
+    //    = pd_config_rec.GetActuatorToVelocityIndexMap(); auto act_index_map =
+    //    multibody::makeNameToActuatorsMap(plant_w_spr);
+    //    std::vector<std::string> actuated_joint_names{"hip_roll", "hip_yaw",
+    //                                                  "hip_pitch", "knee",
+    //                                                  "toe"};
+    //    std::vector<std::string> left_right_names{"_left", "_right"};
+    //    MatrixXd K = MatrixXd::Zero(
+    //        plant_w_spr.num_actuators(),
+    //        plant_w_spr.num_positions() + plant_w_spr.num_velocities());
+    //    for (auto joint_name : actuated_joint_names) {
+    //      for (auto l_r : left_right_names) {
+    //        std::string name = joint_name + l_r + "_motor";
+    //        cout << name << endl;
+    //        int u_ind = act_index_map.at(name);
+    //        int q_ind = act_to_pos_idx_map.at(u_ind);
+    //        int v_ind = act_to_vel_idx_map.at(u_ind);
+    //        K(u_ind, q_ind) = actuator_pd_gain_map.at(name).first;
+    //        K(u_ind, plant_w_spr.num_positions() + v_ind) =
+    //            actuator_pd_gain_map.at(name).second;
+    //      }
+    //    }
+    //    cout << "Outside diagram: K = " << K << endl;
+    //    VectorXd K_vec(Eigen::Map<VectorXd>(K.data(), K.cols() * K.rows()));
+    //    config_mux->get_gains_input_port().FixValue(&config_mux_context,
+    //        systems::BasicVector<double>(K_vec));
 
     // Set the initial time and state for VdotIntegrator
     // Read OutputVector from the output port of RobotOutputReceiver()
-//    auto& state_receiver_context = diagram_ptr->GetMutableSubsystemContext(
-//        *state_receiver, &diagram_context);
+    //    auto& state_receiver_context =
+    //    diagram_ptr->GetMutableSubsystemContext(
+    //        *state_receiver, &diagram_context);
     // Currently the next line throw a segfualt because we have not received a
     // message yet
-//    const systems::OutputVector<double>& robot_output =
-//        state_receiver->get_output_port(0).Eval<systems::OutputVector<double>>(
-//            state_receiver_context);
-//    // Set time and state
-//    auto& vdot_integrator_context = diagram_ptr->GetMutableSubsystemContext(
-//        *vdot_integrator, &diagram_context);
-//    vdot_integrator->SetInitialTime(&vdot_integrator_context,
-//                                    robot_output.get_timestamp());
-//    vdot_integrator->SetInitialState(&vdot_integrator_context,
-//                                     robot_output.GetState());
+    //    const systems::OutputVector<double>& robot_output =
+    //       state_receiver->get_output_port(0).Eval<systems::OutputVector<double>>(
+    //            state_receiver_context);
+    //    // Set time and state
+    //    auto& vdot_integrator_context =
+    //    diagram_ptr->GetMutableSubsystemContext(
+    //        *vdot_integrator, &diagram_context);
+    //    vdot_integrator->SetInitialTime(&vdot_integrator_context,
+    //                                    robot_output.get_timestamp());
+    //    vdot_integrator->SetInitialState(&vdot_integrator_context,
+    //                                     robot_output.GetState());
   }
 
   loop.Simulate();

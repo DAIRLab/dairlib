@@ -15,16 +15,17 @@ namespace osc {
 /// The input format for K is a Eigen::VectorXd which consists of columns of K
 class LinearConfigMux : public drake::systems::LeafSystem<double> {
  public:
-  LinearConfigMux(const drake::multibody::MultibodyPlant<double>& plant);
+  LinearConfigMux(const drake::multibody::MultibodyPlant<double>& plant,
+                  MatrixXd K);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_desired_state_input_port()
       const {
     return this->get_input_port(desired_state_port_);
   }
-  const drake::systems::InputPort<double>& get_gains_input_port() const {
-    return this->get_input_port(gains_port_);
-  }
+  //  const drake::systems::InputPort<double>& get_gains_input_port() const {
+  //    return this->get_input_port(gains_port_);
+  //  }
 
  private:
   void SetConfig(const drake::systems::Context<double>& context,
@@ -37,6 +38,8 @@ class LinearConfigMux : public drake::systems::LeafSystem<double> {
 
   int desired_state_port_;
   int gains_port_;
+
+  MatrixXd K_;
 };
 
 }  // namespace osc

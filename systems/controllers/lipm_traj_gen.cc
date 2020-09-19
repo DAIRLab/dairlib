@@ -165,11 +165,6 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
   cout << "In discreate_update: prev_touchdown_stance_foot = " << discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_).get_mutable_value().transpose() << endl;
   cout << "In discreate_update: prev_touchdown_com_pos = " << discrete_state->get_mutable_vector(prev_touchdown_com_pos_idx_).get_mutable_value().transpose() << endl;
 
-  cout << "In du: prev_touchdown_stance_foot (current) = " << context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value().transpose() << endl;
-  cout << "In du: prev_touchdown_com_pos (current) = " << context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value().transpose() << endl;
-  cout << "In discreate_update: prev_touchdown_stance_foot = " << discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_).get_mutable_value().transpose() << endl;
-  cout << "In discreate_update: prev_touchdown_com_pos = " << discrete_state->get_mutable_vector(prev_touchdown_com_pos_idx_).get_mutable_value().transpose() << endl;
-
   return EventStatus::Succeeded();
 }
 

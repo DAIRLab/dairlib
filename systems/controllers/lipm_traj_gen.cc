@@ -104,6 +104,8 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
   auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
   // when entering a new stance phase
+  cout << "fsm_state= " << fsm_state << endl;
+  cout << "discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)= " << discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0) << endl;
   if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
     old_prev_fsm_event_time << new_prev_event_time;
 
@@ -153,9 +155,20 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     discrete_state->get_mutable_vector(prev_touchdown_com_vel_idx_)
             .get_mutable_value()
         << dCoM;
+
+    cout << "stance_foot_pos = " << stance_foot_pos.transpose() << endl;
+    cout << "CoM = " << CoM.transpose() << endl;
   }
 
   discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;
+
+  cout << "In discreate_update: prev_touchdown_stance_foot = " << discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_).get_mutable_value().transpose() << endl;
+  cout << "In discreate_update: prev_touchdown_com_pos = " << discrete_state->get_mutable_vector(prev_touchdown_com_pos_idx_).get_mutable_value().transpose() << endl;
+
+  cout << "In du: prev_touchdown_stance_foot (current) = " << context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value().transpose() << endl;
+  cout << "In du: prev_touchdown_com_pos (current) = " << context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value().transpose() << endl;
+  cout << "In discreate_update: prev_touchdown_stance_foot = " << discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_).get_mutable_value().transpose() << endl;
+  cout << "In discreate_update: prev_touchdown_com_pos = " << discrete_state->get_mutable_vector(prev_touchdown_com_pos_idx_).get_mutable_value().transpose() << endl;
 
   return EventStatus::Succeeded();
 }
@@ -281,6 +294,9 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   }
   stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
+  cout << "In Publish: prev_touchdown_com_pos (current) = " << context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value().transpose() << endl;
+  cout << "In Publish: prev_touchdown_stance_foot (current) = " << context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value().transpose() << endl;
+
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
@@ -320,6 +336,9 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
   // Stance foot position
   const auto stance_foot_pos_at_touchdown =
       context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value();
+
+  cout << "In Publish: prev_touchdown_com_pos (td) = " << context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value().transpose() << endl;
+  cout << "In Publish: prev_touchdown_stance_foot (td) = " << context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value().transpose() << endl;
 
   double prev_touchdown_time =
       this->EvalVectorInput(context, fsm_switch_time_port_)->get_value()(0);

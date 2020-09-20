@@ -352,6 +352,18 @@ void DoMain(double duration, int max_iter, string data_directory,
                                      VectorXd::Constant(n_u, +300), ui);
   }
 
+  // Symmetry constraints
+  for (const auto& l_r_pair : l_r_pairs) {
+    for (const auto& sym_joint_name : sym_joint_names) {
+      trajopt.AddLinearConstraint(
+          x0(positions_map[sym_joint_name + l_r_pair.first]) ==
+              x0(positions_map[sym_joint_name + l_r_pair.second]));
+      trajopt.AddLinearConstraint(
+          xf(positions_map[sym_joint_name + l_r_pair.first]) ==
+              xf(positions_map[sym_joint_name + l_r_pair.second]));
+    }
+  }
+
   // toe position constraint in y direction (avoid leg crossing)
   std::vector<int> y_active({1});
   auto left_foot_y_eval = multibody::WorldPointEvaluator(
@@ -382,6 +394,14 @@ void DoMain(double duration, int max_iter, string data_directory,
   for (int index = 0; index < num_knotpoints; index++) {
     auto x = trajopt.state(index);
     trajopt.AddConstraint(foot_y_constraint, x.head(n_q));
+  }
+
+  for (int index = 0; index < num_knotpoints; index++) {
+    auto lambda = trajopt.force_vars(0, index);
+    trajopt.AddLinearConstraint(lambda(2) >= 15);
+    trajopt.AddLinearConstraint(lambda(5) >= 15);
+    trajopt.AddLinearConstraint(lambda(8) >= 15);
+    trajopt.AddLinearConstraint(lambda(11) >= 15);
   }
 
   // add cost

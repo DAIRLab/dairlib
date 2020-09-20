@@ -58,6 +58,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_int32(knot_points, 10, "Number of knot points per contact mode");
 DEFINE_double(height, 0.2, "Target height for jumping.");
+DEFINE_double(start_height, 1.0, "Starting pelvis height for the trajectory.");
 DEFINE_double(distance, 0.0, "Target distance (x) from the initial position.");
 DEFINE_double(duration, 0.0, "Duration of the total gait");
 DEFINE_int32(scale_option, 0,
@@ -405,7 +406,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddDurationBounds(min_duration, max_duration);
 
   // Standing constraints
-  double rest_height = 1.0;
+  double rest_height = FLAGS_start_height;
   double eps = 1e-6;
 
   // position constraints
@@ -416,6 +417,21 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   VectorXd quat_identity(4);
   quat_identity << 1, 0, 0, 0;
   trajopt->AddBoundingBoxConstraint(quat_identity, quat_identity, x0.head(4));
+//  trajopt->AddBoundingBoxConstraint(quat_identity, quat_identity, xf.head(4));
+
+  // hip yaw and roll constraints
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_left")));
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_right")));
+
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_roll_left")));
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_roll_right")));
+
+  // hip yaw and roll constraints
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_yaw_left")));
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_yaw_right")));
+
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_roll_left")));
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_roll_right")));
 
   // Jumping height constraints
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
@@ -563,8 +579,11 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
     trajopt->AddLinearConstraint(lambda(11) <= 300);
   }
 
-  const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
-  const MatrixXd R = 0.005 * MatrixXd::Identity(n_u, n_u);
+  MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd R = 0.005 * MatrixXd::Identity(n_u, n_u);
+  Q(0, 0) = 1;
+  Q(1, 1) = 1;
+  Q(2, 2) = 1;
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 

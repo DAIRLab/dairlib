@@ -581,9 +581,9 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
   MatrixXd R = 0.005 * MatrixXd::Identity(n_u, n_u);
-  Q(0, 0) = 1;
-  Q(1, 1) = 1;
-  Q(2, 2) = 1;
+  Q(0, 0) = 5;
+  Q(1, 1) = 5;
+  Q(2, 2) = 5;
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 

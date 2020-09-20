@@ -102,8 +102,8 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
       initial_com << center_of_mass;
       switch_time << timestamp;
     }
-    com_x_offset(0) =
-        kLandingOffset + (center_of_mass(0) - crouch_traj_.value(timestamp)(0));
+    com_x_offset(0) = kLandingOffset;
+//        kLandingOffset + (center_of_mass(0) - crouch_traj_.value(timestamp)(0));
     // TODO(yangwill) Remove this or calculate it based on the robot's state.
     // Actually, this is necessary due to the traj opt solution's placement
     // of the final CoM
@@ -185,11 +185,22 @@ drake::trajectories::PiecewisePolynomial<double>
 COMTrajGenerator::generateLandingTraj(
     const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
     double time) const {
+
+  plant_.SetPositionsAndVelocities(context_, x);
+  Vector3d contact_pos_sum = Vector3d::Zero();
+  Vector3d position;
+  for (const auto& point_and_frame : feet_contact_points_) {
+    plant_.CalcPointsPositions(*context_, point_and_frame.second,
+                               VectorXd::Zero(3), world_, &position);
+    contact_pos_sum += position;
+  }
+
   const auto& com_x_offset =
       context.get_discrete_state().get_vector(com_x_offset_idx_);
 
   // Only offset the x-position
   Vector3d offset(com_x_offset[0], 0, 0);
+  offset += 0.5 * contact_pos_sum;
 
   auto traj_segment =
       crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);

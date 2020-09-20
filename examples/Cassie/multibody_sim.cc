@@ -91,15 +91,17 @@ int do_main(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   std::string terrain_name =
       FindResourceOrThrow("examples/simple_examples/terrain.urdf");
-  parser.AddModelFromFile(terrain_name);
   Vector3d offset;
   if (FLAGS_terrain_height >= 0.0) {
     offset << 0.25, 0, FLAGS_terrain_height;
   } else {
     offset << -0.25, 0, -FLAGS_terrain_height;
   }
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                   drake::math::RigidTransform<double>(offset));
+  if (FLAGS_terrain_height != 0.0){
+    parser.AddModelFromFile(terrain_name);
+    plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                     drake::math::RigidTransform<double>(offset));
+  }
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
@@ -159,7 +161,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-  ConnectDrakeVisualizer(&builder, scene_graph);
+  if(FLAGS_terrain_height != 0.0)
+    ConnectDrakeVisualizer(&builder, scene_graph);
 
   auto diagram = builder.Build();
 

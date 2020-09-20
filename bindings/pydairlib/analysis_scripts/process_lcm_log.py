@@ -137,8 +137,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
           osc_debug[msg.tracking_data[i].name] = lcmt_osc_tracking_data_t()
         osc_debug[msg.tracking_data[i].name].append(msg.tracking_data[i], msg.utime / 1e6)
       fsm.append(msg.fsm_state)
-    if event.channel == "CASSIE_CONTACT_RESULTS" or event.channel \
-        == "CASSIE_CONTACT_DRAKE" or event.channel == "CASSIE_CONTACT_MUJOCO":
+    if event.channel == "CASSIE_CONTACT_DRAKE" or event.channel == "CASSIE_CONTACT_MUJOCO":
       # Need to distinguish between front and rear contact forces
       # Best way is to track the contact location and group by proximity
       msg = drake.lcmt_contact_results_for_viz.decode(event.data)
@@ -147,12 +146,16 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
       num_right_contacts = 0
       for i in range(msg.num_point_pair_contacts):
         if "toe_left" in msg.point_pair_contact_info[i].body2_name:
+          if(num_left_contacts >= 2):
+            continue
           contact_info_locs[num_left_contacts].append(
             msg.point_pair_contact_info[i].contact_point)
           contact_forces[num_left_contacts].append(
             msg.point_pair_contact_info[i].contact_force)
           num_left_contacts += 1
         elif "toe_right" in msg.point_pair_contact_info[i].body2_name:
+          if(num_right_contacts >= 2):
+            continue
           contact_info_locs[2 + num_right_contacts].append(
             msg.point_pair_contact_info[i].contact_point)
           contact_forces[2 + num_right_contacts].append(

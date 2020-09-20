@@ -62,8 +62,7 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
 DEFINE_string(channel_u, "OSC_JUMPING",
               "The name of the channel which publishes command");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
-DEFINE_string(folder_path,
-              "examples/Cassie/saved_trajectories/",
+DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
 DEFINE_string(mode_name, "state_input_trajectory",
@@ -199,10 +198,10 @@ int DoMain(int argc, char* argv[]) {
       gains.FlightFootKd.data(), 3, 3);
 
   /**** Get trajectory from optimization ****/
-  const DirconTrajectory& dircon_trajectory =
-      DirconTrajectory(FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
-  const LcmTrajectory& processed_trajs =
-      LcmTrajectory(FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name + "_processed"));
+  const DirconTrajectory& dircon_trajectory = DirconTrajectory(
+      FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
+  const LcmTrajectory& processed_trajs = LcmTrajectory(
+      FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name + "_processed"));
 
   const LcmTrajectory::Trajectory lcm_com_traj =
       processed_trajs.GetTrajectory("center_of_mass_trajectory");
@@ -232,14 +231,13 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.datapoints.topRows(4));
 
   // For the time-based FSM
-  //  double flight_time = FLAGS_delay_time +
-  //  dircon_trajectory.GetStateBreaks(1)(0); double land_time =
-  //  FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
+  double flight_time =
+      FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
+  double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
   //  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
   //                                          land_time};
-  std::vector<double> transition_times = {0.0, FLAGS_delay_time,
-                                          FLAGS_delay_time + 300.0,
-                                          FLAGS_delay_time + 600.0};
+  std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
+                                          land_time};
 
   Vector3d support_center_offset;
   support_center_offset << gains.x_offset, 0.0, 0.0;
@@ -281,9 +279,9 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
-//  auto controller_switch_receiver = builder.AddSystem(
-//      LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>("INPUT_SWITCH",
-//                                                                 &lcm));
+  //  auto controller_switch_receiver = builder.AddSystem(
+  //      LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>("INPUT_SWITCH",
+  //                                                                 &lcm));
 
   LcmSubscriberSystem* contact_results_sub = nullptr;
   if (FLAGS_simulator == "DRAKE") {
@@ -399,8 +397,8 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_contact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_state_input_port());
-//  builder.Connect(controller_switch_receiver->get_output_port(),
-//                  fsm->get_switch_input_port());
+  //  builder.Connect(controller_switch_receiver->get_output_port(),
+  //                  fsm->get_switch_input_port());
 
   // Trajectory generator connections
   builder.Connect(state_receiver->get_output_port(0),

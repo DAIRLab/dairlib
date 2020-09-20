@@ -1,9 +1,11 @@
 #include <drake/geometry/scene_graph.h>
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
+
 #include "examples/Cassie/cassie_utils.h"
-#include "multibody/multibody_utils.h"
 #include "lcm/lcm_trajectory.h"
+#include "multibody/multibody_utils.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 
 using drake::geometry::SceneGraph;
@@ -109,44 +111,43 @@ int DoMain() {
                                            nv_wo_spr) =
       map_velocity_from_no_spring_to_spring;
 
-  const LcmTrajectory& loadedTrajs =
+  LcmTrajectory loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
-  auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
-  auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
+  auto traj_mode0 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u0");
+  auto traj_mode1 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u1");
+  auto traj_mode2 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u2");
 
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
                  traj_mode2.datapoints.cols();
 
-  MatrixXd xu(2*nx_wo_spr + nu, n_points);
+  MatrixXd xu(2 * nx_wo_spr + nu, n_points);
   VectorXd times(n_points);
 
   xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
   times << traj_mode0.time_vector, traj_mode1.time_vector,
       traj_mode2.time_vector;
-  MatrixXd x_w_spr(2*nx_w_spr, n_points);
+  MatrixXd x_w_spr(2 * nx_w_spr, n_points);
   x_w_spr.topRows(nx_w_spr) =
       map_state_from_no_spring_to_spring * xu.topRows(nx_wo_spr);
   x_w_spr.bottomRows(nx_w_spr) =
-      map_state_from_no_spring_to_spring * xu.topRows(2*nx_wo_spr).bottomRows
-      (nx_wo_spr);
+      map_state_from_no_spring_to_spring *
+      xu.topRows(2 * nx_wo_spr).bottomRows(nx_wo_spr);
 
   auto state_traj_w_spr = LcmTrajectory::Trajectory();
   state_traj_w_spr.traj_name = "cassie_jumping_trajectory_x";
   state_traj_w_spr.datapoints = x_w_spr;
   state_traj_w_spr.time_vector = times;
   const std::vector<string> state_names =
-      multibody::createStateNameVectorFromMap(
-          plant_w_spr);
+      multibody::createStateNameVectorFromMap(plant_w_spr);
   const std::vector<string> state_dot_names =
-      multibody::createStateNameVectorFromMap(
-          plant_w_spr);
+      multibody::createStateNameVectorFromMap(plant_w_spr);
 
   state_traj_w_spr.datatypes.reserve(2 * nx_w_spr);
   state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),
-      state_names.begin(), state_names.end());
+                                    state_names.begin(), state_names.end());
   state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),
-      state_dot_names.begin(), state_dot_names.end());
+                                    state_dot_names.begin(),
+                                    state_dot_names.end());
 
   std::vector<LcmTrajectory::Trajectory> trajectories = {state_traj_w_spr};
   std::vector<std::string> trajectory_names = {state_traj_w_spr.traj_name};
@@ -156,7 +157,7 @@ int DoMain() {
                     "State trajectory for cassie jumping adjusted to include "
                     "states of the plant with springs");
 
-  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
                              "_for_sim");
   return 0;
 }

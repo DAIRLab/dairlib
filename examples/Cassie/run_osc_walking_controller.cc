@@ -116,26 +116,26 @@ struct OSCWalkingGains {
   double final_foot_velocity_z;
   double lipm_height;
 
-  double kp_hip_roll_left;
-  double kd_hip_roll_left;
-  double kp_hip_yaw_left;
-  double kd_hip_yaw_left;
-  double kp_hip_pitch_left;
-  double kd_hip_pitch_left;
-  double kp_knee_left;
-  double kd_knee_left;
-  double kp_toe_left;
-  double kd_toe_left;
-  double kp_hip_roll_right;
-  double kd_hip_roll_right;
-  double kp_hip_yaw_right;
-  double kd_hip_yaw_right;
-  double kp_hip_pitch_right;
-  double kd_hip_pitch_right;
-  double kp_knee_right;
-  double kd_knee_right;
-  double kp_toe_right;
-  double kd_toe_right;
+  double kp_hip_roll_stance;
+  double kd_hip_roll_stance;
+  double kp_hip_yaw_stance;
+  double kd_hip_yaw_stance;
+  double kp_hip_pitch_stance;
+  double kd_hip_pitch_stance;
+  double kp_knee_stance;
+  double kd_knee_stance;
+  double kp_toe_stance;
+  double kd_toe_stance;
+  double kp_hip_roll_swing;
+  double kd_hip_roll_swing;
+  double kp_hip_yaw_swing;
+  double kd_hip_yaw_swing;
+  double kp_hip_pitch_swing;
+  double kd_hip_pitch_swing;
+  double kp_knee_swing;
+  double kd_knee_swing;
+  double kp_toe_swing;
+  double kd_toe_swing;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -170,26 +170,26 @@ struct OSCWalkingGains {
     // lipm heursitics
     a->Visit(DRAKE_NVP(lipm_height));
     // pd control gains
-    a->Visit(DRAKE_NVP(kp_hip_roll_left));
-    a->Visit(DRAKE_NVP(kd_hip_roll_left));
-    a->Visit(DRAKE_NVP(kp_hip_yaw_left));
-    a->Visit(DRAKE_NVP(kd_hip_yaw_left));
-    a->Visit(DRAKE_NVP(kp_hip_pitch_left));
-    a->Visit(DRAKE_NVP(kd_hip_pitch_left));
-    a->Visit(DRAKE_NVP(kp_knee_left));
-    a->Visit(DRAKE_NVP(kd_knee_left));
-    a->Visit(DRAKE_NVP(kp_toe_left));
-    a->Visit(DRAKE_NVP(kd_toe_left));
-    a->Visit(DRAKE_NVP(kp_hip_roll_right));
-    a->Visit(DRAKE_NVP(kd_hip_roll_right));
-    a->Visit(DRAKE_NVP(kp_hip_yaw_right));
-    a->Visit(DRAKE_NVP(kd_hip_yaw_right));
-    a->Visit(DRAKE_NVP(kp_hip_pitch_right));
-    a->Visit(DRAKE_NVP(kd_hip_pitch_right));
-    a->Visit(DRAKE_NVP(kp_knee_right));
-    a->Visit(DRAKE_NVP(kd_knee_right));
-    a->Visit(DRAKE_NVP(kp_toe_right));
-    a->Visit(DRAKE_NVP(kd_toe_right));
+    a->Visit(DRAKE_NVP(kp_hip_roll_stance));
+    a->Visit(DRAKE_NVP(kd_hip_roll_stance));
+    a->Visit(DRAKE_NVP(kp_hip_yaw_stance));
+    a->Visit(DRAKE_NVP(kd_hip_yaw_stance));
+    a->Visit(DRAKE_NVP(kp_hip_pitch_stance));
+    a->Visit(DRAKE_NVP(kd_hip_pitch_stance));
+    a->Visit(DRAKE_NVP(kp_knee_stance));
+    a->Visit(DRAKE_NVP(kd_knee_stance));
+    a->Visit(DRAKE_NVP(kp_toe_stance));
+    a->Visit(DRAKE_NVP(kd_toe_stance));
+    a->Visit(DRAKE_NVP(kp_hip_roll_swing));
+    a->Visit(DRAKE_NVP(kd_hip_roll_swing));
+    a->Visit(DRAKE_NVP(kp_hip_yaw_swing));
+    a->Visit(DRAKE_NVP(kd_hip_yaw_swing));
+    a->Visit(DRAKE_NVP(kp_hip_pitch_swing));
+    a->Visit(DRAKE_NVP(kd_hip_pitch_swing));
+    a->Visit(DRAKE_NVP(kp_knee_swing));
+    a->Visit(DRAKE_NVP(kd_knee_swing));
+    a->Visit(DRAKE_NVP(kp_toe_swing));
+    a->Visit(DRAKE_NVP(kd_toe_swing));
   }
 };
 
@@ -276,27 +276,60 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Swing Foot Kp: \n" << K_p_swing_foot << std::endl;
   std::cout << "Swing Foot Kd: \n" << K_d_swing_foot << std::endl;
 
-  std::map<std::string, std::pair<double, double>> actuator_pd_gain_map;
-  actuator_pd_gain_map["hip_roll_left_motor"] =
-      std::pair<double, double>(gains.kp_hip_roll_left, gains.kd_hip_roll_left);
-  actuator_pd_gain_map["hip_yaw_left_motor"] =
-      std::pair<double, double>(gains.kp_hip_yaw_left, gains.kd_hip_yaw_left);
-  actuator_pd_gain_map["hip_pitch_left_motor"] = std::pair<double, double>(
-      gains.kp_hip_pitch_left, gains.kd_hip_pitch_left);
-  actuator_pd_gain_map["knee_left_motor"] =
-      std::pair<double, double>(gains.kp_knee_left, gains.kd_knee_left);
-  actuator_pd_gain_map["toe_left_motor"] =
-      std::pair<double, double>(gains.kp_toe_left, gains.kd_toe_left);
-  actuator_pd_gain_map["hip_roll_right_motor"] = std::pair<double, double>(
-      gains.kp_hip_roll_right, gains.kd_hip_roll_right);
-  actuator_pd_gain_map["hip_yaw_right_motor"] =
-      std::pair<double, double>(gains.kp_hip_yaw_right, gains.kd_hip_yaw_right);
-  actuator_pd_gain_map["hip_pitch_right_motor"] = std::pair<double, double>(
-      gains.kp_hip_pitch_right, gains.kd_hip_pitch_right);
-  actuator_pd_gain_map["knee_right_motor"] =
-      std::pair<double, double>(gains.kp_knee_right, gains.kd_knee_right);
-  actuator_pd_gain_map["toe_right_motor"] =
-      std::pair<double, double>(gains.kp_toe_right, gains.kd_toe_right);
+  std::map<std::string, std::pair<double, double>>
+      actuator_pd_gain_map_left_stance;
+  actuator_pd_gain_map_left_stance["hip_roll_left_motor"] =
+      std::pair<double, double>(gains.kp_hip_roll_stance,
+                                gains.kd_hip_roll_stance);
+  actuator_pd_gain_map_left_stance["hip_yaw_left_motor"] =
+      std::pair<double, double>(gains.kp_hip_yaw_stance,
+                                gains.kd_hip_yaw_stance);
+  actuator_pd_gain_map_left_stance["hip_pitch_left_motor"] =
+      std::pair<double, double>(gains.kp_hip_pitch_stance,
+                                gains.kd_hip_pitch_stance);
+  actuator_pd_gain_map_left_stance["knee_left_motor"] =
+      std::pair<double, double>(gains.kp_knee_stance, gains.kd_knee_stance);
+  actuator_pd_gain_map_left_stance["toe_left_motor"] =
+      std::pair<double, double>(gains.kp_toe_stance, gains.kd_toe_stance);
+  actuator_pd_gain_map_left_stance["hip_roll_right_motor"] =
+      std::pair<double, double>(gains.kp_hip_roll_swing,
+                                gains.kd_hip_roll_swing);
+  actuator_pd_gain_map_left_stance["hip_yaw_right_motor"] =
+      std::pair<double, double>(gains.kp_hip_yaw_swing, gains.kd_hip_yaw_swing);
+  actuator_pd_gain_map_left_stance["hip_pitch_right_motor"] =
+      std::pair<double, double>(gains.kp_hip_pitch_swing,
+                                gains.kd_hip_pitch_swing);
+  actuator_pd_gain_map_left_stance["knee_right_motor"] =
+      std::pair<double, double>(gains.kp_knee_swing, gains.kd_knee_swing);
+  actuator_pd_gain_map_left_stance["toe_right_motor"] =
+      std::pair<double, double>(gains.kp_toe_swing, gains.kd_toe_swing);
+  std::map<std::string, std::pair<double, double>>
+      actuator_pd_gain_map_right_stance;
+  actuator_pd_gain_map_right_stance["hip_roll_right_motor"] =
+      std::pair<double, double>(gains.kp_hip_roll_stance,
+                                gains.kd_hip_roll_stance);
+  actuator_pd_gain_map_right_stance["hip_yaw_right_motor"] =
+      std::pair<double, double>(gains.kp_hip_yaw_stance,
+                                gains.kd_hip_yaw_stance);
+  actuator_pd_gain_map_right_stance["hip_pitch_right_motor"] =
+      std::pair<double, double>(gains.kp_hip_pitch_stance,
+                                gains.kd_hip_pitch_stance);
+  actuator_pd_gain_map_right_stance["knee_right_motor"] =
+      std::pair<double, double>(gains.kp_knee_stance, gains.kd_knee_stance);
+  actuator_pd_gain_map_right_stance["toe_right_motor"] =
+      std::pair<double, double>(gains.kp_toe_stance, gains.kd_toe_stance);
+  actuator_pd_gain_map_right_stance["hip_roll_left_motor"] =
+      std::pair<double, double>(gains.kp_hip_roll_swing,
+                                gains.kd_hip_roll_swing);
+  actuator_pd_gain_map_right_stance["hip_yaw_left_motor"] =
+      std::pair<double, double>(gains.kp_hip_yaw_swing, gains.kd_hip_yaw_swing);
+  actuator_pd_gain_map_right_stance["hip_pitch_left_motor"] =
+      std::pair<double, double>(gains.kp_hip_pitch_swing,
+                                gains.kd_hip_pitch_swing);
+  actuator_pd_gain_map_right_stance["knee_left_motor"] =
+      std::pair<double, double>(gains.kp_knee_swing, gains.kd_knee_swing);
+  actuator_pd_gain_map_right_stance["toe_left_motor"] =
+      std::pair<double, double>(gains.kp_toe_swing, gains.kd_toe_swing);
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_spr or plant_wo_spr because the contact frames exit in both
@@ -629,7 +662,10 @@ int DoMain(int argc, char* argv[]) {
     std::vector<std::string> actuated_joint_names{"hip_roll", "hip_yaw",
                                                   "hip_pitch", "knee", "toe"};
     std::vector<std::string> left_right_names{"_left", "_right"};
-    MatrixXd K = MatrixXd::Zero(
+    MatrixXd K_left_stance = MatrixXd::Zero(
+        plant_w_spr.num_actuators(),
+        plant_w_spr.num_positions() + plant_w_spr.num_velocities());
+    MatrixXd K_right_stance = MatrixXd::Zero(
         plant_w_spr.num_actuators(),
         plant_w_spr.num_positions() + plant_w_spr.num_velocities());
     for (auto joint_name : actuated_joint_names) {
@@ -639,16 +675,28 @@ int DoMain(int argc, char* argv[]) {
         int u_ind = act_index_map.at(name);
         int q_ind = act_to_pos_idx_map.at(u_ind);
         int v_ind = act_to_vel_idx_map.at(u_ind);
-        K(u_ind, q_ind) = actuator_pd_gain_map.at(name).first;
-        K(u_ind, plant_w_spr.num_positions() + v_ind) =
-            actuator_pd_gain_map.at(name).second;
+        K_left_stance(u_ind, q_ind) =
+            actuator_pd_gain_map_left_stance.at(name).first;
+        K_left_stance(u_ind, plant_w_spr.num_positions() + v_ind) =
+            actuator_pd_gain_map_left_stance.at(name).second;
+        K_right_stance(u_ind, q_ind) =
+            actuator_pd_gain_map_right_stance.at(name).first;
+        K_right_stance(u_ind, plant_w_spr.num_positions() + v_ind) =
+            actuator_pd_gain_map_right_stance.at(name).second;
       }
     }
-    cout << "K = " << K << endl;
+    cout << "K_left_stance = \n" << K_left_stance << endl;
+    cout << "K_right_stance = \n" << K_right_stance << endl;
+
+    std::vector<std::pair<int, MatrixXd>> gains_and_fsm_state;
+    gains_and_fsm_state.push_back(
+        std::pair<int, MatrixXd>(left_stance_state, K_left_stance));
+    gains_and_fsm_state.push_back(
+        std::pair<int, MatrixXd>(right_stance_state, K_right_stance));
 
     // Linear config (desired state and gains) multiplexer
-    auto config_mux =
-        builder.AddSystem<cassie::osc::LinearConfigMux>(plant_w_spr, K);
+    auto config_mux = builder.AddSystem<cassie::osc::LinearConfigMux>(
+        plant_w_spr, gains_and_fsm_state);
 
     // State integrator
     auto vdot_integrator = builder.AddSystem<cassie::osc::VdotIntegrator>(
@@ -659,6 +707,7 @@ int DoMain(int argc, char* argv[]) {
                     vdot_integrator->get_osc_vdot_input_port());
     builder.Connect(vdot_integrator->get_output_port(0),
                     config_mux->get_desired_state_input_port());
+    builder.Connect(fsm->get_output_port(0), config_mux->get_fsm_input_port());
 
     // pd controller
     auto pd_controller = builder.AddSystem<systems::LinearController>(

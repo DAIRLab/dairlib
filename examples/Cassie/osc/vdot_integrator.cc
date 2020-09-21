@@ -193,6 +193,8 @@ EventStatus VdotIntegrator::DiscreteVariableUpdate(
         discrete_state->get_mutable_vector(actuated_v_idx_).get_mutable_value();
     q += dt * v;
     v += dt * map_from_v_no_spring_to_v_actuated_joints_ * vdot->get_data();
+
+    cout << "vdot = " << (map_from_v_no_spring_to_v_actuated_joints_ * vdot->get_data()).transpose() << endl;
   }
 
   return EventStatus::Succeeded();

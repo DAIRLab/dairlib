@@ -16,7 +16,7 @@ namespace osc {
 class LinearConfigMux : public drake::systems::LeafSystem<double> {
  public:
   LinearConfigMux(const drake::multibody::MultibodyPlant<double>& plant,
-                  MatrixXd K);
+                  std::vector<std::pair<int, MatrixXd>> gains_and_fsm_state);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_desired_state_input_port()
@@ -26,6 +26,9 @@ class LinearConfigMux : public drake::systems::LeafSystem<double> {
   //  const drake::systems::InputPort<double>& get_gains_input_port() const {
   //    return this->get_input_port(gains_port_);
   //  }
+  const drake::systems::InputPort<double>& get_fsm_input_port() const {
+    return this->get_input_port(fsm_port_);
+  }
 
  private:
   void SetConfig(const drake::systems::Context<double>& context,
@@ -38,8 +41,13 @@ class LinearConfigMux : public drake::systems::LeafSystem<double> {
 
   int desired_state_port_;
   int gains_port_;
+  int fsm_port_;
 
-  MatrixXd K_;
+//  MatrixXd K_left_stance_;
+//  MatrixXd K_right_stance_;
+  std::vector<std::pair<int, MatrixXd>> gains_and_fsm_state_;
+
+  mutable double prev_fsm_state_ = -std::numeric_limits<double>::infinity();
 };
 
 }  // namespace osc

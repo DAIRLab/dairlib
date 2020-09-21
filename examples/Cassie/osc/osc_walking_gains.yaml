@@ -70,32 +70,32 @@ SwingFootKd:
       0,    1,     0,
       0,    0,     1]
 
-kp_hip_roll_left: 20
-kd_hip_roll_left: 1
+kp_hip_roll_stance: 300
+kd_hip_roll_stance: 3
 
-kp_hip_yaw_left: 10
-kd_hip_yaw_left: 1
+kp_hip_yaw_stance: 10
+kd_hip_yaw_stance: 1
 
-kp_hip_pitch_left: 20
-kd_hip_pitch_left: 1
+kp_hip_pitch_stance: 20
+kd_hip_pitch_stance: 1
 
-kp_knee_left: 100
-kd_knee_left: 2
+kp_knee_stance: 80
+kd_knee_stance: 2
 
-kp_toe_left: 10
-kd_toe_left: 1
+kp_toe_stance: 10
+kd_toe_stance: 1
 
-kp_hip_roll_right: 20
-kd_hip_roll_right: 1
+kp_hip_roll_swing: 50
+kd_hip_roll_swing: 2
 
-kp_hip_yaw_right: 10
-kd_hip_yaw_right: 1
+kp_hip_yaw_swing: 10
+kd_hip_yaw_swing: 1
 
-kp_hip_pitch_right: 20
-kd_hip_pitch_right: 1
+kp_hip_pitch_swing: 20
+kd_hip_pitch_swing: 1
 
-kp_knee_right: 100
-kd_knee_right: 2
+kp_knee_swing: 75
+kd_knee_swing: 2
 
-kp_toe_right: 10
-kd_toe_right: 1
+kp_toe_swing: 10
+kd_toe_swing: 1

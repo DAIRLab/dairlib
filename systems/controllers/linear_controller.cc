@@ -27,7 +27,13 @@ void LinearController::CalcControl(const Context<double>& context,
     VectorXd u = config->GetK() *
         (config->GetDesiredState() - output->GetState());
 
-    control->SetDataVector(u);
+    std::cout << "xd = " << config->GetDesiredState().transpose() << std::endl;
+    std::cout << "x = " << output->GetState().transpose() << std::endl;
+    std::cout << "u = " << u.transpose() << std::endl;
+//    std::cout << "u_fb = " << output->GetEfforts().transpose() << std::endl;
+
+
+  control->SetDataVector(u);
     control->set_timestamp(output->get_timestamp());
 }
 

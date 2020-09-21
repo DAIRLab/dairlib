@@ -129,7 +129,7 @@ VdotIntegrator::VdotIntegrator(
       successfully_added = false;
       for (const auto& map_element : vel_map_w_spr) {
         if (map_element.first == joint_name + "dot") {
-          map_from_q_actuated_joints_to_q_spring_(map_element.second,
+          map_from_v_actuated_joints_to_v_spring_(map_element.second,
                                                   joint_idx) = 1;
           successfully_added = true;
         }

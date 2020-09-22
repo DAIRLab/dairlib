@@ -64,7 +64,7 @@ SwingFootW:
 SwingFootKp:
   [ 200,    0,     0,
       0,  200,     0,
-      0,    0,   200]
+      0,    0,   2000]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

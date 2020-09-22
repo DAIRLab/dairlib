@@ -115,9 +115,10 @@ def main():
   u_indices = slice(0, 10)
   # joint_name = "knee_left"
   joint_name = "knee_right"
+  joint_name = "hip_pitch_right"
 
   # import pdb; pdb.set_trace()
-  plt.figure("PD knee_right: " + filename)
+  plt.figure("PD " + joint_name + ": " + filename)
   plt.plot(t_u[t_slice], q_fb_pd[t_slice, pos_map[joint_name]])
   plt.plot(t_u[t_slice], q_des_pd[t_slice, pos_map[joint_name]])
   plt.plot(t_u[t_slice], v_fb_pd[t_slice, vel_map[joint_name+"dot"]])
@@ -145,7 +146,7 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
 
 
@@ -213,6 +214,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
+
   osc_traj0 = "swing_ft_traj"
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
@@ -223,16 +225,16 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
-  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  plot_osc(osc_debug, osc_traj0, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
   # plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
-  #
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
+
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
   # plot_osc(osc_debug, osc_traj0, 1, "accel")
-  # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  plot_osc(osc_debug, osc_traj0, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])

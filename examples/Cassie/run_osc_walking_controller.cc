@@ -593,13 +593,13 @@ int DoMain(int argc, char* argv[]) {
   // Swing foot tracking
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_swing_foot,
                                              K_d_swing_foot, W_swing_foot,
-                                             plant_w_spr, plant_wo_spr, false);
+                                             plant_w_spr, plant_wo_spr, true);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
   ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-                                      plant_w_spr, plant_wo_spr, false);
+                                      plant_w_spr, plant_wo_spr, true);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(

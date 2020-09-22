@@ -40,6 +40,9 @@ def main():
   plant_w_spr.mutable_gravity_field().set_gravity_vector(
     -9.81 * np.array([0, 0, 1]))
   plant_w_spr.Finalize()
+  plant_wo_spr.mutable_gravity_field().set_gravity_vector(
+    -9.81 * np.array([0, 0, 1]))
+  plant_wo_spr.Finalize()
 
   # relevant MBP parameters
   nq = plant_w_spr.num_positions()
@@ -72,7 +75,7 @@ def main():
 
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
+  osc_output, vdot, q_fb_pd, q_des_pd, v_fb_pd, v_des_pd, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
@@ -89,7 +92,7 @@ def main():
     estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
 
   # Default time window values, can override
-  t_start = t_u[10]
+  t_start = t_u[0]
   t_end = t_u[-10]
   # Override here #
   # t_start = 205
@@ -102,12 +105,33 @@ def main():
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
 
+
+
+  vel_map_wo_spr = pydairlib.multibody.makeNameToVelocitiesMap(plant_wo_spr)
+
+  # pos_indices = slice(7, 23)
+  pos_indices = slice(13, 15)
+  vel_indices = slice(6, 22)
+  u_indices = slice(0, 10)
+  # joint_name = "knee_left"
+  joint_name = "knee_right"
+
+  # import pdb; pdb.set_trace()
+  plt.figure("PD knee_right: " + filename)
+  plt.plot(t_u[t_slice], q_fb_pd[t_slice, pos_map[joint_name]])
+  plt.plot(t_u[t_slice], q_des_pd[t_slice, pos_map[joint_name]])
+  plt.plot(t_u[t_slice], v_fb_pd[t_slice, vel_map[joint_name+"dot"]])
+  plt.plot(t_u[t_slice], v_des_pd[t_slice, vel_map[joint_name+"dot"]])
+  plt.plot(t_u[t_slice], vdot[t_slice, vel_map_wo_spr[joint_name+"dot"]])
+  plt.plot(t_u[t_slice], u[t_slice, act_map[joint_name+"_motor"]])
+  plt.legend([joint_name, joint_name+" des", joint_name+"dot", joint_name+"dot"+" des", joint_name + "ddot", joint_name + "motor"])
+
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
-  plot_contact_est(full_log)
+  # plot_contact_est(full_log)
   plt.plot(t_u[t_u_slice], fsm[t_u_slice])
-  if True:
+  if False:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "left_", "_front")
@@ -121,7 +145,7 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
 
 
@@ -341,18 +365,18 @@ def compare_ekf(log, pos_map, vel_map):
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   # pos_indices = slice(0 + 7, 23, 2)
-  vel_indices = slice(23 + 6, 45, 2)
-  pos_indices = slice(0,7)
+  vel_indices = slice(23 + 6, 45)
+  pos_indices = slice(7,23)
   # vel_indices = slice(23, 23 + 6)
-  u_indices = slice(6, 8)
+  u_indices = slice(0, 10)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
 
   plt.figure("positions: " + filename)
-  plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
-  plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
-  # plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])

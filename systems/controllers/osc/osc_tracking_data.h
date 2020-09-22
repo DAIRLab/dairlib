@@ -69,7 +69,8 @@ class OscTrackingData {
                   const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
                   const Eigen::MatrixXd& W,
                   const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+                  bool use_desired_acceleration);
 
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_state_
@@ -198,6 +199,7 @@ class OscTrackingData {
   // PD control gains
   Eigen::MatrixXd K_p_;
   Eigen::MatrixXd K_d_;
+  bool use_desired_acceleration_;
 
   // Cost weights
   Eigen::MatrixXd W_;
@@ -213,7 +215,8 @@ class ComTrackingData final : public OscTrackingData {
   ComTrackingData(const std::string& name, const Eigen::MatrixXd& K_p,
                   const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
                   const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+                  bool use_desired_acceleration = true);
 
   //  ComTrackingData() {}  // Default constructor
 
@@ -243,7 +246,8 @@ class TaskSpaceTrackingData : public OscTrackingData {
       const std::string& name, int n_y, int n_ydot, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      bool use_desired_acceleration);
 
  protected:
   // `body_index_w_spr` is the index of the body
@@ -274,7 +278,8 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      bool use_desired_acceleration = true);
 
   void AddPointToTrack(
       const std::string& body_name,
@@ -322,7 +327,8 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      bool use_desired_acceleration = true);
 
   void AddFrameToTrack(
       const std::string& body_name,
@@ -370,7 +376,8 @@ class JointSpaceTrackingData final : public OscTrackingData {
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      bool use_desired_acceleration = true);
 
   void AddJointToTrack(const std::string& joint_pos_name,
                        const std::string& joint_vel_name);

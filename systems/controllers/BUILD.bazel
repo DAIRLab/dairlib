@@ -38,6 +38,8 @@ cc_library(
         "linear_controller.h",
     ],
     deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

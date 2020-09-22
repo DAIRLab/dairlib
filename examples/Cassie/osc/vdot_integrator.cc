@@ -169,6 +169,7 @@ EventStatus VdotIntegrator::DiscreteVariableUpdate(
     discrete_state->get_mutable_vector(actuated_v_idx_).get_mutable_value()
         << map_from_v_spring_to_v_actuated_joints_ *
                robot_output->GetVelocities();
+//    discrete_state->get_mutable_vector(actuated_v_idx_).get_mutable_value().setZero();
     has_been_initialized_ = true;
   }
 
@@ -194,6 +195,7 @@ EventStatus VdotIntegrator::DiscreteVariableUpdate(
     q += dt * v;
     v += dt * map_from_v_no_spring_to_v_actuated_joints_ * vdot->get_data();
 
+    cout << "t = " << time << endl;
     cout << "vdot = " << (map_from_v_no_spring_to_v_actuated_joints_ * vdot->get_data()).transpose() << endl;
   }
 

@@ -92,6 +92,10 @@ OperationalSpaceControl::OperationalSpaceControl(
                             &OperationalSpaceControl::AssignOscLcmOutput)
                         .get_index();
 
+  osc_vdot_lcm_port_ = this->DeclareAbstractOutputPort(
+                            &OperationalSpaceControl::AssignVdotLcmOutput)
+                        .get_index();
+
   // PerStep update for the OSC
   DeclarePerStepDiscreteUpdateEvent(&OperationalSpaceControl::OscUpdate);
   // The timestamp for the last QP update
@@ -147,6 +151,11 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
+
+  // Create vel index to vel name map for debugging
+  for(auto element : vel_map_wo_spr) {
+    vel_index_to_name_map_wo_spr_[element.second] = element.first;
+  }
 }
 
 // Cost methods
@@ -825,6 +834,21 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   }
 
   output->num_tracking_data = output->tracking_data_names.size();
+}
+
+void OperationalSpaceControl::AssignVdotLcmOutput(
+    const Context<double>& context, drake::lcmt_drake_signal* msg) const {
+  auto dv_sol = context.get_discrete_state(dv_sol_idx_).get_value();
+
+  int signal_size = plant_wo_spr_.num_velocities();
+  msg->dim = signal_size;
+  msg->val.resize(signal_size);
+  msg->coord.resize(signal_size);
+  for (int i = 0; i < signal_size; i++) {
+    msg->val[i] = dv_sol(i);
+    msg->coord[i] = vel_index_to_name_map_wo_spr_.at(i);
+  }
+  msg->timestamp = context.get_time() * 1e6;
 }
 
 void OperationalSpaceControl::CopyOptimalInput(

@@ -1,0 +1,20 @@
+package dairlib;
+
+struct lcmt_pd_control
+{
+  int64_t utime;
+  int32_t num_positions;
+  int32_t num_velocities;
+  int32_t num_efforts;
+
+  string position_names [num_positions];
+  double position_feedback [num_positions];
+  double position_desired [num_positions];
+
+  string velocity_names [num_velocities];
+  double velocity_feedback [num_velocities];
+  double velocity_desired [num_velocities];
+
+  string effort_names [num_efforts];
+  double effort [num_efforts];
+}

@@ -15,6 +15,7 @@
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
+#include "drake/lcmt_drake_signal.hpp"
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -105,6 +106,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_osc_debug_port() const {
     return this->get_output_port(osc_debug_port_);
   }
+  const drake::systems::OutputPort<double>& get_vdot_debug_port() const {
+    return this->get_output_port(osc_vdot_lcm_port_);
+  }
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -176,6 +180,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   void AssignOscLcmOutput(const drake::systems::Context<double>& context,
                           dairlib::lcmt_osc_output* output) const;
+  void AssignVdotLcmOutput(const drake::systems::Context<double>& context,
+                          drake::lcmt_drake_signal* output) const;
 
   // Output function
   void CopyOptimalInput(const drake::systems::Context<double>& context,
@@ -189,6 +195,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int osc_optimal_u_port_;
   int osc_optimal_vdot_port_;
   int osc_debug_port_;
+  int osc_vdot_lcm_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -293,6 +300,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // We only apply the control when t_s <= t <= t_e
   std::vector<double> t_s_vec_;
   std::vector<double> t_e_vec_;
+
+  // Debugging
+  std::map<int, std::string> vel_index_to_name_map_wo_spr_;
 };
 
 }  // namespace dairlib::systems::controllers

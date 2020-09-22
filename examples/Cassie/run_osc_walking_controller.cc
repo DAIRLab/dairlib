@@ -22,8 +22,10 @@
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+#include "dairlib/lcmt_pd_control.hpp"
 
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/lcmt_drake_signal.hpp"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -591,13 +593,13 @@ int DoMain(int argc, char* argv[]) {
   // Swing foot tracking
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_swing_foot,
                                              K_d_swing_foot, W_swing_foot,
-                                             plant_w_spr, plant_wo_spr);
+                                             plant_w_spr, plant_wo_spr, false);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
   ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-                                      plant_w_spr, plant_wo_spr);
+                                      plant_w_spr, plant_wo_spr, false);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
@@ -712,13 +714,28 @@ int DoMain(int argc, char* argv[]) {
     // pd controller
     auto pd_controller = builder.AddSystem<systems::LinearController>(
         plant_w_spr.num_positions(), plant_w_spr.num_velocities(),
-        plant_w_spr.num_actuators());
+        plant_w_spr.num_actuators(), plant_w_spr);
     builder.Connect(state_receiver->get_output_port(0),
                     pd_controller->get_input_port_output());
     builder.Connect(config_mux->get_output_port(0),
                     pd_controller->get_input_port_config());
     builder.Connect(pd_controller->get_output_port(0),
                     command_sender->get_input_port(0));
+
+    bool publish_pd_control_debug_data = true;
+    if (publish_pd_control_debug_data) {
+      // Create debug senders.
+      auto vdot_debug_pub =
+          builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_drake_signal>(
+              "VDOT", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+      auto pd_control_debug_pub =
+          builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_pd_control>(
+              "PD_DATA", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+      builder.Connect(osc->get_vdot_debug_port(),
+                      vdot_debug_pub->get_input_port());
+      builder.Connect(pd_controller->get_debug_port(),
+                      pd_control_debug_pub->get_input_port());
+    }
 
   } else {
     builder.Connect(osc->get_osc_optimal_u_port(),

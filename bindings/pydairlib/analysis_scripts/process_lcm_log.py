@@ -70,6 +70,12 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   u_pd = []
   t_u_pd = []
 
+  vdot = []
+  q_fb_pd = []
+  q_des_pd = []
+  v_fb_pd = []
+  v_des_pd = []
+
   full_log = dict()
   channel_to_type_map = dict()
   unknown_types = set()
@@ -91,7 +97,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
         unknown_types.add(event.channel)
     if event.channel in full_log:
       full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
-    if event.channel == "CASSIE_STATE_DISPATCHER":
+    if event.channel == "CASSIE_STATE_SIMULATION":
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]
       v_temp = [[] for i in range(len(msg.velocity))]
@@ -167,6 +173,15 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
         contact_info_locs[2 + num_right_contacts].append((0.0, 0.0,
                                                           0.0))
         num_right_contacts += 1
+    if event.channel == "VDOT":
+      msg = drake.lcmt_drake_signal.decode(event.data)
+      vdot.append(msg.val)
+    if event.channel == "PD_DATA":
+      msg = dairlib.lcmt_pd_control.decode(event.data)
+      q_fb_pd.append(msg.position_feedback)
+      q_des_pd.append(msg.position_desired)
+      v_fb_pd.append(msg.velocity_feedback)
+      v_des_pd.append(msg.velocity_desired)
 
   # Convert into numpy arrays
   t_x = np.array(t_x)
@@ -187,6 +202,12 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   contact_forces = np.array(contact_forces)
   contact_info_locs = np.array(contact_info_locs)
 
+  vdot = np.array(vdot)
+  q_fb_pd = np.array(q_fb_pd)
+  q_des_pd = np.array(q_des_pd)
+  v_fb_pd = np.array(v_fb_pd)
+  v_des_pd = np.array(v_des_pd)
+
   for i in range(contact_info_locs.shape[1]):
     # Swap front and rear contacts if necessary
     # Order will be front contact in index 1
@@ -205,4 +226,4 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   return x, u_meas, t_x, u, t_u, contact_forces, contact_info_locs, \
          t_contact_info, osc_debug, fsm, estop_signal, \
          switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
-         t_u_pd, osc_output, full_log
+         t_u_pd, osc_output, vdot, q_fb_pd, q_des_pd, v_fb_pd, v_des_pd, full_log

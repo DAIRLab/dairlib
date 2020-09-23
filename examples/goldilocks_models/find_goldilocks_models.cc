@@ -219,14 +219,19 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
     }
   }else if (rerun_current_sample) {
-    if(iter==1){
-      //currently extend the task space
-      *init_file = to_string(iter) + "_" + to_string(
-          task_gen_expansion.expansion_sample_index(sample))+ string("_w.csv");
-    }else if(task_gen_mediate.currently_find_mediate_sample()){
-      //the index for mediate samples are different
-      *init_file = to_string(iter) + "_" + to_string(
-          sample+task_gen->total_sample_number())+ string("_w.csv");
+    if(non_grid_task){
+      if(iter==1){
+        //currently extend the task space
+        *init_file = to_string(iter) + "_" + to_string(
+            task_gen_expansion.expansion_sample_index(sample))+ string("_w.csv");
+      }else if(task_gen_mediate.currently_find_mediate_sample()){
+        //the index for mediate samples are different
+        *init_file = to_string(iter) + "_" + to_string(
+            sample+task_gen->total_sample_number())+ string("_w.csv");
+      }
+      else{
+        *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
+      }
     }
     else{
       *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");

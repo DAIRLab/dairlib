@@ -48,8 +48,8 @@ def main():
 
   # Plotting reconstructed state trajectories
   plt.figure("state trajectory")
-  plt.plot(t_knot, x_knot.T)
   plt.plot(t, state_samples)
+  plt.plot(t_knot, x_knot.T, 'ko', markersize=2)
   plt.legend(state_datatypes[x_idx_start:x_idx_end])
 
   plt.figure("input trajectory")

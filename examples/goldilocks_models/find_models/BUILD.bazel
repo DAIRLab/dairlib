@@ -156,3 +156,13 @@ cc_test(
         "@gtest//:main",
     ],
 )
+
+py_binary(
+    name = "plot_x",
+    srcs = ["plot_x.py"],
+    deps = [
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

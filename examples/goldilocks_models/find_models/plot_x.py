@@ -42,32 +42,19 @@ if len(sys.argv) >= 6:
 robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 
 # Paths
-abs_path = "/home/yuming/Documents/workspace/"
-dairlib_path = abs_path + "dairlib/"
 # data_path = 'data/robot_' + str(robot_option) + '/'
 data_path = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
-# data_path = abs_path + "dairlib_data/goldilocks_models/find_models/robot_" + str(robot_option) + "/"
-
-# Testing
-# import os
-# print(os.getcwd())
-
-
 
 # Build MBP
 builder = DiagramBuilder()
 plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
 # Parser(plant).AddModelFromFile(FindResourceOrThrow("examples/Cassie/urdf/cassie_v2.urdf"))
-# Parser(plant).AddModelFromFile(FindResourceOrThrow("/home/yuming/Documents/workspace/dairlib/examples/Cassie/urdf/cassie_fixed_springs.urdf"))
-# Parser(plant).AddModelFromFile(dairlib_path + "examples/Cassie/urdf/cassie_fixed_springs.urdf")
 Parser(plant).AddModelFromFile(FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"))
-# Parser(plant).AddModelFromFile("examples/Cassie/urdf/cassie_fixed_springs.urdf")
-# Parser(plant).AddModelFromFile("examples/Cassie/urdf/cassie_v2.urdf")
 plant.mutable_gravity_field().set_gravity_vector(-9.81 * np.array([0, 0, 1]))
 plant.Finalize()
 
 
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 
 # MBP params
 nq = plant.num_positions()

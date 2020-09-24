@@ -5,75 +5,83 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "utils",
+    name = "multibody_solvers",
     srcs = [
-        "multibody_utils.cc",
-        "com_pose_system.cc",
+        "multibody_solvers.cc",
     ],
     hdrs = [
-        "multibody_utils.h",
-        "com_pose_system.h",
+        "multibody_solvers.h",
     ],
     deps = [
+        ":utils",
+        "//multibody/kinematic",
+        "//multibody/kinematic:constraints",
+        "//solvers:nonlinear_constraint",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "utils",
+    srcs = [
+        "com_pose_system.cc",
+        "multibody_utils.cc",
+    ],
+    hdrs = [
+        "com_pose_system.h",
+        "multibody_utils.h",
+    ],
+    deps = [
+        ":visualization_utils",
         "@drake//multibody/plant",
-        ":visualization_utils"
     ],
 )
 
 cc_library(
     name = "visualization_utils",
     srcs = [
-        "visualization_utils.cc"
+        "visualization_utils.cc",
     ],
     hdrs = [
         "visualization_utils.h",
     ],
     deps = [
+        "//systems/primitives",
         "@drake//:drake_shared_library",
-         "//systems/primitives",
     ],
 )
 
 cc_library(
-    name = "contact_toolkit",
+    name = "multipose_visualizer",
     srcs = [
-        "contact_toolkit.cc",
+        "multipose_visualizer.cc",
     ],
     hdrs = [
-        "contact_toolkit.h",
+        "multipose_visualizer.h",
     ],
     deps = [
         "@drake//:drake_shared_library",
-        ":utils",
     ],
 )
 
+cc_binary(
+    name = "multipose_visualizer_test",
+    srcs = ["test/multipose_visualizer_test.cc"],
+    deps = [
+        ":multipose_visualizer",
+        "//common",
+    ],
+)
 
 cc_test(
     name = "multibody_utils_test",
+    size = "small",
     srcs = ["test/multibody_utils_test.cc"],
     deps = [
-            ":utils",
-            "//examples/Cassie:cassie_urdf",
-            "//common",
-            "@drake//:drake_shared_library",
-            "@gtest//:main",
-            ],
-    size = "small"
-)
-
-
-cc_test(
-    name = "contact_toolkit_test",
-    srcs = [
-        "test/contact_toolkit_test.cc",
-    ],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        ":contact_toolkit",
         ":utils",
+        "//common",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//:drake_shared_library",
         "@gtest//:main",
     ],
-    size = "small",
-    tags = ["manual"],
 )

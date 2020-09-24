@@ -14,10 +14,9 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/lcmt_iiwa_command.hpp"
 #include "drake/lcmt_iiwa_status.hpp"
-#include "drake/manipulation/util/sim_diagram_builder.h"
-#include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
+#include "drake/manipulation/kuka_iiwa/iiwa_status_receiver.h"
+#include "drake/manipulation/kuka_iiwa/iiwa_command_sender.h"
 #include "drake/common/find_resource.h"
-#include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/common/text_logging.h"
 #include <nlohmann/json.hpp>
 
@@ -59,10 +58,10 @@ int do_main(int argc, char* argv[]) {
   auto status_subscriber = builder.AddSystem(
     drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
       "IIWA_STATUS", lcm));
-  auto status_receiver = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaStatusReceiver>();
+  auto status_receiver = builder.AddSystem<drake::manipulation::kuka_iiwa::IiwaStatusReceiver>();
 
   // Adding command publisher and broadcaster blocks
-  auto command_sender = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaCommandSender>();
+  auto command_sender = builder.AddSystem<drake::manipulation::kuka_iiwa::IiwaCommandSender>();
   auto command_publisher = builder.AddSystem(
     drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
       "IIWA_COMMAND", lcm, 1.0/200.0));

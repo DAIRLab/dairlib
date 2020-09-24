@@ -68,7 +68,7 @@ int DoMain() {
   std::unique_ptr<MultibodyPlant<double>> owned_world_plant =
       std::make_unique<MultibodyPlant<double>>(0.001);
   std::unique_ptr<MultibodyPlant<double>> owned_controller_plant =
-      std::make_unique<MultibodyPlant<double>>();
+      std::make_unique<MultibodyPlant<double>>(0.0);
   std::unique_ptr<drake::geometry::SceneGraph<double>> owned_scene_graph =
       std::make_unique<drake::geometry::SceneGraph<double>>();
 
@@ -217,7 +217,9 @@ int DoMain() {
 
   // Hook up controller to model
   builder.Connect(command_sub->get_output_port(),
-                  command_receiver->get_input_port());
+                  command_receiver->get_message_input_port());
+
+  // Connecting iiwa input ports
   builder.Connect(iiwa_controller->get_output_port_control(),
                   world_plant->get_actuation_input_port(iiwa_model));
   builder.Connect(command_receiver->get_commanded_position_output_port(),

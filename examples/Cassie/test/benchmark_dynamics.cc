@@ -74,7 +74,7 @@ int do_main() {
   // Build and test multibody plant
   systems::DiagramBuilder<double> builder;
   MultibodyPlant<double>& multibody_plant =
-      *builder.AddSystem<MultibodyPlant>();
+      *builder.AddSystem<MultibodyPlant>(0.0);
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
@@ -82,9 +82,6 @@ int do_main() {
   multibody::Parser parser(&multibody_plant, &scene_graph);
   parser.AddModelFromFile(dairlib::FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf"));
-
-  multibody_plant.mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
 
   multibody_plant.WeldFrames(
     multibody_plant.world_frame(), multibody_plant.GetFrameByName("pelvis"));
@@ -99,6 +96,19 @@ int do_main() {
     x(0) = i;
     multibody_context->get_mutable_continuous_state_vector().SetFromVector(x);
     multibody_plant.CalcMassMatrixViaInverseDynamics(*multibody_context, &M);
+  }
+  stop =  my_clock::now();
+  duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "(multibody_plant) " << std::to_string(num_reps) <<
+      "x inverse-dynamics inertia calculations took " << duration.count() << " miliseconds. " <<
+      1000*duration.count()/num_reps << " microseconds per." << std::endl;
+
+  start =  my_clock::now();
+  for (int i = 0; i < num_reps; i++) {
+    x(0) = i;
+    multibody_context->get_mutable_continuous_state_vector().SetFromVector(x);
+    multibody_plant.CalcMassMatrix(*multibody_context, &M);
   }
   stop =  my_clock::now();
   duration =
@@ -133,9 +143,26 @@ int do_main() {
   duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
   std::cout << "(multibody_plant) " << std::to_string(num_autodiff_reps) <<
+      "x inverse-dynamics inertia autodiff calculations took " << duration.count() <<
+      " miliseconds. " << 1000*duration.count()/num_autodiff_reps <<
+      " microseconds per." << std::endl;
+
+  start =  my_clock::now();
+  for (int i = 0; i < num_autodiff_reps; i++) {
+    x(0) = i;
+    multibody_context_autodiff->get_mutable_continuous_state_vector().
+        SetFromVector(math::initializeAutoDiff(x));
+    multibody_plant_autodiff->CalcMassMatrix(
+        *multibody_context_autodiff, &M_autodiff);
+  }
+  stop =  my_clock::now();
+  duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "(multibody_plant) " << std::to_string(num_autodiff_reps) <<
       "x inertia autodiff calculations took " << duration.count() <<
       " miliseconds. " << 1000*duration.count()/num_autodiff_reps <<
       " microseconds per." << std::endl;
+
 
   // rigid body inverse dynamics
   Eigen::VectorXd desired_vdot(nq);

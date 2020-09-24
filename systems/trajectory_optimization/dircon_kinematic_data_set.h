@@ -22,22 +22,26 @@ class DirconKinematicDataSet {
   drake::VectorX<T> getC();
   drake::VectorX<T> getCDot();
   drake::MatrixX<T> getJ();
+  drake::MatrixX<T> getJWithoutSkipping();
   drake::VectorX<T> getJdotv();
   drake::VectorX<T> getCDDot();
   drake::VectorX<T> getVDot();
   drake::VectorX<T> getXDot();
 
+  drake::MatrixX<double> getConstraintMap();
+
   DirconKinematicData<T>* getConstraint(int index);
 
   int getNumConstraintObjects();
   int countConstraints();
+  int countConstraintsWithoutSkipping();
 
  private:
-  // Key for the data cache--note that these are VectorXd, and not VectorX<T>
+  template <typename S>
   struct CacheKey {
-    const Eigen::VectorXd state;
-    const Eigen::VectorXd input;
-    const Eigen::VectorXd forces;
+    const drake::VectorX<S> state;
+    const drake::VectorX<S> input;
+    const drake::VectorX<S> forces;
   };
 
   // Copy of a data entry for the cache
@@ -55,25 +59,49 @@ class DirconKinematicDataSet {
   // elements
   class CacheHasher {
    public:
-    std::size_t operator()(const CacheKey& key) const {
-      std::size_t hash = 0;
+    std::size_t operator()(const CacheKey<double>& key) const {
+      std::size_t ret = 0;
       for (int i = 0; i < key.state.rows(); i++) {
-        hash = (hash << 1) ^ std::hash<double>{}(key.state(i));
+        ret = (ret << 1) ^ std::hash<double>{}(key.state(i));
       }
       for (int i = 0; i < key.input.rows(); i++) {
-        hash = (hash << 1) ^ std::hash<double>{}(key.input(i));
+        ret = (ret << 1) ^ std::hash<double>{}(key.input(i));
       }
       for (int i = 0; i < key.forces.rows(); i++) {
-        hash = (hash << 1) ^ std::hash<double>{}(key.forces(i));
+        ret = (ret << 1) ^ std::hash<double>{}(key.forces(i));
       }
-      return hash;
+      return ret;
+    }
+
+    std::size_t operator()(const CacheKey<drake::AutoDiffXd>& key) const {
+      using std::hash;
+      std::size_t ret = 0;
+      for (int i = 0; i < key.state.rows(); i++) {
+        ret = (ret << 1) ^ hash<double>{}(key.state(i).value());
+        for (int j = 0; j < key.state(i).derivatives().size(); j++) {
+          ret = (ret << 1) ^ hash<double>{}(key.state(i).derivatives()[j]);
+        }
+      }
+      for (int i = 0; i < key.input.rows(); i++) {
+        ret = (ret << 1) ^ hash<double>{}(key.input(i).value());
+        for (int j = 0; j < key.input(i).derivatives().size(); j++) {
+          ret = (ret << 1) ^ hash<double>{}(key.input(i).derivatives()[j]);
+        }
+      }
+      for (int i = 0; i < key.forces.rows(); i++) {
+        ret = (ret << 1) ^ hash<double>{}(key.forces(i).value());
+        for (int j = 0; j < key.forces(i).derivatives().size(); j++) {
+          ret = (ret << 1) ^ hash<double>{}(key.forces(i).derivatives()[j]);
+        }
+      }
+      return ret;
     }
   };
 
   // == operation for two CacheKeys
   class CacheComparer {
    public:
-    bool operator()(const CacheKey& a, const CacheKey& b) const {
+    bool operator()(const CacheKey<T>& a, const CacheKey<T>& b) const {
       auto ret = (a.state.isApprox(b.state)) && (a.forces.isApprox(b.forces)) &&
           (a.input.isApprox(b.input));
       return ret;
@@ -87,18 +115,18 @@ class DirconKinematicDataSet {
     explicit Cache(unsigned int max_size) : max_size_(max_size) {}
 
     // Check if the cache contains the given key
-    bool Contains(const CacheKey& key) const {
+    bool Contains(const CacheKey<T>& key) const {
       return map_.find(key) != map_.end();
     }
 
     // Get the data associated with a key element
-    const CacheData& GetData(const CacheKey& key) {
+    const CacheData& GetData(const CacheKey<T>& key) {
       return map_[key];
     }
 
     // Adds an entry to storage. If at max size, removes the oldest element
     // For speed, this assumes that the map does not contain the key already!!
-    void AddData(const CacheKey& key, const CacheData& data) {
+    void AddData(const CacheKey<T>& key, const CacheData& data) {
       if (map_.size() >= max_size_) {
         map_.erase(queue_.front());
         queue_.pop_front();
@@ -109,8 +137,8 @@ class DirconKinematicDataSet {
 
    private:
     unsigned int max_size_;
-    std::unordered_map<CacheKey, CacheData, CacheHasher, CacheComparer> map_;
-    std::list<CacheKey> queue_;
+    std::unordered_map<CacheKey<T>, CacheData, CacheHasher, CacheComparer> map_;
+    std::list<CacheKey<T>> queue_;
   };
 
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -118,6 +146,7 @@ class DirconKinematicDataSet {
   int num_positions_;
   int num_velocities_;
   int constraint_count_;
+  int constraint_count_without_skipping_;
   drake::VectorX<T> c_;
   drake::VectorX<T> cdot_;
   drake::MatrixX<T> J_;

@@ -15,3 +15,5 @@ attic/multibody/solver_log/
 *.swp
 logs/*
 /examples/kuka_iiwa_arm/simulation_settings.json
+.clwb/
+.csv

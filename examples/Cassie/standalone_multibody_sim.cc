@@ -2,7 +2,6 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/joints/floating_base_types.h" 
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -26,7 +25,7 @@ using drake::multibody::RevoluteJoint;
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
-DEFINE_double(target_realtime_rate, 1.0,  
+DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
 DEFINE_bool(time_stepping, false, "If 'true', the plant is modeled as a "
@@ -123,7 +122,7 @@ int do_main(int argc, char* argv[]) {
     // simulator.get_mutable_integrator()->set_target_accuracy(1e-1);
     // simulator.get_mutable_integrator()->set_fixed_step_mode(true);
     simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-      *diagram, FLAGS_dt, &simulator.get_mutable_context());
+      FLAGS_dt);
   }
 
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);

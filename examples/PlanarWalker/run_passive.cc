@@ -3,7 +3,6 @@
 #include <gflags/gflags.h>
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
@@ -45,7 +44,7 @@ int do_main(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
   auto tree = std::make_unique<RigidBodyTree<double>>();
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "PlanarWalker.urdf",
+      "examples/PlanarWalker/PlanarWalker.urdf",
       drake::multibody::joints::kFixed, tree.get());
 
   drake::multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  

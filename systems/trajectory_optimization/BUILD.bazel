@@ -6,53 +6,53 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "dircon",
     srcs = [
-#        "dircon.cc",
         "dircon_opt_constraints.cc",
         "dircon_options.cc",
         "hybrid_dircon.cc",
     ],
     hdrs = [
-#        "dircon.h",
         "dircon_opt_constraints.h",
         "dircon_options.h",
         "hybrid_dircon.h",
     ],
     deps = [
-        "@drake//:drake_shared_library",
         ":dircon_kinematic_data",
         "//solvers:optimization_utils",
+        "//solvers:nonlinear_constraint",
+        "//common",
+        "//multibody:multipose_visualizer",
+        "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
     name = "dircon_kinematic_data",
     srcs = [
-        "dircon_kinematic_data.cc",
-        "dircon_position_data.cc",
         "dircon_distance_data.cc",
+        "dircon_kinematic_data.cc",
         "dircon_kinematic_data_set.cc",
+        "dircon_position_data.cc",
     ],
     hdrs = [
-        "dircon_kinematic_data.h",
-        "dircon_position_data.h",
         "dircon_distance_data.h",
+        "dircon_kinematic_data.h",
         "dircon_kinematic_data_set.h",
+        "dircon_position_data.h",
     ],
     deps = [
-        "@drake//:drake_shared_library",
         "//multibody:utils",
+        "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_binary(
     name = "passive_constrained_pendulum_dircon",
     srcs = ["test/passive_constrained_pendulum_dircon.cc"],
     data = ["@drake//examples/acrobot:models"],
     deps = [
-        "//systems/trajectory_optimization:dircon",
         "//common",
         "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

@@ -1,14 +1,13 @@
 #pragma once
 
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/systems/framework/leaf_system.h"
-
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-
-#include "systems/framework/output_vector.h"
-#include "attic/multibody/rigidbody_utils.h"
+#include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/framework/output_vector.h"
+
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -25,18 +24,16 @@ namespace systems {
 ///  - `is_feet_collision_avoid`
 ///
 /// Arguments of the constructor:
-/// - rigid body tree
+/// - MultibodyPlant of the robot
+/// - left/right stance state of finite state machine
+/// - duration of the left/right stance state of finite state machine
+/// - left/right position (w.r.t. left/right foot body) and body frame of the
+///     contact point
 /// - desired height of the swing foot during mid swing phase
 /// - desired height of the swing foot at the end of swing phase
 /// - desired vertical velocity of the swing foot at the end of swing phase
 /// - maximum distance between center of mass and CP
 ///     (used to restrict the CP within an area)
-/// - duration of the swing phase
-/// - left foot body index
-/// - right foot body index
-/// - position of the contact point w.r.t. left foot body
-/// - position of the contact point w.r.t. right foot body
-/// - pelvis body index (used to get the pelvis heading direction)
 /// - a flag enabling CP modification (e.g. walking speed control)
 /// - a flag enabling feet collision avoidance
 /// - a flag enabling the usage of prediction of center of mass
@@ -46,22 +43,19 @@ namespace systems {
 
 class CPTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  CPTrajGenerator(const RigidBodyTree<double>& tree,
-                  double mid_foot_height,
+  CPTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                  drake::systems::Context<double>* context,
+                  std::vector<int> left_right_support_fsm_states,
+                  std::vector<double> left_right_support_durations,
+                  std::vector<std::pair<const Eigen::Vector3d,
+                                        const drake::multibody::Frame<double>&>>
+                      left_right_foot,
+                  std::string floating_base_body_name, double mid_foot_height,
                   double desired_final_foot_height,
                   double desired_final_vertical_foot_velocity,
-                  double max_CoM_to_CP_dist,
-                  double stance_duration_per_leg,
-                  int left_foot_idx,
-                  Eigen::Vector3d pt_on_left_foot,
-                  int right_foot_idx,
-                  Eigen::Vector3d pt_on_right_foot,
-                  int pelvis_idx,
-                  bool add_extra_control,
-                  bool is_feet_collision_avoid,
-                  bool is_using_predicted_com,
-                  double cp_offset,
-                  double center_line_offset);
+                  double max_CoM_to_CP_dist, bool add_extra_control,
+                  bool is_feet_collision_avoid, bool is_using_predicted_com,
+                  double cp_offset, double center_line_offset);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -78,19 +72,20 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
-    const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const;
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  Eigen::Vector2d calculateCapturePoint(
-    const drake::systems::Context<double>& context,
-    const OutputVector<double>* robot_output,
-    const double end_time_of_this_interval) const;
+  void calcCpAndStanceFootHeight(const drake::systems::Context<double>& context,
+                                 const OutputVector<double>* robot_output,
+                                 const double end_time_of_this_interval,
+                                 Eigen::Vector2d* final_CP,
+                                 Eigen::VectorXd* stance_foot_height) const;
 
   drake::trajectories::PiecewisePolynomial<double> createSplineForSwingFoot(
-    const double start_time_of_this_interval,
-    const double end_time_of_this_interval,
-    const Eigen::Vector3d & init_swing_foot_pos,
-    const Eigen::Vector2d & CP) const;
+      const double start_time_of_this_interval,
+      const double end_time_of_this_interval, const double stance_duration,
+      const Eigen::Vector3d& init_swing_foot_pos, const Eigen::Vector2d& CP,
+      const Eigen::VectorXd& stance_foot_height) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;
@@ -104,34 +99,33 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   int prev_td_time_idx_;
   int prev_fsm_state_idx_;
 
-  bool is_quaternion_;
-
-  const RigidBodyTree<double>& tree_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
+  std::vector<int> left_right_support_fsm_states_;
   double mid_foot_height_;
   double desired_final_foot_height_;
   double desired_final_vertical_foot_velocity_;
   double max_CoM_to_CP_dist_;
-  double stance_duration_per_leg_;
-  int left_foot_idx_;
-  int right_foot_idx_;
-  Eigen::Vector3d pt_on_left_foot_;
-  Eigen::Vector3d pt_on_right_foot_;
-  int pelvis_idx_;
   bool add_extra_control_;
   bool is_feet_collision_avoid_;
+
   bool is_using_predicted_com_;
+  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::Body<double>& pelvis_;
 
   // Parameters
-  const double cp_offset_;  // in meters
+  const double cp_offset_;           // in meters
   const double center_line_offset_;  // in meters
 
-  // left stance state (of finite state machine)
-  // right stance state (of finite state machine)
-  const int left_stance_ = 0;
-  const int right_stance_ = 1;
+  // Maps
+  std::map<int, std::pair<const Eigen::Vector3d,
+                          const drake::multibody::Frame<double>&>>
+      stance_foot_map_;
+  std::map<int, std::pair<const Eigen::Vector3d,
+                          const drake::multibody::Frame<double>&>>
+      swing_foot_map_;
+  std::map<int, double> duration_map_;
 };
 
 }  // namespace systems
 }  // namespace dairlib
-
-

@@ -74,6 +74,7 @@ void EndEffectorVelocityController::CalcOutputTorques(
   Eigen::Vector3d joint4_contact_frame = xactual_ee - xactual_joint4;
 
   // Calculating the jacobian of the kuka arm
+<<<<<<< HEAD
   Eigen::MatrixXd Jee(6, num_joints_);
   plant_.CalcFrameGeometricJacobianExpressedInWorld(
       *plant_context, plant_.GetFrameByName("iiwa_link_7"), ee_contact_frame_,

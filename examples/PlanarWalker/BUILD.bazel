@@ -1,6 +1,8 @@
 # -*- mode: python -*-
 # vi: set ft=python :
 
+package(default_visibility = ["//visibility:public"])
+
 cc_binary(
     name = "run_passive",
     srcs = ["run_passive.cc"],
@@ -9,6 +11,8 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
 )
 
 cc_binary(
@@ -19,6 +23,8 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
 )
 
 cc_binary(
@@ -26,64 +32,9 @@ cc_binary(
     srcs = ["run_gait_dircon.cc"],
     data = ["PlanarWalker.urdf"],
     deps = [
-        "//systems/trajectory_optimization:dircon",
+        "//systems/trajectory_optimization/dircon",
         "//common",
         "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-
-cc_binary(
-    name = "run_rbt_gait_dircon",
-    srcs = ["run_rbt_gait_dircon.cc"],
-    data = ["PlanarWalker.urdf"],
-    deps = [
-        "//attic/systems/trajectory_optimization:dircon",
-        "//common",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-
-cc_library(
-    name = "sgd_iter",
-    srcs = ["sgd_iter.cc"],
-    hdrs = ["sgd_iter.h"],
-    deps = [
-        "//systems/goldilocks_models",
-        "//attic/systems/trajectory_optimization:dircon",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "runSGD",
-    srcs = ["runSGD.cc"],
-    data = [
-        "PlanarWalkerWithTorso.urdf",
-        "z_save.csv",
-    ],
-    deps = [
-        ":sgd_iter",
-        "//systems/goldilocks_models",
-        "//attic/systems/trajectory_optimization:dircon",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "runSGDIter",
-    srcs = ["runSGDIter.cc"],
-    data = ["PlanarWalkerWithTorso.urdf"],
-    deps = [
-        ":sgd_iter",
-        "//systems/goldilocks_models",
-        "//attic/systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -94,25 +45,16 @@ cc_binary(
     srcs = ["visualize_gait.cc"],
     data = ["PlanarWalkerWithTorso.urdf"],
     deps = [
-        "//systems/goldilocks_models",
+        "//common",
         "//attic/systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
 )
 
-cc_binary(
-    name = "generate_nominal_gaits",
-    srcs = ["generate_nominal_gaits.cc"],
-    data = [
-        "PlanarWalkerWithTorso.urdf",
-        "z_save.csv",
-    ],
-    deps = [
-        ":sgd_iter",
-        "//systems/goldilocks_models",
-        "//attic/systems/trajectory_optimization:dircon",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
+cc_library(
+    name = "urdf",
+    data = ["PlanarWalker.urdf",
+            "PlanarWalkerWithTorso.urdf"]
 )

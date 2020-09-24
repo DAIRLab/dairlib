@@ -1,20 +1,21 @@
 #pragma once
 
-#include <memory.h>
 #include <vector>
+#include <memory.h>
 
 #include "drake/common/drake_copyable.h"
+#include "drake/common/symbolic.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/common/symbolic.h"
 
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/trajectory_optimization/dircon_options.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "systems/trajectory_optimization/dircon_options.h"
+#include "multibody/multipose_visualizer.h"
 
 namespace dairlib {
 namespace systems {
@@ -33,8 +34,8 @@ namespace trajectory_optimization {
 /// and corresponding acceleration, velocity, and position constraints.
 
 template <typename T>
-class HybridDircon :
-    public drake::systems::trajectory_optimization::MultipleShooting {
+class HybridDircon
+    : public drake::systems::trajectory_optimization::MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(HybridDircon)
 
@@ -65,20 +66,56 @@ class HybridDircon :
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const override;
 
+  /// Adds a visualization callback that will visualize knot points
+  /// without transparency. Cannot be called twice
+  /// @param model_name The path of a URDF/SDF model name for visualization
+  /// @param poses_per_mode Regulates how many knot points are visualized. A
+  ///   vector containing the nubmer of poses to show per mode. This is in
+  ///   addition to the start/end poses of every mode! The total number of poses
+  ///   is therefore [sum(poses_per_mode) + num_modes + 1]
+  /// @param alpha A transparency scaler for all poses except the first and last
+  /// @param weld_frame_to_world The name of a frame to weld to the world frame
+  ///   when parsing the model. Defaults to blank, which will not perform a weld
+  void CreateVisualizationCallback(std::string model_file,
+      std::vector<unsigned int> poses_per_mode, double alpha = 1,
+      std::string weld_frame_to_world = "");
+
+  /// See CreateVisualizationCallback(std::string model_file,
+  ///    std::vector<unsigned int> poses_per_mode,
+  ///    std::string weld_frame_to_world)
+  ///
+  /// Creates a callback using a single pose count parameter, num_poses
+  /// Evenly divides the poses among the different modes, weighting by number
+  /// of frames in that mode. Since start/end poses per mdoe are required, must
+  /// have num_poses >= num_modes + 1
+  void CreateVisualizationCallback(std::string model_file,
+      unsigned int num_poses, double alpha = 1,
+      std::string weld_frame_to_world = "");
+
+  /// See CreateVisualizationCallback(std::string model_file,
+  ///    unsigned int poses_per_mode,
+  ///    std::string weld_frame_to_world)
+  ///
+  /// Creates a visualization callback that shows all knot points.
+  void CreateVisualizationCallback(std::string model_file, double alpha = 1,
+      std::string weld_frame_to_world = "");
+
   /// Set the initial guess for the force variables for a specific mode
   /// @param mode the mode index
   /// @param traj_init_l contact forces lambda (interpreted at knot points)
   /// @param traj_init_lc contact forces (interpretted at collocation points)
   /// @param traj_init_vc velocity constraint slack variables (at collocation)
-  void SetInitialForceTrajectory(int mode,
+  void SetInitialForceTrajectory(
+      int mode,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_l,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_lc,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_vc);
 
-
-
   int num_kinematic_constraints(int mode) const {
     return num_kinematic_constraints_[mode];
+  }
+  int num_kinematic_constraints_wo_skipping(int mode) const {
+    return num_kinematic_constraints_wo_skipping_[mode];
   }
 
   const drake::solvers::VectorXDecisionVariable& force_vars(int mode) const {
@@ -89,33 +126,52 @@ class HybridDircon :
     return offset_vars_[mode];
   }
 
-  const drake::solvers::VectorXDecisionVariable& collocation_force_vars(int mode)
-      const { return collocation_force_vars_[mode]; }
+  const drake::solvers::VectorXDecisionVariable& collocation_force_vars(
+      int mode) const {
+    return collocation_force_vars_[mode];
+  }
 
-  const drake::solvers::VectorXDecisionVariable& collocation_slack_vars(int mode)
-      const { return collocation_slack_vars_[mode]; }
+  const drake::solvers::VectorXDecisionVariable& collocation_slack_vars(
+      int mode) const {
+    return collocation_slack_vars_[mode];
+  }
+
+  const drake::solvers::VectorXDecisionVariable& quaternion_slack_vars(
+      int mode) const {
+    return quaternion_slack_vars_[mode];
+  }
 
   const drake::solvers::VectorXDecisionVariable& v_post_impact_vars() const {
     return v_post_impact_vars_;
   }
 
-  const drake::solvers::VectorXDecisionVariable& impulse_vars(int mode)
-      const { return impulse_vars_[mode]; }
+  const drake::solvers::VectorXDecisionVariable& impulse_vars(int mode) const {
+    return impulse_vars_[mode];
+  }
 
   const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-      v_post_impact_vars_by_mode(int mode) const;
+  v_post_impact_vars_by_mode(int mode) const;
 
   /// Get the state decision variables given a mode and a time_index
   /// (time_index is w.r.t that particular mode). This will use the
   ///  v_post_impact_vars_ if needed. Otherwise, it just returns the standard
   /// x_vars element
-  drake::solvers::VectorXDecisionVariable state_vars_by_mode(int mode,
-      int time_index) const;
+  drake::solvers::VectorXDecisionVariable state_vars_by_mode(
+      int mode, int time_index) const;
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable> force(
-        int mode, int index) const {
-    return force_vars_[mode].segment(index * num_kinematic_constraints_[mode],
-                                     num_kinematic_constraints_[mode]);
+      int mode, int index) const {
+    DRAKE_DEMAND(index < mode_lengths_[mode]);
+    return force_vars_[mode].segment(
+        index * num_kinematic_constraints_wo_skipping_[mode],
+        num_kinematic_constraints_wo_skipping_[mode]);
+  }
+  Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
+      collocation_force(int mode, int index) const {
+    DRAKE_DEMAND(index < mode_lengths_[mode] - 1);
+    return collocation_force_vars_[mode].segment(
+        index * num_kinematic_constraints_wo_skipping_[mode],
+        num_kinematic_constraints_wo_skipping_[mode]);
   }
 
   drake::VectorX<drake::symbolic::Expression> SubstitutePlaceholderVariables(
@@ -124,7 +180,21 @@ class HybridDircon :
 
   using drake::systems::trajectory_optimization::MultipleShooting::N;
   using drake::systems::trajectory_optimization::MultipleShooting::
-        SubstitutePlaceholderVariables;
+      SubstitutePlaceholderVariables;
+
+  void ScaleTimeVariables(double scale);
+  void ScaleQuaternionSlackVariables(double scale);
+  void ScaleStateVariable(int idx, double scale);
+  void ScaleInputVariable(int idx, double scale);
+  void ScaleForceVariable(int mode, int idx, double scale);
+  void ScaleImpulseVariable(int mode, int idx, double scale);
+  void ScaleKinConstraintSlackVariable(int mode, int idx, double scale);
+  void ScaleStateVariables(std::vector<int> idx_list, double scale);
+  void ScaleInputVariables(std::vector<int> idx_list, double scale);
+  void ScaleForceVariables(int mode, std::vector<int> idx_list, double scale);
+  void ScaleImpulseVariables(int mode, std::vector<int> idx_list, double scale);
+  void ScaleKinConstraintSlackVariables(int mode, std::vector<int> idx_list,
+                                        double scale);
 
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
@@ -140,7 +210,11 @@ class HybridDircon :
   std::vector<drake::solvers::VectorXDecisionVariable> collocation_slack_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> offset_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> impulse_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;
   std::vector<int> num_kinematic_constraints_;
+  std::vector<int> num_kinematic_constraints_wo_skipping_;
+
+  std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
 };
 
 }  // namespace trajectory_optimization

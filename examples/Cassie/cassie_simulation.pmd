@@ -1,0 +1,184 @@
+group "1.controllers-and-dispatchers" {
+    cmd "3.osc-standing-controller (dispatched)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER  --height=.85 --cost_weight_multiplier=1";
+        host = "localhost";
+    }
+    cmd "0.b.dispatcher-robot-out (gazebo)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --floating_base=false";
+        host = "localhost";
+    }
+    cmd "3.osc-walking-controller (no dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
+        host = "localhost";
+    }
+    cmd "3.osc-walking-controller (dispatched)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "0.a.dispatcher-robot-out (lcm, floating-base)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
+        host = "localhost";
+    }
+    cmd "0.a.dispatcher-robot-out (lcm, fixed-base)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true --floating_base=false";
+        host = "localhost";
+    }
+    cmd "3.osc-standing-controller (no dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
+        host = "localhost";
+    }
+    cmd "2.pd-controller" {
+        exec = "bazel-bin/examples/Cassie/run_pd_controller";
+        host = "localhost";
+    }
+    cmd "1.dispatcher-robot-in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
+        host = "localhost";
+    }
+}
+
+group "2.drake-simulator" {
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=false";
+        host = "localhost";
+    }
+    cmd "1.simulator for OSC controller" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
+        host = "localhost";
+    }
+}
+
+group "3.other-simulators" {
+    cmd "1.launch-gazebo-fixed-base" {
+        exec = "bash ../cassie-gazebo-sim/cassie_fixed_base/launch_sim.sh";
+        host = "localhost";
+    }
+    cmd "0.launch-gazebo" {
+        exec = "bash ../cassie-gazebo-sim/cassie/launch_sim.sh";
+        host = "localhost";
+    }
+    cmd "3.cassie-mujoco-fixed-base" {
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -h -s";
+        host = "localhost";
+    }
+    cmd "2.cassie-mujoco" {
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -s";
+        host = "localhost";
+    }
+}
+
+group "0.operator" {
+    cmd "2.state-visualizer-floating (from simulation)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION";
+        host = "localhost";
+    }
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+    cmd "2.state-visualizer-floating (from dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true";
+        host = "localhost";
+    }
+    cmd "1.state-visualizer-fixed-base (from simulation)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false --channel=CASSIE_STATE_SIMULATION";
+        host = "localhost";
+    }
+    cmd "1.state-visualizer-fixed-base (from dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
+        host = "localhost";
+    }
+}
+
+group "4.lcm-tools" {
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+
+script "run-drake-osc-standing-w-ekf" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "0.a.dispatcher-robot-out (lcm, floating-base)";
+    start cmd "1.simulator for OSC controller";
+    start cmd "3.osc-standing-controller (dispatched)";
+}
+
+script "run-drake-osc-standing-wo-ekf" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "1.simulator for OSC controller";
+    start cmd "3.osc-standing-controller (no dispatcher)";
+}
+
+script "run-drake-osc-walking-w-ekf" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "0.a.dispatcher-robot-out (lcm, floating-base)";
+    wait ms 200;
+    start cmd "3.osc-walking-controller (dispatched)";
+    wait ms 200;
+    start cmd "1.simulator for OSC controller";
+}
+
+script "run-drake-osc-walking-wo-ekf" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "1.simulator for OSC controller";
+    start cmd "3.osc-walking-controller (no dispatcher)";
+}
+
+script "run-drake-pd-control" {
+    run_script "start-operator-simulation-fixed-base";
+    start cmd "1.simulator";
+    start cmd "0.a.dispatcher-robot-out (lcm, fixed-base)";
+    start cmd "2.pd-controller";
+}
+
+script "run-gazebo-lcm-pd-control" {
+    run_script "start-operator-simulation-fixed-base";
+    start cmd "1.launch-gazebo-fixed-base";
+    start cmd "0.a.dispatcher-robot-out (lcm, fixed-base)";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "2.pd-controller";
+}
+
+script "run-gazebo-pd-control" {
+    run_script "start-operator-simulation-fixed-base";
+    start cmd "1.launch-gazebo-fixed-base";
+    start cmd "0.b.dispatcher-robot-out (gazebo)";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "2.pd-controller";
+}
+
+script "run-mujoco-lcm-pd-control" {
+    run_script "start-operator-simulation-fixed-base";
+    start cmd "3.cassie-mujoco-fixed-base";
+    start cmd "0.a.dispatcher-robot-out (lcm, fixed-base)";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "2.pd-controller";
+}
+
+script "run-mujoco-osc-standing" {
+    start cmd "2.cassie-mujoco";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "3.osc-standing-controller";
+}
+
+script "start-operator-simulation-fixed-base" {
+    stop cmd "1.state-visualizer-fixed-base (from simulation)";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "1.state-visualizer-fixed-base (from simulation)";
+}
+
+script "start-operator-simulation-floating-base" {
+    stop cmd "2.state-visualizer-floating (from simulation)";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "2.state-visualizer-floating (from simulation)";
+}

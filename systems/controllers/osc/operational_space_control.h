@@ -1,50 +1,58 @@
 #pragma once
 
+#include <memory>
+#include <string>
 #include <utility>
 #include <vector>
-#include <string>
-#include <memory>
+#include <set>
+#include <drake/multibody/plant/multibody_plant.h>
+#include "dairlib/lcmt_osc_output.hpp"
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
 
-#include "systems/framework/output_vector.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/kinematic/world_point_evaluator.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/framework/output_vector.h"
 
-namespace dairlib {
-namespace systems {
-
-namespace controllers {
+namespace dairlib::systems::controllers {
 
 /// `OperationalSpaceControl` takes in desired trajectory in world frame and
 /// outputs torque command of the motors.
 
 /// Inputs of the constructor:
-///  - `tree_w_spr` a RigidBodyTree with springs
-///  - `tree_wo_spr` a RigidBodyTree without springs
+///  - `plant_w_spr` a MultibodyPlant with springs. If the full model of the
+///    plant does not have spring, then plant_w_spr and plant_wo_spr should
+///    refer to the same plant.
+///  - `plant_wo_spr` a MultibodyPlant without springs
+///  - `context_w_spr` a pointer to Context for plant_w_spr. If it's nullptr,
+///    OSC will create its own Context for the plant
+///  - `context_wo_spr` a pointer to Context for plant_wo_spr. If it's nullptr,
+///    OSC will create its own Context for the plant
 ///  - `used_with_finite_state_machine` a flag indicating whehter using osc with
 ///    finite state machine or not
 /// The springs here refer to the compliant components in the robots.
 
-/// OSC calculates feedback positions/velocities from `tree_w_spr`,
-/// but in the optimization it uses `tree_wo_spr`. The reason of using
-/// RigidBodyTree without spring is that the OSC cannot track desired
+/// OSC calculates feedback positions/velocities from `plant_w_spr`,
+/// but in the optimization it uses `plant_wo_spr`. The reason of using
+/// MultibodyPlant without spring is that the OSC cannot track desired
 /// acceleration instantaneously when springs exist. (relative degrees of 4)
 
 /// Requirement:
-///  - the joints name (except for the spring joints) in `tree_w_spr` must be
-///    the same as those of `tree_wo_spr`
-///  - the bodies in both RBT's should be the same. (to get jacobian from
-///    both trees)
+///  - the joints name (except for the spring joints) in `plant_w_spr` must be
+///    the same as those of `plant_wo_spr`
+///  - the bodies in both MBP's should be the same. (to get Jacobian from
+///    both plants)
 
-/// If the robot doesn't have any spring, the user can just pass two identical
-/// RigidBodyTree into the constructor.
+/// If the robot doesn't have any springs, the user can just pass two identical
+/// MultibodyPlants into the constructor.
 
 /// Users define
 ///     costs,
@@ -54,6 +62,7 @@ namespace controllers {
 
 /// Before adding desired trajectories to `OperationalSpaceControl` with the
 /// method `AddTrackingData`, users have to create
+///     `CenterOfMassTrackingData`,
 ///     `TransTaskSpaceTrackingData`,
 ///     `RotTaskSpaceTrackingData`,
 ///     and/or `JointSpaceTrackingData`.
@@ -67,7 +76,7 @@ namespace controllers {
 /// the outputs of trajectory blocks need to be of the derived classes of
 ///     drake::trajectories::Trajectory<double>
 /// such as `PiecewisePolynomial` and `ExponentialPlusPiecewisePolynomial`.
-/// The users can connect the output ports of the desired trajecotry blocks to
+/// The users can connect the output ports of the desired trajectory blocks to
 /// the corresponding input ports of `OperationalSpaceControl` by using
 /// the method get_tracking_data_input_port().
 
@@ -81,10 +90,20 @@ namespace controllers {
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  OperationalSpaceControl(const RigidBodyTree<double>& tree_w_spr,
-                          const RigidBodyTree<double>& tree_wo_spr,
-                          bool used_with_finite_state_machine = true,
-                          bool print_tracking_info = false);
+  OperationalSpaceControl(
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      drake::systems::Context<double>* context_w_spr,
+      drake::systems::Context<double>* context_wo_spr,
+      bool used_with_finite_state_machine = true,
+      bool print_tracking_info = false);
+
+  const drake::systems::OutputPort<double>& get_osc_output_port() const {
+    return this->get_output_port(osc_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_osc_debug_port() const {
+    return this->get_output_port(osc_debug_port_);
+  }
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -94,41 +113,45 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
-      std::string name) const {
+      const std::string& name) const {
     return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
 
   // Cost methods
-  void SetInputCost(Eigen::MatrixXd W) {W_input_ = W;}
-  void SetAccelerationCostForAllJoints(Eigen::MatrixXd W) {W_joint_accel_ = W;}
-  void AddAccelerationCost(std::string joint_vel_name, double w);
+  void SetInputCost(const Eigen::MatrixXd& W) { W_input_ = W; }
+  void SetAccelerationCostForAllJoints(const Eigen::MatrixXd& W) {
+    W_joint_accel_ = W;
+  }
+  void AddAccelerationCost(const std::string& joint_vel_name, double w);
 
   // Constraint methods
-  void DisableAcutationConstraint() {with_input_constraints_ = false;}
-  void SetContactFriction(double mu) {mu_ = mu;}
+  void DisableAcutationConstraint() { with_input_constraints_ = false; }
+  void SetContactFriction(double mu) { mu_ = mu; }
   void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
-  void AddContactPoint(std::string body_name, Eigen::VectorXd pt_on_body);
-  void AddStateAndContactPoint(int state,
-                               std::string body_name,
-                               Eigen::VectorXd pt_on_body);
-
+  void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);
+  void AddStateAndContactPoint(
+      int state, const multibody::WorldPointEvaluator<double>* evaluator);
+  void AddKinematicConstraint(
+      const multibody::KinematicEvaluatorSet<double>* evaluators);
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
   /// a new state)
-  void AddTrackingData(OscTrackingData* tracking_data, double duration = 0);
-  void AddConstTrackingData(OscTrackingData* tracking_data, Eigen::VectorXd v,
-      double duration = 0);
-  std::vector<OscTrackingData*>* GetAllTrackingData(){
+  void AddTrackingData(OscTrackingData* tracking_data, double t_lb = 0,
+                       double t_ub = std::numeric_limits<double>::infinity());
+  void AddConstTrackingData(
+      OscTrackingData* tracking_data, const Eigen::VectorXd& v, double t_lb = 0,
+      double t_ub = std::numeric_limits<double>::infinity());
+  std::vector<OscTrackingData*>* GetAllTrackingData() {
     return tracking_data_vec_.get();
   }
   OscTrackingData* GetTrackingDataByIndex(int index) {
     return tracking_data_vec_->at(index);
   }
 
-  // Osc leafsystem builder
+  // OSC LeafSystem builder
   void Build();
 
  private:
@@ -137,20 +160,27 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void CheckConstraintSettings();
 
   // Get solution of OSC
-  Eigen::VectorXd SolveQp(Eigen::VectorXd x_w_spr, Eigen::VectorXd x_wo_spr,
-      const drake::systems::Context<double>& context, double t,
-      int fsm_state, double time_since_last_state_switch) const;
+  Eigen::VectorXd SolveQp(const Eigen::VectorXd& x_w_spr,
+                          const Eigen::VectorXd& x_wo_spr,
+                          const drake::systems::Context<double>& context,
+                          double t, int fsm_state,
+                          double time_since_last_state_switch) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  void AssignOscLcmOutput(const drake::systems::Context<double>& context,
+                          dairlib::lcmt_osc_output* output) const;
+
   // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
 
   // Input/Output ports
+  int osc_debug_port_;
+  int osc_output_port_;
   int state_port_;
   int fsm_port_;
 
@@ -165,24 +195,36 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Map from (non-const) trajectory names to input port indices
   std::map<std::string, int> traj_name_to_port_index_map_;
 
-  // RBT's.
-  const RigidBodyTree<double>& tree_w_spr_;
-  const RigidBodyTree<double>& tree_wo_spr_;
+  // MBP's.
+  const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
+  const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
 
-  // Size of position, velocity and input of the RBT without spring
+  // World frames
+  const drake::multibody::BodyFrame<double>& world_w_spr_;
+  const drake::multibody::BodyFrame<double>& world_wo_spr_;
+
+  // MBP context's
+  drake::systems::Context<double>* context_w_spr_;
+  drake::systems::Context<double>* context_wo_spr_;
+
+  // Size of position, velocity and input of the MBP without spring
   int n_q_;
   int n_v_;
   int n_u_;
 
-  // Size of holonomic constraint and total contact constraints
+  // Size of holonomic constraint and total/active contact constraints
   int n_h_;
   int n_c_;
+  int n_c_active_;
+
+  // Manually specified holonomic constraints (only valid for plants_wo_springs)
+  const multibody::KinematicEvaluatorSet<double>* kinematic_evaluators_;
 
   // robot input limits
   Eigen::VectorXd u_min_;
   Eigen::VectorXd u_max_;
 
-  // flag indicating whehter using osc with finite state machine or not
+  // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
 
   // flag indicating whether to print the tracking related values or not
@@ -206,43 +248,45 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
 
+  // OSC solution
+  std::unique_ptr<Eigen::VectorXd> dv_sol_;
+  std::unique_ptr<Eigen::VectorXd> u_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
+  std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
+
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user
-  /// could consider usnig acceleration cost instead.
-  Eigen::MatrixXd W_input_;  // Input cost weight
+  /// could consider using acceleration cost instead.
+  Eigen::MatrixXd W_input_;        // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
 
   // OSC constraint members
   bool with_input_constraints_ = true;
 
-  // (flat ground) Contact constraints and friction cone cnostraints
-  std::vector<int> body_index_ = {};
-  std::vector<Eigen::VectorXd> pt_on_body_ = {};
+  // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
 
-  // `fsm_state_when_active_` is the finite state machine state when the contact
-  // constraint is active. If `fsm_state_when_active_` is empty, then the
-  // constraint is always active.
-  // The states here can repeat, since there might be multipel contact points
-  // in a state of the finite state machine.
-  std::vector<int> fsm_state_when_active_;
-
-  // CalcActiveContactIndices gives a vector of flags indicating the active
-  // contact (constraint)
-  std::vector<bool> CalcActiveContactIndices(int fsm_state) const;
+  // Map finite state machine state to its active contact indices
+  std::map<int, std::set<int>> contact_indices_map_ = {};
+  // All contacts (used in contact constraints)
+  std::vector<const multibody::WorldPointEvaluator<double>*> all_contacts_ = {};
+  // single_contact_mode_ is true if there is only 1 contact mode in OSC
+  bool single_contact_mode_ = false;
 
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
       std::make_unique<std::vector<OscTrackingData*>>();
+
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;
-  // A period when we don't apply control (Unit: seconds)
-  // The period startd at the time when fsm switches to a new state.
-  std::vector<double> period_of_no_control_vec_;
+
+  // Set a period during which we apply control (Unit: seconds)
+  // Let t be the elapsed time since fsm switched to a new state.
+  // We only apply the control when t_s <= t <= t_e
+  std::vector<double> t_s_vec_;
+  std::vector<double> t_e_vec_;
 };
 
-
-}  // namespace controllers
-}  // namespace systems
-}  // namespace dairlib
+}  // namespace dairlib::systems::controllers

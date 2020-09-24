@@ -23,7 +23,7 @@
 #include "attic/systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "attic/systems/trajectory_optimization/hybrid_dircon.h"
 #include "attic/systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -119,7 +119,7 @@ void visualizeGait(std::string file, int steps, double rate) {
                                                         options_list);
 
   // read in file and set decision variable values
-  MatrixXd z = dairlib::goldilocks_models::readCSV(file);
+  MatrixXd z = readCSV(file);
 
   // go through solver interface
   auto solver = std::make_shared<drake::solvers::SnoptSolver>();
@@ -138,7 +138,7 @@ void visualizeGait(std::string file, int steps, double rate) {
 
   // repeat trajectory
   // std::vector<MatrixXd<Polynomial<double>>> trajectory_matrix;
-  std::vector<MatrixX<Polynomial<double>>> trajectory_matrix;
+  std::vector<MatrixX<drake::Polynomial<>>> trajectory_matrix;
   std::vector<double> breaks;
   breaks.push_back(pp_xtraj.start_time());
 
@@ -152,7 +152,7 @@ void visualizeGait(std::string file, int steps, double rate) {
     if (j % 2 == 1) {
       // mirror left right legs
       for (int i = ind_start; i < pp_xtraj.get_number_of_segments(); i++) {
-        MatrixX<Polynomial<double>> mat = pp_xtraj.getPolynomialMatrix(i);
+        MatrixX<drake::Polynomial<>> mat = pp_xtraj.getPolynomialMatrix(i);
         mat(0, 0) += step_distance*j;
 
         auto tmp = mat(3, 0);
@@ -176,7 +176,7 @@ void visualizeGait(std::string file, int steps, double rate) {
       }
     } else {
       for (int i = ind_start; i < pp_xtraj.get_number_of_segments(); i++) {
-        MatrixX<Polynomial<double>> mat = pp_xtraj.getPolynomialMatrix(i);
+        MatrixX<drake::Polynomial<>> mat = pp_xtraj.getPolynomialMatrix(i);
         mat(0, 0) += step_distance*j;
         trajectory_matrix.push_back(mat);
         breaks.push_back(t_start + pp_xtraj.end_time(i));

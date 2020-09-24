@@ -1,0 +1,88 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "osc_jump",
+    deps = [
+        "//examples/Cassie/osc_jump:com_traj_generator",
+        "//examples/Cassie/osc_jump:flight_foot_traj_generator",
+        "//examples/Cassie/osc_jump:jumping_event_based_fsm",
+        "//examples/Cassie/osc_jump:pelvis_orientation_traj_generator",
+        "//systems/controllers/osc:operational_space_control",
+    ],
+)
+
+cc_library(
+    name = "com_traj_generator",
+    srcs = ["com_traj_generator.cc"],
+    hdrs = ["com_traj_generator.h"],
+    deps = [
+        ":jumping_event_based_fsm",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "flight_foot_traj_generator",
+    srcs = ["flight_foot_traj_generator.cc"],
+    hdrs = ["flight_foot_traj_generator.h"],
+    deps = [
+        ":jumping_event_based_fsm",
+        "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "pelvis_orientation_traj_generator",
+    srcs = ["pelvis_orientation_traj_generator.cc"],
+    hdrs = ["pelvis_orientation_traj_generator.h"],
+    deps = [
+        ":jumping_event_based_fsm",
+        "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "jumping_event_based_fsm",
+    srcs = ["jumping_event_based_fsm.cc"],
+    hdrs = ["jumping_event_based_fsm.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "convert_traj_for_controller",
+    srcs = ["convert_traj_for_controller.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "convert_traj_for_sim",
+    srcs = ["convert_traj_for_sim.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

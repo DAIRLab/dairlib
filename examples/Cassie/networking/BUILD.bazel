@@ -45,7 +45,6 @@ cc_library(
     "//examples/Cassie/datatypes:cassie_inout_types",
     "//lcmtypes:lcmt_robot",
     "//multibody:utils",
-    "//attic/multibody:utils",
     ":simple_cassie_udp_subscriber",
     ":udp_lcm_translator",
   ]

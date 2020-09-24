@@ -22,9 +22,8 @@ cc_library(
     deps = [
         ":controllers",
         "//lcmtypes:lcmt_robot",
-        "//attic/multibody:utils",
-        "//systems/framework:vector",
         "//multibody:utils",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
     ],
@@ -67,30 +66,19 @@ cc_library(
         "constrained_lqr_controller.h",
     ],
     deps = [
+        "//multibody:utils",
+        "//multibody/kinematic",
         "//systems/framework:vector",
-        "//attic/multibody:contact_toolkit",
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
-  name = "controllers",
-  deps = [
-      ":linear_controller",
-      ":affine_controller",
-      ":constrained_lqr_controller",
-  ],
-)
-
-cc_test(
-    name = "pd_config_lcm_test",
-    size = "small",
-    srcs = ["test/pd_config_lcm_test.cc"],
+    name = "controllers",
     deps = [
-        ":pd_config_lcm",
-        "//examples/Cassie:cassie_urdf",
-        "@drake//:drake_shared_library",
-        "@gtest//:main",
+        ":affine_controller",
+        ":constrained_lqr_controller",
+        ":linear_controller",
     ],
 )
 
@@ -106,53 +94,37 @@ cc_test(
     ],
 )
 
-
 cc_library(
     name = "time_based_fsm",
-    srcs = ["time_based_fsm.cc",],
+    srcs = ["time_based_fsm.cc"],
     hdrs = ["time_based_fsm.h"],
     deps = [
-            "//systems/framework:vector",
-            "@drake//:drake_shared_library",
-            ]
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
 )
 
 cc_library(
     name = "lipm_traj_gen",
-    srcs = ["lipm_traj_gen.cc",],
+    srcs = ["lipm_traj_gen.cc"],
     hdrs = ["lipm_traj_gen.h"],
     deps = [
-            ":control_utils",
-            "//attic/multibody:utils",
-            "//systems/framework:vector",
-            "@drake//:drake_shared_library",
-            ]
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
 )
 
 cc_library(
     name = "cp_traj_gen",
-    srcs = ["cp_traj_gen.cc",],
+    srcs = ["cp_traj_gen.cc"],
     hdrs = ["cp_traj_gen.h"],
     deps = [
-            ":control_utils",
-            "//attic/multibody:utils",
-            "//examples/Cassie/osc_walk:cp_control_common_func",
-            "//systems/framework:vector",
-            "@drake//:drake_shared_library",
-            ]
-)
-
-cc_test(
-    name = "constrained_lqr_controller_test",
-    size = "small",
-    srcs = [
-        "test/constrained_lqr_controller_test.cc"
-    ],
-    deps = [
-        ":controllers",
-        "//attic/multibody:multibody_solvers",
-        "//examples/Cassie:cassie_utils",
-        "@gtest//:main",
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -161,23 +133,21 @@ cc_library(
     srcs = ["safe_velocity_controller.cc"],
     hdrs = ["safe_velocity_controller.h"],
     deps = [
-            "//common",
-            "//systems/framework:vector",
-            "@drake//:drake_shared_library",
-            ],
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
 )
-
 
 cc_library(
     name = "endeffector_position_controller",
     srcs = ["endeffector_position_controller.cc"],
     hdrs = ["endeffector_position_controller.h"],
     deps = [
-            "//common",
-            "//systems/framework:vector",
-            "@drake//:drake_shared_library",
-    ]
-
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
 )
 
 cc_library(
@@ -185,9 +155,8 @@ cc_library(
     srcs = ["endeffector_velocity_controller.cc"],
     hdrs = ["endeffector_velocity_controller.h"],
     deps = [
-            "//common",
-            "//systems/framework:vector",
-            "@drake//:drake_shared_library",
-    ]
-
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
 )

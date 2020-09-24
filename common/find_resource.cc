@@ -14,8 +14,8 @@ using std::string;
 namespace dairlib {
 
 using Result = FindResourceResult;
-using drake::optional;
-using drake::nullopt;
+using std::optional;
+using std::nullopt;
 
 optional<string>
 Result::get_absolute_path() const {

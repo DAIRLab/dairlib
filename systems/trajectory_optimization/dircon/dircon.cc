@@ -576,48 +576,66 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
 }
 
 template <typename T>
-PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory(
-    const MathematicalProgramResult& result) const {
-  Eigen::VectorXd times = GetSampleTimes(result);
-  Eigen::MatrixXd inputs(plant_.num_actuators(), N());
-  for (int i = 0; i < N(); i++) {
-    inputs.col(i) = result.GetSolution(input(i));
+void Dircon<T>::GetStateAndDerivativeSamples(
+    const drake::solvers::MathematicalProgramResult& result,
+    std::vector<Eigen::MatrixXd>* state_samples,
+    std::vector<Eigen::MatrixXd>* derivative_samples,
+    std::vector<Eigen::VectorXd>* state_breaks) const {
+  DRAKE_ASSERT(state_samples->empty());
+  DRAKE_ASSERT(derivative_samples->empty());
+  DRAKE_ASSERT(state_breaks->empty());
+
+  VectorXd times(GetSampleTimes(result));
+
+  for (int mode = 0; mode < num_modes(); mode++) {
+    MatrixXd states_i(num_states(), mode_length(mode));
+    MatrixXd derivatives_i(num_states(), mode_length(mode));
+    VectorXd times_i(mode_length(mode));
+    for (int j = 0; j < mode_length(mode); j++) {
+      int k = mode_start_[mode] + j;
+
+      VectorX<T> xk = result.GetSolution(state_vars(mode, j));
+      VectorX<T> uk = result.GetSolution(input_vars(mode, j));
+      auto context = multibody::createContext<T>(plant_, xk, uk);
+
+      states_i.col(j) = drake::math::DiscardGradient(xk);
+      auto xdot = get_mode(mode).evaluators().CalcTimeDerivativesWithForce(
+        context.get(), result.GetSolution(force_vars(mode, j)));
+      derivatives_i.col(k) = drake::math::DiscardGradient(xdot);
+      times_i(j) = times(k);
+    }
+    state_samples->push_back(states_i);
+    derivative_samples->push_back(derivatives_i);
+    state_breaks->push_back(times_i);
   }
-  return PiecewisePolynomial<double>::FirstOrderHold(times, inputs);
 }
 
-// TODO(posa)
-// need to configure this to handle the hybrid discontinuities properly
+template <typename T>
+PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory(
+    const MathematicalProgramResult& result) const {
+  return PiecewisePolynomial<double>::FirstOrderHold(GetSampleTimes(result),
+                                                     GetInputSamples(result));
+}
+
 template <typename T>
 PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
     const MathematicalProgramResult& result) const {
-  VectorXd times_all(GetSampleTimes(result));
-  VectorXd times(N() + num_modes() - 1);
-
-  MatrixXd states(num_states(), N() + num_modes() - 1);
-  MatrixXd inputs(num_inputs(), N() + num_modes() - 1);
-  MatrixXd derivatives(num_states(), N() + num_modes() - 1);
-
-  for (int i = 0; i < num_modes(); i++) {
-    for (int j = 0; j < mode_length(i); j++) {
-      int k = mode_start_[i] + j + i;
-      times(k) = times_all(mode_start_[i] + j);
-
-      // False timestep to match velocities
-      if (i > 0 && j == 0) {
-        times(k) += +1e-6;
-      }
-      VectorX<T> xk = result.GetSolution(state_vars(i, j));
-      VectorX<T> uk = result.GetSolution(input_vars(i, j));
-      states.col(k) = drake::math::DiscardGradient(xk);
-      inputs.col(k) = drake::math::DiscardGradient(uk);
-      auto context = multibody::createContext<T>(plant_, xk, uk);
-      auto xdot = get_mode(i).evaluators().CalcTimeDerivativesWithForce(
-          context.get(), result.GetSolution(force_vars(i, j)));
-      derivatives.col(k) = drake::math::DiscardGradient(xdot);
+  std::vector<MatrixXd> states;
+  std::vector<MatrixXd> derivatives;
+  std::vector<VectorXd> times;
+  GetStateAndDerivativeSamples(result, &states, &derivatives, &times);
+  PiecewisePolynomial<double> state_traj =
+      PiecewisePolynomial<double>::CubicHermite(times[0], states[0],
+                                                derivatives[0]);
+  for (int mode = 1; mode < num_modes(); ++mode) {
+    // Cannot form trajectory with only a single break
+    if (mode_length(mode) < 2) {
+      continue;
     }
+    state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        times[mode], states[mode], derivatives[mode]));
   }
-  return PiecewisePolynomial<double>::CubicHermite(times, states, derivatives);
+  return state_traj;
 }
 
 template <typename T>

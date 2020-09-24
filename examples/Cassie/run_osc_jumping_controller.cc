@@ -124,17 +124,17 @@ int DoMain(int argc, char* argv[]) {
       "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
       FLAGS_traj_name + "_processed");
 
-  const LcmTrajectory::Trajectory& lcm_com_traj =
-      processed_trajs.getTrajectory("center_of_mass_trajectory");
-  const LcmTrajectory::Trajectory& lcm_l_foot_traj =
-      processed_trajs.getTrajectory("left_foot_trajectory");
-  const LcmTrajectory::Trajectory& lcm_r_foot_traj =
-      processed_trajs.getTrajectory("right_foot_trajectory");
-  const LcmTrajectory::Trajectory& lcm_pelvis_rot_traj =
-      processed_trajs.getTrajectory("pelvis_rot_trajectory");
+  const LcmTrajectory::Trajectory lcm_com_traj =
+      processed_trajs.GetTrajectory("center_of_mass_trajectory");
+  const LcmTrajectory::Trajectory lcm_l_foot_traj =
+      processed_trajs.GetTrajectory("left_foot_trajectory");
+  const LcmTrajectory::Trajectory lcm_r_foot_traj =
+      processed_trajs.GetTrajectory("right_foot_trajectory");
+  const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
+      processed_trajs.GetTrajectory("pelvis_rot_trajectory");
   vector<PiecewisePolynomial<double>> state_trajs;
   for (int i = 0; i < n_modes; ++i) {
-    const LcmTrajectory::Trajectory& state_traj_i = original_traj.getTrajectory(
+    const LcmTrajectory::Trajectory state_traj_i = original_traj.GetTrajectory(
         "cassie_jumping_trajectory_x_u" + std::to_string(i));
     state_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
         state_traj_i.time_vector, state_traj_i.datapoints.topRows(nx),

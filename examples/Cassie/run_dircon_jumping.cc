@@ -423,15 +423,18 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_left")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_right")));
 
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_roll_left")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_roll_right")));
+  trajopt->AddBoundingBoxConstraint(0, 0.1, x0(pos_map.at("hip_roll_left")));
+  trajopt->AddBoundingBoxConstraint(-0.1, 0, x0(pos_map.at("hip_roll_right")));
 
   // hip yaw and roll constraints
   trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_yaw_left")));
   trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_yaw_right")));
 
-  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_roll_left")));
-  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_roll_right")));
+  trajopt->AddBoundingBoxConstraint(-1.9, -1.8, xf(pos_map.at("toe_left")));
+  trajopt->AddBoundingBoxConstraint(-1.9, -1.8, xf(pos_map.at("toe_right")));
+
+//  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_roll_left")));
+//  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_roll_right")));
 
   // Jumping height constraints
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
@@ -519,17 +522,17 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto left_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          0.05 * VectorXd::Ones(1), 0.6 * VectorXd::Ones(1));
+          0.25 * VectorXd::Ones(1), 0.3 * VectorXd::Ones(1));
   auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          -0.6 * VectorXd::Ones(1), -0.05 * VectorXd::Ones(1));
-  for (int mode = 0; mode < 3; ++mode) {
+          -0.3 * VectorXd::Ones(1), -0.25 * VectorXd::Ones(1));
+  for (int mode = 2; mode < 3; ++mode) {
     for (int index = 0; index < mode_lengths[mode]; index++) {
       // Assumes mode_lengths are the same across modes
-      auto x = trajopt->state((mode_lengths[mode] - 1) * mode + index);
-      trajopt->AddConstraint(left_foot_y_constraint, x.head(n_q));
-      trajopt->AddConstraint(right_foot_y_constraint, x.head(n_q));
+      auto x_i = trajopt->state((mode_lengths[mode] - 1) * mode + index);
+      trajopt->AddConstraint(left_foot_y_constraint, x_i.head(n_q));
+      trajopt->AddConstraint(right_foot_y_constraint, x_i.head(n_q));
     }
   }
   // Jumping distance constraint
@@ -590,7 +593,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // Add some cost to hip roll and yaw
   double w_q_hip_roll = 0.3;
   double w_q_hip_yaw = 0.3;
-  double w_q_hip_pitch = 0.5;
+  double w_q_hip_pitch = 1.0;
   double w_q_quat_xyz = 0.3;
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
@@ -607,7 +610,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   if (w_q_hip_pitch) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(11, 2);
-      trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
+      trajopt->AddCost(w_q_hip_pitch * q.transpose() * q);
     }
   }
   if (w_q_quat_xyz) {

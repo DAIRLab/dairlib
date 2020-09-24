@@ -201,6 +201,8 @@ int do_main(int argc, char* argv[]) {
     q_init(6) -= FLAGS_terrain_height;
   }
 
+  std::cout << q_init << std::endl;
+
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
 

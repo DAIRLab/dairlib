@@ -217,11 +217,11 @@ int DoMain(int argc, char* argv[]) {
       PiecewisePolynomial<double>::CubicHermite(
           lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
           lcm_com_traj.datapoints.bottomRows(3));
-  const PiecewisePolynomial<double>& l_foot_trajectory =
+  PiecewisePolynomial<double> l_foot_trajectory =
       PiecewisePolynomial<double>::CubicHermite(
           lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
           lcm_l_foot_traj.datapoints.bottomRows(3));
-  const PiecewisePolynomial<double>& r_foot_trajectory =
+  PiecewisePolynomial<double> r_foot_trajectory =
       PiecewisePolynomial<double>::CubicHermite(
           lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
           lcm_r_foot_traj.datapoints.bottomRows(3));
@@ -242,11 +242,18 @@ int DoMain(int argc, char* argv[]) {
   Vector3d support_center_offset;
   support_center_offset << gains.x_offset, 0.0, 0.0;
   std::vector<double> breaks = com_traj.get_segment_times();
+  std::vector<double> ft_breaks = l_foot_trajectory.get_segment_times();
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
+  VectorXd ft_breaks_vector =
+      Eigen::Map<VectorXd>(ft_breaks.data(), ft_breaks.size());
   MatrixXd offset_points = support_center_offset.replicate(1, breaks.size());
+  MatrixXd ft_offset_points =
+      support_center_offset.replicate(1, ft_breaks_vector.size());
   PiecewisePolynomial<double> offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
   com_traj = com_traj + offset_traj;
+  l_foot_trajectory = l_foot_trajectory - ft_offset_points;
+  r_foot_trajectory = r_foot_trajectory - ft_offset_points;
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");

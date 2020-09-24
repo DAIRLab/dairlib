@@ -21,10 +21,8 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/lcmt_iiwa_command.hpp"
 #include "drake/lcmt_iiwa_status.hpp"
-#include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
 #include "drake/common/find_resource.h"
-#include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/common/text_logging.h"
 
 #include "spdlog/spdlog.h"

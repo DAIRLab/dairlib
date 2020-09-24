@@ -33,7 +33,7 @@
 #include "examples/kuka_iiwa_arm/kuka_torque_controller.h"
 #include "drake/examples/manipulation_station/manipulation_station.h"
 
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include <iostream>
 #include <fstream>
 

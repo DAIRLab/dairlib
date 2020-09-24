@@ -22,7 +22,7 @@
 #include "systems/controllers/endeffector_position_controller.h"
 #include <lcm/lcm-cpp.hpp>
 
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>

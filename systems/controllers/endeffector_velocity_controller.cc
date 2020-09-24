@@ -74,11 +74,19 @@ void EndEffectorVelocityController::CalcOutputTorques(
   Eigen::Vector3d joint4_contact_frame = xactual_ee - xactual_joint4;
 
   // Calculating the jacobian of the kuka arm
-<<<<<<< HEAD
   Eigen::MatrixXd Jee(6, num_joints_);
-  plant_.CalcFrameGeometricJacobianExpressedInWorld(
-      *plant_context, plant_.GetFrameByName("iiwa_link_7"), ee_contact_frame_,
-      &Jee);
+  plant_.CalcJacobianSpatialVelocity(
+		  *plant_context,
+		  drake::multibody::JacobianWrtVariable::kQDot,
+		  plant_.GetFrameByName("iiwa_link_7"),
+		  ee_contact_frame_,
+		  plant_.GetFrameByName("iiwa_link_1"),
+		  plant_.GetFrameByName("iiwa_link_1"),
+		  &Jee
+		  );
+//  plant_.CalcFrameGeometricJacobianExpressedInWorld(      // TODO: replace with CalcJacobianSpatialVelocity?
+//      *plant_context, plant_.GetFrameByName("iiwa_link_7"), ee_contact_frame_,
+//      &Jee);
 
   Eigen::MatrixXd Jeet = Jee.transpose();
 

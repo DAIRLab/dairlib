@@ -27,7 +27,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "//common:common",
         ":kuka_torque_controller",
-        "@json",
+        ":json",
         "@gflags",
     ],
 )
@@ -37,7 +37,7 @@ cc_binary(
     srcs = ["iiwa_controller_demo.cc"],
     data = glob(["config/**"]),
     deps = [
-            "@json",
+            ":json",
             "@lcm",
             "@drake//:drake_shared_library",
             "//systems/controllers:endeffector_velocity_controller",
@@ -51,7 +51,7 @@ cc_binary(
     data = glob(["config/**"]),
     deps = [
             "@drake//:drake_shared_library",
-            "@json",
+            ":json",
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",
             "//systems/controllers:safe_velocity_controller",
@@ -63,6 +63,7 @@ cc_binary(
     srcs = ["iiwa_estop.cc"],
     deps = [
             "@drake//:drake_shared_library",
+	    "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",
             "//systems/controllers:safe_velocity_controller",
@@ -92,4 +93,9 @@ cc_library(
     deps = [
             "@drake//:drake_shared_library",
     ],
+)
+
+cc_library(
+    name = "json",
+    hdrs = ["json.hpp"],
 )

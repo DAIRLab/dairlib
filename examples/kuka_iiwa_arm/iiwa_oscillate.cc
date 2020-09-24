@@ -1,5 +1,5 @@
 #include <vector>
-#include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <ctime>
 
@@ -18,7 +18,7 @@
 #include "drake/manipulation/kuka_iiwa/iiwa_command_sender.h"
 #include "drake/common/find_resource.h"
 #include "drake/common/text_logging.h"
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"

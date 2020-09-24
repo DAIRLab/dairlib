@@ -8,6 +8,7 @@
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/attic/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/traj_opt_helper_func.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/nonlinear_constraint.h"
 #include "solvers/optimization_utils.h"
@@ -1635,8 +1636,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
       rom, std::move(trajopt), plant, num_time_samples, dataset_list,
-      is_get_nominal, setting, rom_option,
-      robot_option, 1 /*temporary*/);
+      is_get_nominal, setting, rom_option, robot_option, 1 /*temporary*/);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -1738,6 +1738,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // fine to just ignore the four bar constraint (position, velocity and
   // acceleration levels))
   bool four_bar_in_right_support = false;
+  // TODO
 
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
@@ -2232,9 +2233,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // testing -- swing foot contact point height constraint
   for (int index = 0; index < num_time_samples[0] - 1; index++) {
     double h_min = 0;
-    if (index == int(num_time_samples[0] / 2)) {
-      h_min = 0.1;  // 10 centimeter high in the mid point
-    }
+    //    if (index == int(num_time_samples[0] / 2)) {
+    //      h_min = 0.1;  // 10 centimeter high in the mid point
+    //    }
 
     double h_max = std::numeric_limits<double>::infinity();
     if (index == 0) {
@@ -2281,11 +2282,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // testing -- swing foot pos at mid stance is the average of the start and the
   // end of the stance
   //  if (turning_rate == 0) {
-  auto swing_foot_mid_stance_xy_constraint =
-      std::make_shared<SwingFootXYPosAtMidStanceConstraint>(&plant, "toe_right",
-                                                            Vector3d::Zero());
-  trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
-                         {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
+  //  auto swing_foot_mid_stance_xy_constraint =
+  //      std::make_shared<SwingFootXYPosAtMidStanceConstraint>(&plant,
+  //      "toe_right",
+  //                                                            Vector3d::Zero());
+  //  trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
+  //                         {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
   //  }
 
   // testing -- lock the swing toe joint position (otherwise it shakes too much)
@@ -2441,8 +2443,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
       rom, std::move(trajopt), plant, num_time_samples, dataset_list,
-      is_get_nominal, setting, rom_option,
-      robot_option, s);
+      is_get_nominal, setting, rom_option, robot_option, s);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -2526,7 +2527,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
 
-  bool is_print_for_debugging = false;
+  // Save trajectory to file
+  if (false) {
+    string file_name = "dircon_trajectory";
+    DirconTrajectory saved_traj(
+        plant, *gm_traj_opt.dircon, result, file_name,
+        "Decision variables and state/input trajectories");
+    saved_traj.WriteToFile(setting.directory + file_name);
+    std::cout << "Wrote to file: " << setting.directory + file_name
+              << std::endl;
+  }
+
+  bool is_print_for_debugging = true;
   VectorXd w_sol;
   extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
                 plant_autoDiff, setting, rom, task, QPs, sample_idx, n_rerun,

@@ -28,6 +28,8 @@ iteration_end = 1
 sample_idx = 0;
 state_idx_start = 7;
 state_idx_end = 19;  # doesn't include
+state_idx_start = 19 + 6;
+state_idx_end = 19 + 18;  # doesn't include
 if len(sys.argv) >= 2:
     iteration_start = int(sys.argv[1])
 if len(sys.argv) >= 3:
@@ -73,7 +75,9 @@ inv_act_map = {value : key for (key, value) in act_map.items()}
 
 inv_state_map = inv_pos_map
 for (key, value) in vel_map.items():
-    inv_state_map[key] = value + nq
+    inv_state_map[value + nq] = key
+
+# import pdb; pdb.set_trace()
 
 # Plots
 fig = plt.figure(1)

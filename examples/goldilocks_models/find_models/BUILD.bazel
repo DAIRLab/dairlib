@@ -45,6 +45,7 @@ cc_library(
         "//examples/goldilocks_models:task",
         "//examples/goldilocks_models/attic:dynamics_expression",
         "//examples/goldilocks_models/find_models:goldilocks_model_traj_opt",
+        "//lcm:dircon_trajectory_saver",
         "//solvers:nonlinear_constraint",
         "//solvers:optimization_utils",
         "//systems/primitives",

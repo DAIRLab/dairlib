@@ -105,6 +105,8 @@ struct OSCJumpingGains {
   double w_swing_toe;
   double swing_toe_kp;
   double swing_toe_kd;
+  double t_delay_ft_pos;
+  double t_delay_toe_ang;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -124,6 +126,8 @@ struct OSCJumpingGains {
     a->Visit(DRAKE_NVP(w_swing_toe));
     a->Visit(DRAKE_NVP(swing_toe_kp));
     a->Visit(DRAKE_NVP(swing_toe_kd));
+    a->Visit(DRAKE_NVP(t_delay_ft_pos));
+    a->Visit(DRAKE_NVP(t_delay_toe_ang));
   }
 };
 
@@ -412,14 +416,12 @@ int DoMain(int argc, char* argv[]) {
                                               "toe_leftdot");
   right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
                                          "toe_rightdot");
-  //  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0,
-  //  0.3);
-  osc->AddTrackingData(&left_toe_angle_traj, 0.1, 1);
-  osc->AddTrackingData(&right_toe_angle_traj, 0.1, 1);
 
   osc->AddTrackingData(&pelvis_rot_tracking_data);
-  osc->AddTrackingData(&left_foot_tracking_data, 0.005, 1);
-  osc->AddTrackingData(&right_foot_tracking_data, 0.005, 1);
+  osc->AddTrackingData(&left_foot_tracking_data, gains.t_delay_ft_pos, 1);
+  osc->AddTrackingData(&right_foot_tracking_data, gains.t_delay_ft_pos, 1);
+  osc->AddTrackingData(&left_toe_angle_traj, gains.t_delay_toe_ang, 1);
+  osc->AddTrackingData(&right_toe_angle_traj, gains.t_delay_toe_ang, 1);
 
   // Build OSC problem
   osc->Build();

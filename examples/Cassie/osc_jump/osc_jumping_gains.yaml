@@ -6,6 +6,8 @@ x_offset: -0.02
 w_swing_toe: 50
 swing_toe_kp: 5
 swing_toe_kd: 1
+t_delay_toe_ang: 0.2
+t_delay_ft_pos: 0.005
 
 CoMW:
   [2000, 0, 0,

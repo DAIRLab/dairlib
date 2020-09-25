@@ -115,7 +115,7 @@ def main():
   u_indices = slice(0, 10)
   # joint_name = "knee_left"
   joint_name = "knee_right"
-  joint_name = "hip_pitch_right"
+  # joint_name = "hip_pitch_right"
 
   # import pdb; pdb.set_trace()
   plt.figure("PD " + joint_name + ": " + filename)
@@ -126,6 +126,14 @@ def main():
   plt.plot(t_u[t_slice], vdot[t_slice, vel_map_wo_spr[joint_name+"dot"]])
   plt.plot(t_u[t_slice], u[t_slice, act_map[joint_name+"_motor"]])
   plt.legend([joint_name, joint_name+" des", joint_name+"dot", joint_name+"dot"+" des", joint_name + "ddot", joint_name + "motor"])
+
+  plt.figure("PD " + joint_name + " 2: " + filename)
+  plt.plot(t_u[t_slice], q_des_pd[t_slice, pos_map[joint_name]] - q_fb_pd[t_slice, pos_map[joint_name]])
+  plt.plot(t_u[t_slice], v_des_pd[t_slice, vel_map[joint_name+"dot"]] - v_fb_pd[t_slice, vel_map[joint_name+"dot"]])
+  plt.plot(t_u[t_slice], 75 * (q_des_pd[t_slice, pos_map[joint_name]] - q_fb_pd[t_slice, pos_map[joint_name]]))
+  plt.plot(t_u[t_slice], 2 * (v_des_pd[t_slice, vel_map[joint_name+"dot"]] - v_fb_pd[t_slice, vel_map[joint_name+"dot"]]))
+  plt.plot(t_u[t_slice], u[t_slice, act_map[joint_name+"_motor"]])
+  plt.legend([joint_name+" des - " + joint_name, joint_name+"dot"+" des - " + joint_name+"dot", "torque from q_error", "torque from v_error", joint_name + "motor"])
 
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
@@ -224,17 +232,17 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   #
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
+  plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
   # plot_osc(osc_debug, osc_traj0, 0, "vel")
-  # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
-  # plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
+  plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])

@@ -1,5 +1,6 @@
 #include "examples/Cassie/osc/vdot_integrator.h"
 
+#include <algorithm>  // std::max
 #include "multibody/multibody_utils.h"
 
 using std::cout;
@@ -169,7 +170,7 @@ EventStatus VdotIntegrator::DiscreteVariableUpdate(
     discrete_state->get_mutable_vector(actuated_v_idx_).get_mutable_value()
         << map_from_v_spring_to_v_actuated_joints_ *
                robot_output->GetVelocities();
-//    discrete_state->get_mutable_vector(actuated_v_idx_).get_mutable_value().setZero();
+    //    discrete_state->get_mutable_vector(actuated_v_idx_).get_mutable_value().setZero();
     has_been_initialized_ = true;
   }
 
@@ -195,8 +196,15 @@ EventStatus VdotIntegrator::DiscreteVariableUpdate(
     q += dt * v;
     v += dt * map_from_v_no_spring_to_v_actuated_joints_ * vdot->get_data();
 
-    cout << "t = " << time << endl;
-    cout << "vdot = " << (map_from_v_no_spring_to_v_actuated_joints_ * vdot->get_data()).transpose() << endl;
+    //    cout << "t = " << time << endl;
+    //    cout << "vdot = " << (map_from_v_no_spring_to_v_actuated_joints_ *
+    //    vdot->get_data()).transpose() << endl;
+
+    // Add satuation to desired velocity
+    double max_vel_des = 10;
+    for (int i = 0; i < 10; i++) {
+      v(i) = std::max(-max_vel_des, std::min(max_vel_des, v(i)));
+    }
   }
 
   return EventStatus::Succeeded();
@@ -210,11 +218,15 @@ void VdotIntegrator::CopyState(
       (TimestampedVector<double>*)this->EvalVectorInput(context, vdot_port_);
 
   // Read in integrated joint's state
-  VectorXd desired_state(nx_spr_);
-  desired_state << map_from_q_actuated_joints_to_q_spring_ *
-                       context.get_discrete_state(actuated_q_idx_).get_value(),
-      map_from_v_actuated_joints_to_v_spring_ *
-          context.get_discrete_state(actuated_v_idx_).get_value();
+  //  VectorXd desired_state(nx_spr_);
+  //  desired_state << map_from_q_actuated_joints_to_q_spring_ *
+  //                       context.get_discrete_state(actuated_q_idx_).get_value(),
+  //      map_from_v_actuated_joints_to_v_spring_ *
+  //          context.get_discrete_state(actuated_v_idx_).get_value();
+  VectorXd desired_state = VectorXd::Zero(nx_spr_);
+  desired_state.head(nq_spr_) =
+      map_from_q_actuated_joints_to_q_spring_ *
+      context.get_discrete_state(actuated_q_idx_).get_value();
 
   output->SetDataVector(desired_state);
   output->set_timestamp(vdot->get_timestamp());

@@ -25,22 +25,22 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    50]
+      0,    0,    500]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    5]
+      0,    0,     10]
 
 PelvisBalanceW:
   [ 200,    0,     0,
     0,    400,     0,
     0,      0,     0]
 PelvisBalanceKp:
-  [ 20,      0,    0,
+  [ 500,      0,    0,
      0,    100,    0,
      0,      0,    0]
 PelvisBalanceKd:
-  [  2,     0,    0,
+  [  20,     0,    0,
       0,    10,    0,
       0,     0,    0]
 
@@ -62,13 +62,29 @@ SwingFootW:
       0,  400,     0,
       0,    0,   400]
 SwingFootKp:
-  [ 200,    0,     0,
-      0,  200,     0,
-      0,    0,   2000]
+  [ 500,    0,     0,
+      0,  500,     0,
+      0,    0,   5000]
 SwingFootKd:
-  [   1,    0,     0,
-      0,    1,     0,
-      0,    0,     1]
+  [   50,    0,     0,
+      0,    50,     0,
+      0,    0,     100]
+
+# Michigan's gains: https://github.com/UMich-BipedLab/Cassie_FlatGround_Controller/blob/82a04b4cc758ab56fdb51d1cfb97f742cd68f334/Controllers/Flatground/utils/%2BPreFunctions/ParamInit.m#L9
+#kp_hip_roll_stance: 400
+#kd_hip_roll_stance: 10
+#
+#kp_hip_yaw_stance: 200
+#kd_hip_yaw_stance: 4
+#
+#kp_hip_pitch_stance: 500
+#kd_hip_pitch_stance: 15
+#
+#kp_knee_stance: 500
+#kd_knee_stance: 15
+#
+#kp_toe_stance: 10
+#kd_toe_stance: 2
 
 kp_hip_roll_stance: 300
 kd_hip_roll_stance: 3
@@ -97,5 +113,5 @@ kd_hip_pitch_swing: 1
 kp_knee_swing: 75
 kd_knee_swing: 2
 
-kp_toe_swing: 10
-kd_toe_swing: 1
+kp_toe_swing: 5
+kd_toe_swing: 0.5

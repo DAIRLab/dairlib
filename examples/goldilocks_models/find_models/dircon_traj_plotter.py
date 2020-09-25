@@ -29,6 +29,9 @@ def main():
   # Get data at knot points
   t_knot = dircon_traj.GetStateBreaks(0)
   x_knot = dircon_traj.GetStateSamples(0)[x_idx_start:x_idx_end, :]
+  force_knot = dircon_traj.GetForceSamples(0)
+  t_coll = dircon_traj.GetCollocationForceBreaks(0)
+  force_coll = dircon_traj.GetCollocationForceSamples(0)
 
   # Reconstructing state and input trajectory as piecewise polynomials
   state_traj = dircon_traj.ReconstructStateTrajectory()
@@ -54,16 +57,16 @@ def main():
     force_samples[i] = force_traj.value(t[i])[:, 0]
     force_c_samples[i] = force_c_traj.value(t[i])[:, 0]
 
-  # # Plotting reconstructed state trajectories
-  # plt.figure("state trajectory")
-  # plt.plot(t, state_samples)
-  # plt.plot(t_knot, x_knot.T, 'ko', markersize=2)
-  # plt.legend(state_datatypes[x_idx_start:x_idx_end])
-  #
-  # plt.figure("input trajectory")
-  # plt.plot(t, input_samples)
-  # plt.legend(input_datatypes)
-  #
+  # Plotting reconstructed state trajectories
+  plt.figure("state trajectory")
+  plt.plot(t, state_samples)
+  plt.plot(t_knot, x_knot.T, 'ko', markersize=2)
+  plt.legend(state_datatypes[x_idx_start:x_idx_end])
+
+  plt.figure("input trajectory")
+  plt.plot(t, input_samples)
+  plt.legend(input_datatypes)
+
   # plt.figure("force trajectory")
   # plt.plot(t, force_samples)
   # plt.legend(force_datatypes)
@@ -71,6 +74,25 @@ def main():
   # plt.figure("collocation force trajectory")
   # plt.plot(t, force_c_samples)
   # plt.legend(force_c_datatypes)
+
+  # plt.figure("force at knots and collocation pts")
+  # plt.plot(t_knot, force_knot.T)
+  # plt.plot(t_coll, force_coll.T, 'ko', markersize=4)
+  # plt.legend(force_datatypes + force_c_datatypes)
+
+  # Reconstruct force at both collocation and knots
+  t_knot_col = np.zeros((t_knot.shape[0] + t_coll.shape[0], 1))
+  force_knot_col = np.zeros((force_knot.shape[0],t_knot_col.shape[0]))
+  force_knot_col[:, 0] = force_knot[:, 0]
+  for i in range(1, t_knot.shape[0]):
+    t_knot_col[2*i - 1] = t_coll[i-1]
+    t_knot_col[2*i] = t_knot[i]
+    force_knot_col[:, 2*i - 1] = force_coll[:, i-1]
+    force_knot_col[:, 2*i] = force_knot[:, i]
+  plt.figure("force at knots and collocation pts")
+  plt.plot(t_knot_col, force_knot_col.T)
+  plt.plot(t_coll, force_coll.T, 'ko', markersize=2)
+  plt.legend(force_datatypes + force_c_datatypes)
 
   """
   Center of mass trajectories
@@ -91,8 +113,6 @@ def main():
   # Conext and world
   context = plant.CreateDefaultContext()
   world = plant.world_frame()
-
-  # import pdb; pdb.set_trace()
 
   # Get data at knots
   t_knot = dircon_traj.GetStateBreaks(0)

@@ -7,6 +7,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc_jump/com_traj_generator.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
+#include "examples/Cassie/osc_jump/flight_toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/osc_jump/pelvis_orientation_traj_generator.h"
 #include "lcm/dircon_saved_trajectory.h"
@@ -100,6 +101,10 @@ struct OSCJumpingGains {
   std::vector<double> FlightFootW;
   std::vector<double> FlightFootKp;
   std::vector<double> FlightFootKd;
+  // Swing toe tracking
+  double w_swing_toe;
+  double swing_toe_kp;
+  double swing_toe_kd;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -116,6 +121,9 @@ struct OSCJumpingGains {
     a->Visit(DRAKE_NVP(FlightFootW));
     a->Visit(DRAKE_NVP(FlightFootKp));
     a->Visit(DRAKE_NVP(FlightFootKd));
+    a->Visit(DRAKE_NVP(w_swing_toe));
+    a->Visit(DRAKE_NVP(swing_toe_kp));
+    a->Visit(DRAKE_NVP(swing_toe_kd));
   }
 };
 
@@ -154,11 +162,11 @@ int DoMain(int argc, char* argv[]) {
 
   // Create maps for joints
   map<string, int> pos_map =
-      multibody::makeNameToPositionsMap(plant_wo_springs);
+      multibody::makeNameToPositionsMap(plant_w_springs);
   map<string, int> vel_map =
-      multibody::makeNameToVelocitiesMap(plant_wo_springs);
+      multibody::makeNameToVelocitiesMap(plant_w_springs);
   map<string, int> act_map =
-      multibody::makeNameToActuatorsMap(plant_wo_springs);
+      multibody::makeNameToActuatorsMap(plant_w_springs);
 
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, right_toe};
@@ -375,9 +383,43 @@ int DoMain(int argc, char* argv[]) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
   }
 
+  // Toe tracking flight phase
+  MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
+  JointSpaceTrackingData left_toe_angle_traj("left_toe_angle_traj", K_p_swing_toe,
+                                        K_d_swing_toe, W_swing_toe, plant_w_springs,
+                                        plant_wo_springs);
+  JointSpaceTrackingData right_toe_angle_traj("right_toe_angle_traj", K_p_swing_toe,
+                                        K_d_swing_toe, W_swing_toe, plant_w_springs,
+                                        plant_wo_springs);
+
+  vector<std::pair<const Vector3d, const Frame<double>&>>
+      left_foot_points = {left_heel, left_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>>
+      right_foot_points = {right_heel, right_toe};
+
+  auto left_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
+          plant_w_springs, context_w_spr.get(), pos_map["toe_left"],
+          left_foot_points, "left_toe_angle_traj");
+  auto right_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
+          plant_w_springs, context_w_spr.get(), pos_map["toe_right"],
+          right_foot_points, "right_toe_angle_traj");
+
+  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
+                                              "toe_leftdot");
+  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
+                                         "toe_rightdot");
+  //  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0,
+  //  0.3);
+  osc->AddTrackingData(&left_toe_angle_traj, 0.1, 1);
+  osc->AddTrackingData(&right_toe_angle_traj, 0.1, 1);
+
   osc->AddTrackingData(&pelvis_rot_tracking_data);
-  osc->AddTrackingData(&left_foot_tracking_data);
-  osc->AddTrackingData(&right_foot_tracking_data);
+  osc->AddTrackingData(&left_foot_tracking_data, 0.005, 1);
+  osc->AddTrackingData(&right_foot_tracking_data, 0.005, 1);
 
   // Build OSC problem
   osc->Build();
@@ -395,6 +437,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("l_foot_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("r_foot_traj"));
+  builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+  builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
   builder.Connect(
       pelvis_rot_traj_generator->get_output_port(0),
       osc->get_tracking_data_input_port("pelvis_rot_tracking_data"));
@@ -414,12 +460,20 @@ int DoMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
                   com_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
                   l_foot_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
                   r_foot_traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  left_toe_angle_traj_gen->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  right_toe_angle_traj_gen->get_fsm_input_port());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

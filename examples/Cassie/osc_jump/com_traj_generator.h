@@ -73,6 +73,7 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   // rear toe contacts - this is an offset to move it closer to the center of
   // the support polygon
   static constexpr double kLandingOffset = 0.1;  // 0.04 m (4cm)
+//  static constexpr double kLandingOffset = 0.04;  // 0.04 m (4cm)
 };
 
 }  // namespace dairlib::examples::osc_jump

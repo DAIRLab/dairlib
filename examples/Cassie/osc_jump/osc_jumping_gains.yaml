@@ -1,7 +1,12 @@
 w_input: 0
 w_accel: 0.000001
 w_soft_constraint: 20000
-x_offset: -0.06
+x_offset: -0.02
+
+w_swing_toe: 50
+swing_toe_kp: 5
+swing_toe_kd: 1
+
 CoMW:
   [2000, 0, 0,
    0, 200, 0,
@@ -12,7 +17,7 @@ PelvisRotW:
    0, 0, 10]
 FlightFootW:
   [1000, 0, 0,
-   0, 1000, 0,
+   0, 500, 0,
    0, 0, 1000]
 CoMKp:
   [60,  0,  0,
@@ -31,11 +36,11 @@ PelvisRotKd:
    0, 2,  0,
    0, 0,  1]
 FlightFootKp:
-  [100, 0, 0,
-   0,   5, 0,
-   0,   0, 20]
+  [100,   0,   0,
+   0,   100,   0,
+   0,     0, 100]
 FlightFootKd:
-  [10,  0,  0,
-    0,  2,  0,
-    0,  0,  1]
+  [20,   0,  0,
+    0,  30,  0,
+    0,   0,  10]
 

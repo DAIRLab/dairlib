@@ -255,12 +255,12 @@ void DirconTrajectory::LoadFromFile(const std::string& filepath) {
 }
 
 Eigen::VectorXd DirconTrajectory::GetCollocationPoints(
-    Eigen::VectorXd& time_vector) {
+    const Eigen::VectorXd& time_vector) {
   // using a + (b - a) / 2 midpoint
   int num_knotpoints = time_vector.size();
-  return 0.5 * time_vector.tail(num_knotpoints - 1) +
-         (time_vector.head(num_knotpoints - 1) -
-          time_vector.tail(num_knotpoints - 1));
+  return time_vector.head(num_knotpoints - 1) +
+         0.5 * (time_vector.tail(num_knotpoints - 1) -
+                time_vector.head(num_knotpoints - 1));
 }
 
 }  // namespace dairlib

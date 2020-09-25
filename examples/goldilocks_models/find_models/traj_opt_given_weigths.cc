@@ -2528,7 +2528,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   std::chrono::duration<double> elapsed = finish - start;
 
   // Save trajectory to file
-  if (false) {
+  if (true) {
     string file_name = "dircon_trajectory";
     DirconTrajectory saved_traj(
         plant, *gm_traj_opt.dircon, result, file_name,
@@ -2538,7 +2538,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
               << std::endl;
   }
 
-  bool is_print_for_debugging = true;
+  bool is_print_for_debugging = false;
   VectorXd w_sol;
   extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
                 plant_autoDiff, setting, rom, task, QPs, sample_idx, n_rerun,

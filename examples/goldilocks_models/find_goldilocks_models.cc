@@ -1678,7 +1678,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
   inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;
-  inner_loop_setting.cubic_spline_in_rom_constraint = true; // for testing
+  inner_loop_setting.cubic_spline_in_rom_constraint = false; // for testing
+  cout << "directory = "
+       << dir << endl;
+  cout << "cubic_spline_in_rom_constraint = "
+       << inner_loop_setting.cubic_spline_in_rom_constraint << endl;
 
   // Construct reduced order model
   cout << "\nReduced-order model setting:\n";

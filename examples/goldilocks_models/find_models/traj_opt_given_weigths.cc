@@ -572,6 +572,12 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   string directory = setting.directory;
   string prefix = setting.prefix;
 
+  cout << "here========================================================================================================\n";
+cout << "is_get_nominal = " << is_get_nominal << endl;
+  cout << "!result.is_success() = " << !result.is_success() << endl;
+  cout << "extend_model = " << extend_model << endl;
+  cout << "(n_rerun == N_rerun) = " << (n_rerun == N_rerun) << endl;
+
   if (is_get_nominal || !result.is_success()) {
     // Do nothing.
   } else if (extend_model && (n_rerun == N_rerun)) {  // Extending the model
@@ -655,6 +661,8 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     writeCSV(directory + string("theta_yddot_new_index.csv"), new_idx);
 
   } else {
+    cout << "here========================================================================================================\n";
+
     if (n_rerun > N_rerun) {
       if (!result.is_success()) {
         return;
@@ -662,6 +670,7 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
         return;
       }
     }
+    cout << "here========================================================================================================\n";
 
     // Assume theta is fixed. Get the linear approximation of
     //      // the cosntraints and second order approximation of the cost.
@@ -800,53 +809,110 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
     // Store y, ydot, yddot and tau into csv files
     // cout << "\nStoring y, ydot and yddot into csv.\n";
-    std::vector<VectorXd> y_vec;
-    std::vector<VectorXd> ydot_vec;
-    std::vector<VectorXd> yddot_vec;
-    std::vector<VectorXd> tau_vec;
-    std::vector<VectorXd> h_vec;
-    int N_accum = 0;
-    // for (unsigned int l = 0; l < num_time_samples.size() ; l++) {
-    for (unsigned int l = 0; l < 1; l++) {  // just look at the first mode now
-      for (int m = 0; m < num_time_samples[l]; m++) {
-        int i = N_accum + m;
-        // Get the gradient value first
-        auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-        auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
-        VectorXd x_i_sol = result.GetSolution(x_i);
-        VectorXd tau_i_sol = result.GetSolution(tau_i);
+    cout << "setting.cubic_spline_in_rom_constraint = " << setting.cubic_spline_in_rom_constraint << endl;
+    if (setting.cubic_spline_in_rom_constraint) {
+      std::vector<VectorXd> y_vec;
+      std::vector<VectorXd> ydot_vec;
+      std::vector<VectorXd> yddot_vec;
+      std::vector<VectorXd> tau_vec;
+      std::vector<VectorXd> h_vec;
+      int N_accum = 0;
+      // for (unsigned int l = 0; l < num_time_samples.size() ; l++) {
+      for (unsigned int l = 0; l < 1; l++) {  // just look at the first mode now
+        for (int m = 0; m < num_time_samples[l]; m++) {
+          int i = N_accum + m;
+          auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
+          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          VectorXd x_i_sol = result.GetSolution(x_i);
+          VectorXd tau_i_sol = result.GetSolution(tau_i);
 
-        VectorXd y =
-            gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
-        VectorXd ydot =
-            gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
-        VectorXd yddot = gm_traj_opt.dynamics_constraint_at_head->GetYddot(
-            y, ydot, tau_i_sol);
-        y_vec.push_back(y);
-        ydot_vec.push_back(ydot);
-        yddot_vec.push_back(yddot);
-        tau_vec.push_back(tau_i_sol);
+          VectorXd y =
+              gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
+          VectorXd ydot =
+              gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
+          VectorXd yddot = gm_traj_opt.dynamics_constraint_at_head->GetYddot(
+              y, ydot, tau_i_sol);
+          y_vec.push_back(y);
+          ydot_vec.push_back(ydot);
+          yddot_vec.push_back(yddot);
+          tau_vec.push_back(tau_i_sol);
 
-        if (m < num_time_samples[l] - 1) {
-          auto h_i = gm_traj_opt.dircon->timestep(i);
-          VectorXd h_i_sol = result.GetSolution(h_i);
-          h_vec.push_back(h_i_sol);
+          if (m < num_time_samples[l] - 1) {
+            auto h_i = gm_traj_opt.dircon->timestep(i);
+            VectorXd h_i_sol = result.GetSolution(h_i);
+            h_vec.push_back(h_i_sol);
+          }
         }
+        N_accum += num_time_samples[l];
+        N_accum -= 1;  // due to overlaps between modes
       }
-      N_accum += num_time_samples[l];
-      N_accum -= 1;  // due to overlaps between modes
+
+      // Save y, ydot and yddot
+      // TODO: need to use CheckSplineOfY in case yddot doesn't match the spline
+      //  constructed from y and ydot
+      PiecewisePolynomial<double> s_spline =
+          CreateCubicSplineGivenYAndYdot(h_vec, y_vec, ydot_vec);
+      StoreSplineOfY(h_vec, s_spline, directory, prefix);
+      storeTau(h_vec, tau_vec, directory, prefix);
+      // CheckSplineOfY(h_vec, yddot_vec, s_spline);
+    } else {
+      // Only store the data of the first mode now
+      MatrixXd t_and_y(1 + n_y, num_time_samples[0]);
+      MatrixXd t_and_ydot(1 + n_y, num_time_samples[0]);
+      MatrixXd t_and_yddot(1 + n_y, num_time_samples[0]);
+      MatrixXd t_and_tau(1 + n_y, num_time_samples[0]);
+      t_and_y(0,0) = 0;
+      t_and_ydot(0,0) = 0;
+      t_and_yddot(0,0) = 0;
+      t_and_tau(0,0) = 0;
+      int N_accum = 0;
+      for (unsigned int l = 0; l < 1; l++) {
+        for (int m = 0; m < num_time_samples[l]; m++) {
+          int i = N_accum + m;
+          auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
+          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          VectorXd x_i_sol = result.GetSolution(x_i);
+          VectorXd tau_i_sol = result.GetSolution(tau_i);
+
+          VectorXd y = gm_traj_opt.dynamics_constraint_at_knot[l]->GetY(
+              x_i_sol.head(n_q));
+          VectorXd ydot =
+              gm_traj_opt.dynamics_constraint_at_knot[l]->GetYdot(x_i_sol);
+          VectorXd yddot = gm_traj_opt.dynamics_constraint_at_knot[l]->GetYddot(
+              y, ydot, tau_i_sol);
+          t_and_y.block(0, m, n_y, 1) = y;
+          t_and_ydot.block(0, m, n_y, 1) = ydot;
+          t_and_yddot.block(0, m, n_y, 1) = yddot;
+          t_and_tau.block(0, m, n_tau, 1) = tau_i_sol;
+
+          if (m < num_time_samples[l] - 1) {
+            auto h_i = gm_traj_opt.dircon->timestep(i);
+            VectorXd h_i_sol = result.GetSolution(h_i);
+            t_and_y(0, m+1) = t_and_y(0, m) + h_i_sol(0);
+            t_and_ydot(0, m+1) = t_and_ydot(0, m) + h_i_sol(0);
+            t_and_yddot(0, m+1) = t_and_yddot(0, m) + h_i_sol(0);
+            t_and_tau(0, m+1) = t_and_tau(0, m) + h_i_sol(0);
+          }
+        }
+        N_accum += num_time_samples[l];
+        N_accum -= 1;  // due to overlaps between modes
+      }
+      writeCSV(directory + prefix + string("t_and_y.csv"), t_and_y);
+      writeCSV(directory + prefix + string("t_and_ydot.csv"), t_and_ydot);
+      writeCSV(directory + prefix + string("t_and_yddot.csv"), t_and_yddot);
+      writeCSV(directory + prefix + string("t_and_tau.csv"), t_and_tau);
+      cout << "t_and_y = \n" << t_and_y << endl;
+      cout << "t_and_ydot = \n" << t_and_ydot << endl;
+      cout << "t_and_yddot = \n" << t_and_yddot << endl;
+      cout << "t_and_tau = \n" << t_and_tau << endl;
     }
-    PiecewisePolynomial<double> s_spline =
-        CreateCubicSplineGivenYAndYdot(h_vec, y_vec, ydot_vec);
-    StoreSplineOfY(h_vec, s_spline, directory, prefix);
-    storeTau(h_vec, tau_vec, directory, prefix);
-    // CheckSplineOfY(h_vec, yddot_vec, s_spline);
 
     // Below are all for debugging /////////////////////////////////////////////
 
     // Checking B
     // BTW, the code only work in the case of y = q_1 ^2 and yddot = y^3
     bool is_checking_matrix_B = false;
+    int N_accum = 0;
     if (is_checking_matrix_B) {
       N_accum = 0;
       for (unsigned int l = 0; l < 1; l++) {  // just look at the first mode now
@@ -2036,8 +2102,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Constraint on final floating base quaternion
   // TODO: below is a naive version. You can implement the constraint using
-  // rotation matrix and mirror around the x-z plane of local frame (however,
-  // the downside is the potential complexity of constraint)
+  //  rotation matrix and mirror around the x-z plane of local frame (however,
+  //  the downside is the potential complexity of constraint)
   double turning_angle = turning_rate * duration;
   trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
                                     cos(turning_angle / 2),
@@ -2514,8 +2580,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing -- visualize poses
   if (sample_idx == 0) {
-    //    gm_traj_opt.dircon->CreateVisualizationCallback(
-    //        "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
+//    double alpha = 1;
+//    gm_traj_opt.dircon->CreateVisualizationCallback(
+//        "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5, alpha);
   }
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
@@ -2528,7 +2595,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   std::chrono::duration<double> elapsed = finish - start;
 
   // Save trajectory to file
-  if (true) {
+  if (false) {
     string file_name = "dircon_trajectory";
     DirconTrajectory saved_traj(
         plant, *gm_traj_opt.dircon, result, file_name,

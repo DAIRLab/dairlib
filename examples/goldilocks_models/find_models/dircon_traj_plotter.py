@@ -4,6 +4,7 @@ import pydairlib.lcm_trajectory
 from pydairlib.common import FindResourceOrThrow
 from pydrake.trajectories import PiecewisePolynomial
 import numpy as np
+from scipy.interpolate import CubicSpline
 
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
@@ -44,7 +45,7 @@ def main():
   force_c_datatypes = dircon_traj.GetTrajectory("collocation_force_vars0").datatypes
 
   # Sampling the spline for visualization
-  n_points = 500
+  n_points = 10000
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
   # state_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
   state_samples = np.zeros((n_points, x_idx_end - x_idx_start))
@@ -120,11 +121,8 @@ def main():
   xdot_knot = dircon_traj.GetStateDerivativeSamples(0)
 
   com_at_knot = np.zeros((3, t_knot.shape[0]))
-  com_at_coll = np.zeros((3, t_knot.shape[0] - 1))
   comdot_at_knot = np.zeros((3, t_knot.shape[0]))
-  comdot_at_coll = np.zeros((3, t_knot.shape[0] - 1))
   comddot_at_knot = np.zeros((3, t_knot.shape[0]))
-  comddot_at_coll = np.zeros((3, t_knot.shape[0] - 1))
   for i in range(t_knot.shape[0]):
     xi = x_knot[:, i]
     plant.SetPositionsAndVelocities(context, xi)
@@ -134,18 +132,50 @@ def main():
     JdotV_i = plant.CalcBiasCenterOfMassTranslationalAcceleration(context, JacobianWrtVariable.kV, world, world)
     comddot_at_knot[:, i] = J @ xdot_knot[nq:, i] + JdotV_i
 
-  plt.figure("com trajectory")
+  com_at_coll = np.zeros((3, t_knot.shape[0] - 1))
+  comdot_at_coll = np.zeros((3, t_knot.shape[0] - 1))
+  comddot_at_coll = np.zeros((3, t_knot.shape[0] - 1))
+  for i in range(t_knot.shape[0] - 1):
+    # Get x and xdot at collocation points
+    x_cs = CubicSpline(np.squeeze(t_knot[i: i+2]), x_knot[:, i:i+2].T, bc_type=((1, xdot_knot[:, i].T), (1, xdot_knot[:, i+1].T)))
+    x_col = x_cs(np.average(t_knot[i: i+2]))
+    xdot_col = x_cs(1, np.average(t_knot[i: i+2]))
+    # Compute com, comdot, comddot
+    plant.SetPositionsAndVelocities(context, x_col)
+    com_at_coll[:, i] = plant.CalcCenterOfMassPosition(context)
+    J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context, JacobianWrtVariable.kV, world, world)
+    comdot_at_coll[:, i] = J @ x_col[nq:]
+    JdotV_i = plant.CalcBiasCenterOfMassTranslationalAcceleration(context, JacobianWrtVariable.kV, world, world)
+    comddot_at_coll[:, i] = J @ xdot_col[nq:] + JdotV_i
+
+  # plt.figure("com traj at knot pts")
+  # plt.plot(t_knot, com_at_knot.T)
+  # plt.legend(['x', 'y', 'z'])
+  # plt.figure("comdot traj at knot pts")
+  # plt.plot(t_knot, comdot_at_knot.T)
+  # plt.legend(['x', 'y', 'z'])
+  # plt.figure("comddot traj at knot pts")
+  # plt.plot(t_knot, comddot_at_knot.T)
+  # plt.legend(['x', 'y', 'z'])
+
+  plt.figure("com traj at knot and coll pts")
   plt.plot(t_knot, com_at_knot.T)
-  # plt.plot(t_knot, com_at_knot.T, 'ko', markersize=2)
-  plt.legend(['x', 'y', 'z'])
-  plt.figure("comdot trajectory")
+  plt.gca().set_prop_cycle(None)  # reset color cycle
+  plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
+  plt.plot(t_knot, com_at_knot.T, 'ko', markersize=2)
+  plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
+  plt.figure("comdot traj at knot and coll pts")
   plt.plot(t_knot, comdot_at_knot.T)
-  # plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=2)
-  plt.legend(['x', 'y', 'z'])
-  plt.figure("comddot trajectory")
+  plt.gca().set_prop_cycle(None)  # reset color cycle
+  plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
+  plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=2)
+  plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
+  plt.figure("comddot traj at knot and coll pts")
   plt.plot(t_knot, comddot_at_knot.T)
-  # plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=2)
-  plt.legend(['x', 'y', 'z'])
+  plt.gca().set_prop_cycle(None)  # reset color cycle
+  plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
+  plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=2)
+  plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
 
 
   plt.show()

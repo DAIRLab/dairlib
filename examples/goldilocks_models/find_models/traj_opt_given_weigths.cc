@@ -1777,7 +1777,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_R = setting.R_double * all_cost_scale;
   double w_R_swing_toe = w_R * 1 * all_cost_scale;  // avoid swing toe shaking
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-4 * all_cost_scale * all_cost_scale;
+  double w_lambda = 1.0e-3 * all_cost_scale * all_cost_scale;
   // Cost on difference over time
   double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
   double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;
@@ -2331,10 +2331,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //  }
 
   // testing -- zero impact
-  /*if (setting.is_zero_touchdown_impact) {
+  if (setting.is_zero_touchdown_impact) {
     trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(2) == 0);
     trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(5) == 0);
-  }*/
+  }
 
   // testing -- swing foot pos at mid stance is the average of the start and the
   // end of the stance

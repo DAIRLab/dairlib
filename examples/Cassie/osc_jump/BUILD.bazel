@@ -7,9 +7,9 @@ cc_library(
     deps = [
         "//examples/Cassie/osc_jump:com_traj_generator",
         "//examples/Cassie/osc_jump:flight_foot_traj_generator",
+        "//examples/Cassie/osc_jump:flight_toe_angle_traj_generator",
         "//examples/Cassie/osc_jump:jumping_event_based_fsm",
         "//examples/Cassie/osc_jump:pelvis_orientation_traj_generator",
-        "//examples/Cassie/osc_jump:flight_toe_angle_traj_generator",
         "//systems/controllers/osc:operational_space_control",
     ],
 )
@@ -82,19 +82,7 @@ cc_binary(
     srcs = ["convert_traj_for_controller.cc"],
     deps = [
         "//examples/Cassie:cassie_utils",
-        "//lcm:lcm_trajectory_saver",
         "//lcm:dircon_trajectory_saver",
-        "//multibody:utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "convert_traj_for_sim",
-    srcs = ["convert_traj_for_sim.cc"],
-    deps = [
-        "//examples/Cassie:cassie_utils",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
         "@drake//:drake_shared_library",

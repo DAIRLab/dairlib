@@ -95,6 +95,14 @@ template <typename T>
 std::vector<std::string> createActuatorNameVectorFromMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
+///
+/// \param plant_w_spr
+/// \param plant_wo_spr
+template <typename T>
+Eigen::MatrixXd createWithSpringsToWithoutSpringsMap(
+    const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<T>& plant_wo_spr);
+
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the
 // change once the codebase shifts to using multibody.

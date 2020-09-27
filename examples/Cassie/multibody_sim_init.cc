@@ -7,6 +7,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -39,6 +40,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 
 using drake::math::RotationMatrix;
+using drake::trajectories::PiecewisePolynomial;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -70,7 +72,8 @@ DEFINE_double(starting_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
 DEFINE_string(traj_name, "", "Name of the saved trajectory");
-DEFINE_string(folder_path, "", "Local path of the saved trajectory");
+DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
+              "Folder path for where the trajectory names are stored");
 DEFINE_string(mode_name, "state_trajectory",
               "Name of the individual saved trajectory");
 
@@ -176,14 +179,36 @@ int do_main(int argc, char* argv[]) {
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
-  const LcmTrajectory& processed_trajs =
-      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name + "_for_sim");
-  const LcmTrajectory::Trajectory& lcm_state_traj =
-      processed_trajs.GetTrajectory(FLAGS_mode_name);
-  const drake::trajectories::PiecewisePolynomial<double>& state_traj =
-      drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
-          lcm_state_traj.time_vector, lcm_state_traj.datapoints.topRows(nx),
-          lcm_state_traj.datapoints.bottomRows(nx));
+  MultibodyPlant<double> plant_wo_spr(0.0);  // non-zero timestep to avoid
+  Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
+  parser_wo_spr.AddModelFromFile(
+      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
+  plant_wo_spr.Finalize();
+  Eigen::MatrixXd map_no_spring_to_spring =
+      multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
+
+  const DirconTrajectory& dircon_trajectory =
+      DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
+
+  PiecewisePolynomial<double> state_traj =
+      PiecewisePolynomial<double>::CubicHermite(
+          dircon_trajectory.GetStateBreaks(0),
+          map_no_spring_to_spring * dircon_trajectory.GetStateSamples(0),
+          map_no_spring_to_spring *
+              dircon_trajectory.GetStateDerivativeSamples(0));
+
+  for (int mode = 1; mode < dircon_trajectory.GetNumModes(); ++mode) {
+    // Cannot form trajectory with only a single break
+    if (dircon_trajectory.GetStateBreaks(mode).size() < 2) {
+      continue;
+    }
+    state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        dircon_trajectory.GetStateBreaks(mode),
+        map_no_spring_to_spring * dircon_trajectory.GetStateSamples(mode),
+        map_no_spring_to_spring *
+            dircon_trajectory.GetStateDerivativeSamples(mode)));
+  }
+
   VectorXd x_init = state_traj.value(FLAGS_starting_time);
 
   if (FLAGS_terrain_height < 0.0) {

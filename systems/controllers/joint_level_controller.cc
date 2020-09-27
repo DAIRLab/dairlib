@@ -19,11 +19,13 @@ JointLevelController::JointLevelController(
     const MultibodyPlant<double>& plant,
     const drake::trajectories::PiecewisePolynomial<double>& state_traj,
     const drake::trajectories::PiecewisePolynomial<double>& input_traj,
-    const Eigen::MatrixXd& K)
+    const Eigen::MatrixXd& K, const Eigen::MatrixXd& map, int max_periods)
     : plant_(plant),
       state_traj_(state_traj),
       input_traj_(input_traj),
       K_(K),
+      map_(map),
+      max_periods_(max_periods),
       nq_(plant.num_positions()),
       nv_(plant.num_velocities()),
       nu_(plant.num_actuators()) {
@@ -47,12 +49,13 @@ JointLevelController::JointLevelController(
 EventStatus JointLevelController::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-//  auto time_shift =
-//      discrete_state->get_mutable_vector(time_shift_idx_).get_mutable_value();
-//
-//  const auto robot_output = this->template EvalVectorInput<OutputVector>(
-//      context, input_port_info_index_);
-//  double timestamp = robot_output->get_timestamp();
+  const auto robot_output = this->template EvalVectorInput<OutputVector>(
+      context, input_port_info_index_);
+  double timestamp = robot_output->get_timestamp();
+
+  if (abs(timestamp - max_periods_ * state_traj_.end_time()) < 1e-3) {
+    // TODO(yangwill) Calculate efforts to result in landing using fixed point solver
+  }
 
   return EventStatus::Succeeded();
 }
@@ -63,9 +66,10 @@ void JointLevelController::CalcControl(
   auto state = (OutputVector<double>*)this->EvalVectorInput(
       context, input_port_info_index_);
   double timestamp = state->get_timestamp();
-  double phase = std::fmod(timestamp, state_traj_.end_time());
+  double phase = std::min(max_periods_ * state_traj_.end_time(), timestamp);
+  phase = std::fmod(phase, state_traj_.end_time());
   VectorXd u_ff = input_traj_.value(phase);
-  VectorXd u_fb = -K_ * (state->GetState() - state_traj_.value(phase));
+  VectorXd u_fb = -K_ * (state->GetState() - map_ * state_traj_.value(phase));
   control->set_timestamp(timestamp);
   control->SetDataVector(u_ff + u_fb);
 }

@@ -20,12 +20,13 @@ class JointLevelController : public drake::systems::LeafSystem<double> {
   /*
    * The constructor assumes K has been constructed correctly.
    * This means that there is only feedback on the actuated joints
+   * If the reference trajectory does not include the spring joints, ie dim(plant state) != dim(state_traj), use the map
    */
   JointLevelController(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::trajectories::PiecewisePolynomial<double>& state_traj,
       const drake::trajectories::PiecewisePolynomial<double>& input_traj,
-      const Eigen::MatrixXd& K);
+      const Eigen::MatrixXd& K, const Eigen::MatrixXd& map, int max_periods = 1);
 
   /*
    * Function to get the input port that takes in the current state
@@ -67,6 +68,8 @@ class JointLevelController : public drake::systems::LeafSystem<double> {
   drake::trajectories::PiecewisePolynomial<double> state_traj_;
   drake::trajectories::PiecewisePolynomial<double> input_traj_;
   Eigen::MatrixXd K_;
+  Eigen::MatrixXd map_;
+  int max_periods_;
   int nq_;
   int nv_;
   int nu_;

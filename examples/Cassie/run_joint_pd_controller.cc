@@ -1,8 +1,10 @@
+#include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/joint_level_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -20,6 +22,7 @@ namespace dairlib {
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
@@ -35,14 +38,11 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
-DEFINE_string(folder_path,
-              "/home/yangwill/Documents/research/projects/cassie"
-              "/walking/saved_trajs/",
+DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
 DEFINE_string(mode_name, "state_input_trajectory",
               "Base name of each trajectory");
-DEFINE_int32(num_modes, 0, "Number of modes in target trajectory");
 // Cassie model parameter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_string(gains, "examples/Cassie/data/joint_gains.yaml",
@@ -82,18 +82,19 @@ int doMain(int argc, char* argv[]) {
   int nq = plant.num_positions();
   int nx = plant.num_positions() + plant.num_velocities();
   int nu = plant.num_actuators();
-  const LcmTrajectory& original_traj =
-      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name);
-  const LcmTrajectory::Trajectory& lcm_state_traj =
-      original_traj.GetTrajectory("state_trajectory");
-  const LcmTrajectory::Trajectory& lcm_input_traj =
-      original_traj.GetTrajectory("input_trajectory");
+//  const LcmTrajectory& original_traj =
+//      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name);
+//  const LcmTrajectory::Trajectory& lcm_state_traj =
+//      original_traj.GetTrajectory("state_trajectory");
+//  const LcmTrajectory::Trajectory& lcm_input_traj =
+//      original_traj.GetTrajectory("input_trajectory");
 
-  auto state_traj = PiecewisePolynomial<double>::CubicHermite(
-      lcm_state_traj.time_vector, lcm_state_traj.datapoints.topRows(nx),
-      lcm_state_traj.datapoints.bottomRows(nx));
-  auto input_traj = PiecewisePolynomial<double>::FirstOrderHold(
-      lcm_input_traj.time_vector, lcm_input_traj.datapoints);
+  const DirconTrajectory& dircon_trajectory = DirconTrajectory(
+      FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
+  PiecewisePolynomial<double> state_traj =
+      dircon_trajectory.ReconstructStateTrajectory();
+  PiecewisePolynomial<double> input_traj =
+      dircon_trajectory.ReconstructInputTrajectory();
 
   const std::string channel_x = FLAGS_channel_x;
   const std::string channel_u = FLAGS_channel_u;
@@ -124,10 +125,17 @@ int doMain(int argc, char* argv[]) {
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       result.K.data(), result.rows, result.cols);
 
-  std::cout << K << std::endl;
+//  std::cout << K << std::endl;
+  MultibodyPlant<double> plant_wo_spr(0.0);  // non-zero timestep to avoid
+  Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
+  parser_wo_spr.AddModelFromFile(
+      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
+  plant_wo_spr.Finalize();
+  Eigen::MatrixXd map_no_spring_to_spring =
+      multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
 
   auto controller = builder.AddSystem<systems::JointLevelController>(
-      plant, state_traj, input_traj, K);
+      plant, state_traj, input_traj, K, map_no_spring_to_spring);
 
   builder.Connect(state_receiver->get_output_port(0),
                   controller->get_input_port_info());

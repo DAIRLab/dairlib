@@ -175,6 +175,7 @@ DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 // clang-format on
 
 // Testing
+DEFINE_bool(com_accel_constraint, false, "");
 DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
 
 void setCostWeight(double* Q, double* R, double* all_cost_scale,
@@ -1358,7 +1359,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_rom_option != 5);
   }
 
-  cout << "\nTrail name: " << FLAGS_program_name << endl;
+  cout << "\nTrial name: " << FLAGS_program_name << endl;
   std::time_t current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   cout << "Current time: " << std::ctime(&current_time);
@@ -1379,8 +1380,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << endl;
 
   // Files parameters
-  /*const string dir = "examples/goldilocks_models/find_models/data/robot_" +
-      to_string(FLAGS_robot_option) + "/";*/
   const string dir = "../dairlib_data/goldilocks_models/find_models/robot_" +
                      to_string(FLAGS_robot_option) + "/";
   string init_file = FLAGS_init_file;
@@ -1681,9 +1680,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
   inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;
-  inner_loop_setting.cubic_spline_in_rom_constraint = FLAGS_cubic_spline_in_rom_constraint; // for testing
-  cout << "directory = "
-       << dir << endl;
+  inner_loop_setting.com_accel_constraint = FLAGS_com_accel_constraint;
+  inner_loop_setting.cubic_spline_in_rom_constraint =
+      FLAGS_cubic_spline_in_rom_constraint;  // for testing
+  cout << "directory = " << dir << endl;
+  cout << "com_accel_constraint = "
+       << inner_loop_setting.com_accel_constraint << endl;
   cout << "cubic_spline_in_rom_constraint = "
        << inner_loop_setting.cubic_spline_in_rom_constraint << endl;
 

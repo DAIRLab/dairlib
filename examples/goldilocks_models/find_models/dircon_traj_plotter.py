@@ -13,7 +13,7 @@ import pydairlib.multibody
 
 def main():
   # Default filename for the example
-  filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory1')
+  filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory')
   if len(sys.argv) == 2:
     filename = sys.argv[1]
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
@@ -128,12 +128,9 @@ def main():
   for i in range(t_knot.shape[0]):
     xi = x_knot[:, i]
     plant.SetPositionsAndVelocities(context, xi)
-
     com_at_knot[:, i] = plant.CalcCenterOfMassPosition(context)
-
     J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context, JacobianWrtVariable.kV, world, world)
     comdot_at_knot[:, i] = J @ x_knot[nq:, i]
-
     JdotV_i = plant.CalcBiasCenterOfMassTranslationalAcceleration(context, JacobianWrtVariable.kV, world, world)
     comddot_at_knot[:, i] = J @ xdot_knot[nq:, i] + JdotV_i
 
@@ -141,12 +138,10 @@ def main():
   plt.plot(t_knot, com_at_knot.T)
   # plt.plot(t_knot, com_at_knot.T, 'ko', markersize=2)
   plt.legend(['x', 'y', 'z'])
-
   plt.figure("comdot trajectory")
   plt.plot(t_knot, comdot_at_knot.T)
   # plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=2)
   plt.legend(['x', 'y', 'z'])
-
   plt.figure("comddot trajectory")
   plt.plot(t_knot, comddot_at_knot.T)
   # plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=2)

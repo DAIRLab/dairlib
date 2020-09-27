@@ -800,7 +800,8 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
     // Store y, ydot, yddot and tau into csv files
     // cout << "\nStoring y, ydot and yddot into csv.\n";
-    cout << "setting.cubic_spline_in_rom_constraint = " << setting.cubic_spline_in_rom_constraint << endl;
+    cout << "setting.cubic_spline_in_rom_constraint = "
+         << setting.cubic_spline_in_rom_constraint << endl;
     if (setting.cubic_spline_in_rom_constraint) {
       std::vector<VectorXd> y_vec;
       std::vector<VectorXd> ydot_vec;
@@ -852,10 +853,10 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
       MatrixXd t_and_ydot(1 + n_y, num_time_samples[0]);
       MatrixXd t_and_yddot(1 + n_y, num_time_samples[0]);
       MatrixXd t_and_tau(1 + n_tau, num_time_samples[0]);
-      t_and_y(0,0) = 0;
-      t_and_ydot(0,0) = 0;
-      t_and_yddot(0,0) = 0;
-      t_and_tau(0,0) = 0;
+      t_and_y(0, 0) = 0;
+      t_and_ydot(0, 0) = 0;
+      t_and_yddot(0, 0) = 0;
+      t_and_tau(0, 0) = 0;
       int N_accum = 0;
       for (unsigned int l = 0; l < 1; l++) {
         for (int m = 0; m < num_time_samples[l]; m++) {
@@ -879,10 +880,10 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
           if (m < num_time_samples[l] - 1) {
             auto h_i = gm_traj_opt.dircon->timestep(i);
             VectorXd h_i_sol = result.GetSolution(h_i);
-            t_and_y(0, m+1) = t_and_y(0, m) + h_i_sol(0);
-            t_and_ydot(0, m+1) = t_and_ydot(0, m) + h_i_sol(0);
-            t_and_yddot(0, m+1) = t_and_yddot(0, m) + h_i_sol(0);
-            t_and_tau(0, m+1) = t_and_tau(0, m) + h_i_sol(0);
+            t_and_y(0, m + 1) = t_and_y(0, m) + h_i_sol(0);
+            t_and_ydot(0, m + 1) = t_and_ydot(0, m) + h_i_sol(0);
+            t_and_yddot(0, m + 1) = t_and_yddot(0, m) + h_i_sol(0);
+            t_and_tau(0, m + 1) = t_and_tau(0, m) + h_i_sol(0);
           }
         }
         N_accum += num_time_samples[l];
@@ -2086,24 +2087,24 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   trajopt->AddDurationBounds(duration, duration);
 
   // Constraint on initial floating base quaternion
-  trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
+  /*trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));*/
 
   // Constraint on final floating base quaternion
   // TODO: below is a naive version. You can implement the constraint using
   //  rotation matrix and mirror around the x-z plane of local frame (however,
   //  the downside is the potential complexity of constraint)
   double turning_angle = turning_rate * duration;
-  trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
+  /*trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
                                     cos(turning_angle / 2),
                                     xf(pos_map.at("base_qw")));
   trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
   trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
   trajopt->AddBoundingBoxConstraint(sin(turning_angle / 2),
                                     sin(turning_angle / 2),
-                                    xf(pos_map.at("base_qz")));
+                                    xf(pos_map.at("base_qz")));*/
 
   // other floating base constraints
   if (turning_rate == 0) {
@@ -2113,14 +2114,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                       xf(pos_map.at("base_x")));
 
     // Floating base periodicity
-    /*trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
-        xf(pos_map.at("base_qw")));
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
+                                 xf(pos_map.at("base_qw")));
     trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
-        -xf(pos_map.at("base_qx")));
+                                 -xf(pos_map.at("base_qx")));
     trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
-        xf(pos_map.at("base_qy")));
+                                 xf(pos_map.at("base_qy")));
     trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
-        -xf(pos_map.at("base_qz")));*/
+                                 -xf(pos_map.at("base_qz")));
     trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
                                  -xf(pos_map.at("base_y")));
     trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
@@ -2235,18 +2236,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                       VectorXd::Constant(n_u, +300), ui);
   }
 
-  if (is_get_nominal) {
-    //    cout << "Adding zero COM height acceleration constraint\n";
-    //    auto com_vel_constraint =
-    //    std::make_shared<ComHeightVelConstraint>(&plant);
-    //    std::unordered_map<int, double> com_vel_constraint_scale;
-    //    com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
-    //    com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);
-    //    for (int index = 0; index < num_time_samples[0] - 1; index++) {
-    //      auto x0 = trajopt->state(index);
-    //      auto x1 = trajopt->state(index + 1);
-    //      trajopt->AddConstraint(com_vel_constraint, {x0, x1});
-    //    }
+  if (setting.com_accel_constraint) {
+    cout << "Adding zero COM height acceleration constraint\n";
+    auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
+    std::unordered_map<int, double> com_vel_constraint_scale;
+    com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
+    com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);
+    for (int index = 0; index < num_time_samples[0] - 1; index++) {
+      auto x0 = trajopt->state(index);
+      auto x1 = trajopt->state(index + 1);
+      trajopt->AddConstraint(com_vel_constraint, {x0, x1});
+    }
   }
 
   // toe position constraint in y direction (avoid leg crossing)
@@ -2586,7 +2586,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   std::chrono::duration<double> elapsed = finish - start;
 
   // Save trajectory to file
-  if (false) {
+  if (true) {
     string file_name = "dircon_trajectory";
     DirconTrajectory saved_traj(
         plant, *gm_traj_opt.dircon, result, file_name,

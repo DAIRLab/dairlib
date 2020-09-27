@@ -37,6 +37,8 @@ class InnerLoopSetting {
   std::string prefix;
   std::string init_file;
 
+  bool com_accel_constraint;
+
   // For testing
   bool cubic_spline_in_rom_constraint;
 };

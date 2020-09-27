@@ -174,6 +174,9 @@ DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 
 // clang-format on
 
+// Testing
+DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
+
 void setCostWeight(double* Q, double* R, double* all_cost_scale,
                    int robot_option) {
   if (robot_option == 0) {
@@ -1678,7 +1681,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
   inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;
-  inner_loop_setting.cubic_spline_in_rom_constraint = false; // for testing
+  inner_loop_setting.cubic_spline_in_rom_constraint = FLAGS_cubic_spline_in_rom_constraint; // for testing
   cout << "directory = "
        << dir << endl;
   cout << "cubic_spline_in_rom_constraint = "

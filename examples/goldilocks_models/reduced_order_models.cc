@@ -406,6 +406,7 @@ Lipm::Lipm(const Lipm& old_obj)
       plant_(old_obj.plant()),
       world_(old_obj.world()),
       stance_contact_point_(old_obj.stance_foot()),
+      is_quaternion_(isQuaternion(old_obj.plant())),
       world_dim_(old_obj.world_dim()) {}
 
 VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
@@ -581,6 +582,7 @@ LipmWithSwingFoot::LipmWithSwingFoot(const LipmWithSwingFoot& old_obj)
       world_(old_obj.world()),
       stance_contact_point_(old_obj.stance_foot()),
       swing_contact_point_(old_obj.swing_foot()),
+      is_quaternion_(isQuaternion(old_obj.plant())),
       world_dim_(old_obj.world_dim()) {}
 
 VectorX<double> LipmWithSwingFoot::EvalMappingFeat(
@@ -756,7 +758,8 @@ FixHeightAccel::FixHeightAccel(const FixHeightAccel& old_obj)
     : ReducedOrderModel(old_obj),
       plant_(old_obj.plant()),
       world_(old_obj.world()),
-      stance_contact_point_(old_obj.stance_foot()) {}
+      stance_contact_point_(old_obj.stance_foot()),
+      is_quaternion_(isQuaternion(old_obj.plant())) {}
 
 VectorX<double> FixHeightAccel::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
@@ -884,7 +887,8 @@ FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
       plant_(old_obj.plant()),
       world_(old_obj.world()),
       stance_contact_point_(old_obj.stance_foot()),
-      swing_contact_point_(old_obj.swing_foot()) {}
+      swing_contact_point_(old_obj.swing_foot()),
+      is_quaternion_(isQuaternion(old_obj.plant())) {}
 
 VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
@@ -1167,7 +1171,8 @@ testing::Com::Com(const drake::multibody::MultibodyPlant<double>& plant,
 testing::Com::Com(const testing::Com& old_obj)
     : ReducedOrderModel(old_obj),
       plant_(old_obj.plant()),
-      world_(old_obj.world()){};
+      world_(old_obj.world()),
+      is_quaternion_(isQuaternion(old_obj.plant())){};
 
 // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
 VectorX<double> testing::Com::EvalMappingFeat(

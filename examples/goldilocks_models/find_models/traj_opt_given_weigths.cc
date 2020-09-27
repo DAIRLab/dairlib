@@ -572,12 +572,6 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   string directory = setting.directory;
   string prefix = setting.prefix;
 
-  cout << "here========================================================================================================\n";
-cout << "is_get_nominal = " << is_get_nominal << endl;
-  cout << "!result.is_success() = " << !result.is_success() << endl;
-  cout << "extend_model = " << extend_model << endl;
-  cout << "(n_rerun == N_rerun) = " << (n_rerun == N_rerun) << endl;
-
   if (is_get_nominal || !result.is_success()) {
     // Do nothing.
   } else if (extend_model && (n_rerun == N_rerun)) {  // Extending the model
@@ -661,8 +655,6 @@ cout << "is_get_nominal = " << is_get_nominal << endl;
     writeCSV(directory + string("theta_yddot_new_index.csv"), new_idx);
 
   } else {
-    cout << "here========================================================================================================\n";
-
     if (n_rerun > N_rerun) {
       if (!result.is_success()) {
         return;
@@ -670,7 +662,6 @@ cout << "is_get_nominal = " << is_get_nominal << endl;
         return;
       }
     }
-    cout << "here========================================================================================================\n";
 
     // Assume theta is fixed. Get the linear approximation of
     //      // the cosntraints and second order approximation of the cost.
@@ -860,7 +851,7 @@ cout << "is_get_nominal = " << is_get_nominal << endl;
       MatrixXd t_and_y(1 + n_y, num_time_samples[0]);
       MatrixXd t_and_ydot(1 + n_y, num_time_samples[0]);
       MatrixXd t_and_yddot(1 + n_y, num_time_samples[0]);
-      MatrixXd t_and_tau(1 + n_y, num_time_samples[0]);
+      MatrixXd t_and_tau(1 + n_tau, num_time_samples[0]);
       t_and_y(0,0) = 0;
       t_and_ydot(0,0) = 0;
       t_and_yddot(0,0) = 0;
@@ -880,10 +871,10 @@ cout << "is_get_nominal = " << is_get_nominal << endl;
               gm_traj_opt.dynamics_constraint_at_knot[l]->GetYdot(x_i_sol);
           VectorXd yddot = gm_traj_opt.dynamics_constraint_at_knot[l]->GetYddot(
               y, ydot, tau_i_sol);
-          t_and_y.block(0, m, n_y, 1) = y;
-          t_and_ydot.block(0, m, n_y, 1) = ydot;
-          t_and_yddot.block(0, m, n_y, 1) = yddot;
-          t_and_tau.block(0, m, n_tau, 1) = tau_i_sol;
+          t_and_y.block(1, m, n_y, 1) = y;
+          t_and_ydot.block(1, m, n_y, 1) = ydot;
+          t_and_yddot.block(1, m, n_y, 1) = yddot;
+          t_and_tau.block(1, m, n_tau, 1) = tau_i_sol;
 
           if (m < num_time_samples[l] - 1) {
             auto h_i = gm_traj_opt.dircon->timestep(i);
@@ -2580,9 +2571,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing -- visualize poses
   if (sample_idx == 0) {
-//    double alpha = 1;
-//    gm_traj_opt.dircon->CreateVisualizationCallback(
-//        "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5, alpha);
+    double alpha = 1;
+    gm_traj_opt.dircon->CreateVisualizationCallback(
+        "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5, alpha);
   }
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";

@@ -373,7 +373,7 @@ VectorXd DynamicsConstraintV2::EvalConstraintWithModelParams(
   // Get J and JdotV
   drake::MatrixX<double> J = rom_->EvalMappingFuncJ(x_i.head(n_q_), *context_);
   drake::VectorX<double> JdotV =
-      rom_->EvalMappingFeatJdotV(x_i.head(n_q_), x_i.tail(n_v_), *context_);
+      rom_->EvalMappingFuncJdotV(x_i.head(n_q_), x_i.tail(n_v_), *context_);
 
   // Get y and ydot
   VectorXd y = GetY(x_i.head(n_q_), *context_);

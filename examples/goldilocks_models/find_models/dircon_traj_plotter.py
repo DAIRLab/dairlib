@@ -14,7 +14,8 @@ import pydairlib.multibody
 
 def main():
   # Default filename for the example
-  filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory')
+  # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory_iter0')
+  filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/dircon_trajectory_iter1')
   if len(sys.argv) == 2:
     filename = sys.argv[1]
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
@@ -22,10 +23,40 @@ def main():
   """
   States, inputs, forces trajectories
   """
+  PlotStateInputForce(dircon_traj)
 
+  """
+  Center of mass trajectories
+  """
+  global plant, context, world, nq, nv, nx, nu
+
+  # Build MBP
+  builder = DiagramBuilder()
+  plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
+  Parser(plant).AddModelFromFile(FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"))
+  plant.mutable_gravity_field().set_gravity_vector(-9.81 * np.array([0, 0, 1]))
+  plant.Finalize()
+
+  # MBP params
+  nq = plant.num_positions()
+  nv = plant.num_velocities()
+  nx = plant.num_positions() + plant.num_velocities()
+  nu = plant.num_actuators()
+
+  # Conext and world
+  context = plant.CreateDefaultContext()
+  world = plant.world_frame()
+
+  PlotCenterOfMass(dircon_traj)
+
+  plt.show()
+
+def PlotStateInputForce(dircon_traj):
   # Indexing
-  x_idx_start = 7
+  x_idx_start = 0
   x_idx_end = 19
+  # x_idx_start = 19
+  # x_idx_end = 19 + 18
 
   # Get data at knot points
   t_knot = dircon_traj.GetStateBreaks(0)
@@ -95,31 +126,17 @@ def main():
   plt.plot(t_coll, force_coll.T, 'ko', markersize=2)
   plt.legend(force_datatypes + force_c_datatypes)
 
-  """
-  Center of mass trajectories
-  """
-  # Build MBP
-  builder = DiagramBuilder()
-  plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant).AddModelFromFile(FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"))
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 * np.array([0, 0, 1]))
-  plant.Finalize()
 
-  # MBP params
-  nq = plant.num_positions()
-  nv = plant.num_velocities()
-  nx = plant.num_positions() + plant.num_velocities()
-  nu = plant.num_actuators()
-
-  # Conext and world
-  context = plant.CreateDefaultContext()
-  world = plant.world_frame()
+def PlotCenterOfMass(dircon_traj):
+  # Parameter
+  visualize_only_collocation_point = False
 
   # Get data at knots
   t_knot = dircon_traj.GetStateBreaks(0)
   x_knot = dircon_traj.GetStateSamples(0)
   xdot_knot = dircon_traj.GetStateDerivativeSamples(0)
 
+  # Compute for knot points
   com_at_knot = np.zeros((3, t_knot.shape[0]))
   comdot_at_knot = np.zeros((3, t_knot.shape[0]))
   comddot_at_knot = np.zeros((3, t_knot.shape[0]))
@@ -132,22 +149,7 @@ def main():
     JdotV_i = plant.CalcBiasCenterOfMassTranslationalAcceleration(context, JacobianWrtVariable.kV, world, world)
     comddot_at_knot[:, i] = J @ xdot_knot[nq:, i] + JdotV_i
 
-  com_at_coll = np.zeros((3, t_knot.shape[0] - 1))
-  comdot_at_coll = np.zeros((3, t_knot.shape[0] - 1))
-  comddot_at_coll = np.zeros((3, t_knot.shape[0] - 1))
-  for i in range(t_knot.shape[0] - 1):
-    # Get x and xdot at collocation points
-    x_cs = CubicSpline(np.squeeze(t_knot[i: i+2]), x_knot[:, i:i+2].T, bc_type=((1, xdot_knot[:, i].T), (1, xdot_knot[:, i+1].T)))
-    x_col = x_cs(np.average(t_knot[i: i+2]))
-    xdot_col = x_cs(1, np.average(t_knot[i: i+2]))
-    # Compute com, comdot, comddot
-    plant.SetPositionsAndVelocities(context, x_col)
-    com_at_coll[:, i] = plant.CalcCenterOfMassPosition(context)
-    J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context, JacobianWrtVariable.kV, world, world)
-    comdot_at_coll[:, i] = J @ x_col[nq:]
-    JdotV_i = plant.CalcBiasCenterOfMassTranslationalAcceleration(context, JacobianWrtVariable.kV, world, world)
-    comddot_at_coll[:, i] = J @ xdot_col[nq:] + JdotV_i
-
+  # # Plot com at knot points only
   # plt.figure("com traj at knot pts")
   # plt.plot(t_knot, com_at_knot.T)
   # plt.legend(['x', 'y', 'z'])
@@ -158,27 +160,66 @@ def main():
   # plt.plot(t_knot, comddot_at_knot.T)
   # plt.legend(['x', 'y', 'z'])
 
-  plt.figure("com traj at knot and coll pts")
-  plt.plot(t_knot, com_at_knot.T)
-  plt.gca().set_prop_cycle(None)  # reset color cycle
-  plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
-  plt.plot(t_knot, com_at_knot.T, 'ko', markersize=2)
-  plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
-  plt.figure("comdot traj at knot and coll pts")
-  plt.plot(t_knot, comdot_at_knot.T)
-  plt.gca().set_prop_cycle(None)  # reset color cycle
-  plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
-  plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=2)
-  plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
-  plt.figure("comddot traj at knot and coll pts")
-  plt.plot(t_knot, comddot_at_knot.T)
-  plt.gca().set_prop_cycle(None)  # reset color cycle
-  plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
-  plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=2)
-  plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
+  # Compute along the cubic spline
+  if visualize_only_collocation_point:
+    n_visualize = 1
+  else:
+    n_visualize = 100
+  t_coll = np.zeros((t_knot.shape[0] - 1)*n_visualize)
+  com_at_coll = np.zeros((3, (t_knot.shape[0] - 1)*n_visualize))
+  comdot_at_coll = np.zeros((3, (t_knot.shape[0] - 1)*n_visualize))
+  comddot_at_coll = np.zeros((3, (t_knot.shape[0] - 1)*n_visualize))
+  for i in range(t_knot.shape[0] - 1):
+    # Get x and xdot at collocation points
+    x_cs = CubicSpline(np.squeeze(t_knot[i: i+2]), x_knot[:, i:i+2].T, bc_type=((1, xdot_knot[:, i].T), (1, xdot_knot[:, i+1].T)))
+    # Compute com, comdot, comddot
+    ratio = np.linspace(0, 1, n_visualize + 1, endpoint=False)[1:]
+    for j in range(n_visualize):
+      t = t_knot[i] + ratio[j] * (t_knot[i+1]-t_knot[i])
+      t_coll[i * n_visualize + j] = t
+      x_col = x_cs(t[0])
+      xdot_col = x_cs(t[0], 1)
+      plant.SetPositionsAndVelocities(context, x_col)
+      com_at_coll[:, i * n_visualize + j] = plant.CalcCenterOfMassPosition(context)
+      J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context, JacobianWrtVariable.kV, world, world)
+      comdot_at_coll[:, i * n_visualize + j] = J @ x_col[nq:]
+      JdotV_i = plant.CalcBiasCenterOfMassTranslationalAcceleration(context, JacobianWrtVariable.kV, world, world)
+      comddot_at_coll[:, i * n_visualize + j] = J @ xdot_col[nq:] + JdotV_i
 
-
-  plt.show()
+  if visualize_only_collocation_point:
+    # Plot com at both knot and collocation points
+    plt.figure("com traj at knot and coll pts")
+    plt.plot(t_knot, com_at_knot.T)
+    plt.gca().set_prop_cycle(None)  # reset color cycle
+    plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
+    plt.plot(t_knot, com_at_knot.T, 'ko', markersize=2)
+    plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
+    plt.figure("comdot traj at knot and coll pts")
+    plt.plot(t_knot, comdot_at_knot.T)
+    plt.gca().set_prop_cycle(None)  # reset color cycle
+    plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
+    plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=2)
+    plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
+    plt.figure("comddot traj at knot and coll pts")
+    plt.plot(t_knot, comddot_at_knot.T)
+    plt.gca().set_prop_cycle(None)  # reset color cycle
+    plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
+    plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=2)
+    plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
+  else:
+    # Plot com along the cubic splines
+    plt.figure("com traj at knot and coll pts")
+    plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
+    plt.plot(t_knot, com_at_knot.T, 'ko', markersize=4)
+    plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
+    plt.figure("comdot traj at knot and coll pts")
+    plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
+    plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=4)
+    plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
+    plt.figure("comddot traj at knot and coll pts")
+    plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
+    plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=4)
+    plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
 
 
 if __name__ == "__main__":

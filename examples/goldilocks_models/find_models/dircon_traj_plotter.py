@@ -13,7 +13,6 @@ from pydrake.systems.framework import DiagramBuilder
 import pydairlib.multibody
 
 def main():
-  # Default filename for the example
   # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory_iter0')
   filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/dircon_trajectory_iter1')
   if len(sys.argv) == 2:
@@ -47,7 +46,8 @@ def main():
   context = plant.CreateDefaultContext()
   world = plant.world_frame()
 
-  PlotCenterOfMass(dircon_traj)
+  PlotCenterOfMass(dircon_traj, True)
+  PlotCenterOfMass(dircon_traj, False)
 
   plt.show()
 
@@ -127,10 +127,7 @@ def PlotStateInputForce(dircon_traj):
   plt.legend(force_datatypes + force_c_datatypes)
 
 
-def PlotCenterOfMass(dircon_traj):
-  # Parameter
-  visualize_only_collocation_point = False
-
+def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
   # Get data at knots
   t_knot = dircon_traj.GetStateBreaks(0)
   x_knot = dircon_traj.GetStateSamples(0)
@@ -191,32 +188,32 @@ def PlotCenterOfMass(dircon_traj):
     plt.figure("com traj at knot and coll pts")
     plt.plot(t_knot, com_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
-    plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
-    plt.plot(t_knot, com_at_knot.T, 'ko', markersize=2)
+    plt.plot(t_coll, com_at_coll.T, 'o', markersize=2.5)
+    plt.plot(t_knot, com_at_knot.T, 'ko', markersize=4)
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     plt.figure("comdot traj at knot and coll pts")
     plt.plot(t_knot, comdot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
-    plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
-    plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=2)
+    plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2.5)
+    plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=4)
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     plt.figure("comddot traj at knot and coll pts")
     plt.plot(t_knot, comddot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
-    plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
-    plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=2)
+    plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2.5)
+    plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=4)
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
   else:
     # Plot com along the cubic splines
-    plt.figure("com traj at knot and coll pts")
+    plt.figure("com traj along the traj")
     plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, com_at_knot.T, 'ko', markersize=4)
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
-    plt.figure("comdot traj at knot and coll pts")
+    plt.figure("comdot traj along the traj")
     plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=4)
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
-    plt.figure("comddot traj at knot and coll pts")
+    plt.figure("comddot traj along the traj")
     plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=4)
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])

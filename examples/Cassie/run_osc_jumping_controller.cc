@@ -165,12 +165,10 @@ int DoMain(int argc, char* argv[]) {
   int nx = nq + nv;
 
   // Create maps for joints
-  map<string, int> pos_map =
-      multibody::makeNameToPositionsMap(plant_w_springs);
+  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_springs);
   map<string, int> vel_map =
       multibody::makeNameToVelocitiesMap(plant_w_springs);
-  map<string, int> act_map =
-      multibody::makeNameToActuatorsMap(plant_w_springs);
+  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant_w_springs);
 
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, right_toe};
@@ -242,12 +240,13 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.time_vector,
       lcm_pelvis_rot_traj.datapoints.topRows(4));
 
-  // For the time-based FSM
-  double flight_time =
-      FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
-  double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
-  //  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
-  //                                          land_time};
+  // For the time-based FSM (squatting by default)
+  double flight_time = FLAGS_delay_time + 100;
+  double land_time = FLAGS_delay_time + 200;
+  if (dircon_trajectory.GetNumModes() == 2) { // Override for jumping
+    flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
+    land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
+  }
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};
 
@@ -391,17 +390,17 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData left_toe_angle_traj("left_toe_angle_traj", K_p_swing_toe,
-                                        K_d_swing_toe, W_swing_toe, plant_w_springs,
-                                        plant_wo_springs);
-  JointSpaceTrackingData right_toe_angle_traj("right_toe_angle_traj", K_p_swing_toe,
-                                        K_d_swing_toe, W_swing_toe, plant_w_springs,
-                                        plant_wo_springs);
+  JointSpaceTrackingData left_toe_angle_traj(
+      "left_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
+      plant_w_springs, plant_wo_springs);
+  JointSpaceTrackingData right_toe_angle_traj(
+      "right_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
+      plant_w_springs, plant_wo_springs);
 
-  vector<std::pair<const Vector3d, const Frame<double>&>>
-      left_foot_points = {left_heel, left_toe};
-  vector<std::pair<const Vector3d, const Frame<double>&>>
-      right_foot_points = {right_heel, right_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
+      left_heel, left_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
+      right_heel, right_toe};
 
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
@@ -415,7 +414,7 @@ int DoMain(int argc, char* argv[]) {
   left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
                                               "toe_leftdot");
   right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
-                                         "toe_rightdot");
+                                               "toe_rightdot");
 
   osc->AddTrackingData(&pelvis_rot_tracking_data);
   osc->AddTrackingData(&left_foot_tracking_data, gains.t_delay_ft_pos, 1);

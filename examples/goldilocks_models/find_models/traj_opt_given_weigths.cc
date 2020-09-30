@@ -2496,6 +2496,22 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
+  // Add force at collocation points to cost function, to eliminate the forces
+  // in the null space of constraints
+  for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+    if (options_list[i].getForceCost() != 0) {
+      int n_lambda = dataset_list[i]->countConstraintsWithoutSkipping();
+      auto A = options_list[i].getForceCost() *
+          MatrixXd::Identity(n_lambda,
+                             n_lambda);
+      auto b = MatrixXd::Zero(n_lambda, 1);
+      for (int j = 0; j < num_time_samples[i] - 1; j++) {
+        // Add || Ax - b ||^2
+        trajopt->AddL2NormCost(A, b, trajopt->collocation_force(i, j));
+      }
+    }
+  }
+
   // Move the trajectory optimization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(

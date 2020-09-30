@@ -228,9 +228,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         // Add || Ax - b ||^2
         AddL2NormCost(A, b, force(i, j));
       }
-      for (int j = 0; j < mode_lengths_[i] - 1; j++) {
-        AddL2NormCost(A, b, collocation_force(i, j));
-      }
     }
 
     if (i > 0) {

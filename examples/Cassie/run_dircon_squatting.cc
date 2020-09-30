@@ -294,8 +294,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   // start/end velocity constraints
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    x0.tail(n_v));
-  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                   xf_m1.tail(n_v));
+//  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+//                                   xf_m1.tail(n_v));
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    xf.tail(n_v));
 
@@ -329,7 +329,7 @@ void DoMain(double duration, int max_iter, string data_directory,
                                        0);
   trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_yaw_right")) ==
                                        0);
-
+  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("base_z")) <= 1.0);
   trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_roll_left")) ==
                                        0);
   trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_roll_right")) ==

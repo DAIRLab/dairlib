@@ -69,7 +69,7 @@ int doMain(int argc, char* argv[]) {
 
   //  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
   //      "udpm://239.255.76.67:7667?ttl=0");
-  drake::lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   SceneGraph<double>& scene_graph_null = *builder_null.AddSystem<SceneGraph>();

@@ -338,6 +338,7 @@ cc_binary(
         ":cassie_utils",
         ":simulator_drift",
         "//examples/Cassie/osc",
+        "//examples/Cassie/osc:spring_to_no_spring_converter",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",

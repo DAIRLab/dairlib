@@ -57,6 +57,7 @@ using drake::math::RollPitchYaw;
 using drake::math::RotationMatrix;
 using drake::multibody::Body;
 using drake::multibody::BodyIndex;
+using drake::multibody::JacobianWrtVariable;
 using drake::multibody::JointActuator;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::ModelInstanceIndex;
@@ -238,6 +239,42 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
 
   std::vector<BodyIndex> body_indexes_;
   double composite_mass_;
+};
+
+class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {
+ public:
+  ComZeroHeightVelConstraint(const MultibodyPlant<double>& plant)
+      : NonlinearConstraint<double>(
+            1, plant.num_positions() + plant.num_velocities(),
+            VectorXd::Zero(1), VectorXd::Zero(1),
+            "com_zero_height_vel_constraint"),
+        plant_(plant),
+        world_(plant.world_frame()),
+        context_(plant.CreateDefaultContext()),
+        n_q_(plant.num_positions()),
+        n_v_(plant.num_velocities()) {}
+  ~ComZeroHeightVelConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    VectorXd q = x.head(n_q_);
+    VectorXd v = x.tail(n_v_);
+    plant_.SetPositions(context_.get(), q);
+    plant_.SetVelocities(context_.get(), v);
+
+    MatrixX<double> J_com(3, n_v_);
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+
+    *y = J_com.row(2) * v;
+  };
+
+ private:
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  int n_q_;
+  int n_v_;
 };
 
 void addRegularization(bool is_get_nominal, double eps_reg,
@@ -1771,11 +1808,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Cost on velocity and input
   double w_Q = setting.Q_double * all_cost_scale;
-  double w_Q_vy = w_Q * 10000 * all_cost_scale;     // avoid pelvis rocking in y
-  double w_Q_vz = w_Q * 10000 * all_cost_scale;     // avoid pelvis rocking in z
-  double w_Q_swing_toe = w_Q * 1 * all_cost_scale;  // avoid swing toe shaking
+  double w_Q_vy = w_Q * 10000 * all_cost_scale;  // avoid pelvis rocking in y
+  double w_Q_vz = w_Q * 10000 * all_cost_scale;  // avoid pelvis rocking in z
+  double w_Q_swing_toe = w_Q * 100 * all_cost_scale;  // avoid swing toe shaking
   double w_R = setting.R_double * all_cost_scale;
-  double w_R_swing_toe = w_R * 1 * all_cost_scale;  // avoid swing toe shaking
+  double w_R_swing_toe = w_R * 100 * all_cost_scale;  // avoid swing toe shaking
   // Cost on force (the final weight is w_lambda^2)
   double w_lambda = 1.0e-3 * all_cost_scale * all_cost_scale;
   // Cost on difference over time
@@ -1786,6 +1823,24 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
   double w_q_hip_yaw = 1 * 5 * all_cost_scale;
   double w_q_quat = 1 * 5 * 10 * all_cost_scale;
+  // Testing -- cost on position difference (cost on v is not enough, because
+  // the solver might exploit the integration scheme. If we only penalize
+  // velocity at knots, then the solver will converge to small velocity at knots
+  // but big acceleration at knots!)
+  double w_q_diff = 1 * 5 * 0.1 * all_cost_scale;
+  double w_q_diff_swing_toe = 100 * 5 * 0.1 * all_cost_scale;
+
+  // Flags for constraints
+  bool swing_foot_ground_clearance = false;
+  bool swing_leg_collision_avoidance = false;
+  bool periodic_floating_base_vel = false;
+  bool periodic_quaternion = false;
+  bool periodic_joint_pos = true;
+  bool periodic_joint_vel = false;
+  bool ground_normal_force_margin = false;
+  bool zero_com_height_vel = false;
+  bool zero_com_height_vel_difference = false;
+  bool zero_pelvis_height_vel = false;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -2087,24 +2142,28 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   trajopt->AddDurationBounds(duration, duration);
 
   // Constraint on initial floating base quaternion
-  /*trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));*/
+  if (!periodic_quaternion) {
+    trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));
+  }
 
   // Constraint on final floating base quaternion
   // TODO: below is a naive version. You can implement the constraint using
   //  rotation matrix and mirror around the x-z plane of local frame (however,
   //  the downside is the potential complexity of constraint)
   double turning_angle = turning_rate * duration;
-  /*trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
-                                    cos(turning_angle / 2),
-                                    xf(pos_map.at("base_qw")));
-  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
-  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
-  trajopt->AddBoundingBoxConstraint(sin(turning_angle / 2),
-                                    sin(turning_angle / 2),
-                                    xf(pos_map.at("base_qz")));*/
+  if (!periodic_quaternion) {
+    trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
+                                      cos(turning_angle / 2),
+                                      xf(pos_map.at("base_qw")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
+    trajopt->AddBoundingBoxConstraint(sin(turning_angle / 2),
+                                      sin(turning_angle / 2),
+                                      xf(pos_map.at("base_qz")));
+  }
 
   // other floating base constraints
   if (turning_rate == 0) {
@@ -2114,29 +2173,32 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                       xf(pos_map.at("base_x")));
 
     // Floating base periodicity
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
-                                 xf(pos_map.at("base_qw")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
-                                 -xf(pos_map.at("base_qx")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
-                                 xf(pos_map.at("base_qy")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
-                                 -xf(pos_map.at("base_qz")));
     trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
                                  -xf(pos_map.at("base_y")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                 xf(n_q + vel_map.at("base_wx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                 -xf(n_q + vel_map.at("base_wy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                 xf(n_q + vel_map.at("base_wz")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                                 xf(n_q + vel_map.at("base_vx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-                                 -xf(n_q + vel_map.at("base_vy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                                 xf(n_q + vel_map.at("base_vz")));
-
+    if (periodic_quaternion) {
+      trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
+                                   xf(pos_map.at("base_qw")));
+      trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
+                                   -xf(pos_map.at("base_qx")));
+      trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
+                                   xf(pos_map.at("base_qy")));
+      trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
+                                   -xf(pos_map.at("base_qz")));
+    }
+    if (periodic_floating_base_vel) {
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+                                   xf(n_q + vel_map.at("base_wx")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+                                   -xf(n_q + vel_map.at("base_wy")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+                                   xf(n_q + vel_map.at("base_wz")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+                                   xf(n_q + vel_map.at("base_vx")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+                                   -xf(n_q + vel_map.at("base_vy")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+                                   xf(n_q + vel_map.at("base_vz")));
+    }
   } else {
     // z position constraint
     // We don't need to impose this constraint when turning rate is 0, because
@@ -2170,18 +2232,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
     // velocity constraint at the end point
     // TODO: double check that the floating base velocity is wrt local frame
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                 xf(n_q + vel_map.at("base_wx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                 -xf(n_q + vel_map.at("base_wy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                 xf(n_q + vel_map.at("base_wz")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                                 xf(n_q + vel_map.at("base_vx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-                                 -xf(n_q + vel_map.at("base_vy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                                 xf(n_q + vel_map.at("base_vz")));
+    if (periodic_floating_base_vel) {
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+                                   xf(n_q + vel_map.at("base_wx")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+                                   -xf(n_q + vel_map.at("base_wy")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+                                   xf(n_q + vel_map.at("base_wz")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+                                   xf(n_q + vel_map.at("base_vx")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+                                   -xf(n_q + vel_map.at("base_vy")));
+      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+                                   xf(n_q + vel_map.at("base_vz")));
+    }
   }
 
   // The legs joint positions/velocities/torque should be mirrored between legs
@@ -2189,13 +2253,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& asy_joint_name : asy_joint_names) {
       // positions
-      trajopt->AddLinearConstraint(
-          x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
-          -xf(pos_map.at(asy_joint_name + l_r_pair.second)));
+      if (periodic_joint_pos) {
+        trajopt->AddLinearConstraint(
+            x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
+            -xf(pos_map.at(asy_joint_name + l_r_pair.second)));
+      }
       // velocities
-      trajopt->AddLinearConstraint(
-          x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
-          -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
+      if (periodic_joint_vel) {
+        trajopt->AddLinearConstraint(
+            x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
+            -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
+      }
       // inputs
       trajopt->AddLinearConstraint(
           u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
@@ -2203,13 +2271,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
     for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
       // positions
-      trajopt->AddLinearConstraint(
-          x0(pos_map.at(sym_joint_names[i] + l_r_pair.first)) ==
-          xf(pos_map.at(sym_joint_names[i] + l_r_pair.second)));
+      if (periodic_joint_pos) {
+        trajopt->AddLinearConstraint(
+            x0(pos_map.at(sym_joint_names[i] + l_r_pair.first)) ==
+            xf(pos_map.at(sym_joint_names[i] + l_r_pair.second)));
+      }
       // velocities
-      trajopt->AddLinearConstraint(
-          x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
-          xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
+      if (periodic_joint_vel) {
+        trajopt->AddLinearConstraint(
+            x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
+            xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
+      }
       // inputs (ankle joint is not actuated)
       if (sym_joint_names[i] != "ankle_joint") {
         trajopt->AddLinearConstraint(
@@ -2236,7 +2308,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                       VectorXd::Constant(n_u, +300), ui);
   }
 
-  if (setting.com_accel_constraint) {
+  if (setting.com_accel_constraint && zero_com_height_vel) {
     cout << "Adding zero COM height acceleration constraint\n";
     auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
     std::unordered_map<int, double> com_vel_constraint_scale;
@@ -2247,13 +2319,43 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       auto x1 = trajopt->state(index + 1);
       trajopt->AddConstraint(com_vel_constraint, {x0, x1});
     }
+  } else {
+    zero_com_height_vel = false;
+  }
+
+  // Testing
+  if (zero_com_height_vel_difference) {
+    cout << "Adding zero COM height vel constraint\n";
+    auto com_zero_vel_constraint =
+        std::make_shared<ComZeroHeightVelConstraint>(plant);
+    //  std::unordered_map<int, double> com_zero_vel_constraint_scale;
+    //  com_zero_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
+    //  com_zero_vel_constraint->SetConstraintScaling(com_zero_vel_constraint_scale);
+    //    std::vector<int> index_list = {0,
+    //                                   1,
+    //                                   2,
+    //                                   num_time_samples[0] - 3,
+    //                                   num_time_samples[0] - 2,
+    //                                   num_time_samples[0] - 1};
+    //    for (auto index : index_list) {
+    for (int index = 0; index < num_time_samples[0]; index++) {
+      auto xi = trajopt->state(index);
+      trajopt->AddConstraint(com_zero_vel_constraint, xi);
+    }
+  }
+  if (zero_pelvis_height_vel) {
+    cout << "Adding zero pelvis height vel constraint\n";
+    for (int index = 0; index < num_time_samples[0]; index++) {
+      auto xi = trajopt->state(index);
+      trajopt->AddBoundingBoxConstraint(0, 0, xi(n_q + vel_map.at("base_vz")));
+    }
   }
 
   // toe position constraint in y direction (avoid leg crossing)
   VectorXd one = VectorXd::Ones(1);
   std::unordered_map<int, double> odbp_constraint_scale;  // scaling
   odbp_constraint_scale.insert(std::pair<int, double>(0, s));
-  if (turning_rate == 0) {
+  if (swing_leg_collision_avoidance && (turning_rate == 0)) {
     auto left_foot_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_left", Vector3d::Zero(),
@@ -2274,8 +2376,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
       trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
     }
+  } else {
+    swing_leg_collision_avoidance = false;
   }
-  // toe height constraint at mid stance (avoid foot scuffing)
+
+  // testing - toe height constraint at mid stance (avoid foot scuffing)
   Vector3d z_hat(0, 0, 1);
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, ground_normal);
@@ -2288,35 +2393,38 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
 
   // testing -- swing foot contact point height constraint
-  for (int index = 0; index < num_time_samples[0] - 1; index++) {
-    double h_min = 0;
-    //    if (index == int(num_time_samples[0] / 2)) {
-    //      h_min = 0.1;  // 10 centimeter high in the mid point
-    //    }
+  if (swing_foot_ground_clearance) {
+    for (int index = 0; index < num_time_samples[0] - 1; index++) {
+      double h_min = 0;
+      //    if (index == int(num_time_samples[0] / 2)) {
+      //      h_min = 0.1;  // 10 centimeter high in the mid point
+      //    }
 
-    double h_max = std::numeric_limits<double>::infinity();
-    if (index == 0) {
-      h_max = 0;
+      double h_max = std::numeric_limits<double>::infinity();
+      if (index == 0) {
+        h_max = 0;
+      }
+
+      auto x_i = trajopt->state(index);
+
+      auto right_foot_constraint_z1 =
+          std::make_shared<PointPositionConstraint<double>>(
+              plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
+              h_min * one, h_max * one, "right_foot_constraint_z");
+      auto right_foot_constraint_z2 =
+          std::make_shared<PointPositionConstraint<double>>(
+              plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
+              h_min * one, h_max * one);
+
+      // scaling
+      right_foot_constraint_z1->SetConstraintScaling(odbp_constraint_scale);
+      right_foot_constraint_z2->SetConstraintScaling(odbp_constraint_scale);
+
+      trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
+      trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
     }
-
-    auto x_i = trajopt->state(index);
-
-    auto right_foot_constraint_z1 =
-        std::make_shared<PointPositionConstraint<double>>(
-            plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
-            h_min * one, h_max * one, "right_foot_constraint_z");
-    auto right_foot_constraint_z2 =
-        std::make_shared<PointPositionConstraint<double>>(
-            plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
-            h_min * one, h_max * one);
-
-    // scaling
-    right_foot_constraint_z1->SetConstraintScaling(odbp_constraint_scale);
-    right_foot_constraint_z2->SetConstraintScaling(odbp_constraint_scale);
-
-    trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
-    trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
   }
+
   //  // testing -- vertical touchdown velocity
   //  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
   //  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
@@ -2358,11 +2466,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }*/
 
   // Testing -- constraint on normal force
-  for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
-    for (int index = 0; index < num_time_samples[mode]; index++) {
-      auto lambda = trajopt->force(mode, index);
-      trajopt->AddLinearConstraint(lambda(2) >= 10);
-      trajopt->AddLinearConstraint(lambda(5) >= 10);
+  if (ground_normal_force_margin) {
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        auto lambda = trajopt->force(mode, index);
+        trajopt->AddLinearConstraint(lambda(2) >= 10);
+        trajopt->AddLinearConstraint(lambda(5) >= 10);
+      }
     }
   }
   // Testing -- constraint left four-bar force (seems to help in high speed)
@@ -2454,6 +2564,16 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
   // add cost on vel difference wrt time
+  MatrixXd Q_q_diff = w_q_diff * MatrixXd::Identity(n_q, n_q);
+  Q_q_diff(n_q - 1, n_q - 1) = w_q_diff_swing_toe;
+  if (w_q_diff) {
+    for (int i = 0; i < N - 1; i++) {
+      auto q0 = trajopt->state(i).head(n_q);
+      auto q1 = trajopt->state(i + 1).head(n_q);
+      trajopt->AddCost((q0 - q1).dot(Q_q_diff * (q0 - q1)));
+    }
+  }
+  // add cost on pos difference wrt time
   MatrixXd Q_v_diff = w_v_diff * MatrixXd::Identity(n_v, n_v);
   if (w_v_diff) {
     for (int i = 0; i < N - 1; i++) {
@@ -2502,8 +2622,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     if (options_list[i].getForceCost() != 0) {
       int n_lambda = dataset_list[i]->countConstraintsWithoutSkipping();
       auto A = options_list[i].getForceCost() *
-          MatrixXd::Identity(n_lambda,
-                             n_lambda);
+               MatrixXd::Identity(n_lambda, n_lambda);
       auto b = MatrixXd::Zero(n_lambda, 1);
       for (int j = 0; j < num_time_samples[i] - 1; j++) {
         // Add || Ax - b ||^2
@@ -2628,6 +2747,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   if (is_print_for_debugging) {
+    // Impulse variable's value
+    for (int i = w_sol.size() - 6; i < w_sol.size(); i++) {
+      cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
+           << w_sol[i] << endl;
+    }
+    cout << endl;
+
     // Extract result for printing
     VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
     MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
@@ -2640,6 +2766,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "w_R_swing_toe = " << w_R_swing_toe << endl;
     cout << "w_lambda = " << w_lambda << endl;
     cout << "w_lambda_diff = " << w_lambda_diff << endl;
+    cout << "w_q_diff = " << w_q_diff << endl;
+    cout << "w_q_diff_swing_toe = " << w_q_diff_swing_toe << endl;
     cout << "w_v_diff = " << w_v_diff << endl;
     cout << "w_u_diff = " << w_u_diff << endl;
     cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
@@ -2696,6 +2824,15 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
     total_cost += cost_lambda_diff;
     cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
+    // cost on pos difference wrt time
+    double cost_pos_diff = 0;
+    for (int i = 0; i < N - 1; i++) {
+      auto q0 = result.GetSolution(gm_traj_opt.dircon->state(i).head(n_q));
+      auto q1 = result.GetSolution(gm_traj_opt.dircon->state(i + 1).head(n_q));
+      cost_pos_diff += (q0 - q1).dot(Q_q_diff * (q0 - q1));
+    }
+    total_cost += cost_pos_diff;
+    cout << "cost_pos_diff = " << cost_pos_diff << endl;
     // cost on vel difference wrt time
     double cost_vel_diff = 0;
     for (int i = 0; i < N - 1; i++) {
@@ -2746,6 +2883,26 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
     cout << "total_cost (only the nominal traj cost terms) = " << total_cost
          << endl;
+
+    // Constraints
+    cout << "swing_foot_ground_clearance = " << swing_foot_ground_clearance
+         << endl;
+    cout << "swing_leg_collision_avoidance = " << swing_leg_collision_avoidance
+         << endl;
+    cout << "periodic_quaternion (only effective when turning rate = 0) = "
+         << periodic_quaternion << endl;
+    cout << "periodic_floating_base_vel = " << periodic_floating_base_vel
+         << endl;
+    cout << "periodic_joint_pos = " << periodic_joint_pos << endl;
+    cout << "periodic_joint_vel = " << periodic_joint_vel << endl;
+    cout << "ground_normal_force_margin = " << ground_normal_force_margin
+         << endl;
+    cout << "zero_com_height_vel = " << zero_com_height_vel << endl;
+    cout << "zero_com_height_vel_difference = "
+         << zero_com_height_vel_difference << endl;
+    cout << "zero_pelvis_height_vel = " << zero_pelvis_height_vel << endl;
+    cout << "constrain_stance_leg_fourbar_force = "
+         << constrain_stance_leg_fourbar_force << endl;
   }  // end if is_print_for_debugging
 }
 

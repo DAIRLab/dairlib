@@ -99,6 +99,7 @@ def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
   plt.figure("state trajectory " + str(x_idx_start) + ":" + str(x_idx_end))
   plt.plot(t, state_samples)
   plt.plot(t_knot, x_knot.T, 'ko', markersize=2)
+  plt.xlabel('time (s)')
   plt.legend(state_datatypes[x_idx_start:x_idx_end])
 
 
@@ -122,6 +123,7 @@ def PlotInput(dircon_traj):
   # Plotting reconstructed state trajectories
   plt.figure("input trajectory")
   plt.plot(t, input_samples)
+  plt.xlabel('time (s)')
   plt.legend(input_datatypes)
 
 
@@ -179,6 +181,7 @@ def PlotForce(dircon_traj):
   plt.figure("force at knots and collocation pts")
   plt.plot(t_knot_col, force_knot_col.T)
   plt.plot(t_coll, force_coll.T, 'ko', markersize=2)
+  plt.xlabel('time (s)')
   plt.legend(force_datatypes + force_c_datatypes)
 
 
@@ -251,32 +254,38 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     plt.gca().set_prop_cycle(None)  # reset color cycle
     plt.plot(t_coll, com_at_coll.T, 'o', markersize=2.5)
     plt.plot(t_knot, com_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     plt.figure("comdot traj at knot and coll pts")
     plt.plot(t_knot, comdot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
     plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2.5)
     plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     plt.figure("comddot traj at knot and coll pts")
     plt.plot(t_knot, comddot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
     plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2.5)
     plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
   else:
     # Plot com along the cubic splines
     plt.figure("com traj along the traj")
     plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, com_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     plt.figure("comdot traj along the traj")
     plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     plt.figure("comddot traj along the traj")
     plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
 
 
@@ -355,32 +364,38 @@ def PlotPelvis(dircon_traj, visualize_only_collocation_point=False):
     plt.gca().set_prop_cycle(None)  # reset color cycle
     plt.plot(t_coll, base_xyz_at_coll.T, 'o', markersize=2.5)
     plt.plot(t_knot, base_xyz_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     plt.figure("base_xyzdot traj at knot and coll pts")
     plt.plot(t_knot, base_xyzdot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
     plt.plot(t_coll, base_xyzdot_at_coll.T, 'o', markersize=2.5)
     plt.plot(t_knot, base_xyzdot_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     plt.figure("base_xyzddot traj at knot and coll pts")
     plt.plot(t_knot, base_xyzddot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
     plt.plot(t_coll, base_xyzddot_at_coll.T, 'o', markersize=2.5)
     plt.plot(t_knot, base_xyzddot_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
   else:
     # Plot base_xyz along the cubic splines
     plt.figure("base_xyz traj along the traj")
     plt.plot(t_coll, base_xyz_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, base_xyz_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     plt.figure("base_xyzdot traj along the traj")
     plt.plot(t_coll, base_xyzdot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, base_xyzdot_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     plt.figure("base_xyzddot traj along the traj")
     plt.plot(t_coll, base_xyzddot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, base_xyzddot_at_knot.T, 'ko', markersize=4)
+    plt.xlabel('time (s)')
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
 
 

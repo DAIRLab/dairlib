@@ -66,6 +66,8 @@ DEFINE_bool(construct_cubic, false,
             "files (before 2019.12.31) didn't store derivatives information, "
             "so this option cannot be used on those files.");
 
+DEFINE_string(path, "", "");
+
 void swapTwoBlocks(MatrixXd* mat, int i_1, int j_1, int i_2, int j_2, int n_row,
                    int n_col) {
   MatrixXd temp_block1 = mat->block(i_1, j_1, n_row, n_col);
@@ -90,6 +92,11 @@ void visualizeGait(int argc, char* argv[]) {
   //      "../dairlib_data/goldilocks_models/find_boundary_sl_gi_not_optimized/"
   //      "robot_" +
   //      to_string(FLAGS_robot_option) + "/";
+
+  if (FLAGS_path.length() != 0) {
+    directory = FLAGS_path + "/";
+  }
+  cout << "directory = " << directory << endl;
 
   // Other settings
   int iter_start = FLAGS_iter_start;

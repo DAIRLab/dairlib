@@ -5,6 +5,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/spring_to_no_spring_converter.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -69,6 +70,10 @@ DEFINE_int32(
     footstep_option, 1,
     "0 uses the capture point\n"
     "1 uses the neutral point derived from LIPM given the stance duration");
+
+DEFINE_bool(use_fixed_spring_model, false,
+            "true if we want to use fixed spring model as a full model for "
+            "Cassie in the controller");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -145,10 +150,21 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Build Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+  drake::multibody::MultibodyPlant<double> dispatcher_plant(0.0);
+  addCassieMultibody(&dispatcher_plant, nullptr, true /*floating base*/,
                      "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
+  dispatcher_plant.Finalize();
+  drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
+  if (FLAGS_use_fixed_spring_model) {
+    addCassieMultibody(&plant_w_spr, nullptr, true,
+                       "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                       false);
+  } else {
+    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+                       "examples/Cassie/urdf/cassie_v2.urdf",
+                       true /*spring model*/, false /*loop closure*/);
+  }
   plant_w_spr.Finalize();
   // Build fix-spring Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);
@@ -240,9 +256,19 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
       Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_right"));
 
-  // Create state receiver.
+  // Create state receiver (must use cassie with spring because dispather_out
+  // uses it)
   auto state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
+      builder.AddSystem<systems::RobotOutputReceiver>(dispatcher_plant);
+
+  // Create a converter from cassie with springs to without springs
+  auto robot_output_converter =
+      builder.AddSystem<cassie::SpringToNoSpringConverter>(dispatcher_plant,
+                                                           plant_wo_spr);
+  if (FLAGS_use_fixed_spring_model) {
+    builder.Connect(state_receiver->get_output_port(0),
+                    robot_output_converter->get_input_port(0));
+  }
 
   // Create command sender.
   auto command_pub =
@@ -271,8 +297,13 @@ int DoMain(int argc, char* argv[]) {
 
   auto simulator_drift =
       builder.AddSystem<SimulatorDrift>(plant_w_spr, drift_mean, drift_cov);
-  builder.Connect(state_receiver->get_output_port(0),
-                  simulator_drift->get_input_port_state());
+  if (FLAGS_use_fixed_spring_model) {
+    builder.Connect(robot_output_converter->get_output_port(0),
+                    simulator_drift->get_input_port_state());
+  } else {
+    builder.Connect(state_receiver->get_output_port(0),
+                    simulator_drift->get_input_port_state());
+  }
 
   // Create human high-level control
   Eigen::Vector2d global_target_position(0, 0);
@@ -295,8 +326,13 @@ int DoMain(int argc, char* argv[]) {
         plant_w_spr, context_w_spr.get(), global_target_position,
         params_of_no_turning, FLAGS_footstep_option);
   }
-  builder.Connect(state_receiver->get_output_port(0),
-                  high_level_command->get_state_input_port());
+  if (FLAGS_use_fixed_spring_model) {
+    builder.Connect(robot_output_converter->get_output_port(0),
+                    high_level_command->get_state_input_port());
+  } else {
+    builder.Connect(state_receiver->get_output_port(0),
+                    high_level_command->get_state_input_port());
+  }
 
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(

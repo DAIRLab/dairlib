@@ -88,7 +88,7 @@ void StandingComTraj::CalcDesiredTraj(
     contact_pos_sum += position;
   }
   Vector3d feet_center_pos = contact_pos_sum / 4;
-  Vector3d desired_com_pos(feet_center_pos(0), feet_center_pos(1),
+  Vector3d desired_com_pos(feet_center_pos(0) + x_offset, feet_center_pos(1) + y_offset,
                            feet_center_pos(2) + target_height);
 
   // Assign traj

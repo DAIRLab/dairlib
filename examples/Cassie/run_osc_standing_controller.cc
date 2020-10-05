@@ -244,8 +244,10 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
-  Q_accel(8, 8) = 1;
-  Q_accel(9, 9) = 1;
+  Q_accel(6, 6) = 1;
+  Q_accel(7, 7) = 1;
+  Q_accel(8, 8) = 10;
+  Q_accel(9, 9) = 10;
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing

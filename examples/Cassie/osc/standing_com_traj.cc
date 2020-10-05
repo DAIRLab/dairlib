@@ -72,6 +72,8 @@ void StandingComTraj::CalcDesiredTraj(
       context, radio_port_);
   target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
   target_height += kHeightScale_ * cassie_out->pelvis.radio.channel[0];
+  double x_offset = cassie_out->pelvis.radio.channel[4];
+  double y_offset = cassie_out->pelvis.radio.channel[5];
   VectorXd q = robot_output->GetPositions();
 
   multibody::SetPositionsIfNew<double>(plant_, q, context_);

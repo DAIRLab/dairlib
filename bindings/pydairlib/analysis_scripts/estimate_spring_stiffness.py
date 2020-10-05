@@ -88,7 +88,6 @@ def main():
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_name)
 
-
   # Will need to manually select the data range
   t_start = t_x[10]
   t_end = t_x[-10]
@@ -103,7 +102,7 @@ def main():
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
   # plt.show()
 
-  solve_for_k(x, t_x, u, t_u)
+  # solve_for_k(x, t_x, u, t_u)
   solve_with_lambda(x, t_x, u, t_u)
 
 
@@ -197,16 +196,18 @@ def solve_for_k(x, t_x, u, t_u):
   lambdas = sol[n_k:nvars]
   print("K: ", K)
   print("lambdas: ", lambdas)
+  print(A.rows())
 
 
 def solve_with_lambda(x, t_x, u, t_u):
   n_samples = len(sample_times)
   n_samples_per_iter = 10
-  n_lambda_vars = 12
+  n_lambda_vars = 14
+  n_offset_vars = 4
   # K is a diagonal matrix, do the springs act directly on the knees? If so the non-zero values will not
   # be on the diagonals
   n_k = 4
-  nvars = n_k + n_samples * n_lambda_vars
+  nvars = n_k + n_samples * n_lambda_vars + n_offset_vars
   prog = mp.MathematicalProgram()
 
   A = np.zeros((n_samples * n_samples_per_iter * nv, nvars))
@@ -245,11 +246,19 @@ def solve_with_lambda(x, t_x, u, t_u):
       A[row_start + l_heel_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
       A[row_start + r_heel_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
       A[row_start:row_end, n_k + i * n_lambda_vars: n_k + (i + 1) * n_lambda_vars] = J.T
+      A[row_start + l_knee_idx - 1, -4] = 1
+      A[row_start + r_knee_idx - 1, -3] = 1
+      A[row_start + l_heel_idx - 1, -2] = 1
+      A[row_start + r_heel_idx - 1, -1] = 1
+
       b[row_start:row_end] = - B @ u[u_ind] - g
 
-  x = prog.NewContinuousVariables(nvars, "sigma")
+  x_vars = prog.NewContinuousVariables(nvars, "sigma")
 
-  prog.AddL2NormCost(A, b, x)
+  import pdb; pdb.set_trace()
+  prog.AddL2NormCost(A, b, x_vars)
+  Q = 100 * np.eye(n_offset_vars)
+  prog.AddQuadraticCost(Q, np.zeros(n_offset_vars), x_vars[-n_offset_vars:])
   solver_id = mp.ChooseBestSolver(prog)
   print(solver_id.name())
   solver = mp.MakeSolver(solver_id)
@@ -257,11 +266,63 @@ def solve_with_lambda(x, t_x, u, t_u):
   print("LSTSQ cost: ", result.get_optimal_cost())
   print("Solution result: ", result.get_solution_result())
   sol = result.GetSolution()
-  K = sol[0:n_k]
-  lambdas = sol[n_k:nvars]
-  print("K: ", K)
+  k_sol = sol[0:n_k]
+  lambdas = sol[n_k:nvars - n_offset_vars]
+  offsets = sol[-n_offset_vars:]
+  print("K: ", k_sol)
   print("lambdas: ", lambdas)
+  print("offsets: ", offsets)
   import pdb; pdb.set_trace()
+
+  K = np.zeros((nv, nq))
+  K[l_knee_idx - 1, l_knee_spring_idx] = k_sol[0]
+  K[r_knee_idx - 1, r_knee_spring_idx] = k_sol[1]
+  K[l_heel_idx - 1, l_heel_spring_idx] = k_sol[2]
+  K[r_heel_idx - 1, r_heel_spring_idx] = k_sol[3]
+
+  joint_pos = np.zeros((n_samples, 4))
+  err = np.zeros((n_samples, 4))
+  for i in range(n_samples):
+    for j in range(n_samples_per_iter):
+      delta_t = 1e-2 * j
+      x_ind = np.argwhere(np.abs(t_x - sample_times[i] + delta_t) < 1e-3)[0][0]
+      u_ind = np.argwhere(np.abs(t_u - sample_times[i] + delta_t) < 1e-3)[0][0]
+      plant.SetPositionsAndVelocities(context, x[x_ind, :])
+
+      M = plant.CalcMassMatrixViaInverseDynamics(context)
+      M_inv = np.linalg.inv(M)
+      B = plant.MakeActuationMatrix()
+      g = plant.CalcGravityGeneralizedForces(context)
+      J_lh = plant.CalcJacobianTranslationalVelocity(
+        context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
+      J_lt = plant.CalcJacobianTranslationalVelocity(
+        context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
+      J_rh = plant.CalcJacobianTranslationalVelocity(
+        context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
+      J_rt = plant.CalcJacobianTranslationalVelocity(
+        context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
+
+      J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
+      J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
+      J = np.vstack((J_lh, J_lt, J_rh, J_rt, J_l_loop_closure, J_r_loop_closure))
+
+      forces = B @ u[u_ind] + g + J.T @ lambdas[n_lambda_vars * i: n_lambda_vars * (i+1)] + K @ (x[x_ind, :nq])
+    err[i, 0] = forces[l_knee_idx - 1]
+    err[i, 1] = forces[r_knee_idx - 1]
+    err[i, 2] = forces[l_heel_idx - 1]
+    err[i, 3] = forces[r_heel_idx - 1]
+    joint_pos[i, 0] = x[x_ind, l_knee_spring_idx]
+    joint_pos[i, 1] = x[x_ind, r_knee_spring_idx]
+    joint_pos[i, 2] = x[x_ind, l_heel_spring_idx]
+    joint_pos[i, 3] = x[x_ind, r_heel_spring_idx]
+  # plt.plot(err, joint_pos)
+
+  import pdb; pdb.set_trace()
+  plt.plot(joint_pos, err)
+  plt.figure()
+  plt.plot(sample_times, err)
+  plt.plot(sample_times, joint_pos)
+  plt.show()
 
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):

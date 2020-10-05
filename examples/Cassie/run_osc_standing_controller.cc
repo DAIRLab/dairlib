@@ -47,6 +47,9 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
+DEFINE_string(
+    cassie_out_channel, "CASSIE_OUTPUT_ECHO",
+    "The name of the channel to receive the cassie out structure from.");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 0.001,
               "A cosntant times with cost weight of OSC traj tracking");
@@ -162,6 +165,10 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
 
+  auto cassie_out_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+          FLAGS_cassie_out_channel, &lcm_local));
+
   // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -190,6 +197,10 @@ int DoMain(int argc, char* argv[]) {
                   com_traj_generator->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   pelvis_rot_traj_generator->get_input_port_state());
+  builder.Connect(cassie_out_receiver->get_output_port(),
+                  pelvis_rot_traj_generator->get_input_port_radio());
+  builder.Connect(cassie_out_receiver->get_output_port(),
+                  com_traj_generator->get_input_port_radio());
   builder.Connect(target_height_receiver->get_output_port(),
                   com_traj_generator->get_input_port_target_height());
 

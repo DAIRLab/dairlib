@@ -1,5 +1,6 @@
 #include <gflags/gflags.h>
 
+#include "dairlib/lcmt_pd_control.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
@@ -7,6 +8,7 @@
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/linear_config_mux.h"
 #include "examples/Cassie/osc/vdot_integrator.h"
+#include "examples/Cassie/osc/timestamped_vector_adder.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -22,8 +24,8 @@
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
-#include "dairlib/lcmt_pd_control.hpp"
 
+#include <drake/systems/primitives/adder.h>
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/lcmt_drake_signal.hpp"
 #include "drake/systems/framework/diagram_builder.h"
@@ -200,6 +202,9 @@ int DoMain(int argc, char* argv[]) {
 
   // Controller flags
   bool use_predicted_com_vel = true;
+
+  bool combine_joint_pd_with_osc = true;
+  bool publish_pd_control_debug_data = true;
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -719,10 +724,23 @@ int DoMain(int argc, char* argv[]) {
                     pd_controller->get_input_port_output());
     builder.Connect(config_mux->get_output_port(0),
                     pd_controller->get_input_port_config());
-    builder.Connect(pd_controller->get_output_port(0),
-                    command_sender->get_input_port(0));
 
-    bool publish_pd_control_debug_data = true;
+    // Connect to command sender
+    if (combine_joint_pd_with_osc) {
+      auto adder =
+          builder.AddSystem<cassie::osc::TimestampedVectorAdder>(
+              2, plant_w_spr.num_actuators());
+      builder.Connect(osc->get_osc_optimal_u_port(), adder->get_input_port(0));
+      builder.Connect(pd_controller->get_output_port(0),
+                      adder->get_input_port(1));
+      builder.Connect(adder->get_output_port(0),
+                      command_sender->get_input_port(0));
+    } else {
+      builder.Connect(pd_controller->get_output_port(0),
+                      command_sender->get_input_port(0));
+    }
+
+    // For debugging joint pd controller and the integrator
     if (publish_pd_control_debug_data) {
       // Create debug senders.
       auto vdot_debug_pub =

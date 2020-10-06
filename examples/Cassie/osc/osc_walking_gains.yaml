@@ -18,31 +18,34 @@ final_foot_velocity_z: 0.0
 mid_foot_height: 0.05
 lipm_height: 0.89
 
+###
+### with OSC u*
+###
 CoMW:
   [  50,    0,     0,
-      0,   50,     0,
-      0,    0,  1000]
+     0,   50,     0,
+     0,    0,  1000]
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    500]
+      0,    0,    50]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,     10]
+      0,    0,     5]
 
 PelvisBalanceW:
   [ 200,    0,     0,
     0,    400,     0,
     0,      0,     0]
 PelvisBalanceKp:
-  [ 500,      0,    0,
-     0,    100,    0,
-     0,      0,    0]
+  [ 20,      0,    0,
+    0,    100,    0,
+    0,      0,    0]
 PelvisBalanceKd:
-  [  20,     0,    0,
-      0,    10,    0,
-      0,     0,    0]
+  [  2,     0,    0,
+     0,    10,    0,
+     0,     0,    0]
 
 PelvisHeadingW:
   [   0,    0,     0,
@@ -59,16 +62,134 @@ PelvisHeadingKd:
 
 SwingFootW:
   [ 400,    0,     0,
-      0,  400,     0,
-      0,    0,   400]
+    0,  400,     0,
+    0,    0,   400]
 SwingFootKp:
-  [ 400,    0,     0,
-      0,  400,     0,
-      0,    0,   2000]
+  [ 200,    0,     0,
+    0,  200,     0,
+    0,    0,   200]
 SwingFootKd:
-  [   50,    0,     0,
-      0,    50,     0,
-      0,    0,     100]
+  [   1,    0,     0,
+      0,    1,     0,
+      0,    0,     1]
+
+kp_hip_roll_stance: 0
+kd_hip_roll_stance: 0
+
+kp_hip_yaw_stance: 0
+kd_hip_yaw_stance: 0
+
+kp_hip_pitch_stance: 0
+kd_hip_pitch_stance: 0
+
+kp_knee_stance: 0
+kd_knee_stance: 0
+
+kp_toe_stance: 0
+kd_toe_stance: 0
+
+kp_hip_roll_swing: 0
+kd_hip_roll_swing: 0
+
+kp_hip_yaw_swing: 0
+kd_hip_yaw_swing: 0
+
+kp_hip_pitch_swing: 0
+kd_hip_pitch_swing: 0
+
+kp_knee_swing: 0
+kd_knee_swing: 0
+
+kp_toe_swing: 0
+kd_toe_swing: 0
+
+###
+### without OSC u*
+###
+#
+#CoMW:
+#  [  50,    0,     0,
+#      0,   50,     0,
+#      0,    0,  1000]
+#CoMKp:
+#  [   0,    0,     0,
+#      0,    0,     0,
+#      0,    0,    500]
+#CoMKd:
+#  [   0,    0,     0,
+#      0,    0,     0,
+#      0,    0,     10]
+#
+#PelvisBalanceW:
+#  [ 200,    0,     0,
+#    0,    400,     0,
+#    0,      0,     0]
+#PelvisBalanceKp:
+#  [ 500,      0,    0,
+#     0,    100,    0,
+#     0,      0,    0]
+#PelvisBalanceKd:
+#  [  20,     0,    0,
+#      0,    10,    0,
+#      0,     0,    0]
+#
+#PelvisHeadingW:
+#  [   0,    0,     0,
+#      0,    0,     0,
+#      0,    0,    10]
+#PelvisHeadingKp:
+#  [   0,     0,    0,
+#      0,     0,    0,
+#      0,     0,   10]
+#PelvisHeadingKd:
+#  [   0,     0,    0,
+#      0,     0,    0,
+#      0,     0,    2]
+#
+#SwingFootW:
+#  [ 400,    0,     0,
+#      0,  400,     0,
+#      0,    0,   400]
+#SwingFootKp:
+#  [ 400,    0,     0,
+#      0,  400,     0,
+#      0,    0,   2000]
+#SwingFootKd:
+#  [   50,    0,     0,
+#      0,    50,     0,
+#      0,    0,     100]
+
+#kp_hip_roll_stance: 300
+#kd_hip_roll_stance: 3
+#
+#kp_hip_yaw_stance: 10
+#kd_hip_yaw_stance: 1
+#
+#kp_hip_pitch_stance: 20
+#kd_hip_pitch_stance: 1
+#
+#kp_knee_stance: 80
+#kd_knee_stance: 2
+#
+#kp_toe_stance: 10
+#kd_toe_stance: 1
+#
+#kp_hip_roll_swing: 50
+#kd_hip_roll_swing: 2
+#
+#kp_hip_yaw_swing: 10
+#kd_hip_yaw_swing: 1
+#
+#kp_hip_pitch_swing: 20
+#kd_hip_pitch_swing: 1
+#
+#kp_knee_swing: 75
+#kd_knee_swing: 2
+#
+#kp_toe_swing: 5
+#kd_toe_swing: 0.5
+
+
 
 # Michigan's gains: https://github.com/UMich-BipedLab/Cassie_FlatGround_Controller/blob/82a04b4cc758ab56fdb51d1cfb97f742cd68f334/Controllers/Flatground/utils/%2BPreFunctions/ParamInit.m#L9
 #kp_hip_roll_stance: 400
@@ -86,32 +207,4 @@ SwingFootKd:
 #kp_toe_stance: 10
 #kd_toe_stance: 2
 
-kp_hip_roll_stance: 300
-kd_hip_roll_stance: 3
 
-kp_hip_yaw_stance: 10
-kd_hip_yaw_stance: 1
-
-kp_hip_pitch_stance: 20
-kd_hip_pitch_stance: 1
-
-kp_knee_stance: 80
-kd_knee_stance: 2
-
-kp_toe_stance: 10
-kd_toe_stance: 1
-
-kp_hip_roll_swing: 50
-kd_hip_roll_swing: 2
-
-kp_hip_yaw_swing: 10
-kd_hip_yaw_swing: 1
-
-kp_hip_pitch_swing: 20
-kd_hip_pitch_swing: 1
-
-kp_knee_swing: 75
-kd_knee_swing: 2
-
-kp_toe_swing: 5
-kd_toe_swing: 0.5

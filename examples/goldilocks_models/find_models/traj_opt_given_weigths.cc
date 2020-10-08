@@ -1808,11 +1808,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Cost on velocity and input
   double w_Q = setting.Q_double * all_cost_scale;
-  double w_Q_vy = w_Q * 10000 * all_cost_scale;  // avoid pelvis rocking in y
-  double w_Q_vz = w_Q * 10000 * all_cost_scale;  // avoid pelvis rocking in z
-  double w_Q_swing_toe = w_Q * 100 * all_cost_scale;  // avoid swing toe shaking
   double w_R = setting.R_double * all_cost_scale;
-  double w_R_swing_toe = w_R * 100 * all_cost_scale;  // avoid swing toe shaking
   // Cost on force (the final weight is w_lambda^2)
   double w_lambda = 1.0e-3 * all_cost_scale * all_cost_scale;
   // Cost on difference over time
@@ -1823,20 +1819,28 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
   double w_q_hip_yaw = 1 * 5 * all_cost_scale;
   double w_q_quat = 1 * 5 * 10 * all_cost_scale;
+  // Additional cost on pelvis
+  double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
+  double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
+  // Additional cost on swing toe
+  double w_Q_swing_toe = w_Q * 1;  // avoid swing toe shaking
+  double w_R_swing_toe = w_R * 1;  // avoid swing toe shaking
   // Testing -- cost on position difference (cost on v is not enough, because
   // the solver might exploit the integration scheme. If we only penalize
   // velocity at knots, then the solver will converge to small velocity at knots
   // but big acceleration at knots!)
   double w_q_diff = 1 * 5 * 0.1 * all_cost_scale;
-  double w_q_diff_swing_toe = 100 * 5 * 0.1 * all_cost_scale;
+  double w_q_diff_swing_toe = w_q_diff * 1;
+  // Testing
+  double w_v_diff_swing_leg = w_v_diff * 1;
 
   // Flags for constraints
   bool swing_foot_ground_clearance = false;
   bool swing_leg_collision_avoidance = false;
-  bool periodic_floating_base_vel = false;
   bool periodic_quaternion = false;
+  bool periodic_floating_base_vel = false;
   bool periodic_joint_pos = true;
-  bool periodic_joint_vel = false;
+  bool periodic_joint_vel = true;
   bool ground_normal_force_margin = false;
   bool zero_com_height_vel = false;
   bool zero_com_height_vel_difference = false;
@@ -1860,6 +1864,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+//  for (auto mem : vel_map) {
+//    cout << mem.first << ", " << mem.second << endl;
+//  }
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -2575,6 +2582,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
   // add cost on pos difference wrt time
   MatrixXd Q_v_diff = w_v_diff * MatrixXd::Identity(n_v, n_v);
+  Q_v_diff(7, 7) = w_v_diff_swing_leg;
+  Q_v_diff(9, 9) = w_v_diff_swing_leg;
+  Q_v_diff(11, 11) = w_v_diff_swing_leg;
+  Q_v_diff(13, 13) = w_v_diff_swing_leg;
+  Q_v_diff(15, 15) = w_v_diff_swing_leg;
+  Q_v_diff(17, 17) = w_v_diff_swing_leg;
   if (w_v_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto v0 = trajopt->state(i).tail(n_v);
@@ -2761,6 +2774,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
     // Print weight
     cout << "\nw_Q = " << w_Q << endl;
+    cout << "w_Q_vy = " << w_Q_vy << endl;
+    cout << "w_Q_vz = " << w_Q_vz << endl;
     cout << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
     cout << "w_R = " << w_R << endl;
     cout << "w_R_swing_toe = " << w_R_swing_toe << endl;
@@ -2769,6 +2784,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "w_q_diff = " << w_q_diff << endl;
     cout << "w_q_diff_swing_toe = " << w_q_diff_swing_toe << endl;
     cout << "w_v_diff = " << w_v_diff << endl;
+    cout << "w_v_diff_swing_leg = " << w_v_diff_swing_leg << endl;
     cout << "w_u_diff = " << w_u_diff << endl;
     cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
     cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
@@ -2885,6 +2901,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
          << endl;
 
     // Constraints
+    cout << endl;
     cout << "swing_foot_ground_clearance = " << swing_foot_ground_clearance
          << endl;
     cout << "swing_leg_collision_avoidance = " << swing_leg_collision_avoidance

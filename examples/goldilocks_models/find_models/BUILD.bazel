@@ -47,6 +47,7 @@ cc_library(
         "//examples/goldilocks_models/find_models:goldilocks_model_traj_opt",
         "//lcm:dircon_trajectory_saver",
         "//solvers:nonlinear_constraint",
+        "//solvers:nonlinear_cost",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",

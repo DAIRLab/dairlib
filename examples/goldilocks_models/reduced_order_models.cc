@@ -739,7 +739,9 @@ FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
                         "Fixed COM vertical acceleration"),
       plant_(plant),
       world_(plant_.world_frame()),
-      stance_contact_point_(stance_contact_point) {
+      stance_contact_point_(stance_contact_point),
+      pelvis_(std::pair<const Vector3d, const Frame<double>&>(
+          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
   // Initialize model parameters (dependant on the feature vectors)
   VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
   VectorX<double> theta_yddot =
@@ -758,13 +760,21 @@ FixHeightAccel::FixHeightAccel(const FixHeightAccel& old_obj)
     : ReducedOrderModel(old_obj),
       plant_(old_obj.plant()),
       world_(old_obj.world()),
+      is_quaternion_(isQuaternion(old_obj.plant())),
       stance_contact_point_(old_obj.stance_foot()),
-      is_quaternion_(isQuaternion(old_obj.plant())) {}
+      pelvis_(std::pair<const Vector3d, const Frame<double>&>(
+          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
+}
 
 VectorX<double> FixHeightAccel::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM position
-  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+//  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+// Testing using pelvis
+  VectorX<double> CoM(3);
+  plant_.CalcPointsPositions(context, pelvis_.second,
+                             pelvis_.first, plant_.world_frame(),
+                             &CoM);
   // Stance foot position
   VectorX<double> left_foot_pos(3);
   plant_.CalcPointsPositions(context, stance_contact_point_.second,
@@ -790,9 +800,14 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM velocity
+//  MatrixX<double> J_com(3, plant_.num_velocities());
+//  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+//      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // testing using pelvis
   MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  plant_.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable::kV, pelvis_.second,
+      pelvis_.first, world_, world_, &J_com);
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
@@ -811,9 +826,14 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJV(
 MatrixX<double> FixHeightAccel::EvalMappingFeatJ(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM velocity
+//  MatrixX<double> J_com(3, plant_.num_velocities());
+//  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+//      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+// Testing using pelvis
   MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  plant_.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable::kV, pelvis_.second,
+      pelvis_.first, world_, world_, &J_com);
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
@@ -831,9 +851,13 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM JdotV
-  VectorX<double> JdotV_com =
-      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
-          context, JacobianWrtVariable::kV, world_, world_);
+  //  VectorX<double> JdotV_com =
+  //      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+  //          context, JacobianWrtVariable::kV, world_, world_);
+  // Testing: use pelvis origin
+  VectorX<double> JdotV_com = plant_.CalcBiasTranslationalAcceleration(
+      context, JacobianWrtVariable::kV, pelvis_.second,
+      pelvis_.first, world_, world_);
   // Stance foot JdotV
   VectorX<double> JdotV_st = plant_.CalcBiasTranslationalAcceleration(
       context, JacobianWrtVariable::kV, stance_contact_point_.second,

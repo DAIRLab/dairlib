@@ -353,6 +353,9 @@ class FixHeightAccel : public ReducedOrderModel {
   // contact body frame and contact point of the stance foot
   const BodyPoint stance_contact_point_;
   bool is_quaternion_;
+
+  // Testing
+  BodyPoint pelvis_;
 };
 
 class FixHeightAccelWithSwingFoot : public ReducedOrderModel {

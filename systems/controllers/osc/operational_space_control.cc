@@ -461,6 +461,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   plant_wo_spr_.CalcForceElementsContribution(*context_wo_spr_, &f_app);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
   bias = bias - grav;
+  // TODO (yangwill): Characterize damping in cassie model
   bias = bias - f_app.generalized_forces();
 
   // Get J and JdotV for holonomic constraint

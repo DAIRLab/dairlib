@@ -343,6 +343,55 @@ class CollocationVelocityCost : public solvers::NonlinearCost<double> {
   MatrixXd W_Q_;
 };
 
+class JointAccelCost : public solvers::NonlinearCost<double> {
+ public:
+  JointAccelCost(const MatrixXd& W_Q,
+                 const drake::multibody::MultibodyPlant<double>& plant,
+                 DirconKinematicDataSet<double>* constraints,
+                 const std::string& description = "")
+      : solvers::NonlinearCost<double>(
+            plant.num_positions() + plant.num_velocities() +
+                plant.num_actuators() +
+                constraints->countConstraintsWithoutSkipping(),
+            description),
+        plant_(plant),
+        context_(plant_.CreateDefaultContext()),
+        constraints_(constraints),
+        n_v_(plant.num_velocities()),
+        n_x_(plant.num_positions() + plant.num_velocities()),
+        n_u_(plant.num_actuators()),
+        n_lambda_(constraints->countConstraintsWithoutSkipping()),
+        W_Q_(W_Q){};
+
+ private:
+  void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
+                    drake::VectorX<double>* y) const override {
+    DRAKE_ASSERT(x.size() == n_x_ + n_u_ + n_lambda_);
+
+    // Extract our input variables:
+    const auto x0 = x.segment(0, n_x_);
+    const auto u0 = x.segment(n_x_, n_u_);
+    const auto l0 = x.segment(n_x_ + n_u_, n_lambda_);
+
+    multibody::setContext<double>(plant_, x0, u0, context_.get());
+    constraints_->updateData(*context_, l0);
+    const VectorX<double> xdot0 = constraints_->getXDot();
+
+    (*y) = xdot0.tail(n_v_).transpose() * W_Q_ * xdot0.tail(n_v_);
+  };
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  DirconKinematicDataSet<double>* constraints_;
+
+  int n_v_;
+  int n_x_;
+  int n_u_;
+  int n_lambda_;
+
+  MatrixXd W_Q_;
+};
+
 void addRegularization(bool is_get_nominal, double eps_reg,
                        GoldilocksModelTrajOpt& gm_traj_opt) {
   // Add regularization term here so that hessian is pd (for outer loop), so
@@ -1834,6 +1883,17 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
 
+  // Save trajectory to file
+  if (true) {
+    string file_name = "dircon_trajectory";
+    DirconTrajectory saved_traj(
+        plant, *gm_traj_opt.dircon, result, file_name,
+        "Decision variables and state/input trajectories");
+    saved_traj.WriteToFile(setting.directory + file_name);
+    std::cout << "Wrote to file: " << setting.directory + file_name
+              << std::endl;
+  }
+
   bool is_print_for_debugging = false;
   VectorXd w_sol;
   extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
@@ -1924,12 +1984,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // TODO
 
   // Testing
-  bool add_cost_on_collocation_vel = true;
-  bool only_one_mode = true;
+  bool only_one_mode = false;
   if (only_one_mode) {
     periodic_joint_pos = false;
     periodic_joint_vel = false;
   }
+  // Testing
+  bool add_cost_on_collocation_vel = false;
+  bool add_joint_acceleration_cost = false;
 
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
@@ -2185,10 +2247,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->SetSolverOption(id, "acceptable_tol", 1e2);
     trajopt->SetSolverOption(id, "acceptable_iter", 5);
   } else {
-    // Snopt settings
-    // cout << "WARNING: you are printing snopt log.\n for Cassie";
-    // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-    //                         "../snopt_sample#"+to_string(sample_idx)+".out");
+    //     Snopt settings
+    cout << "WARNING: you are printing snopt log.\n for Cassie";
+    trajopt->SetSolverOption(
+        drake::solvers::SnoptSolver::id(), "Print file",
+        "../snopt_sample#" + to_string(sample_idx) + ".out");
     trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                              "Major iterations limit", setting.max_iter);
     trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -2243,6 +2306,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         0.780914, -0.269512;
     trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
     trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
+    //    trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
+    //    xf.head(n_q));
     //  trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
     //  xf.head(7));
     //    trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
@@ -2768,6 +2833,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
+  // Testing: add joint acceleration cost at knot points
+  if (add_joint_acceleration_cost) {
+    auto vel_collocation_cost =
+        std::make_shared<JointAccelCost>(0.00001 * W_Q, plant, dataset_list[0]);
+    for (int i = 0; i < N; i++) {
+      auto x0 = trajopt->state(i);
+      auto u0 = trajopt->input(i);
+      auto l0 = trajopt->force(0, i);
+      trajopt->AddCost(vel_collocation_cost, {x0, u0, l0});
+    }
+  }
+
   // Move the trajectory optimization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
@@ -3047,6 +3124,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
     cout << endl;
     cout << "only_one_mode = " << only_one_mode << endl;
+    cout << "add_cost_on_collocation_vel = " << add_cost_on_collocation_vel
+         << endl;
+    cout << "add_joint_acceleration_cost = " << add_joint_acceleration_cost
+         << endl;
   }  // end if is_print_for_debugging
 }
 

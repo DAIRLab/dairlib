@@ -1,4 +1,3 @@
-#include "drake/common/yaml/yaml_read_archive.h"
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -14,6 +13,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -69,6 +69,9 @@ struct OSCStandingGains {
   double w_input;
   double w_accel;
   double w_soft_constraint;
+  double HipYawKp;
+  double HipYawKd;
+  double HipYawW;
   std::vector<double> CoMKp;
   std::vector<double> CoMKd;
   std::vector<double> PelvisRotKp;
@@ -87,8 +90,11 @@ struct OSCStandingGains {
     a->Visit(DRAKE_NVP(CoMKd));
     a->Visit(DRAKE_NVP(PelvisRotKp));
     a->Visit(DRAKE_NVP(PelvisRotKd));
+    a->Visit(DRAKE_NVP(HipYawKp));
+    a->Visit(DRAKE_NVP(HipYawKd));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(PelvisW));
+    a->Visit(DRAKE_NVP(HipYawW));
   }
 };
 
@@ -140,12 +146,15 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisRotKd.data(), gains.rows, gains.cols);
+  MatrixXd K_p_hip_yaw = gains.HipYawKp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_hip_yaw = gains.HipYawKd * MatrixXd::Identity(1, 1);
   MatrixXd W_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.CoMW.data(), gains.rows, gains.cols);
   MatrixXd W_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisW.data(), gains.rows, gains.cols);
+  MatrixXd W_hip_yaw = gains.HipYawW * MatrixXd::Identity(1, 1);
   std::cout << "w input (not used): \n" << gains.w_input << std::endl;
   std::cout << "w accel: \n" << gains.w_accel << std::endl;
   std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
@@ -182,7 +191,8 @@ int DoMain(int argc, char* argv[]) {
   // Create osc debug sender.
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG_STANDING", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+          "OSC_DEBUG_STANDING", &lcm_local,
+          TriggerTypeSet({TriggerType::kForced})));
 
   // Create desired center of mass traj
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
@@ -244,10 +254,10 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
-  Q_accel(6, 6) = 1;
-  Q_accel(7, 7) = 1;
-  Q_accel(8, 8) = 10;
-  Q_accel(9, 9) = 10;
+  Q_accel(6, 6) = 0.1;
+  Q_accel(7, 7) = 0.1;
+  Q_accel(8, 8) = 0.1;
+  Q_accel(9, 9) = 0.1;
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
@@ -262,6 +272,19 @@ int DoMain(int argc, char* argv[]) {
       plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_rot_traj);
+
+  JointSpaceTrackingData hip_yaw_left_tracking(
+      "hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw,
+      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
+      plant_wo_springs);
+  JointSpaceTrackingData hip_yaw_right_tracking(
+      "hip_yaw_right_traj", K_p_hip_yaw, K_d_hip_yaw,
+      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
+      plant_wo_springs);
+  hip_yaw_left_tracking.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  hip_yaw_right_tracking.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  osc->AddConstTrackingData(&hip_yaw_left_tracking, 0.0 * VectorXd::Ones(1));
+  osc->AddConstTrackingData(&hip_yaw_right_tracking, 0.0 * VectorXd::Ones(1));
 
   // Build OSC problem
   osc->Build();

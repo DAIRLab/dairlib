@@ -2550,7 +2550,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "Current time: " << std::ctime(&current_time) << "\n\n";
 
   // store parameter values
-  prefix = to_string(iter + 1) + "_";
+  prefix = to_string(iter) + "_";
   if (!FLAGS_is_debug) {
     writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
     writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());

@@ -20,6 +20,8 @@ def main():
   # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/dircon_trajectory_iter1')
   # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
   # filename = abs_path + "/dircon_trajectory"
+  # filename = "../dircon_trajectory"
+  # filename = "../dairlib_data/cassie_trajopt_data/default_filename"
   if len(sys.argv) == 2:
     filename = sys.argv[1]
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
@@ -48,18 +50,10 @@ def main():
   States, inputs, forces trajectories
   """
   # Indexing
-  x_idx_start = 0
-  x_idx_end = 7
-  PlotState(dircon_traj, x_idx_start, x_idx_end)
-  x_idx_start = 7
-  x_idx_end = nq
-  PlotState(dircon_traj, x_idx_start, x_idx_end)
-  # x_idx_start = nq
-  # x_idx_end = nq + 6
-  # PlotStateInputForce(dircon_traj, x_idx_start, x_idx_end)
-  x_idx_start = nq + 6
-  x_idx_end = nx
-  PlotState(dircon_traj, x_idx_start, x_idx_end)
+  PlotState(dircon_traj, 0, 7)
+  PlotState(dircon_traj, 7, nq)
+  PlotState(dircon_traj, nq, nq + 6)
+  PlotState(dircon_traj, nq + 6, nx)
 
   PlotInput(dircon_traj)
   PlotForce(dircon_traj)

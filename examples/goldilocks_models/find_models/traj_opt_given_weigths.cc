@@ -1857,6 +1857,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   bool four_bar_in_right_support = false;
   // TODO
 
+  // Testing
+  bool only_one_mode = true;
+
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
 
@@ -1864,9 +1867,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
-//  for (auto mem : vel_map) {
-//    cout << mem.first << ", " << mem.second << endl;
-//  }
+  //  for (auto mem : vel_map) {
+  //    cout << mem.first << ", " << mem.second << endl;
+  //  }
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -1970,10 +1973,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Set up options
   std::vector<DirconOptions> options_list;
   options_list.push_back(DirconOptions(ls_dataset.countConstraints(), plant));
-  options_list.push_back(DirconOptions(rs_dataset.countConstraints(), plant));
+  if (!only_one_mode) {
+    options_list.push_back(DirconOptions(rs_dataset.countConstraints(), plant));
+  }
 
   // set force cost weight
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < options_list.size(); i++) {
     options_list[i].setForceCost(w_lambda);
   }
 
@@ -1981,7 +1986,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   ///                 || lf/rf | lr/rr | fourbar
   /// Before skipping || 0 1 2 | 3 4 5 | 6 7
   /// After skipping  || 0 1 2 |   3 4 | 5 6
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < options_list.size(); i++) {
     options_list[i].setConstraintRelative(0, true);
     options_list[i].setConstraintRelative(1, true);
     options_list[i].setConstraintRelative(3, true);
@@ -1989,7 +1994,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Constraint scaling
   double s = 1;  // 100;  // scale every nonlinear constraint together except
                  // quaternion
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < options_list.size(); i++) {
     // options_list[i].setQuatConstraintScaling(s);
     if (is_get_nominal) {
       // old constraint scaling (from traj opt of cassie, without rom
@@ -2068,16 +2073,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // timesteps and modes setting
   vector<double> min_dt;
   vector<double> max_dt;
-  min_dt.push_back(0);
-  min_dt.push_back(0);
-  max_dt.push_back(.3);
-  max_dt.push_back(.3);
   vector<int> num_time_samples;
-  num_time_samples.push_back(setting.n_node);
-  num_time_samples.push_back(1);
   vector<DirconKinematicDataSet<double>*> dataset_list;
+  min_dt.push_back(0);
+  max_dt.push_back(.3);
+  num_time_samples.push_back(setting.n_node);
   dataset_list.push_back(&ls_dataset);
-  dataset_list.push_back(&rs_dataset);
+  if (!only_one_mode) {
+    min_dt.push_back(0);
+    max_dt.push_back(.3);
+    num_time_samples.push_back(1);
+    dataset_list.push_back(&rs_dataset);
+  }
 
   auto trajopt = std::make_unique<HybridDircon<double>>(
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
@@ -2140,16 +2147,42 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   auto u0 = trajopt->input(0);
   auto uf = trajopt->input(N - 1);
   auto x0 = trajopt->initial_state();
-  auto xf = trajopt->state_vars_by_mode(
-      num_time_samples.size() - 1,
-      num_time_samples[num_time_samples.size() - 1] - 1);
+  auto xf = only_one_mode
+                ? trajopt->final_state()
+                : trajopt->state_vars_by_mode(
+                      num_time_samples.size() - 1,
+                      num_time_samples[num_time_samples.size() - 1] - 1);
   auto x_mid = trajopt->state(int(num_time_samples[0] / 2));
+
+  // Testing
+  if (only_one_mode) {
+    VectorXd x0_val(plant.num_positions() + plant.num_velocities());
+    x0_val << 1, 0, 0, 0, 0, -0.00527375, 1.10066, 0.00686375, 0.0025628,
+        0.000573004, -0.000573019, 0.439262, 0.201581, -0.646, -0.795755,
+        0.866859, 1.01813, -1.53361, -1.29744, -0.321, 0.198875, -0.0342067,
+        0.67034, 0.363396, -0.0367492, -0.0100005, 0.0120047, 0.0355722,
+        0.0585609, 0.26338, -0.584013, -1.45501, 0.221981, 1.47458, -0.223655,
+        -0.0841209, 0.797712;
+    VectorXd xf_val(plant.num_positions() + plant.num_velocities());
+    xf_val << 1, 0, 0, 0, 0.3, 0.00527375, 1.10066, -0.0025628, -0.00686375,
+        0.000573019, -0.000573004, 0.201581, 0.439262, -0.795755, -0.646,
+        1.01813, 0.866859, -1.29744, -1.53361, 0.49743, 0.0737923, 0.0867892,
+        0.666384, -0.319709, -0.072308, -0.202807, 0.193892, -0.0869775,
+        0.763641, -0.705892, -0.590682, 0.214898, 1.02658, -0.216519, -1.04038,
+        0.780914, -0.269512;
+    trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
+    trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
+    //  trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
+    //  xf.head(7));
+//    trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
+//                                      xf_val.segment<1>(4), xf.segment<1>(4));
+  }
 
   // Fix time duration
   trajopt->AddDurationBounds(duration, duration);
 
   // Constraint on initial floating base quaternion
-  if (!periodic_quaternion) {
+  if (!periodic_quaternion && !only_one_mode) {
     trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
     trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
     trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
@@ -2161,7 +2194,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //  rotation matrix and mirror around the x-z plane of local frame (however,
   //  the downside is the potential complexity of constraint)
   double turning_angle = turning_rate * duration;
-  if (!periodic_quaternion) {
+  if (!periodic_quaternion && !only_one_mode) {
     trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
                                       cos(turning_angle / 2),
                                       xf(pos_map.at("base_qw")));
@@ -2173,85 +2206,87 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   // other floating base constraints
-  if (turning_rate == 0) {
-    // x position constraint
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-    trajopt->AddBoundingBoxConstraint(stride_length, stride_length,
-                                      xf(pos_map.at("base_x")));
+  if (!only_one_mode) {
+    if (turning_rate == 0) {
+      // x position constraint
+      trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
+      trajopt->AddBoundingBoxConstraint(stride_length, stride_length,
+                                        xf(pos_map.at("base_x")));
 
-    // Floating base periodicity
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
-                                 -xf(pos_map.at("base_y")));
-    if (periodic_quaternion) {
-      trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
-                                   xf(pos_map.at("base_qw")));
-      trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
-                                   -xf(pos_map.at("base_qx")));
-      trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
-                                   xf(pos_map.at("base_qy")));
-      trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
-                                   -xf(pos_map.at("base_qz")));
-    }
-    if (periodic_floating_base_vel) {
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                   xf(n_q + vel_map.at("base_wx")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                   -xf(n_q + vel_map.at("base_wy")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                   xf(n_q + vel_map.at("base_wz")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                                   xf(n_q + vel_map.at("base_vx")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-                                   -xf(n_q + vel_map.at("base_vy")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                                   xf(n_q + vel_map.at("base_vz")));
-    }
-  } else {
-    // z position constraint
-    // We don't need to impose this constraint when turning rate is 0, because
-    // the periodicity constraint already enforce the z height implicitly
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) ==
-                                 xf(pos_map.at("base_z")) +
-                                     xf(pos_map.at("base_x")) *
-                                         sin(ground_incline));
+      // Floating base periodicity
+      trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
+                                   -xf(pos_map.at("base_y")));
+      if (periodic_quaternion) {
+        trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
+                                     xf(pos_map.at("base_qw")));
+        trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
+                                     -xf(pos_map.at("base_qx")));
+        trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
+                                     xf(pos_map.at("base_qy")));
+        trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
+                                     -xf(pos_map.at("base_qz")));
+      }
+      if (periodic_floating_base_vel) {
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+                                     xf(n_q + vel_map.at("base_wx")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+                                     -xf(n_q + vel_map.at("base_wy")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+                                     xf(n_q + vel_map.at("base_wz")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+                                     xf(n_q + vel_map.at("base_vx")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+                                     -xf(n_q + vel_map.at("base_vy")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+                                     xf(n_q + vel_map.at("base_vz")));
+      }
+    } else {
+      // z position constraint
+      // We don't need to impose this constraint when turning rate is 0, because
+      // the periodicity constraint already enforce the z height implicitly
+      trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) ==
+                                   xf(pos_map.at("base_z")) +
+                                       xf(pos_map.at("base_x")) *
+                                           sin(ground_incline));
 
-    // x y position constraint
-    double radius = stride_length / abs(turning_angle);
-    int sign = (turning_angle >= 0) ? 1 : -1;
-    double delta_x = radius * sin(abs(turning_angle));
-    double delta_y = sign * radius * (1 - cos(turning_angle));
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-    trajopt->AddBoundingBoxConstraint(delta_x, delta_x,
-                                      xf(pos_map.at("base_x")));
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
-    trajopt->AddBoundingBoxConstraint(delta_y, delta_y,
-                                      xf(pos_map.at("base_y")));
+      // x y position constraint
+      double radius = stride_length / abs(turning_angle);
+      int sign = (turning_angle >= 0) ? 1 : -1;
+      double delta_x = radius * sin(abs(turning_angle));
+      double delta_y = sign * radius * (1 - cos(turning_angle));
+      trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
+      trajopt->AddBoundingBoxConstraint(delta_x, delta_x,
+                                        xf(pos_map.at("base_x")));
+      trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
+      trajopt->AddBoundingBoxConstraint(delta_y, delta_y,
+                                        xf(pos_map.at("base_y")));
 
-    // floating base velocity constraint at mid point
-    // TODO: double check that the floating base velocity is wrt local frame
-    /*trajopt->AddBoundingBoxConstraint(stride_length / duration,
-                                      stride_length / duration,
-                                      x_mid(n_q + vel_map.at("base_vx")));
-    trajopt->AddBoundingBoxConstraint(0, 0, x_mid(n_q + vel_map.at("base_vy")));
-    trajopt->AddBoundingBoxConstraint(turning_rate,
-                                      turning_rate,
-                                      x_mid(n_q + vel_map.at("base_wz")));*/
+      // floating base velocity constraint at mid point
+      // TODO: double check that the floating base velocity is wrt local frame
+      /*trajopt->AddBoundingBoxConstraint(stride_length / duration,
+                                        stride_length / duration,
+                                        x_mid(n_q + vel_map.at("base_vx")));
+      trajopt->AddBoundingBoxConstraint(0, 0, x_mid(n_q +
+      vel_map.at("base_vy"))); trajopt->AddBoundingBoxConstraint(turning_rate,
+                                        turning_rate,
+                                        x_mid(n_q + vel_map.at("base_wz")));*/
 
-    // velocity constraint at the end point
-    // TODO: double check that the floating base velocity is wrt local frame
-    if (periodic_floating_base_vel) {
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                   xf(n_q + vel_map.at("base_wx")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                   -xf(n_q + vel_map.at("base_wy")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                   xf(n_q + vel_map.at("base_wz")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                                   xf(n_q + vel_map.at("base_vx")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-                                   -xf(n_q + vel_map.at("base_vy")));
-      trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                                   xf(n_q + vel_map.at("base_vz")));
+      // velocity constraint at the end point
+      // TODO: double check that the floating base velocity is wrt local frame
+      if (periodic_floating_base_vel) {
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+                                     xf(n_q + vel_map.at("base_wx")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+                                     -xf(n_q + vel_map.at("base_wy")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+                                     xf(n_q + vel_map.at("base_wz")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+                                     xf(n_q + vel_map.at("base_vx")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+                                     -xf(n_q + vel_map.at("base_vy")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+                                     xf(n_q + vel_map.at("base_vz")));
+      }
     }
   }
 
@@ -2519,9 +2554,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   for (int i = 0; i < rs_dataset.countConstraintsWithoutSkipping(); i++) {
     idx_list.push_back(i);
   }
-  trajopt->ScaleForceVariables(1, idx_list, 1000);
+  if (!only_one_mode) trajopt->ScaleForceVariables(1, idx_list, 1000);
   // impulse
-  trajopt->ScaleImpulseVariables(0, idx_list, 10);  // 0.1
+  if (!only_one_mode) trajopt->ScaleImpulseVariables(0, idx_list, 10);  // 0.1
   // quaternion slack
   trajopt->ScaleQuaternionSlackVariables(30);
   // Constraint slack
@@ -2920,6 +2955,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "zero_pelvis_height_vel = " << zero_pelvis_height_vel << endl;
     cout << "constrain_stance_leg_fourbar_force = "
          << constrain_stance_leg_fourbar_force << endl;
+
+    cout << endl;
+    cout << "only_one_mode = " << only_one_mode << endl;
   }  // end if is_print_for_debugging
 }
 

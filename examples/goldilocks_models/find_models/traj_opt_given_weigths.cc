@@ -1991,7 +1991,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
   // Testing
   bool add_cost_on_collocation_vel = false;
-  bool add_joint_acceleration_cost = false;
+  bool add_joint_acceleration_cost = true;
 
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
@@ -2819,7 +2819,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing: add velocity at collocation point to the cost function
   if (add_cost_on_collocation_vel) {
     auto vel_collocation_cost =
-        std::make_shared<CollocationVelocityCost>(W_Q, plant, dataset_list[0]);
+        std::make_shared<CollocationVelocityCost>(0.1 * W_Q, plant, dataset_list[0]);
     for (int i = 0; i < N - 1; i++) {
       auto dt = trajopt->timestep(i);
       auto x0 = trajopt->state(i);

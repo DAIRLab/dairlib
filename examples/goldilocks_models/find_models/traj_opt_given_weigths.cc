@@ -1966,7 +1966,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   bool periodic_quaternion = false;
   bool periodic_floating_base_vel = false;
   bool periodic_joint_pos = true;
-  bool periodic_joint_vel = true;
+  bool periodic_joint_vel = false;
   bool ground_normal_force_margin = false;
   bool zero_com_height_vel = false;
   bool zero_com_height_vel_difference = false;
@@ -2818,8 +2818,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing: add velocity at collocation point to the cost function
   if (add_cost_on_collocation_vel) {
-    auto vel_collocation_cost =
-        std::make_shared<CollocationVelocityCost>(0.1 * W_Q, plant, dataset_list[0]);
+    auto vel_collocation_cost = std::make_shared<CollocationVelocityCost>(
+        0.1 * W_Q, plant, dataset_list[0]);
     for (int i = 0; i < N - 1; i++) {
       auto dt = trajopt->timestep(i);
       auto x0 = trajopt->state(i);
@@ -2834,14 +2834,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   // Testing: add joint acceleration cost at knot points
+  auto joint_accel_cost =
+      std::make_shared<JointAccelCost>(0.00001 * W_Q, plant, dataset_list[0]);
   if (add_joint_acceleration_cost) {
-    auto vel_collocation_cost =
-        std::make_shared<JointAccelCost>(0.00001 * W_Q, plant, dataset_list[0]);
     for (int i = 0; i < N; i++) {
       auto x0 = trajopt->state(i);
       auto u0 = trajopt->input(i);
       auto l0 = trajopt->force(0, i);
-      trajopt->AddCost(vel_collocation_cost, {x0, u0, l0});
+      trajopt->AddCost(joint_accel_cost, {x0, u0, l0});
     }
   }
 
@@ -3097,6 +3097,22 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
     total_cost += cost_q_quat_xyz;
     cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
+    double cost_joint_acceleration = 0;
+    if (add_joint_acceleration_cost) {
+//      for (int i = 0; i < N; i++) {
+//        auto x0 = result.GetSolution(trajopt->state(i));
+//        auto u0 = result.GetSolution(trajopt->input(i));
+//        auto l0 = result.GetSolution(trajopt->force(0, i));
+//
+//        Eigen::VectorXd x_val(x0.size() + u0.size() + l0.size());
+//        x_val << x0, u0, l0;
+//        Eigen::VectorXd y_val(1);
+//        joint_accel_cost->Eval(x_val, &y_val);
+//        cost_joint_acceleration += y_val(0);
+//      }
+    }
+    total_cost += cost_joint_acceleration;
+    cout << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
 
     cout << "total_cost (only the nominal traj cost terms) = " << total_cost
          << endl;

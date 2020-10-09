@@ -517,7 +517,7 @@ void HybridDircon<T>::ScaleImpulseVariable(int mode, int idx, double scale) {
 template <typename T>
 void HybridDircon<T>::ScaleKinConstraintSlackVariable(int mode, int idx,
                                                       double scale) {
-  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_));
   int n_lambda = num_kinematic_constraints_wo_skipping_[mode];
   DRAKE_DEMAND(idx < n_lambda);
 

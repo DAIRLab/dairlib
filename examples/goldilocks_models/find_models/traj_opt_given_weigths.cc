@@ -11,6 +11,7 @@
 #include "lcm/dircon_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/nonlinear_constraint.h"
+#include "solvers/nonlinear_cost.h"
 #include "solvers/optimization_utils.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
@@ -275,6 +276,71 @@ class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {
   std::unique_ptr<drake::systems::Context<double>> context_;
   int n_q_;
   int n_v_;
+};
+
+class CollocationVelocityCost : public solvers::NonlinearCost<double> {
+ public:
+  CollocationVelocityCost(const MatrixXd& W_Q,
+                          const drake::multibody::MultibodyPlant<double>& plant,
+                          DirconKinematicDataSet<double>* constraints,
+                          const std::string& description = "")
+      : solvers::NonlinearCost<double>(
+            1 + 2 * (plant.num_positions() + plant.num_velocities()) +
+                (2 * plant.num_actuators()) +
+                (2 * constraints->countConstraintsWithoutSkipping()),
+            description),
+        plant_(plant),
+        context_(plant_.CreateDefaultContext()),
+        constraints_(constraints),
+        n_v_(plant.num_velocities()),
+        n_x_(plant.num_positions() + plant.num_velocities()),
+        n_u_(plant.num_actuators()),
+        n_lambda_(constraints->countConstraintsWithoutSkipping()),
+        W_Q_(W_Q){};
+
+ private:
+  void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
+                    drake::VectorX<double>* y) const override {
+    DRAKE_ASSERT(x.size() == 1 + 2 * (n_x_ + n_u_ + n_lambda_));
+
+    // Extract our input variables:
+    // h - current time (knot) value
+    // x0, x1 state vector at time steps k, k+1
+    // u0, u1 input vector at time steps k, k+1
+    const auto h = x(0);
+    const auto x0 = x.segment(1, n_x_);
+    const auto x1 = x.segment(1 + n_x_, n_x_);
+    const auto u0 = x.segment(1 + (2 * n_x_), n_u_);
+    const auto u1 = x.segment(1 + (2 * n_x_) + n_u_, n_u_);
+    const auto l0 = x.segment(1 + 2 * (n_x_ + n_u_), n_lambda_);
+    const auto l1 = x.segment(1 + 2 * (n_x_ + n_u_) + n_lambda_, n_lambda_);
+
+    multibody::setContext<double>(plant_, x0, u0, context_.get());
+    constraints_->updateData(*context_, l0);
+    const VectorX<double> xdot0 = constraints_->getXDot();
+
+    multibody::setContext<double>(plant_, x1, u1, context_.get());
+    constraints_->updateData(*context_, l1);
+    const VectorX<double> xdot1 = constraints_->getXDot();
+
+    // Cubic interpolation to get xcol and xdotcol.
+    const VectorX<double> xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
+    //    const VectorX<double> xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 +
+    //    xdot1);
+
+    (*y) = xcol.tail(n_v_).transpose() * W_Q_ * xcol.tail(n_v_);
+  };
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  DirconKinematicDataSet<double>* constraints_;
+
+  int n_v_;
+  int n_x_;
+  int n_u_;
+  int n_lambda_;
+
+  MatrixXd W_Q_;
 };
 
 void addRegularization(bool is_get_nominal, double eps_reg,
@@ -1858,7 +1924,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // TODO
 
   // Testing
+  bool add_cost_on_collocation_vel = true;
   bool only_one_mode = true;
+  if (only_one_mode) {
+    periodic_joint_pos = false;
+    periodic_joint_vel = false;
+  }
 
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
@@ -2174,8 +2245,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
     //  trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
     //  xf.head(7));
-//    trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
-//                                      xf_val.segment<1>(4), xf.segment<1>(4));
+    //    trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
+    //                                      xf_val.segment<1>(4),
+    //                                      xf.segment<1>(4));
   }
 
   // Fix time duration
@@ -2676,6 +2748,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         // Add || Ax - b ||^2
         trajopt->AddL2NormCost(A, b, trajopt->collocation_force(i, j));
       }
+    }
+  }
+
+  // Testing: add velocity at collocation point to the cost function
+  if (add_cost_on_collocation_vel) {
+    auto vel_collocation_cost =
+        std::make_shared<CollocationVelocityCost>(W_Q, plant, dataset_list[0]);
+    for (int i = 0; i < N - 1; i++) {
+      auto dt = trajopt->timestep(i);
+      auto x0 = trajopt->state(i);
+      auto x1 = trajopt->state(i + 1);
+      auto u0 = trajopt->input(i);
+      auto u1 = trajopt->input(i + 1);
+      auto l0 = trajopt->force(0, i);
+      auto l1 = trajopt->force(0, i + 1);
+
+      trajopt->AddCost(vel_collocation_cost, {dt, x0, x1, u0, u1, l0, l1});
     }
   }
 

@@ -1,5 +1,8 @@
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 
+#include <algorithm>  // std::max
+
+#include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "systems/controllers/osc/osc_utils.h"
 
@@ -18,6 +21,7 @@ using std::to_string;
 using std::vector;
 
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -42,43 +46,19 @@ using dairlib::systems::OutputVector;
 namespace dairlib {
 namespace goldilocks_models {
 
-OptimalRomPlanner::OptimalRomPlanner(
+CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_feedback,
     const MultibodyPlant<double>& plant_controls,
-    const std::vector<int>& single_support_fsm_states, double stride_period)
+    const std::vector<int>& left_right_support_fsm_states, double stride_period,
+    const PlannerSetting& param, bool debug_mode)
     : plant_controls_(plant_controls),
-      single_support_fsm_states_(single_support_fsm_states),
-      stride_period_(stride_period) {
-  this->set_name("mpc_traj");
+      left_right_support_fsm_states_(left_right_support_fsm_states),
+      stride_period_(stride_period),
+      param_(param),
+      debug_mode_(debug_mode) {
+  this->set_name("planner_traj");
 
-  // Parameters for the traj opt
-  FLAGS_rom_option = 5;
-  FLAGS_iter = 30;
-  int sample = 19;
-
-  FLAGS_n_step = 2;
-  FLAGS_knots_per_mode = 10;
-  FLAGS_final_position_x = 1;
-
-  zero_touchdown_impact_ = true;
-
-  FLAGS_equalize_timestep_size = true;
-  FLAGS_fix_duration = false;
-
-  FLAGS_feas_tol = 1e-4;
-  FLAGS_opt_tol = 1e-4;
-
-  FLAGS_use_ipopt = false;
-  FLAGS_log_solver_info = false;
-
-  // Files parameters
-  int robot_option = 1;  // robot index for Cassie
-  const string dir = "../dairlib_data/goldilocks_models/planning/robot_1/";
-  const string dir_model = dir + "models/";  // location of the model files
-  const string dir_data = dir + "data/";     // location to store the opt result
-  /*string init_file = FLAGS_init_file;
-  if (!CreateFolderIfNotExist(dir_model)) return 0;
-  if (!CreateFolderIfNotExist(dir_data)) return 0;*/
+  DRAKE_DEMAND(param_.knots_per_mode > 0);
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -88,7 +68,7 @@ OptimalRomPlanner::OptimalRomPlanner(
                     .get_index();
   fsm_and_lo_time_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
-  this->DeclareAbstractOutputPort(&OptimalRomPlanner::SolveTrajOpt);
+  this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
@@ -102,30 +82,26 @@ OptimalRomPlanner::OptimalRomPlanner(
   positions_map_ = multibody::makeNameToPositionsMap(plant_controls);
 
   // Reduced order model
-  rom_ = CreateRom(FLAGS_rom_option, robot_option, plant_controls, false);
-  ReadModelParameters(rom_.get(), dir_model, FLAGS_iter);
+  rom_ = CreateRom(param_.rom_option, ROBOT, plant_controls, false);
+  ReadModelParameters(rom_.get(), param_.dir_model, param_.iter);
 
   // Create mirror maps
-  state_mirror_ =
-      StateMirror(MirrorPosIndexMap(plant_controls, robot_option),
-                  MirrorPosSignChangeSet(plant_controls, robot_option),
-                  MirrorVelIndexMap(plant_controls, robot_option),
-                  MirrorVelSignChangeSet(plant_controls, robot_option));
+  state_mirror_ = StateMirror(MirrorPosIndexMap(plant_controls, ROBOT),
+                              MirrorPosSignChangeSet(plant_controls, ROBOT),
+                              MirrorVelIndexMap(plant_controls, ROBOT),
+                              MirrorVelSignChangeSet(plant_controls, ROBOT));
 
-  // Optimization parameters
+  // Provide initial guess
+  bool with_init_guess = true;
   int n_y = rom_->n_y();
   int n_tau = rom_->n_tau();
-  Q_ = MatrixXd::Identity(n_y, n_y);
-  R_ = MatrixXd::Identity(n_tau, n_tau);
-
-  bool with_init_guess = true;
-  // Provide initial guess
-  string model_dir_n_pref = dir_model + to_string(FLAGS_iter) + string("_") +
-                            to_string(sample) + string("_");
-  h_guess_ = VectorXd(FLAGS_knots_per_mode);
-  r_guess_ = MatrixXd(n_y, FLAGS_knots_per_mode);
-  dr_guess_ = MatrixXd(n_y, FLAGS_knots_per_mode);
-  tau_guess_ = MatrixXd(n_tau, FLAGS_knots_per_mode);
+  string model_dir_n_pref = param_.dir_model + to_string(param_.iter) +
+                            string("_") + to_string(param_.sample) +
+                            string("_");
+  h_guess_ = VectorXd(param_.knots_per_mode);
+  r_guess_ = MatrixXd(n_y, param_.knots_per_mode);
+  dr_guess_ = MatrixXd(n_y, param_.knots_per_mode);
+  tau_guess_ = MatrixXd(n_tau, param_.knots_per_mode);
   if (with_init_guess) {
     VectorXd h_guess_raw =
         readCSV(model_dir_n_pref + string("time_at_knots.csv")).col(0);
@@ -145,27 +121,27 @@ OptimalRomPlanner::OptimalRomPlanner(
 
     // TODO: reconstruct cubic spline and resample
     double duration = h_guess_raw.tail(1)(0);
-    for (int i = 0; i < FLAGS_knots_per_mode; i++) {
-      h_guess_(i) = duration / (FLAGS_knots_per_mode - 1) * i;
+    for (int i = 0; i < param_.knots_per_mode; i++) {
+      h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
     }
-    for (int i = 0; i < FLAGS_knots_per_mode; i++) {
+    for (int i = 0; i < param_.knots_per_mode; i++) {
       int n_mat_col_r = r_guess_raw.cols();
       int idx_r = (int)round(double(i * (n_mat_col_r - 1)) /
-                             (FLAGS_knots_per_mode - 1));
+                             (param_.knots_per_mode - 1));
       r_guess_.col(i) = r_guess_raw.col(idx_r);
       int n_mat_col_dr = dr_guess_raw.cols();
       int idx_dr = (int)round(double(i * (n_mat_col_dr - 1)) /
-                              (FLAGS_knots_per_mode - 1));
+                              (param_.knots_per_mode - 1));
       dr_guess_.col(i) = dr_guess_raw.col(idx_dr);
       int n_mat_col_tau = tau_guess_raw.cols();
       int idx_tau = (int)round(double(i * (n_mat_col_tau - 1)) /
-                               (FLAGS_knots_per_mode - 1));
+                               (param_.knots_per_mode - 1));
       tau_guess_.col(i) = tau_guess_raw.col(idx_tau);
     }
     x_guess_left_in_front_ = x_guess_left_in_front_raw;
     x_guess_right_in_front_ = x_guess_right_in_front_raw;
 
-    cout << "initial guess duration = " << duration << endl;
+    cout << "initial guess duration ~ " << duration << endl;
     // cout << "h_guess = " << h_guess << endl;
     // cout << "r_guess = " << r_guess << endl;
     // cout << "dr_guess = " << dr_guess << endl;
@@ -177,8 +153,8 @@ OptimalRomPlanner::OptimalRomPlanner(
   // Get foot contacts
   auto left_toe = LeftToeFront(plant_controls);
   auto left_heel = LeftToeRear(plant_controls);
-  auto right_toe = RightToeFront(plant_controls);
-  auto right_heel = RightToeRear(plant_controls);
+  // auto right_toe = RightToeFront(plant_controls);
+  // auto right_heel = RightToeRear(plant_controls);
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
   auto left_toe_mid =
       BodyPoint(mid_contact_point, plant_controls.GetFrameByName("toe_left"));
@@ -201,20 +177,74 @@ OptimalRomPlanner::OptimalRomPlanner(
               .position_upper_limits()(0));
     }
   }
+
+  // Cost weight
+  Q_ = param_.w_Q * MatrixXd::Identity(n_y, n_y);
+  R_ = param_.w_R * MatrixXd::Identity(n_tau, n_tau);
+
+  // Pick solver
+  drake::solvers::SolverId solver_id("");
+  if (param_.use_ipopt) {
+    solver_id = drake::solvers::IpoptSolver().id();
+  } else {
+    solver_id = drake::solvers::SnoptSolver().id();
+  }
+  cout << "Solver: " << solver_id.name() << endl;
+  solver_ = drake::solvers::MakeSolver(solver_id);
+
+  // Set solver option
+  if (param_.use_ipopt) {
+    // Ipopt settings adapted from CaSaDi and FROST
+    auto id = drake::solvers::IpoptSolver::id();
+    solver_option_.SetOption(id, "tol", param_.feas_tol);
+    solver_option_.SetOption(id, "dual_inf_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "constr_viol_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "compl_inf_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "max_iter", param_.max_iter);
+    solver_option_.SetOption(id, "nlp_lower_bound_inf", -1e6);
+    solver_option_.SetOption(id, "nlp_upper_bound_inf", 1e6);
+    if (param_.log_solver_info) {
+      solver_option_.SetOption(id, "print_timing_statistics", "yes");
+      solver_option_.SetOption(id, "print_level", 5);
+    } else {
+      solver_option_.SetOption(id, "print_timing_statistics", "no");
+      solver_option_.SetOption(id, "print_level", 0);
+    }
+
+    // Set to ignore overall tolerance/dual infeasibility, but terminate when
+    // primal feasible and objective fails to increase over 5 iterations.
+    solver_option_.SetOption(id, "acceptable_compl_inf_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "acceptable_constr_viol_tol", param_.feas_tol);
+    solver_option_.SetOption(id, "acceptable_obj_change_tol", 1e-3);
+    solver_option_.SetOption(id, "acceptable_tol", 1e2);
+    solver_option_.SetOption(id, "acceptable_iter", 5);
+  } else {
+    if (param_.log_solver_info) {
+      solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
+                               "../snopt_planning.out");
+    }
+    solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
+                             "Major iterations limit", param_.max_iter);
+    solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Verify level",
+                             0);
+    solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
+                             "Major optimality tolerance", param_.opt_tol);
+    solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
+                             "Major feasibility tolerance", param_.feas_tol);
+  }
 }
 
-void OptimalRomPlanner::SolveTrajOpt(
+void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     const Context<double>& context,
     dairlib::lcmt_trajectory_block* traj_msg) const {
   // Read in current robot state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd q_init =
-      map_position_from_spring_to_no_spring_ * robot_output->GetPositions();
-  VectorXd v_init =
+  VectorXd x_init(map_position_from_spring_to_no_spring_.rows() +
+                  map_velocity_from_spring_to_no_spring_.rows());
+  x_init << map_position_from_spring_to_no_spring_ *
+                robot_output->GetPositions(),
       map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
-  VectorXd x_init(q_init.size() + v_init.size());
-  x_init << q_init, v_init;
 
   // Read in fsm state and lift-off time
   const BasicVector<double>* fsm_and_lo_time_port =
@@ -228,58 +258,120 @@ void OptimalRomPlanner::SolveTrajOpt(
 
   // Calc phase
   double init_phase = (current_time - lift_off_time) / stride_period_;
-  if (init_phase > 1) {
-    cout << "WARNING: phase is larger than 1. There might be a bug somewhere\n";
-    init_phase = 1;
+  if (init_phase >= 1) {
+    cout << "WARNING: phase >= 1. There might be a bug somewhere, "
+            "since we are using a time-based fsm\n";
+    init_phase = 1 - 1e-8;
   }
 
-  // TODO: Move the touchdown state to the origin
+  ///
+  /// Rotate Cassie's floating base configuration
+  ///
+  // Rotate Cassie's floating base configuration to face toward world's x
+  // direction and translate the x and y position to the origin
+
+  // TODO: Our original plan was to move the touchdown state to the origin.
+  //  But right now we move the current state (instead of touchdown state) to
+  //  the corresponding x-y position based on init phase and desired traj
+
+  // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
+  // frame is in the world’s x-z plane and toward world’s x axis.
+  Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
+  Vector3d pelvis_x = quat.toRotationMatrix().col(0);
+  pelvis_x(2) = 0;
+  Vector3d world_x(1, 0, 0);
+  Quaterniond relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
+  Quaterniond rotated_quat = relative_qaut * quat;
+  x_init.head(4) << rotated_quat.w(), rotated_quat.vec();
+  // cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
+  // cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() <<
+  // endl;
+
+  // Shift pelvis in x, y direction
+  x_init(positions_map_.at("base_x")) =
+      init_phase * param_.final_position_x / param_.n_step;
+  x_init(positions_map_.at("base_y")) = 0;
+  // cout << "x(\"base_x\") = " << x_init(positions_map_.at("base_x")) << endl;
+  // cout << "x(\"base_y\") = " << x_init(positions_map_.at("base_y")) << endl;
 
   ///
   /// Construct rom traj opt
   ///
 
-  bool start_with_left_stance = fsm_state == single_support_fsm_states_.at(0);
+  // Find fsm_state in left_right_support_fsm_states_
+  bool is_single_support_phase =
+      find(left_right_support_fsm_states_.begin(),
+           left_right_support_fsm_states_.end(),
+           fsm_state) != left_right_support_fsm_states_.end();
+  if (!is_single_support_phase) {
+    // do nothing here to use the previous start_with_left_stance_
+  } else {
+    start_with_left_stance_ = fsm_state == left_right_support_fsm_states_.at(0);
+  }
 
-  // Prespecify the time steps
+  // Prespecify the number of knot points
   std::vector<int> num_time_samples;
   std::vector<double> min_dt;
   std::vector<double> max_dt;
-  for (int i = 0; i < FLAGS_n_step; i++) {
-    num_time_samples.push_back(FLAGS_knots_per_mode);
+  for (int i = 0; i < param_.n_step; i++) {
+    num_time_samples.push_back(param_.knots_per_mode);
     min_dt.push_back(.01);
     max_dt.push_back(.3);
   }
-  int fisrt_mode_phase_index = int(FLAGS_knots_per_mode * init_phase);
-  int knots_first_mode = FLAGS_knots_per_mode - fisrt_mode_phase_index;
+  // We use int() to round down the index because we need to have at least one
+  // timestep in the first mode, i.e. 2 knot points.
+  int first_mode_phase_index = int((param_.knots_per_mode - 1) * init_phase);
+  int knots_first_mode = param_.knots_per_mode - first_mode_phase_index;
   num_time_samples[0] = knots_first_mode;
+  if (knots_first_mode == 2) {
+    min_dt[0] = 1e-3;
+  }
   cout << "init_phase = " << init_phase << endl;
   cout << "knots_first_mode = " << knots_first_mode << endl;
-  cout << "fisrt_mode_phase_index = " << fisrt_mode_phase_index << endl;
+  cout << "first_mode_phase_index = " << first_mode_phase_index << endl;
 
   // Goal position
-  // TODO: update the final position
   VectorXd final_position(2);
-  final_position << q_init(positions_map_.at("base_x")) +
-                        FLAGS_final_position_x,
-      0;
+  final_position << param_.final_position_x, 0;
+  /*final_position << x_lift_off(positions_map_.at("base_x")) +
+                        param_.final_position_x,
+      0;*/
 
   // Construct
-  cout << "\nConstructing optimization problem...\n";
+  if (debug_mode_) {
+    cout << "\nConstructing optimization problem...\n";
+  }
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
                            state_mirror_, left_contacts_, right_contacts_,
-                           joint_name_lb_ub_, x_init, start_with_left_stance,
-                           zero_touchdown_impact_);
+                           joint_name_lb_ub_, x_init, start_with_left_stance_,
+                           param_.zero_touchdown_impact,
+                           debug_mode_ /*print_status*/);
 
-  cout << "Other constraints/costs and initial guess=============\n";
-  // Time step cosntraints
+  if (debug_mode_) {
+    cout << "Other constraints/costs and initial guess===============\n";
+  }
+  // Time step constraints
   int n_time_samples =
       std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
       num_time_samples.size() + 1;
-  trajopt.AddTimeStepConstraint(min_dt, max_dt, FLAGS_equalize_timestep_size,
-                                FLAGS_fix_duration,
-                                h_guess_(1) * (n_time_samples - 1));
+  // TODO: play with dt_value. Also don't hard-coded dt_value
+  double dt_value =
+      stride_period_ / (param_.knots_per_mode - 1);  // h_guess_(1);
+  if (knots_first_mode == 2) {
+    // Note that the timestep size of the first mode should be different from
+    // the rest because the robot could be very close to the touchdown
+    double remaining_time_of_first_mode =
+        std::max(stride_period_ - current_time, min_dt[0]);
+    trajopt.AddTimeStepConstraint(
+        min_dt, max_dt, param_.fix_duration,
+        remaining_time_of_first_mode + dt_value * (n_time_samples - 2),
+        param_.equalize_timestep_size, remaining_time_of_first_mode);
+  } else {
+    trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
+                                  dt_value * (n_time_samples - 1),
+                                  param_.equalize_timestep_size);
+  }
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar
@@ -304,7 +396,9 @@ void OptimalRomPlanner::SolveTrajOpt(
   }*/
 
   // Final goal position constraint
-  cout << "Adding final position constraint for full-order model...\n";
+  if (debug_mode_) {
+    cout << "Adding final position constraint for full-order model...\n";
+  }
   trajopt.AddBoundingBoxConstraint(
       final_position, final_position,
       trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));
@@ -315,13 +409,6 @@ void OptimalRomPlanner::SolveTrajOpt(
     trajopt.AddRegularizationCost(final_position, x_guess_left_in_front_,
                                   x_guess_right_in_front_,
                                   false /*straight_leg_cost*/);
-
-    // Add more regularization cost
-    /*auto qf_var = trajopt.xf_vars_by_mode(num_time_samples.size()-1);
-    VectorXd quat_unity(4);
-    quat_unity << 1, 0, 0, 0;
-    trajopt.AddQuadraticErrorCost(100*MatrixXd::Identity(4, 4), quat_unity,
-                                  qf_var.head(4));*/
   } else {
     // Since there are multiple q that could be mapped to the same r, I
     // penalize on q so it get close to a certain configuration
@@ -336,9 +423,9 @@ void OptimalRomPlanner::SolveTrajOpt(
   // Default initial guess to avoid singularity (which messes with gradient)
   for (int i = 0; i < num_time_samples.size(); i++) {
     for (int j = 0; j < num_time_samples[i]; j++) {
-      if ((FLAGS_rom_option == 0) || (FLAGS_rom_option == 1)) {
+      if ((param_.rom_option == 0) || (param_.rom_option == 1)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
-      } else if (FLAGS_rom_option == 4) {
+      } else if (param_.rom_option == 4) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(2), 1);
       } else {
         DRAKE_UNREACHABLE();
@@ -347,128 +434,134 @@ void OptimalRomPlanner::SolveTrajOpt(
   }
 
   // Initial guess for all variables
-  // TODO: try warm start the problem
-  string init_file = "";
-  if (!init_file.empty()) {
-    /*VectorXd z0 = readCSV(dir_data + init_file).col(0);
-    int n_dec = trajopt.decision_variables().size();
-    if (n_dec > z0.rows()) {
-      cout << "dim(initial guess) < dim(decision var). "
-              "Fill the rest with zero's.\n";
-      VectorXd old_z0 = z0;
-      z0.resize(n_dec);
-      z0 = VectorXd::Zero(n_dec);
-      z0.head(old_z0.rows()) = old_z0;
+  if (debug_mode_) {
+    if (!param_.init_file.empty()) {
+      VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
+      int n_dec = trajopt.decision_variables().size();
+      if (n_dec > z0.rows()) {
+        cout << "dim(initial guess) < dim(decision var). "
+                "Fill the rest with zero's.\n";
+        VectorXd old_z0 = z0;
+        z0.resize(n_dec);
+        z0 = VectorXd::Zero(n_dec);
+        z0.head(old_z0.rows()) = old_z0;
+      }
+      trajopt.SetInitialGuessForAllVariables(z0);
+    } else {
+      trajopt.SetAllInitialGuess(
+          h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
+          x_guess_right_in_front_, final_position, first_mode_phase_index);
     }
-    trajopt.SetInitialGuessForAllVariables(z0);*/
   } else {
+    // TODO: try warm start the problem with previous solution
     trajopt.SetAllInitialGuess(h_guess_, r_guess_, dr_guess_, tau_guess_,
                                x_guess_left_in_front_, x_guess_right_in_front_,
-                               final_position, fisrt_mode_phase_index);
+                               final_position, first_mode_phase_index);
   }
 
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  cout << "Construction time:" << elapsed.count() << "\n";
+  cout << "\nConstruction time:" << elapsed.count() << "\n";
 
-  /*// Testing
-  cout << "\nChoose the best solver: "
-       << drake::solvers::ChooseBestSolver(trajopt).name() << endl;
-
-  // Print out the scaling factor
-  for (int i = 0; i < trajopt.decision_variables().size(); i++) {
-    cout << trajopt.decision_variable(i) << ", ";
-    cout << trajopt.decision_variable(i).get_id() << ", ";
-    cout << trajopt.FindDecisionVariableIndex(trajopt.decision_variable(i))
-         << ", ";
-    auto scale_map = trajopt.GetVariableScaling();
-    auto it = scale_map.find(i);
-    if (it != scale_map.end()) {
-      cout << it->second;
-    } else {
-      cout << "none";
-    }
-    cout << ", ";
-    cout << trajopt.GetInitialGuess(trajopt.decision_variable(i));
-    cout << endl;
-  }*/
-
-  // Snopt setting
-  int max_iter = 10000;
-  if (FLAGS_use_ipopt) {
-    // Ipopt settings adapted from CaSaDi and FROST
-    auto id = drake::solvers::IpoptSolver::id();
-    trajopt.SetSolverOption(id, "tol", FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "dual_inf_tol", FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "constr_viol_tol", FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "compl_inf_tol", FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "max_iter", max_iter);
-    trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
-    trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
-    if (FLAGS_log_solver_info) {
-      trajopt.SetSolverOption(id, "print_timing_statistics", "yes");
-      trajopt.SetSolverOption(id, "print_level", 5);
-    } else {
-      trajopt.SetSolverOption(id, "print_timing_statistics", "no");
-      trajopt.SetSolverOption(id, "print_level", 0);
-    }
-
-    // Set to ignore overall tolerance/dual infeasibility, but terminate when
-    // primal feasible and objective fails to increase over 5 iterations.
-    trajopt.SetSolverOption(id, "acceptable_compl_inf_tol", FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "acceptable_constr_viol_tol", FLAGS_feas_tol);
-    trajopt.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
-    trajopt.SetSolverOption(id, "acceptable_tol", 1e2);
-    trajopt.SetSolverOption(id, "acceptable_iter", 5);
-  } else {
-    if (FLAGS_log_solver_info) {
-      trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                              "../snopt_planning.out");
-    }
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                            "Major iterations limit", max_iter);
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
-                            0);
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                            "Major optimality tolerance", FLAGS_opt_tol);
-    trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                            "Major feasibility tolerance", FLAGS_feas_tol);
+  // Testing
+  if (debug_mode_) {
+    // Print out the scaling factor
+    /*for (int i = 0; i < trajopt.decision_variables().size(); i++) {
+      cout << trajopt.decision_variable(i) << ", ";
+      cout << trajopt.decision_variable(i).get_id() << ", ";
+      cout << trajopt.FindDecisionVariableIndex(trajopt.decision_variable(i))
+           << ", ";
+      auto scale_map = trajopt.GetVariableScaling();
+      auto it = scale_map.find(i);
+      if (it != scale_map.end()) {
+        cout << it->second;
+      } else {
+        cout << "none";
+      }
+      cout << ", ";
+      cout << trajopt.GetInitialGuess(trajopt.decision_variable(i));
+      cout << endl;
+    }*/
   }
-
-  // Pick solver
-  drake::solvers::SolverId solver_id("");
-  if (FLAGS_use_ipopt) {
-    solver_id = drake::solvers::IpoptSolver().id();
-  } else {
-    solver_id = drake::solvers::ChooseBestSolver(trajopt);
-  }
-  auto solver = drake::solvers::MakeSolver(solver_id);
 
   // Solve
   cout << "\nSolving optimization problem...\n";
   start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result;
-  solver->Solve(trajopt, trajopt.initial_guess(), trajopt.solver_options(),
-                &result);
+  solver_->Solve(trajopt, trajopt.initial_guess(), solver_option_, &result);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
-  cout << "    Solve time:" << elapsed.count() << " | ";
+  cout << "    Current time: " << current_time << " | ";
+  cout << "Solve time:" << elapsed.count() << " | ";
   SolutionResult solution_result = result.get_solution_result();
   cout << solution_result << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
-  // Check which solver we are using
-  cout << "Solver: " << result.get_solver_id().name() << endl;
+  // Get solution
+  VectorXd time_at_knots = trajopt.GetSampleTimes(result);
+  MatrixXd state_at_knots = trajopt.GetStateSamples(result);
 
-  // Extract solution
-  VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
-  // writeCSV(dir_data + string("z.csv"), z_sol);
-  // cout << trajopt.decision_variables() << endl;
+  // Shift the timestamps by lift-off time
+  time_at_knots.array() += lift_off_time;
+
+  // Extract and save solution into files
+  if (debug_mode_) {
+    VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
+    writeCSV(param_.dir_data + string("z.csv"), z_sol);
+    // cout << trajopt.decision_variables() << endl;
+
+    MatrixXd input_at_knots = trajopt.GetInputSamples(result);
+    writeCSV(param_.dir_data + string("time_at_knots.csv"), time_at_knots);
+    writeCSV(param_.dir_data + string("state_at_knots.csv"), state_at_knots);
+    writeCSV(param_.dir_data + string("input_at_knots.csv"), input_at_knots);
+
+    MatrixXd x0_each_mode(
+        plant_controls_.num_positions() + plant_controls_.num_velocities(),
+        num_time_samples.size());
+    MatrixXd xf_each_mode(
+        plant_controls_.num_positions() + plant_controls_.num_velocities(),
+        num_time_samples.size());
+    for (uint i = 0; i < num_time_samples.size(); i++) {
+      x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
+      xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
+    }
+    writeCSV(param_.dir_data + string("x0_each_mode.csv"), x0_each_mode);
+    writeCSV(param_.dir_data + string("xf_each_mode.csv"), xf_each_mode);
+  }
 
   ///
-  /// Pack the traj into lcm (traj_msg)
+  /// Pack traj into lcm message (traj_msg)
   ///
-  // TODO: finish this
+//  if (true) {
+//  if (!result.is_success() || !start_with_left_stance_) {
+  if (!result.is_success()) {
+    // If the solution failed, send an empty-size data. This tells the
+    // controller thread to fall back to LIPM traj
+    // Note that we cannot really send an empty traj because we use CubicHermite
+    // in construction in rom_traj_receiver. We need at least one segment
+    // TODO(yminchen): you can create lcmt_planner_traj which contains a flag
+    //  solutino_found and a lcmt_trajectory_block
+    time_at_knots.resize(2);
+    time_at_knots << -std::numeric_limits<double>::infinity(), 0;
+    state_at_knots.resize(state_at_knots.rows(), 2);
+  }
+
+  traj_msg->trajectory_name = "";
+  traj_msg->num_points = time_at_knots.size();
+  traj_msg->num_datatypes = state_at_knots.rows();
+
+  // Reserve space for vectors
+  traj_msg->time_vec.resize(traj_msg->num_points);
+  traj_msg->datatypes.resize(traj_msg->num_datatypes);
+  traj_msg->datapoints.clear();
+
+  // Copy Eigentypes to std::vector
+  traj_msg->time_vec = CopyVectorXdToStdVector(time_at_knots);
+  traj_msg->datatypes = vector<string>(traj_msg->num_datatypes, "");
+  for (int i = 0; i < traj_msg->num_datatypes; ++i) {
+    traj_msg->datapoints.push_back(
+        CopyVectorXdToStdVector(state_at_knots.row(i)));
+  }
 }
 
 }  // namespace goldilocks_models

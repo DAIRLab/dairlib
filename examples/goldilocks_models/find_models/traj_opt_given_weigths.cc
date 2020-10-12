@@ -8,8 +8,10 @@
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/attic/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/traj_opt_helper_func.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/nonlinear_constraint.h"
+#include "solvers/nonlinear_cost.h"
 #include "solvers/optimization_utils.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
@@ -56,6 +58,7 @@ using drake::math::RollPitchYaw;
 using drake::math::RotationMatrix;
 using drake::multibody::Body;
 using drake::multibody::BodyIndex;
+using drake::multibody::JacobianWrtVariable;
 using drake::multibody::JointActuator;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::ModelInstanceIndex;
@@ -237,6 +240,156 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
 
   std::vector<BodyIndex> body_indexes_;
   double composite_mass_;
+};
+
+class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {
+ public:
+  ComZeroHeightVelConstraint(const MultibodyPlant<double>& plant)
+      : NonlinearConstraint<double>(
+            1, plant.num_positions() + plant.num_velocities(),
+            VectorXd::Zero(1), VectorXd::Zero(1),
+            "com_zero_height_vel_constraint"),
+        plant_(plant),
+        world_(plant.world_frame()),
+        context_(plant.CreateDefaultContext()),
+        n_q_(plant.num_positions()),
+        n_v_(plant.num_velocities()) {}
+  ~ComZeroHeightVelConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    VectorXd q = x.head(n_q_);
+    VectorXd v = x.tail(n_v_);
+    plant_.SetPositions(context_.get(), q);
+    plant_.SetVelocities(context_.get(), v);
+
+    MatrixX<double> J_com(3, n_v_);
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+
+    *y = J_com.row(2) * v;
+  };
+
+ private:
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  int n_q_;
+  int n_v_;
+};
+
+class CollocationVelocityCost : public solvers::NonlinearCost<double> {
+ public:
+  CollocationVelocityCost(const MatrixXd& W_Q,
+                          const drake::multibody::MultibodyPlant<double>& plant,
+                          DirconKinematicDataSet<double>* constraints,
+                          const std::string& description = "")
+      : solvers::NonlinearCost<double>(
+            1 + 2 * (plant.num_positions() + plant.num_velocities()) +
+                (2 * plant.num_actuators()) +
+                (2 * constraints->countConstraintsWithoutSkipping()),
+            description),
+        plant_(plant),
+        context_(plant_.CreateDefaultContext()),
+        constraints_(constraints),
+        n_v_(plant.num_velocities()),
+        n_x_(plant.num_positions() + plant.num_velocities()),
+        n_u_(plant.num_actuators()),
+        n_lambda_(constraints->countConstraintsWithoutSkipping()),
+        W_Q_(W_Q){};
+
+ private:
+  void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
+                    drake::VectorX<double>* y) const override {
+    DRAKE_ASSERT(x.size() == 1 + 2 * (n_x_ + n_u_ + n_lambda_));
+
+    // Extract our input variables:
+    // h - current time (knot) value
+    // x0, x1 state vector at time steps k, k+1
+    // u0, u1 input vector at time steps k, k+1
+    const auto h = x(0);
+    const auto x0 = x.segment(1, n_x_);
+    const auto x1 = x.segment(1 + n_x_, n_x_);
+    const auto u0 = x.segment(1 + (2 * n_x_), n_u_);
+    const auto u1 = x.segment(1 + (2 * n_x_) + n_u_, n_u_);
+    const auto l0 = x.segment(1 + 2 * (n_x_ + n_u_), n_lambda_);
+    const auto l1 = x.segment(1 + 2 * (n_x_ + n_u_) + n_lambda_, n_lambda_);
+
+    multibody::setContext<double>(plant_, x0, u0, context_.get());
+    constraints_->updateData(*context_, l0);
+    const VectorX<double> xdot0 = constraints_->getXDot();
+
+    multibody::setContext<double>(plant_, x1, u1, context_.get());
+    constraints_->updateData(*context_, l1);
+    const VectorX<double> xdot1 = constraints_->getXDot();
+
+    // Cubic interpolation to get xcol and xdotcol.
+    const VectorX<double> xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
+    //    const VectorX<double> xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 +
+    //    xdot1);
+
+    (*y) = xcol.tail(n_v_).transpose() * W_Q_ * xcol.tail(n_v_);
+  };
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  DirconKinematicDataSet<double>* constraints_;
+
+  int n_v_;
+  int n_x_;
+  int n_u_;
+  int n_lambda_;
+
+  MatrixXd W_Q_;
+};
+
+class JointAccelCost : public solvers::NonlinearCost<double> {
+ public:
+  JointAccelCost(const MatrixXd& W_Q,
+                 const drake::multibody::MultibodyPlant<double>& plant,
+                 DirconKinematicDataSet<double>* constraints,
+                 const std::string& description = "")
+      : solvers::NonlinearCost<double>(
+            plant.num_positions() + plant.num_velocities() +
+                plant.num_actuators() +
+                constraints->countConstraintsWithoutSkipping(),
+            description),
+        plant_(plant),
+        context_(plant_.CreateDefaultContext()),
+        constraints_(constraints),
+        n_v_(plant.num_velocities()),
+        n_x_(plant.num_positions() + plant.num_velocities()),
+        n_u_(plant.num_actuators()),
+        n_lambda_(constraints->countConstraintsWithoutSkipping()),
+        W_Q_(W_Q){};
+
+ private:
+  void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
+                    drake::VectorX<double>* y) const override {
+    DRAKE_ASSERT(x.size() == n_x_ + n_u_ + n_lambda_);
+
+    // Extract our input variables:
+    const auto x0 = x.segment(0, n_x_);
+    const auto u0 = x.segment(n_x_, n_u_);
+    const auto l0 = x.segment(n_x_ + n_u_, n_lambda_);
+
+    multibody::setContext<double>(plant_, x0, u0, context_.get());
+    constraints_->updateData(*context_, l0);
+    const VectorX<double> xdot0 = constraints_->getXDot();
+
+    (*y) = xdot0.tail(n_v_).transpose() * W_Q_ * xdot0.tail(n_v_);
+  };
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  DirconKinematicDataSet<double>* constraints_;
+
+  int n_v_;
+  int n_x_;
+  int n_u_;
+  int n_lambda_;
+
+  MatrixXd W_Q_;
 };
 
 void addRegularization(bool is_get_nominal, double eps_reg,
@@ -678,49 +831,84 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     int n_theta_yddot = theta_yddot.size();
     int n_theta = n_theta_y + n_theta_yddot;
     MatrixXd B = MatrixXd::Zero(A.rows(), n_theta);
-    // Get the row index of B matrix where dynamics constraint starts
-    VectorXd ind_head = solvers::GetConstraintRows(
-        *gm_traj_opt.dircon,
-        gm_traj_opt.dynamics_constraint_at_head_bindings[0]);
-    // cout << "ind_head = " << ind_head(0) << endl;
-    // VectorXd ind_tail = solvers::GetConstraintRows(
-    //                     *gm_traj_opt.dircon.get(),
-    //                     gm_traj_opt.dynamics_constraint_at_tail_bindings[0]);
-    // cout << "ind_tail = " << ind_tail(0) << endl;
-    int N_accum = 0;
-    for (unsigned int l = 0; l < num_time_samples.size(); l++) {
-      for (int m = 0; m < num_time_samples[l] - 1; m++) {
-        int i = N_accum + m;
-        // cout << "i = " << i << endl;
-        // Get the gradient value first
-        auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-        auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
-        auto x_iplus1 = gm_traj_opt.dircon->state_vars_by_mode(l, m + 1);
-        auto tau_iplus1 = gm_traj_opt.reduced_model_input(i + 1, n_tau);
-        auto h_btwn_knot_i_iplus1 = gm_traj_opt.dircon->timestep(i);
-        VectorXd x_i_sol = result.GetSolution(x_i);
-        VectorXd tau_i_sol = result.GetSolution(tau_i);
-        VectorXd x_iplus1_sol = result.GetSolution(x_iplus1);
-        VectorXd tau_iplus1_sol = result.GetSolution(tau_iplus1);
-        VectorXd h_i_sol = result.GetSolution(h_btwn_knot_i_iplus1);
+    if (setting.cubic_spline_in_rom_constraint) {
+      // Get the row index of B matrix where dynamics constraint starts
+      VectorXd ind_head = solvers::GetConstraintRows(
+          *gm_traj_opt.dircon,
+          gm_traj_opt.dynamics_constraint_at_head_bindings[0]);
+      // cout << "ind_head = " << ind_head(0) << endl;
+      // VectorXd ind_tail = solvers::GetConstraintRows(
+      //                     *gm_traj_opt.dircon.get(),
+      //                     gm_traj_opt.dynamics_constraint_at_tail_bindings[0]);
+      // cout << "ind_tail = " << ind_tail(0) << endl;
+      int N_accum = 0;
+      for (unsigned int l = 0; l < num_time_samples.size(); l++) {
+        for (int m = 0; m < num_time_samples[l] - 1; m++) {
+          int i = N_accum + m;
+          // cout << "i = " << i << endl;
+          // Get the gradient value first
+          auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
+          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          auto x_iplus1 = gm_traj_opt.dircon->state_vars_by_mode(l, m + 1);
+          auto tau_iplus1 = gm_traj_opt.reduced_model_input(i + 1, n_tau);
+          auto h_btwn_knot_i_iplus1 = gm_traj_opt.dircon->timestep(i);
+          VectorXd x_i_sol = result.GetSolution(x_i);
+          VectorXd tau_i_sol = result.GetSolution(tau_i);
+          VectorXd x_iplus1_sol = result.GetSolution(x_iplus1);
+          VectorXd tau_iplus1_sol = result.GetSolution(tau_iplus1);
+          VectorXd h_i_sol = result.GetSolution(h_btwn_knot_i_iplus1);
 
-        MatrixXd dyn_gradient_head =
-            gm_traj_opt.dynamics_constraint_at_head->getGradientWrtTheta(
-                x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
-        // MatrixXd dyn_gradient_tail =
-        //   gm_traj_opt.dynamics_constraint_at_tail->getGradientWrtTheta(
-        //     x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
+          MatrixXd dyn_gradient_head =
+              gm_traj_opt.dynamics_constraint_at_head->getGradientWrtTheta(
+                  x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
+          // MatrixXd dyn_gradient_tail =
+          //   gm_traj_opt.dynamics_constraint_at_tail->getGradientWrtTheta(
+          //     x_i_sol, tau_i_sol, x_iplus1_sol, tau_iplus1_sol, h_i_sol);
 
-        // Fill in B matrix
-        B.block(ind_head(0) + i * n_yddot, 0, n_yddot, n_theta) =
-            dyn_gradient_head;
-        // B.block(ind_tail(0) + i * 2 * n_yddot, 0, n_yddot, n_theta)
-        //   = dyn_gradient_tail;
-        // cout << "row " << ind_head(0) + i * 2 * n_yddot << endl;
-        // cout << "row " << ind_tail(0) + i * 2 * n_yddot << endl << endl;
+          // Fill in B matrix
+          B.block(ind_head(0) + i * n_yddot, 0, n_yddot, n_theta) =
+              dyn_gradient_head;
+          // B.block(ind_tail(0) + i * 2 * n_yddot, 0, n_yddot, n_theta)
+          //   = dyn_gradient_tail;
+          // cout << "row " << ind_head(0) + i * 2 * n_yddot << endl;
+          // cout << "row " << ind_tail(0) + i * 2 * n_yddot << endl << endl;
+        }
+        N_accum += num_time_samples[l];
+        N_accum -= 1;  // due to overlaps between modes
       }
-      N_accum += num_time_samples[l];
-      N_accum -= 1;  // due to overlaps between modes
+    } else {
+      // Get the row index of B matrix where dynamics constraint starts
+      VectorXd ind_start = solvers::GetConstraintRows(
+          *gm_traj_opt.dircon,
+          gm_traj_opt.dynamics_constraint_at_knot_bindings[0]);
+      // cout << "ind_start = " << ind_start(0) << endl;
+      int N_accum = 0;
+      for (unsigned int l = 0; l < num_time_samples.size(); l++) {
+        for (int m = 0; m < num_time_samples[l]; m++) {
+          int time_index = N_accum + m;
+          // cout << "i = " << i << endl;
+          // Get the gradient value first
+          auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
+          auto u_i = gm_traj_opt.dircon->input(time_index);
+          auto lambda_i = gm_traj_opt.dircon->force(l, m);
+          auto tau_i = gm_traj_opt.reduced_model_input(time_index, n_tau);
+          VectorXd x_i_sol = result.GetSolution(x_i);
+          VectorXd u_i_sol = result.GetSolution(u_i);
+          VectorXd lambda_i_sol = result.GetSolution(lambda_i);
+          VectorXd tau_i_sol = result.GetSolution(tau_i);
+
+          MatrixXd dyn_gradient =
+              gm_traj_opt.dynamics_constraint_at_knot[l]->getGradientWrtTheta(
+                  x_i_sol, u_i_sol, lambda_i_sol, tau_i_sol);
+
+          // Fill in B matrix
+          B.block(ind_start(0) + time_index * n_yddot, 0, n_yddot, n_theta) =
+              dyn_gradient;
+          // cout << "row " << ind_start(0) + i * 2 * n_yddot << endl;
+        }
+        N_accum += num_time_samples[l];
+        N_accum -= 1;  // due to overlaps between modes
+      }
     }
 
     // Augment the constraint matrices and vectors (B, A, y, lb, ub)
@@ -764,53 +952,111 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
     // Store y, ydot, yddot and tau into csv files
     // cout << "\nStoring y, ydot and yddot into csv.\n";
-    std::vector<VectorXd> y_vec;
-    std::vector<VectorXd> ydot_vec;
-    std::vector<VectorXd> yddot_vec;
-    std::vector<VectorXd> tau_vec;
-    std::vector<VectorXd> h_vec;
-    N_accum = 0;
-    // for (unsigned int l = 0; l < num_time_samples.size() ; l++) {
-    for (unsigned int l = 0; l < 1; l++) {  // just look at the first mode now
-      for (int m = 0; m < num_time_samples[l]; m++) {
-        int i = N_accum + m;
-        // Get the gradient value first
-        auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-        auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
-        VectorXd x_i_sol = result.GetSolution(x_i);
-        VectorXd tau_i_sol = result.GetSolution(tau_i);
+    cout << "setting.cubic_spline_in_rom_constraint = "
+         << setting.cubic_spline_in_rom_constraint << endl;
+    if (setting.cubic_spline_in_rom_constraint) {
+      std::vector<VectorXd> y_vec;
+      std::vector<VectorXd> ydot_vec;
+      std::vector<VectorXd> yddot_vec;
+      std::vector<VectorXd> tau_vec;
+      std::vector<VectorXd> h_vec;
+      int N_accum = 0;
+      // for (unsigned int l = 0; l < num_time_samples.size() ; l++) {
+      for (unsigned int l = 0; l < 1; l++) {  // just look at the first mode now
+        for (int m = 0; m < num_time_samples[l]; m++) {
+          int i = N_accum + m;
+          auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
+          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          VectorXd x_i_sol = result.GetSolution(x_i);
+          VectorXd tau_i_sol = result.GetSolution(tau_i);
 
-        VectorXd y =
-            gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
-        VectorXd ydot =
-            gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
-        VectorXd yddot = gm_traj_opt.dynamics_constraint_at_head->GetYddot(
-            y, ydot, tau_i_sol);
-        y_vec.push_back(y);
-        ydot_vec.push_back(ydot);
-        yddot_vec.push_back(yddot);
-        tau_vec.push_back(tau_i_sol);
+          VectorXd y =
+              gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
+          VectorXd ydot =
+              gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
+          VectorXd yddot = gm_traj_opt.dynamics_constraint_at_head->GetYddot(
+              y, ydot, tau_i_sol);
+          y_vec.push_back(y);
+          ydot_vec.push_back(ydot);
+          yddot_vec.push_back(yddot);
+          tau_vec.push_back(tau_i_sol);
 
-        if (m < num_time_samples[l] - 1) {
-          auto h_i = gm_traj_opt.dircon->timestep(i);
-          VectorXd h_i_sol = result.GetSolution(h_i);
-          h_vec.push_back(h_i_sol);
+          if (m < num_time_samples[l] - 1) {
+            auto h_i = gm_traj_opt.dircon->timestep(i);
+            VectorXd h_i_sol = result.GetSolution(h_i);
+            h_vec.push_back(h_i_sol);
+          }
         }
+        N_accum += num_time_samples[l];
+        N_accum -= 1;  // due to overlaps between modes
       }
-      N_accum += num_time_samples[l];
-      N_accum -= 1;  // due to overlaps between modes
+
+      // Save y, ydot and yddot
+      // TODO: need to use CheckSplineOfY in case yddot doesn't match the spline
+      //  constructed from y and ydot
+      PiecewisePolynomial<double> s_spline =
+          CreateCubicSplineGivenYAndYdot(h_vec, y_vec, ydot_vec);
+      StoreSplineOfY(h_vec, s_spline, directory, prefix);
+      storeTau(h_vec, tau_vec, directory, prefix);
+      // CheckSplineOfY(h_vec, yddot_vec, s_spline);
+    } else {
+      // Only store the data of the first mode now
+      MatrixXd t_and_y(1 + n_y, num_time_samples[0]);
+      MatrixXd t_and_ydot(1 + n_y, num_time_samples[0]);
+      MatrixXd t_and_yddot(1 + n_y, num_time_samples[0]);
+      MatrixXd t_and_tau(1 + n_tau, num_time_samples[0]);
+      t_and_y(0, 0) = 0;
+      t_and_ydot(0, 0) = 0;
+      t_and_yddot(0, 0) = 0;
+      t_and_tau(0, 0) = 0;
+      int N_accum = 0;
+      for (unsigned int l = 0; l < 1; l++) {
+        for (int m = 0; m < num_time_samples[l]; m++) {
+          int i = N_accum + m;
+          auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
+          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          VectorXd x_i_sol = result.GetSolution(x_i);
+          VectorXd tau_i_sol = result.GetSolution(tau_i);
+
+          VectorXd y = gm_traj_opt.dynamics_constraint_at_knot[l]->GetY(
+              x_i_sol.head(n_q));
+          VectorXd ydot =
+              gm_traj_opt.dynamics_constraint_at_knot[l]->GetYdot(x_i_sol);
+          VectorXd yddot = gm_traj_opt.dynamics_constraint_at_knot[l]->GetYddot(
+              y, ydot, tau_i_sol);
+          t_and_y.block(1, m, n_y, 1) = y;
+          t_and_ydot.block(1, m, n_y, 1) = ydot;
+          t_and_yddot.block(1, m, n_y, 1) = yddot;
+          t_and_tau.block(1, m, n_tau, 1) = tau_i_sol;
+
+          if (m < num_time_samples[l] - 1) {
+            auto h_i = gm_traj_opt.dircon->timestep(i);
+            VectorXd h_i_sol = result.GetSolution(h_i);
+            t_and_y(0, m + 1) = t_and_y(0, m) + h_i_sol(0);
+            t_and_ydot(0, m + 1) = t_and_ydot(0, m) + h_i_sol(0);
+            t_and_yddot(0, m + 1) = t_and_yddot(0, m) + h_i_sol(0);
+            t_and_tau(0, m + 1) = t_and_tau(0, m) + h_i_sol(0);
+          }
+        }
+        N_accum += num_time_samples[l];
+        N_accum -= 1;  // due to overlaps between modes
+      }
+      writeCSV(directory + prefix + string("t_and_y.csv"), t_and_y);
+      writeCSV(directory + prefix + string("t_and_ydot.csv"), t_and_ydot);
+      writeCSV(directory + prefix + string("t_and_yddot.csv"), t_and_yddot);
+      writeCSV(directory + prefix + string("t_and_tau.csv"), t_and_tau);
+      cout << "t_and_y = \n" << t_and_y << endl;
+      cout << "t_and_ydot = \n" << t_and_ydot << endl;
+      cout << "t_and_yddot = \n" << t_and_yddot << endl;
+      cout << "t_and_tau = \n" << t_and_tau << endl;
     }
-    PiecewisePolynomial<double> s_spline =
-        CreateCubicSplineGivenYAndYdot(h_vec, y_vec, ydot_vec);
-    StoreSplineOfY(h_vec, s_spline, directory, prefix);
-    storeTau(h_vec, tau_vec, directory, prefix);
-    // CheckSplineOfY(h_vec, yddot_vec, s_spline);
 
     // Below are all for debugging /////////////////////////////////////////////
 
     // Checking B
     // BTW, the code only work in the case of y = q_1 ^2 and yddot = y^3
     bool is_checking_matrix_B = false;
+    int N_accum = 0;
     if (is_checking_matrix_B) {
       N_accum = 0;
       for (unsigned int l = 0; l < 1; l++) {  // just look at the first mode now
@@ -1599,8 +1845,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   // Move the trajectory optmization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
-      rom, std::move(trajopt), plant, num_time_samples, is_get_nominal,
-      setting.is_add_tau_in_cost, rom_option, robot_option, 1 /*temporary*/);
+      rom, std::move(trajopt), plant, num_time_samples, dataset_list,
+      is_get_nominal, setting, rom_option, robot_option, 1 /*temporary*/);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -1622,10 +1868,10 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
 
   if (setting.use_ipopt) {
     solver_id = drake::solvers::IpoptSolver().id();
-//    cout << "\nChose manually: " << solver_id.name() << endl;
+    //    cout << "\nChose manually: " << solver_id.name() << endl;
   } else {
     solver_id = drake::solvers::ChooseBestSolver(*gm_traj_opt.dircon);
-//    cout << "\nChose the best solver: " << solver_id.name() << endl;
+    //    cout << "\nChose the best solver: " << solver_id.name() << endl;
   }
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
@@ -1636,6 +1882,17 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
                 gm_traj_opt.dircon->solver_options(), &result);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
+
+  // Save trajectory to file
+  if (true) {
+    string file_name = "dircon_trajectory";
+    DirconTrajectory saved_traj(
+        plant, *gm_traj_opt.dircon, result, file_name,
+        "Decision variables and state/input trajectories");
+    saved_traj.WriteToFile(setting.directory + file_name);
+    std::cout << "Wrote to file: " << setting.directory + file_name
+              << std::endl;
+  }
 
   bool is_print_for_debugging = false;
   VectorXd w_sol;
@@ -1677,13 +1934,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Cost on velocity and input
   double w_Q = setting.Q_double * all_cost_scale;
-  double w_Q_vy = w_Q * 10000 * all_cost_scale;     // avoid pelvis rocking in y
-  double w_Q_vz = w_Q * 10000 * all_cost_scale;     // avoid pelvis rocking in z
-  double w_Q_swing_toe = w_Q * 1 * all_cost_scale;  // avoid swing toe shaking
   double w_R = setting.R_double * all_cost_scale;
-  double w_R_swing_toe = w_R * 1 * all_cost_scale;  // avoid swing toe shaking
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-4 * all_cost_scale * all_cost_scale;
+  double w_lambda = 1.0e-3 * all_cost_scale * all_cost_scale;
   // Cost on difference over time
   double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
   double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;
@@ -1692,6 +1945,32 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
   double w_q_hip_yaw = 1 * 5 * all_cost_scale;
   double w_q_quat = 1 * 5 * 10 * all_cost_scale;
+  // Additional cost on pelvis
+  double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
+  double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
+  // Additional cost on swing toe
+  double w_Q_swing_toe = w_Q * 1;  // avoid swing toe shaking
+  double w_R_swing_toe = w_R * 1;  // avoid swing toe shaking
+  // Testing -- cost on position difference (cost on v is not enough, because
+  // the solver might exploit the integration scheme. If we only penalize
+  // velocity at knots, then the solver will converge to small velocity at knots
+  // but big acceleration at knots!)
+  double w_q_diff = 1 * 5 * 0.1 * all_cost_scale;
+  double w_q_diff_swing_toe = w_q_diff * 1;
+  // Testing
+  double w_v_diff_swing_leg = w_v_diff * 1;
+
+  // Flags for constraints
+  bool swing_foot_ground_clearance = false;
+  bool swing_leg_collision_avoidance = false;
+  bool periodic_quaternion = false;
+  bool periodic_floating_base_vel = false;
+  bool periodic_joint_pos = true;
+  bool periodic_joint_vel = false;
+  bool ground_normal_force_margin = false;
+  bool zero_com_height_vel = false;
+  bool zero_com_height_vel_difference = false;
+  bool zero_pelvis_height_vel = false;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -1702,6 +1981,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // fine to just ignore the four bar constraint (position, velocity and
   // acceleration levels))
   bool four_bar_in_right_support = false;
+  // TODO
+
+  // Testing
+  bool only_one_mode = false;
+  if (only_one_mode) {
+    periodic_joint_pos = false;
+    periodic_joint_vel = false;
+  }
+  // Testing
+  bool add_cost_on_collocation_vel = false;
+  bool add_joint_acceleration_cost = true;
 
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
@@ -1710,6 +2000,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  //  for (auto mem : vel_map) {
+  //    cout << mem.first << ", " << mem.second << endl;
+  //  }
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -1813,10 +2106,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Set up options
   std::vector<DirconOptions> options_list;
   options_list.push_back(DirconOptions(ls_dataset.countConstraints(), plant));
-  options_list.push_back(DirconOptions(rs_dataset.countConstraints(), plant));
+  if (!only_one_mode) {
+    options_list.push_back(DirconOptions(rs_dataset.countConstraints(), plant));
+  }
 
   // set force cost weight
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < options_list.size(); i++) {
     options_list[i].setForceCost(w_lambda);
   }
 
@@ -1824,7 +2119,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   ///                 || lf/rf | lr/rr | fourbar
   /// Before skipping || 0 1 2 | 3 4 5 | 6 7
   /// After skipping  || 0 1 2 |   3 4 | 5 6
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < options_list.size(); i++) {
     options_list[i].setConstraintRelative(0, true);
     options_list[i].setConstraintRelative(1, true);
     options_list[i].setConstraintRelative(3, true);
@@ -1832,7 +2127,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Constraint scaling
   double s = 1;  // 100;  // scale every nonlinear constraint together except
                  // quaternion
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < options_list.size(); i++) {
     // options_list[i].setQuatConstraintScaling(s);
     if (is_get_nominal) {
       // old constraint scaling (from traj opt of cassie, without rom
@@ -1911,16 +2206,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // timesteps and modes setting
   vector<double> min_dt;
   vector<double> max_dt;
-  min_dt.push_back(0);
-  min_dt.push_back(0);
-  max_dt.push_back(.3);
-  max_dt.push_back(.3);
   vector<int> num_time_samples;
-  num_time_samples.push_back(setting.n_node);
-  num_time_samples.push_back(1);
   vector<DirconKinematicDataSet<double>*> dataset_list;
+  min_dt.push_back(0);
+  max_dt.push_back(.3);
+  num_time_samples.push_back(setting.n_node);
   dataset_list.push_back(&ls_dataset);
-  dataset_list.push_back(&rs_dataset);
+  if (!only_one_mode) {
+    min_dt.push_back(0);
+    max_dt.push_back(.3);
+    num_time_samples.push_back(1);
+    dataset_list.push_back(&rs_dataset);
+  }
 
   auto trajopt = std::make_unique<HybridDircon<double>>(
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
@@ -1950,10 +2247,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->SetSolverOption(id, "acceptable_tol", 1e2);
     trajopt->SetSolverOption(id, "acceptable_iter", 5);
   } else {
-    // Snopt settings
-    // cout << "WARNING: you are printing snopt log.\n for Cassie";
-    // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-    //                         "../snopt_sample#"+to_string(sample_idx)+".out");
+    //     Snopt settings
+    cout << "WARNING: you are printing snopt log.\n for Cassie";
+    trajopt->SetSolverOption(
+        drake::solvers::SnoptSolver::id(), "Print file",
+        "../snopt_sample#" + to_string(sample_idx) + ".out");
     trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                              "Major iterations limit", setting.max_iter);
     trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -1983,110 +2281,150 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   auto u0 = trajopt->input(0);
   auto uf = trajopt->input(N - 1);
   auto x0 = trajopt->initial_state();
-  auto xf = trajopt->state_vars_by_mode(
-      num_time_samples.size() - 1,
-      num_time_samples[num_time_samples.size() - 1] - 1);
+  auto xf = only_one_mode
+                ? trajopt->final_state()
+                : trajopt->state_vars_by_mode(
+                      num_time_samples.size() - 1,
+                      num_time_samples[num_time_samples.size() - 1] - 1);
   auto x_mid = trajopt->state(int(num_time_samples[0] / 2));
+
+  // Testing
+  if (only_one_mode) {
+    VectorXd x0_val(plant.num_positions() + plant.num_velocities());
+    x0_val << 1, 0, 0, 0, 0, -0.00527375, 1.10066, 0.00686375, 0.0025628,
+        0.000573004, -0.000573019, 0.439262, 0.201581, -0.646, -0.795755,
+        0.866859, 1.01813, -1.53361, -1.29744, -0.321, 0.198875, -0.0342067,
+        0.67034, 0.363396, -0.0367492, -0.0100005, 0.0120047, 0.0355722,
+        0.0585609, 0.26338, -0.584013, -1.45501, 0.221981, 1.47458, -0.223655,
+        -0.0841209, 0.797712;
+    VectorXd xf_val(plant.num_positions() + plant.num_velocities());
+    xf_val << 1, 0, 0, 0, 0.3, 0.00527375, 1.10066, -0.0025628, -0.00686375,
+        0.000573019, -0.000573004, 0.201581, 0.439262, -0.795755, -0.646,
+        1.01813, 0.866859, -1.29744, -1.53361, 0.49743, 0.0737923, 0.0867892,
+        0.666384, -0.319709, -0.072308, -0.202807, 0.193892, -0.0869775,
+        0.763641, -0.705892, -0.590682, 0.214898, 1.02658, -0.216519, -1.04038,
+        0.780914, -0.269512;
+    trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
+    trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
+    //    trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
+    //    xf.head(n_q));
+    //  trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
+    //  xf.head(7));
+    //    trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
+    //                                      xf_val.segment<1>(4),
+    //                                      xf.segment<1>(4));
+  }
 
   // Fix time duration
   trajopt->AddDurationBounds(duration, duration);
 
   // Constraint on initial floating base quaternion
-  trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));
+  if (!periodic_quaternion && !only_one_mode) {
+    trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));
+  }
 
   // Constraint on final floating base quaternion
   // TODO: below is a naive version. You can implement the constraint using
-  // rotation matrix and mirror around the x-z plane of local frame (however,
-  // the downside is the potential complexity of constraint)
+  //  rotation matrix and mirror around the x-z plane of local frame (however,
+  //  the downside is the potential complexity of constraint)
   double turning_angle = turning_rate * duration;
-  trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
-                                    cos(turning_angle / 2),
-                                    xf(pos_map.at("base_qw")));
-  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
-  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
-  trajopt->AddBoundingBoxConstraint(sin(turning_angle / 2),
-                                    sin(turning_angle / 2),
-                                    xf(pos_map.at("base_qz")));
+  if (!periodic_quaternion && !only_one_mode) {
+    trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
+                                      cos(turning_angle / 2),
+                                      xf(pos_map.at("base_qw")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
+    trajopt->AddBoundingBoxConstraint(sin(turning_angle / 2),
+                                      sin(turning_angle / 2),
+                                      xf(pos_map.at("base_qz")));
+  }
 
   // other floating base constraints
-  if (turning_rate == 0) {
-    // x position constraint
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-    trajopt->AddBoundingBoxConstraint(stride_length, stride_length,
-                                      xf(pos_map.at("base_x")));
+  if (!only_one_mode) {
+    if (turning_rate == 0) {
+      // x position constraint
+      trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
+      trajopt->AddBoundingBoxConstraint(stride_length, stride_length,
+                                        xf(pos_map.at("base_x")));
 
-    // Floating base periodicity
-    /*trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
-        xf(pos_map.at("base_qw")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
-        -xf(pos_map.at("base_qx")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
-        xf(pos_map.at("base_qy")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
-        -xf(pos_map.at("base_qz")));*/
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
-                                 -xf(pos_map.at("base_y")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                 xf(n_q + vel_map.at("base_wx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                 -xf(n_q + vel_map.at("base_wy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                 xf(n_q + vel_map.at("base_wz")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                                 xf(n_q + vel_map.at("base_vx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-                                 -xf(n_q + vel_map.at("base_vy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                                 xf(n_q + vel_map.at("base_vz")));
+      // Floating base periodicity
+      trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
+                                   -xf(pos_map.at("base_y")));
+      if (periodic_quaternion) {
+        trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
+                                     xf(pos_map.at("base_qw")));
+        trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
+                                     -xf(pos_map.at("base_qx")));
+        trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
+                                     xf(pos_map.at("base_qy")));
+        trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
+                                     -xf(pos_map.at("base_qz")));
+      }
+      if (periodic_floating_base_vel) {
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+                                     xf(n_q + vel_map.at("base_wx")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+                                     -xf(n_q + vel_map.at("base_wy")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+                                     xf(n_q + vel_map.at("base_wz")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+                                     xf(n_q + vel_map.at("base_vx")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+                                     -xf(n_q + vel_map.at("base_vy")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+                                     xf(n_q + vel_map.at("base_vz")));
+      }
+    } else {
+      // z position constraint
+      // We don't need to impose this constraint when turning rate is 0, because
+      // the periodicity constraint already enforce the z height implicitly
+      trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) ==
+                                   xf(pos_map.at("base_z")) +
+                                       xf(pos_map.at("base_x")) *
+                                           sin(ground_incline));
 
-  } else {
-    // z position constraint
-    // We don't need to impose this constraint when turning rate is 0, because
-    // the periodicity constraint already enforce the z height implicitly
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) ==
-                                 xf(pos_map.at("base_z")) +
-                                     xf(pos_map.at("base_x")) *
-                                         sin(ground_incline));
+      // x y position constraint
+      double radius = stride_length / abs(turning_angle);
+      int sign = (turning_angle >= 0) ? 1 : -1;
+      double delta_x = radius * sin(abs(turning_angle));
+      double delta_y = sign * radius * (1 - cos(turning_angle));
+      trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
+      trajopt->AddBoundingBoxConstraint(delta_x, delta_x,
+                                        xf(pos_map.at("base_x")));
+      trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
+      trajopt->AddBoundingBoxConstraint(delta_y, delta_y,
+                                        xf(pos_map.at("base_y")));
 
-    // x y position constraint
-    double radius = stride_length / abs(turning_angle);
-    int sign = (turning_angle >= 0) ? 1 : -1;
-    double delta_x = radius * sin(abs(turning_angle));
-    double delta_y = sign * radius * (1 - cos(turning_angle));
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-    trajopt->AddBoundingBoxConstraint(delta_x, delta_x,
-                                      xf(pos_map.at("base_x")));
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
-    trajopt->AddBoundingBoxConstraint(delta_y, delta_y,
-                                      xf(pos_map.at("base_y")));
+      // floating base velocity constraint at mid point
+      // TODO: double check that the floating base velocity is wrt local frame
+      /*trajopt->AddBoundingBoxConstraint(stride_length / duration,
+                                        stride_length / duration,
+                                        x_mid(n_q + vel_map.at("base_vx")));
+      trajopt->AddBoundingBoxConstraint(0, 0, x_mid(n_q +
+      vel_map.at("base_vy"))); trajopt->AddBoundingBoxConstraint(turning_rate,
+                                        turning_rate,
+                                        x_mid(n_q + vel_map.at("base_wz")));*/
 
-    // floating base velocity constraint at mid point
-    // TODO: double check that the floating base velocity is wrt local frame
-    /*trajopt->AddBoundingBoxConstraint(stride_length / duration,
-                                      stride_length / duration,
-                                      x_mid(n_q + vel_map.at("base_vx")));
-    trajopt->AddBoundingBoxConstraint(0, 0, x_mid(n_q + vel_map.at("base_vy")));
-    trajopt->AddBoundingBoxConstraint(turning_rate,
-                                      turning_rate,
-                                      x_mid(n_q + vel_map.at("base_wz")));*/
-
-    // velocity constraint at the end point
-    // TODO: double check that the floating base velocity is wrt local frame
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                 xf(n_q + vel_map.at("base_wx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                 -xf(n_q + vel_map.at("base_wy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                 xf(n_q + vel_map.at("base_wz")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                                 xf(n_q + vel_map.at("base_vx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-                                 -xf(n_q + vel_map.at("base_vy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                                 xf(n_q + vel_map.at("base_vz")));
+      // velocity constraint at the end point
+      // TODO: double check that the floating base velocity is wrt local frame
+      if (periodic_floating_base_vel) {
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+                                     xf(n_q + vel_map.at("base_wx")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+                                     -xf(n_q + vel_map.at("base_wy")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+                                     xf(n_q + vel_map.at("base_wz")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+                                     xf(n_q + vel_map.at("base_vx")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+                                     -xf(n_q + vel_map.at("base_vy")));
+        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+                                     xf(n_q + vel_map.at("base_vz")));
+      }
+    }
   }
 
   // The legs joint positions/velocities/torque should be mirrored between legs
@@ -2094,13 +2432,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& asy_joint_name : asy_joint_names) {
       // positions
-      trajopt->AddLinearConstraint(
-          x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
-          -xf(pos_map.at(asy_joint_name + l_r_pair.second)));
+      if (periodic_joint_pos) {
+        trajopt->AddLinearConstraint(
+            x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
+            -xf(pos_map.at(asy_joint_name + l_r_pair.second)));
+      }
       // velocities
-      trajopt->AddLinearConstraint(
-          x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
-          -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
+      if (periodic_joint_vel) {
+        trajopt->AddLinearConstraint(
+            x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
+            -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
+      }
       // inputs
       trajopt->AddLinearConstraint(
           u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
@@ -2108,13 +2450,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
     for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
       // positions
-      trajopt->AddLinearConstraint(
-          x0(pos_map.at(sym_joint_names[i] + l_r_pair.first)) ==
-          xf(pos_map.at(sym_joint_names[i] + l_r_pair.second)));
+      if (periodic_joint_pos) {
+        trajopt->AddLinearConstraint(
+            x0(pos_map.at(sym_joint_names[i] + l_r_pair.first)) ==
+            xf(pos_map.at(sym_joint_names[i] + l_r_pair.second)));
+      }
       // velocities
-      trajopt->AddLinearConstraint(
-          x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
-          xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
+      if (periodic_joint_vel) {
+        trajopt->AddLinearConstraint(
+            x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
+            xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
+      }
       // inputs (ankle joint is not actuated)
       if (sym_joint_names[i] != "ankle_joint") {
         trajopt->AddLinearConstraint(
@@ -2141,25 +2487,54 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                       VectorXd::Constant(n_u, +300), ui);
   }
 
-  if (is_get_nominal) {
-    //    cout << "Adding zero COM height acceleration constraint\n";
-    //    auto com_vel_constraint =
-    //    std::make_shared<ComHeightVelConstraint>(&plant);
-    //    std::unordered_map<int, double> com_vel_constraint_scale;
-    //    com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
-    //    com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);
-    //    for (int index = 0; index < num_time_samples[0] - 1; index++) {
-    //      auto x0 = trajopt->state(index);
-    //      auto x1 = trajopt->state(index + 1);
-    //      trajopt->AddConstraint(com_vel_constraint, {x0, x1});
-    //    }
+  if (setting.com_accel_constraint && zero_com_height_vel) {
+    cout << "Adding zero COM height acceleration constraint\n";
+    auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
+    std::unordered_map<int, double> com_vel_constraint_scale;
+    com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
+    com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);
+    for (int index = 0; index < num_time_samples[0] - 1; index++) {
+      auto x0 = trajopt->state(index);
+      auto x1 = trajopt->state(index + 1);
+      trajopt->AddConstraint(com_vel_constraint, {x0, x1});
+    }
+  } else {
+    zero_com_height_vel = false;
+  }
+
+  // Testing
+  if (zero_com_height_vel_difference) {
+    cout << "Adding zero COM height vel constraint\n";
+    auto com_zero_vel_constraint =
+        std::make_shared<ComZeroHeightVelConstraint>(plant);
+    //  std::unordered_map<int, double> com_zero_vel_constraint_scale;
+    //  com_zero_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
+    //  com_zero_vel_constraint->SetConstraintScaling(com_zero_vel_constraint_scale);
+    //    std::vector<int> index_list = {0,
+    //                                   1,
+    //                                   2,
+    //                                   num_time_samples[0] - 3,
+    //                                   num_time_samples[0] - 2,
+    //                                   num_time_samples[0] - 1};
+    //    for (auto index : index_list) {
+    for (int index = 0; index < num_time_samples[0]; index++) {
+      auto xi = trajopt->state(index);
+      trajopt->AddConstraint(com_zero_vel_constraint, xi);
+    }
+  }
+  if (zero_pelvis_height_vel) {
+    cout << "Adding zero pelvis height vel constraint\n";
+    for (int index = 0; index < num_time_samples[0]; index++) {
+      auto xi = trajopt->state(index);
+      trajopt->AddBoundingBoxConstraint(0, 0, xi(n_q + vel_map.at("base_vz")));
+    }
   }
 
   // toe position constraint in y direction (avoid leg crossing)
   VectorXd one = VectorXd::Ones(1);
   std::unordered_map<int, double> odbp_constraint_scale;  // scaling
   odbp_constraint_scale.insert(std::pair<int, double>(0, s));
-  if (turning_rate == 0) {
+  if (swing_leg_collision_avoidance && (turning_rate == 0)) {
     auto left_foot_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_left", Vector3d::Zero(),
@@ -2180,8 +2555,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
       trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
     }
+  } else {
+    swing_leg_collision_avoidance = false;
   }
-  // toe height constraint at mid stance (avoid foot scuffing)
+
+  // testing - toe height constraint at mid stance (avoid foot scuffing)
   Vector3d z_hat(0, 0, 1);
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, ground_normal);
@@ -2194,35 +2572,38 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
 
   // testing -- swing foot contact point height constraint
-  for (int index = 0; index < num_time_samples[0] - 1; index++) {
-    double h_min = 0;
-    if (index == int(num_time_samples[0] / 2)) {
-      h_min = 0.1;  // 10 centimeter high in the mid point
+  if (swing_foot_ground_clearance) {
+    for (int index = 0; index < num_time_samples[0] - 1; index++) {
+      double h_min = 0;
+      //    if (index == int(num_time_samples[0] / 2)) {
+      //      h_min = 0.1;  // 10 centimeter high in the mid point
+      //    }
+
+      double h_max = std::numeric_limits<double>::infinity();
+      if (index == 0) {
+        h_max = 0;
+      }
+
+      auto x_i = trajopt->state(index);
+
+      auto right_foot_constraint_z1 =
+          std::make_shared<PointPositionConstraint<double>>(
+              plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
+              h_min * one, h_max * one, "right_foot_constraint_z");
+      auto right_foot_constraint_z2 =
+          std::make_shared<PointPositionConstraint<double>>(
+              plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
+              h_min * one, h_max * one);
+
+      // scaling
+      right_foot_constraint_z1->SetConstraintScaling(odbp_constraint_scale);
+      right_foot_constraint_z2->SetConstraintScaling(odbp_constraint_scale);
+
+      trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
+      trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
     }
-
-    double h_max = std::numeric_limits<double>::infinity();
-    if (index == 0) {
-      h_max = 0;
-    }
-
-    auto x_i = trajopt->state(index);
-
-    auto right_foot_constraint_z1 =
-        std::make_shared<PointPositionConstraint<double>>(
-            plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
-            h_min * one, h_max * one, "right_foot_constraint_z");
-    auto right_foot_constraint_z2 =
-        std::make_shared<PointPositionConstraint<double>>(
-            plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
-            h_min * one, h_max * one);
-
-    // scaling
-    right_foot_constraint_z1->SetConstraintScaling(odbp_constraint_scale);
-    right_foot_constraint_z2->SetConstraintScaling(odbp_constraint_scale);
-
-    trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
-    trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
   }
+
   //  // testing -- vertical touchdown velocity
   //  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
   //  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
@@ -2237,19 +2618,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //  }
 
   // testing -- zero impact
-  /*if (setting.is_zero_touchdown_impact) {
+  if (setting.is_zero_touchdown_impact) {
     trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(2) == 0);
     trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(5) == 0);
-  }*/
+  }
 
   // testing -- swing foot pos at mid stance is the average of the start and the
   // end of the stance
   //  if (turning_rate == 0) {
-  auto swing_foot_mid_stance_xy_constraint =
-      std::make_shared<SwingFootXYPosAtMidStanceConstraint>(&plant, "toe_right",
-                                                            Vector3d::Zero());
-  trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
-                         {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
+  //  auto swing_foot_mid_stance_xy_constraint =
+  //      std::make_shared<SwingFootXYPosAtMidStanceConstraint>(&plant,
+  //      "toe_right",
+  //                                                            Vector3d::Zero());
+  //  trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
+  //                         {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
   //  }
 
   // testing -- lock the swing toe joint position (otherwise it shakes too much)
@@ -2263,11 +2645,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }*/
 
   // Testing -- constraint on normal force
-  for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
-    for (int index = 0; index < num_time_samples[mode]; index++) {
-      auto lambda = trajopt->force(mode, index);
-      trajopt->AddLinearConstraint(lambda(2) >= 10);
-      trajopt->AddLinearConstraint(lambda(5) >= 10);
+  if (ground_normal_force_margin) {
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        auto lambda = trajopt->force(mode, index);
+        trajopt->AddLinearConstraint(lambda(2) >= 10);
+        trajopt->AddLinearConstraint(lambda(5) >= 10);
+      }
     }
   }
   // Testing -- constraint left four-bar force (seems to help in high speed)
@@ -2307,9 +2691,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   for (int i = 0; i < rs_dataset.countConstraintsWithoutSkipping(); i++) {
     idx_list.push_back(i);
   }
-  trajopt->ScaleForceVariables(1, idx_list, 1000);
+  if (!only_one_mode) trajopt->ScaleForceVariables(1, idx_list, 1000);
   // impulse
-  trajopt->ScaleImpulseVariables(0, idx_list, 10);  // 0.1
+  if (!only_one_mode) trajopt->ScaleImpulseVariables(0, idx_list, 10);  // 0.1
   // quaternion slack
   trajopt->ScaleQuaternionSlackVariables(30);
   // Constraint slack
@@ -2359,7 +2743,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
   // add cost on vel difference wrt time
+  MatrixXd Q_q_diff = w_q_diff * MatrixXd::Identity(n_q, n_q);
+  Q_q_diff(n_q - 1, n_q - 1) = w_q_diff_swing_toe;
+  if (w_q_diff) {
+    for (int i = 0; i < N - 1; i++) {
+      auto q0 = trajopt->state(i).head(n_q);
+      auto q1 = trajopt->state(i + 1).head(n_q);
+      trajopt->AddCost((q0 - q1).dot(Q_q_diff * (q0 - q1)));
+    }
+  }
+  // add cost on pos difference wrt time
   MatrixXd Q_v_diff = w_v_diff * MatrixXd::Identity(n_v, n_v);
+  Q_v_diff(7, 7) = w_v_diff_swing_leg;
+  Q_v_diff(9, 9) = w_v_diff_swing_leg;
+  Q_v_diff(11, 11) = w_v_diff_swing_leg;
+  Q_v_diff(13, 13) = w_v_diff_swing_leg;
+  Q_v_diff(15, 15) = w_v_diff_swing_leg;
+  Q_v_diff(17, 17) = w_v_diff_swing_leg;
   if (w_v_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto v0 = trajopt->state(i).tail(n_v);
@@ -2401,11 +2801,55 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
+  // Add force at collocation points to cost function, to eliminate the forces
+  // in the null space of constraints
+  for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+    if (options_list[i].getForceCost() != 0) {
+      int n_lambda = dataset_list[i]->countConstraintsWithoutSkipping();
+      auto A = options_list[i].getForceCost() *
+               MatrixXd::Identity(n_lambda, n_lambda);
+      auto b = MatrixXd::Zero(n_lambda, 1);
+      for (int j = 0; j < num_time_samples[i] - 1; j++) {
+        // Add || Ax - b ||^2
+        trajopt->AddL2NormCost(A, b, trajopt->collocation_force(i, j));
+      }
+    }
+  }
+
+  // Testing: add velocity at collocation point to the cost function
+  if (add_cost_on_collocation_vel) {
+    auto vel_collocation_cost = std::make_shared<CollocationVelocityCost>(
+        0.1 * W_Q, plant, dataset_list[0]);
+    for (int i = 0; i < N - 1; i++) {
+      auto dt = trajopt->timestep(i);
+      auto x0 = trajopt->state(i);
+      auto x1 = trajopt->state(i + 1);
+      auto u0 = trajopt->input(i);
+      auto u1 = trajopt->input(i + 1);
+      auto l0 = trajopt->force(0, i);
+      auto l1 = trajopt->force(0, i + 1);
+
+      trajopt->AddCost(vel_collocation_cost, {dt, x0, x1, u0, u1, l0, l1});
+    }
+  }
+
+  // Testing: add joint acceleration cost at knot points
+  auto joint_accel_cost =
+      std::make_shared<JointAccelCost>(0.00001 * W_Q, plant, dataset_list[0]);
+  if (add_joint_acceleration_cost) {
+    for (int i = 0; i < N; i++) {
+      auto x0 = trajopt->state(i);
+      auto u0 = trajopt->input(i);
+      auto l0 = trajopt->force(0, i);
+      trajopt->AddCost(joint_accel_cost, {x0, u0, l0});
+    }
+  }
+
   // Move the trajectory optimization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
-      rom, std::move(trajopt), plant, num_time_samples, is_get_nominal,
-      setting.is_add_tau_in_cost, rom_option, robot_option, s);
+      rom, std::move(trajopt), plant, num_time_samples, dataset_list,
+      is_get_nominal, setting, rom_option, robot_option, s);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -2468,16 +2912,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   if (setting.use_ipopt) {
     solver_id = drake::solvers::IpoptSolver().id();
-//    cout << "\nChose manually: " << solver_id.name() << endl;
+    //    cout << "\nChose manually: " << solver_id.name() << endl;
   } else {
     solver_id = drake::solvers::ChooseBestSolver(*gm_traj_opt.dircon);
-//    cout << "\nChose the best solver: " << solver_id.name() << endl;
+    //    cout << "\nChose the best solver: " << solver_id.name() << endl;
   }
 
   // Testing -- visualize poses
   if (sample_idx == 0) {
-    //    gm_traj_opt.dircon->CreateVisualizationCallback(
-    //        "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
+    double alpha = 1;
+    gm_traj_opt.dircon->CreateVisualizationCallback(
+        "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5, alpha);
   }
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
@@ -2488,6 +2933,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                 gm_traj_opt.dircon->solver_options(), &result);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
+
+  // Save trajectory to file
+  if (true) {
+    string file_name = "dircon_trajectory";
+    DirconTrajectory saved_traj(
+        plant, *gm_traj_opt.dircon, result, file_name,
+        "Decision variables and state/input trajectories");
+    saved_traj.WriteToFile(setting.directory + file_name);
+    std::cout << "Wrote to file: " << setting.directory + file_name
+              << std::endl;
+  }
 
   bool is_print_for_debugging = false;
   VectorXd w_sol;
@@ -2505,6 +2961,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   if (is_print_for_debugging) {
+    // Impulse variable's value
+    for (int i = w_sol.size() - 6; i < w_sol.size(); i++) {
+      cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
+           << w_sol[i] << endl;
+    }
+    cout << endl;
+
     // Extract result for printing
     VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
     MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
@@ -2512,12 +2975,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
     // Print weight
     cout << "\nw_Q = " << w_Q << endl;
+    cout << "w_Q_vy = " << w_Q_vy << endl;
+    cout << "w_Q_vz = " << w_Q_vz << endl;
     cout << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
     cout << "w_R = " << w_R << endl;
     cout << "w_R_swing_toe = " << w_R_swing_toe << endl;
     cout << "w_lambda = " << w_lambda << endl;
     cout << "w_lambda_diff = " << w_lambda_diff << endl;
+    cout << "w_q_diff = " << w_q_diff << endl;
+    cout << "w_q_diff_swing_toe = " << w_q_diff_swing_toe << endl;
     cout << "w_v_diff = " << w_v_diff << endl;
+    cout << "w_v_diff_swing_leg = " << w_v_diff_swing_leg << endl;
     cout << "w_u_diff = " << w_u_diff << endl;
     cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
     cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
@@ -2573,6 +3041,15 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
     total_cost += cost_lambda_diff;
     cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
+    // cost on pos difference wrt time
+    double cost_pos_diff = 0;
+    for (int i = 0; i < N - 1; i++) {
+      auto q0 = result.GetSolution(gm_traj_opt.dircon->state(i).head(n_q));
+      auto q1 = result.GetSolution(gm_traj_opt.dircon->state(i + 1).head(n_q));
+      cost_pos_diff += (q0 - q1).dot(Q_q_diff * (q0 - q1));
+    }
+    total_cost += cost_pos_diff;
+    cout << "cost_pos_diff = " << cost_pos_diff << endl;
     // cost on vel difference wrt time
     double cost_vel_diff = 0;
     for (int i = 0; i < N - 1; i++) {
@@ -2620,8 +3097,52 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
     total_cost += cost_q_quat_xyz;
     cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
+    double cost_joint_acceleration = 0;
+    if (add_joint_acceleration_cost) {
+//      for (int i = 0; i < N; i++) {
+//        auto x0 = result.GetSolution(trajopt->state(i));
+//        auto u0 = result.GetSolution(trajopt->input(i));
+//        auto l0 = result.GetSolution(trajopt->force(0, i));
+//
+//        Eigen::VectorXd x_val(x0.size() + u0.size() + l0.size());
+//        x_val << x0, u0, l0;
+//        Eigen::VectorXd y_val(1);
+//        joint_accel_cost->Eval(x_val, &y_val);
+//        cost_joint_acceleration += y_val(0);
+//      }
+    }
+    total_cost += cost_joint_acceleration;
+    cout << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
 
     cout << "total_cost (only the nominal traj cost terms) = " << total_cost
+         << endl;
+
+    // Constraints
+    cout << endl;
+    cout << "swing_foot_ground_clearance = " << swing_foot_ground_clearance
+         << endl;
+    cout << "swing_leg_collision_avoidance = " << swing_leg_collision_avoidance
+         << endl;
+    cout << "periodic_quaternion (only effective when turning rate = 0) = "
+         << periodic_quaternion << endl;
+    cout << "periodic_floating_base_vel = " << periodic_floating_base_vel
+         << endl;
+    cout << "periodic_joint_pos = " << periodic_joint_pos << endl;
+    cout << "periodic_joint_vel = " << periodic_joint_vel << endl;
+    cout << "ground_normal_force_margin = " << ground_normal_force_margin
+         << endl;
+    cout << "zero_com_height_vel = " << zero_com_height_vel << endl;
+    cout << "zero_com_height_vel_difference = "
+         << zero_com_height_vel_difference << endl;
+    cout << "zero_pelvis_height_vel = " << zero_pelvis_height_vel << endl;
+    cout << "constrain_stance_leg_fourbar_force = "
+         << constrain_stance_leg_fourbar_force << endl;
+
+    cout << endl;
+    cout << "only_one_mode = " << only_one_mode << endl;
+    cout << "add_cost_on_collocation_vel = " << add_cost_on_collocation_vel
+         << endl;
+    cout << "add_joint_acceleration_cost = " << add_joint_acceleration_cost
          << endl;
   }  // end if is_print_for_debugging
 }

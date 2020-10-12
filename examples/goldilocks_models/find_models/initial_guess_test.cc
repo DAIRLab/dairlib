@@ -80,11 +80,12 @@ int test_initial_guess(int iter, int sample, int robot) {
   if (robot == 0) {
     task_gen_grid = GridTasksGenerator(
         3, {"stride length", "ground incline", "velocity"}, {2, 2, 2},
-        {0.25, 0, 0.4}, {0.015, 0.05, 0.02}, true);
+        {0.25, 0, 0.4}, {0.015, 0.05, 0.02}, {true, true, true});
   } else {
     task_gen_grid = GridTasksGenerator(
         4, {"stride length", "ground incline", "velocity", "turning rate"},
-        {2, 2, 2, 2}, {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, true);
+        {2, 2, 2, 2}, {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125},
+        {true, true, true, true});
   }
   TasksGenerator* task_gen = &task_gen_grid;
   int total_sample_num = task_gen->total_sample_number();

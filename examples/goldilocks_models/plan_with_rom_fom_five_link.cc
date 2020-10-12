@@ -208,9 +208,9 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   cout << "Construction time:" << elapsed.count() << "\n";
 
   // Time step cosntraints
-  trajopt.AddTimeStepConstraint(min_dt, max_dt, FLAGS_equalize_timestep_size,
-                                FLAGS_fix_duration,
-                                h_guess.tail(1)(0) * num_time_samples.size());
+  trajopt.AddTimeStepConstraint(min_dt, max_dt, FLAGS_fix_duration,
+                                h_guess.tail(1)(0) * num_time_samples.size(),
+                                FLAGS_equalize_timestep_size);
 
   // Final goal position constraint
   cout << "Adding final position constraint for full-order model...\n";

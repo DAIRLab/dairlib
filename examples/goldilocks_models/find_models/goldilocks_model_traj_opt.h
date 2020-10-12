@@ -32,9 +32,10 @@ class GoldilocksModelTrajOpt {
       std::unique_ptr<systems::trajectory_optimization::HybridDircon<double>>
           dircon_in,
       const drake::multibody::MultibodyPlant<double>& plant,
-      const std::vector<int>& num_time_samples, bool is_get_nominal,
-      bool is_add_tau_in_cost, int rom_option, int robot_option,
-      double constraint_scale);
+      const std::vector<int>& num_time_samples,
+      std::vector<DirconKinematicDataSet<double>*> constraints,
+      bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
+      int robot_option, double constraint_scale);
   GoldilocksModelTrajOpt(){};
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
@@ -46,12 +47,19 @@ class GoldilocksModelTrajOpt {
   std::unique_ptr<systems::trajectory_optimization::HybridDircon<double>>
       dircon;
 
+  // Version 1 of dynamics constraints
   std::shared_ptr<find_models::DynamicsConstraint> dynamics_constraint_at_head;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
       dynamics_constraint_at_head_bindings;
   std::shared_ptr<find_models::DynamicsConstraint> dynamics_constraint_at_tail;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
       dynamics_constraint_at_tail_bindings;
+
+  // Version 2 of dynamics constraints
+  std::vector<std::shared_ptr<find_models::DynamicsConstraintV2>>
+      dynamics_constraint_at_knot;
+  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
+      dynamics_constraint_at_knot_bindings;
 
   std::vector<drake::solvers::Binding<drake::solvers::Cost>> tau_cost_bindings;
 

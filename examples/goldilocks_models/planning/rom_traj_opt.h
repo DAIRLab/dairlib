@@ -38,14 +38,17 @@ class RomTrajOpt
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
              Eigen::VectorXd x_init, bool start_with_left_stance,
-             bool zero_touchdown_impact = true);
+             bool zero_touchdown_impact, bool print_status = true);
 
   ~RomTrajOpt() override {}
 
+  // The argument `dt_0` is the first time step size which we don't want to
+  // equalize to the rest of the time step. Default to negative (the argument is
+  // not used)
   void AddTimeStepConstraint(std::vector<double> minimum_timestep,
                              std::vector<double> maximum_timestep,
-                             bool equalize_timestep_size, bool fix_duration,
-                             double duration);
+                             bool fix_duration, double duration,
+                             bool equalize_timestep_size, double dt_0 = -1);
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
@@ -93,6 +96,11 @@ class RomTrajOpt
   const drake::multibody::MultibodyPlant<double>& plant_;
   const ReducedOrderModel& rom_;
   bool start_with_left_stance_;
+
+  void PrintStatus(const std::string& msg) const {
+    if (print_status_) std::cout << msg << std::endl;
+  };
+  bool print_status_;
 };
 
 class RomTrajOptCassie : public RomTrajOpt {
@@ -106,7 +114,7 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const std::vector<std::tuple<std::string, double, double>>&
                        fom_joint_name_lb_ub,
                    Eigen::VectorXd x_init, bool start_with_left_stance,
-                   bool zero_touchdown_impact);
+                   bool zero_touchdown_impact, bool print_status = true);
 
   void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,

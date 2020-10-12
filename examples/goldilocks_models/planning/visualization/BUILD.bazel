@@ -8,6 +8,7 @@ cc_binary(
         "//common",
         "//common:file_utils",
         "//examples/goldilocks_models:goldilocks_utils",
+        "//multibody:multipose_visualizer",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

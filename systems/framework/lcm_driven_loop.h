@@ -142,6 +142,14 @@ class LcmDrivenLoop {
                       std::vector<std::string>(1, input_channel), input_channel,
                       "", is_forced_publish){};
 
+  // Getters for diagram and its context
+  drake::systems::Diagram<double>* get_diagram() {
+    return diagram_ptr_;
+  }
+  drake::systems::Context<double>& get_diagram_mutable_context() {
+    return simulator_->get_mutable_context();
+  }
+
   // Start simulating the diagram
   void Simulate(double end_time = std::numeric_limits<double>::infinity()) {
     // Get mutable contexts
@@ -188,7 +196,6 @@ class LcmDrivenLoop {
       bool is_new_switch_message = false;
       LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
         if (name_to_input_sub_map_.at(active_channel_).count() > 0) {
-          std::cout << "start of lcmdrivenloop, message count = " << name_to_input_sub_map_.at(active_channel_).count() << std::endl;
           is_new_input_message = true;
         }
         if (switch_sub_ != nullptr) {
@@ -232,7 +239,6 @@ class LcmDrivenLoop {
         }
 
         // Clear messages in the current input channel
-        std::cout << "end of lcmdrivenloop, message count = " << name_to_input_sub_map_.at(active_channel_).count() << std::endl;
         name_to_input_sub_map_.at(active_channel_).clear();
       }
 

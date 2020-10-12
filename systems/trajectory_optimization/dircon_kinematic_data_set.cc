@@ -106,7 +106,12 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
     // BiasTerm is C(q,v) in manipulator equations
     plant_.CalcBiasTerm(context, &right_hand_side_);
 
+    // Damping term
+    drake::multibody::MultibodyForces<T> f_app(plant_);
+    plant_.CalcForceElementsContribution(context, &f_app);
+
     right_hand_side_ = -right_hand_side_ +
+        f_app.generalized_forces() +
         plant_.MakeActuationMatrix() * input +
         plant_.CalcGravityGeneralizedForces(context) +
         getJWithoutSkipping().transpose() * forces;

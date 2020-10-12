@@ -184,6 +184,10 @@ DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 
 // clang-format on
 
+// Testing
+DEFINE_bool(com_accel_constraint, false, "");
+DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
+
 void setCostWeight(double* Q, double* R, double* all_cost_scale,
                    int robot_option) {
   if (robot_option == 0) {
@@ -1395,7 +1399,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_rom_option != 5);
   }
 
-  cout << "\nTrail name: " << FLAGS_program_name << endl;
+  cout << "\nTrial name: " << FLAGS_program_name << endl;
   std::time_t current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   cout << "Current time: " << std::ctime(&current_time);
@@ -1416,8 +1420,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << endl;
 
   // Files parameters
-  /*const string dir = "examples/goldilocks_models/find_models/data/robot_" +
-      to_string(FLAGS_robot_option) + "/";*/
   const string dir = "../dairlib_data/goldilocks_models/find_models/robot_" +
                      to_string(FLAGS_robot_option) + "/";
   string init_file = FLAGS_init_file;
@@ -1435,13 +1437,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
       task_gen_grid = GridTasksGenerator(
           3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
-          {0.25, 0, 0.4}, {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
+          {0.25, 0, 0.4}, {0.015, 0.05, 0.02},
+          std::vector<bool>(3, FLAGS_is_stochastic));
     } else if (FLAGS_robot_option == 1) {
+      std::vector<bool> is_stochastic(4);
+      is_stochastic[0] = (FLAGS_N_sample_sl > 1) & FLAGS_is_stochastic;
+      is_stochastic[1] = (FLAGS_N_sample_gi > 1) & FLAGS_is_stochastic;
+      is_stochastic[2] = (FLAGS_N_sample_v > 1) & FLAGS_is_stochastic;
+      is_stochastic[3] = (FLAGS_N_sample_tr > 1) & FLAGS_is_stochastic;
       task_gen_grid = GridTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
-          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.005, 0.125}, FLAGS_is_stochastic);
+          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, is_stochastic);
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_grid = GridTasksGenerator();
@@ -1727,6 +1735,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
   inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;
+  inner_loop_setting.com_accel_constraint = FLAGS_com_accel_constraint;
+  inner_loop_setting.cubic_spline_in_rom_constraint =
+      FLAGS_cubic_spline_in_rom_constraint;  // for testing
+  cout << "directory = " << dir << endl;
+  cout << "com_accel_constraint = "
+       << inner_loop_setting.com_accel_constraint << endl;
+  cout << "cubic_spline_in_rom_constraint = "
+       << inner_loop_setting.cubic_spline_in_rom_constraint << endl;
 
   // Construct reduced order model
   cout << "\nReduced-order model setting:\n";
@@ -2757,7 +2773,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "Current time: " << std::ctime(&current_time) << "\n\n";
 
   // store parameter values
-  prefix = to_string(iter + 1) + "_";
+  prefix = to_string(iter) + "_";
   if (!FLAGS_is_debug) {
     writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
     writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());

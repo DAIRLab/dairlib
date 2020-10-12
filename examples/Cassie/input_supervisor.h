@@ -7,6 +7,9 @@
 
 namespace dairlib {
 
+
+static constexpr double kFilterDuration = 2;
+
 /// The InputSupervisor is a simple Drake System that acts as an intermediary
 /// between commands from controllers and the actual robot. It's envisioned role
 /// is to (1) sanity check any inputs, (2) shut down in case of errors or
@@ -48,6 +51,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_controller_switch() const {
+    return this->get_input_port(controller_switch_input_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_command() const {
     return this->get_output_port(command_output_port_);
   }
@@ -81,10 +88,14 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   double max_joint_velocity_;
 
   double input_limit_;
+  int status_vars_index_;
   int n_fails_index_;
   int status_index_;
+  int switch_time_index_;
+  int prev_efforts_index_;
   int state_input_port_;
   int command_input_port_;
+  int controller_switch_input_port_;
   int command_output_port_;
   int status_output_port_;
 };

@@ -72,6 +72,9 @@ int do_main(int argc, char* argv[]) {
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
 
+  // Channel name of the input switch
+  std::string switch_channel = "INPUT_SWITCH";
+
   // Create LCM receiver for commands
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(plant);
 
@@ -79,6 +82,9 @@ int do_main(int argc, char* argv[]) {
   auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_state_channel_name, &lcm_local));
+  auto controller_switch_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>(
+          switch_channel, &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   builder.Connect(*state_sub, *state_receiver);
 
@@ -98,6 +104,8 @@ int do_main(int argc, char* argv[]) {
                   input_supervisor->get_input_port_state());
   builder.Connect(command_receiver->get_output_port(0),
                   input_supervisor->get_input_port_command());
+  builder.Connect(controller_switch_sub->get_output_port(),
+                  input_supervisor->get_input_port_controller_switch());
 
   // Create and connect translator
   auto input_translator =
@@ -127,8 +135,7 @@ int do_main(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("dispatcher_robot_in");
 
-  // Channel name of the input switch
-  std::string switch_channel = "INPUT_SWITCH";
+
   // Channel names of the controllers
   std::vector<std::string> input_channels;
   input_channels.push_back(FLAGS_control_channel_name_1);

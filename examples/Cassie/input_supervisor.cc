@@ -1,5 +1,6 @@
 #include "examples/Cassie/input_supervisor.h"
 
+#include "dairlib/lcmt_controller_switch.hpp"
 #include "systems/framework/output_vector.h"
 
 using drake::systems::Context;
@@ -29,6 +30,11 @@ InputSupervisor::InputSupervisor(
                           ->DeclareVectorInputPort(OutputVector<double>(
                               num_positions_, num_velocities_, num_actuators_))
                           .get_index();
+  controller_switch_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_controller_switch",
+              drake::Value<dairlib::lcmt_controller_switch>{})
+          .get_index();
 
   // Create output port for commands
   command_output_port_ =
@@ -44,9 +50,11 @@ InputSupervisor::InputSupervisor(
 
   // Create error flag as discrete state
   // Store both values in single discrete vector
-  DeclareDiscreteState(2);
+  status_vars_index_ = DeclareDiscreteState(2);
   n_fails_index_ = 0;
   status_index_ = 1;
+  switch_time_index_ = DeclareDiscreteState(1);
+  prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
@@ -59,8 +67,8 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  bool is_error =
-      context.get_discrete_state()[n_fails_index_] >= min_consecutive_failures_;
+  bool is_error = context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
+                  min_consecutive_failures_;
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros
@@ -86,6 +94,18 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     output->set_timestamp(command->get_timestamp());
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
   }
+
+  double alpha = (command->get_timestamp() -
+                  context.get_discrete_state(switch_time_index_)[0]) /
+                 kFilterDuration;
+  if (alpha <= 1.0) {
+    if(fmod(command->get_timestamp(), 1.0) < 1e-3)
+      std::cout << "Blending efforts" << std::endl;
+    Eigen::VectorXd blended_effort =
+        (1 - alpha) * context.get_discrete_state(prev_efforts_index_).get_value() + alpha *
+        output->get_data();
+    output->SetDataVector(blended_effort);
+  }
 }
 
 void InputSupervisor::SetStatus(const Context<double>& context,
@@ -94,7 +114,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  output->get_mutable_value()(0) = context.get_discrete_state()[status_index_];
+  output->get_mutable_value()(0) = context.get_discrete_state(status_vars_index_)[status_index_];
   if (input_limit_ != std::numeric_limits<double>::max()) {
     for (int i = 0; i < command->get_data().size(); i++) {
       double command_value = command->get_data()(i);
@@ -108,7 +128,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
   // Shutdown is/will soon be active (the status flag is set in a separate loop
   // from the actual motor torques so the update of the status bit could be
   // slightly off
-  if (context.get_discrete_state()[n_fails_index_] >=
+  if (context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
       min_consecutive_failures_) {
     output->get_mutable_value()(0) += 4;
   }
@@ -119,29 +139,44 @@ void InputSupervisor::UpdateErrorFlag(
     DiscreteValues<double>* discrete_state) const {
   const OutputVector<double>* state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+  auto controller_switch =
+      this->EvalInputValue<dairlib::lcmt_controller_switch>(
+          context, controller_switch_input_port_);
+  const TimestampedVector<double>* command =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        command_input_port_);
 
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
-  if ((*discrete_state)[n_fails_index_] < min_consecutive_failures_) {
+  if (discrete_state->get_vector(status_vars_index_)[n_fails_index_] <
+      min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
                              (velocities.array() < -max_joint_velocity_).any();
     if (is_velocity_error) {
       // Increment counter
-      (*discrete_state)[n_fails_index_]++;
-      (*discrete_state)[status_index_] = true;
+      discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] += 1;
+      discrete_state->get_mutable_vector(status_vars_index_)[status_index_] = true;
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
-      std::cout << "Consecutive error " << (*discrete_state)[n_fails_index_]
+      std::cout << "Consecutive error "
+                << discrete_state->get_data()[0]->get_value()[n_fails_index_]
                 << " of " << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
                 << std::endl;
     } else {
       // Reset counter
-      (*discrete_state)[n_fails_index_] = 0;
-      (*discrete_state)[status_index_] = false;
+      discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] = 0;
+      discrete_state->get_mutable_vector(status_vars_index_)[status_index_] = false;
     }
+  }
+
+  if (controller_switch) {
+    discrete_state->get_mutable_vector(prev_efforts_index_).get_mutable_value() =
+        command->get_value();
+    discrete_state->get_mutable_vector(switch_time_index_)[0] =
+        state->get_timestamp();
   }
 }
 

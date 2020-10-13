@@ -14,7 +14,7 @@ using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::TriggerTypeSet;
 
-DEFINE_string(channel_x, "CASSIE_STATE",
+DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "The name of the channel which receives state");
 DEFINE_string(switch_channel, "INPUT_SWITCH",
               "The name of the channel which sends the channel name that "

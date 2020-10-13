@@ -105,7 +105,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     Eigen::VectorXd blended_effort =
         (1 - alpha) *
             context.get_discrete_state(prev_efforts_index_).get_value() +
-        alpha * output->get_data();
+        alpha * command->get_value();
     output->SetDataVector(blended_effort);
   }
 }
@@ -145,7 +145,6 @@ void InputSupervisor::UpdateErrorFlag(
   const auto* controller_switch =
       this->EvalInputValue<dairlib::lcmt_controller_switch>(
           context, controller_switch_input_port_);
-
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
@@ -179,9 +178,6 @@ void InputSupervisor::UpdateErrorFlag(
           false;
     }
   }
-
-  std::cout << state->get_timestamp() << std::endl;
-//  std::cout << command->get_timestamp() << std::endl;
 
   if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
       controller_switch->utime * 1e-6) {

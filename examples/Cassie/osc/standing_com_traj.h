@@ -53,6 +53,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   int state_port_;
   int target_height_port_;
   int radio_port_;
+  double height_;
 
   // A list of pairs of contact body frame and contact point
   const std::vector<

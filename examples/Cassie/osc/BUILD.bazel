@@ -5,11 +5,10 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "osc",
     deps = [
-        "//examples/Cassie/osc:deviation_from_cp",
         "//examples/Cassie/osc:heading_traj_generator",
         "//examples/Cassie/osc:high_level_command",
         "//examples/Cassie/osc:standing_com_traj",
-        "//systems/controllers:cp_traj_gen",
+        "//examples/Cassie/osc:standing_pelvis_traj",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:time_based_fsm",
         "//systems/controllers/osc:operational_space_control",
@@ -58,6 +57,18 @@ cc_library(
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "standing_pelvis_traj",
+    srcs = ["standing_pelvis_orientation_traj.cc"],
+    hdrs = ["standing_pelvis_orientation_traj.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

@@ -96,17 +96,20 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
   }
 
+  // Blend the efforts between the previous controller effort and the current
+  // commanded effort using linear interpolation
   double alpha = (command->get_timestamp() -
                   context.get_discrete_state(switch_time_index_)[0]) /
                  kFilterDuration;
   if (alpha <= 1.0) {
-    if (fmod(command->get_timestamp(), 1.0) < 1e-3)
-      std::cout << "Blending efforts" << std::endl;
     Eigen::VectorXd blended_effort =
+        alpha * command->get_value() +
         (1 - alpha) *
-            context.get_discrete_state(prev_efforts_index_).get_value() +
-        alpha * command->get_value();
+            context.get_discrete_state(prev_efforts_index_).get_value();
     output->SetDataVector(blended_effort);
+    if (fmod(command->get_timestamp(), 0.5) < 1e-4) {
+      std::cout << "Blending efforts" << std::endl;
+    }
   }
 }
 
@@ -179,11 +182,17 @@ void InputSupervisor::UpdateErrorFlag(
     }
   }
 
-  if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
-      controller_switch->utime * 1e-6) {
-    std::cout << "Got new switch message" << std::endl;
+  // Update the previous commanded switch message unless trying to blend efforts
+  if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
+      kFilterDuration) {
     discrete_state->get_mutable_vector(prev_efforts_index_)
         .get_mutable_value() = command->get_value();
+  }
+
+  // When receiving a new controller switch message record the time
+  if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
+          controller_switch->utime * 1e-6) {
+    std::cout << "Got new switch message" << std::endl;
     discrete_state->get_mutable_vector(switch_time_index_)[0] =
         controller_switch->utime * 1e-6;
   }

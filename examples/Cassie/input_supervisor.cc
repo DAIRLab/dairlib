@@ -67,8 +67,9 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  bool is_error = context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
-                  min_consecutive_failures_;
+  bool is_error =
+      context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
+      min_consecutive_failures_;
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros
@@ -99,11 +100,12 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
                   context.get_discrete_state(switch_time_index_)[0]) /
                  kFilterDuration;
   if (alpha <= 1.0) {
-    if(fmod(command->get_timestamp(), 1.0) < 1e-3)
+    if (fmod(command->get_timestamp(), 1.0) < 1e-3)
       std::cout << "Blending efforts" << std::endl;
     Eigen::VectorXd blended_effort =
-        (1 - alpha) * context.get_discrete_state(prev_efforts_index_).get_value() + alpha *
-        output->get_data();
+        (1 - alpha) *
+            context.get_discrete_state(prev_efforts_index_).get_value() +
+        alpha * output->get_data();
     output->SetDataVector(blended_effort);
   }
 }
@@ -114,7 +116,8 @@ void InputSupervisor::SetStatus(const Context<double>& context,
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  output->get_mutable_value()(0) = context.get_discrete_state(status_vars_index_)[status_index_];
+  output->get_mutable_value()(0) =
+      context.get_discrete_state(status_vars_index_)[status_index_];
   if (input_limit_ != std::numeric_limits<double>::max()) {
     for (int i = 0; i < command->get_data().size(); i++) {
       double command_value = command->get_data()(i);
@@ -139,9 +142,10 @@ void InputSupervisor::UpdateErrorFlag(
     DiscreteValues<double>* discrete_state) const {
   const OutputVector<double>* state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
-  auto controller_switch =
+  const auto* controller_switch =
       this->EvalInputValue<dairlib::lcmt_controller_switch>(
           context, controller_switch_input_port_);
+
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
@@ -155,8 +159,10 @@ void InputSupervisor::UpdateErrorFlag(
                              (velocities.array() < -max_joint_velocity_).any();
     if (is_velocity_error) {
       // Increment counter
-      discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] += 1;
-      discrete_state->get_mutable_vector(status_vars_index_)[status_index_] = true;
+      discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] +=
+          1;
+      discrete_state->get_mutable_vector(status_vars_index_)[status_index_] =
+          true;
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error "
@@ -167,16 +173,23 @@ void InputSupervisor::UpdateErrorFlag(
                 << std::endl;
     } else {
       // Reset counter
-      discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] = 0;
-      discrete_state->get_mutable_vector(status_vars_index_)[status_index_] = false;
+      discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] =
+          0;
+      discrete_state->get_mutable_vector(status_vars_index_)[status_index_] =
+          false;
     }
   }
 
-  if (controller_switch) {
-    discrete_state->get_mutable_vector(prev_efforts_index_).get_mutable_value() =
-        command->get_value();
+  std::cout << state->get_timestamp() << std::endl;
+//  std::cout << command->get_timestamp() << std::endl;
+
+  if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
+      controller_switch->utime * 1e-6) {
+    std::cout << "Got new switch message" << std::endl;
+    discrete_state->get_mutable_vector(prev_efforts_index_)
+        .get_mutable_value() = command->get_value();
     discrete_state->get_mutable_vector(switch_time_index_)[0] =
-        state->get_timestamp();
+        controller_switch->utime * 1e-6;
   }
 }
 

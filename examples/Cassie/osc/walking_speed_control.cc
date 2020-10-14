@@ -118,6 +118,16 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
     com_vel = J * v;
   }
 
+  // Filter the com vel
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    double dt = robot_output->get_timestamp() - last_timestamp_;
+    last_timestamp_ = robot_output->get_timestamp();
+    double alpha =
+        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+    filterred_com_vel_ = alpha * com_vel + (1 - alpha) * filterred_com_vel_;
+  }
+  com_vel = filterred_com_vel_;
+
   // Extract quaternion from floating base position
   Quaterniond Quat(q(0), q(1), q(2), q(3));
   Quaterniond Quat_conj = Quat.conjugate();
@@ -126,7 +136,8 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
                      Quat_conj.z());
 
   // Calculate local velocity
-  Vector3d local_com_vel = drake::math::quatRotateVec(quad_conj, com_vel);
+  Vector3d local_com_vel =
+      drake::math::quatRotateVec(quad_conj, com_vel);
 
   //////////////////// Sagital ////////////////////
   Vector3d delta_x_fs_sagital_3D_global(0, 0, 0);

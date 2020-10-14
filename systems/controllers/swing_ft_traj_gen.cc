@@ -200,6 +200,16 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     com_dot = J_com * v;
   }
 
+  // Filter the com vel
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    double dt = robot_output->get_timestamp() - last_timestamp_;
+    last_timestamp_ = robot_output->get_timestamp();
+    double alpha =
+        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+    filterred_com_vel_ = alpha * com_dot + (1 - alpha) * filterred_com_vel_;
+  }
+  com_dot = filterred_com_vel_;
+
   // Compute footstep location
   double omega = sqrt(9.81 / com(2));
   if (footstep_option_ == 0) {

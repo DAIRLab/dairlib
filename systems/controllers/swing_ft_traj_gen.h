@@ -137,6 +137,13 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   bool is_feet_collision_avoid_;
   bool is_using_predicted_com_;
   int footstep_option_;
+
+  // COM vel filtering
+  // TODO(yminchen): extract this filter out of WalkingSpeedControl and
+  //  SwingFootTrajGen
+  double cutoff_freq_ = 10; // in Hz.
+  mutable Eigen::Vector3d filterred_com_vel_ = Eigen::Vector3d::Zero();
+  mutable double last_timestamp_ = 0;
 };
 
 }  // namespace systems

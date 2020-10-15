@@ -101,6 +101,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   double alpha = (command->get_timestamp() -
                   context.get_discrete_state(switch_time_index_)[0]) /
                  kFilterDuration;
+
   if (alpha <= 1.0) {
     Eigen::VectorXd blended_effort =
         alpha * command->get_value() +
@@ -168,7 +169,8 @@ void InputSupervisor::UpdateErrorFlag(
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error "
-                << discrete_state->get_vector(status_vars_index_)[n_fails_index_]
+                << discrete_state->get_vector(
+                       status_vars_index_)[n_fails_index_]
                 << " of " << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
@@ -182,16 +184,17 @@ void InputSupervisor::UpdateErrorFlag(
     }
   }
 
-  // Update the previous commanded switch message unless trying to blend efforts
+  // Update the previous commanded switch message unless currently blending
+  // efforts
   if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
       kFilterDuration) {
     discrete_state->get_mutable_vector(prev_efforts_index_)
         .get_mutable_value() = command->get_value();
   }
 
-  // When receiving a new controller switch message record the time
+  // When receiving a new controller switch message, record the time
   if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
-          controller_switch->utime * 1e-6) {
+      controller_switch->utime * 1e-6) {
     std::cout << "Got new switch message" << std::endl;
     discrete_state->get_mutable_vector(switch_time_index_)[0] =
         controller_switch->utime * 1e-6;

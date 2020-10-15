@@ -8,7 +8,7 @@
 namespace dairlib {
 
 
-static constexpr double kFilterDuration = 2;
+static constexpr double kFilterDuration = 2.0;
 
 /// The InputSupervisor is a simple Drake System that acts as an intermediary
 /// between commands from controllers and the actual robot. It's envisioned role

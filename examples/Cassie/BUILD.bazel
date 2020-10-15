@@ -46,7 +46,9 @@ cc_library(
         "//examples/Cassie:run_osc_jumping_controller",
         "//examples/Cassie:run_osc_standing_controller",
         "//examples/Cassie:run_osc_walking_controller",
+        "//examples/Cassie:run_pd_controller",
         "//examples/Cassie/osc",
+        "//examples/Cassie/osc_jump",
     ],
 )
 

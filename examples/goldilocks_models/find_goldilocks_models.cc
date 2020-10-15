@@ -2543,7 +2543,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if(!is_get_nominal)
   }    // end for
 
-  cout << "Exited the outer loop.\n";
+  cout << "\nExited the outer loop.\n";
   cout << '\a';  // making noise to notify the user the end of an iteration
   current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());

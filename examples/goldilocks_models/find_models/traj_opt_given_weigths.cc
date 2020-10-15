@@ -1980,7 +1980,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // second mode (since we have periodic constraints on state and input, it's
   // fine to just ignore the four bar constraint (position, velocity and
   // acceleration levels))
-  bool four_bar_in_right_support = false;
+  bool four_bar_in_right_support = true;
   // TODO
 
   // Testing
@@ -1992,6 +1992,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   bool add_cost_on_collocation_vel = false;
   bool add_joint_acceleration_cost = true;
+
+  // Testing
+  bool lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = false;
 
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
@@ -2318,20 +2321,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Fix time duration
   trajopt->AddDurationBounds(duration, duration);
 
-  // Constraint on initial floating base quaternion
+  double turning_angle = turning_rate * duration;
   if (!periodic_quaternion && !only_one_mode) {
+    // Constraint on INITIAL floating base quaternion
     trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
     trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
     trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
     trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));
-  }
 
-  // Constraint on final floating base quaternion
-  // TODO: below is a naive version. You can implement the constraint using
-  //  rotation matrix and mirror around the x-z plane of local frame (however,
-  //  the downside is the potential complexity of constraint)
-  double turning_angle = turning_rate * duration;
-  if (!periodic_quaternion && !only_one_mode) {
+    // Constraint on FINAL floating base quaternion
+    // TODO: below is a naive version. You can implement the constraint using
+    //  rotation matrix and mirror around the x-z plane of local frame (however,
+    //  the downside is the potential complexity of constraint)
     trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
                                       cos(turning_angle / 2),
                                       xf(pos_map.at("base_qw")));
@@ -2666,6 +2667,16 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
+  // Testing -- add lower bound for the force at the first/last knot points
+  if (lower_bound_on_ground_reaction_force_at_the_first_and_last_knot) {
+    int mode = 0;
+    vector<int> index_list = {0, num_time_samples[mode] - 1};
+    for (int index : index_list) {
+      auto lambda = trajopt->force(mode, index);
+      trajopt->AddLinearConstraint(lambda(2) + lambda(5) >= 220);
+    }
+  }
+
   // Scale decision variable
   std::vector<int> idx_list;
   // time
@@ -2723,6 +2734,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0));
     trajopt->AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0));
   }
+  //  // Not use trapozoidal integration
+  //  bool not_use_trapo_integration = true;
+  //  if (not_use_trapo_integration) {
+  //    auto v0 = trajopt->state(0).tail(n_v);
+  //    auto v1 = trajopt->state(N - 1).tail(n_v);
+  //    trajopt->AddCost(((v0.transpose() * W_Q * v0) * fixed_dt / 2)(0));
+  //    trajopt->AddCost(((v1.transpose() * W_Q * v1) * fixed_dt / 2)(0));
+  //    auto u0 = trajopt->input(0);
+  //    auto u1 = trajopt->input(N-1);
+  //    trajopt->AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0));
+  //    trajopt->AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0));
+  //  }
+  // Testing
+  //  auto v0 = trajopt->state(0).tail(n_v);
+  //  auto v1 = trajopt->state(N - 1).tail(n_v);
+  //  trajopt->AddCost(((v0.transpose() * W_Q * v0) * 100 * fixed_dt / 2)(0));
+  //  trajopt->AddCost(((v1.transpose() * W_Q * v1) * 100 * fixed_dt / 2)(0));
 
   // add cost on force difference wrt time
   bool diff_with_force_at_collocation = false;
@@ -2962,7 +2990,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   if (is_print_for_debugging) {
     // Impulse variable's value
-    for (int i = w_sol.size() - 6; i < w_sol.size(); i++) {
+    for (int i = w_sol.size() - rs_dataset.countConstraints(); i < w_sol.size();
+         i++) {
       cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
            << w_sol[i] << endl;
     }
@@ -3099,17 +3128,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
     double cost_joint_acceleration = 0;
     if (add_joint_acceleration_cost) {
-//      for (int i = 0; i < N; i++) {
-//        auto x0 = result.GetSolution(trajopt->state(i));
-//        auto u0 = result.GetSolution(trajopt->input(i));
-//        auto l0 = result.GetSolution(trajopt->force(0, i));
-//
-//        Eigen::VectorXd x_val(x0.size() + u0.size() + l0.size());
-//        x_val << x0, u0, l0;
-//        Eigen::VectorXd y_val(1);
-//        joint_accel_cost->Eval(x_val, &y_val);
-//        cost_joint_acceleration += y_val(0);
-//      }
+      //      for (int i = 0; i < N; i++) {
+      //        auto x0 = result.GetSolution(trajopt->state(i));
+      //        auto u0 = result.GetSolution(trajopt->input(i));
+      //        auto l0 = result.GetSolution(trajopt->force(0, i));
+      //
+      //        Eigen::VectorXd x_val(x0.size() + u0.size() + l0.size());
+      //        x_val << x0, u0, l0;
+      //        Eigen::VectorXd y_val(1);
+      //        joint_accel_cost->Eval(x_val, &y_val);
+      //        cost_joint_acceleration += y_val(0);
+      //      }
     }
     total_cost += cost_joint_acceleration;
     cout << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
@@ -3143,6 +3172,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "add_cost_on_collocation_vel = " << add_cost_on_collocation_vel
          << endl;
     cout << "add_joint_acceleration_cost = " << add_joint_acceleration_cost
+         << endl;
+    cout << "lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = "
+         << lower_bound_on_ground_reaction_force_at_the_first_and_last_knot
          << endl;
   }  // end if is_print_for_debugging
 }

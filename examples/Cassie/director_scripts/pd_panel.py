@@ -52,9 +52,14 @@ position_names = [
 # kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
 
 # Set of gains with which COM is within support polygon when we lower the hoist 
+# joint_default = [0.2,-.2,0,0,0.35,0.35,-1.5,-1.5,-1.8,-1.8]
+# kp_default = [i for i in [20,20,10,10,20,20,50,50,10,10]]
+# kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
+
+# Another set of gains
 joint_default = [0.2,-.2,0,0,0.35,0.35,-1.5,-1.5,-1.8,-1.8]
-kp_default = [i for i in [20,20,10,10,20,20,50,50,10,10]]
-kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
+kp_default = [i for i in [20,20,10,10,25,25,50,50,15,15]]
+kd_default = [i for i in [1,1,1,1,5,5,2,2,1,1]]
 
 
 class ControllerGui(QWidget):

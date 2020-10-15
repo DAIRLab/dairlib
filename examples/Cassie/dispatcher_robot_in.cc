@@ -135,7 +135,6 @@ int do_main(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("dispatcher_robot_in");
 
-
   // Channel names of the controllers
   std::vector<std::string> input_channels;
   input_channels.push_back(FLAGS_control_channel_name_1);
@@ -150,7 +149,7 @@ int do_main(int argc, char* argv[]) {
        command_receiver,
        input_channels,
        FLAGS_control_channel_name_1,
-       switch_channel,
+       controller_switch_sub,
        true);
   loop.Simulate();
 

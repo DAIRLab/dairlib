@@ -1984,7 +1984,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // TODO
 
   // Testing
-  bool only_one_mode = false;
+  bool only_one_mode = true;
   if (only_one_mode) {
     periodic_joint_pos = false;
     periodic_joint_vel = false;
@@ -2294,28 +2294,32 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   if (only_one_mode) {
     VectorXd x0_val(plant.num_positions() + plant.num_velocities());
+    VectorXd xf_val(plant.num_positions() + plant.num_velocities());
+    // The following states come from traj opt with periodicity constraints
     x0_val << 1, 0, 0, 0, 0, -0.00527375, 1.10066, 0.00686375, 0.0025628,
         0.000573004, -0.000573019, 0.439262, 0.201581, -0.646, -0.795755,
         0.866859, 1.01813, -1.53361, -1.29744, -0.321, 0.198875, -0.0342067,
         0.67034, 0.363396, -0.0367492, -0.0100005, 0.0120047, 0.0355722,
         0.0585609, 0.26338, -0.584013, -1.45501, 0.221981, 1.47458, -0.223655,
         -0.0841209, 0.797712;
-    VectorXd xf_val(plant.num_positions() + plant.num_velocities());
     xf_val << 1, 0, 0, 0, 0.3, 0.00527375, 1.10066, -0.0025628, -0.00686375,
         0.000573019, -0.000573004, 0.201581, 0.439262, -0.795755, -0.646,
         1.01813, 0.866859, -1.29744, -1.53361, 0.49743, 0.0737923, 0.0867892,
         0.666384, -0.319709, -0.072308, -0.202807, 0.193892, -0.0869775,
         0.763641, -0.705892, -0.590682, 0.214898, 1.02658, -0.216519, -1.04038,
         0.780914, -0.269512;
-    trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
-    trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
+
+    // Set constraints for the first and last knot points
+    //    trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
+    //    trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
     //    trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
-    //    xf.head(n_q));
-    //  trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
-    //  xf.head(7));
-    //    trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
-    //                                      xf_val.segment<1>(4),
-    //                                      xf.segment<1>(4));
+    //                                      xf.head(n_q));
+    //    trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
+    //                                      xf.head(7));
+    trajopt->AddBoundingBoxConstraint(x0_val.segment<1>(4),
+                                      x0_val.segment<1>(4), x0.segment<1>(4));
+    trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
+                                      xf_val.segment<1>(4), xf.segment<1>(4));
   }
 
   // Fix time duration
@@ -3128,17 +3132,16 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
     double cost_joint_acceleration = 0;
     if (add_joint_acceleration_cost) {
-      //      for (int i = 0; i < N; i++) {
-      //        auto x0 = result.GetSolution(trajopt->state(i));
-      //        auto u0 = result.GetSolution(trajopt->input(i));
-      //        auto l0 = result.GetSolution(trajopt->force(0, i));
-      //
-      //        Eigen::VectorXd x_val(x0.size() + u0.size() + l0.size());
-      //        x_val << x0, u0, l0;
-      //        Eigen::VectorXd y_val(1);
-      //        joint_accel_cost->Eval(x_val, &y_val);
-      //        cost_joint_acceleration += y_val(0);
-      //      }
+      for (int i = 0; i < N; i++) {
+        auto x0 = result.GetSolution(gm_traj_opt.dircon->state(i));
+        auto u0 = result.GetSolution(gm_traj_opt.dircon->input(i));
+        auto l0 = result.GetSolution(gm_traj_opt.dircon->force(0, i));
+        Eigen::VectorXd x_val(x0.size() + u0.size() + l0.size());
+        x_val << x0, u0, l0;
+        Eigen::VectorXd y_val(1);
+        joint_accel_cost->Eval(x_val, &y_val);
+        cost_joint_acceleration += y_val(0);
+      }
     }
     total_cost += cost_joint_acceleration;
     cout << "cost_joint_acceleration = " << cost_joint_acceleration << endl;

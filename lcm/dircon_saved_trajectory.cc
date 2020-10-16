@@ -145,7 +145,12 @@ DirconTrajectory::DirconTrajectory(
     std::vector<std::string> force_names;
     std::vector<std::string> collocation_force_names;
     int num_forces = 0;
+<<<<<<< HEAD
     for (int i = 0; i < dircon.num_kinematic_constraints_wo_skipping(mode); ++i) {
+=======
+    for (int i = 0; i < dircon.num_kinematic_constraints_wo_skipping(mode);
+         ++i) {
+>>>>>>> upstream/master
       force_names.push_back("lambda_" + std::to_string(num_forces));
       collocation_force_names.push_back("lambda_c_" +
                                         std::to_string(num_forces));
@@ -259,8 +264,8 @@ Eigen::VectorXd DirconTrajectory::GetCollocationPoints(
   // using a + (b - a) / 2 midpoint
   int num_knotpoints = time_vector.size();
   return time_vector.head(num_knotpoints - 1) +
-         0.5 * (time_vector.tail(num_knotpoints - 1) -
-                time_vector.head(num_knotpoints - 1));
+      0.5 * (time_vector.tail(num_knotpoints - 1) -
+          time_vector.head(num_knotpoints - 1));
 }
 
 }  // namespace dairlib

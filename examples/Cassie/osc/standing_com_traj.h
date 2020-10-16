@@ -14,6 +14,9 @@ namespace osc {
 
 static constexpr double kMaxHeight = 1.2;
 static constexpr double kMinHeight = 0.3;
+static constexpr double kHeightScale = 0.2;
+static constexpr double kCoMXScale = 0.05;
+static constexpr double kCoMYScale = 0.1;
 
 class StandingComTraj : public drake::systems::LeafSystem<double> {
  public:
@@ -50,14 +53,12 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   int state_port_;
   int target_height_port_;
   int radio_port_;
+  double height_;
 
   // A list of pairs of contact body frame and contact point
   const std::vector<
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
       feet_contact_points_;
-
-  double height_;
-  static constexpr double kHeightScale_ = 0.2;
 };
 
 }  // namespace osc

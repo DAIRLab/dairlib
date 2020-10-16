@@ -70,10 +70,16 @@ void StandingComTraj::CalcDesiredTraj(
           context, target_height_port_)->target_height;
   const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
       context, radio_port_);
+
+  // no message
+  if(this->EvalInputValue<dairlib::lcmt_target_standing_height>(
+      context, target_height_port_)->timestamp < 1e-3){
+    target_height = height_;
+  }
   target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
-  target_height += kHeightScale_ * cassie_out->pelvis.radio.channel[0];
-  double x_offset = cassie_out->pelvis.radio.channel[4];
-  double y_offset = cassie_out->pelvis.radio.channel[5];
+  target_height += kHeightScale * cassie_out->pelvis.radio.channel[0];
+  double x_offset = kCoMXScale * cassie_out->pelvis.radio.channel[4];
+  double y_offset = kCoMYScale * cassie_out->pelvis.radio.channel[5];
   VectorXd q = robot_output->GetPositions();
 
   multibody::SetPositionsIfNew<double>(plant_, q, context_);

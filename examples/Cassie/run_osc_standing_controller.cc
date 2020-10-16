@@ -308,22 +308,6 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
 
-  // Get context and initialize the input port of LcmSubsriber for
-  // lcmt_target_standing_height
-  auto diagram_ptr = loop.get_diagram();
-  auto& diagram_context = loop.get_diagram_mutable_context();
-  auto& target_receiver_context = diagram_ptr->GetMutableSubsystemContext(
-      *target_height_receiver, &diagram_context);
-  // Note that currently the LcmSubscriber store the lcm message in the first
-  // state of the leaf system (we hard coded index 0 here)
-  auto& mutable_state =
-      target_receiver_context
-          .get_mutable_abstract_state<dairlib::lcmt_target_standing_height>(0);
-  dairlib::lcmt_target_standing_height initial_message;
-  initial_message.target_height = FLAGS_height;
-  mutable_state = initial_message;
-
-  // Run lcm-driven simulation
   loop.Simulate();
 
   return 0;

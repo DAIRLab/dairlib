@@ -89,7 +89,8 @@ class DirconTrajectory : public LcmTrajectory {
   int GetNumModes() const { return num_modes_; }
 
  private:
-  static Eigen::VectorXd GetCollocationPoints(Eigen::VectorXd& time_vector);
+  static Eigen::VectorXd GetCollocationPoints(
+      const Eigen::VectorXd& time_vector);
   int num_modes_ = 0;
 
   const Trajectory* decision_vars_;

@@ -68,8 +68,8 @@ py_binary(
     name = "cassie_log_plotter",
     srcs = ["analysis_scripts/cassie_log_plotter.py"],
     data = [
-        "@lcm//:lcm-python",
         "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python",
     ],
     deps = [
         ":lcm_trajectory_py",
@@ -85,8 +85,8 @@ py_binary(
     name = "log_plotter_cassie",
     srcs = ["analysis_scripts/log_plotter_cassie.py"],
     data = [
-        "@lcm//:lcm-python",
         "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python",
     ],
     deps = [
         ":lcm_trajectory_py",
@@ -102,8 +102,8 @@ py_binary(
     name = "walking_analysis",
     srcs = ["analysis_scripts/walking_analysis.py"],
     data = [
-        "@lcm//:lcm-python",
         "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python",
     ],
     deps = [
         ":lcm_trajectory_py",

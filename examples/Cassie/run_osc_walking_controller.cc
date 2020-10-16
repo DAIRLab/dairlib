@@ -553,7 +553,7 @@ int DoMain(int argc, char* argv[]) {
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
                                          "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
+  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1));
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);

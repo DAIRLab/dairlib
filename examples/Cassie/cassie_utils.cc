@@ -160,6 +160,18 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
         heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
         kCassieAchillesLength, achilles_stiffness, achilles_damping);
   }
+
+  // Copied from impact_uncertainty branch
+  bool add_reflected_inertia = true;
+  std::vector<double> reflected_inertias = {
+      0.038125, 0.038125, 0.038125, 0.038125, 0.09344,
+      0.09344,  0.09344,  0.09344,  0.01225,  0.01225};
+  if (add_reflected_inertia) {
+    for (int i = 0; i < reflected_inertias.size(); ++i) {
+      plant->get_mutable_joint_actuator(drake::multibody::JointActuatorIndex(i))
+          .set_reflected_inertia(reflected_inertias[i]);
+    }
+  }
 }
 
 const systems::SimCassieSensorAggregator& AddImuAndAggregator(

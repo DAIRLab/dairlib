@@ -58,10 +58,9 @@ void CreateMBP(MultibodyPlant<double>* plant, int robot_option) {
     plant->Finalize();
 
   } else if (robot_option == 1) {
-    Parser parser(plant);
-    string full_name =
-        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-    parser.AddModelFromFile(full_name);
+    addCassieMultibody(plant, nullptr, true,
+                       "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                       false);
     plant->Finalize();
   } else {
     throw std::runtime_error("robot_option " + to_string(robot_option) +
@@ -86,9 +85,9 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
   } else if (robot_option == 1) {
     multibody::addFlatTerrain(plant, scene_graph, 0.8, 0.8, ground_normal);
     Parser parser(plant, scene_graph);
-    string full_name =
-        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-    parser.AddModelFromFile(full_name);
+    addCassieMultibody(plant, scene_graph, true,
+                       "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                       false);
     plant->Finalize();
   } else {
     throw std::runtime_error("robot_option " + to_string(robot_option) +

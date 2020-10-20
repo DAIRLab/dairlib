@@ -1934,31 +1934,31 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Cost on velocity and input
   double w_Q = setting.Q_double * all_cost_scale;
-  double w_R = setting.R_double * all_cost_scale;
+  double w_R = 0;  // setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-3 * all_cost_scale * all_cost_scale;
+  double w_lambda = 0;  // 1.0e-3 * all_cost_scale * all_cost_scale;
   // Cost on difference over time
-  double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
-  double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;
-  double w_u_diff = 0.00001 * 0.1 * all_cost_scale;
+  double w_lambda_diff = 0;  // 0.000001 * 0.1 * all_cost_scale;
+  double w_v_diff = 0;       // 0.01 * 5 * 0.1 * all_cost_scale;
+  double w_u_diff = 0;       // 0.00001 * 0.1 * all_cost_scale;
   // Cost on position
-  double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
-  double w_q_hip_yaw = 1 * 5 * all_cost_scale;
-  double w_q_quat = 1 * 5 * 10 * all_cost_scale;
+  double w_q_hip_roll = 0;  // 1 * 5 * 10 * all_cost_scale;
+  double w_q_hip_yaw = 0;   // 1 * 5 * all_cost_scale;
+  double w_q_quat = 0;      // 1 * 5 * 10 * all_cost_scale;
   // Additional cost on pelvis
-  double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
-  double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
+  double w_Q_vy = 0;  // w_Q * 1;  // avoid pelvis rocking in y
+  double w_Q_vz = 0;  // w_Q * 1;  // avoid pelvis rocking in z
   // Additional cost on swing toe
-  double w_Q_swing_toe = w_Q * 1;  // avoid swing toe shaking
-  double w_R_swing_toe = w_R * 1;  // avoid swing toe shaking
+  double w_Q_swing_toe = w_Q * 10;  // w_Q * 1;  // avoid swing toe shaking
+  double w_R_swing_toe = 0;         // w_R * 1;  // avoid swing toe shaking
   // Testing -- cost on position difference (cost on v is not enough, because
   // the solver might exploit the integration scheme. If we only penalize
   // velocity at knots, then the solver will converge to small velocity at knots
   // but big acceleration at knots!)
-  double w_q_diff = 1 * 5 * 0.1 * all_cost_scale;
-  double w_q_diff_swing_toe = w_q_diff * 1;
+  double w_q_diff = 0;            // 1 * 5 * 0.1 * all_cost_scale;
+  double w_q_diff_swing_toe = 0;  // w_q_diff * 1;
   // Testing
-  double w_v_diff_swing_leg = w_v_diff * 1;
+  double w_v_diff_swing_leg = 0;  // w_v_diff * 1;
 
   // Flags for constraints
   bool swing_foot_ground_clearance = false;
@@ -1967,6 +1967,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   bool periodic_floating_base_vel = false;
   bool periodic_joint_pos = true;
   bool periodic_joint_vel = false;
+  bool periodic_effort = false;
   bool ground_normal_force_margin = false;
   bool zero_com_height_vel = false;
   bool zero_com_height_vel_difference = false;
@@ -1988,10 +1989,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (only_one_mode) {
     periodic_joint_pos = false;
     periodic_joint_vel = false;
+    periodic_effort = false;
   }
   // Testing
   bool add_cost_on_collocation_vel = false;
   bool add_joint_acceleration_cost = true;
+  bool not_trapo_integration_cost = true;
 
   // Testing
   bool lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = false;
@@ -2310,12 +2313,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         0.780914, -0.269512;
 
     // Set constraints for the first and last knot points
-    //    trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
-    //    trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
+    //        trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
+    //        trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
+
     //    trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
     //                                      xf.head(n_q));
     //    trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
     //                                      xf.head(7));
+
     trajopt->AddBoundingBoxConstraint(x0_val.segment<1>(4),
                                       x0_val.segment<1>(4), x0.segment<1>(4));
     trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
@@ -2449,9 +2454,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
             -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
       }
       // inputs
-      trajopt->AddLinearConstraint(
-          u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
-          -uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
+      if (periodic_effort) {
+        trajopt->AddLinearConstraint(
+            u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
+            -uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
+      }
     }
     for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
       // positions
@@ -2467,10 +2474,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
             xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
       }
       // inputs (ankle joint is not actuated)
-      if (sym_joint_names[i] != "ankle_joint") {
-        trajopt->AddLinearConstraint(
-            u0(act_map.at(sym_joint_names[i] + l_r_pair.first + "_motor")) ==
-            uf(act_map.at(sym_joint_names[i] + l_r_pair.second + "_motor")));
+      if (periodic_effort) {
+        if (sym_joint_names[i] != "ankle_joint") {
+          trajopt->AddLinearConstraint(
+              u0(act_map.at(sym_joint_names[i] + l_r_pair.first + "_motor")) ==
+              uf(act_map.at(sym_joint_names[i] + l_r_pair.second + "_motor")));
+        }
       }
     }
   }  // end for (l_r_pairs)
@@ -2738,18 +2747,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0));
     trajopt->AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0));
   }
-  //  // Not use trapozoidal integration
-  //  bool not_use_trapo_integration = true;
-  //  if (not_use_trapo_integration) {
-  //    auto v0 = trajopt->state(0).tail(n_v);
-  //    auto v1 = trajopt->state(N - 1).tail(n_v);
-  //    trajopt->AddCost(((v0.transpose() * W_Q * v0) * fixed_dt / 2)(0));
-  //    trajopt->AddCost(((v1.transpose() * W_Q * v1) * fixed_dt / 2)(0));
-  //    auto u0 = trajopt->input(0);
-  //    auto u1 = trajopt->input(N-1);
-  //    trajopt->AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0));
-  //    trajopt->AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0));
-  //  }
+  // Not use trapozoidal integration
+  if (not_trapo_integration_cost) {
+    auto v0 = trajopt->state(0).tail(n_v);
+    auto v1 = trajopt->state(N - 1).tail(n_v);
+    trajopt->AddCost(((v0.transpose() * W_Q * v0) * fixed_dt / 2)(0));
+    trajopt->AddCost(((v1.transpose() * W_Q * v1) * fixed_dt / 2)(0));
+    auto u0 = trajopt->input(0);
+    auto u1 = trajopt->input(N - 1);
+    trajopt->AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0));
+    trajopt->AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0));
+  }
   // Testing
   //  auto v0 = trajopt->state(0).tail(n_v);
   //  auto v1 = trajopt->state(N - 1).tail(n_v);
@@ -3161,6 +3169,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
          << endl;
     cout << "periodic_joint_pos = " << periodic_joint_pos << endl;
     cout << "periodic_joint_vel = " << periodic_joint_vel << endl;
+    cout << "periodic_effort = " << periodic_effort << endl;
     cout << "ground_normal_force_margin = " << ground_normal_force_margin
          << endl;
     cout << "zero_com_height_vel = " << zero_com_height_vel << endl;
@@ -3178,6 +3187,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
          << endl;
     cout << "lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = "
          << lower_bound_on_ground_reaction_force_at_the_first_and_last_knot
+         << endl;
+    cout << "not_trapo_integration_cost = " << not_trapo_integration_cost
          << endl;
   }  // end if is_print_for_debugging
 }

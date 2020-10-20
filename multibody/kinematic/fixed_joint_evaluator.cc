@@ -21,7 +21,10 @@ FixedJointEvaluator<T>::FixedJointEvaluator(const MultibodyPlant<T>& plant,
     : KinematicEvaluator<T>(plant, 1),
       pos_idx_(pos_idx),
       vel_idx_(vel_idx),
-      pos_value_(pos_value) {}
+      pos_value_(pos_value) {
+  J_ = MatrixX<T>::Zero(1, plant.num_velocities());
+  J_(0, vel_idx_) = 1;
+}
 
 template <typename T>
 VectorX<T> FixedJointEvaluator<T>::EvalFull(const Context<T>& context) const {
@@ -34,9 +37,7 @@ VectorX<T> FixedJointEvaluator<T>::EvalFull(const Context<T>& context) const {
 template <typename T>
 void FixedJointEvaluator<T>::EvalFullJacobian(
     const Context<T>& context, drake::EigenPtr<MatrixX<T>> J) const {
-  MatrixX<T> J_temp = MatrixX<T>::Zero(1, plant().num_velocities());
-  J_temp(0, vel_idx_) = 1;
-  *J = J_temp;
+  *J = J_;
 }
 
 template <typename T>

@@ -35,6 +35,7 @@ class FixedJointEvaluator : public KinematicEvaluator<T> {
   const int pos_idx_;
   const int vel_idx_;
   const double pos_value_;
+  drake::MatrixX<T> J_;
 };
 
 }  // namespace multibody

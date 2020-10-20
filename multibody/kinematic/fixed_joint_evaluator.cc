@@ -20,10 +20,9 @@ FixedJointEvaluator<T>::FixedJointEvaluator(const MultibodyPlant<T>& plant,
                                             double pos_value)
     : KinematicEvaluator<T>(plant, 1),
       pos_idx_(pos_idx),
-      vel_idx_(vel_idx),
       pos_value_(pos_value) {
   J_ = MatrixX<T>::Zero(1, plant.num_velocities());
-  J_(0, vel_idx_) = 1;
+  J_(0, vel_idx) = 1;
 }
 
 template <typename T>

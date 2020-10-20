@@ -33,7 +33,6 @@ class FixedJointEvaluator : public KinematicEvaluator<T> {
 
  private:
   const int pos_idx_;
-  const int vel_idx_;
   const double pos_value_;
   drake::MatrixX<T> J_;
 };

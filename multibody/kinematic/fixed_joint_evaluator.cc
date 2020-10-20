@@ -27,7 +27,6 @@ FixedJointEvaluator<T>::FixedJointEvaluator(const MultibodyPlant<T>& plant,
 
 template <typename T>
 VectorX<T> FixedJointEvaluator<T>::EvalFull(const Context<T>& context) const {
-  // Transform points A and B to world frame
   VectorX<T> difference(1);
   difference << plant().GetPositions(context)(pos_idx_) - pos_value_;
   return difference;

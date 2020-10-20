@@ -42,8 +42,10 @@ def main():
   # Parser(plant).AddModelFromFile(
   #   FindResourceOrThrow(
   #     "examples/Cassie/urdf/cassie_v2.urdf"))
+  # pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, False,
+  #   "examples/Cassie/urdf/cassie_v2.urdf", True, True)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, False,
-    "examples/Cassie/urdf/cassie_v2.urdf", True, True)
+    "examples/Cassie/urdf/cassie_v2.urdf", False, False)
   plant.Finalize()
 
   # relevant MBP parameters
@@ -84,6 +86,7 @@ def main():
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
+  joint_name = filename[7:filename.find('_sine')]
 
   matplotlib.rcParams["savefig.directory"] = path
 
@@ -104,11 +107,10 @@ def main():
 
   # import pdb; pdb.set_trace()
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
-  plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes)
+  # plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes, act_map[joint_name + '_motor'])
   # plt.show()
   xdot = estimate_xdot_with_filtering(x, t_x)
 
-  joint_name = filename[7:filename.find('_sine')]
   solve_individual_joint(x, xdot, t_x, u_meas, pos_map[joint_name], act_map[joint_name + '_motor'])
   # solve_with_lambda(x, xdot, t_x, u_meas)
   plt.show()
@@ -149,16 +151,18 @@ def solve_individual_joint(x, xdot, t_x, u_meas, joint_idx, act_idx):
 
   nvars = 1
   tau_res = np.zeros((n_samples, nv))
+  tau_res_wo_damping = np.zeros((n_samples, nv))
+  tau_res_wo_springs = np.zeros((n_samples, nv))
   A = np.zeros((n_samples, nvars))
   b = np.zeros(n_samples)
   for i in range(n_samples):
     t = t_x[10] + 1e-2 * i
-    x_ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
-    x_samples.append(x[x_ind, :])
-    xdot_samples.append(xdot[x_ind, :])
-    u_samples.append(u_meas[x_ind, :])
+    ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
+    x_samples.append(x[ind, :])
+    xdot_samples.append(xdot[ind, :])
+    u_samples.append(u_meas[ind, :])
     t_samples.append(t)
-    plant.SetPositionsAndVelocities(context, x[x_ind, :])
+    plant.SetPositionsAndVelocities(context, x[ind, :])
 
     M = plant.CalcMassMatrixViaInverseDynamics(context)
     M_inv = inv(M)
@@ -173,33 +177,58 @@ def solve_individual_joint(x, xdot, t_x, u_meas, joint_idx, act_idx):
     JdotV = np.vstack((JdotV_l_loop_closure, JdotV_r_loop_closure))
     JdotV = np.reshape(JdotV, (2,))
 
-    A[i, 0] = -x[x_ind, nq + joint_idx]
-    b[i] = M[joint_idx, joint_idx] * xdot[x_ind, nq + joint_idx] - u_meas[x_ind, act_idx]
+    A[i, 0] = -x[ind, nq + joint_idx]
+    b[i] = M[joint_idx, joint_idx] * xdot[ind, nq + joint_idx] - u_meas[ind, act_idx]
 
-    qdot = x[x_ind, nq:]
-    qddot = xdot[x_ind, nq:]
+    qdot = x[ind, nq:]
+    qddot = xdot[ind, nq:]
     K = np.zeros((nq, nq))
-    K[l_knee_idx, l_knee_idx] = 1500
-    K[r_knee_idx, r_knee_idx] = 1500
-    K[l_heel_idx, l_heel_idx] = 1500
-    K[r_heel_idx, r_heel_idx] = 1500
+    K[l_knee_spring_idx, l_knee_spring_idx] = 1500
+    K[r_knee_spring_idx, r_knee_spring_idx] = 1500
+    K[l_heel_spring_idx, l_heel_spring_idx] = 1250
+    K[r_heel_spring_idx, r_heel_spring_idx] = 1250
+    # K[l_knee_spring_idx, l_knee_spring_idx] = 1000
+    # K[r_knee_spring_idx, r_knee_spring_idx] = 1000
+    # K[l_heel_spring_idx, l_heel_spring_idx] = 1000
+    # K[r_heel_spring_idx, r_heel_spring_idx] = 1000
+    K = -K
+    D = np.zeros((nv, nv))
+    D[joint_idx, joint_idx] = -2.0/3
 
-    lambda_implicit = inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[x_ind] + 0) - JdotV)
-    tau_res[i] = M @ qddot  + Cv - B @ u_meas[x_ind] - g - J.T @ lambda_implicit
+    # Compute force residuals
+    lambda_implicit =            inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq] + D@qdot) - JdotV)
+    lambda_implicit_wo_damping = inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq])          - JdotV)
+    lambda_implicit_wo_spring =  inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + D@qdot)                 - JdotV)
+    tau_res[i] =            M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit            - K@x[ind, :nq] - D@qdot
+    tau_res_wo_damping[i] = M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit_wo_damping - K@x[ind, :nq]
+    tau_res_wo_springs[i] = M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit_wo_spring  - D@qdot
 
   x_samples = np.array(x_samples)
   xdot_samples = np.array(xdot_samples)
   u_samples = np.array(u_samples)
-  plt.figure("force residual")
+  plt.figure("force residual position x-axis: " + filename)
+  plt.plot(x_samples[:, joint_idx], tau_res[:, joint_idx], '.')
+  plt.plot(x_samples[:, joint_idx], tau_res_wo_damping[:, joint_idx], '.')
+  plt.plot(x_samples[:, joint_idx], tau_res_wo_springs[:, joint_idx], '.')
+  plt.xlabel('joint position (rad)')
+
+
+  plt.figure("force residual velocity x-axis: " + filename)
   # plt.plot(t_samples, x_samples[:, joint_idx])
   # plt.plot(t_samples, x_samples[:, nq + joint_idx])
   # plt.plot(x_samples[:, nq + joint_idx], tau_res)
 
-  plt.plot(x_samples[:, nq + joint_idx], tau_res[:, joint_idx], '.')
+  plt.plot(x_samples[:, nq + joint_idx], tau_res[:, joint_idx], 'b.')
+  plt.plot(x_samples[:, nq + joint_idx], tau_res_wo_damping[:, joint_idx], 'r.')
+  plt.plot(x_samples[:, nq + joint_idx], tau_res_wo_springs[:, joint_idx], 'g.')
+
+
+  plt.xlabel('joint velocity (rad/s)')
   # plt.plot(x_samples[:, joint_idx], tau_res[:, joint_idx])
-  plt.figure("force res vs time")
+  plt.figure("force res vs time: " + filename)
   plt.plot(t_samples, tau_res[:, joint_idx], '-')
   plt.plot(t_samples, x_samples[:, nq + joint_idx], 'r-')
+  plt.xlabel('time (s)')
   # plt.legend(x_datatypes[:nq])
 
   prog = mp.MathematicalProgram()
@@ -211,19 +240,6 @@ def solve_individual_joint(x, xdot, t_x, u_meas, joint_idx, act_idx):
   print("Solution result: ", result.get_solution_result())
   sol = result.GetSolution()
   print(sol)
-
-
-
-  f_samples = np.zeros((n_samples, nu))
-  for i in range(n_samples):
-    plant.SetPositionsAndVelocities(context, x_samples[i, :])
-
-    M = plant.CalcMassMatrixViaInverseDynamics(context)
-
-
-    # f_samples[i] = M[joint_idx, joint_idx]*xdot_samples[i, nq + joint_idx] - u_samples[i, act_idx] + Cv[joint_idx] - sol * x_samples[i, nq + joint_idx] +
-  plt.figure(3)
-  plt.plot(t_samples, f_samples)
 
 def solve_with_lambda(x, xdot, t_x, u_meas):
   # n_samples = len(sample_times)
@@ -331,10 +347,10 @@ def solve_with_lambda(x, xdot, t_x, u_meas):
   print("D: ", d_sol)
   import pdb; pdb.set_trace()
 
-def plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes):
+def plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes, act_idx):
   pos_indices = slice(0, nq)
   vel_indices = slice(nq, nx)
-  u_indices = slice(8, 10)
+  u_indices = act_idx
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)

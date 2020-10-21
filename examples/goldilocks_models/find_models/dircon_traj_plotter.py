@@ -74,12 +74,12 @@ def main():
   Center of mass trajectories
   """
   # PlotCenterOfMass(dircon_traj, True)
-  PlotCenterOfMass(dircon_traj, False)
+  # PlotCenterOfMass(dircon_traj, False)
 
   """
   Pevlis trajectories
   """
-  # PlotPelvis(dircon_traj, False)
+  PlotPelvis(dircon_traj, False)
 
   if not savefig:
       plt.show()

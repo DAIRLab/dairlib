@@ -2255,7 +2255,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->SetSolverOption(id, "acceptable_iter", 5);
   } else {
     //     Snopt settings
-    cout << "WARNING: you are printing snopt log.\n for Cassie";
+    cout << "WARNING: you are printing snopt log for Cassie.\n";
     trajopt->SetSolverOption(
         drake::solvers::SnoptSolver::id(), "Print file",
         "../snopt_sample#" + to_string(sample_idx) + ".out");
@@ -3003,8 +3003,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   if (is_print_for_debugging) {
     // Impulse variable's value
-    for (int i = w_sol.size() - rs_dataset.countConstraints(); i < w_sol.size();
-         i++) {
+    for (int i = w_sol.size() - rs_dataset.countConstraints() - 1;
+         i < w_sol.size(); i++) {
       cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
            << w_sol[i] << endl;
     }

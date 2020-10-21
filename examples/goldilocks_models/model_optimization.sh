@@ -2,7 +2,7 @@ echo If you ssh, run this sciprt in the background to prevent the program from b
 
 # Set robot id and model id
 robot=1
-model=2
+model=2 #4
 echo robot_option = $robot, rom_option = $model
 
 # Set sample size

@@ -251,20 +251,24 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(),
-      true, FLAGS_print_osc /*print_tracking_info*/);
+      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
+      FLAGS_print_osc /*print_tracking_info*/);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();
   MatrixXd Q_accel = 2 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
-  // Distance constraint
+  // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
+  // 1. fourbar constraint
   auto left_loop = LeftLoopClosureEvaluator(plant_w_spr);
   auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
+  // 2. fixed spring constriant
+  // Note that we set the position value to 0, but this is not used in OSC,
+  // because OSC constraint only use JdotV and J.
   auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
   auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
   auto left_fixed_knee_spring =

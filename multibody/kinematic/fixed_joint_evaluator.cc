@@ -1,15 +1,9 @@
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 
-#include "drake/math/orthonormal_basis.h"
-
-using drake::Matrix3X;
 using drake::MatrixX;
-using drake::Vector3;
 using drake::VectorX;
-using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
-using Eigen::Vector3d;
 
 namespace dairlib {
 namespace multibody {

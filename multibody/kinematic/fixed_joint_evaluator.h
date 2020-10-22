@@ -13,8 +13,8 @@ class FixedJointEvaluator : public KinematicEvaluator<T> {
  public:
   /// Constructor for FixedJointEvaluator
   /// @param plant
-  /// @param pos_idx index in the generalized position
-  /// @param vel_idx index in the generalized velocity
+  /// @param pos_idx index in the generalized positions
+  /// @param vel_idx index in the generalized velocities
 
   FixedJointEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
                       int pos_idx, int vel_idx, double pos_value);

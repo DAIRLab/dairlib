@@ -161,15 +161,18 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
         kCassieAchillesLength, achilles_stiffness, achilles_damping);
   }
 
-  // Copied from impact_uncertainty branch
   bool add_reflected_inertia = true;
-  std::vector<double> reflected_inertias = {
-      0.038125, 0.038125, 0.038125, 0.038125, 0.09344,
-      0.09344,  0.09344,  0.09344,  0.01225,  0.01225};
+  VectorXd rotor_inertias(10);
+  rotor_inertias <<61,61, 61,61,365,365,365,365,4.9, 4.9;
+  rotor_inertias *= 1e-6;
+  VectorXd gear_ratios(10);
+  gear_ratios << 25, 25, 25, 25, 16, 16, 16, 16, 50, 50;
   if (add_reflected_inertia) {
-    for (int i = 0; i < reflected_inertias.size(); ++i) {
-      plant->get_mutable_joint_actuator(drake::multibody::JointActuatorIndex(i))
-          .set_reflected_inertia(reflected_inertias[i]);
+    for (int i = 0; i < rotor_inertias.size(); ++i) {
+      auto& joint_actuator = plant->get_mutable_joint_actuator(
+          drake::multibody::JointActuatorIndex(i));
+      joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+      joint_actuator.set_default_gear_ratio(gear_ratios(i));
     }
   }
 }
@@ -190,8 +193,7 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
 
   auto sensor_aggregator =
       builder->AddSystem<systems::SimCassieSensorAggregator>(plant);
-  builder->Connect(actuation_port,
-                   sensor_aggregator->get_input_port_input());
+  builder->Connect(actuation_port, sensor_aggregator->get_input_port_input());
   builder->Connect(plant.get_state_output_port(),
                    sensor_aggregator->get_input_port_state());
   builder->Connect(accelerometer.get_measurement_output_port(),

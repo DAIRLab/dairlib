@@ -80,21 +80,6 @@ CassieStateEstimator::CassieStateEstimator(
       this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
                                     &CassieStateEstimator::CopyStateOut)
           .get_index();
-  contact_output_port_ =
-      this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
-          .get_index();
-  filtered_contact_output_port_ =
-      this->DeclareAbstractOutputPort(
-              &CassieStateEstimator::CopyFilteredContact)
-          .get_index();
-  gm_contact_output_port_ =
-      this->DeclareAbstractOutputPort(
-              &CassieStateEstimator::CopyEstimatedContactForces)
-          .get_index();
-  gm_contact_for_fsm_output_port_ =
-      this->DeclareAbstractOutputPort(
-              &CassieStateEstimator::CopyEstimatedContactForcesForFsm)
-          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -258,6 +243,24 @@ CassieStateEstimator::CassieStateEstimator(
                 VectorXd::Zero(SPACE_DIM), eps_imu_)
             .evaluator()
             .get();
+
+    // Declare output ports for contact information. Only necessary for
+    // floating base model
+    contact_output_port_ =
+        this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
+            .get_index();
+    filtered_contact_output_port_ =
+        this->DeclareAbstractOutputPort(
+                &CassieStateEstimator::CopyFilteredContact)
+            .get_index();
+    gm_contact_output_port_ =
+        this->DeclareAbstractOutputPort(
+                &CassieStateEstimator::CopyEstimatedContactForces)
+            .get_index();
+    gm_contact_for_fsm_output_port_ =
+        this->DeclareAbstractOutputPort(
+                &CassieStateEstimator::CopyEstimatedContactForcesForFsm)
+            .get_index();
   }
 }
 
@@ -1542,13 +1545,15 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
     // Subtract a small epsilon value so this event triggers before the publish
     *time = next_message_time_ - eps_;
 
-    UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
-        [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
-               drake::systems::State<double>* s) { this->Update(c, s); };
+    if(is_floating_base_){
+      UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
+          [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
+                 drake::systems::State<double>* s) { this->Update(c, s); };
 
-    auto& uu_events = events->get_mutable_unrestricted_update_events();
-    uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
-        drake::systems::TriggerType::kTimed, callback));
+      auto& uu_events = events->get_mutable_unrestricted_update_events();
+      uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+          drake::systems::TriggerType::kTimed, callback));
+    }
   }
 }
 

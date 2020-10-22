@@ -392,6 +392,54 @@ class JointAccelCost : public solvers::NonlinearCost<double> {
   MatrixXd W_Q_;
 };
 
+class JointAccelConstraint : public solvers::NonlinearConstraint<double> {
+ public:
+  JointAccelConstraint(const VectorXd& lb, const VectorXd& ub,
+                       const drake::multibody::MultibodyPlant<double>& plant,
+                       DirconKinematicDataSet<double>* constraints,
+                       const std::string& description = "")
+      : solvers::NonlinearConstraint<double>(
+            plant.num_velocities(),
+            plant.num_positions() + plant.num_velocities() +
+                plant.num_actuators() +
+                constraints->countConstraintsWithoutSkipping(),
+            lb, ub, description),
+        plant_(plant),
+        context_(plant_.CreateDefaultContext()),
+        constraints_(constraints),
+        n_v_(plant.num_velocities()),
+        n_x_(plant.num_positions() + plant.num_velocities()),
+        n_u_(plant.num_actuators()),
+        n_lambda_(constraints->countConstraintsWithoutSkipping()){};
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    DRAKE_ASSERT(x.size() == n_x_ + n_u_ + n_lambda_);
+
+    // Extract our input variables:
+    const auto x0 = x.segment(0, n_x_);
+    const auto u0 = x.segment(n_x_, n_u_);
+    const auto l0 = x.segment(n_x_ + n_u_, n_lambda_);
+
+    multibody::setContext<double>(plant_, x0, u0, context_.get());
+    constraints_->updateData(*context_, l0);
+
+    (*y) = constraints_->getXDot().tail(n_v_);
+  };
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  DirconKinematicDataSet<double>* constraints_;
+
+  int n_v_;
+  int n_x_;
+  int n_u_;
+  int n_lambda_;
+
+  MatrixXd W_Q_;
+};
+
 void addRegularization(bool is_get_nominal, double eps_reg,
                        GoldilocksModelTrajOpt& gm_traj_opt) {
   // Add regularization term here so that hessian is pd (for outer loop), so
@@ -1934,7 +1982,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Cost on velocity and input
   double w_Q = setting.Q_double * all_cost_scale;
-  double w_R = setting.R_double * all_cost_scale;
+  double w_R = 0;  // setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
   double w_lambda = 1.0e-3 * all_cost_scale * all_cost_scale;
   // Cost on difference over time
@@ -1996,6 +2044,15 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   bool add_cost_on_collocation_vel = false;
   bool add_joint_acceleration_cost = true;
   bool not_trapo_integration_cost = false;
+  bool add_joint_acceleration_constraint = true;
+  double joint_accel_lb = -10;
+  double joint_accel_ub = 10;
+  bool add_hip_roll_pos_constraint = false;
+  double hip_roll_pos_lb = -0.1;
+  double hip_roll_pos_ub = 0.1;
+  bool add_base_vy_constraint = true;
+  double base_vy_lb = -0.4;
+  double base_vy_ub = 0.4;
 
   // Testing
   bool lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = false;
@@ -2691,6 +2748,45 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
+  // Testing -- add constraint on joint acceleration
+  // TODO: include second mode?
+  if (add_joint_acceleration_constraint) {
+    auto joint_accel_constraint = std::make_shared<JointAccelConstraint>(
+        joint_accel_lb * VectorXd::Ones(n_v),
+        joint_accel_ub * VectorXd::Ones(n_v), plant, dataset_list[0],
+        "joint_accel_constraint");
+    // scaling
+    // TODO: set constraint scaling
+    // joint_accel_constraint->SetConstraintScaling(odbp_constraint_scale);
+    for (int i = 0; i < N; i++) {
+      auto x0 = trajopt->state(i);
+      auto u0 = trajopt->input(i);
+      auto l0 = trajopt->force(0, i);
+      trajopt->AddConstraint(joint_accel_constraint, {x0, u0, l0});
+    }
+  }
+
+  // Testing -- add constraint to limit hip roll position
+  if (add_hip_roll_pos_constraint) {
+    for (const auto& l_r_pair : l_r_pairs) {
+      for (int index = 0; index < num_time_samples[0]; index++) {
+        auto xi = trajopt->state(index);
+        trajopt->AddBoundingBoxConstraint(
+            hip_roll_pos_lb, hip_roll_pos_ub,
+            xi(pos_map.at("hip_roll" + l_r_pair.first)));
+      }
+    }
+  }
+
+  // Testing -- add constraint to limit base y velocity
+  if (add_base_vy_constraint) {
+    for (int index = 0; index < num_time_samples[0]; index++) {
+      auto xi = trajopt->state(index);
+      trajopt->AddBoundingBoxConstraint(base_vy_lb, base_vy_ub,
+                                        xi(n_q + vel_map.at("base_vy")));
+    }
+  }
+
   // Scale decision variable
   std::vector<int> idx_list;
   // time
@@ -2876,7 +2972,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing: add joint acceleration cost at knot points
   auto joint_accel_cost =
-      std::make_shared<JointAccelCost>(0.00001 * W_Q, plant, dataset_list[0]);
+      std::make_shared<JointAccelCost>(0.001 * W_Q, plant, dataset_list[0]);
   if (add_joint_acceleration_cost) {
     for (int i = 0; i < N; i++) {
       auto x0 = trajopt->state(i);
@@ -3191,6 +3287,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
          << endl;
     cout << "not_trapo_integration_cost = " << not_trapo_integration_cost
          << endl;
+    cout << "add_joint_acceleration_constraint = "
+         << add_joint_acceleration_constraint
+         << "; (lb, ub) = " << joint_accel_lb << ", " << joint_accel_ub << endl;
+    cout << "add_hip_roll_pos_constraint = " << add_hip_roll_pos_constraint
+         << "; (lb, ub) = " << hip_roll_pos_lb << ", " << hip_roll_pos_ub
+         << endl;
+    cout << "add_base_vy_constraint = " << add_base_vy_constraint
+         << "; (lb, ub) = " << base_vy_lb << ", " << base_vy_ub << endl;
   }  // end if is_print_for_debugging
 }
 

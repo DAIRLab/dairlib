@@ -103,7 +103,7 @@ def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
     state_samples[i] = state_traj.value(t[i])[x_idx_start:x_idx_end, 0]
 
   # Plotting reconstructed state trajectories
-  figname = "state trajectory " + str(x_idx_start) + ":" + str(x_idx_end)
+  figname = "state trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
   plt.figure(figname, figsize=figsize)
   plt.plot(t, state_samples)
   plt.plot(t_knot, x_knot.T, 'ko', markersize=2)

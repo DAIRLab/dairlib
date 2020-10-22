@@ -149,7 +149,7 @@ int do_main(int argc, char* argv[]) {
        command_receiver,
        input_channels,
        FLAGS_control_channel_name_1,
-       controller_switch_sub,
+       switch_channel,
        true);
   loop.Simulate();
 

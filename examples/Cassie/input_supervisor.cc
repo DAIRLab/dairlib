@@ -57,8 +57,7 @@ InputSupervisor::InputSupervisor(
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
   // Create update for error flag
-  DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
-                                     &InputSupervisor::UpdateErrorFlag);
+  DeclarePerStepDiscreteUpdateEvent(&InputSupervisor::UpdateErrorFlag);
 }
 
 void InputSupervisor::SetMotorTorques(const Context<double>& context,
@@ -141,7 +140,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
   }
 }
 
-void InputSupervisor::UpdateErrorFlag(
+drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   const OutputVector<double>* state =
@@ -199,6 +198,8 @@ void InputSupervisor::UpdateErrorFlag(
     discrete_state->get_mutable_vector(switch_time_index_)[0] =
         controller_switch->utime * 1e-6;
   }
+
+  return drake::systems::EventStatus::Succeeded();
 }
 
 }  // namespace dairlib

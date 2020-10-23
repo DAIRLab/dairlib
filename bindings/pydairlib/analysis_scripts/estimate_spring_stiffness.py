@@ -16,10 +16,11 @@ import pydairlib.multibody
 from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.common import FindResourceOrThrow
-
+from numpy.linalg import inv
 
 def main():
   global l_knee_spring_idx, r_knee_spring_idx, l_heel_spring_idx, r_heel_spring_idx
+  global l_knee_spring_dot_idx, r_knee_spring_dot_idx, l_heel_spring_dot_idx, r_heel_spring_dot_idx
   global plant, context, world, l_toe_frame, r_toe_frame
   global front_contact_disp, rear_contact_disp
   global l_knee_idx, r_knee_idx, l_heel_idx, r_heel_idx
@@ -34,13 +35,19 @@ def main():
   global l_loop_closure, r_loop_closure
 
   builder = DiagramBuilder()
-  plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
-  plant.mutable_gravity_field().set_gravity_vector(
+  # plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
+  # Parser(plant).AddModelFromFile(
+  #   FindResourceOrThrow(
+  #     "examples/Cassie/urdf/cassie_v2.urdf"))
+  # plant.mutable_gravity_field().set_gravity_vector(
+  #
+  #   -9.81 * np.array([0, 0, 1]))
+  # plant.Finalize()
 
-    -9.81 * np.array([0, 0, 1]))
+  plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
+  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, True,
+                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+  plant.mutable_gravity_field().set_gravity_vector(-9.81 * np.array([0, 0, 1]))
   plant.Finalize()
 
   # relevant MBP parameters
@@ -65,6 +72,10 @@ def main():
   r_knee_spring_idx = pos_map["knee_joint_right"]
   l_heel_spring_idx = pos_map["ankle_spring_joint_left"]
   r_heel_spring_idx = pos_map["ankle_spring_joint_right"]
+  l_knee_spring_dot_idx = vel_map["knee_joint_leftdot"]
+  r_knee_spring_dot_idx = vel_map["knee_joint_rightdot"]
+  l_heel_spring_dot_idx = vel_map["ankle_spring_joint_leftdot"]
+  r_heel_spring_dot_idx = vel_map["ankle_spring_joint_rightdot"]
   l_knee_idx = pos_map["knee_left"]
   r_knee_idx = pos_map["knee_right"]
   l_heel_idx = pos_map["ankle_joint_left"]
@@ -97,13 +108,156 @@ def main():
   start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
-  sample_times = [46.0, 58.5, 65.0, 70.2, 74.8, 93.1, 98.7]
+  sample_times = [215.4, 229.4, 252.8, 265.3, 282.1, 289.0]
 
+  joint_idx = vel_map["knee_joint_leftdot"]
+  act_idx = act_map["knee_left_motor"]
+  xdot = np.zeros(x.shape)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
-  # plt.show()
-
+  plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx)
+  plt.show()
   # solve_for_k(x, t_x, u, t_u)
   solve_with_lambda(x, t_x, u, t_u)
+
+def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
+  n_samples = len(3*sample_times)
+
+  x_samples = []
+  u_samples = []
+  xdot_samples = []
+  t_samples = []
+
+  tau_res = np.zeros((n_samples, nv))
+  tau_res_wo_damping = np.zeros((n_samples, nv))
+  tau_res_wo_springs = np.zeros((n_samples, nv))
+  generalized_force = np.zeros((n_samples, nv))
+  Bu_force = np.zeros((n_samples, nv))
+  Cv_force = np.zeros((n_samples, nv))
+  g_force = np.zeros((n_samples, nv))
+  J_lambda = np.zeros((n_samples, nv))
+  J_lambda_spring = np.zeros((n_samples, nv))
+  K_force = np.zeros((n_samples, nv))
+  # Jv = np.zeros((n_samples, 2))
+
+  for i in range(len(3*sample_times)):
+    t = t_x[50] + 1e-2 * i
+    t = -0.05 + (0.05 * np.mod(i,3)) + sample_times[i//3]
+    ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
+    x_samples.append(x[ind, :])
+    xdot_samples.append(xdot[ind, :])
+    u_samples.append(u_meas[ind, :])
+    t_samples.append(t)
+    plant.SetPositionsAndVelocities(context, x[ind, :])
+
+    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    M_inv = np.linalg.inv(M)
+    B = plant.MakeActuationMatrix()
+    g = plant.CalcGravityGeneralizedForces(context)
+    Cv = plant.CalcBiasTerm(context)
+    J_lh = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
+    J_lt = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
+    J_rh = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
+    J_rt = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
+
+    J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
+    J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
+    J = np.vstack((J_lh, J_lt[1:], J_rh, J_rt[1:], J_l_loop_closure, J_r_loop_closure))
+
+    # J = np.vstack((J_l_loop_closure, J_r_loop_closure))
+    JdotV_l_loop_closure = l_loop_closure.EvalFullJacobianDotTimesV(context)
+    JdotV_r_loop_closure = r_loop_closure.EvalFullJacobianDotTimesV(context)
+    # JdotV = np.vstack((JdotV_l_loop_closure, JdotV_r_loop_closure))
+    # JdotV = np.reshape(JdotV, (2,))
+    JdotV = np.zeros(12)
+
+    # A[i, 0] = -x[ind, nq + joint_idx]
+    # b[i] = M[joint_idx, joint_idx] * xdot[ind, nq + joint_idx] - u_meas[ind, act_idx]
+
+    qdot = x[ind, nq:]
+    qddot = xdot[ind, nq:]
+    K = np.zeros((nv, nq))
+    # K[l_knee_spring_dot_idx, l_knee_spring_idx] = 1500
+    # K[r_knee_spring_dot_idx, r_knee_spring_idx] = 1500
+    # K[l_heel_spring_dot_idx, l_heel_spring_idx] = 1250
+    # K[r_heel_spring_dot_idx, r_heel_spring_idx] = 1250
+    # K[l_knee_spring_idx, l_knee_spring_idx] = 1000
+    # K[r_knee_spring_idx, r_knee_spring_idx] = 1000
+    # K[l_heel_spring_idx, l_heel_spring_idx] = 1000
+    # K[r_heel_spring_idx, r_heel_spring_idx] = 1000
+    K = -K
+    D = np.zeros((nv, nv))
+    # D[joint_idx, joint_idx] = -2.0/3
+
+    # Compute force residuals
+    lambda_implicit =            inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq] + D@qdot) - JdotV)
+    lambda_implicit_wo_damping = inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq])          - JdotV)
+    lambda_implicit_wo_spring =  inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + D@qdot)                 - JdotV)
+    lambda_implicit_spring =  inv(J @ M_inv @ J.T) @ (- J @ M_inv @( K @ x[ind, :nq]))
+    tau_res[i] =            M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit            - K@x[ind, :nq] - D@qdot
+    tau_res_wo_damping[i] = M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit_wo_damping - K@x[ind, :nq]
+    tau_res_wo_springs[i] = M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit_wo_spring  - D@qdot
+
+    # Jv[i] = J@qdot
+
+    generalized_force[i] = M @ qddot
+    Bu_force[i] = B@u_meas[ind]
+    Cv_force[i] = Cv
+    g_force[i] = g
+    J_lambda[i] = J.T @ lambda_implicit
+    J_lambda_spring[i] = J.T @ lambda_implicit_spring
+    K_force[i] = K @ x[ind, :nq]
+
+  plt.figure("force contribution")
+
+  plt.plot(t_samples, generalized_force[:, joint_idx])
+  plt.plot(t_samples, Bu_force[:, joint_idx])
+  plt.plot(t_samples, Cv_force[:, joint_idx])
+  plt.plot(t_samples, g_force[:, joint_idx])
+  plt.plot(t_samples, J_lambda[:, joint_idx])
+  plt.plot(t_samples, K_force[:, joint_idx])
+  plt.plot(t_samples, tau_res[:, joint_idx])
+  plt.plot(t_samples, J_lambda_spring[:, joint_idx])
+  plt.legend(['Mqddot', 'Bu', 'Cv', 'g', 'J.T lambda', 'Kq', 'residual', "J.T lambda_spring"])
+
+  plt.figure("force res vs q")
+  x_samples = np.array(x_samples)
+  plt.plot(x_samples[:, joint_idx + 1], tau_res[:, joint_idx], '.')
+  A = np.vstack((x_samples[:, joint_idx + 1], np.ones(n_samples).T)).T
+  b = tau_res[:, joint_idx]
+  x = inv(A.T @ A) @ A.T @ b
+  print(x)
+  print(x[1] / x[0])
+
+  joint_pos_idx = pos_map["knee_joint_right"]
+  joint_vel_idx = vel_map["knee_joint_rightdot"]
+  A = np.vstack((x_samples[:, joint_pos_idx], np.ones(n_samples).T)).T
+  b = tau_res[:, joint_vel_idx]
+  x = inv(A.T @ A) @ A.T @ b
+  print(x)
+  print(x[1] / x[0])
+  plt.plot(x_samples[:, joint_idx + 2], tau_res[:, joint_idx  + 1], '.')
+  joint_pos_idx = pos_map["ankle_spring_joint_left"]
+  joint_vel_idx = vel_map["ankle_spring_joint_leftdot"]
+  A = np.vstack((x_samples[:, joint_pos_idx], np.ones(n_samples).T)).T
+  b = tau_res[:, joint_vel_idx]
+  x = inv(A.T @ A) @ A.T @ b
+  print(x)
+  print(x[1] / x[0])
+  plt.plot(x_samples[:, joint_pos_idx], tau_res[:, joint_vel_idx], '.')
+  joint_pos_idx = pos_map["ankle_spring_joint_right"]
+  joint_vel_idx = vel_map["ankle_spring_joint_rightdot"]
+  A = np.vstack((x_samples[:, joint_pos_idx], np.ones(n_samples).T)).T
+  b = tau_res[:, joint_vel_idx]
+  x = inv(A.T @ A) @ A.T @ b
+  print(x)
+  print(x[1] / x[0])
+  plt.plot(x_samples[:, joint_pos_idx], tau_res[:, joint_vel_idx], '.')
+
+pass
 
 
 def solve_for_k(x, t_x, u, t_u):
@@ -309,7 +463,7 @@ def solve_with_lambda(x, t_x, u, t_u):
 
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
-  pos_indices = slice(0, 7)
+  pos_indices = slice(0, nq)
   vel_indices = slice(23, nx)
   u_indices = slice(6, 8)
   # overwrite
@@ -323,7 +477,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
-  plt.plot(sample_times, np.zeros((len(sample_times),)), 'k*')
+  # plt.plot(sample_times, np.zeros((len(sample_times),)), 'k*')
   plt.legend(x_datatypes[vel_indices])
   plt.figure("efforts: " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])

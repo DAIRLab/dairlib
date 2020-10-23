@@ -153,10 +153,19 @@ def solve_individual_joint(x, xdot, t_x, u_meas, joint_idx, act_idx):
   tau_res = np.zeros((n_samples, nv))
   tau_res_wo_damping = np.zeros((n_samples, nv))
   tau_res_wo_springs = np.zeros((n_samples, nv))
+  generalized_force = np.zeros((n_samples, nv))
+  Bu_force = np.zeros((n_samples, nv))
+  Cv_force = np.zeros((n_samples, nv))
+  g_force = np.zeros((n_samples, nv))
+  J_lambda = np.zeros((n_samples, nv))
+  J_lambda_spring = np.zeros((n_samples, nv))
+  K_force = np.zeros((n_samples, nv))
+  Jv = np.zeros((n_samples, 2))
+
   A = np.zeros((n_samples, nvars))
   b = np.zeros(n_samples)
   for i in range(n_samples):
-    t = t_x[10] + 1e-2 * i
+    t = t_x[50] + 1e-2 * i
     ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
     x_samples.append(x[ind, :])
     xdot_samples.append(xdot[ind, :])
@@ -193,43 +202,68 @@ def solve_individual_joint(x, xdot, t_x, u_meas, joint_idx, act_idx):
     # K[r_heel_spring_idx, r_heel_spring_idx] = 1000
     K = -K
     D = np.zeros((nv, nv))
-    D[joint_idx, joint_idx] = -2.0/3
+    # D[joint_idx, joint_idx] = -2.0/3
 
     # Compute force residuals
     lambda_implicit =            inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq] + D@qdot) - JdotV)
     lambda_implicit_wo_damping = inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq])          - JdotV)
     lambda_implicit_wo_spring =  inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + D@qdot)                 - JdotV)
+    lambda_implicit_spring =  inv(J @ M_inv @ J.T) @ (- J @ M_inv @( K @ x[ind, :nq]))
     tau_res[i] =            M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit            - K@x[ind, :nq] - D@qdot
     tau_res_wo_damping[i] = M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit_wo_damping - K@x[ind, :nq]
     tau_res_wo_springs[i] = M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit_wo_spring  - D@qdot
 
+    Jv[i] = J@qdot
+
+    generalized_force[i] = M @ qddot
+    Bu_force[i] = B@u_meas[ind]
+    Cv_force[i] = Cv
+    g_force[i] = g
+    J_lambda[i] = J.T @ lambda_implicit
+    J_lambda_spring[i] = J.T @ lambda_implicit_spring
+    K_force[i] = K @ x[ind, :nq]
+
   x_samples = np.array(x_samples)
   xdot_samples = np.array(xdot_samples)
   u_samples = np.array(u_samples)
-  plt.figure("force residual position x-axis: " + filename)
-  plt.plot(x_samples[:, joint_idx], tau_res[:, joint_idx], '.')
-  plt.plot(x_samples[:, joint_idx], tau_res_wo_damping[:, joint_idx], '.')
-  plt.plot(x_samples[:, joint_idx], tau_res_wo_springs[:, joint_idx], '.')
-  plt.xlabel('joint position (rad)')
 
+  plt.figure("force contribution")
+
+  plt.plot(t_samples, generalized_force[:, joint_idx])
+  plt.plot(t_samples, Bu_force[:, joint_idx])
+  plt.plot(t_samples, Cv_force[:, joint_idx])
+  plt.plot(t_samples, g_force[:, joint_idx])
+  plt.plot(t_samples, J_lambda[:, joint_idx])
+  plt.plot(t_samples, K_force[:, joint_idx])
+  plt.plot(t_samples, tau_res[:, joint_idx])
+  plt.plot(t_samples, J_lambda_spring[:, joint_idx])
+  plt.legend(['Mqddot', 'Bu', 'Cv', 'g', 'J.T lambda', "J.T lambda_spring", 'Kq', 'residual'])
+
+  plt.figure("Jv")
+
+  plt.plot(t_samples, Jv)
+
+
+  plt.figure("force residual position x-axis: " + filename)
+  plt.plot(x_samples[:, joint_idx], tau_res[:, joint_idx], 'b.')
+  # plt.plot(x_samples[:, joint_idx], tau_res_wo_damping[:, joint_idx], 'r.')
+  # plt.plot(x_samples[:, joint_idx], tau_res_wo_springs[:, joint_idx], 'g.')
+  plt.xlabel('joint position (rad)')
+  plt.ylabel('generalized force error (Nm)')
 
   plt.figure("force residual velocity x-axis: " + filename)
-  # plt.plot(t_samples, x_samples[:, joint_idx])
-  # plt.plot(t_samples, x_samples[:, nq + joint_idx])
-  # plt.plot(x_samples[:, nq + joint_idx], tau_res)
-
   plt.plot(x_samples[:, nq + joint_idx], tau_res[:, joint_idx], 'b.')
-  plt.plot(x_samples[:, nq + joint_idx], tau_res_wo_damping[:, joint_idx], 'r.')
-  plt.plot(x_samples[:, nq + joint_idx], tau_res_wo_springs[:, joint_idx], 'g.')
-
-
   plt.xlabel('joint velocity (rad/s)')
-  # plt.plot(x_samples[:, joint_idx], tau_res[:, joint_idx])
-  plt.figure("force res vs time: " + filename)
-  plt.plot(t_samples, tau_res[:, joint_idx], '-')
-  plt.plot(t_samples, x_samples[:, nq + joint_idx], 'r-')
-  plt.xlabel('time (s)')
-  # plt.legend(x_datatypes[:nq])
+  plt.ylabel('generalized force error (Nm)')
+  # plt.plot(x_samples[:, nq + joint_idx], tau_res_wo_springs[:, joint_idx], 'g.')
+  # plt.plot(x_samples[:, nq + joint_idx], tau_res_wo_damping[:, joint_idx], 'r.')
+  # plt.legend()
+
+
+  # plt.figure("force res vs time: " + filename)
+  # plt.plot(t_samples, tau_res[:, joint_idx], '-')
+  # plt.plot(t_samples, x_samples[:, nq + joint_idx], 'r-')
+  # plt.xlabel('time (s)')
 
   prog = mp.MathematicalProgram()
   x_vars = prog.NewContinuousVariables(nvars, "sigma")

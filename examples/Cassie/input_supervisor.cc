@@ -100,7 +100,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // commanded effort using linear interpolation
   double alpha = (command->get_timestamp() -
                   context.get_discrete_state(switch_time_index_)[0]) /
-                 kFilterDuration;
+                 blend_duration_;
 
   if (alpha <= 1.0) {
     Eigen::VectorXd blended_effort =
@@ -184,10 +184,11 @@ void InputSupervisor::UpdateErrorFlag(
     }
   }
 
+  blend_duration_ = controller_switch->blend_duration;
   // Update the previous commanded switch message unless currently blending
   // efforts
   if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
-      kFilterDuration) {
+      blend_duration_) {
     discrete_state->get_mutable_vector(prev_efforts_index_)
         .get_mutable_value() = command->get_value();
   }

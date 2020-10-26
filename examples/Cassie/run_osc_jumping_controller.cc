@@ -243,9 +243,9 @@ int DoMain(int argc, char* argv[]) {
   // For the time-based FSM (squatting by default)
   double flight_time = FLAGS_delay_time + 100;
   double land_time = FLAGS_delay_time + 200;
-  if (dircon_trajectory.GetNumModes() == 2) { // Override for jumping
+  if (dircon_trajectory.GetNumModes() == 3) { // Override for jumping
     flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
-    land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
+    land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) + 0.05;
   }
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};

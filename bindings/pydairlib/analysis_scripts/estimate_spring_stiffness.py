@@ -115,9 +115,9 @@ def main():
   xdot = np.zeros(x.shape)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
   plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx)
-  plt.show()
   # solve_for_k(x, t_x, u, t_u)
-  solve_with_lambda(x, t_x, u, t_u)
+  plt.show()
+  # solve_with_lambda(x, t_x, u, t_u)
 
 def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
   n_samples = len(3*sample_times)
@@ -180,10 +180,10 @@ def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
     qdot = x[ind, nq:]
     qddot = xdot[ind, nq:]
     K = np.zeros((nv, nq))
-    # K[l_knee_spring_dot_idx, l_knee_spring_idx] = 1500
-    # K[r_knee_spring_dot_idx, r_knee_spring_idx] = 1500
-    # K[l_heel_spring_dot_idx, l_heel_spring_idx] = 1250
-    # K[r_heel_spring_dot_idx, r_heel_spring_idx] = 1250
+    K[l_knee_spring_dot_idx, l_knee_spring_idx] = 1129.0
+    K[r_knee_spring_dot_idx, r_knee_spring_idx] = 1290.0
+    K[l_heel_spring_dot_idx, l_heel_spring_idx] = 1264.0
+    K[r_heel_spring_dot_idx, r_heel_spring_idx] = 1231.0
     # K[l_knee_spring_idx, l_knee_spring_idx] = 1000
     # K[r_knee_spring_idx, r_knee_spring_idx] = 1000
     # K[l_heel_spring_idx, l_heel_spring_idx] = 1000
@@ -226,35 +226,14 @@ def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
   plt.figure("force res vs q")
   x_samples = np.array(x_samples)
   plt.plot(x_samples[:, joint_idx + 1], tau_res[:, joint_idx], '.')
-  A = np.vstack((x_samples[:, joint_idx + 1], np.ones(n_samples).T)).T
-  b = tau_res[:, joint_idx]
-  x = inv(A.T @ A) @ A.T @ b
-  print(x)
-  print(x[1] / x[0])
-
   joint_pos_idx = pos_map["knee_joint_right"]
   joint_vel_idx = vel_map["knee_joint_rightdot"]
-  A = np.vstack((x_samples[:, joint_pos_idx], np.ones(n_samples).T)).T
-  b = tau_res[:, joint_vel_idx]
-  x = inv(A.T @ A) @ A.T @ b
-  print(x)
-  print(x[1] / x[0])
   plt.plot(x_samples[:, joint_idx + 2], tau_res[:, joint_idx  + 1], '.')
   joint_pos_idx = pos_map["ankle_spring_joint_left"]
   joint_vel_idx = vel_map["ankle_spring_joint_leftdot"]
-  A = np.vstack((x_samples[:, joint_pos_idx], np.ones(n_samples).T)).T
-  b = tau_res[:, joint_vel_idx]
-  x = inv(A.T @ A) @ A.T @ b
-  print(x)
-  print(x[1] / x[0])
   plt.plot(x_samples[:, joint_pos_idx], tau_res[:, joint_vel_idx], '.')
   joint_pos_idx = pos_map["ankle_spring_joint_right"]
   joint_vel_idx = vel_map["ankle_spring_joint_rightdot"]
-  A = np.vstack((x_samples[:, joint_pos_idx], np.ones(n_samples).T)).T
-  b = tau_res[:, joint_vel_idx]
-  x = inv(A.T @ A) @ A.T @ b
-  print(x)
-  print(x[1] / x[0])
   plt.plot(x_samples[:, joint_pos_idx], tau_res[:, joint_vel_idx], '.')
 
 pass
@@ -262,11 +241,11 @@ pass
 
 def solve_for_k(x, t_x, u, t_u):
   n_samples = len(sample_times)
-  n_samples_per_iter = 10
+  n_samples_per_iter = 3
   # K is a diagonal matrix, do the springs act directly on the knees? If so the non-zero values will not
   # be on the diagonals
   n_k = 4
-  nvars = n_k
+  nvars = n_k + 4
   prog = mp.MathematicalProgram()
 
   A = np.zeros((n_samples * n_samples_per_iter * nv, nvars))
@@ -294,23 +273,29 @@ def solve_for_k(x, t_x, u, t_u):
 
       J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
       J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
-      J = np.vstack((J_lh, J_lt, J_rh, J_rt, J_l_loop_closure, J_r_loop_closure))
+      # J = np.vstack((J_lh, J_lt, J_rh, J_rt, J_l_loop_closure, J_r_loop_closure))
+      J = np.vstack((J_lh, J_lt[1:], J_rh, J_rt[1:], J_l_loop_closure, J_r_loop_closure))
 
       row_start = i * (nv * n_samples_per_iter) + nv * j
       row_end = i * (nv * n_samples_per_iter) + nv * (j + 1)
 
-      lambda_i_wo_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv @ B @ u[u_ind] + J @ M_inv @ g)
-      lambda_i_w_k = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
+      # lambda_implicit = inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq] + D@qdot) - JdotV)
+      lambda_i_wo_k = - inv(J @ M_inv @ J.T) @ (J @ M_inv @ (B @ u[u_ind] + g))
+      lambda_i_w_k = - inv(J @ M_inv @ J.T) @ (J @ M_inv)
 
-      A[row_start + l_knee_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
-      A[row_start + r_knee_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
-      A[row_start + l_heel_idx - 1, 2] = x[x_ind, l_heel_spring_idx]
-      A[row_start + r_heel_idx - 1, 3] = x[x_ind, r_heel_spring_idx]
+      A[row_start + l_knee_spring_dot_idx, 0] = x[x_ind, l_knee_spring_idx]
+      A[row_start + r_knee_spring_dot_idx, 1] = x[x_ind, r_knee_spring_idx]
+      A[row_start + l_heel_spring_dot_idx, 2] = x[x_ind, l_heel_spring_idx]
+      A[row_start + r_heel_spring_dot_idx, 3] = x[x_ind, r_heel_spring_idx]
+      A[row_start + l_knee_spring_dot_idx, 4] = 1
+      A[row_start + r_knee_spring_dot_idx, 5] = 1
+      A[row_start + l_heel_spring_dot_idx, 6] = 1
+      A[row_start + r_heel_spring_dot_idx, 7] = 1
 
-      A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_idx - 1] * x[x_ind, l_knee_spring_idx]
-      A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_idx - 1] * x[x_ind, r_knee_spring_idx]
-      A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_idx - 1] * x[x_ind, l_heel_spring_idx]
-      A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_idx - 1] * x[x_ind, r_heel_spring_idx]
+      A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_spring_dot_idx] * x[x_ind, l_knee_spring_idx]
+      A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_spring_dot_idx] * x[x_ind, r_knee_spring_idx]
+      A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_spring_dot_idx] * x[x_ind, l_heel_spring_idx]
+      A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_spring_dot_idx] * x[x_ind, r_heel_spring_idx]
       # A[row_start:row_end, 1] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, r_knee_spring_idx] * x[
       #   x_ind, r_knee_spring_idx]
       # A[row_start:row_end, 2] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_heel_spring_idx] * x[
@@ -330,11 +315,11 @@ def solve_for_k(x, t_x, u, t_u):
   print("Solution result: ", result.get_solution_result())
   sol = result.GetSolution()
   K = sol[0:n_k]
-  lambdas = sol[n_k:nvars]
+  offsets = sol[-n_k:]
+  # lambdas = sol[-n_k:]
   print("K: ", K)
+  print("offsets: ", offsets)
   print("lambdas: ", lambdas)
-  print(A.rows())
-
 
 def solve_with_lambda(x, t_x, u, t_u):
   n_samples = len(sample_times)

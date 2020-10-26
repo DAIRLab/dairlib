@@ -397,6 +397,7 @@ cc_binary(
         "//examples/Cassie/osc",
         "//examples/Cassie/osc:spring_to_no_spring_converter",
         "//multibody:utils",
+        "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
         "//systems/framework:lcm_driven_loop",

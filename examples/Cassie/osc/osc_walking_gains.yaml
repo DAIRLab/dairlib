@@ -1,22 +1,22 @@
 rows: 3
 cols: 3
-w_accel: 0.0001
+w_accel: 0.000001
 w_soft_constraint: 8000
 
-w_swing_toe: 200
-swing_toe_kp: 10
-swing_toe_kd: 3
+w_swing_toe: 100
+swing_toe_kp: 20
+swing_toe_kd: 15
 
-w_hip_yaw: 60
-hip_yaw_kp: 10
-hip_yaw_kd: 2
+w_hip_yaw: 100
+hip_yaw_kp: 25
+hip_yaw_kd: 5
 
 footstep_offset: 0.06
-center_line_offset: 0.08
-final_foot_height: 0.01
-final_foot_velocity_z: 0.0
-mid_foot_height: 0.1
-lipm_height: 0.85
+center_line_offset: 0.06
+final_foot_height: 0.03
+final_foot_velocity_z: -0.02
+mid_foot_height: 0.05
+lipm_height: 0.80
 
 CoMW:
   [  50,    0,     0,
@@ -66,6 +66,6 @@ SwingFootKp:
       0,  200,     0,
       0,    0,   200]
 SwingFootKd:
-  [  10,    0,     0,
-      0,   10,     0,
-      0,    0,    10]
+  [   5,    0,     0,
+      0,    5,     0,
+      0,    0,     5]

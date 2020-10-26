@@ -46,6 +46,8 @@ namespace systems {
 
 class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
+  // TODO(yminchen): clean up the parameters. Maybe we should extract the
+  //  collision avoidance into a new leafsystem?
   SwingFootTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,

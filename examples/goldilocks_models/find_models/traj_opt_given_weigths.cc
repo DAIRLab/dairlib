@@ -1970,6 +1970,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   double all_cost_scale = setting.all_cost_scale;
 
+  int n_q = plant.num_positions();
+  int n_v = plant.num_velocities();
+  int n_u = plant.num_actuators();
+
   // Walking modes
   int walking_mode = 0;  // 0: instant change of support
   // 1: single double single
@@ -1982,12 +1986,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Cost on velocity and input
   double w_Q = setting.Q_double * all_cost_scale;
-  double w_R = 0;  // setting.R_double * all_cost_scale;
+  double w_R = setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-3 * all_cost_scale * all_cost_scale;
+  double w_lambda = 1.0e-3 * all_cost_scale *
+                    all_cost_scale;  // This should be sqrt(all_cost_scale)
   // Cost on difference over time
   double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
-  double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;
+  double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;  // TODO
   double w_u_diff = 0.00001 * 0.1 * all_cost_scale;
   // Cost on position
   double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
@@ -2007,17 +2012,19 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_q_diff_swing_toe = w_q_diff * 1;
   // Testing
   double w_v_diff_swing_leg = w_v_diff * 1;
+  // Testing
+  double w_joint_accel = 0.00001;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
   bool swing_foot_ground_clearance = false;
   bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
   bool periodic_floating_base_vel = false;
-  bool periodic_joint_pos = true;
+  bool periodic_joint_pos = false;
   bool periodic_joint_vel = false;
   bool periodic_effort = false;
   bool ground_normal_force_margin = false;
-  bool zero_com_height_vel = true;
+  bool zero_com_height_vel = false;
   // Testing
   bool zero_com_height_vel_difference = false;
   bool zero_pelvis_height_vel = false;
@@ -2034,7 +2041,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // TODO
 
   // Testing
-  bool only_one_mode = false;
+  bool only_one_mode = true;
   if (only_one_mode) {
     periodic_joint_pos = false;
     periodic_joint_vel = false;
@@ -2043,22 +2050,27 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   bool add_cost_on_collocation_vel = false;
   bool add_joint_acceleration_cost = true;
-  bool not_trapo_integration_cost = false;
-  bool add_joint_acceleration_constraint = true;
+  bool not_trapo_integration_cost = false;  // TODO: try this again
+  bool add_joint_acceleration_constraint = false;
   double joint_accel_lb = -10;
   double joint_accel_ub = 10;
   bool add_hip_roll_pos_constraint = false;
   double hip_roll_pos_lb = -0.1;
   double hip_roll_pos_ub = 0.1;
-  bool add_base_vy_constraint = true;
+  bool add_base_vy_constraint = false;
   double base_vy_lb = -0.4;
   double base_vy_ub = 0.4;
 
   // Testing
   bool lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = false;
 
-  // Create ground normal for the problem
-  Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
+  // Setup cost matrices
+  MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
+  W_Q(4, 4) = w_Q_vy;
+  W_Q(5, 5) = w_Q_vz;
+  W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
+  MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
+  W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
 
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
@@ -2068,9 +2080,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //    cout << mem.first << ", " << mem.second << endl;
   //  }
 
-  int n_q = plant.num_positions();
-  int n_v = plant.num_velocities();
-  int n_u = plant.num_actuators();
   // int n_x = n_q + n_v;
   // cout << "n_q = " << n_q << "\n";
   // cout << "n_v = " << n_v << "\n";
@@ -2108,6 +2117,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
     }
   }
+
+  // Create ground normal for the problem
+  Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
 
   // Set up contact/distance constraints
   const Body<double>& toe_left = plant.GetBodyByName("toe_left");
@@ -2356,7 +2368,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (only_one_mode) {
     VectorXd x0_val(plant.num_positions() + plant.num_velocities());
     VectorXd xf_val(plant.num_positions() + plant.num_velocities());
-    // The following states come from traj opt with periodicity constraints
+    // The following states come from traj opt with pos/vel periodicity
+    // constraints and without ROM cosntraint
     x0_val << 1, 0, 0, 0, 0, -0.00527375, 1.10066, 0.00686375, 0.0025628,
         0.000573004, -0.000573019, 0.439262, 0.201581, -0.646, -0.795755,
         0.866859, 1.01813, -1.53361, -1.29744, -0.321, 0.198875, -0.0342067,
@@ -2371,11 +2384,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         0.780914, -0.269512;
 
     // Set constraints for the first and last knot points
-    //        trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
-    //        trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
+    //    trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
+    //    trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
 
+    //    trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
+    //                                      x0.head(n_q));
     //    trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
     //                                      xf.head(n_q));
+
     //    trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
     //                                      xf.head(7));
 
@@ -2822,12 +2838,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   trajopt->ScaleKinConstraintSlackVariables(0, {6, 7}, 500);
 
   // add cost
-  MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
-  W_Q(4, 4) = w_Q_vy;
-  W_Q(5, 5) = w_Q_vz;
-  W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
-  MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
-  W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
   /*trajopt->AddRunningCost(x.tail(n_v).transpose() * W_Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * W_R * u);*/
   // Add cost without time
@@ -2938,7 +2948,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
-  // Add force at collocation points to cost function, to eliminate the forces
+  // Add cost on  collocation force, to eliminate the forces
   // in the null space of constraints
   for (unsigned int i = 0; i < num_time_samples.size(); i++) {
     if (options_list[i].getForceCost() != 0) {
@@ -2971,8 +2981,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   // Testing: add joint acceleration cost at knot points
-  auto joint_accel_cost =
-      std::make_shared<JointAccelCost>(0.001 * W_Q, plant, dataset_list[0]);
+  auto joint_accel_cost = std::make_shared<JointAccelCost>(
+      w_joint_accel * W_Q, plant, dataset_list[0]);
   if (add_joint_acceleration_cost) {
     for (int i = 0; i < N; i++) {
       auto x0 = trajopt->state(i);
@@ -3128,6 +3138,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
     cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
     cout << "w_q_quat = " << w_q_quat << endl;
+    cout << "w_joint_accel = " << w_joint_accel << endl;
 
     // Calculate each term of the cost
     double total_cost = 0;
@@ -3275,6 +3286,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "zero_pelvis_height_vel = " << zero_pelvis_height_vel << endl;
     cout << "constrain_stance_leg_fourbar_force = "
          << constrain_stance_leg_fourbar_force << endl;
+    cout << "four_bar_in_right_support = " << four_bar_in_right_support << endl;
 
     cout << endl;
     cout << "only_one_mode = " << only_one_mode << endl;

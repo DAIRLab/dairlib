@@ -115,7 +115,7 @@ def main():
   xdot = np.zeros(x.shape)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
   plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx)
-  # solve_for_k(x, t_x, u, t_u)
+  solve_for_k(x, t_x, u, t_u)
   plt.show()
   # solve_with_lambda(x, t_x, u, t_u)
 
@@ -188,6 +188,11 @@ def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
     # K[r_knee_spring_idx, r_knee_spring_idx] = 1000
     # K[l_heel_spring_idx, l_heel_spring_idx] = 1000
     # K[r_heel_spring_idx, r_heel_spring_idx] = 1000
+    force_offsets = np.zeros(nv)
+    force_offsets[vel_map["knee_joint_leftdot"]] = 1.88336193
+    force_offsets[vel_map["knee_joint_rightdot"]] = 1.2012477
+    force_offsets[vel_map["ankle_spring_joint_leftdot"]] = 0.0428804
+    force_offsets[vel_map["ankle_spring_joint_rightdot"]] = 0.03423141
     K = -K
     D = np.zeros((nv, nv))
     # D[joint_idx, joint_idx] = -2.0/3
@@ -197,7 +202,7 @@ def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
     lambda_implicit_wo_damping = inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq])          - JdotV)
     lambda_implicit_wo_spring =  inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + D@qdot)                 - JdotV)
     lambda_implicit_spring =  inv(J @ M_inv @ J.T) @ (- J @ M_inv @( K @ x[ind, :nq]))
-    tau_res[i] =            M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit            - K@x[ind, :nq] - D@qdot
+    tau_res[i] =            M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit            - K@x[ind, :nq] - D@qdot - force_offsets
     tau_res_wo_damping[i] = M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit_wo_damping - K@x[ind, :nq]
     tau_res_wo_springs[i] = M @ qddot + Cv - B @ u_meas[ind] - g - J.T @ lambda_implicit_wo_spring  - D@qdot
 
@@ -213,28 +218,38 @@ def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
 
   plt.figure("force contribution")
 
-  plt.plot(t_samples, generalized_force[:, joint_idx])
-  plt.plot(t_samples, Bu_force[:, joint_idx])
-  plt.plot(t_samples, Cv_force[:, joint_idx])
-  plt.plot(t_samples, g_force[:, joint_idx])
-  plt.plot(t_samples, J_lambda[:, joint_idx])
-  plt.plot(t_samples, K_force[:, joint_idx])
-  plt.plot(t_samples, tau_res[:, joint_idx])
-  plt.plot(t_samples, J_lambda_spring[:, joint_idx])
-  plt.legend(['Mqddot', 'Bu', 'Cv', 'g', 'J.T lambda', 'Kq', 'residual', "J.T lambda_spring"])
+  # plt.plot(t_samples, generalized_force[:, joint_idx])
+  # plt.plot(t_samples, Bu_force[:, joint_idx])
+  # plt.plot(t_samples, Cv_force[:, joint_idx])
+  # plt.plot(t_samples, g_force[:, joint_idx])
+  # plt.plot(t_samples, J_lambda[:, joint_idx])
+  # plt.plot(t_samples, K_force[:, joint_idx])
+  plt.plot(t_samples, tau_res[:, vel_map["knee_joint_leftdot"]])
+  plt.plot(t_samples, tau_res[:, vel_map["knee_joint_rightdot"]])
+  plt.plot(t_samples, tau_res[:, vel_map["ankle_spring_joint_leftdot"]])
+  plt.plot(t_samples, tau_res[:, vel_map["ankle_spring_joint_rightdot"]])
+  # plt.plot(t_samples, J_lambda_spring[:, joint_idx])
+  # plt.legend(['Mqddot', 'Bu', 'Cv', 'g', 'J.T lambda', 'Kq', 'residual', "J.T lambda_spring"])
+  plt.legend(['knee_left', 'knee_right', 'ankle_spring_left', 'ankle_spring_right'])
 
   plt.figure("force res vs q")
   x_samples = np.array(x_samples)
-  plt.plot(x_samples[:, joint_idx + 1], tau_res[:, joint_idx], '.')
-  joint_pos_idx = pos_map["knee_joint_right"]
-  joint_vel_idx = vel_map["knee_joint_rightdot"]
-  plt.plot(x_samples[:, joint_idx + 2], tau_res[:, joint_idx  + 1], '.')
-  joint_pos_idx = pos_map["ankle_spring_joint_left"]
-  joint_vel_idx = vel_map["ankle_spring_joint_leftdot"]
-  plt.plot(x_samples[:, joint_pos_idx], tau_res[:, joint_vel_idx], '.')
-  joint_pos_idx = pos_map["ankle_spring_joint_right"]
-  joint_vel_idx = vel_map["ankle_spring_joint_rightdot"]
-  plt.plot(x_samples[:, joint_pos_idx], tau_res[:, joint_vel_idx], '.')
+  plt.plot(x_samples[:, pos_map['knee_joint_left']], tau_res[:, vel_map["knee_joint_leftdot"]])
+  plt.plot(x_samples[:, pos_map['knee_joint_right']], tau_res[:, vel_map["knee_joint_rightdot"]])
+  plt.plot(x_samples[:, pos_map['ankle_spring_joint_left']], tau_res[:, vel_map["ankle_spring_joint_leftdot"]])
+  plt.plot(x_samples[:, pos_map['ankle_spring_joint_right']], tau_res[:, vel_map["ankle_spring_joint_rightdot"]])
+  plt.legend(['knee_left', 'knee_right', 'ankle_spring_left', 'ankle_spring_right'])
+
+  # plt.plot(x_samples[:, joint_idx + 1], tau_res[:, joint_idx], '.')
+  # joint_pos_idx = pos_map["knee_joint_right"]
+  # joint_vel_idx = vel_map["knee_joint_rightdot"]
+  # plt.plot(x_samples[:, joint_idx + 2], tau_res[:, joint_idx  + 1], '.')
+  # joint_pos_idx = pos_map["ankle_spring_joint_left"]
+  # joint_vel_idx = vel_map["ankle_spring_joint_leftdot"]
+  # plt.plot(x_samples[:, joint_pos_idx], tau_res[:, joint_vel_idx], '.')
+  # joint_pos_idx = pos_map["ankle_spring_joint_right"]
+  # joint_vel_idx = vel_map["ankle_spring_joint_rightdot"]
+  # plt.plot(x_samples[:, joint_pos_idx], tau_res[:, joint_vel_idx], '.')
 
 pass
 
@@ -283,10 +298,10 @@ def solve_for_k(x, t_x, u, t_u):
       lambda_i_wo_k = - inv(J @ M_inv @ J.T) @ (J @ M_inv @ (B @ u[u_ind] + g))
       lambda_i_w_k = - inv(J @ M_inv @ J.T) @ (J @ M_inv)
 
-      A[row_start + l_knee_spring_dot_idx, 0] = x[x_ind, l_knee_spring_idx]
-      A[row_start + r_knee_spring_dot_idx, 1] = x[x_ind, r_knee_spring_idx]
-      A[row_start + l_heel_spring_dot_idx, 2] = x[x_ind, l_heel_spring_idx]
-      A[row_start + r_heel_spring_dot_idx, 3] = x[x_ind, r_heel_spring_idx]
+      A[row_start + l_knee_spring_dot_idx, 0] = -x[x_ind, l_knee_spring_idx]
+      A[row_start + r_knee_spring_dot_idx, 1] = -x[x_ind, r_knee_spring_idx]
+      A[row_start + l_heel_spring_dot_idx, 2] = -x[x_ind, l_heel_spring_idx]
+      A[row_start + r_heel_spring_dot_idx, 3] = -x[x_ind, r_heel_spring_idx]
       A[row_start + l_knee_spring_dot_idx, 4] = 1
       A[row_start + r_knee_spring_dot_idx, 5] = 1
       A[row_start + l_heel_spring_dot_idx, 6] = 1
@@ -319,7 +334,7 @@ def solve_for_k(x, t_x, u, t_u):
   # lambdas = sol[-n_k:]
   print("K: ", K)
   print("offsets: ", offsets)
-  print("lambdas: ", lambdas)
+  # print("lambdas: ", lambdas)
 
 def solve_with_lambda(x, t_x, u, t_u):
   n_samples = len(sample_times)

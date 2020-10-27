@@ -62,6 +62,7 @@ PiecewisePolynomial<double> FlightToeAngleTrajGenerator::CalcToeAngle(
   // Get current difference between
   VectorXd des_swing_toe_angle = VectorXd(1);
   des_swing_toe_angle << swing_toe_angle - deviation_from_ground_plane;
+  des_swing_toe_angle << -1.5;
 
   return PiecewisePolynomial<double>(des_swing_toe_angle);
 }

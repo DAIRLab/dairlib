@@ -83,9 +83,9 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateSwingTraj(
   std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
 
   // x
-  Y[0](0, 0) = -0.1;
+  Y[0](0, 0) = -0.2;
   Y[1](0, 0) = 0.0;
-  Y[2](0, 0) = 0.1;
+  Y[2](0, 0) = 0.2;
   // y
   Y[0](1, 0) = center_line_offset_;
   Y[1](1, 0) = center_line_offset_;
@@ -95,7 +95,7 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateSwingTraj(
   /// relative to the stance foot in case the floating base state estimation
   /// drifts.
   Y[0](2, 0) = -0.8;
-  Y[1](2, 0) = -0.6;
+  Y[1](2, 0) = -0.7;
   Y[2](2, 0) = -0.8;
 
   std::vector<MatrixXd> Y_dot(T_waypoint.size(), MatrixXd::Zero(3, 1));
@@ -131,9 +131,9 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateStanceTraj(
   std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
 
   // x
-  Y[0](0, 0) = 0.1;
+  Y[0](0, 0) = 0.2;
   Y[1](0, 0) = 0.0;
-  Y[2](0, 0) = -0.1;
+  Y[2](0, 0) = -0.2;
   // y
   Y[0](1, 0) = center_line_offset_;
   Y[1](1, 0) = center_line_offset_;

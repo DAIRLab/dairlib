@@ -8,6 +8,7 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 //#include "systems/controllers/fsm_event_time.h"
+#include "examples/Cassie/osc_jump/flight_toe_angle_traj_generator.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -22,7 +23,8 @@ namespace dairlib {
 using std::cout;
 using std::endl;
 using std::vector;
-
+using std::string;
+using std::map;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -299,22 +301,49 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&left_foot_traj);
   osc->AddTrackingData(&right_foot_traj);
 
+
+  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  map<string, int> vel_map =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant_w_spr);
   // Swing toe joint tracking (Currently use fix position)
   // The desired position, -1.5, was derived heuristically. It is roughly the
   // toe angle when Cassie stands on the ground.
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_toe_traj_left("swing_toe_traj", K_p_swing_toe,
+  JointSpaceTrackingData swing_toe_traj_left("left_toe_angle_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe, plant_w_spr,
                                         plant_w_spr);
-  JointSpaceTrackingData swing_toe_traj_right("swing_toe_traj", K_p_swing_toe,
+  JointSpaceTrackingData swing_toe_traj_right("right_toe_angle_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe, plant_w_spr,
                                         plant_w_spr);
+
+  // Get contact frames and position (doesn't matter whether we use
+  // plant_w_springs or plant_wo_springs because the contact frames exit in both
+  // plants)
+  auto left_toe = LeftToeFront(plant_w_spr);
+  auto left_heel = LeftToeRear(plant_w_spr);
+  auto right_toe = RightToeFront(plant_w_spr);
+  auto right_heel = RightToeRear(plant_w_spr);
+  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
+      left_heel, left_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
+      right_heel, right_toe};
+  auto left_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
+          left_foot_points, "left_toe_angle_traj");
+  auto right_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
+          right_foot_points, "right_toe_angle_traj");
   swing_toe_traj_right.AddJointToTrack("toe_right", "toe_rightdot");
   swing_toe_traj_left.AddJointToTrack("toe_left", "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj_left, -1.6 * VectorXd::Ones(1));
-  osc->AddConstTrackingData(&swing_toe_traj_right, -1.6 * VectorXd::Ones(1));
+  osc->AddTrackingData(&swing_toe_traj_left);
+  osc->AddTrackingData(&swing_toe_traj_right);
+//  osc->AddConstTrackingData(&swing_toe_traj_left, -1.6 * VectorXd::Ones(1));
+//  osc->AddConstTrackingData(&swing_toe_traj_right, -1.6 * VectorXd::Ones(1));
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
@@ -347,6 +376,18 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("left_ft_traj"));
   builder.Connect(right_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("right_ft_traj"));
+  builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+  builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+  builder.Connect(fsm->get_output_port(0),
+                  left_toe_angle_traj_gen->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  right_toe_angle_traj_gen->get_fsm_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.

@@ -61,8 +61,8 @@ PiecewisePolynomial<double> FlightToeAngleTrajGenerator::CalcToeAngle(
   double deviation_from_ground_plane = (atan2(foot(2), foot.head(2).norm()));
   // Get current difference between
   VectorXd des_swing_toe_angle = VectorXd(1);
-  des_swing_toe_angle << swing_toe_angle - deviation_from_ground_plane;
-  des_swing_toe_angle << -1.5;
+  des_swing_toe_angle << swing_toe_angle + deviation_from_ground_plane;
+//  des_swing_toe_angle << -1.5;
 
   return PiecewisePolynomial<double>(des_swing_toe_angle);
 }
@@ -82,9 +82,7 @@ void FlightToeAngleTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  if (fsm_state[0] == examples::osc_jump::FLIGHT) {
-    *casted_traj = CalcToeAngle(robot_output->GetPositions());
-  }
+  *casted_traj = CalcToeAngle(robot_output->GetPositions());
 }
 
 }  // namespace dairlib::cassie::osc_jump

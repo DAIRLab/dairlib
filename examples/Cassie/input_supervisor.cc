@@ -184,21 +184,21 @@ void InputSupervisor::UpdateErrorFlag(
     }
   }
 
-  blend_duration_ = controller_switch->blend_duration;
-  // Update the previous commanded switch message unless currently blending
-  // efforts
-  if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
-      blend_duration_) {
-    discrete_state->get_mutable_vector(prev_efforts_index_)
-        .get_mutable_value() = command->get_value();
-  }
-
   // When receiving a new controller switch message, record the time
   if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
       controller_switch->utime * 1e-6) {
     std::cout << "Got new switch message" << std::endl;
     discrete_state->get_mutable_vector(switch_time_index_)[0] =
         controller_switch->utime * 1e-6;
+    blend_duration_ = controller_switch->blend_duration;
+  }
+
+  // Update the previous commanded switch message unless currently blending
+  // efforts
+  if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
+      blend_duration_) {
+    discrete_state->get_mutable_vector(prev_efforts_index_)
+        .get_mutable_value() = command->get_value();
   }
 }
 

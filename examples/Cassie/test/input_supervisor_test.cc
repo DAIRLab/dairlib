@@ -28,7 +28,8 @@ class InputSupervisorTest : public ::testing::Test {
         plant_, 10.0, 0.01, min_consecutive_failures, 20.0);
     context_ = supervisor_->CreateDefaultContext();
     status_output_ = std::make_unique<TimestampedVector<double>>(1);
-    motor_output_ = std::make_unique<TimestampedVector<double>>(plant_.num_actuators());
+    motor_output_ =
+        std::make_unique<TimestampedVector<double>>(plant_.num_actuators());
     command_input_ =
         std::make_unique<TimestampedVector<double>>(plant_.num_actuators());
     state_input_ = std::make_unique<OutputVector<double>>(
@@ -99,18 +100,24 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
 TEST_F(InputSupervisorTest, BlendEffortsTest) {
   VectorXd prev_input = VectorXd::Zero(plant_.num_actuators());
   VectorXd desired_input = 10 * VectorXd::Ones(plant_.num_actuators());
-  double timestamp = 0.5;
-  context_->FixInputPort(
-      controller_switch_input_port_,
-      std::make_unique<drake::Value<lcmt_controller_switch>>());
+  double blend_start_time = 0.5;
+  double timestamp = 1.0;
+  double blend_duration = 1.0;
+  std::unique_ptr<drake::Value<lcmt_controller_switch>> switch_msg = std::make_unique<drake::Value<lcmt_controller_switch>>();
+  switch_msg->get_mutable_value().blend_duration = blend_duration;
+  switch_msg->get_mutable_value().utime = blend_start_time * 1e6;
+  context_->FixInputPort(state_input_port_, *state_input_);
+  context_->FixInputPort(controller_switch_input_port_, (drake::AbstractValue&)*switch_msg);
   command_input_->get_mutable_value() = desired_input;
   command_input_->set_timestamp(timestamp);
   context_->FixInputPort(command_input_port_, *command_input_);
-
+  supervisor_->UpdateErrorFlag(*context_, &context_->get_mutable_discrete_state());
   supervisor_->SetMotorTorques(*context_, motor_output_.get());
 
   VectorXd output_from_supervisor = motor_output_->get_value();
-  double alpha = (timestamp - 0.0) / kFilterDuration;
+  double alpha = (timestamp - blend_start_time) / blend_duration;
+
+  EXPECT_EQ(context_->get_discrete_state().get_vector(1)[0], blend_start_time);
   EXPECT_EQ(output_from_supervisor, alpha * desired_input);
 }
 

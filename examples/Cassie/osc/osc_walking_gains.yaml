@@ -5,22 +5,22 @@ w_soft_constraint: 8000
 
 w_swing_toe: 100
 swing_toe_kp: 20
-swing_toe_kd: 15
+swing_toe_kd: 5
 
 w_hip_yaw: 100
-hip_yaw_kp: 25
+hip_yaw_kp: 15
 hip_yaw_kd: 5
 
 footstep_offset: 0.06
-center_line_offset: 0.06
-final_foot_height: 0.03
-final_foot_velocity_z: -0.02
+center_line_offset: 0.05
+final_foot_height: 0.02
+final_foot_velocity_z: -0.005
 mid_foot_height: 0.05
-lipm_height: 0.80
+lipm_height: 0.8
 
 CoMW:
-  [  50,    0,     0,
-      0,   50,     0,
+  [   5,    0,     0,
+      0,    5,     0,
       0,    0,  1000]
 CoMKp:
   [   0,    0,     0,
@@ -64,7 +64,7 @@ SwingFootW:
 SwingFootKp:
   [ 200,    0,     0,
       0,  200,     0,
-      0,    0,   200]
+      0,    0,   400]
 SwingFootKd:
   [   5,    0,     0,
       0,    5,     0,

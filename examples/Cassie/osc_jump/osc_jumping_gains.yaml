@@ -3,9 +3,9 @@ w_accel: 0.00001
 w_soft_constraint: 20000
 x_offset: 0.00
 
-w_swing_toe: 5
-swing_toe_kp: 20
-swing_toe_kd: 10
+w_swing_toe: 50
+swing_toe_kp: 15
+swing_toe_kd: 5
 t_delay_toe_ang: 0.00
 t_delay_ft_pos: 0.00
 
@@ -38,11 +38,11 @@ PelvisRotKd:
    0,  5,  0,
    0,  0,  5]
 FlightFootKp:
-  [50,   0,   0,
-   0,   50,   0,
-   0,    0,  50]
+  [400,   0,    0,
+   0,   200,    0,
+   0,     0,  400]
 FlightFootKd:
   [10,   0,   0,
     0,  10,   0,
-    0,   0,  10]
+    0,   0,   5]
 

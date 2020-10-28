@@ -5,7 +5,7 @@ w_soft_constraint: 8000
 
 w_swing_toe: 100
 swing_toe_kp: 20
-swing_toe_kd: 5
+swing_toe_kd: 15
 
 w_hip_yaw: 100
 hip_yaw_kp: 15

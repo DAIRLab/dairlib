@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "osc",
     deps = [
+        "//examples/Cassie/osc:flight_foot_traj",
         "//examples/Cassie/osc:heading_traj_generator",
         "//examples/Cassie/osc:high_level_command",
         "//examples/Cassie/osc:standing_com_traj",
@@ -83,6 +84,18 @@ cc_library(
     name = "swing_toe_traj",
     srcs = ["swing_toe_traj_generator.cc"],
     hdrs = ["swing_toe_traj_generator.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "flight_foot_traj",
+    srcs = ["flight_foot_traj_generator.cc"],
+    hdrs = ["flight_foot_traj_generator.h"],
     deps = [
         "//multibody:utils",
         "//systems/controllers:control_utils",

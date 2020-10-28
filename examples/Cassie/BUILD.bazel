@@ -369,13 +369,12 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_osc_walking_controller_tracking",
-    srcs = ["run_osc_walking_controller_tracking.cc"],
+    name = "run_osc_swing_ft_controller",
+    srcs = ["run_osc_swing_ft_controller.cc"],
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        "//examples/Cassie/osc_jump",
-        "//examples/Cassie/osc_walk",
+        "//examples/Cassie/osc",
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",

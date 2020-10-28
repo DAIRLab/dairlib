@@ -49,8 +49,7 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
-DEFINE_double(period, 1.0,
-            "Duration of each swing leg trajectory");
+DEFINE_double(period, 1.0, "Duration of each swing leg trajectory");
 DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
@@ -154,40 +153,40 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   MatrixXd W_com = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.CoMW.data(), gains.rows, gains.cols);
   MatrixXd K_p_com = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.CoMKp.data(), gains.rows, gains.cols);
   MatrixXd K_d_com = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.CoMKd.data(), gains.rows, gains.cols);
   MatrixXd W_pelvis_heading = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisHeadingW.data(), gains.rows, gains.cols);
   MatrixXd K_p_pelvis_heading = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisHeadingKp.data(), gains.rows, gains.cols);
   MatrixXd K_d_pelvis_heading = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisHeadingKd.data(), gains.rows, gains.cols);
   MatrixXd W_pelvis_balance = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisBalanceW.data(), gains.rows, gains.cols);
   MatrixXd K_p_pelvis_balance = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisBalanceKp.data(), gains.rows, gains.cols);
   MatrixXd K_d_pelvis_balance = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.PelvisBalanceKd.data(), gains.rows, gains.cols);
   MatrixXd W_swing_foot = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.SwingFootW.data(), gains.rows, gains.cols);
   MatrixXd K_p_swing_foot = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.SwingFootKp.data(), gains.rows, gains.cols);
   MatrixXd K_d_swing_foot = Eigen::Map<
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.SwingFootKd.data(), gains.rows, gains.cols);
   std::cout << "w accel: \n" << gains.w_accel << std::endl;
   std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
@@ -239,10 +238,12 @@ int DoMain(int argc, char* argv[]) {
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations);
 
-  auto left_ft_traj_generator = builder.AddSystem<examples::osc::FlightFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), FLAGS_period, 0);
-  auto right_ft_traj_generator = builder.AddSystem<examples::osc::FlightFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), FLAGS_period, 1);
+  auto left_ft_traj_generator =
+      builder.AddSystem<examples::osc::FlightFootTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), FLAGS_period, 1);
+  auto right_ft_traj_generator =
+      builder.AddSystem<examples::osc::FlightFootTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), FLAGS_period, 0);
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -286,13 +287,13 @@ int DoMain(int argc, char* argv[]) {
 
   // Swing foot tracking
   TransTaskSpaceTrackingData left_foot_traj("left_ft_traj", K_p_swing_foot,
-                                             K_d_swing_foot, W_swing_foot,
-                                             plant_w_spr, plant_w_spr);
+                                            K_d_swing_foot, W_swing_foot,
+                                            plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData right_foot_traj("right_ft_traj", K_p_swing_foot,
                                              K_d_swing_foot, W_swing_foot,
                                              plant_w_spr, plant_w_spr);
-//  swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
-//  swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  //  swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
+  //  swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   left_foot_traj.AddPointToTrack("toe_left");
   right_foot_traj.AddPointToTrack("toe_right");
   osc->AddTrackingData(&left_foot_traj);
@@ -304,14 +305,16 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
+  JointSpaceTrackingData swing_toe_traj_left("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe, plant_w_spr,
                                         plant_w_spr);
-  swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                         "toe_rightdot");
-  swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                         "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.6 * VectorXd::Ones(1));
+  JointSpaceTrackingData swing_toe_traj_right("swing_toe_traj", K_p_swing_toe,
+                                        K_d_swing_toe, W_swing_toe, plant_w_spr,
+                                        plant_w_spr);
+  swing_toe_traj_right.AddJointToTrack("toe_right", "toe_rightdot");
+  swing_toe_traj_left.AddJointToTrack("toe_left", "toe_leftdot");
+  osc->AddConstTrackingData(&swing_toe_traj_left, -1.6 * VectorXd::Ones(1));
+  osc->AddConstTrackingData(&swing_toe_traj_right, -1.6 * VectorXd::Ones(1));
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
@@ -332,10 +335,14 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port(0), left_ft_traj_generator->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port(0), right_ft_traj_generator->get_fsm_input_port());
-  builder.Connect(state_receiver->get_output_port(0), left_ft_traj_generator->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0), right_ft_traj_generator->get_state_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  left_ft_traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  right_ft_traj_generator->get_fsm_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_ft_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_ft_traj_generator->get_state_input_port());
   builder.Connect(left_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("left_ft_traj"));
   builder.Connect(right_ft_traj_generator->get_output_port(0),

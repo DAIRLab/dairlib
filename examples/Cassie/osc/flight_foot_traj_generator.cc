@@ -41,13 +41,13 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
   Trajectory<double>& traj_inst = empty_pp_traj;
 
   if(is_left_ft_){
-    center_line_offset_ = -0.1;
+    center_line_offset_ = 0.15;
     this->set_name("left_ft_traj");
     this->DeclareAbstractOutputPort("left_ft_traj", traj_inst,
                                     &FlightFootTrajGenerator::CalcTraj);
   }
   else{
-    center_line_offset_ = 0.1;
+    center_line_offset_ = -0.15;
     this->set_name("right_ft_traj");
     this->DeclareAbstractOutputPort("right_ft_traj", traj_inst,
                                     &FlightFootTrajGenerator::CalcTraj);

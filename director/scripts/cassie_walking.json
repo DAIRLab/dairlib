@@ -1,6 +1,7 @@
 {
   "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
-  "channelName": "CASSIE_STATE_SIMULATION",
+  "weld-body": "pelvis",
+  "channelName": "NETWORK_CASSIE_STATE_DISPATCHER",
   "data": [
     {
       "name": "left_toe_line",
@@ -22,7 +23,7 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.005,
-        "history": -5
+        "history": 5
       }
     },
     {
@@ -45,7 +46,7 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.005,
-        "history": -5
+        "history": 5
       }
     },
     {
@@ -62,7 +63,7 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.005,
-        "history": -5
+        "history": 5
       }
     },
     {
@@ -85,18 +86,18 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.01,
-        "history": -1
+        "history": 1
       }
     },
     {
-      "name": "swing_foot",
+      "name": "left_swing_foot",
       "source_data": {
         "category": "lcm",
-        "abstract_channel": "OSC_DEBUG",
+        "abstract_channel": "NETWORK_OSC_DEBUG_SWING_FOOT",
         "abstract_type": "dairlib.lcmt_osc_output",
         "abstract_field": "tracking_data[%d].y",
         "index_field": "tracking_data_names",
-        "index_element": "swing_foot_traj",
+        "index_element": "left_ft_traj",
         "x_index": 0
       },
       "type_data": {
@@ -108,7 +109,30 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.01,
-        "history": -1
+        "history": 5
+      }
+    },
+    {
+      "name": "right_swing_foot",
+      "source_data": {
+        "category": "lcm",
+        "abstract_channel": "NETWORK_OSC_DEBUG_SWING_FOOT",
+        "abstract_type": "dairlib.lcmt_osc_output",
+        "abstract_field": "tracking_data[%d].y",
+        "index_field": "tracking_data_names",
+        "index_element": "right_ft_traj",
+        "x_index": 0
+      },
+      "type_data": {
+        "color": [
+          0.5,
+          0.5,
+          1
+        ],
+        "alpha": 0.5,
+        "type": "line",
+        "thickness": 0.01,
+        "history": 5
       }
     }
   ]

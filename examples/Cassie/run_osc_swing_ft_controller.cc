@@ -148,6 +148,7 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
   OSCWalkingGains gains;
   const YAML::Node& root =
@@ -397,6 +398,13 @@ int DoMain(int argc, char* argv[]) {
             TriggerTypeSet({TriggerType::kForced})));
     builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   }
+
+//  // Create osc debug sender.
+//  auto osc_debug_pub_network =
+//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+//          "NETWORK_OSC_DEBUG_SWING_FOOT", &lcm_local,
+//          TriggerTypeSet({TriggerType::kPeriodic}), 0.02));
+//  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub_network->get_input_port());
 
   // Create the diagram
   auto owned_diagram = builder.Build();

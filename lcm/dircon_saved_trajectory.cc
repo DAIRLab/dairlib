@@ -101,7 +101,7 @@ DirconTrajectory::DirconTrajectory(
   decision_var_traj.traj_name = "decision_vars";
   decision_var_traj.datapoints = result.GetSolution();
   decision_var_traj.time_vector =
-      VectorXd::Zero(decision_var_traj.datapoints.size());
+      VectorXd::Zero(1);
   decision_var_traj.datatypes =
       vector<string>(decision_var_traj.datapoints.size());
   AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
@@ -197,7 +197,7 @@ DirconTrajectory::DirconTrajectory(
   decision_var_traj.traj_name = "decision_vars";
   decision_var_traj.datapoints = result.GetSolution();
   decision_var_traj.time_vector =
-      VectorXd::Zero(decision_var_traj.datapoints.size());
+      VectorXd::Zero(1);
   decision_var_traj.datatypes =
       vector<string>(decision_var_traj.datapoints.size());
   AddTrajectory(decision_var_traj.traj_name, decision_var_traj);

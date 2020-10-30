@@ -15,6 +15,7 @@ import pydairlib.multibody
 from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import *
 
+
 def main():
   filename = FindResourceOrThrow(
     '../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory')
@@ -97,8 +98,20 @@ def main():
   """
   # PlotDynamicError(dircon_traj, nq + 6, nx)
 
+  """
+  Print the value of the solutions
+  """
+  PrintAllDecisionVar(dircon_traj)
+
   if not savefig:
-      plt.show()
+    plt.show()
+
+
+def PrintAllDecisionVar(dircon_traj):
+  for i in range(len(dircon_traj.GetTrajectory("decision_vars").datatypes)):
+    print(dircon_traj.GetTrajectory("decision_vars").datatypes[i] + " = " + str(
+      dircon_traj.GetTrajectory("decision_vars").datapoints[i, 0]))
+
 
 def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
   # Get data at knot points
@@ -126,6 +139,7 @@ def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
   plt.legend(state_datatypes[x_idx_start:x_idx_end])
   if savefig:
     plt.savefig(save_path + figname + ".png")
+
 
 def PlotInput(dircon_traj):
   # Get data at knot points
@@ -464,6 +478,7 @@ def PlotPelvis(dircon_traj, visualize_only_collocation_point=False):
     if savefig:
       plt.savefig(save_path + figname + ".png")
 
+
 def PlotDynamicError(dircon_traj, x_idx_start=0, x_idx_end=19):
   # Get data at knot points
   t_knot = dircon_traj.GetStateBreaks(0)
@@ -517,13 +532,17 @@ def PlotDynamicError(dircon_traj, x_idx_start=0, x_idx_end=19):
 
     # The constraint order should be the same as trajopt's
     J_lt = plant.CalcJacobianTranslationalVelocity(
-      context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
+      context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world,
+      world)
     J_lh = plant.CalcJacobianTranslationalVelocity(
-      context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
+      context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world,
+      world)
     J_rt = plant.CalcJacobianTranslationalVelocity(
-      context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
+      context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world,
+      world)
     J_rh = plant.CalcJacobianTranslationalVelocity(
-      context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
+      context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world,
+      world)
     J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
     J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
     # J = np.vstack((J_lt, J_lh, J_rt, J_rh, J_l_loop_closure, J_r_loop_closure))
@@ -531,7 +550,7 @@ def PlotDynamicError(dircon_traj, x_idx_start=0, x_idx_end=19):
 
     # xdot_from_func[i, :nq] = state_samples[i][nq:]
     # import pdb; pdb.set_trace()
-    xdot_from_func[i, nq:] = M_inv @ (-Cv + g + B@u + J.T @ lamb)
+    xdot_from_func[i, nq:] = M_inv @ (-Cv + g + B @ u + J.T @ lamb)
 
   # Plotting reconstructed state trajectories
   figname = "xdot trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
@@ -545,6 +564,7 @@ def PlotDynamicError(dircon_traj, x_idx_start=0, x_idx_end=19):
   if savefig:
     plt.savefig(save_path + figname + ".png")
 
+
 # PlotStateAtKnots is for testing (TODO: delete later)
 def PlotStateAtKnots(dircon_traj, x_idx_start=0, x_idx_end=19):
   # Get data at knot points
@@ -554,11 +574,13 @@ def PlotStateAtKnots(dircon_traj, x_idx_start=0, x_idx_end=19):
   state_datatypes = dircon_traj.GetTrajectory("state_traj0").datatypes
 
   # Plotting reconstructed state trajectories
-  figname = "state trajectory " + str(x_idx_start) + "-" + str(x_idx_end) + "(at knots)"
+  figname = "state trajectory " + str(x_idx_start) + "-" + str(
+    x_idx_end) + "(at knots)"
   plt.figure(figname, figsize=figsize)
   plt.plot(t_knot, x_knot.T)
   plt.xlabel('time (s)')
   plt.legend(state_datatypes[x_idx_start:x_idx_end])
+
 
 if __name__ == "__main__":
   main()

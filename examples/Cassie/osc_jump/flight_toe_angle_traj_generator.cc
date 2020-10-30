@@ -43,9 +43,6 @@ FlightToeAngleTrajGenerator::FlightToeAngleTrajGenerator(
 PiecewisePolynomial<double> FlightToeAngleTrajGenerator::CalcToeAngle(
     VectorXd q) const {
   // Read in current state
-  //  const OutputVector<double>* robotOutput =
-  //      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  //  VectorXd q = robotOutput->GetPositions();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   double swing_toe_angle = q[swing_toe_idx_];
@@ -61,8 +58,7 @@ PiecewisePolynomial<double> FlightToeAngleTrajGenerator::CalcToeAngle(
   double deviation_from_ground_plane = (atan2(foot(2), foot.head(2).norm()));
   // Get current difference between
   VectorXd des_swing_toe_angle = VectorXd(1);
-  des_swing_toe_angle << swing_toe_angle - deviation_from_ground_plane;
-  des_swing_toe_angle << -1.5;
+  des_swing_toe_angle << swing_toe_angle + deviation_from_ground_plane;
 
   return PiecewisePolynomial<double>(des_swing_toe_angle);
 }

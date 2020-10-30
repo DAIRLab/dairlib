@@ -183,9 +183,9 @@ def PlotForce(dircon_traj):
 
   # Plotting reconstructed state trajectories
 
-  plt.figure("force trajectory")
-  plt.plot(t, force_samples)
-  plt.legend(force_datatypes)
+  # plt.figure("force trajectory")
+  # plt.plot(t, force_samples)
+  # plt.legend(force_datatypes)
   #
   # plt.figure("collocation force trajectory")
   # plt.plot(t, force_c_samples)

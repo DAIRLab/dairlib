@@ -1988,8 +1988,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_Q = setting.Q_double * all_cost_scale;
   double w_R = setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-3 * all_cost_scale *
-                    all_cost_scale;  // This should be sqrt(all_cost_scale)
+  double w_lambda = 1.0e-3 * sqrt(all_cost_scale);
   // Cost on difference over time
   double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
   double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;  // TODO
@@ -2002,8 +2001,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
   double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
   // Additional cost on swing toe
-  double w_Q_swing_toe = w_Q * 1;  // avoid swing toe shaking
-  double w_R_swing_toe = w_R * 1;  // avoid swing toe shaking
+  double w_Q_swing_toe = w_Q * 10;  // avoid swing toe shaking
+  double w_R_swing_toe = w_R * 1;   // avoid swing toe shaking
   // Testing -- cost on position difference (cost on v is not enough, because
   // the solver might exploit the integration scheme. If we only penalize
   // velocity at knots, then the solver will converge to small velocity at knots
@@ -2013,14 +2012,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   double w_v_diff_swing_leg = w_v_diff * 1;
   // Testing
-  double w_joint_accel = 0.00001;  // The final weight is w_joint_accel * W_Q
+  double w_joint_accel = 0.001;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
   bool swing_foot_ground_clearance = false;
   bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
-  bool periodic_floating_base_vel = false;
   bool periodic_joint_pos = false;
+  bool periodic_floating_base_vel = false;
   bool periodic_joint_vel = false;
   bool periodic_effort = false;
   bool ground_normal_force_margin = false;
@@ -2041,12 +2040,16 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // TODO
 
   // Testing
-  bool only_one_mode = true;
+  bool only_one_mode = false;
   if (only_one_mode) {
     periodic_joint_pos = false;
     periodic_joint_vel = false;
     periodic_effort = false;
   }
+  bool one_mode_full_states_constraint_at_boundary = false;
+  bool one_mode_full_positions_constraint_at_boundary = true;
+  bool one_mode_base_x_constraint_at_boundary = false;
+
   // Testing
   bool add_cost_on_collocation_vel = false;
   bool add_joint_acceleration_cost = true;
@@ -2369,37 +2372,116 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     VectorXd x0_val(plant.num_positions() + plant.num_velocities());
     VectorXd xf_val(plant.num_positions() + plant.num_velocities());
     // The following states come from traj opt with pos/vel periodicity
-    // constraints and without ROM cosntraint
-    x0_val << 1, 0, 0, 0, 0, -0.00527375, 1.10066, 0.00686375, 0.0025628,
-        0.000573004, -0.000573019, 0.439262, 0.201581, -0.646, -0.795755,
-        0.866859, 1.01813, -1.53361, -1.29744, -0.321, 0.198875, -0.0342067,
-        0.67034, 0.363396, -0.0367492, -0.0100005, 0.0120047, 0.0355722,
-        0.0585609, 0.26338, -0.584013, -1.45501, 0.221981, 1.47458, -0.223655,
-        -0.0841209, 0.797712;
-    xf_val << 1, 0, 0, 0, 0.3, 0.00527375, 1.10066, -0.0025628, -0.00686375,
-        0.000573019, -0.000573004, 0.201581, 0.439262, -0.795755, -0.646,
-        1.01813, 0.866859, -1.29744, -1.53361, 0.49743, 0.0737923, 0.0867892,
-        0.666384, -0.319709, -0.072308, -0.202807, 0.193892, -0.0869775,
-        0.763641, -0.705892, -0.590682, 0.214898, 1.02658, -0.216519, -1.04038,
-        0.780914, -0.269512;
+    // constraints and without ROM cosntraint.
+    // Note that the velocities don't strictly mirror because the values for
+    // post and pre impact vel are different!
+    //    x0_val << 1, 0, 0, 0, 0, -0.00527375, 1.10066, 0.00686375, 0.0025628,
+    //        0.000573004, -0.000573019, 0.439262, 0.201581, -0.646, -0.795755,
+    //        0.866859, 1.01813, -1.53361, -1.29744, -0.321, 0.198875,
+    //        -0.0342067, 0.67034, 0.363396, -0.0367492, -0.0100005, 0.0120047,
+    //        0.0355722, 0.0585609, 0.26338, -0.584013, -1.45501,
+    //        0.221981, 1.47458, -0.223655, -0.0841209, 0.797712;
+    //    xf_val << 1, 0, 0, 0, 0.3, 0.00527375, 1.10066, -0.0025628,
+    //    -0.00686375,
+    //        0.000573019, -0.000573004, 0.201581, 0.439262, -0.795755, -0.646,
+    //        1.01813, 0.866859, -1.29744, -1.53361, 0.49743, 0.0737923,
+    //        0.0867892, 0.666384, -0.319709, -0.072308, -0.202807, 0.193892,
+    //        -0.0869775, 0.763641, -0.705892, -0.590682, 0.214898, 1.02658,
+    //        -0.216519, -1.04038, 0.780914, -0.269512;
+
+    // This solution is derived with reflected inertia and pos/vel periodicity
+    // constraint of two mode walking
+    // From:
+    // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
+    // traj/Cost setting 1
+    //    x0_val << 1, 0, 0, 0, 0, 0.00135545, 1.09939, -0.0768261, 0.0651368,
+    //        0.0339166, -0.0339448, 0.431728, 0.1889, -0.646, -0.785052,
+    //        0.866859, 1.00734, -1.52347, -1.28247, 1.68172E-08,
+    //        -2.93932E-08, 1.30851E-11, 0.618169, 0.135654, -0.0738718,
+    //        -0.10875, -0.110773, -0.000283673, 0.0345027, 0.0339327,
+    //        -0.597203, -1.3188, -0.151959, 1.33654, 0.153149, -0.0479795,
+    //        0.564141;
+    //    xf_val << 1, 0, 0, 0, 0.3, -0.00135545, 1.09939, -0.0651368,
+    //    0.0768261,
+    //        0.0339448, -0.0339166, 0.1889, 0.431728, -0.785052,
+    //        -0.646, 1.00734, 0.866859, -1.28247, -1.52347, 0.542888,
+    //        -0.274931, 0.00598288, 0.601503, -0.146041, -0.140087, -0.387284,
+    //        0.0312489, 0.012249, 0.130986, -0.824682, 0.305998, -0.225036,
+    //        0.293566, 0.226799, -0.297514, 0.543059, -0.727215;
+
+    // This solution is derived with reflected inertia and pos/vel periodicity
+    // constraint of two mode walking
+    // From:
+    // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
+    // traj/Cost setting 2/1 rederived start and end state from nomial traj/
+    x0_val << 1, 0, 0, 0, 0, 0.00403739, 1.09669, -0.0109186, -0.00428689,
+        0.0286625, -0.0286639, 0.455519, 0.229628, -0.646, -0.82116, 0.866859,
+        1.04372, -1.54955, -1.3258, 1.95188E-07, -8.5509E-08, -8.03449E-11,
+        0.660358, 0.322854, -0.0609757, -0.277685, -0.274869, -8.67676E-05,
+        0.0667662, 0.0559658, -0.659971, -1.44404, -0.10276, 1.46346, 0.10347,
+        -0.0674264, 0.631613;
+    xf_val << 1, 0, 0, 0, 0.3, -0.00403739, 1.09669, 0.00428689, 0.0109186,
+        0.0286639, -0.0286625, 0.229628, 0.455519, -0.82116, -0.646, 1.04372,
+        0.866859, -1.3258, -1.54955, 0.51891, -0.174452, 0.100391, 0.661351,
+        -0.338064, -0.12571, -0.183991, 0.218535, -0.101178, -0.0317852,
+        -0.8024, -0.278951, -0.148364, 0.375203, 0.149389, -0.380249, 0.617827,
+        -0.712411;
 
     // Set constraints for the first and last knot points
-    //    trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
-    //    trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
-
-    //    trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
-    //                                      x0.head(n_q));
-    //    trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
-    //                                      xf.head(n_q));
-
+    if (one_mode_full_states_constraint_at_boundary) {
+      trajopt->AddBoundingBoxConstraint(x0_val, x0_val, x0);
+      trajopt->AddBoundingBoxConstraint(xf_val, xf_val, xf);
+    } else if (one_mode_full_positions_constraint_at_boundary) {
+      trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
+                                        x0.head(n_q));
+      trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
+                                        xf.head(n_q));
+    } else if (one_mode_base_x_constraint_at_boundary) {
+      trajopt->AddBoundingBoxConstraint(x0_val.segment<1>(4),
+                                        x0_val.segment<1>(4), x0.segment<1>(4));
+      trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
+                                        xf_val.segment<1>(4), xf.segment<1>(4));
+    }
     //    trajopt->AddBoundingBoxConstraint(xf_val.head(7), xf_val.head(7),
     //                                      xf.head(7));
-
-    trajopt->AddBoundingBoxConstraint(x0_val.segment<1>(4),
-                                      x0_val.segment<1>(4), x0.segment<1>(4));
-    trajopt->AddBoundingBoxConstraint(xf_val.segment<1>(4),
-                                      xf_val.segment<1>(4), xf.segment<1>(4));
   }
+
+  // Testing -- add start/end position constraint (TODO: delete this)
+  VectorXd x0_val(plant.num_positions() + plant.num_velocities());
+  VectorXd xf_val(plant.num_positions() + plant.num_velocities());
+  // From:
+  // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
+  //  x0_val << 1, 0, 0, 0, 0, 0.00135545, 1.09939, -0.0768261, 0.0651368,
+  //      0.0339166, -0.0339448, 0.431728, 0.1889, -0.646, -0.785052, 0.866859,
+  //      1.00734, -1.52347, -1.28247, 1.68172E-08, -2.93932E-08, 1.30851E-11,
+  //      0.618169, 0.135654, -0.0738718, -0.10875, -0.110773, -0.000283673,
+  //      0.0345027, 0.0339327, -0.597203, -1.3188, -0.151959, 1.33654,
+  //      0.153149, -0.0479795, 0.564141;
+  //  xf_val << 1, 0, 0, 0, 0.3, -0.00135545, 1.09939, -0.0651368, 0.0768261,
+  //      0.0339448, -0.0339166, 0.1889, 0.431728, -0.785052, -0.646, 1.00734,
+  //      0.866859, -1.28247, -1.52347, 0.542888, -0.274931, 0.00598288,
+  //      0.601503, -0.146041, -0.140087, -0.387284, 0.0312489, 0.012249,
+  //      0.130986, -0.824682, 0.305998, -0.225036, 0.293566, 0.226799,
+  //      -0.297514, 0.543059, -0.727215;
+  // From:
+  // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
+  // traj/Cost setting 2/1 rederived start and end state from nomial traj/
+  //  x0_val << 1, 0, 0, 0, 0, 0.00403739, 1.09669, -0.0109186, -0.00428689,
+  //      0.0286625, -0.0286639, 0.455519, 0.229628, -0.646, -0.82116, 0.866859,
+  //      1.04372, -1.54955, -1.3258, 1.95188E-07, -8.5509E-08, -8.03449E-11,
+  //      0.660358, 0.322854, -0.0609757, -0.277685, -0.274869, -8.67676E-05,
+  //      0.0667662, 0.0559658, -0.659971, -1.44404, -0.10276, 1.46346, 0.10347,
+  //      -0.0674264, 0.631613;
+  //  xf_val << 1, 0, 0, 0, 0.3, -0.00403739, 1.09669, 0.00428689, 0.0109186,
+  //      0.0286639, -0.0286625, 0.229628, 0.455519, -0.82116, -0.646, 1.04372,
+  //      0.866859, -1.3258, -1.54955, 0.51891, -0.174452, 0.100391, 0.661351,
+  //      -0.338064, -0.12571, -0.183991, 0.218535, -0.101178, -0.0317852,
+  //      -0.8024, -0.278951, -0.148364, 0.375203, 0.149389, -0.380249,
+  //      0.617827, -0.712411;
+  trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
+                                    x0.head(n_q));
+  trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
+                                    xf.head(n_q));
 
   // Fix time duration
   trajopt->AddDurationBounds(duration, duration);
@@ -3290,6 +3372,15 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
     cout << endl;
     cout << "only_one_mode = " << only_one_mode << endl;
+    if (only_one_mode) {
+      if (one_mode_full_states_constraint_at_boundary) {
+        cout << "  one_mode_full_states_constraint_at_boundary" << endl;
+      } else if (one_mode_full_positions_constraint_at_boundary) {
+        cout << "  one_mode_full_positions_constraint_at_boundary" << endl;
+      } else if (one_mode_base_x_constraint_at_boundary) {
+        cout << "  one_mode_base_x_constraint_at_boundary" << endl;
+      }
+    }
     cout << "add_cost_on_collocation_vel = " << add_cost_on_collocation_vel
          << endl;
     cout << "add_joint_acceleration_cost = " << add_joint_acceleration_cost

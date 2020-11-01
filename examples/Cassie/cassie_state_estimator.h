@@ -245,6 +245,11 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Timestamp from unprocessed message
   double next_message_time_ = -std::numeric_limits<double>::infinity();
   double eps_ = 1e-12;
+
+  // Parameters for complimentary filter used when Cassie is fixed on stand and
+  // we still want to estimate the floating base state
+  double cutoff_freq_;
+  Eigen::VectorXd long_term_state_average_;
 };
 
 }  // namespace systems

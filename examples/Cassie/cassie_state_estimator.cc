@@ -1112,15 +1112,25 @@ EventStatus CassieStateEstimator::Update(
   if (hardware_test_mode_ == 0) {
     left_contact = 1;
     right_contact = 1;
-
-    if ((*counter_for_testing_) % 5000 == 0) {
-      cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
-    }
-    *counter_for_testing_ = *counter_for_testing_ + 1;
   } else if (hardware_test_mode_ == 1) {
     left_contact = 0;
     right_contact = 0;
+  } else if (hardware_test_mode_ == 2) {
+    left_contact = 1;
+    right_contact = 1;
+
+    // Override hardware_test_mode_ if test mode is 2 and we detect contact
+    // Useful for preventing drift when the feet are not fully in contact - i.e
+    // when running the PD controller with external support
+    if (left_contact && right_contact) {
+      hardware_test_mode_ = -1;
+    }
   }
+
+  if ((*counter_for_testing_) % 5000 == 0) {
+    cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
+  }
+  *counter_for_testing_ = *counter_for_testing_ + 1;
 
   std::vector<std::pair<int, bool>> contacts;
   contacts.push_back(std::pair<int, bool>(0, left_contact));

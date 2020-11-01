@@ -61,7 +61,9 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_int64(test_mode, -1,
              "-1: Regular EKF (not testing mode). "
              "0: both feet always in contact with ground. "
-             "1: both feet never in contact with ground. ");
+             "1: both feet never in contact with ground. "
+             "2: both feet always in contact with the ground until contact is"
+             " detected in which case it swtiches to test mode -1.");
 
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.

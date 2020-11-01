@@ -2282,6 +2282,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
+  // Testing -- TODO: delete this after done testing
+  //  if (options_list.size() == 2) {
+  //    options_list[1].setStartType(DirconKinConstraintType::kAccelOnly);
+  //  }
+
   // timesteps and modes setting
   vector<double> min_dt;
   vector<double> max_dt;
@@ -2466,22 +2471,34 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // From:
   // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
   // traj/Cost setting 2/1 rederived start and end state from nomial traj/
-//  x0_val << 1, 0, 0, 0, 0, 0.00403739, 1.09669, -0.0109186, -0.00428689,
-//      0.0286625, -0.0286639, 0.455519, 0.229628, -0.646, -0.82116, 0.866859,
-//      1.04372, -1.54955, -1.3258, 1.95188E-07, -8.5509E-08, -8.03449E-11,
-//      0.660358, 0.322854, -0.0609757, -0.277685, -0.274869, -8.67676E-05,
-//      0.0667662, 0.0559658, -0.659971, -1.44404, -0.10276, 1.46346, 0.10347,
-//      -0.0674264, 0.631613;
-//  xf_val << 1, 0, 0, 0, 0.3, -0.00403739, 1.09669, 0.00428689, 0.0109186,
-//      0.0286639, -0.0286625, 0.229628, 0.455519, -0.82116, -0.646, 1.04372,
-//      0.866859, -1.3258, -1.54955, 0.51891, -0.174452, 0.100391, 0.661351,
-//      -0.338064, -0.12571, -0.183991, 0.218535, -0.101178, -0.0317852, -0.8024,
-//      -0.278951, -0.148364, 0.375203, 0.149389, -0.380249, 0.617827, -0.712411;
-//  auto xf_end_of_first_mode = trajopt->final_state();
-//  trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
-//                                    x0.head(n_q));
-//  trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
-//                                    xf_end_of_first_mode.head(n_q));
+  //  x0_val << 1, 0, 0, 0, 0, 0.00403739, 1.09669, -0.0109186, -0.00428689,
+  //      0.0286625, -0.0286639, 0.455519, 0.229628, -0.646, -0.82116, 0.866859,
+  //      1.04372, -1.54955, -1.3258, 1.95188E-07, -8.5509E-08, -8.03449E-11,
+  //      0.660358, 0.322854, -0.0609757, -0.277685, -0.274869, -8.67676E-05,
+  //      0.0667662, 0.0559658, -0.659971, -1.44404, -0.10276, 1.46346, 0.10347,
+  //      -0.0674264, 0.631613;
+  //  xf_val << 1, 0, 0, 0, 0.3, -0.00403739, 1.09669, 0.00428689, 0.0109186,
+  //      0.0286639, -0.0286625, 0.229628, 0.455519, -0.82116, -0.646, 1.04372,
+  //      0.866859, -1.3258, -1.54955, 0.51891, -0.174452, 0.100391, 0.661351,
+  //      -0.338064, -0.12571, -0.183991, 0.218535, -0.101178, -0.0317852,
+  //      -0.8024, -0.278951, -0.148364, 0.375203, 0.149389, -0.380249,
+  //      0.617827, -0.712411;
+  //  auto xf_end_of_first_mode = trajopt->final_state();
+  //  trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
+  //                                    x0.head(n_q));
+  //  trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
+  //                                    xf_end_of_first_mode.head(n_q));
+  //  trajopt->AddBoundingBoxConstraint(x0_val.head(6), x0_val.head(6),
+  //  x0.head(6)); trajopt->AddBoundingBoxConstraint(xf_val.head(6),
+  //  xf_val.head(6),
+  //                                    xf_end_of_first_mode.head(6));
+  //  trajopt->AddBoundingBoxConstraint(x0_val.segment(7, n_q - 7),
+  //                                    x0_val.segment(7, n_q - 7),
+  //                                    x0.segment(7, n_q - 7));
+  //  trajopt->AddBoundingBoxConstraint(xf_val.segment(7, n_q - 7),
+  //                                    xf_val.segment(7, n_q - 7),
+  //                                    xf_end_of_first_mode.segment(7, n_q -
+  //                                    7));
 
   // Fix time duration
   trajopt->AddDurationBounds(duration, duration);
@@ -2947,6 +2964,19 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt->AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0));
     trajopt->AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0));
   }
+
+  // Testing -- Make the last knot point weight much bigger
+  bool much_bigger_weight_at_last_knot = false;
+  if (much_bigger_weight_at_last_knot) {
+    double multiplier = 200;
+    auto v1 = trajopt->state(N - 1).tail(n_v);
+    trajopt->AddCost(
+        ((v1.transpose() * W_Q * v1) * multiplier * fixed_dt / 2)(0));
+    auto u1 = trajopt->input(N - 1);
+    trajopt->AddCost(
+        ((u1.transpose() * W_R * u1) * multiplier * fixed_dt / 2)(0));
+  }
+
   // Testing
   //  auto v0 = trajopt->state(0).tail(n_v);
   //  auto v1 = trajopt->state(N - 1).tail(n_v);

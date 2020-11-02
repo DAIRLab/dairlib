@@ -1034,6 +1034,13 @@ EventStatus CassieStateEstimator::Update(
   imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
       imu_angular_velocity[2], imu_linear_acceleration[0],
       imu_linear_acceleration[1], imu_linear_acceleration[2];
+  //auto& ekf = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
+  //MatrixXd R_WB = Quaterniond(ekf.getState().getRotation()).toRotationMatrix();
+  //cout << "before: imu_measurement.tail(3) = " << imu_measurement.tail(3).transpose() << endl;
+  //Vector3d imu_excluding_gravity = R_WB.transpose() * (R_WB * imu_measurement.tail(3) + gravity_);
+  //imu_measurement.tail(3) = imu_excluding_gravity;
+  //cout << "after: imu_measurement.tail(3) = " << imu_measurement.tail(3).transpose() << endl;
+
   if (print_info_to_terminal_) {
     // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
   }

@@ -1101,6 +1101,9 @@ EventStatus CassieStateEstimator::Update(
     estimated_fb_state = (1 - w_correction_signal) * estimated_fb_state +
                          w_correction_signal * long_term_state_average_;
 
+    // Normalize quaternion
+    estimated_fb_state.head(4).normalize();
+
   } else {
     // Step 3 - Estimate which foot/feet are in contact with the ground
     // Estimate feet contacts

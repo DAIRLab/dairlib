@@ -1094,6 +1094,11 @@ EventStatus CassieStateEstimator::Update(
         cout << "done calibrating\n";
     }
 
+    if ((*counter_for_testing_) == 0) {
+    
+      estimated_fb_state = VectorXd::Zero(13);
+      estimated_fb_state[0]=1;
+    }
     // Printing
     if ((*counter_for_testing_) % 5000 == 0) {
       cout << "estimated_fb_state = " << estimated_fb_state.transpose() << endl;

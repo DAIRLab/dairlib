@@ -1086,14 +1086,20 @@ EventStatus CassieStateEstimator::Update(
     estimated_fb_state.head(4).normalize();
 
     // Calibrate accelerometer in the first 5 second:
-    if ((*counter_for_testing_) < 10000) {
+    int n_loop = 10000 * 4;
+    if ((*counter_for_testing_) < n_loop) {
       accelerometer_bias_ =
           0.99 * accelerometer_bias_ + 0.01 * imu_excluding_gravity_wrt_world;
+      if ((*counter_for_testing_) == n_loop-1)
+        cout << "done calibrating\n";
     }
 
     // Printing
     if ((*counter_for_testing_) % 5000 == 0) {
       cout << "estimated_fb_state = " << estimated_fb_state.transpose() << endl;
+            cout << "accelerometer_bias_ = " << accelerometer_bias_.transpose() << endl;
+      cout << "imu_excluding_gravity_wrt_world = " << imu_excluding_gravity_wrt_world.transpose() << endl;
+
     }
     *counter_for_testing_ = *counter_for_testing_ + 1;
   } else {

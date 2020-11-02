@@ -228,6 +228,8 @@ CassieStateEstimator::CassieStateEstimator(
 
     long_term_state_average_ = VectorXd::Zero(13);
     long_term_state_average_[0] = 1;
+
+    accelerometer_bias_ = VectorXd::Zero(3);
   }
 }
 
@@ -1072,16 +1074,28 @@ EventStatus CassieStateEstimator::Update(
     Vector3d omega_global = R_WB * imu_measurement.head(3);
     estimated_fb_state.segment(7, 3) = omega_global;
     // translational vel
-    estimated_fb_state.tail(3) += imu_excluding_gravity_wrt_world * dt;
+    estimated_fb_state.tail(3) +=
+        (imu_excluding_gravity_wrt_world - accelerometer_bias_) * dt;
 
     // Step 2: correction step
     double w_correction_signal =
         (2 * M_PI * dt * cutoff_freq_) / (2 * M_PI * dt * cutoff_freq_ + 1);
     estimated_fb_state = (1 - w_correction_signal) * estimated_fb_state +
                          w_correction_signal * long_term_state_average_;
-
     // Normalize quaternion
     estimated_fb_state.head(4).normalize();
+
+    // Calibrate accelerometer in the first 5 second:
+    if ((*counter_for_testing_) < 10000) {
+      accelerometer_bias_ =
+          0.99 * accelerometer_bias_ + 0.01 * imu_excluding_gravity_wrt_world;
+    }
+
+    // Printing
+    if ((*counter_for_testing_) % 5000 == 0) {
+      cout << "estimated_fb_state = " << estimated_fb_state.transpose() << endl;
+    }
+    *counter_for_testing_ = *counter_for_testing_ + 1;
   } else {
     // Perform State Estimation (in several steps)
     // Step 1 - Solve for the unknown joint angle

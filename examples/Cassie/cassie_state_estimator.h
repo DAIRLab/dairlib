@@ -250,6 +250,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // we still want to estimate the floating base state
   double cutoff_freq_;
   Eigen::VectorXd long_term_state_average_;
+  mutable Eigen::VectorXd accelerometer_bias_;
 };
 
 }  // namespace systems

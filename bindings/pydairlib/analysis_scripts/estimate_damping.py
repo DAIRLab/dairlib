@@ -35,18 +35,15 @@ def main():
   global act_map
   global l_loop_closure, r_loop_closure
   global x_datatypes, u_datatypes
+  global K
+  global offsets
 
   np.set_printoptions(precision=3)
 
   builder = DiagramBuilder()
   plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
 
-  # Parser(plant).AddModelFromFile(
-  #   FindResourceOrThrow(
-  #     "examples/Cassie/urdf/cassie_v2.urdf"))
-  # pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, False,
-  #   "examples/Cassie/urdf/cassie_v2.urdf", True, True)
-  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, False,
+  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, True,
     "examples/Cassie/urdf/cassie_v2.urdf", False, False)
   plant.Finalize()
 
@@ -83,6 +80,19 @@ def main():
   l_loop_closure = LeftLoopClosureEvaluator(plant)
   r_loop_closure = RightLoopClosureEvaluator(plant)
 
+  K = np.zeros((nv, nq))
+  offsets = np.zeros(nq)
+  use_springs = False
+  if(use_springs):
+    K[7,8] = 1097.0
+    K[8,9] = 1264.0
+    K[11,12] = 1196.0
+    K[13,14] = 1184.0
+    offsets[7] = 0.111
+    offsets[8] = 0.103
+    offsets[12] = 0.066
+    offsets[14] = 0.070
+
   filename = sys.argv[1]
   if(len(sys.argv) > 2):
     controller_name = sys.argv[2]
@@ -108,33 +118,14 @@ def main():
   start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
-  # sample_times = [46.0, 58.5, 65.0, 70.2, 74.8, 93.1, 98.7]
 
-
-  # imu_data = np.zeros((len(cassie_out), 3))
-  # t_imu_data = np.zeros((len(cassie_out),))
-  # imu_data = []
-  # t_imu_data = []
-  # for i in range(len(cassie_out)):
-  #   if(cassie_out[i].utime / 1e6 > t_x[100] and cassie_out[i].utime / 1e6 < t_x[40100]):
-      # imu_data[i] = np.array(cassie_out[i].pelvis.vectorNav.linearAcceleration)
-      # t_imu_data[i] = cassie_out[i].utime / 1e6
-  #     imu_data.append(np.array(cassie_out[i].pelvis.vectorNav.linearAcceleration))
-  #     t_imu_data.append(cassie_out[i].utime / 1e6)
-  # imu_data = np.array(imu_data)
-  # t_imu_data = np.array(t_imu_data)
-  # plt.figure("imu")
-  # plt.plot(t_imu_data, imu_data)
-
-  # import pdb; pdb.set_trace()
-  # plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes)
   xdot = estimate_xdot_with_filtering(x, t_x)
+  # plot_imu_data(t_x, cassie_out)
+  # plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes)
 
   # solve_individual_joint(x, xdot, t_x, u_meas, pos_map[joint_name], act_map[joint_name + '_motor'])
   solve_with_lambda(x, xdot, t_x, u_meas)
   plt.show()
-
-  # solve_with_lambda(x, t_x, u_meas)
 
 
 def estimate_xdot_with_filtering(x, t_x):
@@ -145,7 +136,7 @@ def estimate_xdot_with_filtering(x, t_x):
   for i in range(plant.num_velocities()):
     vdot[:, i] = vdot[:, i] / dt
 
-  filter = 100
+  filter = 50
   idx = int(filter / 2)
   filter_output = np.zeros((x.shape[0], nv))
   for i in range(idx, dt.shape[0] - idx):
@@ -153,33 +144,20 @@ def estimate_xdot_with_filtering(x, t_x):
     filter_output[i, :] = np.average(vdot[i - idx:i+idx, :], axis=0)
 
   plt.figure("vdot fb")
-  plt.plot(t_x[t_slice], filter_output[t_slice, 4:6])
+  plt.plot(t_x[t_slice], filter_output[t_slice, 10:11])
   
   xdot = np.hstack((x[:, -nv:], filter_output))
   return xdot
 
 def solve_with_lambda(x, xdot, t_x, u_meas):
-  # n_samples = len(sample_times)
   # n_samples = 2000
   n_samples = 10000
-  n_k = 0
   n_damping_vars = nv
-  nvars = n_k + n_damping_vars
+  nvars = n_damping_vars
 
   A = np.zeros((n_samples * nv, nvars))
   b = np.zeros(n_samples * nv)
 
-  K = np.zeros((nv, nq))
-  offsets = np.zeros(nq)
-  # K[7,8] = 1097.0
-  # K[8,9] = 1264.0
-  # K[11,12] = 1196.0
-  # K[13,14] = 1184.0
-  # offsets[7] = 0.111
-  # offsets[8] = 0.103
-  # offsets[12] = 0.066
-  # offsets[14] = 0.070
-  # import pdb; pdb.set_trace()
   x_samples = []
   u_samples = []
   xdot_samples = []
@@ -211,11 +189,11 @@ def solve_with_lambda(x, xdot, t_x, u_meas):
     JdotV = np.vstack((JdotV_l_loop_closure, JdotV_r_loop_closure))
     JdotV = np.reshape(JdotV, (2,))
 
+    lambda_i_wo_vars = - np.linalg.inv(J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_meas[x_ind] + g - Cv + Kq) - JdotV)
+    lambda_i_w_vars = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
+
     row_start = i * (nv)
     row_end = (i+1) * (nv)
-    lambda_i_wo_vars = - np.linalg.inv(J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_meas[x_ind] + g - Cv + Kq) - JdotV)
-    # lambda_i_wo_vars = - np.linalg.inv(J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_meas[x_ind] + g - Cv) - JdotV)
-    lambda_i_w_vars = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
 
     # Damping indices
     A[row_start:row_end, -n_damping_vars:] = np.diag(x[x_ind, nq:])
@@ -238,8 +216,7 @@ def solve_with_lambda(x, xdot, t_x, u_meas):
   print("LSTSQ cost: ", result.get_optimal_cost())
   print("Solution result: ", result.get_solution_result())
   sol = result.GetSolution()
-  k_sol = sol[0:n_k]
-  d_sol = sol[n_k:n_k + n_damping_vars]
+  d_sol = sol[:n_damping_vars]
 
   D = np.diag(d_sol)
 
@@ -269,47 +246,41 @@ def solve_with_lambda(x, xdot, t_x, u_meas):
     Bu = B @ u_samples[i]
     Dv = D @ x_samples[i, nq:]
 
-    # lambda_implicit = np.linalg.inv(J @ M_inv @ J.T)
     lambda_implicit = (J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_samples[i] + g - Cv + Kq + Dv) - JdotV)
-    # lambda_implicit = (J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_samples[i] + g - Cv + Dv) - JdotV)
-    # f_samples[i] = M@xdot_samples[i, nq:] + Cv - g - Dv - J.T @ lambda_implicit - Kq
-    # f_samples[i] = M@xdot_samples[i, nq:] + Cv - g
+
     f_samples[i] = M@xdot_samples[i, -nv:] + Cv - g - Bu - Dv
-    # f_samples[i] = M@xdot_samples[i, nq:] + Cv - g
     Bu_force[i] = B @ u_samples[i]
     Cv_force[i] = Cv
     g_force[i] = g
     J_lambda[i] = J.T @ lambda_implicit
     D_force[i] = Dv
     K_force[i] = Kq + J.T @ (J @ M_inv @ J.T) @ J @ M_inv @ Kq
-    # f_samples.append(np.zeros(nv))
-  # import pdb; pdb.set_trace()
+
   plt.figure("res vs joint vel")
-  pos_idx = 4
-  vel_idx = pos_idx + 16
-  plt.plot(x_samples[:,vel_idx], f_samples[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], Bu_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], Cv_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], J_lambda[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], D_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], K_force[:,pos_idx])
+  # pos_idx = 4
+  # vel_idx = pos_idx + 16
+  vel_idx = 10
+  joint_pos_idx = 11
+  joint_vel_idx = 10 + 23
+  plt.plot(x_samples[:, joint_vel_idx], f_samples[:,vel_idx])
+  plt.plot(x_samples[:, joint_vel_idx], Bu_force[:,vel_idx])
+  plt.plot(x_samples[:, joint_vel_idx], Cv_force[:,vel_idx])
+  plt.plot(x_samples[:, joint_vel_idx], J_lambda[:,vel_idx])
+  plt.plot(x_samples[:, joint_vel_idx], D_force[:,vel_idx])
+  plt.plot(x_samples[:, joint_vel_idx], K_force[:,vel_idx])
   plt.legend(['f', 'Bu', 'Cv', 'J', 'D', 'K'])
 
-  print("K: ", k_sol)
   print("D: ", d_sol)
-  plt.figure("")
-  plt.plot(t_samples, f_samples[:,pos_idx])
-  plt.plot(t_samples, Bu_force[:,pos_idx])
-  plt.plot(t_samples, Cv_force[:,pos_idx])
-  plt.plot(t_samples, g_force[:,pos_idx])
-  plt.plot(t_samples, x_samples[:,pos_idx])
-  plt.plot(t_samples, x_samples[:,vel_idx])
-  # plt.plot(t_samples, J_lambda[:,pos_idx])
-  # plt.plot(t_samples, D_force[:,pos_idx])
-  # plt.plot(t_samples, K_force[:,pos_idx])
-  plt.legend(['f', 'Bu', 'Cv', 'g', 'D', 'K'])
-  # plt.legend(['f'])
-
+  plt.figure("Forces vs time")
+  plt.plot(t_samples, f_samples[:,vel_idx])
+  plt.plot(t_samples, Bu_force[:,vel_idx])
+  plt.plot(t_samples, Cv_force[:,vel_idx])
+  plt.plot(t_samples, g_force[:,vel_idx])
+  plt.plot(t_samples, D_force[:,vel_idx])
+  plt.plot(t_samples, K_force[:,vel_idx])
+  plt.plot(t_samples, x_samples[:,joint_pos_idx])
+  plt.plot(t_samples, x_samples[:,joint_vel_idx])
+  plt.legend(['f', 'Bu', 'Cv', 'g', 'D', 'K', 'pos', 'vel'])
 
 def plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes, act_idx = 4):
   pos_indices = slice(0, nq)
@@ -320,17 +291,12 @@ def plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes, act_idx = 4):
   # pos_indices = tuple(slice(x) for x in pos_indices)
 
   plt.figure("positions: " + filename)
-  # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
-  # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
   plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
-  # plt.plot(sample_times, np.zeros((len(sample_times),)), 'k*')
-  # plt.figure("efforts: " + filename)
-  # plt.legend(u_datatypes[u_indices])
-  plt.figure("efforts meas: " + filename)
+  plt.figure("efforts: " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
   # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
   plt.legend(u_datatypes[u_indices])
@@ -470,6 +436,17 @@ def solve_individual_joint(x, xdot, t_x, u_meas, joint_idx, act_idx):
   sol = result.GetSolution()
   print(sol)
 
+def plot_imu_data(t_x, cassie_out):
+  imu_data = []
+  t_imu_data = []
+  for i in range(len(cassie_out)):
+    if(cassie_out[i].utime / 1e6 > t_x[100] and cassie_out[i].utime / 1e6 < t_x[40100]):
+      imu_data.append(np.array(cassie_out[i].pelvis.vectorNav.linearAcceleration))
+      t_imu_data.append(cassie_out[i].utime / 1e6)
+  imu_data = np.array(imu_data)
+  t_imu_data = np.array(t_imu_data)
+  plt.figure("imu")
+  plt.plot(t_imu_data, imu_data)
 
 if __name__ == "__main__":
   main()

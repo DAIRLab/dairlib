@@ -7,6 +7,7 @@
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/fsm_event_time.h"
@@ -43,6 +44,8 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+
+using multibody::FixedJointEvaluator;
 
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -150,15 +153,8 @@ int DoMain(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant_w_spr.Finalize();
-  // Build fix-spring Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);
-  addCassieMultibody(&plant_wo_spr, nullptr, true,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     false);
-  plant_wo_spr.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
-  auto context_wo_spr = plant_wo_spr.CreateDefaultContext();
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -222,7 +218,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Swing Foot Kd: \n" << K_d_swing_foot << std::endl;
 
   // Get contact frames and position (doesn't matter whether we use
-  // plant_w_spr or plant_wo_spr because the contact frames exit in both
+  // plant_w_spr or plant_wospr because the contact frames exit in both
   // plants)
   auto left_toe = LeftToeFront(plant_w_spr);
   auto left_heel = LeftToeRear(plant_w_spr);
@@ -432,20 +428,42 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_wo_spr, context_w_spr.get(), context_wo_spr.get(),
-      true, FLAGS_print_osc /*print_tracking_info*/);
+      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
+      FLAGS_print_osc /*print_tracking_info*/);
 
   // Cost
-  int n_v = plant_wo_spr.num_velocities();
+  int n_v = plant_w_spr.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
-  // Distance constraint
-  multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_spr);
-  auto left_loop = LeftLoopClosureEvaluator(plant_wo_spr);
-  auto right_loop = RightLoopClosureEvaluator(plant_wo_spr);
+  // Constraints in OSC
+  multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
+  // 1. fourbar constraint
+  auto left_loop = LeftLoopClosureEvaluator(plant_w_spr);
+  auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
+  // 2. fixed spring constriant
+  // Note that we set the position value to 0, but this is not used in OSC,
+  // because OSC constraint only use JdotV and J.
+  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  auto left_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
+                          vel_idx_map.at("knee_joint_leftdot"), 0);
+  auto right_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_right"),
+                          vel_idx_map.at("knee_joint_rightdot"), 0);
+  auto left_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
+      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+  auto right_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
+      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+  evaluators.add_evaluator(&left_fixed_knee_spring);
+  evaluators.add_evaluator(&right_fixed_knee_spring);
+  evaluators.add_evaluator(&left_fixed_ankle_spring);
+  evaluators.add_evaluator(&right_fixed_ankle_spring);
   osc->AddKinematicConstraint(&evaluators);
 
   // Soft constraint
@@ -457,16 +475,16 @@ int DoMain(int argc, char* argv[]) {
   osc->SetContactFriction(mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_spr, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      plant_w_spr, left_toe.first, left_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_spr, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      plant_w_spr, left_heel.first, left_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_spr, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      plant_w_spr, right_toe.first, right_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
+      plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
   osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
   osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
@@ -482,18 +500,18 @@ int DoMain(int argc, char* argv[]) {
   // Swing foot tracking
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_swing_foot,
                                              K_d_swing_foot, W_swing_foot,
-                                             plant_w_spr, plant_wo_spr);
+                                             plant_w_spr, plant_w_spr);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
   ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-                                      plant_w_spr, plant_wo_spr);
+                                      plant_w_spr, plant_w_spr);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
       "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
-      W_pelvis_balance, plant_w_spr, plant_wo_spr);
+      W_pelvis_balance, plant_w_spr, plant_w_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
@@ -501,7 +519,7 @@ int DoMain(int argc, char* argv[]) {
   // Pelvis rotation tracking (yaw)
   RotTaskSpaceTrackingData pelvis_heading_traj(
       "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
-      W_pelvis_heading, plant_w_spr, plant_wo_spr);
+      W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
@@ -512,7 +530,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe, plant_w_spr,
-                                        plant_wo_spr);
+                                        plant_w_spr);
   swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
@@ -524,7 +542,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
                                             K_d_hip_yaw, W_hip_yaw, plant_w_spr,
-                                            plant_wo_spr);
+                                            plant_w_spr);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",

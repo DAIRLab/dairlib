@@ -23,6 +23,9 @@ class StandingPelvisOrientationTraj
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_port_);
+  }
 
  private:
   void CalcTraj(const drake::systems::Context<double>& context,
@@ -37,6 +40,7 @@ class StandingPelvisOrientationTraj
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
       feet_contact_points_;
   int state_port_;
+  int radio_port_;
 };
 
 }  // namespace dairlib::cassie::osc

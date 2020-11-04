@@ -339,6 +339,7 @@ cc_binary(
         ":simulator_drift",
         "//examples/Cassie/osc",
         "//multibody:utils",
+        "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
         "//systems/framework:lcm_driven_loop",
@@ -390,6 +391,7 @@ cc_binary(
         ":cassie_fixed_point_solver",
         ":cassie_utils",
         "//common",
+        "//lcm:dircon_trajectory_saver",
         "//multibody/kinematic",
         "//solvers:optimization_utils",
         "//systems/primitives",
@@ -407,6 +409,7 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
+        "//lcm:dircon_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
@@ -423,6 +426,7 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
+        "//lcm:dircon_trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
@@ -447,6 +451,7 @@ cc_binary(
     srcs = ["visualize_trajectory.cc"],
     deps = [
         ":cassie_utils",
+        "//lcm:dircon_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
         "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",

@@ -1,5 +1,7 @@
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 
+#include <dairlib/lcmt_cassie_out.hpp>
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/math/wrap_to.h"
@@ -32,6 +34,10 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_cassie_output",
+                                     drake::Value<dairlib::lcmt_cassie_out>{})
+          .get_index();
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->set_name(traj_name);
@@ -45,6 +51,8 @@ void StandingPelvisOrientationTraj::CalcTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const auto& cassie_out =
+      this->EvalInputValue<dairlib::lcmt_cassie_out>(context, radio_port_);
   VectorXd q = robot_output->GetPositions();
   plant_.SetPositions(context_, q);
   auto* casted_traj =
@@ -68,10 +76,12 @@ void StandingPelvisOrientationTraj::CalcTraj(
   VectorXd r_foot = pt_2 - pt_3;
   //  l_foot_proj = l_foot.dot()
   Vector3d rpy;
-  rpy << 0, 0,
+  rpy << cassie_out->pelvis.radio.channel[1],
+      cassie_out->pelvis.radio.channel[2],
       drake::math::wrap_to(
           0.5 * (atan2(l_foot(1), l_foot(0)) + atan2(r_foot(1), r_foot(0))),
-          -M_PI, M_PI);
+          -M_PI, M_PI) +
+          cassie_out->pelvis.radio.channel[3];
 
   auto rot_mat =
       drake::math::RotationMatrix<double>(drake::math::RollPitchYaw(rpy));

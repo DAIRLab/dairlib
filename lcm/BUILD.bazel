@@ -23,6 +23,21 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "dircon_trajectory_saver",
+    srcs = ["dircon_saved_trajectory.cc"],
+    hdrs = ["dircon_saved_trajectory.h"],
+    deps = [
+        ":lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/trajectory_optimization/dircon:dircon",
+        "@drake//common/trajectories",
+        "@lcm",
+    ],
+)
+
 cc_test(
     name = "lcm_trajectory_saver_test",
     size = "small",

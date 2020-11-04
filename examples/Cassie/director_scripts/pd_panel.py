@@ -143,7 +143,7 @@ class ControllerGui(QWidget):
         self.ramp_up_time_box = QDoubleSpinBox();
         grid.addWidget(QLabel("Ramp up time"), 11, 0)
         grid.addWidget(self.ramp_up_time_box, 11, 1)
-        self.ramp_up_time = 5.0
+        self.ramp_up_time = 0.5
 
         self.target_height_box = QDoubleSpinBox();
         grid.addWidget(QLabel("Target height"), 13, 0)
@@ -186,7 +186,7 @@ class ControllerGui(QWidget):
             self.ledits[idx].setValue(joint_default[idx])
             self.ledits[idx + len(joint_names)].setValue(kp_default[idx])
             self.ledits[idx + 2*len(joint_names)].setValue(kd_default[idx])
-        self.ramp_up_time_box.setValue(5.0)
+        self.ramp_up_time_box.setValue(0.5)
 
     def publishHeight_clicked(self):
         self.target_height = self.target_height_box.value

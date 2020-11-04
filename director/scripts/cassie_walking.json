@@ -22,7 +22,7 @@
         ],
         "alpha": 0.5,
         "type": "line",
-        "thickness": 0.005,
+        "thickness": 0.01,
         "history": 5
       }
     },
@@ -45,7 +45,7 @@
         ],
         "alpha": 0.5,
         "type": "line",
-        "thickness": 0.005,
+        "thickness": 0.01,
         "history": 5
       }
     },
@@ -95,7 +95,7 @@
         "category": "lcm",
         "abstract_channel": "NETWORK_OSC_DEBUG_SWING_FOOT",
         "abstract_type": "dairlib.lcmt_osc_output",
-        "abstract_field": "tracking_data[%d].y",
+        "abstract_field": "tracking_data[%d].y_des",
         "index_field": "tracking_data_names",
         "index_element": "left_ft_traj",
         "x_index": 0
@@ -118,7 +118,7 @@
         "category": "lcm",
         "abstract_channel": "NETWORK_OSC_DEBUG_SWING_FOOT",
         "abstract_type": "dairlib.lcmt_osc_output",
-        "abstract_field": "tracking_data[%d].y",
+        "abstract_field": "tracking_data[%d].y_des",
         "index_field": "tracking_data_names",
         "index_element": "right_ft_traj",
         "x_index": 0

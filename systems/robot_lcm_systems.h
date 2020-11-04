@@ -56,6 +56,11 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
     return this->get_input_port(effort_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_imu()
+      const {
+    return this->get_input_port(imu_input_port_);
+  }
+
  private:
   void Output(const drake::systems::Context<double>& context,
                    dairlib::lcmt_robot_output* output) const;
@@ -71,6 +76,7 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> effortIndexMap_;
   int state_input_port_;
   int effort_input_port_;
+  int imu_input_port_;
   bool publish_efforts_;
 };
 

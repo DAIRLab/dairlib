@@ -298,6 +298,12 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Contacts
   const int num_contacts_ = 2;
   const std::vector<std::string> contact_names_ = {"left", "right"};
+
+  // Parameters for complimentary filter used when Cassie is fixed on stand and
+  // we still want to estimate the floating base state
+  double cutoff_freq_;
+  Eigen::VectorXd long_term_state_average_;
+  mutable Eigen::VectorXd accelerometer_bias_;
 };
 
 }  // namespace systems

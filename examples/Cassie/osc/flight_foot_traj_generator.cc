@@ -76,20 +76,31 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateSwingTraj(
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
   plant_.SetPositionsAndVelocities(context_, x);
 
-  double start_time = t - fmod(t, period_);
+  double start_time;
+  if(is_left_ft_){
+    start_time = t - fmod(t, 2*period_);
+  }
+  else{
+    start_time = t - fmod(t + period_, 2*period_);
+  }
   double end_time = start_time + period_;
+  double mid_point_time = start_time + 0.5 * (end_time - start_time);
   std::vector<double> T_waypoint = {
-      start_time, start_time + 0.5 * (end_time - start_time), end_time};
+      start_time, mid_point_time, end_time, end_time + 0.5 * (end_time - start_time), end_time + (end_time - start_time)};
   std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
 
   // x
   Y[0](0, 0) = -0.2;
   Y[1](0, 0) = 0.0;
   Y[2](0, 0) = 0.2;
+  Y[3](0, 0) = 0.0;
+  Y[4](0, 0) = -0.2;
   // y
   Y[0](1, 0) = center_line_offset_;
   Y[1](1, 0) = center_line_offset_;
   Y[2](1, 0) = center_line_offset_;
+  Y[3](1, 0) = center_line_offset_;
+  Y[4](1, 0) = center_line_offset_;
   // z
   /// We added stance_foot_height because we want the desired trajectory to be
   /// relative to the stance foot in case the floating base state estimation
@@ -97,26 +108,36 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateSwingTraj(
   Y[0](2, 0) = -0.8;
   Y[1](2, 0) = -0.7;
   Y[2](2, 0) = -0.8;
+  Y[3](2, 0) = -0.8;
+  Y[4](2, 0) = -0.8;
 
   std::vector<MatrixXd> Y_dot(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
   Y_dot[0](0, 0) = 0;
-  Y_dot[1](0, 0) = 0.2 / period_;
+  Y_dot[1](0, 0) = 0.4 / period_;
   Y_dot[2](0, 0) = 0;
+  Y_dot[3](0, 0) = -0.4 / period_;
+  Y_dot[4](0, 0) = 0;
   // y
   Y_dot[0](1, 0) = 0;
   Y_dot[1](1, 0) = 0;
   Y_dot[2](1, 0) = 0;
+  Y_dot[3](1, 0) = 0;
+  Y_dot[4](1, 0) = 0;
   // z
   Y_dot[0](2, 0) = 0;
   Y_dot[1](2, 0) = 0;
-  Y_dot[2](2, 0) = -0.01;
+  Y_dot[2](2, 0) = 0;
+  Y_dot[3](2, 0) = 0;
+  Y_dot[4](2, 0) = 0;
 
   //  const PiecewisePolynomial<double>& foot_traj_segment =
   //      foot_traj_.slice(foot_traj_.get_segment_index(t), 1);
 
+//  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+//      T_waypoint, Y, Y_dot.at(0), Y_dot.at(4));
   return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-      T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));
+      T_waypoint, Y, true);
 }
 
 PiecewisePolynomial<double> FlightFootTrajGenerator::generateStanceTraj(
@@ -182,14 +203,16 @@ void FlightFootTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  if(fsm_state[0] != is_left_ft_){
-    *casted_traj =
-        generateSwingTraj(robot_output->GetState(), timestamp);
-  }
-  else{
-    *casted_traj =
-        generateStanceTraj(robot_output->GetState(), timestamp);
-  }
+  *casted_traj =
+      generateSwingTraj(robot_output->GetState(), timestamp);
+//  if(fsm_state[0] != is_left_ft_){
+//    *casted_traj =
+//        generateSwingTraj(robot_output->GetState(), timestamp);
+//  }
+//  else{
+//    *casted_traj =
+//        generateStanceTraj(robot_output->GetState(), timestamp);
+//  }
 }
 
 }  // namespace dairlib::examples::osc

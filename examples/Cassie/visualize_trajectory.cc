@@ -5,6 +5,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
@@ -29,6 +30,7 @@ DEFINE_int32(visualize_mode, 0,
              "0 - Single animation"
              "1 - Looped animation"
              "2 - Multipose visualizer");
+DEFINE_bool(use_transparency, false, "Transparency setting for the Multipose visualizer");
 
 namespace dairlib {
 
@@ -43,35 +45,14 @@ int DoMain() {
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
   plant.Finalize();
 
+  int nq = plant.num_positions();
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 
-  int nq = plant.num_positions();
-  int nu = plant.num_actuators();
-  int nx = plant.num_positions() + plant.num_velocities();
-
-  const LcmTrajectory& loadedTrajs =
-      LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-
-  auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
-  auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
-  auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
-
-  int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
-                 traj_mode2.datapoints.cols();
-
-  MatrixXd xu(nx + nx + nu, n_points);
-  VectorXd times(n_points);
-
-  xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
-
-  times << traj_mode0.time_vector, traj_mode1.time_vector,
-      traj_mode2.time_vector;
-
-  MatrixXd x = xu.topRows(nx);
-  MatrixXd xdot = xu.topRows(2 * nx).bottomRows(nx);
+  DirconTrajectory saved_traj(FLAGS_folder_path + FLAGS_trajectory_name);
+  VectorXd time_vector = saved_traj.GetBreaks();
 
   PiecewisePolynomial<double> optimal_traj =
-      PiecewisePolynomial<double>::CubicHermite(times, x, xdot);
+      saved_traj.ReconstructStateTrajectory();
 
   if (FLAGS_visualize_mode == 0 || FLAGS_visualize_mode == 1) {
     multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
@@ -88,14 +69,23 @@ int DoMain() {
     } while (FLAGS_visualize_mode == 1);
   } else if (FLAGS_visualize_mode == 2) {
     MatrixXd poses = MatrixXd::Zero(nq, FLAGS_num_poses);
-    std::vector<double> indices = {0, 12, 20};
     for (int i = 0; i < FLAGS_num_poses; ++i) {
-      poses.col(i) = optimal_traj.value(times[i * n_points / FLAGS_num_poses]);
+      poses.col(i) = optimal_traj.value(
+          time_vector[i * time_vector.size() / FLAGS_num_poses]);
     }
-    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
-        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
-        FLAGS_num_poses);
-    visualizer.DrawPoses(poses);
+    if(FLAGS_use_transparency){
+      VectorXd alpha_scale = VectorXd::LinSpaced(FLAGS_num_poses, 0.2, 1.0);
+      multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+          FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+          FLAGS_num_poses, alpha_scale.array().square());
+      visualizer.DrawPoses(poses);
+    }
+    else{
+      multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+          FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+          FLAGS_num_poses);
+      visualizer.DrawPoses(poses);
+    }
   }
 
   return 0;

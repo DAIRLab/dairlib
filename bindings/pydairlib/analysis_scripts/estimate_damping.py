@@ -36,6 +36,8 @@ def main():
   global l_loop_closure, r_loop_closure
   global x_datatypes, u_datatypes
 
+  np.set_printoptions(precision=3)
+
   builder = DiagramBuilder()
   plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
 
@@ -82,7 +84,10 @@ def main():
   r_loop_closure = RightLoopClosureEvaluator(plant)
 
   filename = sys.argv[1]
-  controller_name = sys.argv[2]
+  if(len(sys.argv) > 2):
+    controller_name = sys.argv[2]
+  else:
+    controller_name = "CASSIE_INPUT"
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
@@ -105,9 +110,24 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
   # sample_times = [46.0, 58.5, 65.0, 70.2, 74.8, 93.1, 98.7]
 
+
+  # imu_data = np.zeros((len(cassie_out), 3))
+  # t_imu_data = np.zeros((len(cassie_out),))
+  # imu_data = []
+  # t_imu_data = []
+  # for i in range(len(cassie_out)):
+  #   if(cassie_out[i].utime / 1e6 > t_x[100] and cassie_out[i].utime / 1e6 < t_x[40100]):
+      # imu_data[i] = np.array(cassie_out[i].pelvis.vectorNav.linearAcceleration)
+      # t_imu_data[i] = cassie_out[i].utime / 1e6
+  #     imu_data.append(np.array(cassie_out[i].pelvis.vectorNav.linearAcceleration))
+  #     t_imu_data.append(cassie_out[i].utime / 1e6)
+  # imu_data = np.array(imu_data)
+  # t_imu_data = np.array(t_imu_data)
+  # plt.figure("imu")
+  # plt.plot(t_imu_data, imu_data)
+
   # import pdb; pdb.set_trace()
   # plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes)
-  # plt.show()
   xdot = estimate_xdot_with_filtering(x, t_x)
 
   # solve_individual_joint(x, xdot, t_x, u_meas, pos_map[joint_name], act_map[joint_name + '_motor'])
@@ -120,27 +140,200 @@ def main():
 def estimate_xdot_with_filtering(x, t_x):
   xdot = np.zeros((x.shape))
 
-  filter = 10
-  idx = int(filter / 2)
-  filtered_x = np.copy(x)
-  for i in range(idx, t_x.shape[0] - idx):
-    filtered_x[i, nq:] = np.average(x[i - idx:i+idx, nq:])
-
-  vdot = np.diff(filtered_x[:, -plant.num_velocities():], axis=0, prepend=filtered_x[0:1, -nv:])
+  vdot = np.diff(x[:, -nv:], axis=0, prepend=x[0:1, -nv:])
   dt = np.diff(t_x, axis=0, prepend=t_x[0] - 1e-4)
   for i in range(plant.num_velocities()):
     vdot[:, i] = vdot[:, i] / dt
 
-  filter = 50
+  filter = 100
   idx = int(filter / 2)
-  filter_output = np.diff(x[:, -plant.num_velocities():], axis=0, prepend=x[0:1, -nv:])
+  filter_output = np.zeros((x.shape[0], nv))
   for i in range(idx, dt.shape[0] - idx):
-    filter_output[i, :] = np.average(vdot[i - idx:i+idx, :])
+    # be careful when using np.average
+    filter_output[i, :] = np.average(vdot[i - idx:i+idx, :], axis=0)
 
-  # plt.figure("vdot")
-  # plt.plot(t_x[t_slice], vdot[t_slice])
-  # plt.show()
-  return np.hstack((x[:, :nv], filter_output))
+  plt.figure("vdot fb")
+  plt.plot(t_x[t_slice], filter_output[t_slice, 4:6])
+  
+  xdot = np.hstack((x[:, -nv:], filter_output))
+  return xdot
+
+def solve_with_lambda(x, xdot, t_x, u_meas):
+  # n_samples = len(sample_times)
+  # n_samples = 2000
+  n_samples = 10000
+  n_k = 0
+  n_damping_vars = nv
+  nvars = n_k + n_damping_vars
+
+  A = np.zeros((n_samples * nv, nvars))
+  b = np.zeros(n_samples * nv)
+
+  K = np.zeros((nv, nq))
+  offsets = np.zeros(nq)
+  # K[7,8] = 1097.0
+  # K[8,9] = 1264.0
+  # K[11,12] = 1196.0
+  # K[13,14] = 1184.0
+  # offsets[7] = 0.111
+  # offsets[8] = 0.103
+  # offsets[12] = 0.066
+  # offsets[14] = 0.070
+  # import pdb; pdb.set_trace()
+  x_samples = []
+  u_samples = []
+  xdot_samples = []
+  t_samples = []
+
+  for i in range(n_samples):
+    t = t_x[100] + 1e-3 * i
+    x_ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
+    x_samples.append(x[x_ind, :])
+    xdot_samples.append(xdot[x_ind, :])
+    u_samples.append(u_meas[x_ind, :])
+    t_samples.append(t)
+
+    plant.SetPositionsAndVelocities(context, x[x_ind, :])
+
+    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    M_inv = np.linalg.inv(M)
+    B = plant.MakeActuationMatrix()
+    g = plant.CalcGravityGeneralizedForces(context)
+    Cv = plant.CalcBiasTerm(context)
+    Kq = K @ (offsets - x[x_ind, :nq])
+
+    J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
+    J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
+    J = np.vstack((J_l_loop_closure, J_r_loop_closure))
+
+    JdotV_l_loop_closure = l_loop_closure.EvalFullJacobianDotTimesV(context)
+    JdotV_r_loop_closure = r_loop_closure.EvalFullJacobianDotTimesV(context)
+    JdotV = np.vstack((JdotV_l_loop_closure, JdotV_r_loop_closure))
+    JdotV = np.reshape(JdotV, (2,))
+
+    row_start = i * (nv)
+    row_end = (i+1) * (nv)
+    lambda_i_wo_vars = - np.linalg.inv(J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_meas[x_ind] + g - Cv + Kq) - JdotV)
+    # lambda_i_wo_vars = - np.linalg.inv(J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_meas[x_ind] + g - Cv) - JdotV)
+    lambda_i_w_vars = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
+
+    # Damping indices
+    A[row_start:row_end, -n_damping_vars:] = np.diag(x[x_ind, nq:])
+    A[row_start:row_end, -n_damping_vars:] += np.diag((J.T @ lambda_i_w_vars) @ x[x_ind, nq:])
+
+    # Lambda indices
+    b[row_start:row_end] = M @ xdot[x_ind, -nv:] + Cv - B @ u_meas[x_ind] - g - J.T @ lambda_i_wo_vars - Kq
+
+  x_samples = np.array(x_samples)
+  xdot_samples = np.array(xdot_samples)
+
+  prog = mp.MathematicalProgram()
+  x_vars = prog.NewContinuousVariables(nvars, "sigma")
+  prog.AddL2NormCost(A, b, x_vars)
+  prog.AddBoundingBoxConstraint(np.full((nv,), -np.inf), np.zeros(nv), x_vars)
+  solver_id = mp.ChooseBestSolver(prog)
+  print(solver_id.name())
+  solver = mp.MakeSolver(solver_id)
+  result = solver.Solve(prog, None, None)
+  print("LSTSQ cost: ", result.get_optimal_cost())
+  print("Solution result: ", result.get_solution_result())
+  sol = result.GetSolution()
+  k_sol = sol[0:n_k]
+  d_sol = sol[n_k:n_k + n_damping_vars]
+
+  D = np.diag(d_sol)
+
+  f_samples = np.zeros((n_samples, nv))
+  Bu_force = np.zeros((n_samples, nv))
+  Cv_force = np.zeros((n_samples, nv))
+  g_force = np.zeros((n_samples, nv))
+  D_force = np.zeros((n_samples, nv))
+  K_force = np.zeros((n_samples, nv))
+  J_lambda = np.zeros((n_samples, nv))
+  for i in range(n_samples):
+    plant.SetPositionsAndVelocities(context, x_samples[i, :])
+
+    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    M_inv = np.linalg.inv(M)
+    B = plant.MakeActuationMatrix()
+    g = plant.CalcGravityGeneralizedForces(context)
+    Cv = plant.CalcBiasTerm(context)
+    J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
+    J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
+    J = np.vstack((J_l_loop_closure, J_r_loop_closure))
+    JdotV_l_loop_closure = l_loop_closure.EvalFullJacobianDotTimesV(context)
+    JdotV_r_loop_closure = r_loop_closure.EvalFullJacobianDotTimesV(context)
+    JdotV = np.vstack((JdotV_l_loop_closure, JdotV_r_loop_closure))
+    JdotV = np.reshape(JdotV, (2,))
+    Kq = K @ (offsets - x_samples[i, :nq])
+    Bu = B @ u_samples[i]
+    Dv = D @ x_samples[i, nq:]
+
+    # lambda_implicit = np.linalg.inv(J @ M_inv @ J.T)
+    lambda_implicit = (J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_samples[i] + g - Cv + Kq + Dv) - JdotV)
+    # lambda_implicit = (J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_samples[i] + g - Cv + Dv) - JdotV)
+    # f_samples[i] = M@xdot_samples[i, nq:] + Cv - g - Dv - J.T @ lambda_implicit - Kq
+    # f_samples[i] = M@xdot_samples[i, nq:] + Cv - g
+    f_samples[i] = M@xdot_samples[i, -nv:] + Cv - g - Bu - Dv
+    # f_samples[i] = M@xdot_samples[i, nq:] + Cv - g
+    Bu_force[i] = B @ u_samples[i]
+    Cv_force[i] = Cv
+    g_force[i] = g
+    J_lambda[i] = J.T @ lambda_implicit
+    D_force[i] = Dv
+    K_force[i] = Kq + J.T @ (J @ M_inv @ J.T) @ J @ M_inv @ Kq
+    # f_samples.append(np.zeros(nv))
+  # import pdb; pdb.set_trace()
+  plt.figure("res vs joint vel")
+  pos_idx = 4
+  vel_idx = pos_idx + 16
+  plt.plot(x_samples[:,vel_idx], f_samples[:,pos_idx])
+  plt.plot(x_samples[:,vel_idx], Bu_force[:,pos_idx])
+  plt.plot(x_samples[:,vel_idx], Cv_force[:,pos_idx])
+  plt.plot(x_samples[:,vel_idx], J_lambda[:,pos_idx])
+  plt.plot(x_samples[:,vel_idx], D_force[:,pos_idx])
+  plt.plot(x_samples[:,vel_idx], K_force[:,pos_idx])
+  plt.legend(['f', 'Bu', 'Cv', 'J', 'D', 'K'])
+
+  print("K: ", k_sol)
+  print("D: ", d_sol)
+  plt.figure("")
+  plt.plot(t_samples, f_samples[:,pos_idx])
+  plt.plot(t_samples, Bu_force[:,pos_idx])
+  plt.plot(t_samples, Cv_force[:,pos_idx])
+  plt.plot(t_samples, g_force[:,pos_idx])
+  plt.plot(t_samples, x_samples[:,pos_idx])
+  plt.plot(t_samples, x_samples[:,vel_idx])
+  # plt.plot(t_samples, J_lambda[:,pos_idx])
+  # plt.plot(t_samples, D_force[:,pos_idx])
+  # plt.plot(t_samples, K_force[:,pos_idx])
+  plt.legend(['f', 'Bu', 'Cv', 'g', 'D', 'K'])
+  # plt.legend(['f'])
+
+
+def plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes, act_idx = 4):
+  pos_indices = slice(0, nq)
+  vel_indices = slice(nq, nx)
+  u_indices = act_idx
+  # overwrite
+  # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
+  # pos_indices = tuple(slice(x) for x in pos_indices)
+
+  plt.figure("positions: " + filename)
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  plt.legend(x_datatypes[pos_indices])
+  plt.figure("velocities: " + filename)
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
+  plt.legend(x_datatypes[vel_indices])
+  # plt.plot(sample_times, np.zeros((len(sample_times),)), 'k*')
+  # plt.figure("efforts: " + filename)
+  # plt.legend(u_datatypes[u_indices])
+  plt.figure("efforts meas: " + filename)
+  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
+  plt.legend(u_datatypes[u_indices])
 
 
 def solve_individual_joint(x, xdot, t_x, u_meas, joint_idx, act_idx):
@@ -276,179 +469,6 @@ def solve_individual_joint(x, xdot, t_x, u_meas, joint_idx, act_idx):
   print("Solution result: ", result.get_solution_result())
   sol = result.GetSolution()
   print(sol)
-
-def solve_with_lambda(x, xdot, t_x, u_meas):
-  # n_samples = len(sample_times)
-  n_samples = 2000
-  n_k = 0
-  n_damping_vars = 23 - 7
-  nvars = n_k + n_damping_vars
-
-  A = np.zeros((n_samples * nv, nvars))
-  b = np.zeros(n_samples * nv)
-
-  K = np.zeros((nq, nq))
-  offsets = np.zeros(nq)
-  K[8,8] = 1097.0
-  K[9,9] = 1264.0
-  K[12,12] = 1196.0
-  K[14,14] = 1184.0
-  offsets[8] = 0.111
-  offsets[9] = 0.103
-  offsets[12] = 0.066
-  offsets[14] = 0.070
-  # import pdb; pdb.set_trace()
-  x_samples = []
-  u_samples = []
-  xdot_samples = []
-  t_samples = []
-
-  for i in range(n_samples):
-    # delta_t = 1e-2 * i
-    t = t_x[100] + 1e-2 * i
-    x_ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
-    x_samples.append(x[x_ind, :])
-    xdot_samples.append(xdot[x_ind, :])
-    u_samples.append(u_meas[x_ind, :])
-    t_samples.append(t)
-    plant.SetPositionsAndVelocities(context, x[x_ind, :])
-
-    M = plant.CalcMassMatrixViaInverseDynamics(context)
-    M_inv = np.linalg.inv(M)
-    B = plant.MakeActuationMatrix()
-    g = plant.CalcGravityGeneralizedForces(context)
-    Cv = plant.CalcBiasTerm(context)
-    Kq = K @ (offsets - x[x_ind, :nq])
-
-    J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
-    J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
-    J = np.vstack((J_l_loop_closure, J_r_loop_closure))
-
-    JdotV_l_loop_closure = l_loop_closure.EvalFullJacobianDotTimesV(context)
-    JdotV_r_loop_closure = r_loop_closure.EvalFullJacobianDotTimesV(context)
-    JdotV = np.vstack((JdotV_l_loop_closure, JdotV_r_loop_closure))
-    JdotV = np.reshape(JdotV, (2,))
-
-    row_start = i * (nv)
-    row_end = (i+1) * (nv)
-
-    # lambda_i_wo_vars = - np.linalg.inv(J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_meas[x_ind] + g - Cv + Kq) - JdotV)
-    lambda_i_wo_vars = - np.linalg.inv(J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_meas[x_ind] + g - Cv) - JdotV)
-    lambda_i_w_vars = - np.linalg.inv(J @ M_inv @ J.T) @ (J @ M_inv)
-
-    # Damping indices
-    A[row_start:row_end, -n_damping_vars:] = np.diag(x[x_ind, nq:])
-    A[row_start:row_end, -n_damping_vars:] += np.diag((J.T @ lambda_i_w_vars) @ x[x_ind, nq:])
-
-    # Lambda indices
-    b[row_start:row_end] = M @ xdot[x_ind, -nv:] + Cv - B @ u_meas[x_ind] - g - J.T @ lambda_i_wo_vars - Kq
-
-  x_samples = np.array(x_samples)
-  xdot_samples = np.array(xdot_samples)
-
-  prog = mp.MathematicalProgram()
-  x_vars = prog.NewContinuousVariables(nvars, "sigma")
-  prog.AddL2NormCost(A, b, x_vars)
-  solver_id = mp.ChooseBestSolver(prog)
-  print(solver_id.name())
-  solver = mp.MakeSolver(solver_id)
-  result = solver.Solve(prog, None, None)
-  print("LSTSQ cost: ", result.get_optimal_cost())
-  print("Solution result: ", result.get_solution_result())
-  sol = result.GetSolution()
-  k_sol = sol[0:n_k]
-  d_sol = sol[n_k:n_k + n_damping_vars]
-
-  D = np.diag(d_sol)
-  f_samples = np.zeros((n_samples, nv))
-  Bu_force = np.zeros((n_samples, nv))
-  Cv_force = np.zeros((n_samples, nv))
-  g_force = np.zeros((n_samples, nv))
-  D_force = np.zeros((n_samples, nv))
-  K_force = np.zeros((n_samples, nv))
-  J_lambda = np.zeros((n_samples, nv))
-  for i in range(n_samples):
-    plant.SetPositionsAndVelocities(context, x_samples[i, :])
-
-    M = plant.CalcMassMatrixViaInverseDynamics(context)
-    M_inv = np.linalg.inv(M)
-    B = plant.MakeActuationMatrix()
-    g = plant.CalcGravityGeneralizedForces(context)
-    Cv = plant.CalcBiasTerm(context)
-    J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
-    J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
-    J = np.vstack((J_l_loop_closure, J_r_loop_closure))
-    JdotV_l_loop_closure = l_loop_closure.EvalFullJacobianDotTimesV(context)
-    JdotV_r_loop_closure = r_loop_closure.EvalFullJacobianDotTimesV(context)
-    JdotV = np.vstack((JdotV_l_loop_closure, JdotV_r_loop_closure))
-    JdotV = np.reshape(JdotV, (2,))
-    Kq = K @ (offsets - x_samples[i, :nq])
-    Bu = B @ u_samples[i]
-    Dv = D @ x_samples[i, nv:]
-
-    # lambda_implicit = np.linalg.inv(J @ M_inv @ J.T)
-
-    lambda_implicit = (J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_samples[i] + g - Cv + Kq + Dv) - JdotV)
-    # lambda_implicit = (J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_samples[i] + g - Cv + Dv) - JdotV)
-    # f_samples[i] = M@xdot_samples[i, nq:] + Cv - g - Dv - J.T @ lambda_implicit - Kq
-    f_samples[i] = M@xdot_samples[i, nq:] + Cv - g
-    # f_samples[i] = M@xdot_samples[i, nq:] + Cv - g
-    Bu_force[i] = B @ u_samples[i]
-    Cv_force[i] = Cv
-    g_force[i] = g
-    J_lambda[i] = J.T @ lambda_implicit
-    D_force[i] = Dv
-    K_force[i] = Kq + J.T @ (J @ M_inv @ J.T) @ J @ M_inv @ Kq
-    # f_samples.append(np.zeros(nv))
-  # import pdb; pdb.set_trace()
-  plt.figure("res vs joint vel")
-  pos_idx = 4
-  vel_idx = pos_idx + 16
-  plt.plot(x_samples[:,vel_idx], f_samples[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], Bu_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], Cv_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], J_lambda[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], D_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], K_force[:,pos_idx])
-  plt.legend(['f', 'Bu', 'Cv', 'J', 'D', 'K'])
-
-  print("K: ", k_sol)
-  print("D: ", d_sol)
-  plt.figure()
-  plt.plot(t_samples, f_samples[:,pos_idx])
-  plt.plot(t_samples, Bu_force[:,pos_idx])
-  # plt.plot(t_samples, Cv_force[:,pos_idx])
-  # plt.plot(t_samples, J_lambda[:,pos_idx])
-  # plt.plot(t_samples, g_force[:,pos_idx])
-  # plt.plot(t_samples, D_force[:,pos_idx])
-  # plt.plot(t_samples, K_force[:,pos_idx])
-  plt.legend(['f', 'Bu', 'Cv', 'J', 'g', 'D', 'K'])
-  # plt.legend(['f'])
-
-
-def plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes, act_idx = 0):
-  pos_indices = slice(0, nq)
-  vel_indices = slice(nq, nx)
-  u_indices = act_idx
-  # overwrite
-  # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
-  # pos_indices = tuple(slice(x) for x in pos_indices)
-
-  plt.figure("positions: " + filename)
-  # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
-  # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
-  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
-  plt.legend(x_datatypes[pos_indices])
-  plt.figure("velocities: " + filename)
-  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
-  plt.legend(x_datatypes[vel_indices])
-  # plt.plot(sample_times, np.zeros((len(sample_times),)), 'k*')
-  # plt.figure("efforts: " + filename)
-  # plt.legend(u_datatypes[u_indices])
-  plt.figure("efforts meas: " + filename)
-  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
-  plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
-  plt.legend(u_datatypes[u_indices])
 
 
 if __name__ == "__main__":

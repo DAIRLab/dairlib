@@ -1056,7 +1056,6 @@ EventStatus CassieStateEstimator::Update(
         R_WB * imu_measurement.tail(3) + gravity_;
     Vector3d imu_excluding_gravity_wrt_body =
         R_WB.transpose() * imu_excluding_gravity_wrt_world;
-    imu_measurement.tail(3) = imu_excluding_gravity_wrt_body;
     //    cout << "after: imu_measurement.tail(3) = "
     //         << imu_measurement.tail(3).transpose() << endl;
 
@@ -1075,7 +1074,7 @@ EventStatus CassieStateEstimator::Update(
     estimated_fb_state.segment(7, 3) = omega_global;
     // translational vel
     estimated_fb_state.tail(3) +=
-        (imu_excluding_gravity_wrt_world - accelerometer_bias_) * dt;
+        R_WB * (imu_excluding_gravity_wrt_body - accelerometer_bias_) * dt;
 
     // Step 2: correction step
     double w_correction_signal =
@@ -1089,22 +1088,21 @@ EventStatus CassieStateEstimator::Update(
     int n_loop = 10000 * 4;
     if ((*counter_for_testing_) < n_loop) {
       accelerometer_bias_ =
-          0.99 * accelerometer_bias_ + 0.01 * imu_excluding_gravity_wrt_world;
-      if ((*counter_for_testing_) == n_loop-1)
-        cout << "done calibrating\n";
+          0.99 * accelerometer_bias_ + 0.01 * imu_excluding_gravity_wrt_body;
+      if ((*counter_for_testing_) == n_loop - 1) cout << "done calibrating\n";
     }
 
     if ((*counter_for_testing_) == 0) {
-    
       estimated_fb_state = VectorXd::Zero(13);
-      estimated_fb_state[0]=1;
+      estimated_fb_state[0] = 1;
     }
     // Printing
     if ((*counter_for_testing_) % 5000 == 0) {
       cout << "estimated_fb_state = " << estimated_fb_state.transpose() << endl;
-            cout << "accelerometer_bias_ = " << accelerometer_bias_.transpose() << endl;
-      cout << "imu_excluding_gravity_wrt_world = " << imu_excluding_gravity_wrt_world.transpose() << endl;
-
+      cout << "accelerometer_bias_ = " << accelerometer_bias_.transpose()
+           << endl;
+      cout << "imu_excluding_gravity_wrt_body = "
+           << imu_excluding_gravity_wrt_body.transpose() << endl;
     }
     *counter_for_testing_ = *counter_for_testing_ + 1;
   } else {

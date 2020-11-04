@@ -36,6 +36,10 @@ def main():
   global l_loop_closure, r_loop_closure
   global x_datatypes, u_datatypes
 
+  # parameter
+  data_has_floating_base = True
+  process_with_fixed_base = True
+
   np.set_printoptions(precision=3)
 
   builder = DiagramBuilder()
@@ -46,7 +50,7 @@ def main():
   #     "examples/Cassie/urdf/cassie_v2.urdf"))
   # pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, False,
   #   "examples/Cassie/urdf/cassie_v2.urdf", True, True)
-  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, False,
+  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, data_has_floating_base,
                                                    "examples/Cassie/urdf/cassie_v2.urdf", False, False)
   plant.Finalize()
 
@@ -146,7 +150,7 @@ def estimate_xdot_with_filtering(x, t_x):
   for i in range(plant.num_velocities()):
     vdot[:, i] = vdot[:, i] / dt
 
-  filter = 100
+  filter = 50
   idx = int(filter / 2)
   filter_output = np.zeros((x.shape[0], nv))
   for i in range(idx, dt.shape[0] - idx):
@@ -156,7 +160,8 @@ def estimate_xdot_with_filtering(x, t_x):
   plt.figure("vdot fb")
   plt.plot(t_x[t_slice], filter_output[t_slice, 4:6])
 
-  xdot = np.hstack((x[:, -nv:], filter_output))
+  # xdot = np.hstack((x[:, -nv:], filter_output))
+  xdot = np.hstack((np.zeros((x.shape[0], nq)), filter_output))
 
   # import pdb; pdb.set_trace()
   return xdot
@@ -288,28 +293,30 @@ def solve_with_lambda(x, xdot, t_x, u_meas):
     # f_samples.append(np.zeros(nv))
   # import pdb; pdb.set_trace()
   plt.figure("res vs joint vel")
-  pos_idx = 4
-  vel_idx = pos_idx + 16
-  plt.plot(x_samples[:,vel_idx], f_samples[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], Bu_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], Cv_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], J_lambda[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], D_force[:,pos_idx])
-  plt.plot(x_samples[:,vel_idx], K_force[:,pos_idx])
+  pos_idx = 11 #4, 11
+  vel_idx = (nv-nq) + pos_idx
+  print("pos_idx = " + str(pos_idx))
+  print("vel_idx = " + str(vel_idx))
+  plt.plot(x_samples[:,vel_idx+nq], f_samples[:,vel_idx])
+  plt.plot(x_samples[:,vel_idx+nq], Bu_force[:,vel_idx])
+  plt.plot(x_samples[:,vel_idx+nq], Cv_force[:,vel_idx])
+  plt.plot(x_samples[:,vel_idx+nq], J_lambda[:,vel_idx])
+  plt.plot(x_samples[:,vel_idx+nq], D_force[:,vel_idx])
+  plt.plot(x_samples[:,vel_idx+nq], K_force[:,vel_idx])
   plt.legend(['f', 'Bu', 'Cv', 'J', 'D', 'K'])
 
   print("K: ", k_sol)
   print("D: ", d_sol)
   plt.figure("")
-  plt.plot(t_samples, f_samples[:,pos_idx])
-  plt.plot(t_samples, Bu_force[:,pos_idx])
-  plt.plot(t_samples, Cv_force[:,pos_idx])
-  plt.plot(t_samples, g_force[:,pos_idx])
-  plt.plot(t_samples, x_samples[:,pos_idx])
-  plt.plot(t_samples, x_samples[:,vel_idx])
-  # plt.plot(t_samples, J_lambda[:,pos_idx])
-  # plt.plot(t_samples, D_force[:,pos_idx])
-  # plt.plot(t_samples, K_force[:,pos_idx])
+  plt.plot(t_samples, f_samples[:,vel_idx])
+  plt.plot(t_samples, Bu_force[:,vel_idx])
+  plt.plot(t_samples, Cv_force[:,vel_idx])
+  plt.plot(t_samples, g_force[:,vel_idx])
+  plt.plot(t_samples, x_samples[:,vel_idx+nq])
+  # plt.plot(t_samples, x_samples[:,pos_idx])
+  # plt.plot(t_samples, J_lambda[:,vel_idx])
+  # plt.plot(t_samples, D_force[:,vel_idx])
+  # plt.plot(t_samples, K_force[:,vel_idx])
   plt.legend(['f', 'Bu', 'Cv', 'g', 'D', 'K'])
   # plt.legend(['f'])
 

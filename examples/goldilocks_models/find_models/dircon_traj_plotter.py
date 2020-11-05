@@ -24,7 +24,6 @@ def main():
   # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
   # filename = abs_path + "/dircon_trajectory"
   # filename = "../dircon_trajectory"
-  # filename = "../dairlib_data/cassie_trajopt_data/default_filename"
   if len(sys.argv) == 2:
     if sys.argv[1] != "save":
       filename = sys.argv[1]
@@ -102,6 +101,9 @@ def main():
   Print the value of the solutions
   """
   PrintAllDecisionVar(dircon_traj)
+
+  # print(dircon_traj.GetStateSamples(1))
+  # import pdb; pdb.set_trace()
 
   if not savefig:
     plt.show()

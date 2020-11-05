@@ -2053,7 +2053,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   bool add_cost_on_collocation_vel = false;
   bool add_joint_acceleration_cost = true;
-  bool not_trapo_integration_cost = false;  // TODO: try this again
+  bool not_trapo_integration_cost = false;
   bool add_joint_acceleration_constraint = false;
   double joint_accel_lb = -10;
   double joint_accel_ub = 10;
@@ -2066,6 +2066,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing
   bool lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = false;
+
+  // Testing
+  bool pre_and_post_impact_efforts = true;
+  if (pre_and_post_impact_efforts) {
+    cout << "WARNING: you also need to set the flat "
+            "`pre_and_post_impact_efforts` in HybridDricon to true.\n";
+  }
 
   // Setup cost matrices
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
@@ -2363,7 +2370,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   auto u = trajopt->input();
   auto x = trajopt->state();
   auto u0 = trajopt->input(0);
-  auto uf = trajopt->input(N - 1);
+  auto uf = (only_one_mode || !pre_and_post_impact_efforts)
+                ? trajopt->input(N - 1)
+                : trajopt->input_vars_by_mode(
+                      num_time_samples.size() - 1,
+                      num_time_samples[num_time_samples.size() - 1] - 1);
   auto x0 = trajopt->initial_state();
   auto xf = only_one_mode
                 ? trajopt->final_state()
@@ -2471,23 +2482,22 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // From:
   // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
   // traj/Cost setting 2/1 rederived start and end state from nomial traj/
-  //  x0_val << 1, 0, 0, 0, 0, 0.00403739, 1.09669, -0.0109186, -0.00428689,
-  //      0.0286625, -0.0286639, 0.455519, 0.229628, -0.646, -0.82116, 0.866859,
-  //      1.04372, -1.54955, -1.3258, 1.95188E-07, -8.5509E-08, -8.03449E-11,
-  //      0.660358, 0.322854, -0.0609757, -0.277685, -0.274869, -8.67676E-05,
-  //      0.0667662, 0.0559658, -0.659971, -1.44404, -0.10276, 1.46346, 0.10347,
-  //      -0.0674264, 0.631613;
-  //  xf_val << 1, 0, 0, 0, 0.3, -0.00403739, 1.09669, 0.00428689, 0.0109186,
-  //      0.0286639, -0.0286625, 0.229628, 0.455519, -0.82116, -0.646, 1.04372,
-  //      0.866859, -1.3258, -1.54955, 0.51891, -0.174452, 0.100391, 0.661351,
-  //      -0.338064, -0.12571, -0.183991, 0.218535, -0.101178, -0.0317852,
-  //      -0.8024, -0.278951, -0.148364, 0.375203, 0.149389, -0.380249,
-  //      0.617827, -0.712411;
-  //  auto xf_end_of_first_mode = trajopt->final_state();
-  //  trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
-  //                                    x0.head(n_q));
-  //  trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
-  //                                    xf_end_of_first_mode.head(n_q));
+  x0_val << 1, 0, 0, 0, 0, 0.00403739, 1.09669, -0.0109186, -0.00428689,
+      0.0286625, -0.0286639, 0.455519, 0.229628, -0.646, -0.82116, 0.866859,
+      1.04372, -1.54955, -1.3258, 1.95188E-07, -8.5509E-08, -8.03449E-11,
+      0.660358, 0.322854, -0.0609757, -0.277685, -0.274869, -8.67676E-05,
+      0.0667662, 0.0559658, -0.659971, -1.44404, -0.10276, 1.46346, 0.10347,
+      -0.0674264, 0.631613;
+  xf_val << 1, 0, 0, 0, 0.3, -0.00403739, 1.09669, 0.00428689, 0.0109186,
+      0.0286639, -0.0286625, 0.229628, 0.455519, -0.82116, -0.646, 1.04372,
+      0.866859, -1.3258, -1.54955, 0.51891, -0.174452, 0.100391, 0.661351,
+      -0.338064, -0.12571, -0.183991, 0.218535, -0.101178, -0.0317852, -0.8024,
+      -0.278951, -0.148364, 0.375203, 0.149389, -0.380249, 0.617827, -0.712411;
+  auto xf_end_of_first_mode = trajopt->final_state();
+  trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
+                                    x0.head(n_q));
+  trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
+                                    xf_end_of_first_mode.head(n_q));
   //  trajopt->AddBoundingBoxConstraint(x0_val.head(6), x0_val.head(6),
   //  x0.head(6)); trajopt->AddBoundingBoxConstraint(xf_val.head(6),
   //  xf_val.head(6),
@@ -2668,10 +2678,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   // u limit
-  for (int i = 0; i < N; i++) {
-    auto ui = trajopt->input(i);
-    trajopt->AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
-                                      VectorXd::Constant(n_u, +300), ui);
+  if (pre_and_post_impact_efforts) {
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        auto ui = trajopt->input_vars_by_mode(mode, index);
+        trajopt->AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
+                                          VectorXd::Constant(n_u, +300), ui);
+      }
+    }
+  } else {
+    for (int i = 0; i < N; i++) {
+      auto ui = trajopt->input(i);
+      trajopt->AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
+                                        VectorXd::Constant(n_u, +300), ui);
+    }
   }
 
   if (setting.com_accel_constraint && zero_com_height_vel) {
@@ -3428,6 +3448,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
          << endl;
     cout << "add_base_vy_constraint = " << add_base_vy_constraint
          << "; (lb, ub) = " << base_vy_lb << ", " << base_vy_ub << endl;
+
+    cout << "pre_and_post_impact_efforts = " << pre_and_post_impact_efforts
+         << endl;
+    if (pre_and_post_impact_efforts) {
+      cout << "u_pre_impact = "
+           << result.GetSolution(gm_traj_opt.dircon->input(N - 1)).transpose()
+           << endl;
+      cout << "u_post_impact = "
+           << result
+                  .GetSolution(gm_traj_opt.dircon->input_vars_by_mode(
+                      num_time_samples.size() - 1,
+                      num_time_samples[num_time_samples.size() - 1] - 1))
+                  .transpose()
+           << endl;
+    }
+
+    cout << endl;
   }  // end if is_print_for_debugging
 }
 

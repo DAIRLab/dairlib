@@ -171,6 +171,12 @@ class HybridDircon
   drake::solvers::VectorXDecisionVariable state_vars_by_mode(
       int mode, int time_index) const;
 
+  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
+  u_post_impact_vars_by_mode(int mode) const;
+
+  drake::solvers::VectorXDecisionVariable input_vars_by_mode(
+      int mode, int time_index) const;
+
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable> force(
       int mode, int index) const {
     DRAKE_DEMAND(index < mode_lengths_[mode]);
@@ -217,6 +223,7 @@ class HybridDircon
   std::vector<int> mode_start_;
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
   const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
+  const drake::solvers::VectorXDecisionVariable u_post_impact_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> collocation_force_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> collocation_slack_vars_;

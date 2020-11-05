@@ -2073,6 +2073,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "WARNING: you also need to set the flat "
             "`pre_and_post_impact_efforts` in HybridDricon to true.\n";
   }
+  // TODO(yminchen):
+  //  1. add post impact input to cost
+  //  2. add scaling for post impact input
+  //  3. add dircon traj logging for post impact input
 
   // Setup cost matrices
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);

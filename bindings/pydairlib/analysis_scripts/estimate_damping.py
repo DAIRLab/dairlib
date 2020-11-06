@@ -39,15 +39,15 @@ def main():
   global offsets
 
   # parameter
+  global data_has_floating_base, process_with_fixed_base
   data_has_floating_base = True
-  process_with_fixed_base = True
+  process_with_fixed_base = False
 
   np.set_printoptions(precision=3)
 
   builder = DiagramBuilder()
   plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
-
-  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, data_has_floating_base,
+  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, not process_with_fixed_base,
     "examples/Cassie/urdf/cassie_v2.urdf", False, False)
   plant.Finalize()
 
@@ -109,9 +109,26 @@ def main():
 
   matplotlib.rcParams["savefig.directory"] = path
 
+  dummy_builder = DiagramBuilder()
+  plant_data, scene_graph = AddMultibodyPlantSceneGraph(dummy_builder, 0.0)
+  pydairlib.cassie.cassie_utils.addCassieMultibody(plant_data, scene_graph, data_has_floating_base,
+                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+  plant_data.Finalize()
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_name)
+  osc_output, full_log = process_lcm_log.process_log(log, pydairlib.multibody.makeNameToPositionsMap(plant_data),
+                                                     pydairlib.multibody.makeNameToVelocitiesMap(plant_data),
+                                                     pydairlib.multibody.makeNameToActuatorsMap(plant_data),
+                                                     controller_name)
+
+  if process_with_fixed_base and data_has_floating_base:
+    nq_data = plant_data.num_positions()
+    x_temp = np.copy(x)
+    x = np.zeros((x_temp.shape[0], nx))
+    x[:, :nq] = x_temp[:, 7:nq_data]
+    x[:, nq:] = x_temp[:, nq_data+6:]
+
+  # import pdb; pdb.set_trace()
 
   # Will need to manually select the data range
   t_start = t_x[200]
@@ -150,7 +167,7 @@ def estimate_xdot_with_filtering(x, t_x):
 
   plt.figure("vdot fb")
   plt.plot(t_x[t_slice], filter_output[t_slice, 0:6])
-  
+
   # xdot = np.hstack((x[:, -nv:], filter_output))
   xdot = np.hstack((np.zeros((x.shape[0], nq)), filter_output))
   return xdot
@@ -264,7 +281,9 @@ def solve_with_lambda(x, xdot, t_x, u_meas):
     K_force[i] = Kq + J.T @ (J @ M_inv @ J.T) @ J @ M_inv @ Kq
 
   plt.figure("res vs joint vel")
-  pos_idx = 11 #4, 11
+  pos_idx = 4 #4, 11
+  if not process_with_fixed_base:
+    pos_idx += 7
   vel_idx = (nv-nq) + pos_idx
   print("pos_idx = " + str(pos_idx))
   print("vel_idx = " + str(vel_idx))

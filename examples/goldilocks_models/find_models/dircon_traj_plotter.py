@@ -85,12 +85,12 @@ def main():
   Center of mass trajectories
   """
   # PlotCenterOfMass(dircon_traj, True)
-  # PlotCenterOfMass(dircon_traj, False)
+  # PlotCenterOfMass(dircon_traj)
 
   """
   Pevlis trajectories
   """
-  PlotPelvis(dircon_traj, False)
+  PlotPelvis(dircon_traj)
 
   """
   Dynamic error

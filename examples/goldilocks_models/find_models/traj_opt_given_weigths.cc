@@ -2019,8 +2019,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
   bool periodic_joint_pos = true;
-  bool periodic_floating_base_vel = false;
-  bool periodic_joint_vel = false;
+  bool periodic_floating_base_vel = true;
+  bool periodic_joint_vel = true;
   bool periodic_effort = false;
   bool ground_normal_force_margin = false;
   bool zero_com_height_vel = false;
@@ -2037,7 +2037,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // fine to just ignore the four bar constraint (position, velocity and
   // acceleration levels))
   bool four_bar_in_right_support = true;
-  // TODO
 
   // Testing
   bool only_one_mode = false;
@@ -2073,8 +2072,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "WARNING: you also need to set the flat "
             "`pre_and_post_impact_efforts` in HybridDricon to true.\n";
   }
+  // TODO(yminchen): add dircon traj logging for post impact input
+
   // TODO(yminchen):
-  //  1. add dircon traj logging for post impact input
+  //  reminder: if it solves very slowly, you might want to scale constraint
+  //  because you added relected inertia
+
+  // Testing -- remove ankle joint pos/vel periodicity constraint becasue it's
+  // redundant (because we have fourbar constraint at pos/vel level)
+  bool remove_ankle_joint_from_periodicity = true;
+  if (remove_ankle_joint_from_periodicity) {
+    DRAKE_DEMAND(four_bar_in_right_support);
+  }
+
+  // Testing -- add epsilon to periodicity contraint in case we are over
+  // cosntraining the problem
+  bool relax_vel_periodicity_constraint = true;
+  double eps_vel_period = 0.1;
 
   // Setup cost matrices
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
@@ -2110,7 +2124,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   vector<string> sym_joint_names;
   if (turning_rate == 0) {
     asy_joint_names = {"hip_roll", "hip_yaw"};
-    sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
+    if (remove_ankle_joint_from_periodicity) {
+      sym_joint_names = {"hip_pitch", "knee", "toe"};
+    } else {
+      sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
+    }
   } else {
     asy_joint_names = {"hip_roll"};
     sym_joint_names = {"hip_pitch"};
@@ -2496,6 +2514,21 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //      -0.338064, -0.12571, -0.183991, 0.218535, -0.101178, -0.0317852,
   //      -0.8024, -0.278951, -0.148364, 0.375203, 0.149389, -0.380249,
   //      0.617827, -0.712411;
+  // From:
+  // /home/yuming/Desktop/20200926 try to impose lipm constraint/33 play with
+  // periodicity cosntraint/5 relax vel periodicity constraint/robot_1
+  //  x0_val << 1, 0, 0, 0, 0, -0.00562789, 1.11289, 0.000132934, -0.00535692,
+  //      0.0568366, -0.0568358, 0.379726, 0.0957978, -0.646, -0.696699,
+  //      0.866859, 0.918171, -1.47408, -1.19106, 0.179286, 0.180633, -0.233861,
+  //      0.620297, 0.366947, 0.000266116, -0.49626, -0.344546, 0.233888,
+  //      0.237652, -0.205129, -0.605529, -0.538989, 0.482027, 0.546237,
+  //      -0.487284, 0.396197, 0.755361;
+  //  xf_val << 1, 0, 0, 0, 0.3, 0.00562789, 1.11289, 0.00535692, -0.000132934,
+  //      0.0568358, -0.0568366, 0.0957978, 0.379726, -0.696699, -0.646,
+  //      0.918171, 0.866859, -1.19106, -1.47408, 0.131213, 0.0349848, 0.289911,
+  //      0.631216, -0.315915, -0.000545674, 0.193521, 0.00283896, -0.289819,
+  //      -0.246365, -0.822828, -0.0944468, 0.546554, 0.314669, -0.552515,
+  //      -0.318901, 0.84682, -0.888837;
   //  auto xf_end_of_first_mode = trajopt->final_state();
   //  trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
   //                                    x0.head(n_q));
@@ -2560,20 +2593,22 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                      -xf(pos_map.at("base_qz")));
       }
       if (periodic_floating_base_vel) {
-        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                     xf(n_q + vel_map.at("base_wx")));
-        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                     -xf(n_q + vel_map.at("base_wy")));
-        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                     xf(n_q + vel_map.at("base_wz")));
-        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                                     xf(n_q + vel_map.at("base_vx")));
+        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+        //                             xf(n_q + vel_map.at("base_wx")));
+        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+        //                             -xf(n_q + vel_map.at("base_wy")));
+        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+        //                             xf(n_q + vel_map.at("base_wz")));
+        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+        //                             xf(n_q + vel_map.at("base_vx")));
         trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
                                      -xf(n_q + vel_map.at("base_vy")));
-        trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                                     xf(n_q + vel_map.at("base_vz")));
+        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+        //                             xf(n_q + vel_map.at("base_vz")));
       }
     } else {
+      DRAKE_DEMAND(false);  // need to update this block of code first
+
       // z position constraint
       // We don't need to impose this constraint when turning rate is 0, because
       // the periodicity constraint already enforce the z height implicitly
@@ -2626,6 +2661,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // The legs joint positions/velocities/torque should be mirrored between legs
   // (notice that hip yaw and roll should be asymmetric instead of symmetric.)
   for (const auto& l_r_pair : l_r_pairs) {
+    // Asymmetrical joints
     for (const auto& asy_joint_name : asy_joint_names) {
       // positions
       if (periodic_joint_pos) {
@@ -2635,9 +2671,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
       // velocities
       if (periodic_joint_vel) {
-        trajopt->AddLinearConstraint(
-            x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
-            -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
+        if (eps_vel_period) {
+          trajopt->AddLinearConstraint(
+              x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) >=
+              -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")) -
+                  eps_vel_period);
+          trajopt->AddLinearConstraint(
+              x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) <=
+              -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")) +
+                  eps_vel_period);
+        } else {
+          trajopt->AddLinearConstraint(
+              x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
+              -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
+        }
       }
       // inputs
       if (periodic_effort) {
@@ -2646,6 +2693,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
             -uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
       }
     }
+    // Symmetrical joints
     for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
       // positions
       if (periodic_joint_pos) {
@@ -2655,9 +2703,26 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
       // velocities
       if (periodic_joint_vel) {
-        trajopt->AddLinearConstraint(
-            x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
-            xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
+        if (eps_vel_period) {
+          trajopt->AddLinearConstraint(
+              x0(n_q +
+                 vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) >=
+              xf(n_q +
+                 vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")) -
+                  eps_vel_period);
+          trajopt->AddLinearConstraint(
+              x0(n_q +
+                 vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) <=
+              xf(n_q +
+                 vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")) +
+                  eps_vel_period);
+        } else {
+          trajopt->AddLinearConstraint(
+              x0(n_q +
+                 vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
+              xf(n_q +
+                 vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
+        }
       }
       // inputs (ankle joint is not actuated)
       if (periodic_effort) {
@@ -3484,6 +3549,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                   .transpose()
            << endl;
     }
+
+    cout << "remove_ankle_joint_from_periodicity = "
+         << remove_ankle_joint_from_periodicity << endl;
+    cout << "relax_vel_periodicity_constraint = "
+         << relax_vel_periodicity_constraint
+         << "; (eps_vel_period = " << eps_vel_period << ")\n";
 
     cout << endl;
   }  // end if is_print_for_debugging

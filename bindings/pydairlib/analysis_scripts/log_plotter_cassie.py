@@ -95,6 +95,7 @@ def main():
   # t_start = 205
   # t_end = 208
   ### Convert times to indices
+  # import pdb; pdb.set_trace()
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
   t_slice = slice(t_start_idx, t_end_idx)
@@ -105,21 +106,21 @@ def main():
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
-  plot_contact_est(full_log)
-  plt.plot(t_u[t_u_slice], fsm[t_u_slice])
-  if True:
-    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
-                        front_contact_disp,
-                        world, t_x, t_slice, "left_", "_front")
-    plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
-                        front_contact_disp,
-                        world, t_x, t_slice, "right_", "_front")
-    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
-                        rear_contact_disp,
-                        world, t_x, t_slice, "left_", "_rear")
-    plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
-                        rear_contact_disp,
-                        world, t_x, t_slice, "right_", "_rear")
+  # plot_contact_est(full_log)
+  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+  # if True:
+  #   plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+  #                       front_contact_disp,
+  #                       world, t_x, t_slice, "left_", "_front")
+  #   plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
+  #                       front_contact_disp,
+  #                       world, t_x, t_slice, "right_", "_front")
+  #   plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+  #                       rear_contact_disp,
+  #                       world, t_x, t_slice, "left_", "_rear")
+  #   plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
+  #                       rear_contact_disp,
+  #                       world, t_x, t_slice, "right_", "_rear")
 
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()

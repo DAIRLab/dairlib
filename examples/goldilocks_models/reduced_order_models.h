@@ -246,6 +246,9 @@ class Lipm : public ReducedOrderModel {
   const BodyPoint stance_contact_point_;
   bool is_quaternion_;
   int world_dim_;
+
+  // Testing
+  BodyPoint pelvis_;
 };
 
 /// Linear inverted pendulum model with swing foot (either 2D or 3D, determined

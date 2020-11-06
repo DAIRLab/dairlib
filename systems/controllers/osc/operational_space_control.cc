@@ -800,6 +800,16 @@ void OperationalSpaceControl::CalcOptimalInput(
 
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, fsm_state(0),
                     current_time - prev_event_time(0));
+
+    // Testing -- setting stance toe torque to 0
+    if (fsm_state(0) == 0) {
+      u_sol(8) = 0;
+    } else if (fsm_state(0) == 1) {
+      u_sol(9) = 0;
+    } else {
+      u_sol(8) = 0;
+      u_sol(9) = 0;
+    }
   } else {
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time);
   }

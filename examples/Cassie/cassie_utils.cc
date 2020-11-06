@@ -161,7 +161,7 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
         kCassieAchillesLength, achilles_stiffness, achilles_damping);
   }
 
-  bool add_reflected_inertia = false;
+  bool add_reflected_inertia = true;
   VectorXd rotor_inertias(10);
   rotor_inertias << 61, 61, 61, 61, 365, 365, 365, 365, 4.9, 4.9;
   rotor_inertias *= 1e-6;

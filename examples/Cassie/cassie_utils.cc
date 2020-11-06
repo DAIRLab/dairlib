@@ -160,6 +160,27 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
         heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
         kCassieAchillesLength, achilles_stiffness, achilles_damping);
   }
+
+  bool add_reflected_inertia = true;
+  VectorXd rotor_inertias(10);
+  rotor_inertias << 61, 61, 61, 61, 365, 365, 365, 365, 4.9, 4.9;
+  rotor_inertias *= 1e-6;
+  VectorXd gear_ratios(10);
+  gear_ratios << 25, 25, 25, 25, 16, 16, 16, 16, 50, 50;
+  std::vector<std::string> motor_joint_names = {
+      "hip_roll_left_motor", "hip_roll_right_motor", "hip_yaw_left_motor",
+      "hip_yaw_right_motor", "hip_pitch_left_motor", "hip_pitch_right_motor",
+      "knee_left_motor",     "knee_right_motor",     "toe_left_motor",
+      "toe_right_motor"};
+  if (add_reflected_inertia) {
+    for (int i = 0; i < rotor_inertias.size(); ++i) {
+      auto& joint_actuator = plant->get_mutable_joint_actuator(
+          drake::multibody::JointActuatorIndex(i));
+      joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+      joint_actuator.set_default_gear_ratio(gear_ratios(i));
+      DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
+    }
+  }
 }
 
 const systems::SimCassieSensorAggregator& AddImuAndAggregator(

@@ -26,6 +26,9 @@ using std::vector;
 namespace dairlib {
 namespace goldilocks_models {
 
+// Testing flag
+bool use_pelvis = true;
+
 using multibody::isQuaternion;
 using multibody::JwrtqdotToJwrtv;
 using multibody::WToQuatDotMap;
@@ -375,7 +378,9 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
       plant_(plant),
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
-      world_dim_(world_dim) {
+      world_dim_(world_dim),
+      pelvis_(std::pair<const Vector3d, const Frame<double>&>(
+          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)
@@ -407,12 +412,22 @@ Lipm::Lipm(const Lipm& old_obj)
       world_(old_obj.world()),
       stance_contact_point_(old_obj.stance_foot()),
       is_quaternion_(isQuaternion(old_obj.plant())),
-      world_dim_(old_obj.world_dim()) {}
+      world_dim_(old_obj.world_dim()),
+      pelvis_(std::pair<const Vector3d, const Frame<double>&>(
+          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {}
 
 VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
                                       const Context<double>& context) const {
   // Get CoM position
-  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+  VectorX<double> CoM(3);
+  if (use_pelvis) {
+    // testing using pelvis
+    plant_.CalcPointsPositions(context, pelvis_.second, pelvis_.first,
+                               plant_.world_frame(), &CoM);
+  } else {
+    CoM = plant_.CalcCenterOfMassPosition(context);
+  }
+
   // Stance foot position
   VectorX<double> stance_foot_pos(3);
   plant_.CalcPointsPositions(context, stance_contact_point_.second,
@@ -451,8 +466,15 @@ VectorX<double> Lipm::EvalMappingFeatJV(const VectorX<double>& q,
                                         const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  if (use_pelvis) {
+    // testing using pelvis
+    plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
+                                             pelvis_.second, pelvis_.first,
+                                             world_, world_, &J_com);
+  } else {
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  }
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
@@ -476,8 +498,15 @@ MatrixX<double> Lipm::EvalMappingFeatJ(const VectorX<double>& q,
                                        const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  if (use_pelvis) {
+    // testing using pelvis
+    plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
+                                             pelvis_.second, pelvis_.first,
+                                             world_, world_, &J_com);
+  } else {
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  }
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
@@ -501,9 +530,16 @@ VectorX<double> Lipm::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM JdotV
-  VectorX<double> JdotV_com =
-      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
-          context, JacobianWrtVariable::kV, world_, world_);
+  VectorX<double> JdotV_com(3);
+  if (use_pelvis) {
+    // Testing: use pelvis origin
+    JdotV_com = plant_.CalcBiasTranslationalAcceleration(
+        context, JacobianWrtVariable::kV, pelvis_.second, pelvis_.first, world_,
+        world_);
+  } else {
+    JdotV_com = plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+        context, JacobianWrtVariable::kV, world_, world_);
+  }
   // Stance foot JdotV
   VectorX<double> JdotV_st = plant_.CalcBiasTranslationalAcceleration(
       context, JacobianWrtVariable::kV, stance_contact_point_.second,
@@ -763,18 +799,17 @@ FixHeightAccel::FixHeightAccel(const FixHeightAccel& old_obj)
       is_quaternion_(isQuaternion(old_obj.plant())),
       stance_contact_point_(old_obj.stance_foot()),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
-}
+          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {}
 
 VectorX<double> FixHeightAccel::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM position
-//  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
-// Testing using pelvis
-  VectorX<double> CoM(3);
-  plant_.CalcPointsPositions(context, pelvis_.second,
-                             pelvis_.first, plant_.world_frame(),
-                             &CoM);
+  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+  // Testing using pelvis
+  //  VectorX<double> CoM(3);
+  //  plant_.CalcPointsPositions(context, pelvis_.second,
+  //                             pelvis_.first, plant_.world_frame(),
+  //                             &CoM);
   // Stance foot position
   VectorX<double> left_foot_pos(3);
   plant_.CalcPointsPositions(context, stance_contact_point_.second,
@@ -800,14 +835,14 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM velocity
-//  MatrixX<double> J_com(3, plant_.num_velocities());
-//  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-//      context, JacobianWrtVariable::kV, world_, world_, &J_com);
-  // testing using pelvis
   MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianTranslationalVelocity(
-      context, JacobianWrtVariable::kV, pelvis_.second,
-      pelvis_.first, world_, world_, &J_com);
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // testing using pelvis
+  //  MatrixX<double> J_com(3, plant_.num_velocities());
+  //  plant_.CalcJacobianTranslationalVelocity(
+  //      context, JacobianWrtVariable::kV, pelvis_.second,
+  //      pelvis_.first, world_, world_, &J_com);
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
@@ -826,14 +861,14 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJV(
 MatrixX<double> FixHeightAccel::EvalMappingFeatJ(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM velocity
-//  MatrixX<double> J_com(3, plant_.num_velocities());
-//  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-//      context, JacobianWrtVariable::kV, world_, world_, &J_com);
-// Testing using pelvis
   MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianTranslationalVelocity(
-      context, JacobianWrtVariable::kV, pelvis_.second,
-      pelvis_.first, world_, world_, &J_com);
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // Testing using pelvis
+  //  MatrixX<double> J_com(3, plant_.num_velocities());
+  //  plant_.CalcJacobianTranslationalVelocity(
+  //      context, JacobianWrtVariable::kV, pelvis_.second,
+  //      pelvis_.first, world_, world_, &J_com);
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
@@ -851,13 +886,13 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM JdotV
-  //  VectorX<double> JdotV_com =
-  //      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
-  //          context, JacobianWrtVariable::kV, world_, world_);
+  VectorX<double> JdotV_com =
+      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+          context, JacobianWrtVariable::kV, world_, world_);
   // Testing: use pelvis origin
-  VectorX<double> JdotV_com = plant_.CalcBiasTranslationalAcceleration(
-      context, JacobianWrtVariable::kV, pelvis_.second,
-      pelvis_.first, world_, world_);
+  //  VectorX<double> JdotV_com = plant_.CalcBiasTranslationalAcceleration(
+  //      context, JacobianWrtVariable::kV, pelvis_.second,
+  //      pelvis_.first, world_, world_);
   // Stance foot JdotV
   VectorX<double> JdotV_st = plant_.CalcBiasTranslationalAcceleration(
       context, JacobianWrtVariable::kV, stance_contact_point_.second,

@@ -7,16 +7,18 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "kinematic",
     srcs = [
+        "distance_evaluator.cc",
+        "fixed_joint_evaluator.cc",
         "kinematic_evaluator.cc",
         "kinematic_evaluator_set.cc",
         "world_point_evaluator.cc",
-        "distance_evaluator.cc",
     ],
     hdrs = [
+        "distance_evaluator.h",
+        "fixed_joint_evaluator.h",
         "kinematic_evaluator.h",
         "kinematic_evaluator_set.h",
         "world_point_evaluator.h",
-        "distance_evaluator.h",
     ],
     deps = [
         "//solvers:constraint_factory",
@@ -48,13 +50,14 @@ cc_binary(
     deps = [
         ":kinematic",
         "//common",
-        "//examples/Cassie:cassie_utils",
         "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
     ],
 )
 
 cc_test(
     name = "kinematic_evaluator_test",
+    size = "small",
     srcs = [
         "test/kinematic_evaluator_test.cc",
     ],
@@ -65,5 +68,4 @@ cc_test(
         "@drake//common/test_utilities",
         "@gtest//:main",
     ],
-    size = "small",
 )

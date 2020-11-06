@@ -101,7 +101,7 @@ DirconTrajectory::DirconTrajectory(
   decision_var_traj.traj_name = "decision_vars";
   decision_var_traj.datapoints = result.GetSolution();
   decision_var_traj.time_vector =
-      VectorXd::Zero(decision_var_traj.datapoints.size());
+      VectorXd::Zero(1);
   decision_var_traj.datatypes =
       vector<string>(decision_var_traj.datapoints.size());
   AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
@@ -145,7 +145,8 @@ DirconTrajectory::DirconTrajectory(
     std::vector<std::string> force_names;
     std::vector<std::string> collocation_force_names;
     int num_forces = 0;
-    for (int i = 0; i < dircon.num_kinematic_constraints_wo_skipping(mode); ++i) {
+    for (int i = 0; i < dircon.num_kinematic_constraints_wo_skipping(mode);
+         ++i) {
       force_names.push_back("lambda_" + std::to_string(num_forces));
       collocation_force_names.push_back("lambda_c_" +
                                         std::to_string(num_forces));
@@ -196,9 +197,12 @@ DirconTrajectory::DirconTrajectory(
   decision_var_traj.traj_name = "decision_vars";
   decision_var_traj.datapoints = result.GetSolution();
   decision_var_traj.time_vector =
-      VectorXd::Zero(decision_var_traj.datapoints.size());
+      VectorXd::Zero(1);
   decision_var_traj.datatypes =
       vector<string>(decision_var_traj.datapoints.size());
+  for (int i = 0; i < decision_var_traj.datapoints.size(); i++) {
+    decision_var_traj.datatypes[i] = dircon.decision_variable(i).get_name();
+  }
   AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
   decision_vars_ = &decision_var_traj;
 
@@ -259,8 +263,8 @@ Eigen::VectorXd DirconTrajectory::GetCollocationPoints(
   // using a + (b - a) / 2 midpoint
   int num_knotpoints = time_vector.size();
   return time_vector.head(num_knotpoints - 1) +
-         0.5 * (time_vector.tail(num_knotpoints - 1) -
-                time_vector.head(num_knotpoints - 1));
+      0.5 * (time_vector.tail(num_knotpoints - 1) -
+          time_vector.head(num_knotpoints - 1));
 }
 
 }  // namespace dairlib

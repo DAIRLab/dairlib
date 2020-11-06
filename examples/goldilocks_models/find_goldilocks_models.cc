@@ -863,7 +863,7 @@ void RecordSolutionQualityAndQueueList(
     bool is_limit_difference_of_two_adjacent_costs, bool sample_success,
     bool current_sample_is_queued, int task_dim, const vector<int>& n_rerun,
     int N_rerun, vector<double>& each_min_cost_so_far,
-    vector<int>& is_good_solution, MatrixXi& sample_idx_waiting_to_help,
+    vector<double>& sample_status, MatrixXi& sample_idx_waiting_to_help,
     MatrixXi& sample_idx_that_helped, std::deque<int>& awaiting_sample_idx) {
   double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
 
@@ -889,7 +889,7 @@ void RecordSolutionQualityAndQueueList(
                           each_min_cost_so_far[sample_idx]) {
         // If the adjacent sample has a good solution and has finished basic
         // reruns
-        if ((is_good_solution[adj_idx] == 1) && (n_rerun[adj_idx] >= N_rerun)) {
+        if ((sample_status[adj_idx] == 1) && (n_rerun[adj_idx] >= N_rerun)) {
           low_adjacent_cost_idx.push_back(adj_idx);
         }
       }
@@ -898,7 +898,7 @@ void RecordSolutionQualityAndQueueList(
                                each_min_cost_so_far[sample_idx]) {
         // If the adjacent sample has a good solution and has finished basic
         // reruns
-        if ((is_good_solution[adj_idx] == 1) && (n_rerun[adj_idx] >= N_rerun)) {
+        if ((sample_status[adj_idx] == 1) && (n_rerun[adj_idx] >= N_rerun)) {
           high_adjacent_cost_idx.push_back(adj_idx);
         }
       }
@@ -928,7 +928,7 @@ void RecordSolutionQualityAndQueueList(
                           each_min_cost_so_far[sample_idx]) &&
       !too_high_above_adjacent_cost) {
     // Set the current sample to be having good solution
-    is_good_solution[sample_idx] = 1;
+    sample_status[sample_idx] = 1;
 
     // Remove the helpers which wait to help the current sample since it's
     // successful. However, the removal not necessary in the algorithm.
@@ -964,7 +964,7 @@ void RecordSolutionQualityAndQueueList(
       bool this_adjacent_sample_needs_help = false;
       bool current_sample_has_helped = false;
 
-      bool adj_has_bad_sol = is_good_solution[adj_idx] == 0;
+      bool adj_has_bad_sol = sample_status[adj_idx] == 0;
       bool adj_has_too_high_cost =
           (find(high_adjacent_cost_idx.begin(), high_adjacent_cost_idx.end(),
                 adj_idx) != high_adjacent_cost_idx.end());
@@ -1002,7 +1002,7 @@ void RecordSolutionQualityAndQueueList(
       } else if (adj_has_too_high_cost) {
         this_adjacent_sample_needs_help = true;
 
-        is_good_solution[adj_idx] = 0;
+        sample_status[adj_idx] = 0;
         revert_good_adj_sol_to_bad_sol = true;
 
         // Add current sample to sample_idx_waiting_to_help.
@@ -1054,7 +1054,7 @@ void RecordSolutionQualityAndQueueList(
 
   } else {
     // Set the current sample to be having bad solution
-    is_good_solution[sample_idx] = 0;
+    sample_status[sample_idx] = 0;
 
     // Look for any adjacent sample that can help
     for (int j = 0; j < adjacent_sample_indices.cols(); j++) {
@@ -1066,7 +1066,7 @@ void RecordSolutionQualityAndQueueList(
       int adj_idx = adjacent_sample_indices(sample_idx, j);
       if (adj_idx == -1) continue;
 
-      bool adj_has_good_sol = is_good_solution[adj_idx] == 1;
+      bool adj_has_good_sol = sample_status[adj_idx] == 1;
       bool adj_has_too_low_cost =
           (find(low_adjacent_cost_idx.begin(), low_adjacent_cost_idx.end(),
                 adj_idx) != low_adjacent_cost_idx.end());
@@ -1739,8 +1739,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.cubic_spline_in_rom_constraint =
       FLAGS_cubic_spline_in_rom_constraint;  // for testing
   cout << "directory = " << dir << endl;
-  cout << "com_accel_constraint = "
-       << inner_loop_setting.com_accel_constraint << endl;
+  cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint
+       << endl;
   cout << "cubic_spline_in_rom_constraint = "
        << inner_loop_setting.cubic_spline_in_rom_constraint << endl;
 
@@ -2013,8 +2013,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       for (int i = 0; i < N_sample; i++) awaiting_sample_idx.push_back(i);
 
       // Set up for feeding good sample solution to adjacent bad samples
-      std::vector<int> is_good_solution(N_sample, -1);  // -1 means unset,
-                                                        // 0 is bad, 1 is good
+      std::vector<double> sample_status(N_sample, -1);  // -1 means unset,
+                                                     // 0 is bad, 1 is good
       // In the following int matrices, each row is a list that contains the
       // sample idx that can help (or helped)
       // -1 means empty.
@@ -2128,9 +2128,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // there exists a adjacent sample that can help the current sample.
           int sample_idx_to_help = -1;
           if (get_good_sol_from_adjacent_sample) {
-            if (n_rerun[sample_idx] > N_rerun) {
-              cout << "is_good_solution = ";
-              for (auto& mem : is_good_solution) {
+            if ((n_rerun[sample_idx] > N_rerun) &&
+                (sample_status[sample_idx] != 0.5)) {
+              cout << "sample_status = ";
+              for (auto& mem : sample_status) {
                 cout << mem << ", ";
               }
               cout << endl;
@@ -2242,14 +2243,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // BTW, erasing middle members is computationally inefficient:
           //   http://www.cplusplus.com/reference/vector/vector/erase/
 
-          // Queue the current sample back if
-          // 1. it's not the last evaluation for this sample
-          bool current_sample_is_queued = false;
-          if (n_rerun[sample_idx] < N_rerun) {
-            awaiting_sample_idx.push_back(sample_idx);
-            current_sample_is_queued = true;
-          }
-
           // Record success history
           prefix = to_string(iter) + "_" + to_string(sample_idx) + "_";
           bool sample_success =
@@ -2257,6 +2250,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
           bool sample_iteration_limit =
               ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) == 0.5);
           bool sample_fail = !sample_success && !sample_iteration_limit;
+
+          // Queue the current sample back if
+          // 1. it's not the last evaluation for this sample, OR
+          // 2. it reached iteration limit
+          bool current_sample_is_queued = false;
+          if ((n_rerun[sample_idx] < N_rerun) || sample_iteration_limit) {
+            awaiting_sample_idx.push_back(sample_idx);
+            current_sample_is_queued = true;
+          }
 
           // Update cost_threshold_for_update
           if (sample_success && (n_rerun[sample_idx] >= N_rerun)) {
@@ -2270,7 +2272,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // (we dont' get help from adjacent samples when extending model,
           // because the length of decision variable is not the same)
           if (get_good_sol_from_adjacent_sample && !extend_model_this_iter) {
-            if (n_rerun[sample_idx] >= N_rerun) {
+            if ((n_rerun[sample_idx] >= N_rerun) && !sample_iteration_limit) {
               RecordSolutionQualityAndQueueList(
                   dir, prefix, sample_idx, assigned_thread_idx,
                   adjacent_sample_indices,
@@ -2278,10 +2280,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   max_adj_cost_diff_rate_before_ask_for_help,
                   is_limit_difference_of_two_adjacent_costs, sample_success,
                   current_sample_is_queued, task_gen->dim_nondeg(), n_rerun,
-                  N_rerun, local_each_min_cost_so_far, is_good_solution,
+                  N_rerun, local_each_min_cost_so_far, sample_status,
                   sample_idx_waiting_to_help, sample_idx_that_helped,
                   awaiting_sample_idx);
             }
+          }
+          if (sample_iteration_limit) {
+            sample_status[sample_idx] = 0.5;
           }
 
           // If the current sample is queued again because it could be helped by
@@ -2766,7 +2771,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if(!is_get_nominal)
   }    // end for
 
-  cout << "Exited the outer loop.\n";
+  cout << "\nExited the outer loop.\n";
   cout << '\a';  // making noise to notify the user the end of an iteration
   current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());

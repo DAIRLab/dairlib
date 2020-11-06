@@ -1,9 +1,11 @@
 #include "systems/controllers/osc/osc_tracking_data.h"
 
 #include <math.h>
+
 #include <algorithm>
-#include <chrono>
+
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "multibody/multibody_utils.h"
 
 #include "systems/controllers/osc/osc_utils.h"
@@ -64,8 +66,16 @@ bool OscTrackingData::Update(
     // Careful: must update y_des_ before calling UpdateYAndError()
     // Update desired output
     y_des_ = traj.value(t);
-    ydot_des_ = traj.EvalDerivative(t, 1);
-    yddot_des_ = traj.EvalDerivative(t, 2);
+    if (traj.has_derivative()) {
+      ydot_des_ = traj.EvalDerivative(t, 1);
+      yddot_des_ = traj.EvalDerivative(t, 2);
+    }
+    // TODO (yangwill): Remove this edge case after EvalDerivative has been
+    // implemented for ExponentialPlusPiecewisePolynomial
+    else {
+      ydot_des_ = traj.MakeDerivative(1)->value(t);
+      yddot_des_ = traj.MakeDerivative(2)->value(t);
+    }
 
     // Update feedback output (Calling virtual methods)
     if (use_only_plant_wo_spr_in_evaluation_) {

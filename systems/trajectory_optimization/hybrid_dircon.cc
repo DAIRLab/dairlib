@@ -46,7 +46,11 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       num_modes_(num_time_samples.size()),
       mode_lengths_(num_time_samples),
       v_post_impact_vars_(NewContinuousVariables(
-          plant.num_velocities() * (num_time_samples.size() - 1), "v_p")) {
+          plant.num_velocities() * (num_time_samples.size() - 1), "v_p")),
+      u_post_impact_vars_(NewContinuousVariables(
+          plant.num_actuators() * (num_time_samples.size() - 1), "u_p")) {
+  bool pre_and_post_impact_efforts = true;
+
   DRAKE_ASSERT(minimum_timestep.size() == num_modes_);
   DRAKE_ASSERT(maximum_timestep.size() == num_modes_);
   DRAKE_ASSERT(constraints.size() == num_modes_);
@@ -133,11 +137,18 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         options[i].getDynConstraintScaling());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
+      auto u_var1 =
+          pre_and_post_impact_efforts
+              ? input_vars_by_mode(i, j)
+              : u_vars().segment(time_index * num_inputs(), num_inputs());
+      auto u_var2 =
+          pre_and_post_impact_efforts
+              ? input_vars_by_mode(i, j + 1)
+              : u_vars().segment((time_index + 1) * num_inputs(), num_inputs());
       AddConstraint(
           dynamic_constraint,
           {h_vars().segment(time_index, 1), state_vars_by_mode(i, j),
-           state_vars_by_mode(i, j + 1),
-           u_vars().segment(time_index * num_inputs(), num_inputs() * 2),
+           state_vars_by_mode(i, j + 1), u_var1, u_var2,
            force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i),
                                  num_kinematic_constraints_wo_skipping(i) * 2),
            collocation_force_vars(i).segment(
@@ -157,10 +168,13 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         options[i].getKinConstraintScaling());
     for (int j = 1; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
+      auto u_var =
+          pre_and_post_impact_efforts
+              ? input_vars_by_mode(i, j)
+              : u_vars().segment(time_index * num_inputs(), num_inputs());
       AddConstraint(
           kinematic_constraint,
-          {state_vars_by_mode(i, j),
-           u_vars().segment(time_index * num_inputs(), num_inputs()),
+          {state_vars_by_mode(i, j), u_var,
            force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i),
                                  num_kinematic_constraints_wo_skipping(i)),
            offset_vars(i)});
@@ -173,10 +187,13 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
             options[i].getStartType());
     kinematic_constraint_start->SetConstraintScaling(
         options[i].getKinConstraintScalingStart());
+    auto u_var_kin0 =
+        pre_and_post_impact_efforts
+            ? input_vars_by_mode(i, 0)
+            : u_vars().segment(mode_start_[i] * num_inputs(), num_inputs());
     AddConstraint(
         kinematic_constraint_start,
-        {state_vars_by_mode(i, 0),
-         u_vars().segment(mode_start_[i] * num_inputs(), num_inputs()),
+        {state_vars_by_mode(i, 0), u_var_kin0,
          force_vars(i).segment(0, num_kinematic_constraints_wo_skipping(i)),
          offset_vars(i)});
 
@@ -191,12 +208,14 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
               options[i].getEndType());
       kinematic_constraint_end->SetConstraintScaling(
           options[i].getKinConstraintScalingEnd());
+      auto u_var = pre_and_post_impact_efforts
+          ? input_vars_by_mode(i, mode_lengths_[i] - 1)
+          : u_vars().segment(
+                (mode_start_[i] + mode_lengths_[i] - 1) * num_inputs(),
+                num_inputs());
       AddConstraint(
           kinematic_constraint_end,
-          {state_vars_by_mode(i, mode_lengths_[i] - 1),
-           u_vars().segment(
-               (mode_start_[i] + mode_lengths_[i] - 1) * num_inputs(),
-               num_inputs()),
+          {state_vars_by_mode(i, mode_lengths_[i] - 1), u_var,
            force_vars(i).segment((mode_lengths_[i] - 1) *
                                      num_kinematic_constraints_wo_skipping(i),
                                  num_kinematic_constraints_wo_skipping(i)),
@@ -272,6 +291,13 @@ HybridDircon<T>::v_post_impact_vars_by_mode(int mode) const {
 }
 
 template <typename T>
+const Eigen::VectorBlock<const VectorXDecisionVariable>
+HybridDircon<T>::u_post_impact_vars_by_mode(int mode) const {
+  return u_post_impact_vars_.segment(mode * plant_.num_actuators(),
+                                     plant_.num_actuators());
+}
+
+template <typename T>
 VectorX<Expression> HybridDircon<T>::SubstitutePlaceholderVariables(
     const VectorX<Expression>& f, int interval_index) const {
   VectorX<Expression> ret(f.size());
@@ -302,6 +328,17 @@ VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(
     // std::cout << Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0,
     // num_states())  << std::endl; return
     // Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0, num_states());
+  }
+}
+
+template <typename T>
+VectorXDecisionVariable HybridDircon<T>::input_vars_by_mode(
+    int mode, int time_index) const {
+  if (time_index == 0 && mode > 0) {
+    return u_post_impact_vars_by_mode(mode - 1);
+  } else {
+    return u_vars().segment((mode_start_[mode] + time_index) * num_inputs(),
+                            num_inputs());
   }
 }
 
@@ -380,7 +417,7 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
                                                 derivatives[0]);
   for (int mode = 1; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
-    if(mode_lengths_[mode] < 2){
+    if (mode_lengths_[mode] < 2) {
       continue;
     }
     state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(

@@ -1,0 +1,42 @@
+echo If you ssh, run this sciprt in the background to prevent the program from being terminated due to disconnection. Sush as: nohup long-running-command \&
+
+# Set robot id and model id
+robot=1
+model=0 # 1Drom 0,1   2Drom 2,3  3Drom 4,5
+echo robot_option = $robot, rom_option = $model
+
+# Set sample size
+n_sl=2
+n_gi=2
+n_v=2
+n_tr=1
+
+# Set optimization range
+# small range
+sl_min=0.25
+sl_max=0.35
+gi_min=-0.15
+gi_max=0.15
+v_min=0.45
+v_max=0.55
+tr_min=0
+tr_max=0
+# large range
+# Other parameters
+final_iter=1
+snopt_scaling=true
+N_rerun=2
+
+# Delete and create a new data folder if specified in the argument
+if [ "$1" = "rm" ]; then
+	echo Delete and create a new folder dairlib_data/goldilocks_models/find_models/robot_$robot/
+	rm -rf ../dairlib_data/goldilocks_models/find_models/robot_$robot/
+	mkdir -p ../dairlib_data/goldilocks_models/find_models/robot_$robot/nominal_no_constraint_traj/
+fi
+
+
+##########################
+echo ===== optimize rom0 in small 3D task space \(sl gi v\) with snopt scaling =====
+./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=$final_iter --robot_option=$robot --rom_option=$model --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_v=$n_v --N_sample_tr=$n_tr --sl_min=$sl_min --sl_max=$sl_max --gi_min=$gi_min --gi_max=$gi_max --v_min=$v_min --v_max=$v_max --tr_min=$tr_min --tr_max=$tr_max --is_grid_task=false --fix_node_number=true --snopt_scaling=$snopt_scaling --N_rerun=$N_rerun | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log.txt
+
+

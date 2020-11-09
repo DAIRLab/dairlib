@@ -349,14 +349,18 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
+  JointSpaceTrackingData swing_hip_yaw_left_traj("swing_hip_yaw_traj", K_p_hip_yaw,
                                             K_d_hip_yaw, W_hip_yaw, plant_w_spr,
                                             plant_w_spr);
-  swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
-                                             "hip_yaw_rightdot");
-  swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
+  JointSpaceTrackingData swing_hip_yaw_right_traj("swing_hip_yaw_traj", K_p_hip_yaw,
+                                            K_d_hip_yaw, W_hip_yaw, plant_w_spr,
+                                            plant_w_spr);
+  swing_hip_yaw_left_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
                                              "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+  swing_hip_yaw_right_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
+                                             "hip_yaw_rightdot");
+  osc->AddConstTrackingData(&swing_hip_yaw_left_traj, VectorXd::Zero(1));
+  osc->AddConstTrackingData(&swing_hip_yaw_right_traj, VectorXd::Zero(1));
   // Build OSC problem
   osc->Build();
   // Connect ports
@@ -402,7 +406,7 @@ int DoMain(int argc, char* argv[]) {
 //  // Create osc debug sender.
 //  auto osc_debug_pub_network =
 //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-//          "NETWORK_OSC_DEBUG_SWING_FOOT", &lcm_local,
+//          "NETWORK_OSC_DEBUG_SWING_FOOT", &lcm_network,
 //          TriggerTypeSet({TriggerType::kPeriodic}), 0.02));
 //  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub_network->get_input_port());
 

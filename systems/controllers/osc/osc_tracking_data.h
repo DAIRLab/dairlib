@@ -127,6 +127,11 @@ class OscTrackingData {
   // correctly.
   void CheckOscTrackingData();
 
+  // Testing
+  void DisableFeedForwardAccel() {
+    disable_feedforward_accel_ = true;
+  }
+
  protected:
   int GetStateIdx() const { return state_idx_; };
   void AddState(int state);
@@ -205,6 +210,9 @@ class OscTrackingData {
   // Store whether or not the tracking data is active
   bool track_at_current_state_;
   int state_idx_ = 0;
+
+  // Testing
+  bool disable_feedforward_accel_ = false;
 };
 
 /// ComTrackingData is used when we want to track center of mass trajectory.

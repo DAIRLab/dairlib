@@ -138,7 +138,7 @@ int DoMain(int argc, char* argv[]) {
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   addCassieMultibody(&plant_w_spr, nullptr, false /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     "examples/Cassie/urdf/cassie_v2_experimental.urdf",
                      false /*spring model*/, false /*loop closure*/);
   plant_w_spr.Finalize();
 
@@ -346,17 +346,17 @@ int DoMain(int argc, char* argv[]) {
 //  osc->AddConstTrackingData(&swing_toe_traj_left, -1.6 * VectorXd::Ones(1));
 //  osc->AddConstTrackingData(&swing_toe_traj_right, -1.6 * VectorXd::Ones(1));
   // Swing hip yaw joint tracking
-  MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
-                                            K_d_hip_yaw, W_hip_yaw, plant_w_spr,
+  MatrixXd W_hip_roll = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_hip_roll = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_hip_roll = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
+  JointSpaceTrackingData swing_hip_roll_traj("swing_hip_roll_traj", K_p_hip_roll,
+                                            K_d_hip_roll, W_hip_roll, plant_w_spr,
                                             plant_w_spr);
-  swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
-                                             "hip_yaw_rightdot");
-  swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
-                                             "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+  swing_hip_roll_traj.AddStateAndJointToTrack(left_stance_state, "hip_roll_right",
+                                             "hip_roll_rightdot");
+  swing_hip_roll_traj.AddStateAndJointToTrack(right_stance_state, "hip_roll_left",
+                                             "hip_roll_leftdot");
+  osc->AddConstTrackingData(&swing_hip_roll_traj, VectorXd::Zero(1));
   // Build OSC problem
   osc->Build();
   // Connect ports

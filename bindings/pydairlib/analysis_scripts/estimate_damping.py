@@ -43,7 +43,7 @@ def main():
   builder = DiagramBuilder()
   plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
 
-  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, True,
+  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, False,
     "examples/Cassie/urdf/cassie_v2.urdf", False, False)
   plant.Finalize()
 
@@ -124,6 +124,8 @@ def main():
   # plot_state(x, t_x, u, t_u, u_meas, x_datatypes, u_datatypes)
 
   # solve_individual_joint(x, xdot, t_x, u_meas, pos_map[joint_name], act_map[joint_name + '_motor'])
+  if u_meas.shape[1] == 0:
+    u_meas = u
   solve_with_lambda(x, xdot, t_x, u_meas)
   plt.show()
 
@@ -136,7 +138,7 @@ def estimate_xdot_with_filtering(x, t_x):
   for i in range(plant.num_velocities()):
     vdot[:, i] = vdot[:, i] / dt
 
-  filter = 50
+  filter = 60
   idx = int(filter / 2)
   filter_output = np.zeros((x.shape[0], nv))
   for i in range(idx, dt.shape[0] - idx):
@@ -209,9 +211,7 @@ def solve_with_lambda(x, xdot, t_x, u_meas):
   x_vars = prog.NewContinuousVariables(nvars, "sigma")
   prog.AddL2NormCost(A, b, x_vars)
   prog.AddBoundingBoxConstraint(np.full((nv,), -np.inf), np.zeros(nv), x_vars)
-  solver_id = mp.ChooseBestSolver(prog)
-  print(solver_id.name())
-  solver = mp.MakeSolver(solver_id)
+  solver = OsqpSolver()
   result = solver.Solve(prog, None, None)
   print("LSTSQ cost: ", result.get_optimal_cost())
   print("Solution result: ", result.get_solution_result())
@@ -248,20 +248,27 @@ def solve_with_lambda(x, xdot, t_x, u_meas):
 
     lambda_implicit = (J @ M_inv @ J.T) @ ((J @ M_inv) @ (B @ u_samples[i] + g - Cv + Kq + Dv) - JdotV)
 
-    f_samples[i] = M@xdot_samples[i, -nv:] + Cv - g - Bu - Dv
+    f_samples[i] = M@xdot_samples[i, -nv:] + Cv - g - Bu - Dv - J.T @ lambda_implicit
     Bu_force[i] = B @ u_samples[i]
     Cv_force[i] = Cv
     g_force[i] = g
     J_lambda[i] = J.T @ lambda_implicit
     D_force[i] = Dv
-    K_force[i] = Kq + J.T @ (J @ M_inv @ J.T) @ J @ M_inv @ Kq
+    K_force[i] = Kq
+
+  data_folder = '/home/yangwill/Documents/research/projects/cassie/hardware/sysid_data/'
+  np.save(data_folder + filename + "_f", f_samples)
+  np.save(data_folder + filename + "_x", x_samples)
 
   plt.figure("res vs joint vel")
-  # pos_idx = 4
-  # vel_idx = pos_idx + 16
-  vel_idx = 10
-  joint_pos_idx = 11
-  joint_vel_idx = 10 + 23
+  vel_idx = 4
+  joint_pos_idx = 4
+  joint_vel_idx = joint_pos_idx + nq
+  if(nq == 23):
+    vel_idx = 10
+    joint_pos_idx = 11
+    joint_vel_idx = 10 + 23
+
   plt.plot(x_samples[:, joint_vel_idx], f_samples[:,vel_idx])
   plt.plot(x_samples[:, joint_vel_idx], Bu_force[:,vel_idx])
   plt.plot(x_samples[:, joint_vel_idx], Cv_force[:,vel_idx])

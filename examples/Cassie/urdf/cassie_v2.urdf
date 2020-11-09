@@ -615,7 +615,7 @@
     <child link="yaw_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.262" upper="0.393" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="5.5" />
   </joint>
 
   <joint name="hip_roll_right" type="revolute">
@@ -624,7 +624,7 @@
     <child link="yaw_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.393" upper="0.262" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1.3" />
   </joint> 
 
 
@@ -653,7 +653,7 @@
     <child link="thigh_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.873" upper="1.396" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="0.6" />
   </joint>
 
   <joint name="hip_pitch_right" type="revolute">
@@ -662,7 +662,7 @@
     <child link="thigh_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.873" upper="1.396" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="0.8" />
   </joint>
 
   <joint name="knee_left" type="revolute">
@@ -671,7 +671,7 @@
     <child link="knee_left" />
     <axis xyz="0 0 1" />
     <limit lower="-2.862" upper="-0.646" effort="300"/>
-    <dynamics damping="1" />
+    <dynamics damping=0.6" />
   </joint>
 
   <joint name="knee_right" type="revolute">
@@ -680,7 +680,7 @@
     <child link="knee_right" />
     <axis xyz="0 0 1" />
     <limit lower="-2.862" upper="-0.646" effort="300"/>
-    <dynamics damping="1" />
+    <dynamics damping="1.2" />
   </joint>
 
 
@@ -746,7 +746,7 @@
     <child link="tarsus_left" />
     <axis xyz="0 0 1" />
     <limit lower=".8" upper="3"/>
-    <dynamics damping="0.1" /> 
+    <dynamics damping="0.0" />
   </joint>
 
   <joint name="ankle_joint_right" type="revolute">
@@ -755,7 +755,7 @@
     <child link="tarsus_right" />
     <axis xyz="0 0 1" />
     <limit lower=".8" upper="3"/>
-    <dynamics damping="0.1" />
+    <dynamics damping="0.0" />
   </joint>
 
 <!-- rpy="-0.0689 -0.0370 2.7208"-->
@@ -765,7 +765,7 @@
     <child link="heel_spring_left" />
     <limit lower="-.1" upper="0.1"/>
     <axis xyz="0 0 1" />
-    <dynamics damping="10" /> <!-- made up value -->
+    <dynamics damping="2" /> <!-- made up value -->
   </joint> 
 
 <!-- rpy="0.0734 0.0269 2.7201"-->
@@ -775,7 +775,7 @@
     <child link="heel_spring_right" />
     <limit lower="-.1" upper="0.1"/>
     <axis xyz="0 0 1" />
-    <dynamics damping="10" /> <!-- made up value -->
+    <dynamics damping="4" /> <!-- made up value -->
   </joint> 
 
 
@@ -785,7 +785,7 @@
     <child link="toe_left" />
     <axis xyz="0 0 1" />
     <limit lower="-2.8" upper="0" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="5" />
   </joint>
 
   <joint name="toe_right" type="revolute">
@@ -794,7 +794,7 @@
     <child link="toe_right" />
     <axis xyz="0 0 1" />
     <limit lower="-2.8" upper="0" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="5" />
   </joint>
 
  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->

@@ -8,7 +8,7 @@ swing_toe_kp: 20
 swing_toe_kd: 15
 
 w_hip_yaw: 100
-hip_yaw_kp: 40
+hip_yaw_kp: 20
 hip_yaw_kd: 10
 
 footstep_offset: 0.06

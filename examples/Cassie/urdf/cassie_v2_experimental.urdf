@@ -1,4 +1,3 @@
-<!-- Model from System Identification-->
 <robot name="cassie">
 
     <link name="pelvis">
@@ -625,7 +624,7 @@
         <child link="yaw_right" />
         <axis xyz="0 0 1" />
         <limit lower="-0.393" upper="0.262" effort="300"/>
-        <dynamics damping="1" />
+        <dynamics damping="1.3" />
     </joint>
 
 
@@ -635,7 +634,7 @@
         <child link="hip_left" />
         <axis xyz="0 0 1" />
         <limit lower="-0.393" upper="0.393" effort="300"/>
-        <dynamics damping="0.2" />
+        <dynamics damping="0.4" />
     </joint>
 
     <joint name="hip_yaw_right" type="revolute">
@@ -644,7 +643,7 @@
         <child link="hip_right" />
         <axis xyz="0 0 1" />
         <limit lower="-0.393" upper="0.393" effort="300"/>
-        <dynamics damping="2" />
+        <dynamics damping="1" />
     </joint>
 
 
@@ -663,7 +662,7 @@
         <child link="thigh_right" />
         <axis xyz="0 0 1" />
         <limit lower="-0.873" upper="1.396" effort="300"/>
-        <dynamics damping="1.2" />
+        <dynamics damping="1" />
     </joint>
 
     <joint name="knee_left" type="revolute">
@@ -681,7 +680,7 @@
         <child link="knee_right" />
         <axis xyz="0 0 1" />
         <limit lower="-2.862" upper="-0.646" effort="300"/>
-        <dynamics damping="1.2" />
+        <dynamics damping="1" />
     </joint>
 
 
@@ -776,7 +775,7 @@
         <child link="heel_spring_right" />
         <limit lower="-.1" upper="0.1"/>
         <axis xyz="0 0 1" />
-        <dynamics damping="4" /> <!-- made up value -->
+        <dynamics damping="2" /> <!-- made up value -->
     </joint>
 
 
@@ -786,7 +785,7 @@
         <child link="toe_left" />
         <axis xyz="0 0 1" />
         <limit lower="-2.8" upper="0" effort="300"/>
-        <dynamics damping="5" />
+        <dynamics damping="1" />
     </joint>
 
     <joint name="toe_right" type="revolute">
@@ -795,7 +794,7 @@
         <child link="toe_right" />
         <axis xyz="0 0 1" />
         <limit lower="-2.8" upper="0" effort="300"/>
-        <dynamics damping="5" />
+        <dynamics damping="1" />
     </joint>
 
     <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->

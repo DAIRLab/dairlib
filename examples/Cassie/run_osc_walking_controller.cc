@@ -503,7 +503,7 @@ int DoMain(int argc, char* argv[]) {
                                              plant_w_spr, plant_w_spr);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
-  swing_foot_traj.DisableFeedForwardAccel();
+//  swing_foot_traj.DisableFeedForwardAccel();
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
   ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,

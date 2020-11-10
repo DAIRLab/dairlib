@@ -432,8 +432,8 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_left")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_right")));
 
-  trajopt->AddBoundingBoxConstraint(0, 0.1, x0(pos_map.at("hip_roll_left")));
-  trajopt->AddBoundingBoxConstraint(-0.1, 0, x0(pos_map.at("hip_roll_right")));
+  trajopt->AddBoundingBoxConstraint(0.05, 0.2, x0(pos_map.at("hip_roll_left")));
+  trajopt->AddBoundingBoxConstraint(-0.2, -0.05, x0(pos_map.at("hip_roll_right")));
 
   // hip yaw and roll constraints
   trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_yaw_left")));

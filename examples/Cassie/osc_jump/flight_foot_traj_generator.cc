@@ -42,12 +42,12 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
   Trajectory<double>& traj_inst = empty_pp_traj;
 
   if (isLeftFoot) {
-    this->set_name("l_foot_traj");
-    this->DeclareAbstractOutputPort("l_foot_traj", traj_inst,
+    this->set_name("left_ft_traj");
+    this->DeclareAbstractOutputPort("left_ft_traj", traj_inst,
                                     &FlightFootTrajGenerator::CalcTraj);
   } else {
-    this->set_name("r_foot_traj");
-    this->DeclareAbstractOutputPort("r_foot_traj", traj_inst,
+    this->set_name("right_ft_traj");
+    this->DeclareAbstractOutputPort("right_ft_traj", traj_inst,
                                     &FlightFootTrajGenerator::CalcTraj);
   }
 

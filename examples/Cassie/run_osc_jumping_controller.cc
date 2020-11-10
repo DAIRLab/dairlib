@@ -369,10 +369,10 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&com_tracking_data);
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "l_foot_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
+      "left_ft_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
       plant_w_springs, plant_wo_springs);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "r_foot_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
+      "right_ft_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
       plant_w_springs, plant_wo_springs);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
@@ -435,9 +435,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("l_foot_traj"));
+                  osc->get_tracking_data_input_port("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("r_foot_traj"));
+                  osc->get_tracking_data_input_port("right_ft_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),

@@ -1,5 +1,5 @@
 w_input: 2
-w_accel: 0.00001
+w_accel: 0.0005
 w_soft_constraint: 20000
 x_offset: 0.01
 

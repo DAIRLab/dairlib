@@ -12,6 +12,7 @@
 #include "examples/Cassie/osc_jump/pelvis_orientation_traj_generator.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
+#include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -51,6 +52,7 @@ using examples::osc_jump::COMTrajGenerator;
 using examples::osc_jump::FlightFootTrajGenerator;
 using examples::osc_jump::JumpingEventFsm;
 using examples::osc_jump::PelvisOrientationTrajGenerator;
+using multibody::FixedJointEvaluator;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
@@ -138,37 +140,36 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   // Built the Cassie MBPs
-  drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
-  addCassieMultibody(&plant_w_springs, nullptr, true,
+  drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
+  addCassieMultibody(&plant_w_spr, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2.urdf",
-                     true /*spring model*/, false /*loop closure*/);
-  drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
-  addCassieMultibody(&plant_wo_springs, nullptr, true,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     false);
-  plant_w_springs.Finalize();
-  plant_wo_springs.Finalize();
+                     false /*spring model*/, false /*loop closure*/);
+  //  drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
+  //  addCassieMultibody(&plant_wo_springs, nullptr, true,
+  //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+  //                     false, false);
+  plant_w_spr.Finalize();
+  //  plant_wo_springs.Finalize();
 
-  auto context_w_spr = plant_w_springs.CreateDefaultContext();
-  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
+  auto context_w_spr = plant_w_spr.CreateDefaultContext();
+  //  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
 
   // Get contact frames and position (doesn't matter whether we use
-  // plant_w_springs or plant_wo_springs because the contact frames exit in both
+  // plant_w_spr or plant_wo_springs because the contact frames exit in both
   // plants)
-  auto left_toe = LeftToeFront(plant_wo_springs);
-  auto left_heel = LeftToeRear(plant_wo_springs);
-  auto right_toe = RightToeFront(plant_wo_springs);
-  auto right_heel = RightToeRear(plant_wo_springs);
+  auto left_toe = LeftToeFront(plant_w_spr);
+  auto left_heel = LeftToeRear(plant_w_spr);
+  auto right_toe = RightToeFront(plant_w_spr);
+  auto right_heel = RightToeRear(plant_w_spr);
 
-  int nq = plant_wo_springs.num_positions();
-  int nv = plant_wo_springs.num_velocities();
+  int nq = plant_w_spr.num_positions();
+  int nv = plant_w_spr.num_velocities();
   int nx = nq + nv;
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_springs);
-  map<string, int> vel_map =
-      multibody::makeNameToVelocitiesMap(plant_w_springs);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant_w_springs);
+  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant_w_spr);
 
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, right_toe};
@@ -243,7 +244,7 @@ int DoMain(int argc, char* argv[]) {
   // For the time-based FSM (squatting by default)
   double flight_time = FLAGS_delay_time + 100;
   double land_time = FLAGS_delay_time + 200;
-  if (dircon_trajectory.GetNumModes() == 3) { // Override for jumping
+  if (dircon_trajectory.GetNumModes() == 3) {  // Override for jumping
     flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
     land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
   }
@@ -270,30 +271,30 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   auto state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, context_w_spr.get(), com_traj, feet_contact_points,
+      plant_w_spr, context_w_spr.get(), com_traj, feet_contact_points,
       FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
+      plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
       FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, context_w_spr.get(), "hip_right", false,
-      r_foot_trajectory, FLAGS_delay_time);
+      plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
+      FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
-      plant_w_springs, transition_times, FLAGS_contact_based_fsm,
+      plant_w_spr, transition_times, FLAGS_contact_based_fsm,
       FLAGS_transition_delay, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
+      builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, plant_wo_springs, context_w_spr.get(),
-      context_wo_spr.get(), true, FLAGS_print_osc); /*print_tracking_info*/
+      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
+      FLAGS_print_osc); /*print_tracking_info*/
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -333,17 +334,17 @@ int DoMain(int argc, char* argv[]) {
   osc->SetContactFriction(mu);
 
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      plant_w_spr, left_toe.first, left_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      plant_w_spr, left_heel.first, left_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      plant_w_spr, right_toe.first, right_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, right_heel.first, right_heel.second,
-      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+      plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {0, 1, 2});
   vector<osc_jump::FSM_STATE> stance_modes = {osc_jump::BALANCE,
                                               osc_jump::CROUCH, osc_jump::LAND};
   for (auto mode : stance_modes) {
@@ -353,16 +354,36 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(mode, &right_heel_evaluator);
   }
 
-  multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
-  auto left_loop = LeftLoopClosureEvaluator(plant_wo_springs);
-  auto right_loop = RightLoopClosureEvaluator(plant_wo_springs);
+  multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
+  auto left_loop = LeftLoopClosureEvaluator(plant_w_spr);
+  auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
+
+  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  auto left_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
+                          vel_idx_map.at("knee_joint_leftdot"), 0);
+  auto right_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_right"),
+                          vel_idx_map.at("knee_joint_rightdot"), 0);
+  auto left_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
+      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+  auto right_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
+      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+  evaluators.add_evaluator(&left_fixed_knee_spring);
+  evaluators.add_evaluator(&right_fixed_knee_spring);
+  evaluators.add_evaluator(&left_fixed_ankle_spring);
+  evaluators.add_evaluator(&right_fixed_ankle_spring);
+
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
   ComTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
-                                    plant_w_springs, plant_wo_springs);
+                                    plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
     com_tracking_data.AddStateToTrack(mode);
   }
@@ -370,17 +391,17 @@ int DoMain(int argc, char* argv[]) {
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
       "left_ft_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
-      plant_w_springs, plant_wo_springs);
+      plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData right_foot_tracking_data(
       "right_ft_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
-      plant_w_springs, plant_wo_springs);
+      plant_w_spr, plant_w_spr);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");
 
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_tracking_data", K_p_pelvis, K_d_pelvis, W_pelvis,
-      plant_w_springs, plant_wo_springs);
+      "pelvis_rot_tracking_data", K_p_pelvis, K_d_pelvis, W_pelvis, plant_w_spr,
+      plant_w_spr);
 
   for (auto mode : stance_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
@@ -392,10 +413,10 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData left_toe_angle_traj(
       "left_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
-      plant_w_springs, plant_wo_springs);
+      plant_w_spr, plant_w_spr);
   JointSpaceTrackingData right_toe_angle_traj(
       "right_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
-      plant_w_springs, plant_wo_springs);
+      plant_w_spr, plant_w_spr);
 
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
@@ -404,16 +425,20 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
-          plant_w_springs, context_w_spr.get(), pos_map["toe_left"],
+          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
           left_foot_points, "left_toe_angle_traj");
   auto right_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
-          plant_w_springs, context_w_spr.get(), pos_map["toe_right"],
+          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
 
   left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
                                               "toe_leftdot");
   right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
+                                               "toe_rightdot");
+  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_left",
+                                              "toe_leftdot");
+  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_right",
                                                "toe_rightdot");
 
   osc->AddTrackingData(&pelvis_rot_tracking_data);

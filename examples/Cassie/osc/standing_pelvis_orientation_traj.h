@@ -41,6 +41,11 @@ class StandingPelvisOrientationTraj
       feet_contact_points_;
   int state_port_;
   int radio_port_;
+
+  // Filtering desired traj
+  double dt_ = 0.0005;
+  double cutoff_freq_ = 1;
+  mutable Eigen::Vector3d filtered_desired_rpy_pos_ = Eigen::Vector3d::Zero();
 };
 
 }  // namespace dairlib::cassie::osc

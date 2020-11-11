@@ -113,7 +113,7 @@ void StandingComTraj::CalcDesiredTraj(
   PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *pp_traj = PiecewisePolynomial<double>(desired_com_pos);
+  *pp_traj = PiecewisePolynomial<double>(filtered_desired_com_pos_);
 }
 
 }  // namespace osc

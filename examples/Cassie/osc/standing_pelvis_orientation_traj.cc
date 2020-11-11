@@ -83,8 +83,17 @@ void StandingPelvisOrientationTraj::CalcTraj(
           -M_PI, M_PI) +
           cassie_out->pelvis.radio.channel[3];
 
+  if (filtered_desired_rpy_pos_.norm() == 0) {
+    filtered_desired_rpy_pos_ = rpy;
+  } else {
+    double w_low_pass =
+        (2 * M_PI * dt_ * cutoff_freq_) / (2 * M_PI * dt_ * cutoff_freq_ + 1);
+    filtered_desired_rpy_pos_ = (1 - w_low_pass) * filtered_desired_rpy_pos_ +
+        w_low_pass * rpy;
+  }
+
   auto rot_mat =
-      drake::math::RotationMatrix<double>(drake::math::RollPitchYaw(rpy));
+      drake::math::RotationMatrix<double>(drake::math::RollPitchYaw(filtered_desired_rpy_pos_));
 
   *casted_traj = PiecewisePolynomial<double>(rot_mat.ToQuaternionAsVector4());
 }

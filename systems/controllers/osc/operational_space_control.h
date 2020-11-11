@@ -7,6 +7,8 @@
 #include <set>
 #include <drake/multibody/plant/multibody_plant.h>
 #include "dairlib/lcmt_osc_output.hpp"
+#include "dairlib/lcmt_osc_qp_output.hpp"
+
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram.h"

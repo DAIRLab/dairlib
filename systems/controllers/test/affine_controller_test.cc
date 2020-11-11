@@ -106,10 +106,10 @@ TEST_F(AffineControllerTest, TestNumberOfPortsAndControllerOutput) {
   ASSERT_EQ(affine_controller_->num_input_ports(), 2);
 
   // Hook input of the expected size.
-  context_->FixInputPort(affine_controller_->get_input_port_info_index(),
-                         *input_port_info_val_);
-  context_->FixInputPort(affine_controller_->get_input_port_params_index(),
-                         *input_port_params_val_);
+  affine_controller_->get_input_port_info().FixValue(context_.get(),
+                                                   *input_port_info_val_);
+  affine_controller_->get_input_port_params().FixValue(context_.get(),
+                                                   *input_port_params_val_);
 
   affine_controller_->CalcOutput(*context_, output_.get());
 

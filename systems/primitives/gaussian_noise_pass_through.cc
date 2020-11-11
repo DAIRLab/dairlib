@@ -11,7 +11,6 @@ GaussianNoisePassThrough::GaussianNoisePassThrough(
     const drake::MatrixX<double>& vel_variance)
     : num_positions_(num_positions),
       num_velocities_(num_velocities),
-      num_inputs_(num_inputs),
       pos_variance_(pos_variance),
       vel_variance_(vel_variance) {
   systems::OutputVector<double> input(num_positions, num_velocities,

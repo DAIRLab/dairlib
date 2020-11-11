@@ -199,13 +199,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
 
-  // World frames
-  const drake::multibody::BodyFrame<double>& world_w_spr_;
-  const drake::multibody::BodyFrame<double>& world_wo_spr_;
-
   // MBP context's
   drake::systems::Context<double>* context_w_spr_;
   drake::systems::Context<double>* context_wo_spr_;
+
+  // World frames
+  const drake::multibody::BodyFrame<double>& world_w_spr_;
+  const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
   // Size of position, velocity and input of the MBP without spring
   int n_q_;

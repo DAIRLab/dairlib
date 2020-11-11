@@ -14,8 +14,6 @@ namespace {
 
 using Eigen::VectorXd;
 
-// class InputSupervisorTest: public ::testing::Test {};
-
 class InputSupervisorTest : public ::testing::Test {
  protected:
   InputSupervisorTest()
@@ -35,9 +33,6 @@ class InputSupervisorTest : public ::testing::Test {
     state_input_ = std::make_unique<OutputVector<double>>(
         plant_.num_positions(), plant_.num_velocities(),
         plant_.num_actuators());
-    //    controller_switch_input_ = std::make_unique<lcmt_controller_switch>();
-    //    controller_switch_input_->utime = 0;
-    //    controller_switch_input_->channel = "CONTROLLER_CHANNEL";
     command_input_port_ = supervisor_->get_input_port_command().get_index();
     state_input_port_ = supervisor_->get_input_port_state().get_index();
     controller_switch_input_port_ =
@@ -62,25 +57,28 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
   double output_bit;
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
   command_input_->get_mutable_value() = zero_input;
-  context_->FixInputPort(command_input_port_, *command_input_);
 
+  supervisor_->get_input_port_command().FixValue(context_.get(),
+                                                 *command_input_);
   supervisor_->SetStatus(*context_, status_output_.get());
   output_bit = status_output_->get_value()[0];
   EXPECT_EQ(output_bit, 0);
 
   VectorXd large_input = 100 * VectorXd::Ones(plant_.num_actuators());
   command_input_->get_mutable_value() = large_input;
-  context_->FixInputPort(command_input_port_, *command_input_);
+  supervisor_->get_input_port_command().FixValue(context_.get(),
+                                                 *command_input_);
   supervisor_->SetStatus(*context_, status_output_.get());
   output_bit = status_output_->get_value()[0];
   EXPECT_EQ(output_bit, 2);
 
   VectorXd high_velocities = 100 * VectorXd::Ones(plant_.num_velocities());
   state_input_->SetVelocities(high_velocities);
-  context_->FixInputPort(state_input_port_, *state_input_);
-  context_->FixInputPort(
-      controller_switch_input_port_,
-      std::make_unique<drake::Value<lcmt_controller_switch>>());
+
+  supervisor_->get_input_port_state().FixValue(context_.get(), *state_input_);
+  supervisor_->get_input_port_controller_switch().FixValue(
+      context_.get(),
+      *std::make_unique<drake::Value<lcmt_controller_switch>>());
   supervisor_->UpdateErrorFlag(*context_,
                                &context_->get_mutable_discrete_state());
   supervisor_->SetStatus(*context_, status_output_.get());
@@ -103,15 +101,19 @@ TEST_F(InputSupervisorTest, BlendEffortsTest) {
   double blend_start_time = 0.5;
   double timestamp = 1.0;
   double blend_duration = 1.0;
-  std::unique_ptr<drake::Value<lcmt_controller_switch>> switch_msg = std::make_unique<drake::Value<lcmt_controller_switch>>();
+  std::unique_ptr<drake::Value<lcmt_controller_switch>> switch_msg =
+      std::make_unique<drake::Value<lcmt_controller_switch>>();
   switch_msg->get_mutable_value().blend_duration = blend_duration;
   switch_msg->get_mutable_value().utime = blend_start_time * 1e6;
-  context_->FixInputPort(state_input_port_, *state_input_);
-  context_->FixInputPort(controller_switch_input_port_, (drake::AbstractValue&)*switch_msg);
   command_input_->get_mutable_value() = desired_input;
   command_input_->set_timestamp(timestamp);
-  context_->FixInputPort(command_input_port_, *command_input_);
-  supervisor_->UpdateErrorFlag(*context_, &context_->get_mutable_discrete_state());
+  supervisor_->get_input_port_state().FixValue(context_.get(), *state_input_);
+  supervisor_->get_input_port_controller_switch().FixValue(
+      context_.get(), (drake::AbstractValue&)*switch_msg);
+  supervisor_->get_input_port_command().FixValue(context_.get(),
+                                                 *command_input_);
+  supervisor_->UpdateErrorFlag(*context_,
+                               &context_->get_mutable_discrete_state());
   supervisor_->SetMotorTorques(*context_, motor_output_.get());
 
   VectorXd output_from_supervisor = motor_output_->get_value();

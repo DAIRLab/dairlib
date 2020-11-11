@@ -96,11 +96,11 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateSwingTraj(
   Y[3](0, 0) = 0.0;
   Y[4](0, 0) = -0.2;
   // y
-  Y[0](1, 0) = center_line_offset_;
-  Y[1](1, 0) = center_line_offset_;
-  Y[2](1, 0) = center_line_offset_;
-  Y[3](1, 0) = center_line_offset_;
-  Y[4](1, 0) = center_line_offset_;
+  Y[0](1, 0) = 1.5  * center_line_offset_;
+  Y[1](1, 0) = 1.25 * center_line_offset_;
+  Y[2](1, 0) = 1.5  * center_line_offset_;
+  Y[3](1, 0) = 1.25 * center_line_offset_;
+  Y[4](1, 0) = 1.5 * center_line_offset_;
   // z
   /// We added stance_foot_height because we want the desired trajectory to be
   /// relative to the stance foot in case the floating base state estimation

@@ -403,12 +403,12 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   }
 
-//  // Create osc debug sender.
-//  auto osc_debug_pub_network =
-//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-//          "NETWORK_OSC_DEBUG_SWING_FOOT", &lcm_network,
-//          TriggerTypeSet({TriggerType::kPeriodic}), 0.02));
-//  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub_network->get_input_port());
+  // Create osc debug sender.
+  auto osc_debug_pub_network =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+          "NETWORK_OSC_DEBUG_SWING_FOOT", &lcm_network,
+          TriggerTypeSet({TriggerType::kPeriodic}), 0.02));
+  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub_network->get_input_port());
 
   // Create the diagram
   auto owned_diagram = builder.Build();

@@ -27,13 +27,13 @@ InputSupervisor::InputSupervisor(
       this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
           .get_index();
   state_input_port_ = this
-                          ->DeclareVectorInputPort(OutputVector<double>(
-                              num_positions_, num_velocities_, num_actuators_))
-                          .get_index();
+      ->DeclareVectorInputPort(OutputVector<double>(
+          num_positions_, num_velocities_, num_actuators_))
+      .get_index();
   controller_switch_input_port_ =
       this->DeclareAbstractInputPort(
-              "lcmt_controller_switch",
-              drake::Value<dairlib::lcmt_controller_switch>{})
+          "lcmt_controller_switch",
+          drake::Value<dairlib::lcmt_controller_switch>{})
           .get_index();
 
   // Create output port for commands
@@ -57,7 +57,8 @@ InputSupervisor::InputSupervisor(
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
   // Create update for error flag
-  DeclarePerStepDiscreteUpdateEvent(&InputSupervisor::UpdateErrorFlag);
+  DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
+                                     &InputSupervisor::UpdateErrorFlag);
 }
 
 void InputSupervisor::SetMotorTorques(const Context<double>& context,
@@ -68,7 +69,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
 
   bool is_error =
       context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
-      min_consecutive_failures_;
+          min_consecutive_failures_;
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros
@@ -98,14 +99,14 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // Blend the efforts between the previous controller effort and the current
   // commanded effort using linear interpolation
   double alpha = (command->get_timestamp() -
-                  context.get_discrete_state(switch_time_index_)[0]) /
-                 kFilterDuration;
+      context.get_discrete_state(switch_time_index_)[0]) /
+      blend_duration_;
 
   if (alpha <= 1.0) {
     Eigen::VectorXd blended_effort =
         alpha * command->get_value() +
-        (1 - alpha) *
-            context.get_discrete_state(prev_efforts_index_).get_value();
+            (1 - alpha) *
+                context.get_discrete_state(prev_efforts_index_).get_value();
     output->SetDataVector(blended_effort);
     if (fmod(command->get_timestamp(), 0.5) < 1e-4) {
       std::cout << "Blending efforts" << std::endl;
@@ -140,7 +141,7 @@ void InputSupervisor::SetStatus(const Context<double>& context,
   }
 }
 
-drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
+void InputSupervisor::UpdateErrorFlag(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   const OutputVector<double>* state =
@@ -158,7 +159,7 @@ drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
       min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
-                             (velocities.array() < -max_joint_velocity_).any();
+        (velocities.array() < -max_joint_velocity_).any();
     if (is_velocity_error) {
       // Increment counter
       discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] +=
@@ -169,7 +170,7 @@ drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
                 << max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error "
                 << discrete_state->get_vector(
-                       status_vars_index_)[n_fails_index_]
+                    status_vars_index_)[n_fails_index_]
                 << " of " << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
@@ -183,23 +184,22 @@ drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
     }
   }
 
-  // Update the previous commanded switch message unless currently blending
-  // efforts
-  if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
-      kFilterDuration) {
-    discrete_state->get_mutable_vector(prev_efforts_index_)
-        .get_mutable_value() = command->get_value();
-  }
-
   // When receiving a new controller switch message, record the time
   if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
       controller_switch->utime * 1e-6) {
     std::cout << "Got new switch message" << std::endl;
     discrete_state->get_mutable_vector(switch_time_index_)[0] =
         controller_switch->utime * 1e-6;
+    blend_duration_ = controller_switch->blend_duration;
   }
 
-  return drake::systems::EventStatus::Succeeded();
+  // Update the previous commanded switch message unless currently blending
+  // efforts
+  if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
+      blend_duration_) {
+    discrete_state->get_mutable_vector(prev_efforts_index_)
+        .get_mutable_value() = command->get_value();
+  }
 }
 
 }  // namespace dairlib

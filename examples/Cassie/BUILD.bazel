@@ -328,6 +328,7 @@ cc_binary(
         ":simulator_drift",
         "//examples/Cassie/osc",
         "//multibody:utils",
+        "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",

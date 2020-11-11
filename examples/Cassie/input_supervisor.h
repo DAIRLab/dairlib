@@ -52,6 +52,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_controller_switch() const {
+    return this->get_input_port(controller_switch_input_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_command() const {
     return this->get_output_port(command_output_port_);
   }
@@ -59,7 +63,6 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_status() const {
     return this->get_output_port(status_output_port_);
   }
-
 
   void SetMotorTorques(const drake::systems::Context<double>& context,
                        systems::TimestampedVector<double>* output) const;
@@ -84,14 +87,16 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   const int num_velocities_;
   const int min_consecutive_failures_;
   double max_joint_velocity_;
-
   double input_limit_;
+  mutable double blend_duration_ = 0.0;
   int status_vars_index_;
   int n_fails_index_;
   int status_index_;
+  int switch_time_index_;
   int prev_efforts_index_;
   int state_input_port_;
   int command_input_port_;
+  int controller_switch_input_port_;
   int command_output_port_;
   int status_output_port_;
 

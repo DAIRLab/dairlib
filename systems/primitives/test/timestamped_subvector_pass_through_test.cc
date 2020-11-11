@@ -53,7 +53,7 @@ TEST_F(SubvectorPassThroughTest, VectorThroughPassThroughSystem) {
   auto input = std::make_unique<TimestampedVector<double>>(input_value_);
   input->set_timestamp(time_);
   // Hook input of the expected size.
-  context_->FixInputPort(0, std::move(input));
+  pass_through_->get_input_port().FixValue(context_.get(), input_value_);
 
 
   pass_through_->CalcOutput(*context_, output_.get());

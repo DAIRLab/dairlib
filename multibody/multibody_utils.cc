@@ -65,8 +65,7 @@ std::unique_ptr<Context<T>> createContext(
   auto context = plant.CreateDefaultContext();
   plant.SetPositionsAndVelocities(context.get(), state);
 
-  context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
-
+  plant.get_actuation_input_port().FixValue(context.get(), input);
   return context;
 }
 
@@ -112,7 +111,7 @@ void SetInputsIfNew(const MultibodyPlant<T>& plant,
                     Context<T>* context) {
   if (!plant.get_actuation_input_port().HasValue(*context) ||
       !AreVectorsEqual(u, plant.get_actuation_input_port().Eval(*context))) {
-    context->FixInputPort(plant.get_actuation_input_port().get_index(), u);
+    plant.get_actuation_input_port().FixValue(context, u);
   }
 }
 

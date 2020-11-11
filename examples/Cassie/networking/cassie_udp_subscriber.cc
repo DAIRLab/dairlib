@@ -37,7 +37,7 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
     const int port)
     : address_(address),
       port_(port),
-      serializer_(std::move(make_unique<CassieUDPOutSerializer>())) {
+      serializer_(make_unique<CassieUDPOutSerializer>()) {
 
   // Creating socket file descriptor
   socket_ = socket(AF_INET, SOCK_DGRAM, 0);

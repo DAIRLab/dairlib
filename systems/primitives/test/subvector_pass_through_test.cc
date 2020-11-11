@@ -52,9 +52,7 @@ TEST_F(SubvectorPassThroughTest, VectorThroughPassThroughSystem) {
   ASSERT_EQ(1, pass_through_->num_input_ports());
 
   // Hook input of the expected size.
-  context_->FixInputPort(
-        0, std::make_unique<BasicVector<double>>(input_value_));
-
+  pass_through_->get_input_port().FixValue(context_.get(), input_value_);
 
   pass_through_->CalcOutput(*context_, output_.get());
 

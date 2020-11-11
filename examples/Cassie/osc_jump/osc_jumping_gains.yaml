@@ -6,6 +6,11 @@ x_offset: 0.01
 w_swing_toe: 10
 swing_toe_kp: 25
 swing_toe_kd: 5
+
+w_hip_yaw: 100
+hip_yaw_kp: 15
+hip_yaw_kd: 5
+
 t_delay_toe_ang: 0.00
 t_delay_ft_pos: 0.00
 
@@ -22,17 +27,17 @@ FlightFootW:
    0,   400,    0,
    0,     0,  400]
 CoMKp:
-  [200,   0,   0,
+  [ 50,   0,   0,
      0,  30,   0,
-     0,   0, 200]
+     0,   0,  50]
 CoMKd:
-  [ 10,    0,   0,
+  [  5,    0,   0,
      0,    4,   0,
-     0,    0,  10]
+     0,    0,   5]
 PelvisRotKp:
-  [20, 0, 0,
-   0, 20, 0,
-   0, 0, 20]
+  [ 30,   0,   0,
+     0,  20,   0,
+     0,   0,  20]
 PelvisRotKd:
   [5,  0,  0,
    0,  5,  0,
@@ -42,7 +47,7 @@ FlightFootKp:
    0,   200,    0,
    0,     0,  400]
 FlightFootKd:
-  [10,   0,   0,
+  [ 5,   0,   0,
     0,   5,   0,
-    0,   0,  10]
+    0,   0,   5]
 

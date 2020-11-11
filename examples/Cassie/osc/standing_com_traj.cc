@@ -100,6 +100,15 @@ void StandingComTraj::CalcDesiredTraj(
                            feet_center_pos(1) + y_offset,
                            feet_center_pos(2) + target_height);
 
+  if (filtered_desired_com_pos_.norm() == 0) {
+    filtered_desired_com_pos_ = desired_com_pos;
+  } else {
+    double w_low_pass =
+        (2 * M_PI * dt_ * cutoff_freq_) / (2 * M_PI * dt_ * cutoff_freq_ + 1);
+    filtered_desired_com_pos_ = (1 - w_low_pass) * filtered_desired_com_pos_ +
+        w_low_pass * desired_com_pos;
+  }
+
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(

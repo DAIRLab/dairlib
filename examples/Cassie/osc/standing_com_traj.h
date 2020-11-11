@@ -59,6 +59,11 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   const std::vector<
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
       feet_contact_points_;
+
+  // Filtering COM
+  double dt_ = 0.0005;
+  double cutoff_freq_ = 1;
+  mutable Eigen::Vector3d filtered_desired_com_pos_ = Eigen::Vector3d::Zero();
 };
 
 }  // namespace osc

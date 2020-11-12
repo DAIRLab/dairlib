@@ -537,11 +537,11 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto left_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          0.25 * VectorXd::Ones(1), 0.3 * VectorXd::Ones(1));
+          0.2 * VectorXd::Ones(1), 0.25 * VectorXd::Ones(1));
   auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          -0.3 * VectorXd::Ones(1), -0.25 * VectorXd::Ones(1));
+          -0.25 * VectorXd::Ones(1), -0.2 * VectorXd::Ones(1));
   for (int mode = 2; mode < 3; ++mode) {
     for (int index = 0; index < mode_lengths[mode]; index++) {
       // Assumes mode_lengths are the same across modes

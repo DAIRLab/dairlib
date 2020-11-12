@@ -1988,7 +1988,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_Q = setting.Q_double * all_cost_scale;
   double w_R = setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-3 * sqrt(all_cost_scale);
+  double w_lambda = 1.0e-4 * sqrt(all_cost_scale);
   // Cost on difference over time
   double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
   double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;  // TODO

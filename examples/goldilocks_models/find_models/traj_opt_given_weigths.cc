@@ -1093,10 +1093,11 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
       writeCSV(directory + prefix + string("t_and_ydot.csv"), t_and_ydot);
       writeCSV(directory + prefix + string("t_and_yddot.csv"), t_and_yddot);
       writeCSV(directory + prefix + string("t_and_tau.csv"), t_and_tau);
-      cout << "t_and_y = \n" << t_and_y << endl;
-      cout << "t_and_ydot = \n" << t_and_ydot << endl;
-      cout << "t_and_yddot = \n" << t_and_yddot << endl;
-      cout << "t_and_tau = \n" << t_and_tau << endl;
+      // TODO: still need to test if the data is saved correctly
+      //      cout << "t_and_y = \n" << t_and_y << endl;
+      //      cout << "t_and_ydot = \n" << t_and_ydot << endl;
+      //      cout << "t_and_yddot = \n" << t_and_yddot << endl;
+      //      cout << "t_and_tau = \n" << t_and_tau << endl;
     }
 
     // Below are all for debugging /////////////////////////////////////////////
@@ -2319,6 +2320,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing -- TODO: delete this after done testing
   //  if (options_list.size() == 2) {
+  //    cout << "\n!set second mode kAccelOnly!\n\n";
   //    options_list[1].setStartType(DirconKinConstraintType::kAccelOnly);
   //  }
 
@@ -2537,7 +2539,22 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //      0.631216, -0.315915, -0.000545674, 0.193521, 0.00283896, -0.289819,
   //      -0.246365, -0.822828, -0.0944468, 0.546554, 0.314669, -0.552515,
   //      -0.318901, 0.84682, -0.888837;
+  // From 20200926 try to impose lipm constraint/35 play with periodicity
+  // cosntraint (new cost weight)/0 base case
+  //  x0_val << 1, 0, 0, 0, 0, 0.00201455, 1.11186, 0.00667135, 0.000154667,
+  //      -0.00160869, -0.00282592, 0.385475, 0.111884, -0.646, -0.700251,
+  //      0.866859, 0.921762, -1.47982, -1.20683, 0.221816, 0.166368, -0.073378,
+  //      0.632197, 0.351811, 0.00308428, -0.542369, -0.466149, 0.074483,
+  //      0.087794, -0.232225, -0.661135, -0.494315, 0.489445, 0.500962,
+  //      -0.494709, 0.390937, 0.789718;
+  //  xf_val << 1, 0, 0, 0, 0.3, -0.00201455, 1.11363, 0.00984533, -0.000591072,
+  //      -0.00160865, 0.00906268, 0.101884, 0.375475, -0.69639, -0.646,
+  //      0.91786, 0.866859, -1.19683, -1.46982, 0.117548, 0.00933199, 0.15473,
+  //      0.619705, -0.367853, 0.00262366, 0.218544, 0.338137, -0.154625,
+  //      -0.199548, -0.863092, -0.142833, 0.557317, 0.275048, -0.563403,
+  //      -0.278747, 0.880573, -0.57644;
   //  auto xf_end_of_first_mode = trajopt->final_state();
+  //  cout << "\n!specify the start and end configurations!\n\n";
   //  trajopt->AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
   //                                    x0.head(n_q));
   //  trajopt->AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),

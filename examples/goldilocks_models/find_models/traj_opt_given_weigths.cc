@@ -2076,7 +2076,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // TODO(yminchen):
   //  reminder: if it solves very slowly, you might want to scale constraint
-  //  because you added relected inertia
+  //  because you added reflected inertia
 
   // Testing -- remove ankle joint pos/vel periodicity constraint becasue it's
   // redundant (because we have fourbar constraint at pos/vel level)
@@ -2089,6 +2089,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // cosntraining the problem
   bool relax_vel_periodicity_constraint = true;
   double eps_vel_period = 0.1;
+  if (!relax_vel_periodicity_constraint) {
+    eps_vel_period = 0;
+  }
+  bool relax_pos_periodicity_constraint = true;
+  double eps_pos_period = 0.01;
+  if (!relax_pos_periodicity_constraint) {
+    eps_pos_period = 0;
+  }
 
   // Setup cost matrices
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
@@ -2666,25 +2674,22 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       // positions
       if (periodic_joint_pos) {
         trajopt->AddLinearConstraint(
-            x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
-            -xf(pos_map.at(asy_joint_name + l_r_pair.second)));
+            x0(pos_map.at(asy_joint_name + l_r_pair.first)) >=
+            -xf(pos_map.at(asy_joint_name + l_r_pair.second)) - eps_pos_period);
+        trajopt->AddLinearConstraint(
+            x0(pos_map.at(asy_joint_name + l_r_pair.first)) <=
+            -xf(pos_map.at(asy_joint_name + l_r_pair.second)) + eps_pos_period);
       }
       // velocities
       if (periodic_joint_vel) {
-        if (eps_vel_period) {
-          trajopt->AddLinearConstraint(
-              x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) >=
-              -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")) -
-                  eps_vel_period);
-          trajopt->AddLinearConstraint(
-              x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) <=
-              -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")) +
-                  eps_vel_period);
-        } else {
-          trajopt->AddLinearConstraint(
-              x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
-              -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
-        }
+        trajopt->AddLinearConstraint(
+            x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) >=
+            -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")) -
+                eps_vel_period);
+        trajopt->AddLinearConstraint(
+            x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) <=
+            -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")) +
+                eps_vel_period);
       }
       // inputs
       if (periodic_effort) {
@@ -2698,31 +2703,24 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       // positions
       if (periodic_joint_pos) {
         trajopt->AddLinearConstraint(
-            x0(pos_map.at(sym_joint_names[i] + l_r_pair.first)) ==
-            xf(pos_map.at(sym_joint_names[i] + l_r_pair.second)));
+            x0(pos_map.at(sym_joint_names[i] + l_r_pair.first)) >=
+            xf(pos_map.at(sym_joint_names[i] + l_r_pair.second)) -
+                eps_pos_period);
+        trajopt->AddLinearConstraint(
+            x0(pos_map.at(sym_joint_names[i] + l_r_pair.first)) <=
+            xf(pos_map.at(sym_joint_names[i] + l_r_pair.second)) +
+                eps_pos_period);
       }
       // velocities
       if (periodic_joint_vel) {
-        if (eps_vel_period) {
-          trajopt->AddLinearConstraint(
-              x0(n_q +
-                 vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) >=
-              xf(n_q +
-                 vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")) -
-                  eps_vel_period);
-          trajopt->AddLinearConstraint(
-              x0(n_q +
-                 vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) <=
-              xf(n_q +
-                 vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")) +
-                  eps_vel_period);
-        } else {
-          trajopt->AddLinearConstraint(
-              x0(n_q +
-                 vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
-              xf(n_q +
-                 vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
-        }
+        trajopt->AddLinearConstraint(
+            x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) >=
+            xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")) -
+                eps_vel_period);
+        trajopt->AddLinearConstraint(
+            x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) <=
+            xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")) +
+                eps_vel_period);
       }
       // inputs (ankle joint is not actuated)
       if (periodic_effort) {
@@ -3572,6 +3570,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "relax_vel_periodicity_constraint = "
          << relax_vel_periodicity_constraint
          << "; (eps_vel_period = " << eps_vel_period << ")\n";
+    cout << "relax_pos_periodicity_constraint = "
+         << relax_pos_periodicity_constraint
+         << "; (eps_pos_period = " << eps_pos_period << ")\n";
 
     cout << endl;
   }  // end if is_print_for_debugging

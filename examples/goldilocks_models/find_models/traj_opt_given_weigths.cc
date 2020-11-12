@@ -1988,7 +1988,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_Q = setting.Q_double * all_cost_scale;
   double w_R = setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-3 * sqrt(all_cost_scale);
+  double w_lambda = 1.0e-4 * sqrt(all_cost_scale);
   // Cost on difference over time
   double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
   double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;  // TODO
@@ -2012,14 +2012,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   double w_v_diff_swing_leg = w_v_diff * 1;
   // Testing
-  double w_joint_accel = 0.001;  // The final weight is w_joint_accel * W_Q
+  double w_joint_accel = 0.0001;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
   bool swing_foot_ground_clearance = false;
   bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
   bool periodic_joint_pos = true;
-  bool periodic_floating_base_vel = true;
+  bool periodic_floating_base_vel = false;
   bool periodic_joint_vel = true;
   bool periodic_effort = false;
   bool ground_normal_force_margin = false;
@@ -3196,11 +3196,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   auto joint_accel_cost = std::make_shared<JointAccelCost>(
       w_joint_accel * W_Q, plant, dataset_list[0]);
   if (add_joint_acceleration_cost) {
-    for (int i = 0; i < N; i++) {
-      auto x0 = trajopt->state(i);
-      auto u0 = trajopt->input(i);
-      auto l0 = trajopt->force(0, i);
-      trajopt->AddCost(joint_accel_cost, {x0, u0, l0});
+    int idx_start = 0;
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        auto xi = trajopt->state_vars_by_mode(mode, index);
+        auto ui = (only_one_mode || !pre_and_post_impact_efforts)
+                      ? trajopt->input(idx_start + index)
+                      : trajopt->input_vars_by_mode(mode, index);
+        auto li = trajopt->force(mode, index);
+        trajopt->AddCost(joint_accel_cost, {xi, ui, li});
+      }
+      idx_start += num_time_samples[mode] - 1;
     }
   }
 
@@ -3388,7 +3394,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
     }
     total_cost += cost_lambda;
-    cout << "cost_lambda = " << cost_lambda << endl;
+    cout << "cost_lambda (at knots) = " << cost_lambda << endl;
+    // TODO: Sum collocation force cost
+    cout << "cost_lambda (at collocation points) = ..." << endl;
     // cost on force difference wrt time
     double cost_lambda_diff = 0;
     for (int i = 0; i < N - 1; i++) {
@@ -3466,15 +3474,24 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
     double cost_joint_acceleration = 0;
     if (add_joint_acceleration_cost) {
-      for (int i = 0; i < N; i++) {
-        auto x0 = result.GetSolution(gm_traj_opt.dircon->state(i));
-        auto u0 = result.GetSolution(gm_traj_opt.dircon->input(i));
-        auto l0 = result.GetSolution(gm_traj_opt.dircon->force(0, i));
-        Eigen::VectorXd x_val(x0.size() + u0.size() + l0.size());
-        x_val << x0, u0, l0;
-        Eigen::VectorXd y_val(1);
-        joint_accel_cost->Eval(x_val, &y_val);
-        cost_joint_acceleration += y_val(0);
+      int idx_start = 0;
+      for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+        for (int index = 0; index < num_time_samples[mode]; index++) {
+          auto xi = result.GetSolution(
+              gm_traj_opt.dircon->state_vars_by_mode(mode, index));
+          auto ui = result.GetSolution(
+              (only_one_mode || !pre_and_post_impact_efforts)
+                  ? gm_traj_opt.dircon->input(idx_start + index)
+                  : gm_traj_opt.dircon->input_vars_by_mode(mode, index));
+          auto li = result.GetSolution(gm_traj_opt.dircon->force(mode, index));
+
+          Eigen::VectorXd x_val(xi.size() + ui.size() + li.size());
+          x_val << xi, ui, li;
+          Eigen::VectorXd y_val(1);
+          joint_accel_cost->Eval(x_val, &y_val);
+          cost_joint_acceleration += y_val(0);
+        }
+        idx_start += num_time_samples[mode] - 1;
       }
     }
     total_cost += cost_joint_acceleration;
@@ -3491,9 +3508,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
          << endl;
     cout << "periodic_quaternion (only effective when turning rate = 0) = "
          << periodic_quaternion << endl;
+    cout << "periodic_joint_pos = " << periodic_joint_pos << endl;
     cout << "periodic_floating_base_vel = " << periodic_floating_base_vel
          << endl;
-    cout << "periodic_joint_pos = " << periodic_joint_pos << endl;
     cout << "periodic_joint_vel = " << periodic_joint_vel << endl;
     cout << "periodic_effort = " << periodic_effort << endl;
     cout << "ground_normal_force_margin = " << ground_normal_force_margin

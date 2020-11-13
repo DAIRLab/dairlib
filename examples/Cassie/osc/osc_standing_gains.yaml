@@ -9,7 +9,7 @@
 rows: 3
 cols: 3
 w_input: 0
-w_accel: .01
+w_accel: .00001
 w_soft_constraint: 20000
 HipYawKp: 10
 HipYawKd: 1

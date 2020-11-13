@@ -2,9 +2,9 @@
 
 #include <gflags/gflags.h>
 
+#include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_cassie_out.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
@@ -14,6 +14,7 @@
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
@@ -28,9 +29,11 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
+
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 
@@ -41,7 +44,6 @@ using Eigen::VectorXd;
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
-
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
@@ -49,6 +51,7 @@ DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
+DEFINE_string(channel_u, "CASSIE_INPUT", "LCM channel to receive inputs on");
 DEFINE_double(dt, 8e-5,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
@@ -62,6 +65,7 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -84,18 +88,34 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
-                     FLAGS_spring_model, true);
-  plant.Finalize();
+  Parser parser(&plant, &scene_graph);
+  std::string terrain_name =
+      FindResourceOrThrow("examples/simple_examples/terrain.urdf");
+  Vector3d offset;
+  if (FLAGS_terrain_height >= 0.0) {
+    offset << 0.25, 0, FLAGS_terrain_height;
+  } else {
+    offset << -0.25, 0, -FLAGS_terrain_height;
+  }
+  if (FLAGS_terrain_height != 0.0){
+    parser.AddModelFromFile(terrain_name);
+    plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                     drake::math::RigidTransform<double>(offset));
+  }
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
+
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+                     FLAGS_spring_model, true);
+
+  plant.Finalize();
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", lcm));
+          FLAGS_channel_u, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
@@ -115,8 +135,8 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
-  const auto& sensor_aggregator = AddImuAndAggregator(
-      &builder, plant, passthrough->get_output_port());
+  const auto& sensor_aggregator =
+      AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
@@ -140,6 +160,9 @@ int do_main(int argc, char* argv[]) {
                   contact_results_publisher.get_input_port());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
+
+  if(FLAGS_terrain_height != 0.0)
+    ConnectDrakeVisualizer(&builder, scene_graph);
 
   auto diagram = builder.Build();
 
@@ -173,6 +196,13 @@ int do_main(int argc, char* argv[]) {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
   }
+
+  if (FLAGS_terrain_height < 0){
+    q_init(6) -= FLAGS_terrain_height;
+  }
+
+  std::cout << q_init << std::endl;
+
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
 

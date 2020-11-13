@@ -78,6 +78,7 @@ cc_library(
     deps = [
         ":affine_controller",
         ":constrained_lqr_controller",
+        ":joint_level_controller",
         ":linear_controller",
     ],
 )
@@ -98,6 +99,16 @@ cc_library(
     name = "time_based_fsm",
     srcs = ["time_based_fsm.cc"],
     hdrs = ["time_based_fsm.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "joint_level_controller",
+    srcs = ["joint_level_controller.cc"],
+    hdrs = ["joint_level_controller.h"],
     deps = [
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

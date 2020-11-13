@@ -43,8 +43,9 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
 
-  double m = floor((current_sim_time - t0_) / period_);
-  double remainder = (current_sim_time - t0_) - m * period_;
+//  double m = floor((current_sim_time - t0_) / period_);
+//  double remainder = (current_sim_time - t0_) - m * period_;
+  double remainder = fmod(current_sim_time, period_);
 
   // Get current finite state
   VectorXd current_finite_state(1);

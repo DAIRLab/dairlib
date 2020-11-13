@@ -5,6 +5,8 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/spring_to_no_spring_converter.h"
+#include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -26,6 +28,8 @@ namespace dairlib {
 
 using std::cout;
 using std::endl;
+using std::map;
+using std::string;
 using std::vector;
 
 using Eigen::Matrix3d;
@@ -218,7 +222,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Swing Foot Kd: \n" << K_d_swing_foot << std::endl;
 
   // Get contact frames and position (doesn't matter whether we use
-  // plant_w_spr or plant_wospr because the contact frames exit in both
+  // plant_w_spr or plant_wo_spr because the contact frames exit in both
   // plants)
   auto left_toe = LeftToeFront(plant_w_spr);
   auto left_heel = LeftToeRear(plant_w_spr);
@@ -236,7 +240,8 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
       Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_right"));
 
-  // Create state receiver.
+  // Create state receiver (must use cassie with spring because dispather_out
+  // uses it)
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
 
@@ -291,6 +296,7 @@ int DoMain(int argc, char* argv[]) {
         plant_w_spr, context_w_spr.get(), global_target_position,
         params_of_no_turning, FLAGS_footstep_option);
   }
+
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
@@ -306,9 +312,9 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  double left_support_duration = 0.35;
-  double right_support_duration = 0.35;
-  double double_support_duration = 0.02;
+  double left_support_duration = 0.30;
+  double right_support_duration = 0.30;
+  double double_support_duration = 0.03;
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {
@@ -497,6 +503,10 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(double_support_state, &right_heel_evaluator);
   }
 
+  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant_w_spr);
+
   // Swing foot tracking
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_swing_foot,
                                              K_d_swing_foot, W_swing_foot,
@@ -505,8 +515,11 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
-  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
+//  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
+//                                      plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
                                       plant_w_spr, plant_w_spr);
+  center_of_mass_traj.AddPointToTrack("pelvis");
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
@@ -523,19 +536,33 @@ int DoMain(int argc, char* argv[]) {
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
-  // The desired position, -1.5, was derived heuristically. It is roughly the
-  // toe angle when Cassie stands on the ground.
+  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
+      left_heel, left_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
+      right_heel, right_toe};
+  auto left_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
+          left_foot_points, "left_toe_angle_traj");
+  auto right_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
+          right_foot_points, "right_toe_angle_traj");
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
-                                        K_d_swing_toe, W_swing_toe, plant_w_spr,
-                                        plant_w_spr);
-  swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                         "toe_rightdot");
-  swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                         "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
+  JointSpaceTrackingData swing_toe_traj_left(
+      "left_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
+      plant_w_spr, plant_w_spr);
+  JointSpaceTrackingData swing_toe_traj_right(
+      "right_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
+      plant_w_spr, plant_w_spr);
+  swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
+                                               "toe_rightdot");
+  swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
+                                              "toe_leftdot");
+  osc->AddTrackingData(&swing_toe_traj_left);
+  osc->AddTrackingData(&swing_toe_traj_right);
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
@@ -550,6 +577,15 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
   // Build OSC problem
   osc->Build();
+
+  builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+  builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_toe_angle_traj_gen->get_state_input_port());
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());

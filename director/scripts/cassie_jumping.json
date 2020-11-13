@@ -1,0 +1,138 @@
+{
+  "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
+  "channelName": "CASSIE_STATE_SIMULATION",
+  "data": [
+    {
+      "name": "left_toe_line",
+      "source_data": {
+        "category": "kinematic",
+        "frame": "toe_left",
+        "point": [
+          0,
+          0,
+          0
+        ]
+      },
+      "type_data": {
+        "color": [
+          0,
+          0,
+          1
+        ],
+        "alpha": 0.5,
+        "type": "line",
+        "thickness": 0.005,
+        "history": 5
+      }
+    },
+    {
+      "name": "right_toe_line",
+      "source_data": {
+        "category": "kinematic",
+        "frame": "toe_right",
+        "point": [
+          0,
+          0,
+          0
+        ]
+      },
+      "type_data": {
+        "color": [
+          1,
+          0,
+          0
+        ],
+        "alpha": 0.5,
+        "type": "line",
+        "thickness": 0.005,
+        "history": 5
+      }
+    },
+    {
+      "name": "com_line",
+      "source_data": {
+        "category": "com"
+      },
+      "type_data": {
+        "color": [
+          0,
+          1,
+          0
+        ],
+        "alpha": 0.5,
+        "type": "line",
+        "thickness": 0.005,
+        "history": 5
+      }
+    },
+    {
+      "name": "center_of_mass",
+      "source_data": {
+        "category": "lcm",
+        "abstract_channel": "OSC_DEBUG_JUMPING",
+        "abstract_type": "dairlib.lcmt_osc_output",
+        "abstract_field": "tracking_data[%d].y_des",
+        "index_field": "tracking_data_names",
+        "index_element": "com_traj",
+        "x_index": 0
+      },
+      "type_data": {
+        "color": [
+          0.5,
+          1,
+          1
+        ],
+        "alpha": 0.5,
+        "type": "line",
+        "thickness": 0.01,
+        "history": 5
+      }
+    },
+    {
+      "name": "left_swing_foot",
+      "source_data": {
+        "category": "lcm",
+        "abstract_channel": "OSC_DEBUG_JUMPING",
+        "abstract_type": "dairlib.lcmt_osc_output",
+        "abstract_field": "tracking_data[%d].y_des",
+        "index_field": "tracking_data_names",
+        "index_element": "left_ft_traj",
+        "x_index": 0
+      },
+      "type_data": {
+        "color": [
+          0.5,
+          0.5,
+          1
+        ],
+        "alpha": 0.5,
+        "type": "line",
+        "thickness": 0.01,
+        "history": 5
+      }
+    },
+    {
+      "name": "right_swing_foot",
+      "source_data": {
+        "category": "lcm",
+        "abstract_channel": "OSC_DEBUG_JUMPING",
+        "abstract_type": "dairlib.lcmt_osc_output",
+        "abstract_field": "tracking_data[%d].y_des",
+        "index_field": "tracking_data_names",
+        "index_element": "right_ft_traj",
+        "x_index": 0
+      },
+      "type_data": {
+        "color": [
+          0.5,
+          0.5,
+          1
+        ],
+        "alpha": 0.5,
+        "type": "line",
+        "thickness": 0.01,
+        "history": 5
+      }
+    }
+  ]
+}

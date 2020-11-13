@@ -22,17 +22,33 @@ group "0.operator" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.37 --n_period_delay=2";
         host = "dair-cassie";
     }
+    cmd "controller-switch-to-walking (2 phase walking)" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.35 --n_period_delay=2";
+        host = "dair-cassie";
+    }
+    cmd "controller-switch-to-jumping" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_JUMPING --channel_x=CASSIE_STATE_DISPATCHER --n_publishes=1";
+        host = "dair-cassie";
+    }
     cmd "controller-switch-to-pd" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=PD_CONTROL --channel_x=CASSIE_STATE_DISPATCHER";
         host = "dair-cassie";
     }
     cmd "controller-switch-to-standing" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=1";
+        host = "dair-cassie";
+    }
+    cmd "controller-switch-to-walking (3 phase walking)" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.74 --n_period_delay=1";
         host = "dair-cassie";
     }
 }
 
 group "3.cassie-robot" {
+    cmd "5. osc-jumping-controller-real-robot" {
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --folder_path=\"examples/Cassie/saved_trajectories/\" --traj_name=\"squatting\" --delay_time=20.0 --channel_x=CASSIE_STATE_DISPATCHER --contact_based_fsm=0 --print_osc=0";
+        host = "dair-cassie";
+    }
     cmd "0.dispatcher-robot-out-real-robot" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --floating_base=true --test_mode=2";
         host = "dair-cassie";
@@ -42,7 +58,7 @@ group "3.cassie-robot" {
         host = "dair-cassie";
     }
     cmd "3.osc-standing-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_u=OSC_STANDING --channel_x=CASSIE_STATE_DISPATCHER --cost_weight_multiplier=1 --height=0.35";
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_u=OSC_STANDING --channel_x=CASSIE_STATE_DISPATCHER --cost_weight_multiplier=1 --height=0.8";
         host = "dair-cassie";
     }
     cmd "1.dispatcher-robot-in-real-robot" {
@@ -50,7 +66,7 @@ group "3.cassie-robot" {
         host = "dair-cassie";
     }
     cmd "4.0 osc-walking-real-robot (wo radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING --use_radio=false";
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING --use_radio=false --is_two_phase=false";
         host = "dair-cassie";
     }
     cmd "4.osc-walking-real-robot (w radio)" {
@@ -67,92 +83,18 @@ script "initialize_standing" {
     start cmd "2.pd-controller-real-robot";
 }
 
-script "mujoco-osc-standing" {
-    start cmd "2.cassie-mujoco";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "4.osc-standing-controller";
-}
-
-script "run-drake-osc-standing-control" {
-    run_script "start-operator-RBP";
-    start cmd "1.simulator (no dispatcher) for OSC controller";
-    start cmd "4.osc-standing-controller";
-}
-
-script "run-drake-osc-walking-control" {
-    run_script "start-operator-RBP";
-    start cmd "1.simulator (no dispatcher) for OSC controller";
-    start cmd "4.osc-walking-controller";
-}
-
-script "run-drake-pd-control" {
-    run_script "start-operator-MBP";
-    start cmd "1.simulator (dispatched)";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
-    start cmd "0.pd-controller";
-}
-
-script "run-gazebo-lcm-pd-control" {
-    run_script "start-operator-MBP";
-    start cmd "1.launch-gazebo-fixed-base";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "0.pd-controller";
-}
-
-script "run-gazebo-pd-control" {
-    run_script "start-operator-MBP";
-    start cmd "1.launch-gazebo-fixed-base";
-    start cmd "2.b.dispatcher-robot-out (gazebo)";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "0.pd-controller";
-}
-
-script "run-mujoco-lcm-pd-control" {
-    run_script "start-operator-MBP";
-    start cmd "3.cassie-mujoco-fixed-base";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "0.pd-controller";
-}
-
-script "run-real-robot-pd-control" {
-    run_script "start-operator-real-robot";
-    start cmd "0.dispatcher-robot-out-real-robot";
-    start cmd "1.dispatcher-robot-in-real-robot";
-    start cmd "2.pd-controller-real-robot";
-}
-
 script "set_up_from_pd_to_osc_standing" {
     restart cmd "0.dispatcher-robot-out-real-robot";
     start cmd "3.osc-standing-real-robot";
 }
 
-script "start-operator-MBP" {
-    stop cmd "1.state-visualizer";
-    stop cmd "0.drake-director";
-    start cmd "0.drake-director";
-    wait ms 3000;
-    start cmd "1.state-visualizer";
+script "switch from standing to 2 phase walking" {
+    start cmd "controller-switch-to-walking (2 phase walking)";
+    wait ms 1000;
+    stop cmd "3.osc-standing-real-robot";
 }
 
-script "start-operator-RBP" {
-    stop cmd "4.state-visualizer-floating";
-    stop cmd "0.drake-director";
-    start cmd "0.drake-director";
-    wait ms 3000;
-    start cmd "4.state-visualizer-floating";
-}
-
-script "start-operator-real-robot" {
-    stop cmd "3.state-visualizer-real-robot";
-    stop cmd "2.drake-director-real-robot";
-    start cmd "2.drake-director-real-robot";
-    wait ms 3000;
-    start cmd "3.state-visualizer-real-robot";
-}
-
-script "switch from standing to walking" {
+script "switch from standing to 3 phase walking" {
     start cmd "controller-switch-to-walking (3 phase walking)";
     wait ms 1000;
     stop cmd "3.osc-standing-real-robot";

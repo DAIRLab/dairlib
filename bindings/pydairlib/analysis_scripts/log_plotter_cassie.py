@@ -31,6 +31,10 @@ def main():
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
+  # Parser(plant_w_spr).AddModelFromFile(
+  #     "/home/yangwill/workspace/dairlib/examples/Cassie/urdf/cassie_v2.urdf")
+  # Parser(plant_wo_spr).AddModelFromFile(
+  #     "/home/yangwill/workspace/dairlib/examples/Cassie/urdf/cassie_v2.urdf")
   Parser(plant_w_spr).AddModelFromFile(
     FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf"))
@@ -91,9 +95,10 @@ def main():
   # Default time window values, can override
   t_start = t_u[10]
   t_end = t_u[-10]
+  # import pdb; pdb.set_trace()
   # Override here #
-  # t_start = 205
-  # t_end = 208
+  # t_start = 8.7
+  # t_end = 10.5
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -104,9 +109,15 @@ def main():
 
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  # import pdb; pdb.set_trace()
+  # plot_contact_est(full_log)
+  # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
+  # plt.plot(t_contact_info, contact_info[2, :, 2], 'r-')
+  # plt.plot(t_u[t_u_slice], 100 * fsm[t_u_slice], 'k')
 
-  plot_contact_est(full_log)
-  plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+  plt.ylim([-100, 500])
+  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+
   if True:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -124,14 +135,16 @@ def main():
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
 
-
 def plot_contact_est(log):
   t_contact = []
-  t_filtered_contact = []
-  t_gm_contact = []
   contact = []
+  t_filtered_contact = []
   contact_filtered = []
-  gm_contact = []
+  t_gm_contact = []
+  gm_contact_l = []
+  gm_contact_r = []
+  t_fsm_contact = []
+  fsm_contact = np.zeros((len(log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"]), 2))
   for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
     msg = log["CASSIE_CONTACT_DISPATCHER"][i]
     t_contact.append(msg.utime / 1e6)
@@ -142,21 +155,30 @@ def plot_contact_est(log):
     contact_filtered.append(list(msg.contact))
   for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
     msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_gm_contact.append(msg.utime / 1e6)
-    gm_contact.append(list(msg.contact))
-  t_contact = np.array(t_contact)
-  t_filtered_contact = np.array(t_filtered_contact)
-  t_gm_contact = np.array(t_gm_contact)
-  contact = np.array(contact)
-  contact_filtered = np.array(contact_filtered)
-  gm_contact = np.array(gm_contact)
+    t_gm_contact.append(msg.timestamp / 1e6)
+    gm_contact_l.append(list(msg.point_pair_contact_info[0].contact_force))
+    gm_contact_r.append(list(msg.point_pair_contact_info[1].contact_force))
+  for i in range(len(log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"])):
+    msg = log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"][i]
+    t_fsm_contact.append(msg.timestamp / 1e6)
+    for j in range(msg.num_point_pair_contacts):
+      fsm_contact[i][j] = msg.point_pair_contact_info[j].contact_force[2]
 
+
+  t_contact = np.array(t_contact)
+  contact = np.array(contact)
+  t_filtered_contact = np.array(t_filtered_contact)
+  contact_filtered = np.array(contact_filtered)
+  t_gm_contact = np.array(t_gm_contact)
+  gm_contact_l = np.array(gm_contact_l)
+  gm_contact_r = np.array(gm_contact_r)
   plt.figure("Contact estimation")
   # plt.plot(t_contact[t_slice], contact[t_slice], '-')
-  plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
-  plt.plot(t_gm_contact[t_slice], gm_contact[t_slice, 0], '-')
-  plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt",
-              "l_gm_contact", "r_gm_contact"])
+  # plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
+  plt.plot(t_gm_contact[t_slice], gm_contact_l[t_slice, 2], 'b--')
+  plt.plot(t_gm_contact[t_slice], gm_contact_r[t_slice, 2], 'r--')
+  # plt.plot(t_fsm_contact, fsm_contact, 'k-')
+  plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt"])
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
@@ -167,7 +189,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   tracking_cost_map = dict()
   num_tracking_cost = 0
 
-  for i in range(t_u.shape[0] - 1 - 2):
+  for i in range(t_u.shape[0] - 10):
     input_cost[i] = osc_output[i].input_cost
     acceleration_cost[i] = osc_output[i].acceleration_cost
     soft_constraint_cost[i] = osc_output[i].soft_constraint_cost
@@ -189,26 +211,29 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
-  osc_traj0 = "swing_ft_traj"
+  osc_traj0 = "r_foot_traj"
+  # osc_traj0 = "swing_ft_traj"
   # osc_traj0 = "lipm_traj"
-  osc_traj1 = "lipm_traj"
-  osc_traj2 = "pelvis_balance_traj"
+  # osc_traj1 = "com_traj"
+  osc_traj1 = "l_foot_traj"
+  # osc_traj1 = "pelvis_rot_tracking_data"
+  # osc_traj1 = "pelvis_balance_traj"
   osc_traj3 = "swing_hip_yaw_traj"
 
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj0, 1, "pos")
-  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  plot_osc(osc_debug, osc_traj0, 1, "pos")
+  plot_osc(osc_debug, osc_traj0, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "vel")
-  # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plot_osc(osc_debug, osc_traj0, 0, "vel")
+  plot_osc(osc_debug, osc_traj0, 1, "vel")
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "accel")
-  # plot_osc(osc_debug, osc_traj0, 1, "accel")
-  # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  plot_osc(osc_debug, osc_traj0, 0, "accel")
+  plot_osc(osc_debug, osc_traj0, 1, "accel")
+  plot_osc(osc_debug, osc_traj0, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
@@ -277,7 +302,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world) @ x[i, -nv:]
   fig = plt.figure('foot pos: ' + filename)
   # state_indices = slice(4, 5)
-  state_indices = slice(2, 3)
+  state_indices = slice(0, 1)
   # state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
@@ -331,28 +356,28 @@ def compare_ekf(log, pos_map, vel_map):
   vel_indices = slice(4, 5)
   plt.figure("EKF positions: " + filename)
   plt.plot(t_x, q[:, pos_indices], '-')
-  plt.plot(t_x_est, q_est[:, pos_indices], '--')
+  plt.plot(t_x_est, q_est[:, pos_indices])
   plt.figure("EKF velocities: " + filename)
   plt.plot(t_x, v[:, vel_indices], '-')
-  plt.plot(t_x_est, v_est[:, vel_indices], '--')
+  plt.plot(t_x_est, v_est[:, vel_indices])
   plt.figure("IMU: " + filename)
   plt.plot(t_x, imu, 'k-')
 
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
-  # pos_indices = slice(0 + 7, 23, 2)
-  vel_indices = slice(23 + 6, 45, 2)
+  # pos_indices = slice(0 + 7, 23)
+  vel_indices = slice(23 + 6, 45)
   pos_indices = slice(0,7)
   # vel_indices = slice(23, 23 + 6)
-  u_indices = slice(6, 8)
+  u_indices = slice(0, 10)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
 
   plt.figure("positions: " + filename)
-  plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
-  plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
-  # plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])

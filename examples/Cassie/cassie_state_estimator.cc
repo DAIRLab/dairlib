@@ -80,17 +80,6 @@ CassieStateEstimator::CassieStateEstimator(
       this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
                                     &CassieStateEstimator::CopyStateOut)
           .get_index();
-  contact_output_port_ =
-      this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
-          .get_index();
-  filtered_contact_output_port_ =
-      this->DeclareAbstractOutputPort(
-              &CassieStateEstimator::CopyFilteredContact)
-          .get_index();
-  gm_contact_output_port_ =
-      this->DeclareAbstractOutputPort(
-              &CassieStateEstimator::CopyEstimatedContactForces)
-          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -254,6 +243,24 @@ CassieStateEstimator::CassieStateEstimator(
                 VectorXd::Zero(SPACE_DIM), eps_imu_)
             .evaluator()
             .get();
+
+    // Declare output ports for contact information. Only necessary for
+    // floating base model
+    contact_output_port_ =
+        this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
+            .get_index();
+    filtered_contact_output_port_ =
+        this->DeclareAbstractOutputPort(
+                &CassieStateEstimator::CopyFilteredContact)
+            .get_index();
+    gm_contact_output_port_ =
+        this->DeclareAbstractOutputPort(
+                &CassieStateEstimator::CopyEstimatedContactForces)
+            .get_index();
+    gm_contact_for_fsm_output_port_ =
+        this->DeclareAbstractOutputPort(
+                &CassieStateEstimator::CopyEstimatedContactForcesForFsm)
+            .get_index();
   }
 }
 
@@ -1142,7 +1149,7 @@ EventStatus CassieStateEstimator::Update(
     //                              &optimal_cost);
     EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
                           &right_contact);
-    EstimateContactForces(context, filtered_output, lambda_est, left_contact, right_contact);
+    EstimateContactForces(context, filtered_output, lambda_est, &left_contact, &right_contact);
   }
   state->get_mutable_discrete_state(gm_contact_forces_idx_).get_mutable_value()
       << lambda_est;
@@ -1422,6 +1429,33 @@ void CassieStateEstimator::CopyEstimatedContactForces(
   }
 }
 
+void CassieStateEstimator::CopyEstimatedContactForcesForFsm(
+    const Context<double>& context,
+    drake::lcmt_contact_results_for_viz* contact_msg) const {
+  contact_msg->timestamp = context.get_time() * 1e6;
+  contact_msg->num_point_pair_contacts = 0;
+  contact_msg->num_hydroelastic_contacts = 0;
+  contact_msg->point_pair_contact_info.clear();
+  for (int i = 0; i < num_contacts_; i++) {
+    auto contact_info = drake::lcmt_point_pair_contact_info_for_viz();
+    contact_info.timestamp = contact_msg->timestamp;
+    contact_info.body1_name = toe_frames_[i]->body().name();
+    contact_info.body2_name = world_.name();
+    memcpy(contact_info.contact_force,
+           context.get_discrete_state(gm_contact_forces_idx_)
+               .get_value()
+               .segment(i * SPACE_DIM, (i + 1) * SPACE_DIM)
+               .data(),
+           SPACE_DIM * sizeof(double));
+    if(context.get_discrete_state(gm_contact_forces_idx_)
+        .get_value()
+        .segment(i * SPACE_DIM, (i + 1) * SPACE_DIM)(2) > 0){
+      contact_msg->point_pair_contact_info.push_back(contact_info);
+      contact_msg->num_point_pair_contacts += 1;
+    }
+  }
+}
+
 void CassieStateEstimator::setPreviousTime(Context<double>* context,
                                            double time) const {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
@@ -1455,7 +1489,7 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 }
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
-    VectorXd& lambda, int& left_contact, int& right_contact) const {
+    VectorXd& lambda, int* left_contact, int* right_contact) const {
   // TODO(yangwill) add a discrete time filter to the force estimate
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
@@ -1488,8 +1522,6 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  left_contact = lambda[2] > 0;
-  right_contact = lambda[5] > 0;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(
@@ -1513,13 +1545,15 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
     // Subtract a small epsilon value so this event triggers before the publish
     *time = next_message_time_ - eps_;
 
-    UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
-        [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
-               drake::systems::State<double>* s) { this->Update(c, s); };
+    if(is_floating_base_){
+      UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
+          [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
+                 drake::systems::State<double>* s) { this->Update(c, s); };
 
-    auto& uu_events = events->get_mutable_unrestricted_update_events();
-    uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
-        drake::systems::TriggerType::kTimed, callback));
+      auto& uu_events = events->get_mutable_unrestricted_update_events();
+      uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+          drake::systems::TriggerType::kTimed, callback));
+    }
   }
 }
 

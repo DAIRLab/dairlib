@@ -1,7 +1,10 @@
 #include <string>
+
 #include <gflags/gflags.h>
+
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -14,7 +17,7 @@ using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::TriggerTypeSet;
 
-DEFINE_string(channel_x, "CASSIE_STATE",
+DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "The name of the channel which receives state");
 DEFINE_string(switch_channel, "INPUT_SWITCH",
               "The name of the channel which sends the channel name that "
@@ -34,6 +37,9 @@ DEFINE_double(fsm_period, -1.0, " the period of TimeBasedFiniteStateMachine");
 DEFINE_double(fsm_offset, 0.0,
               "a constant that's used to determined the publish time see the "
               "documentation below for details");
+DEFINE_double(blend_duration, 0.0,
+              "Duration to blend efforts between previous and current "
+              "controller command");
 
 /// This program is a one-time-use switch that tells dispatcher_robot_in which
 /// channel to listen to. It publishes the lcm message,
@@ -110,6 +116,7 @@ int do_main(int argc, char* argv[]) {
   // Create output message
   dairlib::lcmt_controller_switch msg;
   msg.channel = FLAGS_new_channel;
+  msg.blend_duration = FLAGS_blend_duration;
 
   // Run the simulation until it publishes the channel name `n_publishes` times
   drake::log()->info(diagram_ptr->get_name() + " started");

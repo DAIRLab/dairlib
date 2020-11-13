@@ -460,7 +460,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   drake::multibody::MultibodyForces<double> f_app(plant_wo_spr_);
   plant_wo_spr_.CalcForceElementsContribution(*context_wo_spr_, &f_app);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
+<<<<<<< HEAD
   bias = bias - grav - f_app.generalized_forces();
+=======
+  bias = bias - grav;
+  // TODO (yangwill): Characterize damping in cassie model
+  bias = bias - f_app.generalized_forces();
+>>>>>>> 6f9311ae1d9f734a8990f20f1a30ac408ceea246
 
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(n_h_, n_v_);
@@ -722,6 +728,19 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_data_names.clear();
   output->tracking_data.clear();
   output->tracking_cost.clear();
+
+  lcmt_osc_qp_output qp_output;
+  qp_output.u_dim = n_u_;
+  qp_output.lambda_c_dim = n_c_;
+  qp_output.lambda_h_dim = n_h_;
+  qp_output.v_dim = n_v_;
+  qp_output.epsilon_dim = n_c_active_;
+  qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
+  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
+  qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
+  qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
+  output->qp_output = qp_output;
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);

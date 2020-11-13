@@ -77,6 +77,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_gm_contact_output_port() const {
     return this->get_output_port(gm_contact_output_port_);
   }
+  const drake::systems::OutputPort<double>& get_gm_contact_for_fsm_output_port() const {
+    return this->get_output_port(gm_contact_for_fsm_output_port_);
+  }
 
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
@@ -103,8 +106,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       int* left_contact, int* right_contact) const;
   void EstimateContactForces(const drake::systems::Context<double>& context,
                              const systems::OutputVector<double>& output,
-                             Eigen::VectorXd& lambda, int& left_contact,
-                             int& right_contact) const;
+                             Eigen::VectorXd& lambda, int* left_contact,
+                             int* right_contact) const;
 
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,
@@ -153,6 +156,11 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   void CopyEstimatedContactForces(
       const drake::systems::Context<double>& context,
       drake::lcmt_contact_results_for_viz* contact_msg) const;
+  // Copy the estimated contact forces in a similar way to how contact forces
+  // are published in simulation
+  void CopyEstimatedContactForcesForFsm(
+      const drake::systems::Context<double>& context,
+      drake::lcmt_contact_results_for_viz* contact_msg) const;
 
   int n_q_;
   int n_v_;
@@ -183,6 +191,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int contact_output_port_;
   int filtered_contact_output_port_;
   int gm_contact_output_port_;
+  int gm_contact_for_fsm_output_port_;
 
   // Below are indices of system states:
   // A state which stores previous timestamp

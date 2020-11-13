@@ -27,8 +27,7 @@ namespace cassie {
 namespace osc {
 
 StandingComTraj::StandingComTraj(
-    const MultibodyPlant<double>& plant,
-    Context<double>* context,
+    const MultibodyPlant<double>& plant, Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
     double height)

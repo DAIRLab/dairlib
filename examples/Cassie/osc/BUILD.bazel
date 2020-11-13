@@ -90,3 +90,17 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+<<<<<<< HEAD
+=======
+
+cc_library(
+    name = "spring_to_no_spring_converter",
+    srcs = ["spring_to_no_spring_converter.cc"],
+    hdrs = ["spring_to_no_spring_converter.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+>>>>>>> 6f9311ae1d9f734a8990f20f1a30ac408ceea246

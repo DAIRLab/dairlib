@@ -43,9 +43,13 @@ cc_library(
         "//examples/Cassie:dispatcher_robot_in",
         "//examples/Cassie:dispatcher_robot_out",
         "//examples/Cassie:multibody_sim",
+        "//examples/Cassie:run_controller_switch",
+        "//examples/Cassie:run_osc_jumping_controller",
         "//examples/Cassie:run_osc_standing_controller",
         "//examples/Cassie:run_osc_walking_controller",
+        "//examples/Cassie:run_pd_controller",
         "//examples/Cassie/osc",
+        "//examples/Cassie/osc_jump",
     ],
 )
 
@@ -95,6 +99,7 @@ cc_library(
     srcs = ["input_supervisor.cc"],
     hdrs = ["input_supervisor.h"],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
@@ -178,6 +183,23 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_joint_pd_controller",
+    srcs = ["run_joint_pd_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//common",
+        "//lcm:dircon_trajectory_saver",
+        "//lcm:trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "visualizer",
     srcs = ["visualizer.cc"],
     deps = [
@@ -225,6 +247,22 @@ cc_binary(
         ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "multibody_sim_init",
+    srcs = ["multibody_sim_init.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -319,7 +357,26 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//examples/Cassie/osc_jump",
-        "//lcm:lcm_trajectory_saver",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "//systems/primitives:gaussian_noise_pass_through",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_walking_controller_tracking",
+    srcs = ["run_osc_walking_controller_tracking.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/osc_jump",
+        "//examples/Cassie/osc_walk",
+        "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
@@ -338,6 +395,7 @@ cc_binary(
         ":cassie_utils",
         ":simulator_drift",
         "//examples/Cassie/osc",
+        "//examples/Cassie/osc:spring_to_no_spring_converter",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
@@ -430,7 +488,7 @@ cc_binary(
         ":cassie_fixed_point_solver",
         ":cassie_utils",
         "//common",
-        "//lcm:dircon_trajectory_saver",
+        "//lcm:trajectory_saver",
         "//multibody/kinematic",
         "//solvers:optimization_utils",
         "//systems/primitives",
@@ -448,8 +506,7 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
-        "//lcm:dircon_trajectory_saver",
-        "//lcm:lcm_trajectory_saver",
+        "//lcm:trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
@@ -465,7 +522,7 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
-        "//lcm:dircon_trajectory_saver",
+        "//lcm:trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
@@ -490,8 +547,7 @@ cc_binary(
     srcs = ["visualize_trajectory.cc"],
     deps = [
         ":cassie_utils",
-        "//lcm:dircon_trajectory_saver",
-        "//lcm:lcm_trajectory_saver",
+        "//lcm:trajectory_saver",
         "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",
         "@gflags",

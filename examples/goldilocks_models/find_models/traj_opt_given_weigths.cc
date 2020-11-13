@@ -3612,7 +3612,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << endl;
 
     // Testing -- checking Jacobian in impact and kinematic constraint
-    if (false) {
+    if (true) {
       auto kin_constraint = gm_traj_opt.dircon->GetKinematicConstraintStart(1);
 
       auto xi =
@@ -3636,7 +3636,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       std::cout << "in kinematics, J = \n"
                 << data_set->getJWithoutSkipping() << std::endl;
     }
-    if (false) {
+    if (true) {
       auto impact_constraint = gm_traj_opt.dircon->GetImpactConstraint(0);
 
       auto xi = result.GetSolution(
@@ -3657,6 +3657,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       data_set->updateData(*context, Li);
       std::cout << "in impact, J = \n"
                 << data_set->getJWithoutSkipping() << std::endl;
+
+      cout << "J*v0 = " << data_set->getJWithoutSkipping() * xi.tail(n_v)
+           << endl;
+      cout << "J*vp = " << data_set->getJWithoutSkipping() * vp << endl;
     }
 
   }  // end if is_print_for_debugging

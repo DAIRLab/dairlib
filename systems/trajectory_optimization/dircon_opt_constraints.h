@@ -118,6 +118,10 @@ class DirconKinematicConstraint : public solvers::NonlinearConstraint<T> {
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;
 
+  DirconKinematicDataSet<T>* GetDirconKinematicDataSet() const {
+    return constraints_;
+  };
+
  private:
   DirconKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                             DirconKinematicDataSet<T>& constraint_data,
@@ -181,6 +185,10 @@ class DirconImpactConstraint : public solvers::NonlinearConstraint<T> {
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;
+
+  DirconKinematicDataSet<T>* GetDirconKinematicDataSet() const {
+    return constraints_;
+  };
 
  private:
   DirconImpactConstraint(const drake::multibody::MultibodyPlant<T>& plant,

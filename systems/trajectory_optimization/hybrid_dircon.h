@@ -11,11 +11,11 @@
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
+#include "multibody/multipose_visualizer.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_options.h"
-#include "multibody/multipose_visualizer.h"
 
 namespace dairlib {
 namespace systems {
@@ -214,6 +214,17 @@ class HybridDircon
   void ScaleKinConstraintSlackVariables(int mode, std::vector<int> idx_list,
                                         double scale);
 
+  std::shared_ptr<DirconKinematicConstraint<T>> GetKinematicConstraintStart(
+      int mode) const {
+    DRAKE_DEMAND(mode < num_modes_);
+    return kinematic_constraints_start_[mode];
+  }
+  std::shared_ptr<DirconImpactConstraint<T>> GetImpactConstraint(
+      int mode) const {
+    DRAKE_DEMAND(mode < num_modes_ - 1);
+    return impact_constraints_[mode];
+  }
+
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -234,6 +245,11 @@ class HybridDircon
   std::vector<int> num_kinematic_constraints_wo_skipping_;
 
   std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
+
+  // constraints
+  std::vector<std::shared_ptr<DirconKinematicConstraint<T>>>
+      kinematic_constraints_start_;
+  std::vector<std::shared_ptr<DirconImpactConstraint<T>>> impact_constraints_;
 };
 
 }  // namespace trajectory_optimization

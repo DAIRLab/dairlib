@@ -2053,6 +2053,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   bool add_cost_on_collocation_vel = false;
   bool add_joint_acceleration_cost = true;
+  bool joint_accel_cost_in_second_mode = false;
   bool not_trapo_integration_cost = false;
   bool add_joint_acceleration_constraint = false;
   double joint_accel_lb = -10;
@@ -2098,6 +2099,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (!relax_pos_periodicity_constraint) {
     eps_pos_period = 0;
   }
+
+  // Testing -- Make the last knot point weight much bigger
+  bool much_bigger_weight_at_last_knot = false;
+  double multiplier_big_last_knot = 100;
 
   // Setup cost matrices
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
@@ -3081,15 +3086,21 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   // Testing -- Make the last knot point weight much bigger
-  bool much_bigger_weight_at_last_knot = false;
   if (much_bigger_weight_at_last_knot) {
-    double multiplier = 200;
-    auto v1 = trajopt->state(N - 1).tail(n_v);
-    trajopt->AddCost(
-        ((v1.transpose() * W_Q * v1) * multiplier * fixed_dt / 2)(0));
+    //    cout << "make the vel weight on the effort at the last knot point of
+    //    the "
+    //            "first mode"
+    //         << multiplier_big_last_knot << " times bigger \n";
+    //    auto v1 = trajopt->state(N - 1).tail(n_v);
+    //    trajopt->AddCost(
+    //        ((v1.transpose() * W_Q * v1) * multiplier_big_last_knot * fixed_dt
+    //        / 2)(0));
+    cout << "make the cost weight on the effort at the last knot point of the "
+            "first mode"
+         << multiplier_big_last_knot << " times bigger \n";
     auto u1 = trajopt->input(N - 1);
-    trajopt->AddCost(
-        ((u1.transpose() * W_R * u1) * multiplier * fixed_dt / 2)(0));
+    trajopt->AddCost(((u1.transpose() * W_R * u1) * multiplier_big_last_knot *
+                      fixed_dt / 2)(0));
   }
 
   // Testing
@@ -3211,8 +3222,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   auto joint_accel_cost = std::make_shared<JointAccelCost>(
       w_joint_accel * W_Q, plant, dataset_list[0]);
   if (add_joint_acceleration_cost) {
+    int n_mode = joint_accel_cost_in_second_mode ? num_time_samples.size() : 1;
     int idx_start = 0;
-    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+    for (unsigned int mode = 0; mode < n_mode; mode++) {
       for (int index = 0; index < num_time_samples[mode]; index++) {
         auto xi = trajopt->state_vars_by_mode(mode, index);
         auto ui = (only_one_mode || !pre_and_post_impact_efforts)
@@ -3489,8 +3501,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
     double cost_joint_acceleration = 0;
     if (add_joint_acceleration_cost) {
+      int n_mode =
+          joint_accel_cost_in_second_mode ? num_time_samples.size() : 1;
       int idx_start = 0;
-      for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (unsigned int mode = 0; mode < n_mode; mode++) {
         for (int index = 0; index < num_time_samples[mode]; index++) {
           auto xi = result.GetSolution(
               gm_traj_opt.dircon->state_vars_by_mode(mode, index));
@@ -3591,7 +3605,60 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
          << relax_pos_periodicity_constraint
          << "; (eps_pos_period = " << eps_pos_period << ")\n";
 
+    cout << "much_bigger_weight_at_last_knot = "
+         << much_bigger_weight_at_last_knot
+         << " (note that it's not calculated in the solution costs above)\n";
+
     cout << endl;
+
+    // Testing -- checking Jacobian in impact and kinematic constraint
+    if (false) {
+      auto kin_constraint = gm_traj_opt.dircon->GetKinematicConstraintStart(1);
+
+      auto xi =
+          result.GetSolution(gm_traj_opt.dircon->state_vars_by_mode(1, 0));
+      auto ui = result.GetSolution(
+          (only_one_mode || !pre_and_post_impact_efforts)
+              ? gm_traj_opt.dircon->input(num_time_samples[0] - 1)
+              : gm_traj_opt.dircon->input_vars_by_mode(1, 0));
+      auto li = result.GetSolution(gm_traj_opt.dircon->force(1, 0));
+      auto offset = result.GetSolution(gm_traj_opt.dircon->offset_vars(1));
+
+      //      Eigen::VectorXd x_val(xi.size() + ui.size() + li.size() +
+      //      offset.size()); x_val << xi, ui, li, offset; Eigen::VectorXd
+      //      y_val(kin_constraint->num_constraints());
+      //      kin_constraint->Eval(x_val, &y_val);
+
+      auto context = plant.CreateDefaultContext();
+      multibody::setContext<double>(plant, xi, ui, context.get());
+      auto data_set = kin_constraint->GetDirconKinematicDataSet();
+      data_set->updateData(*context, li);
+      std::cout << "in kinematics, J = \n"
+                << data_set->getJWithoutSkipping() << std::endl;
+    }
+    if (false) {
+      auto impact_constraint = gm_traj_opt.dircon->GetImpactConstraint(0);
+
+      auto xi = result.GetSolution(
+          gm_traj_opt.dircon->state_vars_by_mode(0, num_time_samples[0] - 1));
+      auto Li = result.GetSolution(gm_traj_opt.dircon->impulse_vars(0));
+      auto vp =
+          result.GetSolution(gm_traj_opt.dircon->v_post_impact_vars_by_mode(0));
+
+      //      Eigen::VectorXd x_val(xi.size() + Li.size() + vp.size());
+      //      x_val << xi, Li, vp;
+      //      Eigen::VectorXd y_val(impact_constraint->num_constraints());
+      //      impact_constraint->Eval(x_val, &y_val);
+
+      const VectorX<double> u = VectorXd::Zero(plant.num_actuators());
+      auto context = plant.CreateDefaultContext();
+      multibody::setContext<double>(plant, xi, u, context.get());
+      auto data_set = impact_constraint->GetDirconKinematicDataSet();
+      data_set->updateData(*context, Li);
+      std::cout << "in impact, J = \n"
+                << data_set->getJWithoutSkipping() << std::endl;
+    }
+
   }  // end if is_print_for_debugging
 }
 

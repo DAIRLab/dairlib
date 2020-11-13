@@ -1,0 +1,39 @@
+# Set xy PD gains so they do not effect  passive LIPM dynamics at capture
+# point, when x = sqrt(l/g) * xdot
+# Passive dynamics: xddot = g/l * x
+#
+# -Kp * x - Kd * xdot =
+# -Kp * x + Kd * sqrt(g/l) * x = g/l * x
+# Kp = sqrt(g/l) * Kd - g/l
+
+rows: 3
+cols: 3
+w_input: 0
+w_accel: .01
+w_soft_constraint: 20000
+CoMW:
+  [2000, 0, 0,
+   0, 2000, 0,
+   0, 0, 200]
+PelvisW:
+  [200, 0, 0,
+   0, 200, 0,
+   0, 0, 200]
+
+CoMKp:
+  [800, 0, 0,
+   0, 800, 0,
+   0, 0, 500]
+CoMKd:
+  [100, 0, 0,
+   0, 100, 0,
+   0, 0, 30]
+PelvisRotKp:
+  [100, 0, 0,
+   0, 500, 0,
+   0, 0, 100]
+PelvisRotKd:
+  [0,  0, 0,
+   0, 0, 0,
+   0, 0, 0]
+

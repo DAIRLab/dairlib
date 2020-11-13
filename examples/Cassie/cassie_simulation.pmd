@@ -15,6 +15,14 @@ group "1.controllers-and-dispatchers" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
+    cmd "4.mptc-walking-controller (no dispatcher)" {
+            exec = "bazel-bin/examples/Cassie/run_mptc_walking_controller";
+            host = "localhost";
+        }
+    cmd "4.mptc-walking-controller (dispatched)" {
+            exec = "bazel-bin/examples/Cassie/run_mptc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER";
+            host = "localhost";
+        }
     cmd "0.a.dispatcher-robot-out (lcm, floating-base)" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
         host = "localhost";
@@ -26,6 +34,10 @@ group "1.controllers-and-dispatchers" {
     cmd "3.osc-standing-controller (no dispatcher)" {
         exec = "bazel-bin/examples/Cassie/run_osc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
         host = "localhost";
+    }
+    cmd "3.mptc-standing-controller (no dispatcher)" {
+            exec = "bazel-bin/examples/Cassie/run_mptc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
+            host = "localhost";
     }
     cmd "2.pd-controller" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";

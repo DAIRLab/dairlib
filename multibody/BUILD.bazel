@@ -46,6 +46,21 @@ cc_library(
         "visualization_utils.h",
     ],
     deps = [
+        "//common",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "coriolis_matrix_calculator",
+    srcs = [
+        "coriolis_matrix_calculator.cc",
+    ],
+    hdrs = [
+        "coriolis_matrix_calculator.h",
+    ],
+    deps = [
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
@@ -70,6 +85,18 @@ cc_binary(
     deps = [
         ":multipose_visualizer",
         "//common",
+    ],
+)
+
+cc_binary(
+    name = "coriolis_matrix_calculator_test",
+    srcs = ["test/coriolis_matrix_calculator_test.cc"],
+    deps = [
+        ":coriolis_matrix_calculator",
+        ":utils",
+        "//common",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//:drake_shared_library",
     ],
 )
 

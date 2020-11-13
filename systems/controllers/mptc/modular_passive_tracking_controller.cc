@@ -1,11 +1,11 @@
-#include "systems/controllers/osc/operational_space_control.h"
-
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
+#include "modular_passive_tracking_controller.h"
+#include "mptc_tracking_data.h"
 
 using std::cout;
 using std::endl;
@@ -34,15 +34,21 @@ using drake::trajectories::PiecewisePolynomial;
 using drake::solvers::Solve;
 
 namespace dairlib::systems::controllers {
+using mptc_data::MptcTrackingData;
+using mptc_data::ComTrackingData;
+using mptc_data::TaskSpaceTrackingData;
+using mptc_data::TransTaskSpaceTrackingData;
+using mptc_data::RotTaskSpaceTrackingData;
+using mptc_data::JointSpaceTrackingData;
 
 using multibody::makeNameToVelocitiesMap;
 using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
 using multibody::WorldPointEvaluator;
 
-int kSpaceDim = OscTrackingData::kSpaceDim;
+int kSpaceDim = MptcTrackingData::kSpaceDim;
 
-OperationalSpaceControl::OperationalSpaceControl(
+ModularPassiveTrackingControl::ModularPassiveTrackingControl(
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double>* context_w_spr,
@@ -56,7 +62,7 @@ OperationalSpaceControl::OperationalSpaceControl(
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
       print_tracking_info_(print_tracking_info) {
-  this->set_name("OSC");
+  this->set_name("MPTC");
 
   n_q_ = plant_wo_spr.num_positions();
   n_v_ = plant_wo_spr.num_velocities();
@@ -71,24 +77,24 @@ OperationalSpaceControl::OperationalSpaceControl(
                         OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
                     .get_index();
   this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
-                                &OperationalSpaceControl::CalcOptimalInput);
+                                &ModularPassiveTrackingControl::CalcOptimalInput);
   if (used_with_finite_state_machine) {
     fsm_port_ =
         this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
     // Discrete update to record the last state event time
     DeclarePerStepDiscreteUpdateEvent(
-        &OperationalSpaceControl::DiscreteVariableUpdate);
+        &ModularPassiveTrackingControl::DiscreteVariableUpdate);
     prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
-  osc_output_port_ =
+  mptc_output_port_ =
       this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
-                                    &OperationalSpaceControl::CalcOptimalInput)
+                                    &ModularPassiveTrackingControl::CalcOptimalInput)
           .get_index();
-  osc_debug_port_ = this->DeclareAbstractOutputPort(
-                            &OperationalSpaceControl::AssignOscLcmOutput)
+  mptc_debug_port_ = this->DeclareAbstractOutputPort(
+                            &ModularPassiveTrackingControl::AssignMptcLcmOutput)
                         .get_index();
 
   const std::map<string, int>& pos_map_w_spr =
@@ -143,7 +149,7 @@ OperationalSpaceControl::OperationalSpaceControl(
 }
 
 // Cost methods
-void OperationalSpaceControl::AddAccelerationCost(
+void ModularPassiveTrackingControl::AddAccelerationCost(
     const std::string& joint_vel_name, double w) {
   if (W_joint_accel_.size() == 0) {
     W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
@@ -153,13 +159,13 @@ void OperationalSpaceControl::AddAccelerationCost(
 }
 
 // Constraint methods
-void OperationalSpaceControl::AddContactPoint(
+void ModularPassiveTrackingControl::AddContactPoint(
     const WorldPointEvaluator<double>* evaluator) {
   single_contact_mode_ = true;
   AddStateAndContactPoint(-1, evaluator);
 }
 
-void OperationalSpaceControl::AddStateAndContactPoint(
+void ModularPassiveTrackingControl::AddStateAndContactPoint(
     int state, const WorldPointEvaluator<double>* evaluator) {
   DRAKE_DEMAND(&evaluator->plant() == &plant_wo_spr_);
 
@@ -183,14 +189,14 @@ void OperationalSpaceControl::AddStateAndContactPoint(
   }
 }
 
-void OperationalSpaceControl::AddKinematicConstraint(
+void ModularPassiveTrackingControl::AddKinematicConstraint(
     const multibody::KinematicEvaluatorSet<double>* evaluators) {
   DRAKE_DEMAND(&evaluators->plant() == &plant_wo_spr_);
   kinematic_evaluators_ = evaluators;
 }
 
 // Tracking data methods
-void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
+void ModularPassiveTrackingControl::AddTrackingData(MptcTrackingData* tracking_data,
                                               double t_lb, double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
   fixed_position_vec_.push_back(VectorXd::Zero(0));
@@ -211,8 +217,8 @@ void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
     traj_name_to_port_index_map_[traj_name] = port_index;
   }
 }
-void OperationalSpaceControl::AddConstTrackingData(
-    OscTrackingData* tracking_data, const VectorXd& v, double t_lb,
+void ModularPassiveTrackingControl::AddConstTrackingData(
+        MptcTrackingData* tracking_data, const VectorXd& v, double t_lb,
     double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
   fixed_position_vec_.push_back(v);
@@ -221,7 +227,7 @@ void OperationalSpaceControl::AddConstTrackingData(
 }
 
 // Osc checkers and constructor
-void OperationalSpaceControl::CheckCostSettings() {
+void ModularPassiveTrackingControl::CheckCostSettings() {
   if (W_input_.size() != 0) {
     DRAKE_DEMAND((W_input_.rows() == n_u_) && (W_input_.cols() == n_u_));
   }
@@ -230,7 +236,7 @@ void OperationalSpaceControl::CheckCostSettings() {
                  (W_joint_accel_.cols() == n_v_));
   }
 }
-void OperationalSpaceControl::CheckConstraintSettings() {
+void ModularPassiveTrackingControl::CheckConstraintSettings() {
   if (!all_contacts_.empty()) {
     DRAKE_DEMAND(mu_ != -1);
   }
@@ -239,12 +245,12 @@ void OperationalSpaceControl::CheckConstraintSettings() {
   }
 }
 
-void OperationalSpaceControl::Build() {
+void ModularPassiveTrackingControl::Build() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
   for (auto tracking_data : *tracking_data_vec_) {
-    tracking_data->CheckOscTrackingData();
+    tracking_data->CheckMptcTrackingData();
   }
 
   // Construct QP
@@ -397,7 +403,7 @@ void OperationalSpaceControl::Build() {
   }
 }
 
-drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
+drake::systems::EventStatus ModularPassiveTrackingControl::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const BasicVector<double>* fsm_output =
@@ -418,7 +424,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
-VectorXd OperationalSpaceControl::SolveQp(
+VectorXd ModularPassiveTrackingControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double time_since_last_state_switch) const {
@@ -578,7 +584,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (fixed_position_vec_.at(i).size() != 0) {
       // Create constant trajectory and update
       tracking_data->Update(
-          x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
+          x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_, M,
           PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
     } else {
       // Read in traj from input port
@@ -591,7 +597,7 @@ VectorXd OperationalSpaceControl::SolveQp(
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, traj, t, fsm_state);
+                            *context_wo_spr_, M, traj, t, fsm_state);
     }
     // TODO(yangwill): Should only really be updating the trajectory if it's
     //  active
@@ -688,7 +694,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   return *u_sol_;
 }
 
-void OperationalSpaceControl::AssignOscLcmOutput(
+void ModularPassiveTrackingControl::AssignMptcLcmOutput(
     const Context<double>& context, dairlib::lcmt_osc_output* output) const {
   auto state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -763,7 +769,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->num_tracking_data = output->tracking_data_names.size();
 }
 
-void OperationalSpaceControl::CalcOptimalInput(
+void ModularPassiveTrackingControl::CalcOptimalInput(
     const drake::systems::Context<double>& context,
     systems::TimestampedVector<double>* control) const {
   // Read in current state and time

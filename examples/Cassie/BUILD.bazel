@@ -349,6 +349,45 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_mptc_walking_controller",
+    srcs = ["run_mptc_walking_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        ":simulator_drift",
+        "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
+        "//systems/controllers/mptc:modular_passive_tracking_controller",
+        "//systems/controllers/mptc:mptc_tracking_data",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_mptc_standing_controller",
+    srcs = ["run_mptc_standing_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/mptc:modular_passive_tracking_controller",
+        "//systems/controllers/mptc:mptc_tracking_data",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_osc_standing_controller",
     srcs = ["run_osc_standing_controller.cc"],
     deps = [

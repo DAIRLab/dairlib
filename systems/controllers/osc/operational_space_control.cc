@@ -460,13 +460,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   drake::multibody::MultibodyForces<double> f_app(plant_wo_spr_);
   plant_wo_spr_.CalcForceElementsContribution(*context_wo_spr_, &f_app);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
-<<<<<<< HEAD
-  bias = bias - grav - f_app.generalized_forces();
-=======
   bias = bias - grav;
   // TODO (yangwill): Characterize damping in cassie model
   bias = bias - f_app.generalized_forces();
->>>>>>> 6f9311ae1d9f734a8990f20f1a30ac408ceea246
 
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(n_h_, n_v_);

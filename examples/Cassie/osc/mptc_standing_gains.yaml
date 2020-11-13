@@ -11,6 +11,9 @@ cols: 3
 w_input: 0
 w_accel: .01
 w_soft_constraint: 20000
+HipYawKp: 100
+HipYawKd: 1
+HipYawW: 100
 CoMW:
   [2000, 0, 0,
    0, 2000, 0,

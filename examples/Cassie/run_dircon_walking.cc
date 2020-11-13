@@ -3,19 +3,23 @@
 #include <fstream>
 #include <memory>
 #include <string>
+
 #include <gflags/gflags.h>
+
+#include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "common/file_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
+
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
@@ -61,6 +65,9 @@ using drake::trajectories::PiecewisePolynomial;
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
+DEFINE_string(save_filename, "default_filename",
+              "Filename to save decision "
+              "vars to.");
 DEFINE_bool(store_data, false, "To store solution or not");
 
 // SNOPT parameters
@@ -1075,6 +1082,14 @@ void DoMain(double duration, double stride_length, double ground_incline,
   cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
 
   cout << "total_cost = " << total_cost << endl;
+
+  // Save trajectory to file
+  DirconTrajectory saved_traj(plant, *trajopt, result, "walking_trajectory",
+                              "Decision variables and state/input trajectories "
+                              "for walking");
+  saved_traj.WriteToFile(FLAGS_data_directory + FLAGS_save_filename);
+  std::cout << "Wrote to file: " << FLAGS_data_directory + FLAGS_save_filename
+            << std::endl;
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

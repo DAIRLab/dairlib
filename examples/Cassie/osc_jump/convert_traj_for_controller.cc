@@ -1,8 +1,10 @@
 #include <drake/geometry/scene_graph.h>
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
+
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/lcm_trajectory.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 
 using drake::geometry::SceneGraph;
@@ -59,11 +61,12 @@ int DoMain() {
   auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
   auto world = &plant.world_frame();
 
-  const LcmTrajectory& loadedTrajs =
+  LcmTrajectory loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
-  auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
-  auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
+  auto traj_mode0 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u0");
+  auto traj_mode1 = loadedTrajs.GetTrajectory("cassie_jumping_trajectory_x_u1");
+  auto traj_mode2 = loadedTrajs.GetTrajectory
+      ("cassie_jumping_trajectory_x_u2");
 
   DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
@@ -163,10 +166,9 @@ int DoMain() {
   pelvis_orientation_block.traj_name = "pelvis_rot_trajectory";
   pelvis_orientation_block.datapoints = pelvis_orientation;
   pelvis_orientation_block.time_vector = times;
-  pelvis_orientation_block.datatypes = {"pelvis_rotw", "pelvis_rotx",
-                                        "pelvis_roty", "pelvis_rotz",
-                                        "pelvis_rotwdot", "pelvis_rotxdot",
-                                        "pelvis_rotydot", "pelvis_rotzdot"};
+  pelvis_orientation_block.datatypes = {
+      "pelvis_rotw",    "pelvis_rotx",    "pelvis_roty",    "pelvis_rotz",
+      "pelvis_rotwdot", "pelvis_rotxdot", "pelvis_rotydot", "pelvis_rotzdot"};
 
   std::vector<LcmTrajectory::Trajectory> trajectories = {
       lfoot_traj_block, rfoot_traj_block, com_traj_block,
@@ -180,7 +182,7 @@ int DoMain() {
                     "Feet trajectories "
                     "for Cassie jumping");
 
-  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
                              "_processed");
   return 0;
 }

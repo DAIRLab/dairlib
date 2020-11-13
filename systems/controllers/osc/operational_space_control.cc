@@ -457,8 +457,10 @@ VectorXd OperationalSpaceControl::SolveQp(
   plant_wo_spr_.CalcMassMatrix(*context_wo_spr_, &M);
   VectorXd bias(n_v_);
   plant_wo_spr_.CalcBiasTerm(*context_wo_spr_, &bias);
+  drake::multibody::MultibodyForces<double> f_app(plant_wo_spr_);
+  plant_wo_spr_.CalcForceElementsContribution(*context_wo_spr_, &f_app);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
-  bias = bias - grav;
+  bias = bias - grav - f_app.generalized_forces();
 
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(n_h_, n_v_);

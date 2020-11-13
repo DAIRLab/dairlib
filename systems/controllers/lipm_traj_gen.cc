@@ -264,10 +264,12 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
-  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d CoM = Vector3d::Zero();
+  plant_.CalcPointsPositions(*context_, plant_.GetBodyByName("pelvis").body_frame(), Vector3d::Zero(drake::kSpaceDimension),
+          world_, &CoM);
   MatrixXd J(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      *context_, JacobianWrtVariable::kV, world_, world_, &J);
+  plant_.CalcJacobianTranslationalVelocity(*context_, JacobianWrtVariable::kV, plant_.GetBodyByName("pelvis").body_frame(),
+          Vector3d::Zero(drake::kSpaceDimension), world_, world_, &J);
   Vector3d dCoM = J * v;
 
   // Stance foot position (Forward Kinematics)

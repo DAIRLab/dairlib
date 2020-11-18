@@ -10,6 +10,7 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/gaussian_noise_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
 
@@ -252,6 +253,7 @@ int DoMain(int argc, char* argv[]) {
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&right_heel_evaluator);
   // Cost
+  int n_q = plant_wo_springs.num_positions();
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   Q_accel(6, 6) = 0.1;
@@ -261,12 +263,12 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
-//  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
-//                                      W_com * FLAGS_cost_weight_multiplier,
-//                                      plant_w_springs, plant_wo_springs);
-  TransTaskSpaceTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
-                                      W_com * FLAGS_cost_weight_multiplier,
-                                      plant_w_springs, plant_wo_springs);
+  //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
+  //                                      W_com * FLAGS_cost_weight_multiplier,
+  //                                      plant_w_springs, plant_wo_springs);
+  TransTaskSpaceTrackingData center_of_mass_traj(
+      "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
+      plant_w_springs, plant_wo_springs);
   center_of_mass_traj.AddPointToTrack("pelvis");
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
@@ -290,10 +292,28 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&hip_yaw_left_tracking, 0.0 * VectorXd::Ones(1));
   osc->AddConstTrackingData(&hip_yaw_right_tracking, 0.0 * VectorXd::Ones(1));
 
+  //  MatrixXd pos_cov = MatrixXd::Zero(plant_w_springs.num_positions(),
+  //                                    plant_w_springs.num_positions());
+  //  MatrixXd vel_cov = MatrixXd::Zero(plant_w_springs.num_velocities(),
+  //                                    plant_w_springs.num_velocities());
+  // Add Noise
+  MatrixXd pos_cov = 0.05 * MatrixXd::Identity(plant_w_springs.num_positions(),
+                                               plant_w_springs.num_positions());
+  MatrixXd vel_cov = 0.5 * MatrixXd::Identity(plant_w_springs.num_velocities(),
+                                              plant_w_springs.num_velocities());
+  vel_cov(0, 0) = 1;
+  auto noise_passthrough = builder.AddSystem<systems::GaussianNoisePassThrough>(
+      plant_w_springs.num_positions(), plant_w_springs.num_velocities(),
+      plant_w_springs.num_actuators(), pos_cov, vel_cov);
+
   // Build OSC problem
   osc->Build();
   // Connect ports
+  //  builder.Connect(state_receiver->get_output_port(0),
+  //                  osc->get_robot_output_input_port());
   builder.Connect(state_receiver->get_output_port(0),
+                  noise_passthrough->get_input_port());
+  builder.Connect(noise_passthrough->get_output_port(),
                   osc->get_robot_output_input_port());
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));

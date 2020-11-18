@@ -127,21 +127,29 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // Stance foot position (Forward Kinematics)
     // Take the average of all the points
     Vector3d stance_foot_pos = Vector3d::Zero();
-    for (const auto & j : contact_points_in_each_state_[mode_index]) {
+    for (const auto& j : contact_points_in_each_state_[mode_index]) {
       Vector3d position;
-      plant_.CalcPointsPositions(
-          *context_, j.second,
-          j.first, world_,
-          &position);
+      plant_.CalcPointsPositions(*context_, j.second, j.first, world_,
+                                 &position);
       stance_foot_pos += position;
     }
     stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
     // Get center of mass position and velocity
-    Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+    //    Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+    Vector3d CoM;
+    plant_.CalcPointsPositions(*context_,
+                               plant_.GetBodyByName("pelvis").body_frame(),
+                               VectorXd::Zero(3), world_, &CoM);
     MatrixXd J(3, plant_.num_velocities());
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV,
+        plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3), world_,
+        world_, &J);
+    //    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+    //        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    //    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+    //        *context_, JacobianWrtVariable::kV, world_, world_, &J);
     Vector3d dCoM = J * v;
 
     discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_)
@@ -167,7 +175,8 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   // Get CoM_wrt_foot for LIPM
   const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
   const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
-  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
+  //  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
+  const double CoM_wrt_foot_z = CoM(2);
   const double dCoM_wrt_foot_x = dCoM(0);
   const double dCoM_wrt_foot_y = dCoM(1);
   // const double dCoM_wrt_foot_z = dCoM(2);
@@ -186,10 +195,15 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   //  Y[0](2, 0) = CoM(2);
-  Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  // TODO: Revert back to the LIPM traj with stance foot after confident that
+  // the state estimator is working correctly
+
+  //  Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  Y[0](2, 0) = desired_com_height_;
   //  Y[0](2, 0) =
   //      fix_init_height ? desired_com_height_ + stance_foot_pos(2) : CoM(2);
-  Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  //  Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  Y[1](2, 0) = desired_com_height_;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
@@ -273,10 +287,10 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Stance foot position (Forward Kinematics)
   // Take the average of all the points
   Vector3d stance_foot_pos = Vector3d::Zero();
-  for (const auto & stance_foot : contact_points_in_each_state_[mode_index]) {
+  for (const auto& stance_foot : contact_points_in_each_state_[mode_index]) {
     Vector3d position;
-    plant_.CalcPointsPositions(
-        *context_, stance_foot.second, stance_foot.first, world_, &position);
+    plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
+                               world_, &position);
     stance_foot_pos += position;
   }
   stance_foot_pos /= contact_points_in_each_state_[mode_index].size();

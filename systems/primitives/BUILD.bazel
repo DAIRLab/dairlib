@@ -21,6 +21,7 @@ cc_library(
     ],
     deps = [
         "//systems/framework:vector",
+        "gaussian_noise_pass_through",
         "@drake//:drake_shared_library",
     ],
 )
@@ -45,7 +46,6 @@ cc_library(
     ],
     deps = [
         "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",

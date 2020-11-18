@@ -12,6 +12,8 @@ from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
 import pydairlib.lcm_trajectory
 import pydairlib.multibody
+from pydairlib.cassie.cassie_utils import *
+
 from pydairlib.common import FindResourceOrThrow
 
 
@@ -29,21 +31,15 @@ def main():
   global act_map
 
   builder = DiagramBuilder()
-  plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  plant_wo_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  # Parser(plant_w_spr).AddModelFromFile(
-  #     "/home/yangwill/workspace/dairlib/examples/Cassie/urdf/cassie_v2.urdf")
-  # Parser(plant_wo_spr).AddModelFromFile(
-  #     "/home/yangwill/workspace/dairlib/examples/Cassie/urdf/cassie_v2.urdf")
-  Parser(plant_w_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
-  Parser(plant_wo_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
-  plant_w_spr.mutable_gravity_field().set_gravity_vector(
-    -9.81 * np.array([0, 0, 1]))
+  plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
+  plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
+  pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
+                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+                                                   # "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+  pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
+                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
   plant_w_spr.Finalize()
+  plant_wo_spr.Finalize()
 
   # relevant MBP parameters
   nq = plant_w_spr.num_positions()
@@ -76,7 +72,7 @@ def main():
 
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
+  osc_output, full_log, t_lcmlog_u = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
@@ -98,7 +94,7 @@ def main():
   # import pdb; pdb.set_trace()
   # Override here #
   # t_start = 8.7
-  # t_end = 10.5
+  # t_end = 12.0
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -107,8 +103,16 @@ def main():
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
 
+  # t_lcmlog_u -= t_lcmlog_u[0] - t_u[0]
+  # plt.plot(t_u[:-1], np.diff(t_u))
+  # plt.plot(t_x[:-1], np.diff(t_x))
+  # plt.plot(t_u[:-1], np.diff(t_lcmlog_u))
+  # plt.figure()
+  # plt.plot(t_u, t_lcmlog_u - t_u)
+  # plt.show()
+
   ### All plotting scripts here
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # import pdb; pdb.set_trace()
   # plot_contact_est(full_log)
   # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
@@ -188,7 +192,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   tracking_cost = np.zeros((t_u.shape[0], len(osc_debug)))
   tracking_cost_map = dict()
   num_tracking_cost = 0
-
   for i in range(t_u.shape[0] - 10):
     input_cost[i] = osc_output[i].input_cost
     acceleration_cost[i] = osc_output[i].acceleration_cost
@@ -211,14 +214,14 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
-  osc_traj0 = "r_foot_traj"
-  # osc_traj0 = "swing_ft_traj"
-  # osc_traj0 = "lipm_traj"
-  # osc_traj1 = "com_traj"
-  osc_traj1 = "l_foot_traj"
+  # osc_traj0 = "r_foot_traj"
+  osc_traj0 = "lipm_traj"
+  # osc_traj0 = "com_traj"
+  osc_traj1 = "swing_ft_traj"
+  # osc_traj1 = "l_foot_traj"
   # osc_traj1 = "pelvis_rot_tracking_data"
   # osc_traj1 = "pelvis_balance_traj"
-  osc_traj3 = "swing_hip_yaw_traj"
+  # osc_traj3 = "swing_hip_yaw_traj"
 
   #
   plot_osc(osc_debug, osc_traj0, 0, "pos")
@@ -227,18 +230,18 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj0, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
   #
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "pos")
+  plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  # plot_osc(osc_debug, osc_traj1, 2, "pos")
+  plot_osc(osc_debug, osc_traj1, 1, "pos")
+  plot_osc(osc_debug, osc_traj1, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
   # plot_osc(osc_debug, osc_traj1, 0, "vel")
@@ -302,7 +305,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world) @ x[i, -nv:]
   fig = plt.figure('foot pos: ' + filename)
   # state_indices = slice(4, 5)
-  state_indices = slice(0, 1)
+  state_indices = slice(2, 3)
   # state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
@@ -364,7 +367,7 @@ def compare_ekf(log, pos_map, vel_map):
   plt.plot(t_x, imu, 'k-')
 
 
-def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
+def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # pos_indices = slice(0 + 7, 23)
   vel_indices = slice(23 + 6, 45)
   pos_indices = slice(0,7)
@@ -384,10 +387,10 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   plt.legend(x_datatypes[vel_indices])
   plt.figure("efforts: " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  plt.plot(t_x[t_slice], u_meas[t_slice, u_indices], '--')
   plt.legend(u_datatypes[u_indices])
   # plt.figure("efforts meas: " + filename)
   # plt.figure("Delay characterization")
-  # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
   # plt.legend(u_datatypes[u_indices])
 
 

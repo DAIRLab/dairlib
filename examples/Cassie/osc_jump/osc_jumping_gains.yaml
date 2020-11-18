@@ -3,7 +3,7 @@ w_accel: 0.0001
 w_soft_constraint: 20000
 x_offset: 0.01
 
-w_swing_toe: 10
+w_swing_toe: 100
 swing_toe_kp: 25
 swing_toe_kd: 15
 

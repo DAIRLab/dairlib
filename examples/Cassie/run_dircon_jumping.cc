@@ -421,6 +421,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
 
   // initial fb orientation constraint
   VectorXd quat_identity(4);

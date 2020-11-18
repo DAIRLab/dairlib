@@ -4,7 +4,7 @@ w_accel: 0.000001
 w_soft_constraint: 8000
 
 w_swing_toe: 100
-swing_toe_kp: 25
+swing_toe_kp: 20
 swing_toe_kd: 2
 
 w_hip_yaw: 1000

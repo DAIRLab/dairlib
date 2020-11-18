@@ -69,6 +69,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   osc_output = []
   u_pd = []
   t_u_pd = []
+  t_lcmlog_u = []
 
   full_log = dict()
   channel_to_type_map = dict()
@@ -128,9 +129,11 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    if event.channel == "OSC_DEBUG_JUMPING":
-    # if event.channel == "OSC_DEBUG_WALKING":
+    # if event.channel == "OSC_DEBUG_STANDING":
+    # if event.channel == "OSC_DEBUG_JUMPING":
+    if event.channel == "OSC_DEBUG_WALKING":
       msg = dairlib.lcmt_osc_output.decode(event.data)
+      t_lcmlog_u.append(event.timestamp / 1e6)
       osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)
       for i in range(num_osc_tracking_data):
@@ -176,6 +179,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   # Convert into numpy arrays
   t_x = np.array(t_x)
   t_u = np.array(t_u)
+  t_lcmlog_u = np.array(t_lcmlog_u)
   t_controller_switch = np.array(t_controller_switch)
   t_contact_info = np.array(t_contact_info)
   t_pd = np.array(t_pd)
@@ -210,4 +214,4 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   return x, u_meas, t_x, u, t_u, contact_forces, contact_info_locs, \
          t_contact_info, osc_debug, fsm, estop_signal, \
          switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
-         t_u_pd, osc_output, full_log
+         t_u_pd, osc_output, full_log, t_lcmlog_u

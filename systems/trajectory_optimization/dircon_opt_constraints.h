@@ -101,7 +101,7 @@ class DirconKinematicConstraint : public solvers::NonlinearConstraint<T> {
   DirconKinematicConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       DirconKinematicDataSet<T>& constraint_data,
-      DirconKinConstraintType type = DirconKinConstraintType::kAll, bool remove_vel = false);
+      DirconKinConstraintType type = DirconKinConstraintType::kAll);
   /// Constructor
   /// @param plant the MultibodyPlant
   /// @param DirconKinematicDataSet the set of kinematic constraints
@@ -111,7 +111,7 @@ class DirconKinematicConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       DirconKinematicDataSet<T>& constraint_data,
       std::vector<bool> is_constraint_relative,
-      DirconKinConstraintType type = DirconKinConstraintType::kAll,  bool remove_vel = false);
+      DirconKinConstraintType type = DirconKinConstraintType::kAll);
 
   ~DirconKinematicConstraint() override = default;
 
@@ -129,7 +129,7 @@ class DirconKinematicConstraint : public solvers::NonlinearConstraint<T> {
                             DirconKinConstraintType type, int num_positions,
                             int num_velocities, int num_inputs,
                             int num_kinematic_constraints,
-                            int num_kinematic_constraints_wo_skipping, bool remove_vel = false);
+                            int num_kinematic_constraints_wo_skipping);
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;
@@ -145,8 +145,6 @@ class DirconKinematicConstraint : public solvers::NonlinearConstraint<T> {
   const int n_relative_;
   Eigen::MatrixXd relative_map_;
   std::unique_ptr<drake::systems::Context<T>> context_;
-
-  bool remove_vel_;
 };
 
 /// Helper method to add a DirconDynamicConstraint to the @p prog,

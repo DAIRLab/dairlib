@@ -181,16 +181,10 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     }
 
     // Adding kinematic constraints (start node of the mode)
-    bool remove_vel = true;
-    if (i==0) remove_vel = false;
-    if (remove_vel) {
-      std::cout << "\nWe are removing the velocity constraint of the first "
-                   "knot of the second mode in hybrid_dircon.cc!\n";
-    }
     auto kinematic_constraint_start =
         std::make_shared<DirconKinematicConstraint<T>>(
             plant_, *constraints_[i], options[i].getConstraintsRelative(),
-            options[i].getStartType(), remove_vel);
+            options[i].getStartType());
     kinematic_constraint_start->SetConstraintScaling(
         options[i].getKinConstraintScalingStart());
     auto u_var_kin0 =

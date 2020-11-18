@@ -2009,18 +2009,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_Q = setting.Q_double * all_cost_scale;
   double w_R = setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 0;  // 1.0e-4 * sqrt(all_cost_scale);
+  double w_lambda = 1.0e-4 * sqrt(all_cost_scale);
   // Cost on difference over time
-  double w_lambda_diff = 0;  // 0.000001 * 0.1 * all_cost_scale;
-  double w_v_diff = 0;       // 0.01 * 5 * 0.1 * all_cost_scale;  // TODO
-  double w_u_diff = 0;       // 0.00001 * 0.1 * all_cost_scale;
+  double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
+  double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;  // TODO
+  double w_u_diff = 0.00001 * 0.1 * all_cost_scale;
   // Cost on position
   double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
-  double w_q_hip_yaw = 0;  // 1 * 5 * all_cost_scale;
-  double w_q_quat = 0;     // 1 * 5 * 10 * all_cost_scale;
+  double w_q_hip_yaw = 1 * 5 * all_cost_scale;
+  double w_q_quat = 1 * 5 * 10 * all_cost_scale;
   // Additional cost on pelvis
-  double w_Q_vy = 0;  // w_Q * 1;  // avoid pelvis rocking in y
-  double w_Q_vz = 0;  // w_Q * 1;  // avoid pelvis rocking in z
+  double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
+  double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
   // Additional cost on swing toe
   double w_Q_swing_toe = w_Q * 10;  // avoid swing toe shaking
   double w_R_swing_toe = w_R * 1;   // avoid swing toe shaking
@@ -2028,10 +2028,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // the solver might exploit the integration scheme. If we only penalize
   // velocity at knots, then the solver will converge to small velocity at knots
   // but big acceleration at knots!)
-  double w_q_diff = 0;            // 1 * 5 * 0.1 * all_cost_scale;
-  double w_q_diff_swing_toe = 0;  // w_q_diff * 1;
+  double w_q_diff = 1 * 5 * 0.1 * all_cost_scale;
+  double w_q_diff_swing_toe = w_q_diff * 1;
   // Testing
-  double w_v_diff_swing_leg = 0;  // w_v_diff * 1;
+  double w_v_diff_swing_leg = w_v_diff * 1;
   // Testing
   double w_joint_accel = 0.0001;  // The final weight is w_joint_accel * W_Q
 

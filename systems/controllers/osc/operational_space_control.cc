@@ -29,6 +29,8 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
 using drake::solvers::Solve;
+using drake::solvers::OsqpSolver;
+using drake::solvers::OsqpSolverDetails;
 
 namespace dairlib::systems::controllers {
 
@@ -381,6 +383,9 @@ void OperationalSpaceControl::Build() {
                                   .evaluator()
                                   .get());
   }
+
+  // Max solve duration
+  prog_->SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -605,6 +610,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Solve the QP
   const MathematicalProgramResult result = Solve(*prog_);
 
+  solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);
   *u_sol_ = result.GetSolution(u_);
@@ -709,6 +716,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_cost.clear();
 
   lcmt_osc_qp_output qp_output;
+  qp_output.solve_time = solve_time_;
   qp_output.u_dim = n_u_;
   qp_output.lambda_c_dim = n_c_;
   qp_output.lambda_h_dim = n_h_;

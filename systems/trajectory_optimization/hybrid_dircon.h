@@ -129,6 +129,7 @@ class HybridDircon
   int num_modes() const { return num_modes_; }
 
   std::vector<int> mode_lengths() const { return mode_lengths_; }
+  std::vector<int> mode_start() const { return mode_start_; }
 
   const drake::solvers::VectorXDecisionVariable& force_vars(int mode) const {
     return force_vars_[mode];

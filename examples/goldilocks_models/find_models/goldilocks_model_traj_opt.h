@@ -35,11 +35,12 @@ class GoldilocksModelTrajOpt {
       const std::vector<int>& num_time_samples,
       std::vector<DirconKinematicDataSet<double>*> constraints,
       bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
-      int robot_option, double constraint_scale, bool pre_and_post_impact_efforts = false);
+      int robot_option, double constraint_scale,
+      bool pre_and_post_impact_efforts = false);
   GoldilocksModelTrajOpt(){};
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-  reduced_model_input(int index, int n_tau) const;
+  reduced_model_input(int index) const;
 
   // Eigen::VectorBlock<const VectorXDecisionVariable> reduced_model_position(
   //     int index, int n_s) const;
@@ -71,10 +72,17 @@ class GoldilocksModelTrajOpt {
       Eigen::VectorXd* times, Eigen::MatrixXd* states,
       Eigen::MatrixXd* derivatives) const;
 
+  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
+  tau_post_impact_vars_by_mode(int mode) const;
+  drake::solvers::VectorXDecisionVariable tau_vars_by_mode(
+      int mode, int time_index) const;
+
  private:
   int num_knots_;
+  int n_tau_;
   // VectorXDecisionVariable s_vars_;
   drake::solvers::VectorXDecisionVariable tau_vars_;
+  drake::solvers::VectorXDecisionVariable tau_post_impact_vars_;
 };
 
 }  // namespace goldilocks_models

@@ -700,9 +700,13 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
         cout << "i = " << i << endl;
         // Get tau_append
         auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-        auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+        auto tau_i = pre_and_post_impact_efforts
+                       ? gm_traj_opt.tau_vars_by_mode(l, m)
+                       : gm_traj_opt.reduced_model_input(i);
         auto x_iplus1 = gm_traj_opt.dircon->state_vars_by_mode(l, m + 1);
-        auto tau_iplus1 = gm_traj_opt.reduced_model_input(i + 1, n_tau);
+        auto tau_iplus1 = pre_and_post_impact_efforts
+                       ? gm_traj_opt.tau_vars_by_mode(l, m + 1)
+                       : gm_traj_opt.reduced_model_input(i + 1);
         auto h_btwn_knot_i_iplus1 = gm_traj_opt.dircon->timestep(i);
         VectorXd x_i_sol = result.GetSolution(x_i);
         VectorXd tau_i_sol = result.GetSolution(tau_i);
@@ -760,7 +764,8 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
                     const ReducedOrderModel& rom, const SubQpData& QPs,
                     bool is_get_nominal, bool extend_model, int sample_idx,
                     int n_rerun, double cost_threshold_for_update, int N_rerun,
-                    int rom_option, int robot_option) {
+                    int rom_option, int robot_option,
+                    bool pre_and_post_impact_efforts = false) {
   int n_q = plant.num_positions();
   int n_y = rom.n_y();
   int n_yddot = rom.n_y();
@@ -896,9 +901,13 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
           // cout << "i = " << i << endl;
           // Get the gradient value first
           auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          auto tau_i = pre_and_post_impact_efforts
+                           ? gm_traj_opt.tau_vars_by_mode(l, m)
+                           : gm_traj_opt.reduced_model_input(i);
           auto x_iplus1 = gm_traj_opt.dircon->state_vars_by_mode(l, m + 1);
-          auto tau_iplus1 = gm_traj_opt.reduced_model_input(i + 1, n_tau);
+          auto tau_iplus1 = pre_and_post_impact_efforts
+                                ? gm_traj_opt.tau_vars_by_mode(l, m + 1)
+                                : gm_traj_opt.reduced_model_input(i + 1);
           auto h_btwn_knot_i_iplus1 = gm_traj_opt.dircon->timestep(i);
           VectorXd x_i_sol = result.GetSolution(x_i);
           VectorXd tau_i_sol = result.GetSolution(tau_i);
@@ -939,7 +948,9 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
           auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
           auto u_i = gm_traj_opt.dircon->input(time_index);
           auto lambda_i = gm_traj_opt.dircon->force(l, m);
-          auto tau_i = gm_traj_opt.reduced_model_input(time_index, n_tau);
+          auto tau_i = pre_and_post_impact_efforts
+                           ? gm_traj_opt.tau_vars_by_mode(l, m)
+                           : gm_traj_opt.reduced_model_input(time_index);
           VectorXd x_i_sol = result.GetSolution(x_i);
           VectorXd u_i_sol = result.GetSolution(u_i);
           VectorXd lambda_i_sol = result.GetSolution(lambda_i);
@@ -1014,7 +1025,9 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
         for (int m = 0; m < num_time_samples[l]; m++) {
           int i = N_accum + m;
           auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          auto tau_i = pre_and_post_impact_efforts
+                           ? gm_traj_opt.tau_vars_by_mode(l, m)
+                           : gm_traj_opt.reduced_model_input(i);
           VectorXd x_i_sol = result.GetSolution(x_i);
           VectorXd tau_i_sol = result.GetSolution(tau_i);
 
@@ -1062,7 +1075,9 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
         for (int m = 0; m < num_time_samples[l]; m++) {
           int i = N_accum + m;
           auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          auto tau_i = pre_and_post_impact_efforts
+                           ? gm_traj_opt.tau_vars_by_mode(l, m)
+                           : gm_traj_opt.reduced_model_input(i);
           VectorXd x_i_sol = result.GetSolution(x_i);
           VectorXd tau_i_sol = result.GetSolution(tau_i);
 
@@ -1115,9 +1130,13 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
           // From finite differencing
           auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-          auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
+          auto tau_i = pre_and_post_impact_efforts
+                           ? gm_traj_opt.tau_vars_by_mode(l, m)
+                           : gm_traj_opt.reduced_model_input(i);
           auto x_iplus1 = gm_traj_opt.dircon->state_vars_by_mode(l, m + 1);
-          auto tau_iplus1 = gm_traj_opt.reduced_model_input(i + 1, n_tau);
+          auto tau_iplus1 = pre_and_post_impact_efforts
+                                ? gm_traj_opt.tau_vars_by_mode(l, m + 1)
+                                : gm_traj_opt.reduced_model_input(i + 1);
           auto h_btwn_knot_i_iplus1 = gm_traj_opt.dircon->timestep(i);
           VectorXd x_i_sol = result.GetSolution(x_i);
           VectorXd tau_i_sol = result.GetSolution(tau_i);
@@ -1893,9 +1912,10 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
 
   // Move the trajectory optmization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
-  GoldilocksModelTrajOpt gm_traj_opt(
-      rom, std::move(trajopt), plant, num_time_samples, dataset_list,
-      is_get_nominal, setting, rom_option, robot_option, 1 /*temporary*/);
+  GoldilocksModelTrajOpt gm_traj_opt(rom, std::move(trajopt), plant,
+                                     num_time_samples, dataset_list,
+                                     is_get_nominal, setting, rom_option,
+                                     robot_option, 1 /*temporary*/);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -1989,18 +2009,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_Q = setting.Q_double * all_cost_scale;
   double w_R = setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-4 * sqrt(all_cost_scale);
+  double w_lambda = 0;  // 1.0e-4 * sqrt(all_cost_scale);
   // Cost on difference over time
-  double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
-  double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;  // TODO
-  double w_u_diff = 0.00001 * 0.1 * all_cost_scale;
+  double w_lambda_diff = 0;  // 0.000001 * 0.1 * all_cost_scale;
+  double w_v_diff = 0;       // 0.01 * 5 * 0.1 * all_cost_scale;  // TODO
+  double w_u_diff = 0;       // 0.00001 * 0.1 * all_cost_scale;
   // Cost on position
   double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
-  double w_q_hip_yaw = 1 * 5 * all_cost_scale;
-  double w_q_quat = 1 * 5 * 10 * all_cost_scale;
+  double w_q_hip_yaw = 0;  // 1 * 5 * all_cost_scale;
+  double w_q_quat = 0;     // 1 * 5 * 10 * all_cost_scale;
   // Additional cost on pelvis
-  double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
-  double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
+  double w_Q_vy = 0;  // w_Q * 1;  // avoid pelvis rocking in y
+  double w_Q_vz = 0;  // w_Q * 1;  // avoid pelvis rocking in z
   // Additional cost on swing toe
   double w_Q_swing_toe = w_Q * 10;  // avoid swing toe shaking
   double w_R_swing_toe = w_R * 1;   // avoid swing toe shaking
@@ -2008,10 +2028,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // the solver might exploit the integration scheme. If we only penalize
   // velocity at knots, then the solver will converge to small velocity at knots
   // but big acceleration at knots!)
-  double w_q_diff = 1 * 5 * 0.1 * all_cost_scale;
-  double w_q_diff_swing_toe = w_q_diff * 1;
+  double w_q_diff = 0;            // 1 * 5 * 0.1 * all_cost_scale;
+  double w_q_diff_swing_toe = 0;  // w_q_diff * 1;
   // Testing
-  double w_v_diff_swing_leg = w_v_diff * 1;
+  double w_v_diff_swing_leg = 0;  // w_v_diff * 1;
   // Testing
   double w_joint_accel = 0.0001;  // The final weight is w_joint_accel * W_Q
 
@@ -3247,7 +3267,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
       rom, std::move(trajopt), plant, num_time_samples, dataset_list,
-      is_get_nominal, setting, rom_option, robot_option, s, pre_and_post_impact_efforts);
+      is_get_nominal, setting, rom_option, robot_option, s,
+      pre_and_post_impact_efforts);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -3352,7 +3373,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   postProcessing(w_sol, gm_traj_opt, result, num_time_samples, N, plant,
                  plant_autoDiff, setting, rom, QPs, is_get_nominal,
                  extend_model, sample_idx, n_rerun, cost_threshold_for_update,
-                 N_rerun, rom_option, robot_option);
+                 N_rerun, rom_option, robot_option,
+                 pre_and_post_impact_efforts);
 
   if (sample_idx == 0) {
     is_print_for_debugging = true;

@@ -1,15 +1,15 @@
 rows: 3
 cols: 3
-w_accel: 0.000025
+w_accel: 0.000001
 w_soft_constraint: 8000
 
-w_swing_toe: 200
+w_swing_toe: 100
 swing_toe_kp: 20
-swing_toe_kd: 1
+swing_toe_kd: 15
 
-w_hip_yaw: 60
-hip_yaw_kp: 10
-hip_yaw_kd: 0.5
+w_hip_yaw: 100
+hip_yaw_kp: 100
+hip_yaw_kd: 10
 
 footstep_offset: 0.06
 center_line_offset: 0.10
@@ -63,8 +63,8 @@ SwingFootW:
       0,    0,   400]
 SwingFootKp:
   [ 200,    0,     0,
-      0,  200,     0,
-      0,    0,   200]
+      0,  400,     0,
+      0,    0,   400]
 SwingFootKd:
   [   10,    0,     0,
       0,    10,     0,

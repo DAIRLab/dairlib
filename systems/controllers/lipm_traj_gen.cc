@@ -127,21 +127,29 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // Stance foot position (Forward Kinematics)
     // Take the average of all the points
     Vector3d stance_foot_pos = Vector3d::Zero();
-    for (const auto & j : contact_points_in_each_state_[mode_index]) {
+    for (const auto& j : contact_points_in_each_state_[mode_index]) {
       Vector3d position;
-      plant_.CalcPointsPositions(
-          *context_, j.second,
-          j.first, world_,
-          &position);
+      plant_.CalcPointsPositions(*context_, j.second, j.first, world_,
+                                 &position);
       stance_foot_pos += position;
     }
     stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
     // Get center of mass position and velocity
-    Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+//    Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+//    MatrixXd J(3, plant_.num_velocities());
+//    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+//        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+//    Vector3d dCoM = J * v;
+    Vector3d CoM = Vector3d::Zero();
+    plant_.CalcPointsPositions(*context_,
+                               plant_.GetBodyByName("pelvis").body_frame(),
+                               Vector3d::Zero(), world_, &CoM);
     MatrixXd J(3, plant_.num_velocities());
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV,
+        plant_.GetBodyByName("pelvis").body_frame(), Vector3d::Zero(), world_,
+        world_, &J);
     Vector3d dCoM = J * v;
 
     discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_)
@@ -264,19 +272,29 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
-  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+  //  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+  //  MatrixXd J(3, plant_.num_velocities());
+  //  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+  //      *context_, JacobianWrtVariable::kV, world_, world_, &J);
+  //  Vector3d dCoM = J * v;
+  Vector3d CoM = Vector3d::Zero();
+  plant_.CalcPointsPositions(*context_,
+                             plant_.GetBodyByName("pelvis").body_frame(),
+                             Vector3d::Zero(), world_, &CoM);
   MatrixXd J(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      *context_, JacobianWrtVariable::kV, world_, world_, &J);
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV,
+      plant_.GetBodyByName("pelvis").body_frame(), Vector3d::Zero(), world_,
+      world_, &J);
   Vector3d dCoM = J * v;
 
   // Stance foot position (Forward Kinematics)
   // Take the average of all the points
   Vector3d stance_foot_pos = Vector3d::Zero();
-  for (const auto & stance_foot : contact_points_in_each_state_[mode_index]) {
+  for (const auto& stance_foot : contact_points_in_each_state_[mode_index]) {
     Vector3d position;
-    plant_.CalcPointsPositions(
-        *context_, stance_foot.second, stance_foot.first, world_, &position);
+    plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
+                               world_, &position);
     stance_foot_pos += position;
   }
   stance_foot_pos /= contact_points_in_each_state_[mode_index].size();

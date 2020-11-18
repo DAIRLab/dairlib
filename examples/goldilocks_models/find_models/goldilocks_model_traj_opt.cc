@@ -40,7 +40,8 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     const std::vector<int>& num_time_samples,
     std::vector<DirconKinematicDataSet<double>*> constraints,
     bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
-    int robot_option, double constraint_scale) {
+    int robot_option, double constraint_scale,
+    bool pre_and_post_impact_efforts) {
   // Parameters
   bool is_add_tau_in_cost = setting.is_add_tau_in_cost;
   bool cubic_spline_in_rom_constraint =
@@ -181,7 +182,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         for (int j = 0; j < num_time_samples[i]; j++) {
           int time_index = N_accum + j;
           auto x_k = dircon->state_vars_by_mode(i, j);
-          auto u_k = dircon->input(time_index);
+          auto u_k = pre_and_post_impact_efforts
+                         ? dircon->input_vars_by_mode(i, j)
+                         : dircon->input(time_index);
           auto lambda_k = dircon->force(i, j);
           auto tau_k = reduced_model_input(time_index, n_tau);
           dynamics_constraint_at_knot_bindings.push_back(dircon->AddConstraint(

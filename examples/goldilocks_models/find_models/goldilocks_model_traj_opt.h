@@ -35,7 +35,7 @@ class GoldilocksModelTrajOpt {
       const std::vector<int>& num_time_samples,
       std::vector<DirconKinematicDataSet<double>*> constraints,
       bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
-      int robot_option, double constraint_scale);
+      int robot_option, double constraint_scale, bool pre_and_post_impact_efforts = false);
   GoldilocksModelTrajOpt(){};
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>

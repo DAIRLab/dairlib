@@ -2019,9 +2019,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   bool swing_foot_ground_clearance = false;
   bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
-  bool periodic_joint_pos = false;
-  bool periodic_floating_base_vel = false;
-  bool periodic_joint_vel = false;
+  bool periodic_joint_pos = true;
+  bool periodic_floating_base_vel = true;
+  bool periodic_joint_vel = true;
   bool periodic_effort = false;
   bool ground_normal_force_margin = false;
   bool zero_com_height_vel = false;
@@ -3247,7 +3247,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
       rom, std::move(trajopt), plant, num_time_samples, dataset_list,
-      is_get_nominal, setting, rom_option, robot_option, s);
+      is_get_nominal, setting, rom_option, robot_option, s, pre_and_post_impact_efforts);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 

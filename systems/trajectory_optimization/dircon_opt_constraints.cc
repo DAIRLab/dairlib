@@ -186,23 +186,23 @@ Binding<Constraint> AddDirconConstraint(
 template <typename T>
 DirconKinematicConstraint<T>::DirconKinematicConstraint(
     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
-    DirconKinConstraintType type)
+    DirconKinConstraintType type, bool remove_vel)
     : DirconKinematicConstraint(
           plant, constraints,
           std::vector<bool>(constraints.countConstraints(), false), type,
           plant.num_positions(), plant.num_velocities(), plant.num_actuators(),
           constraints.countConstraints(),
-          constraints.countConstraintsWithoutSkipping()) {}
+          constraints.countConstraintsWithoutSkipping(), remove_vel) {}
 
 template <typename T>
 DirconKinematicConstraint<T>::DirconKinematicConstraint(
     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
-    std::vector<bool> is_constraint_relative, DirconKinConstraintType type)
+    std::vector<bool> is_constraint_relative, DirconKinConstraintType type, bool remove_vel)
     : DirconKinematicConstraint(plant, constraints, is_constraint_relative,
                                 type, plant.num_positions(),
                                 plant.num_velocities(), plant.num_actuators(),
                                 constraints.countConstraints(),
-                                constraints.countConstraintsWithoutSkipping()) {
+                                constraints.countConstraintsWithoutSkipping(), remove_vel) {
 }
 
 template <typename T>
@@ -210,7 +210,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
     std::vector<bool> is_constraint_relative, DirconKinConstraintType type,
     int num_positions, int num_velocities, int num_inputs,
-    int num_kinematic_constraints, int num_kinematic_constraints_wo_skipping)
+    int num_kinematic_constraints, int num_kinematic_constraints_wo_skipping, bool remove_vel)
     : solvers::NonlinearConstraint<T>(
           type * num_kinematic_constraints,
           num_positions + num_velocities + num_inputs +
@@ -234,7 +234,8 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       n_relative_{
           static_cast<int>(std::count(is_constraint_relative.begin(),
                                       is_constraint_relative.end(), true))},
-      context_(plant_.CreateDefaultContext()) {
+      context_(plant_.CreateDefaultContext()),
+      remove_vel_(remove_vel) {
   // Set sparsity pattern and relative map
   std::vector<std::pair<int, int>> sparsity;
   // Acceleration constraints are dense in decision variables
@@ -302,8 +303,13 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   switch (type_) {
     case kAll:
       *y = VectorX<T>(3 * num_kinematic_constraints_);
-      *y << constraints_->getCDDot(), constraints_->getCDot(),
-           constraints_->getC() + relative_map_ * offset;
+      if (remove_vel_) {
+        *y << constraints_->getCDDot(), VectorX<T>::Zero(num_kinematic_constraints_),
+            constraints_->getC() + relative_map_ * offset;
+      } else {
+        *y << constraints_->getCDDot(), constraints_->getCDot(),
+            constraints_->getC() + relative_map_ * offset;
+      }
       break;
     case kAccelAndVel:
       *y = VectorX<T>(2 * num_kinematic_constraints_);

@@ -108,30 +108,34 @@ void SimCassieSensorAggregator::Aggregate(const Context<double>& context,
         actuatorIndexMap_.at("toe_right_motor"));
 
   // Joint position and velocity
-  cassie_out_msg->leftLeg.shinJoint.position = state->GetAtIndex(
-        positionIndexMap_.at("knee_joint_left"));
-  cassie_out_msg->rightLeg.shinJoint.position = state->GetAtIndex(
-        positionIndexMap_.at("knee_joint_right"));
-  cassie_out_msg->leftLeg.tarsusJoint.position = state->GetAtIndex(
-        positionIndexMap_.at("ankle_joint_left"));
-  cassie_out_msg->rightLeg.tarsusJoint.position = state->GetAtIndex(
-        positionIndexMap_.at("ankle_joint_right"));
   cassie_out_msg->leftLeg.footJoint.position = state->GetAtIndex(
         positionIndexMap_.at("toe_left"));
   cassie_out_msg->rightLeg.footJoint.position = state->GetAtIndex(
         positionIndexMap_.at("toe_right"));
-  cassie_out_msg->leftLeg.shinJoint.velocity = state->GetAtIndex(
-        num_positions_ + velocityIndexMap_.at("knee_joint_leftdot"));
-  cassie_out_msg->rightLeg.shinJoint.velocity = state->GetAtIndex(
-        num_positions_ + velocityIndexMap_.at("knee_joint_rightdot"));
-  cassie_out_msg->leftLeg.tarsusJoint.velocity = state->GetAtIndex(
-        num_positions_ + velocityIndexMap_.at("ankle_joint_leftdot"));
-  cassie_out_msg->rightLeg.tarsusJoint.velocity = state->GetAtIndex(
-        num_positions_ + velocityIndexMap_.at("ankle_joint_rightdot"));
   cassie_out_msg->leftLeg.footJoint.velocity = state->GetAtIndex(
-        num_positions_ + velocityIndexMap_.at("toe_leftdot"));
+      num_positions_ + velocityIndexMap_.at("toe_leftdot"));
   cassie_out_msg->rightLeg.footJoint.velocity = state->GetAtIndex(
-        num_positions_ + velocityIndexMap_.at("toe_rightdot"));
+      num_positions_ + velocityIndexMap_.at("toe_rightdot"));
+  // copy the spring deflection for the spring model
+  if(num_positions_ == 23){
+    cassie_out_msg->leftLeg.shinJoint.position = state->GetAtIndex(
+        positionIndexMap_.at("knee_joint_left"));
+    cassie_out_msg->rightLeg.shinJoint.position = state->GetAtIndex(
+        positionIndexMap_.at("knee_joint_right"));
+    cassie_out_msg->leftLeg.tarsusJoint.position = state->GetAtIndex(
+        positionIndexMap_.at("ankle_joint_left"));
+    cassie_out_msg->rightLeg.tarsusJoint.position = state->GetAtIndex(
+        positionIndexMap_.at("ankle_joint_right"));
+    cassie_out_msg->leftLeg.shinJoint.velocity = state->GetAtIndex(
+        num_positions_ + velocityIndexMap_.at("knee_joint_leftdot"));
+    cassie_out_msg->rightLeg.shinJoint.velocity = state->GetAtIndex(
+        num_positions_ + velocityIndexMap_.at("knee_joint_rightdot"));
+    cassie_out_msg->leftLeg.tarsusJoint.velocity = state->GetAtIndex(
+        num_positions_ + velocityIndexMap_.at("ankle_joint_leftdot"));
+    cassie_out_msg->rightLeg.tarsusJoint.velocity = state->GetAtIndex(
+        num_positions_ + velocityIndexMap_.at("ankle_joint_rightdot"));
+  }
+
 
   // Gyro and acceleration
   for (int i = 0; i < 3; i++) {

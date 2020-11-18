@@ -2019,9 +2019,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   bool swing_foot_ground_clearance = false;
   bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
-  bool periodic_joint_pos = true;
+  bool periodic_joint_pos = false;
   bool periodic_floating_base_vel = false;
-  bool periodic_joint_vel = true;
+  bool periodic_joint_vel = false;
   bool periodic_effort = false;
   bool ground_normal_force_margin = false;
   bool zero_com_height_vel = false;
@@ -2099,6 +2099,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (!relax_pos_periodicity_constraint) {
     eps_pos_period = 0;
   }
+
+  // We don't need 6 Dof vel perioficity constraints becasue we have the stance
+  // foot contact constraint at velocity level
+  bool one_dof_periodic_floating_base_vel = true;
 
   // Testing -- Make the last knot point weight much bigger
   bool much_bigger_weight_at_last_knot = false;
@@ -2623,18 +2627,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                      -xf(pos_map.at("base_qz")));
       }
       if (periodic_floating_base_vel) {
-        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-        //                             xf(n_q + vel_map.at("base_wx")));
-        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-        //                             -xf(n_q + vel_map.at("base_wy")));
-        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-        //                             xf(n_q + vel_map.at("base_wz")));
-        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-        //                             xf(n_q + vel_map.at("base_vx")));
         trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
                                      -xf(n_q + vel_map.at("base_vy")));
-        // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-        //                             xf(n_q + vel_map.at("base_vz")));
+        if (!one_dof_periodic_floating_base_vel) {
+          trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+                                       xf(n_q + vel_map.at("base_wx")));
+          trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+                                       -xf(n_q + vel_map.at("base_wy")));
+          trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+                                       xf(n_q + vel_map.at("base_wz")));
+          trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+                                       xf(n_q + vel_map.at("base_vx")));
+          trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+                                       xf(n_q + vel_map.at("base_vz")));
+        }
       }
     } else {
       DRAKE_DEMAND(false);  // need to update this block of code first
@@ -3604,6 +3610,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << "relax_pos_periodicity_constraint = "
          << relax_pos_periodicity_constraint
          << "; (eps_pos_period = " << eps_pos_period << ")\n";
+    cout << "one_dof_periodic_floating_base_vel = "
+         << one_dof_periodic_floating_base_vel << endl;
 
     cout << "much_bigger_weight_at_last_knot = "
          << much_bigger_weight_at_last_knot
@@ -3612,7 +3620,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << endl;
 
     // Testing -- checking Jacobian in impact and kinematic constraint
-    if (true) {
+    if (false) {
       auto kin_constraint = gm_traj_opt.dircon->GetKinematicConstraintStart(1);
 
       auto xi =
@@ -3624,11 +3632,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       auto li = result.GetSolution(gm_traj_opt.dircon->force(1, 0));
       auto offset = result.GetSolution(gm_traj_opt.dircon->offset_vars(1));
 
-      //      Eigen::VectorXd x_val(xi.size() + ui.size() + li.size() +
-      //      offset.size()); x_val << xi, ui, li, offset; Eigen::VectorXd
-      //      y_val(kin_constraint->num_constraints());
-      //      kin_constraint->Eval(x_val, &y_val);
-
       auto context = plant.CreateDefaultContext();
       multibody::setContext<double>(plant, xi, ui, context.get());
       auto data_set = kin_constraint->GetDirconKinematicDataSet();
@@ -3636,7 +3639,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       std::cout << "in kinematics, J = \n"
                 << data_set->getJWithoutSkipping() << std::endl;
     }
-    if (true) {
+    if (false) {
       auto impact_constraint = gm_traj_opt.dircon->GetImpactConstraint(0);
 
       auto xi = result.GetSolution(
@@ -3644,11 +3647,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       auto Li = result.GetSolution(gm_traj_opt.dircon->impulse_vars(0));
       auto vp =
           result.GetSolution(gm_traj_opt.dircon->v_post_impact_vars_by_mode(0));
-
-      //      Eigen::VectorXd x_val(xi.size() + Li.size() + vp.size());
-      //      x_val << xi, Li, vp;
-      //      Eigen::VectorXd y_val(impact_constraint->num_constraints());
-      //      impact_constraint->Eval(x_val, &y_val);
 
       const VectorX<double> u = VectorXd::Zero(plant.num_actuators());
       auto context = plant.CreateDefaultContext();

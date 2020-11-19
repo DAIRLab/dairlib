@@ -35,7 +35,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
                               vector<double> minimum_timestep,
                               vector<double> maximum_timestep,
                               vector<DirconKinematicDataSet<T>*> constraints,
-                              vector<DirconOptions> options)
+                              vector<DirconOptions> options,
+                              bool pre_and_post_impact_efforts)
     : MultipleShooting(
           plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -49,8 +50,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           plant.num_velocities() * (num_time_samples.size() - 1), "v_p")),
       u_post_impact_vars_(NewContinuousVariables(
           plant.num_actuators() * (num_time_samples.size() - 1), "u_p")) {
-  bool pre_and_post_impact_efforts = true;
-
   DRAKE_ASSERT(minimum_timestep.size() == num_modes_);
   DRAKE_ASSERT(maximum_timestep.size() == num_modes_);
   DRAKE_ASSERT(constraints.size() == num_modes_);

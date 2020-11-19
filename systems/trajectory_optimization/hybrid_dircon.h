@@ -52,7 +52,8 @@ class HybridDircon
                std::vector<double> minimum_timestep,
                std::vector<double> maximum_timestep,
                std::vector<DirconKinematicDataSet<T>*> constraints,
-               std::vector<DirconOptions> options);
+               std::vector<DirconOptions> options,
+               bool pre_and_post_impact_efforts = false);
 
   ~HybridDircon() override {}
 

@@ -2097,10 +2097,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing
   bool pre_and_post_impact_efforts = true;
-  if (pre_and_post_impact_efforts) {
-    cout << "WARNING: you also need to set the flat "
-            "`pre_and_post_impact_efforts` in HybridDricon to true.\n";
-  }
   // TODO(yminchen): add dircon traj logging for post impact input
 
   // TODO(yminchen):
@@ -2378,7 +2374,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   auto trajopt = std::make_unique<HybridDircon<double>>(
-      plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
+      plant, num_time_samples, min_dt, max_dt, dataset_list, options_list,
+      pre_and_post_impact_efforts);
 
   if (setting.use_ipopt) {
     // Ipopt settings adapted from CaSaDi and FROST
@@ -3568,8 +3565,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     cout << endl;
     cout << "swing_foot_ground_clearance = " << swing_foot_ground_clearance
          << endl;
-    cout << "swing_foot_mid_xy = " << swing_foot_mid_xy
-         << endl;
+    cout << "swing_foot_mid_xy = " << swing_foot_mid_xy << endl;
     cout << "swing_leg_collision_avoidance = " << swing_leg_collision_avoidance
          << endl;
     cout << "periodic_quaternion (only effective when turning rate = 0) = "

@@ -1953,7 +1953,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
 
   // Save trajectory to file
   if (true) {
-    string file_name = "dircon_trajectory";
+    string file_name = setting.prefix + "dircon_trajectory";
     DirconTrajectory saved_traj(
         plant, *gm_traj_opt.dircon, result, file_name,
         "Decision variables and state/input trajectories");

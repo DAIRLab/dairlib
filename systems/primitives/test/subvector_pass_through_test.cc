@@ -7,20 +7,18 @@
 
 #include "drake/common/autodiff.h"
 #include "drake/systems/framework/basic_vector.h"
-#include "drake/systems/framework/fixed_input_port_value.h"
 #include "drake/systems/framework/test_utilities/scalar_conversion.h"
 
+using drake::systems::BasicVector;
+using drake::systems::Context;
+using drake::systems::System;
+using drake::systems::SystemOutput;
 using Eigen::VectorXd;
 using std::make_unique;
-using drake::systems::System;
-using drake::systems::Context;
-using drake::systems::SystemOutput;
-using drake::systems::BasicVector;
 
 namespace dairlib {
 namespace systems {
 namespace {
-
 
 class SubvectorPassThroughTest : public ::testing::Test {
  protected:
@@ -31,8 +29,8 @@ class SubvectorPassThroughTest : public ::testing::Test {
     input_value_.resize(size);
     input_value_ << 2.0, -1.5, 1.0, 3.14, 2.18;
     input_subvector_ = input_value_.segment(start, subvector_size);
-    pass_through_ = make_unique<SubvectorPassThrough<double>>(size, start,
-                                                              subvector_size);
+    pass_through_ =
+        make_unique<SubvectorPassThrough<double>>(size, start, subvector_size);
     context_ = pass_through_->CreateDefaultContext();
     output_ = pass_through_->AllocateOutput();
   }
@@ -69,7 +67,8 @@ TEST_F(SubvectorPassThroughTest, VectorThroughPassThroughSystem) {
   EXPECT_EQ(input_subvector_, output);
 }
 
-// Tests that SubvectorPassThroughTest allocates no state variables in the context_.
+// Tests that SubvectorPassThroughTest allocates no state variables in the
+// context_.
 TEST_F(SubvectorPassThroughTest, PassThroughIsStateless) {
   EXPECT_EQ(0, context_->get_continuous_state().size());
   EXPECT_EQ(0, context_->get_abstract_state().size());
@@ -88,8 +87,7 @@ TEST_F(SubvectorPassThroughTest, ToSymbolic) {
 }  // namespace systems
 }  // namespace dairlib
 
-
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

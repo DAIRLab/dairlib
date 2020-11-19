@@ -1912,10 +1912,9 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
 
   // Move the trajectory optmization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
-  GoldilocksModelTrajOpt gm_traj_opt(rom, std::move(trajopt), plant,
-                                     num_time_samples, dataset_list,
-                                     is_get_nominal, setting, rom_option,
-                                     robot_option, 1 /*temporary*/);
+  GoldilocksModelTrajOpt gm_traj_opt(
+      rom, std::move(trajopt), plant, num_time_samples, dataset_list,
+      is_get_nominal, setting, rom_option, robot_option, 1 /*temporary*/);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
@@ -2006,21 +2005,27 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //    in the first phase, etc)
 
   // Cost on velocity and input
+  // TODO: we probably don't need w_v_diff and w_q_diff now, because we have
+  //  w_joint_accel. However, I still keep them in case they help with
+  //  convergence speed
   double w_Q = setting.Q_double * all_cost_scale;
   double w_R = setting.R_double * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
   double w_lambda = 1.0e-4 * sqrt(all_cost_scale);
   // Cost on difference over time
   double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
-  double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;  // TODO
+  double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;
   double w_u_diff = 0.00001 * 0.1 * all_cost_scale;
   // Cost on position
   double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
   double w_q_hip_yaw = 1 * 5 * all_cost_scale;
-  double w_q_quat = 1 * 5 * 10 * all_cost_scale;
+  double w_q_quat = 0;  // 1 * 5 * 10 * all_cost_scale;
+  // TODO: if you want to use w_q_quat, you need to modify it for turning
   // Additional cost on pelvis
   double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
   double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
+  // Testing -- cost on swing hip roll vel
+  double w_Q_swing_hip_roll = w_Q * 1;
   // Additional cost on swing toe
   double w_Q_swing_toe = w_Q * 10;  // avoid swing toe shaking
   double w_R_swing_toe = w_R * 1;   // avoid swing toe shaking
@@ -2033,10 +2038,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   double w_v_diff_swing_leg = w_v_diff * 1;
   // Testing
-  double w_joint_accel = 0.0001;  // The final weight is w_joint_accel * W_Q
+  double w_joint_accel = 0.001;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
-  bool swing_foot_ground_clearance = false;
+  bool swing_foot_ground_clearance = true;
+  bool swing_foot_mid_xy = false;
+  if (turning_rate != 0) swing_foot_mid_xy = false;
   bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
   bool periodic_joint_pos = true;
@@ -2132,6 +2139,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
   W_Q(4, 4) = w_Q_vy;
   W_Q(5, 5) = w_Q_vz;
+  W_Q(7, 7) = w_Q_swing_hip_roll;
   W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
   W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
@@ -2896,9 +2904,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (swing_foot_ground_clearance) {
     for (int index = 0; index < num_time_samples[0] - 1; index++) {
       double h_min = 0;
-      //    if (index == int(num_time_samples[0] / 2)) {
-      //      h_min = 0.1;  // 10 centimeter high in the mid point
-      //    }
+      if (index == int(num_time_samples[0] / 2)) {
+        h_min = 0.05;  // 5 centimeter high in the mid point
+      }
 
       double h_max = std::numeric_limits<double>::infinity();
       if (index == 0) {
@@ -2946,14 +2954,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // testing -- swing foot pos at mid stance is the average of the start and the
   // end of the stance
-  //  if (turning_rate == 0) {
-  //  auto swing_foot_mid_stance_xy_constraint =
-  //      std::make_shared<SwingFootXYPosAtMidStanceConstraint>(&plant,
-  //      "toe_right",
-  //                                                            Vector3d::Zero());
-  //  trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
-  //                         {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
-  //  }
+  if (swing_foot_mid_xy) {
+    auto swing_foot_mid_stance_xy_constraint =
+        std::make_shared<SwingFootXYPosAtMidStanceConstraint>(
+            &plant, "toe_right", Vector3d::Zero());
+    trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
+                           {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
+  }
 
   // testing -- lock the swing toe joint position (otherwise it shakes too much)
   // Somehow the swing toe doesn't shake that much anymore after adding
@@ -3560,6 +3567,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     // Constraints
     cout << endl;
     cout << "swing_foot_ground_clearance = " << swing_foot_ground_clearance
+         << endl;
+    cout << "swing_foot_mid_xy = " << swing_foot_mid_xy
          << endl;
     cout << "swing_leg_collision_avoidance = " << swing_leg_collision_avoidance
          << endl;

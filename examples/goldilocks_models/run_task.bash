@@ -6,7 +6,7 @@
 #SBATCH --output=/scratch/jianshu/output/slurm-%A_%a.out  ##manually specify this directory
 
 ##email setting##
-#SBATCH --mail-user=$USER@seas.upenn.edu
+#SBATCH --mail-user=jianshu@seas.upenn.edu
 #SBATCH --mail-type=END
 #SBATCH	--mail-type=FAIL
 

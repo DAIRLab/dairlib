@@ -27,7 +27,7 @@ namespace dairlib {
 namespace goldilocks_models {
 
 // Testing flag
-bool use_pelvis = true;
+bool use_pelvis = false;
 
 using multibody::isQuaternion;
 using multibody::JwrtqdotToJwrtv;

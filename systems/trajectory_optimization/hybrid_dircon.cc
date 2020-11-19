@@ -35,7 +35,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
                               vector<double> minimum_timestep,
                               vector<double> maximum_timestep,
                               vector<DirconKinematicDataSet<T>*> constraints,
-                              vector<DirconOptions> options)
+                              vector<DirconOptions> options,
+                              bool pre_and_post_impact_efforts)
     : MultipleShooting(
           plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -49,8 +50,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           plant.num_velocities() * (num_time_samples.size() - 1), "v_p")),
       u_post_impact_vars_(NewContinuousVariables(
           plant.num_actuators() * (num_time_samples.size() - 1), "u_p")) {
-  bool pre_and_post_impact_efforts = true;
-
   DRAKE_ASSERT(minimum_timestep.size() == num_modes_);
   DRAKE_ASSERT(maximum_timestep.size() == num_modes_);
   DRAKE_ASSERT(constraints.size() == num_modes_);
@@ -196,6 +195,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         {state_vars_by_mode(i, 0), u_var_kin0,
          force_vars(i).segment(0, num_kinematic_constraints_wo_skipping(i)),
          offset_vars(i)});
+    kinematic_constraints_start_.push_back(kinematic_constraint_start);
 
     // Adding kinematic constraints (end node of the mode)
     // Only add the end constraint if the length inside the mode is greater
@@ -223,6 +223,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     }
 
     // Add constraints on force
+//    if(i==0) {
     for (int l = 0; l < mode_lengths_[i]; l++) {
       int start_index = l * num_kinematic_constraints_wo_skipping(i);
       for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
@@ -236,6 +237,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         start_index += constraint_j->getLength();
       }
     }
+//    }
 
     // Add force to cost function
     if (options[i].getForceCost() != 0) {
@@ -258,6 +260,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         AddConstraint(impact_constraint,
                       {state_vars_by_mode(i - 1, mode_lengths_[i - 1] - 1),
                        impulse_vars(i - 1), v_post_impact_vars_by_mode(i - 1)});
+        impact_constraints_.push_back(impact_constraint);
 
         // Add constraints on impulse variables
         int start_index = 0;

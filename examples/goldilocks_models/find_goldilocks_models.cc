@@ -81,7 +81,7 @@ DEFINE_bool(is_grid_task, true,
 DEFINE_string(init_file, "",
               "Initial Guess for Trajectory Optimization. "
               "E.g. w0.csv");
-DEFINE_double(major_optimality_tol, 1e-4,
+DEFINE_double(major_optimality_tol, 2e-4,
               "tolerance for optimality condition (complementarity gap)");
 DEFINE_double(major_feasibility_tol, 1e-4,
               "nonlinear constraint violation tol");

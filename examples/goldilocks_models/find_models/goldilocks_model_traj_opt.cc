@@ -40,13 +40,12 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     const std::vector<int>& num_time_samples,
     std::vector<DirconKinematicDataSet<double>*> constraints,
     bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
-    int robot_option, double constraint_scale) {
+    int robot_option, double constraint_scale, bool pre_and_post_impact_efforts)
+    : n_tau_(rom.n_tau()) {
   // Parameters
   bool is_add_tau_in_cost = setting.is_add_tau_in_cost;
   bool cubic_spline_in_rom_constraint =
       setting.cubic_spline_in_rom_constraint;  // for testing
-
-  int n_tau = rom.n_tau();
 
   // Get total sample ponits
   int N = 0;
@@ -59,8 +58,10 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
 
   // Create decision variables
   // (Since VectorX allows 0-size vector, the trajectory optimization works even
-  // when n_tau = 0.)
-  tau_vars_ = dircon->NewContinuousVariables(n_tau * N, "tau");
+  // when n_tau_ = 0.)
+  tau_vars_ = dircon->NewContinuousVariables(n_tau_ * N, "tau");
+  tau_post_impact_vars_ = dircon->NewContinuousVariables(
+      n_tau_ * (num_time_samples.size() - 1), "tau_p");
 
   // Constraints
   // clang-format off
@@ -154,9 +155,13 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       for (unsigned int i = 0; i < num_time_samples.size(); i++) {
         for (int j = 0; j < num_time_samples[i] - 1; j++) {
           auto x_at_knot_k = dircon->state_vars_by_mode(i, j);
-          auto tau_at_knot_k = reduced_model_input(N_accum + j, n_tau);
+          auto tau_at_knot_k = pre_and_post_impact_efforts
+                                   ? tau_vars_by_mode(i, j)
+                                   : reduced_model_input(N_accum + j);
           auto x_at_knot_kplus1 = dircon->state_vars_by_mode(i, j + 1);
-          auto tau_at_knot_kplus1 = reduced_model_input(N_accum + j + 1, n_tau);
+          auto tau_at_knot_kplus1 = pre_and_post_impact_efforts
+                                        ? tau_vars_by_mode(i, j + 1)
+                                        : reduced_model_input(N_accum + j + 1);
           auto h_btwn_knot_k_iplus1 = dircon->timestep(N_accum + j);
           dynamics_constraint_at_head_bindings.push_back(dircon->AddConstraint(
               dynamics_constraint_at_head,
@@ -181,9 +186,13 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         for (int j = 0; j < num_time_samples[i]; j++) {
           int time_index = N_accum + j;
           auto x_k = dircon->state_vars_by_mode(i, j);
-          auto u_k = dircon->input(time_index);
+          auto u_k = pre_and_post_impact_efforts
+                         ? dircon->input_vars_by_mode(i, j)
+                         : dircon->input(time_index);
           auto lambda_k = dircon->force(i, j);
-          auto tau_k = reduced_model_input(time_index, n_tau);
+          auto tau_k = pre_and_post_impact_efforts
+                           ? tau_vars_by_mode(i, j)
+                           : reduced_model_input(time_index);
           dynamics_constraint_at_knot_bindings.push_back(dircon->AddConstraint(
               dynamics_constraint_at_knot[i], {x_k, u_k, lambda_k, tau_k}));
         }
@@ -197,55 +206,65 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     double tau1_scale = 26000.0;
     double tau2_scale = 4000.0;
     if (robot_option == 1) {
-      if (rom_option == 1) {
-        for (int i = 0; i < N; i++) {
-          auto tau_i = reduced_model_input(i, n_tau);
-          dircon->SetVariableScaling(tau_i(0), tau1_scale);
-          dircon->SetVariableScaling(tau_i(1), tau2_scale);
+      int N_accum = 0;
+      for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+        for (int j = 0; j < num_time_samples[i]; j++) {
+          int time_index = N_accum + j;
+          auto tau_k = pre_and_post_impact_efforts
+                           ? tau_vars_by_mode(i, j)
+                           : reduced_model_input(time_index);
+          if (rom_option == 1) {
+            dircon->SetVariableScaling(tau_k(0), tau1_scale);
+            dircon->SetVariableScaling(tau_k(1), tau2_scale);
+          } else if (rom_option == 3) {
+            // TODO: The scaling hasn't been tuned yet
+            dircon->SetVariableScaling(tau_k(0), tau1_scale);
+            dircon->SetVariableScaling(tau_k(1), tau2_scale);
+          } else if (rom_option == 5) {
+            // TODO: The scaling hasn't been tuned yet
+            dircon->SetVariableScaling(tau_k(0), tau1_scale);
+            dircon->SetVariableScaling(tau_k(1), tau1_scale);
+            dircon->SetVariableScaling(tau_k(2), tau2_scale);
+          }
         }
-      } else if (rom_option == 3) {
-        for (int i = 0; i < N; i++) {
-          auto tau_i = reduced_model_input(i, n_tau);
-          // TODO: The scaling hasn't been tuned yet
-          dircon->SetVariableScaling(tau_i(0), tau1_scale);
-          dircon->SetVariableScaling(tau_i(1), tau2_scale);
-        }
-      } else if (rom_option == 5) {
-        for (int i = 0; i < N; i++) {
-          auto tau_i = reduced_model_input(i, n_tau);
-          // TODO: The scaling hasn't been tuned yet
-          dircon->SetVariableScaling(tau_i(0), tau1_scale);
-          dircon->SetVariableScaling(tau_i(1), tau1_scale);
-          dircon->SetVariableScaling(tau_i(2), tau2_scale);
-        }
+        N_accum += num_time_samples[i];
+        N_accum -= 1;  // due to overlaps between modes
       }
     }
 
     // Add cost for the input tau
     double w_tau = 1e-6;
+    MatrixXd W = w_tau * MatrixXd::Identity(n_tau_, n_tau_);
     if (is_add_tau_in_cost) {
-      for (int i = 0; i < N; i++) {
-        MatrixXd W = w_tau * MatrixXd::Identity(n_tau, n_tau);
+      int N_accum = 0;
+      for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+        for (int j = 0; j < num_time_samples[i]; j++) {
+          int time_index = N_accum + j;
 
-        if (robot_option == 1) {
-          if (rom_option == 1) {
-            W(0, 0) /= (tau1_scale * tau1_scale);
-            W(1, 1) /= (tau2_scale * tau2_scale);
-          } else if (rom_option == 3) {
-            // TODO: hasn't added
-            W(0, 0) /= (tau1_scale * tau1_scale);
-            W(1, 1) /= (tau2_scale * tau2_scale);
-          } else if (rom_option == 5) {
-            // TODO: hasn't added
-            W(0, 0) /= (tau1_scale * tau1_scale);
-            W(1, 1) /= (tau1_scale * tau1_scale);
-            W(2, 2) /= (tau2_scale * tau2_scale);
+          if (robot_option == 1) {
+            if (rom_option == 1) {
+              W(0, 0) /= (tau1_scale * tau1_scale);
+              W(1, 1) /= (tau2_scale * tau2_scale);
+            } else if (rom_option == 3) {
+              // TODO: hasn't added
+              W(0, 0) /= (tau1_scale * tau1_scale);
+              W(1, 1) /= (tau2_scale * tau2_scale);
+            } else if (rom_option == 5) {
+              // TODO: hasn't added
+              W(0, 0) /= (tau1_scale * tau1_scale);
+              W(1, 1) /= (tau1_scale * tau1_scale);
+              W(2, 2) /= (tau2_scale * tau2_scale);
+            }
           }
-        }
 
-        auto tau_i = reduced_model_input(i, n_tau);
-        tau_cost_bindings.push_back(
-            dircon->AddQuadraticCost(W, VectorXd::Zero(n_tau), tau_i));
+          auto tau_k = pre_and_post_impact_efforts
+                           ? tau_vars_by_mode(i, j)
+                           : reduced_model_input(time_index);
+          tau_cost_bindings.push_back(
+              dircon->AddQuadraticCost(W, VectorXd::Zero(n_tau_), tau_k));
+        }
+        N_accum += num_time_samples[i];
+        N_accum -= 1;  // due to overlaps between modes
       }
     }
   }
@@ -253,9 +272,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
 }  // end of constructor
 
 Eigen::VectorBlock<const VectorXDecisionVariable>
-GoldilocksModelTrajOpt::reduced_model_input(int index, int n_tau) const {
+GoldilocksModelTrajOpt::reduced_model_input(int index) const {
   DRAKE_DEMAND(index >= 0 && index < num_knots_);
-  return tau_vars_.segment(index * n_tau, n_tau);
+  return tau_vars_.segment(index * n_tau_, n_tau_);
 }
 
 // Eigen::VectorBlock<const VectorXDecisionVariable>
@@ -263,6 +282,21 @@ GoldilocksModelTrajOpt::reduced_model_input(int index, int n_tau) const {
 //   DRAKE_DEMAND(index >= 0 && index < num_knots_);
 //   return s_vars_.segment(index * n_s, n_s);
 // }
+
+const Eigen::VectorBlock<const VectorXDecisionVariable>
+GoldilocksModelTrajOpt::tau_post_impact_vars_by_mode(int mode) const {
+  return tau_post_impact_vars_.segment(mode * n_tau_, n_tau_);
+}
+
+VectorXDecisionVariable GoldilocksModelTrajOpt::tau_vars_by_mode(
+    int mode, int time_index) const {
+  if (time_index == 0 && mode > 0) {
+    return tau_post_impact_vars_by_mode(mode - 1);
+  } else {
+    return tau_vars_.segment((dircon->mode_start()[mode] + time_index) * n_tau_,
+                             n_tau_);
+  }
+}
 
 // (This is modified from HybridDircon::ReconstructStateTrajectory)
 // Instead of returning a trajectory class, we

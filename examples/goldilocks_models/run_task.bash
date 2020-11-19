@@ -3,7 +3,7 @@
 ##basic parameters##
 #SBATCH --job-name=run_model_opt
 #SBATCH --time=20:00
-#SBATCH --output=/scratch/$USER/output/slurm-%A_%a.out
+#SBATCH --output=/scratch/jianshu/output/slurm-%A_%a.out  ##manually specify this directory
 
 ##email setting##
 #SBATCH --mail-user=$USER@seas.upenn.edu

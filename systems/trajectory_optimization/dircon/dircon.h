@@ -40,6 +40,14 @@ class Dircon
   /// For simplicity, a constructor that takes only a single mode as a pointer.
   Dircon(DirconMode<T>* mode);
 
+  /// Returns a vector of matrices containing the state and derivative values at
+  /// each breakpoint at the solution for each mode of the trajectory.
+  void GetStateAndDerivativeSamples(
+      const drake::solvers::MathematicalProgramResult& result,
+      std::vector<Eigen::MatrixXd>* state_samples,
+      std::vector<Eigen::MatrixXd>* derivative_samples,
+      std::vector<Eigen::VectorXd>* state_breaks) const;
+
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory(
@@ -179,11 +187,11 @@ class Dircon
   /// Get the number of knotpoints in a specified mode
   int mode_length(int mode_index) const; 
 
-  const multibody::KinematicEvaluatorSet<T> get_evaluator_set(int mode) const {
+  const multibody::KinematicEvaluatorSet<T>& get_evaluator_set(int mode) const {
     return mode_sequence_.mode(mode).evaluators();
   }
 
-  const DirconMode<T> get_mode(int mode) const {
+  const DirconMode<T>& get_mode(int mode) const {
     return mode_sequence_.mode(mode);
   }
 

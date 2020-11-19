@@ -3358,15 +3358,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   std::chrono::duration<double> elapsed = finish - start;
 
   // Save trajectory to file
-  if (sample_idx == 0) {
-    string file_name = "dircon_trajectory";
-    DirconTrajectory saved_traj(
-        plant, *gm_traj_opt.dircon, result, file_name,
-        "Decision variables and state/input trajectories");
-    saved_traj.WriteToFile(setting.directory + file_name);
-    std::cout << "Wrote to file: " << setting.directory + file_name
-              << std::endl;
-  }
+  string file_name = setting.prefix + "dircon_trajectory";
+  DirconTrajectory saved_traj(
+      plant, *gm_traj_opt.dircon, result, file_name,
+      "Decision variables and state/input trajectories");
+  saved_traj.WriteToFile(setting.directory + file_name);
+    std::cout << "Wrote to file: " << setting.directory + file_name <<
+    std::endl;
 
   bool is_print_for_debugging = false;
   VectorXd w_sol;

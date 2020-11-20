@@ -1,9 +1,11 @@
 #include "examples/Cassie/input_supervisor.h"
 
-#include "drake/multibody/plant/multibody_plant.h"
-#include "examples/Cassie/cassie_utils.h"
 #include <Eigen/Dense>
 #include <gtest/gtest.h>
+
+#include "examples/Cassie/cassie_utils.h"
+
+#include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
 namespace systems {
@@ -14,8 +16,9 @@ using Eigen::VectorXd;
 // class InputSupervisorTest: public ::testing::Test {};
 
 class InputSupervisorTest : public ::testing::Test {
-protected:
-  InputSupervisorTest() : plant_(drake::multibody::MultibodyPlant<double>(0.0)) {
+ protected:
+  InputSupervisorTest()
+      : plant_(drake::multibody::MultibodyPlant<double>(0.0)) {
     addCassieMultibody(&plant_, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_v2.urdf",
                        true /*spring model*/, false /*loop closure*/);
@@ -44,22 +47,24 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
   double output_bit;
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
   command_input_->get_mutable_value() = zero_input;
-  context_->FixInputPort(0, *command_input_);
 
+  supervisor_->get_input_port_command().FixValue(context_.get(),
+                                                 *command_input_);
   supervisor_->SetStatus(*context_, status_output_.get());
   output_bit = status_output_->get_value()[0];
   EXPECT_EQ(output_bit, 0);
 
   VectorXd large_input = 100 * VectorXd::Ones(plant_.num_actuators());
   command_input_->get_mutable_value() = large_input;
-  context_->FixInputPort(0, *command_input_);
+  supervisor_->get_input_port_command().FixValue(context_.get(),
+                                                 *command_input_);
   supervisor_->SetStatus(*context_, status_output_.get());
   output_bit = status_output_->get_value()[0];
   EXPECT_EQ(output_bit, 2);
 
   VectorXd high_velocities = 100 * VectorXd::Ones(plant_.num_velocities());
   state_input_->SetVelocities(high_velocities);
-  context_->FixInputPort(1, *state_input_);
+  supervisor_->get_input_port_state().FixValue(context_.get(), *state_input_);
   supervisor_->UpdateErrorFlag(*context_,
                                &context_->get_mutable_discrete_state());
   supervisor_->SetStatus(*context_, status_output_.get());
@@ -76,11 +81,11 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
   EXPECT_EQ(output_bit, 7);
 }
 
-} // namespace
-} // namespace systems
-} // namespace dairlib
+}  // namespace
+}  // namespace systems
+}  // namespace dairlib
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

@@ -67,8 +67,6 @@ DEFINE_int32(
     "0 uses the capture point\n"
     "1 uses the neutral point derived from LIPM given the stance duration");
 
-DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
-
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)

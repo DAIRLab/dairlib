@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_input_supervisor_status
+{
+  int64_t utime;
+  int64_t status;
+  int8_t shutdown;
+  int8_t vel_limit;
+  int8_t act_limit;
+  int8_t act_delay;
+}

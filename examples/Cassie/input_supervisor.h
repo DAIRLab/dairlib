@@ -2,8 +2,11 @@
 #include <limits>
 
 #include "systems/framework/timestamped_vector.h"
+#include "dairlib/lcmt_input_supervisor_status.hpp"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
+
+static constexpr double kMaxControllerDelay = 0.1;
 
 namespace dairlib {
 
@@ -66,6 +69,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  // Assign the lcmt_input_supervisor_status output
   // Sets the status bit to the current status
   // 0b00  if no limits are being applied
   // 0b01  if velocity has exceeded threshold
@@ -73,7 +77,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // 0b11  if both limits have been exceeded
   // ob1xx if velocity shutdown has been applied
   void SetStatus(const drake::systems::Context<double>& context,
-                 systems::TimestampedVector<double>* output) const;
+                 dairlib::lcmt_input_supervisor_status* output) const;
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -89,6 +93,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   int status_index_;
   int switch_time_index_;
   int prev_efforts_index_;
+  int prev_efforts_time_index_;
   int state_input_port_;
   int command_input_port_;
   int controller_switch_input_port_;

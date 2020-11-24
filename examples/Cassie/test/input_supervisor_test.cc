@@ -24,7 +24,7 @@ class InputSupervisorTest : public ::testing::Test {
     supervisor_ = std::make_unique<InputSupervisor>(
         plant_, 10.0, 0.01, min_consecutive_failures, 20.0);
     context_ = supervisor_->CreateDefaultContext();
-    status_output_ = std::make_unique<TimestampedVector<double>>(1);
+    status_output_ = std::make_unique<dairlib::lcmt_input_supervisor_status>();
     motor_output_ =
         std::make_unique<TimestampedVector<double>>(plant_.num_actuators());
     command_input_ =
@@ -45,7 +45,7 @@ class InputSupervisorTest : public ::testing::Test {
   drake::multibody::MultibodyPlant<double> plant_;
   const int min_consecutive_failures = 5;
   std::unique_ptr<InputSupervisor> supervisor_;
-  std::unique_ptr<TimestampedVector<double>> status_output_;
+  std::unique_ptr<dairlib::lcmt_input_supervisor_status> status_output_;
   std::unique_ptr<TimestampedVector<double>> motor_output_;
   std::unique_ptr<TimestampedVector<double>> command_input_;
   std::unique_ptr<OutputVector<double>> state_input_;
@@ -61,7 +61,7 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
   supervisor_->get_input_port_command().FixValue(context_.get(),
                                                  *command_input_);
   supervisor_->SetStatus(*context_, status_output_.get());
-  output_bit = status_output_->get_value()[0];
+  output_bit = status_output_->status;
   EXPECT_EQ(output_bit, 0);
 
   VectorXd large_input = 100 * VectorXd::Ones(plant_.num_actuators());
@@ -69,7 +69,7 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
   supervisor_->get_input_port_command().FixValue(context_.get(),
                                                  *command_input_);
   supervisor_->SetStatus(*context_, status_output_.get());
-  output_bit = status_output_->get_value()[0];
+  output_bit = status_output_->status;
   EXPECT_EQ(output_bit, 2);
 
   VectorXd high_velocities = 100 * VectorXd::Ones(plant_.num_velocities());
@@ -81,7 +81,7 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
   supervisor_->UpdateErrorFlag(*context_,
                                &context_->get_mutable_discrete_state());
   supervisor_->SetStatus(*context_, status_output_.get());
-  output_bit = status_output_->get_value()[0];
+  output_bit = status_output_->status;
   EXPECT_EQ(output_bit, 3);
 
   // Trigger the min_consecutive_failures
@@ -90,7 +90,7 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
                                  &context_->get_mutable_discrete_state());
   }
   supervisor_->SetStatus(*context_, status_output_.get());
-  output_bit = status_output_->get_value()[0];
+  output_bit = status_output_->status;
   EXPECT_EQ(output_bit, 7);
 }
 

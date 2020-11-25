@@ -79,9 +79,6 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     std::cout << "Delay between controller commands is too long, shutting down"
               << std::endl;
   }
-  std::cout << command->get_timestamp() -
-                   context.get_discrete_state(prev_efforts_time_index_)[0]
-            << std::endl;
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros

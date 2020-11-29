@@ -1,0 +1,78 @@
+group "1.controllers-and-dispatchers" {
+    cmd "1.mptc-walking-controller-(in-place)" {
+            exec = "bazel-bin/examples/Cassie/run_mptc_walking_controller";
+            host = "localhost";
+        }
+    cmd "2.mptc-walking-controller-(virtual-remote)" {
+            exec = "bazel-bin/examples/Cassie/run_mptc_walking_controller --use_radio=true --virtual_radio=true";
+            host = "localhost";
+    }
+    cmd "3.osc-walking-controller-(in-place)" {
+                exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
+                host = "localhost";
+    }
+    cmd "2.osc-walking-controller-(virtual-remote)" {
+                exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --use_radio=true --virtual_radio=true";
+                host = "localhost";
+    }
+    cmd "0.mptc-standing-controller" {
+            exec = "bazel-bin/examples/Cassie/run_mptc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
+            host = "localhost";
+    }
+    cmd "0.cassie_virtual_radio"  {
+            exec = "bazel-bin/examples/Cassie/cassie-virtual-remote-py";
+            host = "localhost";
+    }
+}
+
+group "2.drake-simulator" {
+    cmd "1.simulator-fixed" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=false";
+        host = "localhost";
+    }
+    cmd "1.simulator-floating" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=1000 --init_height=0.8 --terrain_height=0.03 --target_realtime_rate=0.5";
+        host = "localhost";
+    }
+}
+
+group "0.operator" {
+    cmd "2.state-visualizer-floating (from simulation)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION";
+        host = "localhost";
+    }
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+    cmd "2.state-visualizer-floating (from dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true";
+        host = "localhost";
+    }
+}
+
+group "4.lcm-tools" {
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+script "run-drake-mptc-standing" {
+run_script "start-operator-simulation-floating-base";
+    start cmd "0.mptc-standing-controller";
+    start cmd "1.simulator-floating";
+    restart cmd "2.state-visualizer-floating (from simulation)";
+}
+
+script "start-operator-simulation-floating-base" {
+    stop cmd "2.state-visualizer-floating (from simulation)";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "2.state-visualizer-floating (from simulation)";
+}

@@ -68,14 +68,14 @@ WalkingSpeedControl::WalkingSpeedControl(
   // Control gains
   if (footstep_option == 0) {
     // For Capture point
-    k_fp_ff_sagital_ = 0.16;
-    k_fp_fb_sagital_ = 0.04;
+    k_fp_ff_sagital_ = 0.17;
+    k_fp_fb_sagital_ = 0.08;
     k_fp_ff_lateral_ = 0.08;
-    k_fp_fb_lateral_ = 0.02;
+    k_fp_fb_lateral_ = 0.03;
   } else if (footstep_option == 1) {
     // For LIPM neutral point
     k_fp_ff_sagital_ = 0;
-    k_fp_fb_sagital_ = 0.06;
+    k_fp_fb_sagital_ = 0.08;
     k_fp_ff_lateral_ = 0;
     k_fp_fb_lateral_ = 0.12;
   }

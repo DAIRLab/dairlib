@@ -40,13 +40,21 @@ namespace osc {
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context, double vel_scale_rot,
-    double vel_scale_trans, int footstep_option)
+    double vel_scale_trans, int footstep_option, bool virtual_radio)
     : HighLevelCommand(plant, context, footstep_option) {
   cassie_out_port_ =
       this->DeclareAbstractInputPort("lcmt_cassie_output",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
+  if (virtual_radio) {
+      virtual_radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
+  }
+
   use_radio_command_ = true;
+  virtual_radio_ = virtual_radio;
   vel_scale_rot_ = vel_scale_rot;
   vel_scale_trans_ = vel_scale_trans;
 }
@@ -113,14 +121,25 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
   if (use_radio_command_) {
     const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
         context, cassie_out_port_);  // TODO(yangwill) make sure there is a
+
     // message available
     // des_vel indices: 0: yaw_vel (right joystick left/right)
     //                  1: saggital_vel (left joystick up/down)
     //                  2: lateral_vel (left joystick left/right)
     Vector3d des_vel;
-    des_vel << -1 * vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
-        vel_scale_trans_ * cassie_out->pelvis.radio.channel[0],
-        -1 * vel_scale_trans_ * cassie_out->pelvis.radio.channel[1];
+    if (virtual_radio_) {
+        const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
+                context, virtual_radio_port_);
+
+        des_vel << radio_out->channel[3],
+                radio_out->channel[0],
+                radio_out->channel[1];
+    }
+    else {
+        des_vel << -1 * vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
+                vel_scale_trans_ * cassie_out->pelvis.radio.channel[0],
+                -1 * vel_scale_trans_ * cassie_out->pelvis.radio.channel[1];
+    }
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
   } else {
     discrete_state->get_mutable_vector(des_vel_idx_)

@@ -35,10 +35,15 @@ group "1.controllers-and-dispatchers" {
         exec = "bazel-bin/examples/Cassie/run_osc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
         host = "localhost";
     }
-    cmd "3.mptc-standing-controller (no dispatcher)" {
+    cmd "4.mptc-standing-controller (no dispatcher)" {
             exec = "bazel-bin/examples/Cassie/run_mptc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
             host = "localhost";
     }
+    cmd "4.mptc-standing-controller (dispatched)" {
+                exec = "bazel-bin/examples/Cassie/run_mptc_standing_controller  --height=.85 --cost_weight_multiplier=1 --channel_x=CASSIE_STATE_DISPATCHER";
+                host = "localhost";
+     }
+
     cmd "2.pd-controller" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";
         host = "localhost";
@@ -59,7 +64,7 @@ group "2.drake-simulator" {
         host = "localhost";
     }
     cmd "1.simulator-floating" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=1000 --init_height=0.8 --channel_u=OSC_JUMPING";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=1000 --init_height=0.8 --terrain_height=0.03 --target_realtime_rate=0.5";
         host = "localhost";
     }
 }
@@ -131,6 +136,13 @@ script "run-drake-osc-standing-wo-ekf" {
     start cmd "3.osc-standing-controller (no dispatcher)";
 }
 
+script "run-drake-mptc-standing-w-ekf" {
+run_script "start-operator-simulation-floating-base";
+    start cmd "0.a.dispatcher-robot-out (lcm, floating-base)";
+    start cmd "1.simulator-floating";
+    start cmd "4.mptc-standing-controller (dispatched)";
+}
+
 script "run-drake-osc-walking-w-ekf" {
     run_script "start-operator-simulation-floating-base";
     start cmd "0.a.dispatcher-robot-out (lcm, floating-base)";
@@ -150,22 +162,6 @@ script "run-drake-pd-control" {
     run_script "start-operator-simulation-fixed-base";
     start cmd "1.simulator";
     start cmd "0.a.dispatcher-robot-out (lcm, fixed-base)";
-    start cmd "2.pd-controller";
-}
-
-script "run-gazebo-lcm-pd-control" {
-    run_script "start-operator-simulation-fixed-base";
-    start cmd "1.launch-gazebo-fixed-base";
-    start cmd "0.a.dispatcher-robot-out (lcm, fixed-base)";
-    start cmd "1.dispatcher-robot-in";
-    start cmd "2.pd-controller";
-}
-
-script "run-gazebo-pd-control" {
-    run_script "start-operator-simulation-fixed-base";
-    start cmd "1.launch-gazebo-fixed-base";
-    start cmd "0.b.dispatcher-robot-out (gazebo)";
-    start cmd "1.dispatcher-robot-in";
     start cmd "2.pd-controller";
 }
 

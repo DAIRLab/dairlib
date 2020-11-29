@@ -161,6 +161,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_hip_yaw = gains.HipYawW * MatrixXd::Identity(1, 1);
   std::cout << "w input (not used): \n" << gains.w_input << std::endl;
   std::cout << "w accel: \n" << gains.w_accel << std::endl;
+  std::cout << "w accel: \n" << gains.w_accel << std::endl;
   std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
   std::cout << "COM Kp: \n" << K_p_com << std::endl;
   std::cout << "COM Kd: \n" << K_d_com << std::endl;
@@ -220,7 +221,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::ModularPassiveTrackingControl>(
-      plant_w_springs, plant_wo_springs, context_w_spr.get(),
+      plant_w_springs, plant_wo_springs, *plant_ad, context_w_spr.get(),
       context_wo_spr.get(), false, FLAGS_print_osc);
 
   // Distance constraint

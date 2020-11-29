@@ -73,10 +73,13 @@ DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 DEFINE_int32(
-    footstep_option, 1,
+    footstep_option, 0,
     "0 uses the capture point\n"
     "1 uses the neutral point derived from LIPM given the stance duration");
 
+DEFINE_double(target_x, 0.0, "Target x position for the robot to reach");
+
+DEFINE_bool(virtual_radio, false, "whether to use virtual radio");
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
@@ -256,6 +259,12 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
 
+
+  auto virtual_radio_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+                      "RADIO_OUT", &lcm_local));
+
+
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
@@ -276,7 +285,7 @@ int DoMain(int argc, char* argv[]) {
                   simulator_drift->get_input_port_state());
 
   // Create human high-level control
-  Eigen::Vector2d global_target_position(0, 0);
+  Eigen::Vector2d global_target_position(FLAGS_target_x, 0);
   Eigen::Vector2d params_of_no_turning(5, 1);
   // Logistic function 1/(1+5*exp(x-1))
   // The function ouputs 0.0007 when x = 0
@@ -286,11 +295,17 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_use_radio) {
     double vel_scale_rot = 0.5;
     double vel_scale_trans = 1.5;
+
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), vel_scale_rot, vel_scale_trans,
-        FLAGS_footstep_option);
+        FLAGS_footstep_option, FLAGS_virtual_radio);
+
     builder.Connect(cassie_out_receiver->get_output_port(),
                     high_level_command->get_cassie_output_port());
+    if (FLAGS_virtual_radio) {
+        builder.Connect(virtual_radio_receiver->get_output_port(),
+                        high_level_command->get_virtual_radio_input_port());
+    }
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), global_target_position,
@@ -409,6 +424,7 @@ int DoMain(int argc, char* argv[]) {
 
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
+
   vector<double> left_right_support_state_durations = {left_support_duration,
                                                        right_support_duration};
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {

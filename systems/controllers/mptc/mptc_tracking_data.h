@@ -92,7 +92,7 @@ namespace mptc_data {
                         const drake::systems::Context<double> &context_w_spr,
                         const Eigen::VectorXd &x_wo_spr,
                         const drake::systems::Context<double> &context_wo_spr,
-                        const Eigen::MatrixXd &M,
+                        const Eigen::MatrixXd &M, const Eigen::MatrixXd &C,
                         const drake::trajectories::Trajectory<double> &traj, double t,
                         int finite_state_machine_state);
 
@@ -151,14 +151,22 @@ namespace mptc_data {
 
             void AddState(int state);
 
+
+
             // Feedback output, Jacobian and dJ/dt * v
             Eigen::VectorXd error_y_;
             Eigen::VectorXd error_ydot_;
             Eigen::VectorXd y_;
             Eigen::VectorXd ydot_;
+            drake::MatrixX<AutoDiffXd> J_ad_;
             Eigen::MatrixXd J_;
             Eigen::VectorXd JdotV_;
             Eigen::VectorXd Cv_;
+            Eigen::MatrixXd C_;
+            Eigen::MatrixXd Jdot_;
+            Eigen::MatrixXd M_k_;
+            Eigen::MatrixXd C_k_;
+
 
 
             // Desired output
@@ -183,14 +191,16 @@ namespace mptc_data {
             const drake::multibody::MultibodyPlant<double> &plant_w_spr_;
             const drake::multibody::MultibodyPlant<double> &plant_wo_spr_;
             const drake::multibody::MultibodyPlant<drake::AutoDiffXd> &plant_wo_spr_ad_;
-            multibody::CoriolisMatrixCalculator coriolis_;
 
             // World frames
             const drake::multibody::BodyFrame<double> &world_w_spr_;
             const drake::multibody::BodyFrame<double> &world_wo_spr_;
             std::unique_ptr<drake::systems::Context<AutoDiffXd>> context_ad_;
+            std::unique_ptr<drake::systems::Context<double>> update_context_;
             const drake::multibody::BodyFrame<drake::AutoDiffXd> &world_wo_spr_ad_;
 
+            int nq_;
+            int nv_;
         private:
             // Check if we should do tracking in the current state
             void UpdateTrackingFlag(int finite_state_machine_state);
@@ -213,6 +223,10 @@ namespace mptc_data {
                     const drake::systems::Context<double> &context_wo_spr) = 0;
 
             virtual void UpdateJdotV(
+                    const Eigen::VectorXd &x_wo_spr,
+                    const drake::systems::Context<double> &context_wo_spr) = 0;
+
+            virtual void UpdateJdot(
                     const Eigen::VectorXd &x_wo_spr,
                     const drake::systems::Context<double> &context_wo_spr) = 0;
 
@@ -276,6 +290,10 @@ namespace mptc_data {
 
             void UpdateJdotV(const Eigen::VectorXd &x_wo_spr,
                              const drake::systems::Context<double> &context_wo_spr) final;
+
+            void UpdateJdot(
+                    const Eigen::VectorXd &x_wo_spr,
+                    const drake::systems::Context<double> &context_wo_spr) final;
 
             void CheckDerivedMptcTrackingData() final;
         };
@@ -347,6 +365,9 @@ namespace mptc_data {
             void UpdateJdotV(const Eigen::VectorXd &x_wo_spr,
                              const drake::systems::Context<double> &context_wo_spr) final;
 
+            void UpdateJdot(const Eigen::VectorXd &x_wo_spr,
+                            const drake::systems::Context<double> &context_wo_spr) final;
+
             void CheckDerivedMptcTrackingData() final;
 
             // `pt_on_body` is the position w.r.t. the origin of the body
@@ -401,6 +422,9 @@ namespace mptc_data {
             void UpdateJdotV(const Eigen::VectorXd &x_wo_spr,
                              const drake::systems::Context<double> &context_wo_spr) final;
 
+            void UpdateJdot(const Eigen::VectorXd &x_wo_spr,
+                                const drake::systems::Context<double> &context_wo_spr) final;
+
             void CheckDerivedMptcTrackingData() final;
 
             // frame_pose_ represents the pose of the frame (w.r.t. the body's frame)
@@ -452,6 +476,9 @@ namespace mptc_data {
 
             void UpdateJdotV(const Eigen::VectorXd &x_wo_spr,
                              const drake::systems::Context<double> &context_wo_spr) final;
+
+            void UpdateJdot(const Eigen::VectorXd &x_wo_spr,
+                                const drake::systems::Context<double> &context_wo_spr) final;
 
             void CheckDerivedMptcTrackingData() final;
 

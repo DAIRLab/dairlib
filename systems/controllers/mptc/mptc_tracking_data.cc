@@ -3,6 +3,8 @@
 #include <math.h>
 #include <algorithm>
 #include <drake/multibody/plant/multibody_plant.h>
+#include <drake/math/autodiff_gradient.h>
+#include <drake/common/autodiffxd_make_coherent.h>
 #include "multibody/multibody_utils.h"
 
 using std::cout;
@@ -37,7 +39,6 @@ MptcTrackingData::MptcTrackingData(const string& name, int n_y, int n_ydot,
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       plant_wo_spr_ad_(plant_wo_spr_ad),
-      coriolis_(CoriolisMatrixCalculator(plant_wo_spr_ad)),
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
       world_wo_spr_ad_(plant_wo_spr_ad_.world_frame()),
@@ -48,14 +49,18 @@ MptcTrackingData::MptcTrackingData(const string& name, int n_y, int n_ydot,
       K_d_(K_d),
       W_(W) {
         context_ad_ = plant_wo_spr_ad_.CreateDefaultContext();
-        Cv_ = VectorXd::Zero(plant_wo_spr_.num_velocities());
+        update_context_ = plant_wo_spr_.CreateDefaultContext();
+        nq_ = plant_wo_spr_ad_.num_positions();
+        nv_ = plant_wo_spr_ad_.num_velocities();
+        Cv_ = VectorXd::Zero(nv_);
+        C_ = MatrixXd::Zero(nv_, nv_);
 }
 
 // Update
 bool MptcTrackingData::Update(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
-    const Eigen::MatrixXd& M,
+    const Eigen::MatrixXd& M, const Eigen::MatrixXd& C,
     const drake::trajectories::Trajectory<double>& traj, double t,
     int finite_state_machine_state) {
   // Update track_at_current_state_
@@ -66,27 +71,29 @@ bool MptcTrackingData::Update(
     // Careful: must update y_des_ before calling UpdateYAndError()
     // Update desired output
     y_des_ = traj.value(t);
-    ydot_des_ = VectorXd::Zero(n_ydot_); //traj.MakeDerivative(1)->value(t);
-    yddot_des_ = traj.MakeDerivative(2)->value(t);
+      if (traj.has_derivative()) {
+          ydot_des_ = traj.EvalDerivative(t, 1);
+          yddot_des_ = traj.EvalDerivative(t, 2);
+      } else {
+          ydot_des_ =  traj.MakeDerivative(1)->value(t);
+          yddot_des_ = traj.MakeDerivative(2)->value(t);
+      }
 
-    VectorX<AutoDiffXd> x_ad = VectorX<AutoDiffXd>::Zero(plant_wo_spr_ad_.num_positions() +
-                                                          plant_wo_spr_ad_.num_velocities());
-    x_ad.topRows(plant_wo_spr_ad_.num_positions()) = x_wo_spr.topRows(plant_wo_spr_ad_.num_positions());
-    x_ad.bottomRows(plant_wo_spr_ad_.num_velocities()) =
-            drake::math::initializeAutoDiff(x_wo_spr.bottomRows(plant_wo_spr_ad_.num_velocities()));
-    context_ad_->SetContinuousState(x_ad);
-
-    // Update feedback output (Calling virtual methods)
     UpdateYAndError(x_w_spr, context_w_spr);
     UpdateYdotAndError(x_w_spr, context_w_spr);
     UpdateYddotDes();
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
+    UpdateJdot(x_wo_spr, context_wo_spr);
+    //std::cout << "Jdot:\n" << Jdot_ << std::endl;
+    C_ = C;
     UpdateKpKd(M);
+    //std::cout << "Kp:\n" << K_k_ << std::endl;
+    //std::cout << "Kd:\n" << D_k_ << std::endl;
 
     // Update command output (desired output with pd control)
     yddot_command_ =
-        yddot_des_converted_ + K_k_ * (error_y_) + D_k_ +  M_k_inv_* K_d_ * (error_ydot_);
+        yddot_des_converted_ + K_k_ * (error_y_) + D_k_ * (error_ydot_);
   }
   return track_at_current_state_;
 }
@@ -106,8 +113,10 @@ void MptcTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
 void MptcTrackingData::UpdateKpKd(const Eigen::MatrixXd& M) {
     M_inv_ = M.inverse();
     M_k_inv_ = J_ * M_inv_ * J_.transpose();
+    M_k_ = M_k_inv_.inverse();
     K_k_ = M_k_inv_ * K_p_;
-    D_k_ = - (J_ * M_inv_ * Cv_ - JdotV_);
+    C_k_ = M_k_ * (J_ * M_inv_ * C_ - Jdot_) * (M_k_ * J_ * M_inv_).transpose();
+    D_k_ = M_k_inv_*(C_k_ + K_d_);
 }
 
 void MptcTrackingData::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
@@ -185,9 +194,9 @@ void ComTrackingData::UpdateYddotDes() { yddot_des_converted_ = yddot_des_; }
 
 void ComTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                               const Context<double>& context_wo_spr) {
-  J_ = MatrixXd::Zero(kSpaceDim, plant_wo_spr_.num_velocities());
-  plant_wo_spr_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context_wo_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_, &J_);
+    J_ = MatrixXd::Zero(kSpaceDim, plant_wo_spr_.num_velocities());
+    plant_wo_spr_.CalcJacobianCenterOfMassTranslationalVelocity(
+            context_wo_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_, &J_);
 }
 
 void ComTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
@@ -197,6 +206,25 @@ void ComTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
         plant_wo_spr_.CalcBiasTerm(context_wo_spr, &Cv_);
 }
 
+void ComTrackingData::UpdateJdot(const VectorXd& x_wo_spr,
+                                     const Context<double>& context_wo_spr) {
+    // Get euler integration step
+    double dt = 1e-8;
+    VectorXd delta_q = VectorXd::Zero(nq_);
+    plant_wo_spr_.MapVelocityToQDot(context_wo_spr, x_wo_spr.bottomRows(nv_), &delta_q);
+    delta_q = dt*delta_q;
+
+    //update position
+    VectorXd q = x_wo_spr.topRows(nq_) + delta_q;
+    plant_wo_spr_.SetPositions(update_context_.get(), q);
+
+    // take derivative
+    MatrixXd J_perturbed = MatrixXd::Zero(kSpaceDim, plant_wo_spr_.num_velocities());
+    plant_wo_spr_.CalcJacobianCenterOfMassTranslationalVelocity(
+            *update_context_, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_, &J_perturbed);
+
+    Jdot_ = (J_perturbed - J_) / dt;
+}
 
 void ComTrackingData::CheckDerivedMptcTrackingData() {}
 
@@ -248,13 +276,13 @@ void TransTaskSpaceTrackingData::UpdateYAndError(
 
 void TransTaskSpaceTrackingData::UpdateYdotAndError(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
-  MatrixXd J(kSpaceDim, plant_w_spr_.num_velocities());
-  plant_w_spr_.CalcJacobianTranslationalVelocity(
-      context_w_spr, JacobianWrtVariable::kV,
-      *body_frames_w_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
-      world_w_spr_, world_w_spr_, &J);
-  ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
-  error_ydot_ = ydot_des_ - ydot_;
+    MatrixXd J(kSpaceDim, plant_w_spr_.num_velocities());
+    plant_w_spr_.CalcJacobianTranslationalVelocity(
+            context_w_spr, JacobianWrtVariable::kV,
+            *body_frames_w_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
+            world_w_spr_, world_w_spr_, &J);
+    ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
+    error_ydot_ = ydot_des_ - ydot_;
 }
 
 void TransTaskSpaceTrackingData::UpdateYddotDes() {
@@ -263,7 +291,7 @@ void TransTaskSpaceTrackingData::UpdateYddotDes() {
 
 void TransTaskSpaceTrackingData::UpdateJ(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
-  J_ = MatrixXd::Zero(kSpaceDim, plant_wo_spr_.num_velocities());
+  J_ = MatrixXd::Zero(kSpaceDim, nv_);
   plant_wo_spr_.CalcJacobianTranslationalVelocity(
       context_wo_spr, JacobianWrtVariable::kV,
       *body_frames_wo_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
@@ -276,6 +304,28 @@ void TransTaskSpaceTrackingData::UpdateJdotV(
       context_wo_spr, drake::multibody::JacobianWrtVariable::kV,
       *body_frames_wo_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
       world_wo_spr_, world_wo_spr_);
+}
+
+void TransTaskSpaceTrackingData::UpdateJdot(const Eigen::VectorXd &x_wo_spr,
+                                            const drake::systems::Context<double> &context_wo_spr) {
+    // Get euler integration step
+    double dt = 1e-8;
+    VectorXd delta_q = VectorXd::Zero(nq_);
+    plant_wo_spr_.MapVelocityToQDot(context_wo_spr, x_wo_spr.bottomRows(nv_), &delta_q);
+    delta_q = dt*delta_q;
+
+    //update position
+    VectorXd q = x_wo_spr.topRows(nq_) + delta_q;
+    plant_wo_spr_.SetPositions(update_context_.get(), q);
+
+    // take derivative
+    MatrixXd J_perturbed = MatrixXd::Zero(kSpaceDim, plant_wo_spr_.num_velocities());
+    plant_wo_spr_.CalcJacobianTranslationalVelocity(
+            *update_context_, JacobianWrtVariable::kV,
+            *body_frames_wo_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
+            world_wo_spr_, world_wo_spr_, &J_perturbed);
+
+    Jdot_ = (J_perturbed - J_) / dt;
 }
 
 void TransTaskSpaceTrackingData::CheckDerivedMptcTrackingData() {
@@ -371,6 +421,7 @@ void RotTaskSpaceTrackingData::UpdateYddotDes() {
 
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                        const Context<double>& context_wo_spr) {
+
   MatrixXd J_spatial(6, plant_wo_spr_.num_velocities());
   plant_wo_spr_.CalcJacobianSpatialVelocity(
       context_wo_spr, JacobianWrtVariable::kV,
@@ -390,6 +441,28 @@ void RotTaskSpaceTrackingData::UpdateJdotV(
                    frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
                    world_wo_spr_)
                .rotational();
+}
+
+void RotTaskSpaceTrackingData::UpdateJdot(const Eigen::VectorXd &x_wo_spr,
+                                              const drake::systems::Context<double> &context_wo_spr) {
+    // Get euler integration step
+    double dt = 1e-8;
+    VectorXd delta_q = VectorXd::Zero(nq_);
+    plant_wo_spr_.MapVelocityToQDot(context_wo_spr, x_wo_spr.bottomRows(nv_), &delta_q);
+    delta_q = dt*delta_q;
+
+    //update position
+    VectorXd q = x_wo_spr.topRows(nq_) + delta_q;
+    plant_wo_spr_.SetPositions(update_context_.get(), q);
+
+    MatrixXd J_spatial(6, plant_wo_spr_.num_velocities());
+
+    plant_wo_spr_.CalcJacobianSpatialVelocity(
+            context_wo_spr, JacobianWrtVariable::kV,
+            *body_frames_wo_spr_.at(GetStateIdx()),
+            frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_, world_wo_spr_,
+            &J_spatial);
+    Jdot_ = (J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) - J_) / dt;
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedMptcTrackingData() {
@@ -441,10 +514,10 @@ void JointSpaceTrackingData::UpdateYAndError(
 
 void JointSpaceTrackingData::UpdateYdotAndError(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
-  MatrixXd J = MatrixXd::Zero(1, plant_w_spr_.num_velocities());
-  J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
-  ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
-  error_ydot_ = ydot_des_ - ydot_;
+    MatrixXd J = MatrixXd::Zero(1, plant_w_spr_.num_velocities());
+    J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
+    ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
+    error_ydot_ = ydot_des_ - ydot_;
 }
 
 void JointSpaceTrackingData::UpdateYddotDes() {
@@ -461,6 +534,11 @@ void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void JointSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   JdotV_ = VectorXd::Zero(1);
+}
+
+void JointSpaceTrackingData::UpdateJdot(const Eigen::VectorXd &x_wo_spr,
+    const drake::systems::Context<double> &context_wo_spr) {
+    Jdot_ = MatrixXd::Zero(1, nv_);
 }
 
 /// TODO: @Brian-Acosta add update jdot

@@ -51,7 +51,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    double vel_scale_rot, double vel_scale_trans,
-                   int footstep_option);
+                   int footstep_option, bool virtual_radio);
   /// Constructor that computes the desired yaw and translational velocities
   /// according to a global target position
   ///
@@ -71,6 +71,9 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_cassie_output_port() const {
     return this->get_input_port(cassie_out_port_);
+  }
+  const drake::systems::InputPort<double>& get_virtual_radio_input_port() const {
+      return this->get_input_port(virtual_radio_port_);
   }
   const drake::systems::OutputPort<double>& get_xy_output_port() const {
     return this->get_output_port(xy_port_);
@@ -100,6 +103,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
   bool use_radio_command_;
+  bool virtual_radio_;
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
 
@@ -111,6 +115,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   int yaw_port_;
   int xy_port_;
   int cassie_out_port_ = -1;
+  int virtual_radio_port_ = -1;
 
   // Indices for the discrete states of this leafsystem
   drake::systems::DiscreteStateIndex des_vel_idx_;

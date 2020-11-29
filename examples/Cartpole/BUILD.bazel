@@ -43,7 +43,6 @@ cc_binary(
     srcs = ["run_cartpole_demo.cc"],
     deps = [
         ":cartpole_urdf",
-        ":energy_shaping_controller",
         ":lqr_controller",
         "//common",
         "@drake//:drake_shared_library",

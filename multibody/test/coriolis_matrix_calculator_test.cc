@@ -56,14 +56,15 @@ namespace dairlib {
             x.topRows(nq) = xd.topRows(nq);
             x.bottomRows(nv) = drake::math::initializeAutoDiff(xd.bottomRows(nv));
 
+            for (int i = 0; i < 3; i++) {
+                auto start = std::chrono::high_resolution_clock::now();
+                context_ad->SetContinuousState(x);
+                coriolis.CalcCoriolisAutoDiff(context_ad, C);
+                auto stop = std::chrono::high_resolution_clock::now();
 
-            auto start = std::chrono::high_resolution_clock::now();
-            context_ad->SetContinuousState(x);
-            coriolis.CalcCoriolisAutoDiff(std::move(context_ad), C);
-            auto stop = std::chrono::high_resolution_clock::now();
-
-            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-
+                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+                std::cout << "Calculation Time :" << duration.count() << " microseconds\n";
+            }
             VectorX<double> cv = VectorX<double>::Zero(nv);
             plant.CalcBiasTerm(*context, &cv);
 
@@ -81,7 +82,6 @@ namespace dairlib {
             std::cout << "Difference: " << std::endl;
             std::cout << cv - cv_ad << std::endl;
 
-            std::cout << "Calculation Time :" << duration.count() << " microseconds\n";
 
             return 0;
         }

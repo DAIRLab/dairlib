@@ -553,3 +553,30 @@ cc_binary(
         "@gflags",
     ],
 )
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+
+py_binary(
+    name = "cassie-virtual-remote-py",
+    srcs = ["cassie_virtual_remote.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "cassie_virtual_remote.py",
+    deps = [
+        "//bindings/pydairlib",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
+
+drake_runfiles_binary(
+    name = "cassie-virtual-remote",
+    target = "cassie-virtual-remote-py",
+)

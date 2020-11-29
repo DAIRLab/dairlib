@@ -15,7 +15,7 @@ footstep_offset: 0.04
 center_line_offset: 0.00
 final_foot_height: 0.00
 final_foot_velocity_z: -0.01
-mid_foot_height: 0.05
+mid_foot_height: 0.1
 lipm_height: 0.8
 
 CoMW:

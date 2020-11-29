@@ -91,6 +91,7 @@ class ModularPassiveTrackingControl : public drake::systems::LeafSystem<double> 
     ModularPassiveTrackingControl(
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      drake::multibody::MultibodyPlant<AutoDiffXd>& plant_wo_spr_ad,
       drake::systems::Context<double>* context_w_spr,
       drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
@@ -196,6 +197,7 @@ class ModularPassiveTrackingControl : public drake::systems::LeafSystem<double> 
   // MBP's.
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
+  drake::multibody::MultibodyPlant<AutoDiffXd>& plant_wo_spr_ad_;
 
   // World frames
   const drake::multibody::BodyFrame<double>& world_w_spr_;
@@ -204,6 +206,7 @@ class ModularPassiveTrackingControl : public drake::systems::LeafSystem<double> 
   // MBP context's
   drake::systems::Context<double>* context_w_spr_;
   drake::systems::Context<double>* context_wo_spr_;
+  std::unique_ptr<drake::systems::Context<AutoDiffXd>> context_ad_;
 
   // Size of position, velocity and input of the MBP without spring
   int n_q_;

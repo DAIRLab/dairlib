@@ -1,4 +1,5 @@
 #include <drake/multibody/plant/multibody_plant.h>
+#include <drake/math/autodiff_gradient.h>
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
@@ -45,17 +46,18 @@ using multibody::makeNameToVelocitiesMap;
 using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
 using multibody::WorldPointEvaluator;
-
 int kSpaceDim = MptcTrackingData::kSpaceDim;
 
 ModularPassiveTrackingControl::ModularPassiveTrackingControl(
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr,
+    MultibodyPlant<AutoDiffXd>& plant_wo_spr_ad,
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
     bool used_with_finite_state_machine, bool print_tracking_info)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
+      plant_wo_spr_ad_(plant_wo_spr_ad),
       context_w_spr_(context_w_spr),
       context_wo_spr_(context_wo_spr),
       world_w_spr_(plant_w_spr_.world_frame()),
@@ -68,9 +70,14 @@ ModularPassiveTrackingControl::ModularPassiveTrackingControl(
   n_v_ = plant_wo_spr.num_velocities();
   n_u_ = plant_wo_spr.num_actuators();
 
+  context_ad_ = plant_wo_spr_ad_.CreateDefaultContext();
+
   int n_q_w_spr = plant_w_spr.num_positions();
   int n_v_w_spr = plant_w_spr.num_velocities();
   int n_u_w_spr = plant_w_spr.num_actuators();
+
+  //Cv_ = AutoDiffVecXd::Zero(n_v_,1);
+
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -429,6 +436,7 @@ VectorXd ModularPassiveTrackingControl::SolveQp(
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double time_since_last_state_switch) const {
   // Get active contact indices
+
   std::set<int> active_contact_set = {};
   if (single_contact_mode_) {
     active_contact_set = contact_indices_map_.at(-1);
@@ -443,6 +451,7 @@ VectorXd ModularPassiveTrackingControl::SolveQp(
               .c_str()));
     }
   }
+
 
   // Update context
   SetPositionsIfNew<double>(
@@ -465,6 +474,18 @@ VectorXd ModularPassiveTrackingControl::SolveQp(
   plant_wo_spr_.CalcBiasTerm(*context_wo_spr_, &bias);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
   bias = bias - grav;
+
+  VectorX<AutoDiffXd> x_ad = VectorX<AutoDiffXd>::Zero(n_q_+n_v_);
+  AutoDiffVecXd Cv = AutoDiffVecXd::Zero(n_v_, 1);
+  x_ad.topRows(n_q_) = x_wo_spr.topRows(n_q_);
+  x_ad.bottomRows(n_v_) = drake::math::initializeAutoDiff(x_wo_spr.bottomRows(n_v_));
+  context_ad_->SetContinuousState(x_ad);
+
+  //MatrixX<AutoDiffXd>C = MatrixX<AutoDiffXd>::Zero(n_v_, n_v_);
+  plant_wo_spr_ad_.CalcBiasTerm(*context_ad_, &Cv);
+  auto jac = drake::math::autoDiffToGradientMatrix(Cv);
+  MatrixX<AutoDiffXd> C = 0.5*jac;
+  MatrixXd Cd = drake::math::autoDiffToValueMatrix(C);
 
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(n_h_, n_v_);
@@ -583,8 +604,9 @@ VectorXd ModularPassiveTrackingControl::SolveQp(
     // Check whether or not it is a constant trajectory, and update TrackingData
     if (fixed_position_vec_.at(i).size() != 0) {
       // Create constant trajectory and update
+      //std::cout << "updating tracking data " << i << std::endl;
       tracking_data->Update(
-          x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_, M,
+          x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_, M, Cd,
           PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
     } else {
       // Read in traj from input port
@@ -596,8 +618,9 @@ VectorXd ModularPassiveTrackingControl::SolveQp(
       const auto& traj =
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
+      // std::cout << "updating tracking data " << i << std::endl;
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, M, traj, t, fsm_state);
+                            *context_wo_spr_, M, Cd, traj, t, fsm_state);
     }
     // TODO(yangwill): Should only really be updating the trajectory if it's
     //  active

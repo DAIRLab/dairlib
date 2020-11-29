@@ -7,15 +7,15 @@ w_swing_toe: 200
 swing_toe_kp: 20
 swing_toe_kd: 1
 
-w_hip_yaw: 60
-hip_yaw_kp: 10
-hip_yaw_kd: 0.5
+w_hip_yaw: 400
+hip_yaw_kp: 500
+hip_yaw_kd: 5
 
 footstep_offset: 0.04
 center_line_offset: 0.00
 final_foot_height: 0.00
 final_foot_velocity_z: -0.01
-mid_foot_height: 0.05
+mid_foot_height: 0.1
 lipm_height: 0.8
 
 CoMW:
@@ -66,6 +66,6 @@ SwingFootKp:
       0,  800,     0,
       0,    0,   800]
 SwingFootKd:
-  [   5,    0,     0,
-      0,    5,     0,
-      0,    0,    15]
+  [   2,    0,     0,
+      0,    2,     0,
+      0,    0,    5]

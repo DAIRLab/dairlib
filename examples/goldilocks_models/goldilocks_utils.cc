@@ -103,7 +103,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   std::unique_ptr<MonomialFeatures> mapping_basis;
   if (robot_option == 0) {
     mapping_basis = std::make_unique<MonomialFeatures>(
-        2, plant.num_positions(), empty_inds, "mapping basis");
+        3, plant.num_positions(), empty_inds, "mapping basis");
   } else {  // robot_option == 1
     // TODO: we completely remove the quaternion for now. We want to have
     //  roll and pitch, so add this component later (need to map quat to roll
@@ -111,7 +111,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     mapping_basis = std::make_unique<MonomialFeatures>(
-        2, plant.num_positions(), skip_inds, "mapping basis");
+        3, plant.num_positions(), skip_inds, "mapping basis");
   }
   if (print_info) {
     mapping_basis->PrintInfo();
@@ -120,23 +120,23 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   std::unique_ptr<MonomialFeatures> dynamic_basis;
   if (rom_option == 0) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(2), empty_inds, "dynamic basis");
+        3, 2 * Lipm::kDimension(2), empty_inds, "dynamic basis");
   } else if (rom_option == 1) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * LipmWithSwingFoot::kDimension(2), empty_inds, "dynamic basis");
+        3, 2 * LipmWithSwingFoot::kDimension(2), empty_inds, "dynamic basis");
   } else if (rom_option == 2) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * FixHeightAccel::kDimension, empty_inds, "dynamic basis");
+        3, 2 * FixHeightAccel::kDimension, empty_inds, "dynamic basis");
   } else if (rom_option == 3) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * FixHeightAccelWithSwingFoot::kDimension, empty_inds,
+        3, 2 * FixHeightAccelWithSwingFoot::kDimension, empty_inds,
         "dynamic basis");
   } else if (rom_option == 4) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+        3, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else if (rom_option == 5) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
+        3, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }

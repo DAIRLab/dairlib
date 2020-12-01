@@ -4,7 +4,7 @@ import os
 
 # setting of program
 robot_option = 1
-normalized_cost = 0
+normalized_cost = 1
 use_landscape_for_nominal = 0
 plot_successful_sample = 1
 item_to_plot = 0
@@ -21,14 +21,14 @@ else:
         robot = 'cassie/'
 
 # plot setting
-rom1 = '1D_rom/'
-rom2 = '2D_rom/'
-rom3 = '3D_LIP/'
-task_space1 = '2D_task_space/'
-task_space2 = '3D_task_space/'
-task_space5 = '4D_task_space/'
-task_space3 = 'large_task_space/'
-task_space4 = 'small_task_space/'
+rom1 = '1D_LIP'
+rom2 = '2D_LIP'
+rom3 = '3D_LIP'
+task_space1 = '2D_task_space'
+task_space2 = '3D_task_space'
+task_space5 = '4D_task_space'
+task_space3 = 'large_task_space'
+task_space4 = 'small_task_space'
 
 # task space
 large_task_space = 1
@@ -47,9 +47,13 @@ else:
 file_dir = "../dairlib_data/goldilocks_models/find_models/"
 file_dir2 = "../dairlib_data/goldilocks_models/find_boundary/"
 
-
-dir1 = file_dir+robot+rom2+task_space5+'robot_' + str(robot_option)+'_range_2_iter90/'
-label1 = 'optimizing 2D ROM over large task space'
+rom = rom2
+task_space = task_space2
+method ='(grid)'
+iter_start = 1
+iter_end = 300
+dir1 = file_dir+robot+rom+'/'+task_space+'/robot_1/'
+label1 = 'optimizing '+rom+' over '+task_space+method
 line_type1 = 'k-'
 
 dir2 = file_dir+robot+task_space4+'robot_' + str(robot_option)+'_iter2000/'
@@ -86,7 +90,7 @@ def average_cost_several_iter(iter_start, iter_end, n, dir, line_type, label_nam
         if normalized == 1:
             if use_landscape == 1:
                 nominal_cost = calculate_nominal_cost_from_cost_landscape(dir_nominal)
-                print("normalize the cost by nominal cost:", nominal_cost)
+                print('normalize the cost by nominal cost:', nominal_cost)
             else:
                 nominal_cost = []
                 j = 0
@@ -95,24 +99,28 @@ def average_cost_several_iter(iter_start, iter_end, n, dir, line_type, label_nam
                         nominal_cost.append(np.genfromtxt(dir_nominal+str(0)+'_'+str(j)+'_c.csv', delimiter=","))
                     j = j+1
                 nominal_cost = np.array(nominal_cost).sum()/len(nominal_cost)
-                print("normalize the cost by nominal cost:", nominal_cost)
+                print('normalize the cost by nominal cost:', nominal_cost)
         else:
             nominal_cost = 1
-            print("without normalizing the cost by nominal cost")
+            print('without normalizing the cost by nominal cost')
 
     aver_cost = []
     for i in range(iter_start, iter_end+1):
         cost = []
         j = 0
-        whilegit  os.path.isfile(dir+str(i)+'_'+str(j)+'_'+item+'.csv'):
+        while os.path.isfile(dir+str(i)+'_'+str(j)+'_'+item+'.csv'):
             if plot_successful_sample:
-                if float(np.genfromtxt(dir+str(i)+'_'+str(j)+'_is_success.csv', delimiter=","))==1:
-                    if float(np.genfromtxt(dir+str(i)+'_'+str(j)+'_'+item+'.csv', delimiter=","))<15:
+                if float(np.genfromtxt(dir+str(i)+'_'+str(j)+'_is_success.csv', delimiter=",")) == 1:
+                    if float(np.genfromtxt(dir+str(i)+'_'+str(j)+'_'+item+'.csv', delimiter=",")) < 15:
                         cost.append(np.genfromtxt(dir+str(i)+'_'+str(j)+'_'+item+'.csv', delimiter=","))
             else:
                 cost.append(np.genfromtxt(dir + str(i) + '_' + str(j) + '_' + item + '.csv', delimiter=","))
             j = j+1
         aver_cost.append(np.array(cost).sum()/len(cost)/nominal_cost)
+    print('initial cost:', aver_cost[0] * nominal_cost)
+    print('normalized initial cost:', aver_cost[0])
+    print('final cost:', aver_cost[-1]*nominal_cost)
+    print('normalized final cost:', aver_cost[-1])
     # average the cost every n iterations
     cost = np.array(aver_cost)
     aver_cost = []
@@ -129,7 +137,7 @@ def average_cost_several_iter(iter_start, iter_end, n, dir, line_type, label_nam
 
 fig1 = plt.figure(num=1, figsize=(6.4, 4.8))
 ax1 = fig1.gca()
-average_cost_several_iter(2, 89, 1, dir1, line_type1, label1, normalized_cost, use_landscape_for_nominal, dir1)
+average_cost_several_iter(iter_start, iter_end, 1, dir1, line_type1, label1, normalized_cost, use_landscape_for_nominal, dir1)
 # average_cost_several_iter(1, 2000, 20, dir2, line_type2, label2, normalized_cost, use_landscape_for_nominal, dir2)
 # average_cost_several_iter(1, 100, 10, dir3, line_type3, label3, normalized_cost, use_landscape_for_nominal, dir_landscape)
 plt.xlabel('Iteration')

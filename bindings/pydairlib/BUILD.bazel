@@ -99,6 +99,23 @@ py_binary(
 )
 
 py_binary(
+    name = "mptc_experiments_analysis",
+    srcs = ["analysis_scripts/mptc_experiments_analysis.py"],
+    data = [
+        "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        ":process_lcm_log_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
     name = "walking_analysis",
     srcs = ["analysis_scripts/walking_analysis.py"],
     data = [

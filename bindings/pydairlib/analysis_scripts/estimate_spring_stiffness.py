@@ -149,7 +149,7 @@ def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
     t_samples.append(t)
     plant.SetPositionsAndVelocities(context, x[ind, :])
 
-    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    M = plant.CalcMassMatrix(context)
     M_inv = np.linalg.inv(M)
     B = plant.MakeActuationMatrix()
     g = plant.CalcGravityGeneralizedForces(context)

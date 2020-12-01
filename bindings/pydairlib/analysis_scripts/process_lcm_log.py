@@ -19,6 +19,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_des = []
     self.yddot_command = []
     self.yddot_command_sol = []
+    self.V = []
 
   def append(self, msg, t):
     self.t.append(t)
@@ -32,6 +33,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_des.append(msg.yddot_des)
     self.yddot_command.append(msg.yddot_command)
     self.yddot_command_sol.append(msg.yddot_command_sol)
+    self.V.append(msg.V)
 
   def convertToNP(self):
     self.t = np.array(self.t)
@@ -45,6 +47,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_des = np.array(self.yddot_des)
     self.yddot_command = np.array(self.yddot_command)
     self.yddot_command_sol = np.array(self.yddot_command_sol)
+    self.V = np.array(self.V)
 
 
 def process_log(log, pos_map, vel_map, act_map, controller_channel):
@@ -128,8 +131,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    if event.channel == "OSC_DEBUG_JUMPING":
-    # if event.channel == "OSC_DEBUG_WALKING":
+    # if event.channel == "OSC_DEBUG_JUMPING":
+    if event.channel == "OSC_DEBUG_WALKING":
       msg = dairlib.lcmt_osc_output.decode(event.data)
       osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)

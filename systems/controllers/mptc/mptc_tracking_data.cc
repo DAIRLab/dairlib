@@ -119,6 +119,12 @@ void MptcTrackingData::UpdateKpKd(const Eigen::MatrixXd& M) {
     D_k_ = M_k_inv_*(C_k_ + K_d_);
 }
 
+double MptcTrackingData::GetVk() {
+    Eigen::MatrixXd V = 0.5 * error_ydot_.transpose() * M_k_ * error_ydot_ +
+                        0.5 * error_y_.transpose() * K_p_ * error_y_;
+    return V(0,0);
+}
+
 void MptcTrackingData::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
   DRAKE_ASSERT(track_at_current_state_);
   cout << name_ << ":\n";

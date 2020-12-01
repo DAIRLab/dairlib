@@ -471,6 +471,7 @@ int DoMain(int argc, char* argv[]) {
   auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
+
   // 2. fixed spring constriant
   // Note that we set the position value to 0, but this is not used in OSC,
   // because OSC constraint only use JdotV and J.

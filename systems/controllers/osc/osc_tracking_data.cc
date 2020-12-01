@@ -83,6 +83,14 @@ bool OscTrackingData::Update(
   return track_at_current_state_;
 }
 
+double OscTrackingData::GetVk(const Eigen::MatrixXd& M) {
+    Eigen::MatrixXd M_inv = M.inverse();
+    Eigen::MatrixXd M_k_inv = J_ * M_inv * J_.transpose();
+    Eigen::MatrixXd M_k = M_k_inv.inverse();
+    Eigen::MatrixXd V = 0.5 * error_ydot_.transpose() * M_k * error_ydot_ +
+               0.5 * error_y_.transpose() * K_p_ * error_y_;
+    return V(0,0);
+}
 void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
   if (state_.empty()) {
     track_at_current_state_ = true;

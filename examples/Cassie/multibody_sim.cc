@@ -203,8 +203,10 @@ int do_main(int argc, char* argv[]) {
 
   std::cout << q_init << std::endl;
 
+  std::cout << "</solution>\n";
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
+  std::cout << "Positions set" << std::endl;
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

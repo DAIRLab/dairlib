@@ -93,10 +93,11 @@ def main():
   # Default time window values, can override
   t_start = t_u[10]
   t_end = t_u[-10]
-  # import pdb; pdb.set_trace()
+
   # Override here #
-  # t_start = 8.7
-  # t_end = 10.5
+  # t_start = 20
+  # t_end = 23
+
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -106,8 +107,8 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All plotting scripts here
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
-  # import pdb; pdb.set_trace()
+  #plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+
   # plot_contact_est(full_log)
   # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
   # plt.plot(t_contact_info, contact_info[2, :, 2], 'r-')
@@ -116,7 +117,7 @@ def main():
   plt.ylim([-100, 500])
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
 
-  if True:
+  if False:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "left_", "_front")
@@ -131,6 +132,7 @@ def main():
                         world, t_x, t_slice, "right_", "_rear")
 
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_mptc_lyapunov_function(osc_debug, "swing_ft_traj")
   plt.show()
 
 def plot_contact_est(log):
@@ -212,9 +214,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   osc_traj0 = "swing_ft_traj"
   osc_traj1 = "lipm_traj"
-  # osc_traj0 = "lipm_traj"
-  # osc_traj1 = "com_traj"
-  #osc_traj1 = "l_foot_traj"
   # osc_traj1 = "pelvis_rot_tracking_data"
   # osc_traj1 = "pelvis_balance_traj"
   #osc_traj3 = "swing_hip_yaw_traj"
@@ -234,38 +233,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj0, 1, "accel")
   plot_osc(osc_debug, osc_traj0, 2, "accel")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  # plot_osc(osc_debug, osc_traj1, 2, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  #
-  # plot_osc(osc_debug, osc_traj1, 0, "vel")
-  # plot_osc(osc_debug, osc_traj1, 1, "vel")
-  # plot_osc(osc_debug, osc_traj1, 2, "vel")
-
-  # plot_osc(osc_debug, osc_traj2, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  # plot_osc(osc_debug, osc_traj2, 2, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  #
-  # plot_osc(osc_debug, osc_traj2, 0, "vel")
-  # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
-
-  # plot_osc(osc_debug, osc_traj1, 0, "accel")
-  # plot_osc(osc_debug, osc_traj1, 1, "accel")
-  # plot_osc(osc_debug, osc_traj1, 2, "accel")
-
-  # plot_osc(osc_debug, osc_traj2, 0, "accel")
-  # plot_osc(osc_debug, osc_traj2, 1, "accel")
-  # plot_osc(osc_debug, osc_traj2, 2, "accel")
-
-  # plot_osc(osc_debug, osc_traj3, 0, "accel")
-  # plot_osc(osc_debug, osc_traj3, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj3, 0, "vel")
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
@@ -362,6 +329,9 @@ def compare_ekf(log, pos_map, vel_map):
   plt.figure("IMU: " + filename)
   plt.plot(t_x, imu, 'k-')
 
+def plot_mptc_lyapunov_function(osc_debug, osc_traj):
+  fig = plt.figure(osc_traj + " lyapunov function ")
+  plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].V[t_u_slice])
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   # pos_indices = slice(0 + 7, 23)

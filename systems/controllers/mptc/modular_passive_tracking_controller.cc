@@ -777,6 +777,7 @@ void ModularPassiveTrackingControl::AssignMptcLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
+      osc_output.V = tracking_data->GetVk();
       output->tracking_data.push_back(osc_output);
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();

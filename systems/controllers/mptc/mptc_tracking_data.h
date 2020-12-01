@@ -111,6 +111,8 @@ namespace mptc_data {
 
             const Eigen::VectorXd &GetYddotDes() const { return yddot_des_; }
 
+            double GetVk();
+
             const Eigen::VectorXd &GetYddotDesConverted() const {
                 return yddot_des_converted_;
             }

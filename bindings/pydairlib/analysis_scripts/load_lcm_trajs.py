@@ -4,7 +4,7 @@ from pydrake.trajectories import PiecewisePolynomial
 
 def load_lcm_trajs(nx, nu, n_modes, folder_path, trajectory_name, mode_name):
   loaded_state_traj = pydairlib.lcm_trajectory.LcmTrajectory()
-  loaded_state_traj.loadFromFile(
+  loaded_state_traj.LoadFromFile(
     folder_path + trajectory_name)
   state_trajs = []
   t_nominal = []

@@ -453,7 +453,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Get M, f_cg, B matrices of the manipulator equation
   MatrixXd B = plant_wo_spr_.MakeActuationMatrix();
-  MatrixXd M(n_v_, n_v_);
+  Eigen::MatrixXd M(n_v_, n_v_);
   plant_wo_spr_.CalcMassMatrix(*context_wo_spr_, &M);
   VectorXd bias(n_v_);
   plant_wo_spr_.CalcBiasTerm(*context_wo_spr_, &bias);
@@ -765,6 +765,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
+      Eigen::MatrixXd M(n_v_, n_v_);
+      plant_wo_spr_.CalcMassMatrix(*context_wo_spr_, &M);
+      osc_output.V = tracking_data->GetVk(M);
       output->tracking_data.push_back(osc_output);
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();

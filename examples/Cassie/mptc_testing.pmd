@@ -19,6 +19,10 @@ group "1.controllers-and-dispatchers" {
             exec = "bazel-bin/examples/Cassie/run_mptc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
             host = "localhost";
     }
+    cmd "0.osc-standing-controller" {
+                exec = "bazel-bin/examples/Cassie/run_osc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
+                host = "localhost";
+     }
     cmd "0.cassie_virtual_radio"  {
             exec = "bazel-bin/examples/Cassie/cassie-virtual-remote-py";
             host = "localhost";

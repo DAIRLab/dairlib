@@ -63,11 +63,12 @@ int DoMain() {
   auto r_toe_frame = &plant.GetBodyByName("toe_right").body_frame();
   auto hip_left_frame = &plant.GetBodyByName("hip_left").body_frame();
   auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
+  auto pelvis_frame = &plant.GetBodyByName("pelvis").body_frame();
   auto world = &plant.world_frame();
 
   DirconTrajectory dircon_traj(FLAGS_folder_path + FLAGS_trajectory_name);
 
-//  MatrixXd state_points = dircon_traj.G
+  //  MatrixXd state_points = dircon_traj.G
   PiecewisePolynomial<double> state_traj =
       dircon_traj.ReconstructStateTrajectory();
 
@@ -88,8 +89,10 @@ int DoMain() {
     VectorXd x_i = state_traj.value(times[i]);
     VectorXd xdot_i = state_traj.derivative(1).value(times[i]);
     plant.SetPositionsAndVelocities(context.get(), x_i);
-    center_of_mass_points.block(0, i, 3, 1) =
-        plant.CalcCenterOfMassPosition(*context);
+    //    center_of_mass_points.block(0, i, 3, 1) =
+    //        plant.CalcCenterOfMassPosition(*context);
+    Eigen::Ref<Eigen::MatrixXd> center_of_mass_block =
+        center_of_mass_points.block(0, i, 3, 1);
     Eigen::Ref<Eigen::MatrixXd> l_foot_pos_block =
         l_foot_points.block(0, i, 3, 1);
     Eigen::Ref<Eigen::MatrixXd> r_foot_pos_block =
@@ -98,6 +101,8 @@ int DoMain() {
         l_hip_points.block(0, i, 3, 1);
     Eigen::Ref<Eigen::MatrixXd> r_hip_pos_block =
         r_hip_points.block(0, i, 3, 1);
+    plant.CalcPointsPositions(*context, *pelvis_frame, zero_offset, *world,
+                              &center_of_mass_block);
     plant.CalcPointsPositions(*context, *l_toe_frame, zero_offset, *world,
                               &l_foot_pos_block);
     plant.CalcPointsPositions(*context, *r_toe_frame, zero_offset, *world,
@@ -116,8 +121,11 @@ int DoMain() {
     MatrixXd J_l_hip(3, nv);
     MatrixXd J_r_hip(3, nv);
     //    MatrixXd J_pelvis_orientation(3, nv);
-    plant.CalcJacobianCenterOfMassTranslationalVelocity(
-        *context, JacobianWrtVariable::kV, *world, *world, &J_CoM);
+    //    plant.CalcJacobianCenterOfMassTranslationalVelocity(
+    //        *context, JacobianWrtVariable::kV, *world, *world, &J_CoM);
+    plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
+                                            *pelvis_frame, zero_offset, *world,
+                                            *world, &J_CoM);
     plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                             *l_toe_frame, zero_offset, *world,
                                             *world, &J_l_foot);

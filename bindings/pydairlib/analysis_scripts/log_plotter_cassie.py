@@ -34,8 +34,8 @@ def main():
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
-                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
-                                                   # "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+                                                   # "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
                                                    "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
   plant_w_spr.Finalize()
@@ -215,10 +215,11 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   # osc_traj0 = "r_foot_traj"
-  osc_traj0 = "lipm_traj"
-  # osc_traj0 = "com_traj"
-  osc_traj1 = "swing_ft_traj"
+  osc_traj0 = "com_traj"
+  # osc_traj1 = "swing_ft_traj"
   # osc_traj1 = "l_foot_traj"
+  osc_traj1 = "left_ft_traj"
+  osc_traj2 = "left_toe_angle_traj"
   # osc_traj1 = "pelvis_rot_tracking_data"
   # osc_traj1 = "pelvis_balance_traj"
   # osc_traj3 = "swing_hip_yaw_traj"
@@ -230,11 +231,11 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj0, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
   # plot_osc(osc_debug, osc_traj0, 2, "vel")
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  plot_osc(osc_debug, osc_traj0, 0, "accel")
   # plot_osc(osc_debug, osc_traj0, 1, "accel")
   # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
@@ -248,7 +249,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj1, 1, "vel")
   # plot_osc(osc_debug, osc_traj1, 2, "vel")
 
-  # plot_osc(osc_debug, osc_traj2, 0, "pos")
+  plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
@@ -372,7 +373,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   vel_indices = slice(23 + 6, 45)
   pos_indices = slice(0,7)
   # vel_indices = slice(23, 23 + 6)
-  u_indices = slice(0, 10)
+  u_indices = slice(8, 10)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
@@ -387,7 +388,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   plt.legend(x_datatypes[vel_indices])
   plt.figure("efforts: " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
-  plt.plot(t_x[t_slice], u_meas[t_slice, u_indices], '--')
+  # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices], '--')
   plt.legend(u_datatypes[u_indices])
   # plt.figure("efforts meas: " + filename)
   # plt.figure("Delay characterization")

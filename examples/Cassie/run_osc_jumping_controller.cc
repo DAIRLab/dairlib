@@ -390,10 +390,13 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  ComTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
-                                    plant_w_spr, plant_w_spr);
+//  ComTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
+//                                    plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
+                                                 plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
-    com_tracking_data.AddStateToTrack(mode);
+//    com_tracking_data.AddStateToTrack(mode);
+    com_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
   }
   osc->AddTrackingData(&com_tracking_data);
 
@@ -414,6 +417,7 @@ int DoMain(int argc, char* argv[]) {
   for (auto mode : stance_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
   }
+//  pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
 
   // Yaw tracking
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
@@ -461,20 +465,24 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
 
+  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::CROUCH, "toe_left",
+                                              "toe_leftdot");
+  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::CROUCH, "toe_right",
+                                               "toe_rightdot");
   left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
                                               "toe_leftdot");
   right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
                                                "toe_rightdot");
-//  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_left",
-//                                              "toe_leftdot");
-//  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_right",
-//                                               "toe_rightdot");
+  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_left",
+                                              "toe_leftdot");
+  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_right",
+                                               "toe_rightdot");
 
   osc->AddTrackingData(&pelvis_rot_tracking_data);
-  osc->AddTrackingData(&left_foot_tracking_data, gains.t_delay_ft_pos, 1);
-  osc->AddTrackingData(&right_foot_tracking_data, gains.t_delay_ft_pos, 1);
-  osc->AddTrackingData(&left_toe_angle_traj, gains.t_delay_toe_ang, 1);
-  osc->AddTrackingData(&right_toe_angle_traj, gains.t_delay_toe_ang, 1);
+  osc->AddTrackingData(&left_foot_tracking_data);
+  osc->AddTrackingData(&right_foot_tracking_data);
+  osc->AddTrackingData(&left_toe_angle_traj);
+  osc->AddTrackingData(&right_toe_angle_traj);
 
   // Build OSC problem
   osc->Build();

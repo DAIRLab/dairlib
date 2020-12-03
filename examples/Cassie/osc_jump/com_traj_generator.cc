@@ -45,7 +45,7 @@ COMTrajGenerator::COMTrajGenerator(
       world_(plant_.world_frame()),
       crouch_traj_(crouch_traj),
       feet_contact_points_(feet_contact_points),
-      time_offset_(time_offset){
+      time_offset_(time_offset) {
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ =
@@ -96,24 +96,32 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
     VectorXd q = robot_output->GetPositions();
     plant_.SetPositions(context_, q);
-    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
+    //    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
+    VectorXd center_of_mass(3);
+    plant_.CalcPointsPositions(*context_,
+                               plant_.GetBodyByName("pelvis").body_frame(),
+                               VectorXd::Zero(3), world_, &center_of_mass);
     if (fsm_state(0) == BALANCE) {  // Either the simulator restarted or the
                                     // controller switch was triggered
       initial_com << center_of_mass;
       switch_time << timestamp;
     }
     com_x_offset(0) = kLandingOffset;
-//        kLandingOffset + (center_of_mass(0) - crouch_traj_.value(timestamp)(0));
+    //        kLandingOffset + (center_of_mass(0) -
+    //        crouch_traj_.value(timestamp)(0));
     // TODO(yangwill) Remove this or calculate it based on the robot's state.
     // Actually, this is necessary due to the traj opt solution's placement
     // of the final CoM
   }
-  if (initial_com == VectorXd::Zero(3)){
+  if (initial_com == VectorXd::Zero(3)) {
     VectorXd q = robot_output->GetPositions();
     plant_.SetPositions(context_, q);
-    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
+    //    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
+    VectorXd center_of_mass(3);
+    plant_.CalcPointsPositions(*context_,
+                               plant_.GetBodyByName("pelvis").body_frame(),
+                               VectorXd::Zero(3), world_, &center_of_mass);
     initial_com << center_of_mass;
-
   }
   return EventStatus::Succeeded();
 }
@@ -140,20 +148,19 @@ COMTrajGenerator::generateBalanceTraj(
   }
 
   Vector3d target_com = crouch_traj_.value(time_offset_);
-//  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
+  //  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
 
   // generate a trajectory from current position to target position
   MatrixXd centerOfMassPoints(3, 2);
   centerOfMassPoints << initial_com, target_com + 0.5 * contact_pos_sum;
 
   VectorXd breaks_vector(2);
-//  breaks_vector << switch_time,
-//      switch_time + kTransitionSpeed * (curr_com - target_com).norm();
-  breaks_vector << switch_time,
-      switch_time + time_offset_;
+  //  breaks_vector << switch_time,
+  //      switch_time + kTransitionSpeed * (curr_com - target_com).norm();
+  breaks_vector << switch_time, switch_time + time_offset_;
 
-  return PiecewisePolynomial<double>::CubicHermite(breaks_vector,
-                                                     centerOfMassPoints, MatrixXd::Zero(3, 2));
+  return PiecewisePolynomial<double>::CubicHermite(
+      breaks_vector, centerOfMassPoints, MatrixXd::Zero(3, 2));
 }
 
 drake::trajectories::PiecewisePolynomial<double>
@@ -185,7 +192,6 @@ drake::trajectories::PiecewisePolynomial<double>
 COMTrajGenerator::generateLandingTraj(
     const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
     double time) const {
-
   plant_.SetPositionsAndVelocities(context_, x);
   Vector3d contact_pos_sum = Vector3d::Zero();
   Vector3d position;

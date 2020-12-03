@@ -22,6 +22,10 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
+  if(input_limit_ == std::numeric_limits<double>::max()){
+    std::cout << "Warning. No input limits have been set." << std::endl;
+  }
+
   // Create input ports
   command_input_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
@@ -84,7 +88,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // If there has been an error, set the command to all zeros
   if (!is_error) {
     // If input_limit_ has been set, limit inputs to
-    ///   [-input_limit_, input_limit_]
+    // [-input_limit_, input_limit_]
     if (input_limit_ != std::numeric_limits<double>::max()) {
       output->set_timestamp(command->get_timestamp());
       for (int i = 0; i < command->get_data().size(); i++) {

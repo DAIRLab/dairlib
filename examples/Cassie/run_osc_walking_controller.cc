@@ -112,6 +112,8 @@ struct OSCWalkingGains {
   double final_foot_height;
   double final_foot_velocity_z;
   double lipm_height;
+  double ss_time;
+  double ds_time;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -145,6 +147,9 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(final_foot_velocity_z));
     // lipm heursitics
     a->Visit(DRAKE_NVP(lipm_height));
+    // stance times
+    a->Visit(DRAKE_NVP(ss_time));
+    a->Visit(DRAKE_NVP(ds_time));
   }
 };
 
@@ -312,9 +317,9 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  double left_support_duration = 0.30;
-  double right_support_duration = 0.30;
-  double double_support_duration = 0.03;
+  double left_support_duration = gains.ss_time;
+  double right_support_duration = gains.ss_time;
+  double double_support_duration = gains.ds_time;
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {

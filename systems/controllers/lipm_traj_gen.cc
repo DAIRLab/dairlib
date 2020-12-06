@@ -63,7 +63,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   PiecewisePolynomial<double> pp_part(VectorXd(0));
   MatrixXd K = MatrixXd::Ones(0, 0);
   MatrixXd A = MatrixXd::Identity(0, 0);
-  MatrixXd alpha = MatrixXd::Ones(0, 0);
+  MatrixXd alpha = MatrixXd::Ones(0, 1);
   ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   this->DeclareAbstractOutputPort("lipm_traj", traj_inst,

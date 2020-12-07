@@ -19,6 +19,11 @@ class KeyboardManager():
         self.trim_x = 0.14
         self.delta_vx = 0.1
         self.delta_vy = 0.05
+        self.crouch_begin_height = 0.85
+        self.crouch_end_height = 0.4
+        self.crouch_step_time = 2.5
+
+        self.lc = lcm.LCM()
 
     def switch_motion_key(self, key):
         switcher = {
@@ -34,14 +39,33 @@ class KeyboardManager():
             if event.type == QUIT:
                 sys.exit(0)
             elif event.type == KEYDOWN:
-                self.vel += self.switch_motion_key(event.key)
+                if (event.key == K_t):
+                    self.send_lcm_squat_traj()
+                else:
+                    self.vel += self.switch_motion_key(event.key)
                 if np.abs(self.vel[0]) < 1e-2:
                     self.vel[0] = 0.0
                 if np.abs(self.vel[1]) < 1e-2:
                     self.vel[1] = 0.0
 
+    def send_lcm_squat_traj(self):
+        height_msg_1 = dairlib.lcmt_target_standing_height()
+        height_msg_1.timestamp = int(time.time() * 1e6)
+        height_msg_1.target_height = self.crouch_begin_height
+
+        height_msg_2 = dairlib.lcmt_target_standing_height()
+        height_msg_2.target_height = self.crouch_end_height
+        self.lc.publish("TARGET_HEIGHT", height_msg_1.encode())
+        time.sleep(self.crouch_step_time)
+        height_msg_2.timestamp = int(time.time() * 1e6)
+        self.lc.publish("TARGET_HEIGHT", height_msg_2.encode())
+        time.sleep(self.crouch_step_time)
+        height_msg_1.timestamp = int(time.time() * 1e6)
+        self.lc.publish("TARGET_HEIGHT", height_msg_1.encode())
+
+
+
 def main():
-    lc = lcm.LCM()
     keyboard = KeyboardManager()
 
     cassie_blue = (6, 61, 128)
@@ -72,7 +96,7 @@ def main():
         radio_out_msg.channel[0] = keyboard.vel[0] + keyboard.trim_x
         radio_out_msg.channel[1] = keyboard.vel[1]
         radio_out_msg.channel[3] = 0
-        lc.publish("RADIO_OUT", radio_out_msg.encode())
+        keyboard.lc.publish("RADIO_OUT", radio_out_msg.encode())
         time.sleep(0.05)
         pygame.display.update()
 

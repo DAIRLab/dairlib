@@ -1,6 +1,9 @@
 import sys
-
+import glob
+import seaborn as sns
 import lcm
+import pandas as pd
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,25 +17,86 @@ import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 
+class Log:
+  def __init__(self, filename, controller_channel, plant_w_spr, plant_wo_spr):
+    self.t_slice = slice(0,0)
+    self.t_u_slice = slice(0,0)
+    self.filename = filename
+    self.controller_channel = controller_channel
+    self.nq = plant_w_spr.num_positions()
+    self.nv = plant_w_spr.num_velocities()
+    self.nx = plant_w_spr.num_positions() + plant_w_spr.num_velocities()
+    self.nu = plant_w_spr.num_actuators()
+    self.pos_map = pydairlib.multibody.makeNameToPositionsMap(plant_w_spr)
+    self.vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant_w_spr)
+    self.act_map = pydairlib.multibody.makeNameToActuatorsMap(plant_w_spr)
+    self.plant_w_spr = plant_w_spr
+    self.plant_wo_spr = plant_wo_spr
+    self.controller = filename.split("/")[-1].split("_")[0]
+    self.load()
+
+  def load(self):
+    self.log = lcm.EventLog(self.filename, "r")
+
+    self.x, self.u_meas, self.t_x, self.u, self.t_u, self.contact_info, self.contact_info_locs, self.t_contact_info, \
+    self.osc_debug, self.fsm, self.estop_signal, self.switch_signal, self.t_controller_switch, self.t_pd, self.kp, \
+    self.kd, self.cassie_out, self.u_pd, self.t_u_pd, self.osc_output, self.full_log, self.t_target_height, \
+    self.target_height = \
+      process_lcm_log.process_log(
+      self.log,
+      self.pos_map,
+      self.vel_map,
+      self.act_map,
+      self.controller_channel)
+
+  def slice_for_crouch(self):
+    self.t_u_slice = get_crouch_slice(self.osc_debug, self.target_height, self.t_u, self.t_target_height)
+    t_start_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.start]) < 1e-3)[0][0]
+    t_end_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.stop]) < 1e-3)[0][0]
+    self.t_slice = slice(t_start_idx, t_end_idx)
+
+  def slice_for_walk(self):
+    self.t_u_slice = get_walk_slice(self.osc_debug, self.fsm, self.t_u)
+    t_start_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.start]) < 1e-3)[0][0]
+    t_end_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.stop]) < 1e-3)[0][0]
+    self.t_slice = slice(t_start_idx, t_end_idx)
+
+
 
 def main():
-  global t_start
-  global t_end
-  global t_slice
-  global t_u_slice
-  global filename
-  global nq
-  global nv
-  global nx
-  global pos_map
-  global vel_map
-  global act_map
+  bgcol = 'white'
+  textcol = '262626'
+  c = sns.plotting_context("talk")
+  sns.set_theme(context=c, style="ticks")
+  matplotlib.rcParams["axes.facecolor"] = bgcol
+  matplotlib.rcParams["axes.edgecolor"] = textcol
+  matplotlib.rcParams["axes.labelcolor"] = textcol
+  matplotlib.rcParams["axes.labelsize"] = 32
+  matplotlib.rcParams["axes.titlesize"] = 48
+  matplotlib.rcParams["xtick.color"] = textcol
+  matplotlib.rcParams["xtick.direction"] = 'in'
+  matplotlib.rcParams["ytick.direction"] = 'in'
+  matplotlib.rcParams["ytick.color"] = textcol
+  matplotlib.rcParams["figure.facecolor"] = bgcol
+  matplotlib.rcParams["savefig.facecolor"] = bgcol
+  matplotlib.rcParams["savefig.edgecolor"] = textcol
+  matplotlib.rcParams["font.family"] = 'sans-serif'
+  matplotlib.rcParams["font.sans-serif"] ='Public Sans'
+  matplotlib.rcParams["text.color"] = textcol
+  matplotlib.rcParams["lines.color"] = textcol
+  matplotlib.rcParams["lines.linewidth"] = 4.0
+  matplotlib.rcParams["legend.fontsize"] = 'xx-large'
+  matplotlib.rcParams["legend.framealpha"] = 0.25
+  matplotlib.rcParams["legend.facecolor"] = 'd6cac9'
 
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
 
+  CROUCH = 0
+  WALK = 1
 
+  mode = WALK
   Parser(plant_w_spr).AddModelFromFile(
     FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf"))
@@ -43,142 +107,137 @@ def main():
     -9.81 * np.array([0, 0, 1]))
   plant_w_spr.Finalize()
 
-  # relevant MBP parameters
-  nq = plant_w_spr.num_positions()
-  nv = plant_w_spr.num_velocities()
-  nx = plant_w_spr.num_positions() + plant_w_spr.num_velocities()
-  nu = plant_w_spr.num_actuators()
-
-  l_toe_frame = plant_w_spr.GetBodyByName("toe_left").body_frame()
-  r_toe_frame = plant_w_spr.GetBodyByName("toe_right").body_frame()
-  world = plant_w_spr.world_frame()
-  context = plant_w_spr.CreateDefaultContext()
-
-  front_contact_disp = np.array((-0.0457, 0.112, 0))
-  rear_contact_disp = np.array((0.088, 0, 0))
-
-  pos_map = pydairlib.multibody.makeNameToPositionsMap(plant_w_spr)
-  vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant_w_spr)
-  act_map = pydairlib.multibody.makeNameToActuatorsMap(plant_w_spr)
-
-  x_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant_w_spr)
-  u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant_w_spr)
-
-  filename = sys.argv[1]
   controller_channel = sys.argv[2]
-  log = lcm.EventLog(filename, "r")
-  path = pathlib.Path(filename).parent
-  filename = filename.split("/")[-1]
+  logs = []
 
-  matplotlib.rcParams["savefig.directory"] = path
 
-  x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
-  osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
+  for pattern in sys.argv[1:]:
+    for file in glob.glob(pattern):
+      print("Loading" + file)
+      log = Log(file, controller_channel, plant_w_spr, plant_wo_spr)
+      if (mode == CROUCH):
+        log.slice_for_crouch()
+      elif (mode == WALK):
+        log.slice_for_walk()
 
-  if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
-    compare_ekf(full_log, pos_map, vel_map)
-
-  n_msgs = len(cassie_out)
-  knee_pos = np.zeros(n_msgs)
-  t_cassie_out = np.zeros(n_msgs)
-  estop_signal = np.zeros(n_msgs)
-  motor_torques = np.zeros(n_msgs)
-  for i in range(n_msgs):
-    knee_pos[i] = cassie_out[i].leftLeg.kneeDrive.velocity
-    t_cassie_out[i] = cassie_out[i].utime / 1e6
-    motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
-    estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
-
-  # Default time window values, can override
-  t_start = t_u[10]
-  t_end = t_u[-10]
-
-  # Override here #
-  # t_start = 20
-  # t_end = 23
-
-  ### Convert times to indices
-  t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
-  t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
-  t_slice = slice(t_start_idx, t_end_idx)
-  start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
-  end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
-  t_u_slice = slice(start_time_idx, end_time_idx)
-
-  ### All plotting scripts here
-  #plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
-
-  # plot_contact_est(full_log)
-  # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
-  # plt.plot(t_contact_info, contact_info[2, :, 2], 'r-')
-  # plt.plot(t_u[t_u_slice], 100 * fsm[t_u_slice], 'k')
-
-  plt.ylim([-100, 500])
-  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
-
-  if False:
-    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
-                        front_contact_disp,
-                        world, t_x, t_slice, "left_", "_front")
-    plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
-                        front_contact_disp,
-                        world, t_x, t_slice, "right_", "_front")
-    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
-                        rear_contact_disp,
-                        world, t_x, t_slice, "left_", "_rear")
-    plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
-                        rear_contact_disp,
-                        world, t_x, t_slice, "right_", "_rear")
-
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
-  plot_mptc_lyapunov_function(osc_debug, "swing_ft_traj")
+      logs.append(log)
+  if (mode == CROUCH):
+    plot_y_comparison(logs, "com_traj", "COM Height", "Crouch Step Response")
+  else:
+    #plot_y_comparison(logs, "lipm_traj", 2, "Z_COM", "COM Height Tracking During Stumble Event")
+    plot_V_comparison(logs, "swing_ft_traj", "MPTC Lyapunov Function (walking)")
   plt.show()
 
-def plot_contact_est(log):
-  t_contact = []
-  contact = []
-  t_filtered_contact = []
-  contact_filtered = []
-  t_gm_contact = []
-  gm_contact_l = []
-  gm_contact_r = []
-  t_fsm_contact = []
-  fsm_contact = np.zeros((len(log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"]), 2))
-  for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_CONTACT_DISPATCHER"][i]
-    t_contact.append(msg.utime / 1e6)
-    contact.append(list(msg.contact))
-  for i in range(len(log["CASSIE_FILTERED_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
-    t_filtered_contact.append(msg.utime / 1e6)
-    contact_filtered.append(list(msg.contact))
-  for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_gm_contact.append(msg.timestamp / 1e6)
-    gm_contact_l.append(list(msg.point_pair_contact_info[0].contact_force))
-    gm_contact_r.append(list(msg.point_pair_contact_info[1].contact_force))
-  for i in range(len(log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"])):
-    msg = log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"][i]
-    t_fsm_contact.append(msg.timestamp / 1e6)
-    for j in range(msg.num_point_pair_contacts):
-      fsm_contact[i][j] = msg.point_pair_contact_info[j].contact_force[2]
+
+def plot_y_com_collection(logs):
+  table = pd.DataFrame( columns=["time", "y_com"])
+  for i,log in enumerate(logs):
+    data = {"y_com": log.osc_debug["com_traj"].y[log.t_u_slice, 2],
+            "time": log.osc_debug["com_traj"].t[log.t_u_slice] - log.osc_debug["com_traj"].t[log.t_u_slice.start] }
+    frame = pd.DataFrame(data, columns=["time", "y_com"])
+    table = table.append(frame)
+
+  sns.lineplot(x="time", y="y_com", data=table)
 
 
-  t_contact = np.array(t_contact)
-  contact = np.array(contact)
-  t_filtered_contact = np.array(t_filtered_contact)
-  contact_filtered = np.array(contact_filtered)
-  t_gm_contact = np.array(t_gm_contact)
-  gm_contact_l = np.array(gm_contact_l)
-  gm_contact_r = np.array(gm_contact_r)
-  plt.figure("Contact estimation")
-  # plt.plot(t_contact[t_slice], contact[t_slice], '-')
-  # plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
-  plt.plot(t_gm_contact[t_slice], gm_contact_l[t_slice, 2], 'b--')
-  plt.plot(t_gm_contact[t_slice], gm_contact_r[t_slice, 2], 'r--')
-  # plt.plot(t_fsm_contact, fsm_contact, 'k-')
-  plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt"])
+
+def plot_y_comparison(logs, traj_name, dim, signal_name, plot_title):
+  table = pd.DataFrame(columns=["Time", "Y", "Controller", "Signal"])
+  for log in logs:
+    # if log.controller == "osc":
+    #   print("osc!")
+    #   log.osc_debug[traj_name].t = log.osc_debug[traj_name].t - 1.75
+    #   log.t_u = log.t_u - 1.75
+    #   log.t_u_slice = slice(np.argwhere(np.abs(log.t_u - 0.25) < 1e-3)[0][0], log.t_u_slice.stop)
+
+    data1 = {"Y": log.osc_debug[traj_name].y[log.t_u_slice, dim],
+            "Time": log.osc_debug[traj_name].t[log.t_u_slice] - log.osc_debug[traj_name].t[log.t_u_slice.start],
+            "Controller": log.controller,
+            "Signal" : signal_name}
+    data2 = {"Y": log.osc_debug[traj_name].y_des[log.t_u_slice, dim],
+             "Time": log.osc_debug[traj_name].t[log.t_u_slice] - log.osc_debug[traj_name].t[log.t_u_slice.start],
+             "Controller": log.controller,
+             "Signal" : "Des. " + signal_name}
+    frame1 = pd.DataFrame(data1, columns=["Time", "Y", "Controller", "Signal"])
+    frame2 = pd.DataFrame(data2, columns=["Time", "Y", "Controller", "Signal"])
+    table = table.append(frame1)
+    table = table.append(frame2)
+
+  ax = sns.lineplot(x="Time", y="Y", hue="Controller", style="Signal", data=table).set_title(plot_title)
+  plt.legend(bbox_to_anchor=(0,1), loc="upper left", ncol=6)
+
+def plot_V_comparison(logs, traj_name, plot_title):
+  plt.figure("Lyapunov Function")
+  table = pd.DataFrame(columns=["Time", "V", "Controller"])
+  for log in logs:
+    data1 = {"V": log.osc_debug[traj_name].V[log.t_u_slice], #/ np.max(log.osc_debug[traj_name].V[log.t_u_slice]),
+             "Time": log.osc_debug[traj_name].t[log.t_u_slice] - log.osc_debug[traj_name].t[log.t_u_slice.start],
+             "Controller": log.controller}
+    frame1 = pd.DataFrame(data1, columns=["Time", "V", "Controller"])
+    table = table.append(frame1)
+
+  ax = sns.lineplot(x="Time", y="V", hue="Controller",  data=table)#.set_title(plot_title)
+  plt.legend(bbox_to_anchor=(0,1), loc="upper left", ncol=3)
+
+  # controller_channel = sys.argv[2]
+  # log = lcm.EventLog(filename, "r")
+  # log1 = Log(filename, controller_channel, plant_w_spr, plant_wo_spr)
+  #
+  # path = pathlib.Path(filename).parent
+  # filename = filename.split("/")[-1]
+  #
+  #
+  #
+  # matplotlib.rcParams["savefig.directory"] = path
+  #
+  # x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
+  # osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+  # osc_output, full_log, t_target_height, target_height = \
+  # process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
+  #
+  # n_msgs = len(cassie_out)
+  # knee_pos = np.zeros(n_msgs)
+  # t_cassie_out = np.zeros(n_msgs)
+  # estop_signal = np.zeros(n_msgs)
+  # motor_torques = np.zeros(n_msgs)
+  #
+  # for i in range(n_msgs):
+  #   knee_pos[i] = cassie_out[i].leftLeg.kneeDrive.velocity
+  #   t_cassie_out[i] = cassie_out[i].utime / 1e6
+  #   motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
+  #   estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
+  #
+  # # Default time window values, can override
+  # t_start = t_u[10]
+  # t_end = t_u[-10]
+  #
+  # # Override here #
+  # # t_start = 20
+  # # t_end = 23
+  #
+  # ### Convert times to indices
+  #
+  # t_u_slice = get_crouch_slice(osc_debug, target_height, t_u, t_target_height)
+  # #t_u_slice = get_walking_slice(TODO @Brian-Acosta implement get_walking_slice)
+  #
+  # t_start_idx = np.argwhere(np.abs(t_x - t_u[t_u_slice.start]) < 1e-3)[0][0]
+  # t_end_idx = np.argwhere(np.abs(t_x - t_u[t_u_slice.stop]) < 1e-3)[0][0]
+  # t_slice = slice(t_start_idx, t_end_idx)
+  #
+  # ### All plotting scripts here
+  # #plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  #
+  # # plot_contact_est(full_log)
+  # # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
+  # # plt.plot(t_contact_info, contact_info[2, :, 2], 'r-')
+  # # plt.plot(t_u[t_u_slice], 100 * fsm[t_u_slice], 'k')
+  #
+  # plt.ylim([-100, 500])
+  # # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+  #
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_mptc_lyapunov_function(osc_debug, "com_traj")
+  # plt.show()
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
@@ -212,11 +271,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
-  osc_traj0 = "swing_ft_traj"
+  osc_traj0 = "com_traj"
   osc_traj1 = "lipm_traj"
-  # osc_traj1 = "pelvis_rot_tracking_data"
-  # osc_traj1 = "pelvis_balance_traj"
-  #osc_traj3 = "swing_hip_yaw_traj"
+  osc_traj2 = "swing_ft_traj"
 
   #
   plot_osc(osc_debug, osc_traj0, 0, "pos")
@@ -279,55 +336,24 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
   plt.legend()
 
 
-def compare_ekf(log, pos_map, vel_map):
-  t_x = []
-  t_x_est = []
-  q = []
-  v = []
-  imu = []
-  q_est = []
-  v_est = []
-  for i in range(len(log["CASSIE_STATE_SIMULATION"])):
-    msg = log["CASSIE_STATE_SIMULATION"][i]
-    q_temp = [[] for i in range(len(msg.position))]
-    v_temp = [[] for i in range(len(msg.velocity))]
-    for i in range(len(q_temp)):
-      q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
-    for i in range(len(v_temp)):
-      v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
-    q.append(q_temp)
-    v.append(v_temp)
-    imu.append(msg.imu_accel)
-    t_x.append(msg.utime / 1e6)
-  for i in range(len(log["CASSIE_STATE_DISPATCHER"])):
-    msg = log["CASSIE_STATE_DISPATCHER"][i]
-    q_temp = [[] for i in range(len(msg.position))]
-    v_temp = [[] for i in range(len(msg.velocity))]
-    for i in range(len(q_temp)):
-      q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
-    for i in range(len(v_temp)):
-      v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
-    q_est.append(q_temp)
-    v_est.append(v_temp)
-    t_x_est.append(msg.utime / 1e6)
-  t_x = np.array(t_x)
-  t_x_est = np.array(t_x_est)
-  q = np.array(q)
-  v = np.array(v)
-  imu = np.array(imu)
-  q_est = np.array(q_est)
-  v_est = np.array(v_est)
+def get_crouch_slice(osc_debug, target_height, t_u, t_target_height):
+  t0_idx = np.argwhere(osc_debug["com_traj"].y_des[:,2] < 0.5)[0][0]
+  t1_remote = np.argwhere(target_height < 0.5)[0][0]
+  t1 = t_target_height[1]
+  t2 = t_target_height[-1] + 1.0
+  t0_shift = t_target_height[t1_remote] - t_u[t0_idx]
 
-  pos_indices = slice(4, 7)
-  vel_indices = slice(4, 5)
-  plt.figure("EKF positions: " + filename)
-  plt.plot(t_x, q[:, pos_indices], '-')
-  plt.plot(t_x_est, q_est[:, pos_indices])
-  plt.figure("EKF velocities: " + filename)
-  plt.plot(t_x, v[:, vel_indices], '-')
-  plt.plot(t_x_est, v_est[:, vel_indices])
-  plt.figure("IMU: " + filename)
-  plt.plot(t_x, imu, 'k-')
+  t_start_idx = np.argwhere(np.abs(t_u - (t1 - t0_shift - 1)) < 1e-3)[0][0]
+  t_stop_idx = np.argwhere(np.abs(t_u - (t2 - t0_shift)) < 1e-3)[0][0]
+
+  return slice(t_start_idx, t_stop_idx)
+
+def get_walk_slice(osc_debug, fsm, t_u):
+  t_start = 0.25
+  t_end = t_start + 1.5
+  start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
+  end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
+  return slice(start_time_idx, end_time_idx)
 
 def plot_mptc_lyapunov_function(osc_debug, osc_traj):
   fig = plt.figure(osc_traj + " lyapunov function ")

@@ -3,9 +3,9 @@ cols: 3
 w_accel: 0.000001
 w_soft_constraint: 8000
 
-w_swing_toe: 100
+w_swing_toe: 200
 swing_toe_kp: 25
-swing_toe_kd: 2
+swing_toe_kd: 1
 
 w_hip_yaw: 1000
 hip_yaw_kp: 50
@@ -19,21 +19,21 @@ mid_foot_height: 0.1
 lipm_height: 0.8
 
 CoMW:
-  [  10,    0,     0,
-      0,   10,     0,
+  [  50,    0,     0,
+      0,   50,     0,
       0,    0,  1000]
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
       0,    0,   500]
 CoMKd:
-  [   0,    0,     0,
-      0,    0,     0,
+  [   5,    0,     0,
+      0,    5,     0,
       0,    0,    10]
 
 PelvisBalanceW:
-  [ 200,    0,     0,
-    0,    400,     0,
+  [ 600,    0,     0,
+    0,    1000,     0,
     0,      0,     0]
 PelvisBalanceKp:
   [900,      0,    0,

@@ -55,6 +55,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   t_u = []
   t_controller_switch = []
   t_contact_info = []
+  t_target_height = []
   fsm = []
   q = []
   v = []
@@ -72,13 +73,14 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   osc_output = []
   u_pd = []
   t_u_pd = []
+  target_height = []
 
   full_log = dict()
   channel_to_type_map = dict()
   unknown_types = set()
   known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
-                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
+                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_target_standing_height]
 
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:
@@ -115,6 +117,10 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_u.append(msg.utime / 1e6)
+    if event.channel == "TARGET_HEIGHT":
+      msg = dairlib.lcmt_target_standing_height.decode(event.data)
+      target_height.append(msg.target_height)
+      t_target_height.append(msg.timestamp / 1e6)
     if event.channel == "PD_CONTROL":
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u_pd.append(msg.efforts)
@@ -132,7 +138,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
     # if event.channel == "OSC_DEBUG_JUMPING":
-    if event.channel == "OSC_DEBUG_WALKING":
+    if event.channel == "OSC_DEBUG_WALKING" or event.channel == "OSC_DEBUG_STANDING":
       msg = dairlib.lcmt_osc_output.decode(event.data)
       osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)
@@ -182,6 +188,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   t_controller_switch = np.array(t_controller_switch)
   t_contact_info = np.array(t_contact_info)
   t_pd = np.array(t_pd)
+  t_target_height = np.array(t_target_height)
+  target_height = np.array(target_height)
   fsm = np.array(fsm)
   q = np.array(q)
   v = np.array(v)
@@ -213,4 +221,4 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   return x, u_meas, t_x, u, t_u, contact_forces, contact_info_locs, \
          t_contact_info, osc_debug, fsm, estop_signal, \
          switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
-         t_u_pd, osc_output, full_log
+         t_u_pd, osc_output, full_log, t_target_height, target_height

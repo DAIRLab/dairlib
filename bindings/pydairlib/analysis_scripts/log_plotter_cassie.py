@@ -74,7 +74,7 @@ def main():
 
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
+  osc_output, full_log, _, _ = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
@@ -91,12 +91,12 @@ def main():
     estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
 
   # Default time window values, can override
-  t_start = t_u[10]
-  t_end = t_u[-10]
+  # t_start = t_u[10]
+  # t_end = t_u[-10]
   # import pdb; pdb.set_trace()
   # Override here #
-  # t_start = 8.7
-  # t_end = 10.5
+  t_start = 4
+  t_end = 10
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]

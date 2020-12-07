@@ -4,8 +4,8 @@ w_accel: 0.000001
 w_soft_constraint: 8000
 
 w_swing_toe: 200
-swing_toe_kp: 25
-swing_toe_kd: 1
+swing_toe_kp: 1000
+swing_toe_kd: 20
 
 w_hip_yaw: 1000
 hip_yaw_kp: 50
@@ -25,7 +25,7 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,   500]
+      0,    0,   100]
 CoMKd:
   [   5,    0,     0,
       0,    5,     0,

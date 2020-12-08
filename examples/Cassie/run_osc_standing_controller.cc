@@ -297,9 +297,9 @@ int DoMain(int argc, char* argv[]) {
   //  MatrixXd vel_cov = MatrixXd::Zero(plant_w_springs.num_velocities(),
   //                                    plant_w_springs.num_velocities());
   // Add Noise
-  MatrixXd pos_cov = 0.05 * MatrixXd::Identity(plant_w_springs.num_positions(),
+  MatrixXd pos_cov = 0.01 * MatrixXd::Identity(plant_w_springs.num_positions(),
                                                plant_w_springs.num_positions());
-  MatrixXd vel_cov = 0.5 * MatrixXd::Identity(plant_w_springs.num_velocities(),
+  MatrixXd vel_cov = 0.1 * MatrixXd::Identity(plant_w_springs.num_velocities(),
                                               plant_w_springs.num_velocities());
   vel_cov(0, 0) = 1;
   auto noise_passthrough = builder.AddSystem<systems::GaussianNoisePassThrough>(

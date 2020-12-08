@@ -103,7 +103,7 @@ HighLevelCommand::HighLevelCommand(
 
     kp_pos_lateral_ = 0.25;
     kd_pos_lateral_ = 1.0;
-    vel_max_lateral_ = 0.8;
+    vel_max_lateral_ = 0.25;
   }
 }
 

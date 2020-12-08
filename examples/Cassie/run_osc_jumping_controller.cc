@@ -433,10 +433,6 @@ int DoMain(int argc, char* argv[]) {
                                              "hip_yaw_leftdot");
   swing_hip_yaw_right_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "hip_yaw_right",
                                                    "hip_yaw_rightdot");
-  swing_hip_yaw_left_traj.AddStateAndJointToTrack(osc_jump::LAND, "hip_yaw_left",
-                                             "hip_yaw_leftdot");
-  swing_hip_yaw_right_traj.AddStateAndJointToTrack(osc_jump::LAND, "hip_yaw_right",
-                                                   "hip_yaw_rightdot");
   osc->AddConstTrackingData(&swing_hip_yaw_left_traj, VectorXd::Zero(1));
   osc->AddConstTrackingData(&swing_hip_yaw_right_traj, VectorXd::Zero(1));
 
@@ -465,18 +461,18 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
 
-  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::CROUCH, "toe_left",
-                                              "toe_leftdot");
-  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::CROUCH, "toe_right",
-                                               "toe_rightdot");
+//  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::CROUCH, "toe_left",
+//                                              "toe_leftdot");
+//  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::CROUCH, "toe_right",
+//                                               "toe_rightdot");
   left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
                                               "toe_leftdot");
   right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
                                                "toe_rightdot");
-  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_left",
-                                              "toe_leftdot");
-  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_right",
-                                               "toe_rightdot");
+//  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_left",
+//                                              "toe_leftdot");
+//  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_right",
+//                                               "toe_rightdot");
 
   osc->AddTrackingData(&pelvis_rot_tracking_data);
   osc->AddTrackingData(&left_foot_tracking_data);

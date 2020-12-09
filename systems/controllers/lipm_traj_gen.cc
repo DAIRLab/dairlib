@@ -60,11 +60,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
-  PiecewisePolynomial<double> pp_part(VectorXd(0));
-  MatrixXd K = MatrixXd::Ones(0, 0);
-  MatrixXd A = MatrixXd::Identity(0, 0);
-  MatrixXd alpha = MatrixXd::Ones(0, 0);
-  ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
+  ExponentialPlusPiecewisePolynomial<double> exp;
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   this->DeclareAbstractOutputPort("lipm_traj", traj_inst,
                                   &LIPMTrajGenerator::CalcTraj);

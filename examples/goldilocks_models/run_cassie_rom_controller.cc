@@ -12,9 +12,9 @@
 #include "dairlib/lcmt_timestamped_vector.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc/deviation_from_cp.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "examples/goldilocks_models/controller/planned_traj_guard.h"
@@ -23,10 +23,10 @@
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/drake_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -99,6 +99,10 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
+DEFINE_int32(
+    footstep_option, 1,
+    "0 uses the capture point\n"
+    "1 uses the neutral point derived from LIPM given the stance duration");
 
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
@@ -240,7 +244,7 @@ int DoMain(int argc, char* argv[]) {
   //                     0.9993 when x = 2
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant_w_springs, context_w_spr.get(), global_target_position,
-      params_of_no_turning);
+      params_of_no_turning, FLAGS_footstep_option);
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
@@ -354,15 +358,17 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
-  auto deviation_from_cp =
-      builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
-          plant_w_springs, context_w_spr.get());
+  bool use_predicted_com_vel = true;
+  auto walking_speed_control =
+      builder.AddSystem<cassie::osc::WalkingSpeedControl>(
+          plant_w_springs, context_w_spr.get(), FLAGS_footstep_option,
+          use_predicted_com_vel ? left_support_duration : 0);
   if (!FLAGS_const_walking_speed) {
     builder.Connect(high_level_command->get_xy_output_port(),
-                    deviation_from_cp->get_input_port_des_hor_vel());
+                    walking_speed_control->get_input_port_des_hor_vel());
   }
   builder.Connect(simulator_drift->get_output_port(0),
-                  deviation_from_cp->get_input_port_state());
+                  walking_speed_control->get_input_port_state());
 
   // Create swing leg trajectory generator (capture point)
   double mid_foot_height = 0.1;
@@ -383,20 +389,21 @@ int DoMain(int argc, char* argv[]) {
                                                        right_support_duration};
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
-  auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
-      plant_w_springs, context_w_spr.get(), left_right_support_fsm_states,
-      left_right_support_state_durations, left_right_foot, "pelvis",
-      mid_foot_height, desired_final_foot_height,
-      desired_final_vertical_foot_velocity, max_CoM_to_CP_dist, true, true,
-      true, cp_offset, center_line_offset);
+  auto swing_ft_traj_generator =
+      builder.AddSystem<systems::SwingFootTrajGenerator>(
+          plant_w_springs, context_w_spr.get(), left_right_support_fsm_states,
+          left_right_support_state_durations, left_right_foot, "pelvis",
+          mid_foot_height, desired_final_foot_height,
+          desired_final_vertical_foot_velocity, max_CoM_to_CP_dist, true, true,
+          true, cp_offset, center_line_offset);
   builder.Connect(fsm->get_output_port(0),
-                  cp_traj_generator->get_input_port_fsm());
+                  swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
-                  cp_traj_generator->get_input_port_state());
+                  swing_ft_traj_generator->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port(0),
-                  cp_traj_generator->get_input_port_com());
-  builder.Connect(deviation_from_cp->get_output_port(0),
-                  cp_traj_generator->get_input_port_fp());
+                  swing_ft_traj_generator->get_input_port_com());
+  builder.Connect(walking_speed_control->get_output_port(0),
+                  swing_ft_traj_generator->get_input_port_sc());
 
   // Create a guard for the planner in case it doesn't finish solving in time
   auto optimal_traj_planner_guard =
@@ -555,7 +562,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(optimal_traj_planner_guard->get_output_port(0),
                   osc->get_tracking_data_input_port("optimal_rom_traj"));
-  builder.Connect(cp_traj_generator->get_output_port(0),
+  builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_balance_traj"));
@@ -594,11 +601,11 @@ int DoMain(int argc, char* argv[]) {
 
   // Set constant walking speed
   if (FLAGS_const_walking_speed) {
-    auto& deviation_from_cp_context =
-        loop.get_diagram()->GetMutableSubsystemContext(*deviation_from_cp,
+    auto& walking_speed_control_context =
+        loop.get_diagram()->GetMutableSubsystemContext(*walking_speed_control,
                                                        &diagram_context);
-    deviation_from_cp->get_input_port_des_hor_vel().FixValue(
-        &deviation_from_cp_context,
+    walking_speed_control->get_input_port_des_hor_vel().FixValue(
+        &walking_speed_control_context,
         drake::systems::BasicVector<double>({FLAGS_const_walking_speed_x, 0}));
   }
 

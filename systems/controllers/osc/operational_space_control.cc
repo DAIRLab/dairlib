@@ -32,6 +32,8 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
 using drake::solvers::Solve;
+using drake::solvers::OsqpSolver;
+using drake::solvers::OsqpSolverDetails;
 
 namespace dairlib::systems::controllers {
 
@@ -395,6 +397,9 @@ void OperationalSpaceControl::Build() {
                                  .evaluator()
                                  .get());
   }
+
+  // Max solve duration
+  prog_->SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -620,6 +625,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Solve the QP
   const MathematicalProgramResult result = Solve(*prog_);
 
+  solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);
   *u_sol_ = result.GetSolution(u_);
@@ -722,6 +729,20 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_data_names.clear();
   output->tracking_data.clear();
   output->tracking_cost.clear();
+
+  lcmt_osc_qp_output qp_output;
+  qp_output.solve_time = solve_time_;
+  qp_output.u_dim = n_u_;
+  qp_output.lambda_c_dim = n_c_;
+  qp_output.lambda_h_dim = n_h_;
+  qp_output.v_dim = n_v_;
+  qp_output.epsilon_dim = n_c_active_;
+  qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
+  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
+  qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
+  qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
+  output->qp_output = qp_output;
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);

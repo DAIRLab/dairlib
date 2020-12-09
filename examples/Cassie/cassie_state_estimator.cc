@@ -1513,13 +1513,16 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
     // Subtract a small epsilon value so this event triggers before the publish
     *time = next_message_time_ - eps_;
 
-    UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
-        [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
-               drake::systems::State<double>* s) { this->Update(c, s); };
+    if (is_floating_base_) {
+      UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
+          [this](const Context<double>& c,
+                 const UnrestrictedUpdateEvent<double>&,
+                 drake::systems::State<double>* s) { this->Update(c, s); };
 
-    auto& uu_events = events->get_mutable_unrestricted_update_events();
-    uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
-        drake::systems::TriggerType::kTimed, callback));
+      auto& uu_events = events->get_mutable_unrestricted_update_events();
+      uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+          drake::systems::TriggerType::kTimed, callback));
+    }
   }
 }
 

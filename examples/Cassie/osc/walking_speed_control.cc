@@ -136,8 +136,7 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
                      Quat_conj.z());
 
   // Calculate local velocity
-  Vector3d local_com_vel =
-      drake::math::quatRotateVec(quad_conj, com_vel);
+  Vector3d local_com_vel = drake::math::quatRotateVec(quad_conj, com_vel);
 
   //////////////////// Sagital ////////////////////
   Vector3d delta_x_fs_sagital_3D_global(0, 0, 0);

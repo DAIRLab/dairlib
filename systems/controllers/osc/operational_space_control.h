@@ -7,6 +7,8 @@
 #include <set>
 #include <drake/multibody/plant/multibody_plant.h>
 #include "dairlib/lcmt_osc_output.hpp"
+#include "dairlib/lcmt_osc_qp_output.hpp"
+
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram.h"
@@ -14,6 +16,7 @@
 #include "drake/systems/framework/leaf_system.h"
 
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -21,6 +24,9 @@
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
+
+// Maximum time limit for each QP solve
+static constexpr double kMaxSolveDuration = 0.001;
 
 namespace dairlib::systems::controllers {
 
@@ -197,13 +203,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
 
-  // World frames
-  const drake::multibody::BodyFrame<double>& world_w_spr_;
-  const drake::multibody::BodyFrame<double>& world_wo_spr_;
-
   // MBP context's
   drake::systems::Context<double>* context_w_spr_;
   drake::systems::Context<double>* context_wo_spr_;
+
+  // World frames
+  const drake::multibody::BodyFrame<double>& world_w_spr_;
+  const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
   // Size of position, velocity and input of the MBP without spring
   int n_q_;
@@ -252,6 +258,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
+  mutable double solve_time_;
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user

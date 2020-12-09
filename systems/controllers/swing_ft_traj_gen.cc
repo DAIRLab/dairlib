@@ -309,14 +309,11 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::CreateSplineForSwingFoot(
   Y_dot[0](2, 0) = 0;
   Y_dot[1](2, 0) = 0;
   Y_dot[2](2, 0) = desired_final_vertical_foot_velocity_;
-//  PiecewisePolynomial<double> swing_foot_spline =
-//      PiecewisePolynomial<double>::CubicHermite(T_waypoint, Y, Y_dot);
-
   // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
-  // it smooth
+  // the traj smooth at the mid point
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives
-      (T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));
+          (T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));
 
   return swing_foot_spline;
 }

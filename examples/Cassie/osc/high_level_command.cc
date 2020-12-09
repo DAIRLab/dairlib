@@ -40,13 +40,15 @@ HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     const Vector2d& global_target_position,
-    const Vector2d& params_of_no_turning)
+    const Vector2d& params_of_no_turning, int footstep_option)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")),
       global_target_position_(global_target_position),
       params_of_no_turning_(params_of_no_turning) {
+  DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
+
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -72,6 +74,25 @@ HighLevelCommand::HighLevelCommand(
 
   // Discrete state which stores the desired horizontal velocity
   des_horizontal_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(2));
+
+  // Control gains
+  if (footstep_option == 0) {
+    kp_pos_sagital_ = 1.0;
+    kd_pos_sagital_ = 0.2;
+
+    kp_pos_lateral_ = 0.5;
+    kd_pos_lateral_ = 0.1;
+    vel_max_lateral_ = 0.5;
+    vel_min_lateral_ = -0.5;
+  } else if (footstep_option == 1) {
+    kp_pos_sagital_ = 1.0;
+    kd_pos_sagital_ = 1.0;
+
+    kp_pos_lateral_ = 0.25;
+    kd_pos_lateral_ = 1;
+    vel_max_lateral_ = 0.5;
+    vel_min_lateral_ = -0.5;
+  }
 }
 
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
@@ -160,7 +181,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
       des_sagital_vel = std::min(vel_max_sagital_,
                                  std::max(vel_min_sagital_, des_sagital_vel));
 
-      // Frontal plane position PD control.  TODO(yminchen): tune this
+      // Frontal plane position PD control.
       double com_vel_lateral = local_com_vel(1);
       double des_lateral_vel =
           kp_pos_lateral_ * (local_com_pos_to_target_pos(1)) +
@@ -194,11 +215,11 @@ void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,
 
 void HighLevelCommand::CopyDesiredHorizontalVel(
     const Context<double>& context, BasicVector<double>* output) const {
-  auto delta_CP_3D_global =
+  auto delta_x_fs_3D_global =
       context.get_discrete_state(des_horizontal_vel_idx_).get_value();
 
   // Assign
-  output->get_mutable_value() = delta_CP_3D_global;
+  output->get_mutable_value() = delta_x_fs_3D_global;
 }
 
 }  // namespace osc

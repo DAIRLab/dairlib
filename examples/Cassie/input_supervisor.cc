@@ -160,10 +160,12 @@ void InputSupervisor::SetStatus(
     output->shutdown = 1;
   }
 
-  output->act_delay =
-      (command->get_timestamp() -
-           context.get_discrete_state(prev_efforts_time_index_)[0] >
-       kMaxControllerDelay);
+  if((command->get_timestamp() -
+      context.get_discrete_state(prev_efforts_time_index_)[0] >
+      kMaxControllerDelay)){
+    output->act_delay = 1;
+    output->shutdown = 1;
+  }
 }
 
 void InputSupervisor::UpdateErrorFlag(

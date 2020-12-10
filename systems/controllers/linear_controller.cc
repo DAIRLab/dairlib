@@ -34,8 +34,7 @@ void LinearController::CalcControl(const Context<double>& context,
       x_tilde[i] = -kMaxError;
     }
   }
-  VectorXd u =
-      config->GetK() * (x_tilde);
+  VectorXd u = config->GetK() * (x_tilde);
 
   control->SetDataVector(u);
   control->set_timestamp(output->get_timestamp());

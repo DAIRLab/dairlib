@@ -142,6 +142,12 @@ class LcmDrivenLoop {
                       std::vector<std::string>(1, input_channel), input_channel,
                       "", is_forced_publish){};
 
+  // Getters for diagram and its context
+  drake::systems::Diagram<double>* get_diagram() { return diagram_ptr_; }
+  drake::systems::Context<double>& get_diagram_mutable_context() {
+    return simulator_->get_mutable_context();
+  }
+
   // Start simulating the diagram
   void Simulate(double end_time = std::numeric_limits<double>::infinity()) {
     // Get mutable contexts
@@ -249,8 +255,10 @@ class LcmDrivenLoop {
 
         // Advancing the simulator here ensure that the switch message is
         // received in the leaf systems without the encountering a race
-        // condition. Still need to investigate the exact sequence that causes
-        // the race condition
+        // condition when constructing a separate LcmSubscriberSystem that
+        // listens to the same channel. Advancing the simulator, ensures that
+        // the LCM message used here successfully arrives at the input port of
+        // the other LcmSubscriberSystem
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram

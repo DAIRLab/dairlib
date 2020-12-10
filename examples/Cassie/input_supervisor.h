@@ -71,11 +71,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
 
   // Assign the lcmt_input_supervisor_status output
   // Sets the status bit to the current status
-  // 0b00  if no limits are being applied
-  // 0b01  if velocity has exceeded threshold
-  // 0b10  if actuator limits are being applied
-  // 0b11  if both limits have been exceeded
-  // ob1xx if velocity shutdown has been applied
+  // Starting from the rightmost bit, the bits represent:
+  // 0th: velocity limits exceeded once
+  // 1st: actuator limits
+  // 2nd: velocity triggered shutdown
   void SetStatus(const drake::systems::Context<double>& context,
                  dairlib::lcmt_input_supervisor_status* output) const;
 

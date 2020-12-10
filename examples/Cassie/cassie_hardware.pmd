@@ -124,7 +124,9 @@ script "run-real-robot-pd-control" {
 }
 
 script "set_up_from_pd_to_osc_standing" {
-    restart cmd "0.dispatcher-robot-out-real-robot";
+    stop group "3.cassie-robot";
+    start cmd "0.dispatcher-robot-out-real-robot";
+    start cmd "1.dispatcher-robot-in-real-robot";
     start cmd "3.osc-standing-real-robot";
 }
 

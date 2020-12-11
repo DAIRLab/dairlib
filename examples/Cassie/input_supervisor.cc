@@ -145,7 +145,7 @@ void InputSupervisor::SetStatus(
       double command_value = command->get_data()(i);
       if (command_value > input_limit_ || command_value < -input_limit_) {
         output->status += 2;
-        output->act_limit = 1;
+        output->act_limit = true;
         break;
       }
     }
@@ -157,14 +157,14 @@ void InputSupervisor::SetStatus(
   if (context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
       min_consecutive_failures_) {
     output->status += 4;
-    output->shutdown = 1;
+    output->shutdown = true;
   }
 
   if((command->get_timestamp() -
       context.get_discrete_state(prev_efforts_time_index_)[0] >
       kMaxControllerDelay)){
     output->act_delay = 1;
-    output->shutdown = 1;
+    output->shutdown = true;
   }
 }
 

@@ -4,12 +4,12 @@ w_accel: 0.000001
 w_soft_constraint: 8000
 
 w_swing_toe: 100
-swing_toe_kp: 2000
-swing_toe_kd: 20
+swing_toe_kp: 1000
+swing_toe_kd: 10
 
 w_hip_yaw: 10
 hip_yaw_kp: 200
-hip_yaw_kd: 20
+hip_yaw_kd: 10
 
 footstep_offset: 0.04
 center_line_offset: 0.00
@@ -27,7 +27,7 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,   500]
+      0,    0,   100]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,

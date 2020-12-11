@@ -137,6 +137,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 5) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
+  } else if (rom_option == 6) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -187,6 +190,11 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 5) {
     rom = std::make_unique<LipmWithSwingFoot>(
         plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis, 3);
+  } else if (rom_option == 6) {
+    std::set<int> invariant_idx = {0, 1, 2};
+    rom = std::make_unique<LipmWithSwingFoot>(plant, stance_foot, swing_foot,
+                                              *mapping_basis, *dynamic_basis, 3,
+                                              invariant_idx);
   } else {
     throw std::runtime_error("Not implemented");
   }

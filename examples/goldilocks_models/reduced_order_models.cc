@@ -271,7 +271,8 @@ ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
       n_feature_yddot_(n_feature_yddot),
       mapping_basis_(mapping_basis),
       dynamic_basis_(dynamic_basis),
-      theta_y_(VectorX<double>::Zero(n_y * n_feature_y)),
+      theta_y_(VectorX<double>::Zero((n_y - invariant_elements.size()) *
+                                     n_feature_y)),
       theta_yddot_(VectorX<double>::Zero(n_y * n_feature_yddot)),
       invariant_elements_(invariant_elements) {
   for (const auto& element : invariant_elements) {

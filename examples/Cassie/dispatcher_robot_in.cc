@@ -51,6 +51,8 @@ DEFINE_string(control_channel_name_2, "OSC_STANDING",
               "The name of the lcm channel that sends Cassie's state");
 DEFINE_string(control_channel_name_3, "OSC_WALKING",
               "The name of the lcm channel that sends Cassie's state");
+DEFINE_string(control_channel_name_4, "OSC_JUMPING",
+              "The name of the lcm channel that sends Cassie's state");
 
 // Cassie model parameter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -141,6 +143,7 @@ int do_main(int argc, char* argv[]) {
   input_channels.push_back(FLAGS_control_channel_name_1);
   input_channels.push_back(FLAGS_control_channel_name_2);
   input_channels.push_back(FLAGS_control_channel_name_3);
+  input_channels.push_back(FLAGS_control_channel_name_4);
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input,

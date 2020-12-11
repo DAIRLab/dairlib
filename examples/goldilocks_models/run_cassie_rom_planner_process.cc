@@ -51,7 +51,7 @@ using systems::OutputVector;
 
 // Planner settings
 DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
-DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
+DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");

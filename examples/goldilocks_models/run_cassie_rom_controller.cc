@@ -262,11 +262,10 @@ int DoMain(int argc, char* argv[]) {
   // Create finite state machine
   int left_stance_state = LEFT_STANCE;
   int right_stance_state = RIGHT_STANCE;
-  int double_support_state = DOUBLE_STANCE;
-  double left_support_duration =
-      LEFT_SUPPORT_DURATION;  // end_time_of_first_step;
-  double right_support_duration =
-      RIGHT_SUPPORT_DURATION;  // end_time_of_first_step;
+  int post_left_double_support_state = POST_LEFT_DOUBLE_STANCE;
+  int post_right_double_support_state = POST_RIGHT_DOUBLE_STANCE;
+  double left_support_duration = LEFT_SUPPORT_DURATION;
+  double right_support_duration = RIGHT_SUPPORT_DURATION;
   double double_support_duration = DOUBLE_SUPPORT_DURATION;
   vector<int> fsm_states;
   vector<double> state_durations;
@@ -280,13 +279,13 @@ int DoMain(int argc, char* argv[]) {
     }
   } else {
     if (FLAGS_start_with_right_stance) {
-      fsm_states = {right_stance_state, double_support_state, left_stance_state,
-                    double_support_state};
+      fsm_states = {right_stance_state, post_right_double_support_state,
+                    left_stance_state, post_left_double_support_state};
       state_durations = {right_support_duration, double_support_duration,
                          left_support_duration, double_support_duration};
     } else {
-      fsm_states = {left_stance_state, double_support_state, right_stance_state,
-                    double_support_state};
+      fsm_states = {left_stance_state, post_left_double_support_state,
+                    right_stance_state, post_right_double_support_state};
       state_durations = {left_support_duration, double_support_duration,
                          right_support_duration, double_support_duration};
     }
@@ -344,11 +343,14 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({right_toe_mid});
   } else {
     unordered_fsm_states = {left_stance_state, right_stance_state,
-                            double_support_state};
+                            post_left_double_support_state,
+                            post_right_double_support_state};
     unordered_state_durations = {left_support_duration, right_support_duration,
+                                 double_support_duration,
                                  double_support_duration};
     contact_points_in_each_state.push_back({left_toe_mid});
     contact_points_in_each_state.push_back({right_toe_mid});
+    contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
     contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
   }
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
@@ -382,24 +384,22 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Create swing leg trajectory generator (capture point)
-  double mid_foot_height = 0.1;
+  double mid_foot_height = 0.07;
   // Since the ground is soft in the simulation, we raise the desired final
   // foot height by 1 cm. The controller is sensitive to this number, should
   // tune this every time we change the simulation parameter or when we move
   // to the hardware testing.
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
-  double desired_final_foot_height = 0.01;
+  double desired_final_foot_height = 0.0;
   double desired_final_vertical_foot_velocity = 0;  //-1;
-  double max_CoM_to_footstep_dist = 0.4;
+  double max_CoM_to_footstep_dist = 0.5;
   double footstep_offset;
   double center_line_offset;
   if (FLAGS_footstep_option == 0) {
-    max_CoM_to_footstep_dist = 0.4;
     footstep_offset = 0.06;
     center_line_offset = 0.06;
   } else if (FLAGS_footstep_option == 1) {
-    max_CoM_to_footstep_dist = 0.4;
     footstep_offset = 0.06;
     center_line_offset = 0.06;
   }
@@ -506,15 +506,27 @@ int DoMain(int argc, char* argv[]) {
   osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
   if (!FLAGS_is_two_phase) {
-    osc->AddStateAndContactPoint(double_support_state, &left_toe_evaluator);
-    osc->AddStateAndContactPoint(double_support_state, &left_heel_evaluator);
-    osc->AddStateAndContactPoint(double_support_state, &right_toe_evaluator);
-    osc->AddStateAndContactPoint(double_support_state, &right_heel_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &left_toe_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &left_heel_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &right_toe_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &right_heel_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &left_toe_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &left_heel_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &right_toe_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &right_heel_evaluator);
   }
 
   // Swing foot tracking
   MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
-  MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_sw_ft = 200 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_sw_ft,
                                              K_d_sw_ft, W_swing_foot,
@@ -532,15 +544,16 @@ int DoMain(int argc, char* argv[]) {
   OptimalRomTrackingData optimal_rom_traj("optimal_rom_traj", rom->n_y(),
                                           K_p_com, K_d_com, W_com, plant_w_spr,
                                           plant_wo_springs);
-  // TODO(yminchen): we need four fsm states to make this symmetric
-  /*optimal_rom_traj.AddStateAndRom(double_support_state, *rom);
   optimal_rom_traj.AddStateAndRom(left_stance_state, *rom);
-  optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);*/
+  optimal_rom_traj.AddStateAndRom(post_left_double_support_state, *rom);
+  optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
+  optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
+                                  mirrored_rom);
+  //  optimal_rom_traj.AddRom(*rom);
   // TODO(yminchen): currently an issue of using ROM and mirrored ROM with the
   //  secondary LIPM (e.g. LIPM).
   //  Probably need to change OSC API to have an option to disable a traj track
   //  online (an external flag to disable tracking).
-  optimal_rom_traj.AddRom(*rom);
   osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
@@ -607,7 +620,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
+//  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
+//                  osc->get_tracking_data_input_port("optimal_rom_traj"));
+// Testing
+  builder.Connect(lipm_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("optimal_rom_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));

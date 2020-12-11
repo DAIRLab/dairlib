@@ -22,18 +22,22 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
+  if(input_limit_ == std::numeric_limits<double>::max()){
+    std::cout << "Warning. No input limits have been set." << std::endl;
+  }
+
   // Create input ports
   command_input_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
           .get_index();
   state_input_port_ = this
-      ->DeclareVectorInputPort(OutputVector<double>(
-          num_positions_, num_velocities_, num_actuators_))
-      .get_index();
+                          ->DeclareVectorInputPort(OutputVector<double>(
+                              num_positions_, num_velocities_, num_actuators_))
+                          .get_index();
   controller_switch_input_port_ =
       this->DeclareAbstractInputPort(
-          "lcmt_controller_switch",
-          drake::Value<dairlib::lcmt_controller_switch>{})
+              "lcmt_controller_switch",
+              drake::Value<dairlib::lcmt_controller_switch>{})
           .get_index();
 
   // Create output port for commands
@@ -44,9 +48,7 @@ InputSupervisor::InputSupervisor(
 
   // Create output port for status
   status_output_port_ =
-      this->DeclareVectorOutputPort(TimestampedVector<double>(1),
-                                    &InputSupervisor::SetStatus)
-          .get_index();
+      this->DeclareAbstractOutputPort(&InputSupervisor::SetStatus).get_index();
 
   // Create error flag as discrete state
   // Store both values in single discrete vector
@@ -54,6 +56,7 @@ InputSupervisor::InputSupervisor(
   n_fails_index_ = 0;
   status_index_ = 1;
   switch_time_index_ = DeclareDiscreteState(1);
+  prev_efforts_time_index_ = DeclareDiscreteState(1);
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
   // Create update for error flag
@@ -69,13 +72,23 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
 
   bool is_error =
       context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
-          min_consecutive_failures_;
+      min_consecutive_failures_;
+  is_error =
+      is_error || (command->get_timestamp() -
+                       context.get_discrete_state(prev_efforts_time_index_)[0] >
+                   kMaxControllerDelay);
+  if ((command->get_timestamp() -
+           context.get_discrete_state(prev_efforts_time_index_)[0] >
+       kMaxControllerDelay)) {
+    std::cout << "Delay between controller commands is too long, shutting down"
+              << std::endl;
+  }
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros
   if (!is_error) {
     // If input_limit_ has been set, limit inputs to
-    ///   [-input_limit_, input_limit_]
+    // [-input_limit_, input_limit_]
     if (input_limit_ != std::numeric_limits<double>::max()) {
       output->set_timestamp(command->get_timestamp());
       for (int i = 0; i < command->get_data().size(); i++) {
@@ -99,14 +112,14 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // Blend the efforts between the previous controller effort and the current
   // commanded effort using linear interpolation
   double alpha = (command->get_timestamp() -
-      context.get_discrete_state(switch_time_index_)[0]) /
-      blend_duration_;
+                  context.get_discrete_state(switch_time_index_)[0]) /
+                 blend_duration_;
 
   if (alpha <= 1.0) {
     Eigen::VectorXd blended_effort =
         alpha * command->get_value() +
-            (1 - alpha) *
-                context.get_discrete_state(prev_efforts_index_).get_value();
+        (1 - alpha) *
+            context.get_discrete_state(prev_efforts_index_).get_value();
     output->SetDataVector(blended_effort);
     if (fmod(command->get_timestamp(), 0.5) < 1e-4) {
       std::cout << "Blending efforts" << std::endl;
@@ -114,19 +127,25 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   }
 }
 
-void InputSupervisor::SetStatus(const Context<double>& context,
-                                TimestampedVector<double>* output) const {
+void InputSupervisor::SetStatus(
+    const Context<double>& context,
+    dairlib::lcmt_input_supervisor_status* output) const {
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  output->get_mutable_value()(0) =
-      context.get_discrete_state(status_vars_index_)[status_index_];
+  output->status =
+      int(context.get_discrete_state(status_vars_index_)[status_index_]);
+  output->utime = command->get_timestamp() * 1e6;
+  output->vel_limit =
+      bool(context.get_discrete_state(status_vars_index_)[status_index_]);
+
   if (input_limit_ != std::numeric_limits<double>::max()) {
     for (int i = 0; i < command->get_data().size(); i++) {
       double command_value = command->get_data()(i);
       if (command_value > input_limit_ || command_value < -input_limit_) {
-        output->get_mutable_value()(0) += 2;
+        output->status += 2;
+        output->act_limit = true;
         break;
       }
     }
@@ -137,7 +156,15 @@ void InputSupervisor::SetStatus(const Context<double>& context,
   // slightly off
   if (context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
       min_consecutive_failures_) {
-    output->get_mutable_value()(0) += 4;
+    output->status += 4;
+    output->shutdown = true;
+  }
+
+  if((command->get_timestamp() -
+      context.get_discrete_state(prev_efforts_time_index_)[0] >
+      kMaxControllerDelay)){
+    output->act_delay = true;
+    output->shutdown = true;
   }
 }
 
@@ -153,24 +180,34 @@ void InputSupervisor::UpdateErrorFlag(
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
+  if (command->get_timestamp() -
+          discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] >
+      kMaxControllerDelay) {
+    discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] = 0.0;
+  } else {
+    discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] =
+        command->get_timestamp();
+  }
+
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
   if (discrete_state->get_vector(status_vars_index_)[n_fails_index_] <
       min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
-        (velocities.array() < -max_joint_velocity_).any();
+                             (velocities.array() < -max_joint_velocity_).any();
     if (is_velocity_error) {
       // Increment counter
       discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] +=
           1;
+      // Using the discrete state which is a vector of doubles to store a bool
       discrete_state->get_mutable_vector(status_vars_index_)[status_index_] =
-          true;
+          double(true);
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error "
                 << discrete_state->get_vector(
-                    status_vars_index_)[n_fails_index_]
+                       status_vars_index_)[n_fails_index_]
                 << " of " << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
@@ -180,7 +217,7 @@ void InputSupervisor::UpdateErrorFlag(
       discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] =
           0;
       discrete_state->get_mutable_vector(status_vars_index_)[status_index_] =
-          false;
+          double(false);
     }
   }
 

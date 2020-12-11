@@ -20,6 +20,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_command = []
     self.yddot_command_sol = []
     self.V = []
+    self.CkYdot = [];
 
   def append(self, msg, t):
     self.t.append(t)
@@ -34,6 +35,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_command.append(msg.yddot_command)
     self.yddot_command_sol.append(msg.yddot_command_sol)
     self.V.append(msg.V)
+    self.CkYdot.append(msg.CkYdot)
 
   def convertToNP(self):
     self.t = np.array(self.t)
@@ -48,6 +50,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_command = np.array(self.yddot_command)
     self.yddot_command_sol = np.array(self.yddot_command_sol)
     self.V = np.array(self.V)
+    self.CkYdot = np.array(self.CkYdot)
 
 
 def process_log(log, pos_map, vel_map, act_map, controller_channel):

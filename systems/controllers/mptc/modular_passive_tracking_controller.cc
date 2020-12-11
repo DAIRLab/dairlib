@@ -750,6 +750,19 @@ void ModularPassiveTrackingControl::AssignMptcLcmOutput(
   output->tracking_data.clear();
   output->tracking_cost.clear();
 
+  lcmt_osc_qp_output qp_output;
+  qp_output.u_dim = n_u_;
+  qp_output.lambda_c_dim = n_c_;
+  qp_output.lambda_h_dim = n_h_;
+  qp_output.v_dim = n_v_;
+  qp_output.epsilon_dim = n_c_active_;
+  qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
+  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
+  qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
+  qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
+  output->qp_output = qp_output;
+
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
 
@@ -778,6 +791,7 @@ void ModularPassiveTrackingControl::AssignMptcLcmOutput(
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
       osc_output.V = tracking_data->GetVk();
+      osc_output.CkYdot = tracking_data->GetCkForce();
       output->tracking_data.push_back(osc_output);
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();

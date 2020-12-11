@@ -125,6 +125,10 @@ double MptcTrackingData::GetVk() {
     return V(0,0);
 }
 
+double MptcTrackingData::GetCkForce() {
+    Eigen::MatrixXd Cv= C_k_ * error_ydot_;
+    return Cv.norm();
+}
 void MptcTrackingData::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
   DRAKE_ASSERT(track_at_current_state_);
   cout << name_ << ":\n";

@@ -57,37 +57,145 @@ class Log:
 
   def slice_for_walk(self):
     self.t_u_slice = get_walk_slice(self.osc_debug, self.fsm, self.t_u)
-    t_start_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.start]) < 1e-3)[0][0]
-    t_end_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.stop]) < 1e-3)[0][0]
+    try:
+      t_start_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.start]) < 1e-3)[0][0]
+    except:
+      t_start_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.start]) < 2.5e-3)[0][0]
+    try:
+      t_end_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.stop]) < 1e-3)[0][0]
+    except:
+      t_end_idx = np.argwhere(np.abs(self.t_x - self.t_u[self.t_u_slice.stop]) < 2.5e-3)[0][0]
     self.t_slice = slice(t_start_idx, t_end_idx)
+
+  def get_cv_force_swing_ft(self):
+    n_samples = len(self.t_x[self.t_slice])
+    context = self.plant_w_spr.CreateDefaultContext()
+
+    Cv_force = np.zeros((n_samples, 3))
+
+    for i in range(n_samples):
+      idx = i + self.t_slice.start
+      try:
+        u_idx = np.argwhere(np.abs(self.t_u - self.t_x[idx]) < 1e-3)[0][0]
+      except:
+        u_idx = np.argwhere(np.abs(self.t_u - self.t_x[idx]) < 2.5e-3)[0][0]
+
+      self.plant_w_spr.SetPositionsAndVelocities(context, self.x[idx, :])
+      if self.fsm[u_idx] != 2:
+        pt, frame = self.get_swing_foot_midpoint_frame(u_idx)
+        Cv_force[i] = self.calc_task_space_cv_force_translational(context, frame, pt)
+      else :
+        Cv_force[i] = np.zeros((1,3))
+
+    return Cv_force
+
+  def get_commanded_torque_force_swing_ft(self):
+    n_samples = len(self.t_u[self.t_u_slice])
+    context = self.plant_w_spr.CreateDefaultContext()
+
+    actuation_force = np.zeros((n_samples, 3))
+    for i in range(n_samples):
+      idx = i + self.t_u_slice.start
+      try:
+        x_idx = np.argwhere(np.abs(self.t_x - self.t_u[idx]) < 1e-3)[0][0]
+      except:
+        x_idx = np.argwhere(np.abs(self.t_x - self.t_u[idx]) < 2.5e-3)[0][0]
+
+      self.plant_w_spr.SetPositionsAndVelocities(context, self.x[x_idx,:])
+      pt, frame = self.get_swing_foot_midpoint_frame(idx)
+      actuation_force[i] = self.calc_task_space_force_actuation_translational(
+          context, frame, pt, idx)
+
+    return actuation_force
+
+
+  def get_swing_foot_midpoint_frame(self, ind):
+    mid_pt = np.array((-0.0457, 0.112, 0)) + np.array((0.088, 0, 0)) / 2
+    left_stance_state = 0
+    right_stance_state = 1
+    double_support_state = 2
+
+    state = self.fsm[ind]
+    i = 1
+    while (state == double_support_state):
+      state = self.fsm[ind-i]
+      i = i+1
+
+    if self.fsm[ind] == left_stance_state:
+      return mid_pt, self.plant_w_spr.GetBodyByName("toe_right").body_frame()
+    else:
+      return mid_pt, self.plant_w_spr.GetBodyByName("toe_left").body_frame()
+
+
+  def calc_task_space_cv_force_translational(self, context, frame, point):
+    world = self.plant_w_spr.world_frame()
+    Cv = self.plant_w_spr.CalcBiasTerm(context)
+    M = self.plant_w_spr.CalcMassMatrixViaInverseDynamics(context)
+    J = self.plant_w_spr.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV,
+                                                frame, point, world, world)
+    M_inv = np.linalg.inv(M)
+    M_k = np.linalg.inv(J @ M_inv @ J.T)
+    return M_k @ J @ M_inv @ Cv
+
+  def calc_task_space_force_actuation_translational(self, context, frame, point, u_idx):
+    world = self.plant_w_spr.world_frame()
+    M = self.plant_w_spr.CalcMassMatrixViaInverseDynamics(context)
+    J = self.plant_w_spr.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV,
+                                                           frame, point, world, world)
+    B = self.plant_w_spr.MakeActuationMatrix()
+    M_inv = np.linalg.inv(M)
+    M_k = np.linalg.inv(J @ M_inv @ J.T)
+
+    return M_k @ J @ M_inv @ B @ self.osc_output[u_idx].qp_output.u_sol
+
+  def get_total_input(self):
+    n_samples = len(self.t_u[self.t_u_slice])
+    u = np.zeros((n_samples, self.nu))
+
+    for i,osc in enumerate(self.osc_output[self.t_u_slice]):
+      u[i,:] = osc.qp_output.u_sol
+
+    return np.sum(np.abs(u), axis=1)
 
 
 
 def main():
   bgcol = 'white'
   textcol = '262626'
+  labelsize = 36
+  titlesize = 36
+  legend_textsize = 26
+  ticksize = 24
+  linewidth = 2.5
+  font_family = 'sans-serif'
+  font_sans = 'Public Sans'
+
+
   c = sns.plotting_context("talk")
   sns.set_theme(context=c, style="ticks")
   matplotlib.rcParams["axes.facecolor"] = bgcol
   matplotlib.rcParams["axes.edgecolor"] = textcol
   matplotlib.rcParams["axes.labelcolor"] = textcol
-  matplotlib.rcParams["axes.labelsize"] = 32
-  matplotlib.rcParams["axes.titlesize"] = 48
+  matplotlib.rcParams["axes.labelsize"] = labelsize
+  matplotlib.rcParams["axes.titlesize"] = titlesize
   matplotlib.rcParams["xtick.color"] = textcol
+  matplotlib.rcParams["ytick.color"] = textcol
+  matplotlib.rcParams["xtick.labelsize"] = ticksize
+  matplotlib.rcParams["ytick.labelsize"] = ticksize
   matplotlib.rcParams["xtick.direction"] = 'in'
   matplotlib.rcParams["ytick.direction"] = 'in'
-  matplotlib.rcParams["ytick.color"] = textcol
   matplotlib.rcParams["figure.facecolor"] = bgcol
   matplotlib.rcParams["savefig.facecolor"] = bgcol
   matplotlib.rcParams["savefig.edgecolor"] = textcol
-  matplotlib.rcParams["font.family"] = 'sans-serif'
-  matplotlib.rcParams["font.sans-serif"] ='Public Sans'
+  matplotlib.rcParams["font.family"] = font_family
+  matplotlib.rcParams["font.sans-serif"] = font_sans
   matplotlib.rcParams["text.color"] = textcol
   matplotlib.rcParams["lines.color"] = textcol
-  matplotlib.rcParams["lines.linewidth"] = 4.0
-  matplotlib.rcParams["legend.fontsize"] = 'xx-large'
+  matplotlib.rcParams["lines.linewidth"] = linewidth
+  matplotlib.rcParams["legend.fontsize"] = legend_textsize
   matplotlib.rcParams["legend.framealpha"] = 0.25
   matplotlib.rcParams["legend.facecolor"] = 'd6cac9'
+  matplotlib.rcParams["text.usetex"]='true'
 
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
@@ -121,11 +229,19 @@ def main():
         log.slice_for_walk()
 
       logs.append(log)
+
+
   if (mode == CROUCH):
     plot_y_comparison(logs, "com_traj", "COM Height", "Crouch Step Response")
   else:
     #plot_y_comparison(logs, "lipm_traj", 2, "Z_COM", "COM Height Tracking During Stumble Event")
-    plot_V_comparison(logs, "swing_ft_traj", "MPTC Lyapunov Function (walking)")
+    plot_y_comparison(logs, "swing_ft_traj", 2, "$Z_{foot}$", "Swing Foot Height Position Tracking")
+    #plot_V_comparison(logs, "swing_ft_traj", "MPTC Lyapunov Function (walking)")
+    #plot_cv_swing_foot_comparison(logs, "Swing Foot Coriolis Force")
+    #plot_cv_contribution_task_space(logs, "Operational Space Force Contributions - Swing Foot", 2)
+    #plot_total_input(logs, "Total Control Effort")
+    # plot_cv_swing_foot_error_force(logs[0], "Task Space Coriolis Forces")
+
   plt.show()
 
 
@@ -139,6 +255,108 @@ def plot_y_com_collection(logs):
 
   sns.lineplot(x="time", y="y_com", data=table)
 
+def plot_cv_swing_foot(log, title):
+  table = pd.DataFrame(columns=["Time", "|Cv|"])
+  cv = log.get_cv_force_swing_ft()
+  cv_norm = np.linalg.norm(cv, axis=1)
+
+  data = {"Time": log.t_x[log.t_slice],
+          "|Cv|": cv_norm}
+  table = table.append(pd.DataFrame(data, columns=["Time", "|Cv|"]))
+  ax = sns.lineplot(x="Time", y="|Cv|", data=table).set_title(title)
+
+def plot_cv_swing_foot_error_force(log, title):
+  table = pd.DataFrame(columns=["Time", "Cv", "Force"])
+  cv = log.get_cv_force_swing_ft()
+  cv_norm = np.linalg.norm(cv, axis=1)
+
+
+
+  shifted_time = log.osc_debug["swing_ft_traj"].t[log.t_u_slice] - log.osc_debug["swing_ft_traj"].t[log.t_u_slice.start]
+  end_idx = np.argwhere(np.abs(log.osc_debug["swing_ft_traj"].t - log.t_x[log.t_slice.stop]) < 2.5e-3)[0][0]
+  shift_slice = slice(log.t_u_slice.start, end_idx)
+
+  error_force_tx = np.interp(log.t_x[log.t_slice], log.osc_debug["swing_ft_traj"].t[shift_slice],
+                             log.osc_debug["swing_ft_traj"].CkYdot[shift_slice])
+  diff = cv_norm - error_force_tx
+
+  data2 = {"Time": log.t_x[log.t_slice] - log.t_x[log.t_slice.start],
+          "Cv": cv_norm,
+          "Force": "Bias Force"}
+
+  data1 = {"Time": shifted_time[shift_slice],
+           "Cv": log.osc_debug["swing_ft_traj"].CkYdot[shift_slice],
+           "Force": "Velocity Error Bias Force"}
+
+  data3 = {"Time": log.t_x[log.t_slice] - log.t_x[log.t_slice.start],
+           "Cv": diff,
+           "Force": "Difference"}
+  table = table.append(pd.DataFrame(data1, columns=["Time", "Cv", "Force"]))
+  table = table.append(pd.DataFrame(data2, columns=["Time", "Cv", "Force"]))
+  table = table.append(pd.DataFrame(data3, columns=["Time", "Cv", "Force"]))
+
+
+  ax = sns.lineplot(x="Time", y="Cv", hue="Force", data=table)
+  ax.set_title(title)
+  ax.set_xlabel("Time (s)")
+  ax.set_ylabel("$C_{os}$ (N)")
+  plt.legend(bbox_to_anchor=(0,1), loc="upper left", ncol=4)
+
+
+def plot_cv_swing_foot_comparison(logs, title):
+  plt.figure("Plot Cv Swing Foot Comparison")
+  table = pd.DataFrame(columns=["Time", "|Cv|", "Controller"])
+  for log in logs:
+    cv = log.get_cv_force_swing_ft()
+    cv_norm = np.linalg.norm(cv, axis=1)
+
+    data = {"Time": log.t_x[log.t_slice],
+            "|Cv|": cv_norm,
+            "Controller": log.controller}
+    table = table.append(pd.DataFrame(data, columns=["Time", "|Cv|", "Controller"]))
+  ax = sns.lineplot(x="Time", y="|Cv|", hue="Controller", data=table).set_title(title)
+  plt.legend(bbox_to_anchor=(0,1), loc="upper left", ncol=3)
+
+def plot_total_input(logs, title):
+  plt.figure("Total Input Torque")
+  table = pd.DataFrame(columns=["Time", "u", "Controller"])
+  for log in logs:
+    u = log.get_total_input()
+    data = {"Time": log.t_u[log.t_u_slice], # - log.t_u[log.t_u_slice.start],
+            "u": u,
+            "Controller": log.controller}
+    table = table.append(pd.DataFrame(data, columns=["Time", "u", "Controller"]))
+  ax = sns.lineplot(x="Time", y="u", hue= "Controller", data=table)
+  ax.set_title(title)
+  ax.set_ylabel("$u_{tot}$ (Nm)")
+  ax.set_xlabel("Time (s)")
+
+
+def plot_cv_contribution_task_space(logs, title, dim):
+  plt.figure("Plot Bu Task Space Contrib")
+  table = pd.DataFrame(columns=["Time", "Force", "Component", "Controller"])
+  for log in logs:
+    bu = log.get_commanded_torque_force_swing_ft()
+    bu_norm =np.linalg.norm(bu, axis=1)
+    cv = log.get_cv_force_swing_ft()
+    cv_norm = np.linalg.norm(cv, axis=1)
+
+    data1 = {"Time": log.t_u[log.t_u_slice], # - log.t_u[log.t_u_slice.start],
+            "Force": bu_norm,
+            "Component": "Bu",
+            "Controller": log.controller}
+
+    data2 = {"Time": log.t_x[log.t_slice], # - log.t_x[log.t_slice.start],
+             "Force": cv_norm,
+             "Component": "Cv",
+             "Controller": log.controller}
+    table = table.append(pd.DataFrame(data1, columns=["Time", "Force", "Component", "Controller"]))
+    table = table.append(pd.DataFrame(data2, columns=["Time", "Force", "Component", "Controller"]))
+  ax = sns.lineplot(x="Time", y="Force", hue="Controller", style="Component", data=table)
+  ax.set_title(title)
+  ax.set_ylabel("$\parallel F_{os} \parallel$ (N)")
+  ax.set_xlabel("Time (s)")
+  plt.legend(bbox_to_anchor=(1,1), loc="upper right", ncol=2)
 
 
 def plot_y_comparison(logs, traj_name, dim, signal_name, plot_title):
@@ -151,11 +369,11 @@ def plot_y_comparison(logs, traj_name, dim, signal_name, plot_title):
     #   log.t_u_slice = slice(np.argwhere(np.abs(log.t_u - 0.25) < 1e-3)[0][0], log.t_u_slice.stop)
 
     data1 = {"Y": log.osc_debug[traj_name].y[log.t_u_slice, dim],
-            "Time": log.osc_debug[traj_name].t[log.t_u_slice] - log.osc_debug[traj_name].t[log.t_u_slice.start],
+            "Time": log.osc_debug[traj_name].t[log.t_u_slice], #- log.osc_debug[traj_name].t[log.t_u_slice.start],
             "Controller": log.controller,
             "Signal" : signal_name}
     data2 = {"Y": log.osc_debug[traj_name].y_des[log.t_u_slice, dim],
-             "Time": log.osc_debug[traj_name].t[log.t_u_slice] - log.osc_debug[traj_name].t[log.t_u_slice.start],
+             "Time": log.osc_debug[traj_name].t[log.t_u_slice], #- log.osc_debug[traj_name].t[log.t_u_slice.start],
              "Controller": log.controller,
              "Signal" : "Des. " + signal_name}
     frame1 = pd.DataFrame(data1, columns=["Time", "Y", "Controller", "Signal"])
@@ -163,21 +381,28 @@ def plot_y_comparison(logs, traj_name, dim, signal_name, plot_title):
     table = table.append(frame1)
     table = table.append(frame2)
 
-  ax = sns.lineplot(x="Time", y="Y", hue="Controller", style="Signal", data=table).set_title(plot_title)
-  plt.legend(bbox_to_anchor=(0,1), loc="upper left", ncol=6)
+  ax = sns.lineplot(x="Time", y="Y", hue="Controller", style="Signal", data=table)
+  ax.set_title(plot_title)
+  ax.set_xlabel("Time (s)")
+  ax.set_ylabel(signal_name + "(m)")
+  plt.legend(bbox_to_anchor=(0, 1), loc="upper left", ncol=2)
 
 def plot_V_comparison(logs, traj_name, plot_title):
   plt.figure("Lyapunov Function")
   table = pd.DataFrame(columns=["Time", "V", "Controller"])
   for log in logs:
     data1 = {"V": log.osc_debug[traj_name].V[log.t_u_slice], #/ np.max(log.osc_debug[traj_name].V[log.t_u_slice]),
-             "Time": log.osc_debug[traj_name].t[log.t_u_slice] - log.osc_debug[traj_name].t[log.t_u_slice.start],
+             "Time": log.osc_debug[traj_name].t[log.t_u_slice], # - log.osc_debug[traj_name].t[log.t_u_slice.start],
              "Controller": log.controller}
     frame1 = pd.DataFrame(data1, columns=["Time", "V", "Controller"])
     table = table.append(frame1)
 
-  ax = sns.lineplot(x="Time", y="V", hue="Controller",  data=table)#.set_title(plot_title)
+  ax = sns.lineplot(x="Time", y="V", hue="Controller",  data=table).set_title(plot_title)
   plt.legend(bbox_to_anchor=(0,1), loc="upper left", ncol=3)
+
+def plot_cv_springs_(logs, traj_name, plot_title):
+  plt.figure("Task Space Coriolis Forces")
+
 
   # controller_channel = sys.argv[2]
   # log = lcm.EventLog(filename, "r")
@@ -349,8 +574,9 @@ def get_crouch_slice(osc_debug, target_height, t_u, t_target_height):
   return slice(t_start_idx, t_stop_idx)
 
 def get_walk_slice(osc_debug, fsm, t_u):
-  t_start = 0.25
-  t_end = t_start + 1.5
+  t_start = 1.555
+  t_end = t_start + 0.3
+
   start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
   return slice(start_time_idx, end_time_idx)

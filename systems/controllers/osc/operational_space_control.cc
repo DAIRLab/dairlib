@@ -768,6 +768,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       Eigen::MatrixXd M(n_v_, n_v_);
       plant_wo_spr_.CalcMassMatrix(*context_wo_spr_, &M);
       osc_output.V = tracking_data->GetVk(M);
+      osc_output.CkYdot = 0;
       output->tracking_data.push_back(osc_output);
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();

@@ -13,13 +13,13 @@
       <material name="grey">
         <color rgba="0.5 0.5 0.5 1"/>
       </material>
-      <origin xyz="1 -0.5 -0.005" rpy="0 0 0"/>
+      <origin xyz="2 -0.5 -0.005" rpy="0 0 0"/>
     </visual>
     <collision>
       <geometry>
         <box size="0.5 1.0 0.01"/>
       </geometry>
-      <origin xyz="1 -0.5 -0.005" rpy="0 0 0"/>
+      <origin xyz="2 -0.5 -0.005" rpy="0 0 0"/>
     </collision>
   </link>
 </robot>

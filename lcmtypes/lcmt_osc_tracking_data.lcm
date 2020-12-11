@@ -17,4 +17,5 @@ struct lcmt_osc_tracking_data
   double yddot_command [ydot_dim];
   double yddot_command_sol [ydot_dim];
   double V;
+  double CkYdot;
 }

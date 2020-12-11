@@ -75,9 +75,9 @@ WalkingSpeedControl::WalkingSpeedControl(
   } else if (footstep_option == 1) {
     // For LIPM neutral point
     k_fp_ff_sagital_ = 0;
-    k_fp_fb_sagital_ = 0.06;
+    k_fp_fb_sagital_ = 0.14;
     k_fp_ff_lateral_ = 0;
-    k_fp_fb_lateral_ = 0.12;
+    k_fp_fb_lateral_ = 0.13;
   }
 }
 

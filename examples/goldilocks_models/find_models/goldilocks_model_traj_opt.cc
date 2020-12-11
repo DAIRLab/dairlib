@@ -107,7 +107,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 3200.0 * rom_scale));
-      } else if (rom_option == 5) {
+      } else if ((rom_option == 5) || (rom_option == 6)) {
         // TODO: The scaling hasn't been tuned yet. These are just guessings
         constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
@@ -220,7 +220,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
             // TODO: The scaling hasn't been tuned yet
             dircon->SetVariableScaling(tau_k(0), tau1_scale);
             dircon->SetVariableScaling(tau_k(1), tau2_scale);
-          } else if (rom_option == 5) {
+          } else if ((rom_option == 5) || (rom_option == 6)) {
             // TODO: The scaling hasn't been tuned yet
             dircon->SetVariableScaling(tau_k(0), tau1_scale);
             dircon->SetVariableScaling(tau_k(1), tau1_scale);
@@ -249,7 +249,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
               // TODO: hasn't added
               W(0, 0) /= (tau1_scale * tau1_scale);
               W(1, 1) /= (tau2_scale * tau2_scale);
-            } else if (rom_option == 5) {
+            } else if ((rom_option == 5) || (rom_option == 6)) {
               // TODO: hasn't added
               W(0, 0) /= (tau1_scale * tau1_scale);
               W(1, 1) /= (tau1_scale * tau1_scale);

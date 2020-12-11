@@ -270,15 +270,15 @@ TEST_F(MonomialFeatureTest, SkipIndices) {
   VectorX<double> qdot(3);
   qdot << 0.3, 0, 0;
 
-  VectorX<double> expected_feature(10);
+  VectorX<double> expected_feature(6);
   expected_feature << 1, 0, 0, 0, 0.5, 0.25;
   EXPECT_TRUE((features.Eval(q) - expected_feature).norm() == 0);
 
-  VectorX<double> expected_JV(10);
+  VectorX<double> expected_JV(6);
   expected_JV << 0, 0.3, 0, 0.15, 0, 0;
   EXPECT_TRUE((features.EvalJV(q, qdot) - expected_JV).norm() == 0);
 
-  VectorX<double> expected_JdotV(10);
+  VectorX<double> expected_JdotV(6);
   expected_JdotV << 0, 0, 0.18, 0, 0, 0;
   EXPECT_TRUE((features.EvalJdotV(q, qdot) - expected_JdotV).norm() == 0);
 }

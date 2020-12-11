@@ -529,8 +529,7 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
 
   // J_b - Jacobian for fourbar linkage
   MatrixXd J_b = fourbar_evaluator_->EvalFullJacobian(*context_);
-  VectorXd JdotV_b =
-      fourbar_evaluator_->EvalFullJacobianDotTimesV(*context_);
+  VectorXd JdotV_b = fourbar_evaluator_->EvalFullJacobianDotTimesV(*context_);
 
   // J_c{l, r} - contact Jacobians and JdotV
   // l - left; r - right
@@ -602,7 +601,7 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
   drake::solvers::EqualityConstrainedQPSolver solver;
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
-                           "FeasibilityTol", 1e-6); // default 1e-12
+                           "FeasibilityTol", 1e-6);  // default 1e-12
   drake::solvers::MathematicalProgramResult result_double =
       solver.Solve(*quadprog_, {}, solver_options);
 
@@ -1279,7 +1278,8 @@ void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
                                                 Eigen::Vector4d quat,
                                                 Vector3d pelvis_pos) const {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(7)
-      << quat, pelvis_pos;
+      << quat,
+      pelvis_pos;
 
   // Update EKF state
   // The imu's and pelvis's frames share the same rotation.
@@ -1323,13 +1323,16 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
     // Subtract a small epsilon value so this event triggers before the publish
     *time = next_message_time_ - eps_;
 
-    UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
-        [this](const Context<double>& c, const UnrestrictedUpdateEvent<double>&,
-               drake::systems::State<double>* s) { this->Update(c, s); };
+    if (is_floating_base_) {
+      UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
+          [this](const Context<double>& c,
+                 const UnrestrictedUpdateEvent<double>&,
+                 drake::systems::State<double>* s) { this->Update(c, s); };
 
-    auto& uu_events = events->get_mutable_unrestricted_update_events();
-    uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
-        drake::systems::TriggerType::kTimed, callback));
+      auto& uu_events = events->get_mutable_unrestricted_update_events();
+      uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+          drake::systems::TriggerType::kTimed, callback));
+    }
   }
 }
 

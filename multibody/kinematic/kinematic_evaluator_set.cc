@@ -230,9 +230,8 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivativesWithForce(
   EvalFullJacobian(*context, &J);
   VectorX<T> J_transpose_lambda = J.transpose() * lambda;
 
-  context->FixInputPort(
-      plant_.get_applied_generalized_force_input_port().get_index(),
-      J_transpose_lambda);
+  plant_.get_applied_generalized_force_input_port().FixValue(
+      context, J_transpose_lambda);
 
   // N.B. Evaluating the generalized acceleration port rather than the time
   // derivatives to ensure that this supports continuous and discrete plants

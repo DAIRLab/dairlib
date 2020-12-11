@@ -60,8 +60,8 @@ void PlannedTrajGuard::ApplyGuard(
   //  The bug could be that we are using RomTrackingData to tracking LIPM traj,
   //  but the ROM is actually using COM wrt feet. Therefore, we just need to not
   //  use this RomTrackingData LIPM
+  // if (planner_timeout || planner_no_solution) {
   if (true) {
-    //  if (planner_timeout || planner_no_solution) {
     // Read in lipm traj
     const auto& lipm_traj =
         this->EvalAbstractInput(context, lipm_port_)

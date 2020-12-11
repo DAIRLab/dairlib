@@ -44,6 +44,7 @@ cc_binary(
         "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
         "//systems/framework:lcm_driven_loop",
         "//systems/framework:vector",
         "//systems/primitives",

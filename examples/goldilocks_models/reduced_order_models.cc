@@ -260,6 +260,7 @@ ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
                                      int n_feature_yddot,
                                      const MonomialFeatures& mapping_basis,
                                      const MonomialFeatures& dynamic_basis,
+                                     const std::set<int>& invariant_elements,
                                      const std::string& name)
     : name_(name),
       n_y_(n_y),
@@ -270,14 +271,27 @@ ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
       n_feature_yddot_(n_feature_yddot),
       mapping_basis_(mapping_basis),
       dynamic_basis_(dynamic_basis),
-      theta_y_(VectorX<double>::Zero(n_y * n_feature_y)),
-      theta_yddot_(VectorX<double>::Zero(n_y * n_feature_yddot)){};
+      theta_y_(VectorX<double>::Zero((n_y - invariant_elements.size()) *
+                                     n_feature_y)),
+      theta_yddot_(VectorX<double>::Zero(n_y * n_feature_yddot)),
+      invariant_elements_(invariant_elements) {
+  for (const auto& element : invariant_elements) {
+    DRAKE_DEMAND(0 <= element);
+    DRAKE_DEMAND(element < n_y);
+  }
+  for (int i = 0; i < n_y; i++) {
+    if (std::find(invariant_elements.begin(), invariant_elements.end(), i) ==
+        invariant_elements.end()) {
+      varying_elements_.insert(i);
+    }
+  }
+};
 
 /// Methods of ReducedOrderModel
 void ReducedOrderModel::CheckModelConsistency() const {
   DRAKE_DEMAND(B_.rows() == n_yddot_);
   DRAKE_DEMAND(B_.cols() == n_tau_);
-  DRAKE_DEMAND(theta_y_.size() == n_y_ * n_feature_y_);
+  DRAKE_DEMAND(theta_y_.size() == varying_elements_.size() * n_feature_y_);
   DRAKE_DEMAND(theta_yddot_.size() == n_yddot_ * n_feature_yddot_);
 };
 void ReducedOrderModel::PrintInfo() const {
@@ -288,6 +302,11 @@ void ReducedOrderModel::PrintInfo() const {
   }
   cout << "n_feature_y = " << n_feature_y_ << endl;
   cout << "n_feature_yddot = " << n_feature_yddot_ << endl;
+  cout << "varying elements of the model = ";
+  for (const auto& element : varying_elements_) {
+    cout << element << ", ";
+  }
+  cout << endl;
 }
 
 VectorX<double> ReducedOrderModel::theta() const {
@@ -313,9 +332,17 @@ VectorX<double> ReducedOrderModel::EvalMappingFunc(
     const VectorX<double>& q, const Context<double>& context) const {
   VectorX<double> phi = EvalMappingFeat(q, context);
 
-  VectorX<double> expression(n_y_);
-  for (int i = 0; i < n_y_; i++) {
-    expression(i) = theta_y_.segment(i * n_feature_y_, n_feature_y_).dot(phi);
+  VectorX<double> expression = VectorX<double>::Zero(n_y_);
+  // Varying parts
+  int row_idx = 0;
+  for (const auto& element : varying_elements_) {
+    expression(element) =
+        theta_y_.segment(row_idx * n_feature_y_, n_feature_y_).dot(phi);
+    row_idx++;
+  }
+  // Invariant parts
+  for (const auto& element : invariant_elements_) {
+    expression(element) = phi(element);
   }
   return expression;
 }
@@ -337,9 +364,17 @@ VectorX<double> ReducedOrderModel::EvalMappingFuncJV(
     const Context<double>& context) const {
   VectorX<double> JV_feat = EvalMappingFeatJV(q, v, context);
 
-  VectorX<double> JV(n_y_);
-  for (int i = 0; i < n_y_; i++) {
-    JV(i) = theta_y_.segment(i * n_feature_y_, n_feature_y_).dot(JV_feat);
+  VectorX<double> JV = VectorX<double>::Zero(n_y_);
+  // Varying parts
+  int row_idx = 0;
+  for (const auto& element : varying_elements_) {
+    JV(element) =
+        theta_y_.segment(row_idx * n_feature_y_, n_feature_y_).dot(JV_feat);
+    row_idx++;
+  }
+  // Invariant parts
+  for (const auto& element : invariant_elements_) {
+    JV(element) = JV_feat(element);
   }
   return JV;
 }
@@ -348,9 +383,17 @@ VectorX<double> ReducedOrderModel::EvalMappingFuncJdotV(
     const Context<double>& context) const {
   VectorX<double> JdotV_feat = EvalMappingFeatJdotV(q, v, context);
 
-  VectorX<double> JdotV(n_y_);
-  for (int i = 0; i < n_y_; i++) {
-    JdotV(i) = theta_y_.segment(i * n_feature_y_, n_feature_y_).dot(JdotV_feat);
+  VectorX<double> JdotV = VectorX<double>::Zero(n_y_);
+  // Varying parts
+  int row_idx = 0;
+  for (const auto& element : varying_elements_) {
+    JdotV(element) =
+        theta_y_.segment(row_idx * n_feature_y_, n_feature_y_).dot(JdotV_feat);
+    row_idx++;
+  }
+  // Invariant parts
+  for (const auto& element : invariant_elements_) {
+    JdotV(element) = JdotV_feat(element);
   }
   return JdotV;
 }
@@ -358,10 +401,18 @@ MatrixX<double> ReducedOrderModel::EvalMappingFuncJ(
     const VectorX<double>& q, const Context<double>& context) const {
   MatrixX<double> J_feat = EvalMappingFeatJ(q, context);
 
-  MatrixX<double> J(n_y_, J_feat.cols());
-  for (int i = 0; i < n_y_; i++) {
-    J.row(i) =
-        theta_y_.segment(i * n_feature_y_, n_feature_y_).transpose() * J_feat;
+  MatrixX<double> J = MatrixX<double>::Zero(n_y_, J_feat.cols());
+  // Varying parts
+  int row_idx = 0;
+  for (const auto& element : varying_elements_) {
+    J.row(element) =
+        theta_y_.segment(row_idx * n_feature_y_, n_feature_y_).transpose() *
+        J_feat;
+    row_idx++;
+  }
+  // Invariant parts
+  for (const auto& element : invariant_elements_) {
+    J.row(element) = J_feat.row(element);
   }
   return J;
 }
@@ -370,11 +421,13 @@ MatrixX<double> ReducedOrderModel::EvalMappingFuncJ(
 Lipm::Lipm(const MultibodyPlant<double>& plant,
            const BodyPoint& stance_contact_point,
            const MonomialFeatures& mapping_basis,
-           const MonomialFeatures& dynamic_basis, int world_dim)
+           const MonomialFeatures& dynamic_basis, int world_dim,
+           const std::set<int>& invariant_elements)
     : ReducedOrderModel(world_dim, 0, MatrixX<double>::Zero(world_dim, 0),
                         world_dim + mapping_basis.length(),
                         (world_dim - 1) + dynamic_basis.length(), mapping_basis,
-                        dynamic_basis, to_string(world_dim) + "D lipm"),
+                        dynamic_basis, invariant_elements,
+                        to_string(world_dim) + "D lipm"),
       plant_(plant),
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
@@ -384,11 +437,12 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)
-  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
-  theta_y(0) = 1;
-  theta_y(1 + n_feature_y()) = 1;
-  if (world_dim == 3) {
-    theta_y(2 + 2 * n_feature_y()) = 1;
+  VectorX<double> theta_y =
+      VectorX<double>::Zero(varying_elements().size() * n_feature_y());
+  int row_index = 0;
+  for (auto element : varying_elements()) {
+    theta_y(element + row_index * n_feature_y()) = 1;
+    row_index++;
   }
   SetThetaY(theta_y);
 
@@ -566,7 +620,8 @@ LipmWithSwingFoot::LipmWithSwingFoot(const MultibodyPlant<double>& plant,
                                      const BodyPoint& swing_contact_point,
                                      const MonomialFeatures& mapping_basis,
                                      const MonomialFeatures& dynamic_basis,
-                                     int world_dim)
+                                     int world_dim,
+                                     const std::set<int>& invariant_elements)
     : ReducedOrderModel(2 * world_dim, world_dim,
                         (MatrixX<double>(2 * world_dim, world_dim)
                              << MatrixX<double>::Zero(world_dim, world_dim),
@@ -574,7 +629,7 @@ LipmWithSwingFoot::LipmWithSwingFoot(const MultibodyPlant<double>& plant,
                             .finished(),
                         2 * world_dim + mapping_basis.length(),
                         (world_dim - 1) + dynamic_basis.length(), mapping_basis,
-                        dynamic_basis,
+                        dynamic_basis, invariant_elements,
                         to_string(world_dim) + "D lipm with swing foot"),
       plant_(plant),
       world_(plant_.world_frame()),
@@ -584,26 +639,24 @@ LipmWithSwingFoot::LipmWithSwingFoot(const MultibodyPlant<double>& plant,
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)
-  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
+  VectorX<double> theta_y =
+      VectorX<double>::Zero(varying_elements().size() * n_feature_y());
   VectorX<double> theta_yddot =
       VectorX<double>::Zero(n_yddot() * n_feature_yddot());
+
+  int row_index = 0;
+  for (auto element : varying_elements()) {
+    theta_y(element + row_index * n_feature_y()) = 1;
+    row_index++;
+  }
+  SetThetaY(theta_y);
+
   if (world_dim == 2) {
-    theta_y(0) = 1;
-    theta_y(1 + n_feature_y()) = 1;
-    theta_y(2 + 2 * n_feature_y()) = 1;
-    theta_y(3 + 3 * n_feature_y()) = 1;
     theta_yddot(0) = 1;
   } else if (world_dim == 3) {
-    theta_y(0) = 1;
-    theta_y(1 + n_feature_y()) = 1;
-    theta_y(2 + 2 * n_feature_y()) = 1;
-    theta_y(3 + 3 * n_feature_y()) = 1;
-    theta_y(4 + 4 * n_feature_y()) = 1;
-    theta_y(5 + 5 * n_feature_y()) = 1;
     theta_yddot(0) = 1;
     theta_yddot(1 + n_feature_yddot()) = 1;
   }
-  SetThetaY(theta_y);
   SetThetaYddot(theta_yddot);
 
   is_quaternion_ = isQuaternion(plant);
@@ -768,10 +821,11 @@ const int FixHeightAccel::kDimension = 1;
 FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
                                const BodyPoint& stance_contact_point,
                                const MonomialFeatures& mapping_basis,
-                               const MonomialFeatures& dynamic_basis)
+                               const MonomialFeatures& dynamic_basis,
+                               const std::set<int>& invariant_elements)
     : ReducedOrderModel(kDimension, 0, MatrixX<double>::Zero(kDimension, 0),
                         1 + mapping_basis.length(), 0 + dynamic_basis.length(),
-                        mapping_basis, dynamic_basis,
+                        mapping_basis, dynamic_basis, invariant_elements,
                         "Fixed COM vertical acceleration"),
       plant_(plant),
       world_(plant_.world_frame()),
@@ -779,10 +833,15 @@ FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
           Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
   // Initialize model parameters (dependant on the feature vectors)
-  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
+  VectorX<double> theta_y =
+      VectorX<double>::Zero(varying_elements().size() * n_feature_y());
   VectorX<double> theta_yddot =
       VectorX<double>::Zero(n_yddot() * n_feature_yddot());
-  theta_y(0) = 1;
+  int row_index = 0;
+  for (auto element : varying_elements()) {
+    theta_y(element + row_index * n_feature_y()) = 1;
+    row_index++;
+  }
   SetThetaY(theta_y);
   SetThetaYddot(theta_yddot);
 
@@ -914,23 +973,28 @@ const int FixHeightAccelWithSwingFoot::kDimension = 3;
 FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
     const MultibodyPlant<double>& plant, const BodyPoint& stance_contact_point,
     const BodyPoint& swing_contact_point, const MonomialFeatures& mapping_basis,
-    const MonomialFeatures& dynamic_basis)
+    const MonomialFeatures& dynamic_basis,
+    const std::set<int>& invariant_elements)
     : ReducedOrderModel(
           kDimension, 2,
           (MatrixX<double>(kDimension, 2) << 0, 0, 1, 0, 0, 1).finished(),
           3 + mapping_basis.length(), 0 + dynamic_basis.length(), mapping_basis,
-          dynamic_basis, "Fixed COM vertical acceleration + 2D swing foot"),
+          dynamic_basis, invariant_elements,
+          "Fixed COM vertical acceleration + 2D swing foot"),
       plant_(plant),
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
       swing_contact_point_(swing_contact_point) {
   // Initialize model parameters (dependant on the feature vectors)
-  VectorX<double> theta_y = VectorX<double>::Zero(n_y() * n_feature_y());
+  VectorX<double> theta_y =
+      VectorX<double>::Zero(varying_elements().size() * n_feature_y());
   VectorX<double> theta_yddot =
       VectorX<double>::Zero(n_yddot() * n_feature_yddot());
-  theta_y(0) = 1;
-  theta_y(1 + n_feature_y()) = 1;
-  theta_y(2 + 2 * n_feature_y()) = 1;
+  int row_index = 0;
+  for (auto element : varying_elements()) {
+    theta_y(element + row_index * n_feature_y()) = 1;
+    row_index++;
+  }
   SetThetaY(theta_y);
   SetThetaYddot(theta_yddot);
 
@@ -1204,7 +1268,7 @@ testing::Com::Com(const drake::multibody::MultibodyPlant<double>& plant,
                   const MonomialFeatures& dynamic_basis)
     : ReducedOrderModel(3, 0, MatrixX<double>::Zero(3, 0),
                         3 + mapping_basis.length(), 2 + dynamic_basis.length(),
-                        mapping_basis, dynamic_basis, "COM"),
+                        mapping_basis, dynamic_basis, {}, "COM"),
       plant_(plant),
       world_(plant_.world_frame()) {
   // Initialize model parameters (dependant on the feature vectors)

@@ -94,6 +94,7 @@ class ReducedOrderModel {
                     int n_feature_y, int n_feature_yddot,
                     const MonomialFeatures& mapping_basis,
                     const MonomialFeatures& dynamic_basis,
+                    const std::set<int>& invariant_elements = {},
                     const std::string& name = "");
 
   // Clone() is used for deep-copying a polymorphic object
@@ -112,6 +113,7 @@ class ReducedOrderModel {
   int n_feature_y() const { return n_feature_y_; };
   int n_feature_yddot() const { return n_feature_yddot_; };
   const drake::MatrixX<double>& B() const { return B_; };
+  const std::set<int>& varying_elements() const { return varying_elements_; };
 
   // Getters for basis functions
   const MonomialFeatures& mapping_basis() const { return mapping_basis_; };
@@ -189,6 +191,10 @@ class ReducedOrderModel {
 
   drake::VectorX<double> theta_y_;
   drake::VectorX<double> theta_yddot_;
+
+  // varying_elements_ indicates the part of ROM that we want to optimize over
+  std::set<int> varying_elements_;
+  std::set<int> invariant_elements_;
 };
 
 /// Linear inverted pendulum model (either 2D or 3D, determined by `world_dim`)
@@ -202,7 +208,8 @@ class Lipm : public ReducedOrderModel {
   Lipm(const drake::multibody::MultibodyPlant<double>& plant,
        const BodyPoint& stance_contact_point,
        const MonomialFeatures& mapping_basis,
-       const MonomialFeatures& dynamic_basis, int world_dim);
+       const MonomialFeatures& dynamic_basis, int world_dim,
+       const std::set<int>& invariant_elements = {});
 
   // Copy constructor for the Clone() method
   // TODO(yminchen): Do we need to explicitly define the copy constructor here?
@@ -261,10 +268,11 @@ class LipmWithSwingFoot : public ReducedOrderModel {
   };
 
   LipmWithSwingFoot(const drake::multibody::MultibodyPlant<double>& plant,
-                          const BodyPoint& stance_contact_point,
-                          const BodyPoint& swing_contact_point,
-                          const MonomialFeatures& mapping_basis,
-                          const MonomialFeatures& dynamic_basis, int world_dim);
+                    const BodyPoint& stance_contact_point,
+                    const BodyPoint& swing_contact_point,
+                    const MonomialFeatures& mapping_basis,
+                    const MonomialFeatures& dynamic_basis, int world_dim,
+                    const std::set<int>& invariant_elements = {});
 
   // Copy constructor for the Clone() method
   LipmWithSwingFoot(const LipmWithSwingFoot&);
@@ -317,7 +325,8 @@ class FixHeightAccel : public ReducedOrderModel {
   FixHeightAccel(const drake::multibody::MultibodyPlant<double>& plant,
                  const BodyPoint& stance_contact_point,
                  const MonomialFeatures& mapping_basis,
-                 const MonomialFeatures& dynamic_basis);
+                 const MonomialFeatures& dynamic_basis,
+                 const std::set<int>& invariant_elements = {});
 
   // Copy constructor for the Clone() method
   FixHeightAccel(const FixHeightAccel&);
@@ -370,7 +379,8 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
       const BodyPoint& stance_contact_point,
       const BodyPoint& swing_contact_point,
       const MonomialFeatures& mapping_basis,
-      const MonomialFeatures& dynamic_basis);
+      const MonomialFeatures& dynamic_basis,
+      const std::set<int>& invariant_elements = {});
 
   // Copy constructor for the Clone() method
   FixHeightAccelWithSwingFoot(const FixHeightAccelWithSwingFoot&);

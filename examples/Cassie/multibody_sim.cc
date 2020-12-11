@@ -174,7 +174,9 @@ int do_main(int argc, char* argv[]) {
                                     &lambda_init);
   }
   plant.SetPositions(&plant_context, q_init);
-  plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
+  VectorXd v_init = VectorXd::Zero(plant.num_velocities());
+  v_init(4) += 0.3;
+  plant.SetVelocities(&plant_context, v_init);
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

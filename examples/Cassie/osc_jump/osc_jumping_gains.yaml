@@ -1,0 +1,53 @@
+w_input: 2
+w_accel: 0.000001
+w_soft_constraint: 20000
+x_offset: 0.07
+
+w_swing_toe: 100
+swing_toe_kp: 1000
+swing_toe_kd: 50
+
+w_hip_yaw: 100
+hip_yaw_kp: 1000
+hip_yaw_kd: 10
+
+t_delay_toe_ang: 0.000
+t_delay_ft_pos: 0.00
+
+CoMW:
+  [2000,  0,    0,
+   0,   200,    0,
+   0,     0, 2000]
+PelvisRotW:
+  [100,  0,   0,
+   0,  100,   0,
+   0,    0,  100]
+FlightFootW:
+  [400,   0,    0,
+   0,   400,    0,
+   0,     0,  400]
+CoMKp:
+  [ 50,   0,    0,
+     0,  50,    0,
+     0,   0,  100]
+CoMKd:
+  [  5,    0,   0,
+     0,    5,   0,
+     0,    0,   5]
+PelvisRotKp:
+  [900,   0,   0,
+     0, 500,   0,
+     0,   0,   0]
+PelvisRotKd:
+  [10,   0,  0,
+    0,  10,  0,
+    0,   0,  0]
+FlightFootKp:
+  [200,   0,    0,
+   0,   200,    0,
+   0,     0,  400]
+FlightFootKd:
+  [ 5,   0,   0,
+    0,   5,   0,
+    0,   0,   5]
+

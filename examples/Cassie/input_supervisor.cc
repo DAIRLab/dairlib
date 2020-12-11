@@ -135,10 +135,10 @@ void InputSupervisor::SetStatus(
                                                         command_input_port_);
 
   output->status =
-      context.get_discrete_state(status_vars_index_)[status_index_];
+      int(context.get_discrete_state(status_vars_index_)[status_index_]);
   output->utime = command->get_timestamp() * 1e6;
   output->vel_limit =
-      context.get_discrete_state(status_vars_index_)[status_index_];
+      bool(context.get_discrete_state(status_vars_index_)[status_index_]);
 
   if (input_limit_ != std::numeric_limits<double>::max()) {
     for (int i = 0; i < command->get_data().size(); i++) {
@@ -163,7 +163,7 @@ void InputSupervisor::SetStatus(
   if((command->get_timestamp() -
       context.get_discrete_state(prev_efforts_time_index_)[0] >
       kMaxControllerDelay)){
-    output->act_delay = 1;
+    output->act_delay = true;
     output->shutdown = true;
   }
 }
@@ -200,8 +200,9 @@ void InputSupervisor::UpdateErrorFlag(
       // Increment counter
       discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] +=
           1;
+      // Using the discrete state which is a vector of doubles to store a bool
       discrete_state->get_mutable_vector(status_vars_index_)[status_index_] =
-          true;
+          double(true);
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error "
@@ -216,7 +217,7 @@ void InputSupervisor::UpdateErrorFlag(
       discrete_state->get_mutable_vector(status_vars_index_)[n_fails_index_] =
           0;
       discrete_state->get_mutable_vector(status_vars_index_)[status_index_] =
-          false;
+          double(false);
     }
   }
 

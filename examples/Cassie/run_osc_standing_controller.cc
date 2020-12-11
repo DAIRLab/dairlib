@@ -292,29 +292,32 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&hip_yaw_left_tracking, 0.0 * VectorXd::Ones(1));
   osc->AddConstTrackingData(&hip_yaw_right_tracking, 0.0 * VectorXd::Ones(1));
 
-  //  MatrixXd pos_cov = MatrixXd::Zero(plant_w_springs.num_positions(),
-  //                                    plant_w_springs.num_positions());
-  //  MatrixXd vel_cov = MatrixXd::Zero(plant_w_springs.num_velocities(),
-  //                                    plant_w_springs.num_velocities());
+  MatrixXd pos_cov = MatrixXd::Zero(plant_w_springs.num_positions(),
+                                    plant_w_springs.num_positions());
+  MatrixXd vel_cov = MatrixXd::Zero(plant_w_springs.num_velocities(),
+                                    plant_w_springs.num_velocities());
   // Add Noise
-  MatrixXd pos_cov = 0.01 * MatrixXd::Identity(plant_w_springs.num_positions(),
-                                               plant_w_springs.num_positions());
-  MatrixXd vel_cov = 0.1 * MatrixXd::Identity(plant_w_springs.num_velocities(),
-                                              plant_w_springs.num_velocities());
-  vel_cov(0, 0) = 1;
-  auto noise_passthrough = builder.AddSystem<systems::GaussianNoisePassThrough>(
-      plant_w_springs.num_positions(), plant_w_springs.num_velocities(),
-      plant_w_springs.num_actuators(), pos_cov, vel_cov);
+  //  MatrixXd pos_cov = 0.01 *
+  //  MatrixXd::Identity(plant_w_springs.num_positions(),
+  //                                               plant_w_springs.num_positions());
+  //  MatrixXd vel_cov = 0.1 *
+  //  MatrixXd::Identity(plant_w_springs.num_velocities(),
+  //                                              plant_w_springs.num_velocities());
+  //  vel_cov(0, 0) = 1;
+  //  auto noise_passthrough =
+  //  builder.AddSystem<systems::GaussianNoisePassThrough>(
+  //      plant_w_springs.num_positions(), plant_w_springs.num_velocities(),
+  //      plant_w_springs.num_actuators(), pos_cov, vel_cov);
 
   // Build OSC problem
   osc->Build();
   // Connect ports
-  //  builder.Connect(state_receiver->get_output_port(0),
-  //                  osc->get_robot_output_input_port());
   builder.Connect(state_receiver->get_output_port(0),
-                  noise_passthrough->get_input_port());
-  builder.Connect(noise_passthrough->get_output_port(),
                   osc->get_robot_output_input_port());
+  //  builder.Connect(state_receiver->get_output_port(0),
+  //                  noise_passthrough->get_input_port());
+  //  builder.Connect(noise_passthrough->get_output_port(),
+  //                  osc->get_robot_output_input_port());
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());

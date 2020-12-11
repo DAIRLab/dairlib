@@ -72,7 +72,7 @@ class LcmDrivenLoop {
                 const std::string& input_channel, bool is_forced_publish)
       : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
                       std::vector<std::string>(1, input_channel), input_channel,
-                      nullptr, is_forced_publish){};
+                      "", is_forced_publish){};
 
   /// Constructor for multi-input LcmDrivenLoop
   ///     @param drake_lcm DrakeLcm
@@ -88,11 +88,9 @@ class LcmDrivenLoop {
                 const drake::systems::LeafSystem<double>* lcm_parser,
                 std::vector<std::string> input_channels,
                 const std::string& active_channel,
-                const drake::systems::lcm::LcmSubscriberSystem* switch_sub,
-                bool is_forced_publish)
+                const std::string& switch_channel, bool is_forced_publish)
       : drake_lcm_(drake_lcm),
         lcm_parser_(lcm_parser),
-        switch_sub_(switch_sub),
         is_forced_publish_(is_forced_publish) {
     // Move simulator
     if (!diagram->get_name().empty()) {
@@ -105,10 +103,9 @@ class LcmDrivenLoop {
     // Create subscriber for the switch (in the case of multi-input)
     DRAKE_DEMAND(!input_channels.empty());
     if (input_channels.size() > 1) {
-      //      DRAKE_DEMAND(!switch_channel.empty());
-      //      switch_sub_ =
-      //      std::make_unique<drake::lcm::Subscriber<SwitchMessageType>>(
-      //          drake_lcm_, switch_channel);
+      DRAKE_DEMAND(!switch_channel.empty());
+      switch_sub_ = std::make_unique<drake::lcm::Subscriber<SwitchMessageType>>(
+          drake_lcm_, switch_channel);
     }
 
     // Create subscribers for inputs
@@ -200,46 +197,12 @@ class LcmDrivenLoop {
           is_new_input_message = true;
         }
         if (switch_sub_ != nullptr) {
-          if (switch_sub_->GetInternalMessageCount() > switch_msg_count_) {
+          if (switch_sub_->count() > 0) {
             is_new_switch_message = true;
-            std::cout << switch_sub_->GetInternalMessageCount() << " messages in context\n";
           }
         }
         return is_new_input_message || is_new_switch_message;
       });
-
-
-      // Update the name of the active channel if there are multiple inputs and
-      // there is new switch message
-      if (is_new_switch_message) {
-        // Check if the channel name is a key of the map. If it is, we update
-        // the active channel name and clear switch_sub_'s message. If it is
-        // not we do not update the active channel name.
-        auto switch_signal = std::make_unique<drake::Value<lcmt_controller_switch>>();
-        switch_sub_->WaitForMessage(switch_msg_count_, switch_signal.get(), 1e-3);
-        if (name_to_input_sub_map_.count(switch_signal->get_value().channel) == 1) {
-          active_channel_ = switch_signal->get_value().channel;
-        } else {
-          std::cout << switch_signal->get_value().channel << " doesn't exist\n";
-        }
-        switch_msg_count_ = switch_sub_->GetInternalMessageCount();
-
-        simulator_->AdvanceTo(time);
-        if (is_forced_publish_) {
-          // Force-publish via the diagram
-          diagram_ptr_->Publish(diagram_context);
-        }
-
-        // Clear messages in the switch channel
-//        switch_sub_->clear();
-
-        // Clear messages in the new input channel if we just switched input
-        // channel in the current loop
-        if (previous_active_channel_name.compare(active_channel_) != 0) {
-          name_to_input_sub_map_.at(active_channel_).clear();
-        }
-      }
-      previous_active_channel_name = active_channel_;
 
       // Update the diagram context when there is new input message
       if (is_new_input_message) {
@@ -278,7 +241,40 @@ class LcmDrivenLoop {
         name_to_input_sub_map_.at(active_channel_).clear();
       }
 
+      // Update the name of the active channel if there are multiple inputs and
+      // there is new switch message
+      if (is_new_switch_message) {
+        // Check if the channel name is a key of the map. If it is, we update
+        // the active channel name and clear switch_sub_'s message. If it is
+        // not we do not update the active channel name.
+        if (name_to_input_sub_map_.count(switch_sub_->message().channel) == 1) {
+          active_channel_ = switch_sub_->message().channel;
+        } else {
+          std::cout << switch_sub_->message().channel << " doesn't exist\n";
+        }
 
+        // Advancing the simulator here ensure that the switch message is
+        // received in the leaf systems without the encountering a race
+        // condition when constructing a separate LcmSubscriberSystem that
+        // listens to the same channel. Advancing the simulator, ensures that
+        // the LCM message used here successfully arrives at the input port of
+        // the other LcmSubscriberSystem
+        simulator_->AdvanceTo(time);
+        if (is_forced_publish_) {
+          // Force-publish via the diagram
+          diagram_ptr_->Publish(diagram_context);
+        }
+
+        // Clear messages in the switch channel
+        switch_sub_->clear();
+
+        // Clear messages in the new input channel if we just switched input
+        // channel in the current loop
+        if (previous_active_channel_name.compare(active_channel_) != 0) {
+          name_to_input_sub_map_.at(active_channel_).clear();
+        }
+      }
+      previous_active_channel_name = active_channel_;
     }
   };
 
@@ -288,12 +284,10 @@ class LcmDrivenLoop {
   const drake::systems::LeafSystem<double>* lcm_parser_;
   std::unique_ptr<drake::systems::Simulator<double>> simulator_;
 
-  int switch_msg_count_ = 0;
   std::string diagram_name_ = "diagram";
   std::string active_channel_;
-  //  std::unique_ptr<drake::lcm::Subscriber<SwitchMessageType>> switch_sub_ =
-  //      nullptr;
-  const drake::systems::lcm::LcmSubscriberSystem* switch_sub_ = nullptr;
+  std::unique_ptr<drake::lcm::Subscriber<SwitchMessageType>> switch_sub_ =
+      nullptr;
   std::map<std::string, drake::lcm::Subscriber<InputMessageType>>
       name_to_input_sub_map_;
 

@@ -25,9 +25,10 @@ DEFINE_string(switch_channel, "INPUT_SWITCH",
 DEFINE_string(new_channel, "PD_CONTROLLER",
               "The name of the new lcm channel that dispatcher_in listens to "
               "after switch");
-DEFINE_int32(n_publishes, 1,
+DEFINE_int32(n_publishes, 10,
              "The simulation gets updated until it publishes the channel name "
              "n_publishes times");
+
 DEFINE_int32(n_period_delay, -1,
              "the number of periods before we start publishing the new channel "
              "name. If the value is non-positive, the channel name is published"
@@ -109,8 +110,8 @@ int do_main(int argc, char* argv[]) {
   double t_threshold = t0;
   if (FLAGS_n_period_delay > 0) {
     t_threshold = (floor(t0 / FLAGS_fsm_period) + FLAGS_n_period_delay) *
-                      FLAGS_fsm_period +
-                  FLAGS_fsm_offset;
+        FLAGS_fsm_period +
+        FLAGS_fsm_offset;
   }
   // Create output message
   dairlib::lcmt_controller_switch msg;

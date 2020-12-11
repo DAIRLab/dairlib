@@ -622,7 +622,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
 //  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
 //                  osc->get_tracking_data_input_port("optimal_rom_traj"));
-// Testing
+// Testing -- using lipm all the time
+// TODO: the bug comes from ROM is using position wrt foot but lipm traj input is global
   builder.Connect(lipm_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("optimal_rom_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),

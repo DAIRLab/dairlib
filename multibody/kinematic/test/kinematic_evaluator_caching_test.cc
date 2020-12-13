@@ -72,12 +72,68 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
   cout << "***** baseline tests (" << std::to_string(N) << ") *****" << endl;
   auto start =  my_clock::now();
   for (int i = 0; i < N; i++) {
+    Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
+    q = Eigen::VectorXd::Random(plant.num_positions());
+    plant.SetPositions(context.get(), q);
+    evaluators.plant().CalcMassMatrix(*context, &M);
+  }
+  auto stop =  my_clock::now();
+  auto duration =
+    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "M:\t" << (1.0*duration.count())/N << endl;
+
+  start =  my_clock::now();
+  for (int i = 0; i < N; i++) {
+    q = Eigen::VectorXd::Random(plant.num_positions());
+    v = Eigen::VectorXd::Random(plant.num_velocities());
+    plant.SetPositions(context.get(), q);
+    Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
+    evaluators.plant().CalcMassMatrix(*context, &M);
+    auto res = M.llt();
+  }
+  stop =  my_clock::now();
+  duration =
+    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "M.llt:\t" << (1.0*duration.count())/N << endl;
+
+  start =  my_clock::now();
+  for (int i = 0; i < N; i++) {
+    q = Eigen::VectorXd::Random(plant.num_positions());
+    v = Eigen::VectorXd::Random(plant.num_velocities());
+    plant.SetPositions(context.get(), q);
+    plant.SetVelocities(context.get(), v);
+    VectorXd C(plant.num_velocities());
+    plant.CalcBiasTerm(*context, &C);
+  }
+  stop =  my_clock::now();
+  duration =
+    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "C:\t" << (1.0*duration.count())/N << endl;
+
+  start =  my_clock::now();
+  for (int i = 0; i < N; i++) {
+    q = Eigen::VectorXd::Random(plant.num_positions());
+    v = Eigen::VectorXd::Random(plant.num_velocities());
+    plant.SetPositions(context.get(), q);
+    plant.SetVelocities(context.get(), v);
+    VectorXd C(plant.num_velocities());
+    plant.CalcBiasTerm(*context, &C);
+    Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
+    evaluators.plant().CalcMassMatrix(*context, &M);
+  }
+  stop =  my_clock::now();
+  duration =
+    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "C,M:\t" << (1.0*duration.count())/N << endl;
+
+  start =  my_clock::now();
+  for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     plant.SetPositions(context.get(), q);
     auto tmp = evaluators.EvalFull(*context);
   }
-  auto stop =  my_clock::now();
-  auto duration =
+  stop =  my_clock::now();
+  duration =
     std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   cout << "phi:\t" << (1.0*duration.count())/N << endl;
 
@@ -119,6 +175,34 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
   cout << "set qv:\t" << (1.0*duration.count())/N << endl;
 
  cout << "***** 2X tests (" << std::to_string(N) << ") *****" << endl;
+  start =  my_clock::now();
+  for (int i = 0; i < N; i++) {
+    Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
+    q = Eigen::VectorXd::Random(plant.num_positions());
+    plant.SetPositions(context.get(), q);
+    evaluators.plant().CalcMassMatrix(*context, &M);
+    evaluators.plant().CalcMassMatrix(*context, &M);
+  }
+  stop =  my_clock::now();
+  duration =
+    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "M:\t" << (1.0*duration.count())/N << endl;
+
+  start =  my_clock::now();
+  for (int i = 0; i < N; i++) {
+    q = Eigen::VectorXd::Random(plant.num_positions());
+    v = Eigen::VectorXd::Random(plant.num_velocities());
+    plant.SetPositions(context.get(), q);
+    plant.SetVelocities(context.get(), v);
+    VectorXd C(plant.num_velocities());
+    plant.CalcBiasTerm(*context, &C);
+    plant.CalcBiasTerm(*context, &C);
+  }
+  stop =  my_clock::now();
+  duration =
+    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "C:\t" << (1.0*duration.count())/N << endl;
+
   start =  my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
@@ -225,8 +309,6 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(filename);
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);

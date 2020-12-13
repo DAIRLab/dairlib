@@ -1,6 +1,7 @@
 #include "systems/controllers/lipm_traj_gen.h"
 
 #include <math.h>
+
 #include <string>
 
 using std::cout;
@@ -28,13 +29,14 @@ namespace dairlib {
 namespace systems {
 
 LIPMTrajGenerator::LIPMTrajGenerator(
-    const MultibodyPlant<double>& plant, double desired_com_height,
-    const vector<int>& unordered_fsm_states,
+    const MultibodyPlant<double>& plant, Context<double>* context,
+    double desired_com_height, const vector<int>& unordered_fsm_states,
     const vector<double>& unordered_state_durations,
-    const vector<vector<std::pair<
-        const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
+    const vector<vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>>&
         contact_points_in_each_state)
     : plant_(plant),
+      context_(context),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
@@ -54,52 +56,14 @@ LIPMTrajGenerator::LIPMTrajGenerator(
                                                         plant.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_switch_time_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+
   // Provide an instance to allocate the memory first (for the output)
-  PiecewisePolynomial<double> pp_part(VectorXd(0));
-  MatrixXd K = MatrixXd::Ones(0, 0);
-  MatrixXd A = MatrixXd::Identity(0, 0);
-  MatrixXd alpha = MatrixXd::Ones(0, 0);
-  ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
+  ExponentialPlusPiecewisePolynomial<double> exp;
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   this->DeclareAbstractOutputPort("lipm_traj", traj_inst,
                                   &LIPMTrajGenerator::CalcTraj);
-
-  // Discrete state event
-  DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);
-  // The time of the last touch down
-  prev_td_time_idx_ = this->DeclareDiscreteState(1);
-  // The last state of FSM
-  prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
-
-  // Create context
-  context_ = plant_.CreateDefaultContext();
-}
-
-EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
-    const Context<double>& context,
-    DiscreteValues<double>* discrete_state) const {
-  // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
-
-  auto prev_td_time =
-      discrete_state->get_mutable_vector(prev_td_time_idx_).get_mutable_value();
-  auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-                            .get_mutable_value();
-
-  if (fsm_state(0) != prev_fsm_state(0)) {  // if at touchdown
-    prev_fsm_state(0) = fsm_state(0);
-
-    // Get time
-    const OutputVector<double>* robot_output =
-        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-    double timestamp = robot_output->get_timestamp();
-    double current_time = static_cast<double>(timestamp);
-    prev_td_time(0) = current_time;
-  }
-
-  return EventStatus::Succeeded();
 }
 
 void LIPMTrajGenerator::CalcTraj(
@@ -114,6 +78,9 @@ void LIPMTrajGenerator::CalcTraj(
   const BasicVector<double>* fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
+  // Read in finite state machine switch time
+  VectorXd prev_event_time =
+      this->EvalVectorInput(context, fsm_switch_time_port_)->get_value();
 
   // Find fsm_state in unordered_fsm_states_
   auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
@@ -125,16 +92,12 @@ void LIPMTrajGenerator::CalcTraj(
     mode_index = 0;
   }
 
-  // Get discrete states
-  const auto prev_td_time =
-      context.get_discrete_state(prev_td_time_idx_).get_value();
-
   // Get time
   double timestamp = robot_output->get_timestamp();
   auto current_time = static_cast<double>(timestamp);
 
   double end_time_of_this_fsm_state =
-      prev_td_time(0) + unordered_state_durations_[mode_index];
+      prev_event_time(0) + unordered_state_durations_[mode_index];
   // Ensure "current_time < end_time_of_this_fsm_state" to avoid error in
   // creating trajectory.
   if ((end_time_of_this_fsm_state <= current_time + 0.001)) {
@@ -142,7 +105,7 @@ void LIPMTrajGenerator::CalcTraj(
   }
 
   VectorXd q = robot_output->GetPositions();
-  plant_.SetPositions(context_.get(), q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
   Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
@@ -176,8 +139,7 @@ void LIPMTrajGenerator::CalcTraj(
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   // Note that the start time in T_waypoint_com is also used by
   // ExponentialPlusPiecewisePolynomial.
-  vector<double> T_waypoint_com = {current_time,
-                                        end_time_of_this_fsm_state};
+  vector<double> T_waypoint_com = {current_time, end_time_of_this_fsm_state};
 
   vector<MatrixXd> Y(T_waypoint_com.size(), MatrixXd::Zero(3, 1));
   Y[0](0, 0) = stance_foot_pos(0);

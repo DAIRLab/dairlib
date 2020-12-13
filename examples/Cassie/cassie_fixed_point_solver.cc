@@ -29,25 +29,25 @@ void CassieFixedPointSolver(
   evaluators.add_evaluator(&right_loop);
 
   // Add contact points
-  auto left_toe = LeftToe(plant);
+  auto left_toe = LeftToeFront(plant);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(plant,
       left_toe.first, left_toe.second, Eigen::Matrix3d::Identity(),
       Eigen::Vector3d(0, toe_spread, 0), {1, 2});
   evaluators.add_evaluator(&left_toe_evaluator);
 
-  auto left_heel = LeftHeel(plant);
+  auto left_heel = LeftToeRear(plant);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(plant,
       left_heel.first, left_heel.second, Eigen::Vector3d(0,0,1),
       Eigen::Vector3d::Zero(), false);
   evaluators.add_evaluator(&left_heel_evaluator);
 
-  auto right_toe = RightToe(plant);
+  auto right_toe = RightToeFront(plant);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(plant,
       right_toe.first, right_toe.second, Eigen::Matrix3d::Identity(),
       Eigen::Vector3d(0, -toe_spread, 0), {1, 2});
   evaluators.add_evaluator(&right_toe_evaluator);
 
-  auto right_heel = RightHeel(plant);
+  auto right_heel = RightToeRear(plant);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(plant,
       right_heel.first, right_heel.second, Eigen::Vector3d(0,0,1),
       Eigen::Vector3d::Zero(), false);
@@ -83,8 +83,8 @@ void CassieFixedPointSolver(
       q(positions_map.at("hip_pitch_right")));
   program.AddConstraint(q(positions_map.at("hip_roll_left")) ==
       -q(positions_map.at("hip_roll_right")));
-  program.AddConstraint(q(positions_map.at("hip_yaw_right")) ==
-      -q(positions_map.at("hip_yaw_left")));
+  program.AddConstraint(q(positions_map.at("hip_yaw_right")) == 0);
+  program.AddConstraint(q(positions_map.at("hip_yaw_left")) == 0);
 
   // Add some contact force constraints: linear version
   if (linear_friction_cone) {

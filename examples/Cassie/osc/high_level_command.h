@@ -40,8 +40,10 @@ namespace osc {
 class HighLevelCommand : public drake::systems::LeafSystem<double> {
  public:
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::systems::Context<double>* context,
                    const Eigen::Vector2d& global_target_position,
-                   const Eigen::Vector2d& params_of_no_turning);
+                   const Eigen::Vector2d& params_of_no_turning,
+                   int footstep_option);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -67,12 +69,13 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
       drake::systems::BasicVector<double>* output) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
 
-  std::unique_ptr<drake::systems::Context<double>> context_;
+//  std::unique_ptr<drake::systems::Context<double>> context_;
 
   // Port index
   int state_port_;
@@ -91,17 +94,17 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   double vel_min_yaw_ = -0.5;
 
   // Position control (sagital plane) parameters
-  double kp_pos_sagital_ = 1.0;
-  double kd_pos_sagital_ = 0.2;
+  double kp_pos_sagital_;
+  double kd_pos_sagital_;
   double vel_max_sagital_ = 1;
   double vel_min_sagital_ = -1;       // TODO(yminchen): need to test this
   double target_pos_offset_ = -0.16;  // Due to steady state error
 
   // Position control (frontal plane) parameters
-  double kp_pos_lateral_ = 0.5;
-  double kd_pos_lateral_ = 0.1;
-  double vel_max_lateral_ = 0.5;
-  double vel_min_lateral_ = -0.5;
+  double kp_pos_lateral_;
+  double kd_pos_lateral_;
+  double vel_max_lateral_;
+  double vel_min_lateral_;
 };
 
 }  // namespace osc

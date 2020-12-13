@@ -2,6 +2,16 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "common",
+    deps = [
+        ":find_resource",
+        ":eigen_utils",
+        ":file_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "find_resource",
     srcs = ["find_resource.cc"],
     hdrs = [
         "find_resource.h",
@@ -22,4 +32,19 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+
+cc_library(
+    name = "file_utils",
+    srcs = [
+        "file_utils.cc",
+    ],
+    hdrs = [
+        "file_utils.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 

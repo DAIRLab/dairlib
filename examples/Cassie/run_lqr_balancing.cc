@@ -1,6 +1,7 @@
 #include <gflags/gflags.h>
 
 #include "drake/lcm/drake_lcm.h"
+#include "drake/math/autodiff.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -40,6 +41,9 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
+using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
+
 using Eigen::VectorXd;
 
 int do_main(int argc, char* argv[]) {
@@ -109,21 +113,21 @@ int do_main(int argc, char* argv[]) {
 
   // Add contact points. Tangent basis must now be active, to treat these
   // as true constraints.
-  auto left_toe = LeftToe(*plant_ad);
+  auto left_toe = LeftToeFront(*plant_ad);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(*plant_ad,
       left_toe.first, left_toe.second, Eigen::Matrix3d::Identity(),
       Eigen::Vector3d::Zero(), {1,2});
 
-  auto right_toe = RightToe(*plant_ad);
+  auto right_toe = RightToeFront(*plant_ad);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(*plant_ad,
       right_toe.first, right_toe.second, Eigen::Matrix3d::Identity(),
       Eigen::Vector3d::Zero(), {1,2});
 
-  auto left_heel = LeftHeel(*plant_ad);
+  auto left_heel = LeftToeRear(*plant_ad);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(*plant_ad,
       left_heel.first, left_heel.second);
 
-  auto right_heel = RightHeel(*plant_ad);
+  auto right_heel = RightToeRear(*plant_ad);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(*plant_ad,
       right_heel.first, right_heel.second);
 
@@ -146,7 +150,8 @@ int do_main(int argc, char* argv[]) {
   AutoDiffVecXd u_ad = xul_ad.segment(plant.num_positions()
       + plant.num_velocities(), plant.num_actuators());
 
-  auto context_autodiff = multibody::createContext(*plant_ad, x_ad, u_ad);
+  auto context_autodiff =
+      multibody::createContext<AutoDiffXd>(*plant_ad, x_ad, u_ad);
 
   // controller gains
   Eigen::MatrixXd Q =

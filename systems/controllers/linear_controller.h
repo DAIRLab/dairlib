@@ -8,6 +8,8 @@ using Eigen::MatrixXd;
 using drake::systems::LeafSystem;
 using drake::systems::Context;
 
+static constexpr double kMaxError = 1.0;
+
 namespace dairlib{
 namespace systems {
 
@@ -34,8 +36,6 @@ class LinearController : public LeafSystem<double> {
 
   VectorXd x_des_;
   MatrixXd K_;
-  int num_states_;
-  int num_inputs_;
 };
 
 /// Implementation of TimestampedVector to store, set, and get a linear

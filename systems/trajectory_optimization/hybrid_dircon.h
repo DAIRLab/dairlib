@@ -56,6 +56,14 @@ class HybridDircon
 
   ~HybridDircon() override {}
 
+  /// Returns a vector of matrices containing the state and derivative values at
+  /// each breakpoint at the solution for each mode of the trajectory.
+  void GetStateAndDerivativeSamples(
+      const drake::solvers::MathematicalProgramResult& result,
+      std::vector<Eigen::MatrixXd>* state_samples,
+      std::vector<Eigen::MatrixXd>* derivative_samples,
+      std::vector<Eigen::VectorXd>* state_breaks) const;
+
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory(
@@ -73,10 +81,11 @@ class HybridDircon
   ///   vector containing the nubmer of poses to show per mode. This is in
   ///   addition to the start/end poses of every mode! The total number of poses
   ///   is therefore [sum(poses_per_mode) + num_modes + 1]
+  /// @param alpha A transparency scaler for all poses except the first and last
   /// @param weld_frame_to_world The name of a frame to weld to the world frame
   ///   when parsing the model. Defaults to blank, which will not perform a weld
   void CreateVisualizationCallback(std::string model_file,
-      std::vector<unsigned int> poses_per_mode,
+      std::vector<unsigned int> poses_per_mode, double alpha = 1,
       std::string weld_frame_to_world = "");
 
   /// See CreateVisualizationCallback(std::string model_file,
@@ -88,14 +97,15 @@ class HybridDircon
   /// of frames in that mode. Since start/end poses per mdoe are required, must
   /// have num_poses >= num_modes + 1
   void CreateVisualizationCallback(std::string model_file,
-      unsigned int num_poses, std::string weld_frame_to_world = "");
+      unsigned int num_poses, double alpha = 1,
+      std::string weld_frame_to_world = "");
 
   /// See CreateVisualizationCallback(std::string model_file,
   ///    unsigned int poses_per_mode,
   ///    std::string weld_frame_to_world)
   ///
   /// Creates a visualization callback that shows all knot points.
-  void CreateVisualizationCallback(std::string model_file,
+  void CreateVisualizationCallback(std::string model_file, double alpha = 1,
       std::string weld_frame_to_world = "");
 
   /// Set the initial guess for the force variables for a specific mode
@@ -115,6 +125,10 @@ class HybridDircon
   int num_kinematic_constraints_wo_skipping(int mode) const {
     return num_kinematic_constraints_wo_skipping_[mode];
   }
+
+  int num_modes() const { return num_modes_; }
+
+  std::vector<int> mode_lengths() const { return mode_lengths_; }
 
   const drake::solvers::VectorXDecisionVariable& force_vars(int mode) const {
     return force_vars_[mode];

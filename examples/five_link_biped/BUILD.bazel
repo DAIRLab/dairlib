@@ -1,0 +1,17 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+cc_binary(
+    name = "run_dircon_walking",
+    srcs = ["run_dircon_walking.cc"],
+    data = [":five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//lcm:trajectory_saver",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+

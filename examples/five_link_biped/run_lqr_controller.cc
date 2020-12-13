@@ -15,17 +15,14 @@
 #include "multibody/visualization_utils.h"
 #include "systems/controllers/hybrid_lqr.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/goldilocks_models/file_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
-#include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -90,7 +87,6 @@ namespace dairlib {
 
 using drake::AutoDiffVecXd;
 using drake::multibody::Frame;
-using multibody::GetBodyIndexFromName;
 using multibody::KinematicEvaluatorSet;
 using multibody::WorldPointEvaluator;
 using systems::SubvectorPassThrough;
@@ -124,7 +120,7 @@ int doMain(int argc, char* argv[]) {
 
   const LcmTrajectory& loaded_traj =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  for (const auto& name : loaded_traj.getTrajectoryNames()) {
+  for (const auto& name : loaded_traj.GetTrajectoryNames()) {
     std::cout << name << std::endl;
   }
   int nq = plant.num_positions();
@@ -132,12 +128,12 @@ int doMain(int argc, char* argv[]) {
   int nx = nq + nv;
   int nu = plant.num_actuators();
 
-  int num_modes = loaded_traj.getTrajectoryNames().size();
+  int num_modes = loaded_traj.GetTrajectoryNames().size();
   std::vector<PiecewisePolynomial<double>> state_trajs;
   std::vector<PiecewisePolynomial<double>> input_trajs;
   for (int mode = 0; mode < num_modes; ++mode) {
     const LcmTrajectory::Trajectory& state_and_input =
-        loaded_traj.getTrajectory("walking_trajectory_x_u" +
+        loaded_traj.GetTrajectory("walking_trajectory_x_u" +
                                   std::to_string(mode));
     state_trajs.push_back(
         PiecewisePolynomial<double>(PiecewisePolynomial<double>::CubicHermite(

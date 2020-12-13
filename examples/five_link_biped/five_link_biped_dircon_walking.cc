@@ -331,7 +331,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
     LcmTrajectory saved_traj(
         trajectories, trajectory_names, "walking_trajectory",
         "State and input trajectory for walking (2 contacts)");
-    saved_traj.writeToFile("../projects/five_link_biped/hybrid_lqr/saved_trajs"
+    saved_traj.WriteToFile("../projects/five_link_biped/hybrid_lqr/saved_trajs"
                            "/" +
                            FLAGS_file_name);
     for (double t : state_traj.get_segment_times()) {

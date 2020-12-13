@@ -10,7 +10,6 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/analysis/initial_value_problem.h"
 #include "drake/systems/controllers/linear_quadratic_regulator.h"
 #include "drake/systems/framework/event_status.h"
@@ -115,6 +114,8 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  drake::systems::Context<double>* context_;
+  drake::systems::Context<drake::AutoDiffXd>* context_ad_;
   const vector<multibody::KinematicEvaluatorSet<drake::AutoDiffXd>*>
       contact_info_;
 

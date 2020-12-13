@@ -55,9 +55,9 @@ int DoMain() {
       "/saved_trajs/" +
           FLAGS_trajectory_name);
 
-  auto traj_mode0 = loadedTrajs.getTrajectory("walking_trajectory_x_u0");
-  auto traj_mode1 = loadedTrajs.getTrajectory("walking_trajectory_x_u1");
-  auto traj_mode2 = loadedTrajs.getTrajectory("walking_trajectory_x_u2");
+  auto traj_mode0 = loadedTrajs.GetTrajectory("walking_trajectory_x_u0");
+  auto traj_mode1 = loadedTrajs.GetTrajectory("walking_trajectory_x_u1");
+  auto traj_mode2 = loadedTrajs.GetTrajectory("walking_trajectory_x_u2");
 
   std::cout << traj_mode0.datapoints.rows() << std::endl;
   std::cout << traj_mode0.datapoints.cols() << std::endl;

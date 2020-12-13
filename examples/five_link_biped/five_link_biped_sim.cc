@@ -8,7 +8,6 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
-#include "systems/goldilocks_models/file_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -113,11 +112,11 @@ int do_main(int argc, char* argv[]) {
   const LcmTrajectory& loaded_traj = LcmTrajectory(
       FLAGS_folder_path + FLAGS_trajectory_name);
   const LcmTrajectory::Trajectory& xu_0 =
-      loaded_traj.getTrajectory("walking_trajectory_x_u0");
+      loaded_traj.GetTrajectory("walking_trajectory_x_u0");
   const LcmTrajectory::Trajectory& xu_1 =
-      loaded_traj.getTrajectory("walking_trajectory_x_u1");
+      loaded_traj.GetTrajectory("walking_trajectory_x_u1");
   const LcmTrajectory::Trajectory& xu_2 =
-      loaded_traj.getTrajectory("walking_trajectory_x_u2");
+      loaded_traj.GetTrajectory("walking_trajectory_x_u2");
 
   int n_points =
       xu_0.datapoints.cols() + xu_1.datapoints.cols() + xu_2.datapoints.cols();

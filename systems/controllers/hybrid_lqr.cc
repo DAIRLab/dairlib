@@ -41,6 +41,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using multibody::KinematicEvaluatorSet;
 using multibody::WorldPointEvaluator;
+using multibody::setContext;
 using std::cout;
 using std::endl;
 using std::make_unique;
@@ -80,6 +81,8 @@ HybridLQRController::HybridLQRController(
       num_modes_(state_trajs_.size()) {
   DRAKE_ASSERT(contact_info.size() == num_modes_)
   DRAKE_ASSERT(input_trajs.size() == num_modes_)
+
+  context_ = plant_.CreateDefaultContext().get();
 
   // Declare all system ports
   // state feedback
@@ -138,7 +141,7 @@ HybridLQRController::HybridLQRController(
   const LcmTrajectory& P_traj = LcmTrajectory(folder_path_ + "P_traj");
   for (int mode = 0; mode < num_modes_; ++mode) {
     const LcmTrajectory::Trajectory& P_mode_i =
-        P_traj.getTrajectory("P" + to_string(mode));
+        P_traj.GetTrajectory("P" + to_string(mode));
     p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
         P_mode_i.time_vector, P_mode_i.datapoints));
   }
@@ -156,7 +159,7 @@ HybridLQRController::HybridLQRController(
   const LcmTrajectory& L_traj = LcmTrajectory(l_traj_filepath_);
   for (int mode = 0; mode < num_modes_; ++mode) {
     const LcmTrajectory::Trajectory& L_mode_i =
-        L_traj.getTrajectory("L" + to_string(mode));
+        L_traj.GetTrajectory("L" + to_string(mode));
     l_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
         L_mode_i.time_vector, L_mode_i.datapoints));
   }
@@ -181,10 +184,9 @@ void HybridLQRController::CalcControl(
       abs(timestamp - state_trajs_[1].end_time()) < 0.5 * buffer_time_) {
     u_sol = VectorXd::Zero(n_u_);
   } else {
-    auto state_context = createContext(plant_, current_state->GetState(),
-                                       current_state->GetEfforts());
+    plant_.SetPositionsAndVelocities(context_, current_state->get_value());
     MatrixXd M(n_v_, n_v_);
-    plant_.CalcMassMatrix(*state_context, &M);
+    plant_.CalcMassMatrix(*context_, &M);
     MatrixXd B = plant_.MakeActuationMatrix();
     MatrixXd B_linear(n_x_, n_u_);
     B_linear << MatrixXd::Zero(n_q_, n_u_), M.inverse() * B;
@@ -244,10 +246,10 @@ void HybridLQRController::calcMinimalCoordBasis() {
     AutoDiffVecXd xu_autodiff = initializeAutoDiff(xu);
     AutoDiffVecXd x_autodiff = xu_autodiff.head(n_x_);
     AutoDiffVecXd u_autodiff = xu_autodiff.tail(n_u_);
-    auto context = createContext(plant_ad_, x_autodiff, u_autodiff);
+    plant_ad_.SetPositionsAndVelocities(context_ad_, x_autodiff);
 
     MatrixX<AutoDiffXd> J =
-        TXZ_ * contact_info_[mode_rev]->EvalFullJacobian(*context);
+        TXZ_ * contact_info_[mode_rev]->EvalFullJacobian(*context_ad_);
 
     MatrixXd J_q = autoDiffToValueMatrix(J);
     MatrixXd dJdt(J_q.rows(), J_q.cols());
@@ -294,7 +296,7 @@ void HybridLQRController::calcMinimalCoordBasis() {
   }
   LcmTrajectory saved_traj(p_trajs, trajectory_names, "P_traj",
                            "Time varying minimal coordinates basis");
-  saved_traj.writeToFile(folder_path_ + "P_traj");
+  saved_traj.WriteToFile(folder_path_ + "P_traj");
   cout << "Saved P traj" << endl;
 }
 
@@ -356,7 +358,7 @@ void HybridLQRController::calcCostToGo(const MatrixXd& S_f) {
   }
   LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
                            "Square root of the time varying cost to go");
-  saved_traj.writeToFile(l_traj_filepath_);
+  saved_traj.WriteToFile(l_traj_filepath_);
 }
 
 void HybridLQRController::calcLinearizedDynamics(double t, int contact_mode,
@@ -375,10 +377,10 @@ void HybridLQRController::calcLinearizedDynamics(double t, int contact_mode,
   AutoDiffVecXd x_autodiff = xu_autodiff.head(n_x_);  // first segment
   AutoDiffVecXd u_autodiff = xu_autodiff.tail(n_u_);  // middle segment
 
-  auto context = createContext(plant_ad_, x_autodiff, u_autodiff);
+  plant_ad_.SetPositionsAndVelocities(context_ad_, x_autodiff);
 
   const AutoDiffVecXd& xdot =
-      contact_info_[rev_mode]->EvalFullTimeDerivative(*context);
+      contact_info_[rev_mode]->EvalFullTimeDerivative(*context_ad_);
 
   MatrixXd AB = autoDiffToGradientMatrix(xdot);
 
@@ -417,10 +419,10 @@ MatrixXd HybridLQRController::calcAdjustedJumpMap(MatrixXd& S_post,
   AutoDiffVecXd x_autodiff = xu_autodiff.head(n_x_);  // first segment
   AutoDiffVecXd u_autodiff = xu_autodiff.tail(n_u_);  // middle segment
 
-  auto context = createContext(plant_ad_, x_autodiff, u_autodiff);
+  plant_ad_.SetPositionsAndVelocities(context_ad_, x_autodiff);
 
   const MatrixX<AutoDiffXd>& J_pre =
-      contact_info_[rev_mode]->EvalActiveJacobian(*context);
+      contact_info_[rev_mode]->EvalActiveJacobian(*context_ad_);
   MatrixXd J = TXZ_ * autoDiffToValueMatrix(J_pre);
   VectorXd xdot_pre = state_trajs_[rev_mode].derivative(1).value(
       state_trajs_[rev_mode].end_time());
@@ -471,13 +473,13 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
   AutoDiffVecXd xu_autodiff = initializeAutoDiff(xu);
   AutoDiffVecXd x_autodiff = xu_autodiff.head(n_x_);
   AutoDiffVecXd u_autodiff = xu_autodiff.tail(n_u_);
-  auto context = createContext(plant_ad_, x_autodiff, u_autodiff);
+  setContext<AutoDiffXd>(plant_ad_, x_autodiff, u_autodiff, context_ad_);
 
   MatrixX<AutoDiffXd> J =
-      TXZ_ * contact_info_[rev_mode]->EvalActiveJacobian(*context);
+      TXZ_ * contact_info_[rev_mode]->EvalActiveJacobian(*context_ad_);
 
   MatrixX<AutoDiffXd> M(n_v_, n_v_);
-  plant_ad_.CalcMassMatrix(*context, &M);
+  plant_ad_.CalcMassMatrix(*context_ad_, &M);
   MatrixX<AutoDiffXd> M_inv = M.inverse();
   MatrixX<AutoDiffXd> R_non_linear =
       -M_inv * J.transpose() * (J * M_inv * J.transpose()).inverse() * J;
@@ -528,13 +530,13 @@ VectorXd HybridLQRController::calcPdot(double t, const Eigen::VectorXd& p,
   AutoDiffVecXd xu_autodiff = initializeAutoDiff(xu);
   AutoDiffVecXd x_autodiff = xu_autodiff.head(n_x_);
   AutoDiffVecXd u_autodiff = xu_autodiff.tail(n_u_);
-  auto context = createContext(plant_ad_, x_autodiff, u_autodiff);
+  setContext<AutoDiffXd>(plant_ad_, x_autodiff, u_autodiff, context_ad_);
 
   MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
 
   calcLinearizedDynamics(t, getContactModeAtTime(t), &A, &B);
-  MatrixX<AutoDiffXd> J = contact_info_[mode_rev]->EvalFullJacobian(*context);
+  MatrixX<AutoDiffXd> J = contact_info_[mode_rev]->EvalFullJacobian(*context_ad_);
 
   // A lot of repeated code
   MatrixXd J_q = autoDiffToValueMatrix(J);

@@ -1,5 +1,6 @@
 #include <memory>
 
+#include <drake/systems/primitives/discrete_time_delay.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
@@ -60,12 +61,13 @@ DEFINE_double(penetration_allowance, 1e-5,
               " to (m)");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
-DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
+DEFINE_double(publish_rate, 2000, "Publish rate for simulator");
 DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
+DEFINE_double(delay, 0.0, "Delay in commanded to actual motor inputs");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -120,10 +122,13 @@ int do_main(int argc, char* argv[]) {
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
       plant.get_actuation_input_port().size());
+  auto discrete_time_delay =
+      builder.AddSystem<drake::systems::DiscreteTimeDelay>(
+          1.0 / FLAGS_publish_rate, FLAGS_delay * FLAGS_publish_rate, plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant, true);
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
@@ -145,9 +150,13 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*input_sub, *input_receiver);
   builder.Connect(*input_receiver, *passthrough);
   builder.Connect(passthrough->get_output_port(),
+                  discrete_time_delay->get_input_port());
+  builder.Connect(discrete_time_delay->get_output_port(),
                   plant.get_actuation_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
+  builder.Connect(discrete_time_delay->get_output_port(),
+                  state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
       plant.get_geometry_poses_output_port(),

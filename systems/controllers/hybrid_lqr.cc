@@ -55,6 +55,8 @@ MatrixXd generate_state_input_matrix(drake::systems::DenseOutput<double>&,
 HybridLQRController::HybridLQRController(
     const MultibodyPlant<double>& plant,
     const MultibodyPlant<AutoDiffXd>& plant_ad,
+    drake::systems::Context<double>* context,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const vector<KinematicEvaluatorSet<AutoDiffXd>*>& contact_info,
     const vector<PiecewisePolynomial<double>>& state_trajs,
     const vector<PiecewisePolynomial<double>>& input_trajs, const MatrixXd& Q,
@@ -63,6 +65,8 @@ HybridLQRController::HybridLQRController(
     bool recalculateL)
     : plant_(plant),
       plant_ad_(plant_ad),
+      context_(context),
+      context_ad_(context_ad),
       contact_info_(contact_info),
       state_trajs_(state_trajs),
       input_trajs_(input_trajs),
@@ -82,7 +86,6 @@ HybridLQRController::HybridLQRController(
   DRAKE_ASSERT(contact_info.size() == num_modes_)
   DRAKE_ASSERT(input_trajs.size() == num_modes_)
 
-  context_ = plant_.CreateDefaultContext().get();
 
   // Declare all system ports
   // state feedback
@@ -125,6 +128,10 @@ HybridLQRController::HybridLQRController(
   for (JointActuatorIndex i(0); i < n_u_; i++) {
     u_min_(i) = -plant.get_joint_actuator(i).effort_limit();
     u_max_(i) = plant.get_joint_actuator(i).effort_limit();
+  }
+
+  for (int mode = 0; mode < num_modes_; ++mode){
+    ii_basis.push_back(MatrixXd::Zero(n_d_ / 2, n_x_ / 2));
   }
 
   // Set the filepath for the different options
@@ -176,30 +183,37 @@ void HybridLQRController::CalcControl(
   double timestamp = current_state->get_timestamp();
   int mode = (int)fsm_state->get_value()(0);
   VectorXd u_sol(n_u_);
-  //  if (timestamp < 1e-7) {
-  //    u_sol = VectorXd::Zero(n_u_);
-  //  } else
   // Zero out controller efforts in a window around the nominal time
+  plant_.SetPositionsAndVelocities(context_, current_state->GetState());
+  VectorXd x_min(n_d_);
+  // minimal basis
+  MatrixXd P = getPAtTime(timestamp, mode);
+
   if (abs(timestamp - state_trajs_[0].end_time()) < 0.5 * buffer_time_ ||
       abs(timestamp - state_trajs_[1].end_time()) < 0.5 * buffer_time_) {
-    u_sol = VectorXd::Zero(n_u_);
+    std::cout << "near impact" << std::endl;
+    VectorXd x = current_state->GetState();
+    x_min << (P * x).head(5), ii_basis[mode] * x.tail(5);
+//    u_sol = VectorXd::Zero(n_u_);
   } else {
-    plant_.SetPositionsAndVelocities(context_, current_state->get_value());
-    MatrixXd M(n_v_, n_v_);
-    plant_.CalcMassMatrix(*context_, &M);
-    MatrixXd B = plant_.MakeActuationMatrix();
-    MatrixXd B_linear(n_x_, n_u_);
-    B_linear << MatrixXd::Zero(n_q_, n_u_), M.inverse() * B;
-
-    // get S(t) and P(t)
-    MatrixXd S = getSAtTime(timestamp, mode);
-    MatrixXd P = getPAtTime(timestamp, mode);
-    MatrixXd K_minimal =
-        R_.inverse() * B_linear.transpose() * (P.transpose() * S * P);
-    VectorXd x_error =
-        current_state->GetState() - state_trajs_[mode].value(timestamp);
-    u_sol = -K_minimal * x_error + input_trajs_[mode].value(timestamp);
+//    VectorXd x_error =
+//        P * (current_state->GetState() - state_trajs_[mode].value(timestamp));
+    x_min =
+        P * (current_state->GetState() - state_trajs_[mode].value(timestamp));
   }
+
+  MatrixXd M(n_v_, n_v_);
+  plant_.CalcMassMatrix(*context_, &M);
+  MatrixXd B = plant_.MakeActuationMatrix();
+  MatrixXd B_linear(n_x_, n_u_);
+  B_linear << MatrixXd::Zero(n_q_, n_u_), M.inverse() * B;
+
+  // get S(t)
+  MatrixXd S = getSAtTime(timestamp, mode);
+  MatrixXd K_minimal =
+      R_.inverse() * B_linear.transpose() * (P.transpose() * S);
+
+  u_sol = -K_minimal * x_min + input_trajs_[mode].value(timestamp);
 
   for (unsigned int i = 0; i < u_sol.size(); ++i) {  // apply actuator limits
     u_sol(i) =
@@ -246,7 +260,7 @@ void HybridLQRController::calcMinimalCoordBasis() {
     AutoDiffVecXd xu_autodiff = initializeAutoDiff(xu);
     AutoDiffVecXd x_autodiff = xu_autodiff.head(n_x_);
     AutoDiffVecXd u_autodiff = xu_autodiff.tail(n_u_);
-    plant_ad_.SetPositionsAndVelocities(context_ad_, x_autodiff);
+    setContext<AutoDiffXd>(plant_ad_, x_autodiff, u_autodiff, context_ad_);
 
     MatrixX<AutoDiffXd> J =
         TXZ_ * contact_info_[mode_rev]->EvalFullJacobian(*context_ad_);
@@ -377,7 +391,7 @@ void HybridLQRController::calcLinearizedDynamics(double t, int contact_mode,
   AutoDiffVecXd x_autodiff = xu_autodiff.head(n_x_);  // first segment
   AutoDiffVecXd u_autodiff = xu_autodiff.tail(n_u_);  // middle segment
 
-  plant_ad_.SetPositionsAndVelocities(context_ad_, x_autodiff);
+  setContext<AutoDiffXd>(plant_ad_, x_autodiff, u_autodiff, context_ad_);
 
   const AutoDiffVecXd& xdot =
       contact_info_[rev_mode]->EvalFullTimeDerivative(*context_ad_);
@@ -419,7 +433,7 @@ MatrixXd HybridLQRController::calcAdjustedJumpMap(MatrixXd& S_post,
   AutoDiffVecXd x_autodiff = xu_autodiff.head(n_x_);  // first segment
   AutoDiffVecXd u_autodiff = xu_autodiff.tail(n_u_);  // middle segment
 
-  plant_ad_.SetPositionsAndVelocities(context_ad_, x_autodiff);
+  setContext<AutoDiffXd>(plant_ad_, x_autodiff, u_autodiff, context_ad_);
 
   const MatrixX<AutoDiffXd>& J_pre =
       contact_info_[rev_mode]->EvalActiveJacobian(*context_ad_);
@@ -483,6 +497,9 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
   MatrixX<AutoDiffXd> M_inv = M.inverse();
   MatrixX<AutoDiffXd> R_non_linear =
       -M_inv * J.transpose() * (J * M_inv * J.transpose()).inverse() * J;
+
+  Eigen::FullPivLU<MatrixXd> lu(autoDiffToValueMatrix(M_inv * J.transpose()));
+  ii_basis[contact_mode] = lu.kernel().transpose();
 
   // The reset map for qdot
   *R = MatrixXd::Zero(n_x_, n_x_);

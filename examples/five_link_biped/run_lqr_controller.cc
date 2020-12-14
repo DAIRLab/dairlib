@@ -115,6 +115,9 @@ int doMain(int argc, char* argv[]) {
   unique_ptr<MultibodyPlant<AutoDiffXd>> plant_ad =
       std::make_unique<MultibodyPlant<AutoDiffXd>>(plant);
 
+  auto plant_context = plant.CreateDefaultContext();
+  auto plant_context_ad = plant_ad->CreateDefaultContext();
+
   std::cout << "folder path: " << FLAGS_folder_path << std::endl;
   std::cout << "trajectory name: " << FLAGS_trajectory_name << std::endl;
 
@@ -128,21 +131,25 @@ int doMain(int argc, char* argv[]) {
   int nx = nq + nv;
   int nu = plant.num_actuators();
 
-  int num_modes = loaded_traj.GetTrajectoryNames().size();
+//  std::cout << nq << ", " << nv << ", " << nx << ", " << nu << std::endl;
+
+  int num_modes = 3;
   std::vector<PiecewisePolynomial<double>> state_trajs;
   std::vector<PiecewisePolynomial<double>> input_trajs;
   for (int mode = 0; mode < num_modes; ++mode) {
-    const LcmTrajectory::Trajectory& state_and_input =
-        loaded_traj.GetTrajectory("walking_trajectory_x_u" +
-                                  std::to_string(mode));
+    const LcmTrajectory::Trajectory& state =
+        loaded_traj.GetTrajectory("state_traj" + std::to_string(mode));
+    const LcmTrajectory::Trajectory& state_derivative =
+        loaded_traj.GetTrajectory("state_derivative_traj" + std::to_string(mode));
+    const LcmTrajectory::Trajectory& input =
+        loaded_traj.GetTrajectory("input_traj");
     state_trajs.push_back(
         PiecewisePolynomial<double>(PiecewisePolynomial<double>::CubicHermite(
-            state_and_input.time_vector, state_and_input.datapoints.topRows(nx),
-            state_and_input.datapoints.topRows(2 * nx).bottomRows(nx))));
+            state.time_vector, state.datapoints,
+            state_derivative.datapoints)));
     input_trajs.push_back(
         PiecewisePolynomial<double>(PiecewisePolynomial<double>::FirstOrderHold(
-            state_and_input.time_vector,
-            state_and_input.datapoints.bottomRows(nu))));
+            input.time_vector, input.datapoints)));
   }
 
   vector<KinematicEvaluatorSet<AutoDiffXd>*> contact_evals;
@@ -194,7 +201,7 @@ int doMain(int argc, char* argv[]) {
 
   auto start = std::chrono::high_resolution_clock::now();
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
-      plant, *plant_ad, contact_evals, state_trajs, input_trajs, Q, R, Qf,
+      plant, *plant_ad, plant_context.get(), plant_context_ad.get(), contact_evals, state_trajs, input_trajs, Q, R, Qf,
       FLAGS_buffer_time, FLAGS_adjusted_reset_map, FLAGS_folder_path,
       FLAGS_recalculateP, FLAGS_recalculateL);
   auto finish = std::chrono::high_resolution_clock::now();

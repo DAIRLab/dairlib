@@ -6,6 +6,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -49,13 +50,12 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_double(publish_rate, 2000.0,
-              "Publish rate in Hz.");
+DEFINE_double(publish_rate, 2000.0, "Publish rate in Hz.");
 DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
-DEFINE_double(dt, 1e-4,
+DEFINE_double(dt, 1e-5,
               "The step size to use for time_stepping, ignored for "
               "continuous");
 DEFINE_string(channel_x, "RABBIT_STATE",
@@ -71,10 +71,12 @@ DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. It's a penalty "
               "method so there aren't any physical units");
 DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");
-DEFINE_string(trajectory_name, "", "Filename for the trajectory that contains"
-                                   " the initial state.");
-DEFINE_string(folder_path, "", "Folder path for the folder that contains the "
-                               "saved trajectory");
+DEFINE_string(trajectory_name, "",
+              "Filename for the trajectory that contains"
+              " the initial state.");
+DEFINE_string(folder_path, "",
+              "Folder path for the folder that contains the "
+              "saved trajectory");
 DEFINE_int32(error_idx, 0, "Index in the state vector to inject error into");
 DEFINE_double(error, 0.0, "Value fo the error, see error_idx");
 
@@ -101,33 +103,19 @@ int do_main(int argc, char* argv[]) {
   multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);  // Add ground
   plant.Finalize();
 
+  int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
+  int nx = nv + nq;
 
   // Contact model parameters
   plant.set_stiction_tolerance(FLAGS_stiction);
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
 
-  int nx = plant.num_positions() + plant.num_velocities();
-  const LcmTrajectory& loaded_traj = LcmTrajectory(
-      FLAGS_folder_path + FLAGS_trajectory_name);
-  const LcmTrajectory::Trajectory& xu_0 =
-      loaded_traj.GetTrajectory("walking_trajectory_x_u0");
-  const LcmTrajectory::Trajectory& xu_1 =
-      loaded_traj.GetTrajectory("walking_trajectory_x_u1");
-  const LcmTrajectory::Trajectory& xu_2 =
-      loaded_traj.GetTrajectory("walking_trajectory_x_u2");
+  DirconTrajectory saved_traj(FLAGS_folder_path + FLAGS_trajectory_name);
+  PiecewisePolynomial<double> optimal_traj =
+      saved_traj.ReconstructStateTrajectory();
 
-  int n_points =
-      xu_0.datapoints.cols() + xu_1.datapoints.cols() + xu_2.datapoints.cols();
-  MatrixXd xu(nx + nx + nu, n_points);
-  VectorXd times(n_points);
-  xu << xu_0.datapoints, xu_1.datapoints, xu_2.datapoints;
-  times << xu_0.time_vector, xu_1.time_vector, xu_2.time_vector;
-
-  PiecewisePolynomial<double> state_traj =
-      PiecewisePolynomial<double>::CubicHermite(
-          times, xu.topRows(nx), xu.topRows(2 * nx).bottomRows(nx));
   // Create input receiver.
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
@@ -180,18 +168,12 @@ int do_main(int argc, char* argv[]) {
 
   Eigen::VectorXd x0(14);
 
-  if (FLAGS_init_state == "Jumping") {
-    x0 << 0, 0.778109, 0, -.3112, -.231, 0.427, 0.4689, 0, 0, 0, 0, 0, 0, 0;
-  } else if (FLAGS_init_state == "Walking") {
-    x0 << state_traj.value(FLAGS_start_time);
-    if(FLAGS_error_idx >= nx){ //Not a generalized state
-      VectorXd v_offset = calcStateOffset(plant, plant_context, x0);
-      x0.tail(nv) = x0.tail(nv) + v_offset;
-    }
-    else{
-      x0[FLAGS_error_idx] += FLAGS_error;
-    }
+  x0 << optimal_traj.value(FLAGS_start_time);
+  if (FLAGS_error_idx >= nx) {  // Not a generalized state
+    VectorXd v_offset = calcStateOffset(plant, plant_context, x0);
+    x0.tail(nv) = x0.tail(nv) + v_offset;
   }
+
   plant.SetPositionsAndVelocities(&plant_context, x0);
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
@@ -210,46 +192,40 @@ VectorXd calcStateOffset(MultibodyPlant<double>& plant,
   plant.SetPositionsAndVelocities(&context, x0);
 
   // common frames
-  auto right_foot_frame = &plant
-      .GetBodyByName("right_foot").body_frame();
-  auto left_foot_frame = &plant
-      .GetBodyByName("left_foot").body_frame();
+  auto right_foot_frame = &plant.GetBodyByName("right_foot").body_frame();
+  auto left_foot_frame = &plant.GetBodyByName("left_foot").body_frame();
   auto world = &plant.world_frame();
-  MatrixXd TXZ = MatrixXd(2,3);
-  TXZ << 1, 0, 0,
-         0, 0, 1;
+  MatrixXd TXZ = MatrixXd(2, 3);
+  TXZ << 1, 0, 0, 0, 0, 1;
 
   MatrixXd J_foot_3d = MatrixXd::Zero(3, plant.num_velocities());
   Eigen::Vector2d foot_vel_offset = Eigen::Vector2d::Zero();
-  if(FLAGS_error_idx == 14 || FLAGS_error_idx == 16){ // left foot
+  if (FLAGS_error_idx == 14 || FLAGS_error_idx == 16) {  // left foot
     plant.CalcJacobianTranslationalVelocity(
         context, drake::multibody::JacobianWrtVariable::kV, *left_foot_frame,
         Eigen::Vector3d::Zero(), *world, *world, &J_foot_3d);
-    if(FLAGS_error_idx == 14){ // x velocity
+    if (FLAGS_error_idx == 14) {  // x velocity
       foot_vel_offset(0) += FLAGS_error;
-    }
-    else{
+    } else {
       foot_vel_offset(1) += FLAGS_error;
     }
-  }
-  else{
+  } else {
     plant.CalcJacobianTranslationalVelocity(
         context, drake::multibody::JacobianWrtVariable::kV, *right_foot_frame,
         Eigen::Vector3d::Zero(), *world, *world, &J_foot_3d);
-    if(FLAGS_error_idx == 15){ // x velocity
+    if (FLAGS_error_idx == 15) {  // x velocity
       foot_vel_offset(0) += FLAGS_error;
-    }
-    else{
+    } else {
       foot_vel_offset(1) += FLAGS_error;
     }
   }
 
-  MatrixXd J_rfoot_angles = MatrixXd(2,2);
+  MatrixXd J_rfoot_angles = MatrixXd(2, 2);
   // Taking only the Jacobian wrt right leg angles
   J_rfoot_angles << (TXZ * J_foot_3d).col(4), (TXZ * J_foot_3d).col(6);
   VectorXd joint_rate_offsets =
       J_rfoot_angles.colPivHouseholderQr().solve(foot_vel_offset);
-  //Remove floating base offsets
+  // Remove floating base offsets
   VectorXd v_offset = VectorXd::Zero(plant.num_velocities());
   v_offset(4) = joint_rate_offsets(0);
   v_offset(6) = joint_rate_offsets(1);

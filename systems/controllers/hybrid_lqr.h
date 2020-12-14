@@ -30,6 +30,8 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   HybridLQRController(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      drake::systems::Context<double>* context,
+      drake::systems::Context<drake::AutoDiffXd>* context_ad,
       const vector<multibody::KinematicEvaluatorSet<drake::AutoDiffXd>*>&
           contact_info,
       const std::vector<drake::trajectories::PiecewisePolynomial<double>>&
@@ -131,6 +133,9 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
    */
   std::vector<drake::trajectories::PiecewisePolynomial<double>> p_traj_;
   std::vector<drake::trajectories::PiecewisePolynomial<double>> l_traj_;
+
+  // Invariant Impacts Basis
+  std::vector<Eigen::MatrixXd> ii_basis;
 
   // LQR cost matrices
   Eigen::MatrixXd Q_;

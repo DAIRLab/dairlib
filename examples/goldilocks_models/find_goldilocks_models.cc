@@ -177,6 +177,7 @@ DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 // Testing
 DEFINE_bool(com_accel_constraint, false, "");
 DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
+DEFINE_double(turning_rate_center, 0.0, "The step size for outer loop");
 
 void setCostWeight(double* Q, double* R, double* all_cost_scale,
                    int robot_option) {
@@ -1410,7 +1411,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
-          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, is_stochastic);
+          {0.3, 0, 0.5, FLAGS_turning_rate_center}, {0.015, 0.05, 0.04, 0.125}, is_stochastic);
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_grid = GridTasksGenerator();

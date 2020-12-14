@@ -27,7 +27,7 @@ def main():
     filename = sys.argv[1]
   else:
     filename = FindResourceOrThrow(
-      '../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory')
+      '../dairlib_data/goldilocks_models/find_models/robot_1/1_0_dircon_trajectory')
 
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
 

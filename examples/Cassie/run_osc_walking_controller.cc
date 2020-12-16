@@ -108,6 +108,10 @@ struct OSCWalkingGains {
   double final_foot_height;
   double final_foot_velocity_z;
   double lipm_height;
+  double ss_time;
+  double ds_time;
+  double fb_lateral;
+  double fb_sagittal;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -141,6 +145,11 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(final_foot_velocity_z));
     // lipm heursitics
     a->Visit(DRAKE_NVP(lipm_height));
+    // stance times
+    a->Visit(DRAKE_NVP(ss_time));
+    a->Visit(DRAKE_NVP(ds_time));
+    a->Visit(DRAKE_NVP(fb_lateral));
+    a->Visit(DRAKE_NVP(fb_sagittal));
   }
 };
 
@@ -379,7 +388,8 @@ int DoMain(int argc, char* argv[]) {
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
-          use_predicted_com_vel ? left_support_duration : 0);
+          use_predicted_com_vel ? left_support_duration : 0, gains
+          .fb_lateral, gains.fb_sagittal);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),

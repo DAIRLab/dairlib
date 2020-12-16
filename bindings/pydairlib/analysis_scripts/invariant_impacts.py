@@ -33,13 +33,63 @@ def cassie_main():
   plant_w_spr.Finalize()
   plant_wo_spr.Finalize()
 
+  context_w_spr = plant_w_spr.CreateDefaultContext()
+  context_wo_spr = plant_wo_spr.CreateDefaultContext()
+
   nq = plant_wo_spr.num_positions()
   nv = plant_wo_spr.num_velocities()
   nx = plant_wo_spr.num_positions() + plant_wo_spr.num_velocities()
   nu = plant_wo_spr.num_actuators()
+  nc = 10
 
   l_toe_frame = plant_w_spr.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant_w_spr.GetBodyByName("toe_right").body_frame()
+  front_contact_disp = np.array((-0.0457, 0.112, 0))
+  rear_contact_disp = np.array((0.088, 0, 0))
+  world = plant_w_spr.world_frame()
+
+  filename = "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/jumping_0.15h_0.3d"
+  dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
+  state_traj = dircon_traj.ReconstructStateTrajectory()
+
+  x_pre = state_traj.value(dircon_traj.GetStateBreaks(1)[-1] - 1e-6)
+  x_post = state_traj.value(dircon_traj.GetStateBreaks(2)[0])
+
+  plant_wo_spr.SetPositionsAndVelocities(context_wo_spr, x_pre)
+
+  M = plant_wo_spr.CalcMassMatrixViaInverseDynamics(context_wo_spr)
+  M_inv = np.linalg.inv(M)
+  J_l_f = plant_wo_spr.CalcJacobianTranslationalVelocity(context_wo_spr, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
+  J_l_r = plant_wo_spr.CalcJacobianTranslationalVelocity(context_wo_spr, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
+  J_r_f = plant_wo_spr.CalcJacobianTranslationalVelocity(context_wo_spr, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
+  J_r_r = plant_wo_spr.CalcJacobianTranslationalVelocity(context_wo_spr, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
+  J_l = np.vstack((J_l_f, J_l_r[0:2, :], J_r_f, J_r_r[0:2, :]))
+  M_Jt = M_inv @ J_l.T
+  P = linalg.null_space(M_Jt.T).T
+
+  t_impact = dircon_traj.GetStateBreaks(1)[-1]
+  t = np.linspace(t_impact - 0.05, t_impact + 0.05, 100)
+  vel = np.zeros((t.shape[0], nv))
+  cc_vel = np.zeros((t.shape[0], nv - nc))
+
+  for i in range(t.shape[0]):
+    x = state_traj.value(t[i])
+    vel[i] = x[-nv:, 0]
+    cc_vel[i] = P @ vel[i]
+
+  plt.figure("Joint Velocities around impacts")
+  plt.plot(t, vel)
+  plt.figure("Change of coordinates")
+  plt.plot(t, cc_vel, 'b')
+
+  v_pre = x_pre[-nv:]
+  v_post = x_post[-nv:]
+
+  import pdb; pdb.set_trace()
+
+
+  plt.show()
+
 
 def rabbit_main():
   builder = DiagramBuilder()
@@ -87,13 +137,16 @@ def rabbit_main():
   M_Jt = M_inv @ J_r.T
   P = linalg.null_space(M_Jt.T).T
 
+  import pdb; pdb.set_trace()
+
   v_pre = x_pre[-nv:]
   v_post = x_post[-nv:]
   t_impact = dircon_traj.GetStateBreaks(0)[-1]
 
   t = np.linspace(t_impact - 0.05, t_impact + 0.05, 100)
 
-  cc_vel = np.zeros((t.shape[0], nv - nc))
+  # cc_vel = np.zeros((t.shape[0], nv - nc))
+  cc_vel = np.zeros((t.shape[0], nv))
   TV_cc_vel = np.zeros((t.shape[0], nv - nc))
   vel = np.zeros((t.shape[0], nv))
   for i in range(t.shape[0]):
@@ -103,7 +156,7 @@ def rabbit_main():
     J_r = TXZ @ plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_contact_frame, pt_on_body, world, world)
     TV_J = M_inv @ J_r.T
     TV_J_space = linalg.null_space(TV_J.T).T
-    cc_vel[i] = P @ vel[i]
+    cc_vel[i] = P.T @ P @ vel[i]
     TV_cc_vel[i] = TV_J_space @ vel[i]
 
   filename = sys.argv[1]

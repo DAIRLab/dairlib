@@ -67,9 +67,10 @@ DEFINE_double(opt_tol, 1e-3, "");
 DEFINE_double(feas_tol, 1e-3, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
+DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
 DEFINE_bool(log_solver_info, true,
             "Log snopt output to a file or ipopt to terminal");
-DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
+DEFINE_double(time_limit, 0, "time limit for the solver.");
 
 // Flag for debugging
 DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
@@ -139,6 +140,7 @@ int DoMain(int argc, char* argv[]) {
   param.max_iter = FLAGS_max_iter;
   param.use_ipopt = FLAGS_use_ipopt;
   param.log_solver_info = FLAGS_log_solver_info;
+  param.time_limit = FLAGS_time_limit;
   param.w_Q = 1;
   param.w_R = 1;
   param.dir_model =

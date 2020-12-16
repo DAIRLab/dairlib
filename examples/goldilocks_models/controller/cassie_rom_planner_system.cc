@@ -210,6 +210,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       solver_option_.SetOption(id, "print_timing_statistics", "no");
       solver_option_.SetOption(id, "print_level", 0);
     }
+    if (param_.time_limit > 0) {
+      solver_option_.SetOption(id, "max_cpu_time", param_.time_limit);
+    }
 
     // Set to ignore overall tolerance/dual infeasibility, but terminate when
     // primal feasible and objective fails to increase over 5 iterations.
@@ -222,6 +225,12 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     if (param_.log_solver_info) {
       solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
                                "../snopt_planning.out");
+    }
+    if (param_.time_limit > 0) {
+      solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Time limit",
+                               param_.time_limit);
+      solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
+                               "Timing level", 3);
     }
     solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
                              "Major iterations limit", param_.max_iter);
@@ -532,8 +541,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
-//  if (true) {
-//  if (!result.is_success() || !start_with_left_stance_) {
+  //  if (true) {
+  //  if (!result.is_success() || !start_with_left_stance_) {
   if (!result.is_success()) {
     // If the solution failed, send an empty-size data. This tells the
     // controller thread to fall back to LIPM traj

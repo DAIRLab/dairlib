@@ -36,6 +36,7 @@ struct PlannerSetting {
 
   bool use_ipopt;
   bool log_solver_info;
+  double time_limit;
 
   // Cost weight
   double w_Q;

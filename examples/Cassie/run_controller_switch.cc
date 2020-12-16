@@ -33,7 +33,12 @@ DEFINE_int32(n_period_delay, -1,
 DEFINE_double(fsm_period, -1.0, " the period of TimeBasedFiniteStateMachine");
 DEFINE_double(fsm_offset, 0.0,
               "a constant that's used to determined the publish time see the "
-              "documentation below for details");
+              "documentation below for details"
+              "WARNING: don't kill the first controller before switching to "
+              "the second controller");
+DEFINE_double(blend_duration, 1.0,
+              "Duration to blend efforts between previous and current "
+              "controller command");
 
 /// This program is a one-time-use switch that tells dispatcher_robot_in which
 /// channel to listen to. It publishes the lcm message,

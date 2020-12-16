@@ -45,7 +45,8 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
  public:
   WalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
                       drake::systems::Context<double>* context,
-                      int footstep_option, double swing_phase_duration = 0);
+                      int footstep_option, double swing_phase_duration = 0,
+                      double fb_lateral = 0, double fb_sagittal = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -81,12 +82,12 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
   int fsm_switch_time_port_;
   int com_port_;
 
-  // Foot placement control (Sagital) parameters
-  double k_fp_ff_sagital_;
-  double k_fp_fb_sagital_;
   // Foot placement control (Lateral) parameters
   double k_fp_ff_lateral_;
   double k_fp_fb_lateral_;
+  // Foot placement control (Sagittal) parameters
+  double k_fp_ff_sagittal_;
+  double k_fp_fb_sagittal_;
 };
 
 }  // namespace osc

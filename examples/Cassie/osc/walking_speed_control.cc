@@ -1,6 +1,7 @@
 #include "examples/Cassie/osc/walking_speed_control.h"
 
 #include <math.h>
+
 #include <string>
 
 #include "multibody/multibody_utils.h"
@@ -32,13 +33,16 @@ namespace osc {
 
 WalkingSpeedControl::WalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
-    Context<double>* context, int footstep_option, double swing_phase_duration)
+    Context<double>* context, int footstep_option, double swing_phase_duration,
+    double fb_lateral, double fb_sagittal)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")),
       swing_phase_duration_(swing_phase_duration),
-      is_using_predicted_com_(swing_phase_duration > 0) {
+      is_using_predicted_com_(swing_phase_duration > 0),
+      k_fp_fb_lateral_(fb_lateral),
+      k_fp_fb_sagittal_(fb_sagittal) {
   DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
 
   // Input/Output Setup
@@ -68,14 +72,14 @@ WalkingSpeedControl::WalkingSpeedControl(
   // Control gains
   if (footstep_option == 0) {
     // For Capture point
-    k_fp_ff_sagital_ = 0.16;
-    k_fp_fb_sagital_ = 0.04;
+    k_fp_ff_sagittal_ = 0.16;
+    k_fp_fb_sagittal_ = 0.04;
     k_fp_ff_lateral_ = 0.08;
     k_fp_fb_lateral_ = 0.02;
   } else if (footstep_option == 1) {
     // For LIPM neutral point
-    k_fp_ff_sagital_ = 0;
-    k_fp_fb_sagital_ = 0.14;
+    k_fp_ff_sagittal_ = 0;
+    k_fp_fb_sagittal_ = 0.14;
     k_fp_ff_lateral_ = 0;
     k_fp_fb_lateral_ = 0.13;
   }
@@ -137,8 +141,8 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
 
   // Velocity control
   double delta_x_fs_sagital =
-      -k_fp_ff_sagital_ * des_sagital_vel -
-      k_fp_fb_sagital_ * (des_sagital_vel - com_vel_sagital);
+      -k_fp_ff_sagittal_ * des_sagital_vel -
+      k_fp_fb_sagittal_ * (des_sagital_vel - com_vel_sagital);
   Vector3d delta_x_fs_sagital_3D_local(delta_x_fs_sagital, 0, 0);
   delta_x_fs_sagital_3D_global =
       drake::math::quatRotateVec(quat, delta_x_fs_sagital_3D_local);

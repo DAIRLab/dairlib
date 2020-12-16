@@ -20,6 +20,9 @@ lipm_height: 0.89
 ss_time: 0.35
 ds_time: 0.05
 
+fb_lateral: 0.13
+fb_sagittal: 0.14
+
 CoMW:
   [   0,    0,     0,
       0,    0,     0,

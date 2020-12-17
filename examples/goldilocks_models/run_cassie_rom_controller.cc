@@ -17,6 +17,7 @@
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
+#include "examples/goldilocks_models/controller/local_lipm_traj_gen.h"
 #include "examples/goldilocks_models/controller/planned_traj_guard.h"
 #include "examples/goldilocks_models/controller/rom_traj_receiver.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
@@ -428,6 +429,19 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(walking_speed_control->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_sc());
 
+  // lipm traj for ROM (com wrt to stance foot)
+  auto local_lipm_traj_generator =
+      builder.AddSystem<systems::LocalLIPMTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), desired_com_height,
+          unordered_fsm_states, unordered_state_durations,
+          contact_points_in_each_state);
+  builder.Connect(fsm->get_output_port(0),
+                  local_lipm_traj_generator->get_input_port_fsm());
+  builder.Connect(event_time->get_output_port_event_time(),
+                  local_lipm_traj_generator->get_input_port_fsm_switch_time());
+  builder.Connect(simulator_drift->get_output_port(0),
+                  local_lipm_traj_generator->get_input_port_state());
+
   // Create a guard for the planner in case it doesn't finish solving in time
   auto optimal_traj_planner_guard =
       builder.AddSystem<goldilocks_models::PlannedTrajGuard>(
@@ -435,7 +449,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(
       optimal_rom_traj_gen->get_output_port(0),
       optimal_traj_planner_guard->get_input_port_optimal_rom_traj());
-  builder.Connect(lipm_traj_generator->get_output_port(0),
+  builder.Connect(local_lipm_traj_generator->get_output_port(0),
                   optimal_traj_planner_guard->get_input_port_lipm_traj());
 
   // Create Operational space control
@@ -621,11 +635,12 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-//  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
-//                  osc->get_tracking_data_input_port("optimal_rom_traj"));
-// Testing -- using lipm all the time
-// TODO: the bug comes from ROM is using position wrt foot but lipm traj input is global
-  builder.Connect(lipm_traj_generator->get_output_port(0),
+  //  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
+  //                  osc->get_tracking_data_input_port("optimal_rom_traj"));
+  // Testing -- using lipm all the time
+  // TODO: the bug comes from ROM is using position wrt foot but lipm traj input
+  // is global
+  builder.Connect(local_lipm_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("optimal_rom_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));

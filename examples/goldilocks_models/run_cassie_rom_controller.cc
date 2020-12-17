@@ -550,7 +550,11 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
-  // Center of mass tracking (Using RomTrackingData with initial ROM being COM)
+  // "Center of mass" tracking (Using RomTrackingData with initial ROM being
+  // COM)
+  // TODO: we also want ComTrackingData for backup controller. To switch between
+  //  ComTrackingData and OptimalRomTrackingData, we probably need a external
+  //  flag to OSC
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2;
   W_com(1, 1) = 2;

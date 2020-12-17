@@ -84,6 +84,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
   std::map<std::string, int> positions_map_;
+  std::map<std::string, int> velocities_map_;
+
+  int nq_;
+  int nv_;
 
   const drake::multibody::MultibodyPlant<double>& plant_controls_;
   std::vector<int> left_right_support_fsm_states_;

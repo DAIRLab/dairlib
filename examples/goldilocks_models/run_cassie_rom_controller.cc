@@ -550,10 +550,11 @@ int DoMain(int argc, char* argv[]) {
   optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
                                   mirrored_rom);
   //  optimal_rom_traj.AddRom(*rom);
-  // TODO(yminchen): currently an issue of using ROM and mirrored ROM with the
-  //  secondary LIPM (e.g. LIPM).
-  //  Probably need to change OSC API to have an option to disable a traj track
-  //  online (an external flag to disable tracking).
+  // TODO(yminchen): I think currently there are two potential issues.
+  //  1. the optimal ROM is ~COM_wrt_stance_foot, but the LIPM traj is wrt world
+  //  2. mirroring of the ROM
+  //  we have two models and two input trajectories. So keep this in mind when
+  //  you design the controller. Make sure everything is consistent
   osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;

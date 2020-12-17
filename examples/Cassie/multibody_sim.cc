@@ -1,10 +1,13 @@
+#include <chrono>
+#include <iostream>
 #include <memory>
+#include <thread>
 
 #include <gflags/gflags.h>
 
+#include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_cassie_out.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
@@ -38,6 +41,10 @@ using drake::math::RotationMatrix;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+
+// Optimal ROM controller
+DEFINE_bool(publish_at_initialization, true, "");
+DEFINE_double(pause_second, 0, "pause after initialization");
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -115,8 +122,8 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
-  const auto& sensor_aggregator = AddImuAndAggregator(
-      &builder, plant, passthrough->get_output_port());
+  const auto& sensor_aggregator =
+      AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
@@ -189,9 +196,13 @@ int do_main(int argc, char* argv[]) {
   }
 
   simulator.set_publish_every_time_step(false);
-  simulator.set_publish_at_initialization(false);
+  simulator.set_publish_at_initialization(FLAGS_publish_at_initialization);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
+
+  // pause a second for the planner to plan
+  std::this_thread::sleep_for(std::chrono::seconds(FLAGS_pause_second));
+
   simulator.AdvanceTo(FLAGS_end_time);
 
   return 0;

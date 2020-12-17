@@ -201,7 +201,7 @@ int do_main(int argc, char* argv[]) {
   simulator.Initialize();
 
   // pause a second for the planner to plan
-  std::this_thread::sleep_for(std::chrono::seconds(FLAGS_pause_second));
+  std::this_thread::sleep_for(std::chrono::seconds(int(FLAGS_pause_second)));
 
   simulator.AdvanceTo(FLAGS_end_time);
 

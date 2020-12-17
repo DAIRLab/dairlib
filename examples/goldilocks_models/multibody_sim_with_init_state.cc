@@ -1,6 +1,9 @@
 // This is modified from exmaples/Cassie/multibody_sim
 
 #include <memory>
+#include <iostream>
+#include <memory>
+#include <thread>
 
 #include <gflags/gflags.h>
 
@@ -49,6 +52,9 @@ using drake::math::RotationMatrix;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+
+// Optimal ROM controller
+DEFINE_int32(pause_second, 0, "pause after initialization");
 
 DEFINE_bool(start_with_right_stance, false, "");
 DEFINE_bool(simulate_about_one_step_time, false,
@@ -327,9 +333,13 @@ int do_main(int argc, char* argv[]) {
   }
 
   simulator.set_publish_every_time_step(false);
-  simulator.set_publish_at_initialization(false);
+  simulator.set_publish_at_initialization(true);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
+
+  // pause a second for the planner to plan
+  std::this_thread::sleep_for(std::chrono::seconds(FLAGS_pause_second));
+
   simulator.AdvanceTo(FLAGS_simulate_about_one_step_time
                           ? end_time_of_first_step
                           : std::numeric_limits<double>::infinity());

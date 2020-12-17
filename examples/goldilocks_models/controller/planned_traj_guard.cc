@@ -62,10 +62,10 @@ void PlannedTrajGuard::ApplyGuard(
   //  The bug could be that we are using RomTrackingData to tracking LIPM traj,
   //  but the ROM is actually using COM wrt feet. Therefore, we just need to not
   //  use this RomTrackingData LIPM
-   if (planner_timeout || planner_no_solution) {
-     std::cout << "Using backup controller\n";
-//  if (true) {
-    // Read in lipm traj
+//   if (planner_timeout || planner_no_solution) {
+  if (false) {
+  std::cout << "Using backup controller\n";
+  // Read in lipm traj
     const auto& lipm_traj =
         this->EvalAbstractInput(context, lipm_port_)
             ->get_value<drake::trajectories::Trajectory<double>>();

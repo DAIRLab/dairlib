@@ -57,6 +57,10 @@ DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
 
+DEFINE_double(w_Q, 1, "");
+DEFINE_double(w_R, 1, "");
+DEFINE_double(w_rom_reg, 1, "cost weight for the ROM state regularization");
+
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_bool(fix_duration, true,
             "Fix the total time. (could lead to faster solve but possibly "
@@ -141,8 +145,9 @@ int DoMain(int argc, char* argv[]) {
   param.use_ipopt = FLAGS_use_ipopt;
   param.log_solver_info = FLAGS_log_solver_info;
   param.time_limit = FLAGS_time_limit;
-  param.w_Q = 1;
-  param.w_R = 1;
+  param.w_Q = FLAGS_w_Q;
+  param.w_R = FLAGS_w_R;
+  param.w_rom_reg = FLAGS_w_rom_reg;
   param.dir_model =
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   param.dir_data = "../dairlib_data/goldilocks_models/planning/robot_1/data/";

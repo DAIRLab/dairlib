@@ -421,7 +421,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       final_position, final_position,
       trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));
 
-  // Add_robot state in cost
+  // Add robot state in cost
   bool add_x_pose_in_cost = true;
   if (add_x_pose_in_cost) {
     trajopt.AddRegularizationCost(final_position, x_guess_left_in_front_,
@@ -436,6 +436,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       trajopt.AddQuadraticErrorCost(Id, zero_vec,
                                     trajopt.xf_vars_by_mode(i).segment(1, 3));
     }
+  }
+
+  // Add rom state in cost
+  bool add_rom_regularization = true;
+  if (add_rom_regularization) {
+    trajopt.AddRomRegularizationCost(h_guess_, r_guess_, dr_guess_, tau_guess_,
+                                     first_mode_phase_index, param_.w_rom_reg);
   }
 
   // Default initial guess to avoid singularity (which messes with gradient)

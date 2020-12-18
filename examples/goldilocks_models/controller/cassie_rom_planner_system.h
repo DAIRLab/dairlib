@@ -41,6 +41,7 @@ struct PlannerSetting {
   // Cost weight
   double w_Q;
   double w_R;
+  double w_rom_reg;
 
   // Files parameters
   std::string dir_model;  // location of the model files

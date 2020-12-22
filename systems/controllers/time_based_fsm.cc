@@ -14,8 +14,11 @@ namespace systems {
 TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<int>& states, const std::vector<double>& state_durations,
-    double t0)
-    : states_(states), state_durations_(state_durations), t0_(t0) {
+    double t0, double near_impact_threshold)
+    : states_(states),
+      state_durations_(state_durations),
+      t0_(t0),
+      near_impact_threshold_(near_impact_threshold) {
   DRAKE_DEMAND(states.size() == state_durations.size());
 
   // Input/Output Setup
@@ -24,8 +27,15 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
-  this->DeclareVectorOutputPort(BasicVector<double>(1),
-                                &TimeBasedFiniteStateMachine::CalcFiniteState);
+  fsm_port_ = this->DeclareVectorOutputPort(
+                             BasicVector<double>(1),
+                             &TimeBasedFiniteStateMachine::CalcFiniteState)
+                         .get_index();
+  near_impact_port_ =
+      this->DeclareVectorOutputPort(
+              BasicVector<double>(1),
+              &TimeBasedFiniteStateMachine::CalcNearImpact)
+          .get_index();
 
   // Accumulate the durations to get timestamps
   double sum = 0;
@@ -43,16 +53,17 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
 
-//  double m = floor((current_sim_time - t0_) / period_);
-//  double remainder = (current_sim_time - t0_) - m * period_;
+  //  double m = floor((current_sim_time - t0_) / period_);
+  //  double remainder = (current_sim_time - t0_) - m * period_;
   double remainder = fmod(current_sim_time, period_);
 
   // Get current finite state
-  VectorXd current_finite_state(1);
+  VectorXd current_finite_state = VectorXd::Zero(1);
   if (current_sim_time >= t0_) {
     for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
       if (remainder < accu_state_durations_[i]) {
-        current_finite_state << states_[i];
+        //        current_finite_state << states_[i];
+        current_finite_state(0) = states_[i];
         break;
       }
     }
@@ -62,6 +73,25 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
 
   // Assign fsm_state
   fsm_state->get_mutable_value() = current_finite_state;
+}
+void TimeBasedFiniteStateMachine::CalcNearImpact(
+    const Context<double>& context, BasicVector<double>* fsm_state) const {
+  // Read in lcm message time
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
+
+  double remainder = fmod(current_sim_time, period_);
+
+  // Get current finite state
+  if (current_sim_time >= t0_) {
+    for (double accu_state_duration : accu_state_durations_) {
+      if (abs(remainder - accu_state_duration) < near_impact_threshold_) {
+        fsm_state->get_mutable_value()(0) = 1;
+      }
+      break;
+    }
+  }
 }
 
 }  // namespace systems

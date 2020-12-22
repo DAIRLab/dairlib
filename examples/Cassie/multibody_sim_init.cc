@@ -13,6 +13,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
@@ -134,7 +135,8 @@ int do_main(int argc, char* argv[]) {
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant, true);
+  auto state_sender =
+      builder.AddSystem<systems::RobotOutputSender>(plant, true);
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
@@ -223,7 +225,8 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (FLAGS_terrain_height != 0.0) {
-    ConnectDrakeVisualizer(&builder, scene_graph);
+    //    ConnectDrakeVisualizer(&builder, scene_graph);
+    drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   }
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);

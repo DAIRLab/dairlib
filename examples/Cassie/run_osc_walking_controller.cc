@@ -332,9 +332,10 @@ int DoMain(int argc, char* argv[]) {
                        right_support_duration, double_support_duration};
   }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      plant_w_spr, fsm_states, state_durations);
+      plant_w_spr, fsm_states, state_durations, 0.0, 0.05);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
+
 
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,
@@ -343,13 +344,13 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           single_support_states);
   liftoff_event_time->set_name("liftoff_time");
-  builder.Connect(fsm->get_output_port(0),
+  builder.Connect(fsm->get_output_port_fsm(),
                   liftoff_event_time->get_input_port_fsm());
   auto touchdown_event_time =
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           std::vector<int>(1, double_support_state));
   touchdown_event_time->set_name("touchdown_time");
-  builder.Connect(fsm->get_output_port(0),
+  builder.Connect(fsm->get_output_port_fsm(),
                   touchdown_event_time->get_input_port_fsm());
 
   // Create CoM trajectory generator
@@ -378,7 +379,7 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state);
-  builder.Connect(fsm->get_output_port(0),
+  builder.Connect(fsm->get_output_port_fsm(),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
                   lipm_traj_generator->get_input_port_fsm_switch_time());
@@ -426,7 +427,7 @@ int DoMain(int argc, char* argv[]) {
           gains.final_foot_velocity_z, max_CoM_to_footstep_dist,
           gains.footstep_offset, gains.center_line_offset, true, true, true,
           FLAGS_footstep_option);
-  builder.Connect(fsm->get_output_port(0),
+  builder.Connect(fsm->get_output_port_fsm(),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());
@@ -594,7 +595,7 @@ int DoMain(int argc, char* argv[]) {
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
   builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
                   osc->get_tracking_data_input_port("lipm_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
@@ -602,6 +603,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+  builder.Connect(fsm->get_output_port_impact(), osc->get_near_impact_input_port());
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.
     auto osc_debug_pub =

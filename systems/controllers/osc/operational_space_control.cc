@@ -1,7 +1,10 @@
 #include "systems/controllers/osc/operational_space_control.h"
+
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
+
 #include "drake/common/text_logging.h"
 
 using std::cout;
@@ -28,16 +31,16 @@ using drake::systems::Context;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
-using drake::solvers::Solve;
 using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
+using drake::solvers::Solve;
 
 namespace dairlib::systems::controllers {
 
 using multibody::makeNameToVelocitiesMap;
-using multibody::WorldPointEvaluator;
 using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
+using multibody::WorldPointEvaluator;
 
 int kSpaceDim = OscTrackingData::kSpaceDim;
 
@@ -73,6 +76,8 @@ OperationalSpaceControl::OperationalSpaceControl(
                                 &OperationalSpaceControl::CalcOptimalInput);
   if (used_with_finite_state_machine) {
     fsm_port_ =
+        this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+    near_impact_port_ =
         this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
     // Discrete update to record the last state event time
@@ -250,8 +255,9 @@ void OperationalSpaceControl::Build() {
   prog_ = std::make_unique<MathematicalProgram>();
 
   // Size of decision variable
-  n_h_ = (kinematic_evaluators_ == nullptr)?
-      0 : kinematic_evaluators_->count_full();
+  n_h_ = (kinematic_evaluators_ == nullptr)
+             ? 0
+             : kinematic_evaluators_->count_full();
   n_c_ = kSpaceDim * all_contacts_.size();
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
@@ -280,33 +286,37 @@ void OperationalSpaceControl::Build() {
   // Add constraints
   // 1. Dynamics constraint
   dynamics_constraint_ =
-      prog_->AddLinearEqualityConstraint(
-               MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
-               VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
-           .evaluator()
-           .get();
+      prog_
+          ->AddLinearEqualityConstraint(
+              MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
+              VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
+          .evaluator()
+          .get();
   // 2. Holonomic constraint
   holonomic_constraint_ =
-      prog_->AddLinearEqualityConstraint(MatrixXd::Zero(n_h_, n_v_),
-                                         VectorXd::Zero(n_h_), dv_)
-           .evaluator()
-           .get();
+      prog_
+          ->AddLinearEqualityConstraint(MatrixXd::Zero(n_h_, n_v_),
+                                        VectorXd::Zero(n_h_), dv_)
+          .evaluator()
+          .get();
   // 3. Contact constraint
   if (all_contacts_.size() > 0) {
     if (w_soft_constraint_ <= 0) {
       contact_constraints_ =
-          prog_->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_active_, n_v_),
-                                             VectorXd::Zero(n_c_active_), dv_)
-               .evaluator()
-               .get();
+          prog_
+              ->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_active_, n_v_),
+                                            VectorXd::Zero(n_c_active_), dv_)
+              .evaluator()
+              .get();
     } else {
       // Relaxed version:
       contact_constraints_ =
-          prog_->AddLinearEqualityConstraint(
-                   MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_),
-                   VectorXd::Zero(n_c_active_), {dv_, epsilon_})
-               .evaluator()
-               .get();
+          prog_
+              ->AddLinearEqualityConstraint(
+                  MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_),
+                  VectorXd::Zero(n_c_active_), {dv_, epsilon_})
+              .evaluator()
+              .get();
     }
   }
   // 4. Friction constraint (approximated friction cone)
@@ -319,39 +329,44 @@ void OperationalSpaceControl::Build() {
     one << 1;
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_neg1.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                      lambda_c_.segment(kSpaceDim * j + 0, 1)})
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(mu_neg1.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                     lambda_c_.segment(kSpaceDim * j + 0, 1)})
+              .evaluator()
+              .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_1.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                      lambda_c_.segment(kSpaceDim * j + 0, 1)})
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(mu_1.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                     lambda_c_.segment(kSpaceDim * j + 0, 1)})
+              .evaluator()
+              .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_neg1.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                      lambda_c_.segment(kSpaceDim * j + 1, 1)})
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(mu_neg1.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                     lambda_c_.segment(kSpaceDim * j + 1, 1)})
+              .evaluator()
+              .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_1.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                      lambda_c_.segment(kSpaceDim * j + 1, 1)})
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(mu_1.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
+                                     lambda_c_.segment(kSpaceDim * j + 1, 1)})
+              .evaluator()
+              .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(one.transpose(), 0,
-                                     numeric_limits<double>::infinity(),
-                                     lambda_c_.segment(kSpaceDim * j + 2, 1))
-               .evaluator()
-               .get());
+          prog_
+              ->AddLinearConstraint(one.transpose(), 0,
+                                    numeric_limits<double>::infinity(),
+                                    lambda_c_.segment(kSpaceDim * j + 2, 1))
+              .evaluator()
+              .get());
     }
   }
   // 5. Input constraint
@@ -378,10 +393,11 @@ void OperationalSpaceControl::Build() {
   }
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    tracking_cost_.push_back(prog_->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
-                                                     VectorXd::Zero(n_v_), dv_)
-                                  .evaluator()
-                                  .get());
+    tracking_cost_.push_back(prog_
+                                 ->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
+                                                    VectorXd::Zero(n_v_), dv_)
+                                 .evaluator()
+                                 .get());
   }
 
   // Max solve duration
@@ -412,7 +428,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 VectorXd OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
-    double time_since_last_state_switch) const {
+    double time_since_last_state_switch, bool near_impact) const {
   // Get active contact indices
   std::set<int> active_contact_set = {};
   if (single_contact_mode_) {
@@ -430,9 +446,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Update context
-  SetPositionsIfNew<double>(plant_w_spr_,
-                            x_w_spr.head(plant_w_spr_.num_positions()),
-                            context_w_spr_);
+  SetPositionsIfNew<double>(
+      plant_w_spr_, x_w_spr.head(plant_w_spr_.num_positions()), context_w_spr_);
   SetVelocitiesIfNew<double>(plant_w_spr_,
                              x_w_spr.tail(plant_w_spr_.num_velocities()),
                              context_w_spr_);
@@ -565,6 +580,28 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
+  // Invariant Impacts
+  // Only update when near an impact
+  if (near_impact) {
+//    std::cout << "Using Impact Invariant tracking" << std::endl;
+    MatrixXd M_Jt = M.inverse() * J_c_active.transpose();
+    int active_tracking_data_dim = 0;
+    for (auto tracking_data : *tracking_data_vec_) {
+      active_tracking_data_dim += tracking_data->GetYDim();
+    }
+    MatrixXd A = MatrixXd(active_tracking_data_dim, 3);
+    int row_start = 0;
+    for (auto tracking_data : *tracking_data_vec_) {
+      A.block(row_start, 0, tracking_data->GetYDim(), A.cols()) =
+          tracking_data->GetKd() * tracking_data->GetJ() * M_Jt;
+    }
+    ii_proj_ = M_Jt * A.completeOrthogonalDecomposition().pseudoInverse();
+//    ii_proj_ = MatrixXd::Identity(n_v_, n_v_) -
+//               M_Jt * (M_Jt.transpose() * M_Jt).inverse() * M_Jt.transpose();
+  } else {
+    ii_proj_ = MatrixXd::Zero(n_v_, n_v_);
+  }
+
   // Update costs
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
@@ -575,7 +612,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       // Create constant trajectory and update
       tracking_data->Update(
           x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
-          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
+          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state,
+          ii_proj_);
     } else {
       // Read in traj from input port
       const string& traj_name = tracking_data->GetName();
@@ -587,7 +625,7 @@ VectorXd OperationalSpaceControl::SolveQp(
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, traj, t, fsm_state);
+                            *context_wo_spr_, traj, t, fsm_state, ii_proj_);
     }
     // TODO(yangwill): Should only really be updating the trajectory if it's
     //  active
@@ -802,6 +840,8 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Read in finite state machine
     const BasicVector<double>* fsm_output =
         (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+    const BasicVector<double>* near_impact =
+        (BasicVector<double>*)this->EvalVectorInput(context, near_impact_port_);
     VectorXd fsm_state = fsm_output->get_value();
 
     // Get discrete states
@@ -809,9 +849,10 @@ void OperationalSpaceControl::CalcOptimalInput(
         context.get_discrete_state(prev_event_time_idx_).get_value();
 
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, fsm_state(0),
-                    current_time - prev_event_time(0));
+                    current_time - prev_event_time(0), near_impact->get_value()(0));
   } else {
-    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time);
+    u_sol =
+        SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time, false);
   }
 
   // Assign the control input

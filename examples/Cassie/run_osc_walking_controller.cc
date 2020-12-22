@@ -114,6 +114,7 @@ struct OSCWalkingGains {
   double lipm_height;
   double ss_time;
   double ds_time;
+  double impact_threshold;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -150,6 +151,7 @@ struct OSCWalkingGains {
     // stance times
     a->Visit(DRAKE_NVP(ss_time));
     a->Visit(DRAKE_NVP(ds_time));
+    a->Visit(DRAKE_NVP(impact_threshold));
   }
 };
 
@@ -332,7 +334,7 @@ int DoMain(int argc, char* argv[]) {
                        right_support_duration, double_support_duration};
   }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      plant_w_spr, fsm_states, state_durations, 0.0, 0.05);
+      plant_w_spr, fsm_states, state_durations, 0.0, gains.impact_threshold);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 

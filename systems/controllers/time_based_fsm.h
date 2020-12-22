@@ -57,7 +57,7 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
                        drake::systems::BasicVector<double>* fsm_state) const;
 
   void CalcNearImpact(const drake::systems::Context<double>& context,
-                       drake::systems::BasicVector<double>* fsm_state) const;
+                       drake::systems::BasicVector<double>* near_impact) const;
 
   int fsm_port_;
   int near_impact_port_;

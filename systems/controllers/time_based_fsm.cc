@@ -33,7 +33,7 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
                          .get_index();
   near_impact_port_ =
       this->DeclareVectorOutputPort(
-              BasicVector<double>(1),
+              BasicVector<double>(2),
               &TimeBasedFiniteStateMachine::CalcNearImpact)
           .get_index();
 
@@ -75,7 +75,7 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
   fsm_state->get_mutable_value() = current_finite_state;
 }
 void TimeBasedFiniteStateMachine::CalcNearImpact(
-    const Context<double>& context, BasicVector<double>* fsm_state) const {
+    const Context<double>& context, BasicVector<double>* near_impact) const {
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -83,15 +83,18 @@ void TimeBasedFiniteStateMachine::CalcNearImpact(
 
   double remainder = fmod(current_sim_time, period_);
 
+  VectorXd is_near_impact = VectorXd::Zero(2);
   // Get current finite state
   if (current_sim_time >= t0_) {
-    for (double accu_state_duration : accu_state_durations_) {
-      if (abs(remainder - accu_state_duration) < near_impact_threshold_) {
-        fsm_state->get_mutable_value()(0) = 1;
+    for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
+      if (abs(remainder - accu_state_durations_[i]) < near_impact_threshold_) {
+        is_near_impact(0) = 1;
+        is_near_impact(1) = states_[i];
+        break;
       }
-      break;
     }
   }
+  near_impact->get_mutable_value() = is_near_impact;
 }
 
 }  // namespace systems

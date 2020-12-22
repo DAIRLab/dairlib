@@ -172,7 +172,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
                           double time_since_last_state_switch,
-                          bool near_impact) const;
+                          bool near_impact,
+                          int next_fsm_state) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(

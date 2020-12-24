@@ -14,7 +14,7 @@ class DummyRom : public ReducedOrderModel {
       : ReducedOrderModel(kDimension, 0,
                           drake::MatrixX<double>::Zero(kDimension, 0),
                           mapping_basis.length(), dynamic_basis.length(),
-                          mapping_basis, dynamic_basis, "Dummy ROM") {
+                          mapping_basis, dynamic_basis, {}, "Dummy ROM") {
     // Always check dimension after model construction
     CheckModelConsistency();
   };

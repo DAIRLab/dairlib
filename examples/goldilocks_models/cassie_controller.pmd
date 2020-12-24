@@ -3,12 +3,16 @@ group "1.controllers" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
         host = "localhost";
     }
-    cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true";
+    cmd "2.1.optimal-rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --iter=30 --max_solve_time=1";
         host = "localhost";
     }
     cmd "2.2.rom-planner" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=1 --sample=1 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=1 --sample=1 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=1";
+        host = "localhost";
+    }
+    cmd "2.1.initial-rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=false --iter=1";
         host = "localhost";
     }
 }
@@ -38,7 +42,7 @@ group "3.test rom traj tracking" {
 
 group "2.drake-simulator" {
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=1";
         host = "localhost";
     }
     cmd "1.simulator for OSC controller" {
@@ -46,7 +50,7 @@ group "2.drake-simulator" {
         host = "localhost";
     }
     cmd "2.simulator for MPC (with init state)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --target_realtime_rate=0.1";
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --target_realtime_rate=0.1 --pause_second=1";
         host = "localhost";
     }
 }

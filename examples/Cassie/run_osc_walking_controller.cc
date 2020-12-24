@@ -3,16 +3,17 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc/deviation_from_cp.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/cp_traj_gen.h"
+#include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -57,9 +58,14 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
+
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
+DEFINE_int32(
+    footstep_option, 1,
+    "0 uses the capture point\n"
+    "1 uses the neutral point derived from LIPM given the stance duration");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -142,7 +148,7 @@ int DoMain(int argc, char* argv[]) {
   //                     0.9993 when x = 2
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant_w_spr, context_w_spr.get(), global_target_position,
-      params_of_no_turning);
+      params_of_no_turning, FLAGS_footstep_option);
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
@@ -177,6 +183,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 
+  // Create leafsystem that record the switching time of the FSM
+  std::vector<int> single_support_states = {left_stance_state,
+                                            right_stance_state};
+  auto event_time = builder.AddSystem<systems::FiniteStateMachineEventTime>(
+      single_support_states);
+  builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
+
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
   vector<int> unordered_fsm_states;
@@ -203,19 +216,29 @@ int DoMain(int argc, char* argv[]) {
       contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
+  builder.Connect(event_time->get_output_port_event_time(),
+                  lipm_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
-  auto deviation_from_cp =
-      builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
-          plant_w_spr, context_w_spr.get());
+  bool use_predicted_com_vel = true;
+  auto walking_speed_control =
+      builder.AddSystem<cassie::osc::WalkingSpeedControl>(
+          plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
+          use_predicted_com_vel ? left_support_duration : 0);
   builder.Connect(high_level_command->get_xy_output_port(),
-                  deviation_from_cp->get_input_port_des_hor_vel());
+                  walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
-                  deviation_from_cp->get_input_port_state());
+                  walking_speed_control->get_input_port_state());
+  if (use_predicted_com_vel) {
+    builder.Connect(lipm_traj_generator->get_output_port(0),
+                    walking_speed_control->get_input_port_com());
+    builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                    walking_speed_control->get_input_port_fsm_switch_time());
+  }
 
-  // Create swing leg trajectory generator (capture point)
+  // Create swing leg trajectory generator
   double mid_foot_height = 0.1;
   // Since the ground is soft in the simulation, we raise the desired final
   // foot height by 1 cm. The controller is sensitive to this number, should
@@ -225,29 +248,42 @@ int DoMain(int argc, char* argv[]) {
   // instability around state transition.
   double desired_final_foot_height = 0.01;
   double desired_final_vertical_foot_velocity = 0;  //-1;
-  double max_CoM_to_CP_dist = 0.4;
-  double cp_offset = 0.06;
-  double center_line_offset = 0.06;
+  double max_CoM_to_footstep_dist;
+  double footstep_offset;
+  double center_line_offset;
+  if (FLAGS_footstep_option == 0) {
+    max_CoM_to_footstep_dist = 0.4;
+    footstep_offset = 0.06;
+    center_line_offset = 0.06;
+  } else if (FLAGS_footstep_option == 1) {
+    max_CoM_to_footstep_dist = 0.4;
+    footstep_offset = 0.06;
+    center_line_offset = 0.06;
+  }
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
                                                        right_support_duration};
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
-  auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
-      left_right_support_state_durations, left_right_foot, "pelvis",
-      mid_foot_height, desired_final_foot_height,
-      desired_final_vertical_foot_velocity, max_CoM_to_CP_dist, true, true,
-      true, cp_offset, center_line_offset);
+  auto swing_ft_traj_generator =
+      builder.AddSystem<systems::SwingFootTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
+          left_right_support_state_durations, left_right_foot, "pelvis",
+          mid_foot_height, desired_final_foot_height,
+          desired_final_vertical_foot_velocity, max_CoM_to_footstep_dist,
+          footstep_offset, center_line_offset, true, true, true,
+          FLAGS_footstep_option);
   builder.Connect(fsm->get_output_port(0),
-                  cp_traj_generator->get_input_port_fsm());
+                  swing_ft_traj_generator->get_input_port_fsm());
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                  swing_ft_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
-                  cp_traj_generator->get_input_port_state());
+                  swing_ft_traj_generator->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port(0),
-                  cp_traj_generator->get_input_port_com());
-  builder.Connect(deviation_from_cp->get_output_port(0),
-                  cp_traj_generator->get_input_port_fp());
+                  swing_ft_traj_generator->get_input_port_com());
+  builder.Connect(walking_speed_control->get_output_port(0),
+                  swing_ft_traj_generator->get_input_port_sc());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -325,8 +361,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj(
-      "cp_traj", K_p_sw_ft, K_d_sw_ft, W_swing_foot, plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_sw_ft,
+                                             K_d_sw_ft, W_swing_foot,
+                                             plant_w_spr, plant_w_spr);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
@@ -407,8 +444,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(lipm_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("lipm_traj"));
-  builder.Connect(cp_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("cp_traj"));
+  builder.Connect(swing_ft_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_balance_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),

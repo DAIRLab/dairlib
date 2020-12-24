@@ -129,6 +129,14 @@ class RomTrajOptCassie : public RomTrajOpt {
                           const Eigen::VectorXd& x_guess_right_in_front,
                           const Eigen::VectorXd& final_position,
                           int fisrt_mode_phase_index);
+
+  // Testing -- AddRomRegularizationCost is SetAllInitialGuess except we replace
+  // setting guess with setting cost
+  void AddRomRegularizationCost(const Eigen::VectorXd& h_guess,
+                                const Eigen::MatrixXd& r_guess,
+                                const Eigen::MatrixXd& dr_guess,
+                                const Eigen::MatrixXd& tau_guess,
+                                int fisrt_mode_phase_index, double w_reg);
 };
 
 class RomTrajOptFiveLinkRobot : public RomTrajOpt {

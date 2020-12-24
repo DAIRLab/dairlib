@@ -1,6 +1,22 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
+    name = "visualize_single_FoM_pose",
+    srcs = ["visualize_single_FoM_pose.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//common",
+        "//common:file_utils",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//multibody:multipose_visualizer",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "visualize_FoM_pose_MBP",
     srcs = ["visualize_FoM_pose_MBP.cc"],
     data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),

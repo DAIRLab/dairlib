@@ -51,3 +51,15 @@ cc_library(
     deps = [
     ],
 )
+
+cc_library(
+    name = "local_lipm_traj_gen",
+    srcs = ["local_lipm_traj_gen.cc"],
+    hdrs = ["local_lipm_traj_gen.h"],
+    deps = [
+        "//systems/controllers:control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

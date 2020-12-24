@@ -23,7 +23,7 @@ if len(sys.argv) >= 4:
     robot_option = int(sys.argv[3])
 
 
-n_sampel_sl = 13  # should be > 0
+n_sampel_sl = 3  # should be > 0
 n_sampel_gi = 3  # should be > 0
 n_sampel_v = 1  # should be > 0
 n_sampel_tr = 1  # should be > 0

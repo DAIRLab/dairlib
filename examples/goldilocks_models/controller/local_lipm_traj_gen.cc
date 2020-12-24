@@ -1,4 +1,4 @@
-#include "systems/controllers/lipm_traj_gen.h"
+#include "examples/goldilocks_models/controller/local_lipm_traj_gen.h"
 
 #include <math.h>
 
@@ -10,6 +10,7 @@ using std::string;
 using std::vector;
 
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -28,7 +29,7 @@ using drake::trajectories::PiecewisePolynomial;
 namespace dairlib {
 namespace systems {
 
-LIPMTrajGenerator::LIPMTrajGenerator(
+LocalLIPMTrajGenerator::LocalLIPMTrajGenerator(
     const MultibodyPlant<double>& plant, Context<double>* context,
     double desired_com_height, const vector<int>& unordered_fsm_states,
     const vector<double>& unordered_state_durations,
@@ -42,7 +43,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
       world_(plant_.world_frame()) {
-  this->set_name("lipm_traj");
+  this->set_name("local_lipm_traj");
 
   // Checking vector dimension
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
@@ -67,10 +68,10 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   this->DeclareAbstractOutputPort("lipm_traj", traj_inst,
-                                  &LIPMTrajGenerator::CalcTraj);
+                                  &LocalLIPMTrajGenerator::CalcTraj);
 }
 
-void LIPMTrajGenerator::CalcTraj(
+void LocalLIPMTrajGenerator::CalcTraj(
     const Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
@@ -92,7 +93,7 @@ void LIPMTrajGenerator::CalcTraj(
   int mode_index = std::distance(unordered_fsm_states_.begin(), it);
   if (it == unordered_fsm_states_.end()) {
     cout << "WARNING: fsm state number " << fsm_state(0)
-         << " doesn't exist in LIPMTrajGenerator\n";
+         << " doesn't exist in LocalLIPMTrajGenerator\n";
     mode_index = 0;
   }
 
@@ -131,14 +132,24 @@ void LIPMTrajGenerator::CalcTraj(
   }
   stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
+  // Get rotation matrix from pevlis to world in x-y plane
+  Quaterniond quat(q(0), q(1), q(2), q(3));
+  Vector3d pelvis_x = quat.toRotationMatrix().col(0);
+  pelvis_x(2) = 0;
+  Vector3d world_x(1, 0, 0);
+  MatrixXd R_pelvis_to_world =
+      Quaterniond::FromTwoVectors(pelvis_x, world_x).toRotationMatrix();
+
   // Get CoM_wrt_foot for LIPM
-  const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
-  const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
-  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  const double dCoM_wrt_foot_x = dCoM(0);
-  const double dCoM_wrt_foot_y = dCoM(1);
+  VectorXd CoM_wrt_foot = R_pelvis_to_world * (CoM - stance_foot_pos);
+  VectorXd dCoM_wrt_foot = R_pelvis_to_world * dCoM;
+  //  const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
+  //  const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
+  //  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
+  //  const double dCoM_wrt_foot_x = dCoM(0);
+  //  const double dCoM_wrt_foot_y = dCoM(1);
   // const double dCoM_wrt_foot_z = dCoM(2);
-  DRAKE_DEMAND(CoM_wrt_foot_z > 0);
+  DRAKE_DEMAND(CoM_wrt_foot(2) > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   // Note that the start time in T_waypoint_com is also used by
@@ -146,10 +157,10 @@ void LIPMTrajGenerator::CalcTraj(
   vector<double> T_waypoint_com = {current_time, end_time_of_this_fsm_state};
 
   vector<MatrixXd> Y(T_waypoint_com.size(), MatrixXd::Zero(3, 1));
-  Y[0](0, 0) = stance_foot_pos(0);
-  Y[1](0, 0) = stance_foot_pos(0);
-  Y[0](1, 0) = stance_foot_pos(1);
-  Y[1](1, 0) = stance_foot_pos(1);
+  Y[0](0, 0) = 0;  // stance_foot_pos(0);
+  Y[1](0, 0) = 0;  // stance_foot_pos(0);
+  Y[0](1, 0) = 0;  // stance_foot_pos(1);
+  Y[1](1, 0) = 0;  // stance_foot_pos(1);
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
@@ -169,11 +180,11 @@ void LIPMTrajGenerator::CalcTraj(
   //   y = k_1 * exp(w*t) + k_2 * exp(-w*t)
   // where k_1 = (y0 + dy0/w)/2
   //       k_2 = (y0 - dy0/w)/2.
-  double omega = sqrt(9.81 / CoM_wrt_foot_z);
-  double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
-  double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
-  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega);
-  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega);
+  double omega = sqrt(9.81 / CoM_wrt_foot(2));
+  double k1x = 0.5 * (CoM_wrt_foot(0) + dCoM_wrt_foot(0) / omega);
+  double k2x = 0.5 * (CoM_wrt_foot(0) - dCoM_wrt_foot(0) / omega);
+  double k1y = 0.5 * (CoM_wrt_foot(1) + dCoM_wrt_foot(1) / omega);
+  double k2y = 0.5 * (CoM_wrt_foot(1) - dCoM_wrt_foot(1) / omega);
 
   // Sum of two exponential + one-segment 3D polynomial
   MatrixXd K = MatrixXd::Zero(3, 2);

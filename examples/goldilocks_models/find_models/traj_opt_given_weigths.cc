@@ -1011,8 +1011,8 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
     // Store y, ydot, yddot and tau into csv files
     // cout << "\nStoring y, ydot and yddot into csv.\n";
-    cout << "setting.cubic_spline_in_rom_constraint = "
-         << setting.cubic_spline_in_rom_constraint << endl;
+    //    cout << "setting.cubic_spline_in_rom_constraint = "
+    //         << setting.cubic_spline_in_rom_constraint << endl;
     if (setting.cubic_spline_in_rom_constraint) {
       std::vector<VectorXd> y_vec;
       std::vector<VectorXd> ydot_vec;
@@ -2189,6 +2189,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
     }
   }
+  // We need all joints for the joint limit constraints
+  asy_joint_names = {"hip_roll", "hip_yaw"};
+  sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
+  vector<string> joint_names_for_joint_limit{};
+  for (const auto& l_r_pair : l_r_pairs) {
+    for (const auto& asy_joint_name : asy_joint_names) {
+      joint_names_for_joint_limit.push_back(asy_joint_name + l_r_pair.first);
+    }
+    for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
+      joint_names_for_joint_limit.push_back(sym_joint_names[i] + l_r_pair.first);
+    }
+  }
 
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
@@ -2668,8 +2680,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         }
       }
     } else {
-      DRAKE_DEMAND(false);  // need to update this block of code first
-
       // z position constraint
       // We don't need to impose this constraint when turning rate is 0, because
       // the periodicity constraint already enforce the z height implicitly
@@ -2701,7 +2711,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                         x_mid(n_q + vel_map.at("base_wz")));*/
 
       // velocity constraint at the end point
-      // TODO: double check that the floating base velocity is wrt local frame
+      // TODO: double check that the floating base velocity is wrt local frame.
+      //  Update: I think it's wrt world frame, so the following code is just an
+      //  approximation (which might be fine because Cassie cannot turn quickly
+      //  in practice anyway)
       if (periodic_floating_base_vel) {
         trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
                                      xf(n_q + vel_map.at("base_wx")));
@@ -2787,7 +2800,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }  // end for (l_r_pairs)
 
   // joint limits
-  for (const auto& member : joint_names) {
+  for (const auto& member : joint_names_for_joint_limit) {
     trajopt->AddConstraintToAllKnotPoints(
         x(pos_map.at(member)) <=
         plant.GetJointByName(member).position_upper_limits()(0));
@@ -3206,9 +3219,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (w_q_quat) {
     for (int i = 0; i < N; i++) {
       // get desired turning rate at knot point i
-      double turning_rate_i = turning_rate * i / (N - 1);
+      double turning_angle_i = turning_angle * i / (N - 1);
       VectorXd desired_quat(4);
-      desired_quat << cos(turning_rate_i / 2), 0, 0, sin(turning_rate_i / 2);
+      desired_quat << cos(turning_angle_i / 2), 0, 0, sin(turning_angle_i / 2);
 
       auto quat = trajopt->state(i).head(4);
       trajopt->AddCost(w_q_quat * (quat - desired_quat).transpose() *
@@ -3358,15 +3371,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   std::chrono::duration<double> elapsed = finish - start;
 
   // Save trajectory to file
-  if (sample_idx == 0) {
-    string file_name = "dircon_trajectory";
-    DirconTrajectory saved_traj(
-        plant, *gm_traj_opt.dircon, result, file_name,
-        "Decision variables and state/input trajectories");
-    saved_traj.WriteToFile(setting.directory + file_name);
-    std::cout << "Wrote to file: " << setting.directory + file_name
-              << std::endl;
-  }
+  string file_name = setting.prefix + "dircon_trajectory";
+  DirconTrajectory saved_traj(
+      plant, *gm_traj_opt.dircon, result, file_name,
+      "Decision variables and state/input trajectories");
+  saved_traj.WriteToFile(setting.directory + file_name);
+  //  std::cout << "Wrote to file: " << setting.directory + file_name <<
+  //  std::endl;
 
   bool is_print_for_debugging = false;
   VectorXd w_sol;
@@ -3521,9 +3532,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     double cost_q_quat_xyz = 0;
     for (int i = 0; i < N; i++) {
       // get desired turning rate at knot point i
-      double turning_rate_i = turning_rate * i / (N - 1);
+      double turning_angle_i = turning_angle * i / (N - 1);
       VectorXd desired_quat(4);
-      desired_quat << cos(turning_rate_i / 2), 0, 0, sin(turning_rate_i / 2);
+      desired_quat << cos(turning_angle_i / 2), 0, 0, sin(turning_angle_i / 2);
 
       auto quat = result.GetSolution(gm_traj_opt.dircon->state(i).head(4));
       cost_q_quat_xyz +=

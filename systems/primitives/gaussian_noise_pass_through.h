@@ -57,7 +57,6 @@ class GaussianNoisePassThrough final : public
 
   int num_positions_;
   int num_velocities_;
-  int num_inputs_;
   Eigen::MatrixXd pos_variance_;
   Eigen::MatrixXd vel_variance_;
 };

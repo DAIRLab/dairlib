@@ -34,6 +34,31 @@ py_binary(
     ],
 )
 
+py_library(
+    name = "process_lcm_log_py",
+    srcs = ["analysis_scripts/process_lcm_log.py"],
+    deps = [
+        ":module_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "log_plotter_cassie",
+    srcs = ["analysis_scripts/log_plotter_cassie.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        ":process_lcm_log_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 py_binary(
     name = "dircon_trajectory_plotter",
     srcs = ["dircon_trajectory_plotter.py"],
@@ -45,6 +70,7 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
+
 
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.

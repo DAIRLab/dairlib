@@ -51,7 +51,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_controls,
     const std::vector<int>& left_right_support_fsm_states, double stride_period,
     const PlannerSetting& param, bool debug_mode)
-    : plant_controls_(plant_controls),
+    : nq_(plant_controls.num_positions()),
+      nv_(plant_controls.num_velocities()),
+      plant_controls_(plant_controls),
       left_right_support_fsm_states_(left_right_support_fsm_states),
       stride_period_(stride_period),
       param_(param),
@@ -78,8 +80,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       systems::controllers::VelocityMapFromSpringToNoSpring(plant_feedback,
                                                             plant_controls);
 
-  // Create position maps
+  // Create index maps
   positions_map_ = multibody::makeNameToPositionsMap(plant_controls);
+  velocities_map_ = multibody::makeNameToVelocitiesMap(plant_controls);
 
   // Reduced order model
   rom_ = CreateRom(param_.rom_option, ROBOT, plant_controls, false);
@@ -210,6 +213,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       solver_option_.SetOption(id, "print_timing_statistics", "no");
       solver_option_.SetOption(id, "print_level", 0);
     }
+    if (param_.time_limit > 0) {
+      solver_option_.SetOption(id, "max_cpu_time", param_.time_limit);
+    }
 
     // Set to ignore overall tolerance/dual infeasibility, but terminate when
     // primal feasible and objective fails to increase over 5 iterations.
@@ -222,6 +228,12 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     if (param_.log_solver_info) {
       solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
                                "../snopt_planning.out");
+    }
+    if (param_.time_limit > 0) {
+      solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Time limit",
+                               param_.time_limit);
+      solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
+                               "Timing level", 3);
     }
     solver_option_.SetOption(drake::solvers::SnoptSolver::id(),
                              "Major iterations limit", param_.max_iter);
@@ -293,6 +305,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   x_init(positions_map_.at("base_y")) = 0;
   // cout << "x(\"base_x\") = " << x_init(positions_map_.at("base_x")) << endl;
   // cout << "x(\"base_y\") = " << x_init(positions_map_.at("base_y")) << endl;
+
+  // Also need to rotate floating base velocities (wrt global frame)
+  x_init.segment<3>(nq_) =
+      relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_);
+  x_init.segment<3>(nq_ + 3) =
+      relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_ + 3);
 
   ///
   /// Construct rom traj opt
@@ -378,7 +396,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // linkage relationship. You shouldn't add constraint to the initial pose here
   /*double fourbar_angle = 13.0 / 180.0 * M_PI;
   auto q0_var =
-  trajopt.x0_vars_by_mode(0).head(plant_controls_.num_positions());
+  trajopt.x0_vars_by_mode(0).head(nq_);
   trajopt.AddLinearEqualityConstraint(
       q0_var(positions_map.at("knee_left")) +
       q0_var(positions_map.at("ankle_joint_left")), fourbar_angle);
@@ -403,7 +421,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       final_position, final_position,
       trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));
 
-  // Add_robot state in cost
+  // Add robot state in cost
   bool add_x_pose_in_cost = true;
   if (add_x_pose_in_cost) {
     trajopt.AddRegularizationCost(final_position, x_guess_left_in_front_,
@@ -418,6 +436,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       trajopt.AddQuadraticErrorCost(Id, zero_vec,
                                     trajopt.xf_vars_by_mode(i).segment(1, 3));
     }
+  }
+
+  // Add rom state in cost
+  bool add_rom_regularization = true;
+  if (add_rom_regularization) {
+    trajopt.AddRomRegularizationCost(h_guess_, r_guess_, dr_guess_, tau_guess_,
+                                     first_mode_phase_index, param_.w_rom_reg);
   }
 
   // Default initial guess to avoid singularity (which messes with gradient)
@@ -515,12 +540,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     writeCSV(param_.dir_data + string("state_at_knots.csv"), state_at_knots);
     writeCSV(param_.dir_data + string("input_at_knots.csv"), input_at_knots);
 
-    MatrixXd x0_each_mode(
-        plant_controls_.num_positions() + plant_controls_.num_velocities(),
-        num_time_samples.size());
-    MatrixXd xf_each_mode(
-        plant_controls_.num_positions() + plant_controls_.num_velocities(),
-        num_time_samples.size());
+    MatrixXd x0_each_mode(nq_ + nv_, num_time_samples.size());
+    MatrixXd xf_each_mode(nq_ + nv_, num_time_samples.size());
     for (uint i = 0; i < num_time_samples.size(); i++) {
       x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
       xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
@@ -532,8 +553,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
-//  if (true) {
-//  if (!result.is_success() || !start_with_left_stance_) {
+  //  if (true) {
+  //  if (!result.is_success() || !start_with_left_stance_) {
   if (!result.is_success()) {
     // If the solution failed, send an empty-size data. This tells the
     // controller thread to fall back to LIPM traj
@@ -561,6 +582,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   for (int i = 0; i < traj_msg->num_datatypes; ++i) {
     traj_msg->datapoints.push_back(
         CopyVectorXdToStdVector(state_at_knots.row(i)));
+  }
+
+  // Testing
+  if (elapsed.count() > 0.5) {
+    cout << "x_init = " << x_init << endl;
+    writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
   }
 }
 

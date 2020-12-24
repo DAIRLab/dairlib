@@ -36,10 +36,12 @@ struct PlannerSetting {
 
   bool use_ipopt;
   bool log_solver_info;
+  double time_limit;
 
   // Cost weight
   double w_Q;
   double w_R;
+  double w_rom_reg;
 
   // Files parameters
   std::string dir_model;  // location of the model files
@@ -83,6 +85,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
   std::map<std::string, int> positions_map_;
+  std::map<std::string, int> velocities_map_;
+
+  int nq_;
+  int nv_;
 
   const drake::multibody::MultibodyPlant<double>& plant_controls_;
   std::vector<int> left_right_support_fsm_states_;

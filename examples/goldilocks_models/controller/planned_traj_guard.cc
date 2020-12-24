@@ -47,6 +47,8 @@ void PlannedTrajGuard::ApplyGuard(
     prev_traj_start_time_ = optimal_rom_traj.start_time();
   }
 
+  // TODO: also need to consider that when the current time is larger than the
+  //  end of the traj time (we fall back to lipm traj in this case)
   bool planner_timeout =
       (context.get_time() - prev_message_arrival_time_ > max_solve_time_);
   bool planner_no_solution = (optimal_rom_traj.start_time() ==
@@ -60,8 +62,10 @@ void PlannedTrajGuard::ApplyGuard(
   //  The bug could be that we are using RomTrackingData to tracking LIPM traj,
   //  but the ROM is actually using COM wrt feet. Therefore, we just need to not
   //  use this RomTrackingData LIPM
+  //   if (planner_timeout || planner_no_solution) {
+  //  if (false) {
   if (true) {
-    //  if (planner_timeout || planner_no_solution) {
+    //  std::cout << "Using backup controller\n";
     // Read in lipm traj
     const auto& lipm_traj =
         this->EvalAbstractInput(context, lipm_port_)
@@ -84,6 +88,7 @@ void PlannedTrajGuard::ApplyGuard(
     }
     previous_traj_ = LIPM_TRAJ_INDEX;
   } else {
+    //     std::cout << "Using optimal ROM controller\n";
     // Cast traj
     auto* output_traj_casted =
         (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<

@@ -7,6 +7,7 @@ struct lcmt_osc_output
   int32_t num_tracking_data;
 
   lcmt_osc_tracking_data tracking_data[num_tracking_data];
+  lcmt_osc_qp_output qp_output;
   string tracking_data_names[num_tracking_data];
 
   double input_cost;

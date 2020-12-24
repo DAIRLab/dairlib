@@ -12,27 +12,13 @@
 namespace dairlib {
 namespace systems {
 
-/// This class creates predicted center of mass (COM) trajectory of a bipedal
-/// robot.
-/// The trajectories in horizontal directions (x and y axes) are predicted, and
-/// the traj in the vertical direction (z axis) starts/ends at the
-/// current/desired height.
+/// This class is the same as LIPMTrajGenerator except that the lipm is wrt
+/// to stance foot (in xyz), and the reference frame's axes align with pelvis's
+/// on the x-y plane (so we rotate the lipm position by R_pelvis_to_world)
 
-/// Constructor inputs:
-///  @param plant, the MultibodyPlant
-///  @param desired_com_height, desired COM height
-///  @param unordered_fsm_states, vector of fsm states
-///  @param unordered_state_durations, duration of each state in
-///         unordered_fsm_states
-///  @param contact_points_in_each_state, <position of the points on the bodies,
-///         body frame> pairs of plant for calculating the stance foot
-///         position (of each state in unordered_fsm_states). If there are two
-///         or more pairs, we get the average of the positions.
-/// The last three parameters must have the same size.
-
-class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
+class LocalLIPMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  LIPMTrajGenerator(
+  LocalLIPMTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context, double desired_com_height,
       const std::vector<int>& unordered_fsm_states,

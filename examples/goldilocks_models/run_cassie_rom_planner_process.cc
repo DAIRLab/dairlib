@@ -51,11 +51,15 @@ using systems::OutputVector;
 
 // Planner settings
 DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
-DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
+DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
+
+DEFINE_double(w_Q, 1, "");
+DEFINE_double(w_R, 1, "");
+DEFINE_double(w_rom_reg, 1, "cost weight for the ROM state regularization");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_bool(fix_duration, true,
@@ -67,9 +71,10 @@ DEFINE_double(opt_tol, 1e-3, "");
 DEFINE_double(feas_tol, 1e-3, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
+DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
 DEFINE_bool(log_solver_info, true,
             "Log snopt output to a file or ipopt to terminal");
-DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
+DEFINE_double(time_limit, 0, "time limit for the solver.");
 
 // Flag for debugging
 DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
@@ -139,8 +144,10 @@ int DoMain(int argc, char* argv[]) {
   param.max_iter = FLAGS_max_iter;
   param.use_ipopt = FLAGS_use_ipopt;
   param.log_solver_info = FLAGS_log_solver_info;
-  param.w_Q = 1;
-  param.w_R = 1;
+  param.time_limit = FLAGS_time_limit;
+  param.w_Q = FLAGS_w_Q;
+  param.w_R = FLAGS_w_R;
+  param.w_rom_reg = FLAGS_w_rom_reg;
   param.dir_model =
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   param.dir_data = "../dairlib_data/goldilocks_models/planning/robot_1/data/";

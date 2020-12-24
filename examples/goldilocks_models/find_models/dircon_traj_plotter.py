@@ -17,16 +17,18 @@ from pydairlib.cassie.cassie_utils import *
 
 
 def main():
-  filename = FindResourceOrThrow(
-    '../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory')
+  filename = ""
   # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory_iter0')
   # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/dircon_trajectory_iter1')
   # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
   # filename = abs_path + "/dircon_trajectory"
   # filename = "../dircon_trajectory"
-  if len(sys.argv) == 2:
-    if sys.argv[1] != "save":
-      filename = sys.argv[1]
+  if len(sys.argv) == 2 and sys.argv[1] != "save":
+    filename = sys.argv[1]
+  else:
+    filename = FindResourceOrThrow(
+      '../dairlib_data/goldilocks_models/find_models/robot_1/1_0_dircon_trajectory')
+
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
 
   # For saving figures

@@ -1,6 +1,6 @@
 #include <memory>
 #include <chrono>
-
+#include <unistd.h>
 #include <gflags/gflags.h>
 
 #include "drake/solvers/snopt_solver.h"
@@ -90,7 +90,7 @@ void runDircon(
   evaluators.add_evaluator(&left_foot_eval);
   evaluators.add_evaluator(&right_foot_eval);
 
-  int num_knotpoints = 10;
+  int num_knotpoints = 20;
   double min_T = .1;
   double max_T = 3;
   
@@ -131,14 +131,18 @@ void runDircon(
   // Initial height
   trajopt.AddBoundingBoxConstraint(0.8, 0.8, x0(positions_map.at("planar_z")));
   // Final height
+  //trajopt.AddBoundingBoxConstraint(0.8, 0.8, xf(positions_map.at("planar_z")));
+  // Bottom height
   trajopt.AddBoundingBoxConstraint(0.6, 0.6, xf(positions_map.at("planar_z")));
 
   // Initial and final rotation of "torso""
-  //trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("planar_roty")));
-  //trajopt.AddBoundingBoxConstraint(0, 0, xf(positions_map.at("planar_roty")));
+  trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
+  //trajopt.AddLinearConstraint( xmid(positions_map.at("right_knee_pin")) ==  -xmid(positions_map.at("left_knee_pin")));
+  trajopt.AddLinearConstraint( xf(positions_map.at("right_knee_pin")) ==  -xf(positions_map.at("left_knee_pin")));
 
   // Fore-aft position
   trajopt.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
+  //trajopt.AddLinearConstraint(xmid(positions_map["planar_x"]) == 0);
   trajopt.AddLinearConstraint(xf(positions_map["planar_x"]) == 0);
 
   // start/end velocity constraints
@@ -154,7 +158,7 @@ void runDircon(
   }
 
   const double R = 10;  // Cost on input effort
-  const MatrixXd Q = 10 * 50 * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose()*R*u);
 
@@ -181,9 +185,10 @@ void runDircon(
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(.5);
+    simulator.set_target_realtime_rate(.25);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
+    sleep(5);
   }
 }
 

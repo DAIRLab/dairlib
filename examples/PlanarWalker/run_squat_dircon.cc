@@ -133,20 +133,20 @@ void runDircon(
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
 
   // Initial height
-  trajopt.AddBoundingBoxConstraint(0.6, 0.6, x0(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_endHeight, FLAGS_endHeight, x0(positions_map.at("planar_z")));
   // Final height
-  //trajopt.AddBoundingBoxConstraint(0.8, 0.8, xf(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_startHeight, FLAGS_startHeight, xmid(positions_map.at("planar_z")));
   // Bottom height
-  trajopt.AddBoundingBoxConstraint(0.9, 0.9, xf(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_endHeight, FLAGS_endHeight, xf(positions_map.at("planar_z")));
 
   // Initial and final rotation of "torso""
   trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
-  //trajopt.AddLinearConstraint( xmid(positions_map.at("right_knee_pin")) ==  -xmid(positions_map.at("left_knee_pin")));
+  trajopt.AddLinearConstraint( xmid(positions_map.at("right_knee_pin")) ==  -xmid(positions_map.at("left_knee_pin")));
   trajopt.AddLinearConstraint( xf(positions_map.at("right_knee_pin")) ==  -xf(positions_map.at("left_knee_pin")));
 
   // Fore-aft position
   trajopt.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
-  //trajopt.AddLinearConstraint(xmid(positions_map["planar_x"]) == 0);
+  trajopt.AddLinearConstraint(xmid(positions_map["planar_x"]) == 0);
   trajopt.AddLinearConstraint(xf(positions_map["planar_x"]) == 0);
 
   // start/end velocity constraints
@@ -162,18 +162,20 @@ void runDircon(
   }
 
   // Set foot distances
+  std::vector<int> x_active({0});
+
   auto left_foot_x_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                          left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0,2});
+                                                          left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), x_active);
   auto right_foot_x_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                           right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0,2});
+                                                           right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), x_active);
   auto foot_x_evaluators = multibody::KinematicEvaluatorSet<T>(plant);
   foot_x_evaluators.add_evaluator(&right_foot_x_eval);
   foot_x_evaluators.add_evaluator(&left_foot_x_eval);
 
   auto foot_x_lb =
-      Eigen::Vector4d(-0.2, -0.3, -std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity() );
+      Eigen::Vector2d(0.05, -0.15);
   auto foot_x_ub =
-      Eigen::Vector4d(0.3, 0.2, std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+      Eigen::Vector2d(0.15, -0.05);
   auto foot_y_constraint =
       std::make_shared<multibody::KinematicPositionConstraint<T>>(
           plant, foot_x_evaluators, foot_x_lb, foot_x_ub);

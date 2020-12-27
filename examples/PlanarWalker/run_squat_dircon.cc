@@ -17,12 +17,13 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "multibody/kinematic/kinematic_constraints.h"
+#include "multibody/kinematic/distance_evaluator.h"
 
 DEFINE_double(strideLength, 0.1, "The stride length.");
 DEFINE_double(duration, 1, "The squat duration");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
-DEFINE_double(startHeight, 0.6, "The start height.");
-DEFINE_double(endHeight, 0.9, "The end height.");
+DEFINE_double(bottomHeight, 0.6, "The start height.");
+DEFINE_double(topHeight, 0.9, "The end height.");
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -133,11 +134,11 @@ void runDircon(
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
 
   // Initial height
-  trajopt.AddBoundingBoxConstraint(FLAGS_endHeight, FLAGS_endHeight, x0(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_topHeight, FLAGS_topHeight, x0(positions_map.at("planar_z")));
   // Final height
-  trajopt.AddBoundingBoxConstraint(FLAGS_startHeight, FLAGS_startHeight, xmid(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight, FLAGS_bottomHeight, xmid(positions_map.at("planar_z")));
   // Bottom height
-  trajopt.AddBoundingBoxConstraint(FLAGS_endHeight, FLAGS_endHeight, xf(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_topHeight, FLAGS_topHeight, xf(positions_map.at("planar_z")));
 
   // Initial and final rotation of "torso""
   trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
@@ -163,7 +164,9 @@ void runDircon(
 
   // Set foot distances
   std::vector<int> x_active({0});
-
+  auto distance_foot_distance_eval = multibody::DistanceEvaluator<T>(
+      plant, pt, right_lower_leg, pt, left_lower_leg, 0);
+  /*
   auto left_foot_x_eval = multibody::WorldPointEvaluator<T>(plant, pt,
                                                           left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), x_active);
   auto right_foot_x_eval = multibody::WorldPointEvaluator<T>(plant, pt,
@@ -176,17 +179,29 @@ void runDircon(
       Eigen::Vector2d(0.05, -0.15);
   auto foot_x_ub =
       Eigen::Vector2d(0.15, -0.05);
+    */
+  auto foot_distance_evalutors = multibody::KinematicEvaluatorSet<T>(plant);
+  foot_distance_evalutors.add_evaluator(&distance_foot_distance_eval);
+
+  auto foot_distance_lb =
+      Eigen::VectorXd(1);
+  auto foot_distance_ub =
+      Eigen::VectorXd(1);
+  foot_distance_lb(0) = 0.1;
+  foot_distance_ub(0) = 0.3;
+
   auto foot_y_constraint =
       std::make_shared<multibody::KinematicPositionConstraint<T>>(
-          plant, foot_x_evaluators, foot_x_lb, foot_x_ub);
+          plant, foot_distance_evalutors, foot_distance_lb, foot_distance_ub);
 
   for (int index = 0; index < num_knotpoints; index++) {
-    auto x = trajopt.state(index);
-    trajopt.AddConstraint(foot_y_constraint, x.head(n_q));
+    auto x_local = trajopt.state(index);
+    trajopt.AddConstraint(foot_y_constraint, x_local.head(n_q));
   }
 
+
   const double R = 10;  // Cost on input effort
-  const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const MatrixXd Q = 40  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose()*R*u);
 
@@ -271,26 +286,43 @@ int main(int argc, char* argv[]) {
   auto positions_map = dairlib::multibody::makeNameToPositionsMap(*plant);
   auto velocities_map = dairlib::multibody::makeNameToVelocitiesMap(*plant);
 
-  xState(nq + velocities_map.at("hip_pindot")) = 0.1;
-  xState(nq + velocities_map.at("planar_rotydot")) = -0.1;
+  xState(nq + velocities_map.at("hip_pindot")) = -0.1;
+  xState(nq + velocities_map.at("planar_rotydot")) = 0.1;
   xState(nq + velocities_map.at("planar_xdot")) = 0;
-  xState(nq + velocities_map.at("planar_zdot")) = (FLAGS_endHeight-FLAGS_startHeight)/FLAGS_duration;
-  xState(nq + velocities_map.at("left_knee_pindot")) = 0.1;
-  xState(nq + velocities_map.at("right_knee_pindot")) = -0.1;
+  xState(nq + velocities_map.at("planar_zdot")) = -(FLAGS_topHeight-FLAGS_bottomHeight)/FLAGS_duration/2;
+  xState(nq + velocities_map.at("left_knee_pindot")) = -0.1;
+  xState(nq + velocities_map.at("right_knee_pindot")) = 0.1;
   double time = 0;
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < N/2; i++) {
+    time=i*FLAGS_duration/(N-1)/2;
+    init_time.push_back(time);
+
+    xState(positions_map.at("hip_pin")) = -0.4 + xState(nq + velocities_map.at("hip_pindot")) * time;
+    xState(positions_map.at("planar_roty")) = 0.4 + xState(nq + velocities_map.at("planar_rotydot")) * time;
+    xState(positions_map.at("planar_x")) = 0;
+    xState(positions_map.at("planar_z")) = FLAGS_topHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
+    xState(positions_map.at("left_knee_pin")) = -0.3 + xState(nq + velocities_map.at("left_knee_pindot")) * time;
+    xState(positions_map.at("right_knee_pin")) = 0.3 + xState(nq + velocities_map.at("right_knee_pindot")) * time;
+    init_x.push_back(xState);
+    init_u.push_back(VectorXd::Random(nu));
+  }
+
+  xState = -xState;
+  for (int i = N/2; i < N; i++) {
     time=i*FLAGS_duration/(N-1);
     init_time.push_back(time);
 
     xState(positions_map.at("hip_pin")) = -0.4 + xState(nq + velocities_map.at("hip_pindot")) * time;
     xState(positions_map.at("planar_roty")) = 0.4 + xState(nq + velocities_map.at("planar_rotydot")) * time;
     xState(positions_map.at("planar_x")) = 0;
-    xState(positions_map.at("planar_z")) = FLAGS_startHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
-    xState(positions_map.at("left_knee_pin")) = -0.6 + xState(nq + velocities_map.at("left_knee_pindot")) * time;
-    xState(positions_map.at("right_knee_pin")) = 0.6 + xState(nq + velocities_map.at("right_knee_pindot")) * time;
+    xState(positions_map.at("planar_z")) = FLAGS_topHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
+    xState(positions_map.at("left_knee_pin")) = -0.3 + xState(nq + velocities_map.at("left_knee_pindot")) * time;
+    xState(positions_map.at("right_knee_pin")) = 0.3 + xState(nq + velocities_map.at("right_knee_pindot")) * time;
     init_x.push_back(xState);
     init_u.push_back(VectorXd::Random(nu));
   }
+
+
   auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);
   auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_u);
 

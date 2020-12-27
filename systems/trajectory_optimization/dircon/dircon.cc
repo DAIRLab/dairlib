@@ -285,7 +285,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
                   mode.evaluators().evaluator_full_start(k), e.num_full()));
         }
 
-        if (i_mode > 0) {
+        if (i_mode > 0 && is_impact) {
           // Add to impulse variables
           AddConstraint(force_constraint,
                         impulse_vars(i_mode - 1)

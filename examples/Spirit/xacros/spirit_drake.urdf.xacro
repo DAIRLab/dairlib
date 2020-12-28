@@ -153,19 +153,19 @@ SOFTWARE.
 		
 
 		<!-- Abduction joint. Joint names are: 8 9 10 11 -->
-		<joint name="${abductionJointName}" type="revolute">
+		<joint name="joint_${abductionJointName}" type="revolute">
 			<parent link="body"/>
 			<child link="hip${suffix}"/>
 			<axis xyz="1 0 0"/>
 			<origin xyz="${front * dx} ${left * dy} 0"/>
-			<limit effort="${abEffortLimit}" velocity="${abSpeedLimit}" lower="${-abKinLimit}" upper="${abKinLimit}"/>
+			<!-- <limit effort="${abEffortLimit}" velocity="${abSpeedLimit}" lower="${-abKinLimit}" upper="${abKinLimit}"/> -->
 			<dynamics damping="0.0" friction="0.0"/>
 		</joint>
 
 		<!-- Transmission elements required for Gazebo -->
 		<transmission name="transmission_${abductionJointName}">
     		<type>transmission_interface/SimpleTransmission</type>
-    		<joint name="${abductionJointName}">
+    		<joint name="joint_${abductionJointName}">
       			<!-- <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface> -->
     		</joint>
     		<actuator name="motor_${abductionJointName}">
@@ -199,19 +199,19 @@ SOFTWARE.
 		
 
 		<!-- Hip joint. (Motor to upper leg). Joint names are: 0 2 4 6 -->
-		<joint name="${hipJointName}" type="revolute">
+		<joint name="joint_${hipJointName}" type="revolute">
 			<parent link="hip${suffix}"/>
 			<child link="upper${suffix}"/>
 			<axis xyz="0 -1 0"/>
 			<origin xyz="${front * 0} ${left * abOffs} 0"/> <!--  rpy="0 -0.3 0" -->
-			<limit effort="${jointEffortLimit}" velocity="${jointSpeedLimit}" lower="${hipJointLowerLimit}" upper="${hipJointUpperLimit}"/>
+			<!-- <limit effort="${jointEffortLimit}" velocity="${jointSpeedLimit}" lower="${hipJointLowerLimit}" upper="${hipJointUpperLimit}"/> -->
 			<dynamics damping="0.0" friction="0.0"/>
 		</joint>
 
 		<!-- Transmission elements required for Gazebo -->
 		<transmission name="transmission_${hipJointName}">
     		<type>transmission_interface/SimpleTransmission</type>
-    		<joint name="${hipJointName}">
+    		<joint name="joint_${hipJointName}">
       			<!-- <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface> -->
     		</joint>
     		<actuator name="motor_${hipJointName}">
@@ -245,19 +245,19 @@ SOFTWARE.
 		
 
 		<!-- Knee joint. Joint names are: 1 3 5 7 -->
-		<joint name="${kneeJointName}" type="revolute">
+		<joint name="joint_${kneeJointName}" type="revolute">
 			<parent link="upper${suffix}"/>
 			<child link="lower${suffix}"/>
 			<axis xyz="0 1 0"/>
 			<origin xyz="-${upperLegLength} 0 0"/> <!--rpy="0 0.5 0"-->
-			<limit effort="${jointEffortLimit}" velocity="${jointSpeedLimit}" lower="0" upper="${pi}"/>
+			<!-- <limit effort="${jointEffortLimit}" velocity="${jointSpeedLimit}" lower="0" upper="${pi}"/> -->
 			<dynamics damping="0.0" friction="0.0"/>
 		</joint>
 
 		<!-- Transmission elements required for Gazebo -->
 		<transmission name="transmission_${kneeJointName}">
     		<type>transmission_interface/SimpleTransmission</type>
-    		<joint name="${kneeJointName}">
+    		<joint name="joint_${kneeJointName}">
       			<!-- <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface> -->
     		</joint>
     		<actuator name="motor_${kneeJointName}">

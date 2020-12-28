@@ -1,0 +1,61 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "run_spirit_vis",
+    srcs = ["run_spirit_vis.cc"],
+    data = ["spirit_drake.urdf"],
+    deps = [
+        "//systems/trajectory_optimization/dircon",
+        "//common",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+
+
+cc_library(
+    name = "urdf",
+    data = ["spirit_drake.urdf"]
+)
+
+# package(default_visibility = ["//visibility:public"])
+
+# load(
+#     "@drake//tools/skylark:drake_cc.bzl",
+#     "drake_cc_binary",
+# )
+# load("//tools/install:install_data.bzl", "install_data")
+# ​
+# drake_cc_binary(
+#     name = "run_spirit_vis",
+#     srcs = [
+#         "run_spirit_vis.cc",
+#     ],
+#     data = [
+#         ":models",
+#         "//tools:drake_visualizer",
+#         "spirit_drake.urdf"
+#     ],
+#     deps = [
+#         "//common",
+#         "//systems/primitives",
+#         "@drake//:drake_shared_library",
+#         "@gflags",
+#         # "//common:find_resource",
+#         # "//common:text_logging_gflags",
+#         "//geometry:geometry_visualization",
+#         "//lcm",
+#         "//multibody/parsing",
+#         "//multibody/plant",
+#         "//systems/analysis",
+#         "//systems/framework",
+#         "@sdformat",
+#     ],
+# )
+# ​
+# install_data()

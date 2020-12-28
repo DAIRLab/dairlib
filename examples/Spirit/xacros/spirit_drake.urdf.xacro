@@ -69,6 +69,27 @@ SOFTWARE.
 	<xacro:property name="jointSpeedLimit" value="30"/>
 	<xacro:property name="jointEffortLimit" value="40"/>
 
+	<xacro:property name="bodyColor" value="darkgray"/>
+	<xacro:property name="hipColor" value="copper"/>
+	<xacro:property name="upperLegColor" value="silver"/>
+	<xacro:property name="lowerLegColor" value="silver"/>
+	<xacro:property name="toeColor" value="black"/>
+
+	<material name="blue">
+      <color rgba="0 0 0.8 1"/>
+    </material>
+	<material name="black">
+      <color rgba="0.1 0.1 0.1 1"/>
+    </material>
+	<material name="darkgray">
+      <color rgba="0.25 0.25 0.25 1"/>
+    </material>
+	<material name="copper">
+      <color rgba="0.68 0.34 0.08 1"/>
+    </material>
+	<material name="silver">
+      <color rgba="0.68 0.68 0.68 1"/>
+    </material>
 	<!-- 
 	leg suffix="0" hipJointName="0" kneeJointName="1" abductionJointName="8"
  	leg suffix="1" hipJointName="2" kneeJointName="3" abductionJointName="9"
@@ -83,7 +104,7 @@ SOFTWARE.
 			<geometry>
 				<box size="${bodyLength} ${bodyWidth} ${bodyHeight}"/>
 			</geometry>
-			<material name="darkgray"/>
+			<material name="${bodyColor}"/>
 		</visual>
 
 		<inertial>
@@ -112,6 +133,7 @@ SOFTWARE.
 				<geometry>
 					<cylinder length="${podLength}" radius="${podRadius}"/>
 				</geometry>
+				<material name="${hipColor}"/>
 			</visual>
 			
 			<collision>
@@ -159,7 +181,7 @@ SOFTWARE.
 				<geometry>
 					<box size="${upperLegLength} ${upperLegWidth} ${upperLegHeight}"/>
 				</geometry>
-				<material name="silver"/>
+				<material name="${upperLegColor}"/>
 			</visual>
 			
 			<collision>
@@ -205,7 +227,7 @@ SOFTWARE.
 				<geometry>
 					<cylinder length="${lowerLegLength}" radius="${lowerLegRadius}"/>
 				</geometry>
-				<material name="darkgray"/>
+				<material name="${lowerLegColor}"/>
 			</visual>
 			
 			<collision>
@@ -258,7 +280,7 @@ SOFTWARE.
 				<geometry>
 					<sphere radius="${toeRadius}"/>
 				</geometry>
-				<material name="darkgray"/>
+				<material name="${toeColor}"/>
 			</visual>
 			
 			<collision>

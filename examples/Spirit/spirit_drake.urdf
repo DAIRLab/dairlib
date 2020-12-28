@@ -40,6 +40,21 @@ SOFTWARE.
   <!-- guess -->
   <!--visual only-->
   <!--center of pod cylinder to the ab axis-->
+  <material name="blue">
+    <color rgba="0 0 0.8 1"/>
+  </material>
+  <material name="black">
+    <color rgba="0.1 0.1 0.1 1"/>
+  </material>
+  <material name="darkgray">
+    <color rgba="0.25 0.25 0.25 1"/>
+  </material>
+  <material name="copper">
+    <color rgba="0.68 0.34 0.08 1"/>
+  </material>
+  <material name="silver">
+    <color rgba="0.68 0.68 0.68 1"/>
+  </material>
   <!-- 
 	leg suffix="0" hipJointName="0" kneeJointName="1" abductionJointName="8"
  	leg suffix="1" hipJointName="2" kneeJointName="3" abductionJointName="9"
@@ -78,6 +93,7 @@ SOFTWARE.
       <geometry>
         <cylinder length="0.08" radius="0.055"/>
       </geometry>
+      <material name="copper"/>
     </visual>
     <collision>
       <origin rpy="1.570796326795 0 0" xyz="0 0.028 0"/>
@@ -160,7 +176,7 @@ SOFTWARE.
       <geometry>
         <cylinder length="0.206" radius="0.013"/>
       </geometry>
-      <material name="darkgray"/>
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.570796326795 0" xyz="0.103 0 0"/>
@@ -208,7 +224,7 @@ SOFTWARE.
       <geometry>
         <sphere radius="0.02"/>
       </geometry>
-      <material name="darkgray"/>
+      <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -235,6 +251,7 @@ SOFTWARE.
       <geometry>
         <cylinder length="0.08" radius="0.055"/>
       </geometry>
+      <material name="copper"/>
     </visual>
     <collision>
       <origin rpy="1.570796326795 0 0" xyz="0 0.028 0"/>
@@ -317,7 +334,7 @@ SOFTWARE.
       <geometry>
         <cylinder length="0.206" radius="0.013"/>
       </geometry>
-      <material name="darkgray"/>
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.570796326795 0" xyz="0.103 0 0"/>
@@ -365,7 +382,7 @@ SOFTWARE.
       <geometry>
         <sphere radius="0.02"/>
       </geometry>
-      <material name="darkgray"/>
+      <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -392,6 +409,7 @@ SOFTWARE.
       <geometry>
         <cylinder length="0.08" radius="0.055"/>
       </geometry>
+      <material name="copper"/>
     </visual>
     <collision>
       <origin rpy="1.570796326795 0 0" xyz="0 -0.028 0"/>
@@ -474,7 +492,7 @@ SOFTWARE.
       <geometry>
         <cylinder length="0.206" radius="0.013"/>
       </geometry>
-      <material name="darkgray"/>
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.570796326795 0" xyz="0.103 0 0"/>
@@ -522,7 +540,7 @@ SOFTWARE.
       <geometry>
         <sphere radius="0.02"/>
       </geometry>
-      <material name="darkgray"/>
+      <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -549,6 +567,7 @@ SOFTWARE.
       <geometry>
         <cylinder length="0.08" radius="0.055"/>
       </geometry>
+      <material name="copper"/>
     </visual>
     <collision>
       <origin rpy="1.570796326795 0 0" xyz="0 -0.028 0"/>
@@ -631,7 +650,7 @@ SOFTWARE.
       <geometry>
         <cylinder length="0.206" radius="0.013"/>
       </geometry>
-      <material name="darkgray"/>
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.570796326795 0" xyz="0.103 0 0"/>
@@ -679,7 +698,7 @@ SOFTWARE.
       <geometry>
         <sphere radius="0.02"/>
       </geometry>
-      <material name="darkgray"/>
+      <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>

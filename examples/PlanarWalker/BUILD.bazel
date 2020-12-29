@@ -54,6 +54,19 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_jump_dircon",
+    srcs = ["run_jump_dircon.cc"],
+    data = ["PlanarWalker.urdf"],
+    deps = [
+        "//common",
+        "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "visualize_gait",
     srcs = ["visualize_gait.cc"],
     data = ["PlanarWalkerWithTorso.urdf"],

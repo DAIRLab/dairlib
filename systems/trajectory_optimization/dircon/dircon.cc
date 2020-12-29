@@ -593,11 +593,9 @@ void Dircon<T>::GetStateAndDerivativeSamples(
     VectorXd times_i(mode_length(mode));
     for (int j = 0; j < mode_length(mode); j++) {
       int k = mode_start_[mode] + j;
-
       VectorX<T> xk = result.GetSolution(state_vars(mode, j));
       VectorX<T> uk = result.GetSolution(input_vars(mode, j));
       auto context = multibody::createContext<T>(plant_, xk, uk);
-
       states_i.col(j) = drake::math::DiscardGradient(xk);
       auto xdot = get_mode(mode).evaluators().CalcTimeDerivativesWithForce(
         context.get(), result.GetSolution(force_vars(mode, j)));

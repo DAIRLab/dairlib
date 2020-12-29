@@ -138,7 +138,6 @@ void runDircon(
   int n_v = plant.num_velocities();
   int n_q = plant.num_positions();
   int n_u = plant.num_actuators();
-  std::cout << n_u << std::endl;
 
   // Constraints
   auto u = trajopt.input();
@@ -155,9 +154,9 @@ void runDircon(
   trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight, FLAGS_bottomHeight, xf(positions_map.at("planar_z")));
 
   // Initial and final rotation of "torso""
-  //trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
+  trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
   //trajopt.AddLinearConstraint( xmid(positions_map.at("right_knee_pin")) ==  -xmid(positions_map.at("left_knee_pin")));
-  //trajopt.AddLinearConstraint( xf(positions_map.at("right_knee_pin")) ==  -xf(positions_map.at("left_knee_pin")));
+  trajopt.AddLinearConstraint( xf(positions_map.at("right_knee_pin")) ==  -xf(positions_map.at("left_knee_pin")));
 
   // Fore-aft position
   trajopt.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
@@ -169,7 +168,7 @@ void runDircon(
                                   x0.tail(n_v));
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                   xf.tail(n_v));
-  
+
 
   // Set foot distances
   std::vector<int> x_active({0});
@@ -203,26 +202,9 @@ void runDircon(
       std::make_shared<multibody::KinematicPositionConstraint<T>>(
           plant, foot_distance_evalutors, foot_distance_lb, foot_distance_ub);
 
-  std::vector<int> z_active({2});
-  auto left_foot_z_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                            left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), z_active);
-  auto right_foot_z_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                             right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), z_active);
-  auto foot_z_evaluators = multibody::KinematicEvaluatorSet<T>(plant);
-  foot_z_evaluators.add_evaluator(&left_foot_z_eval);
-  foot_z_evaluators.add_evaluator(&right_foot_z_eval);
-  auto foot_z_lb =
-      Eigen::Vector2d(0, 0);
-  auto foot_z_ub =
-      Eigen::Vector2d(10, 10);
-  auto foot_z_constraint =
-      std::make_shared<multibody::KinematicPositionConstraint<T>>(
-          plant, foot_z_evaluators, foot_z_lb, foot_z_ub);
-
   for (int index = 0; index < num_knotpoints; index++) {
     auto x_local = trajopt.state(index);
     trajopt.AddConstraint(foot_x_constraint, x_local.head(n_q));
-    //trajopt.AddConstraint(foot_z_constraint, x_local.head(n_q));
 
   }
 

@@ -25,8 +25,8 @@ DEFINE_double(min_duration, 0.6, "The squat duration");
 DEFINE_double(max_duration, 5, "The squat duration");
 
 DEFINE_bool(autodiff, false, "Double or autodiff version");
-DEFINE_double(bottomHeight, 0.8, "The start height.");
-DEFINE_double(topHeight, 1.1, "The end height.");
+DEFINE_double(bottomHeight, 0.8, "The bottom height.");
+DEFINE_double(topHeight, 1.1, "The top height.");
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -106,31 +106,15 @@ void runDircon(
   double_support.MakeConstraintRelative(0, 0);  // x-coordinate
   double_support.MakeConstraintRelative(1, 0);  // x-coordinate
 
-  std::vector<int> y_active({1});
-  auto left_foot_y_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                          left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), y_active);
-
-  auto right_foot_y_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                           right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), y_active);
-  left_foot_y_eval.set_frictional();
-  right_foot_y_eval.set_frictional();
-  left_foot_y_eval.set_mu(0);
-  right_foot_y_eval.set_mu(0);
 
   auto evaluators_flight = multibody::KinematicEvaluatorSet<T>(plant);
-  evaluators_flight.add_evaluator(&left_foot_y_eval);
-  evaluators_flight.add_evaluator(&right_foot_y_eval);
   auto flight_mode = DirconMode<T>(evaluators_flight, num_knotpoints,
                                       min_T, max_T);
-
-  flight_mode.MakeConstraintRelative(0, 0);  // y-coordinate
-  flight_mode.MakeConstraintRelative(1, 0);  // y-coordinate
 
   auto sequence = DirconModeSequence<T>(plant);
   //sequence.AddMode(&double_support);
   sequence.AddMode(&flight_mode);
   sequence.AddMode(&double_support);
-
   auto trajopt = Dircon<T>(sequence);
 
   trajopt.AddDurationBounds(FLAGS_min_duration, FLAGS_max_duration);
@@ -168,7 +152,7 @@ void runDircon(
   // Final height
   //trajopt.AddBoundingBoxConstraint(FLAGS_topHeight, FLAGS_topHeight, xmid(positions_map.at("planar_z")));
   // Bottom height
-  //trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight, FLAGS_bottomHeight, xf(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight, FLAGS_bottomHeight, xf(positions_map.at("planar_z")));
 
   // Initial and final rotation of "torso""
   //trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
@@ -176,39 +160,16 @@ void runDircon(
   //trajopt.AddLinearConstraint( xf(positions_map.at("right_knee_pin")) ==  -xf(positions_map.at("left_knee_pin")));
 
   // Fore-aft position
-  //trajopt.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
+  trajopt.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
   //trajopt.AddLinearConstraint(xmid(positions_map["planar_x"]) == 0);
-  //trajopt.AddLinearConstraint(xf(positions_map["planar_x"]) == 0);
+  trajopt.AddLinearConstraint(xf(positions_map["planar_x"]) == 0);
 
   // start/end velocity constraints
-  //trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-  //                                x0.tail(n_v));
-  //trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-  //                                xf.tail(n_v));
-
-
-  // Not sure what this is doing
-  for (int i = 0; i < num_knotpoints; i++) {
-    auto lambda = trajopt.force_vars(0, i);
-    for (int j =0; j < lambda.size(); j++)
-    {
-      trajopt.AddBoundingBoxConstraint(0, 0, trajopt.force_vars(0, i)(j));
-    }
-
-  }
-
-  // Actuator limits
-  for (int i = 0; i < trajopt.N(); i++) {
-    auto ui = trajopt.input(i);
-    auto xi = trajopt.state(i);
-    trajopt.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -10),
-                                      VectorXd::Constant(n_u, +10), ui);
-    trajopt.AddBoundingBoxConstraint(0,
-                                     FLAGS_topHeight+0.1, xi(positions_map.at("planar_z")));
-    trajopt.AddBoundingBoxConstraint(-0,
-                                     0, xi(positions_map.at("planar_x")));
-
-  }
+  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+                                  x0.tail(n_v));
+  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+                                  xf.tail(n_v));
+  
 
   // Set foot distances
   std::vector<int> x_active({0});
@@ -250,18 +211,18 @@ void runDircon(
   auto foot_z_evaluators = multibody::KinematicEvaluatorSet<T>(plant);
   foot_z_evaluators.add_evaluator(&left_foot_z_eval);
   foot_z_evaluators.add_evaluator(&right_foot_z_eval);
-  auto foot_x_lb =
+  auto foot_z_lb =
       Eigen::Vector2d(0, 0);
-  auto foot_x_ub =
+  auto foot_z_ub =
       Eigen::Vector2d(10, 10);
   auto foot_z_constraint =
       std::make_shared<multibody::KinematicPositionConstraint<T>>(
-          plant, foot_z_evaluators, foot_x_lb, foot_x_ub);
+          plant, foot_z_evaluators, foot_z_lb, foot_z_ub);
 
   for (int index = 0; index < num_knotpoints; index++) {
     auto x_local = trajopt.state(index);
     trajopt.AddConstraint(foot_x_constraint, x_local.head(n_q));
-    trajopt.AddConstraint(foot_z_constraint, x_local.head(n_q));
+    //trajopt.AddConstraint(foot_z_constraint, x_local.head(n_q));
 
   }
 

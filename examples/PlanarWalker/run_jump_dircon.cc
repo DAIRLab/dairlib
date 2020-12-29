@@ -27,6 +27,7 @@ DEFINE_double(max_duration, 5, "The squat duration");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_double(bottomHeight, 0.8, "The bottom height.");
 DEFINE_double(topHeight, 1.1, "The top height.");
+DEFINE_double(eps, 1e-2, "The top height.");
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -112,7 +113,7 @@ void runDircon(
                                       min_T, max_T);
 
   auto sequence = DirconModeSequence<T>(plant);
-  //sequence.AddMode(&double_support);
+  sequence.AddMode(&double_support);
   sequence.AddMode(&flight_mode);
   sequence.AddMode(&double_support);
   auto trajopt = Dircon<T>(sequence);
@@ -144,24 +145,24 @@ void runDircon(
   auto x = trajopt.state();
   auto x0 = trajopt.initial_state();
   auto xf = trajopt.final_state();
-  auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
+  auto xmid = trajopt.state_vars(0, (trajopt.N() - 1) / 2);
 
   // Initial height
-  trajopt.AddBoundingBoxConstraint(FLAGS_topHeight, FLAGS_topHeight, x0(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight-FLAGS_eps, FLAGS_bottomHeight+FLAGS_eps, x0(positions_map.at("planar_z")));
   // Final height
-  //trajopt.AddBoundingBoxConstraint(FLAGS_topHeight, FLAGS_topHeight, xmid(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_topHeight-FLAGS_eps, FLAGS_topHeight+FLAGS_eps, xmid(positions_map.at("planar_z")));
   // Bottom height
-  trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight, FLAGS_bottomHeight, xf(positions_map.at("planar_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight-FLAGS_eps, FLAGS_bottomHeight+FLAGS_eps, xf(positions_map.at("planar_z")));
 
   // Initial and final rotation of "torso""
   trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
-  //trajopt.AddLinearConstraint( xmid(positions_map.at("right_knee_pin")) ==  -xmid(positions_map.at("left_knee_pin")));
+  trajopt.AddLinearConstraint( xmid(positions_map.at("right_knee_pin")) ==  -xmid(positions_map.at("left_knee_pin")));
   trajopt.AddLinearConstraint( xf(positions_map.at("right_knee_pin")) ==  -xf(positions_map.at("left_knee_pin")));
 
   // Fore-aft position
-  trajopt.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
-  //trajopt.AddLinearConstraint(xmid(positions_map["planar_x"]) == 0);
-  trajopt.AddLinearConstraint(xf(positions_map["planar_x"]) == 0);
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map["planar_x"]));
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps,xmid(positions_map["planar_x"]));
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map["planar_x"]));
 
   // start/end velocity constraints
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
@@ -174,20 +175,7 @@ void runDircon(
   std::vector<int> x_active({0});
   auto distance_foot_distance_eval = multibody::DistanceEvaluator<T>(
       plant, pt, right_lower_leg, pt, left_lower_leg, 0);
-  /*
-  auto left_foot_x_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                          left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), x_active);
-  auto right_foot_x_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                           right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), x_active);
-  auto foot_x_evaluators = multibody::KinematicEvaluatorSet<T>(plant);
-  foot_x_evaluators.add_evaluator(&right_foot_x_eval);
-  foot_x_evaluators.add_evaluator(&left_foot_x_eval);
 
-  auto foot_x_lb =
-      Eigen::Vector2d(0.05, -0.15);
-  auto foot_x_ub =
-      Eigen::Vector2d(0.15, -0.05);
-    */
   auto foot_distance_evalutors = multibody::KinematicEvaluatorSet<T>(plant);
   foot_distance_evalutors.add_evaluator(&distance_foot_distance_eval);
 
@@ -202,21 +190,18 @@ void runDircon(
       std::make_shared<multibody::KinematicPositionConstraint<T>>(
           plant, foot_distance_evalutors, foot_distance_lb, foot_distance_ub);
 
-  for (int index = 0; index < num_knotpoints; index++) {
-    auto x_local = trajopt.state(index);
-    trajopt.AddConstraint(foot_x_constraint, x_local.head(n_q));
-
-  }
+  trajopt.AddConstraint(foot_x_constraint, x0.head(n_q));
+  trajopt.AddConstraint(foot_x_constraint, xf.head(n_q));
 
   const double R = 10;  // Cost on input effort
   const MatrixXd Q = 5  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
-  //trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+  trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose()*R*u);
 
   std::vector<unsigned int> visualizer_poses;
   visualizer_poses.push_back(3);
   visualizer_poses.push_back(3);
-  //visualizer_poses.push_back(3);
+  visualizer_poses.push_back(3);
 
   trajopt.CreateVisualizationCallback(
       dairlib::FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf"),
@@ -298,12 +283,12 @@ int main(int argc, char* argv[]) {
   auto positions_map = dairlib::multibody::makeNameToPositionsMap(*plant);
   auto velocities_map = dairlib::multibody::makeNameToVelocitiesMap(*plant);
 
-  xState(nq + velocities_map.at("hip_pindot")) = -0.1;
-  xState(nq + velocities_map.at("planar_rotydot")) = 0.1;
+  xState(nq + velocities_map.at("hip_pindot")) = 0.1;
+  xState(nq + velocities_map.at("planar_rotydot")) = -0.1;
   xState(nq + velocities_map.at("planar_xdot")) = 0;
-  xState(nq + velocities_map.at("planar_zdot")) = -(FLAGS_topHeight-FLAGS_bottomHeight)/FLAGS_duration/2;
-  xState(nq + velocities_map.at("left_knee_pindot")) = -0.1;
-  xState(nq + velocities_map.at("right_knee_pindot")) = 0.1;
+  xState(nq + velocities_map.at("planar_zdot")) = (FLAGS_topHeight-FLAGS_bottomHeight)/FLAGS_duration/2;
+  xState(nq + velocities_map.at("left_knee_pindot")) = 0.1;
+  xState(nq + velocities_map.at("right_knee_pindot")) = -0.1;
   double time = 0;
   for (int i = 0; i < N/2; i++) {
     time=i*FLAGS_duration/(N-1)/2;

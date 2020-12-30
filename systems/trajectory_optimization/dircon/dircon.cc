@@ -601,7 +601,7 @@ void Dircon<T>::GetStateAndDerivativeSamples(
       states_i.col(j) = drake::math::DiscardGradient(xk);
       auto xdot = get_mode(mode).evaluators().CalcTimeDerivativesWithForce(
         context.get(), result.GetSolution(force_vars(mode, j)));
-      derivatives_i.col(k) = drake::math::DiscardGradient(xdot);
+      derivatives_i.col(j) = drake::math::DiscardGradient(xdot);
       times_i(j) = times(k);
     }
     state_samples->push_back(states_i);

@@ -218,13 +218,13 @@ evaluators.add_evaluator(&(toe3_eval));
   auto xf = trajopt.final_state();
   
   // Initial body positions
-  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
-  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint( -0.5,  0.5, x0(positions_map.at("base_x")));
+  trajopt.AddBoundingBoxConstraint(    0,    0, x0(positions_map.at("base_y")));
   trajopt.AddBoundingBoxConstraint(FLAGS_sitHeight+FLAGS_bodyHeight/2, FLAGS_sitHeight+FLAGS_bodyHeight/2, x0(positions_map.at("base_z")));
   
   // Final body positions
-  trajopt.AddBoundingBoxConstraint(   0,   0, xf(positions_map.at("base_x")));
-  trajopt.AddBoundingBoxConstraint(   0,   0, xf(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(   -0,    0, xf(positions_map.at("base_x")));
+  trajopt.AddBoundingBoxConstraint(    0,    0, xf(positions_map.at("base_y")));
   trajopt.AddBoundingBoxConstraint(FLAGS_standHeight, FLAGS_standHeight, xf(positions_map.at("base_z")));
 
   // Body pose constraints (keep the body flat) at all the knotpoints including the ends
@@ -281,10 +281,10 @@ evaluators.add_evaluator(&(toe3_eval));
     // // Symmetry constraints (mirrored hips all else equal across)
     // trajopt.AddLinearConstraint( xi( positions_map.at("joint_8") ) == -xi( positions_map.at("joint_10") ) );
     
-    // trajopt.AddLinearConstraint( xi( positions_map.at("joint_0") ) == xi( positions_map.at("joint_2") ) );
-    // trajopt.AddLinearConstraint( xi( positions_map.at("joint_1") ) == xi( positions_map.at("joint_3") ) );
-    // trajopt.AddLinearConstraint( xi( positions_map.at("joint_4") ) == xi( positions_map.at("joint_6") ) );
-    // trajopt.AddLinearConstraint( xi( positions_map.at("joint_5") ) == xi( positions_map.at("joint_7") ) );
+    trajopt.AddLinearConstraint( xi( positions_map.at("joint_0") ) == xi( positions_map.at("joint_2") ) );
+    trajopt.AddLinearConstraint( xi( positions_map.at("joint_1") ) == xi( positions_map.at("joint_3") ) );
+    trajopt.AddLinearConstraint( xi( positions_map.at("joint_4") ) == xi( positions_map.at("joint_6") ) );
+    trajopt.AddLinearConstraint( xi( positions_map.at("joint_5") ) == xi( positions_map.at("joint_7") ) );
   }
 
   // Keep knees above the floor 
@@ -420,15 +420,21 @@ int main(int argc, char* argv[]) {
     std::cout << element.first << " = " << element.second << std::endl;
   
   xState(positions_map.at("base_qw")) = 1;
-
-  for (int j = 0; j < num_joints; j++){
-  //   // std::cout << std::to_string(j) << std::endl;
-  //   // std::cout << velocities_map.at( std::to_string(j)+"dot" ) << std::endl;
-    int hipFlag = 1;
-    if (j==8||j==9||j==10||j==11){
-      hipFlag = 0;
-    }
-    xState(nq + velocities_map.at( "joint_" + std::to_string(j)+ "dot" )) = 1 * hipFlag;
+  int upperInd,kneeInd,hipInd;
+  // Upper link velocities
+  for (int j = 0; j < 4; j++){
+      upperInd = j * 2;
+      xState(nq + velocities_map.at( "joint_" + std::to_string(upperInd) + "dot" )) = 1;
+  }
+  // Lower link velocites (for standing useful for it to be about 2 times the upper)
+  for (int j = 0; j < 4; j++){
+      upperInd = j * 2;
+      kneeInd = j * 2 + 1;
+      xState(nq + velocities_map.at( "joint_" + std::to_string(kneeInd) + "dot" )) = 2 * xState(nq + velocities_map.at( "joint_" + std::to_string(upperInd) + "dot"));
+  }
+  for (int j = 0; j < 4; j++){
+      hipInd = j + 8;
+      xState(nq + velocities_map.at( "joint_" + std::to_string(hipInd) + "dot" )) = 0;
   }
   xState( nq + velocities_map.at("base_vz") ) = .3;
   

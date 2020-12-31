@@ -19,15 +19,15 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/distance_evaluator.h"
 
-DEFINE_double(strideLength, 0.1, "The stride length.");
+DEFINE_double(distance, 0.4, "The stride length.");
 DEFINE_double(duration, 1, "The squat duration");
-DEFINE_double(min_duration, 0.6, "The squat duration");
-DEFINE_double(max_duration, 5, "The squat duration");
+DEFINE_double(min_duration, 0.6, "T he squat duration");
+DEFINE_double(max_duration, 2, "The squat duration");
 
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_double(bottomHeight, 0.8, "The bottom height.");
-DEFINE_double(topHeight, 1.1, "The top height.");
-DEFINE_double(eps, 1e-2, "The top height.");
+DEFINE_double(minHeight, 1.1, "The top height.");
+DEFINE_double(eps, 1e-2, "The slack boundary constraints.");
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -82,7 +82,7 @@ void runDircon(
   const auto& right_lower_leg = plant.GetFrameByName("right_lower_leg");
 
   Vector3d pt(0, 0, -.5);
-  double mu = 1;
+  double mu = 3;
 
   auto left_foot_eval = multibody::WorldPointEvaluator<T>(plant, pt,
                                                           left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
@@ -98,7 +98,7 @@ void runDircon(
   evaluators.add_evaluator(&left_foot_eval);
   evaluators.add_evaluator(&right_foot_eval);
 
-  int num_knotpoints = 10;
+  int num_knotpoints = 20;
   double min_T = .03;
   double max_T = 3;
 
@@ -149,20 +149,18 @@ void runDircon(
 
   // Initial height
   trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight-FLAGS_eps, FLAGS_bottomHeight+FLAGS_eps, x0(positions_map.at("planar_z")));
-  // Final height
-  trajopt.AddBoundingBoxConstraint(FLAGS_topHeight-FLAGS_eps, FLAGS_topHeight+FLAGS_eps, xmid(positions_map.at("planar_z")));
+  // Mid height
+  trajopt.AddBoundingBoxConstraint(FLAGS_minHeight, 100, xmid(positions_map.at("planar_z")));
   // Bottom height
   trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight-FLAGS_eps, FLAGS_bottomHeight+FLAGS_eps, xf(positions_map.at("planar_z")));
 
   // Initial and final rotation of "torso""
   trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
-  trajopt.AddLinearConstraint( xmid(positions_map.at("right_knee_pin")) ==  -xmid(positions_map.at("left_knee_pin")));
   trajopt.AddLinearConstraint( xf(positions_map.at("right_knee_pin")) ==  -xf(positions_map.at("left_knee_pin")));
 
   // Fore-aft position
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map["planar_x"]));
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps,xmid(positions_map["planar_x"]));
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map["planar_x"]));
+  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map["planar_x"]));
+  trajopt.AddBoundingBoxConstraint(FLAGS_distance, FLAGS_distance, xf(positions_map["planar_x"]));
 
   // start/end velocity constraints
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
@@ -194,7 +192,7 @@ void runDircon(
   trajopt.AddConstraint(foot_x_constraint, xf.head(n_q));
 
   const double R = 10;  // Cost on input effort
-  const MatrixXd Q = 5  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose()*R*u);
 
@@ -283,10 +281,10 @@ int main(int argc, char* argv[]) {
   auto positions_map = dairlib::multibody::makeNameToPositionsMap(*plant);
   auto velocities_map = dairlib::multibody::makeNameToVelocitiesMap(*plant);
 
-  xState(nq + velocities_map.at("hip_pindot")) = 0.1;
+  xState(nq + velocities_map.at("hip_pindot")) = 0.2;
   xState(nq + velocities_map.at("planar_rotydot")) = -0.1;
-  xState(nq + velocities_map.at("planar_xdot")) = 0;
-  xState(nq + velocities_map.at("planar_zdot")) = (FLAGS_topHeight-FLAGS_bottomHeight)/FLAGS_duration/2;
+  xState(nq + velocities_map.at("planar_xdot")) = FLAGS_distance/FLAGS_duration;
+  xState(nq + velocities_map.at("planar_zdot")) = (FLAGS_minHeight-FLAGS_bottomHeight)/FLAGS_duration/2;
   xState(nq + velocities_map.at("left_knee_pindot")) = 0.1;
   xState(nq + velocities_map.at("right_knee_pindot")) = -0.1;
   double time = 0;
@@ -294,10 +292,10 @@ int main(int argc, char* argv[]) {
     time=i*FLAGS_duration/(N-1)/2;
     init_time.push_back(time);
 
-    xState(positions_map.at("hip_pin")) = -0.4 + xState(nq + velocities_map.at("hip_pindot")) * time;
+    xState(positions_map.at("hip_pin")) = -0.8 + xState(nq + velocities_map.at("hip_pindot")) * time;
     xState(positions_map.at("planar_roty")) = 0.4 + xState(nq + velocities_map.at("planar_rotydot")) * time;
-    xState(positions_map.at("planar_x")) = 0;
-    xState(positions_map.at("planar_z")) = FLAGS_topHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
+    xState(positions_map.at("planar_x")) = -xState(nq + velocities_map.at("planar_xdot")) * time;
+    xState(positions_map.at("planar_z")) = FLAGS_minHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
     xState(positions_map.at("left_knee_pin")) = -0.3 + xState(nq + velocities_map.at("left_knee_pindot")) * time;
     xState(positions_map.at("right_knee_pin")) = 0.3 + xState(nq + velocities_map.at("right_knee_pindot")) * time;
     init_x.push_back(xState);
@@ -309,10 +307,10 @@ int main(int argc, char* argv[]) {
     time=i*FLAGS_duration/(N-1);
     init_time.push_back(time);
 
-    xState(positions_map.at("hip_pin")) = -0.4 + xState(nq + velocities_map.at("hip_pindot")) * time;
+    xState(positions_map.at("hip_pin")) = -0.8 + xState(nq + velocities_map.at("hip_pindot")) * time;
     xState(positions_map.at("planar_roty")) = 0.4 + xState(nq + velocities_map.at("planar_rotydot")) * time;
-    xState(positions_map.at("planar_x")) = 0;
-    xState(positions_map.at("planar_z")) = FLAGS_topHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
+    xState(positions_map.at("planar_x")) = -xState(nq + velocities_map.at("planar_xdot")) * time;
+    xState(positions_map.at("planar_z")) = FLAGS_minHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
     xState(positions_map.at("left_knee_pin")) = -0.3 + xState(nq + velocities_map.at("left_knee_pindot")) * time;
     xState(positions_map.at("right_knee_pin")) = 0.3 + xState(nq + velocities_map.at("right_knee_pindot")) * time;
     init_x.push_back(xState);
@@ -350,12 +348,12 @@ int main(int argc, char* argv[]) {
         drake::systems::System<double>::ToAutoDiffXd(*plant);
     dairlib::runDircon<drake::AutoDiffXd>(
         std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
-        FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+        FLAGS_distance, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
         init_lc_traj, init_vc_traj);
   } else {
     dairlib::runDircon<double>(
         std::move(plant), plant_vis.get(), std::move(scene_graph),
-        FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+        FLAGS_distance, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
         init_lc_traj, init_vc_traj);
   }
 }

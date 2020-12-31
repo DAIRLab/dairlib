@@ -19,7 +19,7 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/distance_evaluator.h"
 
-DEFINE_double(distance, 0.4, "The stride length.");
+DEFINE_double(distance, 1, "The stride length.");
 DEFINE_double(duration, 1, "The squat duration");
 DEFINE_double(min_duration, 0.6, "T he squat duration");
 DEFINE_double(max_duration, 2, "The squat duration");
@@ -82,7 +82,7 @@ void runDircon(
   const auto& right_lower_leg = plant.GetFrameByName("right_lower_leg");
 
   Vector3d pt(0, 0, -.5);
-  double mu = 3;
+  double mu = 1;
 
   auto left_foot_eval = multibody::WorldPointEvaluator<T>(plant, pt,
                                                           left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
@@ -138,7 +138,6 @@ void runDircon(
 
   int n_v = plant.num_velocities();
   int n_q = plant.num_positions();
-  int n_u = plant.num_actuators();
 
   // Constraints
   auto u = trajopt.input();

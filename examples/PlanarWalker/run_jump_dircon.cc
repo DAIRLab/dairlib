@@ -19,14 +19,14 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/distance_evaluator.h"
 
-DEFINE_double(distance, 0.4, "The stride length.");
+DEFINE_double(strideLength, 0.1, "The stride length.");
 DEFINE_double(duration, 1, "The squat duration");
 DEFINE_double(min_duration, 0.6, "The squat duration");
 DEFINE_double(max_duration, 5, "The squat duration");
 
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_double(bottomHeight, 0.8, "The bottom height.");
-DEFINE_double(minHeight, 1.1, "The top height.");
+DEFINE_double(topHeight, 1.1, "The top height.");
 DEFINE_double(eps, 1e-2, "The top height.");
 
 using drake::AutoDiffXd;
@@ -82,15 +82,15 @@ void runDircon(
   const auto& right_lower_leg = plant.GetFrameByName("right_lower_leg");
 
   Vector3d pt(0, 0, -.5);
-  double mu = 0.7;
+  double mu = 1;
 
   auto left_foot_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-      left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
+                                                          left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
   left_foot_eval.set_frictional();
   left_foot_eval.set_mu(mu);
 
   auto right_foot_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-      right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
+                                                           right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
   right_foot_eval.set_frictional();
   right_foot_eval.set_mu(mu);
 
@@ -98,19 +98,19 @@ void runDircon(
   evaluators.add_evaluator(&left_foot_eval);
   evaluators.add_evaluator(&right_foot_eval);
 
-  int num_knotpoints = 20;
+  int num_knotpoints = 10;
   double min_T = .03;
   double max_T = 3;
-  
+
   auto double_support = DirconMode<T>(evaluators, num_knotpoints,
-      min_T, max_T);
+                                      min_T, max_T);
   double_support.MakeConstraintRelative(0, 0);  // x-coordinate
   double_support.MakeConstraintRelative(1, 0);  // x-coordinate
 
 
   auto evaluators_flight = multibody::KinematicEvaluatorSet<T>(plant);
   auto flight_mode = DirconMode<T>(evaluators_flight, num_knotpoints,
-                                      min_T, max_T);
+                                   min_T, max_T);
 
   auto sequence = DirconModeSequence<T>(plant);
   sequence.AddMode(&double_support);
@@ -121,13 +121,13 @@ void runDircon(
   trajopt.AddDurationBounds(FLAGS_min_duration, FLAGS_max_duration);
 
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "/home/shane/snopt.out");
+                          "Print file", "/home/shane/snopt.out");
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 20000);
+                          "Major iterations limit", 20000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Iterations limit", 100000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major optimality tolerance",
-                           1e-4);  // target nonlinear constraint violation
+                          "Major optimality tolerance",
+                          1e-4);  // target nonlinear constraint violation
 
   for (int j = 0; j < sequence.num_modes(); j++) {
     trajopt.drake::systems::trajectory_optimization::MultipleShooting::
@@ -149,33 +149,27 @@ void runDircon(
 
   // Initial height
   trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight-FLAGS_eps, FLAGS_bottomHeight+FLAGS_eps, x0(positions_map.at("planar_z")));
-  // Mid height
-  trajopt.AddBoundingBoxConstraint(FLAGS_minHeight, 100, xmid(positions_map.at("planar_z")));
+  // Final height
+  trajopt.AddBoundingBoxConstraint(FLAGS_topHeight-FLAGS_eps, FLAGS_topHeight+FLAGS_eps, xmid(positions_map.at("planar_z")));
   // Bottom height
   trajopt.AddBoundingBoxConstraint(FLAGS_bottomHeight-FLAGS_eps, FLAGS_bottomHeight+FLAGS_eps, xf(positions_map.at("planar_z")));
 
   // Initial and final rotation of "torso""
   trajopt.AddLinearConstraint( x0(positions_map.at("right_knee_pin")) ==  -x0(positions_map.at("left_knee_pin")));
+  trajopt.AddLinearConstraint( xmid(positions_map.at("right_knee_pin")) ==  -xmid(positions_map.at("left_knee_pin")));
   trajopt.AddLinearConstraint( xf(positions_map.at("right_knee_pin")) ==  -xf(positions_map.at("left_knee_pin")));
 
   // Fore-aft position
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map["planar_x"]));
-  trajopt.AddBoundingBoxConstraint(FLAGS_distance-FLAGS_eps, FLAGS_distance+FLAGS_eps, xf(positions_map["planar_x"]));
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps,xmid(positions_map["planar_x"]));
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map["planar_x"]));
 
   // start/end velocity constraints
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                  x0.tail(n_v));
+                                   x0.tail(n_v));
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                  xf.tail(n_v));
+                                   xf.tail(n_v));
 
-  for (int i = 0; i < trajopt.N(); i++) {
-    auto ui = trajopt.input(i);
-    auto xi = trajopt.state(i);
-    trajopt.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -40),
-                                      VectorXd::Constant(n_u, +40), ui);
-    trajopt.AddBoundingBoxConstraint(0.1, std::numeric_limits<double>::infinity(), xi(positions_map["planar_z"]));
-
-  }
 
   // Set foot distances
   std::vector<int> x_active({0});
@@ -199,8 +193,8 @@ void runDircon(
   trajopt.AddConstraint(foot_x_constraint, x0.head(n_q));
   trajopt.AddConstraint(foot_x_constraint, xf.head(n_q));
 
-  const double R = 3;  // Cost on input effort
-  const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const double R = 10;  // Cost on input effort
+  const MatrixXd Q = 5  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose()*R*u);
 
@@ -225,7 +219,7 @@ void runDircon(
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
   multibody::connectTrajectoryVisualizer(plant_double_ptr,
-      &builder, &scene_graph, pp_xtraj);
+                                         &builder, &scene_graph, pp_xtraj);
   auto diagram = builder.Build();
 
   while (true) {
@@ -268,7 +262,7 @@ int main(int argc, char* argv[]) {
   plant_vis->Finalize();
 
   Eigen::VectorXd x0 = Eigen::VectorXd::Zero(plant->num_positions() +
-                       plant->num_velocities());
+      plant->num_velocities());
 
   Eigen::VectorXd init_l_vec(3);
   init_l_vec << 0, 0, 20*9.81;
@@ -292,7 +286,7 @@ int main(int argc, char* argv[]) {
   xState(nq + velocities_map.at("hip_pindot")) = 0.1;
   xState(nq + velocities_map.at("planar_rotydot")) = -0.1;
   xState(nq + velocities_map.at("planar_xdot")) = 0;
-  xState(nq + velocities_map.at("planar_zdot")) = (FLAGS_minHeight-FLAGS_bottomHeight)/FLAGS_duration/2;
+  xState(nq + velocities_map.at("planar_zdot")) = (FLAGS_topHeight-FLAGS_bottomHeight)/FLAGS_duration/2;
   xState(nq + velocities_map.at("left_knee_pindot")) = 0.1;
   xState(nq + velocities_map.at("right_knee_pindot")) = -0.1;
   double time = 0;
@@ -303,7 +297,7 @@ int main(int argc, char* argv[]) {
     xState(positions_map.at("hip_pin")) = -0.4 + xState(nq + velocities_map.at("hip_pindot")) * time;
     xState(positions_map.at("planar_roty")) = 0.4 + xState(nq + velocities_map.at("planar_rotydot")) * time;
     xState(positions_map.at("planar_x")) = 0;
-    xState(positions_map.at("planar_z")) = FLAGS_minHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
+    xState(positions_map.at("planar_z")) = FLAGS_topHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
     xState(positions_map.at("left_knee_pin")) = -0.3 + xState(nq + velocities_map.at("left_knee_pindot")) * time;
     xState(positions_map.at("right_knee_pin")) = 0.3 + xState(nq + velocities_map.at("right_knee_pindot")) * time;
     init_x.push_back(xState);
@@ -317,8 +311,8 @@ int main(int argc, char* argv[]) {
 
     xState(positions_map.at("hip_pin")) = -0.4 + xState(nq + velocities_map.at("hip_pindot")) * time;
     xState(positions_map.at("planar_roty")) = 0.4 + xState(nq + velocities_map.at("planar_rotydot")) * time;
-    xState(positions_map.at("planar_x")) =FLAGS_distance;
-    xState(positions_map.at("planar_z")) = FLAGS_minHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
+    xState(positions_map.at("planar_x")) = 0;
+    xState(positions_map.at("planar_z")) = FLAGS_topHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
     xState(positions_map.at("left_knee_pin")) = -0.3 + xState(nq + velocities_map.at("left_knee_pindot")) * time;
     xState(positions_map.at("right_knee_pin")) = 0.3 + xState(nq + velocities_map.at("right_knee_pindot")) * time;
     init_x.push_back(xState);
@@ -330,7 +324,7 @@ int main(int argc, char* argv[]) {
   auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_u);
 
   //Initialize force trajectories
-  for (int j = 0; j < 2; j++) {    
+  for (int j = 0; j < 2; j++) {
     std::vector<MatrixXd> init_l_j;
     std::vector<MatrixXd> init_lc_j;
     std::vector<MatrixXd> init_vc_j;
@@ -355,14 +349,14 @@ int main(int argc, char* argv[]) {
     std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
         drake::systems::System<double>::ToAutoDiffXd(*plant);
     dairlib::runDircon<drake::AutoDiffXd>(
-      std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
-      FLAGS_distance, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-      init_lc_traj, init_vc_traj);
+        std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
+        FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+        init_lc_traj, init_vc_traj);
   } else {
     dairlib::runDircon<double>(
-      std::move(plant), plant_vis.get(), std::move(scene_graph),
-      FLAGS_distance, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-      init_lc_traj, init_vc_traj);
+        std::move(plant), plant_vis.get(), std::move(scene_graph),
+        FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+        init_lc_traj, init_vc_traj);
   }
 }
 

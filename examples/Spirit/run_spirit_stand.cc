@@ -194,7 +194,7 @@ void runSpiritStand(
 /////////////////////////TODO/DEBUG
 
   /// Setup the standing mode. This behavior only has one mode.
-  int num_knotpoints = 10; // number of knot points in the collocation
+  int num_knotpoints = 8; // number of knot points in the collocation
   auto full_support = DirconMode<T>(evaluators,num_knotpoints); //No min and max mode times
 
   for (int i = 0; i < num_legs; i++ ){

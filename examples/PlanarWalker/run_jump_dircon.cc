@@ -72,10 +72,13 @@ void runDircon(
 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
+  auto act_map = multibody::makeNameToActuatorsMap(plant);
 
   for (auto const& element : positions_map)
     cout << element.first << " = " << element.second << endl;
   for (auto const& element : velocities_map)
+    cout << element.first << " = " << element.second << endl;
+  for (auto const& element : act_map)
     cout << element.first << " = " << element.second << endl;
 
   const auto& left_lower_leg = plant.GetFrameByName("left_lower_leg");
@@ -98,7 +101,7 @@ void runDircon(
   evaluators.add_evaluator(&left_foot_eval);
   evaluators.add_evaluator(&right_foot_eval);
 
-  int num_knotpoints = 20;
+  int num_knotpoints = 30;
   double min_T = .03;
   double max_T = 3;
 
@@ -190,10 +193,18 @@ void runDircon(
   trajopt.AddConstraint(foot_x_constraint, x0.head(n_q));
   trajopt.AddConstraint(foot_x_constraint, xf.head(n_q));
 
-  const double R = 10;  // Cost on input effort
-  const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
-  trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+  const double R_w = 10;  // Cost on power
+  const MatrixXd Q = 3  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const double R = 3;  // Cost on effort
+
+  trajopt.AddRunningCost(u(act_map["hip_torque"]) * x(n_q + velocities_map["hip_pin_dot"]) * R_w *
+                            u(act_map["hip_torque"]) * x(n_q + velocities_map["hip_pin_dot"]));
+  trajopt.AddRunningCost(u(act_map["left_knee_torque"]) * x(n_q + velocities_map["left_knee_dot"]) * R_w *
+                            u(act_map["left_knee_torque"]) * x(n_q + velocities_map["left_knee_dot"]));
+  trajopt.AddRunningCost(u(act_map["right_knee_torque"]) * x(n_q + velocities_map["right_knee_dot"]) * R_w *
+                            u(act_map["right_knee_torque"]) * x(n_q + velocities_map["right_knee_dot"]));
   trajopt.AddRunningCost(u.transpose()*R*u);
+  trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
 
   std::vector<unsigned int> visualizer_poses;
   visualizer_poses.push_back(3);

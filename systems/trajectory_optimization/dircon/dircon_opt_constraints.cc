@@ -25,7 +25,7 @@ void QuaternionConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
   (*y).resize(1);
   // Using x.norm() is better, numerically, than x.squaredNorm() except when
-  // x is near zero. The below is a permutation of x.norm() = 1 that will be
+  // x is near zero. The bstaticelow is a permutation of x.norm() = 1 that will be
   // differentiable everywhere, unlike x.norm().
   *y << sqrt(x.squaredNorm() + 1e-3) - sqrt(1 + 1e-3);
 }
@@ -95,7 +95,7 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   const auto& xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
   const auto& ucol = 0.5 * (u0 + u1);
 
-  static drake::MatrixX<T> J(evaluators_.count_full(), plant_.num_velocities());
+  drake::MatrixX<T> J(evaluators_.count_full(), plant_.num_velocities());
 
   // Evaluate dynamics at colocation point
   multibody::setContext<T>(plant_, xcol, ucol, context_col_.get());

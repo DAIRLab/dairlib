@@ -207,7 +207,8 @@ SOFTWARE.
     </joint>
     <actuator name="motor_1">
       <!-- <hardwareInterface>EffortJointInterface</hardwareInterface> -->
-      <mechanicalReduction>1</mechanicalReduction>
+      <mechanicalReduction>1.5</mechanicalReduction>
+      <!-- Spirit knees have a 1.5 reduction from the original modules-->
     </actuator>
   </transmission>
   <!-- Toe -->
@@ -365,7 +366,8 @@ SOFTWARE.
     </joint>
     <actuator name="motor_3">
       <!-- <hardwareInterface>EffortJointInterface</hardwareInterface> -->
-      <mechanicalReduction>1</mechanicalReduction>
+      <mechanicalReduction>1.5</mechanicalReduction>
+      <!-- Spirit knees have a 1.5 reduction from the original modules-->
     </actuator>
   </transmission>
   <!-- Toe -->
@@ -523,7 +525,8 @@ SOFTWARE.
     </joint>
     <actuator name="motor_5">
       <!-- <hardwareInterface>EffortJointInterface</hardwareInterface> -->
-      <mechanicalReduction>1</mechanicalReduction>
+      <mechanicalReduction>1.5</mechanicalReduction>
+      <!-- Spirit knees have a 1.5 reduction from the original modules-->
     </actuator>
   </transmission>
   <!-- Toe -->
@@ -681,7 +684,8 @@ SOFTWARE.
     </joint>
     <actuator name="motor_7">
       <!-- <hardwareInterface>EffortJointInterface</hardwareInterface> -->
-      <mechanicalReduction>1</mechanicalReduction>
+      <mechanicalReduction>1.5</mechanicalReduction>
+      <!-- Spirit knees have a 1.5 reduction from the original modules-->
     </actuator>
   </transmission>
   <!-- Toe -->

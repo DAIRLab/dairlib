@@ -262,7 +262,7 @@ SOFTWARE.
     		</joint>
     		<actuator name="motor_${kneeJointName}">
       			<!-- <hardwareInterface>EffortJointInterface</hardwareInterface> -->
-      			<mechanicalReduction>1</mechanicalReduction>
+      			<mechanicalReduction>1.5</mechanicalReduction> <!-- Spirit knees have a 1.5 reduction from the original modules-->
     		</actuator>
   		</transmission>
 

@@ -215,10 +215,10 @@ void runSpiritStand(
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Print file", "../snopt.out");
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 20000);
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Iterations limit", 100000);
+                           "Major iterations limit", 2000);
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Iterations limit", 10000);
   // Add duration constraint, currently constrained not bounded
-  trajopt.AddDurationBounds(duration, duration);
+  trajopt.AddDurationBounds(0, duration);
   // Initialize the trajectory control state and forces
   for (int j = 0; j < sequence.num_modes(); j++) {
     trajopt.drake::systems::trajectory_optimization::MultipleShooting::
@@ -317,8 +317,8 @@ void runSpiritStand(
   for (int i = 0; i < num_knotpoints; i++){
     auto xi = trajopt.state(i);
     //legs lined up (front and back hips equal)
-    trajopt.AddLinearConstraint( xi( positions_map.at("joint_8") ) ==  xi( positions_map.at("joint_9") ) );
-    trajopt.AddLinearConstraint( xi( positions_map.at("joint_10") ) ==  xi( positions_map.at("joint_11") ) );
+    // trajopt.AddLinearConstraint( xi( positions_map.at("joint_8") ) ==  xi( positions_map.at("joint_9") ) );
+    // trajopt.AddLinearConstraint( xi( positions_map.at("joint_10") ) ==  xi( positions_map.at("joint_11") ) );
   
     // Symmetry constraints (mirrored hips all else equal across)
     trajopt.AddLinearConstraint( xi( positions_map.at("joint_8") ) == -xi( positions_map.at("joint_10") ) );
@@ -333,7 +333,7 @@ void runSpiritStand(
 
   /// Constraints for keeping "knees" above the floor 
   //Keep body above initial position
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map["base_z"])  >= FLAGS_sitHeight+FLAGS_bodyHeight/2);
+  trajopt.AddConstraintToAllKnotPoints(x(positions_map["base_z"])  >= FLAGS_sitHeight + FLAGS_bodyHeight / 2);
 
   // Create the knee evaluators for non-linear constraint
   double upperLegLength = 0.206; // length of the upper leg link
@@ -382,10 +382,12 @@ void runSpiritStand(
   }
 
   ///Setup the cost function
-  const double R = 30;  // Cost on input effort
+  const double R = 10;  // Cost on input effort
+  const double Rf = R*30;
   const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose()*R*u);
+  trajopt.AddFinalCost(u.transpose()*Rf*u);
 
   /// Setup the visualization during the optimization
   int num_ghosts = 3;// Number of ghosts in visualization. NOTE: there are limitations on number of ghosts based on modes and knotpoints
@@ -395,7 +397,6 @@ void runSpiritStand(
   trajopt.CreateVisualizationCallback(
       dairlib::FindResourceOrThrow("examples/Spirit/spirit_drake.urdf"),
       visualizer_poses, 0.2); // setup which URDF, how many poses, and alpha transparency 
-
 
   /// Run the optimization using your initial guess
   auto start = std::chrono::high_resolution_clock::now();
@@ -500,7 +501,7 @@ int main(int argc, char* argv[]) {
 
     for (int j = 0; j < num_joints; j++){
     //     xState(nq + velocities_map.at( std::to_string(j)+"dot"  )) = 0;
-        if (j==0||j==4){
+        if (j==0||j==2||j==4||j==6){
           xState(positions_map.at("joint_" + std::to_string(j))) = xState(nq + velocities_map.at("joint_" + std::to_string(j)+"dot" )) * time -.3;
         }
         else{

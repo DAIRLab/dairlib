@@ -92,7 +92,7 @@ namespace mptc_data {
                         const drake::systems::Context<double> &context_w_spr,
                         const Eigen::VectorXd &x_wo_spr,
                         const drake::systems::Context<double> &context_wo_spr,
-                        const Eigen::MatrixXd &M, const Eigen::MatrixXd &C,
+                        const Eigen::MatrixXd &M_inv, const Eigen::MatrixXd &C,
                         const drake::trajectories::Trajectory<double> &traj, double t,
                         int finite_state_machine_state);
 
@@ -208,7 +208,7 @@ namespace mptc_data {
             // Check if we should do tracking in the current state
             void UpdateTrackingFlag(int finite_state_machine_state);
 
-            void UpdateKpKd(const Eigen::MatrixXd &M);
+            void UpdateKpKd(const Eigen::MatrixXd &M_inv);
 
             // Updaters of feedback output, jacobian and dJ/dt * v
             virtual void UpdateYAndError(
@@ -247,7 +247,6 @@ namespace mptc_data {
 
             // Task Space Parameters
             Eigen::MatrixXd M_k_inv_;
-            Eigen::MatrixXd M_inv_;
             Eigen::MatrixXd K_k_;
             Eigen::MatrixXd D_k_;
 

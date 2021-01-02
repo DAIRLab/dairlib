@@ -60,7 +60,7 @@ MptcTrackingData::MptcTrackingData(const string& name, int n_y, int n_ydot,
 bool MptcTrackingData::Update(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
-    const Eigen::MatrixXd& M, const Eigen::MatrixXd& C,
+    const Eigen::MatrixXd& M_inv, const Eigen::MatrixXd& C,
     const drake::trajectories::Trajectory<double>& traj, double t,
     int finite_state_machine_state) {
   // Update track_at_current_state_
@@ -87,7 +87,7 @@ bool MptcTrackingData::Update(
     UpdateJdot(x_wo_spr, context_wo_spr);
     //std::cout << "Jdot:\n" << Jdot_ << std::endl;
     C_ = C;
-    UpdateKpKd(M);
+    UpdateKpKd(M_inv);
     //std::cout << "Kp:\n" << K_k_ << std::endl;
     //std::cout << "Kd:\n" << D_k_ << std::endl;
 
@@ -110,12 +110,11 @@ void MptcTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
   track_at_current_state_ = it != state_.end();
 }
 
-void MptcTrackingData::UpdateKpKd(const Eigen::MatrixXd& M) {
-    M_inv_ = M.inverse();
-    M_k_inv_ = J_ * M_inv_ * J_.transpose();
+void MptcTrackingData::UpdateKpKd(const Eigen::MatrixXd& M_inv) {
+    M_k_inv_ = J_ * M_inv * J_.transpose();
     M_k_ = M_k_inv_.inverse();
     K_k_ = M_k_inv_ * K_p_;
-    C_k_ = M_k_ * (J_ * M_inv_ * C_ - Jdot_) * (M_k_ * J_ * M_inv_).transpose();
+    C_k_ = M_k_ * (J_ * M_inv * C_ - Jdot_) * (M_k_ * J_ * M_inv).transpose();
     D_k_ = M_k_inv_*(C_k_ + K_d_);
 }
 

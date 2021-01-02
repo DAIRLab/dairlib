@@ -470,6 +470,7 @@ VectorXd ModularPassiveTrackingControl::SolveQp(
   MatrixXd B = plant_wo_spr_.MakeActuationMatrix();
   MatrixXd M(n_v_, n_v_);
   plant_wo_spr_.CalcMassMatrix(*context_wo_spr_, &M);
+  MatrixXd M_inv = M.llt().solve(MatrixXd::Identity(n_v_, n_v_));
   VectorXd bias(n_v_);
   plant_wo_spr_.CalcBiasTerm(*context_wo_spr_, &bias);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
@@ -606,7 +607,7 @@ VectorXd ModularPassiveTrackingControl::SolveQp(
       // Create constant trajectory and update
       //std::cout << "updating tracking data " << i << std::endl;
       tracking_data->Update(
-          x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_, M, Cd,
+          x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_, M_inv, Cd,
           PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
     } else {
       // Read in traj from input port
@@ -620,7 +621,7 @@ VectorXd ModularPassiveTrackingControl::SolveQp(
       // Update
       // std::cout << "updating tracking data " << i << std::endl;
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, M, Cd, traj, t, fsm_state);
+                            *context_wo_spr_, M_inv, Cd, traj, t, fsm_state);
     }
     // TODO(yangwill): Should only really be updating the trajectory if it's
     //  active

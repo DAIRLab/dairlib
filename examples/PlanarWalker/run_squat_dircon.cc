@@ -166,20 +166,7 @@ void runDircon(
   std::vector<int> x_active({0});
   auto distance_foot_distance_eval = multibody::DistanceEvaluator<T>(
       plant, pt, right_lower_leg, pt, left_lower_leg, 0);
-  /*
-  auto left_foot_x_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                          left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), x_active);
-  auto right_foot_x_eval = multibody::WorldPointEvaluator<T>(plant, pt,
-                                                           right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), x_active);
-  auto foot_x_evaluators = multibody::KinematicEvaluatorSet<T>(plant);
-  foot_x_evaluators.add_evaluator(&right_foot_x_eval);
-  foot_x_evaluators.add_evaluator(&left_foot_x_eval);
 
-  auto foot_x_lb =
-      Eigen::Vector2d(0.05, -0.15);
-  auto foot_x_ub =
-      Eigen::Vector2d(0.15, -0.05);
-    */
   auto foot_distance_evalutors = multibody::KinematicEvaluatorSet<T>(plant);
   foot_distance_evalutors.add_evaluator(&distance_foot_distance_eval);
 

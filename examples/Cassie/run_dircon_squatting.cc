@@ -511,6 +511,16 @@ void DoMain(double duration, int max_iter, string data_directory,
   cout << "Solve time:" << elapsed.count() << std::endl;
   cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
+  // Save trajectory to file
+  if (!FLAGS_save_filename.empty()) {
+    DirconTrajectory saved_traj(
+        plant, trajopt, result, "walking_trajectory",
+        "Decision variables and state/input trajectories "
+        "for walking");
+    saved_traj.WriteToFile(FLAGS_data_directory + FLAGS_save_filename);
+    std::cout << "Wrote to file: " << FLAGS_data_directory + FLAGS_save_filename
+              << std::endl;
+  }
 
   // Check which solver was used
   cout << "Solver: " << result.get_solver_id().name() << endl;

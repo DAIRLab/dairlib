@@ -193,9 +193,9 @@ void runDircon(
   trajopt.AddConstraint(foot_x_constraint, x0.head(n_q));
   trajopt.AddConstraint(foot_x_constraint, xf.head(n_q));
 
-  const double R_w = 0;  // Cost on power
-  const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
-  const double R = 10;  // Cost on effort
+  const double R_w = 10;  // Cost on power
+  const MatrixXd Q = 1  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const double R = 1;  // Cost on effort
 
   trajopt.AddRunningCost(u(act_map["hip_torque"]) * x(n_q + velocities_map["hip_pin_dot"]) * R_w *
                             u(act_map["hip_torque"]) * x(n_q + velocities_map["hip_pin_dot"]));

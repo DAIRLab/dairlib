@@ -19,7 +19,7 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/distance_evaluator.h"
 
-DEFINE_double(distance, 1, "The stride length.");
+DEFINE_double(distance, 0.5, "The stride length.");
 DEFINE_double(duration, 1, "The squat duration");
 DEFINE_double(min_duration, 0.6, "T he squat duration");
 DEFINE_double(max_duration, 2, "The squat duration");
@@ -101,7 +101,7 @@ void runDircon(
   evaluators.add_evaluator(&left_foot_eval);
   evaluators.add_evaluator(&right_foot_eval);
 
-  int num_knotpoints = 30;
+  int num_knotpoints = 10;
   double min_T = .03;
   double max_T = 3;
 
@@ -193,9 +193,9 @@ void runDircon(
   trajopt.AddConstraint(foot_x_constraint, x0.head(n_q));
   trajopt.AddConstraint(foot_x_constraint, xf.head(n_q));
 
-  const double R_w = 10;  // Cost on power
-  const MatrixXd Q = 3  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
-  const double R = 3;  // Cost on effort
+  const double R_w = 0;  // Cost on power
+  const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const double R = 10;  // Cost on effort
 
   trajopt.AddRunningCost(u(act_map["hip_torque"]) * x(n_q + velocities_map["hip_pin_dot"]) * R_w *
                             u(act_map["hip_torque"]) * x(n_q + velocities_map["hip_pin_dot"]));
@@ -304,7 +304,7 @@ int main(int argc, char* argv[]) {
 
     xState(positions_map.at("hip_pin")) = -0.8 + xState(nq + velocities_map.at("hip_pindot")) * time;
     xState(positions_map.at("planar_roty")) = 0.4 + xState(nq + velocities_map.at("planar_rotydot")) * time;
-    xState(positions_map.at("planar_x")) = -xState(nq + velocities_map.at("planar_xdot")) * time;
+    xState(positions_map.at("planar_x")) = xState(nq + velocities_map.at("planar_xdot")) * time;
     xState(positions_map.at("planar_z")) = FLAGS_minHeight + xState(nq + velocities_map.at("planar_zdot")) * time;
     xState(positions_map.at("left_knee_pin")) = -0.3 + xState(nq + velocities_map.at("left_knee_pindot")) * time;
     xState(positions_map.at("right_knee_pin")) = 0.3 + xState(nq + velocities_map.at("right_knee_pindot")) * time;

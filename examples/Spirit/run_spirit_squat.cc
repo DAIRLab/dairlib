@@ -106,18 +106,22 @@ void runAnimate(
 /// Get a nominal Spirit Stand (i.e. zero hip ad/abduction motor torque, toes below motors) for initializing
 template <typename T>
 void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, double height){
-  xState = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
+  //Get joint name dictionaries
   auto positions_map = dairlib::multibody::makeNameToPositionsMap(plant);
   auto velocities_map = dairlib::multibody::makeNameToVelocitiesMap(plant);
+  
+  // Initialize state vector and add orienation and goal height
+  xState = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
   xState(positions_map.at("base_qw")) = 1;
   xState(positions_map.at("base_z")) = height;
   
+  //Calculate the inverse kinematics to get the joint angles for toe placement
   double upperLegLength = 0.206; // length of the upper leg link
   double hipLength = 0.10098; //absOffset ToeLocation
-  double hip2toeZLength = sqrt(height*height - hipLength*hipLength);
-  double theta1 = asin(hip2toeZLength/(2*upperLegLength )) ;
-  double theta2 = 2*theta1 ;
-  double alpha = asin(hipLength/(height));
+  double hip2toeZLength = sqrt(height*height - hipLength*hipLength);// length of lower legs (2dof)
+  double theta1 = asin(hip2toeZLength/(2*upperLegLength )) ; //upper angle
+  double theta2 = 2*theta1 ; //lower angle
+  double alpha = asin(hipLength/(height)); //hip angle
 
   int upperInd, kneeInd, hipInd;
   int mirroredFlag;
@@ -133,10 +137,8 @@ void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, doubl
     }
     xState(positions_map.at("joint_" + std::to_string(hipInd))) = mirroredFlag * alpha;
   }
-  
-    
 }
-  /// See runSpiritStand()
+  /// See runSpiritSquat()
     // std::unique_ptr<MultibodyPlant<T>> plant_ptr,
     // MultibodyPlant<double>* plant_double_ptr,
     // std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
@@ -149,7 +151,7 @@ void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, doubl
   ///
   /// Given an initial guess for state, control, and forces optimizes a standing behaviour for the spirit robot
 template <typename T>
-void runSpiritStand(
+void runSpiritSquat(
     std::unique_ptr<MultibodyPlant<T>> plant_ptr,
     MultibodyPlant<double>* plant_double_ptr,
     std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
@@ -170,13 +172,6 @@ void runSpiritStand(
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
 
-  // // Print joint dictionary
-  // for (auto const& element : positions_map)
-  //   cout << element.first << " = " << element.second << endl;
-  // for (auto const& element : velocities_map)
-  //   cout << element.first << " = " << element.second << endl;
-  
-
   /// For Spirit front left leg->0, back left leg->1, front right leg->2, back right leg->3
   /// Get the frame of each toe and attach a world point to the toe tip (frame is at toe ball center).
 
@@ -185,9 +180,7 @@ void runSpiritStand(
   Vector3d toeOffset(toeRadius,0,0); // vector to "contact point"
   double mu = 1; //friction
   
-  
   auto evaluators = multibody::KinematicEvaluatorSet<T>(plant); //Initialize kinematic evaluator set
-  // toe stand mode code written to be functionalized to remove this repeated code
   
   // Get the toe frames
   const auto& toe0_frontLeft  = plant.GetFrameByName( "toe" + std::to_string(0) );
@@ -210,26 +203,6 @@ void runSpiritStand(
   evaluators.add_evaluator(&(toe2_eval));
   evaluators.add_evaluator(&(toe3_eval));
   
-
-////////////////////////TODO/DEBUG
-//// Attempted to create an array to not have all of the copy and pasted code above. Reference arrays are illegal in c++. Initializing auto like this is wrong. 
-//// Eventually I will create a "leg/toe" helper function that replaced all of this or figure out the ptr logic necessary to make something like this work. 
-////
-    // const auto& toes[num_legs]; //Initialize toeframes //Doesnt work 
-    // // const dairlib::multibody::Plant<T> *toes[num_legs]; 
-    // // multibody::WorldPointEvaluator<T> toe_eval[num_legs]; //Initialize worldpoints
-    // auto toe_eval[num_legs];
-    
-    // for ( int i = 0; i < num_legs; i++) {
-    //   // For each toe, set up world point evaluator
-    //   toes[i] = plant.GetFrameByName( "toe"+std::to_string(i) ); //Get toe frame
-    //   toe_eval[i] = multibody::WorldPointEvaluator<T>(plant, toeOffset, toes[i], Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip
-    //   toe_eval[i].set_frictional(); //
-    //   toe_eval[i].set_mu(mu);
-    //   evaluators.add_evaluator(&(toe_eval[i]));
-    // }
-/////////////////////////TODO/DEBUG
-
   /// Setup the standing mode. This behavior only has one mode.
   int num_knotpoints = 10; // number of knot points in the collocation
   auto full_support = DirconMode<T>(evaluators,num_knotpoints); //No min and max mode times
@@ -239,7 +212,6 @@ void runSpiritStand(
     full_support.MakeConstraintRelative(i, 1);  // y-coordinate can be non-zero
   }
 
-  
   ///Mode Sequence
   // Adding the ONE mode to the sequence, will not leave full_support
   auto sequence = DirconModeSequence<T>(plant);
@@ -448,10 +420,8 @@ void runSpiritStand(
 //   const double Rf = R*30;
   const MatrixXd Q = FLAGS_velocityCost  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
 
-  // const  //Cost regularization
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose()*R*u);
-//   trajopt.AddFinalCost(u.transpose()*Rf*u);
 
   /// Setup the visualization during the optimization
   int num_ghosts = 3;// Number of ghosts in visualization. NOTE: there are limitations on number of ghosts based on modes and knotpoints
@@ -577,14 +547,8 @@ int main(int argc, char* argv[]) {
     }
 
     for (int j = 0; j < num_joints; j++){
-    //     xState(nq + velocities_map.at( std::to_string(j)+"dot"  )) = 0;
-        // if (j==0||j==2||j==4||j==6){
           xState(positions_map.at("joint_" + std::to_string(j))) =  
                         xState(positions_map.at("joint_" + std::to_string(j))) + xState(nq + velocities_map.at("joint_" + std::to_string(j)+"dot" )) * dt;
-        // }
-        // else{
-        //   xState(positions_map.at("joint_" + std::to_string(j))) =   xState(positions_map.at("joint_" + std::to_string(j))) + xState(nq + velocities_map.at("joint_" + std::to_string(j)+"dot" )) * dt;
-        // }
     }
     xState(positions_map.at("base_x")) = 
                         xState(positions_map.at("base_x")) + xState(nq + velocities_map.at("base_vx")) * dt;
@@ -597,7 +561,6 @@ int main(int argc, char* argv[]) {
     
     init_x.push_back(xState);
     init_u.push_back(Eigen::VectorXd::Zero(nu));
-    // init_u.push_back(VectorXd::Random(nu));
   }
   auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);
   auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_u);
@@ -634,7 +597,7 @@ int main(int argc, char* argv[]) {
   if (FLAGS_autodiff) {
     std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
         drake::systems::System<double>::ToAutoDiffXd(*plant);
-    dairlib::runSpiritStand<drake::AutoDiffXd>(
+    dairlib::runSpiritSquat<drake::AutoDiffXd>(
       std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
       FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
       init_lc_traj, init_vc_traj);
@@ -642,7 +605,7 @@ int main(int argc, char* argv[]) {
     dairlib::runAnimate<double>(
       std::move(plant), plant_vis.get(), std::move(scene_graph), init_x_traj);
   }else {
-    dairlib::runSpiritStand<double>(
+    dairlib::runSpiritSquat<double>(
       std::move(plant), plant_vis.get(), std::move(scene_graph),
       FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
       init_lc_traj, init_vc_traj);

@@ -9,6 +9,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/multibody/parsing/parser.h"
+#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/solvers/solve.h"
 
@@ -26,7 +27,9 @@ DEFINE_double(front2BackToeDistance, 0.35, "Nominal distance between the back an
 DEFINE_double(side2SideToeDistance, 0.2, "Nominal distance between the back and front toes.");
 DEFINE_double(bodyHeight, 0.104, "The spirit body start height (defined in URDF)");
 DEFINE_double(lowerHeight,0.15, "The sitting height of the bottom of the robot");
-DEFINE_double(upperHeight, 0.2, "The standing height.");
+DEFINE_double(upperHeight, 0.25, "The standing height.");
+DEFINE_double(inputCost, 10, "The standing height.");
+DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
 // Parameters which enable dircon-improving features
@@ -55,6 +58,7 @@ using systems::trajectory_optimization::KinematicConstraintType;
 using std::vector;
 using std::cout;
 using std::endl;
+
   /// See runAnimate(
   ///    std::unique_ptr<MultibodyPlant<T>> plant_ptr,
   ///    MultibodyPlant<double>* plant_double_ptr,
@@ -80,11 +84,11 @@ void runAnimate(
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
    
-  // Print joint dictionary
-  for (auto const& element : positions_map)
-    cout << element.first << " = " << element.second << endl;
-  for (auto const& element : velocities_map)
-    cout << element.first << " = " << element.second << endl;
+  // // Print joint dictionary
+  // for (auto const& element : positions_map)
+  //   cout << element.first << " = " << element.second << endl;
+  // for (auto const& element : velocities_map)
+  //   cout << element.first << " = " << element.second << endl;
 
   multibody::connectTrajectoryVisualizer(plant_double_ptr,
       &builder, &scene_graph, pp_xtraj);
@@ -99,6 +103,39 @@ void runAnimate(
   }
 }
 
+/// Get a nominal Spirit Stand (i.e. zero hip ad/abduction motor torque, toes below motors) for initializing
+template <typename T>
+void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, double height){
+  xState = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
+  auto positions_map = dairlib::multibody::makeNameToPositionsMap(plant);
+  auto velocities_map = dairlib::multibody::makeNameToVelocitiesMap(plant);
+  xState(positions_map.at("base_qw")) = 1;
+  xState(positions_map.at("base_z")) = height;
+  
+  double upperLegLength = 0.206; // length of the upper leg link
+  double hipLength = 0.10098; //absOffset ToeLocation
+  double hip2toeZLength = sqrt(height*height - hipLength*hipLength);
+  double theta1 = asin(hip2toeZLength/(2*upperLegLength )) ;
+  double theta2 = 2*theta1 ;
+  double alpha = asin(hipLength/(height));
+
+  int upperInd, kneeInd, hipInd;
+  int mirroredFlag;
+  for (int j = 0; j < 4; j++){
+    upperInd = j * 2;
+    kneeInd = j * 2 + 1;
+    hipInd = j + 8;
+    xState(positions_map.at("joint_" + std::to_string(upperInd))) = theta1 ;
+    xState(positions_map.at("joint_" + std::to_string(kneeInd))) = theta2 ;
+    mirroredFlag = -1;
+    if ( hipInd > 9 ){
+      mirroredFlag = 1;
+    }
+    xState(positions_map.at("joint_" + std::to_string(hipInd))) = mirroredFlag * alpha;
+  }
+  
+    
+}
   /// See runSpiritStand()
     // std::unique_ptr<MultibodyPlant<T>> plant_ptr,
     // MultibodyPlant<double>* plant_double_ptr,
@@ -133,11 +170,11 @@ void runSpiritStand(
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
 
-  // Print joint dictionary
-  for (auto const& element : positions_map)
-    cout << element.first << " = " << element.second << endl;
-  for (auto const& element : velocities_map)
-    cout << element.first << " = " << element.second << endl;
+  // // Print joint dictionary
+  // for (auto const& element : positions_map)
+  //   cout << element.first << " = " << element.second << endl;
+  // for (auto const& element : velocities_map)
+  //   cout << element.first << " = " << element.second << endl;
   
 
   /// For Spirit front left leg->0, back left leg->1, front right leg->2, back right leg->3
@@ -229,7 +266,7 @@ void runSpiritStand(
 
   /// Setup all the optimization constraints 
   int n_v = plant.num_velocities();
-  int n_q = plant.num_positions();
+  // int n_q = plant.num_positions();
   auto u = trajopt.input();
   auto x = trajopt.state();
   auto x0 = trajopt.initial_state();
@@ -407,9 +444,11 @@ void runSpiritStand(
 //   }
 
   ///Setup the cost function
-  const double R = 50;  // Cost on input effort
+  const double R = FLAGS_inputCost;  // Cost on input effort
 //   const double Rf = R*30;
-  const MatrixXd Q = 10  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const MatrixXd Q = FLAGS_velocityCost  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+
+  // const  //Cost regularization
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose()*R*u);
 //   trajopt.AddFinalCost(u.transpose()*Rf*u);
@@ -477,6 +516,7 @@ int main(int argc, char* argv[]) {
   int nu = plant->num_actuators();
   int nx = plant->num_positions() + plant->num_velocities();
   int nq = plant->num_positions();
+  int nv = plant->num_velocities();
   int N = 20; // number of timesteps
 
   std::vector<MatrixXd> init_x;
@@ -487,37 +527,43 @@ int main(int argc, char* argv[]) {
 
   // Initialize state trajectory
   std::vector<double> init_time;
+
+  VectorXd xInit(nx);
+  VectorXd xMid(nx);
   VectorXd xState(nx);
+  xInit = Eigen::VectorXd::Zero(plant->num_positions() + plant->num_velocities());
+  xMid = Eigen::VectorXd::Zero(plant->num_positions() + plant->num_velocities());
   xState = Eigen::VectorXd::Zero(plant->num_positions() + plant->num_velocities());
+
   auto positions_map = dairlib::multibody::makeNameToPositionsMap(*plant);
   auto velocities_map = dairlib::multibody::makeNameToVelocitiesMap(*plant);
   int num_joints = 12;
 
   // Print joint dictionary
+  std::cout<<"**********************Joints***********************"<<std::endl;
   for (auto const& element : positions_map)
     std::cout << element.first << " = " << element.second << std::endl;
   for (auto const& element : velocities_map)
     std::cout << element.first << " = " << element.second << std::endl;
+  std::cout<<"***************************************************"<<std::endl;
+    
+  dairlib::nominalSpiritStand( *plant, xInit,  FLAGS_lowerHeight);
+  dairlib::nominalSpiritStand( *plant, xMid,  FLAGS_upperHeight);
   
+
   int upperInd,kneeInd,hipInd;
-  
-  
+  VectorXd deltaX(nx);
+  VectorXd averageV(nx);
+  deltaX = xMid-xInit;
+  averageV = 2* deltaX / FLAGS_duration;
+  xInit.tail(nv-3) = (averageV.head(nq)).tail(nq-4); //Ignoring Orientation make velocity the average
 
   double time = 0;
   double dt = FLAGS_duration/(N-1);
   int switchDirections;
 
   // Initial pose
-  xState(positions_map.at("base_qw")) = 1;  // Initialize flat pose and quat unit constraint
-  xState(positions_map.at("base_z")) = FLAGS_lowerHeight; // Initialize some height TODO MAKE THE START HEIGHT  
-
-  double initLegAngle = .3;
-  for (int j = 0; j < 4; j++){
-    upperInd = j * 2;
-    kneeInd = j * 2 + 1;
-    xState(positions_map.at( "joint_" + std::to_string(upperInd))) = initLegAngle;
-    xState(positions_map.at( "joint_" + std::to_string(kneeInd))) = xState(positions_map.at( "joint_" + std::to_string(upperInd))) * 2;
-  }
+  xState = xInit;
 
   for (int i = 0; i < N; i++) {
     time=i*dt;
@@ -526,30 +572,10 @@ int main(int argc, char* argv[]) {
     // Switch the direction of the stand to go back to the initial state (not actually properly periodic initial)
     switchDirections = 1;
     if ( i > (N-1)/2 ){
-        switchDirections = -1;
+        // switchDirections = -1;
+        xState.tail(nv) = -xInit.tail(nv);
     }
-    /// VELOCITIES
-    // Upper link velocities
-    for (int j = 0; j < 4; j++){
-        upperInd = j * 2;
-        xState(nq + velocities_map.at( "joint_" + std::to_string(upperInd) + "dot" )) = 1 * switchDirections;
-    }
-    // Lower link velocites (for standing useful for it to be about 2 times the upper)
-    for (int j = 0; j < 4; j++){
-        upperInd = j * 2;
-        kneeInd = j * 2 + 1;
-        xState(nq + velocities_map.at( "joint_" + std::to_string(kneeInd) + "dot" )) = 2 * xState(nq + velocities_map.at( "joint_" + std::to_string(upperInd) + "dot"));
-    }
-    // Hip velocities at zero
-    for (int j = 0; j < 4; j++){
-        hipInd = j + 8;
-        xState(nq + velocities_map.at( "joint_" + std::to_string(hipInd) + "dot" )) = 0;
-    }
-    xState( nq + velocities_map.at("base_vz") ) = (2*(FLAGS_upperHeight - FLAGS_lowerHeight)/FLAGS_duration) * switchDirections;
 
-    /// POSITIONS
-    // Get last position
-    
     for (int j = 0; j < num_joints; j++){
     //     xState(nq + velocities_map.at( std::to_string(j)+"dot"  )) = 0;
         // if (j==0||j==2||j==4||j==6){
@@ -560,10 +586,15 @@ int main(int argc, char* argv[]) {
         //   xState(positions_map.at("joint_" + std::to_string(j))) =   xState(positions_map.at("joint_" + std::to_string(j))) + xState(nq + velocities_map.at("joint_" + std::to_string(j)+"dot" )) * dt;
         // }
     }
+    xState(positions_map.at("base_x")) = 
+                        xState(positions_map.at("base_x")) + xState(nq + velocities_map.at("base_vx")) * dt;
+    
+    xState(positions_map.at("base_y")) = 
+                        xState(positions_map.at("base_y")) + xState(nq + velocities_map.at("base_vy")) * dt;
+    
     xState(positions_map.at("base_z")) = 
                         xState(positions_map.at("base_z")) + xState(nq + velocities_map.at("base_vz")) * dt;
     
-
     init_x.push_back(xState);
     init_u.push_back(Eigen::VectorXd::Zero(nu));
     // init_u.push_back(VectorXd::Random(nu));

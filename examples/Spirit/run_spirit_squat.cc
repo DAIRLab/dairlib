@@ -31,6 +31,8 @@ DEFINE_double(upperHeight, 0.35, "The standing height.");
 DEFINE_double(inputCost, 3, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_double(eps, 1e-2, "The wiggle room.");
+DEFINE_double(optTol, 1e-4,"Optimization Tolerance");
+DEFINE_double(feasTol, 1e-4,"Feasibility Tolerance");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
 // Parameters which enable dircon-improving features
@@ -228,14 +230,14 @@ void runSpiritSquat(
 
   // Set up Trajectory Optimization options
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "/home/shane/snopt.out");
+                           "Print file", "../snopt.out");
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 20000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Iterations limit", 100000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance",
-                           1e-4);  // target optimality
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1e-4);
+                           FLAGS_optTol);  // target optimality
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", FLAGS_feasTol);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
 
@@ -264,14 +266,22 @@ void runSpiritSquat(
   trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, x0(positions_map.at("base_z")));
   
   // Mid body positions
-  //trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  //trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xmid(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_y")));
   trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight-FLAGS_eps, FLAGS_upperHeight+FLAGS_eps, xmid(positions_map.at("base_z")));
 
-  //Final Position Constraints
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, xf(positions_map.at("base_z")));
+  // Final Position Constraints
+  bool isPeriodic = 1;
+  if (isPeriodic){
+    trajopt.AddLinearConstraint( x0(positions_map.at("base_x"))==xf(positions_map.at("base_x")) );
+    trajopt.AddLinearConstraint( x0(positions_map.at("base_y"))==xf(positions_map.at("base_y")) );
+    trajopt.AddLinearConstraint( x0(positions_map.at("base_z"))==xf(positions_map.at("base_z")) );
+  }else{
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_y")));
+    trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, xf(positions_map.at("base_z")));
+  }
+
   
   
   /// Decide whether or not to constrain the body orientation at all knotpoints or only at the beginning and end
@@ -358,8 +368,7 @@ void runSpiritSquat(
   
     // Symmetry constraints (mirrored hips all else equal across)
     trajopt.AddLinearConstraint( xi( positions_map.at("joint_8") ) == -xi( positions_map.at("joint_10") ) );
-    trajopt.AddLinearConstraint( xi( positions_map.at("joint_9") ) == -xi( positions_map.at("joint_11") ) );// Technically overconstrains included for testing and completeness
-    
+    trajopt.AddLinearConstraint( xi( positions_map.at("joint_9") ) == -xi( positions_map.at("joint_11") ) );
     // // Front legs equal and back legs equal constraints 
     // trajopt.AddLinearConstraint( xi( positions_map.at("joint_0") ) == xi( positions_map.at("joint_4") ) );
     // trajopt.AddLinearConstraint( xi( positions_map.at("joint_1") ) == xi( positions_map.at("joint_5") ) );
@@ -370,16 +379,16 @@ void runSpiritSquat(
     auto xi = trajopt.state(i);
     //legs lined up (front and back hips equal)
     trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_8")));
-    trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_8")));
     trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_9")));
     trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_10")));
+    trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_11")));
 
   }
 
-  /// Constraints for keeping "knees" above the floor 
+ double upperLegLength = 0.206; // length of the upper leg link
 
-  // Create the knee evaluators for non-linear constraint
-  double upperLegLength = 0.206; // length of the upper leg link
+  
+// Quick check for allowed heights for Spirit
   try{
     if (FLAGS_lowerHeight<FLAGS_bodyHeight/2){
         throw "Body to close to floor" ;
@@ -391,7 +400,8 @@ void runSpiritSquat(
       std::cerr<< exc <<std::endl;
   }
 
-
+/// Constraints for keeping "knees" above the floor 
+// Create the knee evaluators for non-linear constraint if necessary
 //   Vector3d kneeOffset(upperLegLength/2,0,0); // vector to "knee" point in upper leg frame
 //   std::vector<int> z_active({2});
 
@@ -436,13 +446,18 @@ void runSpiritSquat(
 //     trajopt.AddConstraint(positive_knee_constraints, xi.head(n_q));
 //   }
 
-  ///Setup the cost function
+  ///Setup the traditional cost function
   const double R = FLAGS_inputCost;  // Cost on input effort
-//   const double Rf = R*30;
   const MatrixXd Q = FLAGS_velocityCost  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  trajopt.AddRunningCost( x.tail(n_v).transpose() * Q * x.tail(n_v) );
+  trajopt.AddRunningCost( u.transpose()*R*u );
+  
+  ///Add regularization costs
+  trajopt.AddRunningCost( x0(positions_map.at("base_x")) * 10 * x0(positions_map.at("base_x")) ); // x position cost
+  // trajopt.AddRunningCost( (x.segment(12,2)-x.segment(14,2)).transpose() * 1 * (x.segment(12,2)-x.segment(14,2)) );
+  // trajopt.AddRunningCost( (x.segment(16,2)-x.segment(18,2)).transpose() * 1 * (x.segment(16,2)-x.segment(18,2)) );
 
-  trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
-  trajopt.AddRunningCost(u.transpose()*R*u);
+  
 
   /// Setup the visualization during the optimization
   int num_ghosts = 3;// Number of ghosts in visualization. NOTE: there are limitations on number of ghosts based on modes and knotpoints
@@ -471,7 +486,7 @@ void runSpiritSquat(
   while (true) {
     
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(.25);
+    simulator.set_target_realtime_rate(0.25);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
     sleep(2);
@@ -538,11 +553,9 @@ int main(int argc, char* argv[]) {
     std::cout << element.first << " = " << element.second << std::endl;
   std::cout<<"***************************************************"<<std::endl;
     
-  dairlib::nominalSpiritStand( *plant, xInit,  FLAGS_lowerHeight);
-  dairlib::nominalSpiritStand( *plant, xMid,  FLAGS_upperHeight);
+  dairlib::nominalSpiritStand( *plant, xInit,  FLAGS_lowerHeight); //Update xInit
+  dairlib::nominalSpiritStand( *plant, xMid,  FLAGS_upperHeight); //Update xMid
   
-
-  int upperInd,kneeInd,hipInd;
   VectorXd deltaX(nx);
   VectorXd averageV(nx);
   deltaX = xMid-xInit;
@@ -551,22 +564,19 @@ int main(int argc, char* argv[]) {
 
   double time = 0;
   double dt = FLAGS_duration/(N-1);
-  int switchDirections;
 
   // Initial pose
   xState = xInit;
 
   for (int i = 0; i < N; i++) {
-    time=i*dt;
+    time=i*dt; // calculate iteration's time
     init_time.push_back(time);
 
     // Switch the direction of the stand to go back to the initial state (not actually properly periodic initial)
-    switchDirections = 1;
     if ( i > (N-1)/2 ){
-        // switchDirections = -1;
         xState.tail(nv) = -xInit.tail(nv);
     }
-
+    // Integrate the positions based on constant velocity  for joints and xyz
     for (int j = 0; j < num_joints; j++){
           xState(positions_map.at("joint_" + std::to_string(j))) =  
                         xState(positions_map.at("joint_" + std::to_string(j))) + xState(nq + velocities_map.at("joint_" + std::to_string(j)+"dot" )) * dt;
@@ -579,10 +589,11 @@ int main(int argc, char* argv[]) {
     
     xState(positions_map.at("base_z")) = 
                         xState(positions_map.at("base_z")) + xState(nq + velocities_map.at("base_vz")) * dt;
-    
+    // Save timestep state into matrix
     init_x.push_back(xState);
     init_u.push_back(Eigen::VectorXd::Zero(nu));
   }
+  // Make matrix into trajectory
   auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);
   auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_u);
 

@@ -71,62 +71,6 @@ script "initialize_standing" {
     start cmd "2.pd-controller-real-robot";
 }
 
-script "mujoco-osc-standing" {
-    start cmd "2.cassie-mujoco";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "4.osc-standing-controller";
-}
-
-script "run-drake-osc-standing-control" {
-    run_script "start-operator-RBP";
-    start cmd "1.simulator (no dispatcher) for OSC controller";
-    start cmd "4.osc-standing-controller";
-}
-
-script "run-drake-osc-walking-control" {
-    run_script "start-operator-RBP";
-    start cmd "1.simulator (no dispatcher) for OSC controller";
-    start cmd "4.osc-walking-controller";
-}
-
-script "run-drake-pd-control" {
-    run_script "start-operator-MBP";
-    start cmd "1.simulator (dispatched)";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
-    start cmd "0.pd-controller";
-}
-
-script "run-gazebo-lcm-pd-control" {
-    run_script "start-operator-MBP";
-    start cmd "1.launch-gazebo-fixed-base";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "0.pd-controller";
-}
-
-script "run-gazebo-pd-control" {
-    run_script "start-operator-MBP";
-    start cmd "1.launch-gazebo-fixed-base";
-    start cmd "2.b.dispatcher-robot-out (gazebo)";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "0.pd-controller";
-}
-
-script "run-mujoco-lcm-pd-control" {
-    run_script "start-operator-MBP";
-    start cmd "3.cassie-mujoco-fixed-base";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "0.pd-controller";
-}
-
-script "run-real-robot-pd-control" {
-    run_script "start-operator-real-robot";
-    start cmd "0.dispatcher-robot-out-real-robot";
-    start cmd "1.dispatcher-robot-in-real-robot";
-    start cmd "2.pd-controller-real-robot";
-}
-
 script "set_up_from_pd_to_osc_standing" {
     stop group "3.cassie-robot";
     start cmd "0.dispatcher-robot-out-real-robot";

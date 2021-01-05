@@ -246,8 +246,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         impulse_vars_.push_back(NewContinuousVariables(0, ""));
 
         // Linear equality constraint on velocity variables
-        auto pre_impact_velocity = state_vars(i_mode - 1, pre_impact_index)
-                                       .tail(plant_.num_velocities());
+        VectorXDecisionVariable pre_impact_velocity =
+            state_vars(i_mode - 1, pre_impact_index)
+                .tail(plant_.num_velocities());
         AddLinearConstraint(pre_impact_velocity ==
                             post_impact_velocity_vars(i_mode - 1));
       }

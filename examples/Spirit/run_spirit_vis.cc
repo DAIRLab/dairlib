@@ -13,8 +13,11 @@
 #include "drake/solvers/solve.h"
 
 #include "common/find_resource.h"
+#include "systems/trajectory_optimization/dircon/dircon.h"
+#include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
+#include "multibody/kinematic/kinematic_constraints.h"
 
 #include "examples/Spirit/animate_spirit.h"
 
@@ -94,7 +97,6 @@ int main(int argc, char* argv[]) {
   }
   auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);
 
-  dairlib::printFoo();
   dairlib::runAnimate( std::move(plant), plant_vis.get(), std::move(scene_graph), init_x_traj);
 }
 

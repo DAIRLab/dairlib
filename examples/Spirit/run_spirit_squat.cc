@@ -26,9 +26,9 @@ DEFINE_double(duration, 1, "The stand duration");
 DEFINE_double(front2BackToeDistance, 0.35, "Nominal distance between the back and front toes.");
 DEFINE_double(side2SideToeDistance, 0.2, "Nominal distance between the back and front toes.");
 DEFINE_double(bodyHeight, 0.104, "The spirit body start height (defined in URDF)");
-DEFINE_double(lowerHeight,0.2, "The sitting height of the bottom of the robot");
-DEFINE_double(upperHeight, 0.3, "The standing height.");
-DEFINE_double(inputCost, 1, "The standing height.");
+DEFINE_double(lowerHeight,0.15, "The sitting height of the bottom of the robot");
+DEFINE_double(upperHeight, 0.35, "The standing height.");
+DEFINE_double(inputCost, 3, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_double(eps, 1e-2, "The wiggle room.");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
@@ -236,6 +236,8 @@ void runSpiritSquat(
                            "Major optimality tolerance",
                            1e-4);  // target optimality
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1e-4);
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
+                           0);  // 0
 
     // Add duration constraint, currently constrained not bounded
   trajopt.AddDurationBounds(0, duration*2);

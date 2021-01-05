@@ -315,9 +315,9 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  double left_support_duration = 0.35;
-  double right_support_duration = 0.35;
-  double double_support_duration = 0.02;
+  double left_support_duration = gains.ss_time;
+  double right_support_duration = gains.ss_time;
+  double double_support_duration = gains.ds_time;
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {

@@ -76,7 +76,7 @@ void StandingPelvisOrientationTraj::CalcTraj(
   VectorXd r_foot = pt_2 - pt_3;
   //  l_foot_proj = l_foot.dot()
   Vector3d rpy;
-  rpy << cassie_out->pelvis.radio.channel[1],
+  rpy << 0, //cassie_out->pelvis.radio.channel[1],
       cassie_out->pelvis.radio.channel[2],
       drake::math::wrap_to(
           0.5 * (atan2(l_foot(1), l_foot(0)) + atan2(r_foot(1), r_foot(0))),

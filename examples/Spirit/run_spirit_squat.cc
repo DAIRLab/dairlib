@@ -26,10 +26,11 @@ DEFINE_double(duration, 1, "The stand duration");
 DEFINE_double(front2BackToeDistance, 0.35, "Nominal distance between the back and front toes.");
 DEFINE_double(side2SideToeDistance, 0.2, "Nominal distance between the back and front toes.");
 DEFINE_double(bodyHeight, 0.104, "The spirit body start height (defined in URDF)");
-DEFINE_double(lowerHeight,0.15, "The sitting height of the bottom of the robot");
-DEFINE_double(upperHeight, 0.25, "The standing height.");
-DEFINE_double(inputCost, 10, "The standing height.");
+DEFINE_double(lowerHeight,0.2, "The sitting height of the bottom of the robot");
+DEFINE_double(upperHeight, 0.3, "The standing height.");
+DEFINE_double(inputCost, 1, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
+DEFINE_double(eps, 1e-2, "The wiggle room.");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
 // Parameters which enable dircon-improving features
@@ -212,6 +213,11 @@ void runSpiritSquat(
     full_support.MakeConstraintRelative(i, 1);  // y-coordinate can be non-zero
   }
 
+  full_support.SetDynamicsScale(
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
+  full_support.SetKinVelocityScale(
+    {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
+
   ///Mode Sequence
   // Adding the ONE mode to the sequence, will not leave full_support
   auto sequence = DirconModeSequence<T>(plant);
@@ -222,12 +228,17 @@ void runSpiritSquat(
 
   // Set up Trajectory Optimization options
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "../snopt.out");
+                           "Print file", "/home/shane/snopt.out");
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 20000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Iterations limit", 100000);
-  // Add duration constraint, currently constrained not bounded
-  trajopt.AddDurationBounds(0, duration);
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Major optimality tolerance",
+                           1e-4);  // target optimality
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1e-4);
+
+    // Add duration constraint, currently constrained not bounded
+  trajopt.AddDurationBounds(0, duration*2);
   // Initialize the trajectory control state and forces
   for (int j = 0; j < sequence.num_modes(); j++) {
     trajopt.drake::systems::trajectory_optimization::MultipleShooting::
@@ -246,19 +257,19 @@ void runSpiritSquat(
   auto xf = trajopt.final_state();
   
   // Initial body positions
-  trajopt.AddBoundingBoxConstraint( -0.5,  0.5, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(    0,    0, x0(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight, FLAGS_lowerHeight, x0(positions_map.at("base_z")));
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, x0(positions_map.at("base_z")));
   
   // Mid body positions
-  trajopt.AddBoundingBoxConstraint(   -0,    0, xmid(positions_map.at("base_x"))); // If both init and final are open the gradient can become flat, so constrain the final x position
-  trajopt.AddBoundingBoxConstraint(    0,    0, xmid(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight, FLAGS_upperHeight, xmid(positions_map.at("base_z")));
+  //trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  //trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xmid(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight-FLAGS_eps, FLAGS_upperHeight+FLAGS_eps, xmid(positions_map.at("base_z")));
 
-  //Final Position Periodicity Constraints
-  trajopt.AddLinearConstraint( xf( positions_map.at("base_x") ) == x0( positions_map.at("base_x") ) );
-  trajopt.AddBoundingBoxConstraint(    0,    0, xf(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight, FLAGS_lowerHeight, xf(positions_map.at("base_z")));
+  //Final Position Constraints
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, xf(positions_map.at("base_z")));
   
   
   /// Decide whether or not to constrain the body orientation at all knotpoints or only at the beginning and end
@@ -353,7 +364,15 @@ void runSpiritSquat(
     // trajopt.AddLinearConstraint( xi( positions_map.at("joint_2") ) == xi( positions_map.at("joint_6") ) );
     // trajopt.AddLinearConstraint( xi( positions_map.at("joint_3") ) == xi( positions_map.at("joint_7") ) );
   }
-  
+  for (int i = 0; i < trajopt.N(); i++){
+    auto xi = trajopt.state(i);
+    //legs lined up (front and back hips equal)
+    trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_8")));
+    trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_8")));
+    trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_9")));
+    trajopt.AddBoundingBoxConstraint(-1.5, 1.5, xi( positions_map.at("joint_10")));
+
+  }
 
   /// Constraints for keeping "knees" above the floor 
 

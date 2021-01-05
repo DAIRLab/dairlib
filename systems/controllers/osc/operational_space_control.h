@@ -267,6 +267,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   mutable double solve_time_;
 
   mutable Eigen::MatrixXd ii_proj_;
+  mutable Eigen::MatrixXd M_Jt_;
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user

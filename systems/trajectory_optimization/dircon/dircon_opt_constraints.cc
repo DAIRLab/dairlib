@@ -95,7 +95,7 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   const auto& xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
   const auto& ucol = 0.5 * (u0 + u1);
 
-  static drake::MatrixX<T> J(evaluators_.count_full(), plant_.num_velocities());
+  drake::MatrixX<T> J(evaluators_.count_full(), plant_.num_velocities());
 
   // Evaluate dynamics at colocation point
   multibody::setContext<T>(plant_, xcol, ucol, context_col_.get());

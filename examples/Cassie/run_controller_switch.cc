@@ -1,7 +1,10 @@
 #include <string>
+
 #include <gflags/gflags.h>
+
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -14,7 +17,7 @@ using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::TriggerTypeSet;
 
-DEFINE_string(channel_x, "CASSIE_STATE",
+DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "The name of the channel which receives state");
 DEFINE_string(switch_channel, "INPUT_SWITCH",
               "The name of the channel which sends the channel name that "
@@ -109,12 +112,13 @@ int do_main(int argc, char* argv[]) {
   double t_threshold = t0;
   if (FLAGS_n_period_delay > 0) {
     t_threshold = (floor(t0 / FLAGS_fsm_period) + FLAGS_n_period_delay) *
-                      FLAGS_fsm_period +
-                  FLAGS_fsm_offset;
+        FLAGS_fsm_period +
+        FLAGS_fsm_offset;
   }
   // Create output message
   dairlib::lcmt_controller_switch msg;
   msg.channel = FLAGS_new_channel;
+  msg.blend_duration = FLAGS_blend_duration;
 
   // Run the simulation until it publishes the channel name `n_publishes` times
   drake::log()->info(diagram_ptr->get_name() + " started");

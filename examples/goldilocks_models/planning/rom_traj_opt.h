@@ -50,6 +50,14 @@ class RomTrajOpt
                              bool fix_duration, double duration,
                              bool equalize_timestep_size, double dt_0 = -1);
 
+  /// Returns a vector of matrices containing the state and derivative values at
+  /// each breakpoint at the solution for each mode of the trajectory.
+  void GetStateAndDerivativeSamples(
+      const drake::solvers::MathematicalProgramResult& result,
+      std::vector<Eigen::MatrixXd>* state_samples,
+      std::vector<Eigen::MatrixXd>* derivative_samples,
+      std::vector<Eigen::VectorXd>* state_breaks) const;
+
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory(
@@ -81,6 +89,8 @@ class RomTrajOpt
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
 
+  int num_modes() const { return num_modes_; }
+
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
@@ -91,6 +101,7 @@ class RomTrajOpt
   const drake::solvers::VectorXDecisionVariable x0_var_;
   const drake::solvers::VectorXDecisionVariable xf_vars_;
   const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
+  const int n_y_;
   const int n_z_;
   const int n_x_;
   const drake::multibody::MultibodyPlant<double>& plant_;

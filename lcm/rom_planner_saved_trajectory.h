@@ -9,8 +9,7 @@
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "lcm/lcm_trajectory.h"
-#include "systems/trajectory_optimization/dircon/dircon.h"
-#include "systems/trajectory_optimization/hybrid_dircon.h"
+#include "examples/goldilocks_models/planning/rom_traj_opt.h"
 
 namespace dairlib {
 
@@ -22,7 +21,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
 
   RomPlannerTrajectory(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const systems::trajectory_optimization::HybridDircon<double>& dircon,
+      const goldilocks_models::RomTrajOpt& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& name, const std::string& description);
 
@@ -52,7 +51,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
   }
   Eigen::MatrixXd GetInputSamples() const { return u_->datapoints; }
   Eigen::MatrixXd GetBreaks() const { return u_->time_vector; }
-  Eigen::MatrixXd GetForceSamples(int mode) const {
+  /*Eigen::MatrixXd GetForceSamples(int mode) const {
     return lambda_[mode]->datapoints;
   }
   Eigen::MatrixXd GetForceBreaks(int mode) const {
@@ -63,7 +62,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
   }
   Eigen::MatrixXd GetCollocationForceBreaks(int mode) const {
     return lambda_c_[mode]->time_vector;
-  }
+  }*/
   Eigen::VectorXd GetDecisionVariables() const {
     return decision_vars_->datapoints;
   }
@@ -77,8 +76,8 @@ class RomPlannerTrajectory : public LcmTrajectory {
 
   const Trajectory* decision_vars_;
   const Trajectory* u_;
-  std::vector<const Trajectory*> lambda_;
-  std::vector<const Trajectory*> lambda_c_;
+  // std::vector<const Trajectory*> lambda_;
+  // std::vector<const Trajectory*> lambda_c_;
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 };

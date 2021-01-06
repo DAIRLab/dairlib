@@ -11,24 +11,24 @@ using std::string;
 using std::vector;
 
 namespace dairlib {
-using systems::trajectory_optimization::HybridDircon;
+using goldilocks_models::RomTrajOpt;
 
 RomPlannerTrajectory::RomPlannerTrajectory(
     const MultibodyPlant<double>& plant,
-    const systems::trajectory_optimization::HybridDircon<double>& dircon,
+    const RomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
     const std::string& name, const std::string& description) {
-  num_modes_ = dircon.num_modes();
+  num_modes_ = trajopt.num_modes();
 
   // State trajectory
   std::vector<Eigen::MatrixXd> x;
   std::vector<Eigen::MatrixXd> xdot;
   std::vector<Eigen::VectorXd> state_breaks;
-  dircon.GetStateAndDerivativeSamples(result, &x, &xdot, &state_breaks);
+  trajopt.GetStateAndDerivativeSamples(result, &x, &xdot, &state_breaks);
   for (int mode = 0; mode < num_modes_; ++mode) {
     LcmTrajectory::Trajectory state_traj;
     LcmTrajectory::Trajectory state_derivative_traj;
-    LcmTrajectory::Trajectory force_traj;
+    // LcmTrajectory::Trajectory force_traj;
 
     state_traj.traj_name = "state_traj" + std::to_string(mode);
     state_traj.datapoints = x[mode];
@@ -42,12 +42,12 @@ RomPlannerTrajectory::RomPlannerTrajectory(
     state_derivative_traj.datatypes =
         multibody::createStateNameVectorFromMap(plant);
 
-    // Force vars
+    /*// Force vars
     force_traj.traj_name = "force_vars" + std::to_string(mode);
     std::vector<std::string> force_names;
     std::vector<std::string> collocation_force_names;
     int num_forces = 0;
-    for (int i = 0; i < dircon.num_kinematic_constraints_wo_skipping(mode);
+    for (int i = 0; i < trajopt.num_kinematic_constraints_wo_skipping(mode);
          ++i) {
       force_names.push_back("lambda_" + std::to_string(num_forces));
       collocation_force_names.push_back("lambda_c_" +
@@ -57,7 +57,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
     force_traj.traj_name = "force_vars" + std::to_string(mode);
     force_traj.time_vector = state_breaks[mode];
     force_traj.datapoints =
-        Map<MatrixXd>(result.GetSolution(dircon.force_vars(mode)).data(),
+        Map<MatrixXd>(result.GetSolution(trajopt.force_vars(mode)).data(),
                       num_forces, force_traj.time_vector.size());
     force_traj.datatypes = force_names;
 
@@ -70,26 +70,26 @@ RomPlannerTrajectory::RomPlannerTrajectory(
       collocation_force_traj.time_vector =
           GetCollocationPoints(state_breaks[mode]);
       collocation_force_traj.datapoints = Map<MatrixXd>(
-          result.GetSolution(dircon.collocation_force_vars(mode)).data(),
+          result.GetSolution(trajopt.collocation_force_vars(mode)).data(),
           num_forces, collocation_force_traj.time_vector.size());
       AddTrajectory(collocation_force_traj.traj_name, collocation_force_traj);
       lambda_c_.push_back(&collocation_force_traj);
-    }
+    }*/
 
     AddTrajectory(state_traj.traj_name, state_traj);
     AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
-    AddTrajectory(force_traj.traj_name, force_traj);
+    // AddTrajectory(force_traj.traj_name, force_traj);
 
     x_.push_back(&state_traj);
     xdot_.push_back(&state_derivative_traj);
-    lambda_.push_back(&force_traj);
+    // lambda_.push_back(&force_traj);
   }
 
   // Input trajectory
   LcmTrajectory::Trajectory input_traj;
   input_traj.traj_name = "input_traj";
-  input_traj.datapoints = dircon.GetInputSamples(result);
-  input_traj.time_vector = dircon.GetSampleTimes(result);
+  input_traj.datapoints = trajopt.GetInputSamples(result);
+  input_traj.time_vector = trajopt.GetSampleTimes(result);
   input_traj.datatypes = multibody::createActuatorNameVectorFromMap(plant);
   AddTrajectory(input_traj.traj_name, input_traj);
   u_ = &input_traj;
@@ -103,7 +103,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   decision_var_traj.datatypes =
       vector<string>(decision_var_traj.datapoints.size());
   for (int i = 0; i < decision_var_traj.datapoints.size(); i++) {
-    decision_var_traj.datatypes[i] = dircon.decision_variable(i).get_name();
+    decision_var_traj.datatypes[i] = trajopt.decision_variable(i).get_name();
   }
   AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
   decision_vars_ = &decision_var_traj;
@@ -150,11 +150,11 @@ void RomPlannerTrajectory::LoadFromFile(const std::string& filepath) {
     x_.push_back(&GetTrajectory("state_traj" + std::to_string(mode)));
     xdot_.push_back(
         &GetTrajectory("state_derivative_traj" + std::to_string(mode)));
-    lambda_.push_back(&GetTrajectory("force_vars" + std::to_string(mode)));
+    /*lambda_.push_back(&GetTrajectory("force_vars" + std::to_string(mode)));
     if (x_[mode]->time_vector.size() > 1) {
       lambda_c_.push_back(
           &GetTrajectory("collocation_force_vars" + std::to_string(mode)));
-    }
+    }*/
   }
   u_ = &GetTrajectory("input_traj");
   decision_vars_ = &GetTrajectory("decision_vars");

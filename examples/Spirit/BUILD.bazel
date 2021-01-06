@@ -3,11 +3,24 @@
 
 package(default_visibility = ["//visibility:public"])
 
+cc_library(
+    name = "animate_spirit",
+    srcs = ["animate_spirit.cc"],
+    hdrs = ["animate_spirit.h"],
+    deps = ["//systems/trajectory_optimization/dircon",
+        "//common",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+
+)
 cc_binary(
     name = "run_spirit_vis",
     srcs = ["run_spirit_vis.cc"],
     data = ["spirit_drake.urdf"],
     deps = [
+        ":animate_spirit",
         "//systems/trajectory_optimization/dircon",
         "//common",
         "//systems/primitives",

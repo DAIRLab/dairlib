@@ -67,12 +67,6 @@ void runAnimate(
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
 
-  // Print joint dictionary
-//   for (auto const& element : positions_map)
-//     cout << element.first << " = " << element.second << endl;
-//   for (auto const& element : velocities_map)
-//     cout << element.first << " = " << element.second << endl;
-
   multibody::connectTrajectoryVisualizer(plant_double_ptr,
                                          &builder, &scene_graph, pp_xtraj);
   auto diagram = builder.Build();

@@ -62,15 +62,15 @@ RomTrajOpt::RomTrajOpt(
       num_modes_(num_time_samples.size()),
       mode_lengths_(num_time_samples),
       z_post_impact_vars_(NewContinuousVariables(
-          (2 * rom.n_y()) * (num_time_samples.size() - 1), "zp")),
+          (2 * rom.n_y()) * (num_time_samples.size() - 1), "xp")),
       x0_var_(NewContinuousVariables(
-          (plant.num_positions() + plant.num_velocities()), "x0")),
+          (plant.num_positions() + plant.num_velocities()), "x0_FOM")),
       xf_vars_(NewContinuousVariables(
           (plant.num_positions() + plant.num_velocities()) *
               num_time_samples.size(),
-          "xf")),
+          "xf_FOM")),
       v_post_impact_vars_(NewContinuousVariables(
-          plant.num_velocities() * (num_time_samples.size() - 1), "vp")),
+          plant.num_velocities() * (num_time_samples.size() - 1), "vp_FOM")),
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
       n_x_(plant.num_positions() + plant.num_velocities()),
@@ -159,7 +159,7 @@ RomTrajOpt::RomTrajOpt(
             std::make_shared<planning::FomResetMapConstraint>(plant_,
                                                               swing_contacts);
         auto Lambda = NewContinuousVariables(3 * swing_contacts.size(),
-                                             "Lambda" + to_string(i));
+                                             "Lambda_FOM_" + to_string(i));
         AddConstraint(
             reset_map_constraint,
             {xf_vars_by_mode(i - 1),

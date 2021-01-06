@@ -91,6 +91,8 @@ class RomTrajOpt
 
   int num_modes() const { return num_modes_; }
 
+  const ReducedOrderModel& reduced_order_model() const { return rom_; }
+
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;

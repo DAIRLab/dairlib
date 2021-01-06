@@ -14,11 +14,21 @@ namespace dairlib {
 using goldilocks_models::RomTrajOpt;
 
 RomPlannerTrajectory::RomPlannerTrajectory(
-    const MultibodyPlant<double>& plant,
     const RomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
     const std::string& name, const std::string& description) {
   num_modes_ = trajopt.num_modes();
+
+  // Create state and input names
+  const auto& rom = trajopt.reduced_order_model();
+  std::vector<string> state_names;
+  std::vector<string> input_names;
+  for (int i = 0; i < rom.n_y() + rom.n_yddot(); i++) {
+    state_names.push_back("state" + std::to_string(i));
+  }
+  for (int i = 0; i < rom.n_tau(); i++) {
+    input_names.push_back("input" + std::to_string(i));
+  }
 
   // State trajectory
   std::vector<Eigen::MatrixXd> x;
@@ -33,14 +43,13 @@ RomPlannerTrajectory::RomPlannerTrajectory(
     state_traj.traj_name = "state_traj" + std::to_string(mode);
     state_traj.datapoints = x[mode];
     state_traj.time_vector = state_breaks[mode];
-    state_traj.datatypes = multibody::createStateNameVectorFromMap(plant);
+    state_traj.datatypes = state_names;
 
     state_derivative_traj.traj_name =
         "state_derivative_traj" + std::to_string(mode);
     state_derivative_traj.datapoints = xdot[mode];
     state_derivative_traj.time_vector = state_breaks[mode];
-    state_derivative_traj.datatypes =
-        multibody::createStateNameVectorFromMap(plant);
+    state_derivative_traj.datatypes = state_names;
 
     /*// Force vars
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -90,7 +99,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   input_traj.traj_name = "input_traj";
   input_traj.datapoints = trajopt.GetInputSamples(result);
   input_traj.time_vector = trajopt.GetSampleTimes(result);
-  input_traj.datatypes = multibody::createActuatorNameVectorFromMap(plant);
+  input_traj.datatypes = input_names;
   AddTrajectory(input_traj.traj_name, input_traj);
   u_ = &input_traj;
 
@@ -98,8 +107,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   LcmTrajectory::Trajectory decision_var_traj;
   decision_var_traj.traj_name = "decision_vars";
   decision_var_traj.datapoints = result.GetSolution();
-  decision_var_traj.time_vector =
-      VectorXd::Zero(1);
+  decision_var_traj.time_vector = VectorXd::Zero(1);
   decision_var_traj.datatypes =
       vector<string>(decision_var_traj.datapoints.size());
   for (int i = 0; i < decision_var_traj.datapoints.size(); i++) {
@@ -165,8 +173,8 @@ Eigen::VectorXd RomPlannerTrajectory::GetCollocationPoints(
   // using a + (b - a) / 2 midpoint
   int num_knotpoints = time_vector.size();
   return time_vector.head(num_knotpoints - 1) +
-      0.5 * (time_vector.tail(num_knotpoints - 1) -
-          time_vector.head(num_knotpoints - 1));
+         0.5 * (time_vector.tail(num_knotpoints - 1) -
+                time_vector.head(num_knotpoints - 1));
 }
 
 }  // namespace dairlib

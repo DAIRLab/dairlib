@@ -20,7 +20,6 @@ class RomPlannerTrajectory : public LcmTrajectory {
   RomPlannerTrajectory(const std::string& filepath) { LoadFromFile(filepath); }
 
   RomPlannerTrajectory(
-      const drake::multibody::MultibodyPlant<double>& plant,
       const goldilocks_models::RomTrajOpt& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& name, const std::string& description);

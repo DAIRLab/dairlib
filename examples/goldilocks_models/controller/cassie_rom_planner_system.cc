@@ -4,8 +4,8 @@
 
 #include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
-#include "systems/controllers/osc/osc_utils.h"
 #include "lcm/rom_planner_saved_trajectory.h"
+#include "systems/controllers/osc/osc_utils.h"
 
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/ipopt_solver.h"
@@ -553,9 +553,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     // Save trajectory to file
     string file_name = "rom_trajectory";
     RomPlannerTrajectory saved_traj(
-        plant_controls_, trajopt, result, file_name,
+        trajopt, result, file_name,
         "Decision variables and state/input trajectories");
-    saved_traj.WriteToFile(param_.dir_data  + file_name);
+    saved_traj.WriteToFile(param_.dir_data + file_name);
     //  std::cout << "Wrote to file: " << setting.directory + file_name <<
     //  std::endl;
   }

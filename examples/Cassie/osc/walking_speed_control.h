@@ -1,13 +1,13 @@
 #pragma once
 
 #include "systems/framework/output_vector.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
 
 namespace dairlib {
-namespace cassie {
-namespace osc {
+    namespace cassie {
+        namespace osc {
 
 /// WalkingSpeedControl calculates and outputs the deviation from the nominal
 /// footstep location in order to track a desired velocity of center of mass.
@@ -41,54 +41,62 @@ namespace osc {
 ///  - A 2D vector, delta_r.
 ///
 /// Requirement: quaternion floating-based Cassie only
-class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
- public:
-  WalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
-                      drake::systems::Context<double>* context,
-                      int footstep_option, double swing_phase_duration = 0);
+            class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
+            public:
+                WalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
+                                    drake::systems::Context<double>* context,
+                                    int footstep_option, double swing_phase_duration = 0,
+                                    double fb_lateral = 0, double fb_sagittal = 0);
 
-  const drake::systems::InputPort<double>& get_input_port_state() const {
-    return this->get_input_port(state_port_);
-  }
-  const drake::systems::InputPort<double>& get_input_port_des_hor_vel() const {
-    return this->get_input_port(xy_port_);
-  }
-  const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
-      const {
-    return this->get_input_port(fsm_switch_time_port_);
-  }
-  const drake::systems::InputPort<double>& get_input_port_com() const {
-    return this->get_input_port(com_port_);
-  }
+                const drake::systems::InputPort<double>& get_input_port_state() const {
+                    return this->get_input_port(state_port_);
+                }
+                const drake::systems::InputPort<double>& get_input_port_des_hor_vel() const {
+                    return this->get_input_port(xy_port_);
+                }
+                const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
+                const {
+                    return this->get_input_port(fsm_switch_time_port_);
+                }
+                const drake::systems::InputPort<double>& get_input_port_com() const {
+                    return this->get_input_port(com_port_);
+                }
 
- private:
-  void CalcFootPlacement(const drake::systems::Context<double>& context,
-                         drake::systems::BasicVector<double>* output) const;
+            private:
+                void CalcFootPlacement(const drake::systems::Context<double>& context,
+                                       drake::systems::BasicVector<double>* output) const;
 
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* context_;
-  const drake::multibody::BodyFrame<double>& world_;
-  const drake::multibody::Body<double>& pelvis_;
+                const drake::multibody::MultibodyPlant<double>& plant_;
+                drake::systems::Context<double>* context_;
+                const drake::multibody::BodyFrame<double>& world_;
+                const drake::multibody::Body<double>& pelvis_;
 
-  double swing_phase_duration_;
-  bool is_using_predicted_com_;
+                double swing_phase_duration_;
+                bool is_using_predicted_com_;
 
-  Eigen::Vector2d global_target_position_;
-  Eigen::Vector2d params_of_no_turning_;
+                Eigen::Vector2d global_target_position_;
+                Eigen::Vector2d params_of_no_turning_;
 
-  int state_port_;
-  int xy_port_;
-  int fsm_switch_time_port_;
-  int com_port_;
+                int state_port_;
+                int xy_port_;
+                int fsm_switch_time_port_;
+                int com_port_;
 
-  // Foot placement control (Sagital) parameters
-  double k_fp_ff_sagital_;
-  double k_fp_fb_sagital_;
-  // Foot placement control (Lateral) parameters
-  double k_fp_ff_lateral_;
-  double k_fp_fb_lateral_;
-};
+                // Foot placement control (Lateral) parameters
+                double k_fp_ff_lateral_;
+                double k_fp_fb_lateral_;
+                // Foot placement control (Sagittal) parameters
+                double k_fp_ff_sagittal_;
+                double k_fp_fb_sagittal_;
 
-}  // namespace osc
-}  // namespace cassie
+                // COM vel filtering
+                // TODO(yminchen): extract this filter out of WalkingSpeedControl and
+                //  SwingFootTrajGen
+                double cutoff_freq_ = 10;  // in Hz.
+                mutable Eigen::Vector3d filterred_com_vel_ = Eigen::Vector3d::Zero();
+                mutable double last_timestamp_ = 0;
+            };
+
+        }  // namespace osc
+    }  // namespace cassie
 }  // namespace dairlib

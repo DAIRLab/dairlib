@@ -360,7 +360,7 @@ int main(int argc, char* argv[]) {
   xState(positions_map.at("base_qw")) = 1;
 
   double upperLegLength = 0.206; // length of the upper leg link
-  double hipLength = 0.087;
+  double hipLength = 0.10098;
   double hip2toeZLength = sqrt(FLAGS_standHeight*FLAGS_standHeight - hipLength*hipLength);
   double theta1 = asin(hip2toeZLength/(2*upperLegLength )) ;
   double theta2 = 2*theta1 ;

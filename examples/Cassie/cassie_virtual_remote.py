@@ -1,3 +1,11 @@
+'''
+Uses Pygame to capture keyboard input. The virtual remote must be the active window to register commands.
+W / s to increase/decrease sagittal velocity
+A / D to increase/decrease longitudinal velocity
+
+use Keyboard Manager trim_x and trim_y member variables to add trim to the velocity commands
+'''
+
 import sys
 import pygame
 from pygame.locals import *
@@ -16,7 +24,8 @@ class KeyboardManager():
         screen_size = 400
         self.screen = pygame.display.set_mode((screen_size, screen_size))
         self.vel = np.array([0.0, 0.0])
-        self.trim_x = 0.14
+        self.trim_x = 0
+        self.trim_y = 0
         self.delta_vx = 0.1
         self.delta_vy = 0.05
         self.crouch_begin_height = 0.85
@@ -94,7 +103,7 @@ def main():
 
         radio_out_msg = dairlib.lcmt_radio_out()
         radio_out_msg.channel[0] = keyboard.vel[0] + keyboard.trim_x
-        radio_out_msg.channel[1] = keyboard.vel[1]
+        radio_out_msg.channel[1] = keyboard.vel[1] + keyboard.trim_y
         radio_out_msg.channel[3] = 0
         keyboard.lc.publish("RADIO_OUT", radio_out_msg.encode())
         time.sleep(0.05)

@@ -5,6 +5,7 @@
 
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
+#include "lcm/rom_planner_saved_trajectory.h"
 
 namespace py = pybind11;
 
@@ -58,6 +59,24 @@ PYBIND11_MODULE(lcm_trajectory, m) {
            &DirconTrajectory::ReconstructStateTrajectory)
       .def("ReconstructInputTrajectory",
            &DirconTrajectory::ReconstructInputTrajectory);
+  py::class_<RomPlannerTrajectory>(m, "RomPlannerTrajectory")
+      .def(py::init<const std::string&>())
+      .def("GetMetadata", &LcmTrajectory::GetMetadata)
+      .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)
+      .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
+           py::arg("trajectory_name"))
+      .def("GetStateSamples", &RomPlannerTrajectory::GetStateSamples)
+      .def("GetStateDerivativeSamples",
+           &RomPlannerTrajectory::GetStateDerivativeSamples)
+      .def("GetStateBreaks", &RomPlannerTrajectory::GetStateBreaks)
+      .def("GetInputSamples", &RomPlannerTrajectory::GetInputSamples)
+      .def("GetBreaks", &RomPlannerTrajectory::GetBreaks)
+      .def("GetDecisionVariables", &RomPlannerTrajectory::GetDecisionVariables)
+      .def("GetNumModes", &RomPlannerTrajectory::GetNumModes)
+      .def("ReconstructStateTrajectory",
+           &RomPlannerTrajectory::ReconstructStateTrajectory)
+      .def("ReconstructInputTrajectory",
+           &RomPlannerTrajectory::ReconstructInputTrajectory);
 }
 
 }  // namespace pydairlib

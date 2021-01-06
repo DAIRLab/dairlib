@@ -556,8 +556,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         trajopt, result, file_name,
         "Decision variables and state/input trajectories");
     saved_traj.WriteToFile(param_.dir_data + file_name);
-    //  std::cout << "Wrote to file: " << setting.directory + file_name <<
-    //  std::endl;
+    std::cout << "Wrote to file: " << param_.dir_data + file_name << std::endl;
   }
 
   ///

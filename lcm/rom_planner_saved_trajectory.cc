@@ -23,11 +23,14 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   const auto& rom = trajopt.reduced_order_model();
   std::vector<string> state_names;
   std::vector<string> input_names;
-  for (int i = 0; i < rom.n_y() + rom.n_yddot(); i++) {
-    state_names.push_back("state" + std::to_string(i));
+  for (int i = 0; i < rom.n_y() ; i++) {
+    state_names.push_back("y" + std::to_string(i));
+  }
+  for (int i = 0; i < rom.n_yddot(); i++) {
+    state_names.push_back("ydot" + std::to_string(i));
   }
   for (int i = 0; i < rom.n_tau(); i++) {
-    input_names.push_back("input" + std::to_string(i));
+    input_names.push_back("tau" + std::to_string(i));
   }
 
   // State trajectory

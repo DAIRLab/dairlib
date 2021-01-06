@@ -73,8 +73,7 @@ def main():
   """
   States, inputs trajectories
   """
-  import pdb; pdb.set_trace()
-  PlotState(rom_traj, 0, 6)
+  PlotState(rom_traj, 0, rom_traj.GetStateSamples(0).shape[0])
 
   if (rom_traj.GetInputSamples().shape[0] > 0):
     PlotInput(rom_traj)
@@ -102,7 +101,7 @@ def PrintAllDecisionVar(rom_traj):
       rom_traj.GetTrajectory("decision_vars").datapoints[i, 0]))
 
 
-def PlotState(rom_traj, x_idx_start=0, x_idx_end=19):
+def PlotState(rom_traj, x_idx_start=0, x_idx_end=6):
   # Reconstructing state and input trajectory as piecewise polynomials
   state_traj = rom_traj.ReconstructStateTrajectory()
   state_datatypes = rom_traj.GetTrajectory("state_traj0").datatypes
@@ -236,23 +235,6 @@ def PlotInput(rom_traj):
 #   plt.legend(state_datatypes[x_idx_start:x_idx_end])
 #   if savefig:
 #     plt.savefig(save_path + figname + ".png")
-
-
-# PlotStateAtKnots is for testing (TODO: delete later)
-def PlotStateAtKnots(rom_traj, x_idx_start=0, x_idx_end=19):
-  # Get data at knot points
-  t_knot = rom_traj.GetStateBreaks(0)
-  x_knot = rom_traj.GetStateSamples(0)[x_idx_start:x_idx_end, :]
-
-  state_datatypes = rom_traj.GetTrajectory("state_traj0").datatypes
-
-  # Plotting reconstructed state trajectories
-  figname = "state trajectory " + str(x_idx_start) + "-" + str(
-    x_idx_end) + "(at knots)"
-  plt.figure(figname, figsize=figsize)
-  plt.plot(t_knot, x_knot.T)
-  plt.xlabel('time (s)')
-  plt.legend(state_datatypes[x_idx_start:x_idx_end])
 
 
 if __name__ == "__main__":

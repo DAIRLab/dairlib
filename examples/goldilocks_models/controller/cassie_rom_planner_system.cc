@@ -562,6 +562,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
+  // TODO(yminchen): there is a bug: you are currenlty using
+  //  trajopt.GetStateSamples(result), but the trajectory is discontinous
+  //  between mode (even the position jumps because left vs right stance leg).
+  //  You probably need to send bigger lcmtypes with multiple blocks, and
+  //  reconstruct it into piecewise polynomial in rom_traj_receiver.cc
+
   //  if (true) {
   //  if (!result.is_success() || !start_with_left_stance_) {
   if (!result.is_success()) {

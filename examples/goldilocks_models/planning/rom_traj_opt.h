@@ -19,9 +19,13 @@
 namespace dairlib {
 namespace goldilocks_models {
 
-// Reduced order model
-// z = [y; ydot]
-// yddot = theta_yddot * phi_yddot + B * tau
+/// Reduced order model
+/// z = [y; ydot]
+/// yddot = theta_yddot * phi_yddot + B * tau
+
+/// Notes that we are currently constructing cubic splines for the state. This
+/// is different form the model optimization where we construct cubic splines
+/// for the position.
 
 // Modified from HybridDircon class
 class RomTrajOpt

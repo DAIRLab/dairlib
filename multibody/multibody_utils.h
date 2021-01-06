@@ -4,10 +4,17 @@
 #include <string>
 
 #include "drake/multibody/plant/multibody_plant.h"
+#include "pinocchio/parsers/urdf.hpp"
+#include "pinocchio/algorithm/rnea.hpp"
+
 
 namespace dairlib {
 namespace multibody {
 
+template <typename T>
+class PinocchioModelFromMBP {
+
+};
 template <typename T>
 drake::VectorX<T> getInput(const drake::multibody::MultibodyPlant<T>& plant,
                            const drake::systems::Context<T>& context);

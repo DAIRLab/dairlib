@@ -34,6 +34,7 @@ cc_library(
     deps = [
         ":visualization_utils",
         "@drake//multibody/plant",
+        "@pinocchio",
     ],
 )
 

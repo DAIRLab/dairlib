@@ -35,6 +35,10 @@ group "1.controllers-and-dispatchers" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
         host = "localhost";
     }
+    cmd "0.cassie_virtual_radio"  {
+                exec = "bazel-bin/examples/Cassie/cassie-virtual-remote-py";
+                host = "localhost";
+     }
 }
 
 group "2.drake-simulator" {

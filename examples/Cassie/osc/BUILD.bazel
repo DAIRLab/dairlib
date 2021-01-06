@@ -2,16 +2,24 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+
 cc_library(
     name = "osc",
     deps = [
-        "//examples/Cassie/osc:walking_speed_control",
         "//examples/Cassie/osc:heading_traj_generator",
         "//examples/Cassie/osc:high_level_command",
         "//examples/Cassie/osc:standing_com_traj",
-        "//systems/controllers:swing_ft_traj_gen",
         "//examples/Cassie/osc:standing_pelvis_traj",
+        "//examples/Cassie/osc:swing_toe_traj_generator",
+        "//examples/Cassie/osc:walking_speed_control",
         "//systems/controllers:lipm_traj_gen",
+        "//systems/controllers:swing_ft_traj_gen",
         "//systems/controllers:time_based_fsm",
         "//systems/controllers/osc:operational_space_control",
     ],
@@ -33,6 +41,7 @@ cc_library(
     srcs = ["high_level_command.cc"],
     hdrs = ["high_level_command.h"],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
@@ -71,6 +80,19 @@ cc_library(
     hdrs = ["standing_pelvis_orientation_traj.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "swing_toe_traj_generator",
+    srcs = ["swing_toe_traj_generator.cc"],
+    hdrs = ["swing_toe_traj_generator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

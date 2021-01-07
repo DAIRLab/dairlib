@@ -34,7 +34,6 @@ cc_library(
     deps = [
         ":visualization_utils",
         "@drake//multibody/plant",
-        "@pinocchio",
     ],
 )
 
@@ -77,6 +76,20 @@ cc_library(
     ],
     deps = [
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "pinocchio_model",
+    srcs = [
+        "pinocchio_model.cc",
+    ],
+    hdrs = [
+        "pinocchio_model.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@pinocchio",
     ],
 )
 

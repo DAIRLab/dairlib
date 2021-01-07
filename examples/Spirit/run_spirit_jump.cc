@@ -36,8 +36,8 @@ DEFINE_double(knotpointsPerMode, 10, "Number of knotpoints in each contact mode"
 DEFINE_double(inputCost, 10, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_double(eps, 1e-2, "The wiggle room.");
-DEFINE_double(optTol, 1e-5,"Optimization Tolerance");
-DEFINE_double(feasTol, 1e-4,"Feasibility Tolerance");
+DEFINE_double(optTol, 1e-6,"Optimization Tolerance");
+DEFINE_double(feasTol, 1e-5,"Feasibility Tolerance");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
 // Parameters which enable dircon-improving features

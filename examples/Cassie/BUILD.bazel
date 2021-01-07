@@ -447,3 +447,23 @@ cc_binary(
         "@gflags",
     ],
 )
+
+py_binary(
+    name = "cassie_virtual_remote_py",
+    srcs = ["cassie_virtual_remote.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "cassie_virtual_remote.py",
+    deps = [
+        "//bindings/pydairlib",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
+
+drake_runfiles_binary(
+    name = "cassie_virtual_remote",
+    target = "cassie_virtual_remote_py",
+)

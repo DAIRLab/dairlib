@@ -22,6 +22,8 @@
 #include "multibody/visualization_utils.h"
 #include "multibody/kinematic/kinematic_constraints.h"
 
+#include "examples/Spirit/animate_spirit.h"
+
 DEFINE_double(duration, 1, "The stand duration");
 DEFINE_double(front2BackToeDistance, 0.35, "Nominal distance between the back and front toes.");
 DEFINE_double(side2SideToeDistance, 0.2, "Nominal distance between the back and front toes.");
@@ -62,49 +64,6 @@ using std::vector;
 using std::cout;
 using std::endl;
 
-  /// See runAnimate(
-  ///    std::unique_ptr<MultibodyPlant<T>> plant_ptr,
-  ///    MultibodyPlant<double>* plant_double_ptr,
-  ///    std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
-  ///    PiecewisePolynomial<double> pp_xtraj )
-  ///
-  /// Takes the plants and scenegraph and a trajectory and 
-  /// creates a visualization of that trajectory (example
-  /// built in the main file).
-template <typename T>
-void runAnimate(
-    std::unique_ptr<MultibodyPlant<T>> plant_ptr,
-    MultibodyPlant<double>* plant_double_ptr,
-    std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
-    PiecewisePolynomial<double> pp_xtraj
-    ) {
-
-  drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<T>& plant = *plant_ptr;
-  SceneGraph<double>& scene_graph =
-      *builder.AddSystem(std::move(scene_graph_ptr));
-
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
-  auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
-   
-  // // Print joint dictionary
-  // for (auto const& element : positions_map)
-  //   cout << element.first << " = " << element.second << endl;
-  // for (auto const& element : velocities_map)
-  //   cout << element.first << " = " << element.second << endl;
-
-  multibody::connectTrajectoryVisualizer(plant_double_ptr,
-      &builder, &scene_graph, pp_xtraj);
-  auto diagram = builder.Build();
-  while (true) {
-    
-    drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(1);
-    simulator.Initialize();
-    simulator.AdvanceTo(pp_xtraj.end_time());
-    sleep(1);
-  }
-}
 
 /// Get a nominal Spirit Stand (i.e. zero hip ad/abduction motor torque, toes below motors) for initializing
 template <typename T>

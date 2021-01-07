@@ -251,8 +251,7 @@ void runSpiritJump(
   // Initial body positions
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position 
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_standHeight-FLAGS_eps, FLAGS_standHeight+FLAGS_eps, x0(positions_map.at("base_z")));
-  
+  trajopt.AddBoundingBoxConstraint(FLAGS_standHeight - FLAGS_eps, FLAGS_standHeight + FLAGS_eps, x0(positions_map.at("base_z")));
   // Lift off body positions conditions
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xlo(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xlo(positions_map.at("base_y")));
@@ -265,45 +264,45 @@ void runSpiritJump(
   // Lift off body positions conditions
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_standHeight-FLAGS_eps, FLAGS_standHeight+FLAGS_eps, xf(positions_map.at("base_z")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_standHeight - FLAGS_eps, FLAGS_standHeight + FLAGS_eps, xf(positions_map.at("base_z")));
 
 
-    // Body pose constraints (keep the body flat) at initial state
-    trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, x0(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qz")));
+    // // Body pose constraints (keep the body flat) at initial state
+    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, x0(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qz")));
 
-    // Body pose constraints (keep the body flat) at liftoff state
-    trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xlo(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qz")));
+    // // Body pose constraints (keep the body flat) at liftoff state
+    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xlo(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qz")));
 
-    // Body pose constraints (keep the body flat) at apex state
-    trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xapex(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qz")));
+    // // Body pose constraints (keep the body flat) at apex state
+    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xapex(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qz")));
 
-    // Body pose constraints (keep the body flat) at touchdown state
-    trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xtd(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qz")));
+    // // Body pose constraints (keep the body flat) at touchdown state
+    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xtd(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qz")));
 
-    // Body pose constraints (keep the body flat) at final state
-    trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xf(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qz")));
+    // // Body pose constraints (keep the body flat) at final state
+    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xf(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qz")));
+
+
 
 
 /// Start/End velocity constraints of the behavior
-  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                   x0.tail(n_v));
-  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                   xf.tail(n_v));
+  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v), x0.tail(n_v));
+  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v), xf.tail(n_v));
                                    
   trajopt.AddBoundingBoxConstraint( FLAGS_apexGoal, FLAGS_apexGoal, xapex(positions_map.at("base_z")) );
   trajopt.AddBoundingBoxConstraint( 0, 0, xapex(n_q + velocities_map.at("base_vz")) );
@@ -312,32 +311,36 @@ void runSpiritJump(
   double kneeSet = 2;
 
   //STATIC LEGS IN FLIGHT
-    trajopt.AddBoundingBoxConstraint(upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_0")));
-    trajopt.AddBoundingBoxConstraint( kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_1")));
-    trajopt.AddBoundingBoxConstraint(upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_2")));
-    trajopt.AddBoundingBoxConstraint( kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_3")));
-    trajopt.AddBoundingBoxConstraint(upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_4")));
-    trajopt.AddBoundingBoxConstraint( kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_5")));
-    trajopt.AddBoundingBoxConstraint(upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_6")));
-    trajopt.AddBoundingBoxConstraint( kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_7")));
-    trajopt.AddBoundingBoxConstraint(-0 - FLAGS_eps, 0 + FLAGS_eps, xapex( positions_map.at("joint_8")));
-    trajopt.AddBoundingBoxConstraint(-0 - FLAGS_eps, 0 + FLAGS_eps, xapex( positions_map.at("joint_9")));
-    trajopt.AddBoundingBoxConstraint(-0 - FLAGS_eps, 0 + FLAGS_eps, xapex( positions_map.at("joint_10")));
-    trajopt.AddBoundingBoxConstraint(-0 - FLAGS_eps, 0 + FLAGS_eps, xapex( positions_map.at("joint_11")));
+    trajopt.AddBoundingBoxConstraint( upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_0") ) );
+    trajopt.AddBoundingBoxConstraint(  kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_1") ) );
+
+    trajopt.AddBoundingBoxConstraint( upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_2") ) );
+    trajopt.AddBoundingBoxConstraint(  kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_3") ) );
+
+    trajopt.AddBoundingBoxConstraint( upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_4") ) );
+    trajopt.AddBoundingBoxConstraint(  kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_5") ) );
+
+    trajopt.AddBoundingBoxConstraint( upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_6") ) );
+    trajopt.AddBoundingBoxConstraint(  kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_7") ) );
+
+    // trajopt.AddBoundingBoxConstraint(      -0 - FLAGS_eps,        0 + FLAGS_eps, xapex( positions_map.at("joint_8")));
+    // trajopt.AddBoundingBoxConstraint(      -0 - FLAGS_eps,        0 + FLAGS_eps, xapex( positions_map.at("joint_9")));
+    // trajopt.AddBoundingBoxConstraint(      -0 - FLAGS_eps,        0 + FLAGS_eps, xapex( positions_map.at("joint_10")));
+    // trajopt.AddBoundingBoxConstraint(      -0 - FLAGS_eps,        0 + FLAGS_eps, xapex( positions_map.at("joint_11")));
 
     
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_0dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_1dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_2dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_3dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_4dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_5dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_6dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_7dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_8dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_9dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_10dot")));
-    // trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_11dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_0dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_1dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_2dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_3dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_4dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_5dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_6dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_7dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_8dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_9dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_10dot")));
+    trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_11dot")));
 
 
 
@@ -397,10 +400,17 @@ void runSpiritJump(
     trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_4")));
     trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_6")));
 
-    trajopt.AddBoundingBoxConstraint(-.5, .5, xi( positions_map.at("joint_8")));
-    trajopt.AddBoundingBoxConstraint(-.5, .5, xi( positions_map.at("joint_9")));
-    trajopt.AddBoundingBoxConstraint(-.5, .5, xi( positions_map.at("joint_10")));
-    trajopt.AddBoundingBoxConstraint(-.5, .5, xi( positions_map.at("joint_11")));
+    trajopt.AddBoundingBoxConstraint(-0.5, 0.1, xi( positions_map.at("joint_8")));
+    trajopt.AddBoundingBoxConstraint(-0.5, 0.1, xi( positions_map.at("joint_9")));
+    trajopt.AddBoundingBoxConstraint(-0.1, 0.5, xi( positions_map.at("joint_10")));
+    trajopt.AddBoundingBoxConstraint(-0.1, 0.5, xi( positions_map.at("joint_11")));
+
+    
+    trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xi(positions_map.at("base_qw")));
+    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xi(positions_map.at("base_qx")));
+    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xi(positions_map.at("base_qy")));
+    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xi(positions_map.at("base_qz")));
+
 
     trajopt.AddBoundingBoxConstraint( 0.15, 2, xi( positions_map.at("base_z")));
 
@@ -457,7 +467,15 @@ void runSpiritJump(
   ///Setup the traditional cost function
   const double R = FLAGS_inputCost;  // Cost on input effort
   const MatrixXd Q = FLAGS_velocityCost  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+
+  // auto xBodyVelocities = (x.tail(n_v)).head(6);
+  // auto xJointVelocities = (x.tail(n_v-6));
+
+
+
   trajopt.AddRunningCost( x.tail(n_v).transpose() * Q * x.tail(n_v) );
+  // trajopt.AddRunningCost( xBodyVelocities.transpose() * Q * xBodyVelocities );
+  // trajopt.AddRunningCost( xJointVelocities.transpose() * 10 *  Q * xJointVelocities );
   trajopt.AddRunningCost( u.transpose()*R*u );
   
   ///Add regularization costs

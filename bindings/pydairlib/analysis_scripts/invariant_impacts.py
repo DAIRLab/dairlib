@@ -42,13 +42,14 @@ def cassie_main():
   nu = plant_wo_spr.num_actuators()
   nc = 10
 
-  l_toe_frame = plant_w_spr.GetBodyByName("toe_left").body_frame()
-  r_toe_frame = plant_w_spr.GetBodyByName("toe_right").body_frame()
+  l_toe_frame = plant_wo_spr.GetBodyByName("toe_left").body_frame()
+  r_toe_frame = plant_wo_spr.GetBodyByName("toe_right").body_frame()
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
-  world = plant_w_spr.world_frame()
+  world = plant_wo_spr.world_frame()
 
   filename = "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/jumping_0.15h_0.3d"
+  # filename = "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/walking_0.5"
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
   state_traj = dircon_traj.ReconstructStateTrajectory()
 
@@ -64,8 +65,13 @@ def cassie_main():
   J_r_f = plant_wo_spr.CalcJacobianTranslationalVelocity(context_wo_spr, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
   J_r_r = plant_wo_spr.CalcJacobianTranslationalVelocity(context_wo_spr, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
   J_l = np.vstack((J_l_f, J_l_r[0:2, :], J_r_f, J_r_r[0:2, :]))
-  M_Jt = M_inv @ J_l.T
+  # J = np.vstack((J_r_f, J_r_r[1:3, :]))
+  J = np.vstack((J_l_f, J_l_r[1:3, :], J_r_f, J_r_r[1:3, :]))
+  M_Jt = M_inv @ J.T
   P = linalg.null_space(M_Jt.T).T
+
+  transform = J @ M_inv @ J.T @ np.linalg.pinv(J @ M_inv @ J.T)
+
 
   t_impact = dircon_traj.GetStateBreaks(1)[-1]
   t = np.linspace(t_impact - 0.05, t_impact + 0.05, 100)
@@ -84,6 +90,10 @@ def cassie_main():
 
   v_pre = x_pre[-nv:]
   v_post = x_post[-nv:]
+
+
+  M_Jct = M_inv @ J_l.T
+
 
   import pdb; pdb.set_trace()
 
@@ -137,13 +147,26 @@ def rabbit_main():
   M_Jt = M_inv @ J_r.T
   P = linalg.null_space(M_Jt.T).T
 
-  import pdb; pdb.set_trace()
+  proj_ii = np.eye(nv) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
+
+  J_M_Jt = J_r @ M_inv @ J_r.T
+  proj_y_ii = np.eye(2) - J_M_Jt @ J_M_Jt @ np.linalg.inv(J_M_Jt.T @ J_M_Jt) @ J_M_Jt.T
 
   v_pre = x_pre[-nv:]
   v_post = x_post[-nv:]
   t_impact = dircon_traj.GetStateBreaks(0)[-1]
 
+  ydot_pre = J_r @ v_pre
+  ydot_post = J_r @ v_post
+  transform = J_r @ M_inv @ J_r.T @ np.linalg.pinv(J_r @ M_inv @ J_r.T)
+
+
+
+
   t = np.linspace(t_impact - 0.05, t_impact + 0.05, 100)
+
+  cc = np.eye(nv) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
+  import pdb; pdb.set_trace()
 
   # cc_vel = np.zeros((t.shape[0], nv - nc))
   cc_vel = np.zeros((t.shape[0], nv))
@@ -195,9 +218,8 @@ def rabbit_main():
   plt.show()
 
   print(P @ (v_pre - v_post))
-  import pdb; pdb.set_trace()
 
 
 if __name__ == '__main__':
-  # cassie_main()
-  rabbit_main()
+  cassie_main()
+  # rabbit_main()

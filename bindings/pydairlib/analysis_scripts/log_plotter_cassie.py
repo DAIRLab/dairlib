@@ -112,7 +112,8 @@ def main():
   # plt.show()
 
   ### All plotting scripts here
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  # plot_status(full_log)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # import pdb; pdb.set_trace()
   # plot_contact_est(full_log)
   # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
@@ -122,7 +123,7 @@ def main():
   plt.ylim([-100, 500])
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
 
-  if True:
+  if False:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "left_", "_front")
@@ -138,6 +139,7 @@ def main():
 
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
+
 
 def plot_contact_est(log):
   t_contact = []
@@ -167,7 +169,6 @@ def plot_contact_est(log):
     t_fsm_contact.append(msg.timestamp / 1e6)
     for j in range(msg.num_point_pair_contacts):
       fsm_contact[i][j] = msg.point_pair_contact_info[j].contact_force[2]
-
 
   t_contact = np.array(t_contact)
   contact = np.array(contact)
@@ -223,43 +224,44 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # For Walking
   osc_traj0 = "lipm_traj"
   osc_traj1 = "swing_ft_traj"
-  osc_traj2 = "swing_hip_yaw_traj"
+  # osc_traj2 = "swing_hip_yaw_traj"
   # osc_traj1 = "l_foot_traj"
-  # osc_traj1 = "pelvis_balance_traj"
+  osc_traj2 = "left_toe_angle_traj"
+  osc_traj3 = "swing_hip_yaw_traj"
 
   #
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
   # plot_osc(osc_debug, osc_traj0, 2, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
   # plot_osc(osc_debug, osc_traj0, 2, "vel")
   #
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
-  plot_osc(osc_debug, osc_traj1, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj1, 1, "pos")
-  plot_osc(osc_debug, osc_traj1, 2, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  #
-  # plot_osc(osc_debug, osc_traj1, 0, "vel")
-  # plot_osc(osc_debug, osc_traj1, 1, "vel")
-  # plot_osc(osc_debug, osc_traj1, 2, "vel")
+  # plot_osc(osc_debug, osc_traj1, 0, "pos")
+  # plot_osc(osc_debug, osc_traj1, 1, "pos")
+  # plot_osc(osc_debug, osc_traj1, 2, "pos")
 
-  plot_osc(osc_debug, osc_traj2, 0, "pos")
+  plot_osc(osc_debug, osc_traj1, 0, "vel")
+  plot_osc(osc_debug, osc_traj1, 1, "vel")
+  plot_osc(osc_debug, osc_traj1, 2, "vel")
+  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+
+
+  # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
-  # plot_osc(osc_debug, osc_traj2, 0, "vel")
-  # plot_osc(osc_debug, osc_traj2, 1, "vel")
+  plot_osc(osc_debug, osc_traj2, 0, "vel")
+  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+
+# plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "accel")
@@ -270,10 +272,10 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 1, "accel")
   # plot_osc(osc_debug, osc_traj2, 2, "accel")
 
-  # plot_osc(osc_debug, osc_traj3, 0, "accel")
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj3, 0, "vel")
+  plot_osc(osc_debug, osc_traj3, 0, "vel")
+  # plot_osc(osc_debug, osc_traj3, 0, "accel")
+  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
@@ -287,8 +289,9 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
   elif (derivative == "vel"):
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim])
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot[t_u_slice, dim])
+    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim] - osc_debug[osc_traj].ydot[t_u_slice, dim])
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim])
-    plt.legend(["ydot_des", "ydot", "error_ydot"])
+    plt.legend(["ydot_des", "ydot", "error_ydot", "corrected_error"])
   elif (derivative == "accel"):
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_des[t_u_slice, dim])
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command[t_u_slice, dim])
@@ -374,7 +377,7 @@ def compare_ekf(log, pos_map, vel_map):
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # pos_indices = slice(0 + 7, 23)
   vel_indices = slice(23 + 6, 45)
-  pos_indices = slice(0,7)
+  pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
   u_indices = slice(8, 10)
   # overwrite
@@ -397,6 +400,34 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # plt.figure("Delay characterization")
   # plt.legend(u_datatypes[u_indices])
 
+
+def plot_status(full_log):
+  t_status = []
+  status = []
+  shutdown = []
+  vel_limit = []
+  act_limit = []
+  act_delay = []
+  for log in full_log['INPUT_SUPERVISOR_STATUS']:
+    t_status.append(log.utime / 1e6)
+    status.append(log.status)
+    shutdown.append(log.shutdown)
+    vel_limit.append(log.vel_limit)
+    act_limit.append(log.act_limit)
+    act_delay.append(log.act_delay)
+  t_status = np.array(t_status)
+  status = np.array(status)
+  plt.figure("Input Supervisor Status")
+  plt.plot(t_status, status)
+  plt.plot(t_status, shutdown)
+  plt.plot(t_status, vel_limit)
+  plt.plot(t_status, act_limit)
+  plt.plot(t_status, act_delay)
+  plt.legend(['status',
+              'shutdown',
+              'vel_limit',
+              'act_limit',
+              'act_delay'])
 
 if __name__ == "__main__":
   main()

@@ -76,7 +76,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   unknown_types = set()
   known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
-                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
+                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
 
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:

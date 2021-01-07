@@ -226,7 +226,7 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivativesWithForce(
     Context<T>* context, const VectorX<T>& lambda) const {
-  static MatrixX<T> J(count_full(), plant_.num_velocities());
+  MatrixX<T> J(count_full(), plant_.num_velocities());
   EvalFullJacobian(*context, &J);
   VectorX<T> J_transpose_lambda = J.transpose() * lambda;
 

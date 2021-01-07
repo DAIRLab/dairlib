@@ -25,19 +25,19 @@
 
 #include "examples/Spirit/animate_spirit.h"
 
-DEFINE_double(duration, 2, "The stand duration");
+DEFINE_double(duration, 1, "The stand duration");
 DEFINE_double(front2BackToeDistance, 0.35, "Nominal distance between the back and front toes.");
 DEFINE_double(side2SideToeDistance, 0.2, "Nominal distance between the back and front toes.");
 DEFINE_double(bodyHeight, 0.104, "The spirit body start height (defined in URDF)");
 // DEFINE_double(lowerHeight,0.15, "The sitting height of the bottom of the robot");
 DEFINE_double(standHeight, 0.25, "The standing height.");
 DEFINE_double(apexGoal, 0.5, "Apex state goal");
-DEFINE_double(knotpointsPerMode, 5, "Number of knotpoints in each contact mode" );
-DEFINE_double(inputCost, 10, "The standing height.");
+DEFINE_double(knotpointsPerMode, 7, "Number of knotpoints in each contact mode" );
+DEFINE_double(inputCost, 3, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_double(eps, 1e-2, "The wiggle room.");
-DEFINE_double(optTol, 1e-6,"Optimization Tolerance");
-DEFINE_double(feasTol, 1e-5,"Feasibility Tolerance");
+DEFINE_double(optTol, 1e-4,"Optimization Tolerance");
+DEFINE_double(feasTol, 1e-4,"Feasibility Tolerance");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
 // Parameters which enable dircon-improving features
@@ -180,9 +180,11 @@ void runSpiritJump(
   }
 
   full_support.SetDynamicsScale(
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  150.0);
   full_support.SetKinVelocityScale(
-    {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
+    {0, 1, 2, 3}, {0, 1, 2}, 1);
+    full_support.SetKinPositionScale(
+        {0, 1, 2, 3}, {0, 1, 2}, 150);
 
   /// Add flight mode 
   auto evaluators_flight = multibody::KinematicEvaluatorSet<T>(plant);
@@ -191,7 +193,7 @@ void runSpiritJump(
 
                                    
   flight_mode.SetDynamicsScale(
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  150.0);
   
   ///Mode Sequence
   // Adding the ONE mode to the sequence, will not leave full_support
@@ -391,7 +393,11 @@ void runSpiritJump(
 
   trajopt.AddRunningCost( x.tail(n_v).transpose() * Q * x.tail(n_v) );
   trajopt.AddRunningCost( u.transpose()*R*u );
-  
+  for(int joint = 0; joint< 12; joint ++ )
+  {
+    auto joint_v = x(n_q+velocities_map.at("joint_"+std::to_string(joint)+"dot"));
+    trajopt.AddRunningCost(joint_v * 50 * joint_v);
+  }
   
   /// Setup the visualization during the optimization
   int num_ghosts = 3;// Number of ghosts in visualization. NOTE: there are limitations on number of ghosts based on modes and knotpoints

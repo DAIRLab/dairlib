@@ -8,8 +8,8 @@
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
-    namespace cassie {
-        namespace osc {
+namespace cassie {
+namespace osc {
 
 /// `HighLevelCommand` calculates desired velocity (~in local frame) and desired
 /// horizontal velocity (in local frame) of Cassie's pelvis.
@@ -37,106 +37,107 @@ namespace dairlib {
 ///
 /// Assumption: the roll and pitch angles are close to 0.
 /// Requirement: quaternion floating-based Cassie only
-            class HighLevelCommand : public drake::systems::LeafSystem<double> {
-            public:
-                /// Constructor that computes the desired yaw and translational velocities
-                /// according to radio commands
-                /// @param vel_scale_rot Scaling factor that scales the range of commanded yaw
-                /// velocities according to [-vel_scale_rot, vel_scale_rot]
-                /// @param vel_scale_trans Scaling factor that scales the range of commanded
-                /// translational velocities  (saggital and lateral)according to
-                /// [-vel_scale_trans, vel_scale_trans]
-                ///
-                /// Designed to be used with hardware
-                HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
-                                 drake::systems::Context<double>* context,
-                                 double vel_scale_rot, double vel_scale_trans,
-                                 int footstep_option, bool virtual_radio);
-                /// Constructor that computes the desired yaw and translational velocities
-                /// according to a global target position
-                ///
-                /// Designed to be used in simulation
-                HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
-                                 drake::systems::Context<double>* context,
-                                 const Eigen::Vector2d& global_target_position,
-                                 const Eigen::Vector2d& params_of_no_turning,
-                                 int footstep_option);
+class HighLevelCommand : public drake::systems::LeafSystem<double> {
+ public:
+  /// Constructor that computes the desired yaw and translational velocities
+  /// according to radio commands
+  /// @param vel_scale_rot Scaling factor that scales the range of commanded yaw
+  /// velocities according to [-vel_scale_rot, vel_scale_rot]
+  /// @param vel_scale_trans Scaling factor that scales the range of commanded
+  /// translational velocities  (saggital and lateral)according to
+  /// [-vel_scale_trans, vel_scale_trans]
+  ///
+  /// Designed to be used with hardware
+  HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::systems::Context<double>* context,
+                   double vel_scale_rot, double vel_scale_trans,
+                   int footstep_option, bool virtual_radio);
+  /// Constructor that computes the desired yaw and translational velocities
+  /// according to a global target position
+  ///
+  /// Designed to be used in simulation
+  HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::systems::Context<double>* context,
+                   const Eigen::Vector2d& global_target_position,
+                   const Eigen::Vector2d& params_of_no_turning,
+                   int footstep_option);
 
-                // Input/output ports
-                const drake::systems::InputPort<double>& get_state_input_port() const {
-                    return this->get_input_port(state_port_);
-                }
-                const drake::systems::OutputPort<double>& get_yaw_output_port() const {
-                    return this->get_output_port(yaw_port_);
-                }
-                const drake::systems::InputPort<double>& get_cassie_output_port() const {
-                    return this->get_input_port(cassie_out_port_);
-                }
-                const drake::systems::InputPort<double>& get_virtual_radio_input_port() const {
-                    return this->get_input_port(virtual_radio_port_);
-                }
-                const drake::systems::OutputPort<double>& get_xy_output_port() const {
-                    return this->get_output_port(xy_port_);
-                }
+  // Input/output ports
+  const drake::systems::InputPort<double>& get_state_input_port() const {
+    return this->get_input_port(state_port_);
+  }
+  const drake::systems::OutputPort<double>& get_yaw_output_port() const {
+    return this->get_output_port(yaw_port_);
+  }
+  const drake::systems::InputPort<double>& get_cassie_output_port() const {
+    return this->get_input_port(cassie_out_port_);
+  }
+  const drake::systems::InputPort<double>& get_virtual_radio_input_port()
+      const {
+    return this->get_input_port(virtual_radio_port_);
+  }
+  const drake::systems::OutputPort<double>& get_xy_output_port() const {
+    return this->get_output_port(xy_port_);
+  }
 
-            private:
-                HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
-                                 drake::systems::Context<double>* context,
-                                 int footstep_option);
+ private:
+  HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::systems::Context<double>* context,
+                   int footstep_option);
 
-                drake::systems::EventStatus DiscreteVariableUpdate(
-                        const drake::systems::Context<double>& context,
-                        drake::systems::DiscreteValues<double>* discrete_state) const;
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
-                Eigen::VectorXd CalcCommandFromTargetPosition(
-                        const drake::systems::Context<double>& context) const;
+  Eigen::VectorXd CalcCommandFromTargetPosition(
+      const drake::systems::Context<double>& context) const;
 
-                void CopyHeadingAngle(const drake::systems::Context<double>& context,
-                                      drake::systems::BasicVector<double>* output) const;
-
-                void CopyDesiredHorizontalVel(
-                        const drake::systems::Context<double>& context,
+  void CopyHeadingAngle(const drake::systems::Context<double>& context,
                         drake::systems::BasicVector<double>* output) const;
 
-                const drake::multibody::MultibodyPlant<double>& plant_;
-                drake::systems::Context<double>* context_;
-                const drake::multibody::BodyFrame<double>& world_;
-                const drake::multibody::Body<double>& pelvis_;
-                bool use_radio_command_;
-                bool virtual_radio_;
-                Eigen::Vector2d global_target_position_;
-                Eigen::Vector2d params_of_no_turning_;
+  void CopyDesiredHorizontalVel(
+      const drake::systems::Context<double>& context,
+      drake::systems::BasicVector<double>* output) const;
 
-                double vel_scale_rot_ = 0.5;
-                double vel_scale_trans_ = 1.0;
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
+  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::Body<double>& pelvis_;
+  bool use_radio_command_;
+  bool virtual_radio_;
+  Eigen::Vector2d global_target_position_;
+  Eigen::Vector2d params_of_no_turning_;
 
-                // Port index
-                int state_port_;
-                int yaw_port_;
-                int xy_port_;
-                int cassie_out_port_ = -1;
-                int virtual_radio_port_ = -1;
+  double vel_scale_rot_ = 0.5;
+  double vel_scale_trans_ = 1.0;
 
-                // Indices for the discrete states of this leafsystem
-                drake::systems::DiscreteStateIndex des_vel_idx_;
+  // Port index
+  int state_port_;
+  int yaw_port_;
+  int xy_port_;
+  int cassie_out_port_ = -1;
+  int virtual_radio_port_ = -1;
 
-                // Rotation control (yaw) parameters
-                double kp_yaw_ = 1;
-                double kd_yaw_ = 0.2;
-                double vel_max_yaw_ = 0.5;
+  // Indices for the discrete states of this leafsystem
+  drake::systems::DiscreteStateIndex des_vel_idx_;
 
-                // Position control (sagital plane) parameters
-                double kp_pos_sagital_;
-                double kd_pos_sagital_;
-                double vel_max_sagital_ = 1;
-                double target_pos_offset_ = -0.16;  // Due to steady state error
+  // Rotation control (yaw) parameters
+  double kp_yaw_ = 1;
+  double kd_yaw_ = 0.2;
+  double vel_max_yaw_ = 0.5;
 
-                // Position control (frontal plane) parameters
-                double kp_pos_lateral_;
-                double kd_pos_lateral_;
-                double vel_max_lateral_;
-            };
+  // Position control (sagital plane) parameters
+  double kp_pos_sagital_;
+  double kd_pos_sagital_;
+  double vel_max_sagital_ = 1;
+  double target_pos_offset_ = -0.16;  // Due to steady state error
 
-        }  // namespace osc
-    }  // namespace cassie
+  // Position control (frontal plane) parameters
+  double kp_pos_lateral_;
+  double kd_pos_lateral_;
+  double vel_max_lateral_;
+};
+
+}  // namespace osc
+}  // namespace cassie
 }  // namespace dairlib

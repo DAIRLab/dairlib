@@ -1,11 +1,10 @@
 #include <gflags/gflags.h>
 
-
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
-#include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
+#include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -118,45 +117,45 @@ struct OSCWalkingGains {
   double fb_lateral;
   double fb_sagittal;
 
-        template <typename Archive>
-        void Serialize(Archive* a) {
-            a->Visit(DRAKE_NVP(rows));
-            a->Visit(DRAKE_NVP(cols));
-            a->Visit(DRAKE_NVP(w_accel));
-            a->Visit(DRAKE_NVP(w_soft_constraint));
-            a->Visit(DRAKE_NVP(CoMW));
-            a->Visit(DRAKE_NVP(CoMKp));
-            a->Visit(DRAKE_NVP(CoMKd));
-            a->Visit(DRAKE_NVP(PelvisHeadingW));
-            a->Visit(DRAKE_NVP(PelvisHeadingKp));
-            a->Visit(DRAKE_NVP(PelvisHeadingKd));
-            a->Visit(DRAKE_NVP(PelvisBalanceW));
-            a->Visit(DRAKE_NVP(PelvisBalanceKp));
-            a->Visit(DRAKE_NVP(PelvisBalanceKd));
-            a->Visit(DRAKE_NVP(SwingFootW));
-            a->Visit(DRAKE_NVP(SwingFootKp));
-            a->Visit(DRAKE_NVP(SwingFootKd));
-            a->Visit(DRAKE_NVP(w_swing_toe));
-            a->Visit(DRAKE_NVP(swing_toe_kp));
-            a->Visit(DRAKE_NVP(swing_toe_kd));
-            a->Visit(DRAKE_NVP(w_hip_yaw));
-            a->Visit(DRAKE_NVP(hip_yaw_kp));
-            a->Visit(DRAKE_NVP(hip_yaw_kd));
-            // swing foot heuristics
-            a->Visit(DRAKE_NVP(mid_foot_height));
-            a->Visit(DRAKE_NVP(center_line_offset));
-            a->Visit(DRAKE_NVP(footstep_offset));
-            a->Visit(DRAKE_NVP(final_foot_height));
-            a->Visit(DRAKE_NVP(final_foot_velocity_z));
-            // lipm heursitics
-            a->Visit(DRAKE_NVP(lipm_height));
-            // stance times
-            a->Visit(DRAKE_NVP(ss_time));
-            a->Visit(DRAKE_NVP(ds_time));
-            a->Visit(DRAKE_NVP(fb_lateral));
-            a->Visit(DRAKE_NVP(fb_sagittal));
-        }
-    };
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(rows));
+    a->Visit(DRAKE_NVP(cols));
+    a->Visit(DRAKE_NVP(w_accel));
+    a->Visit(DRAKE_NVP(w_soft_constraint));
+    a->Visit(DRAKE_NVP(CoMW));
+    a->Visit(DRAKE_NVP(CoMKp));
+    a->Visit(DRAKE_NVP(CoMKd));
+    a->Visit(DRAKE_NVP(PelvisHeadingW));
+    a->Visit(DRAKE_NVP(PelvisHeadingKp));
+    a->Visit(DRAKE_NVP(PelvisHeadingKd));
+    a->Visit(DRAKE_NVP(PelvisBalanceW));
+    a->Visit(DRAKE_NVP(PelvisBalanceKp));
+    a->Visit(DRAKE_NVP(PelvisBalanceKd));
+    a->Visit(DRAKE_NVP(SwingFootW));
+    a->Visit(DRAKE_NVP(SwingFootKp));
+    a->Visit(DRAKE_NVP(SwingFootKd));
+    a->Visit(DRAKE_NVP(w_swing_toe));
+    a->Visit(DRAKE_NVP(swing_toe_kp));
+    a->Visit(DRAKE_NVP(swing_toe_kd));
+    a->Visit(DRAKE_NVP(w_hip_yaw));
+    a->Visit(DRAKE_NVP(hip_yaw_kp));
+    a->Visit(DRAKE_NVP(hip_yaw_kd));
+    // swing foot heuristics
+    a->Visit(DRAKE_NVP(mid_foot_height));
+    a->Visit(DRAKE_NVP(center_line_offset));
+    a->Visit(DRAKE_NVP(footstep_offset));
+    a->Visit(DRAKE_NVP(final_foot_height));
+    a->Visit(DRAKE_NVP(final_foot_velocity_z));
+    // lipm heursitics
+    a->Visit(DRAKE_NVP(lipm_height));
+    // stance times
+    a->Visit(DRAKE_NVP(ss_time));
+    a->Visit(DRAKE_NVP(ds_time));
+    a->Visit(DRAKE_NVP(fb_lateral));
+    a->Visit(DRAKE_NVP(fb_sagittal));
+  }
+};
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -266,11 +265,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
 
-
   auto virtual_radio_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-                      "RADIO_OUT", &lcm_local));
-
+          "RADIO_OUT", &lcm_local));
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
@@ -304,8 +301,8 @@ int DoMain(int argc, char* argv[]) {
     double vel_scale_rot = 0.5;
     double vel_scale_trans = 0.5;
 
-    if(FLAGS_virtual_radio) {
-        vel_scale_trans = 1.0;
+    if (FLAGS_virtual_radio) {
+      vel_scale_trans = 1.0;
     }
 
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
@@ -315,8 +312,8 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(cassie_out_receiver->get_output_port(),
                     high_level_command->get_cassie_output_port());
     if (FLAGS_virtual_radio) {
-        builder.Connect(virtual_radio_receiver->get_output_port(),
-                        high_level_command->get_virtual_radio_input_port());
+      builder.Connect(virtual_radio_receiver->get_output_port(),
+                      high_level_command->get_virtual_radio_input_port());
     }
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
@@ -335,28 +332,28 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
 
-        // Create finite state machine
-        int left_stance_state = 0;
-        int right_stance_state = 1;
-        int double_support_state = 2;
-        double left_support_duration = gains.ss_time;
-        double right_support_duration = gains.ss_time;
-        double double_support_duration = gains.ds_time;
-        vector<int> fsm_states;
-        vector<double> state_durations;
-        if (FLAGS_is_two_phase) {
-            fsm_states = {left_stance_state, right_stance_state};
-            state_durations = {left_support_duration, right_support_duration};
-        } else {
-            fsm_states = {left_stance_state, double_support_state, right_stance_state,
-                          double_support_state};
-            state_durations = {left_support_duration, double_support_duration,
-                               right_support_duration, double_support_duration};
-        }
-        auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-                plant_w_spr, fsm_states, state_durations);
-        builder.Connect(simulator_drift->get_output_port(0),
-                        fsm->get_input_port_state());
+  // Create finite state machine
+  int left_stance_state = 0;
+  int right_stance_state = 1;
+  int double_support_state = 2;
+  double left_support_duration = gains.ss_time;
+  double right_support_duration = gains.ss_time;
+  double double_support_duration = gains.ds_time;
+  vector<int> fsm_states;
+  vector<double> state_durations;
+  if (FLAGS_is_two_phase) {
+    fsm_states = {left_stance_state, right_stance_state};
+    state_durations = {left_support_duration, right_support_duration};
+  } else {
+    fsm_states = {left_stance_state, double_support_state, right_stance_state,
+                  double_support_state};
+    state_durations = {left_support_duration, double_support_duration,
+                       right_support_duration, double_support_duration};
+  }
+  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
+      plant_w_spr, fsm_states, state_durations);
+  builder.Connect(simulator_drift->get_output_port(0),
+                  fsm->get_input_port_state());
 
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,
@@ -412,8 +409,8 @@ int DoMain(int argc, char* argv[]) {
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
-          use_predicted_com_vel ? left_support_duration : 0,
-          gains.fb_lateral, gains.fb_sagittal);
+          use_predicted_com_vel ? left_support_duration : 0, gains.fb_lateral,
+          gains.fb_sagittal);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -544,10 +541,10 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
-//  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-//                                      plant_w_spr, plant_w_spr);
-  TransTaskSpaceTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-                                      plant_w_spr, plant_w_spr);
+  //  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
+  //                                      plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData center_of_mass_traj(
+      "lipm_traj", K_p_com, K_d_com, W_com, plant_w_spr, plant_w_spr);
   center_of_mass_traj.AddPointToTrack("pelvis");
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)

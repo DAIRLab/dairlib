@@ -34,6 +34,7 @@ cc_binary(
     srcs = ["run_spirit_stand.cc"],
     data = ["spirit_drake.urdf"],
     deps = [
+        ":animate_spirit",
         "//systems/trajectory_optimization/dircon",
         "//multibody/kinematic",
         "//common",
@@ -48,6 +49,7 @@ cc_binary(
     srcs = ["run_spirit_squat.cc"],
     data = ["spirit_drake.urdf"],
     deps = [
+        ":animate_spirit",
         "//systems/trajectory_optimization/dircon",
         "//multibody/kinematic",
         "//common",
@@ -62,6 +64,7 @@ cc_binary(
     srcs = ["run_spirit_best_stand.cc"],
     data = ["spirit_drake.urdf"],
     deps = [
+        ":animate_spirit",
         "//systems/trajectory_optimization/dircon",
         "//multibody/kinematic",
         "//common",

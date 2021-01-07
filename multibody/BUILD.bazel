@@ -88,6 +88,7 @@ cc_library(
         "pinocchio_model.h",
     ],
     deps = [
+        "//common",
         "@drake//:drake_shared_library",
         "@pinocchio",
     ],
@@ -110,6 +111,19 @@ cc_binary(
         ":utils",
         "//common",
         "//examples/Cassie:cassie_urdf",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "pinocchio_model_test",
+    srcs = ["test/pinocchio_model_test.cc"],
+    deps = [
+        ":pinocchio_model",
+        ":utils",
+        "//common",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
         "@drake//:drake_shared_library",
     ],
 )

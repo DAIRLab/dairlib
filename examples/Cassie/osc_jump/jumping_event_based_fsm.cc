@@ -49,12 +49,16 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       this->DeclareVectorOutputPort(BasicVector<double>(1),
                                     &JumpingEventFsm::CalcClockTime)
           .get_index();
+  near_impact_output_port =
+      this->DeclareVectorOutputPort(BasicVector<double>(2),
+                                    &JumpingEventFsm::CalcNearImpact)
+          .get_index();
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
 
   BasicVector<double> init_prev_time = BasicVector<double>(VectorXd::Zero(1));
   BasicVector<double> init_state_trigger_time =
       BasicVector<double>(VectorXd::Zero(1));
-  BasicVector<double> init_fsm_state = BasicVector<double>(VectorXd::Zero(1));
+  BasicVector<double> init_fsm_state = BasicVector<double>(VectorXd::Zero(2));
   init_state_trigger_time.get_mutable_value()(0) = -1.0;
   init_fsm_state.get_mutable_value()(0) = init_state_;
 
@@ -169,6 +173,27 @@ void JumpingEventFsm::CalcFiniteState(const Context<double>& context,
                                       BasicVector<double>* fsm_state) const {
   fsm_state->get_mutable_value() =
       context.get_discrete_state().get_vector(fsm_idx_).get_value();
+}
+
+void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
+                                     BasicVector<double>* near_impact) const {
+  VectorXd fsm_state =
+      context.get_discrete_state(fsm_idx_).get_value();
+  // Read in lcm message time
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double timestamp = robot_output->get_timestamp();
+
+  VectorXd is_near_impact = VectorXd::Zero(2);
+  // Get current finite state
+  for (unsigned int i = 0; i < transition_times_.size(); i++) {
+    if (abs(timestamp - transition_times_[fsm_state(0) + 1]) < transition_delay_) {
+      is_near_impact(0) = 1;
+      is_near_impact(1) = i;
+      break;
+    }
+  }
+  near_impact->get_mutable_value() = is_near_impact;
 }
 
 void JumpingEventFsm::CalcClockTime(const Context<double>& context,

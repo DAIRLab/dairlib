@@ -164,7 +164,7 @@ void ComTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
       &J_w_spr);
   ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_.num_velocities());
   error_ydot_ =
-      ydot_des_ - ydot_ - J_w_spr * ii_proj * (ydot_des_ - ydot_);
+      ydot_des_ - ydot_ - GetJ() * ii_proj * (ydot_des_ - ydot_);
   //  error_ydot_ = ydot_des_ - ydot_;
 }
 
@@ -238,7 +238,7 @@ void TransTaskSpaceTrackingData::UpdateYdotAndError(
       *body_frames_w_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
       world_w_spr_, world_w_spr_, &J);
   ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
-  error_ydot_ = ydot_des_ - ydot_ - J * ii_proj * (ydot_des_ - ydot_);
+  error_ydot_ = ydot_des_ - ydot_ - GetJ() * ii_proj * (ydot_des_ - ydot_);
   //  error_ydot_ = ydot_des_ - ydot_;
 }
 
@@ -428,7 +428,7 @@ void JointSpaceTrackingData::UpdateYdotAndError(
   MatrixXd J = MatrixXd::Zero(1, plant_w_spr_.num_velocities());
   J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
   ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
-  error_ydot_ = ydot_des_ - ydot_ - J * ii_proj * (ydot_des_ - ydot_);
+  error_ydot_ = ydot_des_ - ydot_ - GetJ() * ii_proj * (ydot_des_ - ydot_);
   //  error_ydot_ = ydot_des_ - ydot_;
 }
 

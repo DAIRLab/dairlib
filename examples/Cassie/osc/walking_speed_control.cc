@@ -77,7 +77,7 @@ WalkingSpeedControl::WalkingSpeedControl(
     k_fp_ff_sagital_ = 0;
     k_fp_fb_sagital_ = 0.14;
     k_fp_ff_lateral_ = 0;
-    k_fp_fb_lateral_ = 0.13;
+    k_fp_fb_lateral_ = 0.10;
   }
 }
 

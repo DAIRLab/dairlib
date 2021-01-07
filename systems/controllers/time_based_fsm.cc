@@ -28,14 +28,13 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
                                                         plant.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorOutputPort(
-                             BasicVector<double>(1),
-                             &TimeBasedFiniteStateMachine::CalcFiniteState)
-                         .get_index();
-  near_impact_port_ =
-      this->DeclareVectorOutputPort(
-              BasicVector<double>(2),
-              &TimeBasedFiniteStateMachine::CalcNearImpact)
-          .get_index();
+                      BasicVector<double>(1),
+                      &TimeBasedFiniteStateMachine::CalcFiniteState)
+                  .get_index();
+  near_impact_port_ = this->DeclareVectorOutputPort(
+                              BasicVector<double>(2),
+                              &TimeBasedFiniteStateMachine::CalcNearImpact)
+                          .get_index();
 
   // Accumulate the durations to get timestamps
   double sum = 0;
@@ -74,6 +73,7 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
   // Assign fsm_state
   fsm_state->get_mutable_value() = current_finite_state;
 }
+
 void TimeBasedFiniteStateMachine::CalcNearImpact(
     const Context<double>& context, BasicVector<double>* near_impact) const {
   // Read in lcm message time

@@ -487,7 +487,9 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_fsm_output_port(), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_impact_output_port(),
+                  osc->get_near_impact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),

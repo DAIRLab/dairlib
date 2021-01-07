@@ -583,28 +583,33 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Invariant Impacts
   // Only update when near an impact
-  //  if (near_impact) {
-  //    std::cout << "near contact mode: " << next_fsm_state << std::endl;
-  std::set<int> next_contact_set = {};
-  auto map_iterator = contact_indices_map_.find(next_fsm_state);
-  next_contact_set = map_iterator->second;
-  int active_contact_dim = 0;
-  for (unsigned int i = 0; i < all_contacts_.size(); i++) {
-    if (next_contact_set.find(i) != next_contact_set.end()) {
-      active_contact_dim +=
-          all_contacts_[i]->EvalFullJacobian(*context_wo_spr_).rows();
+  if (near_impact) {
+    std::cout << "Calculating next contact state" << std::endl;
+    std::set<int> next_contact_set = {};
+    std::cout << "Current contact state: " << fsm_state << std::endl;
+    std::cout << "Next contact state: " << next_fsm_state << std::endl;
+    auto map_iterator = contact_indices_map_.find(next_fsm_state);
+    next_contact_set = map_iterator->second;
+    int active_contact_dim = 0;
+    for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+      if (next_contact_set.find(i) != next_contact_set.end()) {
+        active_contact_dim +=
+            all_contacts_[i]->EvalFullJacobian(*context_wo_spr_).rows();
+      }
     }
-  }
-  MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
-  int row_start = 0;
-  for (unsigned int i = 0; i < all_contacts_.size(); i++) {
-    if (next_contact_set.find(i) != next_contact_set.end()) {
-      J_c_next.block(row_start, 0, kSpaceDim, n_v_) =
-          all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
-      row_start += kSpaceDim;
+    std::cout << "Contact dim: " << active_contact_dim << std::endl;
+    MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
+    int row_start = 0;
+    for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+      if (next_contact_set.find(i) != next_contact_set.end()) {
+        J_c_next.block(row_start, 0, kSpaceDim, n_v_) =
+            all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
+        row_start += kSpaceDim;
+      }
     }
+    M_Jt_ = M.inverse() * J_c_next.transpose();
+    std::cout << "Finished calculating next contact state" << std::endl;
   }
-  M_Jt_ = M.inverse() * J_c_next.transpose();
 
   // Update costs
   // 4. Tracking cost
@@ -634,6 +639,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                             *context_wo_spr_, traj, t, fsm_state, ii_proj);
 
       if (near_impact && tracking_data->IsActive()) {
+        // Need to call Update before this to get the updated jacobian
         MatrixXd A = tracking_data->GetJ() * M_Jt_;
         MatrixXd A_pinv = A.completeOrthogonalDecomposition().pseudoInverse();
         ii_proj = M_Jt_ * A_pinv;
@@ -641,10 +647,6 @@ VectorXd OperationalSpaceControl::SolveQp(
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t, fsm_state, ii_proj);
       }
-
-      //      tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-      //                            *context_wo_spr_, traj, t, fsm_state,
-      //                            ii_proj_);
     }
     // TODO(yangwill): Should only really be updating the trajectory if it's
     //  active

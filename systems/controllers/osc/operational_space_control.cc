@@ -428,7 +428,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 VectorXd OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
-    double time_since_last_state_switch, bool near_impact,
+    double time_since_last_state_switch, double near_impact,
     int next_fsm_state) const {
   // Get active contact indices
   std::set<int> active_contact_set = {};
@@ -584,10 +584,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Invariant Impacts
   // Only update when near an impact
   if (near_impact) {
-    std::cout << "Calculating next contact state" << std::endl;
     std::set<int> next_contact_set = {};
-    std::cout << "Current contact state: " << fsm_state << std::endl;
-    std::cout << "Next contact state: " << next_fsm_state << std::endl;
     auto map_iterator = contact_indices_map_.find(next_fsm_state);
     next_contact_set = map_iterator->second;
     int active_contact_dim = 0;
@@ -597,7 +594,6 @@ VectorXd OperationalSpaceControl::SolveQp(
             all_contacts_[i]->EvalFullJacobian(*context_wo_spr_).rows();
       }
     }
-    std::cout << "Contact dim: " << active_contact_dim << std::endl;
     MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
     int row_start = 0;
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
@@ -608,18 +604,17 @@ VectorXd OperationalSpaceControl::SolveQp(
       }
     }
     M_Jt_ = M.inverse() * J_c_next.transpose();
-    std::cout << "Finished calculating next contact state" << std::endl;
   }
 
   // Update costs
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
+    MatrixXd ii_proj = MatrixXd::Zero(n_v_, tracking_data->GetYDim());
 
     // Check whether or not it is a constant trajectory, and update TrackingData
     if (fixed_position_vec_.at(i).size() != 0) {
       // Create constant trajectory and update
-      MatrixXd ii_proj = MatrixXd::Zero(n_v_, tracking_data->GetYDim());
       tracking_data->Update(
           x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
           PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state,
@@ -634,7 +629,6 @@ VectorXd OperationalSpaceControl::SolveQp(
       const auto& traj =
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
-      MatrixXd ii_proj = MatrixXd::Zero(n_v_, tracking_data->GetYDim());
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                             *context_wo_spr_, traj, t, fsm_state, ii_proj);
 
@@ -642,7 +636,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         // Need to call Update before this to get the updated jacobian
         MatrixXd A = tracking_data->GetJ() * M_Jt_;
         MatrixXd A_pinv = A.completeOrthogonalDecomposition().pseudoInverse();
-        ii_proj = M_Jt_ * A_pinv;
+        ii_proj = near_impact * M_Jt_ * A_pinv;
         // Update again using correction
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t, fsm_state, ii_proj);

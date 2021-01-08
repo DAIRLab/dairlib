@@ -119,7 +119,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     //                  2: lateral_vel (left joystick left/right)
     Vector3d des_vel;
     des_vel << -1 * vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
-        vel_scale_trans_ * cassie_out->pelvis.radio.channel[0],
+        vel_scale_trans_ * 1.5 * cassie_out->pelvis.radio.channel[0],
         -1 * vel_scale_trans_ * cassie_out->pelvis.radio.channel[1];
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
   } else {

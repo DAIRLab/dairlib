@@ -13,14 +13,14 @@ hip_yaw_kd: 0.5
 
 footstep_offset: 0.04
 center_line_offset: 0.00
-final_foot_height: 0.00
-final_foot_velocity_z: -0.01
+final_foot_height: 0.02
+final_foot_velocity_z: 0.0
 mid_foot_height: 0.05
 lipm_height: 0.78
 ss_time: 0.30
 ds_time: 0.05
 
-fb_lateral: 0.25
+fb_lateral: 0.1
 fb_sagittal: 0.17
 
 CoMW:
@@ -69,7 +69,7 @@ SwingFootW:
 SwingFootKp:
   [ 200,    0,     0,
     0,  200,     0,
-    0,    0,   140]
+    0,    0,   100]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

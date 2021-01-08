@@ -16,7 +16,7 @@ center_line_offset: 0.00
 final_foot_height: 0.02
 final_foot_velocity_z: 0.0
 mid_foot_height: 0.05
-lipm_height: 0.78
+lipm_height: 0.9
 ss_time: 0.30
 ds_time: 0.05
 

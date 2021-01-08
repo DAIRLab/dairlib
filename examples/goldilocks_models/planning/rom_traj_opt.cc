@@ -91,8 +91,23 @@ RomTrajOpt::RomTrajOpt(
 
   // Initial pose constraint for the full order model
   PrintStatus("Adding initial pose constraint for full-order model...");
-  AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
-  // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
+  bool soft_init_constraint = true;
+  if (soft_init_constraint) {
+    auto slack = NewContinuousVariables((n_x_), "eps_x0_FOM");
+    MatrixXd Aeq = MatrixXd::Ones(1, 2);
+    for (int i = 0; i < n_x_; i++) {
+      AddLinearEqualityConstraint(
+          Aeq, x_init.segment<1>(i),
+          {x0_vars_by_mode(0).segment<1>(i), slack.segment<1>(i)});
+    }
+    MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
+    VectorXd b_x0 = VectorXd::Zero(n_x_);
+    AddQuadraticCost(Q_x0, b_x0, slack);
+    SetInitialGuess(slack, VectorXd::Zero(n_x_));
+  } else {
+    AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
+    // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
+  }
   if (print_status_) {
     cout << "x_init = " << x_init.transpose() << endl;
   }

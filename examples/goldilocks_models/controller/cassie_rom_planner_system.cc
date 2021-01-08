@@ -229,6 +229,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     if (param_.log_solver_info) {
       solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
                                "../snopt_planning.out");
+      cout << "Note that you are logging snopt result.\n";
     }
     if (param_.time_limit > 0) {
       solver_option_.SetOption(drake::solvers::SnoptSolver::id(), "Time limit",
@@ -531,7 +532,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   time_at_knots.array() += lift_off_time;
 
   // Extract and save solution into files
-  if (debug_mode_) {
+  //  if (debug_mode_) {
+  if (debug_mode_ || (result.get_optimal_cost() > 50)) {
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
     writeCSV(param_.dir_data + string("z.csv"), z_sol);
     // cout << trajopt.decision_variables() << endl;

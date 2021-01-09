@@ -100,6 +100,47 @@ void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, doubl
     xState(positions_map.at("joint_" + std::to_string(hipInd))) = mirroredFlag * alpha;
   }
 }
+
+// template <typename T>
+// void makeSpiritToe(){
+
+// }
+
+// template <typename T>
+// void getSpiritToes(){
+
+// }
+
+// template <typename T>
+// void makeSpiritModeSeq( modeBinaryMatrix ){
+    
+// }
+
+template <typename T>
+void addConstraints(const MultibodyPlant<T>& plant, Dircon<T>& trajopt){
+  // Get position and velocity dictionaries 
+  int num_knotpoints =10; ///DEBUG
+  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
+  auto x0 = trajopt.initial_state();
+  auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
+  auto xf = trajopt.final_state();
+
+
+  // Initial body positions
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, x0(positions_map.at("base_z")));
+  
+  // Mid body positions
+  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight-FLAGS_eps, FLAGS_upperHeight+FLAGS_eps, xmid(positions_map.at("base_z")));
+
+  return;
+}
+
+
   /// See runSpiritSquat()
     // std::unique_ptr<MultibodyPlant<T>> plant_ptr,
     // MultibodyPlant<double>* plant_double_ptr,
@@ -218,16 +259,16 @@ void runSpiritSquat(
   auto x0 = trajopt.initial_state();
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
   auto xf = trajopt.final_state();
+  addConstraints(plant,trajopt);
+  // // Initial body positions
+  // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
+  // trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, x0(positions_map.at("base_z")));
   
-  // Initial body positions
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, x0(positions_map.at("base_z")));
-  
-  // Mid body positions
-  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight-FLAGS_eps, FLAGS_upperHeight+FLAGS_eps, xmid(positions_map.at("base_z")));
+  // // Mid body positions
+  // trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  // trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_y")));
+  // trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight-FLAGS_eps, FLAGS_upperHeight+FLAGS_eps, xmid(positions_map.at("base_z")));
 
   // Final Position Constraints
   bool isPeriodic = 1;

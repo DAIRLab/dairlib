@@ -67,8 +67,8 @@ DEFINE_bool(fix_duration, true,
             "worse solution)");
 DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
 DEFINE_bool(zero_touchdown_impact, true, "Zero impact at foot touchdown");
-DEFINE_double(opt_tol, 1e-3, "");
-DEFINE_double(feas_tol, 1e-3, "");
+DEFINE_double(opt_tol, 1e-2, "");
+DEFINE_double(feas_tol, 1e-2, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
 DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");

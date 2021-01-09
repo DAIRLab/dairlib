@@ -532,8 +532,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   time_at_knots.array() += lift_off_time;
 
   // Extract and save solution into files
-  //  if (debug_mode_) {
-  if (debug_mode_ || (result.get_optimal_cost() > 50)) {
+  if (debug_mode_) {
+    //  if (debug_mode_ || (result.get_optimal_cost() > 50) ||
+    //      (elapsed.count() > 0.5)) {
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
     writeCSV(param_.dir_data + string("z.csv"), z_sol);
     // cout << trajopt.decision_variables() << endl;
@@ -603,8 +604,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Testing
   if (elapsed.count() > 0.5) {
-    cout << "x_init = " << x_init << endl;
-    writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
+    //    cout << "x_init = " << x_init << endl;
+    //    writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
   }
 }
 

@@ -93,17 +93,32 @@ RomTrajOpt::RomTrajOpt(
   PrintStatus("Adding initial pose constraint for full-order model...");
   bool soft_init_constraint = true;
   if (soft_init_constraint) {
-    auto slack = NewContinuousVariables((n_x_), "eps_x0_FOM");
+    /// relax the state
+    auto eps = NewContinuousVariables(n_x_, "eps_x0_FOM");
     MatrixXd Aeq = MatrixXd::Ones(1, 2);
     for (int i = 0; i < n_x_; i++) {
       AddLinearEqualityConstraint(
           Aeq, x_init.segment<1>(i),
-          {x0_vars_by_mode(0).segment<1>(i), slack.segment<1>(i)});
+          {x0_vars_by_mode(0).segment<1>(i), eps.segment<1>(i)});
     }
     MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
     VectorXd b_x0 = VectorXd::Zero(n_x_);
-    AddQuadraticCost(Q_x0, b_x0, slack);
-    SetInitialGuess(slack, VectorXd::Zero(n_x_));
+    AddQuadraticCost(Q_x0, b_x0, eps);
+    SetInitialGuess(eps, VectorXd::Zero(n_x_));
+    /// relax only the velocity
+    // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
+    /*auto eps = NewContinuousVariables(n_v, "eps_v0_FOM");
+    const VectorXDecisionVariable& v0_vars = x0_vars_by_mode(0).tail(n_v);
+    const VectorXd& v_init = x_init.tail(n_v);
+    MatrixXd Aeq = MatrixXd::Ones(1, 2);
+    for (int i = 0; i < n_v; i++) {
+      AddLinearEqualityConstraint(Aeq, v_init.segment<1>(i),
+                                  {v0_vars.segment<1>(i), eps.segment<1>(i)});
+    }
+    MatrixXd Q_v0 = 1 * MatrixXd::Identity(n_v, n_v);
+    VectorXd b_v0 = VectorXd::Zero(n_v);
+    AddQuadraticCost(Q_v0, b_v0, eps);
+    SetInitialGuess(eps, VectorXd::Zero(n_v));*/
   } else {
     AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
     // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);

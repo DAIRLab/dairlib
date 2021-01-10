@@ -67,7 +67,7 @@ using std::endl;
 
 /// Get a nominal Spirit Stand (i.e. zero hip ad/abduction motor torque, toes below motors) for initializing
 template <typename T>
-void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, double height){
+void nominalSpiritStand( MultibodyPlant<T>& plant, Eigen::VectorXd& xState, double height){
   //Get joint name dictionaries
   auto positions_map = dairlib::multibody::makeNameToPositionsMap(plant);
   auto velocities_map = dairlib::multibody::makeNameToVelocitiesMap(plant);
@@ -101,15 +101,33 @@ void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, doubl
   }
 }
 
-// template <typename T>
-// void makeSpiritToe(){
+template <typename T>
+const drake::multibody::Frame<T>& getSpiritToe( MultibodyPlant<T>& plant, u_int8_t toeIndex ){
+  assert(toeIndex<4);
+  return plant.GetFrameByName( "toe" + std::to_string(toeIndex) );
+}
 
-// }
-
-// template <typename T>
-// void getSpiritToes(){
-
-// }
+template <typename T>
+void createSpiritModeSequence( 
+  MultibodyPlant<T>& plant, // multibodyPlant
+  Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
+  Eigen::VectorXi knotpointMat, // Matrix of knot points for each mode  
+  double mu = 1){
+  std::cout<<modeSeqMat<<std::endl;
+  std::cout<<knotpointMat<<std::endl;
+  return;
+}
+//Overload function to allow the use of a equal number of knotpoints for every mode.
+template <typename T>
+void createSpiritModeSequence( 
+  MultibodyPlant<T>& plant, // multibodyPlant
+  Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
+  uint16_t knotpoints, // Number of knot points per mode
+  double mu = 1){
+  int numModes = modeSeqMat.rows(); 
+  Eigen::VectorXi knotpointMat = Eigen::MatrixXi::Constant(numModes,1,knotpoints);
+  return createSpiritModeSequence(plant, modeSeqMat,knotpointMat,mu);
+}
 
 // template <typename T>
 // void makeSpiritModeSeq( modeBinaryMatrix ){
@@ -124,7 +142,7 @@ void addConstraints(const MultibodyPlant<T>& plant, Dircon<T>& trajopt){
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
   auto x0 = trajopt.initial_state();
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
-  auto xf = trajopt.final_state();
+  // auto xf = trajopt.final_state();
 
 
   // Initial body positions
@@ -174,6 +192,11 @@ void runSpiritSquat(
   // Get position and velocity dictionaries 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
+  Eigen::Matrix<bool,2,4> modeSeqMat;
+  modeSeqMat<<
+  0,0,0,0,
+  1,1,1,1;
+  createSpiritModeSequence(plant, modeSeqMat, 10,.5);
 
   /// For Spirit front left leg->0, back left leg->1, front right leg->2, back right leg->3
   /// Get the frame of each toe and attach a world point to the toe tip (frame is at toe ball center).

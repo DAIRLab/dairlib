@@ -102,19 +102,60 @@ void nominalSpiritStand( MultibodyPlant<T>& plant, Eigen::VectorXd& xState, doub
 }
 
 template <typename T>
-const drake::multibody::Frame<T>& getSpiritToe( MultibodyPlant<T>& plant, u_int8_t toeIndex ){
+const drake::multibody::Frame<T>& getSpiritToeFrame( MultibodyPlant<T>& plant, u_int8_t toeIndex ){
   assert(toeIndex<4);
   return plant.GetFrameByName( "toe" + std::to_string(toeIndex) );
 }
 
 template <typename T>
+const multibody::WorldPointEvaluator<T> getSpiritToeEvaluator( 
+                      MultibodyPlant<T>& plant, 
+                      u_int8_t toeIndex,
+                      const Eigen::Vector3d toePoint = Eigen::Vector3d::Zero(),
+                      std::vector<int> active_directions = {0, 1, 2},
+                      double mu = 0 ){
+  assert(toeIndex<4);
+  auto toe_eval =  multibody::WorldPointEvaluator<T>(
+        plant, 
+        toePoint, 
+        getSpiritToeFrame(plant, toeIndex ) , 
+        Eigen::Matrix3d::Identity(), 
+        Eigen::Vector3d::Zero(), 
+        active_directions   );
+  if(mu){
+    toe_eval.set_frictional(); toe_eval.set_mu(mu);
+  }
+  return toe_eval;
+}
+
+
+
+template <typename T>
 void createSpiritModeSequence( 
-  MultibodyPlant<T>& plant, // multibodyPlant
-  Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
-  Eigen::VectorXi knotpointMat, // Matrix of knot points for each mode  
-  double mu = 1){
+          MultibodyPlant<T>& plant, // multibodyPlant
+          Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
+          Eigen::VectorXi knotpointMat, // Matrix of knot points for each mode  
+          double mu = 1){
   std::cout<<modeSeqMat<<std::endl;
-  std::cout<<knotpointMat<<std::endl;
+  std::cout<<knotpointMat<<std::endl;  
+  double toeRadius = 0.02;
+  Vector3d toeOffset(toeRadius,0,0); // vector to "contact point"
+  
+  assert( modeSeqMat.rows()==knotpointMat.rows() );
+
+  std::vector<multibody::WorldPointEvaluator<T>> toeEvals;
+  for (int i=0;i<4;i++){
+    toeEvals.push_back( getSpiritToeEvaluator(plant, i, toeOffset, {0, 1, 2}, mu) ) ;
+  }
+
+  for (i = 0; i<modeSeqMat.rows(); i++)
+  {
+    // auto evaluators = multibody::KinematicEvaluatorSet<T>(plant);//Likely not like this
+    for ( j = 0; j < 4; j++ ){
+      
+    }
+  }
+  
   return;
 }
 //Overload function to allow the use of a equal number of knotpoints for every mode.
@@ -129,10 +170,6 @@ void createSpiritModeSequence(
   return createSpiritModeSequence(plant, modeSeqMat,knotpointMat,mu);
 }
 
-// template <typename T>
-// void makeSpiritModeSeq( modeBinaryMatrix ){
-    
-// }
 
 template <typename T>
 void addConstraints(const MultibodyPlant<T>& plant, Dircon<T>& trajopt){
@@ -228,6 +265,8 @@ void runSpiritSquat(
   evaluators.add_evaluator(&(toe1_eval));
   evaluators.add_evaluator(&(toe2_eval));
   evaluators.add_evaluator(&(toe3_eval));
+
+  // createSpiritModeSequence(plant, {{0,0,0,0},{1,1,0,0},{1,1,1,1}}, 10,1)
   
   /// Setup the standing mode. This behavior only has one mode.
   int num_knotpoints = 10; // number of knot points in the collocation

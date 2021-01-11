@@ -40,7 +40,7 @@ DEFINE_double(optTol, 1e-4,"Optimization Tolerance");
 DEFINE_double(feasTol, 1e-4,"Feasibility Tolerance");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
-// Parameters which enable dircon-improving features
+// Parameters which enable dircon -improving features
 DEFINE_bool(scale_constraint, true, "Scale the nonlinear constraint values");
 DEFINE_bool(scale_variable, false, "Scale the decision variable");
 
@@ -193,7 +193,7 @@ void runSpiritJump(
 
                                    
   flight_mode.SetDynamicsScale(
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  150.0);
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  1.0);
   
   ///Mode Sequence
   // Adding the ONE mode to the sequence, will not leave full_support
@@ -255,10 +255,10 @@ void runSpiritJump(
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
   trajopt.AddBoundingBoxConstraint(FLAGS_standHeight - FLAGS_eps, FLAGS_standHeight + FLAGS_eps, x0(positions_map.at("base_z")));
   // Lift off body positions conditions
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xlo(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  //trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xlo(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xlo(positions_map.at("base_y")));
   // Apex body positions conditions
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  //trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex(positions_map.at("base_y")));
   // Touchdown body positions conditions
   trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xtd(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
@@ -396,7 +396,7 @@ void runSpiritJump(
   for(int joint = 0; joint< 12; joint ++ )
   {
     auto joint_v = x(n_q+velocities_map.at("joint_"+std::to_string(joint)+"dot"));
-    trajopt.AddRunningCost(joint_v * 50 * joint_v);
+    trajopt.AddRunningCost(joint_v * 0 * joint_v);
   }
   
   /// Setup the visualization during the optimization
@@ -506,7 +506,7 @@ int main(int argc, char* argv[]) {
   averageV = deltaX / FLAGS_duration;
   xInit.tail(nv-3) = (averageV.head(nq)).tail(nq-4); //Ignoring Orientation make velocity the average
   double time = 0;
-  double dt = FLAGS_duration/(N-1);
+  double dt = FLAGS_duration/(N-1)/2;
 
   // Initial pose
   xState = xInit;
@@ -516,9 +516,9 @@ int main(int argc, char* argv[]) {
     init_time.push_back(time);
 
     // Switch the direction of the stand to go back to the initial state (not actually properly periodic initial)
-    // if ( i > (N-1)/2 ){
-    //     xState.tail(nv) = -xInit.tail(nv);
-    // }
+    if ( i > (N-1)/2 ){
+         xState.tail(nv) = -xInit.tail(nv);
+    }
     // Integrate the positions based on constant velocity  for joints and xyz
     for (int j = 0; j < num_joints; j++){
           xState(positions_map.at("joint_" + std::to_string(j))) =  

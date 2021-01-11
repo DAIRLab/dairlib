@@ -8,7 +8,7 @@ swing_toe_kp: 1000
 swing_toe_kd: 10
 
 w_hip_yaw: 50
-hip_yaw_kp: 10
+hip_yaw_kp: 30
 hip_yaw_kd: 0.5
 
 footstep_offset: 0.04
@@ -20,7 +20,7 @@ lipm_height: 0.9
 ss_time: 0.30
 ds_time: 0.05
 
-fb_lateral: 0.1
+fb_lateral: 0.15
 fb_sagittal: 0.17
 
 CoMW:

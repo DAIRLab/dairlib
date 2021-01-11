@@ -196,12 +196,15 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   Y[1](1, 0) = stance_foot_pos(1);
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
+  double max_height_diff_per_step = 0.05;
+  double final_height = (desired_com_height_ + stance_foot_pos(2) - CoM(2) >
+                         max_height_diff_per_step)
+                            ? CoM(2) + max_height_diff_per_step
+                            : desired_com_height_ + stance_foot_pos(2);
   //  Y[0](2, 0) = CoM(2);
   //  Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
-  Y[0](2, 0) = constant_target_height_
-                   ? desired_com_height_ + stance_foot_pos(2)
-                   : CoM(2);
-  Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  Y[0](2, 0) = constant_target_height_ ? final_height : CoM(2);
+  Y[1](2, 0) = final_height;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   //  MatrixXd Y_dot_start = dCoM;

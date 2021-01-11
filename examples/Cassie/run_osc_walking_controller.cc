@@ -375,16 +375,28 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({right_toe_mid});
     contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
   }
+  double com_pelvis_height_difference = 0.15; // TODO(yminchen): improve this
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), desired_com_height,
-      unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state);
+      plant_w_spr, context_w_spr.get(),
+      desired_com_height - com_pelvis_height_difference, unordered_fsm_states,
+      unordered_state_durations, contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
                   lipm_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
+
+  auto pelvis_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
+      plant_w_spr, context_w_spr.get(), desired_com_height,
+      unordered_fsm_states, unordered_state_durations,
+      contact_points_in_each_state, false);
+  builder.Connect(fsm->get_output_port(0),
+                  pelvis_traj_generator->get_input_port_fsm());
+  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+                  pelvis_traj_generator->get_input_port_fsm_switch_time());
+  builder.Connect(simulator_drift->get_output_port(0),
+                  pelvis_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
   bool use_predicted_com_vel = true;
@@ -518,17 +530,22 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
-  //  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-  //                                      plant_w_spr, plant_w_spr);
   W_com(0, 0) = 0;
   W_com(1, 1) = 0;
-  TransTaskSpaceTrackingData center_of_mass_traj(
-      "lipm_traj", K_p_com, K_d_com, W_com, plant_w_spr, plant_w_spr);
-  center_of_mass_traj.AddPointToTrack("pelvis");
+  bool use_pelvis_for_lipm_tracking = true;
+  TransTaskSpaceTrackingData pelvis_traj("lipm_traj", K_p_com, K_d_com, W_com,
+                                         plant_w_spr, plant_w_spr);
+  pelvis_traj.AddPointToTrack("pelvis");
   //  VectorXd pelvis_target(3);
   //  pelvis_target << 0, 0, gains.lipm_height;
-  //  osc->AddConstTrackingData(&center_of_mass_traj, pelvis_target);
-  osc->AddTrackingData(&center_of_mass_traj);
+  //  osc->AddConstTrackingData(&pelvis_traj, pelvis_target);
+  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
+                                      plant_w_spr, plant_w_spr);
+  if (use_pelvis_for_lipm_tracking) {
+    osc->AddTrackingData(&pelvis_traj);
+  } else {
+    osc->AddTrackingData(&center_of_mass_traj);
+  }
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
       "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
@@ -609,8 +626,14 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
-                  osc->get_tracking_data_input_port("lipm_traj"));
+  if (use_pelvis_for_lipm_tracking) {
+    builder.Connect(
+        pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
+        osc->get_tracking_data_input_port("lipm_traj"));
+  } else {
+    builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
+                    osc->get_tracking_data_input_port("lipm_traj"));
+  }
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),

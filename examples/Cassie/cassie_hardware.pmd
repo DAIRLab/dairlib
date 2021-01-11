@@ -19,7 +19,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "controller-switch-to-walking (3 phase walking)" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.7 --n_period_delay=1 --fsm_offset=0.35 --blend_duration=0.0";
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.7 --n_period_delay=1 --fsm_offset=0.3 --blend_duration=0.0";
         host = "dair-cassie";
     }
     cmd "controller-switch-to-pd" {

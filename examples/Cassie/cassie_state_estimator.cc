@@ -1488,8 +1488,8 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  left_contact = lambda[2] > 0;
-  right_contact = lambda[5] > 0;
+  //left_contact = lambda[2] > 0;
+  //right_contact = lambda[5] > 0;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

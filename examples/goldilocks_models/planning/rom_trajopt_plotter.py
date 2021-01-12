@@ -51,7 +51,8 @@ def main():
   plant_FOM, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
   Parser(plant_FOM).AddModelFromFile(
     FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"))
-  plant_FOM.mutable_gravity_field().set_gravity_vector(-9.81 * np.array([0, 0, 1]))
+  plant_FOM.mutable_gravity_field().set_gravity_vector(
+    -9.81 * np.array([0, 0, 1]))
   plant_FOM.Finalize()
   # Conext and world
   context = plant_FOM.CreateDefaultContext()
@@ -106,20 +107,29 @@ def PlotCOM(rom_traj):
   # value
   init_state = FindVariableByName(rom_traj, 'x0_FOM', nx_FOM)
   com_relaxed, comdot_relaxed = CalcCenterOfMass(init_state)
-  init_state = init_state + FindVariableByName(rom_traj, 'eps_x0_FOM', nx_FOM)
+
+  # 1. If we relax the whole state
+  # init_state = init_state + FindVariableByName(rom_traj, 'eps_x0_FOM', nx_FOM)
+  # 2. If we relax only the velocity
+  init_state[nq_FOM:] = init_state[nq_FOM:] + FindVariableByName(rom_traj,
+    'eps_v0_FOM', nv_FOM)
+
   com, comdot = CalcCenterOfMass(init_state)
   figname = "COM before and after relaxing"
   plt.figure(figname, figsize=figsize)
-  plt.plot([0,1,2], com_relaxed, 'ro', markersize=4)
-  plt.plot([0,1,2], com, 'bo', markersize=4)
+  plt.plot([0, 1, 2], com_relaxed, 'ro', markersize=4)
+  plt.plot([0, 1, 2], com, 'bo', markersize=4)
+  plt.ylabel('(m))')
   plt.xlabel('index')
   plt.legend(['com_relaxed', 'com'])
   figname = "COM vel before and after relaxing"
   plt.figure(figname, figsize=figsize)
-  plt.plot([0,1,2], comdot_relaxed, 'ro', markersize=4)
-  plt.plot([0,1,2], comdot, 'bo', markersize=4)
+  plt.plot([0, 1, 2], comdot_relaxed, 'ro', markersize=4)
+  plt.plot([0, 1, 2], comdot, 'bo', markersize=4)
+  plt.ylabel('(m/s))')
   plt.xlabel('index')
   plt.legend(['comdot_relaxed', 'comdot'])
+
 
 def CalcCenterOfMass(x):
   plant_FOM.SetPositionsAndVelocities(context, x)
@@ -129,6 +139,7 @@ def CalcCenterOfMass(x):
   comdot = J @ x[nq_FOM:]
   return com, comdot
 
+
 def FindVariableByName(rom_traj, name, var_length):
   # returns solutions by variable names
   j = 0
@@ -136,7 +147,9 @@ def FindVariableByName(rom_traj, name, var_length):
     if rom_traj.GetTrajectory("decision_vars").datatypes[i][:len(name)] == name:
       j = i
       break
-  return rom_traj.GetTrajectory("decision_vars").datapoints[j:j+var_length, 0]
+  # We need to make a copy here. Otherwise, the returned object is not writable
+  return rom_traj.GetTrajectory("decision_vars").datapoints[j:j + var_length, 0].copy()
+
 
 def PrintAllDecisionVar(rom_traj):
   for i in range(len(rom_traj.GetTrajectory("decision_vars").datatypes)):

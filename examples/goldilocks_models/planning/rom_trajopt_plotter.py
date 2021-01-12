@@ -42,33 +42,34 @@ def main():
   username = getpass.getuser()
   save_path = "/home/" + username + "/"
 
+  """
+  Construct full order model and related variables 
+  """
   # Build MBP
-  # global plant, context, world, nq, nv, nx, nu
-  # builder = DiagramBuilder()
-  # plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  # Parser(plant).AddModelFromFile(
-  #   FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"))
-  # plant.mutable_gravity_field().set_gravity_vector(-9.81 * np.array([0, 0, 1]))
-  # plant.Finalize()
-  #
-  # # Conext and world
-  # context = plant.CreateDefaultContext()
-  # world = plant.world_frame()
-  # global l_toe_frame, r_toe_frame
-  # global front_contact_disp, rear_contact_disp
-  # global l_loop_closure, r_loop_closure
-  # l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
-  # r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
-  # front_contact_disp = np.array((-0.0457, 0.112, 0))
-  # rear_contact_disp = np.array((0.088, 0, 0))
-  # l_loop_closure = LeftLoopClosureEvaluator(plant)
-  # r_loop_closure = RightLoopClosureEvaluator(plant)
-  #
-  # # MBP params
-  # nq = plant.num_positions()
-  # nv = plant.num_velocities()
-  # nx = plant.num_positions() + plant.num_velocities()
-  # nu = plant.num_actuators()
+  global plant_FOM, context, world, nq_FOM, nv_FOM, nx_FOM, nu_FOM
+  builder = DiagramBuilder()
+  plant_FOM, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
+  Parser(plant_FOM).AddModelFromFile(
+    FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"))
+  plant_FOM.mutable_gravity_field().set_gravity_vector(-9.81 * np.array([0, 0, 1]))
+  plant_FOM.Finalize()
+  # Conext and world
+  context = plant_FOM.CreateDefaultContext()
+  world = plant_FOM.world_frame()
+  global l_toe_frame, r_toe_frame
+  global front_contact_disp, rear_contact_disp
+  global l_loop_closure, r_loop_closure
+  l_toe_frame = plant_FOM.GetBodyByName("toe_left").body_frame()
+  r_toe_frame = plant_FOM.GetBodyByName("toe_right").body_frame()
+  front_contact_disp = np.array((-0.0457, 0.112, 0))
+  rear_contact_disp = np.array((0.088, 0, 0))
+  l_loop_closure = LeftLoopClosureEvaluator(plant_FOM)
+  r_loop_closure = RightLoopClosureEvaluator(plant_FOM)
+  # MBP params
+  nq_FOM = plant_FOM.num_positions()
+  nv_FOM = plant_FOM.num_velocities()
+  nx_FOM = plant_FOM.num_positions() + plant_FOM.num_velocities()
+  nu_FOM = plant_FOM.num_actuators()
 
   """
   States, inputs trajectories
@@ -88,12 +89,54 @@ def main():
   """
   PrintAllDecisionVar(rom_traj)
 
-  # print(rom_traj.GetStateSamples(1))
+  """
+  Testing
+  """
+  PlotCOM(rom_traj)
+
   # import pdb; pdb.set_trace()
 
   if not savefig:
     plt.show()
 
+
+def PlotCOM(rom_traj):
+  # We assume that the initial state constraint is relaxed, and here
+  # we reconstruct the robot's init state by adding back the slack variable
+  # value
+  init_state = FindVariableByName(rom_traj, 'x0_FOM', nx_FOM)
+  com_relaxed, comdot_relaxed = CalcCenterOfMass(init_state)
+  init_state = init_state + FindVariableByName(rom_traj, 'eps_x0_FOM', nx_FOM)
+  com, comdot = CalcCenterOfMass(init_state)
+  figname = "COM before and after relaxing"
+  plt.figure(figname, figsize=figsize)
+  plt.plot([0,1,2], com_relaxed, 'ro', markersize=4)
+  plt.plot([0,1,2], com, 'bo', markersize=4)
+  plt.xlabel('index')
+  plt.legend(['com_relaxed', 'com'])
+  figname = "COM vel before and after relaxing"
+  plt.figure(figname, figsize=figsize)
+  plt.plot([0,1,2], comdot_relaxed, 'ro', markersize=4)
+  plt.plot([0,1,2], comdot, 'bo', markersize=4)
+  plt.xlabel('index')
+  plt.legend(['comdot_relaxed', 'comdot'])
+
+def CalcCenterOfMass(x):
+  plant_FOM.SetPositionsAndVelocities(context, x)
+  com = plant_FOM.CalcCenterOfMassPosition(context)
+  J = plant_FOM.CalcJacobianCenterOfMassTranslationalVelocity(context,
+    JacobianWrtVariable.kV, world, world)
+  comdot = J @ x[nq_FOM:]
+  return com, comdot
+
+def FindVariableByName(rom_traj, name, var_length):
+  # returns solutions by variable names
+  j = 0
+  for i in range(len(rom_traj.GetTrajectory("decision_vars").datatypes)):
+    if rom_traj.GetTrajectory("decision_vars").datatypes[i][:len(name)] == name:
+      j = i
+      break
+  return rom_traj.GetTrajectory("decision_vars").datapoints[j:j+var_length, 0]
 
 def PrintAllDecisionVar(rom_traj):
   for i in range(len(rom_traj.GetTrajectory("decision_vars").datatypes)):

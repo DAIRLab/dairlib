@@ -59,7 +59,6 @@ def main():
     cassie_blue = (6, 61, 128)
     white = (255, 255, 255)
     pygame.display.set_caption('Cassie Virtual Radio Controller')
-    keyboard.screen.fill(cassie_blue)
     fnt = pygame.font.Font('freesansbold.ttf', 32)
 
     while True:

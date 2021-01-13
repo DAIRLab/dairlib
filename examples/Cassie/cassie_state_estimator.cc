@@ -1323,6 +1323,7 @@ EventStatus CassieStateEstimator::Update(
   estimated_fb_state.segment<3>(1) = q.vec();
   // Translational position
   r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
+//  r_imu_to_pelvis_global = VectorXd::Zero(3);
   estimated_fb_state.segment<3>(4) =
       ekf.getState().getPosition() + r_imu_to_pelvis_global;
   // Rotational velocity
@@ -1522,6 +1523,8 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
+  *left_contact = lambda(2) > 50;
+  *right_contact = lambda(5) > 50;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

@@ -90,11 +90,11 @@ def main():
 
   # Default time window values, can override
   t_start = t_u[10]
-  t_end = t_u[-10]
+  t_end = t_u[-1000]
   # import pdb; pdb.set_trace()
   # Override here #
   # t_start = 8.7
-  # t_end = 12.0
+  # t_end = 98
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -113,8 +113,7 @@ def main():
 
   ### All plotting scripts here
   # plot_status(full_log)
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  # import pdb; pdb.set_trace()
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
   # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
   # plt.plot(t_contact_info, contact_info[2, :, 2], 'r-')
@@ -226,7 +225,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   osc_traj1 = "swing_ft_traj"
   # osc_traj2 = "swing_hip_yaw_traj"
   # osc_traj1 = "l_foot_traj"
-  osc_traj2 = "left_toe_angle_traj"
+  # osc_traj2 = "left_toe_angle_traj"
   osc_traj3 = "swing_hip_yaw_traj"
 
   #
@@ -234,9 +233,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
   # plot_osc(osc_debug, osc_traj0, 2, "pos")
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "vel")
-  # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plot_osc(osc_debug, osc_traj0, 0, "vel")
+  plot_osc(osc_debug, osc_traj0, 1, "vel")
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
   #
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
   # plot_osc(osc_debug, osc_traj0, 1, "accel")
@@ -258,8 +257,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
   #
-  plot_osc(osc_debug, osc_traj2, 0, "vel")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj2, 0, "vel")
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
 # plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
@@ -272,10 +271,10 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 1, "accel")
   # plot_osc(osc_debug, osc_traj2, 2, "accel")
 
-  # plot_osc(osc_debug, osc_traj3, 0, "pos")
-  plot_osc(osc_debug, osc_traj3, 0, "vel")
+  plot_osc(osc_debug, osc_traj3, 0, "pos")
+  # plot_osc(osc_debug, osc_traj3, 0, "vel")
   # plot_osc(osc_debug, osc_traj3, 0, "accel")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
@@ -292,6 +291,7 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim] - osc_debug[osc_traj].ydot[t_u_slice, dim])
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim])
     plt.legend(["ydot_des", "ydot", "error_ydot", "corrected_error"])
+    # plt.legend(["error_ydot", "corrected_error"])
   elif (derivative == "accel"):
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_des[t_u_slice, dim])
     plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command[t_u_slice, dim])
@@ -379,7 +379,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   vel_indices = slice(23 + 6, 45)
   pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
-  u_indices = slice(8, 10)
+  u_indices = slice(0, 10)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)

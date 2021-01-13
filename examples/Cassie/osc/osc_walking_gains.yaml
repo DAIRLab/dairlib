@@ -8,17 +8,17 @@ swing_toe_kp: 1000
 swing_toe_kd: 10
 
 w_hip_yaw: 50
-hip_yaw_kp: 60
+hip_yaw_kp: 30
 hip_yaw_kd: 0.5
 
 footstep_offset: 0.04
 center_line_offset: 0.00
-final_foot_height: 0.01
-final_foot_velocity_z: -0.01
-mid_foot_height: 0.02
-lipm_height: 0.89
-ss_time: 0.35
-ds_time: 0.02
+final_foot_height: 0.02
+final_foot_velocity_z: 0.00
+mid_foot_height: 0.05
+lipm_height: 0.9
+ss_time: 0.30
+ds_time: 0.05
 impact_threshold: 0.050
 
 CoMW:
@@ -67,7 +67,7 @@ SwingFootW:
 SwingFootKp:
   [ 200,    0,     0,
       0,  200,     0,
-      0,    0,   200]
+      0,    0,   100]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

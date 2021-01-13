@@ -140,21 +140,23 @@ def plot_contact_est(log):
     msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
     t_filtered_contact.append(msg.utime / 1e6)
     contact_filtered.append(list(msg.contact))
-  for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_gm_contact.append(msg.utime / 1e6)
-    gm_contact.append(list(msg.contact))
+  # for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
+  #   msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
+  #   t_gm_contact.append(msg.utime / 1e6)
+  #   gm_contact.append(list(msg.contact))
   t_contact = np.array(t_contact)
   t_filtered_contact = np.array(t_filtered_contact)
-  t_gm_contact = np.array(t_gm_contact)
+  # t_gm_contact = np.array(t_gm_contact)
   contact = np.array(contact)
   contact_filtered = np.array(contact_filtered)
-  gm_contact = np.array(gm_contact)
+  # gm_contact = np.array(gm_contact)
 
   plt.figure("Contact estimation")
-  # plt.plot(t_contact[t_slice], contact[t_slice], '-')
-  plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
-  plt.plot(t_gm_contact[t_slice], gm_contact[t_slice, 0], '-')
+  # import pdb; pdb.set_trace()
+  plt.plot(t_contact[t_slice], contact[t_slice], '-')
+  plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice], '-')
+  # plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
+  # plt.plot(t_gm_contact[t_slice], gm_contact[t_slice, 0], '-')
   plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt",
               "l_gm_contact", "r_gm_contact"])
 

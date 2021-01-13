@@ -94,6 +94,7 @@ RomTrajOpt::RomTrajOpt(
   bool soft_init_constraint = true;
   if (soft_init_constraint) {
     /// relax the state
+    /* PrintStatus("(relax the whole state)");
     auto eps = NewContinuousVariables(n_x_, "eps_x0_FOM");
     MatrixXd Aeq = MatrixXd::Ones(1, 2);
     for (int i = 0; i < n_x_; i++) {
@@ -104,12 +105,15 @@ RomTrajOpt::RomTrajOpt(
     MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
     VectorXd b_x0 = VectorXd::Zero(n_x_);
     AddQuadraticCost(Q_x0, b_x0, eps);
-    SetInitialGuess(eps, VectorXd::Zero(n_x_));
+    SetInitialGuess(eps, VectorXd::Zero(n_x_));*/
     /// relax only the velocity
     // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
-    /*auto eps = NewContinuousVariables(n_v, "eps_v0_FOM");
-    const VectorXDecisionVariable& v0_vars = x0_vars_by_mode(0).tail(n_v);
-    const VectorXd& v_init = x_init.tail(n_v);
+    PrintStatus("(relax only the velocity)");
+    int n_v = 6;  // n_v;
+    auto eps = NewContinuousVariables(n_v, "eps_v0_FOM");
+    const VectorXDecisionVariable& v0_vars =
+        x0_vars_by_mode(0).segment(n_q, n_v);
+    const VectorXd& v_init = x_init.segment(n_q, n_v);
     MatrixXd Aeq = MatrixXd::Ones(1, 2);
     for (int i = 0; i < n_v; i++) {
       AddLinearEqualityConstraint(Aeq, v_init.segment<1>(i),
@@ -118,7 +122,7 @@ RomTrajOpt::RomTrajOpt(
     MatrixXd Q_v0 = 1 * MatrixXd::Identity(n_v, n_v);
     VectorXd b_v0 = VectorXd::Zero(n_v);
     AddQuadraticCost(Q_v0, b_v0, eps);
-    SetInitialGuess(eps, VectorXd::Zero(n_v));*/
+    SetInitialGuess(eps, VectorXd::Zero(n_v));
   } else {
     AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
     // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);

@@ -314,6 +314,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   x_init.segment<3>(nq_ + 3) =
       relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_ + 3);
 
+  if (debug_mode_) {
+    cout << "x_init used for the planner = " << x_init.transpose() << endl;
+  }
+
   ///
   /// Construct rom traj opt
   ///
@@ -533,8 +537,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Extract and save solution into files
 //  if (debug_mode_) {
-      if (debug_mode_ || (result.get_optimal_cost() > 50) ||
-          (elapsed.count() > 0.5)) {
+//  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() > 0.5)) {
+//  if (!result.is_success()) {
+    if (elapsed.count() > 0.8) {
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
     writeCSV(param_.dir_data + string("z.csv"), z_sol);
     // cout << trajopt.decision_variables() << endl;
@@ -603,9 +608,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Testing
-  if (elapsed.count() > 0.5) {
-    //    cout << "x_init = " << x_init << endl;
-    //    writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
+//  if (elapsed.count() > 0.5) {
+//  if (!result.is_success() && start_with_left_stance_) {
+  if ((result.get_optimal_cost() > 50) && start_with_left_stance_) {
+//        cout << "x_init = " << x_init << endl;
+//        writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
   }
 }
 

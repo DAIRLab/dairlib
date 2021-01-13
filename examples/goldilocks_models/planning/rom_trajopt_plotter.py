@@ -111,22 +111,25 @@ def PlotCOM(rom_traj):
   # 1. If we relax the whole state
   # init_state = init_state + FindVariableByName(rom_traj, 'eps_x0_FOM', nx_FOM)
   # 2. If we relax only the velocity
-  init_state[nq_FOM:] = init_state[nq_FOM:] + FindVariableByName(rom_traj,
-    'eps_v0_FOM', nv_FOM)
+  # init_state[nq_FOM:] = init_state[nq_FOM:] + FindVariableByName(rom_traj,
+  #   'eps_v0_FOM', nv_FOM)
+  # 3. If we relax only the floating base vel
+  init_state[nq_FOM:nq_FOM + 6] = init_state[nq_FOM:nq_FOM + 6] + \
+                                  FindVariableByName(rom_traj, 'eps_v0_FOM', 6)
 
   com, comdot = CalcCenterOfMass(init_state)
   figname = "COM before and after relaxing"
   plt.figure(figname, figsize=figsize)
   plt.plot([0, 1, 2], com_relaxed, 'ro', markersize=4)
   plt.plot([0, 1, 2], com, 'bo', markersize=4)
-  plt.ylabel('(m))')
+  plt.ylabel('(m)')
   plt.xlabel('index')
   plt.legend(['com_relaxed', 'com'])
   figname = "COM vel before and after relaxing"
   plt.figure(figname, figsize=figsize)
   plt.plot([0, 1, 2], comdot_relaxed, 'ro', markersize=4)
   plt.plot([0, 1, 2], comdot, 'bo', markersize=4)
-  plt.ylabel('(m/s))')
+  plt.ylabel('(m/s)')
   plt.xlabel('index')
   plt.legend(['comdot_relaxed', 'comdot'])
 
@@ -148,7 +151,8 @@ def FindVariableByName(rom_traj, name, var_length):
       j = i
       break
   # We need to make a copy here. Otherwise, the returned object is not writable
-  return rom_traj.GetTrajectory("decision_vars").datapoints[j:j + var_length, 0].copy()
+  return rom_traj.GetTrajectory("decision_vars").datapoints[j:j + var_length,
+         0].copy()
 
 
 def PrintAllDecisionVar(rom_traj):

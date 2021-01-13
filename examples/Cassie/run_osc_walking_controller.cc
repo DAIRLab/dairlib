@@ -292,7 +292,7 @@ int DoMain(int argc, char* argv[]) {
   cassie::osc::HighLevelCommand* high_level_command;
   if (FLAGS_use_radio) {
     double vel_scale_rot = 0.5;
-    double vel_scale_trans = 0.4;
+    double vel_scale_trans = 0.2;
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), vel_scale_rot, vel_scale_trans,
         FLAGS_footstep_option);

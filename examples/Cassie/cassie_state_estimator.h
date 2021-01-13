@@ -270,7 +270,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable eps_cr_;
   drake::solvers::VectorXDecisionVariable eps_imu_;
   // Other variables for contacts
-  const double persistent_contact_threshold_ = 0.02; // in seconds
+  const double persistent_contact_threshold_ = 0.00; // in seconds
   mutable double left_contact_start_time_ = 0;
   mutable double right_contact_start_time_ = 0;
 

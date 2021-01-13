@@ -270,8 +270,19 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   double timestamp = robot_output->get_timestamp();
   auto current_time = static_cast<double>(timestamp);
 
+  // Get time in the first mode
+  // TODO(yminchen):
+  //  1. move time_in_first_mode out to a new block
+  //  2. move x_init rotation and translation to a new block
+  //  The above change would help readability and presentation. It helps you in
+  //  testing the code as well.
+  // TODO(yminchen): think about if you need to rotate the coordinates back
+  //  after solver gives a desired traj
+
+  double time_in_first_mode = current_time - lift_off_time;
+
   // Calc phase
-  double init_phase = (current_time - lift_off_time) / stride_period_;
+  double init_phase = time_in_first_mode / stride_period_;
   if (init_phase >= 1) {
     cout << "WARNING: phase >= 1. There might be a bug somewhere, "
             "since we are using a time-based fsm\n";
@@ -350,6 +361,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (knots_first_mode == 2) {
     min_dt[0] = 1e-3;
   }
+  cout << "time_in_first_mode = " << time_in_first_mode << endl;
   cout << "init_phase = " << init_phase << endl;
   cout << "knots_first_mode = " << knots_first_mode << endl;
   cout << "first_mode_phase_index = " << first_mode_phase_index << endl;
@@ -386,11 +398,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     // Note that the timestep size of the first mode should be different from
     // the rest because the robot could be very close to the touchdown
     double remaining_time_of_first_mode =
-        std::max(stride_period_ - current_time, min_dt[0]);
-    trajopt.AddTimeStepConstraint(
-        min_dt, max_dt, param_.fix_duration,
-        remaining_time_of_first_mode + dt_value * (n_time_samples - 2),
-        param_.equalize_timestep_size, remaining_time_of_first_mode);
+        std::max(stride_period_ - time_in_first_mode, min_dt[0]);
+    // duration of the whole trajopt = first mode's time + the rest modes'
+    double duration =
+        remaining_time_of_first_mode + dt_value * (n_time_samples - 2);
+    trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration, duration,
+                                  param_.equalize_timestep_size,
+                                  remaining_time_of_first_mode);
   } else {
     trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
                                   dt_value * (n_time_samples - 1),
@@ -536,10 +550,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   time_at_knots.array() += lift_off_time;
 
   // Extract and save solution into files
-//  if (debug_mode_) {
-//  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() > 0.5)) {
-//  if (!result.is_success()) {
-    if (elapsed.count() > 0.8) {
+  //  if (debug_mode_) {
+  //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >
+  //  0.5)) { if (!result.is_success()) {
+  if (elapsed.count() > 0.8) {
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
     writeCSV(param_.dir_data + string("z.csv"), z_sol);
     // cout << trajopt.decision_variables() << endl;
@@ -608,11 +622,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Testing
-//  if (elapsed.count() > 0.5) {
-//  if (!result.is_success() && start_with_left_stance_) {
-  if ((result.get_optimal_cost() > 50) && start_with_left_stance_) {
-//        cout << "x_init = " << x_init << endl;
-//        writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
+  //  if (elapsed.count() > 0.5) {
+  if ((elapsed.count() > 0.7) && start_with_left_stance_) {
+    //  if (!result.is_success() && start_with_left_stance_) {
+    //  if ((result.get_optimal_cost() > 50) && start_with_left_stance_) {
+    cout << "x_init = " << x_init << endl;
+    writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
   }
 }
 

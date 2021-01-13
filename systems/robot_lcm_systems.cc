@@ -55,10 +55,15 @@ void RobotOutputReceiver::CopyOutput(
     int j = effortIndexMap_.at(state_msg.effort_names[i]);
     efforts(j) = state_msg.effort[j];
   }
+  VectorXd imu_accel = VectorXd::Zero(3);
+  for (int i = 0; i < 3; i++) {
+    imu_accel(i) = state_msg.imu_accel[i];
+  }
 
   output->SetPositions(positions);
   output->SetVelocities(velocities);
   output->SetEfforts(efforts);
+  output->SetIMUAccelerations(imu_accel);
   output->set_timestamp(state_msg.utime * 1.0e-6);
 }
 

@@ -1501,7 +1501,7 @@ void CassieStateEstimator::EstimateContactForces(
   plant_.CalcBiasTerm(*context_, &C);
   MatrixXd B = plant_.MakeActuationMatrix();
   //  double cutoff_freq = 0.005;
-  double gamma = 0.015;
+  double gamma = 0.003;
   //  double Delta_t = output.get_timestamp() - prev_time;
   //  double beta = (1 - gamma) / gamma / Delta_t;
 
@@ -1523,8 +1523,8 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  *left_contact = lambda(2) > 50;
-  *right_contact = lambda(5) > 50;
+  *left_contact = lambda(2) > 40;
+  *right_contact = lambda(5) > 40;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

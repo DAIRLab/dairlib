@@ -113,6 +113,7 @@ struct OSCJumpingGains {
   double hip_yaw_kd;
   double t_delay_ft_pos;
   double t_delay_toe_ang;
+  double impact_threshold;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -137,6 +138,7 @@ struct OSCJumpingGains {
     a->Visit(DRAKE_NVP(hip_yaw_kd));
     a->Visit(DRAKE_NVP(t_delay_ft_pos));
     a->Visit(DRAKE_NVP(t_delay_toe_ang));
+    a->Visit(DRAKE_NVP(impact_threshold));
 
   }
 };
@@ -294,7 +296,7 @@ int DoMain(int argc, char* argv[]) {
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
-      FLAGS_transition_delay, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
+      gains.impact_threshold, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -306,9 +308,6 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  //  auto controller_switch_receiver = builder.AddSystem(
-  //      LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>("INPUT_SWITCH",
-  //                                                                 &lcm));
 
   LcmSubscriberSystem* contact_results_sub = nullptr;
   if (FLAGS_simulator == "DRAKE") {
@@ -390,12 +389,9 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-//  ComTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
-//                                    plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData com_tracking_data("com_traj", K_p_com, K_d_com, W_com,
                                                  plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
-//    com_tracking_data.AddStateToTrack(mode);
     com_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
   }
   osc->AddTrackingData(&com_tracking_data);
@@ -417,7 +413,6 @@ int DoMain(int argc, char* argv[]) {
   for (auto mode : stance_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
   }
-//  pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
 
   // Yaw tracking
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);

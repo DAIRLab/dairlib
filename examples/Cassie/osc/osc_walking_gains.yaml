@@ -3,7 +3,7 @@ cols: 3
 w_accel: 0.000001
 w_soft_constraint: 8000
 
-w_swing_toe: 100
+w_swing_toe: 0.1
 swing_toe_kp: 1000
 swing_toe_kd: 10
 

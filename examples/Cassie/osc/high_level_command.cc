@@ -40,37 +40,51 @@ namespace osc {
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context, double vel_scale_rot,
-    double vel_scale_trans, int footstep_option)
-    : HighLevelCommand(plant, context, footstep_option) {
+    double vel_scale_trans_sagital, double vel_scale_trans_lateral)
+    : HighLevelCommand(plant, context) {
   cassie_out_port_ =
       this->DeclareAbstractInputPort("lcmt_cassie_output",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   use_radio_command_ = true;
+
   vel_scale_rot_ = vel_scale_rot;
-  vel_scale_trans_ = vel_scale_trans;
+  vel_scale_trans_sagital_ = vel_scale_trans_sagital;
+  vel_scale_trans_lateral_ = vel_scale_trans_lateral;
 }
 
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
+    drake::systems::Context<double>* context, double kp_yaw, double kd_yaw,
+    double vel_max_yaw, double kp_pos_sagital, double kd_pos_sagital,
+    double vel_max_sagital, double kp_pos_lateral, double kd_pos_lateral,
+    double vel_max_lateral, double target_pos_offset,
     const Vector2d& global_target_position,
-    const Vector2d& params_of_no_turning, int footstep_option)
-    : HighLevelCommand(plant, context, footstep_option) {
+    const Vector2d& params_of_no_turning)
+    : HighLevelCommand(plant, context) {
   use_radio_command_ = false;
+  kp_yaw_ = kp_yaw;
+  kd_yaw_ = kd_yaw;
+  vel_max_yaw_ = vel_max_yaw;
+  kp_pos_sagital_ = kp_pos_sagital;
+  kd_pos_sagital_ = kd_pos_sagital;
+  vel_max_sagital_ = vel_max_sagital;
+  target_pos_offset_ = target_pos_offset;
+  kp_pos_lateral_ = kp_pos_lateral;
+  kd_pos_lateral_ = kd_pos_lateral;
+  vel_max_lateral_ = vel_max_lateral;
+
   global_target_position_ = global_target_position;
   params_of_no_turning_ = params_of_no_turning;
 }
 
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context, int footstep_option)
+    drake::systems::Context<double>* context)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
-  DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
-
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
@@ -89,22 +103,6 @@ HighLevelCommand::HighLevelCommand(
 
   // Discrete state which stores the desired yaw velocity
   des_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(3));
-  // Control gains
-  if (footstep_option == 0) {
-    kp_pos_sagital_ = 1.0;
-    kd_pos_sagital_ = 0.2;
-
-    kp_pos_lateral_ = 0.5;
-    kd_pos_lateral_ = 0.1;
-    vel_max_lateral_ = 0.5;
-  } else if (footstep_option == 1) {
-    kp_pos_sagital_ = 1.0;
-    kd_pos_sagital_ = 1.0;
-
-    kp_pos_lateral_ = 0.25;
-    kd_pos_lateral_ = 1.0;
-    vel_max_lateral_ = 0.25;
-  }
 }
 
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
@@ -112,15 +110,15 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     DiscreteValues<double>* discrete_state) const {
   if (use_radio_command_) {
     const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
-        context, cassie_out_port_);  // TODO(yangwill) make sure there is a
-    // message available
+        context, cassie_out_port_);
+    // TODO(yangwill) make sure there is a message available
     // des_vel indices: 0: yaw_vel (right joystick left/right)
     //                  1: saggital_vel (left joystick up/down)
     //                  2: lateral_vel (left joystick left/right)
     Vector3d des_vel;
     des_vel << -1 * vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
-        vel_scale_trans_ * 3.0 * cassie_out->pelvis.radio.channel[0],
-        -1 * vel_scale_trans_ * cassie_out->pelvis.radio.channel[1];
+        vel_scale_trans_sagital_ * cassie_out->pelvis.radio.channel[0],
+        -1 * vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
   } else {
     discrete_state->get_mutable_vector(des_vel_idx_)

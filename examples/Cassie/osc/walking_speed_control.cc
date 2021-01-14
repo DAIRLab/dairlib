@@ -33,18 +33,18 @@ namespace osc {
 
 WalkingSpeedControl::WalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
-    Context<double>* context, int footstep_option, double swing_phase_duration,
-    double fb_lateral, double fb_sagittal)
+    Context<double>* context, double k_ff_lateral, double k_fb_lateral,
+    double k_ff_sagittal, double k_fb_sagittal, double swing_phase_duration)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")),
       swing_phase_duration_(swing_phase_duration),
       is_using_predicted_com_(swing_phase_duration > 0),
-      k_fp_fb_lateral_(fb_lateral),
-      k_fp_fb_sagittal_(fb_sagittal) {
-  DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
-
+      k_fp_ff_lateral_(k_ff_lateral),
+      k_fp_fb_lateral_(k_fb_lateral),
+      k_fp_ff_sagittal_(k_ff_sagittal),
+      k_fp_fb_sagittal_(k_fb_sagittal) {
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -65,23 +65,6 @@ WalkingSpeedControl::WalkingSpeedControl(
                 "com_traj",
                 drake::Value<drake::trajectories::Trajectory<double>>(pp))
             .get_index();
-  }
-
-  // TODO(yminchen): Gains are not tuned yet. Do we need two sets of gains for
-  //  moving forward and backward?
-  // Control gains
-  if (footstep_option == 0) {
-    // For Capture point
-    k_fp_ff_sagittal_ = 0.16;
-    k_fp_fb_sagittal_ = 0.04;
-    k_fp_ff_lateral_ = 0.08;
-    k_fp_fb_lateral_ = 0.02;
-  } else if (footstep_option == 1) {
-    // For LIPM neutral point
-    k_fp_ff_sagittal_ = 0;
-    k_fp_fb_sagittal_ = 0.14;
-    k_fp_ff_lateral_ = 0;
-    k_fp_fb_lateral_ = 0.16;
   }
 }
 

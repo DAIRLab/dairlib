@@ -73,8 +73,8 @@ void RobotOutputReceiver::CopyOutput(const Context<double>& context,
 
 RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const bool publish_efforts)
-    : publish_efforts_(publish_efforts) {
+    const bool publish_efforts, const bool publish_imu)
+    : publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
@@ -120,8 +120,10 @@ RobotOutputSender::RobotOutputSender(
         this->DeclareVectorInputPort(BasicVector<double>(num_efforts_))
             .get_index();
   }
-  imu_input_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(3)).get_index();
+  if (publish_imu_) {
+    imu_input_port_ =
+        this->DeclareVectorInputPort(BasicVector<double>(3)).get_index();
+  }
 
   this->DeclareAbstractOutputPort(&RobotOutputSender::Output);
 }
@@ -130,7 +132,6 @@ RobotOutputSender::RobotOutputSender(
 void RobotOutputSender::Output(const Context<double>& context,
                                dairlib::lcmt_robot_output* state_msg) const {
   const auto state = this->EvalVectorInput(context, state_input_port_);
-  const auto imu = this->EvalVectorInput(context, imu_input_port_);
 
   // using the time from the context
   state_msg->utime = context.get_time() * 1e6;
@@ -151,10 +152,6 @@ void RobotOutputSender::Output(const Context<double>& context,
     state_msg->velocity_names[i] = ordered_velocity_names_[i];
   }
 
-  for (int i = 0; i < 3; ++i) {
-    state_msg->imu_accel[i] = imu->get_value()[i];
-  }
-
   if (publish_efforts_) {
     const auto efforts = this->EvalVectorInput(context, effort_input_port_);
 
@@ -165,6 +162,13 @@ void RobotOutputSender::Output(const Context<double>& context,
     for (int i = 0; i < num_efforts_; i++) {
       state_msg->effort[i] = efforts->GetAtIndex(i);
       state_msg->effort_names[i] = ordered_effort_names_[i];
+    }
+  }
+
+  if (publish_imu_) {
+    const auto imu = this->EvalVectorInput(context, imu_input_port_);
+    for (int i = 0; i < 3; ++i) {
+      state_msg->imu_accel[i] = imu->get_value()[i];
     }
   }
 }

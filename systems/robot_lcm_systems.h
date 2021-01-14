@@ -1,16 +1,16 @@
 #pragma once
 
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
 
-#include "drake/multibody/plant/multibody_plant.h"
-#include "drake/systems/framework/leaf_system.h"
+#include "dairlib/lcmt_robot_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 
-#include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_robot_input.hpp"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -25,11 +25,11 @@ namespace systems {
 class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotOutputReceiver(
-    const drake::multibody::MultibodyPlant<double>& plant);
+      const drake::multibody::MultibodyPlant<double>& plant);
 
  private:
   void CopyOutput(const drake::systems::Context<double>& context,
-                    OutputVector<double>* output) const;
+                  OutputVector<double>* output) const;
   int num_positions_;
   int num_velocities_;
   int num_efforts_;
@@ -38,32 +38,28 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> effortIndexMap_;
 };
 
-
 /// Converts a OutputVector object to LCM type lcmt_robot_output
 class RobotOutputSender : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotOutputSender(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const bool publish_efforts=false);;
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const bool publish_efforts = false, const bool publish_imu = false);
 
-  const drake::systems::InputPort<double>& get_input_port_state()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_effort()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_effort() const {
     return this->get_input_port(effort_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_imu()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_imu() const {
     return this->get_input_port(imu_input_port_);
   }
 
  private:
   void Output(const drake::systems::Context<double>& context,
-                   dairlib::lcmt_robot_output* output) const;
+              dairlib::lcmt_robot_output* output) const;
 
   int num_positions_;
   int num_velocities_;
@@ -78,6 +74,7 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   int effort_input_port_;
   int imu_input_port_;
   bool publish_efforts_;
+  bool publish_imu_;
 };
 
 /// Receives the output of an LcmSubsriberSystem that subsribes to the
@@ -88,7 +85,6 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
   explicit RobotInputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant);
 
-
  private:
   void CopyInputOut(const drake::systems::Context<double>& context,
                     TimestampedVector<double>* output) const;
@@ -97,13 +93,11 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuatorIndexMap_;
 };
 
-
 /// Receives the output of a controller, and outputs it as an LCM
 /// message with type lcm_robot_u. Its output port is usually connected to
 /// an LcmPublisherSystem to publish the messages it generates.
 class RobotCommandSender : public drake::systems::LeafSystem<double> {
  public:
-
   explicit RobotCommandSender(
       const drake::multibody::MultibodyPlant<double>& plant);
 

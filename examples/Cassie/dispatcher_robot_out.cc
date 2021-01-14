@@ -229,7 +229,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create and connect RobotOutput publisher.
   auto robot_output_sender =
-      builder.AddSystem<systems::RobotOutputSender>(plant, true);
+      builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));

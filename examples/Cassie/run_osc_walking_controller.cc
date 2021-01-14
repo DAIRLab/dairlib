@@ -375,10 +375,9 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({right_toe_mid});
     contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
   }
-  double com_pelvis_height_difference = 0.15; // TODO(yminchen): improve this
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       plant_w_spr, context_w_spr.get(),
-      desired_com_height - com_pelvis_height_difference, unordered_fsm_states,
+      desired_com_height, unordered_fsm_states,
       unordered_state_durations, contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
@@ -387,6 +386,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
+  // We can use the same desired_com_height for pelvis_traj_generator as we use
+  // for lipm_traj_generator, even though one is pelvis and the other is COM.
+  // This is because we don't use the COM desired height in
+  // pelvis_traj_generator. Only the initial COM height is used in the x and y
+  // direction.
   auto pelvis_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,

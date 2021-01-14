@@ -575,6 +575,7 @@ int DoMain(int argc, char* argv[]) {
   //  2. mirroring of the ROM
   //  we have two models and two input trajectories. So keep this in mind when
   //  you design the controller. Make sure everything is consistent
+  // TODO(yminchen): After you ROM plannar gave an output, you should probably also rotate it from local to global? (probably not?)
   osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;

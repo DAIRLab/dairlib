@@ -11,6 +11,7 @@ cc_library(
         "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:reduced_order_models",
         "//examples/goldilocks_models/planning:rom_traj_opt",
+        "//lcm:rom_planner_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/controllers/osc:osc_utils",
@@ -57,8 +58,8 @@ cc_library(
     srcs = ["local_lipm_traj_gen.cc"],
     hdrs = ["local_lipm_traj_gen.h"],
     deps = [
-        "//systems/controllers:control_utils",
         "//multibody:utils",
+        "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

@@ -3396,14 +3396,16 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   if (is_print_for_debugging) {
-    // this part leads to segmentation fault sometimes
-    // Impulse variable's value
-//    for (int i = w_sol.size() - rs_dataset.countConstraints() - 1;
-//         i < w_sol.size(); i++) {
-//      cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
-//           << w_sol[i] << endl;
-//    }
-    cout << endl;
+    // w_sol is not assigned when snopt didn't solve the problem successfully 
+    if (w_sol.size() > 0) {
+      // Impulse variable's value
+      for (int i = w_sol.size() - rs_dataset.countConstraints() - 1;
+           i < w_sol.size(); i++) {
+        cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
+             << w_sol[i] << endl;
+      }
+      cout << endl;
+    }
 
     // Extract result for printing
     VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);

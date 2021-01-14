@@ -67,8 +67,8 @@ DEFINE_bool(fix_duration, true,
             "worse solution)");
 DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
 DEFINE_bool(zero_touchdown_impact, true, "Zero impact at foot touchdown");
-DEFINE_double(opt_tol, 1e-3, "");
-DEFINE_double(feas_tol, 1e-3, "");
+DEFINE_double(opt_tol, 1e-2, "");
+DEFINE_double(feas_tol, 1e-2, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
 DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
@@ -169,6 +169,16 @@ int DoMain(int argc, char* argv[]) {
         readCSV(model_dir_n_pref + string("time_at_knots.csv")).size();
     x_init = readCSV(model_dir_n_pref + string("state_at_knots.csv"))
                  .col(int(round((n_sample_raw - 1) * FLAGS_init_phase)));
+
+    // Testing -- read x_init directly from a file
+    // Note that you need to disable the rotation in
+    // CassiePlannerWithMixedRomFom as well is you want to use the exact init
+    // here for the trajopt init state
+    /*x_init = readCSV(
+        "../dairlib_data/goldilocks_models/planning/robot_1/data/"
+        "x_init_test.csv");
+    cout << "x_init = " << x_init.transpose() << endl;*/
+
     // Mirror x_init if it's right stance
     if (!FLAGS_start_with_left_stance) {
       // Create mirror maps
@@ -207,10 +217,14 @@ int DoMain(int argc, char* argv[]) {
 
     // Perturbing the initial floating base configuration for testing trajopt
     srand((unsigned int)time(0));
-    double theta = M_PI * VectorXd::Random(1)(0) * FLAGS_yaw_disturbance;
-    Vector3d vec(0, 0, 1);
-    x_init.head(4) << cos(theta / 2), sin(theta / 2) * vec.normalized();
-    x_init.segment<2>(4) = 10 * VectorXd::Random(2) * FLAGS_xy_disturbance;
+    if (FLAGS_yaw_disturbance > 0) {
+      double theta = M_PI * VectorXd::Random(1)(0) * FLAGS_yaw_disturbance;
+      Vector3d vec(0, 0, 1);
+      x_init.head(4) << cos(theta / 2), sin(theta / 2) * vec.normalized();
+    }
+    if (FLAGS_xy_disturbance > 0) {
+      x_init.segment<2>(4) = 10 * VectorXd::Random(2) * FLAGS_xy_disturbance;
+    }
 
     cout << "x_init = " << x_init.transpose() << endl;
 

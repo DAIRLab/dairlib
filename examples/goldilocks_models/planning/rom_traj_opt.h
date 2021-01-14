@@ -19,9 +19,13 @@
 namespace dairlib {
 namespace goldilocks_models {
 
-// Reduced order model
-// z = [y; ydot]
-// yddot = theta_yddot * phi_yddot + B * tau
+/// Reduced order model
+/// z = [y; ydot]
+/// yddot = theta_yddot * phi_yddot + B * tau
+
+/// Notes that we are currently constructing cubic splines for the state. This
+/// is different form the model optimization where we construct cubic splines
+/// for the position.
 
 // Modified from HybridDircon class
 class RomTrajOpt
@@ -49,6 +53,14 @@ class RomTrajOpt
                              std::vector<double> maximum_timestep,
                              bool fix_duration, double duration,
                              bool equalize_timestep_size, double dt_0 = -1);
+
+  /// Returns a vector of matrices containing the state and derivative values at
+  /// each breakpoint at the solution for each mode of the trajectory.
+  void GetStateAndDerivativeSamples(
+      const drake::solvers::MathematicalProgramResult& result,
+      std::vector<Eigen::MatrixXd>* state_samples,
+      std::vector<Eigen::MatrixXd>* derivative_samples,
+      std::vector<Eigen::VectorXd>* state_breaks) const;
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
@@ -81,6 +93,10 @@ class RomTrajOpt
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
 
+  int num_modes() const { return num_modes_; }
+
+  const ReducedOrderModel& reduced_order_model() const { return rom_; }
+
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
@@ -91,6 +107,7 @@ class RomTrajOpt
   const drake::solvers::VectorXDecisionVariable x0_var_;
   const drake::solvers::VectorXDecisionVariable xf_vars_;
   const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
+  const int n_y_;
   const int n_z_;
   const int n_x_;
   const drake::multibody::MultibodyPlant<double>& plant_;

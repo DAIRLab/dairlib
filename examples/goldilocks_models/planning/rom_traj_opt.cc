@@ -62,15 +62,16 @@ RomTrajOpt::RomTrajOpt(
       num_modes_(num_time_samples.size()),
       mode_lengths_(num_time_samples),
       z_post_impact_vars_(NewContinuousVariables(
-          (2 * rom.n_y()) * (num_time_samples.size() - 1), "zp")),
+          (2 * rom.n_y()) * (num_time_samples.size() - 1), "xp")),
       x0_var_(NewContinuousVariables(
-          (plant.num_positions() + plant.num_velocities()), "x0")),
+          (plant.num_positions() + plant.num_velocities()), "x0_FOM")),
       xf_vars_(NewContinuousVariables(
           (plant.num_positions() + plant.num_velocities()) *
               num_time_samples.size(),
-          "xf")),
+          "xf_FOM")),
       v_post_impact_vars_(NewContinuousVariables(
-          plant.num_velocities() * (num_time_samples.size() - 1), "vp")),
+          plant.num_velocities() * (num_time_samples.size() - 1), "vp_FOM")),
+      n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
       n_x_(plant.num_positions() + plant.num_velocities()),
       plant_(plant),
@@ -90,8 +91,42 @@ RomTrajOpt::RomTrajOpt(
 
   // Initial pose constraint for the full order model
   PrintStatus("Adding initial pose constraint for full-order model...");
-  AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
-  // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
+  bool soft_init_constraint = true;
+  if (soft_init_constraint) {
+    /// relax the state
+    /* PrintStatus("(relax the whole state)");
+    auto eps = NewContinuousVariables(n_x_, "eps_x0_FOM");
+    MatrixXd Aeq = MatrixXd::Ones(1, 2);
+    for (int i = 0; i < n_x_; i++) {
+      AddLinearEqualityConstraint(
+          Aeq, x_init.segment<1>(i),
+          {x0_vars_by_mode(0).segment<1>(i), eps.segment<1>(i)});
+    }
+    MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
+    VectorXd b_x0 = VectorXd::Zero(n_x_);
+    AddQuadraticCost(Q_x0, b_x0, eps);
+    SetInitialGuess(eps, VectorXd::Zero(n_x_));*/
+    /// relax only the velocity
+    // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
+    PrintStatus("(relax only the velocity)");
+    int n_v = 6;  // n_v;
+    auto eps = NewContinuousVariables(n_v, "eps_v0_FOM");
+    const VectorXDecisionVariable& v0_vars =
+        x0_vars_by_mode(0).segment(n_q, n_v);
+    const VectorXd& v_init = x_init.segment(n_q, n_v);
+    MatrixXd Aeq = MatrixXd::Ones(1, 2);
+    for (int i = 0; i < n_v; i++) {
+      AddLinearEqualityConstraint(Aeq, v_init.segment<1>(i),
+                                  {v0_vars.segment<1>(i), eps.segment<1>(i)});
+    }
+    MatrixXd Q_v0 = 1 * MatrixXd::Identity(n_v, n_v);
+    VectorXd b_v0 = VectorXd::Zero(n_v);
+    AddQuadraticCost(Q_v0, b_v0, eps);
+    SetInitialGuess(eps, VectorXd::Zero(n_v));
+  } else {
+    AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
+    // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
+  }
   if (print_status_) {
     cout << "x_init = " << x_init.transpose() << endl;
   }
@@ -158,7 +193,7 @@ RomTrajOpt::RomTrajOpt(
             std::make_shared<planning::FomResetMapConstraint>(plant_,
                                                               swing_contacts);
         auto Lambda = NewContinuousVariables(3 * swing_contacts.size(),
-                                             "Lambda" + to_string(i));
+                                             "Lambda_FOM_" + to_string(i));
         AddConstraint(
             reset_map_constraint,
             {xf_vars_by_mode(i - 1),
@@ -337,6 +372,44 @@ void RomTrajOpt::DoAddRunningCost(const drake::symbolic::Expression& g) {
   }
   AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
           h_vars()(N() - 2) / 2);
+}
+
+void RomTrajOpt::GetStateAndDerivativeSamples(
+    const drake::solvers::MathematicalProgramResult& result,
+    std::vector<Eigen::MatrixXd>* state_samples,
+    std::vector<Eigen::MatrixXd>* derivative_samples,
+    std::vector<Eigen::VectorXd>* state_breaks) const {
+  DRAKE_ASSERT(state_samples->empty());
+  DRAKE_ASSERT(derivative_samples->empty());
+  DRAKE_ASSERT(state_breaks->empty());
+
+  VectorXd times(GetSampleTimes(result));
+
+  for (int i = 0; i < num_modes_; i++) {
+    MatrixXd states_i(num_states(), mode_lengths_[i]);
+    MatrixXd derivatives_i(num_states(), mode_lengths_[i]);
+    VectorXd times_i(mode_lengths_[i]);
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      int k_data = mode_start_[i] + j;
+
+      VectorX<double> zk = result.GetSolution(state_vars_by_mode(i, j));
+      VectorX<double> tauk = result.GetSolution(input(k_data));
+
+      // z = [y; ydot]
+      // Calculate zdot.
+      // Copied from: examples/goldilocks_models/planning/dynamics_constraint.h
+      VectorX<double> zdot(n_z_);
+      zdot << zk.tail(n_y_),
+          rom_.EvalDynamicFunc(zk.head(n_y_), zk.tail(n_y_), tauk);
+
+      states_i.col(j) = drake::math::DiscardGradient(zk);
+      derivatives_i.col(j) = drake::math::DiscardGradient(zdot);
+      times_i(j) = times(k_data);
+    }
+    state_samples->push_back(states_i);
+    derivative_samples->push_back(derivatives_i);
+    state_breaks->push_back(times_i);
+  }
 }
 
 PiecewisePolynomial<double> RomTrajOpt::ReconstructInputTrajectory(

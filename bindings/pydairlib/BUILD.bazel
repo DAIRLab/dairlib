@@ -16,6 +16,7 @@ pybind_py_library(
     cc_deps = [
         "//lcm:dircon_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
+        "//lcm:rom_planner_trajectory_saver",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "lcm_trajectory",
@@ -70,7 +71,6 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
-
 
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.

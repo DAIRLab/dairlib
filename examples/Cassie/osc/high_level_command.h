@@ -51,7 +51,11 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    double vel_scale_rot, double vel_scale_trans_sagital,
-                   double vel_scale_trans_lateral);
+                   double vel_scale_trans_lateral,  double kp_yaw, double kd_yaw,
+                   double vel_max_yaw, double kp_pos_sagital, double kd_pos_sagital,
+                   double vel_max_sagital, double kp_pos_lateral, double kd_pos_lateral,
+                   double vel_max_lateral, double target_pos_offset,
+                   const Eigen::Vector2d& params_of_no_turning);
   /// Constructor that computes the desired yaw and translational velocities
   /// according to a global target position
   ///
@@ -88,7 +92,8 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   Eigen::VectorXd CalcCommandFromTargetPosition(
-      const drake::systems::Context<double>& context) const;
+      const drake::systems::Context<double>& context,
+      const Eigen::Vector2d& global_target_position) const;
 
   void CopyHeadingAngle(const drake::systems::Context<double>& context,
                         drake::systems::BasicVector<double>* output) const;
@@ -111,6 +116,8 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
 
   // Indices for the discrete states of this leafsystem
   drake::systems::DiscreteStateIndex des_vel_idx_;
+  drake::systems::DiscreteStateIndex timestamp_idx_;
+  drake::systems::DiscreteStateIndex target_pos_idx_;
 
   // Rotation control (yaw) parameters
   double kp_yaw_;
@@ -134,6 +141,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   double vel_scale_rot_;
   double vel_scale_trans_sagital_;
   double vel_scale_trans_lateral_;
+  double max_dt_ = 0.01; // 10 ms maximum timestep
 };
 
 }  // namespace osc

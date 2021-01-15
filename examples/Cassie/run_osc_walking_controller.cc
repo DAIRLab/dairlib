@@ -342,7 +342,12 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_use_radio) {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
-        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
+        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral,
+        gains.kp_yaw, gains.kd_yaw,
+        gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
+        gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
+        gains.vel_max_lateral, gains.target_pos_offset,
+        params_of_no_turning);
     builder.Connect(cassie_out_receiver->get_output_port(),
                     high_level_command->get_cassie_output_port());
   } else {

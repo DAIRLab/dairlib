@@ -53,6 +53,7 @@ class KeyboardManager():
 
 def main():
     keyboard = KeyboardManager()
+    start_time = time.time()
 
     lc = lcm.LCM()
 
@@ -84,10 +85,11 @@ def main():
         cassie_out_msg.pelvis.radio.channel[0] = keyboard.vel[0] + keyboard.trim_x
         cassie_out_msg.pelvis.radio.channel[1] = keyboard.vel[1] + keyboard.trim_y
         cassie_out_msg.pelvis.radio.channel[3] = 0
+        cassie_out_msg.utime = int((time.time() - start_time) * 1e6)
 
         lc.publish("CASSIE_OUTPUT_ECHO", cassie_out_msg.encode())
 
-        time.sleep(0.05)
+        time.sleep(0.005)
         pygame.display.update()
 
 if __name__ == '__main__':

@@ -40,7 +40,12 @@ namespace osc {
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context, double vel_scale_rot,
-    double vel_scale_trans_sagital, double vel_scale_trans_lateral)
+    double vel_scale_trans_sagital, double vel_scale_trans_lateral,
+    double kp_yaw, double kd_yaw,
+    double vel_max_yaw, double kp_pos_sagital, double kd_pos_sagital,
+    double vel_max_sagital, double kp_pos_lateral, double kd_pos_lateral,
+    double vel_max_lateral, double target_pos_offset,
+    const Vector2d& params_of_no_turning)
     : HighLevelCommand(plant, context) {
   cassie_out_port_ =
       this->DeclareAbstractInputPort("lcmt_cassie_output",
@@ -51,6 +56,19 @@ HighLevelCommand::HighLevelCommand(
   vel_scale_rot_ = vel_scale_rot;
   vel_scale_trans_sagital_ = vel_scale_trans_sagital;
   vel_scale_trans_lateral_ = vel_scale_trans_lateral;
+
+  kp_yaw_ = kp_yaw;
+  kd_yaw_ = kd_yaw;
+  vel_max_yaw_ = vel_max_yaw;
+  kp_pos_sagital_ = kp_pos_sagital;
+  kd_pos_sagital_ = kd_pos_sagital;
+  vel_max_sagital_ = vel_max_sagital;
+  target_pos_offset_ = target_pos_offset;
+  kp_pos_lateral_ = kp_pos_lateral;
+  kd_pos_lateral_ = kd_pos_lateral;
+  vel_max_lateral_ = vel_max_lateral;
+  params_of_no_turning_ = params_of_no_turning;
+
 }
 
 HighLevelCommand::HighLevelCommand(
@@ -103,6 +121,8 @@ HighLevelCommand::HighLevelCommand(
 
   // Discrete state which stores the desired yaw velocity
   des_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(3));
+  target_pos_idx_ = DeclareDiscreteState(VectorXd::Zero(2));
+  timestamp_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
 }
 
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
@@ -115,21 +135,33 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     // des_vel indices: 0: yaw_vel (right joystick left/right)
     //                  1: saggital_vel (left joystick up/down)
     //                  2: lateral_vel (left joystick left/right)
-    Vector3d des_vel;
-    des_vel << -1 * vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
-        vel_scale_trans_sagital_ * cassie_out->pelvis.radio.channel[0],
-        -1 * vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
-    discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
+
+    double curr_time = (double)(cassie_out->utime) * 1e-6;
+    double dt = std::min(std::max(.001, curr_time - discrete_state->get_vector(timestamp_idx_)[0]), max_dt_);
+
+    VectorXd t(1);
+    t << curr_time;
+    Vector2d delta;
+    delta << vel_scale_trans_sagital_ * cassie_out->pelvis.radio.channel[0] * dt,
+            -1 * vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1] * dt;
+
+    Vector2d target_pos = discrete_state->get_vector(target_pos_idx_).get_value() + delta;
+
+    discrete_state->get_mutable_vector(des_vel_idx_).set_value(CalcCommandFromTargetPosition(context, target_pos));
+    discrete_state->get_mutable_vector(target_pos_idx_).set_value(target_pos);
+    discrete_state->get_mutable_vector(timestamp_idx_).set_value(t);
   } else {
     discrete_state->get_mutable_vector(des_vel_idx_)
-        .set_value(CalcCommandFromTargetPosition(context));
+        .set_value(CalcCommandFromTargetPosition(context, global_target_position_));
   }
 
   return EventStatus::Succeeded();
 }
 
+
+
 VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
-    const Context<double>& context) const {
+    const Context<double>& context, const Vector2d& global_target_position) const {
   // Read in current state
   const OutputVector<double>* robotOutput =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -137,7 +169,6 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   VectorXd v = robotOutput->GetVelocities();
 
   plant_.SetPositions(context_, q);
-
   // Get center of mass position and velocity
   Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);
   MatrixXd J(3, plant_.num_velocities());
@@ -154,9 +185,10 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
   // Get desired heading angle of pelvis
   Vector2d global_com_pos_to_target_pos =
-      global_target_position_ - com_pos.segment(0, 2);
+      global_target_position - com_pos.segment(0, 2);
   double desired_yaw =
       atan2(global_com_pos_to_target_pos(1), global_com_pos_to_target_pos(0));
+
 
   // Get current yaw velocity
   double yaw_vel = v(2);
@@ -217,6 +249,8 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
   return des_vel;
 }
+
+
 
 void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,
                                         BasicVector<double>* output) const {

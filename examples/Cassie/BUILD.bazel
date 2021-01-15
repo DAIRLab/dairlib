@@ -468,7 +468,6 @@ py_binary(
     ],
     main = "cassie_virtual_remote.py",
     deps = [
-        "//bindings/pydairlib",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )

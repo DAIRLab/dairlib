@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # High level command gains (with radio)
-vel_scale_rot: 0.5
+vel_scale_rot: 1
 vel_scale_trans_sagital: 0.6
 vel_scale_trans_lateral: 0.2
 
@@ -41,7 +41,7 @@ target_pos_offset: -0.16
 k_ff_sagittal: 0
 k_fb_sagittal: 0.14 #0.17
 k_ff_lateral: 0
-k_fb_lateral: 0.16 #0.2
+k_fb_lateral: 0.2 #0.2
 
 # Finite state machine
 ss_time: 0.30
@@ -52,7 +52,7 @@ max_CoM_to_footstep_dist: 0.4
 footstep_offset: 0.04
 center_line_offset: 0.00
 mid_foot_height: 0.03
-final_foot_height: 0.007
+final_foot_height: 0.005
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory

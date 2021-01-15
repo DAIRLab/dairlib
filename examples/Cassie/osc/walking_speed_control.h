@@ -45,8 +45,9 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
  public:
   WalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
                       drake::systems::Context<double>* context,
-                      int footstep_option, double swing_phase_duration = 0,
-                      double fb_lateral = 0, double fb_sagittal = 0);
+                      double k_ff_lateral, double k_fb_lateral,
+                      double k_ff_sagittal, double k_fb_sagittal,
+                      double swing_phase_duration = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);

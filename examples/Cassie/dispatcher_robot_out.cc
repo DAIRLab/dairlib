@@ -229,7 +229,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create and connect RobotOutput publisher.
   auto robot_output_sender =
-      builder.AddSystem<systems::RobotOutputSender>(plant, true);
+      builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
@@ -270,6 +270,11 @@ int do_main(int argc, char* argv[]) {
       robot_output_sender->get_input_port_state().size(),
       robot_output_sender->get_input_port_effort().size());
 
+  auto imu_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+      state_estimator->get_robot_output_port().size(),
+      robot_output_sender->get_input_port_state().size() + robot_output_sender->get_input_port_effort().size(),
+      robot_output_sender->get_input_port_imu().size());
+
   builder.Connect(state_estimator->get_robot_output_port(),
                   state_passthrough->get_input_port());
   builder.Connect(state_passthrough->get_output_port(),
@@ -279,6 +284,11 @@ int do_main(int argc, char* argv[]) {
                   effort_passthrough->get_input_port());
   builder.Connect(effort_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_effort());
+
+  builder.Connect(state_estimator->get_robot_output_port(),
+                  imu_passthrough->get_input_port());
+  builder.Connect(imu_passthrough->get_output_port(),
+                  robot_output_sender->get_input_port_imu());
 
   builder.Connect(*robot_output_sender, *state_pub);
 

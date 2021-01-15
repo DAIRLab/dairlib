@@ -85,6 +85,7 @@ DEFINE_int32(
 struct OSCWalkingGains {
   int rows;
   int cols;
+  double mu;
   double w_accel;
   double w_soft_constraint;
   std::vector<double> CoMW;
@@ -105,6 +106,8 @@ struct OSCWalkingGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
+  double period_of_no_heading_control;
+  double max_CoM_to_footstep_dist;
   double center_line_offset;
   double footstep_offset;
   double mid_foot_height;
@@ -113,13 +116,33 @@ struct OSCWalkingGains {
   double lipm_height;
   double ss_time;
   double ds_time;
-  double fb_lateral;
-  double fb_sagittal;
+  double k_ff_lateral;
+  double k_fb_lateral;
+  double k_ff_sagittal;
+  double k_fb_sagittal;
+  double kp_pos_sagital;
+  double kd_pos_sagital;
+  double vel_max_sagital;
+  double kp_pos_lateral;
+  double kd_pos_lateral;
+  double vel_max_lateral;
+  double kp_yaw;
+  double kd_yaw;
+  double vel_max_yaw;
+  double target_pos_offset;
+  double global_target_position_x;
+  double global_target_position_y;
+  double params_of_no_turning1;
+  double params_of_no_turning2;
+  double vel_scale_rot;
+  double vel_scale_trans_sagital;
+  double vel_scale_trans_lateral;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
+    a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(CoMW));
@@ -140,10 +163,12 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(w_hip_yaw));
     a->Visit(DRAKE_NVP(hip_yaw_kp));
     a->Visit(DRAKE_NVP(hip_yaw_kd));
+    a->Visit(DRAKE_NVP(period_of_no_heading_control));
     // swing foot heuristics
-    a->Visit(DRAKE_NVP(mid_foot_height));
+    a->Visit(DRAKE_NVP(max_CoM_to_footstep_dist));
     a->Visit(DRAKE_NVP(center_line_offset));
     a->Visit(DRAKE_NVP(footstep_offset));
+    a->Visit(DRAKE_NVP(mid_foot_height));
     a->Visit(DRAKE_NVP(final_foot_height));
     a->Visit(DRAKE_NVP(final_foot_velocity_z));
     // lipm heursitics
@@ -151,8 +176,30 @@ struct OSCWalkingGains {
     // stance times
     a->Visit(DRAKE_NVP(ss_time));
     a->Visit(DRAKE_NVP(ds_time));
-    a->Visit(DRAKE_NVP(fb_lateral));
-    a->Visit(DRAKE_NVP(fb_sagittal));
+    // Speed control gains
+    a->Visit(DRAKE_NVP(k_ff_lateral));
+    a->Visit(DRAKE_NVP(k_fb_lateral));
+    a->Visit(DRAKE_NVP(k_ff_sagittal));
+    a->Visit(DRAKE_NVP(k_fb_sagittal));
+    // High level command gains (without radio)
+    a->Visit(DRAKE_NVP(kp_pos_sagital));
+    a->Visit(DRAKE_NVP(kd_pos_sagital));
+    a->Visit(DRAKE_NVP(vel_max_sagital));
+    a->Visit(DRAKE_NVP(kp_pos_lateral));
+    a->Visit(DRAKE_NVP(kd_pos_lateral));
+    a->Visit(DRAKE_NVP(vel_max_lateral));
+    a->Visit(DRAKE_NVP(kp_yaw));
+    a->Visit(DRAKE_NVP(kd_yaw));
+    a->Visit(DRAKE_NVP(vel_max_yaw));
+    a->Visit(DRAKE_NVP(target_pos_offset));
+    a->Visit(DRAKE_NVP(global_target_position_x));
+    a->Visit(DRAKE_NVP(global_target_position_y));
+    a->Visit(DRAKE_NVP(params_of_no_turning1));
+    a->Visit(DRAKE_NVP(params_of_no_turning2));
+    // High level command gains (with radio)
+    a->Visit(DRAKE_NVP(vel_scale_rot));
+    a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
+    a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
   }
 };
 
@@ -283,25 +330,28 @@ int DoMain(int argc, char* argv[]) {
                   simulator_drift->get_input_port_state());
 
   // Create human high-level control
-  Eigen::Vector2d global_target_position(0, 0);
-  Eigen::Vector2d params_of_no_turning(5, 1);
-  // Logistic function 1/(1+5*exp(x-1))
-  // The function ouputs 0.0007 when x = 0
-  //                     0.5    when x = 1
-  //                     0.9993 when x = 2
+  Eigen::Vector2d global_target_position(gains.global_target_position_x,
+                                         gains.global_target_position_y);
+  Eigen::Vector2d params_of_no_turning(gains.params_of_no_turning1,
+                                       gains.params_of_no_turning2);
+  // Logistic function 1/(1+exp(-param1*(x-param2)))
+  // The function 1/(1+exp(5*(x-1))) outputs 0.0007 when x = 0
+  //                                      0.5    when x = 1
+  //                                      0.9993 when x = 2
   cassie::osc::HighLevelCommand* high_level_command;
   if (FLAGS_use_radio) {
-    double vel_scale_rot = 0.5;
-    double vel_scale_trans = 0.4;
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-        plant_w_spr, context_w_spr.get(), vel_scale_rot, vel_scale_trans,
-        FLAGS_footstep_option);
+        plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
+        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
     builder.Connect(cassie_out_receiver->get_output_port(),
                     high_level_command->get_cassie_output_port());
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-        plant_w_spr, context_w_spr.get(), global_target_position,
-        params_of_no_turning, FLAGS_footstep_option);
+        plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
+        gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
+        gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
+        gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
+        params_of_no_turning);
   }
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
@@ -375,11 +425,10 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({right_toe_mid});
     contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
   }
-  double com_pelvis_height_difference = 0.15; // TODO(yminchen): improve this
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
-      plant_w_spr, context_w_spr.get(),
-      desired_com_height - com_pelvis_height_difference, unordered_fsm_states,
-      unordered_state_durations, contact_points_in_each_state);
+      plant_w_spr, context_w_spr.get(), desired_com_height,
+      unordered_fsm_states, unordered_state_durations,
+      contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
@@ -387,6 +436,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
+  // We can use the same desired_com_height for pelvis_traj_generator as we use
+  // for lipm_traj_generator, even though one is pelvis and the other is COM.
+  // This is because we don't use the COM desired height in
+  // pelvis_traj_generator. Only the initial COM height is used in the x and y
+  // direction.
   auto pelvis_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
@@ -402,9 +456,9 @@ int DoMain(int argc, char* argv[]) {
   bool use_predicted_com_vel = true;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
-          plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
-          use_predicted_com_vel ? left_support_duration : 0, gains.fb_lateral,
-          gains.fb_sagittal);
+          plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
+          gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
+          use_predicted_com_vel ? left_support_duration : 0);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -424,8 +478,6 @@ int DoMain(int argc, char* argv[]) {
   // to the hardware testing.
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
-  double max_CoM_to_footstep_dist = 0.4;
-
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
@@ -437,7 +489,7 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
           left_right_support_state_durations, left_right_foot, "pelvis",
           gains.mid_foot_height, gains.final_foot_height,
-          gains.final_foot_velocity_z, max_CoM_to_footstep_dist,
+          gains.final_foot_velocity_z, gains.max_CoM_to_footstep_dist,
           gains.footstep_offset, gains.center_line_offset, true, true, true,
           FLAGS_footstep_option);
   builder.Connect(fsm->get_output_port(0),
@@ -496,8 +548,7 @@ int DoMain(int argc, char* argv[]) {
   // important
   osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
   // Friction coefficient
-  double mu = 0.4;
-  osc->SetContactFriction(mu);
+  osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, left_toe.first, left_toe.second, Matrix3d::Identity(),
@@ -559,25 +610,25 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
       W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
+  osc->AddTrackingData(&pelvis_heading_traj,
+                       gains.period_of_no_heading_control);  // 0.05
   // Swing toe joint tracking
-
-  // Fix position:
-  // The desired position, -1.5, was derived heuristically. It is roughly the
-  // toe angle when Cassie stands on the ground.
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
+  // 1. Fix position:
+  // The desired position, -1.5, was derived heuristically. It is roughly the
+  // toe angle when Cassie stands on the ground.
+  /*JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe, plant_w_spr,
                                         plant_w_spr);
   swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
                                          "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
+  osc->AddConstTrackingData(&swing_toe_traj, -1.5 *VectorXd::Ones(1), 0, 0.3);*/
 
-  // Non-fixed position
+  // 2. Non-fixed position
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};

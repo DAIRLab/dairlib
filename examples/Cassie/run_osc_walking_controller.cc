@@ -323,10 +323,6 @@ int DoMain(int argc, char* argv[]) {
                                          gains.global_target_position_y);
   Eigen::Vector2d params_of_no_turning(gains.params_of_no_turning1,
                                        gains.params_of_no_turning2);
-  // Logistic function 1/(1+exp(-param1*(x-param2)))
-  // The function 1/(1+exp(5*(x-1))) outputs 0.0007 when x = 0
-  //                                      0.5    when x = 1
-  //                                      0.9993 when x = 2
   cassie::osc::HighLevelCommand* high_level_command;
   if (FLAGS_use_radio) {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(

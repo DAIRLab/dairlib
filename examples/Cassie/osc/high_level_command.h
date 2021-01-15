@@ -25,6 +25,9 @@ namespace osc {
 /// y_c and y_t.
 /// Logistic function = 1 / (1 +exp(-params_1*(x-params_2)))
 /// Function visualization: https://www.desmos.com/calculator/agxuc5gip8
+/// As an example, the function 1/(1+exp(-5*(x-1))) outputs 0.0007 when x = 0
+///                                                         0.5    when x = 1
+///                                                         0.9993 when x = 2
 ///
 /// The desired velocities are derived based on PD position control.
 ///

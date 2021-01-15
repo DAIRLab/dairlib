@@ -545,7 +545,7 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
       W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
+  osc->AddTrackingData(&pelvis_heading_traj, 0.05);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};

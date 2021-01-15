@@ -99,10 +99,10 @@ HighLevelCommand::HighLevelCommand(
     vel_max_lateral_ = 0.5;
   } else if (footstep_option == 1) {
     kp_pos_sagital_ = 1.0;
-    kd_pos_sagital_ = 1.0;
+    kd_pos_sagital_ = 0.2;
 
-    kp_pos_lateral_ = 0.25;
-    kd_pos_lateral_ = 1.0;
+    kp_pos_lateral_ = 0.5;
+    kd_pos_lateral_ = 0.1;
     vel_max_lateral_ = 0.25;
   }
 }

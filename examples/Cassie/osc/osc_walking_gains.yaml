@@ -3,19 +3,19 @@ cols: 3
 w_accel: 0.000001
 w_soft_constraint: 8000
 
-w_swing_toe: 0.1
+w_swing_toe: 100
 swing_toe_kp: 1000
 swing_toe_kd: 10
 
 w_hip_yaw: 50
-hip_yaw_kp: 30
+hip_yaw_kp: 40
 hip_yaw_kd: 0.5
 
 footstep_offset: 0.04
 center_line_offset: 0.00
-final_foot_height: 0.02
+final_foot_height: 0.0007
 final_foot_velocity_z: 0.00
-mid_foot_height: 0.05
+mid_foot_height: 0.03
 lipm_height: 0.9
 ss_time: 0.30
 ds_time: 0.05
@@ -71,4 +71,4 @@ SwingFootKp:
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,
-      0,    0,    10]
+      0,    0,     1]

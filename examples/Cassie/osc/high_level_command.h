@@ -123,8 +123,8 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   // Position control (sagital plane) parameters
   double kp_pos_sagital_;
   double kd_pos_sagital_;
-  double vel_max_sagital_ = 0.5;
-  double target_pos_offset_ = -0.16;  // Due to steady state error
+  double vel_max_sagital_ = 0.1;
+  double target_pos_offset_ = -0.1;  // Due to steady state error
 
   // Position control (frontal plane) parameters
   double kp_pos_lateral_;

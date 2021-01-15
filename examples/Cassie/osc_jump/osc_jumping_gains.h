@@ -1,6 +1,8 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "yaml-cpp/yaml.h"
 
+using Eigen::MatrixXd;
+
 struct OSCJumpingGains {
   // costs
   double w_input;
@@ -31,6 +33,16 @@ struct OSCJumpingGains {
   double t_delay_toe_ang;
   double impact_threshold;
 
+  MatrixXd W_com;
+  MatrixXd K_p_com;
+  MatrixXd K_d_com;
+  MatrixXd W_pelvis;
+  MatrixXd K_p_pelvis;
+  MatrixXd K_d_pelvis;
+  MatrixXd W_flight_foot;
+  MatrixXd K_p_flight_foot;
+  MatrixXd K_d_flight_foot;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(w_input));
@@ -55,6 +67,34 @@ struct OSCJumpingGains {
     a->Visit(DRAKE_NVP(t_delay_ft_pos));
     a->Visit(DRAKE_NVP(t_delay_toe_ang));
     a->Visit(DRAKE_NVP(impact_threshold));
+
+    W_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->CoMW.data(), 3, 3);
+    K_p_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->CoMKp.data(), 3, 3);
+    K_d_com = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->CoMKd.data(), 3, 3);
+    W_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->PelvisRotW.data(), 3, 3);
+    K_p_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->PelvisRotKp.data(), 3, 3);
+    K_d_pelvis = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->PelvisRotKd.data(), 3, 3);
+    W_flight_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->FlightFootW.data(), 3, 3);
+    K_p_flight_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->FlightFootKp.data(), 3, 3);
+    K_d_flight_foot = Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      this->FlightFootKd.data(), 3, 3);
 
   }
 };

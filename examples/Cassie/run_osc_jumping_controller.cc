@@ -97,15 +97,9 @@ int DoMain(int argc, char* argv[]) {
   addCassieMultibody(&plant_w_spr, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2.urdf",
                      false /*spring model*/, false /*loop closure*/);
-  //  drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
-  //  addCassieMultibody(&plant_wo_springs, nullptr, true,
-  //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-  //                     false, false);
   plant_w_spr.Finalize();
-  //  plant_wo_springs.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
-  //  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_spr or plant_wo_springs because the contact frames exit in both
@@ -133,33 +127,7 @@ int DoMain(int argc, char* argv[]) {
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
-  MatrixXd W_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMW.data(), 3, 3);
-  MatrixXd K_p_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMKp.data(), 3, 3);
-  MatrixXd K_d_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMKd.data(), 3, 3);
-  MatrixXd W_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisRotW.data(), 3, 3);
-  MatrixXd K_p_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisRotKp.data(), 3, 3);
-  MatrixXd K_d_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisRotKd.data(), 3, 3);
-  MatrixXd W_flight_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.FlightFootW.data(), 3, 3);
-  MatrixXd K_p_flight_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.FlightFootKp.data(), 3, 3);
-  MatrixXd K_d_flight_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.FlightFootKd.data(), 3, 3);
+
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
@@ -332,25 +300,25 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  TransTaskSpaceTrackingData com_tracking_data("com_traj", K_p_com, K_d_com,
-                                               W_com, plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData com_tracking_data("com_traj", gains.K_p_com, gains.K_d_com,
+                                               gains.W_com, plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
     com_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
   }
   osc->AddTrackingData(&com_tracking_data);
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "left_ft_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
+      "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot, gains.W_flight_foot,
       plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "right_ft_traj", K_p_flight_foot, K_d_flight_foot, W_flight_foot,
+      "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot, gains.W_flight_foot,
       plant_w_spr, plant_w_spr);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");
 
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_tracking_data", K_p_pelvis, K_d_pelvis, W_pelvis, plant_w_spr,
+      "pelvis_rot_tracking_data", gains.K_p_pelvis, gains.K_d_pelvis, gains.W_pelvis, plant_w_spr,
       plant_w_spr);
 
   for (auto mode : stance_modes) {

@@ -105,8 +105,47 @@ def main():
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
+  # plot_contact_est(full_log)
+  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+  # if True:
+  #   plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+  #                       front_contact_disp,
+  #                       world, t_x, t_slice, "left_", "_front")
+  #   plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
+  #                       front_contact_disp,
+  #                       world, t_x, t_slice, "right_", "_front")
+  #   plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+  #                       rear_contact_disp,
+  #                       world, t_x, t_slice, "left_", "_rear")
+  #   plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
+  #                       rear_contact_disp,
+  #                       world, t_x, t_slice, "right_", "_rear")
+
+  investigate_ekf(context, front_contact_disp, fsm, full_log, l_toe_frame,
+                  plant_w_spr, r_toe_frame, rear_contact_disp, t_slice, t_u,
+                  t_u_slice, t_x, world, x, x_datatypes)
+
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plt.show()
+
+
+def investigate_ekf(context, front_contact_disp, fsm, full_log, l_toe_frame,
+                    plant_w_spr, r_toe_frame, rear_contact_disp, t_slice, t_u,
+                    t_u_slice, t_x, world, x, x_datatypes):
+  # import pdb; pdb.set_trace()
   plot_contact_est(full_log)
   plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+  pos_indices = slice(5, 6)
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  # plt.legend(["l_contact_filt", "r_contact_filt", "FSM"] + x_datatypes[pos_indices])
+
+  imu = []
+  for i in range(len(full_log["CASSIE_STATE_DISPATCHER"])):
+    msg = full_log["CASSIE_STATE_DISPATCHER"][i]
+    imu.append(msg.imu_accel)
+  imu = np.array(imu)
+  plt.plot(t_x[t_slice], imu[t_slice, :])
+
   if True:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -121,9 +160,8 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
-  plt.show()
-
+  # plt.legend(["l_contact", "r_contact", "FSM"] + x_datatypes[pos_indices] + ["imu_x", "imu_y", "imu_z"] + ["left_front", "right_front", "left_rear", "right_rear"])
+  plt.legend(["l_contact_filt", "r_contact_filt", "FSM"] + x_datatypes[pos_indices] + ["imu_x", "imu_y", "imu_z"] + ["left_front", "right_front", "left_rear", "right_rear"])
 
 def plot_contact_est(log):
   t_contact = []
@@ -153,12 +191,12 @@ def plot_contact_est(log):
 
   plt.figure("Contact estimation")
   # import pdb; pdb.set_trace()
-  plt.plot(t_contact[t_slice], contact[t_slice], '-')
-  plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice], '-')
+  # plt.plot(t_contact[t_slice], contact[t_slice], '--')
+  plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice], '--')
   # plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
   # plt.plot(t_gm_contact[t_slice], gm_contact[t_slice, 0], '-')
-  plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt",
-              "l_gm_contact", "r_gm_contact"])
+  # plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt",
+  #             "l_gm_contact", "r_gm_contact"])
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
@@ -277,10 +315,10 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       context, JacobianWrtVariable.kV, toe_frame, contact_point,
       world,
       world) @ x[i, -nv:]
-  fig = plt.figure('foot pos: ' + filename)
+  # fig = plt.figure('foot pos: ' + filename)
   # state_indices = slice(4, 5)
-  state_indices = slice(2, 3)
-  # state_indices = slice(5, 6)
+  # state_indices = slice(2, 3)
+  state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]

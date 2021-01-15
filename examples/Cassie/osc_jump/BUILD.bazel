@@ -9,6 +9,7 @@ cc_library(
         "//examples/Cassie/osc_jump:flight_foot_traj_generator",
         "//examples/Cassie/osc_jump:flight_toe_angle_traj_generator",
         "//examples/Cassie/osc_jump:jumping_event_based_fsm",
+        "//examples/Cassie/osc_jump:osc_jumping_gains",
         "//examples/Cassie/osc_jump:pelvis_orientation_traj_generator",
         "//systems/controllers/osc:operational_space_control",
     ],
@@ -73,6 +74,14 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "osc_jumping_gains",
+    hdrs = ["osc_jumping_gains.h"],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

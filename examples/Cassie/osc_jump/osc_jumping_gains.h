@@ -1,0 +1,60 @@
+#include "drake/common/yaml/yaml_read_archive.h"
+#include "yaml-cpp/yaml.h"
+
+struct OSCJumpingGains {
+  // costs
+  double w_input;
+  double w_accel;
+  double w_soft_constraint;
+  double x_offset;
+  // center of mass tracking
+  std::vector<double> CoMW;
+  std::vector<double> CoMKp;
+  std::vector<double> CoMKd;
+  // pelvis orientation tracking
+  std::vector<double> PelvisRotW;
+  std::vector<double> PelvisRotKp;
+  std::vector<double> PelvisRotKd;
+  // flight foot tracking
+  std::vector<double> FlightFootW;
+  std::vector<double> FlightFootKp;
+  std::vector<double> FlightFootKd;
+  // Swing toe tracking
+  double w_swing_toe;
+  double swing_toe_kp;
+  double swing_toe_kd;
+  // Hip yaw tracking
+  double w_hip_yaw;
+  double hip_yaw_kp;
+  double hip_yaw_kd;
+  double t_delay_ft_pos;
+  double t_delay_toe_ang;
+  double impact_threshold;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(w_input));
+    a->Visit(DRAKE_NVP(w_accel));
+    a->Visit(DRAKE_NVP(w_soft_constraint));
+    a->Visit(DRAKE_NVP(x_offset));
+    a->Visit(DRAKE_NVP(CoMW));
+    a->Visit(DRAKE_NVP(CoMKp));
+    a->Visit(DRAKE_NVP(CoMKd));
+    a->Visit(DRAKE_NVP(PelvisRotW));
+    a->Visit(DRAKE_NVP(PelvisRotKp));
+    a->Visit(DRAKE_NVP(PelvisRotKd));
+    a->Visit(DRAKE_NVP(FlightFootW));
+    a->Visit(DRAKE_NVP(FlightFootKp));
+    a->Visit(DRAKE_NVP(FlightFootKd));
+    a->Visit(DRAKE_NVP(w_swing_toe));
+    a->Visit(DRAKE_NVP(swing_toe_kp));
+    a->Visit(DRAKE_NVP(swing_toe_kd));
+    a->Visit(DRAKE_NVP(w_hip_yaw));
+    a->Visit(DRAKE_NVP(hip_yaw_kp));
+    a->Visit(DRAKE_NVP(hip_yaw_kd));
+    a->Visit(DRAKE_NVP(t_delay_ft_pos));
+    a->Visit(DRAKE_NVP(t_delay_toe_ang));
+    a->Visit(DRAKE_NVP(impact_threshold));
+
+  }
+};

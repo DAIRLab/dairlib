@@ -5,6 +5,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -75,129 +76,14 @@ DEFINE_int32(
     "0 uses the capture point\n"
     "1 uses the neutral point derived from LIPM given the stance duration");
 
-struct OSCWalkingGains {
-  int rows;
-  int cols;
-  double mu;
-  double w_accel;
-  double w_soft_constraint;
-  std::vector<double> CoMW;
-  std::vector<double> CoMKp;
-  std::vector<double> CoMKd;
-  std::vector<double> PelvisHeadingW;
-  std::vector<double> PelvisHeadingKp;
-  std::vector<double> PelvisHeadingKd;
-  std::vector<double> PelvisBalanceW;
-  std::vector<double> PelvisBalanceKp;
-  std::vector<double> PelvisBalanceKd;
-  std::vector<double> SwingFootW;
-  std::vector<double> SwingFootKp;
-  std::vector<double> SwingFootKd;
-  double w_swing_toe;
-  double swing_toe_kp;
-  double swing_toe_kd;
-  double w_hip_yaw;
-  double hip_yaw_kp;
-  double hip_yaw_kd;
-  double period_of_no_heading_control;
-  double max_CoM_to_footstep_dist;
-  double center_line_offset;
-  double footstep_offset;
-  double mid_foot_height;
-  double final_foot_height;
-  double final_foot_velocity_z;
-  double lipm_height;
-  double ss_time;
-  double ds_time;
-  double k_ff_lateral;
-  double k_fb_lateral;
-  double k_ff_sagittal;
-  double k_fb_sagittal;
-  double kp_pos_sagital;
-  double kd_pos_sagital;
-  double vel_max_sagital;
-  double kp_pos_lateral;
-  double kd_pos_lateral;
-  double vel_max_lateral;
-  double kp_yaw;
-  double kd_yaw;
-  double vel_max_yaw;
-  double target_pos_offset;
-  double global_target_position_x;
-  double global_target_position_y;
-  double params_of_no_turning1;
-  double params_of_no_turning2;
-  double vel_scale_rot;
-  double vel_scale_trans_sagital;
-  double vel_scale_trans_lateral;
-
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(rows));
-    a->Visit(DRAKE_NVP(cols));
-    a->Visit(DRAKE_NVP(mu));
-    a->Visit(DRAKE_NVP(w_accel));
-    a->Visit(DRAKE_NVP(w_soft_constraint));
-    a->Visit(DRAKE_NVP(CoMW));
-    a->Visit(DRAKE_NVP(CoMKp));
-    a->Visit(DRAKE_NVP(CoMKd));
-    a->Visit(DRAKE_NVP(PelvisHeadingW));
-    a->Visit(DRAKE_NVP(PelvisHeadingKp));
-    a->Visit(DRAKE_NVP(PelvisHeadingKd));
-    a->Visit(DRAKE_NVP(PelvisBalanceW));
-    a->Visit(DRAKE_NVP(PelvisBalanceKp));
-    a->Visit(DRAKE_NVP(PelvisBalanceKd));
-    a->Visit(DRAKE_NVP(SwingFootW));
-    a->Visit(DRAKE_NVP(SwingFootKp));
-    a->Visit(DRAKE_NVP(SwingFootKd));
-    a->Visit(DRAKE_NVP(w_swing_toe));
-    a->Visit(DRAKE_NVP(swing_toe_kp));
-    a->Visit(DRAKE_NVP(swing_toe_kd));
-    a->Visit(DRAKE_NVP(w_hip_yaw));
-    a->Visit(DRAKE_NVP(hip_yaw_kp));
-    a->Visit(DRAKE_NVP(hip_yaw_kd));
-    a->Visit(DRAKE_NVP(period_of_no_heading_control));
-    // swing foot heuristics
-    a->Visit(DRAKE_NVP(max_CoM_to_footstep_dist));
-    a->Visit(DRAKE_NVP(center_line_offset));
-    a->Visit(DRAKE_NVP(footstep_offset));
-    a->Visit(DRAKE_NVP(mid_foot_height));
-    a->Visit(DRAKE_NVP(final_foot_height));
-    a->Visit(DRAKE_NVP(final_foot_velocity_z));
-    // lipm heursitics
-    a->Visit(DRAKE_NVP(lipm_height));
-    // stance times
-    a->Visit(DRAKE_NVP(ss_time));
-    a->Visit(DRAKE_NVP(ds_time));
-    // Speed control gains
-    a->Visit(DRAKE_NVP(k_ff_lateral));
-    a->Visit(DRAKE_NVP(k_fb_lateral));
-    a->Visit(DRAKE_NVP(k_ff_sagittal));
-    a->Visit(DRAKE_NVP(k_fb_sagittal));
-    // High level command gains (without radio)
-    a->Visit(DRAKE_NVP(kp_pos_sagital));
-    a->Visit(DRAKE_NVP(kd_pos_sagital));
-    a->Visit(DRAKE_NVP(vel_max_sagital));
-    a->Visit(DRAKE_NVP(kp_pos_lateral));
-    a->Visit(DRAKE_NVP(kd_pos_lateral));
-    a->Visit(DRAKE_NVP(vel_max_lateral));
-    a->Visit(DRAKE_NVP(kp_yaw));
-    a->Visit(DRAKE_NVP(kd_yaw));
-    a->Visit(DRAKE_NVP(vel_max_yaw));
-    a->Visit(DRAKE_NVP(target_pos_offset));
-    a->Visit(DRAKE_NVP(global_target_position_x));
-    a->Visit(DRAKE_NVP(global_target_position_y));
-    a->Visit(DRAKE_NVP(params_of_no_turning1));
-    a->Visit(DRAKE_NVP(params_of_no_turning2));
-    // High level command gains (with radio)
-    a->Visit(DRAKE_NVP(vel_scale_rot));
-    a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
-    a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
-  }
-};
-
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  // Read-in the parameters
+  OSCWalkingGains gains;
+  const YAML::Node& root =
+      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -212,62 +98,6 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-
-  OSCWalkingGains gains;
-  const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
-  drake::yaml::YamlReadArchive(root).Accept(&gains);
-
-  MatrixXd W_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMW.data(), gains.rows, gains.cols);
-  MatrixXd K_p_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMKp.data(), gains.rows, gains.cols);
-  MatrixXd K_d_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMKd.data(), gains.rows, gains.cols);
-  MatrixXd W_pelvis_heading = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisHeadingW.data(), gains.rows, gains.cols);
-  MatrixXd K_p_pelvis_heading = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisHeadingKp.data(), gains.rows, gains.cols);
-  MatrixXd K_d_pelvis_heading = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisHeadingKd.data(), gains.rows, gains.cols);
-  MatrixXd W_pelvis_balance = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisBalanceW.data(), gains.rows, gains.cols);
-  MatrixXd K_p_pelvis_balance = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisBalanceKp.data(), gains.rows, gains.cols);
-  MatrixXd K_d_pelvis_balance = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisBalanceKd.data(), gains.rows, gains.cols);
-  MatrixXd W_swing_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.SwingFootW.data(), gains.rows, gains.cols);
-  MatrixXd K_p_swing_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.SwingFootKp.data(), gains.rows, gains.cols);
-  MatrixXd K_d_swing_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.SwingFootKd.data(), gains.rows, gains.cols);
-  std::cout << "w accel: \n" << gains.w_accel << std::endl;
-  std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
-  std::cout << "COM W: \n" << W_com << std::endl;
-  std::cout << "COM Kp: \n" << K_p_com << std::endl;
-  std::cout << "COM Kd: \n" << K_d_com << std::endl;
-  std::cout << "Pelvis Heading W: \n" << W_pelvis_heading << std::endl;
-  std::cout << "Pelvis Heading Kp: \n" << K_p_pelvis_heading << std::endl;
-  std::cout << "Pelvis Heading Kd: \n" << K_d_pelvis_heading << std::endl;
-  std::cout << "Pelvis Balance W: \n" << W_pelvis_balance << std::endl;
-  std::cout << "Pelvis Balance Kp: \n" << K_p_pelvis_balance << std::endl;
-  std::cout << "Pelvis Balance Kd: \n" << K_d_pelvis_balance << std::endl;
-  std::cout << "Swing Foot W: \n" << W_swing_foot << std::endl;
-  std::cout << "Swing Foot Kp: \n" << K_p_swing_foot << std::endl;
-  std::cout << "Swing Foot Kd: \n" << K_d_swing_foot << std::endl;
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_spr or plant_wospr because the contact frames exit in both
@@ -536,28 +366,28 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Swing foot tracking
-  TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_swing_foot,
-                                             K_d_swing_foot, W_swing_foot,
-                                             plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData swing_foot_traj(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
-  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-                                      plant_w_spr, plant_w_spr);
+  ComTrackingData center_of_mass_traj("lipm_traj", gains.K_p_com, gains.K_d_com,
+                                      gains.W_com, plant_w_spr, plant_w_spr);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
-      "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
-      W_pelvis_balance, plant_w_spr, plant_w_spr);
+      "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
+      gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_balance_traj, pelvis_desired_quat);
   // Pelvis rotation tracking (yaw)
   RotTaskSpaceTrackingData pelvis_heading_traj(
-      "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
-      W_pelvis_heading, plant_w_spr, plant_w_spr);
+      "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
+      gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj,
                        gains.period_of_no_heading_control);  // 0.05

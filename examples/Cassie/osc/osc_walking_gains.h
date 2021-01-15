@@ -53,8 +53,8 @@ struct OSCWalkingGains {
   double target_pos_offset;
   double global_target_position_x;
   double global_target_position_y;
-  double params_of_no_turning1;
-  double params_of_no_turning2;
+  double yaw_deadband_blur;
+  double yaw_deadband_radius;
   double vel_scale_rot;
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
@@ -128,8 +128,8 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(target_pos_offset));
     a->Visit(DRAKE_NVP(global_target_position_x));
     a->Visit(DRAKE_NVP(global_target_position_y));
-    a->Visit(DRAKE_NVP(params_of_no_turning1));
-    a->Visit(DRAKE_NVP(params_of_no_turning2));
+    a->Visit(DRAKE_NVP(yaw_deadband_blur));
+    a->Visit(DRAKE_NVP(yaw_deadband_radius));
     // High level command gains (with radio)
     a->Visit(DRAKE_NVP(vel_scale_rot));
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));

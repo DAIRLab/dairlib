@@ -151,8 +151,8 @@ int DoMain(int argc, char* argv[]) {
   // Create human high-level control
   Eigen::Vector2d global_target_position(gains.global_target_position_x,
                                          gains.global_target_position_y);
-  Eigen::Vector2d params_of_no_turning(gains.params_of_no_turning1,
-                                       gains.params_of_no_turning2);
+  Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
+                                       gains.yaw_deadband_radius);
   cassie::osc::HighLevelCommand* high_level_command;
   if (FLAGS_use_radio) {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(

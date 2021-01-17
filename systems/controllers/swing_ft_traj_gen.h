@@ -46,6 +46,8 @@ namespace systems {
 
 class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
+  // TODO(yminchen): clean up the parameters. Maybe we should extract the
+  //  collision avoidance into a new leafsystem?
   SwingFootTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
@@ -53,7 +55,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       std::vector<double> left_right_support_durations,
       std::vector<std::pair<const Eigen::Vector3d,
                             const drake::multibody::Frame<double>&>>
-          left_right_foot,
+      left_right_foot,
       std::string floating_base_body_name, double mid_foot_height,
       double desired_final_foot_height,
       double desired_final_vertical_foot_velocity,
@@ -69,7 +71,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
-      const {
+  const {
     return this->get_input_port(fsm_switch_time_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_com() const {
@@ -137,6 +139,13 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   bool is_feet_collision_avoid_;
   bool is_using_predicted_com_;
   int footstep_option_;
+
+  // COM vel filtering
+  // TODO(yminchen): extract this filter out of WalkingSpeedControl and
+  //  SwingFootTrajGen
+  double cutoff_freq_ = 10; // in Hz.
+  mutable Eigen::Vector3d filtered_com_vel_ = Eigen::Vector3d::Zero();
+  mutable double last_timestamp_ = 0;
 };
 
 }  // namespace systems

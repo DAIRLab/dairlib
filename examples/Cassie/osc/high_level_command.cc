@@ -8,6 +8,7 @@
 #include "multibody/multibody_utils.h"
 
 #include "drake/math/quaternion.h"
+#include "drake/math/saturate.h"
 
 using std::cout;
 using std::endl;
@@ -40,37 +41,47 @@ namespace osc {
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context, double vel_scale_rot,
-    double vel_scale_trans, int footstep_option)
-    : HighLevelCommand(plant, context, footstep_option) {
+    double vel_scale_sagittal, double vel_scale_lateral)
+    : HighLevelCommand(plant, context) {
   cassie_out_port_ =
       this->DeclareAbstractInputPort("lcmt_cassie_output",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   use_radio_command_ = true;
   vel_scale_rot_ = vel_scale_rot;
-  vel_scale_trans_ = vel_scale_trans;
+  vel_scale_sagittal_ = vel_scale_sagittal;
+  vel_scale_lateral_ = vel_scale_lateral;
 }
 
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
-    const Vector2d& global_target_position,
-    const Vector2d& params_of_no_turning, int footstep_option)
-    : HighLevelCommand(plant, context, footstep_option) {
+    const Eigen::Vector2d& global_target_position,
+    const Eigen::Vector2d& params_of_no_turning, double kp_yaw, double kd_yaw,
+    double vel_max_yaw, double kp_pos_sagittal, double kd_pos_sagittal,
+    double kp_pos_lateral, double kd_pos_lateral, double target_pos_offset)
+    : HighLevelCommand(plant, context) {
   use_radio_command_ = false;
+  kp_yaw_ = kp_yaw;
+  kd_yaw_ = kd_yaw;
+  vel_max_yaw_ = vel_max_yaw;
+  kp_pos_sagittal_ = kp_pos_sagittal;
+  kd_pos_sagittal_ = kd_pos_sagittal;
+  target_pos_offset_ = target_pos_offset;
+  kp_pos_lateral_ = kp_pos_lateral;
+  kd_pos_lateral_ = kd_pos_lateral;
+
   global_target_position_ = global_target_position;
   params_of_no_turning_ = params_of_no_turning;
 }
 
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context, int footstep_option)
+    drake::systems::Context<double>* context)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
-  DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
-
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
@@ -89,22 +100,6 @@ HighLevelCommand::HighLevelCommand(
 
   // Discrete state which stores the desired yaw velocity
   des_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(3));
-  // Control gains
-  if (footstep_option == 0) {
-    kp_pos_sagital_ = 1.0;
-    kd_pos_sagital_ = 0.2;
-
-    kp_pos_lateral_ = 0.5;
-    kd_pos_lateral_ = 0.1;
-    vel_max_lateral_ = 0.5;
-  } else if (footstep_option == 1) {
-    kp_pos_sagital_ = 1.0;
-    kd_pos_sagital_ = 0.2;
-
-    kp_pos_lateral_ = 0.5;
-    kd_pos_lateral_ = 0.1;
-    vel_max_lateral_ = 0.25;
-  }
 }
 
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
@@ -112,15 +107,15 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     DiscreteValues<double>* discrete_state) const {
   if (use_radio_command_) {
     const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
-        context, cassie_out_port_);  // TODO(yangwill) make sure there is a
-    // message available
+        context, cassie_out_port_);
+    // TODO(yangwill) make sure there is a message available
     // des_vel indices: 0: yaw_vel (right joystick left/right)
-    //                  1: saggital_vel (left joystick up/down)
+    //                  1: sagittal_vel (left joystick up/down)
     //                  2: lateral_vel (left joystick left/right)
     Vector3d des_vel;
-    des_vel << -1 * vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
-        vel_scale_trans_ * cassie_out->pelvis.radio.channel[0],
-        -1 * vel_scale_trans_ * cassie_out->pelvis.radio.channel[1];
+    des_vel << vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
+        vel_scale_sagittal_ * cassie_out->pelvis.radio.channel[0],
+        vel_scale_lateral_ * cassie_out->pelvis.radio.channel[1];
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
   } else {
     discrete_state->get_mutable_vector(des_vel_idx_)
@@ -201,18 +196,18 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
     // Sagital plane position PD control
     double com_vel_sagital = local_com_vel(0);
-    des_sagital_vel = kp_pos_sagital_ * (local_com_pos_to_target_pos(0) +
-                                         target_pos_offset_) +
-                      kd_pos_sagital_ * (-com_vel_sagital);
-    des_sagital_vel = std::min(vel_max_sagital_,
-                               std::max(-vel_max_sagital_, des_sagital_vel));
+    des_sagital_vel = kp_pos_sagittal_ * (local_com_pos_to_target_pos(0) +
+                                          target_pos_offset_) +
+                      -kd_pos_sagittal_ * (com_vel_sagital);
+    des_sagital_vel = drake::math::saturate(des_sagital_vel, -vel_max_sagital_,
+                                            vel_max_sagital_);
 
     // Frontal plane position PD control.  TODO(yminchen): tune this
     double com_vel_lateral = local_com_vel(1);
     des_lateral_vel = kp_pos_lateral_ * (local_com_pos_to_target_pos(1)) +
-                      kd_pos_lateral_ * (-com_vel_lateral);
-    des_lateral_vel = std::min(vel_max_lateral_,
-                               std::max(-vel_max_lateral_, des_lateral_vel));
+                      -kd_pos_lateral_ * (com_vel_lateral);
+    des_sagital_vel = drake::math::saturate(des_lateral_vel, -vel_max_lateral_,
+                                            vel_max_lateral_);
   }
   Vector3d des_vel;
   des_vel << desired_filtered_yaw_vel, des_sagital_vel, des_lateral_vel;

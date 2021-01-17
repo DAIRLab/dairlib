@@ -35,7 +35,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
     std::vector<int> left_right_support_fsm_states,
     std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
-        left_right_foot,
+    left_right_foot,
     std::string floating_base_body_name, double mid_foot_height,
     double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
@@ -81,8 +81,8 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
   if (is_using_predicted_com) {
     com_port_ =
         this->DeclareAbstractInputPort(
-                "com_traj",
-                drake::Value<drake::trajectories::Trajectory<double>>(pp))
+            "com_traj",
+            drake::Value<drake::trajectories::Trajectory<double>>(pp))
             .get_index();
   }
   if (add_speed_regularization) {
@@ -127,7 +127,7 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
   VectorXd fsm_state = fsm_output->get_value();
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-                            .get_mutable_value();
+      .get_mutable_value();
 
   // Find fsm_state in left_right_support_fsm_states
   auto it = find(left_right_support_fsm_states_.begin(),
@@ -200,6 +200,16 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     com_dot = J_com * v;
   }
 
+  // Filter the com vel
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    double dt = robot_output->get_timestamp() - last_timestamp_;
+    last_timestamp_ = robot_output->get_timestamp();
+    double alpha =
+        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+    filtered_com_vel_ = alpha * com_dot + (1 - alpha) * filtered_com_vel_;
+  }
+  com_dot = filtered_com_vel_;
+
   // Compute footstep location
   double omega = sqrt(9.81 / com(2));
   if (footstep_option_ == 0) {
@@ -209,9 +219,9 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     double T = duration_map_.at(int(fsm_state(0)));
     Vector2d com_wrt_foot =
         com_dot.head(2) *
-        ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
-         (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
-        omega;
+            ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
+                (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
+            omega;
     *x_fs = com.head(2) - com_wrt_foot;
   }
 
@@ -299,14 +309,11 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::CreateSplineForSwingFoot(
   Y_dot[0](2, 0) = 0;
   Y_dot[1](2, 0) = 0;
   Y_dot[2](2, 0) = desired_final_vertical_foot_velocity_;
-//  PiecewisePolynomial<double> swing_foot_spline =
-//      PiecewisePolynomial<double>::CubicHermite(T_waypoint, Y, Y_dot);
-
   // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
-  // it smooth
+  // the traj smooth at the mid point
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives
-      (T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));
+          (T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));
 
   return swing_foot_spline;
 }

@@ -49,9 +49,8 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   ///
   /// Designed to be used with hardware
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::systems::Context<double>* context,
-                   double vel_scale_rot, double vel_scale_trans,
-                   int footstep_option);
+                   drake::systems::Context<double>*, double vel_scale_rot,
+                   double vel_scale_sagittal, double vel_scale_lateral);
   /// Constructor that computes the desired yaw and translational velocities
   /// according to a global target position
   ///
@@ -59,9 +58,10 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    const Eigen::Vector2d& global_target_position,
-                   const Eigen::Vector2d& params_of_no_turning,
-                   int footstep_option);
-
+                   const Eigen::Vector2d& params_of_no_turning, double kp_yaw,
+                   double kd_yaw, double vel_max_yaw, double kp_pos_sagittal,
+                   double kd_pos_sagittal, double kp_pos_lateral,
+                   double kd_pos_lateral, double target_pos_offset);
   // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -70,6 +70,9 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
     return this->get_output_port(yaw_port_);
   }
   const drake::systems::InputPort<double>& get_cassie_output_port() const {
+    if (cassie_out_port_ == -1) {
+      std::cerr << "Radio option not enabled" << std::endl;
+    }
     return this->get_input_port(cassie_out_port_);
   }
   const drake::systems::OutputPort<double>& get_xy_output_port() const {
@@ -78,8 +81,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
 
  private:
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::systems::Context<double>* context,
-                   int footstep_option);
+                   drake::systems::Context<double>* context);
 
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -103,8 +105,9 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
 
-  double vel_scale_rot_ = 0.5;
-  double vel_scale_trans_ = 1.0;
+  double vel_scale_rot_;
+  double vel_scale_sagittal_;
+  double vel_scale_lateral_;
 
   // Port index
   int state_port_;
@@ -116,20 +119,20 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex des_vel_idx_;
 
   // Rotation control (yaw) parameters
-  double kp_yaw_ = 1;
-  double kd_yaw_ = 0.2;
-  double vel_max_yaw_ = 0.5;
+  double kp_yaw_;
+  double kd_yaw_;
+  double vel_max_yaw_;
 
   // Position control (sagital plane) parameters
-  double kp_pos_sagital_;
-  double kd_pos_sagital_;
-  double vel_max_sagital_ = 0.1;
-  double target_pos_offset_ = -0.1;  // Due to steady state error
+  double kp_pos_sagittal_;
+  double kd_pos_sagittal_;
+  double vel_max_sagital_ = 0.5;
+  double target_pos_offset_;  // Due to steady state error
 
   // Position control (frontal plane) parameters
   double kp_pos_lateral_;
   double kd_pos_lateral_;
-  double vel_max_lateral_;
+  double vel_max_lateral_ = 0.1;
 };
 
 }  // namespace osc

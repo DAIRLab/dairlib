@@ -34,15 +34,22 @@ LIPMTrajGenerator::LIPMTrajGenerator(
     const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
-        contact_points_in_each_state)
+        contact_points_in_each_state,
+    bool use_CoM, bool constant_target_height)
     : plant_(plant),
       context_(context),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
-      world_(plant_.world_frame()) {
-  this->set_name("lipm_traj");
+      world_(plant_.world_frame()),
+      constant_target_height_(constant_target_height),
+      use_com_(use_CoM) {
+  if (use_CoM) {
+    this->set_name("lipm_traj");
+  } else {
+    this->set_name("pelvis_traj");
+  }
 
   // Checking vector dimension
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
@@ -100,7 +107,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
   auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
   // when entering a new stance phase
-  if (new_prev_event_time != old_prev_fsm_event_time(0)) {
+  if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
     old_prev_fsm_event_time << new_prev_event_time;
 
     // Read in current state
@@ -132,20 +139,21 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
     // Get center of mass position and velocity
-    //    Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
     Vector3d CoM;
-    plant_.CalcPointsPositions(*context_,
-                               plant_.GetBodyByName("pelvis").body_frame(),
-                               VectorXd::Zero(3), world_, &CoM);
     MatrixXd J(3, plant_.num_velocities());
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV,
-        plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3), world_,
-        world_, &J);
-    //    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-    //        *context_, JacobianWrtVariable::kV, world_, world_, &J);
-    //    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-    //        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    if (use_com_) {
+      CoM = plant_.CalcCenterOfMassPosition(*context_);
+      plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+          *context_, JacobianWrtVariable::kV, world_, world_, &J);
+    } else {
+      plant_.CalcPointsPositions(*context_,
+                                 plant_.GetBodyByName("pelvis").body_frame(),
+                                 VectorXd::Zero(3), world_, &CoM);
+      plant_.CalcJacobianTranslationalVelocity(
+          *context_, JacobianWrtVariable::kV,
+          plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3),
+          world_, world_, &J);
+    }
     Vector3d dCoM = J * v;
 
     discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_)
@@ -166,13 +174,11 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 
 ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
     const VectorXd& CoM, const VectorXd& dCoM, const VectorXd& stance_foot_pos,
-    double start_time, double end_time_of_this_fsm_state,
-    bool fix_init_height) const {
+    double start_time, double end_time_of_this_fsm_state) const {
   // Get CoM_wrt_foot for LIPM
   const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
   const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
-  //  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  const double CoM_wrt_foot_z = CoM(2);
+  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
   const double dCoM_wrt_foot_x = dCoM(0);
   const double dCoM_wrt_foot_y = dCoM(1);
   // const double dCoM_wrt_foot_z = dCoM(2);
@@ -190,16 +196,14 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   Y[1](1, 0) = stance_foot_pos(1);
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
-  //  Y[0](2, 0) = CoM(2);
-  // TODO: Revert back to the LIPM traj with stance foot after confident that
-  // the state estimator is working correctly
-
-  //  Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
-  Y[0](2, 0) = desired_com_height_;
-  //  Y[0](2, 0) =
-  //      fix_init_height ? desired_com_height_ + stance_foot_pos(2) : CoM(2);
-  //  Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
-  Y[1](2, 0) = desired_com_height_;
+  double max_height_diff_per_step = 0.05;
+  double final_height = desired_com_height_ + stance_foot_pos(2);
+  //  double final_height = (desired_com_height_ + stance_foot_pos(2) - CoM(2) >
+  //      max_height_diff_per_step)
+  //                        ? CoM(2) + max_height_diff_per_step
+  //                        : desired_com_height_ + stance_foot_pos(2);
+  Y[0](2, 0) = constant_target_height_ ? final_height : CoM(2);
+  Y[1](2, 0) = final_height;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
@@ -274,10 +278,21 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
-  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d CoM;
   MatrixXd J(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      *context_, JacobianWrtVariable::kV, world_, world_, &J);
+  if (use_com_) {
+    CoM = plant_.CalcCenterOfMassPosition(*context_);
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J);
+  } else {
+    plant_.CalcPointsPositions(*context_,
+                               plant_.GetBodyByName("pelvis").body_frame(),
+                               VectorXd::Zero(3), world_, &CoM);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV,
+        plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3), world_,
+        world_, &J);
+  }
   Vector3d dCoM = J * v;
 
   // Stance foot position (Forward Kinematics)
@@ -295,7 +310,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, current_time,
-                                   end_time_of_this_fsm_state, true);
+                                   end_time_of_this_fsm_state);
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(
     const Context<double>& context,
@@ -339,7 +354,7 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj = ConstructLipmTraj(
       CoM_at_touchdown, dCoM_at_touchdown, stance_foot_pos_at_touchdown,
-      prev_touchdown_time, end_time_of_this_fsm_state, false);
+      prev_touchdown_time, end_time_of_this_fsm_state);
 }
 
 }  // namespace systems

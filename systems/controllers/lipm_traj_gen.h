@@ -39,7 +39,8 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-          contact_points_in_each_state);
+      contact_points_in_each_state,
+      bool use_com = true, bool constant_target_height = true);
 
   // Input port getters
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -49,12 +50,12 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
-      const {
+  const {
     return this->get_input_port(fsm_switch_time_port_);
   }
   // Output port getters
   const drake::systems::OutputPort<double>& get_output_port_lipm_from_current()
-      const {
+  const {
     return this->get_output_port(output_port_lipm_from_current_);
   }
   const drake::systems::OutputPort<double>&
@@ -70,8 +71,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
   ConstructLipmTraj(const Eigen::VectorXd& CoM, const Eigen::VectorXd& dCoM,
                     const Eigen::VectorXd& stance_foot_pos, double start_time,
-                    double end_time_of_this_fsm_state,
-                    bool fix_init_height = true) const;
+                    double end_time_of_this_fsm_state) const;
 
   void CalcTrajFromCurrent(const drake::systems::Context<double>& context,
                            drake::trajectories::Trajectory<double>* traj) const;
@@ -106,6 +106,9 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
       const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
       contact_points_in_each_state_;
   const drake::multibody::BodyFrame<double>& world_;
+
+  bool constant_target_height_;
+  bool use_com_;
 };
 
 }  // namespace systems

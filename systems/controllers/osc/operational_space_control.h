@@ -251,6 +251,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  drake::solvers::QuadraticCost* blend_constraint_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;
@@ -272,6 +273,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
+  double w_blend_constraint_ = 1;
+  double blend_time_constant_ = 0.025;
 
   // Map finite state machine state to its active contact indices
   std::map<int, std::set<int>> contact_indices_map_ = {};

@@ -55,6 +55,9 @@ mid_foot_height: 0.03
 final_foot_height: 0.005
 final_foot_velocity_z: 0.0
 
+# Invariant Impacts
+impact_threshold: 0.000
+
 # LIPM trajectory
 lipm_height: 0.9
 

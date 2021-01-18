@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 #include "systems/framework/output_vector.h"
 
 #include "drake/multibody/parsing/parser.h"
@@ -38,16 +39,28 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
   TimeBasedFiniteStateMachine(
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::vector<int>& states,
-      const std::vector<double>& state_durations, double t0 = 0);
+      const std::vector<double>& state_durations, double t0 = 0,
+      double near_impact_threshold = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
+    return this->get_output_port(fsm_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_impact() const {
+    return this->get_output_port(near_impact_port_);
   }
 
  private:
   void CalcFiniteState(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* fsm_state) const;
 
+  void CalcNearImpact(const drake::systems::Context<double>& context,
+                       drake::systems::BasicVector<double>* near_impact) const;
+
+  int fsm_port_;
+  int near_impact_port_;
   int state_port_;
 
   std::vector<int> states_;
@@ -57,6 +70,7 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
 
   std::vector<double> accu_state_durations_;
   double period_;
+  double near_impact_threshold_;
 };
 
 }  // namespace systems

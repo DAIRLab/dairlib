@@ -31,9 +31,9 @@ using drake::systems::Context;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
-using drake::solvers::Solve;
 using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
+using drake::solvers::Solve;
 
 namespace dairlib::systems::controllers {
 
@@ -77,6 +77,8 @@ OperationalSpaceControl::OperationalSpaceControl(
   if (used_with_finite_state_machine) {
     fsm_port_ =
         this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+    near_impact_port_ =
+        this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
 
     // Discrete update to record the last state event time
     DeclarePerStepDiscreteUpdateEvent(
@@ -426,7 +428,8 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 VectorXd OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
-    double time_since_last_state_switch) const {
+    double time_since_last_state_switch, double near_impact,
+    int next_fsm_state) const {
   // Get active contact indices
   std::set<int> active_contact_set = {};
   if (single_contact_mode_) {
@@ -578,17 +581,44 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
+  // Invariant Impacts
+  // Only update when near an impact
+  if (near_impact) {
+    std::set<int> next_contact_set = {};
+    auto map_iterator = contact_indices_map_.find(next_fsm_state);
+    next_contact_set = map_iterator->second;
+    int active_contact_dim = 0;
+    for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+      if (next_contact_set.find(i) != next_contact_set.end()) {
+        active_contact_dim +=
+            all_contacts_[i]->EvalFullJacobian(*context_wo_spr_).rows();
+      }
+    }
+    MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
+    int row_start = 0;
+    for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+      if (next_contact_set.find(i) != next_contact_set.end()) {
+        J_c_next.block(row_start, 0, kSpaceDim, n_v_) =
+            all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
+        row_start += kSpaceDim;
+      }
+    }
+    M_Jt_ = M.inverse() * J_c_next.transpose();
+  }
+
   // Update costs
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
+    MatrixXd ii_proj = MatrixXd::Zero(n_v_, tracking_data->GetYDim());
 
     // Check whether or not it is a constant trajectory, and update TrackingData
     if (fixed_position_vec_.at(i).size() != 0) {
       // Create constant trajectory and update
       tracking_data->Update(
           x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
-          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
+          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state,
+          ii_proj);
     } else {
       // Read in traj from input port
       const string& traj_name = tracking_data->GetName();
@@ -600,7 +630,17 @@ VectorXd OperationalSpaceControl::SolveQp(
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, traj, t, fsm_state);
+                            *context_wo_spr_, traj, t, fsm_state, ii_proj);
+
+      if (near_impact && tracking_data->IsActive()) {
+        // Need to call Update before this to get the updated jacobian
+        MatrixXd A = tracking_data->GetJ() * M_Jt_;
+        MatrixXd A_pinv = A.completeOrthogonalDecomposition().pseudoInverse();
+        ii_proj = near_impact * M_Jt_ * A_pinv;
+        // Update again using correction
+        tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                              *context_wo_spr_, traj, t, fsm_state, ii_proj);
+      }
     }
     // TODO(yangwill): Should only really be updating the trajectory if it's
     //  active
@@ -815,6 +855,8 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Read in finite state machine
     const BasicVector<double>* fsm_output =
         (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+    const BasicVector<double>* near_impact =
+        (BasicVector<double>*)this->EvalVectorInput(context, near_impact_port_);
     VectorXd fsm_state = fsm_output->get_value();
 
     // Get discrete states
@@ -822,9 +864,11 @@ void OperationalSpaceControl::CalcOptimalInput(
         context.get_discrete_state(prev_event_time_idx_).get_value();
 
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, fsm_state(0),
-                    current_time - prev_event_time(0));
+                    current_time - prev_event_time(0),
+                    near_impact->get_value()(0), near_impact->get_value()(1));
   } else {
-    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time);
+    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time,
+                    false, -1);
   }
 
   // Assign the control input

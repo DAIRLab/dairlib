@@ -204,14 +204,11 @@ int DoMain(int argc, char* argv[]) {
                   double_support_state};
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
-    //    fsm_states = {double_support_state, left_stance_state,
-    //    double_support_state, right_stance_state}; state_durations =
-    //    {double_support_duration, left_support_duration,
-    //    double_support_duration,
-    //                       right_support_duration};
   }
+//  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
+//      plant_w_spr, fsm_states, state_durations, 0.0, gains.impact_threshold);
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      plant_w_spr, fsm_states, state_durations, 0.0, gains.impact_threshold);
+      plant_w_spr, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 
@@ -263,6 +260,16 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
+  auto pelvis_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
+      plant_w_spr, context_w_spr.get(), desired_com_height,
+      unordered_fsm_states, unordered_state_durations,
+      contact_points_in_each_state, false);
+  builder.Connect(fsm->get_output_port_fsm(),
+                  pelvis_traj_generator->get_input_port_fsm());
+  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+                  pelvis_traj_generator->get_input_port_fsm_switch_time());
+  builder.Connect(simulator_drift->get_output_port(0),
+                  pelvis_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
   bool use_predicted_com_vel = true;
@@ -289,8 +296,6 @@ int DoMain(int argc, char* argv[]) {
   // to the hardware testing.
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
-  double max_CoM_to_footstep_dist = 0.4;
-
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
@@ -302,7 +307,7 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
           left_right_support_state_durations, left_right_foot, "pelvis",
           gains.mid_foot_height, gains.final_foot_height,
-          gains.final_foot_velocity_z, max_CoM_to_footstep_dist,
+          gains.final_foot_velocity_z, gains.max_CoM_to_footstep_dist,
           gains.footstep_offset, gains.center_line_offset, true, true, true,
           FLAGS_footstep_option);
   builder.Connect(fsm->get_output_port_fsm(),
@@ -473,7 +478,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
-  builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
+  builder.Connect(pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
                   osc->get_tracking_data_input_port("lipm_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));

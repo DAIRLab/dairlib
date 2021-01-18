@@ -132,7 +132,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   // Position control (frontal plane) parameters
   double kp_pos_lateral_;
   double kd_pos_lateral_;
-  double vel_max_lateral_ = 0.1;
+  double vel_max_lateral_ = 0.5;
 };
 
 }  // namespace osc

@@ -34,7 +34,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
     const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
-        contact_points_in_each_state,
+    contact_points_in_each_state,
     bool use_CoM, bool constant_target_height)
     : plant_(plant),
       context_(context),
@@ -54,7 +54,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   // Checking vector dimension
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() ==
-               contact_points_in_each_state.size());
+      contact_points_in_each_state.size());
 
   // Input/Output Setup
   state_port_ =
@@ -157,13 +157,13 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     Vector3d dCoM = J * v;
 
     discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_)
-            .get_mutable_value()
+        .get_mutable_value()
         << stance_foot_pos;
     discrete_state->get_mutable_vector(prev_touchdown_com_pos_idx_)
-            .get_mutable_value()
+        .get_mutable_value()
         << CoM;
     discrete_state->get_mutable_vector(prev_touchdown_com_vel_idx_)
-            .get_mutable_value()
+        .get_mutable_value()
         << dCoM;
   }
 
@@ -197,15 +197,17 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double max_height_diff_per_step = 0.05;
-  double final_height = desired_com_height_ + stance_foot_pos(2);
-  //  double final_height = (desired_com_height_ + stance_foot_pos(2) - CoM(2) >
-  //      max_height_diff_per_step)
-  //                        ? CoM(2) + max_height_diff_per_step
-  //                        : desired_com_height_ + stance_foot_pos(2);
+  double final_height = (desired_com_height_ + stance_foot_pos(2) - CoM(2) >
+      max_height_diff_per_step)
+                        ? CoM(2) + max_height_diff_per_step
+                        : desired_com_height_ + stance_foot_pos(2);
+  //  Y[0](2, 0) = CoM(2);
+  //  Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
   Y[0](2, 0) = constant_target_height_ ? final_height : CoM(2);
   Y[1](2, 0) = final_height;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
+  //  MatrixXd Y_dot_start = dCoM;
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
 
   PiecewisePolynomial<double> pp_part =

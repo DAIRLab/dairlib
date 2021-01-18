@@ -25,7 +25,7 @@ vel_max_sagital: 0.5
 kp_pos_lateral: 0.5
 kd_pos_lateral: 0.1
 vel_max_lateral: 0.5
-target_pos_offset: -0.0
+target_pos_offset: -0.16
 
 # Speed control gains for neutral point
 k_ff_sagittal: 0

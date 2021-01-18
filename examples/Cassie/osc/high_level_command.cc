@@ -161,7 +161,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   // PD position control
   double des_yaw_vel =
       kp_yaw_ * (desired_yaw - approx_pelvis_yaw) + kd_yaw_ * (-yaw_vel);
-  des_yaw_vel = std::min(vel_max_yaw_, std::max(-vel_max_yaw_, des_yaw_vel));
+  des_yaw_vel = drake::math::saturate(des_yaw_vel, -vel_max_yaw_, vel_max_yaw_);
 
   // Convex combination of 0 and desired yaw velocity
   double weight = 1 / (1 + exp(-params_of_no_turning_(0) *
@@ -206,7 +206,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
     double com_vel_lateral = local_com_vel(1);
     des_lateral_vel = kp_pos_lateral_ * (local_com_pos_to_target_pos(1)) +
                       -kd_pos_lateral_ * (com_vel_lateral);
-    des_sagital_vel = drake::math::saturate(des_lateral_vel, -vel_max_lateral_,
+    des_lateral_vel = drake::math::saturate(des_lateral_vel, -vel_max_lateral_,
                                             vel_max_lateral_);
   }
   Vector3d des_vel;

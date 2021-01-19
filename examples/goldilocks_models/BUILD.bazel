@@ -114,6 +114,7 @@ cc_binary(
         "//examples/goldilocks_models/controller:cassie_rom_planner_system",
         "//examples/goldilocks_models/controller:control_parameters",
         "//examples/goldilocks_models/controller:rom_traj_receiver",
+        "//examples/goldilocks_models/controller:planner_preprocessing",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:multipose_visualizer",

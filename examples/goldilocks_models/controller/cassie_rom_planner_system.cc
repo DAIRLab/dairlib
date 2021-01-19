@@ -48,14 +48,11 @@ namespace dairlib {
 namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
-    const MultibodyPlant<double>& plant_feedback,
-    const MultibodyPlant<double>& plant_controls,
-    const std::vector<int>& left_right_support_fsm_states, double stride_period,
+    const MultibodyPlant<double>& plant_controls, double stride_period,
     const PlannerSetting& param, bool debug_mode)
     : nq_(plant_controls.num_positions()),
       nv_(plant_controls.num_velocities()),
       plant_controls_(plant_controls),
-      left_right_support_fsm_states_(left_right_support_fsm_states),
       stride_period_(stride_period),
       param_(param),
       debug_mode_(debug_mode) {
@@ -64,22 +61,18 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   DRAKE_DEMAND(param_.knots_per_mode > 0);
 
   // Input/Output Setup
+  stance_foot_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  phase_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_feedback.num_positions(),
-                                             plant_feedback.num_velocities(),
-                                             plant_feedback.num_actuators()))
+                        OutputVector<double>(plant_controls.num_positions(),
+                                             plant_controls.num_velocities(),
+                                             plant_controls.num_actuators()))
                     .get_index();
   fsm_and_lo_time_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
-
-  // Initialize the mapping from spring to no spring
-  map_position_from_spring_to_no_spring_ =
-      systems::controllers::PositionMapFromSpringToNoSpring(plant_feedback,
-                                                            plant_controls);
-  map_velocity_from_spring_to_no_spring_ =
-      systems::controllers::VelocityMapFromSpringToNoSpring(plant_feedback,
-                                                            plant_controls);
 
   // Create index maps
   positions_map_ = multibody::makeNameToPositionsMap(plant_controls);
@@ -254,95 +247,37 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Read in current robot state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd x_init(map_position_from_spring_to_no_spring_.rows() +
-                  map_velocity_from_spring_to_no_spring_.rows());
-  x_init << map_position_from_spring_to_no_spring_ *
-                robot_output->GetPositions(),
-      map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
+  VectorXd x_init = robot_output->GetState();
 
-  // Read in fsm state and lift-off time
-  const BasicVector<double>* fsm_and_lo_time_port =
-      this->EvalVectorInput(context, fsm_and_lo_time_port_);
-  int fsm_state = (int)fsm_and_lo_time_port->get_value()(0);
-  double lift_off_time = fsm_and_lo_time_port->get_value()(1);
+  // Get phase in the first mode
+  const BasicVector<double>* phase_port =
+      this->EvalVectorInput(context, phase_port_);
+  double init_phase = phase_port->get_value()(0);
 
-  // Get time
+  // Get stance foot
+  bool is_right_stance =
+      (bool)this->EvalVectorInput(context, stance_foot_port_)->get_value()(0);
+  bool start_with_left_stance = !is_right_stance;
+
+  // Get current time
   double timestamp = robot_output->get_timestamp();
   auto current_time = static_cast<double>(timestamp);
 
-  // Get time in the first mode
-  // TODO(yminchen):
-  //  1. move time_in_first_mode out to a new block
-  //  2. move x_init rotation and translation to a new block
-  //  The above change would help readability and presentation. It helps you in
-  //  testing the code as well.
-  // TODO(yminchen): think about if you need to rotate the coordinates back
-  //  after solver gives a desired traj
-
-  double time_in_first_mode = current_time - lift_off_time;
-
-  // Calc phase
-  double init_phase = time_in_first_mode / stride_period_;
-  if (init_phase >= 1) {
-    cout << "WARNING: phase >= 1. There might be a bug somewhere, "
-            "since we are using a time-based fsm\n";
-    init_phase = 1 - 1e-8;
-  }
-
-  ///
-  /// Rotate Cassie's floating base configuration
-  ///
-  // Rotate Cassie's floating base configuration to face toward world's x
-  // direction and translate the x and y position to the origin
-
-  // TODO: Our original plan was to move the touchdown state to the origin.
-  //  But right now we move the current state (instead of touchdown state) to
-  //  the corresponding x-y position based on init phase and desired traj
-
-  // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
-  // frame is in the world’s x-z plane and toward world’s x axis.
-  Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
-  Vector3d pelvis_x = quat.toRotationMatrix().col(0);
-  pelvis_x(2) = 0;
-  Vector3d world_x(1, 0, 0);
-  Quaterniond relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
-  Quaterniond rotated_quat = relative_qaut * quat;
-  x_init.head(4) << rotated_quat.w(), rotated_quat.vec();
-  // cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
-  // cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() <<
-  // endl;
-
-  // Shift pelvis in x, y direction
-  x_init(positions_map_.at("base_x")) =
-      init_phase * param_.final_position_x / param_.n_step;
-  x_init(positions_map_.at("base_y")) = 0;
-  // cout << "x(\"base_x\") = " << x_init(positions_map_.at("base_x")) << endl;
-  // cout << "x(\"base_y\") = " << x_init(positions_map_.at("base_y")) << endl;
-
-  // Also need to rotate floating base velocities (wrt global frame)
-  x_init.segment<3>(nq_) =
-      relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_);
-  x_init.segment<3>(nq_ + 3) =
-      relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_ + 3);
+  // Get lift-off time
+  const BasicVector<double>* fsm_and_lo_time_port =
+      this->EvalVectorInput(context, fsm_and_lo_time_port_);
+  double lift_off_time = fsm_and_lo_time_port->get_value()(1);
 
   if (debug_mode_) {
     cout << "x_init used for the planner = " << x_init.transpose() << endl;
   }
 
+  // TODO(yminchen): think about if you need to rotate the coordinates back
+  //  after solver gives a desired traj
+
   ///
   /// Construct rom traj opt
   ///
-
-  // Find fsm_state in left_right_support_fsm_states_
-  bool is_single_support_phase =
-      find(left_right_support_fsm_states_.begin(),
-           left_right_support_fsm_states_.end(),
-           fsm_state) != left_right_support_fsm_states_.end();
-  if (!is_single_support_phase) {
-    // do nothing here to use the previous start_with_left_stance_
-  } else {
-    start_with_left_stance_ = fsm_state == left_right_support_fsm_states_.at(0);
-  }
 
   // Prespecify the number of knot points
   std::vector<int> num_time_samples;
@@ -361,7 +296,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (knots_first_mode == 2) {
     min_dt[0] = 1e-3;
   }
-  cout << "time_in_first_mode = " << time_in_first_mode << endl;
   cout << "init_phase = " << init_phase << endl;
   cout << "knots_first_mode = " << knots_first_mode << endl;
   cout << "first_mode_phase_index = " << first_mode_phase_index << endl;
@@ -380,7 +314,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
                            state_mirror_, left_contacts_, right_contacts_,
-                           joint_name_lb_ub_, x_init, start_with_left_stance_,
+                           joint_name_lb_ub_, x_init, start_with_left_stance,
                            param_.zero_touchdown_impact,
                            debug_mode_ /*print_status*/);
 
@@ -398,7 +332,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     // Note that the timestep size of the first mode should be different from
     // the rest because the robot could be very close to the touchdown
     double remaining_time_of_first_mode =
-        std::max(stride_period_ - time_in_first_mode, min_dt[0]);
+        std::max(stride_period_ * (1 - init_phase), min_dt[0]);
     // duration of the whole trajopt = first mode's time + the rest modes'
     double duration =
         remaining_time_of_first_mode + dt_value * (n_time_samples - 2);
@@ -591,7 +525,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  reconstruct it into piecewise polynomial in rom_traj_receiver.cc
 
   //  if (true) {
-  //  if (!result.is_success() || !start_with_left_stance_) {
+  //  if (!result.is_success() || !start_with_left_stance) {
   if (!result.is_success()) {
     // If the solution failed, send an empty-size data. This tells the
     // controller thread to fall back to LIPM traj
@@ -623,11 +557,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Testing
   //  if (elapsed.count() > 0.5) {
-  if ((elapsed.count() > 0.7) && start_with_left_stance_) {
-    //  if (!result.is_success() && start_with_left_stance_) {
-    //  if ((result.get_optimal_cost() > 50) && start_with_left_stance_) {
+  if ((elapsed.count() > 0.7) && start_with_left_stance) {
+    //  if (!result.is_success() && start_with_left_stance) {
+    //  if ((result.get_optimal_cost() > 50) && start_with_left_stance) {
     cout << "x_init = " << x_init << endl;
     writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
+    writeCSV(param_.dir_data + string("init_phase_test.csv"),
+             init_phase * VectorXd::Ones(1));
+    writeCSV(param_.dir_data + string("is_right_stance_test.csv"),
+             is_right_stance * VectorXd::Ones(1));
   }
 }
 

@@ -18,6 +18,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "examples/goldilocks_models/controller/planner_preprocessing.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/lcmt_drake_signal.hpp"
 #include "drake/systems/framework/diagram_builder.h"
@@ -78,6 +79,7 @@ DEFINE_double(time_limit, 0, "time limit for the solver.");
 
 // Flag for debugging
 DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
+DEFINE_bool(read_from_file, false, "Files for input port values");
 
 // LCM channels (non debug mode)
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -120,11 +122,11 @@ int DoMain(int argc, char* argv[]) {
                      true /*spring model*/, false /*loop closure*/);
   plant_feedback.Finalize();
   // Build fix-spring Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_controls(0.0);
-  addCassieMultibody(&plant_controls, nullptr, true,
+  drake::multibody::MultibodyPlant<double> plant_control(0.0);
+  addCassieMultibody(&plant_control, nullptr, true,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false);
-  plant_controls.Finalize();
+  plant_control.Finalize();
 
   // Parameters for the traj opt
   PlannerSetting param;
@@ -158,111 +160,6 @@ int DoMain(int argc, char* argv[]) {
     if (!CreateFolderIfNotExist(param.dir_data)) return 0;
   }
 
-  // Read in initial robot state
-  VectorXd x_init;  // we assume that solution from files are in left stance
-  if (FLAGS_debug_mode) {
-    string model_dir_n_pref = param.dir_model + to_string(FLAGS_iter) +
-                              string("_") + to_string(FLAGS_sample) +
-                              string("_");
-    cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
-    int n_sample_raw =
-        readCSV(model_dir_n_pref + string("time_at_knots.csv")).size();
-    x_init = readCSV(model_dir_n_pref + string("state_at_knots.csv"))
-                 .col(int(round((n_sample_raw - 1) * FLAGS_init_phase)));
-
-    // Testing -- read x_init directly from a file
-    // Note that you need to disable the rotation in
-    // CassiePlannerWithMixedRomFom as well is you want to use the exact init
-    // here for the trajopt init state
-    /*x_init = readCSV(
-        "../dairlib_data/goldilocks_models/planning/robot_1/data/"
-        "x_init_test.csv");
-    cout << "x_init = " << x_init.transpose() << endl;*/
-
-    // Mirror x_init if it's right stance
-    if (!FLAGS_start_with_left_stance) {
-      // Create mirror maps
-      StateMirror state_mirror(
-          MirrorPosIndexMap(plant_controls,
-                            CassiePlannerWithMixedRomFom::ROBOT),
-          MirrorPosSignChangeSet(plant_controls,
-                                 CassiePlannerWithMixedRomFom::ROBOT),
-          MirrorVelIndexMap(plant_controls,
-                            CassiePlannerWithMixedRomFom::ROBOT),
-          MirrorVelSignChangeSet(plant_controls,
-                                 CassiePlannerWithMixedRomFom::ROBOT));
-      // Mirror the state
-      x_init.head(plant_controls.num_positions()) =
-          state_mirror.MirrorPos(x_init.head(plant_controls.num_positions()));
-      x_init.tail(plant_controls.num_velocities()) =
-          state_mirror.MirrorVel(x_init.tail(plant_controls.num_velocities()));
-    }
-
-    // Map x_init from plant_controls to plant_feedback
-    MatrixXd map_position_from_spring_to_no_spring =
-        systems::controllers::PositionMapFromSpringToNoSpring(plant_feedback,
-                                                              plant_controls);
-    MatrixXd map_velocity_from_spring_to_no_spring =
-        systems::controllers::VelocityMapFromSpringToNoSpring(plant_feedback,
-                                                              plant_controls);
-    VectorXd x_init_controls = x_init;
-    x_init.resize(plant_feedback.num_positions() +
-                  plant_feedback.num_velocities());
-    x_init << map_position_from_spring_to_no_spring.transpose() *
-                  x_init_controls.head(plant_controls.num_positions()),
-        map_velocity_from_spring_to_no_spring.transpose() *
-            x_init_controls.tail(plant_controls.num_velocities());
-
-    cout << "x_init = " << x_init.transpose() << endl;
-
-    // Perturbing the initial floating base configuration for testing trajopt
-    srand((unsigned int)time(0));
-    if (FLAGS_yaw_disturbance > 0) {
-      double theta = M_PI * VectorXd::Random(1)(0) * FLAGS_yaw_disturbance;
-      Vector3d vec(0, 0, 1);
-      x_init.head(4) << cos(theta / 2), sin(theta / 2) * vec.normalized();
-    }
-    if (FLAGS_xy_disturbance > 0) {
-      x_init.segment<2>(4) = 10 * VectorXd::Random(2) * FLAGS_xy_disturbance;
-    }
-
-    cout << "x_init = " << x_init.transpose() << endl;
-
-    // Visualize the initial pose
-    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
-        FindResourceOrThrow("examples/Cassie/urdf/cassie_v2.urdf"), 1);
-    visualizer.DrawPoses(x_init);
-
-    // Testing
-    std::vector<string> name_list = {"base_qw",
-                                     "base_qx",
-                                     "base_qy",
-                                     "base_qz",
-                                     "base_x",
-                                     "base_y",
-                                     "base_z",
-                                     "hip_roll_left",
-                                     "hip_roll_right",
-                                     "hip_yaw_left",
-                                     "hip_yaw_right",
-                                     "hip_pitch_left",
-                                     "hip_pitch_right",
-                                     "knee_left",
-                                     "knee_right",
-                                     "ankle_joint_left",
-                                     "ankle_joint_right",
-                                     "toe_left",
-                                     "toe_right"};
-    std::map<string, int> positions_map =
-        multibody::makeNameToPositionsMap(plant_controls);
-    /*for (auto name : name_list) {
-      cout << name << ", " << init_state(positions_map.at(name)) << endl;
-    }*/
-    // TODO: find out why the initial left knee position is not within the joint
-    //  limits.
-    //  Could be that the constraint tolerance is too high in rom optimization
-  }
-
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
@@ -289,14 +186,38 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_trajectory_block>(
           FLAGS_channel_y, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
-  // Create optimal rom trajectory generator
+  // Create a block that gets the stance leg
   std::vector<int> ss_fsm_states = {LEFT_STANCE, RIGHT_STANCE};
+  auto stance_foot_getter = builder.AddSystem<CurrentStanceFoot>(ss_fsm_states);
+  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
+                  stance_foot_getter->get_input_port_fsm_and_lo_time());
+
+  // Create a block that compute the phase of the first mode
   // TODO(yminchen): stride_period value should change
   double stride_period = LEFT_SUPPORT_DURATION + DOUBLE_SUPPORT_DURATION;
-  auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
-      plant_feedback, plant_controls, ss_fsm_states, stride_period, param,
-      FLAGS_debug_mode);
+  auto init_phase_calculator =
+      builder.AddSystem<PhaseInFirstMode>(plant_feedback, stride_period);
   builder.Connect(state_receiver->get_output_port(0),
+                  init_phase_calculator->get_input_port_state());
+  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
+                  init_phase_calculator->get_input_port_fsm_and_lo_time());
+
+  // Create a block that computes the initial state for the planner
+  auto init_state_calculator = builder.AddSystem<InitialStateForPlanner>(
+      plant_feedback, plant_control, param.final_position_x, param.n_step);
+  builder.Connect(state_receiver->get_output_port(0),
+                  init_state_calculator->get_input_port_state());
+  builder.Connect(init_phase_calculator->get_output_port(0),
+                  init_state_calculator->get_input_port_init_phase());
+
+  // Create optimal rom trajectory generator
+  auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
+      plant_control, stride_period, param, FLAGS_debug_mode);
+  builder.Connect(stance_foot_getter->get_output_port(0),
+                  rom_planner->get_input_port_stance_foot());
+  builder.Connect(init_phase_calculator->get_output_port(0),
+                  rom_planner->get_input_port_init_phase());
+  builder.Connect(init_state_calculator->get_output_port(0),
                   rom_planner->get_input_port_state());
   builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
                   rom_planner->get_input_port_fsm_and_lo_time());
@@ -338,8 +259,124 @@ int DoMain(int argc, char* argv[]) {
   } else {
     // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate
     // the output (we do not run the LcmDrivenLoop)
-    double current_time = FLAGS_init_phase * stride_period;
+
+    // Initialize some values
+    double init_phase;
+    double is_right_stance;
+    if (FLAGS_read_from_file) {
+      init_phase = readCSV(param.dir_data + "init_phase_test.csv")(0, 0);
+      is_right_stance =
+          readCSV(param.dir_data + "is_right_stance_test.csv")(0, 0);
+    } else {
+      init_phase = FLAGS_init_phase;
+      is_right_stance = !FLAGS_start_with_left_stance;
+    }
+
+    ///
+    /// Read in initial robot state
+    ///
+    VectorXd x_init;  // we assume that solution from files are in left stance
+    if (FLAGS_read_from_file) {
+      // Testing -- read x_init directly from a file
+      x_init = readCSV(param.dir_data + "x_init_test.csv");
+
+      cout << "x_init = " << x_init.transpose() << endl;
+    } else {
+      string model_dir_n_pref = param.dir_model + to_string(FLAGS_iter) +
+                                string("_") + to_string(FLAGS_sample) +
+                                string("_");
+      cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
+      int n_sample_raw =
+          readCSV(model_dir_n_pref + string("time_at_knots.csv")).size();
+      x_init = readCSV(model_dir_n_pref + string("state_at_knots.csv"))
+                   .col(int(round((n_sample_raw - 1) * init_phase)));
+
+      // Mirror x_init if it's right stance
+      if (!FLAGS_start_with_left_stance) {
+        // Create mirror maps
+        StateMirror state_mirror(
+            MirrorPosIndexMap(plant_control,
+                              CassiePlannerWithMixedRomFom::ROBOT),
+            MirrorPosSignChangeSet(plant_control,
+                                   CassiePlannerWithMixedRomFom::ROBOT),
+            MirrorVelIndexMap(plant_control,
+                              CassiePlannerWithMixedRomFom::ROBOT),
+            MirrorVelSignChangeSet(plant_control,
+                                   CassiePlannerWithMixedRomFom::ROBOT));
+        // Mirror the state
+        x_init.head(plant_control.num_positions()) =
+            state_mirror.MirrorPos(x_init.head(plant_control.num_positions()));
+        x_init.tail(plant_control.num_velocities()) =
+            state_mirror.MirrorVel(x_init.tail(plant_control.num_velocities()));
+      }
+
+      cout << "x_init = " << x_init.transpose() << endl;
+
+      // Perturbing the initial floating base configuration for testing
+      // trajopt
+      srand((unsigned int)time(0));
+      if (FLAGS_yaw_disturbance > 0) {
+        double theta = M_PI * VectorXd::Random(1)(0) * FLAGS_yaw_disturbance;
+        Vector3d vec(0, 0, 1);
+        x_init.head(4) << cos(theta / 2), sin(theta / 2) * vec.normalized();
+      }
+      if (FLAGS_xy_disturbance > 0) {
+        x_init.segment<2>(4) = 10 * VectorXd::Random(2) * FLAGS_xy_disturbance;
+      }
+
+      cout << "x_init = " << x_init.transpose() << endl;
+    }
+
+    // Visualize the initial pose
+    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+        1);
+    visualizer.DrawPoses(x_init);
+
+    // Testing
+    std::vector<string> name_list = {"base_qw",
+                                     "base_qx",
+                                     "base_qy",
+                                     "base_qz",
+                                     "base_x",
+                                     "base_y",
+                                     "base_z",
+                                     "hip_roll_left",
+                                     "hip_roll_right",
+                                     "hip_yaw_left",
+                                     "hip_yaw_right",
+                                     "hip_pitch_left",
+                                     "hip_pitch_right",
+                                     "knee_left",
+                                     "knee_right",
+                                     "ankle_joint_left",
+                                     "ankle_joint_right",
+                                     "toe_left",
+                                     "toe_right"};
+    std::map<string, int> positions_map =
+        multibody::makeNameToPositionsMap(plant_control);
+    /*for (auto name : name_list) {
+      cout << name << ", " << init_state(positions_map.at(name)) << endl;
+    }*/
+    // TODO: find out why the initial left knee position is not within the
+    //  joint limits.
+    //  Could be that the constraint tolerance is too high in rom optimization
+
+    ///
+    /// Set input ports
+    ///
+
+    // fsm_state is currently not used in the leafsystem
+    double fsm_state = 0;
+
+    // Construct robot output (init state and current time)
     double prev_lift_off_time = 0;
+    double current_time = init_phase * stride_period;
+    OutputVector<double> robot_output(
+        x_init.head(plant_control.num_positions()),
+        x_init.tail(plant_control.num_velocities()),
+        VectorXd::Zero(plant_control.num_actuators()));
+    robot_output.set_timestamp(current_time);
 
     // Get contexts
     auto diagram_ptr = loop.get_diagram();
@@ -347,20 +384,21 @@ int DoMain(int argc, char* argv[]) {
     auto& planner_context =
         diagram_ptr->GetMutableSubsystemContext(*rom_planner, &diagram_context);
 
-    // Set input port value and current time
-    OutputVector<double> robot_output(
-        x_init.head(plant_feedback.num_positions()),
-        x_init.tail(plant_feedback.num_velocities()),
-        VectorXd::Zero(plant_feedback.num_actuators()));
-    robot_output.set_timestamp(current_time);
+    // Set input port value
+    rom_planner->get_input_port_stance_foot().FixValue(&planner_context,
+                                                       is_right_stance);
+    rom_planner->get_input_port_init_phase().FixValue(&planner_context,
+                                                      init_phase);
     rom_planner->get_input_port_state().FixValue(&planner_context,
                                                  robot_output);
     rom_planner->get_input_port_fsm_and_lo_time().FixValue(
         &planner_context,
-        drake::systems::BasicVector({FLAGS_start_with_left_stance
-                                         ? double(LEFT_STANCE)
-                                         : double(RIGHT_STANCE),
-                                     prev_lift_off_time}));
+        drake::systems::BasicVector({fsm_state, prev_lift_off_time}));
+
+    ///
+    /// Eval output port and store data
+    ///
+
     // Calc output
     auto output = rom_planner->AllocateOutput();
     rom_planner->CalcOutput(planner_context, output.get());

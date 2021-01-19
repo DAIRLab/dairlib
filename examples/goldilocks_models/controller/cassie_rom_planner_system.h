@@ -59,11 +59,15 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   static const int ROBOT = 1;  // robot index for Cassie
 
   CassiePlannerWithMixedRomFom(
-      const drake::multibody::MultibodyPlant<double>& plant_feedback,
       const drake::multibody::MultibodyPlant<double>& plant_controls,
-      const std::vector<int>& left_right_support_fsm_states,
       double stride_period, const PlannerSetting& param, bool debug_mode);
 
+  const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
+    return this->get_input_port(stance_foot_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_init_phase() const {
+    return this->get_input_port(phase_port_);
+  }
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
@@ -77,6 +81,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
                     dairlib::lcmt_trajectory_block* traj_msg) const;
 
   // Port indices
+  int stance_foot_port_;
+  int phase_port_;
   int state_port_;
   int fsm_and_lo_time_port_;
 
@@ -91,7 +97,6 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int nv_;
 
   const drake::multibody::MultibodyPlant<double>& plant_controls_;
-  std::vector<int> left_right_support_fsm_states_;
   double stride_period_;
 
   std::unique_ptr<ReducedOrderModel> rom_;
@@ -102,11 +107,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   drake::solvers::SolverOptions solver_option_;
   std::unique_ptr<drake::solvers::SolverInterface> solver_;
 
-  //
-  mutable bool start_with_left_stance_ = true;
-
   // Parameters for traj opt
-  PlannerSetting param_;
+  const PlannerSetting& param_;
 
   // Cost weight
   Eigen::MatrixXd Q_;

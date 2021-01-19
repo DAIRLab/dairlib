@@ -93,8 +93,8 @@ def main():
   t_end = t_u[-1000]
   # import pdb; pdb.set_trace()
   # Override here #
-  # t_start = 8.7
-  # t_end = 98
+  # t_start = 50
+  # t_end = 60
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -191,11 +191,13 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   soft_constraint_cost = np.zeros(t_u.shape[0])
   tracking_cost = np.zeros((t_u.shape[0], len(osc_debug)))
   tracking_cost_map = dict()
+  qp_solve_time = np.zeros(t_u.shape[0])
   num_tracking_cost = 0
   for i in range(t_u.shape[0] - 10):
     input_cost[i] = osc_output[i].input_cost
     acceleration_cost[i] = osc_output[i].acceleration_cost
     soft_constraint_cost[i] = osc_output[i].soft_constraint_cost
+    qp_solve_time[i] = osc_output[i].qp_output.solve_time
     for j in range(len(osc_output[i].tracking_data_names)):
       name = osc_output[i].tracking_data_names[j]
       if osc_output[i].tracking_data_names[j] not in tracking_cost_map:
@@ -206,6 +208,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   for name in tracking_cost_map.keys():
     print(name)
     print(tracking_cost_map[name])
+
+  plt.figure("blend_amount")
+  plt.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
 
   plt.figure("costs")
   plt.plot(t_u[t_u_slice], input_cost[t_u_slice])
@@ -237,6 +242,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj0, 0, "vel")
   plot_osc(osc_debug, osc_traj0, 1, "vel")
   plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+
   #
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
   # plot_osc(osc_debug, osc_traj0, 1, "accel")
@@ -249,7 +256,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj1, 0, "vel")
   plot_osc(osc_debug, osc_traj1, 1, "vel")
   plot_osc(osc_debug, osc_traj1, 2, "vel")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
 
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
@@ -273,9 +280,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 2, "accel")
 
   plot_osc(osc_debug, osc_traj3, 0, "pos")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
   plot_osc(osc_debug, osc_traj4, 0, "pos")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj3, 0, "vel")
   # plot_osc(osc_debug, osc_traj3, 0, "accel")

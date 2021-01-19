@@ -36,7 +36,7 @@ DEFINE_double(knotpointsPerMode, 7, "Number of knotpoints in each contact mode" 
 DEFINE_double(inputCost, 3, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_double(eps, 1e-2, "The wiggle room.");
-DEFINE_double(optTol, 1e-4,"Optimization Tolerance");
+DEFINE_double(optTol, 1e-4, "Optimization Tolerance");
 DEFINE_double(feasTol, 1e-4,"Feasibility Tolerance");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
@@ -180,11 +180,11 @@ void runSpiritJump(
   }
 
   full_support.SetDynamicsScale(
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  150.0);
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  200);
   full_support.SetKinVelocityScale(
-    {0, 1, 2, 3}, {0, 1, 2}, 1);
-    full_support.SetKinPositionScale(
-        {0, 1, 2, 3}, {0, 1, 2}, 150);
+      {0, 1, 2, 3}, {0, 1, 2}, 1.0);
+  full_support.SetKinPositionScale(
+      {0, 1, 2, 3}, {0, 1, 2}, 200);
 
   /// Add flight mode 
   auto evaluators_flight = multibody::KinematicEvaluatorSet<T>(plant);
@@ -193,8 +193,8 @@ void runSpiritJump(
 
                                    
   flight_mode.SetDynamicsScale(
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  1.0);
-  
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  200);
+
   ///Mode Sequence
   // Adding the ONE mode to the sequence, will not leave full_support
   auto sequence = DirconModeSequence<T>(plant);

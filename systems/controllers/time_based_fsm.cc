@@ -86,10 +86,10 @@ void TimeBasedFiniteStateMachine::CalcNearImpact(
   VectorXd near_impact_data = VectorXd::Zero(2);
   // Get current finite state
   if (current_sim_time >= t0_) {
-    for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
-      if (abs(remainder - accu_state_durations_[i]) < near_impact_threshold_) {
-        near_impact_data(0) = 1 - (abs(remainder - accu_state_durations_[i]) / near_impact_threshold_);
-        near_impact_data(1) = states_[i];
+    for (unsigned int i : impact_states_) {
+      if (abs(remainder - impact_times_[i]) < near_impact_threshold_) {
+        near_impact_data(0) = sin(M_PI/2 *(1 -  abs(remainder - impact_times_[i]) / near_impact_threshold_));
+        near_impact_data(1) = states_[i / 2];
         break;
       }
     }

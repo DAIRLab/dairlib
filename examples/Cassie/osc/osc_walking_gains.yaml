@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.000
+impact_threshold: 0.050
 
 # High level command gains (with radio)
 vel_scale_rot: 1

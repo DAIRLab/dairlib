@@ -1,19 +1,19 @@
 w_input: 2
 w_accel: 0.000001
 w_soft_constraint: 8000
-x_offset: 0.04
+x_offset: 0.015
 
 w_swing_toe: 0.1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
 w_hip_yaw: 100
-hip_yaw_kp: 30
+hip_yaw_kp: 40
 hip_yaw_kd: 1
 
 t_delay_toe_ang: 0.000
 t_delay_ft_pos: 0.00
-impact_threshold: 0.050
+impact_threshold: 0.00
 
 CoMW:
   [2000,  0,    0,
@@ -41,7 +41,7 @@ PelvisRotKp:
      0,   0,   0]
 PelvisRotKd:
   [10,   0,  0,
-    0,  10,  0,
+    0,  50,  0,
     0,   0,  0]
 FlightFootKp:
   [200,   0,    0,

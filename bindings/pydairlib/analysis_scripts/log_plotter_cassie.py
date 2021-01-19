@@ -242,7 +242,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj0, 0, "vel")
   plot_osc(osc_debug, osc_traj0, 1, "vel")
   plot_osc(osc_debug, osc_traj0, 2, "vel")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
@@ -275,7 +275,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj1, 1, "accel")
   # plot_osc(osc_debug, osc_traj1, 2, "accel")
 
-  plot_osc(osc_debug, osc_traj2, 0, "accel")
+  # plot_osc(osc_debug, osc_traj2, 0, "accel")
   # plot_osc(osc_debug, osc_traj2, 1, "accel")
   # plot_osc(osc_debug, osc_traj2, 2, "accel")
 

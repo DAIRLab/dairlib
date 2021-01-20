@@ -52,7 +52,7 @@ position_names = [
 # kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
 
 # Set of gains with which COM is within support polygon when we lower the hoist 
-joint_default = [0.2,-.2,0,0,0.35,0.35,-1.5,-1.5,-1.8,-1.8]
+joint_default = [0.07,-.1,0,0,0.35,0.35,-1.5,-1.5,-1.8,-1.8]
 kp_default = [i for i in [20,20,10,10,20,20,50,50,10,10]]
 kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
 
@@ -138,13 +138,13 @@ class ControllerGui(QWidget):
         self.ramp_up_time_box = QDoubleSpinBox();
         grid.addWidget(QLabel("Ramp up time"), 11, 0)
         grid.addWidget(self.ramp_up_time_box, 11, 1)
-        self.ramp_up_time = 5.0
+        self.ramp_up_time = 0.5
 
         self.target_height_box = QDoubleSpinBox();
         grid.addWidget(QLabel("Target height"), 13, 0)
         grid.addWidget(self.target_height_box, 13, 1)
-        self.target_height_box.value = 0.8
-        self.target_height = 0.8
+        self.target_height_box.value = 0.9
+        self.target_height = 0.9
 
         #Initializing the text boxes to the initial values
         self.initialize_default()
@@ -181,7 +181,7 @@ class ControllerGui(QWidget):
             self.ledits[idx].setValue(joint_default[idx])
             self.ledits[idx + len(joint_names)].setValue(kp_default[idx])
             self.ledits[idx + 2*len(joint_names)].setValue(kd_default[idx])
-        self.ramp_up_time_box.setValue(5.0)
+        self.ramp_up_time_box.setValue(0.5)
 
     def publishHeight_clicked(self):
         self.target_height = self.target_height_box.value

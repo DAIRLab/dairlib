@@ -1,6 +1,7 @@
 #include "systems/controllers/osc/operational_space_control.h"
 
 #include <drake/multibody/plant/multibody_plant.h>
+#include <drake/math/saturate.h>
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
@@ -656,8 +657,8 @@ VectorXd OperationalSpaceControl::SolveQp(
         //        alpha_right = 1 / (1 + exp(-blend_time_constant_ *
         //                                   (time_since_last_state_switch -
         //                                   0.05 / 2)));
-        alpha_left = 1 - (time_since_last_state_switch / 0.05);
-        alpha_right = (time_since_last_state_switch / 0.05);
+        alpha_left = drake::math::saturate(1 - (2*time_since_last_state_switch / 0.05), 0, 1);
+        alpha_right = drake::math::saturate(2*time_since_last_state_switch / 0.05, 0, 1);
 
       } else if (!prev_fsm_state) {
         //        alpha_left = 1 / (1 + exp(-blend_time_constant_ *
@@ -667,8 +668,8 @@ VectorXd OperationalSpaceControl::SolveQp(
         //            1 - 1 / (1 + exp(-blend_time_constant_ *
         //                             (time_since_last_state_switch - 0.05 /
         //                             2)));
-        alpha_left = (time_since_last_state_switch / 0.05);
-        alpha_right = 1 - (time_since_last_state_switch / 0.05);
+        alpha_left = drake::math::saturate(2*time_since_last_state_switch / 0.05, 0, 1);
+        alpha_right = drake::math::saturate(1 - (2*time_since_last_state_switch / 0.05), 0, 1);
       }
       A(2, 2) = w_blend_constraint_ * alpha_left;
       A(5, 5) = w_blend_constraint_ * alpha_left;

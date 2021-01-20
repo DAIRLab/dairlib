@@ -274,7 +274,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
-  double w_blend_constraint_ = 0.025;
+  double w_blend_constraint_ = 0.03;
   double blend_time_constant_ = 250;
 
   // Map finite state machine state to its active contact indices

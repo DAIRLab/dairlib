@@ -41,7 +41,7 @@ target_pos_offset: -0.16
 k_ff_sagittal: 0
 k_fb_sagittal: 0.14 #0.17
 k_ff_lateral: 0
-k_fb_lateral: 0.2 #0.2
+k_fb_lateral: 0.25 #0.2
 
 # Finite state machine
 ss_time: 0.30
@@ -52,14 +52,14 @@ max_CoM_to_footstep_dist: 0.4
 footstep_offset: 0.04
 center_line_offset: 0.00
 mid_foot_height: 0.03
-final_foot_height: 0.005
+final_foot_height: 0.000
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
 lipm_height: 0.9
 
 # OSC gains
-mu: 0.4
+mu: 0.8
 
 w_accel: 0.000001
 w_soft_constraint: 8000

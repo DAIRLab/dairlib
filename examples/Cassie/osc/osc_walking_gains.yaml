@@ -39,9 +39,9 @@ target_pos_offset: -0.16
 #k_fb_lateral: 0.02
 # 2. for neutral point:
 k_ff_sagittal: 0
-k_fb_sagittal: 0.14 #0.17
+k_fb_sagittal: 0.14
 k_ff_lateral: 0
-k_fb_lateral: 0.25 #0.2
+k_fb_lateral: 0.2
 
 # Finite state machine
 ss_time: 0.30

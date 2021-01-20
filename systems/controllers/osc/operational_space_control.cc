@@ -1,7 +1,7 @@
 #include "systems/controllers/osc/operational_space_control.h"
 
-#include <drake/multibody/plant/multibody_plant.h>
 #include <drake/math/saturate.h>
+#include <drake/multibody/plant/multibody_plant.h>
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
@@ -393,6 +393,8 @@ void OperationalSpaceControl::Build() {
         VectorXd::Zero(n_c_active_), epsilon_);
   }
 
+  // Testing -- contact force blending
+  /// Absolute value version
   /*if (w_blend_constraint_ > 0) {
     blend_constraint_ =
         prog_
@@ -401,13 +403,24 @@ void OperationalSpaceControl::Build() {
             .evaluator()
             .get();
   }*/
-  // Testing -- hard constraint for contact force blending
-  blend_constraint_hard_ =
+  /// ratio version
+  epsilon_blend_ =
+      prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
+  blend_constraint_2_ =
       prog_
-          ->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_, n_c_),
-                                        VectorXd::Zero(n_c_), lambda_c_)
+          ->AddLinearEqualityConstraint(
+              MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
+              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
           .evaluator()
           .get();
+  //  prog_->AddQuadraticCost(
+  //      w_blend_constraint_2_ *
+  //          MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
+  //      VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
+  prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
 
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
@@ -650,10 +663,9 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Testing -- blend contact forces during double support phase
   if (w_blend_constraint_ > 0 && blend_time_constant_ > 1e-3) {
-    MatrixXd A = MatrixXd::Zero(n_c_, n_c_);
-
     /// Cost version
-    /*if (fsm_state == 2) {
+    /*MatrixXd A = MatrixXd::Zero(n_c_, n_c_);
+    if (fsm_state == 2) {
       const double prev_fsm_state =
           context.get_discrete_state(prev_fsm_state_idx_).get_value()(0);
       double alpha_left = 0;
@@ -666,8 +678,9 @@ VectorXd OperationalSpaceControl::SolveQp(
         //        alpha_right = 1 / (1 + exp(-blend_time_constant_ *
         //                                   (time_since_last_state_switch -
         //                                   0.05 / 2)));
-        alpha_left = drake::math::saturate(1 - (2*time_since_last_state_switch / 0.05), 0, 1);
-        alpha_right = drake::math::saturate(2*(time_since_last_state_switch - 0.025) / 0.05, 0, 1);
+        alpha_left = drake::math::saturate(1 - (2*time_since_last_state_switch /
+0.05), 0, 1); alpha_right =
+drake::math::saturate(2*(time_since_last_state_switch - 0.025) / 0.05, 0, 1);
 
       } else if (!prev_fsm_state) {
         //        alpha_left = 1 / (1 + exp(-blend_time_constant_ *
@@ -677,8 +690,9 @@ VectorXd OperationalSpaceControl::SolveQp(
         //            1 - 1 / (1 + exp(-blend_time_constant_ *
         //                             (time_since_last_state_switch - 0.05 /
         //                             2)));
-        alpha_left = drake::math::saturate(2*(time_since_last_state_switch - 0.025) / 0.05, 0, 1);
-        alpha_right = drake::math::saturate(1 - (2*time_since_last_state_switch / 0.05), 0, 1);
+        alpha_left = drake::math::saturate(2*(time_since_last_state_switch -
+0.025) / 0.05, 0, 1); alpha_right = drake::math::saturate(1 -
+(2*time_since_last_state_switch / 0.05), 0, 1);
       }
       A.block(0, 0, n_c_ / 2, n_c_ / 2) =
           w_blend_constraint_ * alpha_left *
@@ -695,6 +709,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(n_c_));*/
 
     /// Constraint version
+    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
     if (fsm_state == 2) {
       const double prev_fsm_state =
           context.get_discrete_state(prev_fsm_state_idx_).get_value()(0);
@@ -703,24 +718,24 @@ VectorXd OperationalSpaceControl::SolveQp(
       if (prev_fsm_state) {
         // We want left foot force to gradually increase
         alpha_left = -1;
-        alpha_right =
-            1 / w_blend_constraint_hard_ +
-                (w_blend_constraint_hard_ - 1 / w_blend_constraint_hard_) *
-                    (time_since_last_state_switch / 0.05);
+        alpha_right = time_since_last_state_switch /
+                      (0.05 - time_since_last_state_switch);
 
       } else if (!prev_fsm_state) {
-        alpha_left = 1 / w_blend_constraint_hard_ +
-            (w_blend_constraint_hard_ - 1 / w_blend_constraint_hard_) *
-                (time_since_last_state_switch / 0.05);
+        alpha_left = time_since_last_state_switch /
+                     (0.05 - time_since_last_state_switch);
         alpha_right = -1;
       }
-      A(2, 2) = alpha_left/2;
-      A(5, 5) = alpha_left/2;
-      A(8, 8) = alpha_right/2;
-      A(11, 11) = alpha_right/2;
+      A(0, 0) = alpha_left / 2;
+      A(0, 1) = alpha_left / 2;
+      A(0, 2) = alpha_right / 2;
+      A(0, 3) = alpha_right / 2;
+      A(0, 4) = 1;
+      A(0, 5) = 1;
+      A(0, 6) = 1;
+      A(0, 7) = 1;
     }
-    blend_constraint_hard_->UpdateCoefficients(A, VectorXd::Zero(n_c_));
-    
+    blend_constraint_2_->UpdateCoefficients(A, VectorXd::Zero(1));
   }
 
   // Solve the QP

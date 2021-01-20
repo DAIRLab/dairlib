@@ -110,12 +110,12 @@ PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
       0,     0,    2]
-period_of_no_heading_control: 0.1
+period_of_no_heading_control: 0.0
 
 SwingFootW:
   [ 400,    0,     0,
-    0,  400,     0,
-    0,    0,   400]
+    0,    400,     0,
+    0,      0,   400]
 SwingFootKp:
   [ 200,    0,     0,
     0,  200,     0,

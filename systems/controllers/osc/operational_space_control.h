@@ -190,6 +190,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Discrete update
   int prev_fsm_state_idx_;
+  int current_fsm_state_idx_;
   int prev_event_time_idx_;
 
   // Map position/velocity from model with spring to without spring
@@ -273,8 +274,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
-  double w_blend_constraint_ = 1;
-  double blend_time_constant_ = 0.025;
+  double w_blend_constraint_ = 0.025;
+  double blend_time_constant_ = 250;
 
   // Map finite state machine state to its active contact indices
   std::map<int, std::set<int>> contact_indices_map_ = {};

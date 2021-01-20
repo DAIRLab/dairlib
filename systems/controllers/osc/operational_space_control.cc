@@ -649,24 +649,31 @@ VectorXd OperationalSpaceControl::SolveQp(
       double alpha_left = 0;
       double alpha_right = 0;
       if (prev_fsm_state) {
-        alpha_left =
-            1 - 1 / (1 + exp(-blend_time_constant_ *
-                             (time_since_last_state_switch - 0.05 / 2)));
-        alpha_right = 1 / (1 + exp(-blend_time_constant_ *
-                                   (time_since_last_state_switch - 0.05 / 2)));
+        //        alpha_left =
+        //            1 - 1 / (1 + exp(-blend_time_constant_ *
+        //                             (time_since_last_state_switch - 0.05 /
+        //                             2)));
+        //        alpha_right = 1 / (1 + exp(-blend_time_constant_ *
+        //                                   (time_since_last_state_switch -
+        //                                   0.05 / 2)));
+        alpha_left = 1 - (time_since_last_state_switch / 0.05);
+        alpha_right = (time_since_last_state_switch / 0.05);
+
       } else if (!prev_fsm_state) {
-        alpha_left = 1 / (1 + exp(-blend_time_constant_ *
-                                  (time_since_last_state_switch - 0.05 / 2)));
-        alpha_right =
-            1 - 1 / (1 + exp(-blend_time_constant_ *
-                             (time_since_last_state_switch - 0.05 / 2)));
+        //        alpha_left = 1 / (1 + exp(-blend_time_constant_ *
+        //                                  (time_since_last_state_switch - 0.05
+        //                                  / 2)));
+        //        alpha_right =
+        //            1 - 1 / (1 + exp(-blend_time_constant_ *
+        //                             (time_since_last_state_switch - 0.05 /
+        //                             2)));
+        alpha_left = (time_since_last_state_switch / 0.05);
+        alpha_right = 1 - (time_since_last_state_switch / 0.05);
       }
-      A.block(0, 0, n_c_ / 2, n_c_ / 2) =
-          w_blend_constraint_ * alpha_left *
-          MatrixXd::Identity(n_c_ / 2, n_c_ / 2);
-      A.block(n_c_ / 2, n_c_ / 2, n_c_ / 2, n_c_ / 2) =
-          w_blend_constraint_ * alpha_right *
-          MatrixXd::Identity(n_c_ / 2, n_c_ / 2);
+      A(2, 2) = w_blend_constraint_ * alpha_left;
+      A(5, 5) = w_blend_constraint_ * alpha_left;
+      A(8, 8) = w_blend_constraint_ * alpha_right;
+      A(11, 11) = w_blend_constraint_ * alpha_right;
     }
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(n_c_));
   }

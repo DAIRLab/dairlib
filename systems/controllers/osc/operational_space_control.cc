@@ -393,14 +393,21 @@ void OperationalSpaceControl::Build() {
         VectorXd::Zero(n_c_active_), epsilon_);
   }
 
-  if (w_blend_constraint_ > 0) {
+  /*if (w_blend_constraint_ > 0) {
     blend_constraint_ =
         prog_
             ->AddQuadraticCost(w_soft_constraint_ * MatrixXd::Zero(n_c_, n_c_),
                                VectorXd::Zero(n_c_), lambda_c_)
             .evaluator()
             .get();
-  }
+  }*/
+  // Testing -- hard constraint for contact force blending
+  blend_constraint_hard_ =
+      prog_
+          ->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_, n_c_),
+                                        VectorXd::Zero(n_c_), lambda_c_)
+          .evaluator()
+          .get();
 
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
@@ -641,10 +648,12 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
+  // Testing -- blend contact forces during double support phase
   if (w_blend_constraint_ > 0 && blend_time_constant_ > 1e-3) {
     MatrixXd A = MatrixXd::Zero(n_c_, n_c_);
 
-    if (fsm_state == 2) {
+    /// Cost version
+    /*if (fsm_state == 2) {
       const double prev_fsm_state =
           context.get_discrete_state(prev_fsm_state_idx_).get_value()(0);
       double alpha_left = 0;
@@ -683,7 +692,35 @@ VectorXd OperationalSpaceControl::SolveQp(
 //      A(8, 8) = w_blend_constraint_ * alpha_right;
 //      A(11, 11) = w_blend_constraint_ * alpha_right;
     }
-    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(n_c_));
+    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(n_c_));*/
+
+    /// Constraint version
+    if (fsm_state == 2) {
+      const double prev_fsm_state =
+          context.get_discrete_state(prev_fsm_state_idx_).get_value()(0);
+      double alpha_left = 0;
+      double alpha_right = 0;
+      if (prev_fsm_state) {
+        // We want left foot force to gradually increase
+        alpha_left = -1;
+        alpha_right =
+            1 / w_blend_constraint_hard_ +
+                (w_blend_constraint_hard_ - 1 / w_blend_constraint_hard_) *
+                    (time_since_last_state_switch / 0.05);
+
+      } else if (!prev_fsm_state) {
+        alpha_left = 1 / w_blend_constraint_hard_ +
+            (w_blend_constraint_hard_ - 1 / w_blend_constraint_hard_) *
+                (time_since_last_state_switch / 0.05);
+        alpha_right = -1;
+      }
+      A(2, 2) = alpha_left/2;
+      A(5, 5) = alpha_left/2;
+      A(8, 8) = alpha_right/2;
+      A(11, 11) = alpha_right/2;
+    }
+    blend_constraint_hard_->UpdateCoefficients(A, VectorXd::Zero(n_c_));
+    
   }
 
   // Solve the QP

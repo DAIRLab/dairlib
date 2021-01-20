@@ -4,7 +4,7 @@ group "0.cassie planner (2 foot steps)" {
         host = "localhost";
     }
     cmd "0.0.snopt (wo init file)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=1 --sample=1 --init_file=\"\" --debug_mode=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=5";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --iter=1 --sample=1 --init_file=\"\" --debug_mode=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --read_from_file=false";
         host = "localhost";
     }
     cmd "0.1.snopt (w init file)" {

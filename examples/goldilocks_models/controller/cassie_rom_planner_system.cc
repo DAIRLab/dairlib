@@ -348,6 +348,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar
   // linkage relationship. You shouldn't add constraint to the initial pose here
+  // TODO: update this part.
   /*double fourbar_angle = 13.0 / 180.0 * M_PI;
   auto q0_var =
   trajopt.x0_vars_by_mode(0).head(nq_);
@@ -557,7 +558,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Testing
   //  if (elapsed.count() > 0.5) {
-  if ((elapsed.count() > 0.7) && start_with_left_stance) {
+  if ((elapsed.count() > 0.6) && start_with_left_stance) {
     //  if (!result.is_success() && start_with_left_stance) {
     //  if ((result.get_optimal_cost() > 50) && start_with_left_stance) {
     cout << "x_init = " << x_init << endl;

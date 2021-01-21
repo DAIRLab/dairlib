@@ -136,7 +136,7 @@ std::unique_ptr<multibody::WorldPointEvaluator<T>> getSpiritToeEvaluator(
 
 template <typename T>
 std::tuple<
-                DirconModeSequence<T>,
+                std::vector<std::unique_ptr<DirconMode<T>>>,
                 std::vector<std::unique_ptr<multibody::WorldPointEvaluator<T>>> ,
                 std::vector<std::unique_ptr<multibody::KinematicEvaluatorSet<T>>>
           > createSpiritModeSequence( 
@@ -155,8 +155,8 @@ std::tuple<
 
   std::vector<std::unique_ptr<multibody::WorldPointEvaluator<T>>> toeEvals;
   std::vector<std::unique_ptr<multibody::KinematicEvaluatorSet<T>>> toeEvalSets;
-  
-  DirconModeSequence<T> sequence = DirconModeSequence<T>(plant);
+  std::vector<std::unique_ptr<DirconMode<T>>> modeVector;
+  // DirconModeSequence<T> sequence = DirconModeSequence<T>(plant);
 
   for (int i = 0; i<modeSeqMat.rows(); i++)
   {
@@ -168,12 +168,15 @@ std::tuple<
         (toeEvalSets.back())->add_evaluator(  (toeEvals.back()).get()  ); //add evaluator to the set if active //Works ish
       }
     }
-    DirconMode<T> modeDum = DirconMode<T>(  (toeEvalSets.back()).get(), knotpointMat(i)  );
-    sequence.AddMode(  &modeDum  ); // Add the evaluator set to the mode sequence
-  
+    auto dumbToeEvalPtr = (toeEvalSets.back()).get() ;
+    int num_knotpoints = knotpointMat(i);
+    modeVector.push_back(std::move( std::make_unique<DirconMode<T>>( *dumbToeEvalPtr , num_knotpoints )));
+    // DirconMode<T> modeDum = DirconMode<T>( *dumbToeEvalPtr , num_knotpoints );
+    // sequence.AddMode(  &modeDum  ); // Add the evaluator set to the mode sequence
+    
   }
   
-  return {sequence, std::move(toeEvals), std::move(toeEvalSets)};
+  return {std::move(modeVector), std::move(toeEvals), std::move(toeEvalSets)};
   // return {std::move(toeEvals), std::move(toeEvalSets)};
 }
 // //Overload function to allow the use of a equal number of knotpoints for every mode.
@@ -285,17 +288,34 @@ void runSpiritSquat(
 
 
  //******************************
+
+  DirconModeSequence<T> sequenceTest = DirconModeSequence<T>(plant);
+
   Eigen::Matrix<bool,1,4> modeSeqMat;
   Eigen::VectorXi knotpointMat = Eigen::MatrixXi::Constant(1,1,10);
   modeSeqMat << 
   1, 1, 1, 1;
 
-  auto [sequence_test, value2, value3] = createSpiritModeSequence(plant, modeSeqMat , knotpointMat,1);
+  auto [modeVector, toeEvals, toeEvalSets] = createSpiritModeSequence(plant, modeSeqMat , knotpointMat,1);
   
+  for (auto& mode : modeVector){
+    for (int i = 0; i < num_legs; i++ ){
+      mode->MakeConstraintRelative(i,0);
+      mode->MakeConstraintRelative(i,1);
+    }
+    mode->SetDynamicsScale(
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
+    mode->SetKinVelocityScale(
+      {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
+    sequenceTest.AddMode(mode.get());
+  }
+
+
+
   /// Setup the standing mode. This behavior only has one mode.
   int num_knotpoints = 10; // number of knot points in the collocation
   auto full_support = DirconMode<T>(evaluators,num_knotpoints); //No min and max mode times
-
+  
   for (int i = 0; i < num_legs; i++ ){
     full_support.MakeConstraintRelative(i, 0);  // x-coordinate can be non-zero
     full_support.MakeConstraintRelative(i, 1);  // y-coordinate can be non-zero

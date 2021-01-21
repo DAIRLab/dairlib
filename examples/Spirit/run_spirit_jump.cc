@@ -36,13 +36,10 @@ DEFINE_double(knotpointsPerMode, 7, "Number of knotpoints in each contact mode" 
 DEFINE_double(inputCost, 3, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_double(eps, 1e-2, "The wiggle room.");
-DEFINE_double(optTol, 1e-4, "Optimization Tolerance");
-DEFINE_double(feasTol, 1e-4,"Feasibility Tolerance");
+DEFINE_double(tol, 1e-4, "Optimization Tolerance");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
-// Parameters which enable dircon -improving features
-DEFINE_bool(scale_constraint, true, "Scale the nonlinear constraint values");
-DEFINE_bool(scale_variable, false, "Scale the decision variable");
+
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -116,16 +113,29 @@ void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, doubl
   ///
   /// Given an initial guess for state, control, and forces optimizes a standing behaviour for the spirit robot
 template <typename T>
-void runSpiritJump(
+std::tuple<bool, double> runSpiritJump(
     std::unique_ptr<MultibodyPlant<T>> plant_ptr,
     MultibodyPlant<double>* plant_double_ptr,
     std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
-    double duration,
-    PiecewisePolynomial<double> init_x_traj,
-    PiecewisePolynomial<double> init_u_traj,
-    vector<PiecewisePolynomial<double>> init_l_traj,
-    vector<PiecewisePolynomial<double>> init_lc_traj,
-    vector<PiecewisePolynomial<double>> init_vc_traj
+    PiecewisePolynomial<double>& x_traj,
+    PiecewisePolynomial<double>& u_traj,
+    vector<PiecewisePolynomial<double>>& l_traj,
+    vector<PiecewisePolynomial<double>>& lc_traj,
+    vector<PiecewisePolynomial<double>>& vc_traj,
+    const bool animate,
+    const vector<double>& num_knot_points,
+    const double apex_height,
+    const double initial_height,
+    const double fore_aft_displacement,
+    const bool lock_rotation,
+    const double max_duration,
+    const double cost_actuation,
+    const double cost_velocity,
+    const double cost_work,
+    const double mu,
+    const bool save_trajectory,
+    const double eps,
+    const double tol
     ) {
 
   drake::systems::DiagramBuilder<double> builder;
@@ -143,8 +153,7 @@ void runSpiritJump(
   int num_legs = 4;
   double toeRadius = 0.02; // Radius of toe ball
   Vector3d toeOffset(toeRadius,0,0); // vector to "contact point"
-  double mu = 3; //friction //prev 1
-  
+
   auto toe_evaluators = multibody::KinematicEvaluatorSet<T>(plant); //Initialize kinematic evaluator set
   
   // Get the toe frames
@@ -172,7 +181,7 @@ void runSpiritJump(
   
   double min_T = .03;
   double max_T = 3;
-  auto full_support = DirconMode<T>(toe_evaluators,FLAGS_knotpointsPerMode, min_T, max_T); //No min and max mode times
+  auto full_support = DirconMode<T>(toe_evaluators,num_knot_points[0], min_T, max_T); //No min and max mode times
 
   for (int i = 0; i < num_legs; i++ ){
     full_support.MakeConstraintRelative(i, 0);  // x-coordinate can be non-zero
@@ -188,10 +197,9 @@ void runSpiritJump(
 
   /// Add flight mode 
   auto evaluators_flight = multibody::KinematicEvaluatorSet<T>(plant);
-  auto flight_mode = DirconMode<T>(evaluators_flight, FLAGS_knotpointsPerMode,
+  auto flight_mode = DirconMode<T>(evaluators_flight, num_knot_points[1],
                                    min_T, max_T);
 
-                                   
   flight_mode.SetDynamicsScale(
     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  200);
 
@@ -202,9 +210,7 @@ void runSpiritJump(
   sequence.AddMode(&flight_mode);
   sequence.AddMode(&flight_mode);
   sequence.AddMode(&full_support);
-  
-  vector<int> mode_lengths(sequence.num_modes(),FLAGS_knotpointsPerMode);
-  
+
   ///Setup trajectory optimization
   auto trajopt = Dircon<T>(sequence);
   // Set up Trajectory Optimization options
@@ -215,20 +221,20 @@ void runSpiritJump(
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Iterations limit", 1000000);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance",
-                           FLAGS_optTol);  // target optimality
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", FLAGS_feasTol);
+                           tol);  // target optimality
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", tol);
   trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
 
     // Add duration constraint, currently constrained not bounded
-  trajopt.AddDurationBounds(0, duration*2);
+  trajopt.AddDurationBounds(0, max_duration);
   // Initialize the trajectory control state and forces
   
   for (int j = 0; j < sequence.num_modes(); j++) {
     trajopt.drake::systems::trajectory_optimization::MultipleShooting::
-        SetInitialTrajectory(init_u_traj, init_x_traj);
-    trajopt.SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
-                                      init_vc_traj[j]);
+        SetInitialTrajectory(u_traj, x_traj);
+    trajopt.SetInitialForceTrajectory(j, l_traj[j], lc_traj[j],
+                                      vc_traj[j]);
   }
 
   
@@ -251,98 +257,90 @@ void runSpiritJump(
   
   
   // Initial body positions
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_standHeight - FLAGS_eps, FLAGS_standHeight + FLAGS_eps, x0(positions_map.at("base_z")));
+  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position
+  trajopt.AddBoundingBoxConstraint(-eps, eps, x0(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(initial_height - eps, initial_height + eps, x0(positions_map.at("base_z")));
   // Lift off body positions conditions
-  //trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xlo(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xlo(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(-eps, eps, xlo(positions_map.at("base_y")));
   // Apex body positions conditions
-  //trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(-eps, eps, xapex(positions_map.at("base_y")));
   // Touchdown body positions conditions
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xtd(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xtd(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(-eps, eps, xtd(positions_map.at("base_y")));
   // Final body positions conditions
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xf(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_standHeight - FLAGS_eps, FLAGS_standHeight + FLAGS_eps, xf(positions_map.at("base_z")));
+  trajopt.AddBoundingBoxConstraint(-eps, eps, xf(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(-eps, eps, xf(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(initial_height - eps, initial_height + eps, xf(positions_map.at("base_z")));
 
 
     // // Body pose constraints (keep the body flat) at initial state
-    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, x0(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, x0(positions_map.at("base_qz")));
+    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, x0(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qz")));
 
     // // Body pose constraints (keep the body flat) at liftoff state
-    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xlo(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xlo(positions_map.at("base_qz")));
+    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xlo(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xlo(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xlo(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xlo(positions_map.at("base_qz")));
 
     // // Body pose constraints (keep the body flat) at apex state
-    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xapex(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xapex(positions_map.at("base_qz")));
+    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xapex(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xapex(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xapex(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xapex(positions_map.at("base_qz")));
 
     // // Body pose constraints (keep the body flat) at touchdown state
-    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xtd(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xtd(positions_map.at("base_qz")));
+    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xtd(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xtd(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xtd(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xtd(positions_map.at("base_qz")));
 
     // // Body pose constraints (keep the body flat) at final state
-    // trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xf(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xf(positions_map.at("base_qz")));
+    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xf(positions_map.at("base_qw")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qx")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qy")));
+    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qz")));
 
 
 
-
-/// Start/End velocity constraints of the behavior
+  // Initial and final velocity
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v), x0.tail(n_v));
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v), xf.tail(n_v));
-                                   
-  trajopt.AddBoundingBoxConstraint( FLAGS_apexGoal-FLAGS_eps, FLAGS_apexGoal+FLAGS_eps, xapex(positions_map.at("base_z")) );
-  //trajopt.AddBoundingBoxConstraint( 0, 0, xapex(n_q + velocities_map.at("base_vz")) );
-                                   
+
+  // Apex height
+  trajopt.AddBoundingBoxConstraint(apex_height-eps, apex_height+eps, xapex(positions_map.at("base_z")) );
+
   double upperSet = 1;
   double kneeSet = 2;
 
   //STATIC LEGS IN FLIGHT
-    trajopt.AddBoundingBoxConstraint( upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_0") ) );
-    trajopt.AddBoundingBoxConstraint(  kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_1") ) );
+  trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_0") ) );
+  trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_1") ) );
 
-    trajopt.AddBoundingBoxConstraint( upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_2") ) );
-    trajopt.AddBoundingBoxConstraint(  kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_3") ) );
+  trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_2") ) );
+  trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_3") ) );
 
-    trajopt.AddBoundingBoxConstraint( upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_4") ) );
-    trajopt.AddBoundingBoxConstraint(  kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_5") ) );
+  trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_4") ) );
+  trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_5") ) );
 
-    trajopt.AddBoundingBoxConstraint( upperSet - FLAGS_eps, upperSet + FLAGS_eps, xapex( positions_map.at("joint_6") ) );
-    trajopt.AddBoundingBoxConstraint(  kneeSet - FLAGS_eps,  kneeSet + FLAGS_eps, xapex( positions_map.at("joint_7") ) );
+  trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_6") ) );
+  trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_7") ) );
 
-    // trajopt.AddBoundingBoxConstraint(      -0 - FLAGS_eps,        0 + FLAGS_eps, xapex( positions_map.at("joint_8")));
-    // trajopt.AddBoundingBoxConstraint(      -0 - FLAGS_eps,        0 + FLAGS_eps, xapex( positions_map.at("joint_9")));
-    // trajopt.AddBoundingBoxConstraint(      -0 - FLAGS_eps,        0 + FLAGS_eps, xapex( positions_map.at("joint_10")));
-    // trajopt.AddBoundingBoxConstraint(      -0 - FLAGS_eps,        0 + FLAGS_eps, xapex( positions_map.at("joint_11")));
 
     
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_0dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_1dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_2dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_3dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_4dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_5dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_6dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_7dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_8dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_9dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_10dot")));
-    // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, xapex( n_q + velocities_map.at("joint_11dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_0dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_1dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_2dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_3dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_4dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_5dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_6dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_7dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_8dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_9dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_10dot")));
+    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_11dot")));
 
     trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_0dot")));
     trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_1dot")));
@@ -360,15 +358,15 @@ void runSpiritJump(
   for (int i = 0; i < trajopt.N(); i++){
     auto xi = trajopt.state(i);
     // Joint limits
-    trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_1")));
-    trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_3")));
-    trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_5")));
-    trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_7")));
+    trajopt.AddBoundingBoxConstraint(eps, M_PI - eps, xi(positions_map.at("joint_1")));
+    trajopt.AddBoundingBoxConstraint(eps, M_PI - eps, xi(positions_map.at("joint_3")));
+    trajopt.AddBoundingBoxConstraint(eps, M_PI - eps, xi(positions_map.at("joint_5")));
+    trajopt.AddBoundingBoxConstraint(eps, M_PI - eps, xi(positions_map.at("joint_7")));
 
-    trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_0")));
-    trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_2")));
-    trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_4")));
-    trajopt.AddBoundingBoxConstraint(FLAGS_eps, M_PI - FLAGS_eps, xi( positions_map.at("joint_6")));
+    trajopt.AddBoundingBoxConstraint(eps, M_PI - eps, xi(positions_map.at("joint_0")));
+    trajopt.AddBoundingBoxConstraint(eps, M_PI - eps, xi(positions_map.at("joint_2")));
+    trajopt.AddBoundingBoxConstraint(eps, M_PI - eps, xi(positions_map.at("joint_4")));
+    trajopt.AddBoundingBoxConstraint(eps, M_PI - eps, xi(positions_map.at("joint_6")));
 
     trajopt.AddBoundingBoxConstraint(-0.5, 0.1, xi( positions_map.at("joint_8")));
     trajopt.AddBoundingBoxConstraint(-0.5, 0.1, xi( positions_map.at("joint_9")));
@@ -376,10 +374,10 @@ void runSpiritJump(
     trajopt.AddBoundingBoxConstraint(-0.1, 0.5, xi( positions_map.at("joint_11")));
 
     //Orientation
-    trajopt.AddBoundingBoxConstraint(1 - FLAGS_eps, 1 + FLAGS_eps, xi(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xi(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xi(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0 - FLAGS_eps, 0 + FLAGS_eps, xi(positions_map.at("base_qz")));
+    trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xi(positions_map.at("base_qw")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qx")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qy")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qz")));
 
     // Height
     trajopt.AddBoundingBoxConstraint( 0.15, 2, xi( positions_map.at("base_z")));
@@ -388,17 +386,12 @@ void runSpiritJump(
  double upperLegLength = 0.206; // length of the upper leg link
 
   ///Setup the traditional cost function
-  const double R = FLAGS_inputCost;  // Cost on input effort
-  const MatrixXd Q = FLAGS_velocityCost  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
+  const double R = cost_actuation;  // Cost on input effort
+  const MatrixXd Q = cost_velocity  * MatrixXd::Identity(n_v, n_v); // Cost on velocity
 
   trajopt.AddRunningCost( x.tail(n_v).transpose() * Q * x.tail(n_v) );
   trajopt.AddRunningCost( u.transpose()*R*u );
-  for(int joint = 0; joint< 12; joint ++ )
-  {
-    auto joint_v = x(n_q+velocities_map.at("joint_"+std::to_string(joint)+"dot"));
-    trajopt.AddRunningCost(joint_v * 0 * joint_v);
-  }
-  
+
   /// Setup the visualization during the optimization
   int num_ghosts = 3;// Number of ghosts in visualization. NOTE: there are limitations on number of ghosts based on modes and knotpoints
   std::vector<unsigned int> visualizer_poses; // Ghosts for visualizing during optimization
@@ -611,21 +604,29 @@ int main(int argc, char* argv[]) {
   init_lc_traj.push_back(init_lc_traj_j);
   init_vc_traj.push_back(init_vc_traj_j);
 
-  if (FLAGS_autodiff) {
-    std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
-        drake::systems::System<double>::ToAutoDiffXd(*plant);
-    dairlib::runSpiritJump<drake::AutoDiffXd>(
-      std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
-      FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-      init_lc_traj, init_vc_traj);
-  } else if (FLAGS_runInitTraj){
+  if (FLAGS_runInitTraj){
     dairlib::runAnimate<double>(
       std::move(plant), plant_vis.get(), std::move(scene_graph), init_x_traj);
   }else {
     dairlib::runSpiritJump<double>(
-      std::move(plant), plant_vis.get(), std::move(scene_graph),
-      FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-      init_lc_traj, init_vc_traj);
+        std::move(plant), plant_vis.get(), std::move(scene_graph),
+        init_x_traj, init_u_traj, init_l_traj,
+        init_lc_traj, init_vc_traj,
+        true,
+        {FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode} ,
+        FLAGS_apexGoal,
+        FLAGS_standHeight,
+        0,
+        true,
+        2*FLAGS_duration,
+        FLAGS_inputCost,
+        FLAGS_velocityCost,
+        0,
+        4,
+        false,
+        FLAGS_eps,
+        FLAGS_tol
+    );
   }
 
 }

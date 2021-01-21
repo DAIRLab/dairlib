@@ -25,6 +25,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   JumpingEventFsm(const drake::multibody::MultibodyPlant<double>& plant,
                   const std::vector<double>& transition_times,
                   bool contact_based = true, double delay_time = 0.0,
+                  double impact_threshold = 0.0,
                   FSM_STATE init_state = BALANCE);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -39,7 +40,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
     return this->get_input_port(switch_signal_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_fsm_output_port() const{
+  const drake::systems::OutputPort<double>& get_fsm_output_port() const {
     return this->get_output_port(fsm_output_port_);
   }
 
@@ -47,7 +48,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
     return this->get_output_port(near_impact_output_port);
   }
 
-  const drake::systems::OutputPort<double>& get_clock_output_port() const{
+  const drake::systems::OutputPort<double>& get_clock_output_port() const {
     return this->get_output_port(clock_output_port_);
   }
 
@@ -60,10 +61,10 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
                        drake::systems::BasicVector<double>* fsm_state) const;
 
   void CalcNearImpact(const drake::systems::Context<double>& context,
-                       drake::systems::BasicVector<double>* fsm_state) const;
+                      drake::systems::BasicVector<double>* fsm_state) const;
 
   void CalcClockTime(const drake::systems::Context<double>& context,
-                       drake::systems::BasicVector<double>* clock) const;
+                     drake::systems::BasicVector<double>* clock) const;
 
   bool DetectGuardCondition(
       bool guard_condition, double current_time,
@@ -80,6 +81,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   bool contact_based_;
 
   double transition_delay_;
+  double impact_threshold_;
   int fsm_idx_;
   int prev_time_idx_;
   int switching_time_idx_;

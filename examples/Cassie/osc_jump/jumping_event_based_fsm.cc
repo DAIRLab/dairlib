@@ -21,10 +21,11 @@ namespace osc_jump {
 JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
                                  bool contact_based, double delay_time,
-                                 FSM_STATE init_state)
+                                 double impact_threshold, FSM_STATE init_state)
     : transition_times_(transition_times),
       contact_based_(contact_based),
       transition_delay_(delay_time),
+      impact_threshold_(impact_threshold),
       init_state_(init_state) {
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -177,8 +178,7 @@ void JumpingEventFsm::CalcFiniteState(const Context<double>& context,
 
 void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
                                      BasicVector<double>* near_impact) const {
-  VectorXd fsm_state =
-      context.get_discrete_state(fsm_idx_).get_value();
+  VectorXd fsm_state = context.get_discrete_state(fsm_idx_).get_value();
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -186,12 +186,10 @@ void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
 
   VectorXd is_near_impact = VectorXd::Zero(2);
   // Get current finite state
-//  for (unsigned int i = 0; i < transition_times_.size(); i++) {
-  if (abs(timestamp - transition_times_[LAND]) < transition_delay_) {
+  if (abs(timestamp - transition_times_[FLIGHT]) < impact_threshold_) {
     is_near_impact(0) = 1;
     is_near_impact(1) = LAND;
   }
-//  }
   near_impact->get_mutable_value() = is_near_impact;
 }
 

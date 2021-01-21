@@ -207,7 +207,7 @@ int DoMain(int argc, char* argv[]) {
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
-      gains.impact_threshold, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
+      FLAGS_transition_delay, gains.impact_threshold, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

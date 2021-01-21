@@ -1,5 +1,6 @@
 #include <memory>
 #include <chrono>
+#include <tuple>
 #include <unistd.h>
 #include <gflags/gflags.h>
 #include <string.h>
@@ -108,67 +109,88 @@ const drake::multibody::Frame<T>& getSpiritToeFrame( MultibodyPlant<T>& plant, u
 }
 
 template <typename T>
-const multibody::WorldPointEvaluator<T> getSpiritToeEvaluator( 
+std::unique_ptr<multibody::WorldPointEvaluator<T>> getSpiritToeEvaluator( 
                       MultibodyPlant<T>& plant, 
                       u_int8_t toeIndex,
                       const Eigen::Vector3d toePoint = Eigen::Vector3d::Zero(),
-                      std::vector<int> active_directions = {0, 1, 2},
-                      double mu = 0 ){
+                      double mu = 0.0,
+                      const Eigen::Vector3d normal = Eigen::Vector3d::UnitZ(),
+                      bool xy_active = true
+                      ){
   assert(toeIndex<4);
-  auto toe_eval =  multibody::WorldPointEvaluator<T>(
+  auto toe_eval =  std::make_unique<multibody::WorldPointEvaluator<T>>(
         plant, 
         toePoint, 
         getSpiritToeFrame(plant, toeIndex ) , 
-        Eigen::Matrix3d::Identity(), 
+        normal, 
         Eigen::Vector3d::Zero(), 
-        active_directions   );
+        xy_active );
   if(mu){
-    toe_eval.set_frictional(); toe_eval.set_mu(mu);
+    toe_eval->set_frictional(); toe_eval->set_mu(mu);
   }
   return toe_eval;
 }
 
-
+// template <typename T>
+// void (vector<std::unique_ptr<multibody::KinematicEvaluatorSet<T>>>::* func)(const std::unique_ptr<multibody::KinematicEvaluatorSet<T>>&) = &vector<std::unique_ptr<multibody::KinematicEvaluatorSet<T>>>::push_back;
 
 template <typename T>
-void createSpiritModeSequence( 
+std::tuple<
+                DirconModeSequence<T>,
+                std::vector<std::unique_ptr<multibody::WorldPointEvaluator<T>>> ,
+                std::vector<std::unique_ptr<multibody::KinematicEvaluatorSet<T>>>
+          > createSpiritModeSequence( 
           MultibodyPlant<T>& plant, // multibodyPlant
           Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
           Eigen::VectorXi knotpointMat, // Matrix of knot points for each mode  
           double mu = 1){
+
   std::cout<<modeSeqMat<<std::endl;
   std::cout<<knotpointMat<<std::endl;  
-  double toeRadius = 0.02;
-  Vector3d toeOffset(toeRadius,0,0); // vector to "contact point"
+
+  const double toeRadius = 0.02;
+  const Vector3d toeOffset(toeRadius,0,0); // vector to "contact point"
   
   assert( modeSeqMat.rows()==knotpointMat.rows() );
 
-  std::vector<multibody::WorldPointEvaluator<T>> toeEvals;
-  for (int i=0;i<4;i++){
-    toeEvals.push_back( getSpiritToeEvaluator(plant, i, toeOffset, {0, 1, 2}, mu) ) ;
-  }
+  std::vector<std::unique_ptr<multibody::WorldPointEvaluator<T>>> toeEvals;
+  std::vector<std::unique_ptr<multibody::KinematicEvaluatorSet<T>>> toeEvalSets;
+  
+  DirconModeSequence<T> sequence = DirconModeSequence<T>(plant);
 
-  for (i = 0; i<modeSeqMat.rows(); i++)
+  for (int i = 0; i<modeSeqMat.rows(); i++)
   {
-    // auto evaluators = multibody::KinematicEvaluatorSet<T>(plant);//Likely not like this
-    for ( j = 0; j < 4; j++ ){
-      
+    
+    toeEvalSets.push_back( std::move( std::make_unique<multibody::KinematicEvaluatorSet<T>>(plant) ));
+    for ( int j = 0; j < 4; j++ ){
+      if (modeSeqMat(i,j)){
+        toeEvals.push_back( std::move( getSpiritToeEvaluator(plant, i, toeOffset, mu )) );//Default Normal (z) and xy_active=true
+        (toeEvalSets.back())->add_evaluator(  (toeEvals.back()).get()  ); //add evaluator to the set if active //Works ish
+      }
     }
+    DirconMode<T> modeDum = DirconMode<T>(  (toeEvalSets.back()).get(), knotpointMat(i)  );
+    sequence.AddMode(  &modeDum  ); // Add the evaluator set to the mode sequence
+  
   }
   
-  return;
+  return {sequence, std::move(toeEvals), std::move(toeEvalSets)};
+  // return {std::move(toeEvals), std::move(toeEvalSets)};
 }
-//Overload function to allow the use of a equal number of knotpoints for every mode.
-template <typename T>
-void createSpiritModeSequence( 
-  MultibodyPlant<T>& plant, // multibodyPlant
-  Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
-  uint16_t knotpoints, // Number of knot points per mode
-  double mu = 1){
-  int numModes = modeSeqMat.rows(); 
-  Eigen::VectorXi knotpointMat = Eigen::MatrixXi::Constant(numModes,1,knotpoints);
-  return createSpiritModeSequence(plant, modeSeqMat,knotpointMat,mu);
-}
+// //Overload function to allow the use of a equal number of knotpoints for every mode.
+// template <typename T>
+// std::tuple<
+//                 DirconModeSequence<T>,
+//                 std::vector<std::unique_ptr<multibody::WorldPointEvaluator<T>>> ,
+//                 std::vector<std::unique_ptr<multibody::KinematicEvaluatorSet<T>>>
+//           > createSpiritModeSequence( 
+//   MultibodyPlant<T>& plant, // multibodyPlant
+//   Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
+//   uint16_t knotpoints, // Number of knot points per mode
+//   double mu = 1){
+//   int numModes = modeSeqMat.rows(); 
+//   Eigen::VectorXi knotpointMat = Eigen::MatrixXi::Constant(numModes,1,knotpoints);
+//   return createSpiritModeSequence(plant, modeSeqMat,knotpointMat, mu);
+// }
 
 
 template <typename T>
@@ -229,12 +251,6 @@ void runSpiritSquat(
   // Get position and velocity dictionaries 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
-  Eigen::Matrix<bool,2,4> modeSeqMat;
-  modeSeqMat<<
-  0,0,0,0,
-  1,1,1,1;
-  createSpiritModeSequence(plant, modeSeqMat, 10,.5);
-
   /// For Spirit front left leg->0, back left leg->1, front right leg->2, back right leg->3
   /// Get the frame of each toe and attach a world point to the toe tip (frame is at toe ball center).
 
@@ -265,8 +281,16 @@ void runSpiritSquat(
   evaluators.add_evaluator(&(toe1_eval));
   evaluators.add_evaluator(&(toe2_eval));
   evaluators.add_evaluator(&(toe3_eval));
+ 
 
-  // createSpiritModeSequence(plant, {{0,0,0,0},{1,1,0,0},{1,1,1,1}}, 10,1)
+
+ //******************************
+  Eigen::Matrix<bool,1,4> modeSeqMat;
+  Eigen::VectorXi knotpointMat = Eigen::MatrixXi::Constant(1,1,10);
+  modeSeqMat << 
+  1, 1, 1, 1;
+
+  auto [sequence_test, value2, value3] = createSpiritModeSequence(plant, modeSeqMat , knotpointMat,1);
   
   /// Setup the standing mode. This behavior only has one mode.
   int num_knotpoints = 10; // number of knot points in the collocation
@@ -276,12 +300,12 @@ void runSpiritSquat(
     full_support.MakeConstraintRelative(i, 0);  // x-coordinate can be non-zero
     full_support.MakeConstraintRelative(i, 1);  // y-coordinate can be non-zero
   }
+  
 
   full_support.SetDynamicsScale(
     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
   full_support.SetKinVelocityScale(
     {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
-
   ///Mode Sequence
   // Adding the ONE mode to the sequence, will not leave full_support
   auto sequence = DirconModeSequence<T>(plant);
@@ -688,14 +712,15 @@ int main(int argc, char* argv[]) {
     init_vc_traj.push_back(init_vc_traj_j);
   }
 
-  if (FLAGS_autodiff) {
-    std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
-        drake::systems::System<double>::ToAutoDiffXd(*plant);
-    dairlib::runSpiritSquat<drake::AutoDiffXd>(
-      std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
-      FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-      init_lc_traj, init_vc_traj);
-  } else if (FLAGS_runInitTraj){
+  // if (FLAGS_autodiff) {
+  //   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
+  //       drake::systems::System<double>::ToAutoDiffXd(*plant);
+  //   dairlib::runSpiritSquat<drake::AutoDiffXd>(
+  //     std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
+  //     FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+  //     init_lc_traj, init_vc_traj);
+  // } else 
+  if (FLAGS_runInitTraj){
     dairlib::runAnimate<double>(
       std::move(plant), plant_vis.get(), std::move(scene_graph), init_x_traj);
   }else {

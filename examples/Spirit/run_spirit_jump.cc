@@ -100,18 +100,30 @@ void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, doubl
     xState(positions_map.at("joint_" + std::to_string(hipInd))) = mirroredFlag * alpha;
   }
 }
-  /// See runSpiritJump()
-    // std::unique_ptr<MultibodyPlant<T>> plant_ptr,
-    // MultibodyPlant<double>* plant_double_ptr,
-    // std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
-    // double duration,
-    // PiecewisePolynomial<double> init_x_traj,
-    // PiecewisePolynomial<double> init_u_traj,
-    // vector<PiecewisePolynomial<double>> init_l_traj,
-    // vector<PiecewisePolynomial<double>> init_lc_traj,
-    // vector<PiecewisePolynomial<double>> init_vc_traj
-  ///
-  /// Given an initial guess for state, control, and forces optimizes a standing behaviour for the spirit robot
+/// runSpiritJump, runs a trajectory optimization problem for spirit jumping on flat ground
+/// \param plant_ptr: robot model
+/// \param plant_double_ptr: model used for animation
+/// \param scene_graph_ptr: scene graph
+/// \param x_traj[in, out]: initial and solution state trajectory {todo}
+/// \param u_traj[in, out]: initial and solution control trajectory {todo}
+/// \param l_traj[in, out]: initial and solution contact force trajectory {todo}
+/// \param lc_traj[in, out]: initial and solution contact force slack variable trajectory {todo}
+/// \param vc_traj[in, out]: initial and solution contact velocity slack variable trajectory {todo}
+/// \param animate: true if solution should be animated, false otherwise
+/// \param num_knot_points: number of knot points used for each mode (vector) {todo}
+/// \param apex_height: apex height of the jump
+/// \param initial_height: initial and final height of the jump
+/// \param fore_aft_displacement: fore-aft displacemnt after jump
+/// \param lock_rotation: true if rotation is constrained at all knot points, false if just initial and final state
+/// \param max_duration: maximum time allowed for jump
+/// \param cost_actuation: Cost on actuation
+/// \param cost_velocity: Cost on state velocity
+/// \param cost_work: Cost on work {TODO}
+/// \param mu: coefficient of friction
+/// \param eps: the tolerance for position constraints
+/// \param tol: optimization solver constraint and optimality tolerence
+/// \param file_name: if empty, file is unsaved, if not empty saves the trajectory in the directory {todo}
+/// \return
 template <typename T>
 std::tuple<bool, double> runSpiritJump(
     std::unique_ptr<MultibodyPlant<T>> plant_ptr,
@@ -133,9 +145,9 @@ std::tuple<bool, double> runSpiritJump(
     const double cost_velocity,
     const double cost_work,
     const double mu,
-    const bool save_trajectory,
     const double eps,
-    const double tol
+    const double tol,
+    const std::string file_name
     ) {
 
   drake::systems::DiagramBuilder<double> builder;
@@ -267,42 +279,9 @@ std::tuple<bool, double> runSpiritJump(
   // Touchdown body positions conditions
   trajopt.AddBoundingBoxConstraint(-eps, eps, xtd(positions_map.at("base_y")));
   // Final body positions conditions
-  trajopt.AddBoundingBoxConstraint(-eps, eps, xf(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(fore_aft_displacement - eps, fore_aft_displacement + eps, xf(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
   trajopt.AddBoundingBoxConstraint(-eps, eps, xf(positions_map.at("base_y")));
   trajopt.AddBoundingBoxConstraint(initial_height - eps, initial_height + eps, xf(positions_map.at("base_z")));
-
-
-    // // Body pose constraints (keep the body flat) at initial state
-    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, x0(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qz")));
-
-    // // Body pose constraints (keep the body flat) at liftoff state
-    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xlo(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xlo(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xlo(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xlo(positions_map.at("base_qz")));
-
-    // // Body pose constraints (keep the body flat) at apex state
-    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xapex(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xapex(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xapex(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xapex(positions_map.at("base_qz")));
-
-    // // Body pose constraints (keep the body flat) at touchdown state
-    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xtd(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xtd(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xtd(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xtd(positions_map.at("base_qz")));
-
-    // // Body pose constraints (keep the body flat) at final state
-    // trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xf(positions_map.at("base_qw")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qx")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qy")));
-    // trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qz")));
-
-
 
   // Initial and final velocity
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v), x0.tail(n_v));
@@ -311,10 +290,27 @@ std::tuple<bool, double> runSpiritJump(
   // Apex height
   trajopt.AddBoundingBoxConstraint(apex_height-eps, apex_height+eps, xapex(positions_map.at("base_z")) );
 
+  if (!lock_rotation)
+  {
+    // Body pose constraints (keep the body flat) at initial state
+    trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, x0(positions_map.at("base_qw")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qx")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qy")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, x0(positions_map.at("base_qz")));
+
+
+    // Body pose constraints (keep the body flat) at final state
+    trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xf(positions_map.at("base_qw")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qx")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qy")));
+    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xf(positions_map.at("base_qz")));
+  }
+
+
   double upperSet = 1;
   double kneeSet = 2;
 
-  //STATIC LEGS IN FLIGHT
+  //STATIC LEGS AT APEX
   trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_0") ) );
   trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_1") ) );
 
@@ -327,33 +323,18 @@ std::tuple<bool, double> runSpiritJump(
   trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_6") ) );
   trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_7") ) );
 
-
-    
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_0dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_1dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_2dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_3dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_4dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_5dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_6dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_7dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_8dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_9dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_10dot")));
-    // trajopt.AddBoundingBoxConstraint(-eps, eps, xapex( n_q + velocities_map.at("joint_11dot")));
-
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_0dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_1dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_2dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_3dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_4dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_5dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_6dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_7dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_8dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_9dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_10dot")));
-    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_11dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_0dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_1dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_2dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_3dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_4dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_5dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_6dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_7dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_8dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_9dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_10dot")));
+  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_11dot")));
 
   for (int i = 0; i < trajopt.N(); i++){
     auto xi = trajopt.state(i);
@@ -374,13 +355,16 @@ std::tuple<bool, double> runSpiritJump(
     trajopt.AddBoundingBoxConstraint(-0.1, 0.5, xi( positions_map.at("joint_11")));
 
     //Orientation
-    trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xi(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qz")));
+    if (lock_rotation)
+    {
+      trajopt.AddBoundingBoxConstraint(1 - eps, 1 + eps, xi(positions_map.at("base_qw")));
+      trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qx")));
+      trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qy")));
+      trajopt.AddBoundingBoxConstraint(0 - eps, 0 + eps, xi(positions_map.at("base_qz")));
+    }
 
     // Height
-    trajopt.AddBoundingBoxConstraint( 0.15, 2, xi( positions_map.at("base_z")));
+    trajopt.AddBoundingBoxConstraint( 0.15, 5, xi( positions_map.at("base_z")));
   }
 
  double upperLegLength = 0.206; // length of the upper leg link
@@ -418,8 +402,7 @@ std::tuple<bool, double> runSpiritJump(
   multibody::connectTrajectoryVisualizer(plant_double_ptr,
       &builder, &scene_graph, pp_xtraj);
   auto diagram = builder.Build();
-  while (true) {
-    
+  while (animate) {
     drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(0.25);
     simulator.Initialize();
@@ -623,9 +606,9 @@ int main(int argc, char* argv[]) {
         FLAGS_velocityCost,
         0,
         4,
-        false,
         FLAGS_eps,
-        FLAGS_tol
+        FLAGS_tol,
+        ""
     );
   }
 

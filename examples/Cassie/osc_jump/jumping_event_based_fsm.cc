@@ -187,7 +187,12 @@ void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
   VectorXd is_near_impact = VectorXd::Zero(2);
   // Get current finite state
   if (abs(timestamp - transition_times_[FLIGHT]) < impact_threshold_) {
-    is_near_impact(0) = 1;
+    if(timestamp < transition_times_[FLIGHT]){
+      is_near_impact(0) = 1 - exp(- (transition_times_[FLIGHT] - timestamp)/0.005);
+    }
+    else{
+      is_near_impact(0) = 1 - exp(- (timestamp - transition_times_[FLIGHT])/0.005);
+    }
     is_near_impact(1) = LAND;
   }
   near_impact->get_mutable_value() = is_near_impact;

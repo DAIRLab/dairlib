@@ -94,7 +94,7 @@ def main():
   # import pdb; pdb.set_trace()
   # Override here #
   # t_start = 50
-  # t_end = 60
+  # t_end = 55
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -119,7 +119,6 @@ def main():
   # plt.plot(t_contact_info, contact_info[2, :, 2], 'r-')
   # plt.plot(t_u[t_u_slice], 100 * fsm[t_u_slice], 'k')
 
-  plt.ylim([-100, 500])
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
 
   if False:
@@ -209,7 +208,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     print(name)
     print(tracking_cost_map[name])
 
-  plt.figure("blend_amount")
+  plt.figure("qp solve time")
   plt.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
 
   plt.figure("costs")
@@ -223,25 +222,26 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # For Jumping
   # osc_traj0 = "com_traj"
   # osc_traj1 = "left_ft_traj"
-  # osc_traj2 = "left_toe_angle_traj"
+  # osc_traj2 = "right_ft_traj"
+  # osc_traj3 = "left_toe_angle_traj"
+  # osc_traj4 = "right_toe_angle_traj"
 
   # For Walking
   osc_traj0 = "lipm_traj"
   osc_traj1 = "swing_ft_traj"
-  # osc_traj2 = "swing_hip_yaw_traj"
-  # osc_traj1 = "l_foot_traj"
   osc_traj2 = "swing_hip_yaw_traj"
   osc_traj3 = "left_toe_angle_traj"
   osc_traj4 = "right_toe_angle_traj"
+  osc_traj5 = "pelvis_balance_traj"
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
   # plot_osc(osc_debug, osc_traj0, 2, "pos")
   #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   #
@@ -250,42 +250,34 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
-  # plot_osc(osc_debug, osc_traj1, 1, "pos")
+  plot_osc(osc_debug, osc_traj1, 1, "pos")
   # plot_osc(osc_debug, osc_traj1, 2, "pos")
 
-  plot_osc(osc_debug, osc_traj1, 0, "vel")
+  # plot_osc(osc_debug, osc_traj1, 0, "vel")
   plot_osc(osc_debug, osc_traj1, 1, "vel")
-  plot_osc(osc_debug, osc_traj1, 2, "vel")
+  # plot_osc(osc_debug, osc_traj1, 2, "vel")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
-
-
-  # plot_osc(osc_debug, osc_traj2, 0, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  # plot_osc(osc_debug, osc_traj2, 2, "pos")
-  # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  #
-  # plot_osc(osc_debug, osc_traj2, 0, "vel")
-  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
-
-# plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "accel")
-  # plot_osc(osc_debug, osc_traj1, 1, "accel")
+  plot_osc(osc_debug, osc_traj1, 1, "accel")
   # plot_osc(osc_debug, osc_traj1, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj2, 0, "accel")
   # plot_osc(osc_debug, osc_traj2, 1, "accel")
   # plot_osc(osc_debug, osc_traj2, 2, "accel")
 
-  plot_osc(osc_debug, osc_traj3, 0, "pos")
+  # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj4, 0, "pos")
+  # plot_osc(osc_debug, osc_traj4, 0, "pos")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj3, 0, "vel")
-  # plot_osc(osc_debug, osc_traj3, 0, "accel")
+  plot_osc(osc_debug, osc_traj3, 0, "accel")
+
+
+  plot_osc(osc_debug, osc_traj5, 0, "pos")
+  plot_osc(osc_debug, osc_traj5, 0, "vel")
+  plot_osc(osc_debug, osc_traj5, 0, "accel")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
 
@@ -391,7 +383,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   vel_indices = slice(23 + 6, 45)
   pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
-  u_indices = slice(0, 10)
+  u_indices = slice(0, 6)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
@@ -404,10 +396,21 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   plt.figure("velocities: " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
-  plt.figure("efforts: " + filename)
+  plt.figure("efforts 0-5: " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
-  # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices], '--')
   plt.legend(u_datatypes[u_indices])
+  u_indices = slice(6, 8)
+  plt.figure("efforts 6-7: " + filename)
+  plt.legend(u_datatypes[u_indices])
+  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  u_indices = slice(8, 10)
+  plt.figure("efforts 8-9: " + filename)
+  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  plt.legend(u_datatypes[u_indices])
+  # plt.ylim(-300, 300)
+  # plt.ylim(-300, 300)
+  # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices], '--')
+  # plt.legend(u_datatypes[u_indices])
   # plt.figure("efforts meas: " + filename)
   # plt.figure("Delay characterization")
   # plt.legend(u_datatypes[u_indices])

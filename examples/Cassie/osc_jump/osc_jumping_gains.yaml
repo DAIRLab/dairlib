@@ -13,7 +13,7 @@ hip_yaw_kd: 1
 
 t_delay_toe_ang: 0.000
 t_delay_ft_pos: 0.00
-impact_threshold: 0.000
+impact_threshold: 0.100
 
 CoMW:
   [2000,  0,    0,

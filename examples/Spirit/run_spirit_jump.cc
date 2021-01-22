@@ -24,6 +24,9 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 
 #include "examples/Spirit/animate_spirit.h"
+#include "common/file_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
+#include "solvers/optimization_utils.h"
 
 DEFINE_double(duration, 1, "The stand duration");
 DEFINE_double(front2BackToeDistance, 0.35, "Nominal distance between the back and front toes.");
@@ -123,7 +126,7 @@ void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, doubl
 /// \param eps: the tolerance for position constraints
 /// \param tol: optimization solver constraint and optimality tolerence
 /// \param file_name: if empty, file is unsaved, if not empty saves the trajectory in the directory {todo}
-/// \return
+/// \return struct containing boolean describing optimization success and the cost
 template <typename T>
 std::tuple<bool, double> runSpiritJump(
     std::unique_ptr<MultibodyPlant<T>> plant_ptr,
@@ -147,7 +150,7 @@ std::tuple<bool, double> runSpiritJump(
     const double mu,
     const double eps,
     const double tol,
-    const std::string file_name
+    const std::string& file_name
     ) {
 
   drake::systems::DiagramBuilder<double> builder;
@@ -396,6 +399,19 @@ std::tuple<bool, double> runSpiritJump(
   std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
   std::cout << (result.is_success() ? "Optimization Success" : "Optimization Fail") << std::endl;
 
+  /// Save trajectory
+  dairlib::DirconTrajectory saved_traj(
+      plant, trajopt, result, "Jumping trajectory",
+      "Decision variables and state/input trajectories "
+      "for jumping");
+  x_traj = saved_traj.ReconstructStateTrajectory();
+  u_traj = saved_traj.ReconstructInputTrajectory();
+
+  if(!file_name.empty())
+  {
+    saved_traj.WriteToFile(file_name);
+  }
+
   /// Run animation of the final trajectory
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
@@ -409,6 +425,7 @@ std::tuple<bool, double> runSpiritJump(
     simulator.AdvanceTo(pp_xtraj.end_time());
     sleep(2);
   }
+  return {result.is_success(), result.get_optimal_cost()};
 }
 }  // namespace
 }  // namespace dairlib

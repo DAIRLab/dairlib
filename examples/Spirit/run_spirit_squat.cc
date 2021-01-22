@@ -265,74 +265,14 @@ void runSpiritSquat(
 
   
   int num_knotpoints = 10; // number of knot points in the collocation
-  auto evaluators = multibody::KinematicEvaluatorSet<T>(plant); //Initialize kinematic evaluator set
-
-                  // // Get the toe frames
-                  // const auto& toe0_frontLeft  = plant.GetFrameByName( "toe" + std::to_string(0) );
-                  // const auto& toe1_backLeft   = plant.GetFrameByName( "toe" + std::to_string(1) );
-                  // const auto& toe2_frontRight = plant.GetFrameByName( "toe" + std::to_string(2) );
-                  // const auto& toe3_backRight  = plant.GetFrameByName( "toe" + std::to_string(3) );
-
-                  // // Create offset worldpoints (original)
-                  // auto toe0_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe0_frontLeft , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-                  // auto toe1_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe1_backLeft  , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-                  // auto toe2_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe2_frontRight, Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-                  // auto toe3_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe3_backRight , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-                  
-                  // // Create offset worldpoints (normal vector constructor)
-                  // // auto toe0_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe0_frontLeft , Eigen::Vector3d::UnitZ(), Vector3d::Zero(), true); //Shift to tip;
-                  // // auto toe1_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe1_backLeft  , Eigen::Vector3d::UnitZ(), Vector3d::Zero(), true); //Shift to tip;
-                  // // auto toe2_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe2_frontRight, Eigen::Vector3d::UnitZ(), Vector3d::Zero(), true); //Shift to tip;
-                  // // auto toe3_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe3_backRight , Eigen::Vector3d::UnitZ(), Vector3d::Zero(), true); //Shift to tip;
-                  
-                  // // Set frictional properties 
-                  // toe0_eval.set_frictional(); toe0_eval.set_mu(mu);
-                  // toe1_eval.set_frictional(); toe1_eval.set_mu(mu);
-                  // toe2_eval.set_frictional(); toe2_eval.set_mu(mu);
-                  // toe3_eval.set_frictional(); toe3_eval.set_mu(mu);
-
-                  // // Consolidate the evaluators for contant constraint
-                  // evaluators.add_evaluator(&(toe0_eval));
-                  // evaluators.add_evaluator(&(toe1_eval));
-                  // evaluators.add_evaluator(&(toe2_eval));
-                  // evaluators.add_evaluator(&(toe3_eval));
-
-          // auto toe0_eval = getSpiritToeEvaluator(plant,0,toeOffset,mu);
-          // auto toe1_eval = getSpiritToeEvaluator(plant,1,toeOffset,mu);
-          // auto toe2_eval = getSpiritToeEvaluator(plant,2,toeOffset,mu);
-          // auto toe3_eval = getSpiritToeEvaluator(plant,3,toeOffset,mu); 
-          // // Consolidate the evaluators for contant constraint
-          // evaluators.add_evaluator(toe0_eval.get());
-          // evaluators.add_evaluator(toe1_eval.get());
-          // evaluators.add_evaluator(toe2_eval.get());
-          // evaluators.add_evaluator(toe3_eval.get());
-
-
-
-          // /// Setup the standing mode. This behavior only has one mode.
-          // auto full_support = DirconMode<T>(evaluators,num_knotpoints); //No min and max mode times
-          
-          // for (int i = 0; i < num_legs; i++ ){
-          //   full_support.MakeConstraintRelative(i, 0);  // x-coordinate can be non-zero
-          //   full_support.MakeConstraintRelative(i, 1);  // y-coordinate can be non-zero
-          // }
-          
-          // full_support.SetDynamicsScale(
-          //   {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
-          // full_support.SetKinVelocityScale(
-          //   {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
-          // ///Mode Sequence
-          // // Adding the ONE mode to the sequence, will not leave full_support
-          // sequence.AddMode(&full_support);
-
 
   auto sequence = DirconModeSequence<T>(plant);
   Eigen::Matrix<bool,1,4> modeSeqMat;
-  modeSeqMat <<   1, 1, 1, 1;
+  modeSeqMat << 1, 1, 1, 1;
   Eigen::VectorXi knotpointMat = Eigen::MatrixXi::Constant(1,1,10);
 
   auto [modeVector, toeEvals, toeEvalSets] = createSpiritModeSequence(plant, modeSeqMat , knotpointMat, mu);
-  // auto full_support = DirconMode<T>(*(toeEvalSets.back()).get(),10);
+  
   for (auto& mode : modeVector){
     for (int i = 0; i < num_legs; i++ ){
       mode->MakeConstraintRelative(i,0);
@@ -344,18 +284,6 @@ void runSpiritSquat(
       {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
     sequence.AddMode(mode.get());
   }          
-          // for (int i = 0; i < num_legs; i++ ){
-          //   full_support.MakeConstraintRelative(i, 0);  // x-coordinate can be non-zero
-          //   full_support.MakeConstraintRelative(i, 1);  // y-coordinate can be non-zero
-          // }
-          
-          // full_support.SetDynamicsScale(
-          //   {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
-          // full_support.SetKinVelocityScale(
-          //   {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
-          // ///Mode Sequence
-          // // Adding the ONE mode to the sequence, will not leave full_support
-          // sequence.AddMode(&full_support);
 
 
   

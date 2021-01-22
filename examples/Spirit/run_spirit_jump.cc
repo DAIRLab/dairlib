@@ -4,6 +4,7 @@
 #include <gflags/gflags.h>
 #include <string.h>
 #include <cmath>
+#include <experimental/filesystem>
 
 #include "drake/solvers/snopt_solver.h"
 #include "drake/systems/analysis/simulator.h"
@@ -42,7 +43,8 @@ DEFINE_double(eps, 1e-2, "The wiggle room.");
 DEFINE_double(tol, 1e-4, "Optimization Tolerance");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
-
+DEFINE_string(data_directory, "/home/shane/Drake_ws/dairlib/examples/Spirit/saved_trajectories/",
+              "directory to save/read data");
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -400,15 +402,16 @@ std::tuple<bool, double> runSpiritJump(
   std::cout << (result.is_success() ? "Optimization Success" : "Optimization Fail") << std::endl;
 
   /// Save trajectory
-  dairlib::DirconTrajectory saved_traj(
-      plant, trajopt, result, "Jumping trajectory",
-      "Decision variables and state/input trajectories "
-      "for jumping");
-  x_traj = saved_traj.ReconstructStateTrajectory();
-  u_traj = saved_traj.ReconstructInputTrajectory();
+  std::cout << "Outputting trajectories" << std::endl;
+  x_traj = trajopt.ReconstructStateTrajectory(result);
+  u_traj = trajopt.ReconstructInputTrajectory(result);
 
-  if(!file_name.empty())
-  {
+  if(!file_name.empty()){
+    std::cout << "writing to file" << std::endl;
+    dairlib::DirconTrajectory saved_traj(
+        plant, trajopt, result, "Jumping trajectory",
+        "Decision variables and state/input trajectories "
+        "for jumping");
     saved_traj.WriteToFile(file_name);
   }
 
@@ -625,7 +628,7 @@ int main(int argc, char* argv[]) {
         4,
         FLAGS_eps,
         FLAGS_tol,
-        ""
+        FLAGS_data_directory+"simple_jump"
     );
   }
 

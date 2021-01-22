@@ -79,6 +79,7 @@ cc_binary(
     data = ["spirit_drake.urdf"],
     deps = [
         ":animate_spirit",
+        "//lcm:dircon_trajectory_saver",
         "//systems/trajectory_optimization/dircon",
         "//multibody/kinematic",
         "//common",

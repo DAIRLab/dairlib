@@ -15,6 +15,19 @@ cc_library(
     ],
 
 )
+cc_library(
+    name = "spirit_utils",
+    srcs = ["spirit_utils.cc"],
+    hdrs = ["spirit_utils.h"],
+    deps = ["//systems/trajectory_optimization/dircon",
+        "//multibody/kinematic",
+        "//common",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+
+)
 cc_binary(
     name = "run_spirit_vis",
     srcs = ["run_spirit_vis.cc"],
@@ -50,6 +63,7 @@ cc_binary(
     data = ["spirit_drake.urdf"],
     deps = [
         ":animate_spirit",
+        ":spirit_utils",
         "//systems/trajectory_optimization/dircon",
         "//multibody/kinematic",
         "//common",

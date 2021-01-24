@@ -67,6 +67,12 @@ load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repo
 
 signal_scope_repository(name = "signal_scope")
 
+new_local_repository(
+    name = "towr",
+    build_file = "towr.BUILD",
+    path = "/usr/local/lib",
+)
+
 # Prebuilt ROS workspace
 new_local_repository(
     name = "ros",

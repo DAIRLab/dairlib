@@ -10,6 +10,7 @@
 #include <towr/models/robot_model.h>
 #include <towr/initialization/biped_gait_generator.h>
 #include <towr/nlp_formulation.h>
+#include <towr/variables/node_spline.h>
 #include <ifopt/ipopt_solver.h>
 
 #include "drake/geometry/geometry_visualization.h"
@@ -164,8 +165,19 @@ int do_main(int argc, char* argv[]) {
   std::cout.precision(2);
   nlp.PrintCurrent();
 
-  //TODO: Save polynomials as LCM traj to control via OSC
+  int num_base_linear = solution.base_linear_->GetPolynomialCount();
+  int num_base_angular = solution.base_angular_->GetPolynomialCount();
+  int num_left_motion = solution.ee_motion_.at(L)->GetPolynomialCount();
+  int num_right_motion = solution.ee_motion_.at(R)->GetPolynomialCount();
 
+  for (int i = 0; i < num_base_linear; i++) {
+      auto pt = solution.base_linear_->GetPoint(i, 0);
+      std::cout << solution.base_linear_->GetPolyDurations().at(i) << std::endl;
+      std::cout << pt.p().x() << " | " << pt.v().x() << std::endl;
+      std::cout << pt.p().y() << " | " << pt.v().y() << std::endl;
+      std::cout << pt.p().z() << " | " << pt.v().z() << std::endl;
+      std::cout << std::endl;
+  }
   return 0;
 }
 

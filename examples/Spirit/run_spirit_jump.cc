@@ -41,10 +41,10 @@ DEFINE_double(inputCost, 3, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_double(eps, 1e-2, "The wiggle room.");
 DEFINE_double(tol, 1e-4, "Optimization Tolerance");
-DEFINE_bool(autodiff, false, "Double or autodiff version");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
 DEFINE_string(data_directory, "/home/shane/Drake_ws/dairlib/examples/Spirit/saved_trajectories/",
               "directory to save/read data");
+DEFINE_bool(runAllOptimization, false, "rerun earlier optimizations?");
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -403,15 +403,17 @@ std::tuple<bool, double> runSpiritJump(
 
   /// Save trajectory
   std::cout << "Outputting trajectories" << std::endl;
-  x_traj = trajopt.ReconstructStateTrajectory(result);
-  u_traj = trajopt.ReconstructInputTrajectory(result);
+
+  dairlib::DirconTrajectory saved_traj(
+      plant, trajopt, result, "Jumping trajectory",
+      "Decision variables and state/input trajectories "
+      "for jumping");
+  x_traj  = trajopt.ReconstructStateTrajectory(result);
+  u_traj  = trajopt.ReconstructInputTrajectory(result);
+  l_traj  = trajopt.ReconstructLambdaTrajectory(result);
 
   if(!file_name.empty()){
     std::cout << "writing to file" << std::endl;
-    dairlib::DirconTrajectory saved_traj(
-        plant, trajopt, result, "Jumping trajectory",
-        "Decision variables and state/input trajectories "
-        "for jumping");
     saved_traj.WriteToFile(file_name);
   }
 
@@ -607,30 +609,51 @@ int main(int argc, char* argv[]) {
   init_lc_traj.push_back(init_lc_traj_j);
   init_vc_traj.push_back(init_vc_traj_j);
 
-  if (FLAGS_runInitTraj){
-    dairlib::runAnimate<double>(
-      std::move(plant), plant_vis.get(), std::move(scene_graph), init_x_traj);
-  }else {
+  if (FLAGS_runAllOptimization){
     dairlib::runSpiritJump<double>(
         std::move(plant), plant_vis.get(), std::move(scene_graph),
         init_x_traj, init_u_traj, init_l_traj,
         init_lc_traj, init_vc_traj,
-        true,
-        {FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode} ,
+        false,
+        {7, 7, 7, 7} ,
         FLAGS_apexGoal,
         FLAGS_standHeight,
         0,
         true,
-        2*FLAGS_duration,
-        FLAGS_inputCost,
-        FLAGS_velocityCost,
+        2,
+        3,
+        10,
         0,
         4,
         FLAGS_eps,
-        FLAGS_tol,
-        FLAGS_data_directory+"simple_jump"
-    );
+        1e-4,
+        FLAGS_data_directory+"simple_jump");
+  } else{
+    dairlib::DirconTrajectory old_traj(FLAGS_data_directory+"simple_jump");
+    init_x_traj = old_traj.ReconstructStateTrajectory();
+    init_u_traj = old_traj.ReconstructInputTrajectory();
+    init_l_traj = old_traj.ReconstructLambdaTrajectory();
+    init_lc_traj = old_traj.ReconstructLambdaCTrajectory();
+    init_vc_traj = old_traj.ReconstructGammaCTrajectory();
   }
-
+  std::cout<<"Running next optimization"<<std::endl;
+  dairlib::runSpiritJump<double>(
+      std::move(plant), plant_vis.get(), std::move(scene_graph),
+      init_x_traj, init_u_traj, init_l_traj,
+      init_lc_traj, init_vc_traj,
+      true,
+      {FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode} ,
+      FLAGS_apexGoal,
+      FLAGS_standHeight,
+      0.2,
+      false,
+      2*FLAGS_duration,
+      FLAGS_inputCost,
+      FLAGS_velocityCost,
+      0,
+      4,
+      FLAGS_eps,
+      FLAGS_tol,
+      FLAGS_data_directory+"accurate_jump");
 }
 

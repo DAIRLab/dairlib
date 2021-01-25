@@ -53,6 +53,11 @@ class Dircon
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const override;
 
+  /// Get the contact force trajectory at the solution as a
+  /// %drake::trajectories::PiecewisePolynomialTrajectory%.
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaTrajectory(
+      const drake::solvers::MathematicalProgramResult& result) const;
+
   /// Get the state trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory(

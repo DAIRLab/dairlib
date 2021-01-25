@@ -48,6 +48,12 @@ class DirconTrajectory : public LcmTrajectory {
       const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
       const;
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaTrajectory()
+  const;
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaCTrajectory()
+  const;
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructGammaCTrajectory()
+  const;
 
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
@@ -97,6 +103,7 @@ class DirconTrajectory : public LcmTrajectory {
   const Trajectory* u_;
   std::vector<const Trajectory*> lambda_;
   std::vector<const Trajectory*> lambda_c_;
+  std::vector<const Trajectory*> gamma_c_;
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 };

@@ -78,6 +78,24 @@ DirconTrajectory::DirconTrajectory(
       lambda_c_.push_back(&collocation_force_traj);
     }
 
+    // Collocation slack vars
+    if (state_breaks[mode].size() > 1) {
+      LcmTrajectory::Trajectory collocation_slack_traj;
+      collocation_slack_traj.traj_name =
+          "collocation_slack_vars" + std::to_string(mode);
+      collocation_slack_traj.datatypes = collocation_force_names;
+      collocation_slack_traj.time_vector =
+          GetCollocationPoints(state_breaks[mode]);
+      collocation_slack_traj.datapoints =
+          MatrixXd::Zero(num_forces, collocation_slack_traj.time_vector.size());
+      for (int i = 0; i < collocation_slack_traj.time_vector.size(); ++i) {
+        collocation_slack_traj.datapoints.col(i) =
+            result.GetSolution(dircon.collocation_slack_vars(mode, i));
+      }
+      AddTrajectory(collocation_slack_traj.traj_name, collocation_slack_traj);
+      gamma_c_.push_back(&collocation_slack_traj);
+    }
+
     AddTrajectory(state_traj.traj_name, state_traj);
     AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
     AddTrajectory(force_traj.traj_name, force_traj);
@@ -214,7 +232,6 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(
           x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
-
   for (int mode = 1; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
     if (x_[mode]->time_vector.size() < 2) {
@@ -235,6 +252,52 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory()
   return input_traj;
 }
 
+std::vector<PiecewisePolynomial<double>> DirconTrajectory::ReconstructLambdaTrajectory()
+const {
+  std::vector<PiecewisePolynomial<double>> lambda_traj;
+  for(int mode_index = 0; mode_index < num_modes_; mode_index ++){
+    if(lambda_[mode_index]->datapoints.size() > 0) {
+      lambda_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(lambda_[mode_index]->time_vector,
+                                                                        lambda_[mode_index]->datapoints));
+    }else{
+      lambda_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(lambda_[mode_index]->time_vector,
+                                                                        MatrixXd::Zero(1,lambda_[mode_index]->time_vector.size())));
+    }
+  }
+  return lambda_traj;
+}
+
+std::vector<PiecewisePolynomial<double>> DirconTrajectory::ReconstructLambdaCTrajectory()
+const {
+  std::vector<PiecewisePolynomial<double>> lambda_c_traj;
+  for(int mode_index = 0; mode_index < num_modes_; mode_index ++){
+    if(lambda_c_[mode_index]->datapoints.size() > 0) {
+      lambda_c_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(lambda_c_[mode_index]->time_vector,
+                                                                        lambda_c_[mode_index]->datapoints));
+    }else{
+      lambda_c_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(lambda_c_[mode_index]->time_vector,
+                                                                        MatrixXd::Zero(1,lambda_c_[mode_index]->time_vector.size())));
+    }
+  }
+  return lambda_c_traj;
+}
+
+std::vector<PiecewisePolynomial<double>> DirconTrajectory::ReconstructGammaCTrajectory()
+const {
+  std::vector<PiecewisePolynomial<double>> gamma_c_traj;
+  for(int mode_index = 0; mode_index < num_modes_; mode_index ++){
+    if(gamma_c_[mode_index]->datapoints.size() > 0) {
+      gamma_c_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(gamma_c_[mode_index]->time_vector,
+                                                                         gamma_c_[mode_index]->datapoints));
+    }else{
+      gamma_c_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(gamma_c_[mode_index]->time_vector,
+                                                                          MatrixXd::Zero(1,gamma_c_[mode_index]->time_vector.size())));
+    }
+  }
+  return gamma_c_traj;
+}
+
+
 void DirconTrajectory::LoadFromFile(const std::string& filepath) {
   LcmTrajectory::LoadFromFile(filepath);
 
@@ -252,6 +315,8 @@ void DirconTrajectory::LoadFromFile(const std::string& filepath) {
     if (x_[mode]->time_vector.size() > 1) {
       lambda_c_.push_back(
           &GetTrajectory("collocation_force_vars" + std::to_string(mode)));
+      gamma_c_.push_back(
+          &GetTrajectory("collocation_slack_vars" + std::to_string(mode)));
     }
   }
   u_ = &GetTrajectory("input_traj");

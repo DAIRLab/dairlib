@@ -619,6 +619,25 @@ PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory(
 }
 
 template <typename T>
+std::vector<PiecewisePolynomial<double>> Dircon<T>::ReconstructLambdaTrajectory(const MathematicalProgramResult& result)
+const {
+  std::vector<Eigen::MatrixXd> x;
+  std::vector<Eigen::MatrixXd> xdot;
+  std::vector<Eigen::VectorXd> state_breaks;
+  GetStateAndDerivativeSamples(result, &x, &xdot, &state_breaks);
+  std::vector<PiecewisePolynomial<double>> lambda_traj;
+  for(int mode_index = 0; mode_index < num_modes(); mode_index ++){
+    if(get_mode(mode_index).evaluators().count_full() > 0) {
+      lambda_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(state_breaks[mode_index],
+                                                                        GetForceSamplesByMode(result, mode_index)));
+    }else{
+      lambda_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(state_breaks[mode_index],
+                                                                        MatrixXd::Zero(1,state_breaks[mode_index].size())));
+    }
+  }
+  return lambda_traj;
+}
+template <typename T>
 PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
     const MathematicalProgramResult& result) const {
   std::vector<MatrixXd> states;
@@ -895,7 +914,6 @@ Eigen::MatrixXd Dircon<T>::GetForceSamplesByMode(
   }
   return forces;
 }
-
 }  // namespace trajectory_optimization
 }  // namespace systems
 }  // namespace dairlib

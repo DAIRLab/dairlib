@@ -36,11 +36,10 @@ DEFINE_double(bodyHeight, 0.104, "The spirit body start height (defined in URDF)
 // DEFINE_double(lowerHeight,0.15, "The sitting height of the bottom of the robot");
 DEFINE_double(standHeight, 0.25, "The standing height.");
 DEFINE_double(apexGoal, 0.5, "Apex state goal");
-DEFINE_double(knotpointsPerMode, 7, "Number of knotpoints in each contact mode" );
 DEFINE_double(inputCost, 3, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
 DEFINE_double(eps, 1e-2, "The wiggle room.");
-DEFINE_double(tol, 1e-4, "Optimization Tolerance");
+DEFINE_double(tol, 1e-6, "Optimization Tolerance");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
 DEFINE_string(data_directory, "/home/shane/Drake_ws/dairlib/examples/Spirit/saved_trajectories/",
               "directory to save/read data");
@@ -629,7 +628,7 @@ int main(int argc, char* argv[]) {
         1e-4,
         FLAGS_data_directory+"simple_jump");
   } else{
-    dairlib::DirconTrajectory old_traj(FLAGS_data_directory+"simple_jump");
+    dairlib::DirconTrajectory old_traj(FLAGS_data_directory+"jump_05m_hq_med_knot");
     init_x_traj = old_traj.ReconstructStateTrajectory();
     init_u_traj = old_traj.ReconstructInputTrajectory();
     init_l_traj = old_traj.ReconstructLambdaTrajectory();
@@ -642,10 +641,10 @@ int main(int argc, char* argv[]) {
       init_x_traj, init_u_traj, init_l_traj,
       init_lc_traj, init_vc_traj,
       true,
-      {FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode, FLAGS_knotpointsPerMode} ,
+      {7, 15, 15, 7} ,
       FLAGS_apexGoal,
       FLAGS_standHeight,
-      0.2,
+      0.5,
       false,
       2*FLAGS_duration,
       FLAGS_inputCost,
@@ -654,6 +653,6 @@ int main(int argc, char* argv[]) {
       4,
       FLAGS_eps,
       FLAGS_tol,
-      FLAGS_data_directory+"accurate_jump");
+      FLAGS_data_directory+"jump_05m_hq_high_knot");
 }
 

@@ -1,5 +1,6 @@
 #include <memory>
 #include <chrono>
+#include <tuple>
 #include <unistd.h>
 #include <gflags/gflags.h>
 #include <string.h>
@@ -23,6 +24,7 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 
 #include "examples/Spirit/animate_spirit.h"
+#include "examples/Spirit/spirit_utils.h"
 
 DEFINE_double(duration, 1, "The stand duration");
 DEFINE_double(front2BackToeDistance, 0.35, "Nominal distance between the back and front toes.");
@@ -65,41 +67,31 @@ using std::cout;
 using std::endl;
 
 
-/// Get a nominal Spirit Stand (i.e. zero hip ad/abduction motor torque, toes below motors) for initializing
 template <typename T>
-void nominalSpiritStand(MultibodyPlant<T>& plant, Eigen::VectorXd& xState, double height){
-  //Get joint name dictionaries
-  auto positions_map = dairlib::multibody::makeNameToPositionsMap(plant);
-  auto velocities_map = dairlib::multibody::makeNameToVelocitiesMap(plant);
-  
-  // Initialize state vector and add orienation and goal height
-  xState = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
-  xState(positions_map.at("base_qw")) = 1;
-  xState(positions_map.at("base_z")) = height;
-  
-  //Calculate the inverse kinematics to get the joint angles for toe placement
-  double upperLegLength = 0.206; // length of the upper leg link
-  double hipLength = 0.10098; //absOffset ToeLocation
-  double hip2toeZLength = sqrt(height*height - hipLength*hipLength);// length of lower legs (2dof)
-  double theta1 = asin(hip2toeZLength/(2*upperLegLength )) ; //upper angle
-  double theta2 = 2*theta1 ; //lower angle
-  double alpha = asin(hipLength/(height)); //hip angle
+void addConstraints(const MultibodyPlant<T>& plant, Dircon<T>& trajopt){
+  // Get position and velocity dictionaries 
+  int num_knotpoints =10; ///DEBUG
+  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
+  auto x0 = trajopt.initial_state();
+  auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
+  // auto xf = trajopt.final_state();
 
-  int upperInd, kneeInd, hipInd;
-  int mirroredFlag;
-  for (int j = 0; j < 4; j++){
-    upperInd = j * 2;
-    kneeInd = j * 2 + 1;
-    hipInd = j + 8;
-    xState(positions_map.at("joint_" + std::to_string(upperInd))) = theta1 ;
-    xState(positions_map.at("joint_" + std::to_string(kneeInd))) = theta2 ;
-    mirroredFlag = -1;
-    if ( hipInd > 9 ){
-      mirroredFlag = 1;
-    }
-    xState(positions_map.at("joint_" + std::to_string(hipInd))) = mirroredFlag * alpha;
-  }
+
+  // Initial body positions
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, x0(positions_map.at("base_z")));
+  
+  // Mid body positions
+  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_y")));
+  trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight-FLAGS_eps, FLAGS_upperHeight+FLAGS_eps, xmid(positions_map.at("base_z")));
+
+  return;
 }
+
+
   /// See runSpiritSquat()
     // std::unique_ptr<MultibodyPlant<T>> plant_ptr,
     // MultibodyPlant<double>* plant_double_ptr,
@@ -133,7 +125,6 @@ void runSpiritSquat(
   // Get position and velocity dictionaries 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
-
   /// For Spirit front left leg->0, back left leg->1, front right leg->2, back right leg->3
   /// Get the frame of each toe and attach a world point to the toe tip (frame is at toe ball center).
 
@@ -142,47 +133,32 @@ void runSpiritSquat(
   Vector3d toeOffset(toeRadius,0,0); // vector to "contact point"
   double mu = 1; //friction
   
-  auto evaluators = multibody::KinematicEvaluatorSet<T>(plant); //Initialize kinematic evaluator set
+
   
-  // Get the toe frames
-  const auto& toe0_frontLeft  = plant.GetFrameByName( "toe" + std::to_string(0) );
-  const auto& toe1_backLeft   = plant.GetFrameByName( "toe" + std::to_string(1) );
-  const auto& toe2_frontRight = plant.GetFrameByName( "toe" + std::to_string(2) );
-  const auto& toe3_backRight  = plant.GetFrameByName( "toe" + std::to_string(3) );
-  // Create offset worldpoints
-  auto toe0_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe0_frontLeft , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-  auto toe1_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe1_backLeft  , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-  auto toe2_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe2_frontRight, Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-  auto toe3_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe3_backRight , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-  // Set frictional properties (not sure what this does to the optimization)
-  toe0_eval.set_frictional(); toe0_eval.set_mu(mu);
-  toe1_eval.set_frictional(); toe1_eval.set_mu(mu);
-  toe2_eval.set_frictional(); toe2_eval.set_mu(mu);
-  toe3_eval.set_frictional(); toe3_eval.set_mu(mu);
-  // Consolidate the evaluators for contant constraint
-  evaluators.add_evaluator(&(toe0_eval));
-  evaluators.add_evaluator(&(toe1_eval));
-  evaluators.add_evaluator(&(toe2_eval));
-  evaluators.add_evaluator(&(toe3_eval));
-  
-  /// Setup the standing mode. This behavior only has one mode.
   int num_knotpoints = 10; // number of knot points in the collocation
-  auto full_support = DirconMode<T>(evaluators,num_knotpoints); //No min and max mode times
 
-  for (int i = 0; i < num_legs; i++ ){
-    full_support.MakeConstraintRelative(i, 0);  // x-coordinate can be non-zero
-    full_support.MakeConstraintRelative(i, 1);  // y-coordinate can be non-zero
-  }
-
-  full_support.SetDynamicsScale(
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
-  full_support.SetKinVelocityScale(
-    {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
-
-  ///Mode Sequence
-  // Adding the ONE mode to the sequence, will not leave full_support
   auto sequence = DirconModeSequence<T>(plant);
-  sequence.AddMode(&full_support);
+  Eigen::Matrix<bool,1,4> modeSeqMat;
+  modeSeqMat << 1, 1, 1, 1;
+  Eigen::VectorXi knotpointMat = Eigen::MatrixXi::Constant(1,1,10);
+
+  auto [modeVector, toeEvals, toeEvalSets] = createSpiritModeSequence(plant, modeSeqMat , knotpointMat, mu);
+  
+  for (auto& mode : modeVector){
+    for (int i = 0; i < num_legs; i++ ){
+      mode->MakeConstraintRelative(i,0);
+      mode->MakeConstraintRelative(i,1);
+    }
+    mode->SetDynamicsScale(
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 1.0 / 150.0);
+    mode->SetKinVelocityScale(
+      {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * 500 * 1 / 1);
+    sequence.AddMode(mode.get());
+  }          
+
+
+  
+  
 
   ///Setup trajectory optimization
   auto trajopt = Dircon<T>(sequence);
@@ -218,16 +194,16 @@ void runSpiritSquat(
   auto x0 = trajopt.initial_state();
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
   auto xf = trajopt.final_state();
+  addConstraints(plant,trajopt);
+  // // Initial body positions
+  // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  // trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
+  // trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, x0(positions_map.at("base_z")));
   
-  // Initial body positions
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-FLAGS_eps, FLAGS_eps, x0(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_lowerHeight-FLAGS_eps, FLAGS_lowerHeight+FLAGS_eps, x0(positions_map.at("base_z")));
-  
-  // Mid body positions
-  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
-  trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight-FLAGS_eps, FLAGS_upperHeight+FLAGS_eps, xmid(positions_map.at("base_z")));
+  // // Mid body positions
+  // trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_x"))); // Give the initial condition room to choose the x_init position (helps with positive knee constraint)
+  // trajopt.AddBoundingBoxConstraint(-0, 0, xmid(positions_map.at("base_y")));
+  // trajopt.AddBoundingBoxConstraint(FLAGS_upperHeight-FLAGS_eps, FLAGS_upperHeight+FLAGS_eps, xmid(positions_map.at("base_z")));
 
   // Final Position Constraints
   bool isPeriodic = 1;
@@ -585,14 +561,15 @@ int main(int argc, char* argv[]) {
     init_vc_traj.push_back(init_vc_traj_j);
   }
 
-  if (FLAGS_autodiff) {
-    std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
-        drake::systems::System<double>::ToAutoDiffXd(*plant);
-    dairlib::runSpiritSquat<drake::AutoDiffXd>(
-      std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
-      FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-      init_lc_traj, init_vc_traj);
-  } else if (FLAGS_runInitTraj){
+  // if (FLAGS_autodiff) {
+  //   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
+  //       drake::systems::System<double>::ToAutoDiffXd(*plant);
+  //   dairlib::runSpiritSquat<drake::AutoDiffXd>(
+  //     std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
+  //     FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+  //     init_lc_traj, init_vc_traj);
+  // } else 
+  if (FLAGS_runInitTraj){
     dairlib::runAnimate<double>(
       std::move(plant), plant_vis.get(), std::move(scene_graph), init_x_traj);
   }else {

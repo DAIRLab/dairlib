@@ -289,6 +289,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Contacts
   const int num_contacts_ = 2;
   const std::vector<std::string> contact_names_ = {"left", "right"};
+
+  mutable std::vector<double> timestamp_context_;
+  mutable std::vector<long> timestamp_start_;
+  mutable std::vector<long> timestamp_end_;
 };
 
 }  // namespace systems

@@ -7,7 +7,7 @@
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
-
+#include <fstream>
 using std::cout;
 using std::endl;
 
@@ -905,6 +905,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 void OperationalSpaceControl::CalcOptimalInput(
     const drake::systems::Context<double>& context,
     systems::TimestampedVector<double>* control) const {
+  timestamp_context_.push_back(context.get_time());
+  timestamp_start_.push_back(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::system_clock::now().time_since_epoch()).count());
   // Read in current state and time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -944,6 +948,18 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());
+  timestamp_end_.push_back(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::system_clock::now().time_since_epoch()).count());
+
+  if(abs(timestamp - 10) < 1e-3){
+    std::ofstream myfile;
+    myfile.open ("osc_timestamps.txt");
+    for(int i = 0; i < timestamp_context_.size(); ++i){
+      myfile << timestamp_context_[i] << "," << timestamp_start_[i] << "," << timestamp_end_[i] << "\n";
+    }
+    myfile.close();
+  }
 }
 
 }  // namespace dairlib::systems::controllers

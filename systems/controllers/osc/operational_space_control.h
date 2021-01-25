@@ -300,6 +300,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // We only apply the control when t_s <= t <= t_e
   std::vector<double> t_s_vec_;
   std::vector<double> t_e_vec_;
+
+  mutable std::vector<double> timestamp_context_;
+  mutable std::vector<long> timestamp_start_;
+  mutable std::vector<long> timestamp_end_;
+
 };
 
 }  // namespace dairlib::systems::controllers

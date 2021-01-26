@@ -63,7 +63,7 @@ std::tuple<  std::vector<std::unique_ptr<dairlib::systems::trajectory_optimizati
     createSpiritModeSequence( 
           drake::multibody::MultibodyPlant<T>& plant, // multibodyPlant
           Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
-          Eigen::VectorXi knotpointMat, // Matrix of knot points for each mode  
+          std::vector<int> knotpointMat, // Matrix of knot points for each mode
           double mu = 1);
 
 }

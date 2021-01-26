@@ -121,16 +121,15 @@ std::tuple<
           > createSpiritModeSequence( 
           MultibodyPlant<T>& plant, // multibodyPlant
           Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
-          Eigen::VectorXi knotpointMat, // Matrix of knot points for each mode  
+          std::vector<int> knotpointMat, // Matrix of knot points for each mode
           double mu ){
 
   std::cout<<modeSeqMat<<std::endl;
-  std::cout<<knotpointMat<<std::endl;  
 
   const double toeRadius = 0.02;
   const Vector3d toeOffset(toeRadius,0,0); // vector to "contact point"
   
-  assert( modeSeqMat.rows()==knotpointMat.rows() );
+  assert( modeSeqMat.rows()==knotpointMat.size() );
 
   std::vector<std::unique_ptr<dairlib::multibody::WorldPointEvaluator<T>>> toeEvals;
   std::vector<std::unique_ptr<dairlib::multibody::KinematicEvaluatorSet<T>>> toeEvalSets;
@@ -148,7 +147,7 @@ std::tuple<
       }
     }
     auto dumbToeEvalPtr = (toeEvalSets.back()).get() ;
-    int num_knotpoints = knotpointMat(iMode);
+    int num_knotpoints = knotpointMat[iMode];
     modeVector.push_back(std::move( std::make_unique<DirconMode<T>>( *dumbToeEvalPtr , num_knotpoints )));
     // DirconMode<T> modeDum = DirconMode<T>( *dumbToeEvalPtr , num_knotpoints );
     // sequence.AddMode(  &modeDum  ); // Add the evaluator set to the mode sequence
@@ -200,7 +199,7 @@ template std::tuple<  std::vector<std::unique_ptr<dairlib::systems::trajectory_o
     createSpiritModeSequence( 
           drake::multibody::MultibodyPlant<double>& plant, // multibodyPlant
           Eigen::Matrix<bool,-1,4> modeSeqMat, // bool matrix describing toe contacts as true or false e.g. {{1,1,1,1},{0,0,0,0}} would be a full support mode and flight mode
-          Eigen::VectorXi knotpointMat, // Matrix of knot points for each mode  
+          std::vector<int> knotpointMat, // Matrix of knot points for each mode
           double mu); // NOLINT
   
 }//namespace dairlib

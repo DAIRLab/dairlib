@@ -44,7 +44,7 @@ DEFINE_string(data_directory, "/home/shane/Drake_ws/dairlib/examples/Spirit/save
 DEFINE_string(distance_name, "10m","name to describe distance");
 
 DEFINE_bool(runAllOptimization, true, "rerun earlier optimizations?");
-DEFINE_bool(skipInitialOptimization, false, "skip first optimizations?");
+DEFINE_bool(skipInitialOptimization, true, "skip first optimizations?");
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -263,7 +263,7 @@ void runSpiritJump(
     vector<PiecewisePolynomial<double>>& lc_traj,
     vector<PiecewisePolynomial<double>>& vc_traj,
     const bool animate,
-    const vector<double>& num_knot_points,
+    std::vector<int> num_knot_points,
     const double apex_height,
     const double initial_height,
     const double fore_aft_displacement,
@@ -287,7 +287,6 @@ void runSpiritJump(
       dairlib::FindResourceOrThrow("examples/Spirit/spirit_drake.urdf");
   parser_vis.AddModelFromFile(full_name);
   plant_vis->Finalize();
-
   SceneGraph<double>& scene_graph =
       *builder.AddSystem(std::move(scene_graph_ptr));
 
@@ -296,69 +295,32 @@ void runSpiritJump(
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
 
-  /// For Spirit front left leg->0, back left leg->1, front right leg->2, back right leg->3
-  /// Get the frame of each toe and attach a world point to the toe tip (frame is at toe ball center).
-
-  int num_legs = 4;
-  double toeRadius = 0.02; // Radius of toe ball
-  Vector3d toeOffset(toeRadius,0,0); // vector to "contact point"
-
-  auto toe_evaluators = multibody::KinematicEvaluatorSet<T>(plant); //Initialize kinematic evaluator set
-  
-  // Get the toe frames
-  const auto& toe0_frontLeft  = plant.GetFrameByName( "toe" + std::to_string(0) );
-  const auto& toe1_backLeft   = plant.GetFrameByName( "toe" + std::to_string(1) );
-  const auto& toe2_frontRight = plant.GetFrameByName( "toe" + std::to_string(2) );
-  const auto& toe3_backRight  = plant.GetFrameByName( "toe" + std::to_string(3) );
-  // Create offset worldpoints
-  auto toe0_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe0_frontLeft , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-  auto toe1_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe1_backLeft  , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-  auto toe2_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe2_frontRight, Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-  auto toe3_eval = multibody::WorldPointEvaluator<T>(plant, toeOffset, toe3_backRight , Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}); //Shift to tip;
-  // Set frictional properties (not sure what this does to the optimization)
-  toe0_eval.set_frictional(); toe0_eval.set_mu(mu);
-  toe1_eval.set_frictional(); toe1_eval.set_mu(mu);
-  toe2_eval.set_frictional(); toe2_eval.set_mu(mu);
-  toe3_eval.set_frictional(); toe3_eval.set_mu(mu);
-  // Consolidate the evaluators for contant constraint
-  toe_evaluators.add_evaluator(&(toe0_eval));
-  toe_evaluators.add_evaluator(&(toe1_eval));
-  toe_evaluators.add_evaluator(&(toe2_eval));
-  toe_evaluators.add_evaluator(&(toe3_eval));
-  
-  /// Setup the full stance mode.
-  
-  double min_T = .03;
-  double max_T = 3;
-  auto full_support = DirconMode<T>(toe_evaluators,num_knot_points[0], min_T, max_T); //No min and max mode times
-
-  for (int i = 0; i < num_legs; i++ ){
-    full_support.MakeConstraintRelative(i, 0);  // x-coordinate can be non-zero
-    full_support.MakeConstraintRelative(i, 1);  // y-coordinate can be non-zero
-  }
-
-  full_support.SetDynamicsScale(
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  200);
-  full_support.SetKinVelocityScale(
-      {0, 1, 2, 3}, {0, 1, 2}, 1.0);
-  full_support.SetKinPositionScale(
-      {0, 1, 2, 3}, {0, 1, 2}, 200);
-
-  /// Add flight mode 
-  auto evaluators_flight = multibody::KinematicEvaluatorSet<T>(plant);
-  auto flight_mode = DirconMode<T>(evaluators_flight, num_knot_points[1],
-                                   min_T, max_T);
-
-  flight_mode.SetDynamicsScale(
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},  200);
-
-  ///Mode Sequence
-  // Adding the ONE mode to the sequence, will not leave full_support
+  // Setup mode sequence
   auto sequence = DirconModeSequence<T>(plant);
-  sequence.AddMode(&full_support);
-  sequence.AddMode(&flight_mode);
-  sequence.AddMode(&flight_mode);
-  sequence.AddMode(&full_support);
+  Eigen::Matrix<bool,4,4> modeSeqMat;
+  modeSeqMat << true,  true,  true,  true,
+                false, false, false, false,
+                false, false, false, false,
+                true,  true,  true,  true;
+
+  auto [modeVector, toeEvals, toeEvalSets] = createSpiritModeSequence(plant, modeSeqMat , num_knot_points, mu);
+
+  for (auto& mode : modeVector){
+    for (int i = 0; i < mode->evaluators().num_evaluators(); i++ ){
+      mode->MakeConstraintRelative(i,0);
+      mode->MakeConstraintRelative(i,1);
+    }
+    mode->SetDynamicsScale(
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, 200);
+    if (mode->evaluators().num_evaluators() > 0)
+    {
+      mode->SetKinVelocityScale(
+          {0, 1, 2, 3}, {0, 1, 2}, 1.0);
+      mode->SetKinPositionScale(
+          {0, 1, 2, 3}, {0, 1, 2}, 200);
+    }
+    sequence.AddMode(mode.get());
+  }
 
   ///Setup trajectory optimization
   auto trajopt = Dircon<T>(sequence);
@@ -600,6 +562,7 @@ int main(int argc, char* argv[]) {
   std::vector<PiecewisePolynomial<double>> l_traj;
   std::vector<PiecewisePolynomial<double>> lc_traj;
   std::vector<PiecewisePolynomial<double>> vc_traj;
+  Eigen::Vector4d(7, 7, 7, 7);
 
   if (FLAGS_runAllOptimization){
     if(! FLAGS_skipInitialOptimization){
@@ -610,7 +573,7 @@ int main(int argc, char* argv[]) {
           x_traj, u_traj, l_traj,
           lc_traj, vc_traj,
           false,
-          {7, 7, 7, 7} ,
+          {7, 7, 7, 7},
           FLAGS_apexGoal,
           FLAGS_standHeight,
           0,
@@ -635,7 +598,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout<<"Running 2nd optimization"<<std::endl;
-
+    // Hopping correct distance, but heavily constrained
     dairlib::runSpiritJump<double>(
         *plant,
         x_traj, u_traj, l_traj,
@@ -657,7 +620,7 @@ int main(int argc, char* argv[]) {
         FLAGS_data_directory+"jump_"+FLAGS_distance_name);
 
     std::cout<<"Running 3rd optimization"<<std::endl;
-
+    // Fewer constraints, and higher tolerences
     dairlib::runSpiritJump<double>(
         *plant,
         x_traj, u_traj, l_traj,
@@ -685,6 +648,7 @@ int main(int argc, char* argv[]) {
     lc_traj = old_traj.ReconstructLambdaCTrajectory();
     vc_traj = old_traj.ReconstructGammaCTrajectory();
   }
+  // Adding knot points
   std::cout<<"Running final optimization"<<std::endl;
   dairlib::runSpiritJump<double>(
       *plant,

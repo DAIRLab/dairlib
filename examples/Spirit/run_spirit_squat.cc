@@ -140,7 +140,7 @@ void runSpiritSquat(
   auto sequence = DirconModeSequence<T>(plant);
   Eigen::Matrix<bool,1,4> modeSeqMat;
   modeSeqMat << 1, 1, 1, 1;
-  Eigen::VectorXi knotpointMat = Eigen::MatrixXi::Constant(1,1,10);
+  std::vector<int> knotpointMat = {10};
 
   auto [modeVector, toeEvals, toeEvalSets] = createSpiritModeSequence(plant, modeSeqMat , knotpointMat, mu);
   

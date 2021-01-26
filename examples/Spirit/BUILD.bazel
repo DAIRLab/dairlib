@@ -7,36 +7,38 @@ cc_library(
     name = "animate_spirit",
     srcs = ["animate_spirit.cc"],
     hdrs = ["animate_spirit.h"],
-    deps = ["//systems/trajectory_optimization/dircon",
+    deps = [
         "//common",
         "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-
 )
+
 cc_library(
     name = "spirit_utils",
     srcs = ["spirit_utils.cc"],
     hdrs = ["spirit_utils.h"],
-    deps = ["//systems/trajectory_optimization/dircon",
-        "//multibody/kinematic",
+    deps = [
         "//common",
+        "//multibody/kinematic",
         "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-
 )
+
 cc_binary(
     name = "run_spirit_vis",
     srcs = ["run_spirit_vis.cc"],
     data = ["spirit_drake.urdf"],
     deps = [
         ":animate_spirit",
-        "//systems/trajectory_optimization/dircon",
         "//common",
         "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -48,10 +50,10 @@ cc_binary(
     data = ["spirit_drake.urdf"],
     deps = [
         ":animate_spirit",
-        "//systems/trajectory_optimization/dircon",
-        "//multibody/kinematic",
         "//common",
+        "//multibody/kinematic",
         "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -64,10 +66,10 @@ cc_binary(
     deps = [
         ":animate_spirit",
         ":spirit_utils",
-        "//systems/trajectory_optimization/dircon",
-        "//multibody/kinematic",
         "//common",
+        "//multibody/kinematic",
         "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -79,11 +81,12 @@ cc_binary(
     data = ["spirit_drake.urdf"],
     deps = [
         ":animate_spirit",
-        "//lcm:dircon_trajectory_saver",
-        "//systems/trajectory_optimization/dircon",
-        "//multibody/kinematic",
+        ":spirit_utils",
         "//common",
+        "//lcm:dircon_trajectory_saver",
+        "//multibody/kinematic",
         "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -95,20 +98,18 @@ cc_binary(
     data = ["spirit_drake.urdf"],
     deps = [
         ":animate_spirit",
-        "//systems/trajectory_optimization/dircon",
-        "//multibody/kinematic",
         "//common",
+        "//multibody/kinematic",
         "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
 )
 
-
-
 cc_library(
     name = "urdf",
-    data = ["spirit_drake.urdf"]
+    data = ["spirit_drake.urdf"],
 )
 
 # package(default_visibility = ["//visibility:public"])

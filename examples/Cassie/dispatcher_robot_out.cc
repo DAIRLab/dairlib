@@ -380,6 +380,9 @@ int do_main(int argc, char* argv[]) {
         &state_estimator_context, udp_sub.message());
     drake::log()->info("dispatcher_robot_out started");
 
+    std::vector<double> context_timestamps_;
+    std::vector<long> loop_start_timestamps_;
+    std::vector<long> loop_end_timestamps_;
     while (true) {
       udp_sub.Poll();
       output_sender_value.GetMutableData()->set_value(udp_sub.message());
@@ -398,8 +401,27 @@ int do_main(int argc, char* argv[]) {
       }
 
       state_estimator->set_next_message_time(time);
-
+      context_timestamps_.push_back(time);
+      loop_start_timestamps_.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count());
       simulator.AdvanceTo(time);
+      loop_end_timestamps_.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count());
+      if (abs(time - 10) < 1e-3) {
+        std::cout << "Outputting to file: " << diagram_name_ + ".txt"
+                  << std::endl;
+        std::ofstream myfile;
+        myfile.open("../" + diagram_name_ + ".txt");
+        for (int i = 0; i < context_timestamps_.size(); ++i) {
+          myfile << context_timestamps_[i] << "," << loop_start_timestamps_[i]
+                 << "," << loop_end_timestamps_[i] << "\n";
+        }
+        myfile.close();
+      }
       // Force-publish via the diagram
       diagram.Publish(diagram_context);
     }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include <map>
 #include <string>
 #include <vector>
@@ -230,8 +231,27 @@ class LcmDrivenLoop {
                            " time.\n";
           simulator_->get_mutable_context().SetTime(time);
         }
-
+        context_timestamps_.push_back(simulator_->get_context().get_time());
+        loop_start_timestamps_.push_back(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count());
         simulator_->AdvanceTo(time);
+        loop_end_timestamps_.push_back(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count());
+        if (abs(time - 10) < 1e-3) {
+          std::cout << "Outputting to file: " << diagram_name_ + ".txt"
+                    << std::endl;
+          std::ofstream myfile;
+          myfile.open("../" + diagram_name_ + ".txt");
+          for (int i = 0; i < context_timestamps_.size(); ++i) {
+            myfile << context_timestamps_[i] << "," << loop_start_timestamps_[i]
+                   << "," << loop_end_timestamps_[i] << "\n";
+          }
+          myfile.close();
+        }
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->Publish(diagram_context);
@@ -249,7 +269,8 @@ class LcmDrivenLoop {
         // not we do not update the active channel name.
         if (name_to_input_sub_map_.count(switch_sub_->message().channel) == 1) {
           active_channel_ = switch_sub_->message().channel;
-          std::cout << "switch to " << switch_sub_->message().channel << std::endl;
+          std::cout << "switch to " << switch_sub_->message().channel
+                    << std::endl;
 
         } else {
           std::cout << switch_sub_->message().channel << " doesn't exist\n";
@@ -294,6 +315,10 @@ class LcmDrivenLoop {
       name_to_input_sub_map_;
 
   bool is_forced_publish_;
+
+  std::vector<double> context_timestamps_;
+  std::vector<long> loop_start_timestamps_;
+  std::vector<long> loop_end_timestamps_;
 };
 
 }  // namespace systems

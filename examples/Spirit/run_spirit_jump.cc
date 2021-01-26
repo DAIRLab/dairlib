@@ -35,7 +35,7 @@ DEFINE_double(side2SideToeDistance, 0.2, "Nominal distance between the back and 
 DEFINE_double(bodyHeight, 0.104, "The spirit body start height (defined in URDF)");
 // DEFINE_double(lowerHeight,0.15, "The sitting height of the bottom of the robot");
 DEFINE_double(standHeight, 0.25, "The standing height.");
-DEFINE_double(foreAftDisplacement, 0.5, "The fore-aft displacement.");
+DEFINE_double(foreAftDisplacement, 1.0, "The fore-aft displacement.");
 DEFINE_double(apexGoal, 0.5, "Apex state goal");
 DEFINE_double(inputCost, 3, "The standing height.");
 DEFINE_double(velocityCost, 10, "The standing height.");
@@ -44,7 +44,10 @@ DEFINE_double(tol, 1e-6, "Optimization Tolerance");
 DEFINE_bool(runInitTraj, false, "Animate initial conditions?");
 DEFINE_string(data_directory, "/home/shane/Drake_ws/dairlib/examples/Spirit/saved_trajectories/",
               "directory to save/read data");
+DEFINE_string(distance_name, "10m","name to describe distance");
+
 DEFINE_bool(runAllOptimization, true, "rerun earlier optimizations?");
+DEFINE_bool(skipInitialOptimization, true, "skip first optimizations?");
 
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
@@ -143,6 +146,7 @@ void runSpiritJump(
     const double initial_height,
     const double fore_aft_displacement,
     const bool lock_rotation,
+    const bool lock_legs_apex,
     const double max_duration,
     const double cost_actuation,
     const double cost_velocity,
@@ -169,7 +173,6 @@ void runSpiritJump(
   // Get position and velocity dictionaries 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
-  std::cout<<"Line 171"<<std::endl;
 
   /// For Spirit front left leg->0, back left leg->1, front right leg->2, back right leg->3
   /// Get the frame of each toe and attach a world point to the toe tip (frame is at toe ball center).
@@ -322,31 +325,33 @@ void runSpiritJump(
   double upperSet = 1;
   double kneeSet = 2;
 
-  //STATIC LEGS AT APEX
-  trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_0") ) );
-  trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_1") ) );
+  if(lock_legs_apex){
+    //STATIC LEGS AT APEX
+    trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_0") ) );
+    trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_1") ) );
 
-  trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_2") ) );
-  trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_3") ) );
+    trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_2") ) );
+    trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_3") ) );
 
-  trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_4") ) );
-  trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_5") ) );
+    trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_4") ) );
+    trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_5") ) );
 
-  trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_6") ) );
-  trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_7") ) );
+    trajopt.AddBoundingBoxConstraint(upperSet - eps, upperSet + eps, xapex(positions_map.at("joint_6") ) );
+    trajopt.AddBoundingBoxConstraint(kneeSet - eps, kneeSet + eps, xapex(positions_map.at("joint_7") ) );
 
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_0dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_1dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_2dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_3dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_4dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_5dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_6dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_7dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_8dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_9dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_10dot")));
-  trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_11dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_0dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_1dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_2dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_3dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_4dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_5dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_6dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_7dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_8dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_9dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_10dot")));
+    trajopt.AddBoundingBoxConstraint(-0, 0, xapex( n_q + velocities_map.at("joint_11dot")));
+  }
 
   for (int i = 0; i < trajopt.N(); i++){
     auto xi = trajopt.state(i);
@@ -623,24 +628,35 @@ int main(int argc, char* argv[]) {
   init_vc_traj.push_back(init_vc_traj_j);
 
   if (FLAGS_runAllOptimization){
-    dairlib::runSpiritJump<double>(
-        *plant,
-        init_x_traj, init_u_traj, init_l_traj,
-        init_lc_traj, init_vc_traj,
-        false,
-        {7, 7, 7, 7} ,
-        FLAGS_apexGoal,
-        FLAGS_standHeight,
-        0,
-        true,
-        2,
-        3,
-        10,
-        0,
-        4,
-        FLAGS_eps,
-        1e-1,
-        FLAGS_data_directory+"simple_jump");
+    if(! FLAGS_runInitTraj){
+      dairlib::runSpiritJump<double>(
+          *plant,
+          init_x_traj, init_u_traj, init_l_traj,
+          init_lc_traj, init_vc_traj,
+          false,
+          {7, 7, 7, 7} ,
+          FLAGS_apexGoal,
+          FLAGS_standHeight,
+          0,
+          true,
+          true,
+          2,
+          3,
+          10,
+          0,
+          4,
+          FLAGS_eps,
+          1e-1,
+          FLAGS_data_directory+"simple_jump");
+    }
+    else{
+      dairlib::DirconTrajectory old_traj(FLAGS_data_directory+"simple_jump");
+      init_x_traj = old_traj.ReconstructStateTrajectory();
+      init_u_traj = old_traj.ReconstructInputTrajectory();
+      init_l_traj = old_traj.ReconstructLambdaTrajectory();
+      init_lc_traj = old_traj.ReconstructLambdaCTrajectory();
+      init_vc_traj = old_traj.ReconstructGammaCTrajectory();
+    }
 
     std::cout<<"Running 2nd optimization"<<std::endl;
 
@@ -654,6 +670,7 @@ int main(int argc, char* argv[]) {
         FLAGS_standHeight,
         FLAGS_foreAftDisplacement,
         true,
+        true,
         2,
         3,
         10,
@@ -661,7 +678,7 @@ int main(int argc, char* argv[]) {
         4,
         FLAGS_eps,
         1e-4,
-        FLAGS_data_directory+"jump_05m");
+        FLAGS_data_directory+"jump_"+FLAGS_distance_name);
 
     std::cout<<"Running 3rd optimization"<<std::endl;
 
@@ -675,16 +692,17 @@ int main(int argc, char* argv[]) {
         FLAGS_standHeight,
         FLAGS_foreAftDisplacement,
         false,
+        true,
         2,
         3,
         10,
         0,
-        4,
+        1,
         FLAGS_eps,
         1e-6,
-        FLAGS_data_directory+"jump_05m_hq");
+        FLAGS_data_directory+"jump_"+FLAGS_distance_name+"_hq");
   } else{
-    dairlib::DirconTrajectory old_traj(FLAGS_data_directory+"jump_05m_hq");
+    dairlib::DirconTrajectory old_traj(FLAGS_data_directory+"jump_"+FLAGS_distance_name+"_hq");
     init_x_traj = old_traj.ReconstructStateTrajectory();
     init_u_traj = old_traj.ReconstructInputTrajectory();
     init_l_traj = old_traj.ReconstructLambdaTrajectory();
@@ -702,13 +720,14 @@ int main(int argc, char* argv[]) {
       FLAGS_standHeight,
       FLAGS_foreAftDisplacement,
       false,
+      false,
       2*FLAGS_duration,
       FLAGS_inputCost,
       FLAGS_velocityCost,
       0,
-      4,
+      1,
       FLAGS_eps,
-      FLAGS_tol,
-      FLAGS_data_directory+"jump_05m_hq_med_knot");
+      1e-6,
+      FLAGS_data_directory+"jump_"+FLAGS_distance_name+"_hq_med_knot");
 }
 

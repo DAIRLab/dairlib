@@ -971,10 +971,6 @@ void CassieStateEstimator::EstimateContactForController(
 EventStatus CassieStateEstimator::Update(
     const Context<double>& context,
     drake::systems::State<double>* state) const {
-  timestamp_context_.push_back(context.get_time());
-  timestamp_start_.push_back(
-      std::chrono::duration_cast<std::chrono::microseconds>(
-          std::chrono::system_clock::now().time_since_epoch()).count());
   // Get cassie output
   const auto& cassie_out =
       this->EvalAbstractInput(context, cassie_out_input_port_)
@@ -1344,19 +1340,6 @@ EventStatus CassieStateEstimator::Update(
           .get_mutable_value()
       << current_time;
 
-  timestamp_end_.push_back(
-      std::chrono::duration_cast<std::chrono::microseconds>(
-          std::chrono::system_clock::now().time_since_epoch()).count());
-
-  if(abs(current_time - 10) < 1e-3){
-    std::ofstream myfile;
-    myfile.open ("state_estimator_timestamps.txt");
-    for(int i = 0; i < timestamp_context_.size(); ++i){
-      myfile << timestamp_context_[i] << "," << timestamp_start_[i] << "," << timestamp_end_[i] << "\n";
-    }
-    myfile.close();
-  }
-
   return EventStatus::Succeeded();
 }
 
@@ -1535,6 +1518,7 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
           [this](const Context<double>& c,
                  const UnrestrictedUpdateEvent<double>&,
                  drake::systems::State<double>* s) { this->Update(c, s); };
+
       auto& uu_events = events->get_mutable_unrestricted_update_events();
       uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
           drake::systems::TriggerType::kTimed, callback));

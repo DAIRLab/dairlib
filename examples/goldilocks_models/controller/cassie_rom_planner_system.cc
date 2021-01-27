@@ -558,7 +558,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Testing
   //  if (elapsed.count() > 0.5) {
-  if ((elapsed.count() > 0.6) && start_with_left_stance) {
+  /*if ((elapsed.count() > 0.6) && start_with_left_stance) {
     //  if (!result.is_success() && start_with_left_stance) {
     //  if ((result.get_optimal_cost() > 50) && start_with_left_stance) {
     cout << "x_init = " << x_init << endl;
@@ -567,7 +567,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
              init_phase * VectorXd::Ones(1));
     writeCSV(param_.dir_data + string("is_right_stance_test.csv"),
              is_right_stance * VectorXd::Ones(1));
-  }
+  }*/
 }
 
 }  // namespace goldilocks_models

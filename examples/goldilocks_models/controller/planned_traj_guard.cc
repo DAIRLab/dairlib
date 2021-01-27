@@ -62,8 +62,8 @@ void PlannedTrajGuard::ApplyGuard(
   //  The bug could be that we are using RomTrackingData to tracking LIPM traj,
   //  but the ROM is actually using COM wrt feet. Therefore, we just need to not
   //  use this RomTrackingData LIPM
-  //   if (planner_timeout || planner_no_solution) {
-  //  if (false) {
+//     if (planner_timeout || planner_no_solution) {
+//    if (false) {
   if (true) {
     //  std::cout << "Using backup controller\n";
     // Read in lipm traj

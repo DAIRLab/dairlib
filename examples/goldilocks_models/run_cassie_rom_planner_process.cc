@@ -52,7 +52,7 @@ using systems::OutputVector;
 
 // Planner settings
 DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
-DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
+DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
@@ -131,7 +131,7 @@ int DoMain(int argc, char* argv[]) {
   // Parameters for the traj opt
   PlannerSetting param;
   param.rom_option = FLAGS_rom_option;
-  param.iter = FLAGS_iter;
+  param.iter = (FLAGS_iter >= 0) ? FLAGS_iter : MODEL_ITER;
   param.sample = FLAGS_sample;
   param.n_step = FLAGS_n_step;
   param.knots_per_mode = FLAGS_knots_per_mode;
@@ -282,7 +282,7 @@ int DoMain(int argc, char* argv[]) {
 
       cout << "x_init = " << x_init.transpose() << endl;
     } else {
-      string model_dir_n_pref = param.dir_model + to_string(FLAGS_iter) +
+      string model_dir_n_pref = param.dir_model + to_string(param.iter) +
                                 string("_") + to_string(FLAGS_sample) +
                                 string("_");
       cout << "model_dir_n_pref = " << model_dir_n_pref << endl;

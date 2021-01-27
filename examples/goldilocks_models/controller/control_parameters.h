@@ -3,6 +3,9 @@
 namespace dairlib {
 namespace goldilocks_models {
 
+// The iteration # of the theta that you use. >=1
+const int MODEL_ITER = 1;  // 30
+
 const int LEFT_STANCE = 0;
 const int RIGHT_STANCE = 1;
 const int DOUBLE_STANCE = 2;

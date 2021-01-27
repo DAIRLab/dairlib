@@ -81,7 +81,6 @@ DEFINE_double(
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_double(const_walking_speed_x, 0.5, "Walking speed in local x axis");
 
-DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
 DEFINE_bool(start_with_right_stance, false, "");
 
 //
@@ -147,7 +146,7 @@ int DoMain(int argc, char* argv[]) {
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(4 /*rom_option*/, 1 /*robot_option*/, plant_wo_springs, true);
-  ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
+  ReadModelParameters(rom.get(), dir_model, MODEL_ITER);
 
   // Mirrored reduced order model
   int robot_option = 1;

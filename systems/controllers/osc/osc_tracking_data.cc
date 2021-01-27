@@ -32,7 +32,8 @@ OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
                                  const MatrixXd& K_p, const MatrixXd& K_d,
                                  const MatrixXd& W,
                                  const MultibodyPlant<double>& plant_w_spr,
-                                 const MultibodyPlant<double>& plant_wo_spr)
+                                 const MultibodyPlant<double>& plant_wo_spr,
+                                 bool track_accel)
     : K_p_(K_p),
       K_d_(K_d),
       plant_w_spr_(plant_w_spr),
@@ -42,7 +43,8 @@ OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
       name_(name),
       n_y_(n_y),
       n_ydot_(n_ydot),
-      W_(W) {}
+      W_(W),
+      track_accel_(track_accel) {}
 
 // Update
 bool OscTrackingData::Update(
@@ -77,8 +79,12 @@ bool OscTrackingData::Update(
     UpdateJdotV(x_wo_spr, context_wo_spr);
 
     // Update command output (desired output with pd control)
-    yddot_command_ =
-        yddot_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_ydot_);
+    yddot_command_ = K_p_ * (error_y_) + K_d_ * (error_ydot_);
+    if (track_accel_) {
+      yddot_command_ += yddot_des_converted_;
+    }
+    //    yddot_command_ =
+    //        yddot_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_ydot_);
   }
   return track_at_current_state_;
 }
@@ -143,9 +149,10 @@ void OscTrackingData::CheckOscTrackingData() {
 ComTrackingData::ComTrackingData(const string& name, const MatrixXd& K_p,
                                  const MatrixXd& K_d, const MatrixXd& W,
                                  const MultibodyPlant<double>& plant_w_spr,
-                                 const MultibodyPlant<double>& plant_wo_spr)
+                                 const MultibodyPlant<double>& plant_wo_spr,
+                                 bool track_accel)
     : OscTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
-                      plant_wo_spr) {}
+                      plant_wo_spr, track_accel) {}
 
 void ComTrackingData::AddStateToTrack(int state) { AddState(state); }
 
@@ -163,8 +170,7 @@ void ComTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
       context_w_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_,
       &J_w_spr);
   ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_.num_velocities());
-  error_ydot_ =
-      ydot_des_ - ydot_ - GetJ() * ii_proj * (ydot_des_ - ydot_);
+  error_ydot_ = ydot_des_ - ydot_ - GetJ() * ii_proj * (ydot_des_ - ydot_);
   //  error_ydot_ = ydot_des_ - ydot_;
 }
 
@@ -190,17 +196,17 @@ TaskSpaceTrackingData::TaskSpaceTrackingData(
     const string& name, int n_y, int n_ydot, const MatrixXd& K_p,
     const MatrixXd& K_d, const MatrixXd& W,
     const MultibodyPlant<double>& plant_w_spr,
-    const MultibodyPlant<double>& plant_wo_spr)
+    const MultibodyPlant<double>& plant_wo_spr, bool track_accel)
     : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
-                      plant_wo_spr) {}
+                      plant_wo_spr, track_accel) {}
 
 /**** TransTaskSpaceTrackingData ****/
 TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
-    const MultibodyPlant<double>& plant_wo_spr)
+    const MultibodyPlant<double>& plant_wo_spr, bool track_accel)
     : TaskSpaceTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W,
-                            plant_w_spr, plant_wo_spr) {}
+                            plant_w_spr, plant_wo_spr, track_accel) {}
 
 void TransTaskSpaceTrackingData::AddPointToTrack(const std::string& body_name,
                                                  const Vector3d& pt_on_body) {
@@ -283,7 +289,7 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
     : TaskSpaceTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
-                            plant_w_spr, plant_wo_spr) {}
+                            plant_w_spr, plant_wo_spr, true) {}
 
 void RotTaskSpaceTrackingData::AddFrameToTrack(const std::string& body_name,
                                                const Isometry3d& frame_pose) {
@@ -395,7 +401,7 @@ JointSpaceTrackingData::JointSpaceTrackingData(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
-    : OscTrackingData(name, 1, 1, K_p, K_d, W, plant_w_spr, plant_wo_spr) {}
+    : OscTrackingData(name, 1, 1, K_p, K_d, W, plant_w_spr, plant_wo_spr, true) {}
 
 void JointSpaceTrackingData::AddJointToTrack(
     const std::string& joint_pos_name, const std::string& joint_vel_name) {

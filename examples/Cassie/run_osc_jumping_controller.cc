@@ -167,7 +167,7 @@ int DoMain(int argc, char* argv[]) {
   double land_time = FLAGS_delay_time + 200;
   if (dircon_trajectory.GetNumModes() == 3) {  // Override for jumping
     flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
-    land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0);
+    land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) + gains.landing_delay;
   }
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};
@@ -309,10 +309,10 @@ int DoMain(int argc, char* argv[]) {
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot, gains.W_flight_foot,
-      plant_w_spr, plant_w_spr);
+      plant_w_spr, plant_w_spr, false);
   TransTaskSpaceTrackingData right_foot_tracking_data(
       "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot, gains.W_flight_foot,
-      plant_w_spr, plant_w_spr);
+      plant_w_spr, plant_w_spr, false);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");

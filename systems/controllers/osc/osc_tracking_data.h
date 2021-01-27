@@ -70,7 +70,8 @@ class OscTrackingData {
                   const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
                   const Eigen::MatrixXd& W,
                   const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+                  const bool track_accel);
 
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_state_
@@ -209,6 +210,7 @@ class OscTrackingData {
   // Store whether or not the tracking data is active
   bool track_at_current_state_;
   int state_idx_ = 0;
+  bool track_accel_;
 };
 
 /// ComTrackingData is used when we want to track center of mass trajectory.
@@ -217,7 +219,8 @@ class ComTrackingData final : public OscTrackingData {
   ComTrackingData(const std::string& name, const Eigen::MatrixXd& K_p,
                   const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
                   const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+                  bool track_accel = true);
 
   //  ComTrackingData() {}  // Default constructor
 
@@ -247,7 +250,8 @@ class TaskSpaceTrackingData : public OscTrackingData {
       const std::string& name, int n_y, int n_ydot, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      bool track_accel = true);
 
  protected:
   // `body_index_w_spr` is the index of the body
@@ -278,7 +282,8 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_sp,
+      bool track_accel = true);
 
   void AddPointToTrack(
       const std::string& body_name,

@@ -719,11 +719,11 @@ drake::math::saturate(2*(time_since_last_state_switch - 0.025) / 0.05, 0, 1);
         // We want left foot force to gradually increase
         alpha_left = -1;
         alpha_right = time_since_last_state_switch /
-                      (0.05 - time_since_last_state_switch);
+                      (0.1 - time_since_last_state_switch);
 
       } else if (!prev_fsm_state) {
         alpha_left = time_since_last_state_switch /
-                     (0.05 - time_since_last_state_switch);
+                     (0.1 - time_since_last_state_switch);
         alpha_right = -1;
       }
       A(0, 0) = alpha_left / 2;

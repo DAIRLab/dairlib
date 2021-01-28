@@ -429,11 +429,17 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_sc());
 
   // lipm traj for ROM (com wrt to stance foot)
+  vector<bool> flip_in_y;
+  if (FLAGS_is_two_phase) {
+    flip_in_y = {false, true};
+  } else {
+    flip_in_y = {false, true, false, true};
+  }
   auto local_lipm_traj_generator =
       builder.AddSystem<systems::LocalLIPMTrajGenerator>(
           plant_w_spr, context_w_spr.get(), desired_com_height,
           unordered_fsm_states, unordered_state_durations,
-          contact_points_in_each_state);
+          contact_points_in_each_state, flip_in_y);
   builder.Connect(fsm->get_output_port(0),
                   local_lipm_traj_generator->get_input_port_fsm());
   builder.Connect(event_time->get_output_port_event_time(),
@@ -555,8 +561,8 @@ int DoMain(int argc, char* argv[]) {
   //  ComTrackingData and OptimalRomTrackingData, we probably need a external
   //  flag to OSC
   MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2;
-  W_com(1, 1) = 2;
+  W_com(0, 0) = 0;
+  W_com(1, 1) = 0;
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
@@ -574,7 +580,8 @@ int DoMain(int argc, char* argv[]) {
   //  2. mirroring of the ROM
   //  we have two models and two input trajectories. So keep this in mind when
   //  you design the controller. Make sure everything is consistent
-  // TODO(yminchen): After you ROM plannar gave an output, you should probably also rotate it from local to global? (probably not?)
+  // TODO(yminchen): After you ROM plannar gave an output, you should probably
+  // also rotate it from local to global? (probably not?)
   osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;

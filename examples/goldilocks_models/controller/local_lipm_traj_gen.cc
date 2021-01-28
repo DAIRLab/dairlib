@@ -35,13 +35,15 @@ LocalLIPMTrajGenerator::LocalLIPMTrajGenerator(
     const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
-        contact_points_in_each_state)
+        contact_points_in_each_state,
+    const std::vector<bool>& flip_in_y)
     : plant_(plant),
       context_(context),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
+      flip_in_y_(flip_in_y),
       world_(plant_.world_frame()) {
   this->set_name("local_lipm_traj");
 
@@ -151,6 +153,13 @@ void LocalLIPMTrajGenerator::CalcTraj(
   // const double dCoM_wrt_foot_z = dCoM(2);
   DRAKE_DEMAND(CoM_wrt_foot(2) > 0);
 
+  // Flip the sign of position/velocity in y direction (because we are currently
+  // using mirrored_rom)
+  if (flip_in_y_[mode_index]) {
+    CoM_wrt_foot(1) *= -1;
+    dCoM_wrt_foot(1) *= -1;
+  }
+
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   // Note that the start time in T_waypoint_com is also used by
   // ExponentialPlusPiecewisePolynomial.
@@ -163,8 +172,8 @@ void LocalLIPMTrajGenerator::CalcTraj(
   Y[1](1, 0) = 0;  // stance_foot_pos(1);
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
-  Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
-  Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  Y[0](2, 0) = desired_com_height_;  // + stance_foot_pos(2);
+  Y[1](2, 0) = desired_com_height_;  // + stance_foot_pos(2);
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);

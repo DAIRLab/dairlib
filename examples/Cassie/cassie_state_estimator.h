@@ -17,6 +17,7 @@
 #include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "dairlib/lcmt_contact.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -61,6 +62,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
       bool test_with_ground_truth_state = false,
       bool print_info_to_terminal = false, int hardware_test_mode = -1);
+
+  const drake::systems::OutputPort<double>& get_robot_output_port() const {
+    return this->get_output_port(output_vector_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_contact_output_port() const {
+    return this->get_output_port(contact_output_port_);
+  }
+
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -125,6 +134,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
+  void CopyContact(const drake::systems::Context<double>& context,
+                   dairlib::lcmt_contact* contact_msg) const;
 
   int n_q_;
   int n_v_;
@@ -150,6 +161,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Input/output port indices
   int cassie_out_input_port_;
   int state_input_port_;
+  int output_vector_output_port_;
+  int contact_output_port_;
 
   // Below are indices of system states:
   // A state which stores previous timestamp
@@ -158,6 +171,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::AbstractStateIndex ekf_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;
+  drake::systems::DiscreteStateIndex contact_idx_;
   // A state related to contact estimation
   // This state store the previous generalized velocity
   drake::systems::DiscreteStateIndex previous_velocity_idx_;
@@ -245,6 +259,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Timestamp from unprocessed message
   double next_message_time_ = -std::numeric_limits<double>::infinity();
   double eps_ = 1e-12;
+
+  // Contacts
+  const int num_contacts_ = 2;
+  const std::vector<std::string> contact_names_ = {"left", "right"};
 };
 
 }  // namespace systems

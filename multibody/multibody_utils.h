@@ -125,5 +125,14 @@ int QuaternionStartIndex(const drake::multibody::MultibodyPlant<T>& plant);
 template <typename T>
 bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 
+/// Calculate the 3x3 Inertia tensor of a link about the plant's
+/// current center of mass in the specified frame
+template <typename T>
+drake::multibody::RotationalInertia<T> CalcLinkInertiaAboutPlantCom(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const drake::systems::Context<T>& context,
+    const drake::multibody::BodyFrame<T>& frame,
+    std::string link_name);
+
 }  // namespace multibody
 }  // namespace dairlib

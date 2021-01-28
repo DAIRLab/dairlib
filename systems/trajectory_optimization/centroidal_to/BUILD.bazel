@@ -1,0 +1,21 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "centroidal_to",
+    srcs = [
+        "centroidal_traj_opt.cc",
+        "rigid_body_dynamics_constraint.cc",
+    ],
+    hdrs = [
+        "centroidal_traj_opt.h",
+        "rigid_body_dynamics_constraint.h",
+    ],
+    deps = [
+        "//solvers:constraint_factory",
+        "//solvers:constraints",
+        "@drake//:drake_shared_library",
+    ],
+)

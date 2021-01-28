@@ -12,6 +12,7 @@ namespace multibody {
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::VectorX;
+using drake::Vector3;
 using drake::geometry::HalfSpace;
 using drake::geometry::SceneGraph;
 using drake::math::autoDiffToGradientMatrix;
@@ -20,6 +21,9 @@ using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
+using drake::multibody::SpatialInertia;
+using drake::multibody::RotationalInertia;
+using drake::multibody::BodyFrame;
 using Eigen::VectorXd;
 using std::map;
 using std::string;
@@ -385,6 +389,27 @@ bool isQuaternion(const MultibodyPlant<T>& plant) {
   return QuaternionStartIndex(plant) != -1;
 }
 
+template <typename T>
+RotationalInertia<T> CalcLinkInertiaAboutPlantCom(
+    const MultibodyPlant<T>& plant,
+    const Context<T>& context,
+    const BodyFrame<T>& frame,
+    const std::string link_name ) {
+    // Get plant center of mass
+    Vector3<T> CoM = plant.CalcCenterOfMassPosition(context);
+    // Find inertia of link in link's own frame
+    SpatialInertia<T> I = plant.GetBodyByName(link_name).CalcSpatialInertiaInBodyFrame(context);
+    // Rotate inertia to world frame
+    I.ReExpressInPlace(
+        plant.CalcRelativeRotationMatrix(context,
+                                         plant.GetBodyByName(link_name).body_frame(),
+                                         frame));
+
+    // Shift inertia to find about CoM
+    I.ShiftInPlace(CoM - plant.GetBodyByName(link_name).EvalPoseInWorld(context).translation());
+    return I.CalcRotationalInertia();
+}
+
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT
@@ -406,6 +431,8 @@ template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Con
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>& input);  // NOLINT
 template std::unique_ptr<Context<AutoDiffXd>> createContext(const MultibodyPlant<AutoDiffXd>& plant, const Eigen::Ref<const AutoDiffVecXd>& state, const Eigen::Ref<const AutoDiffVecXd>& input);  // NOLINT
+template RotationalInertia<double> CalcLinkInertiaAboutPlantCom(const MultibodyPlant<double>& plant, const Context<double>& context, const BodyFrame<double>& frame, const std::string link_name); // NOLINT
+template RotationalInertia<AutoDiffXd> CalcLinkInertiaAboutPlantCom(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context, const BodyFrame<AutoDiffXd>& frame, const std::string link_name); // NOLINT
 template void setContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>&, Context<double>* context);  // NOLINT
 template void setContext(const MultibodyPlant<AutoDiffXd>& plant, const Eigen::Ref<const AutoDiffVecXd>& state, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>* context);  // NOLINT
 template void SetPositionsAndVelocitiesIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT

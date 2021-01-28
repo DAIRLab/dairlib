@@ -548,7 +548,7 @@ int DoMain(int argc, char* argv[]) {
   // Swing foot tracking
   MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 200 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_sw_ft = 1 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_sw_ft,
                                              K_d_sw_ft, W_swing_foot,
                                              plant_w_spr, plant_wo_springs);
@@ -565,7 +565,7 @@ int DoMain(int argc, char* argv[]) {
   W_com(1, 1) = 0;
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_com = 5 * MatrixXd::Identity(3, 3);
   OptimalRomTrackingData optimal_rom_traj("optimal_rom_traj", rom->n_y(),
                                           K_p_com, K_d_com, W_com, plant_w_spr,
                                           plant_wo_springs);
@@ -620,8 +620,8 @@ int DoMain(int argc, char* argv[]) {
   // The desired position, -1.5, was derived heuristically. It is roughly the
   // toe angle when Cassie stands on the ground.
   MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_swing_toe = 1500 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_swing_toe = 10 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
                                         K_d_swing_toe, W_swing_toe, plant_w_spr,
                                         plant_wo_springs);
@@ -631,9 +631,9 @@ int DoMain(int argc, char* argv[]) {
                                          "toe_leftdot");
   osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
   // Swing hip yaw joint tracking
-  MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
+  MatrixXd W_hip_yaw = 50 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_hip_yaw = 40 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_hip_yaw = 0.5 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
                                             K_d_hip_yaw, W_hip_yaw, plant_w_spr,
                                             plant_wo_springs);

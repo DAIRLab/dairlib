@@ -26,7 +26,13 @@ void CentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
   DRAKE_ASSERT(sequence.size() == times.size())
   int n_modes = sequence.size();
   for (int i = 0; i < n_modes; i++) {
-    int num_knotpoints = std::round(times[i] / h_);
+    int n_knot_f = std::round(times[i] / h_) + 1;
+    int n_knot_s = (i == 0) ? n_knot_f : n_knot_f - 1;
+
+      state_vars_.push_back(NewContinuousVariables(
+          n_knot_f * 3 * kNForceVars,
+          "forces[" + std::to_string(i) + "]"));
+      
 
 
   }

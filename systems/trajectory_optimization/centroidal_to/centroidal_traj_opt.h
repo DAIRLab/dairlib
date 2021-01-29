@@ -33,10 +33,13 @@ class CentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   void SetModeSequence(std::vector<stance> sequence, std::vector<double> times);
   void SetNominalStance(Eigen::Vector3d left, Eigen::Vector3d right);
   void SetMaxDeviationConstraint(Eigen::Vector3d max);
+  void MakeImpulseFrictionConeConstraints();
 
  private:
   const Eigen::Matrix3d inertia_tensor_;
   std::vector<Eigen::Vector3d> nominal_stance_;
+  std::vector<stance> sequence_;
+  std::vector<double> times_;
   std::vector<drake::solvers::VectorXDecisionVariable> state_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> stance_vars_;

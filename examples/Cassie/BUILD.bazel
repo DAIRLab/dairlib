@@ -38,6 +38,18 @@ cc_library(
 )
 
 cc_library(
+    name = "cassie_hardware",
+    deps = [
+        "//examples/Cassie:dispatcher_robot_in",
+        "//examples/Cassie:dispatcher_robot_out",
+        "//examples/Cassie:multibody_sim",
+        "//examples/Cassie:run_osc_standing_controller",
+        "//examples/Cassie:run_osc_walking_controller",
+        "//examples/Cassie/osc",
+    ],
+)
+
+cc_library(
     name = "cassie_urdf",
     data = glob(["urdf/**"]),
 )
@@ -446,23 +458,4 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-)
-
-py_binary(
-    name = "cassie_virtual_remote_py",
-    srcs = ["cassie_virtual_remote.py"],
-    data = [
-        "@lcm//:lcm-python",
-    ],
-    main = "cassie_virtual_remote.py",
-    deps = [
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
-
-drake_runfiles_binary(
-    name = "cassie_virtual_remote",
-    target = "cassie_virtual_remote_py",
 )

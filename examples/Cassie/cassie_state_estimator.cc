@@ -1,6 +1,7 @@
 #include "examples/Cassie/cassie_state_estimator.h"
 
 #include <math.h>
+
 #include <chrono>
 #include <fstream>
 #include <utility>
@@ -76,8 +77,17 @@ CassieStateEstimator::CassieStateEstimator(
   cassie_out_input_port_ = this->DeclareAbstractInputPort(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
                                .get_index();
-  this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
-                                &CassieStateEstimator::CopyStateOut);
+  estimated_state_output_port_ =
+      this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
+                                    &CassieStateEstimator::CopyStateOut)
+          .get_index();
+  contact_output_port_ =
+      this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
+          .get_index();
+  contact_forces_output_port_ =
+      this->DeclareAbstractOutputPort(
+              &CassieStateEstimator::CopyEstimatedContactForces)
+          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -100,6 +110,19 @@ CassieStateEstimator::CassieStateEstimator(
 
     // a state which stores previous timestamp
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
+
+    // Joint selection matrices initialization
+    joint_selection_matrices.emplace_back(MatrixXd::Zero(n_v_, n_v_));
+    joint_selection_matrices.emplace_back(MatrixXd::Zero(n_v_, n_v_));
+    vector<string> leg_names = {"left, right"};
+    for (const auto& joint_name : velocity_idx_map_) {
+      if (joint_name.first.find("left") != std::string::npos) {
+        joint_selection_matrices[0](joint_name.second, joint_name.second) = 1;
+      }
+      if (joint_name.first.find("right") != std::string::npos) {
+        joint_selection_matrices[1](joint_name.second, joint_name.second) = 1;
+      }
+    }
 
     // states related to EKF
     // 1. estimated floating base state (pelvis)
@@ -142,85 +165,11 @@ CassieStateEstimator::CassieStateEstimator(
     prev_imu_idx_ = DeclareDiscreteState(init_prev_imu_value);
 
     // states related to contact estimation
+    contact_idx_ = DeclareDiscreteState(VectorXd::Zero(num_contacts_));
+    contact_forces_idx_ =
+        DeclareDiscreteState(VectorXd::Zero(num_contacts_ * SPACE_DIM));
+
     previous_velocity_idx_ = DeclareDiscreteState(VectorXd::Zero(n_v_, 1));
-
-    filtered_residual_double_idx_ =
-        DeclareDiscreteState(VectorXd::Zero(n_v_, 1));
-    filtered_residual_left_idx_ = DeclareDiscreteState(VectorXd::Zero(n_v_, 1));
-    filtered_residual_right_idx_ =
-        DeclareDiscreteState(VectorXd::Zero(n_v_, 1));
-
-    // Contact Estimation - Quadratic Programing
-    n_b_ = fourbar_evaluator->count_full();
-    n_cl_ = left_contact_evaluator->count_full();
-    n_cl_active_ = left_contact_evaluator->count_active();
-    n_cr_ = right_contact_evaluator->count_full();
-    n_cr_active_ = right_contact_evaluator->count_active();
-    // MathematicalProgram
-    quadprog_ = std::make_unique<drake::solvers::MathematicalProgram>();
-    // Add variables to the optimization program
-    ddq_ = quadprog_->NewContinuousVariables(n_v_, "ddq");
-    lambda_b_ = quadprog_->NewContinuousVariables(n_b_, "lambda_b");
-    lambda_cl_ = quadprog_->NewContinuousVariables(n_cl_, "lambda_cl");
-    lambda_cr_ = quadprog_->NewContinuousVariables(n_cr_, "lambda_cr");
-    eps_cl_ = quadprog_->NewContinuousVariables(n_cl_active_, "eps_cl");
-    eps_cr_ = quadprog_->NewContinuousVariables(n_cr_active_, "eps_cr");
-    eps_imu_ = quadprog_->NewContinuousVariables(SPACE_DIM, "eps_imu");
-    // Add equality constraints to the optimization program
-    fourbar_constraint_ =
-        quadprog_
-            ->AddLinearEqualityConstraint(MatrixXd::Zero(n_b_, n_v_),
-                                          VectorXd::Zero(n_b_), ddq_)
-            .evaluator()
-            .get();
-    left_contact_constraint_ =
-        quadprog_
-            ->AddLinearEqualityConstraint(
-                MatrixXd::Zero(n_cl_active_, n_v_ + n_cl_active_),
-                VectorXd::Zero(n_cl_active_), {ddq_, eps_cl_})
-            .evaluator()
-            .get();
-    right_contact_constraint_ =
-        quadprog_
-            ->AddLinearEqualityConstraint(
-                MatrixXd::Zero(n_cr_active_, n_v_ + n_cr_active_),
-                VectorXd::Zero(n_cr_active_), {ddq_, eps_cr_})
-            .evaluator()
-            .get();
-    imu_accel_constraint_ = quadprog_
-                                ->AddLinearEqualityConstraint(
-                                    MatrixXd::Zero(SPACE_DIM, n_v_ + SPACE_DIM),
-                                    VectorXd::Zero(SPACE_DIM), {ddq_, eps_imu_})
-                                .evaluator()
-                                .get();
-    // Add costs to the optimization program
-    int n_lambda = n_b_ + n_cl_ + n_cr_;
-    quadcost_eom_ =
-        quadprog_
-            ->AddQuadraticCost(MatrixXd::Zero(n_v_ + n_lambda, n_v_ + n_lambda),
-                               MatrixXd::Zero(n_v_ + n_lambda, 1),
-                               {ddq_, lambda_b_, lambda_cl_, lambda_cr_})
-            .evaluator()
-            .get();
-    quadcost_eps_cl_ =
-        quadprog_
-            ->AddQuadraticCost(MatrixXd::Zero(n_cl_active_, n_cl_active_),
-                               VectorXd::Zero(n_cl_active_), eps_cl_)
-            .evaluator()
-            .get();
-    quadcost_eps_cr_ =
-        quadprog_
-            ->AddQuadraticCost(MatrixXd::Zero(n_cr_active_, n_cr_active_),
-                               VectorXd::Zero(n_cr_active_), eps_cr_)
-            .evaluator()
-            .get();
-    quadcost_eps_imu_ =
-        quadprog_
-            ->AddQuadraticCost(
-                w_soft_constraint_ * MatrixXd::Identity(SPACE_DIM, SPACE_DIM),
-                VectorXd::Zero(SPACE_DIM), eps_imu_)
-            .evaluator()
-            .get();
   }
 }
 
@@ -490,269 +439,6 @@ void CassieStateEstimator::AssignFloatingBaseStateToOutputVector(
   output->SetVelocityAtIndex(velocity_idx_map_.at("base_vz"), est_fb_state(12));
 }
 
-/// UpdateContactEstimationCosts() updates the optimal costs of the quadratic
-/// programs for contact estimations. There are three QPs in total which assume
-/// double support, left support and right support in order.
-/// The QP's are solved with the state/input feedback of the robot and the imu
-/// linear acceleration.
-///
-/// Input:
-///  - OutputVector `output` containing the state, input and imu acceleration of
-///    the robot
-///  - time `dt` elapsed between previous iteration and current iteration
-///  - discretevalues `discrete_state` to store states related to contact
-///    estimation
-///
-/// In each optimization, the residual of the
-///  EoM is calculated based on the assumption of the stance. The assumption of
-///  stance is done by imposing a constraint for the acceleration of the stance
-///  foot. The acceleration of the pelvis is also constrained to match the imu
-///  acceleration. The cost from the three optimizations are compared. In
-///  general, the optimization with the least cost is assumed to be the actual
-///  stance.
-void CassieStateEstimator::UpdateContactEstimationCosts(
-    const OutputVector<double>& output, const double& dt,
-    DiscreteValues<double>* discrete_state,
-    std::vector<double>* optimal_cost) const {
-  plant_.SetPositionsAndVelocities(context_.get(), output.GetState());
-
-  // M, C and B matrices
-  MatrixXd M(n_v_, n_v_);
-  plant_.CalcMassMatrix(*context_, &M);
-  VectorXd C(n_v_);
-  plant_.CalcBiasTerm(*context_, &C);
-  C -= plant_.CalcGravityGeneralizedForces(*context_);
-  drake::multibody::MultibodyForces<double> f_app(plant_);
-  plant_.CalcForceElementsContribution(*context_, &f_app);
-  C -= f_app.generalized_forces();
-  C -= plant_.MakeActuationMatrix() * output.GetEfforts();
-
-  // J_b - Jacobian for fourbar linkage
-  MatrixXd J_b = fourbar_evaluator_->EvalFullJacobian(*context_);
-  VectorXd JdotV_b = fourbar_evaluator_->EvalFullJacobianDotTimesV(*context_);
-
-  // J_c{l, r} - contact Jacobians and JdotV
-  // l - left; r - right
-  MatrixXd J_cl = left_contact_evaluator_->EvalFullJacobian(*context_);
-  MatrixXd J_cr = right_contact_evaluator_->EvalFullJacobian(*context_);
-  MatrixXd J_cl_active = left_contact_evaluator_->EvalActiveJacobian(*context_);
-  MatrixXd J_cr_active =
-      right_contact_evaluator_->EvalActiveJacobian(*context_);
-  VectorXd JdotV_cl_active =
-      left_contact_evaluator_->EvalActiveJacobianDotTimesV(*context_);
-  VectorXd JdotV_cr_active =
-      right_contact_evaluator_->EvalActiveJacobianDotTimesV(*context_);
-
-  // J_imu - Jacobian of the imu location
-  MatrixXd J_imu(SPACE_DIM, n_v_);
-  plant_.CalcJacobianTranslationalVelocity(*context_, JacobianWrtVariable::kV,
-                                           pelvis_frame_, imu_pos_, world_,
-                                           world_, &J_imu);
-  VectorXd JdotV_imu = plant_.CalcBiasTranslationalAcceleration(
-      *context_, JacobianWrtVariable::kV, pelvis_frame_, imu_pos_, world_,
-      world_);
-
-  // Get imu acceleration wrt world
-  auto pelvis_pose = plant_.EvalBodyPoseInWorld(*context_, pelvis_);
-  const auto& R_WB = pelvis_pose.rotation();
-  Vector3d imu_accel_wrt_world = R_WB * output.GetIMUAccelerations() + gravity_;
-
-  // Mathematical program - double contact
-  // Equality constraint
-  fourbar_constraint_->UpdateCoefficients(J_b, -1 * JdotV_b);
-
-  MatrixXd IMU_coeff(SPACE_DIM, n_v_ + SPACE_DIM);
-  IMU_coeff << J_imu, MatrixXd::Identity(SPACE_DIM, SPACE_DIM);
-  imu_accel_constraint_->UpdateCoefficients(
-      IMU_coeff, -1 * JdotV_imu + imu_accel_wrt_world);
-
-  MatrixXd CL_coeff(n_cl_active_, n_v_ + n_cl_active_);
-  CL_coeff << J_cl_active, MatrixXd::Identity(n_cl_active_, n_cl_active_);
-  left_contact_constraint_->UpdateCoefficients(CL_coeff, -1 * JdotV_cl_active);
-
-  MatrixXd CR_coeff(n_cr_active_, n_v_ + n_cr_active_);
-  CR_coeff << J_cr_active, MatrixXd::Identity(n_cr_active_, n_cr_active_);
-  right_contact_constraint_->UpdateCoefficients(CR_coeff, -1 * JdotV_cr_active);
-
-  // Cost
-  int A_cols = n_v_ + n_b_ + n_cl_ + n_cr_;
-  MatrixXd A_dyn(n_v_, A_cols);
-  A_dyn << M, -1 * J_b.transpose(), -1 * J_cl.transpose(),
-      -1 * J_cr.transpose();
-  VectorXd b_dyn(n_v_);
-  b_dyn = -C;
-
-  quadcost_eom_->UpdateCoefficients(
-      2 * A_dyn.transpose() * A_dyn +
-          eps_cost_ * MatrixXd::Identity(A_cols, A_cols),
-      -2 * A_dyn.transpose() * b_dyn);
-  quadcost_eps_cl_->UpdateCoefficients(
-      w_soft_constraint_ * MatrixXd::Identity(n_cl_active_, n_cl_active_),
-      VectorXd::Zero(n_cl_active_));
-  quadcost_eps_cr_->UpdateCoefficients(
-      w_soft_constraint_ * MatrixXd::Identity(n_cr_active_, n_cr_active_),
-      VectorXd::Zero(n_cr_active_));
-
-  // Initial guess
-  // EqualityConstrainedQPSolver doesn't depend on the initial guess. There is a
-  // closed form solution.
-
-  // Solve the optimization problem
-  drake::solvers::EqualityConstrainedQPSolver solver;
-  drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
-                           "FeasibilityTol", 1e-6);  // default 1e-12
-  drake::solvers::MathematicalProgramResult result_double =
-      solver.Solve(*quadprog_, {}, solver_options);
-
-  if (!result_double.is_success()) {
-    // If the optimization fails, push infinity into the optimal_cost vector
-    optimal_cost->at(0) = std::numeric_limits<double>::infinity();
-
-  } else {
-    // Push the optimal cost to the optimal_cost vector
-    optimal_cost->at(0) =
-        result_double.get_optimal_cost() +
-        b_dyn.transpose() * b_dyn;  // the second term is the cosntant term
-
-    // Residual calculation
-    // TODO(Nanda): Remove the residual calculation after testing on the real
-    // robot
-    VectorXd ddq_val = result_double.GetSolution(ddq_);
-    VectorXd curr_residual = ddq_val * dt;
-    curr_residual -=
-        (output.GetVelocities() -
-         discrete_state->get_vector(previous_velocity_idx_).get_value());
-    VectorXd filtered_residual_double =
-        discrete_state->get_vector(filtered_residual_double_idx_).get_value();
-    filtered_residual_double =
-        filtered_residual_double +
-        alpha_ * (curr_residual - filtered_residual_double);
-    discrete_state->get_mutable_vector(filtered_residual_double_idx_)
-            .get_mutable_value()
-        << filtered_residual_double;
-  }
-
-  // Mathematical program - left contact
-  // Equality constraints
-  left_contact_constraint_->UpdateCoefficients(CL_coeff, -1 * JdotV_cl_active);
-  right_contact_constraint_->UpdateCoefficients(
-      MatrixXd::Zero(n_cr_active_, n_v_ + n_cr_active_),
-      VectorXd::Zero(n_cr_active_));
-  imu_accel_constraint_->UpdateCoefficients(
-      IMU_coeff, -1 * JdotV_imu + imu_accel_wrt_world);
-
-  // Cost
-  A_dyn << M, -1 * J_b.transpose(), -1 * J_cl.transpose(),
-      MatrixXd::Zero(n_v_, n_cr_);
-
-  quadcost_eom_->UpdateCoefficients(
-      2 * A_dyn.transpose() * A_dyn +
-          eps_cost_ * MatrixXd::Identity(A_cols, A_cols),
-      -2 * A_dyn.transpose() * b_dyn);
-  quadcost_eps_cl_->UpdateCoefficients(
-      w_soft_constraint_ * MatrixXd::Identity(n_cl_active_, n_cl_active_),
-      VectorXd::Zero(n_cl_active_));
-  quadcost_eps_cr_->UpdateCoefficients(
-      MatrixXd::Zero(n_cr_active_, n_cr_active_), VectorXd::Zero(n_cr_active_));
-
-  // Initial guess
-  // EqualityConstrainedQPSolver doesn't depend on the initial guess. There is a
-  // closed form solution.
-
-  // Solve the optimization problem
-  drake::solvers::MathematicalProgramResult result_left =
-      solver.Solve(*quadprog_, {}, solver_options);
-
-  if (!result_left.is_success()) {
-    // Push infinity into optimal_cost vector if the optimization fails
-    optimal_cost->at(1) = std::numeric_limits<double>::infinity();
-
-  } else {
-    // Push the optimal cost to the optimal_cost vector
-    optimal_cost->at(1) =
-        result_left.get_optimal_cost() + b_dyn.transpose() * b_dyn;
-
-    // Residual calculation
-    // TODO(Nanda): Remove the residual calculation after testing on the real
-    // robot
-    VectorXd ddq_val = result_left.GetSolution(ddq_);
-    VectorXd curr_residual = ddq_val * dt;
-    curr_residual -=
-        (output.GetVelocities() -
-         discrete_state->get_vector(previous_velocity_idx_).get_value());
-    VectorXd filtered_residual_left =
-        discrete_state->get_vector(filtered_residual_left_idx_).get_value();
-    filtered_residual_left = filtered_residual_left +
-                             alpha_ * (curr_residual - filtered_residual_left);
-    discrete_state->get_mutable_vector(filtered_residual_left_idx_)
-            .get_mutable_value()
-        << filtered_residual_left;
-  }
-
-  // Mathematical program - right contact
-  // Equality constraint
-  left_contact_constraint_->UpdateCoefficients(
-      MatrixXd::Zero(n_cl_active_, n_v_ + n_cl_active_),
-      VectorXd::Zero(n_cl_active_));
-  right_contact_constraint_->UpdateCoefficients(CR_coeff, -1 * JdotV_cr_active);
-  imu_accel_constraint_->UpdateCoefficients(
-      IMU_coeff, -1 * JdotV_imu + imu_accel_wrt_world);
-
-  // Cost
-  A_dyn << M, -1 * J_b.transpose(), MatrixXd::Zero(n_v_, n_cl_),
-      -1 * J_cr.transpose();
-
-  quadcost_eom_->UpdateCoefficients(
-      2 * A_dyn.transpose() * A_dyn +
-          eps_cost_ * MatrixXd::Identity(A_cols, A_cols),
-      -2 * A_dyn.transpose() * b_dyn);
-  quadcost_eps_cl_->UpdateCoefficients(
-      MatrixXd::Zero(n_cl_active_, n_cl_active_), VectorXd::Zero(n_cl_active_));
-  quadcost_eps_cr_->UpdateCoefficients(
-      w_soft_constraint_ * MatrixXd::Identity(n_cr_active_, n_cr_active_),
-      VectorXd::Zero(n_cr_active_));
-
-  // Initial guess
-  // EqualityConstrainedQPSolver doesn't depend on the initial guess. There is a
-  // closed form solution.
-
-  // Solve the optimization problem
-  drake::solvers::MathematicalProgramResult result_right =
-      solver.Solve(*quadprog_, {}, solver_options);
-
-  if (!result_right.is_success()) {
-    // If the optimization fails, push infinity to the optimal_cost vector
-    optimal_cost->at(2) = std::numeric_limits<double>::infinity();
-
-  } else {
-    // Push the optimal cost to optimal_cost vector
-    optimal_cost->at(2) =
-        result_right.get_optimal_cost() + b_dyn.transpose() * b_dyn;
-
-    // Residual calculation
-    // TODO(Nanda): Remove the residual calculation after testing on the real
-    // robot
-    VectorXd ddq_val = result_right.GetSolution(ddq_);
-    VectorXd curr_residual = ddq_val * dt;
-    curr_residual -=
-        (output.GetVelocities() -
-         discrete_state->get_vector(previous_velocity_idx_).get_value());
-    VectorXd filtered_residual_right =
-        discrete_state->get_vector(filtered_residual_right_idx_).get_value();
-    filtered_residual_right =
-        filtered_residual_right +
-        alpha_ * (curr_residual - filtered_residual_right);
-    discrete_state->get_mutable_vector(filtered_residual_right_idx_)
-            .get_mutable_value()
-        << filtered_residual_right;
-  }
-
-  // Record previous velocity (used in acceleration residual)
-  discrete_state->get_mutable_vector(previous_velocity_idx_).get_mutable_value()
-      << output.GetVelocities();
-}
-
 /// EstimateContactForEkf(). Conservative estimation.
 /// EKF is updated based on the assumption of stance foot being stationary.
 /// The estimated state would get very inaccurate if the stance foot is moving.
@@ -789,30 +475,11 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
 /// Warning: UpdateContactEstimationCosts() should be called to update the costs
 /// before calling EstimateContactForEkf().
 void CassieStateEstimator::EstimateContactForEkf(
-    const OutputVector<double>& output, const std::vector<double>& optimal_cost,
-    int* left_contact, int* right_contact) const {
+    const systems::OutputVector<double>& output, int* left_contact,
+    int* right_contact) const {
   // Initialize
   *left_contact = 0;
   *right_contact = 0;
-
-  // Estimate contact based on optimization results
-  // The vector optimal_cost has double support, left support and right support
-  // costs in order. The corresponding indices are 0, 1, 2.
-  // Here we get the index of min of left and right support costs.
-  auto min_it =
-      std::min_element(std::next(optimal_cost.begin(), 0), optimal_cost.end());
-  int min_index = std::distance(optimal_cost.begin(), min_it);
-
-  // If all three costs are high, we believe it's going through impact event (
-  // big ground contact point acceleration),
-  // and we assume there is no support legs because we don't want moving feet
-  // to mess up EKF.
-  bool qp_informative = !((optimal_cost.at(0) >= cost_threshold_ekf_) &&
-                          (optimal_cost.at(1) >= cost_threshold_ekf_) &&
-                          (optimal_cost.at(2) >= cost_threshold_ekf_));
-  bool double_contact_qp = (min_index == 0);
-  bool left_contact_qp = (min_index == 1);
-  bool right_contact_qp = (min_index == 2);
 
   // Use spring as a necessary guard to determine the contact (that is, in the
   // case where QP says right stance but left spring deflection is not big
@@ -837,20 +504,14 @@ void CassieStateEstimator::EstimateContactForEkf(
                                right_heel_spring < heel_spring_threshold_ekf_);
 
   // Determine contacts based on both spring deflation and QP cost
-  if (qp_informative && (double_contact_qp || left_contact_qp) &&
-      left_contact_spring) {
+  if (left_contact_spring) {
     *left_contact = 1;
   }
-  if (qp_informative && (double_contact_qp || right_contact_qp) &&
-      right_contact_spring) {
+  if (right_contact_spring) {
     *right_contact = 1;
   }
 
   if (print_info_to_terminal_) {
-    cout << "optimal_cost[0][1][2], threshold = " << optimal_cost.at(0) << ", "
-         << optimal_cost.at(1) << ", " << optimal_cost.at(2) << ", "
-         << cost_threshold_ekf_ << endl;
-
     cout << "left/right knee spring, threshold = " << left_knee_spring << ", "
          << right_knee_spring << ", " << knee_spring_threshold_ekf_ << endl;
     cout << "left/right heel spring, threshold = " << left_heel_spring << ", "
@@ -882,28 +543,11 @@ void CassieStateEstimator::EstimateContactForEkf(
 /// Warning: UpdateContactEstimationCosts() should be called to update the costs
 /// before calling EstimateContactForController().
 void CassieStateEstimator::EstimateContactForController(
-    const OutputVector<double>& output, const std::vector<double>& optimal_cost,
-    int* left_contact, int* right_contact) const {
+    const systems::OutputVector<double>& output, int* left_contact,
+    int* right_contact) const {
   // Initialize
   *left_contact = 0;
   *right_contact = 0;
-
-  // Estimate contact based on optimization results
-  // The vector optimal_cost has double support, left support and right support
-  // costs in order. The corresponding indices are 0, 1, 2.
-  // Here we get the index of min of left and right support costs.
-  auto min_it =
-      std::min_element(std::next(optimal_cost.begin(), 0), optimal_cost.end());
-  int min_index = std::distance(optimal_cost.begin(), min_it);
-
-  // If all three costs are high, we believe it's going through impact event.
-  // Since it's not very informative, we don't set any contact.
-  bool qp_informative = !((optimal_cost.at(0) >= cost_threshold_ctrl_) &&
-                          (optimal_cost.at(1) >= cost_threshold_ctrl_) &&
-                          (optimal_cost.at(2) >= cost_threshold_ctrl_));
-  bool double_contact_qp = (min_index == 0);
-  bool left_contact_qp = (min_index == 1);
-  bool right_contact_qp = (min_index == 2);
 
   // Contact estimation based on spring deflection information
   // We say a foot is in contact with the ground if either knee OR heel spring
@@ -924,12 +568,10 @@ void CassieStateEstimator::EstimateContactForController(
        right_heel_spring < heel_spring_threshold_ctrl_);
 
   // Determine contacts based on both spring deflation and QP cost
-  if ((qp_informative && (double_contact_qp || left_contact_qp)) ||
-      left_contact_spring) {
+  if (left_contact_spring) {
     *left_contact = 1;
   }
-  if ((qp_informative && (double_contact_qp || right_contact_qp)) ||
-      right_contact_spring) {
+  if (right_contact_spring) {
     *right_contact = 1;
   }
 }
@@ -1006,15 +648,6 @@ EventStatus CassieStateEstimator::Update(
       cout << quat.transpose() << endl;
       cout << "Velocities: " << endl;
       cout << imu_vel_wrt_world_gt.transpose() << endl;
-
-      // cout << "Leg positions: " << endl;
-      // cout << plant_.transformPoints(
-      //     cache_gt, Vector3d::Zero(), left_toe_idx_, 0).transpose() <<
-      //     endl;
-      // cout << plant_.transformPoints(
-      //     cache_gt, Vector3d::Zero(), right_toe_idx_, 0).transpose() <<
-      //     endl;
-      // cout << endl;
     }
   }
 
@@ -1027,9 +660,6 @@ EventStatus CassieStateEstimator::Update(
   imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
       imu_angular_velocity[2], imu_linear_acceleration[0],
       imu_linear_acceleration[1], imu_linear_acceleration[2];
-  if (print_info_to_terminal_) {
-    // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
-  }
 
   // Perform State Estimation (in several steps)
   // Step 1 - Solve for the unknown joint angle
@@ -1091,24 +721,29 @@ EventStatus CassieStateEstimator::Update(
   // Estimate feet contacts
   int left_contact = 0;
   int right_contact = 0;
-  std::vector<double> optimal_cost(3, 0.0);
+
+  VectorXd lambda_est = VectorXd::Zero(num_contacts_ * 3);
   if (test_with_ground_truth_state_) {
-    UpdateContactEstimationCosts(
-        output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
-    EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
-                          &right_contact);
+    EstimateContactForEkf(output_gt, &left_contact, &right_contact);
   } else {
-    UpdateContactEstimationCosts(filtered_output, dt,
-                                 &(state->get_mutable_discrete_state()),
-                                 &optimal_cost);
-    EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
-                          &right_contact);
+    EstimateContactForEkf(filtered_output, &left_contact, &right_contact);
+    EstimateContactForces(context, filtered_output, lambda_est, left_contact,
+                          right_contact);
+  }
+  state->get_mutable_discrete_state(contact_forces_idx_).get_mutable_value()
+      << lambda_est;
+
+  // Override hardware_test_mode_ if test mode is 2 and we detect contact
+  // Useful for preventing drift when the feet are not fully in contact - i.e
+  // when running the PD controller with external support
+  if (left_contact && right_contact && hardware_test_mode_ == 2) {
+    hardware_test_mode_ = -1;
   }
 
   // Test mode needed for hardware experiment
   // mode #0 assumes the feet are always on the ground
   // mode #1 assumes the feet are always in the air
-  if (hardware_test_mode_ == 0) {
+  if (hardware_test_mode_ == 0 || hardware_test_mode_ == 2) {
     left_contact = 1;
     right_contact = 1;
 
@@ -1121,17 +756,28 @@ EventStatus CassieStateEstimator::Update(
     right_contact = 0;
   }
 
+  // Assign contacts
+  state->get_mutable_discrete_state()
+          .get_mutable_vector(contact_idx_)
+          .get_mutable_value()
+      << left_contact,
+      right_contact;
+
   std::vector<std::pair<int, bool>> contacts;
   contacts.push_back(std::pair<int, bool>(0, left_contact));
-  contacts.push_back(std::pair<int, bool>(1, right_contact));
+  contacts.push_back(std::pair<int, bool>(1, left_contact));
+  contacts.push_back(std::pair<int, bool>(2, right_contact));
+  contacts.push_back(std::pair<int, bool>(3, right_contact));
   ekf.setContacts(contacts);
 
   // Step 4 - EKF (measurement step)
   plant_.SetPositionsAndVelocities(context_.get(), filtered_output.GetState());
 
   // rotation part of pose and covariance is unused in EKF
-  Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
-  Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
+  Eigen::Matrix4d rear_toe_pose = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d front_toe_pose = Eigen::Matrix4d::Identity();
+  Eigen::Matrix<double, 6, 6> rear_covariance = MatrixXd::Identity(6, 6);
+  Eigen::Matrix<double, 6, 6> front_covariance = MatrixXd::Identity(6, 6);
 
   if (test_with_ground_truth_state_) {
     // Print for debugging
@@ -1154,27 +800,39 @@ EventStatus CassieStateEstimator::Update(
   for (int i = 0; i < 2; i++) {
     plant_.CalcPointsPositions(*context_, *toe_frames_[i], rear_contact_disp_,
                                pelvis_frame_, &toe_pos);
-    pose.block<3, 3>(0, 0) = Matrix3d::Identity();
-    pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
+    rear_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
+    rear_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
+    plant_.CalcPointsPositions(*context_, *toe_frames_[i], front_contact_disp_,
+                               pelvis_frame_, &toe_pos);
+    front_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
+    front_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
 
     if (print_info_to_terminal_) {
       // Print for debugging
       // cout << "Pose: " << endl;
-      // cout << pose.block<3, 1>(0, 3).transpose() << endl;
+      // cout << rear_toe_pose.block<3, 1>(0, 3).transpose() << endl;
     }
 
     plant_.CalcJacobianTranslationalVelocity(
         *context_, JacobianWrtVariable::kV, *toe_frames_[i], rear_contact_disp_,
         pelvis_frame_, pelvis_frame_, &J);
     MatrixXd J_wrt_joints = J.block(0, 6, 3, 16);
-    covariance.block<3, 3>(3, 3) =
+    rear_covariance.block<3, 3>(3, 3) =
         J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-    inekf::Kinematics frame(i, pose, covariance);
-    measured_kinematics.push_back(frame);
+    inekf::Kinematics rear_frame(2 * i, rear_toe_pose, rear_covariance);
+    measured_kinematics.push_back(rear_frame);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
+        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
+    J_wrt_joints = J.block(0, 6, 3, 16);
+    front_covariance.block<3, 3>(3, 3) =
+        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
+    inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
+    measured_kinematics.push_back(front_frame);
 
     if (print_info_to_terminal_) {
       cout << "covariance.block<3, 3>(3, 3) = \n"
-           << covariance.block<3, 3>(3, 3) << endl;
+           << rear_covariance.block<3, 3>(3, 3) << endl;
     }
   }
   ekf.CorrectKinematics(measured_kinematics);
@@ -1270,6 +928,43 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
   }
 }
 
+void CassieStateEstimator::CopyContact(
+    const Context<double>& context, dairlib::lcmt_contact* contact_msg) const {
+  contact_msg->utime = context.get_time() * 1e6;
+  contact_msg->num_contacts = num_contacts_;
+  contact_msg->contact_names.resize(num_contacts_);
+  contact_msg->contact.resize(num_contacts_);
+  for (int i = 0; i < num_contacts_; i++) {
+    contact_msg->contact_names[i] = contact_names_[i];
+    contact_msg->contact[i] =
+        (bool)context.get_discrete_state(contact_idx_).get_value()[i];
+  }
+}
+
+void CassieStateEstimator::CopyEstimatedContactForces(
+    const Context<double>& context,
+    drake::lcmt_contact_results_for_viz* contact_msg) const {
+  // TODO (yangwill) fuse residual based contact estimation with heel spring
+  // deflection and phase of gait cycle
+  contact_msg->timestamp = context.get_time() * 1e6;
+  contact_msg->num_point_pair_contacts = num_contacts_;
+  contact_msg->num_hydroelastic_contacts = 0;
+  contact_msg->point_pair_contact_info.clear();
+  for (int i = 0; i < num_contacts_; i++) {
+    auto contact_info = drake::lcmt_point_pair_contact_info_for_viz();
+    contact_info.timestamp = contact_msg->timestamp;
+    contact_info.body1_name = toe_frames_[i]->body().name();
+    contact_info.body2_name = world_.name();
+    memcpy(contact_info.contact_force,
+           context.get_discrete_state(contact_forces_idx_)
+               .get_value()
+               .segment(i * SPACE_DIM, (i + 1) * SPACE_DIM)
+               .data(),
+           SPACE_DIM * sizeof(double));
+    contact_msg->point_pair_contact_info.push_back(contact_info);
+  }
+}
+
 void CassieStateEstimator::setPreviousTime(Context<double>* context,
                                            double time) const {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
@@ -1300,6 +995,41 @@ void CassieStateEstimator::setPreviousImuMeasurement(
     Context<double>* context, const VectorXd& imu_value) const {
   context->get_mutable_discrete_state(prev_imu_idx_).get_mutable_value()
       << imu_value;
+}
+void CassieStateEstimator::EstimateContactForces(
+    const Context<double>& context, const systems::OutputVector<double>& output,
+    VectorXd& lambda, int& left_contact, int& right_contact) const {
+  // TODO(yangwill) add a discrete time filter to the force estimate
+  VectorXd v_prev =
+      context.get_discrete_state(previous_velocity_idx_).get_value();
+  plant_.SetPositionsAndVelocities(context_.get(), output.GetState());
+  MatrixXd M = MatrixXd(n_v_, n_v_);
+  plant_.CalcMassMatrix(*context_, &M);
+  VectorXd C(n_v_);
+  plant_.CalcBiasTerm(*context_, &C);
+  MatrixXd B = plant_.MakeActuationMatrix();
+  double gamma = 0.015;
+
+  VectorXd v = output.GetVelocities();
+  VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
+  VectorXd tau_d = gamma * M * v_prev -
+                   (1 - gamma) * (M * v + B * output.GetEfforts() + C - g);
+
+  // Simplifying to 2 feet contacts, might need to change it to two contacts per
+  // foot and sum them up
+  for (int leg = 0; leg < num_contacts_; ++leg) {
+    MatrixXd J_contact(3, n_v_);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[leg],
+        VectorXd::Zero(3), world_, world_, &J_contact);
+    lambda.segment(3 * leg, SPACE_DIM) =
+        (joint_selection_matrices[leg] * J_contact.transpose())
+            .colPivHouseholderQr()
+            .solve(joint_selection_matrices[leg] * tau_d)
+            .transpose();
+  }
+  left_contact = lambda[2] > 50;
+  right_contact = lambda[5] > 50;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

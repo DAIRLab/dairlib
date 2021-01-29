@@ -37,7 +37,7 @@ namespace centroidal_to {
   /// Total decision variables =  2*(7 + 6) + n_c_ * (9 + 3) = 26 + 12 * n_c_
 
   void RigidBodyDynamicsConstraint::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd> > &x,
-      drake::VectorX<drake::AutoDiffXd> *y) {
+      drake::VectorX<drake::AutoDiffXd> *y) const {
     // TODO: Implement dynamics constraint - Remember to include x0 and x1 in the decision variables
     int n_x = kNLinearVars + kNLinearVars;
     VectorX x0 = x.head(n_x);
@@ -62,7 +62,7 @@ namespace centroidal_to {
   }
 
   VectorX RigidBodyDynamicsConstraint::F(VectorX x, std::vector<Vector3> forces,
-                                         std::vector<Vector3> p) {
+                                         std::vector<Vector3> p) const {
     Eigen::Vector3d g;
     g << 0, 0, -9.81;
 
@@ -74,15 +74,15 @@ namespace centroidal_to {
     }
     VectorX f = VectorX::Zero(kNLinearVars + kNLinearVars);
     f.head(3) = x.segment(7, 3);
-    Quat q = Quat(x.segment(3, 4));
-    Quat omega = Quat(0, x(10), x(11), x(12));
-    Quat qdot = omega*q;
+    Quat q = Quat(x(3), x(4), x(5), x(6));
+    Quat omega_q = Quat(0, x(10), x(11), x(12));
+    Vector3 omega = omega_q.vec();
+    Quat qdot = omega_q*q;
     VectorX qd;
     qd << qdot.w(), qdot.vec();
     f.segment(3, 4) = qd;
     f.segment(7, 3) = (1/mass_) * force + g;
-    f.segment(10, 3) = Inertia_.inverse() * (pxf -
-        (x.segment(10, 3).cross(Inertia_ * x.segment(10,3))));
+    f.segment(10, 3) = Inertia_.inverse() * (pxf - omega.cross(Inertia_ * omega));
     return f;
   }
 

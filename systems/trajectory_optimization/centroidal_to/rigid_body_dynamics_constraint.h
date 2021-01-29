@@ -17,12 +17,12 @@ class RigidBodyDynamicsConstraint : public dairlib::solvers::NonlinearConstraint
   RigidBodyDynamicsConstraint(const Eigen::Matrix3d& Inertia, const double mass,
                               const double h, const int n_c);
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>>& x,
-                          drake::VectorX<drake::AutoDiffXd>* y);
+                          drake::VectorX<drake::AutoDiffXd>* y) const;
 
  private:
   drake::VectorX<drake::AutoDiffXd> F(drake::VectorX<drake::AutoDiffXd> x,
               std::vector<drake::Vector3<drake::AutoDiffXd>> forces,
-              std::vector<drake::Vector3<drake::AutoDiffXd>> p);
+              std::vector<drake::Vector3<drake::AutoDiffXd>> p) const;
 
   Eigen::Matrix3d Inertia_;
   double mass_;

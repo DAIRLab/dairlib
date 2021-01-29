@@ -39,8 +39,10 @@ class CentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   std::vector<Eigen::Vector3d> nominal_stance_;
   std::vector<drake::solvers::VectorXDecisionVariable> state_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> left_foot_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> right_foot_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> stance_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> impulse_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> post_impact_vars_;
+  std::vector<bool> has_impact_;
   const double mass_;
   const double h_;
   const double T_ss_;

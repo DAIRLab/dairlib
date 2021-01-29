@@ -464,7 +464,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
           gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
-          use_predicted_com_vel ? left_support_duration : 0);
+          use_predicted_com_vel
+              ? (left_support_duration + double_support_duration / 2)
+              : 0);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -625,12 +627,12 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData pelvis_traj_ss("lipm_traj_ss", K_p_com, K_d_com,
                                             W_com, plant_w_spr, plant_w_spr);
   pelvis_traj_ss.AddPointToTrack("pelvis");
-//  pelvis_traj_ss.AddStateAndPointToTrack(left_stance_state, "pelvis");
-//  pelvis_traj_ss.AddStateAndPointToTrack(right_stance_state, "pelvis");
+  //  pelvis_traj_ss.AddStateAndPointToTrack(left_stance_state, "pelvis");
+  //  pelvis_traj_ss.AddStateAndPointToTrack(right_stance_state, "pelvis");
   ComTrackingData center_of_mass_traj_ss("lipm_traj_ss", K_p_com, K_d_com,
                                          W_com, plant_w_spr, plant_w_spr);
-//  center_of_mass_traj_ss.AddStateToTrack(left_stance_state);
-//  center_of_mass_traj_ss.AddStateToTrack(right_stance_state);
+  //  center_of_mass_traj_ss.AddStateToTrack(left_stance_state);
+  //  center_of_mass_traj_ss.AddStateToTrack(right_stance_state);
   if (use_pelvis_for_lipm_tracking) {
     osc->AddTrackingData(&pelvis_traj_ss);
   } else {
@@ -694,15 +696,15 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   if (use_pelvis_for_lipm_tracking) {
-//    builder.Connect(
-//        pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
-//        osc->get_tracking_data_input_port("lipm_traj_ds"));
+    //    builder.Connect(
+    //        pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
+    //        osc->get_tracking_data_input_port("lipm_traj_ds"));
     builder.Connect(
         pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
         osc->get_tracking_data_input_port("lipm_traj_ss"));
   } else {
-//    builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
-//                    osc->get_tracking_data_input_port("lipm_traj_ds"));
+    //    builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
+    //                    osc->get_tracking_data_input_port("lipm_traj_ds"));
     builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
                     osc->get_tracking_data_input_port("lipm_traj_ss"));
   }

@@ -261,6 +261,12 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_foot = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       gains.SwingFootKd.data(), gains.rows, gains.cols);
+  MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
+  MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
   std::cout << "w accel: \n" << gains.w_accel << std::endl;
   std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
   std::cout << "COM W: \n" << W_com << std::endl;
@@ -503,6 +509,25 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(walking_speed_control->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_sc());
 
+  // Swing toe joint trajectory
+  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
+      left_heel, left_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
+      right_heel, right_toe};
+  auto left_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
+          left_foot_points, "left_toe_angle_traj");
+  auto right_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
+          right_foot_points, "right_toe_angle_traj");
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_toe_angle_traj_gen->get_state_input_port());
+
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
@@ -581,21 +606,35 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
+  bool use_pelvis_for_lipm_tracking = true;
+  // a. During double support phase
+  /*TransTaskSpaceTrackingData pelvis_traj_ds("lipm_traj_ds", K_p_com, K_d_com,
+                                            W_com, plant_w_spr, plant_w_spr);
+  pelvis_traj_ds.AddStateAndPointToTrack(double_support_state, "pelvis");
+  ComTrackingData center_of_mass_traj_ds("lipm_traj_ds", K_p_com, K_d_com,
+                                         W_com, plant_w_spr, plant_w_spr);
+  center_of_mass_traj_ds.AddStateToTrack(double_support_state);
+  if (use_pelvis_for_lipm_tracking) {
+    osc->AddTrackingData(&pelvis_traj_ds);
+  } else {
+    osc->AddTrackingData(&center_of_mass_traj_ds);
+  }*/
+  // b. During single support phase
   W_com(0, 0) = 0;
   W_com(1, 1) = 0;
-  bool use_pelvis_for_lipm_tracking = true;
-  TransTaskSpaceTrackingData pelvis_traj("lipm_traj", K_p_com, K_d_com, W_com,
-                                         plant_w_spr, plant_w_spr);
-  pelvis_traj.AddPointToTrack("pelvis");
-  //  VectorXd pelvis_target(3);
-  //  pelvis_target << 0, 0, gains.lipm_height;
-  //  osc->AddConstTrackingData(&pelvis_traj, pelvis_target);
-  ComTrackingData center_of_mass_traj("lipm_traj", K_p_com, K_d_com, W_com,
-                                      plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData pelvis_traj_ss("lipm_traj_ss", K_p_com, K_d_com,
+                                            W_com, plant_w_spr, plant_w_spr);
+  pelvis_traj_ss.AddPointToTrack("pelvis");
+//  pelvis_traj_ss.AddStateAndPointToTrack(left_stance_state, "pelvis");
+//  pelvis_traj_ss.AddStateAndPointToTrack(right_stance_state, "pelvis");
+  ComTrackingData center_of_mass_traj_ss("lipm_traj_ss", K_p_com, K_d_com,
+                                         W_com, plant_w_spr, plant_w_spr);
+//  center_of_mass_traj_ss.AddStateToTrack(left_stance_state);
+//  center_of_mass_traj_ss.AddStateToTrack(right_stance_state);
   if (use_pelvis_for_lipm_tracking) {
-    osc->AddTrackingData(&pelvis_traj);
+    osc->AddTrackingData(&pelvis_traj_ss);
   } else {
-    osc->AddTrackingData(&center_of_mass_traj);
+    osc->AddTrackingData(&center_of_mass_traj_ss);
   }
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
@@ -613,10 +652,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&pelvis_heading_traj,
                        gains.period_of_no_heading_control);  // 0.05
   // Swing toe joint tracking
-  MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
-  // 1. Fix position:
+  // a. Fix position:
   // The desired position, -1.5, was derived heuristically. It is roughly the
   // toe angle when Cassie stands on the ground.
   /*JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
@@ -628,24 +664,7 @@ int DoMain(int argc, char* argv[]) {
                                          "toe_leftdot");
   osc->AddConstTrackingData(&swing_toe_traj, -1.5 *VectorXd::Ones(1), 0, 0.3);*/
 
-  // 2. Non-fixed position
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
-  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
-      left_heel, left_toe};
-  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
-      right_heel, right_toe};
-  auto left_toe_angle_traj_gen =
-      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
-          left_foot_points, "left_toe_angle_traj");
-  auto right_toe_angle_traj_gen =
-      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
-          right_foot_points, "right_toe_angle_traj");
-  builder.Connect(state_receiver->get_output_port(0),
-                  left_toe_angle_traj_gen->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
-                  right_toe_angle_traj_gen->get_state_input_port());
+  // b. Non-fixed position
   JointSpaceTrackingData swing_toe_traj_left(
       "left_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       plant_w_spr, plant_w_spr);
@@ -660,9 +679,6 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&swing_toe_traj_right);
 
   // Swing hip yaw joint tracking
-  MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
                                             K_d_hip_yaw, W_hip_yaw, plant_w_spr,
                                             plant_w_spr);
@@ -678,12 +694,17 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   if (use_pelvis_for_lipm_tracking) {
+//    builder.Connect(
+//        pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
+//        osc->get_tracking_data_input_port("lipm_traj_ds"));
     builder.Connect(
         pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
-        osc->get_tracking_data_input_port("lipm_traj"));
+        osc->get_tracking_data_input_port("lipm_traj_ss"));
   } else {
+//    builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
+//                    osc->get_tracking_data_input_port("lipm_traj_ds"));
     builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
-                    osc->get_tracking_data_input_port("lipm_traj"));
+                    osc->get_tracking_data_input_port("lipm_traj_ss"));
   }
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));

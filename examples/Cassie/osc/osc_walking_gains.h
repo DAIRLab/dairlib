@@ -71,6 +71,12 @@ struct OSCWalkingGains {
   MatrixXd W_swing_foot;
   MatrixXd K_p_swing_foot;
   MatrixXd K_d_swing_foot;
+  MatrixXd W_swing_toe;
+  MatrixXd K_p_swing_toe;
+  MatrixXd K_d_swing_toe;
+  MatrixXd W_hip_yaw;
+  MatrixXd K_p_hip_yaw;
+  MatrixXd K_d_hip_yaw;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -171,5 +177,11 @@ struct OSCWalkingGains {
     K_d_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->SwingFootKd.data(), this->rows, this->cols);
+    W_swing_toe = this->w_swing_toe * MatrixXd::Identity(1, 1);
+    K_p_swing_toe = this->swing_toe_kp * MatrixXd::Identity(1, 1);
+    K_d_swing_toe = this->swing_toe_kd * MatrixXd::Identity(1, 1);
+    W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
+    K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
+    K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
   }
 };

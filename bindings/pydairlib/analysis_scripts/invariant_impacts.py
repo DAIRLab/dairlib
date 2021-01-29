@@ -7,6 +7,7 @@ import pathlib
 import process_log
 
 import matplotlib.pyplot as plt
+import matplotlib
 import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
@@ -182,17 +183,23 @@ def rabbit_main():
     cc_vel[i] = P.T @ P @ vel[i]
     TV_cc_vel[i] = TV_J_space @ vel[i]
 
-  filename = sys.argv[1]
-  folder = "/home/yangwill/Documents/research/projects/five_link_biped/hybrid_lqr/logs/stiffness/"
-  log = lcm.EventLog(folder + filename, "r")
-  t_state, t_lqr, \
-  x, u, fsm, contact_info, contact_info_locs = \
-    process_log.process_log(log, pos_map, vel_map)
+  # filename = sys.argv[1]
+  # folder = "/home/yangwill/Documents/research/projects/five_link_biped/hybrid_lqr/logs/stiffness/"
+  # log = lcm.EventLog(folder + filename, "r")
+  # t_state, t_lqr, \
+  # x, u, fsm, contact_info, contact_info_locs = \
+  #   process_log.process_log(log, pos_map, vel_map)
 
-  plt.figure("Joint Velocities around impacts")
+  plt.figure("Generalized velocities around impacts")
   plt.plot(t, vel)
-  plt.figure("Change of coordinates")
-  plt.plot(t, cc_vel, 'b')
+  plt.xlabel('time (s)')
+  plt.ylabel('velocity')
+  plt.figure("Impact invariant projection")
+  plt.plot(t, cc_vel)
+  plt.xlabel('time (s)')
+  plt.ylabel('velocity')
+
+  plt.show()
 
   t_start = 0.2
   t_end = 0.25
@@ -221,5 +228,10 @@ def rabbit_main():
 
 
 if __name__ == '__main__':
-  cassie_main()
-  # rabbit_main()
+  matplotlib.rcParams["savefig.directory"] = "/home/yangwill/Documents/research/presentations/"
+  matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
+  font = {'size'   : 20}
+  matplotlib.rc('font', **font)
+  matplotlib.rcParams['lines.linewidth'] = 4
+  # cassie_main()
+  rabbit_main()

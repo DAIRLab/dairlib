@@ -30,6 +30,9 @@ struct OSCWalkingGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
+  double w_stance_hip_roll;
+  double stance_hip_roll_kp;
+  double stance_hip_roll_kd;
 
   // Impact Invariance
   double impact_threshold;
@@ -144,6 +147,9 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(vel_scale_rot));
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
     a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
+    a->Visit(DRAKE_NVP(w_stance_hip_roll));
+    a->Visit(DRAKE_NVP(stance_hip_roll_kp));
+    a->Visit(DRAKE_NVP(stance_hip_roll_kd));
 
     W_com = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

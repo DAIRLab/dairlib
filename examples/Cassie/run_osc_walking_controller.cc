@@ -6,6 +6,7 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains.h"
+#include "examples/Cassie/osc/pelvis_roll_traj_generator.h"
 #include "examples/Cassie/osc/spring_to_no_spring_converter.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
@@ -463,6 +464,29 @@ int DoMain(int argc, char* argv[]) {
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
                                              "hip_yaw_leftdot");
   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+  MatrixXd W_stance_hip_roll = gains.w_stance_hip_roll * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_stance_hip_roll = gains.stance_hip_roll_kp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_stance_hip_roll = gains.stance_hip_roll_kd * MatrixXd::Identity(1, 1);
+  JointSpaceTrackingData l_stance_hip_roll_traj("left_stance_hip_roll_traj", K_p_stance_hip_roll,
+                                              K_d_stance_hip_roll, W_stance_hip_roll, plant_w_spr,
+                                            plant_w_spr);
+  JointSpaceTrackingData r_stance_hip_roll_traj("right_stance_hip_roll_traj", K_p_stance_hip_roll,
+                                              K_d_stance_hip_roll, W_stance_hip_roll, plant_w_spr,
+                                            plant_w_spr);
+  l_stance_hip_roll_traj.AddStateAndJointToTrack(left_stance_state, "hip_roll_left",
+                                             "hip_roll_leftdot");
+  r_stance_hip_roll_traj.AddStateAndJointToTrack(right_stance_state, "hip_roll_right",
+                                             "hip_roll_rightdot");
+  osc->AddTrackingData(&l_stance_hip_roll_traj);
+  osc->AddTrackingData(&r_stance_hip_roll_traj);
+  auto left_stance_hip_roll_traj_gen =
+      builder.AddSystem<cassie::osc::PelvisRollTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), 1, "left_stance_hip_roll_traj");
+  auto right_stance_hip_roll_traj_gen =
+      builder.AddSystem<cassie::osc::PelvisRollTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), 1, "right_stance_hip_roll_traj");
+
+
   // Build OSC problem
   osc->Build();
 
@@ -470,10 +494,18 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
+  builder.Connect(left_stance_hip_roll_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_stance_hip_roll_traj"));
+  builder.Connect(right_stance_hip_roll_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_stance_hip_roll_traj"));
   builder.Connect(state_receiver->get_output_port(0),
                   left_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_stance_hip_roll_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_stance_hip_roll_traj_gen->get_state_input_port());
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());

@@ -186,6 +186,8 @@ class ReducedOrderModel {
   //  making it a reference again. (pay attention to future bug)
   //  Ok, I found why. It's because MonomialFeatures goes out of scope after we
   //  call CreateRom()
+  //  20210128 Another reason is that we want to have different copy for
+  //  each thread (during the learning phase)
   const MonomialFeatures mapping_basis_;
   const MonomialFeatures dynamic_basis_;
 

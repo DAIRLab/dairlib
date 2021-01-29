@@ -110,8 +110,13 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     //  pitch yaw)
     vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
-    mapping_basis = std::make_unique<MonomialFeatures>(
-        2, plant.num_positions(), skip_inds, "mapping basis");
+    if (0 <= rom_option && rom_option <= 6) {
+      mapping_basis = std::make_unique<MonomialFeatures>(
+          2, plant.num_positions(), skip_inds, "mapping basis");
+    } else if (rom_option == 7) {
+      mapping_basis = std::make_unique<MonomialFeatures>(
+          0, plant.num_positions(), skip_inds, "mapping basis");
+    }
   }
   if (print_info) {
     mapping_basis->PrintInfo();
@@ -140,6 +145,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 6) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
+  } else if (rom_option == 7) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -191,10 +199,17 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<LipmWithSwingFoot>(
         plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis, 3);
   } else if (rom_option == 6) {
+    // Fix the mapping function of the COM
     std::set<int> invariant_idx = {0, 1, 2};
     rom = std::make_unique<LipmWithSwingFoot>(plant, stance_foot, swing_foot,
                                               *mapping_basis, *dynamic_basis, 3,
                                               invariant_idx);
+  } else if (rom_option == 7) {
+    // Fix the mapping function of the COM
+    // TODO: rom_option=7 is unfinished. Should we use COM wrt world?
+    std::set<int> invariant_idx = {0, 1, 2};
+    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
+                                 *dynamic_basis, 3, invariant_idx);
   } else {
     throw std::runtime_error("Not implemented");
   }

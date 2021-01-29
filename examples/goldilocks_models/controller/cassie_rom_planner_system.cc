@@ -471,7 +471,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   solver_->Solve(trajopt, trajopt.initial_guess(), solver_option_, &result);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
-  cout << "    Current time: " << current_time << " | ";
+  cout << "    Time of arrival: " << current_time << " | ";
   cout << "Solve time:" << elapsed.count() << " | ";
   SolutionResult solution_result = result.get_solution_result();
   cout << solution_result << " | ";
@@ -482,7 +482,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   MatrixXd state_at_knots = trajopt.GetStateSamples(result);
 
   // Shift the timestamps by lift-off time
-  time_at_knots.array() += lift_off_time;
+  //  time_at_knots.array() += lift_off_time;
+  // Correction: I think we should be shifting the time by current time
+  time_at_knots.array() += current_time;
 
   // Extract and save solution into files
   //  if (debug_mode_) {

@@ -3,6 +3,8 @@
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::VectorXd;
+using std::cout;
+using std::endl;
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -51,6 +53,12 @@ void PlannedTrajGuard::ApplyGuard(
   //  end of the traj time (we fall back to lipm traj in this case)
   bool planner_timeout =
       (context.get_time() - prev_message_arrival_time_ > max_solve_time_);
+  //  cout << "planner_timeout = " << planner_timeout << endl;
+  cout << "(" << optimal_rom_traj.start_time() << ", "
+       << optimal_rom_traj.end_time() << "), " << context.get_time() << ", "
+       << prev_message_arrival_time_ << ", "
+       << context.get_time() - prev_message_arrival_time_ << ", "
+       << max_solve_time_ << "| timeout?" << planner_timeout << endl;
   bool planner_no_solution = (optimal_rom_traj.start_time() ==
                               -std::numeric_limits<double>::infinity());
 
@@ -62,9 +70,9 @@ void PlannedTrajGuard::ApplyGuard(
   //  The bug could be that we are using RomTrackingData to tracking LIPM traj,
   //  but the ROM is actually using COM wrt feet. Therefore, we just need to not
   //  use this RomTrackingData LIPM
-//     if (planner_timeout || planner_no_solution) {
-//    if (false) {
-  if (true) {
+  //     if (planner_timeout || planner_no_solution) {
+  if (false) {
+    //  if (true) {
     //  std::cout << "Using backup controller\n";
     // Read in lipm traj
     const auto& lipm_traj =

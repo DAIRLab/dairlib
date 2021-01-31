@@ -24,9 +24,10 @@ namespace dairlib {
 /// filepath of the previously saved DirconTrajectory object
 
 /// DirconTrajectory by default contains four Trajectory objects: the state
-/// trajectory, the input trajectory, the force trajectory, and the decision
-/// variables. Additional trajectories can be added using the AddTrajectory()
-/// function
+/// trajectory, the input trajectory, the force trajectory, the contact force
+/// trajectory, the collocation force trajectory, the collocation slack trajectory
+/// and the decision variables. Additional trajectories can be added using
+/// the AddTrajectory() function
 
 class DirconTrajectory : public LcmTrajectory {
  public:
@@ -47,6 +48,12 @@ class DirconTrajectory : public LcmTrajectory {
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
       const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
+      const;
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaTrajectory()
+      const;
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaCTrajectory()
+      const;
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructGammaCTrajectory()
       const;
 
   /// Loads the saved state and input trajectory as well as the decision
@@ -97,6 +104,7 @@ class DirconTrajectory : public LcmTrajectory {
   const Trajectory* u_;
   std::vector<const Trajectory*> lambda_;
   std::vector<const Trajectory*> lambda_c_;
+  std::vector<const Trajectory*> gamma_c_;
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 };

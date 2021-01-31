@@ -22,6 +22,13 @@ enum class stance {
   kDouble= 2
 };
 
+typedef struct CentroidalMode {
+  std::vector<drake::solvers::VectorXDecisionVariable> state_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> stance_vars_;
+  int n_c_;
+} CentroidalMode;
+
 class CentroidalTrajOpt : public drake::solvers::MathematicalProgram {
  public:
   CentroidalTrajOpt(Eigen::Matrix3d inertia_tensor, double mass, double h,
@@ -33,25 +40,23 @@ class CentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   void SetModeSequence(std::vector<stance> sequence, std::vector<double> times);
   void SetNominalStance(Eigen::Vector3d left, Eigen::Vector3d right);
   void SetMaxDeviationConstraint(Eigen::Vector3d max);
-  void MakeImpulseFrictionConeConstraints();
+  void MakeForceConstraints();
 
  private:
   const Eigen::Matrix3d inertia_tensor_;
   std::vector<Eigen::Vector3d> nominal_stance_;
   std::vector<stance> sequence_;
   std::vector<double> times_;
-  std::vector<drake::solvers::VectorXDecisionVariable> state_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> stance_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> impulse_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> post_impact_vars_;
-  std::vector<bool> has_impact_;
+  std::vector<CentroidalMode> modes_;
+
+
   const double mass_;
   const double h_;
   const double T_ss_;
   const double T_ds_;
   const double mu_;
 };
+
 }
 }
 

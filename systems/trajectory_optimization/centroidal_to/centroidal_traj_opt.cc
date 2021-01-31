@@ -28,43 +28,97 @@ void CentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
 
   sequence_ = sequence;
   times_ = times;
+  Eigen::MatrixXd Aeq = Eigen::MatrixXd::Zero(6,6);
+  Aeq.block(0, 0, 3, 3) = Eigen::MatrixXd::Identity(3,3);
+  Aeq.block(0, 3, 3, 3) = -1*Eigen::MatrixXd::Identity(3, 3);
+  Eigen::VectorXd beq = Eigen::VectorXd::Zero(6);
 
   int n_modes = sequence.size();
   for (int i = 0; i < n_modes; i++) {
-    int n_knot_f = std::round(times[i] / h_) + 1;
-    int n_knot_s = (i == 0) ? n_knot_f : n_knot_f - 1;
+    int n_knot_f = std::round(times[i] / h_);
+    int n_knot_s = n_knot_f + 1;
     int n_c = (sequence[i] == stance::kDouble) ? 2 : 1;
 
+    CentroidalMode mode;
+    mode.n_c_ = n_c;
 
-    force_vars_.push_back(NewContinuousVariables(
-        n_knot_f * 3 * kNForceVars * n_c,
-        "forces[" + std::to_string(i) + "]"));
+    // create 3 forces per foot per node
+    for (int j = 0; j < n_knot_f; j++) {
+      mode.force_vars_.push_back(NewContinuousVariables(
+           3* kNForceVars * n_c,
+          "forces[" + std::to_string(i) + "," + std::to_string(j) + "]"));
+    }
 
-    stance_vars_.push_back(NewContinuousVariables(n_c * 3,
-            "stance_pos[" + std::to_string(i) + "]"));
 
-    state_vars_.push_back(NewContinuousVariables(
-              kNLinearVars + kNForceVars * n_knot_s,
-              "x[" + std::to_string(i) + "]"));
+    for (int j = 0; j < n_c; j++) {
+      mode.stance_vars_.push_back(NewContinuousVariables(3,
+          "stance_pos[" + std::to_string(i) + "," + std::to_string(j) + "]"));
+    }
 
-    if (i != 0 && sequence[i-1] != stance::kDouble) {
-      has_impact_.push_back(true);
-      impulse_vars_.push_back(NewContinuousVariables(
-                kNForceVars, "impulse[" + std::to_string(i) + "]"));
-      post_impact_vars_.push_back(NewContinuousVariables(
-              6, "delta_v[" + std::to_string(i) + "]"));
-    } else { has_impact_.push_back(false); }
+    for (int j = 0; j < n_knot_s; j ++) {
+      mode.state_vars_.push_back(NewContinuousVariables(
+          kNLinearVars + kNForceVars * n_knot_s,
+          "x[" + std::to_string(i) + "]"));
+
+    }
+
 
     for (int j = 0; j < n_knot_s - 1 ; j++ ) {
-        auto rbd_constraint = std::make_shared<RigidBodyDynamicsConstraint>(
-                inertia_tensor_, mass_, h_, n_c);
-        AddConstraint(rbd_constraint, {
-                state_vars_[i].segment((kNLinearVars + kNAngularVars) * j, kNLinearVars + kNAngularVars),
-                force_vars_[i].segment(3 * kNForceVars * n_c * j, 3 * kNForceVars * n_c),
-                stance_vars_[i]});
+      auto rbd_constraint = std::make_shared<RigidBodyDynamicsConstraint>(
+              inertia_tensor_, mass_, h_, n_c);
+      switch(n_c) {
+        case 0:
+          AddConstraint(rbd_constraint, {
+              mode.state_vars_[j],
+              mode.state_vars_[j+1],
+              mode.force_vars_[j]});
+          break;
+        case 1:
+          AddConstraint(rbd_constraint, {
+              mode.state_vars_[j],
+              mode.state_vars_[j+1],
+              mode.force_vars_[j],
+              mode.stance_vars_[0] });
+        case 2:
+          AddConstraint(rbd_constraint, {
+              mode.state_vars_[j],
+              mode.state_vars_[j+1],
+              mode.force_vars_[i],
+              mode.stance_vars_[0],
+              mode.stance_vars_[1]});
+      }
+      for (int k = 0; k < n_c; k++) {
+        AddLinearEqualityConstraint(Aeq, beq,
+                                    {mode.force_vars_[j].segment(3*kNForceVars*k + 6, 3),
+                                     mode.force_vars_[j + 1].segment(3*kNForceVars*k, 3)});
+        for(int z = 0; z < 3; z++) {
+          AddConstraint(solvers::CreateLinearFrictionConstraint(mu_),
+              mode.force_vars_[j+1].segment(3*kNForceVars*k + 3*z, 3));
+        }
+      }
+    }
+
+    // zero impact force for incoming swing leg
+    if (i != 0 && sequence_[i] == stance::kDouble) {
+      AddBoundingBoxConstraint(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
+          modes_[i].force_vars_[0].segment(3*kNForceVars*(1-(int)sequence[i-1]), 3));
+    }
+    // zero force for outgoing swing leg at end of mode
+    if (i != n_modes - 1 && sequence_[i] == stance::kDouble) {
+      AddBoundingBoxConstraint(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
+          modes_[i].force_vars_.end()->segment(3*kNForceVars*(int)sequence[i+1], 3));
     }
   }
 }
+
+
+void CentroidalTrajOpt::SetNominalStance(Eigen::Vector3d left,
+                                         Eigen::Vector3d right) {
+  nominal_stance_.clear();
+  nominal_stance_.push_back(left);
+  nominal_stance_.push_back(right);
+}
+
 
 void CentroidalTrajOpt::SetMaxDeviationConstraint(Eigen::Vector3d max) {
 
@@ -75,35 +129,19 @@ void CentroidalTrajOpt::SetMaxDeviationConstraint(Eigen::Vector3d max) {
   std::vector<Eigen::Vector3d> ubs;
 
   for (auto & pose : nominal_stance_) {
-      lbs.push_back(pose - max);
-      ubs.push_back(pose + max);
+    lbs.push_back(pose - max);
+    ubs.push_back(pose + max);
   }
 
   for (int i = 0; i < sequence_.size(); i++) {
-    if (sequence_[i] != stance::kDouble) {
-        AddBoundingBoxConstraint(lbs[(int)sequence_[i]], ubs[(int)sequence_[i]], stance_vars_[i]);
-    } else {
-        AddBoundingBoxConstraint(lbs[(int)stance::kLeft], ubs[(int)stance::kLeft],
-                stance_vars_[i].head(3));
-        AddBoundingBoxConstraint(lbs[(int)stance::kRight], ubs[(int)stance::kRight],
-                stance_vars_[i].tail(3));
+    for (int j = 0; j < modes_[i].n_c_; j ++) {
+      AddBoundingBoxConstraint(lbs[j], ubs[j],
+          modes_[i].stance_vars_[j]);
     }
   }
 }
 
-void CentroidalTrajOpt::MakeImpulseFrictionConeConstraints(){
-  for (auto & lambda : impulse_vars_) {
-    auto friction_cone = solvers::CreateLinearFrictionConstraint(mu_);
-    AddConstraint(friction_cone, lambda);
-  }
-}
 
-void CentroidalTrajOpt::SetNominalStance(Eigen::Vector3d left,
-                                         Eigen::Vector3d right) {
-  nominal_stance_.clear();
-  nominal_stance_.push_back(left);
-  nominal_stance_.push_back(right);
-}
 
 }
 }

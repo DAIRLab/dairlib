@@ -257,16 +257,14 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
 
   // Get time
   double timestamp = robot_output->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
+  double start_time = timestamp;
 
-  double fsm_state_end_time =
+  double end_time =
       prev_event_time(0) + unordered_state_durations_[mode_index];
-  // Ensure "current_time < fsm_state_end_time" to avoid error in
+  // Ensure "current_time < end_time" to avoid error in
   // creating trajectory.
-  // TODO(yangwill): Fix this, should not need to add this
-  if ((fsm_state_end_time <= current_time + 0.001)) {
-    fsm_state_end_time = current_time + 0.002;
-  }
+  start_time = drake::math::saturate(
+      start_time, -std::numeric_limits<double>::infinity(), end_time - 0.001);
 
   VectorXd q = robot_output->GetPositions();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
@@ -303,8 +301,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, current_time,
-                                   fsm_state_end_time);
+  *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(
     const Context<double>& context,

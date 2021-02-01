@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <string>
 
+#include <drake/math/saturate.h>
+
 #include "systems/controllers/control_utils.h"
 
 using std::cout;
@@ -329,10 +331,11 @@ void SwingFootTrajGenerator::CalcTrajs(
 
     // Ensure current_time < end_time_of_this_interval to avoid error in
     // creating trajectory.
-    // TODO(yangwill): find a way to not need this statement
-    if ((end_time_of_this_interval <= current_time + 0.001)) {
-      end_time_of_this_interval = current_time + 0.002;
-    }
+    // Ensure "current_time < end_time" to avoid error in
+    // creating trajectory.
+    start_time_of_this_interval = drake::math::saturate(
+        start_time_of_this_interval, -std::numeric_limits<double>::infinity(),
+        end_time_of_this_interval - 0.001);
 
     // Get Capture Point
     double stance_foot_height;

@@ -32,18 +32,31 @@ typedef struct CentroidalMode {
 
 class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
  public:
+  /// Constructor
   PlanarCentroidalTrajOpt(double I, double mass, double h,
                     double T_ss, double T_ds, double mu);
-  void SetFinalPose(Eigen::Vector3d com, Eigen::Quaterniond pose);
-  void SetFinalVel(Eigen::Vector3d v, Eigen::Vector3d omega);
+
+  /// Specifies a final pose (com position and angle) by adding a bounding box
+  /// constraint to be within +/- eps of the final pose
+  void SetFinalPose(Eigen::Vector2d com, double theta, double eps);
+
+  /// Adds a constraint on the final velocity
+  void SetFinalVel(Eigen::Vector2d v, double omega, double eps);
+
+  /// Constraint on the final state (position and velocity in one function)
   void SetFinalState(Eigen::VectorXd state);
-  void SetInitialPose(Eigen::Vector3d com, Eigen::Quaterniond pose);
+
+
+  void SetInitialPose(Eigen::Vector2d com, double theta);
+  void SetInitialVel(Eigen::Vector2d v, double omega);
   void SetModeSequence(std::vector<stance> sequence, std::vector<double> times);
-  void SetNominalStance(Eigen::Vector3d left, Eigen::Vector3d right);
-  void SetMaxDeviationConstraint(Eigen::Vector3d max);
+  void SetNominalStance(Eigen::Vector2d left, Eigen::Vector2d right);
+  void SetMaxDeviationConstraint(Eigen::Vector2d max);
+  void SetInitialStateGuess();
+  void SetInitialForceGuess();
 
  private:
-  std::vector<Eigen::Vector3d> nominal_stance_;
+  std::vector<Eigen::Vector2d> nominal_stance_;
   std::vector<stance> sequence_;
   std::vector<double> times_;
   std::vector<CentroidalMode> modes_;

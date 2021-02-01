@@ -16,6 +16,7 @@ using VectorX = drake::VectorX<AutoDiffXd>;
 using Quat = drake::Quaternion<AutoDiffXd>;
 using Vector3 = drake::Vector3<AutoDiffXd>;
 
+
 namespace dairlib {
 namespace centroidal_to {
   RigidBodyDynamicsConstraint::RigidBodyDynamicsConstraint(
@@ -24,7 +25,7 @@ namespace centroidal_to {
       const double h,
       const int n_c
       ) : NonlinearConstraint<AutoDiffXd> (kNLinearVars + kNAngularVars,
-          2*(kNLinearVars + kNAngularVars) + kNForceVars * n_c,
+          2*(kNLinearVars + kNAngularVars) + kNForceVars * n_c + 3*n_c,
           VectorXd::Zero(kNLinearVars + kNAngularVars),
           VectorXd(kNLinearVars + kNAngularVars)),
           Inertia_(Inertia),
@@ -39,7 +40,7 @@ namespace centroidal_to {
   void RigidBodyDynamicsConstraint::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd> > &x,
       drake::VectorX<drake::AutoDiffXd> *y) const {
     // TODO: Implement dynamics constraint - Remember to include x0 and x1 in the decision variables
-    int n_x = kNLinearVars + kNLinearVars;
+    int n_x = kNLinearVars + kNAngularVars;
     VectorX x0 = x.head(n_x);
     VectorX x1 = x.segment(n_x,n_x);
     std::vector<Vector3> f0;
@@ -48,10 +49,10 @@ namespace centroidal_to {
     std::vector<Vector3> p;
 
     for (int i = 0; i < n_c_; i++) {
-      f0.push_back(x.segment(2*n_x + n_c_ * kNForceVars * 3*i, kNForceVars));
-      fc.push_back(x.segment(2*n_x + kNForceVars + n_c_ * kNForceVars * 3*i, kNForceVars));
-      f1.push_back(x.segment(2*n_x + 2*kNForceVars + n_c_ * kNForceVars * 3*i, kNForceVars));
-      p.push_back(x.segment(2*n_x + 3*kNForceVars*n_c_ + 3*i, 3));
+      f0.push_back(x.segment(2*n_x + kNForceVars * i, 3));
+      fc.push_back(x.segment(2*n_x + kNForceVars * i + 3, kNForceVars));
+      f1.push_back(x.segment(2*n_x + kNForceVars * i + 6, kNForceVars));
+      p.push_back(x.segment(2*n_x + kNForceVars * n_c_ + 3*i, 3));
     }
 
     VectorX F0 = F(x0, f0, p);
@@ -66,7 +67,7 @@ namespace centroidal_to {
     Eigen::Vector3d g;
     g << 0, 0, -9.81;
 
-    Vector3 force;
+    Vector3 force = Vector3::Zero();
     Vector3 pxf;
     for(int i = 0; i < n_c_; i++) {
       force += forces[i];

@@ -7,10 +7,14 @@ cc_library(
     name = "centroidal_to",
     srcs = [
         "centroidal_traj_opt.cc",
+        "planar_centroidal_traj_opt.cc",
+        "planar_rigid_body_dynamics_constraint.cc",
         "rigid_body_dynamics_constraint.cc",
     ],
     hdrs = [
         "centroidal_traj_opt.h",
+        "planar_centroidal_traj_opt.h",
+        "planar_rigid_body_dynamics_constraint.h",
         "rigid_body_dynamics_constraint.h",
     ],
     deps = [

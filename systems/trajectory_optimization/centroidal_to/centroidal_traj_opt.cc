@@ -45,7 +45,7 @@ void CentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
     // create 3 forces per foot per node
     for (int j = 0; j < n_knot_f; j++) {
       mode.force_vars_.push_back(NewContinuousVariables(
-           3* kNForceVars * n_c,
+           kNForceVars * n_c,
           "forces[" + std::to_string(i) + "," + std::to_string(j) + "]"));
     }
 
@@ -57,7 +57,7 @@ void CentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
 
     for (int j = 0; j < n_knot_s; j ++) {
       mode.state_vars_.push_back(NewContinuousVariables(
-          kNLinearVars + kNForceVars * n_knot_s,
+          kNLinearVars + kNAngularVars,
           "x[" + std::to_string(i) + "]"));
 
     }
@@ -89,11 +89,11 @@ void CentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
       }
       for (int k = 0; k < n_c; k++) {
         AddLinearEqualityConstraint(Aeq, beq,
-                                    {mode.force_vars_[j].segment(3*kNForceVars*k + 6, 3),
-                                     mode.force_vars_[j + 1].segment(3*kNForceVars*k, 3)});
+                                    {mode.force_vars_[j].segment(kNForceVars*k + 6, 3),
+                                     mode.force_vars_[j + 1].segment(kNForceVars*k, 3)});
         for(int z = 0; z < 3; z++) {
           AddConstraint(solvers::CreateLinearFrictionConstraint(mu_),
-              mode.force_vars_[j+1].segment(3*kNForceVars*k + 3*z, 3));
+              mode.force_vars_[j+1].segment(kNForceVars*k + 3*z, 3));
         }
       }
     }
@@ -101,12 +101,12 @@ void CentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
     // zero impact force for incoming swing leg
     if (i != 0 && sequence_[i] == stance::kDouble) {
       AddBoundingBoxConstraint(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
-          modes_[i].force_vars_[0].segment(3*kNForceVars*(1-(int)sequence[i-1]), 3));
+          modes_[i].force_vars_[0].segment(kNForceVars*(1-(int)sequence[i-1]), 3));
     }
     // zero force for outgoing swing leg at end of mode
     if (i != n_modes - 1 && sequence_[i] == stance::kDouble) {
       AddBoundingBoxConstraint(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
-          modes_[i].force_vars_.end()->segment(3*kNForceVars*(int)sequence[i+1], 3));
+          modes_[i].force_vars_.end()->segment(kNForceVars*(int)sequence[i+1], 3));
     }
   }
 }
@@ -140,8 +140,5 @@ void CentroidalTrajOpt::SetMaxDeviationConstraint(Eigen::Vector3d max) {
     }
   }
 }
-
-
-
 }
 }

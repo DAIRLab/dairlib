@@ -49,10 +49,19 @@ class DirconTrajectory : public LcmTrajectory {
       const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
       const;
+
+  /// Returns a vector of polynomials describing the contact forces for each mode. For use when
+  /// adding knot points to the initial guess
   std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaTrajectory()
       const;
+
+  /// Returns a vector of polynomials describing the collocation forces for each mode. For use
+  /// when adding knot points to the initial guess
   std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaCTrajectory()
       const;
+
+  /// Returns a vector of polynomials describing the collocation slack vars. For use when adding
+  /// knot points to the initial guess
   std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructGammaCTrajectory()
       const;
 

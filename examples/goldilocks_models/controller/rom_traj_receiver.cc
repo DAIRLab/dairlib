@@ -32,9 +32,6 @@ void OptimalRoMTrajReceiver::CalcDesiredTraj(
   auto* traj_casted = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
 
-  // TODO(yminchen): test how much time it takes to construct traj below. if
-  //  it's too long, you can avoid copying it in every loop
-
   // Construct traj from lcm message
   LcmTrajectory traj_data(*(this->EvalInputValue<dairlib::lcmt_saved_traj>(
       context, rom_traj_lcm_port_)));

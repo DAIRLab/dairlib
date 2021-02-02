@@ -88,7 +88,12 @@ void TimeBasedFiniteStateMachine::CalcNearImpact(
   if (current_sim_time >= t0_) {
     for (unsigned int i : impact_states_) {
       if (abs(remainder - impact_times_[i]) < near_impact_threshold_) {
-        near_impact_data(0) = sin(M_PI/2 *(1 -  abs(remainder - impact_times_[i]) / near_impact_threshold_));
+        if(remainder < impact_times_[i]){
+          near_impact_data(0) = 1 - exp(- (remainder - impact_times_[i] + near_impact_threshold_)/0.005);
+        }
+        else{
+          near_impact_data(0) = 1 - exp(- (impact_times_[i] + near_impact_threshold_ - remainder)/0.005);
+        }
         near_impact_data(1) = states_[i / 2];
         break;
       }

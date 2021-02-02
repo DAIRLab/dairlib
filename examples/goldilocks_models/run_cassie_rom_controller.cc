@@ -31,13 +31,13 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
-#include "systems/drake_signal_lcm_systems.h"
+#include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/lcmt_drake_signal.hpp"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/primitives/multiplexer.h"
@@ -163,6 +163,7 @@ int DoMain(int argc, char* argv[]) {
       "../dairlib_data/goldilocks_models/planning/robot_1/data/";
   VectorXd time_at_knots =
       readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
+  cout << "time_at_knots= " << time_at_knots.transpose() << endl;
   MatrixXd state_at_knots =
       readCSV(dir_data + std::string("state_at_knots.csv"));
 
@@ -320,7 +321,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(mux->get_output_port(0),
                   fsm_and_liftoff_time_sender->get_input_port(0));
   auto fsm_and_liftoff_time_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_drake_signal>(
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_dairlib_signal>(
           FLAGS_channel_fsm_t, &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),

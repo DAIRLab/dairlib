@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "drake/lcmt_drake_signal.hpp"
+#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -12,9 +12,9 @@ namespace systems {
 
 /// Receives LCM message with type lcm_drake_signal, and outputs it as an
 /// BasicVector as input.
-class DrakeSignalReceiver : public drake::systems::LeafSystem<double> {
+class DairlibSignalReceiver : public drake::systems::LeafSystem<double> {
  public:
-  explicit DrakeSignalReceiver(int signal_size);
+  explicit DairlibSignalReceiver(int signal_size);
 
  private:
   void UnpackLcmIntoVector(const drake::systems::Context<double>& context,
@@ -31,7 +31,7 @@ class DrakeSignalSender : public drake::systems::LeafSystem<double> {
 
  private:
   void PackVectorIntoLcm(const drake::systems::Context<double>& context,
-                         drake::lcmt_drake_signal* output) const;
+                         dairlib::lcmt_dairlib_signal* output) const;
 
   std::vector<std::string> signal_names_;
   int signal_size_;

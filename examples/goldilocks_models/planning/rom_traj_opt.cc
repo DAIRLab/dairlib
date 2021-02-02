@@ -412,6 +412,31 @@ void RomTrajOpt::GetStateAndDerivativeSamples(
   }
 }
 
+void RomTrajOpt::GetStateSamples(
+    const drake::solvers::MathematicalProgramResult& result,
+    std::vector<Eigen::MatrixXd>* state_samples,
+    std::vector<Eigen::VectorXd>* state_breaks) const {
+  DRAKE_ASSERT(state_samples->empty());
+  DRAKE_ASSERT(state_breaks->empty());
+
+  VectorXd times(GetSampleTimes(result));
+
+  for (int i = 0; i < num_modes_; i++) {
+    MatrixXd states_i(num_states(), mode_lengths_[i]);
+    VectorXd times_i(mode_lengths_[i]);
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      int k_data = mode_start_[i] + j;
+
+      VectorX<double> zk = result.GetSolution(state_vars_by_mode(i, j));
+
+      states_i.col(j) = drake::math::DiscardGradient(zk);
+      times_i(j) = times(k_data);
+    }
+    state_samples->push_back(states_i);
+    state_breaks->push_back(times_i);
+  }
+}
+
 PiecewisePolynomial<double> RomTrajOpt::ReconstructInputTrajectory(
     const MathematicalProgramResult& result) const {
   Eigen::VectorXd times = GetSampleTimes(result);

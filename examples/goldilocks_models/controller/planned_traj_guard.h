@@ -5,7 +5,6 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
-#include "dairlib/lcmt_trajectory_block.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"

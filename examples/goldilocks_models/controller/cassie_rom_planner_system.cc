@@ -242,8 +242,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
-    const Context<double>& context,
-    dairlib::lcmt_trajectory_block* traj_msg) const {
+    const Context<double>& context, dairlib::lcmt_saved_traj* traj_msg) const {
   // Read in current robot state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -478,27 +477,34 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Get solution
-  VectorXd time_at_knots = trajopt.GetSampleTimes(result);
-  MatrixXd state_at_knots = trajopt.GetStateSamples(result);
+  std::vector<Eigen::VectorXd> time_breaks;
+  std::vector<Eigen::MatrixXd> state_samples;
+  trajopt.GetStateSamples(result, &state_samples, &time_breaks);
 
-  // Shift the timestamps by lift-off time
-  //  time_at_knots.array() += lift_off_time;
-  // Correction: I think we should be shifting the time by current time
-  time_at_knots.array() += current_time;
+  // Shift the timestamps by the current time
+  for (auto& time_break_per_mode : time_breaks) {
+    time_break_per_mode.array() += current_time;
+  }
 
   // Extract and save solution into files
   //  if (debug_mode_) {
   //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >
   //  0.5)) { if (!result.is_success()) {
   if (elapsed.count() > 0.8) {
+    string dir_data = param_.dir_data;
+
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
-    writeCSV(param_.dir_data + string("z.csv"), z_sol);
+    writeCSV(dir_data + string("z.csv"), z_sol);
     // cout << trajopt.decision_variables() << endl;
 
+    for (int i = 0; i < param_.n_step; i++) {
+      writeCSV(dir_data + string("time_at_knots" + to_string(i) + ".csv"),
+               time_breaks[i]);
+      writeCSV(dir_data + string("state_at_knots" + to_string(i) + ".csv"),
+               state_samples[i]);
+    }
     MatrixXd input_at_knots = trajopt.GetInputSamples(result);
-    writeCSV(param_.dir_data + string("time_at_knots.csv"), time_at_knots);
-    writeCSV(param_.dir_data + string("state_at_knots.csv"), state_at_knots);
-    writeCSV(param_.dir_data + string("input_at_knots.csv"), input_at_knots);
+    writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
 
     MatrixXd x0_each_mode(nq_ + nv_, num_time_samples.size());
     MatrixXd xf_each_mode(nq_ + nv_, num_time_samples.size());
@@ -506,56 +512,52 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
       xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
     }
-    writeCSV(param_.dir_data + string("x0_each_mode.csv"), x0_each_mode);
-    writeCSV(param_.dir_data + string("xf_each_mode.csv"), xf_each_mode);
+    writeCSV(dir_data + string("x0_each_mode.csv"), x0_each_mode);
+    writeCSV(dir_data + string("xf_each_mode.csv"), xf_each_mode);
 
     // Save trajectory to file
     string file_name = "rom_trajectory";
     RomPlannerTrajectory saved_traj(
         trajopt, result, file_name,
         "Decision variables and state/input trajectories");
-    saved_traj.WriteToFile(param_.dir_data + file_name);
-    std::cout << "Wrote to file: " << param_.dir_data + file_name << std::endl;
+    saved_traj.WriteToFile(dir_data + file_name);
+    std::cout << "Wrote to file: " << dir_data + file_name << std::endl;
   }
 
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
-  // TODO(yminchen): there is a bug: you are currenlty using
-  //  trajopt.GetStateSamples(result), but the trajectory is discontinous
-  //  between mode (even the position jumps because left vs right stance leg).
-  //  You probably need to send bigger lcmtypes with multiple blocks, and
-  //  reconstruct it into piecewise polynomial in rom_traj_receiver.cc
+  // Note that the trajectory is discontinuous between mode (even the position
+  // jumps because left vs right stance leg).
+  traj_msg->metadata.description = drake::solvers::to_string(solution_result);
+  traj_msg->num_trajectories = param_.n_step;
 
-  //  if (true) {
-  //  if (!result.is_success() || !start_with_left_stance) {
-  if (!result.is_success()) {
-    // If the solution failed, send an empty-size data. This tells the
-    // controller thread to fall back to LIPM traj
-    // Note that we cannot really send an empty traj because we use CubicHermite
-    // in construction in rom_traj_receiver. We need at least one segment
-    // TODO(yminchen): you can create lcmt_planner_traj which contains a flag
-    //  solutino_found and a lcmt_trajectory_block
-    time_at_knots.resize(2);
-    time_at_knots << -std::numeric_limits<double>::infinity(), 0;
-    state_at_knots.resize(state_at_knots.rows(), 2);
-  }
+  traj_msg->trajectory_names.resize(param_.n_step);
+  traj_msg->trajectories.resize(param_.n_step);
 
-  traj_msg->trajectory_name = "";
-  traj_msg->num_points = time_at_knots.size();
-  traj_msg->num_datatypes = state_at_knots.rows();
+  lcmt_trajectory_block traj_block;
+  traj_block.num_datatypes = state_samples[0].rows();
+  traj_block.datatypes.resize(traj_block.num_datatypes);
+  traj_block.datatypes = vector<string>(traj_block.num_datatypes, "");
+  for (int i = 0; i < param_.n_step; i++) {
+    /// Create lcmt_trajectory_block
+    traj_block.trajectory_name = "";
+    traj_block.num_points = time_breaks[i].size();
 
-  // Reserve space for vectors
-  traj_msg->time_vec.resize(traj_msg->num_points);
-  traj_msg->datatypes.resize(traj_msg->num_datatypes);
-  traj_msg->datapoints.clear();
+    // Reserve space for vectors
+    traj_block.time_vec.resize(traj_block.num_points);
+    traj_block.datapoints.clear();
 
-  // Copy Eigentypes to std::vector
-  traj_msg->time_vec = CopyVectorXdToStdVector(time_at_knots);
-  traj_msg->datatypes = vector<string>(traj_msg->num_datatypes, "");
-  for (int i = 0; i < traj_msg->num_datatypes; ++i) {
-    traj_msg->datapoints.push_back(
-        CopyVectorXdToStdVector(state_at_knots.row(i)));
+    // Copy Eigentypes to std::vector
+    traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+    for (int j = 0; j < traj_block.num_datatypes; ++j) {
+      traj_block.datapoints.push_back(
+          CopyVectorXdToStdVector(state_samples[i].row(j)));
+    }
+
+    /// Assign lcmt_trajectory_block
+    traj_msg->trajectories[i] = traj_block;
+    traj_msg->trajectory_names[i] = to_string(i);
   }
 
   // Testing

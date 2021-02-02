@@ -8,6 +8,7 @@
 #include "drake/systems/framework/leaf_system.h"
 
 #include "dairlib/lcmt_trajectory_block.hpp"
+#include "dairlib/lcmt_saved_traj.hpp"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
@@ -78,7 +79,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
-                    dairlib::lcmt_trajectory_block* traj_msg) const;
+                    dairlib::lcmt_saved_traj* traj_msg) const;
 
   // Port indices
   int stance_foot_port_;

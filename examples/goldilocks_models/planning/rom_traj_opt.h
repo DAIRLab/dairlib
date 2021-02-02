@@ -61,6 +61,12 @@ class RomTrajOpt
       std::vector<Eigen::MatrixXd>* state_samples,
       std::vector<Eigen::MatrixXd>* derivative_samples,
       std::vector<Eigen::VectorXd>* state_breaks) const;
+  /// Returns a vector of matrices containing the state values at
+  /// each breakpoint at the solution for each mode of the trajectory.
+  void GetStateSamples(
+      const drake::solvers::MathematicalProgramResult& result,
+      std::vector<Eigen::MatrixXd>* state_samples,
+      std::vector<Eigen::VectorXd>* state_breaks) const;
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.

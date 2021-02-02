@@ -317,11 +317,19 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   // cout << trajopt.decision_variables() << endl;
 
   VectorXd time_at_knots = trajopt.GetSampleTimes(result);
-  MatrixXd state_at_knots = trajopt.GetStateSamples(result);
   MatrixXd input_at_knots = trajopt.GetInputSamples(result);
   writeCSV(dir_data + string("time_at_knots.csv"), time_at_knots);
-  writeCSV(dir_data + string("state_at_knots.csv"), state_at_knots);
   writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
+
+  std::vector<Eigen::VectorXd> time_breaks;
+  std::vector<Eigen::MatrixXd> state_samples;
+  trajopt.GetStateSamples(result, &state_samples, &time_breaks);
+  for (int i = 0; i < n_step; i++) {
+    writeCSV(dir_data + string("time_at_knots" + to_string(i) + ".csv"),
+             time_breaks[i]);
+    writeCSV(dir_data + string("state_at_knots" + to_string(i) + ".csv"),
+             state_samples[i]);
+  }
 
   MatrixXd x0_each_mode(plant.num_positions() + plant.num_velocities(),
                         num_time_samples.size());

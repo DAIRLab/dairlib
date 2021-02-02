@@ -6,7 +6,7 @@
 
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_trajectory_block.hpp"
+#include "dairlib/lcmt_saved_traj.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
@@ -182,8 +182,8 @@ int DoMain(int argc, char* argv[]) {
                   fsm_and_liftoff_time_receiver->get_input_port(0));
 
   // Create mpc traj publisher
-  auto traj_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_trajectory_block>(
+  auto traj_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_saved_traj>(
           FLAGS_channel_y, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
   // Create a block that gets the stance leg
@@ -411,12 +411,16 @@ int DoMain(int argc, char* argv[]) {
 
     // Testing - checking the planner output
     const auto* abstract_value = output->get_data(0);
-    const dairlib::lcmt_trajectory_block& traj_msg =
-        abstract_value->get_value<dairlib::lcmt_trajectory_block>();
-    LcmTrajectory::Trajectory traj_data("" /*tra_name*/, traj_msg);
-    cout << "traj_data.time_vector = \n"
-         << traj_data.time_vector.transpose() << endl;
-    cout << "traj_data.datapoints = \n" << traj_data.datapoints << endl;
+    const dairlib::lcmt_saved_traj& traj_msg =
+        abstract_value->get_value<dairlib::lcmt_saved_traj>();
+    LcmTrajectory traj_data(traj_msg);
+    cout << "first trajectory in the lcmt_saved_traj:\n";
+    string traj_name_0 = traj_data.GetTrajectoryNames()[0];
+    cout << "time_vector = \n"
+         << traj_data.GetTrajectory(traj_name_0).time_vector.transpose()
+         << endl;
+    cout << "datapoints = \n"
+         << traj_data.GetTrajectory(traj_name_0).datapoints << endl;
   }
 
   return 0;

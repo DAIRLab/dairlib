@@ -486,7 +486,43 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     time_break_per_mode.array() += current_time;
   }
 
-  // Extract and save solution into files
+  ///
+  /// Pack traj into lcm message (traj_msg)
+  ///
+  // Note that the trajectory is discontinuous between mode (even the position
+  // jumps because left vs right stance leg).
+  traj_msg->metadata.description = drake::solvers::to_string(solution_result);
+  traj_msg->num_trajectories = param_.n_step;
+
+  traj_msg->trajectory_names.resize(param_.n_step);
+  traj_msg->trajectories.resize(param_.n_step);
+
+  lcmt_trajectory_block traj_block;
+  traj_block.num_datatypes = state_samples[0].rows();
+  traj_block.datatypes.resize(traj_block.num_datatypes);
+  traj_block.datatypes = vector<string>(traj_block.num_datatypes, "");
+  for (int i = 0; i < param_.n_step; i++) {
+    /// Create lcmt_trajectory_block
+    traj_block.trajectory_name = "";
+    traj_block.num_points = time_breaks[i].size();
+
+    // Reserve space for vectors
+    traj_block.time_vec.resize(traj_block.num_points);
+    traj_block.datapoints.clear();
+
+    // Copy Eigentypes to std::vector
+    traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+    for (int j = 0; j < traj_block.num_datatypes; ++j) {
+      traj_block.datapoints.push_back(
+          CopyVectorXdToStdVector(state_samples[i].row(j)));
+    }
+
+    /// Assign lcmt_trajectory_block
+    traj_msg->trajectories[i] = traj_block;
+    traj_msg->trajectory_names[i] = to_string(i);
+  }
+
+  // Extract and save solution into files (for debugging)
   //  if (debug_mode_) {
   //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >
   //  0.5)) { if (!result.is_success()) {
@@ -522,42 +558,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         "Decision variables and state/input trajectories");
     saved_traj.WriteToFile(dir_data + file_name);
     std::cout << "Wrote to file: " << dir_data + file_name << std::endl;
-  }
-
-  ///
-  /// Pack traj into lcm message (traj_msg)
-  ///
-  // Note that the trajectory is discontinuous between mode (even the position
-  // jumps because left vs right stance leg).
-  traj_msg->metadata.description = drake::solvers::to_string(solution_result);
-  traj_msg->num_trajectories = param_.n_step;
-
-  traj_msg->trajectory_names.resize(param_.n_step);
-  traj_msg->trajectories.resize(param_.n_step);
-
-  lcmt_trajectory_block traj_block;
-  traj_block.num_datatypes = state_samples[0].rows();
-  traj_block.datatypes.resize(traj_block.num_datatypes);
-  traj_block.datatypes = vector<string>(traj_block.num_datatypes, "");
-  for (int i = 0; i < param_.n_step; i++) {
-    /// Create lcmt_trajectory_block
-    traj_block.trajectory_name = "";
-    traj_block.num_points = time_breaks[i].size();
-
-    // Reserve space for vectors
-    traj_block.time_vec.resize(traj_block.num_points);
-    traj_block.datapoints.clear();
-
-    // Copy Eigentypes to std::vector
-    traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
-    for (int j = 0; j < traj_block.num_datatypes; ++j) {
-      traj_block.datapoints.push_back(
-          CopyVectorXdToStdVector(state_samples[i].row(j)));
-    }
-
-    /// Assign lcmt_trajectory_block
-    traj_msg->trajectories[i] = traj_block;
-    traj_msg->trajectory_names[i] = to_string(i);
   }
 
   // Testing

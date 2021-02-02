@@ -23,11 +23,7 @@ PlannedTrajGuard::PlannedTrajGuard(double max_solve_time)
               drake::Value<drake::trajectories::Trajectory<double>>(pp))
           .get_index();
 
-  PiecewisePolynomial<double> pp_part(VectorXd(0));
-  Eigen::MatrixXd K = Eigen::MatrixXd::Ones(0, 0);
-  Eigen::MatrixXd A = Eigen::MatrixXd::Identity(0, 0);
-  Eigen::MatrixXd alpha = Eigen::MatrixXd::Ones(0, 0);
-  ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
+  ExponentialPlusPiecewisePolynomial<double> exp;
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   //  drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("filtered_rom_traj", traj_inst,
@@ -59,6 +55,7 @@ void PlannedTrajGuard::ApplyGuard(
        << prev_message_arrival_time_ << ", "
        << context.get_time() - prev_message_arrival_time_ << ", "
        << max_solve_time_ << "| timeout?" << planner_timeout << endl;
+  // TODO: connect this leafsystem to lcmsubscriber to get the status of solver
   bool planner_no_solution = (optimal_rom_traj.start_time() ==
                               -std::numeric_limits<double>::infinity());
 

@@ -24,6 +24,13 @@ OptimalRoMTrajReceiver::OptimalRoMTrajReceiver() {
 void OptimalRoMTrajReceiver::CalcDesiredTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
+  // TODO(yminchen): currently we construct ExponentialPlusPiecewisePolynomial
+  //  although the traj is PiecewisePolynomial, because we need to use this with
+  //  lipm in the guard.
+  //  One solution to this could be not sending Trajectory class but BasicVector
+  //  to OSC (change the API)
+  //  Put up an issue for this.
+
   // Cast traj
   auto* traj_casted = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
@@ -36,12 +43,6 @@ void OptimalRoMTrajReceiver::CalcDesiredTraj(
   int n_traj = traj_names.size();
   int n_y = traj_data.GetTrajectory(traj_names[0]).datatypes.size() / 2;
 
-  // TODO(yminchen): currently we construct ExponentialPlusPiecewisePolynomial
-  //  although the traj is PiecewisePolynomial, because we need to use this with
-  //  lipm in the guard.
-  //  One solution to this could be not sending Trajectory class but BasicVector
-  //  to OSC (change the API)
-  //  Put up an issue for this.
   const LcmTrajectory::Trajectory& traj0 =
       traj_data.GetTrajectory(traj_names[0]);
   PiecewisePolynomial<double> pp_part =

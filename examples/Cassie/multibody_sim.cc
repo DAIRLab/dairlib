@@ -44,7 +44,7 @@ using Eigen::VectorXd;
 
 // Optimal ROM controller
 DEFINE_bool(publish_at_initialization, true, "");
-DEFINE_int32(pause_second, 0, "pause after initialization");
+DEFINE_double(pause_second, 0, "pause after initialization");
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -201,7 +201,8 @@ int do_main(int argc, char* argv[]) {
   simulator.Initialize();
 
   // pause a second for the planner to plan
-  std::this_thread::sleep_for(std::chrono::seconds(FLAGS_pause_second));
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(int(FLAGS_pause_second * 1000)));
 
   simulator.AdvanceTo(FLAGS_end_time);
 

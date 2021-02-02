@@ -219,6 +219,7 @@ class LcmDrivenLoop {
 
         // Get message time from the active channel to advance
         time = name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
+        std::cout << "** time1 = " << time << ", message count " << name_to_input_sub_map_.at(active_channel_).count() << std::endl;
 
         // Check if we are very far ahead or behind
         // (likely due to a restart of the driving clock)
@@ -232,14 +233,30 @@ class LcmDrivenLoop {
           simulator_->get_mutable_context().SetTime(time);
         }
 
+
+        auto start = std::chrono::high_resolution_clock::now();
         simulator_->AdvanceTo(time);
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = finish - start;
+        std::cout << "\nAdvanceTo() runtime:" << elapsed.count() << "\n";
+
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->Publish(diagram_context);
         }
 
+        auto finish2 = std::chrono::high_resolution_clock::now();
+        elapsed = finish2 - finish;
+        std::cout << "\nPublish() runtime:" << elapsed.count() << "\n";
+
+        time = name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
+        std::cout << "** time2 = " << time << ", message count " << name_to_input_sub_map_.at(active_channel_).count() << std::endl;
+
         // Clear messages in the current input channel
         name_to_input_sub_map_.at(active_channel_).clear();
+
+        time = name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
+        std::cout << "** time3 = " << time << ", message count " << name_to_input_sub_map_.at(active_channel_).count() << std::endl;
       }
 
       // Update the name of the active channel if there are multiple inputs and

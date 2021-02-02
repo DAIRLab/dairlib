@@ -14,11 +14,7 @@ OptimalRoMTrajReceiver::OptimalRoMTrajReceiver() {
           .get_index();
 
   // Provide an instance to allocate the memory first (for the output)
-  PiecewisePolynomial<double> pp_part(VectorXd(0));
-  Eigen::MatrixXd K = Eigen::MatrixXd::Ones(0, 0);
-  Eigen::MatrixXd A = Eigen::MatrixXd::Identity(0, 0);
-  Eigen::MatrixXd alpha = Eigen::MatrixXd::Ones(0, 0);
-  ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
+  ExponentialPlusPiecewisePolynomial<double> exp;
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   //  drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("rom_traj", traj_inst,
@@ -60,14 +56,8 @@ void OptimalRoMTrajReceiver::CalcDesiredTraj(
         traj_i.datapoints.bottomRows(n_y)));
   }
 
-  Eigen::MatrixXd K = Eigen::MatrixXd::Zero(pp_part.rows(), 0);
-  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(0, 0);
-  Eigen::MatrixXd alpha =
-      Eigen::MatrixXd::Zero(0, pp_part.get_number_of_segments());
-
   // Assign traj
-  *traj_casted =
-      ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
+  *traj_casted = ExponentialPlusPiecewisePolynomial<double>(pp_part);
 };
 
 }  // namespace goldilocks_models

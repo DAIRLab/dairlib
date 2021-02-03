@@ -143,9 +143,7 @@ class LcmDrivenLoop {
                       "", is_forced_publish){};
 
   // Getters for diagram and its context
-  drake::systems::Diagram<double>* get_diagram() {
-    return diagram_ptr_;
-  }
+  drake::systems::Diagram<double>* get_diagram() { return diagram_ptr_; }
   drake::systems::Context<double>& get_diagram_mutable_context() {
     return simulator_->get_mutable_context();
   }
@@ -218,7 +216,8 @@ class LcmDrivenLoop {
         }
 
         // Get message time from the active channel to advance
-        time = name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
+        time =
+            name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
 
         // Check if we are very far ahead or behind
         // (likely due to a restart of the driving clock)
@@ -279,6 +278,137 @@ class LcmDrivenLoop {
       nullptr;
   std::map<std::string, drake::lcm::Subscriber<InputMessageType>>
       name_to_input_sub_map_;
+
+  bool is_forced_publish_;
+};
+
+/// TwoLcmDrivenLoop only update the simulation when receiving messages from
+/// both channels.
+///
+/// Note that we update the simulation time with InputMessageType1.
+template <typename InputMessageType1, typename InputMessageType2>
+class TwoLcmDrivenLoop {
+ public:
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(TwoLcmDrivenLoop)
+
+  /// Constructor for TwoLcmDrivenLoop
+  ///     @param drake_lcm DrakeLcm
+  ///     @param diagram A Drake diagram
+  ///     @param lcm_parser The LeafSystem of the diagram that parses the
+  ///     incoming lcm message
+  ///     @param input_channels The names of the input channels
+  ///     @param is_forced_publish A flag which enables publishing via diagram.
+  TwoLcmDrivenLoop(
+      drake::lcm::DrakeLcm* drake_lcm,
+      std::unique_ptr<drake::systems::Diagram<double>> diagram,
+      std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers,
+      const std::vector<std::string>& input_channels, bool is_forced_publish)
+      : drake_lcm_(drake_lcm),
+        lcm_parsers_(lcm_parsers),
+        input_channels_(input_channels),
+        subscriber0_(drake::lcm::Subscriber<InputMessageType1>(
+            drake_lcm_, input_channels[0])),
+        subscriber1_(drake::lcm::Subscriber<InputMessageType2>(
+            drake_lcm_, input_channels[1])),
+        is_forced_publish_(is_forced_publish) {
+    DRAKE_DEMAND(lcm_parsers.size() == 2);
+    DRAKE_DEMAND(input_channels.size() == 2);
+
+    // Move simulator
+    if (!diagram->get_name().empty()) {
+      diagram_name_ = diagram->get_name();
+    }
+    diagram_ptr_ = diagram.get();
+    simulator_ =
+        std::make_unique<drake::systems::Simulator<double>>(std::move(diagram));
+  };
+
+  // Getters for diagram and its context
+  drake::systems::Diagram<double>* get_diagram() { return diagram_ptr_; }
+  drake::systems::Context<double>& get_diagram_mutable_context() {
+    return simulator_->get_mutable_context();
+  }
+
+  // Start simulating the diagram
+  void Simulate(double end_time = std::numeric_limits<double>::infinity()) {
+    // Get mutable contexts
+    auto& diagram_context = simulator_->get_mutable_context();
+
+    // Wait for the first message.
+    drake::log()->info("Waiting for initial lcm input messages");
+    LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
+      return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
+    });
+
+    // Initialize the context time.
+    const double t0 = subscriber0_.message().utime * 1e-6;
+    diagram_context.SetTime(t0);
+
+    // "Simulator" time
+    double time = 0;  // initialize the current time with 0
+
+    // Run the simulation until end_time
+    /// Structure of the code:
+    ///  While() {
+    ///    Wait for all new InputMessageType messages.
+    ///
+    ///    Update diagram context and advance time.
+    ///    Clear input channel messages.
+    ///  }
+    drake::log()->info(diagram_name_ + " started");
+    while (time < end_time) {
+      // Wait for new InputMessageType messages and SwitchMessageType messages.
+      LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
+        return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
+      });
+
+      // Write the InputMessageType message into the context
+      lcm_parsers_[0]->get_input_port(0).FixValue(
+          &(diagram_ptr_->GetMutableSubsystemContext(*(lcm_parsers_[0]),
+                                                     &diagram_context)),
+          subscriber0_.message());
+      lcm_parsers_[1]->get_input_port(0).FixValue(
+          &(diagram_ptr_->GetMutableSubsystemContext(*(lcm_parsers_[1]),
+                                                     &diagram_context)),
+          subscriber1_.message());
+
+      // Get message time from the active channel to advance
+      time = subscriber0_.message().utime * 1e-6;
+
+      // Check if we are very far ahead or behind
+      // (likely due to a restart of the driving clock)
+      if (time > simulator_->get_context().get_time() + 1.0 ||
+          time < simulator_->get_context().get_time()) {
+        std::cout << diagram_name_ + " time is "
+                  << simulator_->get_context().get_time()
+                  << ", but stepping to " << time << std::endl;
+        std::cout << "Difference is too large, resetting " + diagram_name_ +
+                         " time.\n";
+        simulator_->get_mutable_context().SetTime(time);
+      }
+
+      simulator_->AdvanceTo(time);
+      if (is_forced_publish_) {
+        // Force-publish via the diagram
+        diagram_ptr_->Publish(diagram_context);
+      }
+
+      // Clear messages in the input channels
+      subscriber0_.clear();
+      subscriber1_.clear();
+    }
+  };
+
+ private:
+  drake::lcm::DrakeLcm* drake_lcm_;
+  drake::systems::Diagram<double>* diagram_ptr_;
+  std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers_;
+  std::unique_ptr<drake::systems::Simulator<double>> simulator_;
+
+  std::string diagram_name_ = "diagram";
+  std::vector<std::string> input_channels_;
+  drake::lcm::Subscriber<InputMessageType1> subscriber0_;
+  drake::lcm::Subscriber<InputMessageType2> subscriber1_;
 
   bool is_forced_publish_;
 };

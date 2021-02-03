@@ -18,9 +18,9 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "examples/goldilocks_models/controller/planner_preprocessing.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -169,14 +169,14 @@ int DoMain(int argc, char* argv[]) {
   // https://github.com/RobotLocomotion/drake/blob/master/lcm/drake_lcm_interface.h#L242
 
   // Create state subscriber
-  auto state_subscriber =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          FLAGS_channel_x, &lcm_local));
+  //  auto state_subscriber =
+  //      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+  //          FLAGS_channel_x, &lcm_local));
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_feedback);
-  builder.Connect(state_subscriber->get_output_port(),
-                  state_receiver->get_input_port(0));
+  //  builder.Connect(state_subscriber->get_output_port(),
+  //                  state_receiver->get_input_port(0));
 
   // Create Lcm subscriber for fsm and latest lift off time and a translator
   // from this lcm into BasicVector
@@ -237,16 +237,21 @@ int DoMain(int argc, char* argv[]) {
   owned_diagram->set_name("MPC");
 
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_dairlib_signal> loop(
-      &lcm_local, std::move(owned_diagram), fsm_and_liftoff_time_receiver,
-      FLAGS_channel_fsm_t, true);
+  std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers = {
+      fsm_and_liftoff_time_receiver, state_receiver};
+  std::vector<std::string> input_channels = {FLAGS_channel_fsm_t,
+                                             FLAGS_channel_x};
+  systems::TwoLcmDrivenLoop<dairlib::lcmt_dairlib_signal,
+                            dairlib::lcmt_robot_output>
+      loop(&lcm_local, std::move(owned_diagram), lcm_parsers, input_channels,
+           true);
   //  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
   //      &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
   //      true);
   if (!FLAGS_debug_mode) {
     // Get context and initialize the lcm message of LcmSubsriber for
     // lcmt_robot_output
-    auto& diagram_context = loop.get_diagram_mutable_context();
+    /*auto& diagram_context = loop.get_diagram_mutable_context();
     auto& state_subscriber_context =
         loop.get_diagram()->GetMutableSubsystemContext(*state_subscriber,
                                                        &diagram_context);
@@ -268,8 +273,7 @@ int DoMain(int argc, char* argv[]) {
         1.44596,  -0.0250513, -1.60801,     -0.0251036, -1.60804};
     initial_message.velocity = {0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0};
-    mutable_state = initial_message;
-
+    mutable_state = initial_message;*/
 
     // Get context and initialize the lcm message of LcmSubsriber for
     // lcmt_dairlib_signal

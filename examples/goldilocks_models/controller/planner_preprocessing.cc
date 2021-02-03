@@ -95,11 +95,9 @@ void PhaseInFirstMode::CalcPhase(
   auto current_time = static_cast<double>(timestamp);
 
   double time_in_first_mode = current_time - lift_off_time;
-    cout << "time_in_first_mode = " << time_in_first_mode << endl;
-    cout << "current_time=" << current_time << endl;
-    cout << "lift_off_time=" << lift_off_time << endl;
-  // Note that the current time is sometimes smaller than the lift_off_time,
-  // because we get these two from two different ports.
+  //    cout << "time_in_first_mode = " << time_in_first_mode << endl;
+  //    cout << "current_time=" << current_time << endl;
+  //    cout << "lift_off_time=" << lift_off_time << endl;
 
   // Calc phase
   double init_phase = time_in_first_mode / stride_period_;
@@ -169,14 +167,7 @@ void InitialStateForPlanner::CalcState(
       this->EvalVectorInput(context, phase_port_);
   double init_phase = phase_port->get_value()(0);
 
-  // Note that the current time is sometimes smaller than the lift_off_time,
-  // because we get these two from two different ports.
-  // Hence, the phase is sometimes negative.
-  // However, it seems to be fine currently, because we read from
-  // InitialStateForPlanner's output port (which is this function) multiple
-  // times per step?.
-  //  DRAKE_DEMAND((0 <= init_phase) && (init_phase <= 1));
-    cout << "init_phase of the state we got = " << init_phase << endl;
+  //    cout << "init_phase of the state we got = " << init_phase << endl;
 
   ///
   /// Shift and rotate Cassie's floating base configuration

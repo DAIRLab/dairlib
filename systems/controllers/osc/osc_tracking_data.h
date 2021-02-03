@@ -70,8 +70,7 @@ class OscTrackingData {
                   const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
                   const Eigen::MatrixXd& W,
                   const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-                  const bool track_accel);
+                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_state_
@@ -184,7 +183,11 @@ class OscTrackingData {
   virtual void UpdateYdotAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr,
-      const Eigen::MatrixXd& II_proj) = 0;
+      const Eigen::MatrixXd& ii_proj) = 0;
+  virtual void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr,
+      const Eigen::VectorXd& ii_proj) = 0;
   virtual void UpdateYddotDes() = 0;
   virtual void UpdateJ(
       const Eigen::VectorXd& x_wo_spr,
@@ -210,7 +213,6 @@ class OscTrackingData {
   // Store whether or not the tracking data is active
   bool track_at_current_state_;
   int state_idx_ = 0;
-  bool track_accel_;
 };
 
 /// ComTrackingData is used when we want to track center of mass trajectory.
@@ -219,8 +221,7 @@ class ComTrackingData final : public OscTrackingData {
   ComTrackingData(const std::string& name, const Eigen::MatrixXd& K_p,
                   const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
                   const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-                  bool track_accel = true);
+                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
   //  ComTrackingData() {}  // Default constructor
 
@@ -233,7 +234,10 @@ class ComTrackingData final : public OscTrackingData {
       const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                           const drake::systems::Context<double>& context_w_spr,
-                          const Eigen::MatrixXd& II_proj) final;
+                          const Eigen::MatrixXd& ii_proj) final;
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
+                          const drake::systems::Context<double>& context_w_spr,
+                          const Eigen::VectorXd& ii_proj) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
@@ -250,8 +254,7 @@ class TaskSpaceTrackingData : public OscTrackingData {
       const std::string& name, int n_y, int n_ydot, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      bool track_accel = true);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
  protected:
   // `body_index_w_spr` is the index of the body
@@ -282,8 +285,7 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_sp,
-      bool track_accel = true);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_sp);
 
   void AddPointToTrack(
       const std::string& body_name,
@@ -298,7 +300,10 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                           const drake::systems::Context<double>& context_w_spr,
-                          const Eigen::MatrixXd& II_proj) final;
+                          const Eigen::MatrixXd& ii_proj) final;
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
+                          const drake::systems::Context<double>& context_w_spr,
+                          const Eigen::VectorXd& ii_proj) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
@@ -346,7 +351,10 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                           const drake::systems::Context<double>& context_w_spr,
-                          const Eigen::MatrixXd& II_proj) final;
+                          const Eigen::MatrixXd& ii_proj) final;
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
+                          const drake::systems::Context<double>& context_w_spr,
+                          const Eigen::VectorXd& ii_proj) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
@@ -392,7 +400,10 @@ class JointSpaceTrackingData final : public OscTrackingData {
       const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                           const drake::systems::Context<double>& context_w_spr,
-                          const Eigen::MatrixXd& II_proj) final;
+                          const Eigen::MatrixXd& ii_proj) final;
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
+                          const drake::systems::Context<double>& context_w_spr,
+                          const Eigen::VectorXd& ii_proj) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;

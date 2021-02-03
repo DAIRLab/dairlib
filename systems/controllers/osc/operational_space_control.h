@@ -266,7 +266,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   mutable double solve_time_;
 
-  mutable Eigen::MatrixXd ii_proj_;
+  bool use_single_lambda_ = false;
+  mutable Eigen::VectorXd ii_lambda_sol_;
   mutable Eigen::MatrixXd M_Jt_;
 
   // OSC cost members

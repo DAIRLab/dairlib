@@ -206,10 +206,8 @@ int DoMain(int argc, char* argv[]) {
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
   }
-//  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-//      plant_w_spr, fsm_states, state_durations, 0.0, gains.impact_threshold);
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      plant_w_spr, fsm_states, state_durations);
+      plant_w_spr, fsm_states, state_durations, 0.0, gains.impact_threshold);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 

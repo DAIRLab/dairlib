@@ -581,6 +581,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
+  ii_lambda_sol_ = VectorXd::Zero(1);
   // Invariant Impacts
   // Only update when near an impact
   if (near_impact) {
@@ -604,6 +605,52 @@ VectorXd OperationalSpaceControl::SolveQp(
       }
     }
     M_Jt_ = M.inverse() * J_c_next.transpose();
+
+    if (use_single_lambda_) {
+      int active_tracking_data_dim = 0;
+      for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
+        auto tracking_data = tracking_data_vec_->at(i);
+
+        if (tracking_data->IsActive()) {
+          MatrixXd ii_proj = MatrixXd::Zero(n_v_, tracking_data->GetYDim());
+          active_tracking_data_dim += tracking_data->GetYDim();
+
+          if (fixed_position_vec_.at(i).size() != 0) {
+            // Create constant trajectory and update
+            tracking_data->Update(
+                x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
+                PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
+                fsm_state, ii_proj);
+          } else {
+            // Read in traj from input port
+            const string& traj_name = tracking_data->GetName();
+            int port_index = traj_name_to_port_index_map_.at(traj_name);
+            const drake::AbstractValue* input_traj =
+                this->EvalAbstractInput(context, port_index);
+            const auto& traj =
+                input_traj
+                    ->get_value<drake::trajectories::Trajectory<double>>();
+            tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                                  *context_wo_spr_, traj, t, fsm_state,
+                                  ii_proj);
+          }
+        }
+      }
+      MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_contact_dim);
+      VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
+      int start_row = 0;
+      for (auto tracking_data : *tracking_data_vec_) {
+        if (tracking_data->IsActive()) {
+          A.block(start_row, 0, tracking_data->GetYDim(), active_contact_dim) =
+              tracking_data->GetJ() * M_Jt_;
+          ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
+              tracking_data->GetErrorYdot();
+          start_row += tracking_data->GetYDim();
+        }
+      }
+
+      ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
+    }
   }
 
   // Update costs
@@ -634,16 +681,21 @@ VectorXd OperationalSpaceControl::SolveQp(
 
       if (near_impact && tracking_data->IsActive()) {
         // Need to call Update before this to get the updated jacobian
-        MatrixXd A = tracking_data->GetJ() * M_Jt_;
-        MatrixXd A_pinv = A.completeOrthogonalDecomposition().pseudoInverse();
-        ii_proj = near_impact * M_Jt_ * A_pinv;
-        // Update again using correction
-        tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                              *context_wo_spr_, traj, t, fsm_state, ii_proj);
+
+        if (use_single_lambda_) {
+          tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                                *context_wo_spr_, traj, t, fsm_state,
+                                M_Jt_ * ii_lambda_sol_);
+        } else {
+          MatrixXd A = tracking_data->GetJ() * M_Jt_;
+          MatrixXd A_pinv = A.completeOrthogonalDecomposition().pseudoInverse();
+          ii_proj = near_impact * M_Jt_ * A_pinv;
+          // Update again using correction
+          tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                                *context_wo_spr_, traj, t, fsm_state, ii_proj);
+        }
       }
     }
-    // TODO(yangwill): Should only really be updating the trajectory if it's
-    //  active
     if (tracking_data->IsActive() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {

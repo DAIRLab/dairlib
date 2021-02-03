@@ -309,10 +309,10 @@ int DoMain(int argc, char* argv[]) {
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot, gains.W_flight_foot,
-      plant_w_spr, plant_w_spr, false);
+      plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData right_foot_tracking_data(
       "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot, gains.W_flight_foot,
-      plant_w_spr, plant_w_spr, false);
+      plant_w_spr, plant_w_spr);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");

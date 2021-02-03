@@ -95,9 +95,6 @@ void PhaseInFirstMode::CalcPhase(
   auto current_time = static_cast<double>(timestamp);
 
   double time_in_first_mode = current_time - lift_off_time;
-  //    cout << "time_in_first_mode = " << time_in_first_mode << endl;
-  //    cout << "current_time=" << current_time << endl;
-  //    cout << "lift_off_time=" << lift_off_time << endl;
 
   // Calc phase
   double init_phase = time_in_first_mode / stride_period_;
@@ -108,8 +105,12 @@ void PhaseInFirstMode::CalcPhase(
   }
 
   // Assign init_phase
-  init_phase_output->get_mutable_value() =
-      time_in_first_mode * VectorXd::Ones(1);
+  init_phase_output->get_mutable_value() = init_phase * VectorXd::Ones(1);
+
+  //  cout << "time_in_first_mode = " << time_in_first_mode << endl;
+  //  cout << "current_time=" << current_time << endl;
+  //  cout << "lift_off_time=" << lift_off_time << endl;
+  //  cout << "init_phase=" << init_phase << endl;
 }
 
 ///

@@ -51,6 +51,10 @@ void PlannedTrajGuard::ApplyGuard(
     // would just use the value at the end time.
     // https://drake.mit.edu/doxygen_cxx/classdrake_1_1trajectories_1_1_piecewise_polynomial.html#a19b632df0f98f9aaf224e534fac69ec8
   }
+  //  cout << "(traj start time, traj end time) = ("
+  //       << optimal_rom_traj.start_time() << ", " <<
+  //       optimal_rom_traj.end_time()
+  //       << "); current time = " << context.get_time() << "\n";
 
   /// Apply the guard condition
   // If the solver didn't solve quick enough or the solution was not found, then

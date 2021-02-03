@@ -374,6 +374,8 @@ class TwoLcmDrivenLoop {
 
       // Get message time from the active channel to advance
       time = subscriber0_.message().utime * 1e-6;
+      std::cout << "** time1 = " << time << ", message count " << subscriber0_.count() << std::endl;
+
 
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)
@@ -387,15 +389,35 @@ class TwoLcmDrivenLoop {
         simulator_->get_mutable_context().SetTime(time);
       }
 
+      auto start = std::chrono::high_resolution_clock::now();
       simulator_->AdvanceTo(time);
+      auto finish = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed = finish - start;
+      std::cout << "\nAdvanceTo() runtime:" << elapsed.count() << "\n";
+
       if (is_forced_publish_) {
         // Force-publish via the diagram
         diagram_ptr_->Publish(diagram_context);
       }
 
+
+      auto finish2 = std::chrono::high_resolution_clock::now();
+      elapsed = finish2 - finish;
+      std::cout << "\nPublish() runtime:" << elapsed.count() << "\n";
+
+      time = subscriber0_.message().utime * 1e-6;
+      std::cout << "** time2 = " << time << ", message count " << subscriber0_.count() << std::endl;
+
+
       // Clear messages in the input channels
       subscriber0_.clear();
       subscriber1_.clear();
+
+
+      time = subscriber0_.message().utime * 1e-6;
+      std::cout << "** time3 = " << time << ", message count " << subscriber0_.count() << std::endl;
+
+      std::cout << "=============================================\n";
     }
   };
 

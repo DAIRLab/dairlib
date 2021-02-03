@@ -243,6 +243,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     const Context<double>& context, dairlib::lcmt_saved_traj* traj_msg) const {
+  ///
+  /// Read from input ports
+  ///
+
   // Read in current robot state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -271,8 +275,16 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "x_init used for the planner = " << x_init.transpose() << endl;
   }
 
-  // TODO(yminchen): think about if you need to rotate the coordinates back
-  //  after solver gives a desired traj
+  ///
+  /// Decide if we need to re-plan (not ideal code. See header file)
+  ///
+
+  bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
+                         min_time_difference_for_replanning_);
+  if (!need_to_replan) {
+    *traj_msg = previous_output_msg_;
+    return;
+  }
 
   ///
   /// Construct rom traj opt
@@ -486,6 +498,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     time_break_per_mode.array() += current_time;
   }
 
+  // TODO(yminchen): Note that you will to rotate the coordinates back if the
+  //  ROM is dependent on robot's x, y and yaw.
+
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
@@ -521,6 +536,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     traj_msg->trajectories[i] = traj_block;
     traj_msg->trajectory_names[i] = to_string(i);
   }
+
+  // Store the previous message
+  previous_output_msg_ = *traj_msg;
+  timestamp_of_previous_plan_ = current_time;
+
+  ///
+  /// For debugging
+  ///
 
   // Extract and save solution into files (for debugging)
   //  if (debug_mode_) {

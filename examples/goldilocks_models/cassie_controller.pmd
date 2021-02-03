@@ -4,7 +4,7 @@ group "1.controllers" {
         host = "localhost";
     }
     cmd "2.1.optimal-rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --max_solve_time=1";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true";
         host = "localhost";
     }
     cmd "2.2.rom-planner" {

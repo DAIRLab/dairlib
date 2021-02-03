@@ -76,9 +76,6 @@ using multibody::FixedJointEvaluator;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_double(
-    max_solve_time, 0.2,
-    "Maximum solve time for the planner before we switch to backup trajs");
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_double(const_walking_speed_x, 0.5, "Walking speed in local x axis");
 
@@ -457,8 +454,7 @@ int DoMain(int argc, char* argv[]) {
   // TODO: test optimal ROM traj. Currently we are using backup controller all
   //  the time (if-statement insdie the class PlannedTrajGuard)
   auto optimal_traj_planner_guard =
-      builder.AddSystem<goldilocks_models::PlannedTrajGuard>(
-          FLAGS_max_solve_time);
+      builder.AddSystem<goldilocks_models::PlannedTrajGuard>();
   builder.Connect(
       optimal_rom_traj_gen->get_output_port(0),
       optimal_traj_planner_guard->get_input_port_optimal_rom_traj());

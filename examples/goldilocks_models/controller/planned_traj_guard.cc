@@ -37,7 +37,7 @@ void PlannedTrajGuard::ApplyGuard(
       this->EvalAbstractInput(context, optimal_rom_traj_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
 
-  /// Seom computation
+  /// Some computation
   bool no_available_traj = (context.get_time() > optimal_rom_traj.end_time());
   // TODO: connect this leafsystem to lcmsubscriber to get the status of solver
   bool planner_no_solution = (optimal_rom_traj.start_time() ==
@@ -47,6 +47,9 @@ void PlannedTrajGuard::ApplyGuard(
     cout << "WARNING: no available traj! (traj start time, traj end time) = ("
          << optimal_rom_traj.start_time() << ", " << optimal_rom_traj.end_time()
          << "); current time = " << context.get_time() << "\n";
+    // Note that when the current time is larger than the traj end time, drake
+    // would just use the value at the end time.
+    // https://drake.mit.edu/doxygen_cxx/classdrake_1_1trajectories_1_1_piecewise_polynomial.html#a19b632df0f98f9aaf224e534fac69ec8
   }
 
   /// Apply the guard condition

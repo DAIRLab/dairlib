@@ -175,7 +175,7 @@ void InitialStateForPlanner::CalcState(
   // Rotate Cassie's floating base configuration to face toward world's x
   // direction and translate the x and y position to the origin
 
-  // TODO: Our original plan was to move the touchdown state to the origin.
+  // Our original plan was to move the touchdown state to the origin.
   //  But right now we move the current state (instead of touchdown state) to
   //  the corresponding x-y position based on init phase and desired traj
 

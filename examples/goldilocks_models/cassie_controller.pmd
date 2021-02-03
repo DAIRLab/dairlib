@@ -16,7 +16,7 @@ group "1.controllers" {
         host = "localhost";
     }
     cmd "2.2.rom-planner (short time limit)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --sample=1 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=0.25 --log_solver_info=false";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --sample=1 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=0.21 --log_solver_info=false";
         host = "localhost";
     }
 }

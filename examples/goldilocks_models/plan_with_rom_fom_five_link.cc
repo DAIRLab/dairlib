@@ -209,8 +209,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Time step cosntraints
   trajopt.AddTimeStepConstraint(min_dt, max_dt, FLAGS_fix_duration,
-                                h_guess.tail(1)(0) * num_time_samples.size(),
-                                FLAGS_equalize_timestep_size);
+                                FLAGS_equalize_timestep_size,
+                                h_guess.tail(1)(0), h_guess.tail(1)(0));
 
   // Final goal position constraint
   cout << "Adding final position constraint for full-order model...\n";

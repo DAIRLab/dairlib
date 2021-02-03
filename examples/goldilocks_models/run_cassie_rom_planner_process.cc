@@ -115,6 +115,12 @@ int DoMain(int argc, char* argv[]) {
   DRAKE_DEMAND(0 <= FLAGS_xy_disturbance && FLAGS_xy_disturbance <= 1);
   DRAKE_DEMAND(0 <= FLAGS_yaw_disturbance && FLAGS_yaw_disturbance <= 1);
 
+  if (!FLAGS_debug_mode) {
+    // When using with controller, we need to align the steps with the FSM
+    DRAKE_DEMAND(FLAGS_fix_duration);
+    DRAKE_DEMAND(FLAGS_equalize_timestep_size);
+  }
+
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_feedback(0.0);
   addCassieMultibody(&plant_feedback, nullptr, true /*floating base*/,

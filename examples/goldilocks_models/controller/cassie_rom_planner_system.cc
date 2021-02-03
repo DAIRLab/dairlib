@@ -1,5 +1,6 @@
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 
+#include <math.h>     /* fmod */
 #include <algorithm>  // std::max
 
 #include "common/eigen_utils.h"
@@ -12,7 +13,6 @@
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
-#include <math.h>
 #include <string>
 
 using std::cout;
@@ -333,28 +333,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "Other constraints/costs and initial guess===============\n";
   }
   // Time step constraints
-  int n_time_samples =
-      std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
-      num_time_samples.size() + 1;
-  // TODO: play with dt_value. Also don't hard-coded dt_value
-  double dt_value =
-      stride_period_ / (param_.knots_per_mode - 1);  // h_guess_(1);
-  if (knots_first_mode == 2) {
-    // Note that the timestep size of the first mode should be different from
-    // the rest because the robot could be very close to the touchdown
-    double remaining_time_of_first_mode =
-        std::max(stride_period_ * (1 - init_phase), min_dt[0]);
-    // duration of the whole trajopt = first mode's time + the rest modes'
-    double duration =
-        remaining_time_of_first_mode + dt_value * (n_time_samples - 2);
-    trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration, duration,
-                                  param_.equalize_timestep_size,
-                                  remaining_time_of_first_mode);
-  } else {
-    trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
-                                  dt_value * (n_time_samples - 1),
-                                  param_.equalize_timestep_size);
-  }
+  double first_mode_duration =
+      stride_period_ - fmod(current_time, stride_period_);
+  double remaining_mode_duration = stride_period_;
+  trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
+                                param_.equalize_timestep_size,
+                                first_mode_duration, remaining_mode_duration);
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar
@@ -489,6 +473,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Get solution
+  // The time starts at 0. (by accumulating dt's)
   std::vector<Eigen::VectorXd> time_breaks;
   std::vector<Eigen::MatrixXd> state_samples;
   trajopt.GetStateSamples(result, &state_samples, &time_breaks);

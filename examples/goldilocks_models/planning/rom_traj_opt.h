@@ -46,13 +46,11 @@ class RomTrajOpt
 
   ~RomTrajOpt() override {}
 
-  // The argument `dt_0` is the first time step size which we don't want to
-  // equalize to the rest of the time step. Default to negative (the argument is
-  // not used)
   void AddTimeStepConstraint(std::vector<double> minimum_timestep,
                              std::vector<double> maximum_timestep,
-                             bool fix_duration, double duration,
-                             bool equalize_timestep_size, double dt_0 = -1);
+                             bool fix_duration, bool equalize_timestep_size,
+                             double first_mode_duration,
+                             double remaining_mode_duration);
 
   /// Returns a vector of matrices containing the state and derivative values at
   /// each breakpoint at the solution for each mode of the trajectory.
@@ -63,10 +61,9 @@ class RomTrajOpt
       std::vector<Eigen::VectorXd>* state_breaks) const;
   /// Returns a vector of matrices containing the state values at
   /// each breakpoint at the solution for each mode of the trajectory.
-  void GetStateSamples(
-      const drake::solvers::MathematicalProgramResult& result,
-      std::vector<Eigen::MatrixXd>* state_samples,
-      std::vector<Eigen::VectorXd>* state_breaks) const;
+  void GetStateSamples(const drake::solvers::MathematicalProgramResult& result,
+                       std::vector<Eigen::MatrixXd>* state_samples,
+                       std::vector<Eigen::VectorXd>* state_breaks) const;
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.

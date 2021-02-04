@@ -486,7 +486,7 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
   }
 }
 
-// OptimalRomTrackingData //////////////////////////////////////////////////////
+/**** OptimalRomTrackingData ****/
 OptimalRomTrackingData::OptimalRomTrackingData(
     const string& name, int n_y, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,

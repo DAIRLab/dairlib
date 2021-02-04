@@ -1,4 +1,5 @@
 #pragma once
+#include <drake/solvers/mathematical_program_result.h>
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -33,15 +34,14 @@ typedef struct CentroidalMode {
 class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
  public:
   /// Constructor
-  PlanarCentroidalTrajOpt(double I, double mass, double h,
-                    double T_ss, double T_ds, double mu);
+  PlanarCentroidalTrajOpt(double I, double mass, double h, double mu);
 
   /// Specifies a final pose (com position and angle) by adding a bounding box
   /// constraint to be within +/- eps of the final pose
-  void SetFinalPose(Eigen::Vector2d com, double theta, double eps);
+  void SetFinalPose(Eigen::Vector2d com, double theta, double eps=0.05);
 
   /// Adds a constraint on the final velocity
-  void SetFinalVel(Eigen::Vector2d v, double omega, double eps);
+  void SetFinalVel(Eigen::Vector2d v, double omega, double eps=0.01);
 
   /// Constraint on the final state (position and velocity in one function)
   void SetFinalState(Eigen::VectorXd state);
@@ -54,18 +54,19 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   void SetMaxDeviationConstraint(Eigen::Vector2d max);
   void SetInitialStateGuess();
   void SetInitialForceGuess();
+  drake::solvers::MathematicalProgramResult SolveProg();
 
  private:
   std::vector<Eigen::Vector2d> nominal_stance_;
   std::vector<stance> sequence_;
   std::vector<double> times_;
   std::vector<CentroidalMode> modes_;
+  Eigen::VectorXd x0_;
+  Eigen::VectorXd xf_;
 
   const double I_;
   const double mass_;
   const double h_;
-  const double T_ss_;
-  const double T_ds_;
   const double mu_;
 };
 }

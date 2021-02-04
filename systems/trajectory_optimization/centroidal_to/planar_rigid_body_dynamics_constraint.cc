@@ -27,8 +27,9 @@ PlanarRigidBodyDynamicsConstraint::PlanarRigidBodyDynamicsConstraint(
 ) : NonlinearConstraint<AutoDiffXd>(kLinearVars + kAngularVars + n_c * kStanceVars,
                                     2*(kLinearVars + kAngularVars) + n_c * (kForceVars + 2 * kStanceVars),
                                     VectorXd::Zero(
-                                        kLinearVars + kAngularVars),
-                                    VectorXd(kLinearVars + kAngularVars)),
+                                        kLinearVars + kAngularVars + n_c * kStanceVars),
+                                    VectorXd::Zero(
+                                        kLinearVars + kAngularVars + n_c * kStanceVars)),
     I_(I),
     mass_(mass),
     n_c_(n_c),

@@ -23,3 +23,12 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "test_planar",
+    srcs = ["test_planar.cc"],
+    deps = [
+        "//systems/trajectory_optimization/centroidal_to",
+        "@drake//:drake_shared_library",
+    ],
+)

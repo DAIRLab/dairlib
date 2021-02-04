@@ -2,9 +2,9 @@ rows: 3
 cols: 3
 
 # High level command gains (with radio)
-vel_scale_rot: -0.5
-vel_scale_trans_sagital: 0.6
-vel_scale_trans_lateral: -0.2
+vel_scale_rot: -1
+vel_scale_trans_sagital: 0.25
+vel_scale_trans_lateral: -0.15
 
 # High level command gains (without radio)
 global_target_position_x: 0
@@ -14,34 +14,20 @@ yaw_deadband_radius: 1
 kp_yaw: 1
 kd_yaw: 0.2
 vel_max_yaw: 0.5
-# 1. for capture point:
-#kp_pos_sagital: 1.0
-#kd_pos_sagital: 1.0
-#vel_max_sagital: 0.5
-#kp_pos_lateral: 0.25
-#kd_pos_lateral: 1.0
-#vel_max_lateral: 0.25
-#target_pos_offset: -0.16
-# 2. for neutral point:
+
 kp_pos_sagital: 1.0
 kd_pos_sagital: 0.2
-vel_max_sagital: 0.5
+vel_max_sagital: 0.25
 kp_pos_lateral: 0.5
 kd_pos_lateral: 0.1
-vel_max_lateral: 0.5
+vel_max_lateral: 0.15
 target_pos_offset: -0.16
 
 # Speed control gains
-# 1. for capture point:
-#k_ff_sagittal: 0.16
-#k_fb_sagittal: 0.04
-#k_ff_lateral: 0.08
-#k_fb_lateral: 0.02
-# 2. for neutral point:
 k_ff_sagittal: 0
-k_fb_sagittal: 0.14 #0.17
+k_fb_sagittal: 0.14
 k_ff_lateral: 0
-k_fb_lateral: 0.16 #0.2
+k_fb_lateral: 0.2
 
 # Finite state machine
 ss_time: 0.30
@@ -50,16 +36,16 @@ ds_time: 0.05
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.4
 footstep_offset: 0.04
-center_line_offset: 0.00
+center_line_offset: 0.05
 mid_foot_height: 0.03
-final_foot_height: 0.007
+final_foot_height: 0.000
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
 lipm_height: 0.9
 
 # OSC gains
-mu: 0.4
+mu: 0.8
 
 w_accel: 0.000001
 w_soft_constraint: 8000
@@ -90,11 +76,11 @@ PelvisBalanceW:
     0,    400,     0,
     0,      0,     0]
 PelvisBalanceKp:
-  [ 20,      0,    0,
+  [20,      0,    0,
     0,    100,    0,
     0,      0,    0]
 PelvisBalanceKd:
-  [   2,     0,    0,
+  [   1,     0,    0,
       0,    10,    0,
       0,     0,    0]
 
@@ -110,12 +96,12 @@ PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
       0,     0,    2]
-period_of_no_heading_control: 0.1
+period_of_no_heading_control: 0.0
 
 SwingFootW:
   [ 400,    0,     0,
-    0,  400,     0,
-    0,    0,   400]
+    0,    400,     0,
+    0,      0,   400]
 SwingFootKp:
   [ 200,    0,     0,
     0,  200,     0,

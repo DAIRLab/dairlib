@@ -100,8 +100,16 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
   times_ = times;
 
   Eigen::MatrixXd AeqForceKnots = Eigen::MatrixXd::Zero(kForceDim, 2*kForceDim);
-  AeqForceKnots.block(0, 0, kForceDim, kForceDim) = Eigen::MatrixXd::Identity(kForceDim, kForceDim);
-  AeqForceKnots.block(0, kForceDim, kForceDim, kForceDim) = -1 * Eigen::MatrixXd::Identity(kForceDim, kForceDim);
+  AeqForceKnots.block(0, 0, kForceDim, kForceDim) =
+      Eigen::MatrixXd::Identity(kForceDim, kForceDim);
+  AeqForceKnots.block(0, kForceDim, kForceDim, kForceDim) =
+      -1 * Eigen::MatrixXd::Identity(kForceDim, kForceDim);
+
+  Eigen::MatrixXd AeqStanceFoot = Eigen::MatrixXd::Zero(kStanceVars, 2*kStanceVars);
+  AeqStanceFoot.block(0, 0, kStanceVars, kStanceVars) =
+      Eigen::MatrixXd::Identity(kStanceVars, kStanceVars);
+  AeqStanceFoot.block(0, kStanceVars, kStanceVars, kStanceVars) =
+      -1 * Eigen::MatrixXd::Identity(kStanceVars, kStanceVars);
 
   Eigen::MatrixXd AeqModeTransition = Eigen::MatrixXd::Zero(kStateVars, 2* (kStateVars));
   AeqModeTransition.block(0, 0, kStateVars, kStateVars) =
@@ -133,8 +141,8 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
           "forces[" + std::to_string(i) + "," + std::to_string(j) + "]"));
     }
 
-    for (int j = 0; j < n_c; j++) {
-      mode.stance_vars_.push_back(NewContinuousVariables(kStanceVars,
+    for (int j = 0; j < n_knot_s; j++) {
+      mode.stance_vars_.push_back(NewContinuousVariables(kStanceVars * n_c,
                                                          "stance_pos["
                                                              + std::to_string(i)
                                                              + ","
@@ -152,26 +160,18 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
     for (int j = 0; j < n_knot_s - 1; j++) {
       auto rbd_constraint = std::make_shared<PlanarRigidBodyDynamicsConstraint>(
           I_, mass_, h_, n_c);
-      switch (n_c) {
-        case 0:
-          AddConstraint(rbd_constraint, {
-              mode.state_vars_[j],
-              mode.state_vars_[j + 1],
-              mode.force_vars_[j]});
-          break;
-        case 1:
-          AddConstraint(rbd_constraint, {
-              mode.state_vars_[j],
-              mode.state_vars_[j + 1],
-              mode.force_vars_[j],
-              mode.stance_vars_[0]});
-        case 2:
-          AddConstraint(rbd_constraint, {
-              mode.state_vars_[j],
-              mode.state_vars_[j + 1],
-              mode.force_vars_[j],
-              mode.stance_vars_[0],
-              mode.stance_vars_[1]});
+      if(n_c == 0) {
+        AddConstraint(rbd_constraint, {
+            mode.state_vars_[j],
+            mode.state_vars_[j + 1],
+            mode.force_vars_[j]});
+      } else {
+        AddConstraint(rbd_constraint, {
+            mode.state_vars_[j],
+            mode.state_vars_[j + 1],
+            mode.stance_vars_[j],
+            mode.stance_vars_[j + 1],
+            mode.force_vars_[j]});
       }
       for (int k = 0; k < n_c; k++) {
         AddLinearEqualityConstraint(AeqForceKnots, beq,
@@ -191,19 +191,29 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
     if (i == 0) {
       for (int k = 0; k < n_c; k++ ) {
         for (int z = 0; z < kForceVars / kForceDim; z++) {
-          AddLinearConstraint(friction_cone, zero, inf, mode.force_vars_[0].segment(k*kForceVars + kForceDim*z, kForceDim));
+          AddLinearConstraint(friction_cone, zero, inf,
+              mode.force_vars_[0].segment(
+                  k*kForceVars + kForceDim*z, kForceDim));
         }
       }
     }
 
     // zero impact force for incoming swing leg and friction cone constraint
     // for stance foot
+    // Stance foot cannot change
     if (i != 0 && sequence_[i] == stance::D) {
       AddBoundingBoxConstraint(
           Eigen::VectorXd::Zero(kForceDim),
           Eigen::VectorXd::Zero(kForceDim),
           mode.force_vars_[0].segment(kForceVars * (1 - sequence_[i - 1]),
                                    kForceDim));
+      AddLinearEqualityConstraint(AeqStanceFoot,
+                               Eigen::VectorXd::Zero(kStanceVars),
+                                  { mode.stance_vars_.begin()->segment(
+                                      kStanceVars * (sequence_[i - 1]),
+                                                           kStanceVars),
+                                    modes_[i-1].stance_vars_.end()->segment(
+                                        0, kStanceVars)});
     }
 
     // zero force for outgoing swing leg at end of mode
@@ -213,6 +223,15 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
           Eigen::VectorXd::Zero(kForceDim),
           mode.force_vars_[0].segment(kForceVars * (sequence_[i - 1]),
                                                            kForceDim));
+    }
+
+    if (sequence_[i-1] == stance::D) {
+      AddLinearEqualityConstraint(AeqStanceFoot,
+                                  Eigen::VectorXd::Zero(kStanceVars),
+                                  {
+        mode.stance_vars_.begin()->segment(0, kStanceVars),
+        modes_[i-1].stance_vars_.end()->segment(
+            kStanceVars * (sequence_[i]), kStanceVars)});
     }
 
     modes_.push_back(mode);
@@ -230,6 +249,25 @@ void PlanarCentroidalTrajOpt::SetNominalStance(Eigen::Vector2d left,
   nominal_stance_.clear();
   nominal_stance_.push_back(left);
   nominal_stance_.push_back(right);
+  for(int i = 0; i< modes_.size(); i++) {
+    for (int j = 0; j < modes_[i].stance_vars_.size(); j++) {
+      switch(sequence_[i]) {
+        case (stance::L):
+          SetInitialGuess(modes_[i].stance_vars_[j],
+              nominal_stance_[stance::L]);
+          break;
+        case(stance::R):
+          SetInitialGuess(modes_[i].stance_vars_[j],
+                          nominal_stance_[stance::R]);
+          break;
+        case(stance::D):
+          SetInitialGuess(modes_[i].stance_vars_[j].head(kStanceVars),
+              nominal_stance_[stance::L]);
+          SetInitialGuess(modes_[i].stance_vars_[j].tail(kStanceVars),
+                          nominal_stance_[stance::R]);
+      }
+    }
+  }
 }
 
 void PlanarCentroidalTrajOpt::SetMaxDeviationConstraint(Eigen::Vector2d max) {
@@ -248,18 +286,24 @@ void PlanarCentroidalTrajOpt::SetMaxDeviationConstraint(Eigen::Vector2d max) {
   for (int i = 0; i < sequence_.size(); i++) {
     switch (sequence_[i]) {
       case (stance::L):
-        AddBoundingBoxConstraint(lbs[stance::L], ubs[stance::L],
-            modes_[i].stance_vars_[0]);
+        for (int j = 0; j < modes_[i].stance_vars_.size(); j++) {
+          AddBoundingBoxConstraint(lbs[stance::L], ubs[stance::L],
+                                   modes_[i].stance_vars_[j]);
+        }
         break;
       case (stance::R) :
-        AddBoundingBoxConstraint(lbs[stance::R], ubs[stance::R],
-                                 modes_[i].stance_vars_[0]);
+        for (int j = 0; j < modes_[i].stance_vars_.size(); j++) {
+          AddBoundingBoxConstraint(lbs[stance::R], ubs[stance::R],
+                                   modes_[i].stance_vars_[j]);
+        }
         break;
       case (stance::D) :
-        AddBoundingBoxConstraint(lbs[stance::L], ubs[stance::L],
-                                 modes_[i].stance_vars_[0]);
-        AddBoundingBoxConstraint(lbs[stance::R], ubs[stance::R],
-                                 modes_[i].stance_vars_[1]);
+        for (int j = 0; j < modes_[i].stance_vars_.size(); j++) {
+          AddBoundingBoxConstraint(lbs[stance::L], ubs[stance::L],
+                                   modes_[i].stance_vars_[j].head(kStanceVars));
+          AddBoundingBoxConstraint(lbs[stance::R], ubs[stance::R],
+                                   modes_[i].stance_vars_[j].tail(kStanceVars));
+        }
         break;
     }
   }
@@ -267,16 +311,45 @@ void PlanarCentroidalTrajOpt::SetMaxDeviationConstraint(Eigen::Vector2d max) {
 
 void PlanarCentroidalTrajOpt::SetInitialStateGuess() {
   int n_knot_s = 0;
+  double t = 0;
   Eigen::VectorXd delta_pos =
       modes_.end()->state_vars_.end()->head(kLinearDim + kAngularDim) -
       modes_.begin()->state_vars_.begin()->head(kLinearDim + kAngularDim);
 
   for (int i = 0; i < modes_.size(); i++) {
     n_knot_s += modes_[i].state_vars_.size() - 1;
+    t+=times_[i];
   }
-  Eigen::VectorXd v_avg = (1.0/n_knot_s) * delta_pos;
 
 
+  Eigen::VectorXd delta_avg = (1.0/n_knot_s) * delta_pos;
+  Eigen::VectorXd v_avg = (1.0/t) * delta_pos;
+  Eigen::VectorXd pos = Eigen::VectorXd::Zero(kLinearDim+kAngularDim);
+
+  for (int i = 0; i < modes_.size(); i++){
+    for (int j = 0; j < modes_[i].state_vars_.size(); j++){
+      if ((i != 0 || j!= 0) && i != (modes_.size()-1) && j!= (modes_.end()->state_vars_.size() - 1)){
+        SetInitialGuess(modes_[i].state_vars_[j].tail(kLinearDim + kAngularDim),
+                        v_avg);
+        pos += delta_avg;
+        SetInitialGuess(modes_[i].state_vars_[j].head(kLinearDim + kAngularDim),
+            pos);
+      }
+    }
+  }
+}
+
+void PlanarCentroidalTrajOpt::SetInitialForceGuess() {
+  Eigen::VectorXd f = Eigen::VectorXd::Zero(kForceDim);
+  f.tail(1) = 9.81 * mass_ * Eigen::VectorXd::Ones(1);
+
+  for (int i = 0; i < modes_.size(); i++){
+    for (int j = 0; j < modes_[i].force_vars_.size(); j++) {
+      for (int k = 0; k < kForceVars; k+=kForceDim) {
+        SetInitialGuess(modes_[i].force_vars_[j].segment(k, kForceDim),f);
+      }
+    }
+  }
 }
 
 }

@@ -31,8 +31,7 @@ class PlanarRigidBodyDynamicsConstraint
 
  private:
   drake::VectorX<drake::AutoDiffXd> F(drake::VectorX<drake::AutoDiffXd> x,
-                                      std::vector<drake::Vector2<drake::AutoDiffXd>> forces,
-                                      std::vector<drake::Vector2<drake::AutoDiffXd>> p) const;
+                                      std::vector<drake::Vector2<drake::AutoDiffXd>> forces) const;
 
   double I_;
   double mass_;

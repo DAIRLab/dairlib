@@ -92,17 +92,12 @@ def main():
   # Default time window values, can override
   t_start = t_u[10]
   t_end = t_u[-1000]
-  # import pdb; pdb.set_trace()
   # Override here #
   # t_start = 28
   # t_end = 32
   ### Convert times to indices
-  t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
-  t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
-  t_slice = slice(t_start_idx, t_end_idx)
-  start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
-  end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
-  t_u_slice = slice(start_time_idx, end_time_idx)
+  t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
+  t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
 
   # t_lcmlog_u -= t_lcmlog_u[0] - t_u[0]
   # plt.plot(t_u[:-1], np.diff(t_u))
@@ -119,8 +114,6 @@ def main():
   # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
   # plt.plot(t_contact_info, contact_info[2, :, 2], 'r-')
   # plt.plot(t_u[t_u_slice], 100 * fsm[t_u_slice], 'k')
-
-  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
 
   if True:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
@@ -139,7 +132,6 @@ def main():
 
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
-
 
 def plot_contact_est(log):
   t_contact = []

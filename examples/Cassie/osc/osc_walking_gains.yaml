@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.050
+impact_threshold: 0.025
 
 # High level command gains (with radio)
 vel_scale_rot: 1
@@ -63,8 +63,8 @@ hip_yaw_kp: 40
 hip_yaw_kd: 0.5
 
 w_stance_hip_roll: 50
-stance_hip_roll_kp: 2
-stance_hip_roll_kd: 1
+stance_hip_roll_kp: 100
+stance_hip_roll_kd: 10
 
 CoMW:
   [   0,    0,     0,

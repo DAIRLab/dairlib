@@ -1,6 +1,9 @@
 rows: 3
 cols: 3
 
+# Invariant Impacts
+impact_threshold: 0.025
+
 # High level command gains (with radio)
 vel_scale_rot: -1
 vel_scale_trans_sagital: 0.25
@@ -76,11 +79,11 @@ PelvisBalanceW:
     0,    400,     0,
     0,      0,     0]
 PelvisBalanceKp:
-  [20,      0,    0,
+  [50,      0,    0,
     0,    100,    0,
     0,      0,    0]
 PelvisBalanceKd:
-  [   1,     0,    0,
+  [  10,     0,    0,
       0,    10,    0,
       0,     0,    0]
 

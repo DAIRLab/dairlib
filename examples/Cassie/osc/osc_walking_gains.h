@@ -1,5 +1,6 @@
-#include "drake/common/yaml/yaml_read_archive.h"
 #include "yaml-cpp/yaml.h"
+
+#include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
 
@@ -58,6 +59,7 @@ struct OSCWalkingGains {
   double vel_scale_rot;
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
+  double impact_threshold;
 
   MatrixXd W_com;
   MatrixXd K_p_com;
@@ -140,6 +142,7 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(vel_scale_rot));
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
     a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
+    a->Visit(DRAKE_NVP(impact_threshold));
 
     W_com = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

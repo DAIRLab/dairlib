@@ -237,6 +237,11 @@ class LcmDrivenLoop {
                 std::chrono::system_clock::now().time_since_epoch())
                 .count());
         simulator_->AdvanceTo(time);
+        if (is_forced_publish_) {
+          // Force-publish via the diagram
+          diagram_ptr_->Publish(diagram_context);
+        }
+
         loop_end_timestamps_.push_back(
             std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::system_clock::now().time_since_epoch())
@@ -251,10 +256,6 @@ class LcmDrivenLoop {
                    << "," << loop_end_timestamps_[i] << "\n";
           }
           myfile.close();
-        }
-        if (is_forced_publish_) {
-          // Force-publish via the diagram
-          diagram_ptr_->Publish(diagram_context);
         }
 
         // Clear messages in the current input channel

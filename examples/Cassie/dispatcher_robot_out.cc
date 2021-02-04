@@ -229,37 +229,23 @@ int do_main(int argc, char* argv[]) {
 
   // Create and connect RobotOutput publisher.
   auto robot_output_sender =
-      builder.AddSystem<systems::RobotOutputSender>(plant, true);
+      builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
 
-  if(FLAGS_floating_base){
-    // Create and connect contact estimation publisher.
-    auto contact_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
-            "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
-    builder.Connect(state_estimator->get_contact_output_port(),
-                    contact_pub->get_input_port());
-    // Create and connect contact estimation publisher.
-    auto filtered_contact_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
-            "CASSIE_FILTERED_CONTACT_DISPATCHER", &lcm_local,
-            {TriggerType::kForced}));
-    auto gm_contact_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-            "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
-    auto gm_contact_for_fsm_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-            "CASSIE_CONTACT_FOR_FSM_DISPATCHER", &lcm_local, {TriggerType::kForced}));
-    builder.Connect(state_estimator->get_filtered_contact_output_port(),
-                    filtered_contact_pub->get_input_port());
-    builder.Connect(state_estimator->get_gm_contact_output_port(),
-                    gm_contact_pub->get_input_port());
-    builder.Connect(state_estimator->get_gm_contact_for_fsm_output_port(),
-                    gm_contact_for_fsm_pub->get_input_port());
-  }
-
+  // Create and connect contact estimation publisher.
+  auto contact_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
+          "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+  builder.Connect(state_estimator->get_contact_output_port(),
+                  contact_pub->get_input_port());
+  //TODO(yangwill): Consider filtering contact estimation
+  auto gm_contact_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+          "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+  builder.Connect(state_estimator->get_gm_contact_output_port(),
+                  gm_contact_pub->get_input_port());
 
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_pub =
@@ -278,6 +264,11 @@ int do_main(int argc, char* argv[]) {
       robot_output_sender->get_input_port_state().size(),
       robot_output_sender->get_input_port_effort().size());
 
+  auto imu_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+      state_estimator->get_robot_output_port().size(),
+      robot_output_sender->get_input_port_state().size() + robot_output_sender->get_input_port_effort().size(),
+      robot_output_sender->get_input_port_imu().size());
+
   builder.Connect(state_estimator->get_robot_output_port(),
                   state_passthrough->get_input_port());
   builder.Connect(state_passthrough->get_output_port(),
@@ -287,6 +278,11 @@ int do_main(int argc, char* argv[]) {
                   effort_passthrough->get_input_port());
   builder.Connect(effort_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_effort());
+
+  builder.Connect(state_estimator->get_robot_output_port(),
+                  imu_passthrough->get_input_port());
+  builder.Connect(imu_passthrough->get_output_port(),
+                  robot_output_sender->get_input_port_imu());
 
   builder.Connect(*robot_output_sender, *state_pub);
 

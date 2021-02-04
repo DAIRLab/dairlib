@@ -55,14 +55,12 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       std::vector<double> left_right_support_durations,
       std::vector<std::pair<const Eigen::Vector3d,
                             const drake::multibody::Frame<double>&>>
-      left_right_foot,
+          left_right_foot,
       std::string floating_base_body_name, double mid_foot_height,
       double desired_final_foot_height,
       double desired_final_vertical_foot_velocity,
       double max_com_to_x_footstep_dist, double footstep_offset,
-      double center_line_offset, bool add_speed_regularization,
-      bool is_feet_collision_avoid, bool is_using_predicted_com,
-      int footstep_option = 0);
+      double center_line_offset);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -71,14 +69,14 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
-  const {
-    return this->get_input_port(fsm_switch_time_port_);
+      const {
+    return this->get_input_port(liftoff_time_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_com() const {
     return this->get_input_port(com_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_sc() const {
-    return this->get_input_port(speed_control_port_);
+    return this->get_input_port(footstep_adjustment_port_);
   }
 
  private:
@@ -103,11 +101,11 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
 
   int state_port_;
   int fsm_port_;
-  int fsm_switch_time_port_;
+  int liftoff_time_port_;
   int com_port_;
-  int speed_control_port_;
+  int footstep_adjustment_port_;
 
-  int prev_liftoff_swing_foot_idx_;
+  int liftoff_swing_foot_pos_idx_;
   int prev_fsm_state_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -133,12 +131,6 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
                           const drake::multibody::Frame<double>&>>
       swing_foot_map_;
   std::map<int, double> duration_map_;
-
-  // options
-  bool add_speed_regularization_;
-  bool is_feet_collision_avoid_;
-  bool is_using_predicted_com_;
-  int footstep_option_;
 
   // COM vel filtering
   // TODO(yminchen): extract this filter out of WalkingSpeedControl and

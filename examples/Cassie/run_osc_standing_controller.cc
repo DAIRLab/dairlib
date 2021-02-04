@@ -13,8 +13,8 @@
 #include "systems/primitives/gaussian_noise_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
-
 #include "drake/common/yaml/yaml_read_archive.h"
+
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 

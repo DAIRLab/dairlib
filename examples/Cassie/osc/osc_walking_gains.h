@@ -1,14 +1,11 @@
-#include "yaml-cpp/yaml.h"
-
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "yaml-cpp/yaml.h"
 
 using Eigen::MatrixXd;
 
 struct OSCWalkingGains {
   int rows;
   int cols;
-
-  // OSC gains
   double mu;
   double w_accel;
   double w_soft_constraint;
@@ -30,28 +27,6 @@ struct OSCWalkingGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
-  double w_stance_hip_roll;
-  double stance_hip_roll_kp;
-  double stance_hip_roll_kd;
-
-  // Impact Invariance
-  double impact_threshold;
-
-  // Convert to eigen form
-  MatrixXd W_com;
-  MatrixXd K_p_com;
-  MatrixXd K_d_com;
-  MatrixXd W_pelvis_heading;
-  MatrixXd K_p_pelvis_heading;
-  MatrixXd K_d_pelvis_heading;
-  MatrixXd W_pelvis_balance;
-  MatrixXd K_p_pelvis_balance;
-  MatrixXd K_d_pelvis_balance;
-  MatrixXd W_swing_foot;
-  MatrixXd K_p_swing_foot;
-  MatrixXd K_d_swing_foot;
-
-  //
   double period_of_no_heading_control;
   double max_CoM_to_footstep_dist;
   double center_line_offset;
@@ -78,17 +53,35 @@ struct OSCWalkingGains {
   double target_pos_offset;
   double global_target_position_x;
   double global_target_position_y;
-  double params_of_no_turning1;
-  double params_of_no_turning2;
+  double yaw_deadband_blur;
+  double yaw_deadband_radius;
   double vel_scale_rot;
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
+
+  MatrixXd W_com;
+  MatrixXd K_p_com;
+  MatrixXd K_d_com;
+  MatrixXd W_pelvis_heading;
+  MatrixXd K_p_pelvis_heading;
+  MatrixXd K_d_pelvis_heading;
+  MatrixXd W_pelvis_balance;
+  MatrixXd K_p_pelvis_balance;
+  MatrixXd K_d_pelvis_balance;
+  MatrixXd W_swing_foot;
+  MatrixXd K_p_swing_foot;
+  MatrixXd K_d_swing_foot;
+  MatrixXd W_swing_toe;
+  MatrixXd K_p_swing_toe;
+  MatrixXd K_d_swing_toe;
+  MatrixXd W_hip_yaw;
+  MatrixXd K_p_hip_yaw;
+  MatrixXd K_d_hip_yaw;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
-    a->Visit(DRAKE_NVP(impact_threshold));
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));
@@ -141,51 +134,54 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(target_pos_offset));
     a->Visit(DRAKE_NVP(global_target_position_x));
     a->Visit(DRAKE_NVP(global_target_position_y));
-    a->Visit(DRAKE_NVP(params_of_no_turning1));
-    a->Visit(DRAKE_NVP(params_of_no_turning2));
+    a->Visit(DRAKE_NVP(yaw_deadband_blur));
+    a->Visit(DRAKE_NVP(yaw_deadband_radius));
     // High level command gains (with radio)
     a->Visit(DRAKE_NVP(vel_scale_rot));
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
     a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
-    a->Visit(DRAKE_NVP(w_stance_hip_roll));
-    a->Visit(DRAKE_NVP(stance_hip_roll_kp));
-    a->Visit(DRAKE_NVP(stance_hip_roll_kd));
 
     W_com = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->CoMW.data(), 3, 3);
+        this->CoMW.data(), this->rows, this->cols);
     K_p_com = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->CoMKp.data(), 3, 3);
+        this->CoMKp.data(), this->rows, this->cols);
     K_d_com = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->CoMKd.data(), 3, 3);
+        this->CoMKd.data(), this->rows, this->cols);
     W_pelvis_heading = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->PelvisHeadingW.data(), 3, 3);
+        this->PelvisHeadingW.data(), this->rows, this->cols);
     K_p_pelvis_heading = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->PelvisHeadingKp.data(), 3, 3);
+        this->PelvisHeadingKp.data(), this->rows, this->cols);
     K_d_pelvis_heading = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->PelvisHeadingKd.data(), 3, 3);
+        this->PelvisHeadingKd.data(), this->rows, this->cols);
     W_pelvis_balance = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->PelvisBalanceW.data(), 3, 3);
+        this->PelvisBalanceW.data(), this->rows, this->cols);
     K_p_pelvis_balance = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->PelvisBalanceKp.data(), 3, 3);
+        this->PelvisBalanceKp.data(), this->rows, this->cols);
     K_d_pelvis_balance = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->PelvisBalanceKd.data(), 3, 3);
+        this->PelvisBalanceKd.data(), this->rows, this->cols);
     W_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->SwingFootW.data(), 3, 3);
+        this->SwingFootW.data(), this->rows, this->cols);
     K_p_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->SwingFootKp.data(), 3, 3);
+        this->SwingFootKp.data(), this->rows, this->cols);
     K_d_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->SwingFootKd.data(), 3, 3);
+        this->SwingFootKd.data(), this->rows, this->cols);
+    W_swing_toe = this->w_swing_toe * MatrixXd::Identity(1, 1);
+    K_p_swing_toe = this->swing_toe_kp * MatrixXd::Identity(1, 1);
+    K_d_swing_toe = this->swing_toe_kd * MatrixXd::Identity(1, 1);
+    W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
+    K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
+    K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
   }
 };

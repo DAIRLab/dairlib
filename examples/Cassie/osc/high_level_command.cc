@@ -41,35 +41,39 @@ namespace osc {
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context, double vel_scale_rot,
-    double vel_scale_sagittal, double vel_scale_lateral)
+    double vel_scale_trans_sagital, double vel_scale_trans_lateral)
     : HighLevelCommand(plant, context) {
   cassie_out_port_ =
       this->DeclareAbstractInputPort("lcmt_cassie_output",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   use_radio_command_ = true;
+
   vel_scale_rot_ = vel_scale_rot;
-  vel_scale_sagittal_ = vel_scale_sagittal;
-  vel_scale_lateral_ = vel_scale_lateral;
+  vel_scale_trans_sagital_ = vel_scale_trans_sagital;
+  vel_scale_trans_lateral_ = vel_scale_trans_lateral;
 }
 
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    const Eigen::Vector2d& global_target_position,
-    const Eigen::Vector2d& params_of_no_turning, double kp_yaw, double kd_yaw,
-    double vel_max_yaw, double kp_pos_sagittal, double kd_pos_sagittal,
-    double kp_pos_lateral, double kd_pos_lateral, double target_pos_offset)
+    drake::systems::Context<double>* context, double kp_yaw, double kd_yaw,
+    double vel_max_yaw, double kp_pos_sagital, double kd_pos_sagital,
+    double vel_max_sagital, double kp_pos_lateral, double kd_pos_lateral,
+    double vel_max_lateral, double target_pos_offset,
+    const Vector2d& global_target_position,
+    const Vector2d& params_of_no_turning)
     : HighLevelCommand(plant, context) {
   use_radio_command_ = false;
   kp_yaw_ = kp_yaw;
   kd_yaw_ = kd_yaw;
   vel_max_yaw_ = vel_max_yaw;
-  kp_pos_sagittal_ = kp_pos_sagittal;
-  kd_pos_sagittal_ = kd_pos_sagittal;
+  kp_pos_sagital_ = kp_pos_sagital;
+  kd_pos_sagital_ = kd_pos_sagital;
+  vel_max_sagital_ = vel_max_sagital;
   target_pos_offset_ = target_pos_offset;
   kp_pos_lateral_ = kp_pos_lateral;
   kd_pos_lateral_ = kd_pos_lateral;
+  vel_max_lateral_ = vel_max_lateral;
 
   global_target_position_ = global_target_position;
   params_of_no_turning_ = params_of_no_turning;
@@ -110,12 +114,12 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
         context, cassie_out_port_);
     // TODO(yangwill) make sure there is a message available
     // des_vel indices: 0: yaw_vel (right joystick left/right)
-    //                  1: sagittal_vel (left joystick up/down)
+    //                  1: saggital_vel (left joystick up/down)
     //                  2: lateral_vel (left joystick left/right)
     Vector3d des_vel;
     des_vel << vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
-        vel_scale_sagittal_ * cassie_out->pelvis.radio.channel[0],
-        vel_scale_lateral_ * cassie_out->pelvis.radio.channel[1];
+        vel_scale_trans_sagital_ * cassie_out->pelvis.radio.channel[0],
+        vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
   } else {
     discrete_state->get_mutable_vector(des_vel_idx_)
@@ -196,16 +200,16 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
     // Sagital plane position PD control
     double com_vel_sagital = local_com_vel(0);
-    des_sagital_vel = kp_pos_sagittal_ * (local_com_pos_to_target_pos(0) +
-                                          target_pos_offset_) +
-                      -kd_pos_sagittal_ * (com_vel_sagital);
+    des_sagital_vel = kp_pos_sagital_ * (local_com_pos_to_target_pos(0) +
+                                         target_pos_offset_) +
+                      kd_pos_sagital_ * (-com_vel_sagital);
     des_sagital_vel = drake::math::saturate(des_sagital_vel, -vel_max_sagital_,
                                             vel_max_sagital_);
 
     // Frontal plane position PD control.  TODO(yminchen): tune this
     double com_vel_lateral = local_com_vel(1);
     des_lateral_vel = kp_pos_lateral_ * (local_com_pos_to_target_pos(1)) +
-                      -kd_pos_lateral_ * (com_vel_lateral);
+                      kd_pos_lateral_ * (-com_vel_lateral);
     des_lateral_vel = drake::math::saturate(des_lateral_vel, -vel_max_lateral_,
                                             vel_max_lateral_);
   }

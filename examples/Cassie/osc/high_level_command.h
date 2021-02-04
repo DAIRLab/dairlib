@@ -23,8 +23,11 @@ namespace osc {
 ///
 /// We use logistic function to implement the weighting for the current position
 /// y_c and y_t.
-/// Logistic function = 1 / (1 - params_1*exp(x-params_2))
+/// Logistic function = 1 / (1 +exp(-params_1*(x-params_2)))
 /// Function visualization: https://www.desmos.com/calculator/agxuc5gip8
+/// As an example, the function 1/(1+exp(-5*(x-1))) outputs 0.0007 when x = 0
+///                                                         0.5    when x = 1
+///                                                         0.9993 when x = 2
 ///
 /// The desired velocities are derived based on PD position control.
 ///
@@ -49,19 +52,22 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   ///
   /// Designed to be used with hardware
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::systems::Context<double>*, double vel_scale_rot,
-                   double vel_scale_sagittal, double vel_scale_lateral);
+                   drake::systems::Context<double>* context,
+                   double vel_scale_rot, double vel_scale_trans_sagital,
+                   double vel_scale_trans_lateral);
   /// Constructor that computes the desired yaw and translational velocities
   /// according to a global target position
   ///
   /// Designed to be used in simulation
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::systems::Context<double>* context,
+                   drake::systems::Context<double>* context, double kp_yaw,
+                   double kd_yaw, double vel_max_yaw, double kp_pos_sagital,
+                   double kd_pos_sagital, double vel_max_sagital,
+                   double kp_pos_lateral, double kd_pos_lateral,
+                   double vel_max_lateral, double target_pos_offset,
                    const Eigen::Vector2d& global_target_position,
-                   const Eigen::Vector2d& params_of_no_turning, double kp_yaw,
-                   double kd_yaw, double vel_max_yaw, double kp_pos_sagittal,
-                   double kd_pos_sagittal, double kp_pos_lateral,
-                   double kd_pos_lateral, double target_pos_offset);
+                   const Eigen::Vector2d& params_of_no_turning);
+
   // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -70,9 +76,6 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
     return this->get_output_port(yaw_port_);
   }
   const drake::systems::InputPort<double>& get_cassie_output_port() const {
-    if (cassie_out_port_ == -1) {
-      std::cerr << "Radio option not enabled" << std::endl;
-    }
     return this->get_input_port(cassie_out_port_);
   }
   const drake::systems::OutputPort<double>& get_xy_output_port() const {
@@ -102,12 +105,6 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
   bool use_radio_command_;
-  Eigen::Vector2d global_target_position_;
-  Eigen::Vector2d params_of_no_turning_;
-
-  double vel_scale_rot_;
-  double vel_scale_sagittal_;
-  double vel_scale_lateral_;
 
   // Port index
   int state_port_;
@@ -124,15 +121,22 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   double vel_max_yaw_;
 
   // Position control (sagital plane) parameters
-  double kp_pos_sagittal_;
-  double kd_pos_sagittal_;
-  double vel_max_sagital_ = 0.5;
+  double kp_pos_sagital_;
+  double kd_pos_sagital_;
+  double vel_max_sagital_;
   double target_pos_offset_;  // Due to steady state error
 
   // Position control (frontal plane) parameters
   double kp_pos_lateral_;
   double kd_pos_lateral_;
-  double vel_max_lateral_ = 0.5;
+  double vel_max_lateral_;
+
+  // Other parameters
+  Eigen::Vector2d global_target_position_;
+  Eigen::Vector2d params_of_no_turning_;
+  double vel_scale_rot_;
+  double vel_scale_trans_sagital_;
+  double vel_scale_trans_lateral_;
 };
 
 }  // namespace osc

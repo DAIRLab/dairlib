@@ -16,7 +16,7 @@ static constexpr double kMaxHeight = 1.2;
 static constexpr double kMinHeight = 0.3;
 static constexpr double kHeightScale = 0.2;
 static constexpr double kCoMXScale = 0.05;
-static constexpr double kCoMYScale = 0.1;
+static constexpr double kCoMYScale = -0.05;
 
 class StandingComTraj : public drake::systems::LeafSystem<double> {
  public:

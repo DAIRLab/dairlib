@@ -383,10 +383,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
       std::pair<string, string>("_left", "_right"),
       std::pair<string, string>("_right", "_left"),
   };
-  vector<string> asy_joint_names{
-      "hip_roll",
-      "hip_yaw",
-  };
+  vector<string> asy_joint_names{"hip_roll", "hip_yaw"};
   vector<string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
   vector<string> joint_names{};
   vector<string> motor_names{};
@@ -486,7 +483,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddConstraint(right_foot_x_constraint, x_mid.head(n_q));
   trajopt->AddConstraint(left_foot_x_constraint, xf.head(n_q));
 
-//   Foot clearance constraint
+  //   Foot clearance constraint
   auto left_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
@@ -531,116 +528,16 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   }
 }
 
-vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
-                                        const MultibodyPlant<double>& plant) {
-  int n_q = plant.num_positions();
-  int n_v = plant.num_velocities();
-  int n_x = n_q + n_v;
-  map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
+MatrixXd InterpolateTrajectory(const string& filepath, std::vector<int>& knotpoint_per_mode){
+  DirconTrajectory previous_traj = DirconTrajectory(filepath);
+  auto state_traj = previous_traj.ReconstructStateTrajectory();
+  auto input_traj = previous_traj.ReconstructInputTrajectory();
 
-  vector<VectorXd> q_init_guess;
-  VectorXd q_ik_guess = VectorXd::Zero(n_q);
-  Eigen::Vector4d quat(2000.06, -0.339462, -0.609533, -0.760854);
-  q_ik_guess << quat.normalized(), 0.000889849, 0.000626865, 1.0009, -0.0112109,
-      0.00927845, -0.000600725, -0.000895805, 1.15086, 0.610808, -1.38608,
-      -1.35926, 0.806192, 1.00716, -M_PI / 2, -M_PI / 2;
-
-  double factor = apex_height / (num_knot_points * num_knot_points / 4.0);
-  double rest_height = 1.0;
-
-  for (int i = 0; i < num_knot_points; i++) {
-    double eps = 1e-3;
-    Vector3d eps_vec = eps * VectorXd::Ones(3);
-    double height_offset = apex_height - factor * (i - num_knot_points / 2.0) *
-                                             (i - num_knot_points / 2.0);
-    Vector3d pelvis_pos(0.0, 0.0, rest_height + height_offset);
-    // Do not raise the toes as much as the pelvis, (leg extension)
-    Vector3d left_toe_pos(0.0, 0.12, 0.05 + height_offset * 0.5);
-    Vector3d right_toe_pos(0.0, -0.12, 0.05 + height_offset * 0.5);
-
-    const auto& world_frame = plant.world_frame();
-    const auto& pelvis_frame = plant.GetFrameByName("pelvis");
-    const auto& toe_left_frame = plant.GetFrameByName("toe_left");
-    const auto& toe_right_frame = plant.GetFrameByName("toe_right");
-
-    drake::multibody::InverseKinematics ik(plant);
-    ik.AddPositionConstraint(pelvis_frame, Vector3d(0, 0, 0), world_frame,
-                             pelvis_pos - eps * VectorXd::Ones(3),
-                             pelvis_pos + eps * VectorXd::Ones(3));
-    ik.AddOrientationConstraint(pelvis_frame, RotationMatrix<double>(),
-                                world_frame, RotationMatrix<double>(), eps);
-    ik.AddPositionConstraint(toe_left_frame, Vector3d(0, 0, 0), world_frame,
-                             left_toe_pos - eps_vec, left_toe_pos + eps_vec);
-    ik.AddPositionConstraint(toe_right_frame, Vector3d(0, 0, 0), world_frame,
-                             right_toe_pos - eps_vec, right_toe_pos + eps_vec);
-    ik.get_mutable_prog()->AddLinearConstraint(
-        (ik.q())(positions_map.at("hip_yaw_left")) == 0);
-    ik.get_mutable_prog()->AddLinearConstraint(
-        (ik.q())(positions_map.at("hip_yaw_right")) == 0);
-    // Four bar linkage constraint (without spring)
-    ik.get_mutable_prog()->AddLinearConstraint(
-        (ik.q())(positions_map.at("knee_left")) +
-            (ik.q())(positions_map.at("ankle_joint_left")) ==
-        M_PI * 13 / 180.0);
-    ik.get_mutable_prog()->AddLinearConstraint(
-        (ik.q())(positions_map.at("knee_right")) +
-            (ik.q())(positions_map.at("ankle_joint_right")) ==
-        M_PI * 13 / 180.0);
-
-    ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
-    const auto result = Solve(ik.prog());
-    const auto q_sol = result.GetSolution(ik.q());
-    // cout << "  q_sol = " << q_sol.transpose() << endl;
-    // cout << "  q_sol.head(4).norm() = " << q_sol.head(4).norm() << endl;
-    VectorXd q_sol_normd(n_q);
-    q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(n_q - 4);
-    q_ik_guess = q_sol_normd;
-    q_init_guess.push_back(q_sol_normd);
-
-    bool visualize_init_traj = false;
-    if (visualize_init_traj) {
-      // Build temporary diagram for visualization
-      drake::systems::DiagramBuilder<double> builder_ik;
-      SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
-      scene_graph_ik.set_name("scene_graph_ik");
-      MultibodyPlant<double> plant_ik(1e-4);
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8);
-      Parser parser(&plant_ik, &scene_graph_ik);
-      string full_name =
-          FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-      parser.AddModelFromFile(full_name);
-      plant_ik.mutable_gravity_field().set_gravity_vector(
-          -9.81 * Eigen::Vector3d::UnitZ());
-      plant_ik.Finalize();
-
-      // Visualize
-      VectorXd x_const = VectorXd::Zero(n_x);
-      x_const.head(n_q) = q_sol;
-      PiecewisePolynomial<double> pp_xtraj(x_const);
-
-      multibody::connectTrajectoryVisualizer(&plant_ik, &builder_ik,
-                                             &scene_graph_ik, pp_xtraj);
-      auto diagram = builder_ik.Build();
-      drake::systems::Simulator<double> simulator(*diagram);
-      simulator.set_target_realtime_rate(.1);
-      simulator.Initialize();
-      simulator.AdvanceTo(1.0 / num_knot_points);
-    }
-  }
-
-  return q_init_guess;
 }
 
-// Get v by finite differencing q
-vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
-                                  const MultibodyPlant<double>& plant) {}
-
 MatrixXd loadSavedDecisionVars(const string& filepath) {
-  DirconTrajectory loaded_decision_vars = DirconTrajectory(filepath);
-  for (auto& name : loaded_decision_vars.GetTrajectoryNames()) {
-    std::cout << name << std::endl;
-  }
-  return loaded_decision_vars.GetDecisionVariables();
+  DirconTrajectory previous_traj = DirconTrajectory(filepath);
+  return previous_traj.GetDecisionVariables();
 }
 
 }  // namespace dairlib

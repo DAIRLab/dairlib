@@ -46,6 +46,17 @@ class lcmt_osc_tracking_data_t:
     self.yddot_command = np.array(self.yddot_command)
     self.yddot_command_sol = np.array(self.yddot_command_sol)
 
+def skip_current_event(event, first_timestamp, lcm_end_time, lcm_start_time):
+  # Check timestamp and only proceed if time > seconds_ignored
+  if first_timestamp[0] < 0:
+    first_timestamp[0] = event.timestamp
+    if lcm_start_time <= 0:
+      return True
+  else:
+    if (event.timestamp - first_timestamp[0] < lcm_start_time * 1000000) \
+            or (event.timestamp - first_timestamp[0]) > lcm_end_time * 1000000:
+      return True
+  return False
 
 def process_log(log, pos_map, vel_map, act_map, controller_channel):
   t_x = []
@@ -77,16 +88,15 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
                      drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
 
-  seconds_ignored = 1
-  first_event_timestamp = -1
+  lcm_start_time = 1  # note that this is different from drake simulation time!
+  lcm_end_time = 1.5  # note that this is different from drake simulation time!
+  first_timestamp = [-1]  # use list in order to pass by reference
+  print("\nlcm_start_time = " + str(lcm_start_time))
+  print("lcm_end_time = " + str(lcm_end_time) + "\n")
 
   for event in log:
-    # Check timestamp and only proceed if time > seconds_ignored
-    if first_event_timestamp < 0:
-      first_event_timestamp  = event.timestamp
-    else:
-      if (event.timestamp - first_event_timestamp) < seconds_ignored * 1000000:
-        continue
+    if skip_current_event(event, first_timestamp, lcm_end_time, lcm_start_time):
+      continue
     # Read message
     if event.channel not in full_log and event.channel not in unknown_types:
       for lcmtype in known_lcm_types:

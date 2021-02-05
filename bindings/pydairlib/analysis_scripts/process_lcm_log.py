@@ -47,8 +47,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_command_sol = np.array(self.yddot_command_sol)
 
 def skip_current_event(event, first_timestamp, lcm_end_time, lcm_start_time):
-  # Check timestamp and only proceed if time > seconds_ignored
-  if first_timestamp[0] < 0:
+  if first_timestamp[0] < 0: # first time entering the for loop
     first_timestamp[0] = event.timestamp
     if lcm_start_time <= 0:
       return True

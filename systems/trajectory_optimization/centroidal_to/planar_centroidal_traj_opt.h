@@ -54,7 +54,7 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   void SetMaxDeviationConstraint(Eigen::Vector2d max);
   void SetInitialStateGuess();
   void SetInitialForceGuess();
-  drake::solvers::MathematicalProgramResult SolveProg();
+  drake::solvers::MathematicalProgramResult SolveProg(int iteration_limit);
 
  private:
   std::vector<Eigen::Vector2d> nominal_stance_;

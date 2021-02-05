@@ -35,7 +35,7 @@ PlanarRigidBodyDynamicsConstraint::PlanarRigidBodyDynamicsConstraint(
     n_c_(n_c),
     h_(h) {}
 
-/// Variable Ordering: X0, X1 ,P_1, ... P_nc {F0 Fc F1}_1, ... {F0 Fc F1}_nc,
+/// Variable Ordering: X0, X1 ,P_1, ... P_nc {F0 F1}_1, ... {F0 F1}_nc,
 
 void PlanarRigidBodyDynamicsConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>> &x,
@@ -51,8 +51,8 @@ void PlanarRigidBodyDynamicsConstraint::EvaluateConstraint(
 
   for (int i = 0; i < n_c_; i++) {
     f0.push_back(x.segment(2 * n_x + kForceVars * i, kForceDim));
-    fc.push_back(x.segment(2 * n_x + kForceVars * i + kForceDim, kForceDim));
-    f1.push_back(x.segment(2 * n_x + kForceVars * i + 2*kForceDim, kForceDim));
+    f1.push_back(x.segment(2 * n_x + kForceVars * i + kForceDim, kForceDim));
+    fc.push_back(0.5 * f0.back() + 0.5 * f1.back());
   }
 
   // compact form of collocation constraint
@@ -60,6 +60,7 @@ void PlanarRigidBodyDynamicsConstraint::EvaluateConstraint(
   VectorX F1 = F(x1, f1);
   VectorX xc = 0.5 * (x0 + x1) - (h_ / 8) * (F1 - F0);
   VectorX Fc = (3 / (2 * h_)) * (x1 - x0) - (1 / 4) * (F0 + F1);
+
   *y = Fc - F(xc, fc);
 }
 
@@ -81,7 +82,7 @@ VectorX PlanarRigidBodyDynamicsConstraint::F(VectorX x, std::vector<Vector2> for
                                                kLinearDim + kAngularDim);
 
   f.segment(kLinearDim + kAngularDim, kLinearDim) = (1/mass_) * force_sum + g;
-  f.segment(kLinearVars + kAngularDim, kAngularDim) = (1/I_)*pxf_sum;
+  f.segment(kStateVars - kAngularDim, kAngularDim) = (1/I_)*pxf_sum;
 
   for (int i = 0; i < n_c_; i++) {
     f.segment(kStateVars + kStanceVars*i, kStanceVars) = -1*x.segment(kLinearDim + kAngularDim, kLinearDim);

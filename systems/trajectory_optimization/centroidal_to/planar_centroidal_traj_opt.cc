@@ -2,6 +2,7 @@
 // Created by brian on 1/31/21.
 //
 
+#include <drake/solvers/snopt_solver.h>
 #include "planar_centroidal_traj_opt.h"
 #include "planar_rigid_body_dynamics_constraint.h"
 #include "solvers/constraint_factory.h"
@@ -131,7 +132,6 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
   inf << std::numeric_limits<double>::infinity(),
          std::numeric_limits<double>::infinity();
 
-  Eigen::VectorXd beq = Eigen::VectorXd::Zero(kForceDim);
 
   int n_modes = sequence.size();
 
@@ -141,6 +141,7 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
     int n_knot_f = std::round(times[i] / h_);
     int n_knot_s = n_knot_f + 1;
     int n_c = (sequence[i] == stance::D) ? 2 : 1;
+
     std::cout << "NC: " << n_c << std::endl;
     std::cout << "State Knot Points: " << n_knot_s << std::endl;
     std::cout << "Force Knot Points: " << n_knot_f << std::endl;
@@ -177,8 +178,7 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
       if(n_c == 0) {
         AddConstraint(rbd_constraint, {
             mode.state_vars_[j],
-            mode.state_vars_[j + 1],
-            mode.force_vars_[j]});
+            mode.state_vars_[j + 1]});
       } else {
         AddConstraint(rbd_constraint, {
             mode.state_vars_[j],
@@ -189,15 +189,15 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
       }
       for (int k = 0; k < n_c; k++) {
         if (j > 0) {
-          AddLinearEqualityConstraint(AeqForceKnots, beq,
-                                      {mode.force_vars_[j-1].segment(2 * kForceDim,
-                                                                   kForceDim),
-                                       mode.force_vars_[j].segment(
-                                           0, kForceDim)});
+          AddLinearEqualityConstraint(AeqForceKnots, Eigen::VectorXd::Zero(kForceDim),
+                                      {mode.force_vars_[j-1].segment(k * kForceVars + kForceDim,
+                                          kForceDim),
+                                       mode.force_vars_[j].segment(k * kForceVars,
+                                                                   kForceDim)});
 
         }
-        for (int z = 0; z < kForceVars / kForceDim; z++) {
-          AddLinearConstraint(friction_cone, zero, inf, mode.force_vars_[j].segment(k*kForceVars + kForceDim*z, kForceDim));
+        for (int z = 0; z < kForceVars; z += kForceDim) {
+          AddLinearConstraint(friction_cone, zero, inf, mode.force_vars_[j].segment(kForceVars * k + z, kForceDim));
         }
       }
     }
@@ -205,6 +205,7 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
     // zero impact force for incoming swing leg and friction cone constraint
     // for stance foot
     // Stance foot cannot change
+
     if (i != 0 && sequence_[i] == stance::D) {
       AddBoundingBoxConstraint(
           Eigen::VectorXd::Zero(kForceDim),
@@ -220,6 +221,7 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
     }
 
     // zero force for outgoing swing leg at end of mode
+
     if (i != n_modes - 1 && sequence_[i] == stance::D) {
       AddBoundingBoxConstraint(
           Eigen::VectorXd::Zero(kForceDim),
@@ -344,16 +346,22 @@ void PlanarCentroidalTrajOpt::SetInitialForceGuess() {
   f.tail(1) = 9.81 * mass_ * Eigen::VectorXd::Ones(1);
 
   for (int i = 0; i < modes_.size(); i++){
+    int n_c = (sequence_[i] == stance::D)? 2 : 1;
     for (int j = 0; j < modes_[i].force_vars_.size(); j++) {
-      for (int k = 0; k < kForceVars; k+=kForceDim) {
+      for (int k = 0; k < kForceVars * n_c; k+=kForceDim) {
         SetInitialGuess(modes_[i].force_vars_[j].segment(k, kForceDim),f);
       }
     }
   }
 }
 
-drake::solvers::MathematicalProgramResult PlanarCentroidalTrajOpt::SolveProg() {
-  auto result = drake::solvers::Solve(*this);
+drake::solvers::MathematicalProgramResult PlanarCentroidalTrajOpt::SolveProg(int iteration_limit) {
+  std::string outfile = "/home/brian/workspace/dairlib/systems/trajectory_optimization/centroidal_to/snopt.out";
+  SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", outfile);
+  SetSolverOption(drake::solvers::SnoptSolver::id(), "Major iterations limit", iteration_limit);
+
+  drake::solvers::SnoptSolver solver;
+  auto result = solver.Solve(*this, {}, {});
   return result;
 }
 

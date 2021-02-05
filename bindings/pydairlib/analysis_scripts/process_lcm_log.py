@@ -77,7 +77,17 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
                      drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
 
+  seconds_ignored = 1
+  first_event_timestamp = -1
+
   for event in log:
+    # Check timestamp and only proceed if time > seconds_ignored
+    if first_event_timestamp < 0:
+      first_event_timestamp  = event.timestamp
+    else:
+      if (event.timestamp - first_event_timestamp) < seconds_ignored * 1000000:
+        continue
+    # Read message
     if event.channel not in full_log and event.channel not in unknown_types:
       for lcmtype in known_lcm_types:
         try:

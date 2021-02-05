@@ -63,7 +63,13 @@ class LcmTrajectory {
   lcmt_metadata GetMetadata() const { return metadata_; }
 
   const Trajectory& GetTrajectory(const std::string& trajectory_name) const {
-    return trajectories_.at(trajectory_name);
+    try {
+      return trajectories_.at(trajectory_name);
+    } catch (std::exception& e) {
+      std::cerr << "Trajectory: " << trajectory_name << " does not exist."
+                << std::endl;
+      return Trajectory();
+    }
   }
 
   /// Add additional LcmTrajectory::Trajectory objects

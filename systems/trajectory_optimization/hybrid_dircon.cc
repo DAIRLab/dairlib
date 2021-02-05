@@ -680,8 +680,10 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
     assigned_sum++;
   }
 
-  for (auto& n : num_poses_per_mode)
+  std::cout << "poses per mode: " << std::endl;
+  for (auto& n : num_poses_per_mode){
     std::cout << n << std::endl;
+  }
   CreateVisualizationCallback(model_file, num_poses_per_mode, alpha,
       weld_frame_to_world);
 }

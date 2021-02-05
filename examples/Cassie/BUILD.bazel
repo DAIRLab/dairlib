@@ -374,6 +374,7 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
+        "//examples/Cassie/osc",
         "//examples/Cassie/osc_jump",
         "//examples/Cassie/osc_walk",
         "//lcm:trajectory_saver",

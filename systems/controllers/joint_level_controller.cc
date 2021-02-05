@@ -66,8 +66,8 @@ void JointLevelController::CalcControl(
   auto state = (OutputVector<double>*)this->EvalVectorInput(
       context, input_port_info_index_);
   double timestamp = state->get_timestamp();
-  double phase = std::min(max_periods_ * state_traj_.end_time(), timestamp);
-  phase = std::fmod(phase, state_traj_.end_time());
+//  double phase = std::min(max_periods_ * state_traj_.end_time(), timestamp);
+  double phase = std::fmod(timestamp, state_traj_.end_time() - 0.2);
   VectorXd u_ff = input_traj_.value(phase);
   VectorXd u_fb = -K_ * (state->GetState() - map_ * state_traj_.value(phase));
   control->set_timestamp(timestamp);

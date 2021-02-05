@@ -79,11 +79,11 @@ PelvisBalanceW:
     0,    400,     0,
     0,      0,     0]
 PelvisBalanceKp:
-  [50,      0,    0,
+  [ 20,      0,    0,
     0,    100,    0,
     0,      0,    0]
 PelvisBalanceKd:
-  [  10,     0,    0,
+  [   2,     0,    0,
       0,    10,    0,
       0,     0,    0]
 

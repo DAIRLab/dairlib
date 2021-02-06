@@ -599,14 +599,25 @@ int DoMain(int argc, char* argv[]) {
   x_to_plot.col(1) = x_mirror;
   cout << "x_to_plot= \n" << x_to_plot << endl;
 
+  std::vector<int> test_stance = {left_stance_state, right_stance_state};
+
+  optimal_rom_traj.y_des_ = VectorXd::Zero(rom->n_y());
+  optimal_rom_traj.ydot_des_ = VectorXd::Zero(rom->n_y());
+  optimal_rom_traj.yddot_des_ = VectorXd::Zero(rom->n_y());
+  optimal_rom_traj.yddot_des_converted_ = VectorXd::Zero(rom->n_y());
+
   MatrixXd rom_y_pair(rom->n_y(), 2);
   MatrixXd rom_ydot_pair(rom->n_y(), 2);
   MatrixXd rom_jdotv_pair(rom->n_y(), 2);
   for (int i = 0; i < 2; i++) {
     VectorXd x_wo_spr = x_to_plot.col(i);
+
+    // Set context
     plant_wo_springs.SetPositions(context_wo_spr.get(), x_wo_spr.head(n_q));
     plant_wo_springs.SetVelocities(context_wo_spr.get(), x_wo_spr.tail(n_v));
-    optimal_rom_traj.UpdateTrackingFlag(left_stance_state);
+
+    // Update the value
+    optimal_rom_traj.UpdateTrackingFlag(test_stance[i]);
     optimal_rom_traj.UpdateYAndError(x_wo_spr, *context_wo_spr);
     optimal_rom_traj.UpdateYdotAndError(x_wo_spr, *context_wo_spr);
     optimal_rom_traj.UpdateJ(x_wo_spr, *context_wo_spr);
@@ -617,10 +628,9 @@ int DoMain(int argc, char* argv[]) {
     rom_ydot_pair.col(i) = optimal_rom_traj.GetYdot();
     rom_jdotv_pair.col(i) = optimal_rom_traj.GetJdotTimesV();
   }
-  cout << "rom_y_pair = " << rom_y_pair << endl;
-  cout << "rom_ydot_pair = " << rom_ydot_pair << endl;
-  cout << "rom_jdotv_pair = " << rom_jdotv_pair << endl;
-
+  cout << "\nrom_y_pair = \n" << rom_y_pair << endl;
+  cout << "\nrom_ydot_pair = \n" << rom_ydot_pair << endl;
+  cout << "\nrom_jdotv_pair = \n" << rom_jdotv_pair << endl;
 
   //  optimal_rom_traj.AddRom(*rom);
   // TODO(yminchen): I think currently there are two potential issues.

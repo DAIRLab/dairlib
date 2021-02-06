@@ -340,8 +340,9 @@ std::set<int> MirrorVelSignChangeSet(
     // No sign change
   } else {
     std::vector<std::string> asy_joint_names = {
-        "base_wy",          "base_vy",          "hip_roll_rightdot",
-        "hip_yaw_rightdot", "hip_roll_leftdot", "hip_yaw_leftdot"};
+        "base_wx",           "base_wz",          "base_vy",
+        "hip_roll_rightdot", "hip_yaw_rightdot", "hip_roll_leftdot",
+        "hip_yaw_leftdot"};
 
     for (const auto& name : asy_joint_names) {
       ret.insert(pos_map.at(name));

@@ -79,7 +79,7 @@ using multibody::JwrtqdotToJwrtv;
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_double(const_walking_speed_x, 0.5, "Walking speed in local x axis");
 
-DEFINE_bool(start_with_right_stance, false, "");
+DEFINE_bool(start_with_left_stance, true, "");
 
 //
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -273,7 +273,7 @@ int DoMain(int argc, char* argv[]) {
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {
-    if (FLAGS_start_with_right_stance) {
+    if (!FLAGS_start_with_left_stance) {
       fsm_states = {right_stance_state, left_stance_state};
       state_durations = {right_support_duration, left_support_duration};
     } else {
@@ -281,7 +281,7 @@ int DoMain(int argc, char* argv[]) {
       state_durations = {left_support_duration, right_support_duration};
     }
   } else {
-    if (FLAGS_start_with_right_stance) {
+    if (!FLAGS_start_with_left_stance) {
       fsm_states = {right_stance_state, post_right_double_support_state,
                     left_stance_state, post_left_double_support_state};
       state_durations = {right_support_duration, double_support_duration,

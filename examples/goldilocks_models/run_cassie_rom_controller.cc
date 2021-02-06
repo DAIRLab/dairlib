@@ -576,52 +576,6 @@ int DoMain(int argc, char* argv[]) {
   optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
   optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
                                   mirrored_rom);
-
-  const std::string path =
-      "../dairlib_data/goldilocks_models/planning/robot_1/data/x_init_test.csv";
-
-  int n_q = plant_wo_springs.num_positions();
-  //  int n_v = plant_wo_springs.num_velocities();
-  int n_x =
-      plant_wo_springs.num_positions() + plant_wo_springs.num_velocities();
-
-  MatrixXd x_to_plot(n_x, 2);
-  ;
-  x_to_plot.col(0) = readCSV(path).col(0);
-  //  x_to_plot(5, 0) += 0.2;
-
-  VectorXd x_mirror(n_x);
-  x_mirror << state_mirror.MirrorPos(
-      x_to_plot.col(0).head(plant_wo_springs.num_positions())),
-      state_mirror.MirrorVel(
-          x_to_plot.col(0).tail(plant_wo_springs.num_velocities()));
-
-  x_to_plot.col(1) = x_mirror;
-  cout << "x_to_plot= \n" << x_to_plot << endl;
-
-  MatrixXd rom_y_pair(rom->n_y(), 2);
-  MatrixXd rom_ydot_pair(rom->n_y(), 2);
-  MatrixXd rom_jdotv_pair(rom->n_y(), 2);
-  for (int i = 0; i < 2; i++) {
-    VectorXd x_wo_spr = x_to_plot.col(i);
-    plant_wo_springs.SetPositions(context_wo_spr.get(), x_wo_spr.head(n_q));
-    plant_wo_springs.SetVelocities(context_wo_spr.get(), x_wo_spr.tail(n_v));
-    optimal_rom_traj.UpdateTrackingFlag(left_stance_state);
-    optimal_rom_traj.UpdateYAndError(x_wo_spr, *context_wo_spr);
-    optimal_rom_traj.UpdateYdotAndError(x_wo_spr, *context_wo_spr);
-    optimal_rom_traj.UpdateJ(x_wo_spr, *context_wo_spr);
-    optimal_rom_traj.UpdateJdotV(x_wo_spr, *context_wo_spr);
-
-    cout << "GetJ() = \n" << optimal_rom_traj.GetJ() << endl;
-    rom_y_pair.col(i) = optimal_rom_traj.GetY();
-    rom_ydot_pair.col(i) = optimal_rom_traj.GetYdot();
-    rom_jdotv_pair.col(i) = optimal_rom_traj.GetJdotTimesV();
-  }
-  cout << "rom_y_pair = " << rom_y_pair << endl;
-  cout << "rom_ydot_pair = " << rom_ydot_pair << endl;
-  cout << "rom_jdotv_pair = " << rom_jdotv_pair << endl;
-
-
   //  optimal_rom_traj.AddRom(*rom);
   // TODO(yminchen): I think currently there are two potential issues.
   //  1. the optimal ROM is ~COM_wrt_stance_foot, but the LIPM traj is wrt world

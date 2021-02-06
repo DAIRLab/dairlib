@@ -151,11 +151,11 @@ def plot_contact_est(log):
     msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
     t_filtered_contact.append(msg.utime / 1e6)
     contact_filtered.append(list(msg.contact))
-  for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_gm_contact.append(msg.timestamp / 1e6)
-    gm_contact_l.append(list(msg.point_pair_contact_info[0].contact_force))
-    gm_contact_r.append(list(msg.point_pair_contact_info[1].contact_force))
+  # for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
+  #   msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
+  #   t_gm_contact.append(msg.timestamp / 1e6)
+  #   gm_contact_l.append(list(msg.point_pair_contact_info[0].contact_force))
+  #   gm_contact_r.append(list(msg.point_pair_contact_info[1].contact_force))
   for i in range(len(log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"])):
     msg = log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"][i]
     t_fsm_contact.append(msg.timestamp / 1e6)

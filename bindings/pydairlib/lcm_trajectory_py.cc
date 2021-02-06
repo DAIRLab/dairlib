@@ -57,7 +57,9 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("ReconstructStateTrajectory",
            &DirconTrajectory::ReconstructStateTrajectory)
       .def("ReconstructInputTrajectory",
-           &DirconTrajectory::ReconstructInputTrajectory);
+           &DirconTrajectory::ReconstructInputTrajectory)
+      .def("ReconstructLambdaTrajectory",
+           &DirconTrajectory::ReconstructLambdaTrajectory);
 }
 
 }  // namespace pydairlib

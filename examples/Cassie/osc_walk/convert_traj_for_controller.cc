@@ -23,9 +23,6 @@ DEFINE_string(trajectory_name, "",
               "File name where the optimal trajectory is stored.");
 DEFINE_string(folder_path, "",
               "Folder path for where the trajectory names are stored");
-DEFINE_int32(num_modes, 0, "Number of contact modes in the trajectory");
-DEFINE_string(mode_name, "state_input_trajectory",
-              "Base name of each trajectory");
 
 namespace dairlib {
 
@@ -56,6 +53,9 @@ int DoMain() {
 
   auto l_toe_frame = &plant.GetBodyByName("toe_left").body_frame();
   auto r_toe_frame = &plant.GetBodyByName("toe_right").body_frame();
+  auto hip_left_frame = &plant.GetBodyByName("hip_left").body_frame();
+  auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
+  auto pelvis_frame = &plant.GetBodyByName("pelvis").body_frame();
   auto world = &plant.world_frame();
 
   DirconTrajectory dircon_traj(FLAGS_folder_path + FLAGS_trajectory_name);
@@ -77,27 +77,31 @@ int DoMain() {
 
   for (unsigned int i = 0; i < times.size(); ++i) {
     VectorXd x_i = state_traj.value(times[i]);
+    VectorXd xdot_i = state_traj.derivative(1).value(times[i]);
+
     plant.SetPositionsAndVelocities(context.get(), x_i);
-    center_of_mass_points.block(0, i, 3, 1) =
-        plant.CalcCenterOfMassPosition(*context);
+    Eigen::Ref<Eigen::MatrixXd> center_of_mass_block =
+        center_of_mass_points.block(0, i, 3, 1);
     Eigen::Ref<Eigen::MatrixXd> l_foot_pos_block =
         l_foot_points.block(0, i, 3, 1);
     Eigen::Ref<Eigen::MatrixXd> r_foot_pos_block =
         r_foot_points.block(0, i, 3, 1);
+    plant.CalcPointsPositions(*context, *pelvis_frame, zero_offset, *world,
+                              &center_of_mass_block);
     plant.CalcPointsPositions(*context, *l_toe_frame, zero_offset, *world,
                               &l_foot_pos_block);
     plant.CalcPointsPositions(*context, *r_toe_frame, zero_offset, *world,
                               &r_foot_pos_block);
 
     pelvis_orientation.block(0, i, 4, 1) = x_i.head(4);
-    pelvis_orientation.block(4, i, 4, 1) = x_i.segment(nq, 4);
+    pelvis_orientation.block(4, i, 4, 1) = xdot_i.head(4);
 
     MatrixXd J_CoM(3, nv);
     MatrixXd J_l_foot(3, nv);
     MatrixXd J_r_foot(3, nv);
-    //    MatrixXd J_pelvis_orientation(3, nv);
-    plant.CalcJacobianCenterOfMassTranslationalVelocity(
-        *context, JacobianWrtVariable::kV, *world, *world, &J_CoM);
+    plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
+                                            *pelvis_frame, zero_offset, *world,
+                                            *world, &J_CoM);
     plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                             *l_toe_frame, zero_offset, *world,
                                             *world, &J_l_foot);

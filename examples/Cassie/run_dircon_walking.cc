@@ -348,9 +348,9 @@ void DoMain() {
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
                            "../walking_snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 10000);
+                           "Major iterations limit", 100000);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Iterations limit", 10000);  // QP subproblems
+                           "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
   trajopt->SetSolverOption(
@@ -450,10 +450,10 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   int N = trajopt->N();
   std::vector<int> mode_lengths = {FLAGS_knot_points, FLAGS_knot_points, 1};
   auto x0 = trajopt->initial_state();
-  auto ls_mid = trajopt->state(N / 4);
+  auto ls_mid = trajopt->state(FLAGS_knot_points / 2);
   // Midpoint in the trajectory
   auto x_mid = trajopt->state(N / 2);
-  auto rs_mid = trajopt->state(3 * N / 4);
+  auto rs_mid = trajopt->state(FLAGS_knot_points + FLAGS_knot_points / 2);
   auto xf = trajopt->final_state();
   auto u = trajopt->input();
   auto u0 = trajopt->input(0);
@@ -471,20 +471,20 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   double start_height = FLAGS_start_height;
 
   //acceleration_constraints
-  int n = 0;
-  for (int mode = 0; mode < mode_lengths.size(); ++mode){
-    for (int i = 0; i < mode_lengths[mode]; ++i){
-      auto x_i = trajopt->state_vars_by_mode(mode, i);
-      auto u_i = trajopt->input(n + i);
-      auto lambda_i = trajopt->force(mode, i);
-      VectorXd lb = -2 * VectorXd::Ones(n_v);
-      VectorXd ub = 2 * VectorXd::Ones(n_v);
-      auto acceleration_constraint = std::make_shared<JointAccelConstraint>(
-          lb, ub, plant, constraints[mode], "left_stance_accel_constraints");
-      trajopt->AddConstraint(acceleration_constraint, {x_i, u_i, lambda_i});
-    }
-    n += mode_lengths[mode] - 1;
-  }
+//  int n = 0;
+//  for (int mode = 0; mode < mode_lengths.size(); ++mode){
+//    for (int i = 0; i < mode_lengths[mode]; ++i){
+//      auto x_i = trajopt->state_vars_by_mode(mode, i);
+//      auto u_i = trajopt->input(n + i);
+//      auto lambda_i = trajopt->force(mode, i);
+//      VectorXd lb = -2 * VectorXd::Ones(n_v);
+//      VectorXd ub = 2 * VectorXd::Ones(n_v);
+//      auto acceleration_constraint = std::make_shared<JointAccelConstraint>(
+//          lb, ub, plant, constraints[mode], "left_stance_accel_constraints");
+//      trajopt->AddConstraint(acceleration_constraint, {x_i, u_i, lambda_i});
+//    }
+//    n += mode_lengths[mode] - 1;
+//  }
 
   // position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
@@ -662,6 +662,14 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddConstraint(left_foot_x_constraint, xf.head(n_q));
 
   //   Foot clearance constraint
+  auto left_foot_z_constraint_clearance =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+          0 * VectorXd::Ones(1), (0.15) * VectorXd::Ones(1));
+  auto right_foot_z_constraint_clearance =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+          0 * VectorXd::Ones(1), (0.15) * VectorXd::Ones(1));
   auto left_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
@@ -672,7 +680,15 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
           (0.1) * VectorXd::Ones(1), (0.1) * VectorXd::Ones(1));
   trajopt->AddConstraint(left_foot_z_constraint, rs_mid.head(n_q));
   trajopt->AddConstraint(right_foot_z_constraint, ls_mid.head(n_q));
+  for (int i = 0; i < N; i++) {
+    auto x_i = trajopt->state(i);
+    trajopt->AddConstraint(left_foot_z_constraint_clearance, x_i.head(n_q));
+    trajopt->AddConstraint(right_foot_z_constraint_clearance, x_i.head(n_q));
+    trajopt->AddBoundingBoxConstraint(start_height - 0.10, start_height + 0.10, x_i[pos_map["base_z"]]);
+    trajopt->AddBoundingBoxConstraint(-2.0, -1.5, x_i[pos_map["toe_left"]]);
+    trajopt->AddBoundingBoxConstraint(-2.0, -1.5, x_i[pos_map["toe_right"]]);
 
+  }
   for (unsigned int mode = 0; mode < mode_lengths.size(); mode++) {
     for (int index = 0; index < mode_lengths[mode]; index++) {
       auto lambda = trajopt->force(mode, index);
@@ -691,7 +707,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // Add some cost to hip roll and yaw
   double w_q_hip_roll = 0.3;
   double w_q_hip_yaw = 0.3;
-  double w_q_hip_pitch = 0.3;
+  double w_q_hip_pitch = 2.0;
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(7, 2);

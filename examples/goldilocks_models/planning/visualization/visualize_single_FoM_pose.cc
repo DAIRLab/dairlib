@@ -55,17 +55,44 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
 
   // parameters
   const string directory = "../dairlib_data/goldilocks_models/planning/robot_" +
-      to_string(FLAGS_robot_option) + "/data/";
+                           to_string(FLAGS_robot_option) + "/data/";
 
   // Read in pose
-  MatrixXd x_to_plot = readCSV(directory + FLAGS_file_name);
+  //  MatrixXd x_to_plot = readCSV(directory + FLAGS_file_name);
+
+  MatrixXd x_to_plot_data = readCSV(directory + FLAGS_file_name);
+
+  MatrixXd x_to_plot(x_to_plot_data.rows(), 2);
+  x_to_plot.col(0) = x_to_plot_data.col(0);
+  x_to_plot(5,0) += 0.2;
+
+  // Build fix-spring Cassie MBP
+  drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
+  addCassieMultibody(&plant_wo_springs, nullptr, true,
+                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     false);
+  plant_wo_springs.Finalize();
+  int robot_option = 1;
+  StateMirror state_mirror(
+      MirrorPosIndexMap(plant_wo_springs, robot_option),
+      MirrorPosSignChangeSet(plant_wo_springs, robot_option),
+      MirrorVelIndexMap(plant_wo_springs, robot_option),
+      MirrorVelSignChangeSet(plant_wo_springs, robot_option));
+  VectorXd x_mirror(plant_wo_springs.num_positions() +
+                    plant_wo_springs.num_velocities());
+  x_mirror << state_mirror.MirrorPos(
+      x_to_plot.col(0).head(plant_wo_springs.num_positions())),
+      state_mirror.MirrorVel(
+          x_to_plot.col(0).tail(plant_wo_springs.num_velocities()));
+
+  x_to_plot.col(1) = x_mirror;
   cout << "x_to_plot= \n" << x_to_plot << endl;
 
+  VectorXd alpha_scale = 0.3 * VectorXd::Ones(2);
   multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
-      x_to_plot.cols());
+      x_to_plot.cols(), alpha_scale);
   visualizer.DrawPoses(x_to_plot);
-
 }
 }  // namespace planning
 }  // namespace goldilocks_models

@@ -145,7 +145,6 @@ class OscTrackingData {
       const Eigen::VectorXd& x_wo_spr,
       drake::systems::Context<double>& context_wo_spr);
 
- protected:
   int GetStateIdx() const { return state_idx_; };
   void AddState(int state);
 
@@ -183,7 +182,6 @@ class OscTrackingData {
   const drake::multibody::BodyFrame<double>& world_w_spr_;
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
- private:
   // Check if we should do tracking in the current state
   void UpdateTrackingFlag(int finite_state_machine_state);
 
@@ -241,7 +239,6 @@ class ComTrackingData final : public OscTrackingData {
   // If state is not specified, it will track COM for all states
   void AddStateToTrack(int state);
 
- private:
   void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) final;
@@ -266,7 +263,6 @@ class TaskSpaceTrackingData : public OscTrackingData {
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
- protected:
   // `body_index_w_spr` is the index of the body
   // `body_index_wo_spr` is the index of the body
   // If `body_index_w_spr_` is empty, `body_index_wo_spr_` replaces it.
@@ -304,7 +300,6 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       int state, const std::string& body_name,
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
 
- private:
   void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) final;
@@ -352,7 +347,6 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       int state, const std::string& body_name,
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
- private:
   void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) final;
@@ -398,7 +392,6 @@ class JointSpaceTrackingData final : public OscTrackingData {
   void AddStateAndJointToTrack(int state, const std::string& joint_pos_name,
                                const std::string& joint_vel_name);
 
- private:
   void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) final;
@@ -433,7 +426,6 @@ class OptimalRomTrackingData final : public OscTrackingData {
   void AddStateAndRom(int state,
                       const goldilocks_models::ReducedOrderModel& rom);
 
- private:
   void UpdateYAndError(
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) final;

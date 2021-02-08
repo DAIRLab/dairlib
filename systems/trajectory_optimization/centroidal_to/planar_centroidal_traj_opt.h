@@ -27,7 +27,7 @@ enum stance {
 typedef struct CentroidalMode {
   std::vector<drake::solvers::VectorXDecisionVariable> state_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> stance_vars_;
+  drake::solvers::VectorXDecisionVariable stance_vars_;
   int n_c_;
 } CentroidalMode;
 
@@ -52,9 +52,15 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   void SetModeSequence(std::vector<stance> sequence, std::vector<double> times);
   void SetNominalStance(Eigen::Vector2d left, Eigen::Vector2d right);
   void SetMaxDeviationConstraint(Eigen::Vector2d max);
+  void SetFlatGroundTerrainConstraint();
+   // void SetFootPlacementContinuityConstraint();
   void SetInitialStateGuess();
   void SetInitialForceGuess();
+  double MapKnotPointToTime(int idx_mode, int idx_knot);
+
   drake::solvers::MathematicalProgramResult SolveProg(int iteration_limit);
+
+  std::vector<CentroidalMode> modes() { return modes_ ;};
 
  private:
   std::vector<Eigen::Vector2d> nominal_stance_;

@@ -15,7 +15,7 @@ const int kAngularVars = 2;
 const int kStateVars = kLinearVars + kAngularVars;
 const int kLinearDim = 2;
 const int kAngularDim = 1;
-const int kForceVars = 4;
+const int kForceVars = 2;
 const int kForceDim = 2;
 const int kStanceVars = 2;
 
@@ -31,7 +31,8 @@ class PlanarRigidBodyDynamicsConstraint
 
  private:
   drake::VectorX<drake::AutoDiffXd> F(drake::VectorX<drake::AutoDiffXd> x,
-                                      std::vector<drake::Vector2<drake::AutoDiffXd>> forces) const;
+                                      std::vector<drake::Vector2<drake::AutoDiffXd>> forces,
+                                      std::vector<drake::Vector2<drake::AutoDiffXd>> P) const;
 
   double I_;
   double mass_;

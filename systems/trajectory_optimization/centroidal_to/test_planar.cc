@@ -36,7 +36,7 @@ int doMain(int argc, char** argv){
   Eigen::Vector2d com0;
   com0 << 0, 1;
   Eigen::Vector2d com1;
-  com1 << 0.15, 1;
+  com1 << 0.2, 1;
   Eigen::Vector2d dev;
   dev << 0.1, 0.1;
 
@@ -44,26 +44,23 @@ int doMain(int argc, char** argv){
   prog.SetModeSequence(mode_sequence, times);
   prog.SetNominalStance(-com0, -com0);
   prog.SetMaxDeviationConstraint(dev);
-  //prog.SetFootPlacementContinuityConstraint();
   prog.SetInitialPose(com0, 0);
   prog.SetFinalPose(com1, 0, 0.03);
   prog.SetInitialVel(Eigen::Vector2d::Zero(), 0);
   prog.SetFinalVel(Eigen::Vector2d::Zero(), 0);
   prog.SetInitialStateGuess();
+  prog.SetInitialStanceGuess();
   prog.SetInitialForceGuess();
-  prog.AddBoundingBoxConstraint(Eigen::Vector2d::Zero(),
-      Eigen::Vector2d::Zero(), prog.modes()[0].stance_vars_.head(kLinearDim));
-  prog.AddBoundingBoxConstraint(Eigen::Vector2d::Zero(),
-      Eigen::Vector2d::Zero(), prog.modes()[0].stance_vars_.tail(kLinearDim));
 
-  for (int i = 0; i < prog.modes().size(); i++) {
+
+  /*for (int i = 0; i < prog.modes().size(); i++) {
     for (int j = 0; j < prog.modes()[i].state_vars_.size(); j++) {
       prog.AddQuadraticCost(Eigen::MatrixXd::Identity(1, 1),
                             Eigen::VectorXd::Ones(1),
                             prog.modes()[i].state_vars_[j].segment(
                                 kStateVars - kAngularDim, kAngularDim));
     }
-  }
+  }*/
 
 
 

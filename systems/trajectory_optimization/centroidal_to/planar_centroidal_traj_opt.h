@@ -53,8 +53,8 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   void SetNominalStance(Eigen::Vector2d left, Eigen::Vector2d right);
   void SetMaxDeviationConstraint(Eigen::Vector2d max);
   void SetFlatGroundTerrainConstraint();
-   // void SetFootPlacementContinuityConstraint();
   void SetInitialStateGuess();
+  void SetInitialStanceGuess();
   void SetInitialForceGuess();
   double MapKnotPointToTime(int idx_mode, int idx_knot);
 
@@ -70,6 +70,7 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   Eigen::VectorXd x0_;
   Eigen::VectorXd xf_;
 
+  double n_ss_ = 0;
   const double I_;
   const double mass_;
   const double h_;

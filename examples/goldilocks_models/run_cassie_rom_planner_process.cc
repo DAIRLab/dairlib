@@ -10,6 +10,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
+#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
@@ -53,7 +54,7 @@ using systems::OutputVector;
 // Planner settings
 DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
-DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
+DEFINE_int32(sample, 1, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
@@ -108,6 +109,11 @@ DEFINE_double(yaw_disturbance, 0,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  // Read-in the parameters
+  OSCRomWalkingGains gains;
+  const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
+
   // Note that 0 <= phase < 1, but we allows the phase to be 1 here for testing
   // purposes
   DRAKE_DEMAND(0 <= FLAGS_init_phase && FLAGS_init_phase <= 1);
@@ -137,7 +143,7 @@ int DoMain(int argc, char* argv[]) {
   // Parameters for the traj opt
   PlannerSetting param;
   param.rom_option = FLAGS_rom_option;
-  param.iter = (FLAGS_iter >= 0) ? FLAGS_iter : MODEL_ITER;
+  param.iter = (FLAGS_iter >= 0) ? FLAGS_iter : gains.model_iter;
   param.sample = FLAGS_sample;
   param.n_step = FLAGS_n_step;
   param.knots_per_mode = FLAGS_knots_per_mode;

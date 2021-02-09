@@ -1,6 +1,11 @@
 rows: 3
 cols: 3
 
+### ROM parameter
+# The iteration number of the theta that you use. has to be >=1
+model_iter: 1  #40
+
+###
 # High level command gains (with radio)
 vel_scale_rot: -1
 vel_scale_trans_sagital: 0.25

@@ -96,10 +96,6 @@ DEFINE_string(channel_fsm_t, "FSM_T",
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which receives MPC output");
 
-DEFINE_string(
-    gains_filename,
-    "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml",
-    "Filepath containing gains");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
@@ -116,7 +112,7 @@ int DoMain(int argc, char* argv[]) {
   // Read-in the parameters
   OSCRomWalkingGains gains;
   const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+      YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   // Build Cassie MBP
@@ -148,7 +144,7 @@ int DoMain(int argc, char* argv[]) {
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(4 /*rom_option*/, 1 /*robot_option*/, plant_wo_springs, true);
-  ReadModelParameters(rom.get(), dir_model, MODEL_ITER);
+  ReadModelParameters(rom.get(), dir_model, gains.model_iter);
 
   // Mirrored reduced order model
   int robot_option = 1;

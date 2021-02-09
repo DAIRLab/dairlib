@@ -6,6 +6,7 @@ using Eigen::MatrixXd;
 struct OSCRomWalkingGains {
   int rows;
   int cols;
+  int model_iter;
   double mu;
   double w_accel;
   double w_soft_constraint;
@@ -82,6 +83,7 @@ struct OSCRomWalkingGains {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
+    a->Visit(DRAKE_NVP(model_iter));
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));

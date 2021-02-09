@@ -31,8 +31,8 @@ int doMain(int argc, char** argv){
   double mu = 1.0;
   double h = 0.025;
 
-  std::vector<stance> mode_sequence = { stance::D, stance::R, stance::D };
-  std::vector<double> times = {0.05, 0.3, 0.05};
+  std::vector<stance> mode_sequence = { stance::D, stance::R, stance::D , stance::L, stance::D};
+  std::vector<double> times = {0.05, 0.3, 0.05, 0.3, 0.05};
   Eigen::Vector2d com0;
   com0 << 0, 1;
   Eigen::Vector2d com1;

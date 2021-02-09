@@ -315,7 +315,9 @@ void PlanarCentroidalTrajOpt::SetFlatGroundTerrainConstraint() {
 
 void PlanarCentroidalTrajOpt::SetInitialStateGuess() {
   double T = MapKnotPointToTime(modes_.size() - 1,
-      modes_.back().state_vars_.size() -1);
+      modes_.back().state_vars_.size() - 1);
+
+  std::cout << "ToTal Time: " << T << std::endl;
 
   Eigen::VectorXd delta_pos = (xf_ - x0_).head(kLinearDim + kAngularDim);
 
@@ -378,11 +380,11 @@ double PlanarCentroidalTrajOpt::MapKnotPointToTime(int idx_mode, int idx_knot)  
   double time = 0;
   int n_knot = modes_[idx_mode].state_vars_.size() - 1;
 
-  for (int i = 0; i < idx_mode - 1; i++) {
+  for (int i = 0; i < idx_mode; i++) {
     time += times_[i];
   }
 
-  return time + times_[idx_mode] * (double) idx_knot / (double) n_knot;
+  return time + times_[idx_mode] * ((double) idx_knot )/((double) n_knot);
 }
 
 }

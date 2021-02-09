@@ -128,7 +128,7 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
   Eigen::Matrix2d friction_cone;
   friction_cone << -mu_, 1, mu_, 1;
   Eigen::Vector2d zero = Eigen::Vector2d::Zero();
-  Eigen::Vector2d inf = 100 * 9.81 * mass_ * Eigen::Vector2d::Ones();
+  Eigen::Vector2d inf = 3 * 9.81 * mass_ * Eigen::Vector2d::Ones();
   /*inf << std::numeric_limits<double>::infinity(),
          std::numeric_limits<double>::infinity();
 */
@@ -141,8 +141,6 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
     int n_knot_f = std::round(times[i] / h_) + 1;
     int n_knot_s = n_knot_f;
     int n_c = (sequence[i] == stance::D) ? 2 : 1;
-
-    if (n_c == 1) { n_ss_ ++;}
 
     CentroidalMode mode;
     mode.n_c_ = n_c;
@@ -319,10 +317,20 @@ void PlanarCentroidalTrajOpt::SetInitialStateGuess() {
   double T = MapKnotPointToTime(modes_.size() - 1,
       modes_.back().state_vars_.size() - 1);
 
+  std::cout << "ToTal Time: " << T << std::endl;
+
   Eigen::VectorXd delta_pos = (xf_ - x0_).head(kLinearDim + kAngularDim);
+
   Eigen::VectorXd v_coeff = (-6.0 / pow(T, 3)) * delta_pos;
 
+  Eigen::Vector2d stance_delta = (1.0 / modes_.size()) * delta_pos.head(kLinearDim);
+  Eigen::Vector2d stance_0 = Eigen::Vector2d::Zero();
+  stance_0.head(1) = x0_.head(1);
+
   for (int i = 0; i < modes_.size(); i++){
+    SetInitialGuess(modes_[i].stance_vars_.head(kLinearDim), stance_0 + i * stance_delta);
+    SetInitialGuess(modes_[i].stance_vars_.tail(kLinearDim), stance_0 + i * stance_delta);
+
     for (int j = 0; j < modes_[i].state_vars_.size(); j++){
       if ((i != 0 || j!= 0) &&
       ! (i == (modes_.size()-1) && j == (modes_.back().state_vars_.size() - 1))){
@@ -342,37 +350,13 @@ void PlanarCentroidalTrajOpt::SetInitialStateGuess() {
   }
 }
 
-void PlanarCentroidalTrajOpt::SetInitialStanceGuess() {
-  Eigen::VectorXd delta_pos = (xf_ - x0_).head(kLinearDim + kAngularDim);
-  Eigen::Vector2d stance_delta = (1.0 / (2.0 * n_ss_)) * delta_pos.head(kLinearDim);
-  Eigen::Vector2d stance = Eigen::Vector2d::Zero();
-  stance.head(1) = x0_.head(1) - stance_delta.head(1);
-
-  for (int i = 0; i < modes_.size(); i ++) {
-    if (sequence_[i] == stance::D) {
-      SetInitialGuess(modes_[i].stance_vars_.segment(kStanceVars * (1 - sequence_[i + 1]), kStanceVars), stance);
-      stance  = stance + 2.0 * stance_delta;
-      SetInitialGuess(modes_[i].stance_vars_.segment(kStanceVars * (sequence_[i + 1]), kStanceVars), stance);
-    } else {
-      SetInitialGuess(modes_[i].stance_vars_, stance);
-    }
-  }
-}
-
 void PlanarCentroidalTrajOpt::SetInitialForceGuess() {
-  double T = MapKnotPointToTime(modes_.size() - 1,
-                                modes_.back().state_vars_.size() - 1);
-
-  Eigen::VectorXd delta_pos = (xf_ - x0_).head(kLinearDim + kAngularDim);
-  Eigen::VectorXd v_coeff = (-6.0 / pow(T, 3)) * delta_pos;
+  Eigen::VectorXd f = Eigen::VectorXd::Zero(kForceDim);
+  f.tail(1) = 9.81 * mass_ * Eigen::VectorXd::Ones(1);
 
   for (int i = 0; i < modes_.size(); i++){
     int n_c = (sequence_[i] == stance::D)? 2 : 1;
     for (int j = 0; j < modes_[i].force_vars_.size(); j++) {
-      double t = MapKnotPointToTime(i, j);
-      Eigen::VectorXd f = Eigen::VectorXd::Zero(kForceDim);
-      f.head (1) = (mass_ * (2.0 * t - T) / (double) n_c) * v_coeff.head(1);
-      f.tail(1) = 9.81 * (mass_ / (double) n_c) * Eigen::VectorXd::Ones(1);
       for (int k = 0; k < kForceVars * n_c; k+=kForceDim) {
         SetInitialGuess(modes_[i].force_vars_[j].segment(k, kForceDim),f);
       }

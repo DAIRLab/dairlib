@@ -39,7 +39,7 @@ void PlanarRigidBodyDynamicsConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>> &x,
     drake::VectorX<drake::AutoDiffXd> *y) const {
 
-  int n_x = kStateVars;
+  int n_x = kLinearVars + kAngularVars;
   VectorX x0 = x.head(n_x);
   VectorX x1 = x.segment(n_x, n_x);
 
@@ -58,10 +58,10 @@ void PlanarRigidBodyDynamicsConstraint::EvaluateConstraint(
   // compact form of collocation constraint
   VectorX F0 = F(x0, f0, p);
   VectorX F1 = F(x1, f1, p);
-  VectorX xc = 0.5 * (x0 + x1) - (h_ / 8.0) * (F1 - F0);
+  VectorX xc = 0.5 * (x0 + x1) - (h_ / 8) * (F1 - F0);
   VectorX Fc = (3 / (2 * h_)) * (x1 - x0) - (1 / 4) * (F0 + F1);
 
-  *y = F(xc, fc, p) - Fc;
+  *y = Fc - F(xc, fc, p);
 }
 
 VectorX PlanarRigidBodyDynamicsConstraint::F(VectorX x, std::vector<Vector2> forces, std::vector<Vector2> P) const {

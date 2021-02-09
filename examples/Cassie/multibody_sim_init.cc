@@ -75,8 +75,6 @@ DEFINE_double(starting_time, 0.0,
 DEFINE_string(traj_name, "", "Name of the saved trajectory");
 DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
-DEFINE_string(mode_name, "state_trajectory",
-              "Name of the individual saved trajectory");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -188,7 +186,7 @@ int do_main(int argc, char* argv[]) {
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
-  MultibodyPlant<double> plant_wo_spr(0.0);  // non-zero timestep to avoid
+  MultibodyPlant<double> plant_wo_spr(FLAGS_dt);  // non-zero timestep to avoid
   Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
   parser_wo_spr.AddModelFromFile(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));

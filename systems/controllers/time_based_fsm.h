@@ -70,7 +70,7 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
 
   std::vector<double> accu_state_durations_;
   std::vector<double> impact_states_ = {0, 1, 2};
-  std::vector<double> impact_times_ = {0, 0.30, 0.65};
+  std::vector<double> impact_times_ = {0, 0.40, 0.8};
   double period_;
   double near_impact_threshold_;
 };

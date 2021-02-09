@@ -4,16 +4,22 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/osc/heading_traj_generator.h"
+#include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
+#include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/osc_jump/pelvis_orientation_traj_generator.h"
 #include "examples/Cassie/osc_walk/com_traj_generator.h"
 #include "examples/Cassie/osc_walk/swing_foot_traj_generator.h"
 #include "examples/Cassie/osc_walk/walking_event_based_fsm.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
+#include "multibody/kinematic/fixed_joint_evaluator.h"
+#include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/gaussian_noise_pass_through.h"
@@ -50,6 +56,7 @@ using examples::osc_jump::PelvisOrientationTrajGenerator;
 using examples::osc_walk::COMTrajGenerator;
 using examples::osc_walk::SwingFootTrajGenerator;
 using examples::osc_walk::WalkingEventFsm;
+using multibody::FixedJointEvaluator;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
@@ -75,7 +82,8 @@ DEFINE_string(
 DEFINE_bool(add_noise, false,
             "Whether to add gaussian noise to state "
             "inputted to controller");
-//DEFINE_int32(init_fsm_state, osc_walk::DOUBLE_L_LO, "Initial state of the FSM");
+// DEFINE_int32(init_fsm_state, osc_walk::DOUBLE_L_LO, "Initial state of the
+// FSM");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -85,6 +93,8 @@ int DoMain(int argc, char* argv[]) {
   const YAML::Node& root =
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
+
+  bool use_traj_opt_foot_traj = gains.use_traj_opt_feet_traj;
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -101,8 +111,6 @@ int DoMain(int argc, char* argv[]) {
 
   int nq = plant_w_spr.num_positions();
   int nv = plant_w_spr.num_velocities();
-  int nx = nq + nv;
-  int n_modes = 3;
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
@@ -119,35 +127,56 @@ int DoMain(int argc, char* argv[]) {
   const LcmTrajectory& processed_trajs = LcmTrajectory(
       FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name + "_processed"));
 
-  const LcmTrajectory::Trajectory lcm_com_traj =
-      processed_trajs.GetTrajectory("center_of_mass_trajectory");
-  const LcmTrajectory::Trajectory lcm_l_foot_traj =
-      processed_trajs.GetTrajectory("left_foot_trajectory");
-  const LcmTrajectory::Trajectory lcm_r_foot_traj =
-      processed_trajs.GetTrajectory("right_foot_trajectory");
-  const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
-      processed_trajs.GetTrajectory("pelvis_rot_trajectory");
-
   std::cout << "Loading output trajectories: " << std::endl;
-  PiecewisePolynomial<double> com_traj =
-      PiecewisePolynomial<double>::CubicHermite(
-          lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
-          lcm_com_traj.datapoints.bottomRows(3));
-  PiecewisePolynomial<double> l_foot_trajectory =
-      PiecewisePolynomial<double>::CubicHermite(
-          lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
-          lcm_l_foot_traj.datapoints.bottomRows(3));
-  PiecewisePolynomial<double> r_foot_trajectory =
-      PiecewisePolynomial<double>::CubicHermite(
-          lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
-          lcm_r_foot_traj.datapoints.bottomRows(3));
-  PiecewisePolynomial<double> pelvis_rot_trajectory;
-  pelvis_rot_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-      lcm_pelvis_rot_traj.time_vector,
-      lcm_pelvis_rot_traj.datapoints.topRows(4));
+
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
 
+  PiecewisePolynomial<double> lipm_traj;
+  PiecewisePolynomial<double> left_foot_trajectory;
+  PiecewisePolynomial<double> right_foot_trajectory;
+  PiecewisePolynomial<double> pelvis_rot_trajectory;
+
+  for (int mode = 0; mode < 2; ++mode) {
+    const LcmTrajectory::Trajectory lcm_lipm_traj =
+        processed_trajs.GetTrajectory("pelvis_trans_trajectory" +
+                                      std::to_string(mode));
+    const LcmTrajectory::Trajectory lcm_left_foot_traj =
+        processed_trajs.GetTrajectory("left_foot_trajectory" +
+                                      std::to_string(mode));
+    const LcmTrajectory::Trajectory lcm_right_foot_traj =
+        processed_trajs.GetTrajectory("right_foot_trajectory" +
+                                      std::to_string(mode));
+    const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
+        processed_trajs.GetTrajectory("pelvis_rot_trajectory" +
+                                      std::to_string(mode));
+    lipm_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        lcm_lipm_traj.time_vector, lcm_lipm_traj.datapoints.topRows(3),
+        lcm_lipm_traj.datapoints.bottomRows(3)));
+    left_foot_trajectory.ConcatenateInTime(
+        PiecewisePolynomial<double>::CubicHermite(
+            lcm_left_foot_traj.time_vector,
+            lcm_left_foot_traj.datapoints.topRows(3),
+            lcm_left_foot_traj.datapoints.bottomRows(3)));
+    right_foot_trajectory.ConcatenateInTime(
+        PiecewisePolynomial<double>::CubicHermite(
+            lcm_right_foot_traj.time_vector,
+            lcm_right_foot_traj.datapoints.topRows(3),
+            lcm_right_foot_traj.datapoints.bottomRows(3)));
+    pelvis_rot_trajectory.ConcatenateInTime(
+        PiecewisePolynomial<double>::CubicHermite(
+            lcm_pelvis_rot_traj.time_vector,
+            lcm_pelvis_rot_traj.datapoints.topRows(4),
+            lcm_pelvis_rot_traj.datapoints.bottomRows(4)));
+  }
+
+  // Relevant body frames
+  auto left_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
+      Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_left"));
+  auto right_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
+      Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_right"));
+  vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
+      left_toe_origin, right_toe_origin};
   // For the time-based FSM
   double total_time = state_traj.end_time();
   double r_td_time = 0.5 * state_traj.end_time();
@@ -164,12 +193,14 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
   auto pelvis_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), com_traj);
-  auto l_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), "toe_right", true, l_foot_trajectory,
+      plant_w_spr, context_w_spr.get(), lipm_traj);
+  auto left_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
+      plant_w_spr, context_w_spr.get(), "toe_right", true, left_foot_trajectory,
       time_offset);
-  auto r_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), "toe_left", false, r_foot_trajectory);
+  auto right_foot_traj_generator = builder.AddSystem<SwingFootTrajGenerator>(
+      plant_w_spr, context_w_spr.get(), "toe_left", false,
+      right_foot_trajectory);
+
   auto pelvis_rot_traj_generator =
       builder.AddSystem<PelvisOrientationTrajGenerator>(pelvis_rot_trajectory,
                                                         "pelvis_rot_traj");
@@ -186,6 +217,35 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_WALKING", &lcm, TriggerTypeSet({TriggerType::kForced})));
+
+  //  auto swing_ft_traj_generator =
+  //      builder.AddSystem<systems::SwingFootTrajGenerator>(
+  //          plant_w_spr, context_w_spr.get(), fsm_states, transition_times,
+  //          left_right_foot, "pelvis", gains.mid_foot_height,
+  //          gains.final_foot_height, gains.final_foot_velocity_z,
+  //          gains.max_CoM_to_footstep_dist, gains.footstep_offset,
+  //          gains.center_line_offset);
+  //  auto liftoff_event_time =
+  //      builder.AddSystem<systems::FiniteStateMachineEventTime>(fsm_states);
+  //  auto walking_speed_control =
+  //      builder.AddSystem<cassie::osc::WalkingSpeedControl>(
+  //          plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
+  //          gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
+  //          r_td_time);
+  //  Eigen::Vector2d global_target_position(gains.global_target_position_x,
+  //                                         gains.global_target_position_y);
+  //  Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
+  //                                       gains.yaw_deadband_radius);
+  //
+  //  cassie::osc::HighLevelCommand* high_level_command;
+  //  high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+  //      plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
+  //      gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
+  //      gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
+  //      gains.vel_max_lateral, gains.target_pos_offset,
+  //      global_target_position, params_of_no_turning);
+  //  auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
+  //      plant_w_spr, context_w_spr.get());
 
   /*** OSC setup ***/
   // Cost
@@ -213,10 +273,10 @@ int DoMain(int argc, char* argv[]) {
                                            osc_walk::RIGHT_STANCE};
 
   /*** Contact Constraints ***/
-  osc->AddStateAndContactPoint(osc_walk::RIGHT_STANCE, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(osc_walk::RIGHT_STANCE, &right_heel_evaluator);
   osc->AddStateAndContactPoint(osc_walk::LEFT_STANCE, &left_toe_evaluator);
   osc->AddStateAndContactPoint(osc_walk::LEFT_STANCE, &left_heel_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::RIGHT_STANCE, &right_toe_evaluator);
+  osc->AddStateAndContactPoint(osc_walk::RIGHT_STANCE, &right_heel_evaluator);
 
   /*** Four bar constraint ***/
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
@@ -224,12 +284,30 @@ int DoMain(int argc, char* argv[]) {
   auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
+  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  auto left_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
+                          vel_idx_map.at("knee_joint_leftdot"), 0);
+  auto right_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_right"),
+                          vel_idx_map.at("knee_joint_rightdot"), 0);
+  auto left_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
+      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+  auto right_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
+      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+  evaluators.add_evaluator(&left_fixed_knee_spring);
+  evaluators.add_evaluator(&right_fixed_knee_spring);
+  evaluators.add_evaluator(&left_fixed_ankle_spring);
+  evaluators.add_evaluator(&right_fixed_ankle_spring);
   osc->AddKinematicConstraint(&evaluators);
 
   /*** Tracking Data for OSC ***/
   // Pelvis tracking
   TransTaskSpaceTrackingData pelvis_trans_tracking_data(
-      "com_traj", gains.K_p_com, gains.K_d_com, gains.W_com, plant_w_spr,
+      "lipm_traj", gains.K_p_com, gains.K_d_com, gains.W_com, plant_w_spr,
       plant_w_spr);
 
   for (auto mode : all_modes) {
@@ -238,10 +316,10 @@ int DoMain(int argc, char* argv[]) {
 
   // Feet tracking
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "l_foot_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      "left_foot_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "r_foot_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      "right_foot_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   right_foot_tracking_data.AddStateAndPointToTrack(osc_walk::LEFT_STANCE,
                                                    "toe_right");
@@ -250,9 +328,15 @@ int DoMain(int argc, char* argv[]) {
 
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
+      "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
       gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
   pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
+  VectorXd pelvis_desired_quat(4);
+  pelvis_desired_quat << 1, 0, 0, 0;
+  RotTaskSpaceTrackingData pelvis_heading_traj(
+      "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
+      gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
+  pelvis_heading_traj.AddFrameToTrack("pelvis");
 
   // Swing toe joint trajectory
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
@@ -279,33 +363,82 @@ int DoMain(int argc, char* argv[]) {
   swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
                                               "toe_leftdot");
 
+  JointSpaceTrackingData swing_hip_yaw_traj(
+      "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      gains.W_hip_yaw, plant_w_spr, plant_w_spr);
+  swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
+                                             "hip_yaw_rightdot");
+  swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
+                                             "hip_yaw_leftdot");
+
   osc->AddTrackingData(&swing_toe_traj_left);
   osc->AddTrackingData(&swing_toe_traj_right);
   osc->AddTrackingData(&pelvis_trans_tracking_data);
   osc->AddTrackingData(&left_foot_tracking_data);
   osc->AddTrackingData(&right_foot_tracking_data);
+  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+
   osc->AddTrackingData(&pelvis_rot_tracking_data);
+  osc->AddTrackingData(&pelvis_heading_traj);
 
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
 
   // State receiver connections (Connected through LCM driven loop)
-  drake::systems::LeafSystem<double>* controller_state_input = state_receiver;
 
   /*** Connect ports ***/
   // OSC connections
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(pelvis_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("com_traj"));
-  builder.Connect(l_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("l_foot_traj"));
-  builder.Connect(r_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("r_foot_traj"));
+                  osc->get_tracking_data_input_port("lipm_traj"));
+
+  if (use_traj_opt_foot_traj) {
+    builder.Connect(left_foot_traj_generator->get_output_port(0),
+                    osc->get_tracking_data_input_port("left_foot_traj"));
+    builder.Connect(right_foot_traj_generator->get_output_port(0),
+                    osc->get_tracking_data_input_port("right_foot_traj"));
+  } else {
+    //    builder.Connect(state_receiver->get_output_port(0),
+    //                    high_level_command->get_state_input_port());
+    //    builder.Connect(fsm->get_output_port(0),
+    //                    swing_ft_traj_generator->get_input_port_fsm());
+    //    builder.Connect(
+    //        liftoff_event_time->get_output_port_event_time_of_interest(),
+    //        swing_ft_traj_generator->get_input_port_fsm_switch_time());
+    //    builder.Connect(fsm->get_output_port_fsm(),
+    //                    liftoff_event_time->get_input_port_fsm());
+    //    builder.Connect(state_receiver->get_output_port(),
+    //                    swing_ft_traj_generator->get_input_port_state());
+    //    builder.Connect(pelvis_traj_generator->get_output_port(),
+    //                    swing_ft_traj_generator->get_input_port_com());
+    //    builder.Connect(walking_speed_control->get_output_port(0),
+    //                    swing_ft_traj_generator->get_input_port_sc());
+    //    builder.Connect(swing_ft_traj_generator->get_output_port(0),
+    //                    osc->get_tracking_data_input_port("left_foot_traj"));
+    //    builder.Connect(swing_ft_traj_generator->get_output_port(0),
+    //                    osc->get_tracking_data_input_port("right_foot_traj"));
+    //    builder.Connect(high_level_command->get_xy_output_port(),
+    //                    walking_speed_control->get_input_port_des_hor_vel());
+    //    builder.Connect(state_receiver->get_output_port(0),
+    //                    walking_speed_control->get_input_port_state());
+    //    builder.Connect(pelvis_traj_generator->get_output_port(),
+    //                    walking_speed_control->get_input_port_com());
+    //    builder.Connect(
+    //        liftoff_event_time->get_output_port_event_time_of_interest(),
+    //        walking_speed_control->get_input_port_fsm_switch_time());
+    //    builder.Connect(state_receiver->get_output_port(0),
+    //                    head_traj_gen->get_state_input_port());
+    //    builder.Connect(high_level_command->get_yaw_output_port(),
+    //                    head_traj_gen->get_yaw_input_port());
+  }
+
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_rot_traj"));
+                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
+  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
@@ -314,22 +447,26 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_near_impact_input_port());
 
   // FSM connections
-  builder.Connect(controller_state_input->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
 
   // Trajectory generator connections
-  builder.Connect(controller_state_input->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   pelvis_traj_generator->get_state_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
-                  l_foot_traj_generator->get_state_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
-                  r_foot_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_foot_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_foot_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
                   pelvis_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
-                  l_foot_traj_generator->get_fsm_input_port());
+                  left_foot_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
-                  r_foot_traj_generator->get_fsm_input_port());
+                  right_foot_traj_generator->get_fsm_input_port());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

@@ -381,6 +381,7 @@ cc_binary(
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:fsm_event_time",
         "//systems/primitives",
         "//systems/primitives:gaussian_noise_pass_through",
         "@drake//:drake_shared_library",

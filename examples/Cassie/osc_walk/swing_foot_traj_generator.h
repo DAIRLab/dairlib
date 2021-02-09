@@ -55,7 +55,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
 
   int fsm_idx_;
   int time_shift_idx_;
-  int x_offset_idx_;
+  int stance_foot_pos_idx_;
 };
 
 }  // namespace dairlib::examples::osc_walk

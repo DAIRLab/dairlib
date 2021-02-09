@@ -51,7 +51,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
 
   fsm_idx_ = this->DeclareDiscreteState(1);
   time_shift_idx_ = this->DeclareDiscreteState(1);
-  x_offset_idx_ = this->DeclareDiscreteState(1);
+  stance_foot_pos_idx_ = this->DeclareDiscreteState(3);
 
   if (isLeftFoot) {
     this->set_name("l_foot_traj");
@@ -65,7 +65,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
     active_state_ = LEFT_STANCE;
   }
   // Shift trajectory by time_offset
-  foot_traj_.shiftRight(time_offset_);
+//  foot_traj_.shiftRight(time_offset_);
 
   // TODO(yangwill) add this shift elsewhere to make the gait periodic
   DeclarePerStepDiscreteUpdateEvent(
@@ -79,8 +79,8 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
       discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
   auto time_shift =
       discrete_state->get_mutable_vector(time_shift_idx_).get_mutable_value();
-  auto x_offset =
-      discrete_state->get_mutable_vector(x_offset_idx_).get_mutable_value();
+  auto offset =
+      discrete_state->get_mutable_vector(stance_foot_pos_idx_).get_mutable_value();
 
   const BasicVector<double>* fsm_output =
       this->EvalVectorInput(context, fsm_port_);
@@ -94,10 +94,13 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     // A cycle has been reached
-    if (fsm_state(0) == DOUBLE_L_LO) {
+    if (fsm_state(0) == LEFT_STANCE) {
       time_shift << timestamp + time_offset_;
-      plant_.SetPositions(context_, robot_output->GetPositions());
-      x_offset << plant_.CalcCenterOfMassPosition(*context_)[0];
+      plant_.SetPositionsAndVelocities(context_, robot_output->GetState());
+      Vector3d stance_foot_pos = Vector3d::Zero();
+      plant_.CalcPointsPositions(*context_, stance_foot_frame_, Vector3d::Zero(), world_,
+                                 &stance_foot_pos);
+      offset << stance_foot_pos;
     }
   }
   return EventStatus::Succeeded();
@@ -110,27 +113,18 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
 PiecewisePolynomial<double> SwingFootTrajGenerator::generateFootTraj(
     const drake::systems::Context<double>& context, const VectorXd& x,
     double t) const {
-  VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
-
-  Vector3d zero_offset = Vector3d::Zero();
-  Vector3d stance_foot_pos = Vector3d::Zero();
-  plant_.SetPositions(context_, x.head(plant_.num_positions()));
-  plant_.CalcPointsPositions(*context_, stance_foot_frame_, zero_offset, world_,
-                             &stance_foot_pos);
-
-  const PiecewisePolynomial<double>& foot_traj_segment =
-      foot_traj_.slice(foot_traj_.get_segment_index(t), 1);
+  auto stance_foot_pos =
+      context.get_discrete_state(stance_foot_pos_idx_).get_value();
 
   // offset stuff
-  std::vector<double> breaks = foot_traj_segment.get_segment_times();
+  std::vector<double> breaks = foot_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-  MatrixXd stance_foot(3, 2);
-  // Velocity estimates are generally bad
-  stance_foot << stance_foot_pos, stance_foot_pos;
+  MatrixXd stance_foot = stance_foot_pos.replicate(1, breaks.size());
   PiecewisePolynomial<double> stance_foot_offset =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, stance_foot);
 
-  return foot_traj_segment + stance_foot_offset;
+//  return foot_traj_ + stance_foot_offset;
+  return foot_traj_;
 }
 
 void SwingFootTrajGenerator::CalcTraj(
@@ -155,7 +149,7 @@ void SwingFootTrajGenerator::CalcTraj(
   } else {
     // Do nothing to avoid bugs, maybe return a zero trajectory?
   }
-  casted_traj->shiftRight(time_shift(0));
+//  casted_traj->shiftRight(time_shift(0));
 }
 
 }  // namespace dairlib::examples::osc_walk

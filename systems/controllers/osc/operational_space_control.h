@@ -121,7 +121,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
       const std::string& name) const {
-    return this->get_input_port(traj_name_to_port_index_map_.at(name));
+    try{
+      return this->get_input_port(traj_name_to_port_index_map_.at(name));
+    }catch(std::exception& e){
+      std::cerr << "Cannot find tracking data named: " << name << std::endl;
+    }
+    return this->get_input_port(0);
   }
 
   // Cost methods

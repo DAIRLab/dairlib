@@ -185,7 +185,7 @@ void DoMain() {
   auto right_toe_rear_constraint =
       DirconPositionData<double>(plant, right_toe_rear.second.body(),
                                  right_toe_rear.first, isXZ, ground_normal);
-  double mu = 1;
+  double mu = 0.5;
   left_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
   left_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
   right_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
@@ -348,9 +348,9 @@ void DoMain() {
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
                            "../walking_snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 100000);
+                           "Major iterations limit", 10000);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Iterations limit", 100000);  // QP subproblems
+                           "Iterations limit", 1000000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
   trajopt->SetSolverOption(
@@ -471,20 +471,20 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   double start_height = FLAGS_start_height;
 
   //acceleration_constraints
-//  int n = 0;
-//  for (int mode = 0; mode < mode_lengths.size(); ++mode){
-//    for (int i = 0; i < mode_lengths[mode]; ++i){
-//      auto x_i = trajopt->state_vars_by_mode(mode, i);
-//      auto u_i = trajopt->input(n + i);
-//      auto lambda_i = trajopt->force(mode, i);
-//      VectorXd lb = -2 * VectorXd::Ones(n_v);
-//      VectorXd ub = 2 * VectorXd::Ones(n_v);
-//      auto acceleration_constraint = std::make_shared<JointAccelConstraint>(
-//          lb, ub, plant, constraints[mode], "left_stance_accel_constraints");
-//      trajopt->AddConstraint(acceleration_constraint, {x_i, u_i, lambda_i});
-//    }
-//    n += mode_lengths[mode] - 1;
-//  }
+  int n = 0;
+  for (int mode = 0; mode < mode_lengths.size(); ++mode){
+    for (int i = 0; i < mode_lengths[mode]; ++i){
+      auto x_i = trajopt->state_vars_by_mode(mode, i);
+      auto u_i = trajopt->input(n + i);
+      auto lambda_i = trajopt->force(mode, i);
+      VectorXd lb = -10 * VectorXd::Ones(n_v);
+      VectorXd ub = 10 * VectorXd::Ones(n_v);
+      auto acceleration_constraint = std::make_shared<JointAccelConstraint>(
+          lb, ub, plant, constraints[mode], "left_stance_accel_constraints");
+      trajopt->AddConstraint(acceleration_constraint, {x_i, u_i, lambda_i});
+    }
+    n += mode_lengths[mode] - 1;
+  }
 
   // position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
@@ -665,11 +665,11 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto left_foot_z_constraint_clearance =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-          0 * VectorXd::Ones(1), (0.15) * VectorXd::Ones(1));
+          0.055 * VectorXd::Ones(1), (0.15) * VectorXd::Ones(1));
   auto right_foot_z_constraint_clearance =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-          0 * VectorXd::Ones(1), (0.15) * VectorXd::Ones(1));
+          0.055 * VectorXd::Ones(1), (0.15) * VectorXd::Ones(1));
   auto left_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
@@ -702,12 +702,12 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   MatrixXd R = 0.001 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
-  MatrixXd Q0 = MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q0 = 1e-1 * MatrixXd::Identity(n_v, n_v);
   trajopt->AddQuadraticCost(x0.tail(n_v).transpose() * Q * x0.tail(n_v));
   // Add some cost to hip roll and yaw
   double w_q_hip_roll = 0.3;
   double w_q_hip_yaw = 0.3;
-  double w_q_hip_pitch = 2.0;
+  double w_q_hip_pitch = 10.0;
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(7, 2);

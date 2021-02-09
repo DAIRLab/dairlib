@@ -80,7 +80,7 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     // A cycle has been reached
-    if (fsm_state(0) == DOUBLE_R_LO || fsm_state(0) == DOUBLE_L_LO) {
+    if (fsm_state(0) == LEFT_STANCE) {
       time_shift << timestamp;
       plant_.SetPositions(context_, robot_output->GetPositions());
       x_offset << plant_.CalcCenterOfMassPosition(*context_)[0];

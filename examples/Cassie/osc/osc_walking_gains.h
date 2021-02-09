@@ -60,6 +60,7 @@ struct OSCWalkingGains {
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
   double impact_threshold;
+  bool use_traj_opt_feet_traj;
 
   MatrixXd W_com;
   MatrixXd K_p_com;
@@ -143,6 +144,7 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
     a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
     a->Visit(DRAKE_NVP(impact_threshold));
+    a->Visit(DRAKE_NVP(use_traj_opt_feet_traj));
 
     W_com = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

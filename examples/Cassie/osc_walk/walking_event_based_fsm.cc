@@ -26,7 +26,7 @@ WalkingEventFsm::WalkingEventFsm(const MultibodyPlant<double>& plant,
       init_state_(init_state),
       print_fsm_info_(print_fsm_info) {
   DRAKE_ASSERT(transition_times_.size() == RIGHT_STANCE + 1);
-  for(auto& t : transition_times_){
+  for (auto& t : transition_times_) {
     std::cout << "fsm time: " << t << std::endl;
   }
   state_port_ =
@@ -97,24 +97,10 @@ EventStatus WalkingEventFsm::DiscreteVariableUpdate(
   // The fsm state will change transition_delay_ seconds after the guard
   // condition was first triggered.
   // This supports both contact-based and time-based guard conditions
-  if (fsm_state(0) == DOUBLE_R_LO) {
-    if (contact_based_
-            ? num_contacts <= 2 &&
-                  contact_point.find("right") != std::string::npos
-            : timestamp > (transition_times_[DOUBLE_R_LO] + time_offset(0))) {
-      SetNextFiniteState(fsm_state, timestamp);
-    }
-  } else if (fsm_state(0) == LEFT_STANCE) {
+  if (fsm_state(0) == LEFT_STANCE) {
     if (contact_based_
             ? num_contacts >= 3
             : timestamp > (transition_times_[LEFT_STANCE] + time_offset(0))) {
-      SetNextFiniteState(fsm_state, timestamp);
-    }
-  } else if (fsm_state(0) == DOUBLE_L_LO) {
-    if (contact_based_
-            ? num_contacts <= 2 &&
-                  contact_point.find("left") != std::string::npos
-            : timestamp > (transition_times_[DOUBLE_L_LO] + time_offset(0))) {
       SetNextFiniteState(fsm_state, timestamp);
     }
   } else if (fsm_state(0) == RIGHT_STANCE) {
@@ -139,7 +125,7 @@ void WalkingEventFsm::CalcFiniteState(const Context<double>& context,
 void WalkingEventFsm::SetNextFiniteState(Eigen::VectorBlock<VectorXd> fsm_state,
                                          double timestamp) const {
   if (fsm_state(0) == RIGHT_STANCE)
-    fsm_state << DOUBLE_R_LO;
+    fsm_state << LEFT_STANCE;
   else
     fsm_state(0) += 1;
   if (print_fsm_info_) {

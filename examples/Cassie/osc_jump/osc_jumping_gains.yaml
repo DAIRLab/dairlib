@@ -1,7 +1,7 @@
 w_input: 2
 w_accel: 0.000001
 w_soft_constraint: 8000
-x_offset: 0.095
+x_offset: 0.05
 
 w_swing_toe: 0.1
 swing_toe_kp: 1500

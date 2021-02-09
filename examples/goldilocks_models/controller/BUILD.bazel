@@ -77,3 +77,11 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "osc_rom_walking_gains",
+    hdrs = ["osc_rom_walking_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

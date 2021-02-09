@@ -15,12 +15,12 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
-#include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "examples/goldilocks_models/controller/local_lipm_traj_gen.h"
+#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 #include "examples/goldilocks_models/controller/planned_traj_guard.h"
 #include "examples/goldilocks_models/controller/rom_traj_receiver.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
@@ -96,8 +96,10 @@ DEFINE_string(channel_fsm_t, "FSM_T",
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which receives MPC output");
 
-DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains.yaml",
-              "Filepath containing gains");
+DEFINE_string(
+    gains_filename,
+    "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml",
+    "Filepath containing gains");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
@@ -108,16 +110,11 @@ DEFINE_bool(is_two_phase, false,
 
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
-// Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
-// publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
-// performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
-// Maybe we need to update the lcm driven loop to clear the queue of lcm message
-// if it's more than one message?
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Read-in the parameters
-  OSCWalkingGains gains;
+  OSCRomWalkingGains gains;
   const YAML::Node& root =
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
@@ -245,16 +242,14 @@ int DoMain(int argc, char* argv[]) {
                   simulator_drift->get_input_port_state());
 
   // Create human high-level control
-  Eigen::Vector2d global_target_position(1, 0);
+  Eigen::Vector2d global_target_position(gains.global_target_position_x,
+                                         gains.global_target_position_y);
   if (FLAGS_const_walking_speed) {
     // So that the desired yaw angle always points at x direction)
     global_target_position(0) = std::numeric_limits<double>::infinity();
   }
-  Eigen::Vector2d params_of_no_turning(5, 1);
-  // Logistic function 1/(1+5*exp(x-1))
-  // The function ouputs 0.0007 when x = 0
-  //                     0.5    when x = 1
-  //                     0.9993 when x = 2
+  Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
+                                       gains.yaw_deadband_radius);
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
       gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
@@ -344,7 +339,7 @@ int DoMain(int argc, char* argv[]) {
                   optimal_rom_traj_gen->get_input_port(0));
 
   // Create CoM trajectory generator
-  double desired_com_height = 0.89;
+  double desired_com_height = gains.lipm_height;
   vector<int> unordered_fsm_states;
   vector<double> unordered_state_durations;
   vector<vector<std::pair<const Vector3d, const Frame<double>&>>>
@@ -419,6 +414,26 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(walking_speed_control->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_sc());
 
+  // Swing toe joint trajectory
+  std::map<std::string, int> pos_map =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
+      left_heel, left_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
+      right_heel, right_toe};
+  auto left_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
+          left_foot_points, "left_toe_angle_traj");
+  auto right_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
+          right_foot_points, "right_toe_angle_traj");
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_toe_angle_traj_gen->get_state_input_port());
+
   // lipm traj for ROM (com wrt to stance foot)
   vector<bool> flip_in_y;
   if (FLAGS_is_two_phase) {
@@ -456,7 +471,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Cost
   int n_v = plant_wo_springs.num_velocities();
-  MatrixXd Q_accel = 2 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
   // Constraints in OSC
@@ -494,11 +509,9 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  double w_contact_relax = 2000;
-  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
   // Friction coefficient
-  double mu = 0.4;
-  osc->SetContactFriction(mu);
+  osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
@@ -536,12 +549,9 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Swing foot tracking
-  MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
-  MatrixXd K_p_sw_ft = 200 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_sw_ft = 1 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_sw_ft,
-                                             K_d_sw_ft, W_swing_foot,
-                                             plant_w_spr, plant_wo_springs);
+  TransTaskSpaceTrackingData swing_foot_traj(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_wo_springs);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
@@ -550,15 +560,9 @@ int DoMain(int argc, char* argv[]) {
   // TODO: we also want ComTrackingData for backup controller. To switch between
   //  ComTrackingData and OptimalRomTrackingData, we probably need a external
   //  flag to OSC
-  MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 0;
-  W_com(1, 1) = 0;
-  W_com(2, 2) = 2000;
-  MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 5 * MatrixXd::Identity(3, 3);
-  OptimalRomTrackingData optimal_rom_traj("optimal_rom_traj", rom->n_y(),
-                                          K_p_com, K_d_com, W_com, plant_w_spr,
-                                          plant_wo_springs);
+  OptimalRomTrackingData optimal_rom_traj(
+      "optimal_rom_traj", rom->n_y(), gains.K_p_rom, gains.K_d_rom, gains.W_rom,
+      plant_w_spr, plant_wo_springs);
   optimal_rom_traj.AddStateAndRom(left_stance_state, *rom);
   optimal_rom_traj.AddStateAndRom(post_left_double_support_state, *rom);
   optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
@@ -574,59 +578,35 @@ int DoMain(int argc, char* argv[]) {
   // also rotate it from local to global? (probably not?)
   osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
-  double w_pelvis_balance = 200;
-  double k_p_pelvis_balance = 200;
-  double k_d_pelvis_balance = 80;
-  Matrix3d W_pelvis_balance = MatrixXd::Zero(3, 3);
-  W_pelvis_balance(0, 0) = w_pelvis_balance;
-  W_pelvis_balance(1, 1) = w_pelvis_balance;
-  Matrix3d K_p_pelvis_balance = MatrixXd::Zero(3, 3);
-  K_p_pelvis_balance(0, 0) = k_p_pelvis_balance;
-  K_p_pelvis_balance(1, 1) = k_p_pelvis_balance;
-  Matrix3d K_d_pelvis_balance = MatrixXd::Zero(3, 3);
-  K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
-  K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj(
-      "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
-      W_pelvis_balance, plant_w_spr, plant_wo_springs);
+      "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
+      gains.W_pelvis_balance, plant_w_spr, plant_wo_springs);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
-  double w_heading = 200;
-  double k_p_heading = 50;
-  double k_d_heading = 40;
-  Matrix3d W_pelvis_heading = MatrixXd::Zero(3, 3);
-  W_pelvis_heading(2, 2) = w_heading;
-  Matrix3d K_p_pelvis_heading = MatrixXd::Zero(3, 3);
-  K_p_pelvis_heading(2, 2) = k_p_heading;
-  Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
-  K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj(
-      "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
-      W_pelvis_heading, plant_w_spr, plant_wo_springs);
+      "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
+      gains.W_pelvis_heading, plant_w_spr, plant_wo_springs);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
-  // Swing toe joint tracking (Currently use fix position)
-  // The desired position, -1.5, was derived heuristically. It is roughly the
-  // toe angle when Cassie stands on the ground.
-  MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = 1500 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_swing_toe = 10 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
-                                        K_d_swing_toe, W_swing_toe, plant_w_spr,
-                                        plant_wo_springs);
-  swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                         "toe_rightdot");
-  swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                         "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
+  osc->AddTrackingData(&pelvis_heading_traj,
+                       gains.period_of_no_heading_control);
+  // Swing toe joint tracking
+  JointSpaceTrackingData swing_toe_traj_left(
+      "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+      gains.W_swing_toe, plant_w_spr, plant_wo_springs);
+  JointSpaceTrackingData swing_toe_traj_right(
+      "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+      gains.W_swing_toe, plant_w_spr, plant_wo_springs);
+  swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
+                                               "toe_rightdot");
+  swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
+                                              "toe_leftdot");
+  osc->AddTrackingData(&swing_toe_traj_left);
+  osc->AddTrackingData(&swing_toe_traj_right);
   // Swing hip yaw joint tracking
-  MatrixXd W_hip_yaw = 50 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = 40 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = 0.5 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
-                                            K_d_hip_yaw, W_hip_yaw, plant_w_spr,
-                                            plant_wo_springs);
+  JointSpaceTrackingData swing_hip_yaw_traj(
+      "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      gains.W_hip_yaw, plant_w_spr, plant_wo_springs);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
@@ -646,6 +626,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("pelvis_balance_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
+  builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+  builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.

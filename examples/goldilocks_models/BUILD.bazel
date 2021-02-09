@@ -91,6 +91,7 @@ cc_binary(
         "//examples/goldilocks_models/controller:local_lipm_traj_gen",
         "//examples/goldilocks_models/controller:planned_traj_guard",
         "//examples/goldilocks_models/controller:rom_traj_receiver",
+        "//examples/goldilocks_models/controller:osc_rom_walking_gains",
         "//multibody:utils",
         "//systems:dairlib_signal_lcm_systems",
         "//systems:robot_lcm_systems",

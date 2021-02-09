@@ -26,20 +26,12 @@ group "3.test rom traj tracking" {
         exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test1";
         host = "localhost";
     }
-    cmd "1.rom-walking-controller (const traj)" {
-        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2 --iter=30";
-        host = "localhost";
-    }
     cmd "1.simulator for OSC controller (with init state)" {
         exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true";
         host = "localhost";
     }
     cmd "2.simulator for OSC controller (with init state, mirrored robot)" {
         exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true --start_with_right_stance=true";
-        host = "localhost";
-    }
-    cmd "2.rom-walking-controller (const traj, mirrored robot)" {
-        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test2 --iter=30 --start_with_right_stance=true";
         host = "localhost";
     }
 }

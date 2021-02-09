@@ -1,6 +1,7 @@
 #include "examples/Cassie/osc/walking_speed_control.h"
 
 #include <math.h>
+
 #include <string>
 
 #include "multibody/multibody_utils.h"
@@ -32,15 +33,18 @@ namespace osc {
 
 WalkingSpeedControl::WalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
-    Context<double>* context, int footstep_option, double swing_phase_duration)
+    Context<double>* context, double k_ff_lateral, double k_fb_lateral,
+    double k_ff_sagittal, double k_fb_sagittal, double swing_phase_duration)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")),
       swing_phase_duration_(swing_phase_duration),
-      is_using_predicted_com_(swing_phase_duration > 0) {
-  DRAKE_DEMAND(0 <= footstep_option && footstep_option <= 1);
-
+      is_using_predicted_com_(swing_phase_duration > 0),
+      k_fp_ff_lateral_(k_ff_lateral),
+      k_fp_fb_lateral_(k_fb_lateral),
+      k_fp_ff_sagittal_(k_ff_sagittal),
+      k_fp_fb_sagittal_(k_fb_sagittal) {
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -61,23 +65,6 @@ WalkingSpeedControl::WalkingSpeedControl(
                 "com_traj",
                 drake::Value<drake::trajectories::Trajectory<double>>(pp))
             .get_index();
-  }
-
-  // TODO(yminchen): Gains are not tuned yet. Do we need two sets of gains for
-  //  moving forward and backward?
-  // Control gains
-  if (footstep_option == 0) {
-    // For Capture point
-    k_fp_ff_sagital_ = 0.16;
-    k_fp_fb_sagital_ = 0.04;
-    k_fp_ff_lateral_ = 0.08;
-    k_fp_fb_lateral_ = 0.02;
-  } else if (footstep_option == 1) {
-    // For LIPM neutral point
-    k_fp_ff_sagital_ = 0;
-    k_fp_fb_sagital_ = 0.06;
-    k_fp_ff_lateral_ = 0;
-    k_fp_fb_lateral_ = 0.12;
   }
 }
 
@@ -118,6 +105,16 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
     com_vel = J * v;
   }
 
+  // Filter the com vel
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    double dt = robot_output->get_timestamp() - last_timestamp_;
+    last_timestamp_ = robot_output->get_timestamp();
+    double alpha =
+        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+    filterred_com_vel_ = alpha * com_vel + (1 - alpha) * filterred_com_vel_;
+  }
+  com_vel = filterred_com_vel_;
+
   // Extract quaternion from floating base position
   Quaterniond Quat(q(0), q(1), q(2), q(3));
   Quaterniond Quat_conj = Quat.conjugate();
@@ -137,8 +134,8 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
 
   // Velocity control
   double delta_x_fs_sagital =
-      -k_fp_ff_sagital_ * des_sagital_vel -
-      k_fp_fb_sagital_ * (des_sagital_vel - com_vel_sagital);
+      -k_fp_ff_sagittal_ * des_sagital_vel -
+      k_fp_fb_sagittal_ * (des_sagital_vel - com_vel_sagital);
   Vector3d delta_x_fs_sagital_3D_local(delta_x_fs_sagital, 0, 0);
   delta_x_fs_sagital_3D_global =
       drake::math::quatRotateVec(quat, delta_x_fs_sagital_3D_local);

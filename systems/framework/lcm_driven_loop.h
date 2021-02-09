@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "dairlib/lcmt_controller_switch.hpp"
+
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -11,8 +13,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/serializer.h"
-
-#include "dairlib/lcmt_controller_switch.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -251,6 +251,18 @@ class LcmDrivenLoop {
           active_channel_ = switch_sub_->message().channel;
         } else {
           std::cout << switch_sub_->message().channel << " doesn't exist\n";
+        }
+
+        // Advancing the simulator here ensure that the switch message is
+        // received in the leaf systems without the encountering a race
+        // condition when constructing a separate LcmSubscriberSystem that
+        // listens to the same channel. Advancing the simulator, ensures that
+        // the LCM message used here successfully arrives at the input port of
+        // the other LcmSubscriberSystem
+        simulator_->AdvanceTo(time);
+        if (is_forced_publish_) {
+          // Force-publish via the diagram
+          diagram_ptr_->Publish(diagram_context);
         }
 
         // Clear messages in the switch channel

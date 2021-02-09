@@ -15,6 +15,8 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/osc_walking_gains.h"
+#include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
@@ -38,6 +40,7 @@
 
 #include "dairlib/lcmt_dairlib_signal.hpp"
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/primitives/multiplexer.h"
@@ -93,6 +96,8 @@ DEFINE_string(channel_fsm_t, "FSM_T",
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which receives MPC output");
 
+DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains.yaml",
+              "Filepath containing gains");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
@@ -100,10 +105,6 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
-DEFINE_int32(
-    footstep_option, 1,
-    "0 uses the capture point\n"
-    "1 uses the neutral point derived from LIPM given the stance duration");
 
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
@@ -114,6 +115,12 @@ DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 // if it's more than one message?
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  // Read-in the parameters
+  OSCWalkingGains gains;
+  const YAML::Node& root =
+      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -249,8 +256,11 @@ int DoMain(int argc, char* argv[]) {
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), global_target_position,
-      params_of_no_turning, FLAGS_footstep_option);
+      plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
+      gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
+      gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
+      gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
+      params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
@@ -363,49 +373,28 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(event_time->get_output_port_event_time(),
-                  lipm_traj_generator->get_input_port_fsm_switch_time());
+                  lipm_traj_generator->get_input_port_touchdown_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
-  bool use_predicted_com_vel = true;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
-          plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
-          use_predicted_com_vel ? left_support_duration : 0);
+          plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
+          gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
+          left_support_duration);
   if (!FLAGS_const_walking_speed) {
     builder.Connect(high_level_command->get_xy_output_port(),
                     walking_speed_control->get_input_port_des_hor_vel());
   }
   builder.Connect(simulator_drift->get_output_port(0),
                   walking_speed_control->get_input_port_state());
-  if (use_predicted_com_vel) {
-    builder.Connect(lipm_traj_generator->get_output_port(0),
-                    walking_speed_control->get_input_port_com());
-    builder.Connect(event_time->get_output_port_event_time_of_interest(),
-                    walking_speed_control->get_input_port_fsm_switch_time());
-  }
+  builder.Connect(lipm_traj_generator->get_output_port(0),
+                  walking_speed_control->get_input_port_com());
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                  walking_speed_control->get_input_port_fsm_switch_time());
 
-  // Create swing leg trajectory generator (capture point)
-  double mid_foot_height = 0.07;
-  // Since the ground is soft in the simulation, we raise the desired final
-  // foot height by 1 cm. The controller is sensitive to this number, should
-  // tune this every time we change the simulation parameter or when we move
-  // to the hardware testing.
-  // Additionally, implementing a double support phase might mitigate the
-  // instability around state transition.
-  double desired_final_foot_height = 0.0;
-  double desired_final_vertical_foot_velocity = 0;  //-1;
-  double max_CoM_to_footstep_dist = 0.5;
-  double footstep_offset;
-  double center_line_offset;
-  if (FLAGS_footstep_option == 0) {
-    footstep_offset = 0.06;
-    center_line_offset = 0.06;
-  } else if (FLAGS_footstep_option == 1) {
-    footstep_offset = 0.06;
-    center_line_offset = 0.06;
-  }
+  // Create swing leg trajectory generator
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
@@ -416,10 +405,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::SwingFootTrajGenerator>(
           plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
           left_right_support_state_durations, left_right_foot, "pelvis",
-          mid_foot_height, desired_final_foot_height,
-          desired_final_vertical_foot_velocity, max_CoM_to_footstep_dist,
-          footstep_offset, center_line_offset, true, true, true,
-          FLAGS_footstep_option);
+          gains.mid_foot_height, gains.final_foot_height,
+          gains.final_foot_velocity_z, gains.max_CoM_to_footstep_dist,
+          gains.footstep_offset, gains.center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(event_time->get_output_port_event_time_of_interest(),

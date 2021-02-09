@@ -8,6 +8,8 @@ using Eigen::MatrixXd;
 using drake::systems::LeafSystem;
 using drake::systems::Context;
 
+static constexpr double kMaxError = 1.0;
+
 namespace dairlib{
 namespace systems {
 

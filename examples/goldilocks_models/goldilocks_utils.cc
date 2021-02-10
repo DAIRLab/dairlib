@@ -207,6 +207,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 7) {
     // Fix the mapping function of the COM
     // TODO: rom_option=7 is unfinished. Should we use COM wrt world?
+    DRAKE_UNREACHABLE();
     std::set<int> invariant_idx = {0, 1, 2};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);

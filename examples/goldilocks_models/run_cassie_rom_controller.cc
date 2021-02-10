@@ -142,7 +142,7 @@ int DoMain(int argc, char* argv[]) {
   const std::string dir_model =
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   std::unique_ptr<ReducedOrderModel> rom =
-      CreateRom(4 /*rom_option*/, 1 /*robot_option*/, plant_wo_springs, true);
+      CreateRom(gains.rom_option, 1 /*robot_option*/, plant_wo_springs, true);
   ReadModelParameters(rom.get(), dir_model, gains.model_iter);
 
   // Mirrored reduced order model

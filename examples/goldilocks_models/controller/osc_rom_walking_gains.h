@@ -7,6 +7,7 @@ struct OSCRomWalkingGains {
   int rows;
   int cols;
   int model_iter;
+  int rom_option;
   double mu;
   double w_accel;
   double w_soft_constraint;
@@ -84,6 +85,7 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
     a->Visit(DRAKE_NVP(model_iter));
+    a->Visit(DRAKE_NVP(rom_option));
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));

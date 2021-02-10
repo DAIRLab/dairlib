@@ -52,7 +52,7 @@ using drake::trajectories::PiecewisePolynomial;
 using systems::OutputVector;
 
 // Planner settings
-DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
+DEFINE_int32(rom_option, -1, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 1, "The sample # of the initial condition that you use");
 
@@ -142,7 +142,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Parameters for the traj opt
   PlannerSetting param;
-  param.rom_option = FLAGS_rom_option;
+  param.rom_option =
+      (FLAGS_rom_option >= 0) ? FLAGS_rom_option : gains.rom_option;
   param.iter = (FLAGS_iter >= 0) ? FLAGS_iter : gains.model_iter;
   param.sample = FLAGS_sample;
   param.n_step = FLAGS_n_step;

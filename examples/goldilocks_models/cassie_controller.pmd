@@ -63,7 +63,7 @@ script "run-original-walking" {
 
 script "run-rom-walking" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "2.2.rom-planner";
+    start cmd "2.2.rom-planner (short time limit)";
     start cmd "2.1.optimal-rom-walking-controller";
     wait ms 200;
     start cmd "0.simulator";

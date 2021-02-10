@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt
 import pydairlib.lcm_trajectory
+from pydairlib.common import FindResourceOrThrow
+from pydrake.trajectories import PiecewisePolynomial
+
 
 def main():
     loadedTrajs = pydairlib.lcm_trajectory.LcmTrajectory()

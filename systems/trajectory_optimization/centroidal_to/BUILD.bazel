@@ -18,6 +18,7 @@ cc_library(
         "rigid_body_dynamics_constraint.h",
     ],
     deps = [
+        "//lcm:lcm_trajectory_saver",
         "//solvers:constraint_factory",
         "//solvers:constraints",
         "@drake//:drake_shared_library",
@@ -28,8 +29,18 @@ cc_binary(
     name = "test_planar",
     srcs = ["test_planar.cc"],
     deps = [
+        "//lcm:lcm_trajectory_saver",
         "//systems/trajectory_optimization/centroidal_to",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+py_binary(
+    name = "centroidal_trajectory_plotter",
+    srcs = ["centroidal_trajectory_plotter.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "//lcmtypes:lcmtypes_robot_py",
     ],
 )

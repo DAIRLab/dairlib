@@ -31,7 +31,7 @@ void PlanarCentroidalTrajOpt::SetFinalPose(Eigen::Vector2d com, double theta,
   pos.head(kLinearDim) = com;
   pos.tail(kAngularDim) = theta * Eigen::VectorXd::Ones(1);
 
-  Eigen::Vector3d tol = eps* Eigen::Vector3d::Ones();
+  Eigen::Vector3d tol = eps * Eigen::Vector3d::Ones();
 
   AddBoundingBoxConstraint(pos-tol, pos+tol,
       modes_.back().state_vars_.back().head(kLinearDim + kAngularDim));
@@ -106,6 +106,7 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
 
   sequence_ = sequence;
   times_ = times;
+  n_modes_ = sequence_.size();
 
   Eigen::MatrixXd AeqForceKnots = Eigen::MatrixXd::Zero(kForceDim, 2*kForceDim);
   AeqForceKnots.block(0, 0, kForceDim, kForceDim) =
@@ -301,7 +302,7 @@ void PlanarCentroidalTrajOpt::SetMaxDeviationConstraint(Eigen::Vector2d max) {
 }
 
 void PlanarCentroidalTrajOpt::SetFlatGroundTerrainConstraint() {
-  for (int i = 0; i < modes_.size(); i++) {
+  for (int i = 0; i < n_modes_; i++) {
     AddBoundingBoxConstraint(Eigen::VectorXd::Zero(1),
                              Eigen::VectorXd::Zero(1),
                              modes_[i].stance_vars_.tail(1));
@@ -314,29 +315,18 @@ void PlanarCentroidalTrajOpt::SetFlatGroundTerrainConstraint() {
 }
 
 void PlanarCentroidalTrajOpt::SetInitialStateGuess() {
-  double T = MapKnotPointToTime(modes_.size() - 1,
+  double T = MapKnotPointToTime(n_modes_ - 1,
       modes_.back().state_vars_.size() - 1);
 
-  std::cout << "ToTal Time: " << T << std::endl;
-
   Eigen::VectorXd delta_pos = (xf_ - x0_).head(kLinearDim + kAngularDim);
-
   Eigen::VectorXd v_coeff = (-6.0 / pow(T, 3)) * delta_pos;
 
-  Eigen::Vector2d stance_delta = (1.0 / modes_.size()) * delta_pos.head(kLinearDim);
-  Eigen::Vector2d stance_0 = Eigen::Vector2d::Zero();
-  stance_0.head(1) = x0_.head(1);
-
-  for (int i = 0; i < modes_.size(); i++){
-    SetInitialGuess(modes_[i].stance_vars_.head(kLinearDim), stance_0 + i * stance_delta);
-    SetInitialGuess(modes_[i].stance_vars_.tail(kLinearDim), stance_0 + i * stance_delta);
-
+  for (int i = 0; i < n_modes_; i++){
     for (int j = 0; j < modes_[i].state_vars_.size(); j++){
       if ((i != 0 || j!= 0) &&
-      ! (i == (modes_.size()-1) && j == (modes_.back().state_vars_.size() - 1))){
+      ! (i == (n_modes_-1) && j == (modes_.back().state_vars_.size() - 1))){
 
         double t = MapKnotPointToTime(i, j);
-        std::cout << "T : " << t << std::endl;
         Eigen::VectorXd pos = x0_.head(kLinearDim + kAngularDim) +
             v_coeff * ((pow(t, 3) / 3.0 - T * (pow(t, 2) / 2.0)));
 
@@ -354,12 +344,30 @@ void PlanarCentroidalTrajOpt::SetInitialForceGuess() {
   Eigen::VectorXd f = Eigen::VectorXd::Zero(kForceDim);
   f.tail(1) = 9.81 * mass_ * Eigen::VectorXd::Ones(1);
 
-  for (int i = 0; i < modes_.size(); i++){
+  for (int i = 0; i < n_modes_; i++){
     int n_c = (sequence_[i] == stance::D)? 2 : 1;
     for (int j = 0; j < modes_[i].force_vars_.size(); j++) {
       for (int k = 0; k < kForceVars * n_c; k+=kForceDim) {
         SetInitialGuess(modes_[i].force_vars_[j].segment(k, kForceDim),f);
       }
+    }
+  }
+}
+
+void PlanarCentroidalTrajOpt::SetInitialStanceGuess() {
+  double n_ss = floor(sequence_.size() / 2.0);
+  Eigen::VectorXd delta_pos = (xf_ - x0_).head(kLinearDim + kAngularDim);
+  Eigen::Vector2d stance_delta = (1.0 / (2.0 * n_ss)) * delta_pos.head(kLinearDim);
+  Eigen::Vector2d stance = Eigen::Vector2d::Zero();
+  stance.head(1) = x0_.head(1) - stance_delta.head(1);
+
+  for (int i = 0; i < n_modes_; i ++) {
+    if (sequence_[i] == stance::D) {
+      SetInitialGuess(modes_[i].stance_vars_.segment(kStanceVars * (1 - sequence_[i + 1]), kStanceVars), stance);
+      stance  = stance + 2.0 * stance_delta;
+      SetInitialGuess(modes_[i].stance_vars_.segment(kStanceVars * (sequence_[i + 1]), kStanceVars), stance);
+    } else {
+      SetInitialGuess(modes_[i].stance_vars_, stance);
     }
   }
 }
@@ -385,6 +393,45 @@ double PlanarCentroidalTrajOpt::MapKnotPointToTime(int idx_mode, int idx_knot)  
   }
 
   return time + times_[idx_mode] * ((double) idx_knot )/((double) n_knot);
+}
+
+int PlanarCentroidalTrajOpt::NumStateKnots() {
+  int n = 0;
+  for (int i = 0; i < n_modes_; i++) {
+    n += modes_[i].state_vars_.size() - 1;
+  }
+  return n+1;
+}
+
+LcmTrajectory::Trajectory PlanarCentroidalTrajOpt::GetStateTrajectory(
+    drake::solvers::MathematicalProgramResult& result
+    ) {
+  int n_knot = NumStateKnots();
+  Eigen::MatrixXd state_knots = Eigen::MatrixXd::Zero(kStateVars, n_knot);
+  Eigen::VectorXd time_knots = Eigen::VectorXd::Zero(kStateVars, n_knot);
+  int time_idx = 0;
+  for (int i = 0; i < n_modes_; i++) {
+    for (int j = 0; j < modes_[i].state_vars_.size() - 1; j++) {
+      time_knots[time_idx] = MapKnotPointToTime(i, j);
+      state_knots.block(0, time_idx, kStateVars, 1) =
+          result.GetSolution(modes_[i].state_vars_[j]);
+      time_idx ++;
+    }
+  }
+  time_knots[time_idx] = MapKnotPointToTime(n_modes_ - 1,
+      modes_.back().state_vars_.size() -1);
+  state_knots.block(0, time_idx, kStateVars, 1) =
+      result.GetSolution(modes_.back().state_vars_.back());
+
+  auto state_traj = LcmTrajectory::Trajectory();
+  for (int i = 0; i < kStateVars; i ++) {
+    state_traj.datatypes.push_back("double");
+  }
+  state_traj.datapoints = state_knots;
+  state_traj.time_vector = time_knots;
+  state_traj.traj_name = "state_traj";
+
+  return state_traj;
 }
 
 }

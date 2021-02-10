@@ -10,6 +10,9 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
+#include "lcm/lcm_trajectory.h"
+
+
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 
@@ -56,11 +59,14 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
    // void SetFootPlacementContinuityConstraint();
   void SetInitialStateGuess();
   void SetInitialForceGuess();
+  void SetInitialStanceGuess();
   double MapKnotPointToTime(int idx_mode, int idx_knot);
-
+  int NumStateKnots();
+  LcmTrajectory::Trajectory GetStateTrajectory(drake::solvers::MathematicalProgramResult& result);
   drake::solvers::MathematicalProgramResult SolveProg(int iteration_limit);
 
   std::vector<CentroidalMode> modes() { return modes_ ;};
+  std::vector<stance> sequence() { return sequence_;}
 
  private:
   std::vector<Eigen::Vector2d> nominal_stance_;
@@ -70,6 +76,7 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   Eigen::VectorXd x0_;
   Eigen::VectorXd xf_;
 
+  int n_modes_ = 0;
   const double I_;
   const double mass_;
   const double h_;

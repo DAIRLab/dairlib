@@ -27,6 +27,7 @@ DEFINE_double(angular_vel_cost, 0.001, "Cost on angular velocity");
 DEFINE_double(final_pos_cost, 0.05, "Cost on final position");
 DEFINE_double(final_pos_tol, 0.01, "Final Position Error Tolerance");
 DEFINE_double(theta, 0.2, "final_angle");
+DEFINE_double(h, 0.025, "timestep");
 
 
 void print_guess(PlanarCentroidalTrajOpt& prog);
@@ -41,16 +42,16 @@ int doMain(int argc, char** argv){
   double mass = 10;
   double I = 2;
   double mu = 1.0;
-  double h = 0.025;
+  double h = FLAGS_h;
 
   std::vector<stance> mode_sequence = { stance::D, stance::L, stance::D, stance::R, stance::D};
-  std::vector<double> times = {0.05, 0.3, 0.05, 0.3, 0.05};
+  std::vector<double> times = {0.05, 0.25, 0.05, 0.25, 0.05};
   Eigen::Vector2d com0;
   com0 << 0, 1;
   Eigen::Vector2d com1;
   com1 << 0.15, 1;
   Eigen::Vector2d dev;
-  dev << 0.15, 0.15;
+  dev << 0.05, 0.05;
 
   PlanarCentroidalTrajOpt prog(I, mass, h, mu);
   prog.SetModeSequence(mode_sequence, times);

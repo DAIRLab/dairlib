@@ -69,7 +69,7 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   std::vector<stance> sequence() { return sequence_;}
 
  private:
-  std::vector<std::string> state_var_names = {"x", "y", "theta", "x_dot", "y_dot", "omega"};
+  std::vector<std::string> state_var_names = {"x", "y", "theta", "x_dot", "y_dot", "theta_dot"};
 
   std::vector<Eigen::Vector2d> nominal_stance_;
   std::vector<stance> sequence_;

@@ -411,7 +411,7 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetStateTrajectories(
   int n_knot = NumStateKnots();
 
   Eigen::MatrixXd state_knots = Eigen::MatrixXd::Zero(kStateVars, n_knot);
-  Eigen::VectorXd time_knots = Eigen::VectorXd::Zero(kStateVars, n_knot);
+  Eigen::VectorXd time_knots = Eigen::VectorXd::Zero(n_knot);
   int time_idx = 0;
 
   for (int i = 0; i < n_modes_; i++) {

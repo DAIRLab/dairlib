@@ -1,7 +1,7 @@
 // (This file is modified from examples/Cassie/run_osc_walking_controller.cc)
 
-// TODO(yminchen): this file will be the main file that publish OSC output for
-//  ROM MPC
+// TODO(yminchen): Keep in mind that you need to rotate the planned traj back
+//  from local to global frame if the ROM is dependent on x, y or yaw.
 
 #include <string>
 #include <gflags/gflags.h>
@@ -111,8 +111,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Read-in the parameters
   OSCRomWalkingGains gains;
-  const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
+  const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   // Build Cassie MBP
@@ -185,11 +184,6 @@ int DoMain(int argc, char* argv[]) {
   traj_msg.num_trajectories = 1;
   traj_msg.trajectories.push_back(traj_msg0);
   traj_msg.trajectory_names.push_back("");
-
-  // Read in the end time of the trajectory
-  int knots_per_foot_step = readCSV(dir_data + "nodes_per_step.csv")(0, 0);
-  double end_time_of_first_step =
-      readCSV(dir_data + "time_at_knots.csv")(knots_per_foot_step, 0);
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -430,7 +424,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
 
-  // lipm traj for ROM (com wrt to stance foot)
+  /*// lipm traj for ROM (com wrt to stance foot)
   vector<bool> flip_in_y;
   if (FLAGS_is_two_phase) {
     flip_in_y = {false, true};
@@ -450,15 +444,13 @@ int DoMain(int argc, char* argv[]) {
                   local_lipm_traj_generator->get_input_port_state());
 
   // Create a guard for the planner in case it doesn't finish solving in time
-  // TODO: test optimal ROM traj. Currently we are using backup controller all
-  //  the time (if-statement insdie the class PlannedTrajGuard)
   auto optimal_traj_planner_guard =
       builder.AddSystem<goldilocks_models::PlannedTrajGuard>();
   builder.Connect(
       optimal_rom_traj_gen->get_output_port(0),
       optimal_traj_planner_guard->get_input_port_optimal_rom_traj());
   builder.Connect(local_lipm_traj_generator->get_output_port(0),
-                  optimal_traj_planner_guard->get_input_port_lipm_traj());
+                  optimal_traj_planner_guard->get_input_port_lipm_traj());*/
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -553,9 +545,6 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&swing_foot_traj);
   // "Center of mass" tracking (Using RomTrackingData with initial ROM being
   // COM)
-  // TODO: we also want ComTrackingData for backup controller. To switch between
-  //  ComTrackingData and OptimalRomTrackingData, we probably need a external
-  //  flag to OSC
   OptimalRomTrackingData optimal_rom_traj(
       "optimal_rom_traj", rom->n_y(), gains.K_p_rom, gains.K_d_rom, gains.W_rom,
       plant_w_spr, plant_wo_springs);
@@ -564,14 +553,6 @@ int DoMain(int argc, char* argv[]) {
   optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
   optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
                                   mirrored_rom);
-  //  optimal_rom_traj.AddRom(*rom);
-  // TODO(yminchen): I think currently there are two potential issues.
-  //  1. the optimal ROM is ~COM_wrt_stance_foot, but the LIPM traj is wrt world
-  //  2. mirroring of the ROM
-  //  we have two models and two input trajectories. So keep this in mind when
-  //  you design the controller. Make sure everything is consistent
-  // TODO(yminchen): After you ROM plannar gave an output, you should probably
-  // also rotate it from local to global? (probably not?)
   osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
@@ -614,7 +595,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
+  builder.Connect(optimal_rom_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("optimal_rom_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));

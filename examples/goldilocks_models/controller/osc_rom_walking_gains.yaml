@@ -3,7 +3,7 @@ cols: 3
 
 ### ROM parameter
 # The iteration number of the theta that you use. has to be >=1
-model_iter: 1 #150  #1 #40
+model_iter: 1 #150  #1 #30
 
 ###
 # High level command gains (with radio)
@@ -75,6 +75,18 @@ RomKd:
   [   0,    0,     0,
       0,    0,     0,
       0,    0,     5]
+#RomW:
+#  [   2,    0,     0,
+#      0,    2,     0,
+#      0,    0,  2000]
+#RomKp:
+#  [  50,    0,     0,
+#     0,   50,     0,
+#     0,    0,    50]
+#RomKd:
+#  [   5,    0,     0,
+#      0,    5,     0,
+#      0,    0,     5]
 
 PelvisBalanceW:
   [ 200,    0,     0,

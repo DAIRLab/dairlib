@@ -180,26 +180,15 @@ int DoMain(int argc, char* argv[]) {
   // We probably cannot have two lcmsubsribers listening to the same channel?
   // https://github.com/RobotLocomotion/drake/blob/master/lcm/drake_lcm_interface.h#L242
 
-  // Create state subscriber
-  //  auto state_subscriber =
-  //      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-  //          FLAGS_channel_x, &lcm_local));
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_feedback);
-  //  builder.Connect(state_subscriber->get_output_port(),
-  //                  state_receiver->get_input_port(0));
 
-  // Create Lcm subscriber for fsm and latest lift off time and a translator
-  // from this lcm into BasicVector
-  //  auto fsm_and_liftoff_time_subscriber =
-  //      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_dairlib_signal>(
-  //          FLAGS_channel_fsm_t, &lcm_local));
+  // Create Lcm receiver for fsm and latest lift off time (translate the lcm to
+  // BasicVector)
   int lcm_vector_size = 2;
   auto fsm_and_liftoff_time_receiver =
       builder.AddSystem<systems::DairlibSignalReceiver>(lcm_vector_size);
-  //  builder.Connect(fsm_and_liftoff_time_subscriber->get_output_port(),
-  //                  fsm_and_liftoff_time_receiver->get_input_port(0));
 
   // Create mpc traj publisher
   auto traj_publisher =
@@ -257,58 +246,7 @@ int DoMain(int argc, char* argv[]) {
                             dairlib::lcmt_robot_output>
       loop(&lcm_local, std::move(owned_diagram), lcm_parsers, input_channels,
            true);
-  //  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-  //      &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
-  //      true);
   if (!FLAGS_debug_mode) {
-    // Get context and initialize the lcm message of LcmSubsriber for
-    // lcmt_robot_output
-    /*auto& diagram_context = loop.get_diagram_mutable_context();
-    auto& state_subscriber_context =
-        loop.get_diagram()->GetMutableSubsystemContext(*state_subscriber,
-                                                       &diagram_context);
-    // Note that currently the LcmSubscriber stores the lcm message in the first
-    // state of the leaf system (we hard coded index 0 here)
-    auto& mutable_state =
-        state_subscriber_context
-            .get_mutable_abstract_state<dairlib::lcmt_robot_output>(0);
-    dairlib::lcmt_robot_output initial_message;
-    initial_message.utime = 0;
-    initial_message.num_positions = plant_feedback.num_positions();
-    initial_message.num_velocities = plant_feedback.num_velocities();
-    // TODO(yminchen): maybe you can avoid hardcoding the init state. The
-    //  following state is from multibody_sim.cc
-    initial_message.position = {
-        1,        0,          -2.14411e-13, 0,          0,         0,
-        1,        0.0693992,  -0.0693992,   0,          0,         0.476602,
-        0.476602, -1.15135,   -1.15135,     -0.0366887, -0.036661, 1.44596,
-        1.44596,  -0.0250513, -1.60801,     -0.0251036, -1.60804};
-    initial_message.velocity = {0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0,
-                                0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0};
-    mutable_state = initial_message;*/
-
-    // Get context and initialize the lcm message of LcmSubsriber for
-    // lcmt_dairlib_signal
-    /*auto& diagram_context = loop.get_diagram_mutable_context();
-    auto& fsm_and_liftoff_time_subscriber_context =
-        loop.get_diagram()->GetMutableSubsystemContext(
-            *fsm_and_liftoff_time_subscriber, &diagram_context);
-    // Note that currently the LcmSubscriber stores the lcm message in the first
-    // state of the leaf system (we hard coded index 0 here)
-    auto& mutable_state =
-        fsm_and_liftoff_time_subscriber_context
-            .get_mutable_abstract_state<dairlib::lcmt_dairlib_signal>(0);
-    dairlib::lcmt_dairlib_signal initial_message;
-    initial_message.dim = lcm_vector_size;
-    initial_message.val.resize(lcm_vector_size);
-    initial_message.val = {FLAGS_start_with_left_stance ? double(LEFT_STANCE)
-                                                        : double(RIGHT_STANCE),
-                           0};
-    initial_message.coord.resize(lcm_vector_size);
-    initial_message.coord = std::vector<std::string>(2);
-    initial_message.timestamp = 0;
-    mutable_state = initial_message;*/
-
     loop.Simulate();
   } else {
     // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate

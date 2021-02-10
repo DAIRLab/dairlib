@@ -533,14 +533,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Extract and save solution into files (for debugging)
   //  if (debug_mode_) {
   //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >
-  //  0.5)) { if (!result.is_success()) {
-  if (elapsed.count() > 0.8) {
+  //  0.5)) {
+  //  if (!result.is_success()) {
+  if (debug_mode_ || (elapsed.count() > 0.8)) {
     string dir_data = param_.dir_data;
 
+    /// Save the solution vector
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
     writeCSV(dir_data + string("z.csv"), z_sol);
     // cout << trajopt.decision_variables() << endl;
 
+    /// Save traj to csv
     for (int i = 0; i < param_.n_step; i++) {
       writeCSV(dir_data + string("time_at_knots" + to_string(i) + ".csv"),
                time_breaks[i]);
@@ -559,27 +562,24 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     writeCSV(dir_data + string("x0_each_mode.csv"), x0_each_mode);
     writeCSV(dir_data + string("xf_each_mode.csv"), xf_each_mode);
 
-    // Save trajectory to file
+    /// Save trajectory to lcm
     string file_name = "rom_trajectory";
     RomPlannerTrajectory saved_traj(
         trajopt, result, file_name,
         "Decision variables and state/input trajectories");
     saved_traj.WriteToFile(dir_data + file_name);
     std::cout << "Wrote to file: " << dir_data + file_name << std::endl;
-  }
 
-  // Testing
-  //  if (elapsed.count() > 0.5) {
-  /*if ((elapsed.count() > 0.6) && start_with_left_stance) {
-    //  if (!result.is_success() && start_with_left_stance) {
-    //  if ((result.get_optimal_cost() > 50) && start_with_left_stance) {
-    cout << "x_init = " << x_init << endl;
+    /// Save files for reproducing the same result
+    //cout << "x_init = " << x_init << endl;
     writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
     writeCSV(param_.dir_data + string("init_phase_test.csv"),
              init_phase * VectorXd::Ones(1));
     writeCSV(param_.dir_data + string("is_right_stance_test.csv"),
              is_right_stance * VectorXd::Ones(1));
-  }*/
+
+  }
+
 }
 
 }  // namespace goldilocks_models

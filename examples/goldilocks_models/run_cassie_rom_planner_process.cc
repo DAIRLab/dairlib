@@ -407,7 +407,7 @@ int DoMain(int argc, char* argv[]) {
     const dairlib::lcmt_saved_traj& traj_msg =
         abstract_value->get_value<dairlib::lcmt_saved_traj>();
     LcmTrajectory traj_data(traj_msg);
-    cout << "first trajectory in the lcmt_saved_traj:\n";
+    cout << "\nFirst-mode trajectory in the lcmt_saved_traj:\n";
     string traj_name_0 = traj_data.GetTrajectoryNames()[0];
     cout << "time_vector = \n"
          << traj_data.GetTrajectory(traj_name_0).time_vector.transpose()

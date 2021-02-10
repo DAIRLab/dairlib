@@ -26,6 +26,13 @@ DEFINE_string(folder_path, "",
 
 namespace dairlib {
 
+int ComputeCoeffMatrix(const std::vector<double>& breaks,
+                       const std::vector<MatrixXd>& samples, int row, int col,
+                       MatrixXd* A, VectorXd* b) {
+
+
+}
+
 /// This program pre-computes the output trajectories (center of mass, pelvis
 /// orientation, feet trajectories) for the OSC controller.
 ///
@@ -76,19 +83,20 @@ int DoMain() {
       continue;
     }
     VectorXd times = dircon_traj.GetStateBreaks(mode);
+    std::cout << "times: " << times << std::endl;
     MatrixXd state_samples = dircon_traj.GetStateSamples(mode);
     int n_points = times.size();
-    MatrixXd l_foot_points(6, n_points);
-    MatrixXd r_foot_points(6, n_points);
-    MatrixXd l_hip_points(6, n_points);
-    MatrixXd r_hip_points(6, n_points);
-    MatrixXd pelvis_points(6, n_points);
-    MatrixXd pelvis_orientation(8, n_points);
+    MatrixXd l_foot_points(9, n_points);
+    MatrixXd r_foot_points(9, n_points);
+    MatrixXd l_hip_points(9, n_points);
+    MatrixXd r_hip_points(9, n_points);
+    MatrixXd pelvis_points(9, n_points);
+    MatrixXd pelvis_orientation(12, n_points);
     for (unsigned int i = 0; i < times.size(); ++i) {
       VectorXd x_i = state_samples.col(i).head(nx);
       VectorXd xdot_i = state_samples.col(i).tail(nx);
 
-      plant.SetPositionsAndVelocities(context.get(), state_samples.col(i));
+      plant.SetPositionsAndVelocities(context.get(), x_i);
       Eigen::Ref<Eigen::MatrixXd> pelvis_pos_block =
           pelvis_points.block(0, i, 3, 1);
       Eigen::Ref<Eigen::MatrixXd> l_foot_pos_block =
@@ -121,6 +129,22 @@ int DoMain() {
       pelvis_points.block(3, i, 3, 1) = J_CoM * v_i;
       l_foot_points.block(3, i, 3, 1) = J_l_foot * v_i;
       r_foot_points.block(3, i, 3, 1) = J_r_foot * v_i;
+
+      VectorXd JdotV_CoM = plant.CalcBiasTranslationalAcceleration(
+          *context, JacobianWrtVariable::kV, *pelvis_frame, zero_offset, *world,
+          *world);
+      VectorXd JdotV_l_foot = plant.CalcBiasTranslationalAcceleration(
+          *context, JacobianWrtVariable::kV, *l_toe_frame, zero_offset, *world,
+          *world);
+      VectorXd JdotV_r_foot = plant.CalcBiasTranslationalAcceleration(
+          *context, JacobianWrtVariable::kV, *r_toe_frame, zero_offset, *world,
+          *world);
+
+      pelvis_points.block(6, i, 3, 1) = JdotV_CoM + J_CoM * xdot_i.tail(nv);
+      l_foot_points.block(6, i, 3, 1) =
+          JdotV_l_foot + J_l_foot * xdot_i.tail(nv);
+      r_foot_points.block(6, i, 3, 1) =
+          JdotV_r_foot + J_r_foot * xdot_i.tail(nv);
     }
     all_times.push_back(times);
     all_l_foot_points.push_back(l_foot_points);
@@ -164,8 +188,7 @@ int DoMain() {
                                   "rfoot_xdot", "rfoot_ydot", "rfoot_zdot"};
 
     auto com_traj_block = LcmTrajectory::Trajectory();
-    com_traj_block.traj_name =
-        "pelvis_trans_trajectory" + std::to_string(mode);
+    com_traj_block.traj_name = "pelvis_trans_trajectory" + std::to_string(mode);
     com_traj_block.datapoints = all_pelvis_points[mode];
     com_traj_block.time_vector = all_times[mode];
     com_traj_block.datatypes = {"com_x",    "com_y",    "com_z",

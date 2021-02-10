@@ -109,7 +109,7 @@ def main():
 
   ### All plotting scripts here
   # plot_status(full_log)
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
   # plt.plot(t_contact_info, contact_info[0, :, 2], 'b-')
   # plt.plot(t_contact_info, contact_info[2, :, 2], 'r-')

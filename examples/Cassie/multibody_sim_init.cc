@@ -26,6 +26,7 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
+#include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
@@ -38,6 +39,8 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::rendering::MultibodyPositionToGeometryPose;
+
 using drake::systems::lcm::LcmSubscriberSystem;
 
 using drake::math::RotationMatrix;
@@ -51,10 +54,6 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_bool(time_stepping, true,
-            "If 'true', the plant is modeled as a "
-            "discrete system with periodic updates. "
-            "If 'false', the plant is modeled as a continuous system.");
 DEFINE_double(dt, 8e-5,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
@@ -67,9 +66,8 @@ DEFINE_double(publish_rate, 2000, "Publish rate for simulator");
 DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
-DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
-DEFINE_double(starting_time, 0.0,
+DEFINE_double(start_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
 DEFINE_string(traj_name, "", "Name of the saved trajectory");
@@ -84,18 +82,14 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
+  const double time_step = FLAGS_dt;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
     multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
   }
 
   std::string urdf;
-  if (FLAGS_spring_model) {
-    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
-  } else {
-    urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-  }
+  urdf = "examples/Cassie/urdf/cassie_v2.urdf";
 
   if (FLAGS_terrain_height != 0) {
     Parser parser(&plant, &scene_graph);
@@ -111,8 +105,8 @@ int do_main(int argc, char* argv[]) {
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
-                     FLAGS_spring_model, true);
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf, true,
+                     true);
 
   plant.Finalize();
 
@@ -176,6 +170,10 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
+  //  if (FLAGS_terrain_height != 0.0) {
+  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  //  }
+
   auto diagram = builder.Build();
 
   // Create a context for this system:
@@ -187,9 +185,10 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   MultibodyPlant<double> plant_wo_spr(FLAGS_dt);  // non-zero timestep to avoid
-  Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
-  parser_wo_spr.AddModelFromFile(
-      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
+  //  Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
+  addCassieMultibody(&plant_wo_spr, &scene_graph, FLAGS_floating_base,
+                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     true);
   plant_wo_spr.Finalize();
   Eigen::MatrixXd map_no_spring_to_spring =
       multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
@@ -198,47 +197,19 @@ int do_main(int argc, char* argv[]) {
       DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
 
   PiecewisePolynomial<double> state_traj =
-      PiecewisePolynomial<double>::CubicHermite(
-          dircon_trajectory.GetStateBreaks(0),
-          map_no_spring_to_spring * dircon_trajectory.GetStateSamples(0),
-          map_no_spring_to_spring *
-              dircon_trajectory.GetStateDerivativeSamples(0));
+      dircon_trajectory.ReconstructStateTrajectory();
 
-  for (int mode = 1; mode < dircon_trajectory.GetNumModes(); ++mode) {
-    // Cannot form trajectory with only a single break
-    if (dircon_trajectory.GetStateBreaks(mode).size() < 2) {
-      continue;
-    }
-    state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
-        dircon_trajectory.GetStateBreaks(mode),
-        map_no_spring_to_spring * dircon_trajectory.GetStateSamples(mode),
-        map_no_spring_to_spring *
-            dircon_trajectory.GetStateDerivativeSamples(mode)));
-  }
-
-  VectorXd x_init = state_traj.value(FLAGS_starting_time);
+  VectorXd x_init =
+      map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
 
   if (FLAGS_terrain_height < 0.0) {
     x_init(6) -= FLAGS_terrain_height;
   }
 
-  if (FLAGS_terrain_height != 0.0) {
-    //    ConnectDrakeVisualizer(&builder, scene_graph);
-    drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
-  }
-
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 
-  diagram_context->SetTime(FLAGS_starting_time);
+  diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
-
-  if (!FLAGS_time_stepping) {
-    // simulator.get_mutable_integrator()->set_maximum_step_size(0.01);
-    // simulator.get_mutable_integrator()->set_target_accuracy(1e-1);
-    // simulator.get_mutable_integrator()->set_fixed_step_mode(true);
-    simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-        FLAGS_dt);
-  }
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);

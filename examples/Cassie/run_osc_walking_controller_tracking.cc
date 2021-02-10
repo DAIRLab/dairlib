@@ -377,9 +377,11 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&left_foot_tracking_data);
   osc->AddTrackingData(&right_foot_tracking_data);
   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+  osc->AddConstTrackingData(&pelvis_rot_tracking_data, pelvis_desired_quat);
+  osc->AddConstTrackingData(&pelvis_heading_traj, pelvis_desired_quat);
 
-  osc->AddTrackingData(&pelvis_rot_tracking_data);
-  osc->AddTrackingData(&pelvis_heading_traj);
+  //  osc->AddTrackingData(&pelvis_rot_tracking_data);
+  //  osc->AddTrackingData(&pelvis_heading_traj);
 
   // Build OSC problem
   osc->Build();
@@ -435,10 +437,10 @@ int DoMain(int argc, char* argv[]) {
     //                    head_traj_gen->get_yaw_input_port());
   }
 
-  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
-  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
+  //  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
+  //                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
+  //  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
+  //                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),

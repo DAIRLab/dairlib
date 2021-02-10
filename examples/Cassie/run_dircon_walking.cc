@@ -471,20 +471,20 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   double start_height = FLAGS_start_height;
 
   //acceleration_constraints
-  int n = 0;
-  for (int mode = 0; mode < mode_lengths.size(); ++mode){
-    for (int i = 0; i < mode_lengths[mode]; ++i){
-      auto x_i = trajopt->state_vars_by_mode(mode, i);
-      auto u_i = trajopt->input(n + i);
-      auto lambda_i = trajopt->force(mode, i);
-      VectorXd lb = -10 * VectorXd::Ones(n_v);
-      VectorXd ub = 10 * VectorXd::Ones(n_v);
-      auto acceleration_constraint = std::make_shared<JointAccelConstraint>(
-          lb, ub, plant, constraints[mode], "left_stance_accel_constraints");
-      trajopt->AddConstraint(acceleration_constraint, {x_i, u_i, lambda_i});
-    }
-    n += mode_lengths[mode] - 1;
-  }
+//  int n = 0;
+//  for (int mode = 0; mode < mode_lengths.size(); ++mode){
+//    for (int i = 0; i < mode_lengths[mode]; ++i){
+//      auto x_i = trajopt->state_vars_by_mode(mode, i);
+//      auto u_i = trajopt->input(n + i);
+//      auto lambda_i = trajopt->force(mode, i);
+//      VectorXd lb = -10 * VectorXd::Ones(n_v);
+//      VectorXd ub = 10 * VectorXd::Ones(n_v);
+//      auto acceleration_constraint = std::make_shared<JointAccelConstraint>(
+//          lb, ub, plant, constraints[mode], "left_stance_accel_constraints");
+//      trajopt->AddConstraint(acceleration_constraint, {x_i, u_i, lambda_i});
+//    }
+//    n += mode_lengths[mode] - 1;
+//  }
 
   // position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
@@ -685,8 +685,8 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
     trajopt->AddConstraint(left_foot_z_constraint_clearance, x_i.head(n_q));
     trajopt->AddConstraint(right_foot_z_constraint_clearance, x_i.head(n_q));
     trajopt->AddBoundingBoxConstraint(start_height - 0.10, start_height + 0.10, x_i[pos_map["base_z"]]);
-    trajopt->AddBoundingBoxConstraint(-2.0, -1.5, x_i[pos_map["toe_left"]]);
-    trajopt->AddBoundingBoxConstraint(-2.0, -1.5, x_i[pos_map["toe_right"]]);
+    trajopt->AddBoundingBoxConstraint(-1.8, -1.5, x_i[pos_map["toe_left"]]);
+    trajopt->AddBoundingBoxConstraint(-1.8, -1.5, x_i[pos_map["toe_right"]]);
 
   }
   for (unsigned int mode = 0; mode < mode_lengths.size(); mode++) {
@@ -699,15 +699,21 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   std::cout << "Adding costs: " << std::endl;
   MatrixXd Q = 1e-8 * MatrixXd::Identity(n_v, n_v);
-  MatrixXd R = 0.001 * MatrixXd::Identity(n_u, n_u);
+//  MatrixXd Q = MatrixXd::Zero(n_v, n_v);
+  MatrixXd R = 0.0001 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
-  MatrixXd Q0 = 1e-1 * MatrixXd::Identity(n_v, n_v);
-  trajopt->AddQuadraticCost(x0.tail(n_v).transpose() * Q * x0.tail(n_v));
+  MatrixXd Q0 = MatrixXd::Identity(4, 4);
+//  Q0(1, 1) = 20;
+//  Q0(2, 2) = 1;
+//  Q0(3, 3) = 30;
+  VectorXd desired_quat(4);
+  desired_quat << 1, 0, 0, 0;
+  trajopt->AddRunningCost((x.tail(n_v).head(4) - desired_quat).transpose() * Q * (x.tail(n_v).head(4) - desired_quat));
   // Add some cost to hip roll and yaw
-  double w_q_hip_roll = 0.3;
-  double w_q_hip_yaw = 0.3;
-  double w_q_hip_pitch = 10.0;
+  double w_q_hip_roll = 20.0;
+  double w_q_hip_yaw = 1.0;
+  double w_q_hip_pitch = 100.0;
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(7, 2);

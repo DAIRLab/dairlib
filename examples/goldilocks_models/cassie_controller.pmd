@@ -18,12 +18,12 @@ group "1.controllers" {
 }
 
 group "2.drake-simulator" {
-    cmd "1.simulator for testing (with init state)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true";
+    cmd "1.simulator (with init state)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false";
         host = "localhost";
     }
-    cmd "2.simulator for testing (with init state, mirrored robot)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true --start_with_right_stance=true";
+    cmd "2.simulator (with init state, mirrored robot)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false --start_with_right_stance=true";
         host = "localhost";
     }
     cmd "0.simulator" {
@@ -58,33 +58,15 @@ group "4.lcm-tools" {
 script "run-original-walking" {
     run_script "start-operator-simulation-floating-base";
     start cmd "1.original-walking-controller";
-    start cmd "1.simulator for OSC controller";
+    start cmd "0.simulator";
 }
 
 script "run-rom-walking" {
     run_script "start-operator-simulation-floating-base";
     start cmd "2.2.rom-planner";
-    start cmd "2.1.rom-walking-controller";
+    start cmd "2.1.optimal-rom-walking-controller";
     wait ms 200;
-    start cmd "2.simulator for MPC (with init state)";
-}
-
-script "run-rom-walking-test-const-traj" {
-    run_script "start-operator-simulation-floating-base";
-    start cmd "1.rom-walking-controller (const traj)";
-    start cmd "1.simulator for OSC controller (with init state)";
-}
-
-script "run-rom-walking-test-const-traj-mirrored" {
-    run_script "start-operator-simulation-floating-base";
-    start cmd "2.rom-walking-controller (const traj, mirrored robot)";
-    start cmd "2.simulator for OSC controller (with init state, mirrored robot)";
-}
-
-script "run-rom-walking-test-w-lipm" {
-    run_script "start-operator-simulation-floating-base";
-    start cmd "0.rom-walking-controller (with lipm)";
-    start cmd "1.simulator for OSC controller";
+    start cmd "0.simulator";
 }
 
 script "start-operator-simulation-floating-base" {

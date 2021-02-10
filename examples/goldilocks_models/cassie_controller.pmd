@@ -11,42 +11,23 @@ group "1.controllers" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --sample=1 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=1 ";
         host = "localhost";
     }
-    cmd "2.1.initial-rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=false --iter=1";
-        host = "localhost";
-    }
     cmd "2.2.rom-planner (short time limit)" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --sample=1 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=0.21 --log_solver_info=false";
         host = "localhost";
     }
 }
 
-group "3.test rom traj tracking" {
-    cmd "0.rom-walking-controller (with lipm)" {
-        exec = "bazel-bin/examples/goldilocks_models/test/run_cassie_walking_controller_test1";
-        host = "localhost";
-    }
-    cmd "1.simulator for OSC controller (with init state)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true";
-        host = "localhost";
-    }
-    cmd "2.simulator for OSC controller (with init state, mirrored robot)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true --start_with_right_stance=true";
-        host = "localhost";
-    }
-}
-
 group "2.drake-simulator" {
+    cmd "1.simulator for testing (with init state)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true";
+        host = "localhost";
+    }
+    cmd "2.simulator for testing (with init state, mirrored robot)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --target_realtime_rate=1.0 --simulate_about_one_step_time=true --start_with_right_stance=true";
+        host = "localhost";
+    }
     cmd "0.simulator" {
         exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=1";
-        host = "localhost";
-    }
-    cmd "1.simulator for OSC controller" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
-        host = "localhost";
-    }
-    cmd "2.simulator for MPC (with init state)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --publish_rate=200 --target_realtime_rate=0.1 --pause_second=1";
         host = "localhost";
     }
 }

@@ -146,3 +146,19 @@ cc_binary(
         "@gflags",
     ],
 )
+
+py_binary(
+    name = "eval_sim_performance",
+    srcs = ["eval_sim_performance.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        "//bindings/pydairlib:lcm_trajectory_py",
+        "//bindings/pydairlib:module_py",
+        "//bindings/pydairlib:process_lcm_log_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

@@ -89,8 +89,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 205
-  # t_end = 208
+  t_start = 6
+  t_end = 8
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -100,6 +100,45 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All analysis scripts here
+  # Weight used in training
+  w_Q = 0.1
+  w_R = 0.0002
+
+  x_extracted = x[t_slice, :]
+  u_extracted = u[t_u_slice, :]
+  n_x_data = x_extracted.shape[0]
+  n_u_data = u_extracted.shape[0]
+
+  # Get rid of spring joints
+  # x_extracted[:, nq + vel_map["knee_joint_leftdot"]] = 0
+  # x_extracted[:, nq + vel_map["ankle_spring_joint_leftdot"]] = 0
+  # x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
+  # x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
+
+  cost_x = 0.0
+  for i in range(n_x_data):
+    x_i = x_extracted[i,nq:]
+    cost_x += x_i.T @ x_i
+  cost_x *= w_Q
+
+  cost_u = 0.0
+  for i in range(n_u_data):
+    u_i = u_extracted[i,:]
+    cost_u += u_i.T @ u_i
+  cost_u *= w_R
+
+  # Scale the cost by data length because the length of x and u are different
+  # (different publish rate), and u is also different across simulations
+  cost_x /= n_x_data
+  cost_u /= n_u_data
+
+  total_cost = cost_x + cost_u
+  print("n_x_data = " + str(n_x_data))
+  print("n_u_data = " + str(n_u_data))
+  print("cost_x = " + str(cost_x))
+  print("cost_u = " + str(cost_u))
+  print("total_cost = " + str(total_cost))
+  # import pdb; pdb.set_trace()
 
 if __name__ == "__main__":
   main()

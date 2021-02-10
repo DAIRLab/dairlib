@@ -91,12 +91,7 @@ int doMain(int argc, char** argv){
   print_result(prog, result);
 
   if (result.is_success()) {
-    std::vector<LcmTrajectory::Trajectory> traj_vec;
-    std::vector<std::string> traj_name = {"state_traj"};
-    std::string name = "state_traj_vec";
-    std::string desc = "CoM position, orientation, and velocities";
-    traj_vec.push_back(prog.GetStateTrajectory(result));
-    LcmTrajectory lcm_traj(traj_vec, traj_name, name, desc);
+    LcmTrajectory lcm_traj = prog.GetStateTrajectories(result);
     lcm_traj.WriteToFile("/home/brian/workspace/dairlib/systems/trajectory_optimization/centroidal_to/CoMtraj.lcmtraj");
   }
 

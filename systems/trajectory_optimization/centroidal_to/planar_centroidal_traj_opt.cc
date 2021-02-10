@@ -403,13 +403,17 @@ int PlanarCentroidalTrajOpt::NumStateKnots() {
   return n+1;
 }
 
-LcmTrajectory::Trajectory PlanarCentroidalTrajOpt::GetStateTrajectory(
+LcmTrajectory PlanarCentroidalTrajOpt::GetStateTrajectories(
     drake::solvers::MathematicalProgramResult& result
     ) {
+
+  std::vector<LcmTrajectory::Trajectory> state_traj;
   int n_knot = NumStateKnots();
+
   Eigen::MatrixXd state_knots = Eigen::MatrixXd::Zero(kStateVars, n_knot);
   Eigen::VectorXd time_knots = Eigen::VectorXd::Zero(kStateVars, n_knot);
   int time_idx = 0;
+
   for (int i = 0; i < n_modes_; i++) {
     for (int j = 0; j < modes_[i].state_vars_.size() - 1; j++) {
       time_knots[time_idx] = MapKnotPointToTime(i, j);
@@ -418,20 +422,23 @@ LcmTrajectory::Trajectory PlanarCentroidalTrajOpt::GetStateTrajectory(
       time_idx ++;
     }
   }
+
   time_knots[time_idx] = MapKnotPointToTime(n_modes_ - 1,
       modes_.back().state_vars_.size() -1);
   state_knots.block(0, time_idx, kStateVars, 1) =
       result.GetSolution(modes_.back().state_vars_.back());
 
-  auto state_traj = LcmTrajectory::Trajectory();
   for (int i = 0; i < kStateVars; i ++) {
-    state_traj.datatypes.push_back("double");
+    auto traj = LcmTrajectory::Trajectory();
+    traj.traj_name = state_var_names[i];
+    traj.datapoints = state_knots.block(i, 0, 1, n_knot);
+    traj.time_vector = time_knots;
+    traj.datatypes = {"double"};
+    state_traj.push_back(traj);
   }
-  state_traj.datapoints = state_knots;
-  state_traj.time_vector = time_knots;
-  state_traj.traj_name = "state_traj";
 
-  return state_traj;
+  return LcmTrajectory(state_traj, state_var_names, "state_trajectories",
+      "state trajectories");
 }
 
 }

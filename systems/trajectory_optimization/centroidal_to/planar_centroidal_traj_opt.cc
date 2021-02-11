@@ -420,7 +420,7 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetStateTrajectories(
       state_knots.block(0, time_idx, kStateVars, 1) =
           result.GetSolution(modes_[i].state_vars_[j]);
       time_idx ++;
-    }
+    }-
   }
 
   time_knots[time_idx] = MapKnotPointToTime(n_modes_ - 1,
@@ -430,15 +430,103 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetStateTrajectories(
 
   for (int i = 0; i < kStateVars; i ++) {
     auto traj = LcmTrajectory::Trajectory();
-    traj.traj_name = state_var_names[i];
+    traj.traj_name = state_var_names_[i];
     traj.datapoints = state_knots.block(i, 0, 1, n_knot);
     traj.time_vector = time_knots;
     traj.datatypes = {"double"};
     state_traj.push_back(traj);
   }
 
-  return LcmTrajectory(state_traj, state_var_names, "state_trajectories",
+  return LcmTrajectory(state_traj, state_var_names_, "state_trajectories",
       "state trajectories");
+}
+
+LcmTrajectory PlanarCentroidalTrajOpt::GetFootTrajectories(
+    drake::solvers::MathematicalProgramResult &result
+    ) {
+
+  std::vector<LcmTrajectory::Trajectory> foot_traj;
+  std::vector<std::string> traj_names;
+
+
+  for (int i = 0; i < n_modes_; i++) {
+
+    Eigen::Vector2d t = {MapKnotPointToTime(i, 0),
+         MapKnotPointToTime(i, modes_[i].state_vars_.size() -1)};
+
+    if (sequence_[i] != stance::D) {
+
+      auto traj = LcmTrajectory::Trajectory();
+      traj.traj_name = stance_var_names_[sequence_[i]] + ("[" + std::to_string(i) + "]");
+      Eigen::MatrixXd res = Eigen::MatrixXd::Zero(kStanceVars, 2);
+
+      for (int j = 0; j < 2; j++) {
+        res.block(0, j, kStanceVars, 1) =
+            result.GetSolution(modes_[i].stance_vars_);
+      }
+
+      traj.datapoints = res;
+      traj.time_vector = t;
+      traj.datatypes = {"double", "double"};
+      traj_names.push_back(traj.traj_name);
+      foot_traj.push_back(traj);
+
+    } else {
+
+      for (int j = 0; j < 2; j++) {
+        auto traj = LcmTrajectory::Trajectory();
+        traj.traj_name = stance_var_names_[j] + ("[" + std::to_string(i) + "]");
+        Eigen::MatrixXd res = Eigen::MatrixXd::Zero(kStanceVars, 2);
+
+        for (int k = 0; k < 2; k++) {
+          res.block(0, k, kStanceVars, 1) =
+              result.GetSolution(modes_[i].stance_vars_.segment( j * kStanceVars, kStanceVars));
+        }
+
+        traj.datapoints = res;
+        traj.time_vector = t;
+        traj.datatypes = {"double", "double"};
+        traj_names.push_back(traj.traj_name);
+        foot_traj.push_back(traj);
+      }
+    }
+  }
+
+  return LcmTrajectory(foot_traj, traj_names, "Foot Traj", "Foot Placement Trajectories");
+}
+
+LcmTrajectory PlanarCentroidalTrajOpt::GetForceTrajectories(
+    drake::solvers::MathematicalProgramResult &result
+    ) {
+  std::vector<LcmTrajectory::Trajectory> force_traj;
+  int n_knot = NumStateKnots();
+  LcmTrajectory::Trajectory l_force;
+  LcmTrajectory::Trajectory r_force;
+
+  Eigen::MatrixXd force_knots = Eigen::MatrixXd::Zero(2 * kForceDim, n_knot);
+  Eigen::VectorXd time_knots = Eigen::VectorXd::Zero(n_knot);
+
+  int time_idx = 0;
+  for (int i = 0; i < n_modes_; i++) {
+    for (int j = 0; j < modes_[i].force_vars_.size() - 1; j++) {
+      time_knots[time_idx] = MapKnotPointToTime(i, j);
+      if (sequence_[i] != stance::D) {
+        force_knots.block(sequence_[i], time_idx, kForceDim,1) =
+            result.GetSolution(modes_[i].force_vars_[j]);
+        force_knots.block(1 - sequence_[i], time_idx, kForceDim, 1) =
+            Eigen::MatrixXd::Zero(kForceDim, 1);
+      } else {
+        force_knots.block(0, time_idx, 2 * kForceDim, 1) =
+            result.GetSolution(modes_[i].force_vars_[j]);
+      }
+      time_idx ++;
+    }
+  }
+
+
+
+
+  return LcmTrajectory(force_traj, {},  "Force Traj", "force Trajectories");
 }
 
 }

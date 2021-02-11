@@ -63,13 +63,18 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
   double MapKnotPointToTime(int idx_mode, int idx_knot);
   int NumStateKnots();
   LcmTrajectory GetStateTrajectories(drake::solvers::MathematicalProgramResult& result);
+  LcmTrajectory GetFootTrajectories(drake::solvers::MathematicalProgramResult& result);
+  LcmTrajectory GetForceTrajectories(drake::solvers::MathematicalProgramResult& result);
   drake::solvers::MathematicalProgramResult SolveProg(int iteration_limit);
 
   std::vector<CentroidalMode> modes() { return modes_ ;};
   std::vector<stance> sequence() { return sequence_;}
 
  private:
-  std::vector<std::string> state_var_names = {"x", "y", "theta", "x_dot", "y_dot", "theta_dot"};
+  std::vector<std::string> state_var_names_ =
+      {"x", "y", "theta", "x_dot", "y_dot", "theta_dot"};
+  std::vector<std::string> stance_var_names_ =
+      {"left", "right"};
 
   std::vector<Eigen::Vector2d> nominal_stance_;
   std::vector<stance> sequence_;

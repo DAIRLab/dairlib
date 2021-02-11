@@ -25,9 +25,12 @@ DEFINE_int32(iteration_limit, 2500, "Max SNOPT iterations");
 DEFINE_double(height_cost, 0.1, "cost on height deviation");
 DEFINE_double(angular_vel_cost, 0.001, "Cost on angular velocity");
 DEFINE_double(final_pos_cost, 0.05, "Cost on final position");
-DEFINE_double(final_pos_tol, 0.01, "Final Position Error Tolerance");
+DEFINE_double(final_pos_tol, 0.075, "Final Position Error Tolerance");
 DEFINE_double(theta, 0.2, "final_angle");
 DEFINE_double(h, 0.025, "timestep");
+DEFINE_int32(step_pairs, 1, "number of pairs of steps");
+DEFINE_double(t_ds, 0.05, "double stance time");
+DEFINE_double(t_ss, 0.25, "single stance time");
 
 
 void print_guess(PlanarCentroidalTrajOpt& prog);
@@ -44,12 +47,24 @@ int doMain(int argc, char** argv){
   double mu = 1.0;
   double h = FLAGS_h;
 
-  std::vector<stance> mode_sequence = { stance::D, stance::L, stance::D, stance::R, stance::D};
-  std::vector<double> times = {0.05, 0.25, 0.05, 0.25, 0.05};
+  std::vector<stance> mode_sequence = { stance::D };
+  std::vector<double> times = {FLAGS_t_ds};
+
+  for (int i = 0; i < FLAGS_step_pairs; i++) {
+    mode_sequence.push_back(stance::L);
+    mode_sequence.push_back(stance::D);
+    mode_sequence.push_back(stance::R);
+    mode_sequence.push_back(stance::D);
+    times.push_back(FLAGS_t_ss);
+    times.push_back(FLAGS_t_ds);
+    times.push_back(FLAGS_t_ss);
+    times.push_back(FLAGS_t_ds);
+  }
+
   Eigen::Vector2d com0;
   com0 << 0, 1;
   Eigen::Vector2d com1;
-  com1 << 0.15, 1;
+  com1 << 0.1 * FLAGS_step_pairs, 1;
   Eigen::Vector2d dev;
   dev << 0.05, 0.05;
 
@@ -92,8 +107,12 @@ int doMain(int argc, char** argv){
   print_result(prog, result);
 
   if (result.is_success()) {
-    LcmTrajectory lcm_traj = prog.GetStateTrajectories(result);
-    lcm_traj.WriteToFile("/home/brian/workspace/dairlib/systems/trajectory_optimization/centroidal_to/CoMtraj.lcmtraj");
+    LcmTrajectory state_traj = prog.GetStateTrajectories(result);
+    LcmTrajectory stance_traj = prog.GetFootTrajectories(result);
+
+    state_traj.WriteToFile("/home/brian/workspace/dairlib/systems/trajectory_optimization/centroidal_to/CoMtraj.lcmtraj");
+    stance_traj.WriteToFile("/home/brian/workspace/dairlib/systems/trajectory_optimization/centroidal_to/stancetraj.lcmtraj");
+
   }
 
   return 0;

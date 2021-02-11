@@ -40,7 +40,7 @@ void OptimalRoMTrajReceiver::CalcDesiredTraj(
       context, rom_traj_lcm_port_)));
   const auto& traj_names = traj_data.GetTrajectoryNames();
 
-  int n_traj = traj_names.size();
+  int n_traj = traj_names.size() - 1;
   int n_y = traj_data.GetTrajectory(traj_names[0]).datatypes.size() / 2;
 
   const LcmTrajectory::Trajectory& traj0 =

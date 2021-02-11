@@ -52,6 +52,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const PlannerSetting& param, bool debug_mode)
     : nq_(plant_controls.num_positions()),
       nv_(plant_controls.num_velocities()),
+      nx_(plant_controls.num_positions() + plant_controls.num_velocities()),
       plant_controls_(plant_controls),
       stride_period_(stride_period),
       param_(param),
@@ -492,10 +493,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Note that the trajectory is discontinuous between mode (even the position
   // jumps because left vs right stance leg).
   traj_msg->metadata.description = drake::solvers::to_string(solution_result);
-  traj_msg->num_trajectories = param_.n_step;
+  traj_msg->num_trajectories = param_.n_step + 1;
 
-  traj_msg->trajectory_names.resize(param_.n_step);
-  traj_msg->trajectories.resize(param_.n_step);
+  traj_msg->trajectory_names.resize(param_.n_step + 1);
+  traj_msg->trajectories.resize(param_.n_step + 1);
 
   lcmt_trajectory_block traj_block;
   traj_block.num_datatypes = state_samples[0].rows();
@@ -503,7 +504,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   traj_block.datatypes = vector<string>(traj_block.num_datatypes, "");
   for (int i = 0; i < param_.n_step; i++) {
     /// Create lcmt_trajectory_block
-    traj_block.trajectory_name = "";
+    traj_block.trajectory_name = to_string(i);
     traj_block.num_points = time_breaks[i].size();
 
     // Reserve space for vectors
@@ -521,6 +522,34 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     traj_msg->trajectories[i] = traj_block;
     traj_msg->trajectory_names[i] = to_string(i);
   }
+  // Store start/end FOM states into one trajectory block
+  // The order is mode_0_start, mode_0_end, mode_1_start, ...
+  traj_block.num_datatypes = nx_;
+  traj_block.datatypes.resize(nx_);
+  traj_block.datatypes = vector<string>(nx_, "");
+  traj_block.trajectory_name = "FOM";
+  traj_block.num_points = 2 * param_.n_step;
+  // Reserve space for vectors
+  traj_block.time_vec.resize(2 * param_.n_step);
+  traj_block.datapoints.clear();
+  // Copy Eigentypes to std::vector
+  // TODO: you can actually use the touchdown time here, but not sure if it's
+  //  worth it
+  traj_block.time_vec = vector<double>(2 * param_.n_step, 0);
+  // traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+  Eigen::MatrixXd FOM_eigen_matrix(nx_, 2 * param_.n_step);
+  for (int i = 0; i < param_.n_step; ++i) {
+    FOM_eigen_matrix.col(2 * i) =
+        result.GetSolution(trajopt.x0_vars_by_mode(i));
+    FOM_eigen_matrix.col(2 * i + 1) =
+        result.GetSolution(trajopt.xf_vars_by_mode(i));
+  }
+  for (int j = 0; j < nx_; ++j) {
+    traj_block.datapoints.push_back(
+        CopyVectorXdToStdVector(FOM_eigen_matrix.row(j)));
+  }
+  traj_msg->trajectories[param_.n_step] = traj_block;
+  traj_msg->trajectory_names[param_.n_step] = "FOM";
 
   // Store the previous message
   previous_output_msg_ = *traj_msg;
@@ -553,8 +582,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     MatrixXd input_at_knots = trajopt.GetInputSamples(result);
     writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
 
-    MatrixXd x0_each_mode(nq_ + nv_, num_time_samples.size());
-    MatrixXd xf_each_mode(nq_ + nv_, num_time_samples.size());
+    MatrixXd x0_each_mode(nx_, num_time_samples.size());
+    MatrixXd xf_each_mode(nx_, num_time_samples.size());
     for (uint i = 0; i < num_time_samples.size(); i++) {
       x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
       xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
@@ -571,15 +600,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     std::cout << "Wrote to file: " << dir_data + file_name << std::endl;
 
     /// Save files for reproducing the same result
-    //cout << "x_init = " << x_init << endl;
+    // cout << "x_init = " << x_init << endl;
     writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
     writeCSV(param_.dir_data + string("init_phase_test.csv"),
              init_phase * VectorXd::Ones(1));
     writeCSV(param_.dir_data + string("is_right_stance_test.csv"),
              is_right_stance * VectorXd::Ones(1));
-
   }
-
 }
 
 }  // namespace goldilocks_models

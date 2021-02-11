@@ -27,10 +27,67 @@ DEFINE_string(folder_path, "",
 namespace dairlib {
 
 int ComputeCoeffMatrix(const std::vector<double>& breaks,
-                       const std::vector<MatrixXd>& samples, int row, int col,
+                       const std::vector<VectorXd>& samples, int dim,
                        MatrixXd* A, VectorXd* b) {
 
+  const std::vector<double>& times = breaks;
+  const std::vector<VectorXd>& Y = samples;
+  int N = static_cast<int>(times.size());
 
+  DRAKE_DEMAND(A != nullptr);
+  DRAKE_DEMAND(b != nullptr);
+  DRAKE_DEMAND(A->rows() == 6 * (N - 1));
+  DRAKE_DEMAND(A->cols() == 6 * (N - 1));
+  DRAKE_DEMAND(b->rows() == 6 * (N - 1));
+
+  int row_idx = 0;
+  MatrixXd& Aref = *A;
+  VectorXd& bref = *b;
+
+  for (int i = 0; i < N - 1; ++i) {
+    const double dt = times[i + 1] - times[i];
+
+    // Set startpoint constraint
+    Aref(row_idx, 6 * i + 0) = 1;
+    bref(row_idx) = Y[i](0, dim);
+    row_idx += 1;
+    // dy(t)
+    Aref(row_idx, 6 * i + 1) = 1;
+    bref(row_idx) = Y[i](1, dim);
+    row_idx += 1;
+    // ddy(t)
+    Aref(row_idx, 6 * i + 2) = 2;
+    bref(row_idx) = Y[i](2, dim);
+    row_idx += 1;
+
+    // Set endpoint constraint
+    // y(t)
+    Aref(row_idx, 6 * i + 0) = 1;
+    Aref(row_idx, 6 * i + 1) = dt;
+    Aref(row_idx, 6 * i + 2) = dt * dt;
+    Aref(row_idx, 6 * i + 3) = dt * dt * dt;
+    Aref(row_idx, 6 * i + 4) = dt * dt * dt * dt;
+    Aref(row_idx, 6 * i + 5) = dt * dt * dt * dt * dt;
+    bref(row_idx) = Y[i + 1](0, dim);
+    row_idx += 1;
+    // dy(t)
+    Aref(row_idx, 6 * i + 1) = 1;
+    Aref(row_idx, 6 * i + 2) = 2 * dt;
+    Aref(row_idx, 6 * i + 3) = 3 * dt * dt;
+    Aref(row_idx, 6 * i + 4) = 4 * dt * dt * dt;
+    Aref(row_idx, 6 * i + 5) = 5 * dt * dt * dt * dt;
+    bref(row_idx) = Y[i + 1](1, dim);
+    row_idx += 1;
+    // ddy(t)
+    Aref(row_idx, 6 * i + 2) = 2;
+    Aref(row_idx, 6 * i + 3) = 6 * dt;
+    Aref(row_idx, 6 * i + 4) = 12 * dt * dt;
+    Aref(row_idx, 6 * i + 5) = 20 * dt * dt * dt;
+    bref(row_idx) = Y[i + 1](2, dim);
+    row_idx += 1;
+  }
+  DRAKE_DEMAND(row_idx == 6 * (N - 1));
+  return row_idx;
 }
 
 /// This program pre-computes the output trajectories (center of mass, pelvis
@@ -92,6 +149,7 @@ int DoMain() {
     MatrixXd r_hip_points(9, n_points);
     MatrixXd pelvis_points(9, n_points);
     MatrixXd pelvis_orientation(12, n_points);
+
     for (unsigned int i = 0; i < times.size(); ++i) {
       VectorXd x_i = state_samples.col(i).head(nx);
       VectorXd xdot_i = state_samples.col(i).tail(nx);

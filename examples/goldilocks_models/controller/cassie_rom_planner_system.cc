@@ -493,11 +493,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Note that the trajectory is discontinuous between mode (even the position
   // jumps because left vs right stance leg).
   traj_msg->metadata.description = drake::solvers::to_string(solution_result);
-  traj_msg->num_trajectories = param_.n_step + 1;
+  traj_msg->num_trajectories = param_.n_step + 2;
 
-  traj_msg->trajectory_names.resize(param_.n_step + 1);
-  traj_msg->trajectories.resize(param_.n_step + 1);
+  traj_msg->trajectory_names.resize(param_.n_step + 2);
+  traj_msg->trajectories.resize(param_.n_step + 2);
 
+  // 1. ROM trajectory
   lcmt_trajectory_block traj_block;
   traj_block.num_datatypes = state_samples[0].rows();
   traj_block.datatypes.resize(traj_block.num_datatypes);
@@ -507,12 +508,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     traj_block.trajectory_name = to_string(i);
     traj_block.num_points = time_breaks[i].size();
 
-    // Reserve space for vectors
+    // Reserve space for vectors, then copy Eigentypes to std::vector
     traj_block.time_vec.resize(traj_block.num_points);
-    traj_block.datapoints.clear();
-
-    // Copy Eigentypes to std::vector
     traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+
+    traj_block.datapoints.clear();
     for (int j = 0; j < traj_block.num_datatypes; ++j) {
       traj_block.datapoints.push_back(
           CopyVectorXdToStdVector(state_samples[i].row(j)));
@@ -522,21 +522,19 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     traj_msg->trajectories[i] = traj_block;
     traj_msg->trajectory_names[i] = to_string(i);
   }
-  // Store start/end FOM states into one trajectory block
+  // 2. Store start/end FOM states into one trajectory block
   // The order is mode_0_start, mode_0_end, mode_1_start, ...
   traj_block.num_datatypes = nx_;
   traj_block.datatypes.resize(nx_);
   traj_block.datatypes = vector<string>(nx_, "");
   traj_block.trajectory_name = "FOM";
   traj_block.num_points = 2 * param_.n_step;
-  // Reserve space for vectors
   traj_block.time_vec.resize(2 * param_.n_step);
-  traj_block.datapoints.clear();
-  // Copy Eigentypes to std::vector
   // TODO: you can actually use the touchdown time here, but not sure if it's
   //  worth it
   traj_block.time_vec = vector<double>(2 * param_.n_step, 0);
   // traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+  traj_block.datapoints.clear();
   Eigen::MatrixXd FOM_eigen_matrix(nx_, 2 * param_.n_step);
   for (int i = 0; i < param_.n_step; ++i) {
     FOM_eigen_matrix.col(2 * i) =
@@ -550,6 +548,22 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
   traj_msg->trajectories[param_.n_step] = traj_block;
   traj_msg->trajectory_names[param_.n_step] = "FOM";
+  // 3. stance foot (left is 0, right is 1)
+  traj_block.num_datatypes = 1;
+  traj_block.datatypes.resize(1);
+  traj_block.datatypes = vector<string>(1, "");
+  traj_block.trajectory_name = "stance_foot";
+  traj_block.num_points = param_.n_step;
+  traj_block.time_vec.resize(param_.n_step);
+  traj_block.time_vec = vector<double>(param_.n_step, 0);
+  traj_block.datapoints.clear();
+  VectorXd stance_foot_vec = VectorXd::Zero(param_.n_step);
+  for (int i = start_with_left_stance ? 1 : 0; i < param_.n_step; i += 2) {
+    stance_foot_vec(i) = 1;
+  }
+  traj_block.datapoints.push_back(CopyVectorXdToStdVector(stance_foot_vec));
+  traj_msg->trajectories[param_.n_step] = traj_block;
+  traj_msg->trajectory_names[param_.n_step] = "stance_foot";
 
   // Store the previous message
   previous_output_msg_ = *traj_msg;

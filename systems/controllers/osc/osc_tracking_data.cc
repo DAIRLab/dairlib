@@ -81,8 +81,13 @@ bool OscTrackingData::Update(
     UpdateJdotV(x_wo_spr, context_wo_spr);
 
     // Update command output (desired output with pd control)
-    yddot_command_ =
-        yddot_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_ydot_);
+    yddot_command_ = K_p_ * (error_y_) + K_d_ * (error_ydot_);
+    if (this->GetName() != "left_ft_traj" &&
+        this->GetName() != "right_ft_traj") {
+      yddot_command_ += yddot_des_converted_;
+    }
+//    yddot_command_ =
+//        yddot_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_ydot_);
   }
   return track_at_current_state_;
 }

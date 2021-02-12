@@ -263,8 +263,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
 
   // Contact information for OSC
-  double mu = 0.6;
-  osc->SetContactFriction(mu);
+  osc->SetContactFriction(gains.mu);
 
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, left_toe.first, left_toe.second, Matrix3d::Identity(),

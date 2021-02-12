@@ -95,6 +95,7 @@ cc_library(
         "//examples/goldilocks_models:reduced_order_models",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
+        "//multibody:multipose_visualizer",
         "//multibody:utils",
         "//solvers:nonlinear_constraint",
         "//systems/framework:vector",

@@ -1,5 +1,6 @@
 #include "examples/goldilocks_models/controller/rom_inverse_kinematics.h"
 
+#include "multibody/multipose_visualizer.h"
 #include "multibody/visualization_utils.h"
 #include "solvers/nonlinear_constraint.h"
 
@@ -147,6 +148,7 @@ void RomInverseKinematics::CalcIK(
 
   // Initialize IK solutions
   std::vector<MatrixXd> q_sol_all_modes;
+  //  std::vector<MatrixXd> q_init_all_modes;
 
   // Run through each mode and knot points
   // TODO: this could be sped up in various ways
@@ -177,10 +179,13 @@ void RomInverseKinematics::CalcIK(
                                        &stance_foot_pos);
 
     MatrixXd q_sol_per_mode(nq_, n_knots);
-    for (int j = 0; j < n_knots; j++) {
+    q_sol_per_mode.leftCols<1>() = q_planner_start;
+    q_sol_per_mode.rightCols<1>() = q_planner_end;
+    //    MatrixXd q_init_per_mode = q_sol_per_mode;
+    for (int j = 1; j < n_knots - 1; j++) {
       /// Construct IK object
       drake::multibody::InverseKinematics ik(plant_control_);
-      // Four bar linkage constraint (without spring)9
+      // Four bar linkage constraint (without spring)
       ik.get_mutable_prog()->AddLinearConstraint(
           (ik.q())(pos_map_.at("knee_left")) +
               (ik.q())(pos_map_.at("ankle_joint_left")) ==
@@ -241,8 +246,11 @@ void RomInverseKinematics::CalcIK(
       VectorXd q_sol_normd(nq_);
       q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(nq_ - 4);
       q_sol_per_mode.col(j) = q_sol_normd;
+
+      //      q_init_per_mode.col(j) = q_desired;
     }
     q_sol_all_modes.push_back(q_sol_per_mode);
+    //    q_init_all_modes.push_back(q_init_per_mode);
   }
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
@@ -250,35 +258,29 @@ void RomInverseKinematics::CalcIK(
 
   if (true) {
     //  if (debug_mode_) {
-    for (const auto& q_sol_per_mode : q_sol_all_modes) {
-      for (int j = 0; j < q_sol_per_mode.cols(); j++) {
-        // TODO: Use multipose visualizer here
-        // Build temporary diagram for visualization
-        drake::systems::DiagramBuilder<double> builder_ik;
-        SceneGraph<double>& scene_graph_ik =
-            *builder_ik.AddSystem<SceneGraph>();
-        scene_graph_ik.set_name("scene_graph_ik");
-        MultibodyPlant<double> plant_ik(0.0);
-        Parser parser(&plant_ik, &scene_graph_ik);
-        string full_name = FindResourceOrThrow(
-            "examples/Cassie/urdf/cassie_fixed_springs.urdf");
-        parser.AddModelFromFile(full_name);
-        plant_ik.Finalize();
 
-        // Visualize
-        VectorXd x_const = VectorXd::Zero(nx_);
-        x_const.head(nq_) = q_sol_per_mode.col(j);
-        PiecewisePolynomial<double> pp_xtraj(x_const);
+    int knot_idx = 0;
+    MatrixXd poses(nq_, 0);
+    VectorXd alphas(0);
+    for (int mode = 0; mode < n_mode; mode++) {
+      int new_length = q_sol_all_modes[mode].cols();
+      poses.conservativeResize(poses.rows(), poses.cols() + new_length);
+      alphas.conservativeResize(alphas.size() + new_length);
 
-        multibody::connectTrajectoryVisualizer(&plant_ik, &builder_ik,
-                                               &scene_graph_ik, pp_xtraj);
-        auto diagram = builder_ik.Build();
-        drake::systems::Simulator<double> simulator(*diagram);
-        simulator.set_target_realtime_rate(1);
-        simulator.Initialize();
-        simulator.AdvanceTo(1);
-      }
+      poses.block(0, knot_idx, nq_, new_length) = q_sol_all_modes[mode];
+      alphas.segment(knot_idx, new_length) << 1,
+          0.2 * VectorXd::Ones(new_length - 2), 1;
+
+      knot_idx += new_length;
     }
+    cout << "poses = " << poses << endl;
+    cout << "alphas = " << poses << endl;
+
+    ///
+    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+        poses.cols(), alphas);
+    visualizer.DrawPoses(poses);
   }
 
   ///

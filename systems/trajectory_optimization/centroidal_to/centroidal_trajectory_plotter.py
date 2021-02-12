@@ -16,6 +16,30 @@ def ReconstructForceTrajectory(f):
     traj = PiecewisePolynomial.FirstOrderHold(f.time_vector, f.datapoints)
     return traj
 
+def SaveTrajDatapoints(x_poly, theta_poly, stances, force_poly):
+    npoints = 10000
+    return 0
+
+class StanceTrajGenerator:
+    def __init__(self, stances):
+        self.stances = stances
+        self.start_times = np.zeros((stances.len(),))
+        self.end_times = np.zeros((stances.len(),))
+
+        for i,stance in enumerate(stances):
+            self.start_times[i] = stance.start_time()
+            self.end_times[i] = stance.end_time()
+            self.stance_intervals.append((self.start_times[i], self.end_times[i]))
+
+
+    def GetSwingLegLoc(self, t):
+        idx2 = np.argwhere(self.end_times >=t)[0]
+        print(self.stances[idx2].value(t))
+        return self.stances[idx2].value(t)
+
+
+
+
 def main():
     stateTrajs = pydairlib.lcm_trajectory.LcmTrajectory()
     stateTrajs.LoadFromFile("/home/brian/workspace/dairlib/systems/"

@@ -512,9 +512,9 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetForceTrajectories(
       time_knots[time_idx] = MapKnotPointToTime(i, j);
 
       if (sequence_[i] != stance::D) {
-        force_knots.block(sequence_[i], time_idx, kForceDim,1) =
+        force_knots.block(  kForceDim * sequence_[i], time_idx, kForceDim,1) =
             result.GetSolution(modes_[i].force_vars_[j]);
-        force_knots.block(1 - sequence_[i], time_idx, kForceDim, 1) =
+        force_knots.block(kForceDim * (1 - sequence_[i]), time_idx, kForceDim, 1) =
             Eigen::MatrixXd::Zero(kForceDim, 1);
       } else {
         force_knots.block(0, time_idx, 2 * kForceDim, 1) =
@@ -536,7 +536,7 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetForceTrajectories(
   l_force.datatypes = {"double", "double"};
 
   r_force.time_vector = time_knots;
-  r_force.datapoints = force_knots.block(0, kForceDim * stance::R, kForceDim, n_knot);
+  r_force.datapoints = force_knots.block(kForceDim, kForceDim * stance::R, kForceDim, n_knot);
   r_force.traj_name = force_var_names_[stance::R];
   r_force.datatypes = {"double", "double"};
 

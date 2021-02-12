@@ -42,7 +42,7 @@ int doMain(int argc, char** argv){
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  double mass = 10;
+  double mass = 5;
   double I = 2;
   double mu = 1.0;
   double h = FLAGS_h;

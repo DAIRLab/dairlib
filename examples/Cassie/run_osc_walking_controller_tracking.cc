@@ -166,7 +166,7 @@ int DoMain(int argc, char* argv[]) {
     pelvis_rot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::FirstOrderHold(
             lcm_pelvis_rot_traj.time_vector,
-            lcm_pelvis_rot_traj.datapoints.topRows(4));
+            lcm_pelvis_rot_traj.datapoints.topRows(4)));
   }
 
   // Relevant body frames

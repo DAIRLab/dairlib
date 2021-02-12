@@ -2021,6 +2021,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
             writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
           }
 
+          vector<double> ret {0.3, 0, 0.5, 0};
+          task.set(ret);
+
           // (Feature -- get initial guess from adjacent successful samples)
           // If the current sample already finished N_rerun, then it means that
           // there exists a adjacent sample that can help the current sample.

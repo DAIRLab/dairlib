@@ -72,7 +72,7 @@ DEFINE_string(traj_name, "", "File to load saved trajectories from");
 DEFINE_string(mode_name, "state_input_trajectory",
               "Base name of each trajectory");
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
-DEFINE_bool(contact_based_fsm, true,
+DEFINE_bool(contact_based_fsm, false,
             "The contact based fsm transitions "
             "between states using contact data.");
 DEFINE_double(transition_delay, 0.0,
@@ -127,54 +127,68 @@ int DoMain(int argc, char* argv[]) {
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
-
-
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
       FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
   const LcmTrajectory& processed_trajs = LcmTrajectory(
       FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name + "_processed"));
 
-  const LcmTrajectory::Trajectory lcm_com_traj =
-      processed_trajs.GetTrajectory("center_of_mass_trajectory");
-  const LcmTrajectory::Trajectory lcm_l_foot_traj =
-      processed_trajs.GetTrajectory("left_foot_trajectory");
-  const LcmTrajectory::Trajectory lcm_r_foot_traj =
-      processed_trajs.GetTrajectory("right_foot_trajectory");
-  const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
-      processed_trajs.GetTrajectory("pelvis_rot_trajectory");
+  PiecewisePolynomial<double> state_traj =
+      dircon_trajectory.ReconstructStateTrajectory();
 
-  std::cout << "Loading output trajectories: " << std::endl;
-  PiecewisePolynomial<double> com_traj =
-      PiecewisePolynomial<double>::CubicHermite(
-          lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
-          lcm_com_traj.datapoints.bottomRows(3));
-  PiecewisePolynomial<double> l_foot_trajectory =
-      PiecewisePolynomial<double>::CubicHermite(
-          lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
-          lcm_l_foot_traj.datapoints.bottomRows(3));
-  PiecewisePolynomial<double> r_foot_trajectory =
-      PiecewisePolynomial<double>::CubicHermite(
-          lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
-          lcm_r_foot_traj.datapoints.bottomRows(3));
+  PiecewisePolynomial<double> pelvis_trans_traj;
+  PiecewisePolynomial<double> l_foot_trajectory;
+  PiecewisePolynomial<double> r_foot_trajectory;
   PiecewisePolynomial<double> pelvis_rot_trajectory;
-  pelvis_rot_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-      lcm_pelvis_rot_traj.time_vector,
-      lcm_pelvis_rot_traj.datapoints.topRows(4));
+
+  for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
+    const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
+        processed_trajs.GetTrajectory("pelvis_trans_trajectory" +
+                                      std::to_string(mode));
+    const LcmTrajectory::Trajectory lcm_left_foot_traj =
+        processed_trajs.GetTrajectory("left_foot_trajectory" +
+                                      std::to_string(mode));
+    const LcmTrajectory::Trajectory lcm_right_foot_traj =
+        processed_trajs.GetTrajectory("right_foot_trajectory" +
+                                      std::to_string(mode));
+    const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
+        processed_trajs.GetTrajectory("pelvis_rot_trajectory" +
+                                      std::to_string(mode));
+    pelvis_trans_traj.ConcatenateInTime(
+        PiecewisePolynomial<double>::CubicHermite(
+            lcm_pelvis_trans_trajectory.time_vector,
+            lcm_pelvis_trans_trajectory.datapoints.topRows(3),
+            lcm_pelvis_trans_trajectory.datapoints.bottomRows(3)));
+    l_foot_trajectory.ConcatenateInTime(
+        PiecewisePolynomial<double>::CubicHermite(
+            lcm_left_foot_traj.time_vector,
+            lcm_left_foot_traj.datapoints.topRows(3),
+            lcm_left_foot_traj.datapoints.bottomRows(3)));
+    r_foot_trajectory.ConcatenateInTime(
+        PiecewisePolynomial<double>::CubicHermite(
+            lcm_right_foot_traj.time_vector,
+            lcm_right_foot_traj.datapoints.topRows(3),
+            lcm_right_foot_traj.datapoints.bottomRows(3)));
+    pelvis_rot_trajectory.ConcatenateInTime(
+        PiecewisePolynomial<double>::FirstOrderHold(
+            lcm_pelvis_rot_traj.time_vector,
+            lcm_pelvis_rot_traj.datapoints.topRows(4)));
+  }
 
   // For the time-based FSM (squatting by default)
   double flight_time = FLAGS_delay_time + 100;
   double land_time = FLAGS_delay_time + 200;
   if (dircon_trajectory.GetNumModes() == 3) {  // Override for jumping
     flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
-    land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) + gains.landing_delay;
+    land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) +
+                gains.landing_delay;
   }
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};
 
   Vector3d support_center_offset;
   support_center_offset << gains.x_offset, 0.0, 0.0;
-  std::vector<double> breaks = com_traj.get_segment_times();
+  std::vector<double> breaks = pelvis_trans_traj.get_segment_times();
   std::vector<double> ft_breaks = l_foot_trajectory.get_segment_times();
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
   VectorXd ft_breaks_vector =
@@ -184,7 +198,7 @@ int DoMain(int argc, char* argv[]) {
       support_center_offset.replicate(1, ft_breaks_vector.size());
   PiecewisePolynomial<double> offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
-  com_traj = com_traj + offset_traj;
+  pelvis_trans_traj = pelvis_trans_traj + offset_traj;
   l_foot_trajectory = l_foot_trajectory - ft_offset_points;
   r_foot_trajectory = r_foot_trajectory - ft_offset_points;
 
@@ -194,7 +208,7 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), com_traj, feet_contact_points,
+      plant_w_spr, context_w_spr.get(), pelvis_trans_traj, feet_contact_points,
       FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
@@ -207,7 +221,8 @@ int DoMain(int argc, char* argv[]) {
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
-      FLAGS_transition_delay, gains.impact_threshold, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
+      FLAGS_transition_delay, gains.impact_threshold,
+      (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -300,26 +315,27 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  TransTaskSpaceTrackingData com_tracking_data("com_traj", gains.K_p_com, gains.K_d_com,
-                                               gains.W_com, plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData com_tracking_data("com_traj", gains.K_p_com,
+                                               gains.K_d_com, gains.W_com,
+                                               plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
     com_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
   }
   osc->AddTrackingData(&com_tracking_data);
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot, gains.W_flight_foot,
-      plant_w_spr, plant_w_spr);
+      "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
+      gains.W_flight_foot, plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot, gains.W_flight_foot,
-      plant_w_spr, plant_w_spr);
+      "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
+      gains.W_flight_foot, plant_w_spr, plant_w_spr);
   left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");
 
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_tracking_data", gains.K_p_pelvis, gains.K_d_pelvis, gains.W_pelvis, plant_w_spr,
-      plant_w_spr);
+      "pelvis_rot_tracking_data", gains.K_p_pelvis, gains.K_d_pelvis,
+      gains.W_pelvis, plant_w_spr, plant_w_spr);
 
   for (auto mode : stance_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");

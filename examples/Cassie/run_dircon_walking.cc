@@ -698,22 +698,16 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   }
 
   std::cout << "Adding costs: " << std::endl;
-  MatrixXd Q = 1e-8 * MatrixXd::Identity(n_v, n_v);
-//  MatrixXd Q = MatrixXd::Zero(n_v, n_v);
-  MatrixXd R = 0.0001 * MatrixXd::Identity(n_u, n_u);
+  MatrixXd Q = 1e-7 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd R = 0.001 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
-  MatrixXd Q0 = MatrixXd::Identity(4, 4);
-//  Q0(1, 1) = 20;
-//  Q0(2, 2) = 1;
-//  Q0(3, 3) = 30;
-  VectorXd desired_quat(4);
-  desired_quat << 1, 0, 0, 0;
-  trajopt->AddRunningCost((x.tail(n_v).head(4) - desired_quat).transpose() * Q * (x.tail(n_v).head(4) - desired_quat));
+  MatrixXd Q0 = 1e-1 * MatrixXd::Identity(n_v, n_v);
+  trajopt->AddQuadraticCost(x0.tail(n_v).transpose() * Q * x0.tail(n_v));
   // Add some cost to hip roll and yaw
-  double w_q_hip_roll = 20.0;
-  double w_q_hip_yaw = 1.0;
-  double w_q_hip_pitch = 100.0;
+  double w_q_hip_roll = 0.3;
+  double w_q_hip_yaw = 0.3;
+  double w_q_hip_pitch = 30.0;
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(7, 2);

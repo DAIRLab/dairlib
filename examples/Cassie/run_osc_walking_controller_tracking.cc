@@ -164,10 +164,9 @@ int DoMain(int argc, char* argv[]) {
             lcm_right_foot_traj.datapoints.topRows(3),
             lcm_right_foot_traj.datapoints.bottomRows(3)));
     pelvis_rot_trajectory.ConcatenateInTime(
-        PiecewisePolynomial<double>::CubicHermite(
+        PiecewisePolynomial<double>::FirstOrderHold(
             lcm_pelvis_rot_traj.time_vector,
-            lcm_pelvis_rot_traj.datapoints.topRows(4),
-            lcm_pelvis_rot_traj.datapoints.bottomRows(4)));
+            lcm_pelvis_rot_traj.datapoints.topRows(4));
   }
 
   // Relevant body frames

@@ -57,11 +57,6 @@ using systems::OutputVector;
 // Planner settings
 DEFINE_int32(rom_option, 4, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
-DEFINE_int32(sample, 1, "The sample # of the initial condition that you use");
-
-DEFINE_double(w_Q, 1, "");
-DEFINE_double(w_R, 1, "");
-DEFINE_double(w_rom_reg, 1, "cost weight for the ROM state regularization");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_double(opt_tol, 1e-2, "");
@@ -70,7 +65,6 @@ DEFINE_double(feas_tol, 1e-2, "");
 DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
 DEFINE_bool(log_solver_info, true,
             "Log snopt output to a file or ipopt to terminal");
-DEFINE_double(time_limit, 0, "time limit for the solver.");
 
 // Flag for debugging
 DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");

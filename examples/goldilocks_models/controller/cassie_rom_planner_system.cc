@@ -500,27 +500,28 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // 1. ROM trajectory
   lcmt_trajectory_block traj_block;
+  int traj_idx;
   traj_block.num_datatypes = state_samples[0].rows();
   traj_block.datatypes.resize(traj_block.num_datatypes);
   traj_block.datatypes = vector<string>(traj_block.num_datatypes, "");
-  for (int i = 0; i < param_.n_step; i++) {
+  for (traj_idx = 0; traj_idx < param_.n_step; traj_idx++) {
     /// Create lcmt_trajectory_block
-    traj_block.trajectory_name = to_string(i);
-    traj_block.num_points = time_breaks[i].size();
+    traj_block.trajectory_name = to_string(traj_idx);
+    traj_block.num_points = time_breaks[traj_idx].size();
 
     // Reserve space for vectors, then copy Eigentypes to std::vector
     traj_block.time_vec.resize(traj_block.num_points);
-    traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+    traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[traj_idx]);
 
     traj_block.datapoints.clear();
     for (int j = 0; j < traj_block.num_datatypes; ++j) {
       traj_block.datapoints.push_back(
-          CopyVectorXdToStdVector(state_samples[i].row(j)));
+          CopyVectorXdToStdVector(state_samples[traj_idx].row(j)));
     }
 
     /// Assign lcmt_trajectory_block
-    traj_msg->trajectories[i] = traj_block;
-    traj_msg->trajectory_names[i] = to_string(i);
+    traj_msg->trajectories[traj_idx] = traj_block;
+    traj_msg->trajectory_names[traj_idx] = to_string(traj_idx);
   }
   // 2. Store start/end FOM states into one trajectory block
   // The order is mode_0_start, mode_0_end, mode_1_start, ...
@@ -546,8 +547,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     traj_block.datapoints.push_back(
         CopyVectorXdToStdVector(FOM_eigen_matrix.row(j)));
   }
-  traj_msg->trajectories[param_.n_step] = traj_block;
-  traj_msg->trajectory_names[param_.n_step] = "FOM";
+  traj_msg->trajectories[traj_idx] = traj_block;
+  traj_msg->trajectory_names[traj_idx] = "FOM";
+  traj_idx++;
   // 3. stance foot (left is 0, right is 1)
   traj_block.num_datatypes = 1;
   traj_block.datatypes.resize(1);
@@ -562,8 +564,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     stance_foot_vec(i) = 1;
   }
   traj_block.datapoints.push_back(CopyVectorXdToStdVector(stance_foot_vec));
-  traj_msg->trajectories[param_.n_step] = traj_block;
-  traj_msg->trajectory_names[param_.n_step] = "stance_foot";
+  traj_msg->trajectories[traj_idx] = traj_block;
+  traj_msg->trajectory_names[traj_idx] = "stance_foot";
+  traj_idx++;
 
   // Store the previous message
   previous_output_msg_ = *traj_msg;

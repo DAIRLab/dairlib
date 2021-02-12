@@ -2809,6 +2809,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         x(pos_map.at(member)) >=
         plant.GetJointByName(member).position_lower_limits()(0));
   }
+  /* // TODO: You can try this version:
+   prog_->AddBoundingBoxConstraint(plant.GetPositionLowerLimits(),
+                                  plant.GetPositionUpperLimits(), q_);*/
 
   // u limit
   if (pre_and_post_impact_efforts) {

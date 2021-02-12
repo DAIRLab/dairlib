@@ -132,6 +132,30 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_cassie_ik_process",
+    srcs = ["run_cassie_ik_process.cc"],
+    deps = [
+        ":reduced_order_models",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/goldilocks_models/controller:control_parameters",
+        "//examples/goldilocks_models/controller:osc_rom_walking_gains",
+        "//examples/goldilocks_models/controller:rom_inverse_kinematics",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:multipose_visualizer",
+        "//multibody:utils",
+        "//systems:dairlib_signal_lcm_systems",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "multibody_sim_with_init_state",
     srcs = ["multibody_sim_with_init_state.cc"],
     deps = [

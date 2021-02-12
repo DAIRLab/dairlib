@@ -75,6 +75,8 @@ class PlanarCentroidalTrajOpt : public drake::solvers::MathematicalProgram {
       {"x", "y", "theta", "x_dot", "y_dot", "theta_dot"};
   std::vector<std::string> stance_var_names_ =
       {"left", "right"};
+  std::vector<std::string> force_var_names_ =
+      {"left_force", "right_force"};
 
   std::vector<Eigen::Vector2d> nominal_stance_;
   std::vector<stance> sequence_;

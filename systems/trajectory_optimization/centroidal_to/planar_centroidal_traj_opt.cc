@@ -420,7 +420,7 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetStateTrajectories(
       state_knots.block(0, time_idx, kStateVars, 1) =
           result.GetSolution(modes_[i].state_vars_[j]);
       time_idx ++;
-    }-
+    }
   }
 
   time_knots[time_idx] = MapKnotPointToTime(n_modes_ - 1,
@@ -510,6 +510,7 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetForceTrajectories(
   for (int i = 0; i < n_modes_; i++) {
     for (int j = 0; j < modes_[i].force_vars_.size() - 1; j++) {
       time_knots[time_idx] = MapKnotPointToTime(i, j);
+
       if (sequence_[i] != stance::D) {
         force_knots.block(sequence_[i], time_idx, kForceDim,1) =
             result.GetSolution(modes_[i].force_vars_[j]);
@@ -523,10 +524,26 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetForceTrajectories(
     }
   }
 
+  /// Assume double stance in final pose
+  time_knots[time_idx] = MapKnotPointToTime(n_modes_ - 1,
+                                            modes_.back().force_vars_.size() -1);
+  force_knots.block(0, time_idx, 2 * kForceDim, 1) =
+      result.GetSolution(modes_.back().force_vars_.back());
 
+  l_force.time_vector = time_knots;
+  l_force.datapoints = force_knots.block(0, kForceDim * stance::L, kForceDim, n_knot);
+  l_force.traj_name = force_var_names_[stance::L];
+  l_force.datatypes = {"double", "double"};
 
+  r_force.time_vector = time_knots;
+  r_force.datapoints = force_knots.block(0, kForceDim * stance::R, kForceDim, n_knot);
+  r_force.traj_name = force_var_names_[stance::R];
+  r_force.datatypes = {"double", "double"};
 
-  return LcmTrajectory(force_traj, {},  "Force Traj", "force Trajectories");
+  force_traj.push_back(l_force);
+  force_traj.push_back(r_force);
+
+  return LcmTrajectory(force_traj, force_var_names_,  "Force Traj", "force Trajectories");
 }
 
 }

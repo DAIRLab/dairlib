@@ -109,10 +109,11 @@ int doMain(int argc, char** argv){
   if (result.is_success()) {
     LcmTrajectory state_traj = prog.GetStateTrajectories(result);
     LcmTrajectory stance_traj = prog.GetFootTrajectories(result);
+    LcmTrajectory force_traj = prog.GetForceTrajectories(result);
 
     state_traj.WriteToFile("/home/brian/workspace/dairlib/systems/trajectory_optimization/centroidal_to/CoMtraj.lcmtraj");
     stance_traj.WriteToFile("/home/brian/workspace/dairlib/systems/trajectory_optimization/centroidal_to/stancetraj.lcmtraj");
-
+    force_traj.WriteToFile("/home/brian/workspace/dairlib/systems/trajectory_optimization/centroidal_to/forcetraj.lcmtraj");
   }
 
   return 0;

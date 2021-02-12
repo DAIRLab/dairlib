@@ -12,6 +12,9 @@ def ReconstructStanceTrajectory(stance):
     traj = PiecewisePolynomial.ZeroOrderHold(stance.time_vector, stance.datapoints)
     return traj
 
+def ReconstructForceTrajectory(f):
+    traj = PiecewisePolynomial.FirstOrderHold(f.time_vector, f.datapoints)
+    return traj
 
 def main():
     stateTrajs = pydairlib.lcm_trajectory.LcmTrajectory()
@@ -21,12 +24,16 @@ def main():
     stanceTrajs = pydairlib.lcm_trajectory.LcmTrajectory()
     stanceTrajs.LoadFromFile("/home/brian/workspace/dairlib/systems/"
                              "trajectory_optimization/centroidal_to/stancetraj.lcmtraj")
+    forceTrajs = pydairlib.lcm_trajectory.LcmTrajectory()
+    forceTrajs.LoadFromFile("/home/brian/workspace/dairlib/systems/"
+                            "trajectory_optimization/centroidal_to/forcetraj.lcmtraj")
 
     print(stateTrajs.GetTrajectoryNames())
     print(stanceTrajs.GetTrajectoryNames())
 
     traj_names = ['x', 'y', 'theta']
     stance_names = stanceTrajs.GetTrajectoryNames()
+    force_names = forceTrajs.GetTrajectoryNames()
 
     n_points = 5000
     for name in traj_names:
@@ -44,8 +51,22 @@ def main():
         plt.plot(t, qsamples)
         plt.plot(t, qdotsamples)
         plt.legend([name, name + '_dot'])
-    n_points = 3
 
+    plt.figure('contact_forces')
+    for name in force_names:
+        f = forceTrajs.GetTrajectory(name)
+        pp = ReconstructForceTrajectory(f)
+        force_samples = np.zeros((n_points, pp.value(0).shape[0]))
+        for i in range(n_points):
+            force_samples[i] = pp.value(t[i])[:,0]
+
+        plt.plot(t, force_samples)
+
+    plt.legend([force_names[0] + '_x', force_names[0] + '_y',
+                force_names[1] + '_x', force_names[1] + '_y'])
+
+
+    n_points = 3
     plt.figure('stance pos')
     for name in stance_names:
         s = stanceTrajs.GetTrajectory(name)

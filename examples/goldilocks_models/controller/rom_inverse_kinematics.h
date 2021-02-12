@@ -65,10 +65,12 @@ class RomInverseKinematics : public drake::systems::LeafSystem<double> {
   const drake::multibody::Frame<double>& pelvis_frame_;
   const drake::multibody::Frame<double>& toe_left_frame_;
   const drake::multibody::Frame<double>& toe_right_frame_;
+  Eigen::Vector3d mid_contact_disp_;
 
   std::unique_ptr<ReducedOrderModel> rom_;
   std::unique_ptr<MirroredReducedOrderModel> mirrored_rom_;
   StateMirror state_mirror_;
+
 };
 
 }  // namespace goldilocks_models

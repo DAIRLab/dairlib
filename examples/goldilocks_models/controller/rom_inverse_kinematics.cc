@@ -58,7 +58,6 @@ class IkKinematicsConstraint : public solvers::NonlinearConstraint<double> {
                           drake::VectorX<double>* output) const override {
     // Update context
     plant_.SetPositions(context_.get(), q);
-
     // Impose constraint
     *output = y_ - rom_.EvalMappingFunc(q, *context_);
   };
@@ -81,7 +80,10 @@ RomInverseKinematics::RomInverseKinematics(
       world_frame_(plant_control_.world_frame()),
       pelvis_frame_(plant_control_.GetFrameByName("pelvis")),
       toe_left_frame_(plant_control_.GetFrameByName("toe_left")),
-      toe_right_frame_(plant_control_.GetFrameByName("toe_right")) {
+      toe_right_frame_(plant_control_.GetFrameByName("toe_right")),
+      mid_contact_disp_((LeftToeFront(plant_controls).first +
+                         LeftToeRear(plant_controls).first) /
+                        2) {
   rom_traj_lcm_port_ =
       this->DeclareAbstractInputPort("rom_traj_lcm",
                                      drake::Value<dairlib::lcmt_saved_traj>{})
@@ -154,7 +156,8 @@ void RomInverseKinematics::CalcIK(
   // TODO: this could be sped up in various ways
   //  1. just solve for a short horizon starting from current time
   //  2. construct the MP once and replace parameters in each solve.
-  for (int mode = 0; mode < n_mode; mode++) {
+  for (int mode = 0; mode < 1; mode++) {
+    // for (int mode = 0; mode < n_mode; mode++) {
     const LcmTrajectory::Trajectory& traj_i =
         traj_data.GetTrajectory(traj_names[mode]);
     int n_knots = traj_i.time_vector.size();
@@ -175,28 +178,29 @@ void RomInverseKinematics::CalcIK(
     Vector3d stance_foot_pos;
     plant_control_.SetPositions(context_.get(), q_planner_start);
     plant_control_.CalcPointsPositions(*context_, toe_frame_stance,
-                                       Vector3d(0, 0, 0), world_frame_,
+                                       mid_contact_disp_, world_frame_,
                                        &stance_foot_pos);
 
     MatrixXd q_sol_per_mode(nq_, n_knots);
     q_sol_per_mode.leftCols<1>() = q_planner_start;
     q_sol_per_mode.rightCols<1>() = q_planner_end;
     //    MatrixXd q_init_per_mode = q_sol_per_mode;
-    for (int j = 1; j < n_knots - 1; j++) {
+    //    for (int j = 1; j < n_knots - 1; j++) {
+    for (int j = 0; j < 1; j++) {
       /// Construct IK object
       drake::multibody::InverseKinematics ik(plant_control_);
       // Four bar linkage constraint (without spring)
-      ik.get_mutable_prog()->AddLinearConstraint(
+      /*ik.get_mutable_prog()->AddLinearConstraint(
           (ik.q())(pos_map_.at("knee_left")) +
               (ik.q())(pos_map_.at("ankle_joint_left")) ==
           M_PI * 13 / 180.0);
       ik.get_mutable_prog()->AddLinearConstraint(
           (ik.q())(pos_map_.at("knee_right")) +
               (ik.q())(pos_map_.at("ankle_joint_right")) ==
-          M_PI * 13 / 180.0);
+          M_PI * 13 / 180.0);*/
 
       // Stance foot position
-      ik.AddPositionConstraint(toe_frame_stance, Vector3d(0, 0, 0),
+      ik.AddPositionConstraint(toe_frame_stance, mid_contact_disp_,
                                world_frame_, stance_foot_pos - eps_vec,
                                stance_foot_pos + eps_vec);
       // Pelvis pitch and roll
@@ -212,7 +216,7 @@ void RomInverseKinematics::CalcIK(
           0, 0, (ik.q())(pos_map_.at(hip_yaw_swing)));*/
 
       // Swing foot position
-      /*ik.AddPositionConstraint(toe_frame_swing, Vector3d(0, 0, 0),
+      /*ik.AddPositionConstraint(toe_frame_swing, mid_contact_disp_,
          world_frame_, swing_toe_pos - eps_vec, swing_toe_pos + eps_vec);*/
       // Pelvis position
       /*ik.AddPositionConstraint(pelvis_frame_, Vector3d(0, 0, 0), world_frame_,
@@ -222,7 +226,7 @@ void RomInverseKinematics::CalcIK(
       // ROM mapping constraint
       auto kin_constraint = std::make_shared<IkKinematicsConstraint>(
           left_stance ? *rom_ : *mirrored_rom_, plant_control_,
-          traj_i.datapoints.col(j));
+          traj_i.datapoints.col(j).head(n_y));
       ik.get_mutable_prog()->AddConstraint(kin_constraint, ik.q());
 
       // Get the desired position
@@ -233,9 +237,12 @@ void RomInverseKinematics::CalcIK(
       ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_desired);
 
       /// Solve
+      ik.get_mutable_prog()->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                                             "Print file", "../snopt_ik.out");
       // TODO: can I move SnoptSolver outside for loop?
       drake::solvers::SnoptSolver snopt_solver;
-      const auto result = snopt_solver.Solve(ik.prog());
+      const auto result =
+          snopt_solver.Solve(ik.prog(), ik.prog().initial_guess());
 
       SolutionResult solution_result = result.get_solution_result();
       cout << solution_result << " | ";
@@ -245,6 +252,7 @@ void RomInverseKinematics::CalcIK(
       const auto q_sol = result.GetSolution(ik.q());
       VectorXd q_sol_normd(nq_);
       q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(nq_ - 4);
+      //      q_sol_normd << 1, 0, 0, 0, q_sol.tail(nq_ - 4);
       q_sol_per_mode.col(j) = q_sol_normd;
 
       //      q_init_per_mode.col(j) = q_desired;
@@ -262,7 +270,7 @@ void RomInverseKinematics::CalcIK(
     int knot_idx = 0;
     MatrixXd poses(nq_, 0);
     VectorXd alphas(0);
-    for (int mode = 0; mode < n_mode; mode++) {
+    /*for (int mode = 0; mode < n_mode; mode++) {
       int new_length = q_sol_all_modes[mode].cols();
       poses.conservativeResize(poses.rows(), poses.cols() + new_length);
       alphas.conservativeResize(alphas.size() + new_length);
@@ -272,9 +280,14 @@ void RomInverseKinematics::CalcIK(
           0.2 * VectorXd::Ones(new_length - 2), 1;
 
       knot_idx += new_length;
-    }
+    }*/
+
+    poses.conservativeResize(poses.rows(), 1);
+    alphas.conservativeResize(1);
+    poses = q_sol_all_modes[0].col(0);
+    alphas << 1;
     cout << "poses = " << poses << endl;
-    cout << "alphas = " << poses << endl;
+    cout << "alphas = " << alphas << endl;
 
     ///
     multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(

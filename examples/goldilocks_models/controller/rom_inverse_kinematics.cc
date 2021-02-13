@@ -153,14 +153,12 @@ void RomInverseKinematics::CalcIK(
 
   // Initialize IK solutions
   std::vector<MatrixXd> q_sol_all_modes;
-  //  std::vector<MatrixXd> q_init_all_modes;
 
   // Run through each mode and knot points
   // TODO: this could be sped up in various ways
   //  1. just solve for a short horizon starting from current time
   //  2. construct the MP once and replace parameters in each solve.
-  for (int mode = 0; mode < 1; mode++) {
-    // for (int mode = 0; mode < n_mode; mode++) {
+  for (int mode = 0; mode < n_mode; mode++) {
     const LcmTrajectory::Trajectory& traj_i =
         traj_data.GetTrajectory(traj_names[mode]);
     int n_knots = traj_i.time_vector.size();
@@ -187,20 +185,18 @@ void RomInverseKinematics::CalcIK(
     MatrixXd q_sol_per_mode(nq_, n_knots);
     q_sol_per_mode.leftCols<1>() = q_planner_start;
     q_sol_per_mode.rightCols<1>() = q_planner_end;
-    //    MatrixXd q_init_per_mode = q_sol_per_mode;
-    //    for (int j = 1; j < n_knots - 1; j++) {
-    for (int j = 0; j < 1; j++) {
+    for (int j = 1; j < n_knots - 1; j++) {
       /// Construct IK object
       drake::multibody::InverseKinematics ik(plant_control_);
       // Four bar linkage constraint (without spring)
-      /*ik.get_mutable_prog()->AddLinearConstraint(
+      ik.get_mutable_prog()->AddLinearConstraint(
           (ik.q())(pos_map_.at("knee_left")) +
               (ik.q())(pos_map_.at("ankle_joint_left")) ==
           M_PI * 13 / 180.0);
       ik.get_mutable_prog()->AddLinearConstraint(
           (ik.q())(pos_map_.at("knee_right")) +
               (ik.q())(pos_map_.at("ankle_joint_right")) ==
-          M_PI * 13 / 180.0);*/
+          M_PI * 13 / 180.0);
 
       // Stance foot position
       ik.AddPositionConstraint(toe_frame_stance, mid_contact_disp_,
@@ -240,8 +236,11 @@ void RomInverseKinematics::CalcIK(
       ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_desired);
 
       /// Solve
-      ik.get_mutable_prog()->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                                             "Print file", "../snopt_ik.out");
+      if (true) {
+//      if (debug_mode_) {
+        ik.get_mutable_prog()->SetSolverOption(
+            drake::solvers::SnoptSolver::id(), "Print file", "../snopt_ik.out");
+      }
       // TODO: can I move SnoptSolver outside for loop?
       drake::solvers::SnoptSolver snopt_solver;
       const auto result =
@@ -255,13 +254,9 @@ void RomInverseKinematics::CalcIK(
       const auto q_sol = result.GetSolution(ik.q());
       VectorXd q_sol_normd(nq_);
       q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(nq_ - 4);
-      //      q_sol_normd << 1, 0, 0, 0, q_sol.tail(nq_ - 4);
       q_sol_per_mode.col(j) = q_sol_normd;
-
-      //      q_init_per_mode.col(j) = q_desired;
     }
     q_sol_all_modes.push_back(q_sol_per_mode);
-    //    q_init_all_modes.push_back(q_init_per_mode);
   }
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
@@ -270,27 +265,52 @@ void RomInverseKinematics::CalcIK(
   if (true) {
     //  if (debug_mode_) {
 
+    // 0: plot solution. 1: plot desired position in IK
+    const int PLOT_OPTION = 0;
+
+    std::vector<MatrixXd> q_to_plot;
+    if (PLOT_OPTION == 0) {
+      q_to_plot = q_sol_all_modes;
+    } else {
+      // Get all desired positions used in the IK's
+      std::vector<MatrixXd> q_desired_all_modes;
+      for (int mode = 0; mode < n_mode; mode++) {
+        const LcmTrajectory::Trajectory& traj_i =
+            traj_data.GetTrajectory(traj_names[mode]);
+        int n_knots = traj_i.time_vector.size();
+        const MatrixXd& x_FOMs = traj_data.GetTrajectory("FOM").datapoints;
+        VectorXd q_planner_start = x_FOMs.col(2 * mode).head(nq_);
+        VectorXd q_planner_end = x_FOMs.col(2 * mode + 1).head(nq_);
+        MatrixXd q_init_per_mode(nq_, n_knots);
+        for (int j = 1; j < n_knots - 1; j++) {
+          VectorXd q_desired =
+              q_planner_start +
+              (q_planner_end - q_planner_start) * j / (n_knots - 1);
+          q_init_per_mode.col(j) = q_desired;
+        }
+        q_desired_all_modes.push_back(q_init_per_mode);
+      }
+      q_to_plot = q_desired_all_modes;
+    }
+
     int knot_idx = 0;
     MatrixXd poses(nq_, 0);
     VectorXd alphas(0);
-    /*for (int mode = 0; mode < n_mode; mode++) {
-      int new_length = q_sol_all_modes[mode].cols();
+    for (int mode = 0; mode < n_mode; mode++) {
+      int new_length = q_to_plot[mode].cols();
       poses.conservativeResize(poses.rows(), poses.cols() + new_length);
       alphas.conservativeResize(alphas.size() + new_length);
 
-      poses.block(0, knot_idx, nq_, new_length) = q_sol_all_modes[mode];
+      poses.block(0, knot_idx, nq_, new_length) = q_to_plot[mode];
       alphas.segment(knot_idx, new_length) << 1,
           0.2 * VectorXd::Ones(new_length - 2), 1;
 
       knot_idx += new_length;
-    }*/
+    }
 
-    poses.conservativeResize(poses.rows(), 1);
-    alphas.conservativeResize(1);
-    poses = q_sol_all_modes[0].col(0);
-    alphas << 1;
-    cout << "poses = " << poses << endl;
-    cout << "alphas = " << alphas << endl;
+    //    cout << "poses = " << poses << endl;
+    cout << "poses = " << poses.col(0) << endl;
+    cout << "alphas = " << alphas.transpose() << endl;
 
     ///
     multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(

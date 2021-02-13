@@ -5,10 +5,10 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
-#include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/reduced_order_models.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -70,7 +70,6 @@ class RomInverseKinematics : public drake::systems::LeafSystem<double> {
   std::unique_ptr<ReducedOrderModel> rom_;
   std::unique_ptr<MirroredReducedOrderModel> mirrored_rom_;
   StateMirror state_mirror_;
-
 };
 
 }  // namespace goldilocks_models

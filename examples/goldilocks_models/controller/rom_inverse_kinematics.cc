@@ -65,7 +65,10 @@ class IkKinematicsConstraint : public solvers::NonlinearConstraint<double> {
   const ReducedOrderModel& rom_;
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
-  const VectorXd& y_;
+
+  // Cannot use reference probably because you use Eigen's block operation to
+  // pass y into the constructor
+  const VectorXd y_;
 };
 
 RomInverseKinematics::RomInverseKinematics(

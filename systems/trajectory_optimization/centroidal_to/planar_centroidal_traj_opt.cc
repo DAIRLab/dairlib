@@ -137,7 +137,6 @@ void PlanarCentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
   int n_modes = sequence.size();
 
   for (int i = 0; i < n_modes; i++) {
-    std::cout << "Mode " << i << std::endl;
 
     int n_knot_f = std::round(times[i] / h_) + 1;
     int n_knot_s = n_knot_f;
@@ -457,7 +456,10 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetFootTrajectories(
     if (sequence_[i] != stance::D) {
 
       auto traj = LcmTrajectory::Trajectory();
-      traj.traj_name = stance_var_names_[sequence_[i]] + ("[" + std::to_string(i) + "]");
+      char buf[10];
+      sprintf(buf, "%02d", i);
+      std::string b = buf;
+      traj.traj_name = stance_var_names_[sequence_[i]] + ("[" + b + "]");
       Eigen::MatrixXd res = Eigen::MatrixXd::Zero(kStanceVars, 2);
 
       for (int j = 0; j < 2; j++) {
@@ -475,7 +477,10 @@ LcmTrajectory PlanarCentroidalTrajOpt::GetFootTrajectories(
 
       for (int j = 0; j < 2; j++) {
         auto traj = LcmTrajectory::Trajectory();
-        traj.traj_name = stance_var_names_[j] + ("[" + std::to_string(i) + "]");
+        char buf[10];
+        sprintf(buf, "%02d", i);
+        std::string b = buf;
+        traj.traj_name = stance_var_names_[j] + ("[" + b + "]");
         Eigen::MatrixXd res = Eigen::MatrixXd::Zero(kStanceVars, 2);
 
         for (int k = 0; k < 2; k++) {

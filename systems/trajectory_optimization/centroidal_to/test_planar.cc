@@ -102,9 +102,10 @@ int doMain(int argc, char** argv){
     }
   }
 
-  print_guess(prog);
+  // print_guess(prog);
   auto result = prog.SolveProg(FLAGS_iteration_limit);
-  print_result(prog, result);
+  // print_result(prog, result);
+  std::cout << result.get_solution_result() << std::endl;
 
   if (result.is_success()) {
     LcmTrajectory state_traj = prog.GetStateTrajectories(result);

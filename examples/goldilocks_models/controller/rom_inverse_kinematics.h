@@ -53,6 +53,7 @@ class RomInverseKinematics : public drake::systems::LeafSystem<double> {
   int rom_traj_lcm_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_control_;
+  const IKSetting& param_;
   bool debug_mode_;
 
   int nq_;

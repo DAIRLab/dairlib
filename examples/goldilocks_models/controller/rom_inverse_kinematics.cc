@@ -37,6 +37,8 @@ using std::cout;
 using std::endl;
 using std::string;
 
+double INF = std::numeric_limits<double>::infinity();
+
 namespace dairlib {
 namespace goldilocks_models {
 
@@ -75,6 +77,7 @@ RomInverseKinematics::RomInverseKinematics(
     const drake::multibody::MultibodyPlant<double>& plant_controls,
     const IKSetting& param, bool debug_mode)
     : plant_control_(plant_controls),
+      param_(param),
       debug_mode_(debug_mode),
       nq_(plant_controls.num_positions()),
       nx_(plant_controls.num_positions() + plant_controls.num_velocities()),
@@ -146,10 +149,16 @@ void RomInverseKinematics::CalcIK(
   /// Solve IK
   ///
   auto start = std::chrono::high_resolution_clock::now();
+  double total_solve_time = 0;
 
   // Parameters
-  double eps = 1e-3;
+  double eps = 1e-4;
+  double mid_swing_height = 0.1;
+
+  // Some variables used in the bounds
   Vector3d eps_vec = eps * VectorXd::Ones(3);
+  //  Vector3d swing_foot_lb = -INF * Vector3d::Ones();
+  //  Vector3d swing_foot_ub = INF * Vector3d::Ones();
 
   // Initialize IK solutions
   std::vector<MatrixXd> q_sol_all_modes;
@@ -182,6 +191,17 @@ void RomInverseKinematics::CalcIK(
                                        mid_contact_disp_, world_frame_,
                                        &stance_foot_pos);
 
+    // Get the swing foot positions
+    Vector3d swing_foot_pos_start;
+    plant_control_.CalcPointsPositions(*context_, toe_frame_swing,
+                                       mid_contact_disp_, world_frame_,
+                                       &swing_foot_pos_start);
+    Vector3d swing_foot_pos_end;
+    plant_control_.SetPositions(context_.get(), q_planner_end);
+    plant_control_.CalcPointsPositions(*context_, toe_frame_swing,
+                                       mid_contact_disp_, world_frame_,
+                                       &swing_foot_pos_end);
+
     MatrixXd q_sol_per_mode(nq_, n_knots);
     q_sol_per_mode.leftCols<1>() = q_planner_start;
     q_sol_per_mode.rightCols<1>() = q_planner_end;
@@ -199,6 +219,7 @@ void RomInverseKinematics::CalcIK(
           M_PI * 13 / 180.0);
 
       // Stance foot position
+      // TODO: maybe I need to impose two contact constraints for stance foot
       ik.AddPositionConstraint(toe_frame_stance, mid_contact_disp_,
                                world_frame_, stance_foot_pos - eps_vec,
                                stance_foot_pos + eps_vec);
@@ -214,13 +235,24 @@ void RomInverseKinematics::CalcIK(
       ik.get_mutable_prog()->AddBoundingBoxConstraint(
           0, 0, (ik.q())(pos_map_.at(hip_yaw_swing)));*/
 
-      // Swing foot position
-      /*ik.AddPositionConstraint(toe_frame_swing, mid_contact_disp_,
-         world_frame_, swing_toe_pos - eps_vec, swing_toe_pos + eps_vec);*/
       // Pelvis position
       /*ik.AddPositionConstraint(pelvis_frame_, Vector3d(0, 0, 0), world_frame_,
                                pelvis_pos - eps * VectorXd::Ones(3),
                                pelvis_pos + eps * VectorXd::Ones(3));*/
+
+      // Swing foot position
+      // Let's the height be a concave parabola going though (0,0) and
+      // (n_knots-1, 0). The trajectory is -C*x*(x-T) where
+      //   T = n_knots-1
+      //   C = 4/T^2 * mid_foot_height
+      double T = n_knots - 1;
+      Vector3d swing_toe_pos =
+          swing_foot_pos_start +
+          (swing_foot_pos_end - swing_foot_pos_start) * j / T;
+      swing_toe_pos(2) = -4 / (T * T) * mid_swing_height * j * (j - T);
+      ik.AddPositionConstraint(toe_frame_swing, mid_contact_disp_, world_frame_,
+                               swing_toe_pos - eps_vec,
+                               swing_toe_pos + eps_vec);
 
       // ROM mapping constraint
       auto kin_constraint = std::make_shared<IkKinematicsConstraint>(
@@ -229,26 +261,37 @@ void RomInverseKinematics::CalcIK(
       ik.get_mutable_prog()->AddConstraint(kin_constraint, ik.q());
 
       // Get the desired position
-      VectorXd q_desired = q_planner_start + (q_planner_end - q_planner_start) *
-                                                 j / (n_knots - 1);
+      VectorXd q_desired =
+          q_planner_start + (q_planner_end - q_planner_start) * j / T;
       ik.get_mutable_prog()->AddQuadraticErrorCost(
           Eigen::MatrixXd::Identity(nq_, nq_), q_desired, ik.q());
       ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_desired);
 
       /// Solve
+      //  if (debug_mode_) {
       if (true) {
-//      if (debug_mode_) {
         ik.get_mutable_prog()->SetSolverOption(
             drake::solvers::SnoptSolver::id(), "Print file", "../snopt_ik.out");
       }
+      ik.get_mutable_prog()->SetSolverOption(
+          drake::solvers::SnoptSolver::id(), "Major optimality tolerance",
+          param_.feas_tol);  // target nonlinear constraint violation
+      ik.get_mutable_prog()->SetSolverOption(
+          drake::solvers::SnoptSolver::id(), "Major feasibility tolerance",
+          param_.opt_tol);  // target complementarity gap
       // TODO: can I move SnoptSolver outside for loop?
       drake::solvers::SnoptSolver snopt_solver;
+      auto start_inner = std::chrono::high_resolution_clock::now();
       const auto result =
           snopt_solver.Solve(ik.prog(), ik.prog().initial_guess());
+      auto finish_inner = std::chrono::high_resolution_clock::now();
 
       SolutionResult solution_result = result.get_solution_result();
       cout << solution_result << " | ";
       cout << "Cost:" << result.get_optimal_cost() << "\n";
+
+      std::chrono::duration<double> elapsed_inner = finish_inner - start_inner;
+      total_solve_time += elapsed_inner.count();
 
       /// Get solution
       const auto q_sol = result.GetSolution(ik.q());
@@ -260,7 +303,9 @@ void RomInverseKinematics::CalcIK(
   }
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  cout << "Solve time:" << elapsed.count() << "\n";
+  cout << "Construction time : " << elapsed.count() - total_solve_time << "\n";
+  cout << "Solve time : " << total_solve_time << "\n";
+  cout << "Construction time + Solve time: " << elapsed.count() << "\n";
 
   if (true) {
     //  if (debug_mode_) {

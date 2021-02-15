@@ -3,6 +3,7 @@
 #include "multibody/multipose_visualizer.h"
 #include "multibody/visualization_utils.h"
 #include "solvers/nonlinear_constraint.h"
+#include "common/eigen_utils.h"
 
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
@@ -36,6 +37,8 @@ using Eigen::VectorXd;
 using std::cout;
 using std::endl;
 using std::string;
+using std::vector;
+using std::to_string;
 
 double INF = std::numeric_limits<double>::infinity();
 
@@ -307,7 +310,7 @@ void RomInverseKinematics::CalcIK(
   cout << "Solve time : " << total_solve_time << "\n";
   cout << "Construction time + Solve time: " << elapsed.count() << "\n";
 
-  if (true) {
+  if (false) {
     //  if (debug_mode_) {
 
     // 0: plot solution. 1: plot desired position in IK
@@ -367,38 +370,41 @@ void RomInverseKinematics::CalcIK(
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
-  /*// Note that the trajectory is discontinuous between mode (even the position
+  // Note that the trajectory is discontinuous between mode (even the position
   // jumps because left vs right stance leg).
-  traj_msg->metadata.description = drake::solvers::to_string(solution_result);
-  traj_msg->num_trajectories = param_.n_step;
+  q_traj_msg->num_trajectories = n_mode;
 
-  traj_msg->trajectory_names.resize(param_.n_step);
-  traj_msg->trajectories.resize(param_.n_step);
+  q_traj_msg->trajectory_names.resize(n_mode);
+  q_traj_msg->trajectories.resize(n_mode);
 
   lcmt_trajectory_block traj_block;
-  traj_block.num_datatypes = state_samples[0].rows();
-  traj_block.datatypes.resize(traj_block.num_datatypes);
-  traj_block.datatypes = vector<string>(traj_block.num_datatypes, "");
-  for (int i = 0; i < param_.n_step; i++) {
+  traj_block.num_datatypes = nq_;
+  traj_block.datatypes.resize(nq_);
+  traj_block.datatypes = vector<string>(nq_, "");
+  for (int i = 0; i < n_mode; i++) {
+    const LcmTrajectory::Trajectory& traj_i =
+        traj_data.GetTrajectory(traj_names[i]);
+    int n_knots = traj_i.time_vector.size();
+
     /// Create lcmt_trajectory_block
     traj_block.trajectory_name = "";
-    traj_block.num_points = time_breaks[i].size();
+    traj_block.num_points = n_knots;
 
     // Reserve space for vectors
     traj_block.time_vec.resize(traj_block.num_points);
     traj_block.datapoints.clear();
 
     // Copy Eigentypes to std::vector
-    traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+    traj_block.time_vec = CopyVectorXdToStdVector(traj_i.time_vector);
     for (int j = 0; j < traj_block.num_datatypes; ++j) {
       traj_block.datapoints.push_back(
-          CopyVectorXdToStdVector(state_samples[i].row(j)));
+          CopyVectorXdToStdVector(q_sol_all_modes[i].row(j)));
     }
 
     /// Assign lcmt_trajectory_block
-    traj_msg->trajectories[i] = traj_block;
-    traj_msg->trajectory_names[i] = to_string(i);
-  }*/
+    q_traj_msg->trajectories[i] = traj_block;
+    q_traj_msg->trajectory_names[i] = to_string(i);
+  }
 };
 
 }  // namespace goldilocks_models

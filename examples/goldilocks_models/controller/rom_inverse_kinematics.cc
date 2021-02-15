@@ -122,27 +122,27 @@ void RomInverseKinematics::CalcIK(
   ///
   /// Read input port
   ///
-  LcmTrajectory traj_data(*(this->EvalInputValue<dairlib::lcmt_saved_traj>(
+  LcmTrajectory rom_traj(*(this->EvalInputValue<dairlib::lcmt_saved_traj>(
       context, rom_traj_lcm_port_)));
 
   // Some variables
-  const auto& traj_names = traj_data.GetTrajectoryNames();
+  const auto& traj_names = rom_traj.GetTrajectoryNames();
   int n_mode = traj_names.size() - 2;
-  int n_y = traj_data.GetTrajectory(traj_names[0]).datatypes.size() / 2;
+  int n_y = rom_traj.GetTrajectory(traj_names[0]).datatypes.size() / 2;
   const LcmTrajectory::Trajectory& stance_foot_vec =
-      traj_data.GetTrajectory("stance_foot");
+      rom_traj.GetTrajectory("stance_foot");
 
   // Construct traj from lcm message
   /*
   const LcmTrajectory::Trajectory& traj0 =
-      traj_data.GetTrajectory(traj_names[0]);
+      rom_traj.GetTrajectory(traj_names[0]);
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::CubicHermite(
           traj0.time_vector, traj0.datapoints.topRows(n_y),
           traj0.datapoints.bottomRows(n_y));
   for (int mode = 1; mode < n_mode; ++mode) {
     const LcmTrajectory::Trajectory& traj_i =
-        traj_data.GetTrajectory(traj_names[mode]);
+        rom_traj.GetTrajectory(traj_names[mode]);
     pp_part.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
         traj_i.time_vector, traj_i.datapoints.topRows(n_y),
         traj_i.datapoints.bottomRows(n_y)));
@@ -172,10 +172,10 @@ void RomInverseKinematics::CalcIK(
   //  2. construct the MP once and replace parameters in each solve.
   for (int mode = 0; mode < n_mode; mode++) {
     const LcmTrajectory::Trajectory& traj_i =
-        traj_data.GetTrajectory(traj_names[mode]);
+        rom_traj.GetTrajectory(traj_names[mode]);
     int n_knots = traj_i.time_vector.size();
 
-    const MatrixXd& x_FOMs = traj_data.GetTrajectory("FOM").datapoints;
+    const MatrixXd& x_FOMs = rom_traj.GetTrajectory("FOM").datapoints;
     VectorXd q_planner_start = x_FOMs.col(2 * mode).head(nq_);
     VectorXd q_planner_end = x_FOMs.col(2 * mode + 1).head(nq_);
 
@@ -324,9 +324,9 @@ void RomInverseKinematics::CalcIK(
       std::vector<MatrixXd> q_desired_all_modes;
       for (int mode = 0; mode < n_mode; mode++) {
         const LcmTrajectory::Trajectory& traj_i =
-            traj_data.GetTrajectory(traj_names[mode]);
+            rom_traj.GetTrajectory(traj_names[mode]);
         int n_knots = traj_i.time_vector.size();
-        const MatrixXd& x_FOMs = traj_data.GetTrajectory("FOM").datapoints;
+        const MatrixXd& x_FOMs = rom_traj.GetTrajectory("FOM").datapoints;
         VectorXd q_planner_start = x_FOMs.col(2 * mode).head(nq_);
         VectorXd q_planner_end = x_FOMs.col(2 * mode + 1).head(nq_);
         MatrixXd q_init_per_mode(nq_, n_knots);
@@ -383,7 +383,7 @@ void RomInverseKinematics::CalcIK(
   traj_block.datatypes = vector<string>(nq_, "");
   for (int i = 0; i < n_mode; i++) {
     const LcmTrajectory::Trajectory& traj_i =
-        traj_data.GetTrajectory(traj_names[i]);
+        rom_traj.GetTrajectory(traj_names[i]);
     int n_knots = traj_i.time_vector.size();
 
     /// Create lcmt_trajectory_block

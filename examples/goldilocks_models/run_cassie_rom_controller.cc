@@ -95,7 +95,7 @@ DEFINE_string(channel_fsm_t, "FSM_T",
               "LCM channel for sending fsm and time of latest liftoff event. ");
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which receives MPC output");
-DEFINE_string(channel_q_ik, "IK_OUTPUT",
+DEFINE_string(channel_ik, "IK_OUTPUT",
               "The name of the channel which receives IK traj");
 
 DEFINE_bool(publish_osc_data, true,
@@ -680,7 +680,7 @@ int DoMain(int argc, char* argv[]) {
     // Create Lcm subscriber for IK output
     auto IK_output_subscriber =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
-            FLAGS_channel_q_ik, &lcm_local));
+            FLAGS_channel_ik, &lcm_local));
     // Create a system that translate IK lcm into trajectory
     auto optimal_ik_traj_gen =
         builder.AddSystem<SavedTrajReceiver>(0, false, false);

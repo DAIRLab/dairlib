@@ -5,24 +5,31 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
-#include "dairlib/lcmt_trajectory_block.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_trajectory_block.hpp"
+#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
-#include "lcm/lcm_trajectory.h"
 
 namespace dairlib {
 namespace goldilocks_models {
 
-class OptimalRoMTrajReceiver : public drake::systems::LeafSystem<double> {
+// One use case of ExponentialPlusPiecewisePolynomial: if we want to use a guard
+// that merge optimal ROM traj with LIPM traj.
+
+class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
  public:
-  OptimalRoMTrajReceiver();
+  SavedTrajReceiver(int n_tail_ignored, bool use_exp, bool both_pos_vel_in_traj);
 
  private:
   void CalcDesiredTraj(const drake::systems::Context<double>& context,
                        drake::trajectories::Trajectory<double>* traj) const;
 
-  int rom_traj_lcm_port_;
+  int saved_traj_lcm_port_;
+
+  int n_tail_ignored_;
+  bool use_exp_;
+  bool both_pos_vel_in_traj_;
 };
 
 }  // namespace goldilocks_models

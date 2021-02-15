@@ -22,7 +22,7 @@
 #include "examples/goldilocks_models/controller/local_lipm_traj_gen.h"
 #include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 #include "examples/goldilocks_models/controller/planned_traj_guard.h"
-#include "examples/goldilocks_models/controller/rom_traj_receiver.h"
+#include "examples/goldilocks_models/controller/saved_traj_receiver.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -95,6 +95,8 @@ DEFINE_string(channel_fsm_t, "FSM_T",
               "LCM channel for sending fsm and time of latest liftoff event. ");
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which receives MPC output");
+DEFINE_string(channel_q_ik, "IK_OUTPUT",
+              "The name of the channel which receives IK traj");
 
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
@@ -246,25 +248,84 @@ int DoMain(int argc, char* argv[]) {
       single_support_states);
   builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
 
+  // Create a multiplexer which combines current finite state machine state
+  // and the latest lift-off event time, and create publisher for this
+  // combined vector
+  auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(2);
+  builder.Connect(fsm->get_output_port(0), mux->get_input_port(0));
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                  mux->get_input_port(1));
+  std::vector<std::string> singal_names = {"fsm", "t_lo"};
+  auto fsm_and_liftoff_time_sender =
+      builder.AddSystem<systems::DrakeSignalSender>(singal_names);
+  builder.Connect(mux->get_output_port(0),
+                  fsm_and_liftoff_time_sender->get_input_port(0));
+  auto fsm_and_liftoff_time_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_dairlib_signal>(
+          FLAGS_channel_fsm_t, &lcm_local,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
+                  fsm_and_liftoff_time_publisher->get_input_port());
+
+  // Evaluators for OSC constraints
+  multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
+  // 1. fourbar constraint
+  auto left_loop = LeftLoopClosureEvaluator(plant_wo_springs);
+  auto right_loop = RightLoopClosureEvaluator(plant_wo_springs);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
+  // Note that we are still using fixed-spring model in OSC, so we don't need
+  // the spring constraint below
+  // 2. fixed spring constriant
+  // Note that we set the position value to 0, but this is not used in OSC,
+  // because OSC constraint only use JdotV and J.
+  /*auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  auto left_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
+                          vel_idx_map.at("knee_joint_leftdot"), 0);
+  auto right_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_right"),
+                          vel_idx_map.at("knee_joint_rightdot"), 0);
+  auto left_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
+      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+  auto right_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
+      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+  evaluators.add_evaluator(&left_fixed_knee_spring);
+  evaluators.add_evaluator(&right_fixed_knee_spring);
+  evaluators.add_evaluator(&left_fixed_ankle_spring);
+  evaluators.add_evaluator(&right_fixed_ankle_spring);*/
+  // 3. Contact points (The position doesn't matter. It's not used in OSC)
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {0, 1, 2});
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_heel.first, right_heel.second,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+
   if (!FLAGS_use_IK) {
-    // Create a multiplexer which combines current finite state machine state
-    // and the latest lift-off event time, and create publisher for this
-    // combined vector
-    auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(2);
-    builder.Connect(fsm->get_output_port(0), mux->get_input_port(0));
-    builder.Connect(event_time->get_output_port_event_time_of_interest(),
-                    mux->get_input_port(1));
-    std::vector<std::string> singal_names = {"fsm", "t_lo"};
-    auto fsm_and_liftoff_time_sender =
-        builder.AddSystem<systems::DrakeSignalSender>(singal_names);
-    builder.Connect(mux->get_output_port(0),
-                    fsm_and_liftoff_time_sender->get_input_port(0));
-    auto fsm_and_liftoff_time_publisher = builder.AddSystem(
-        LcmPublisherSystem::Make<dairlib::lcmt_dairlib_signal>(
-            FLAGS_channel_fsm_t, &lcm_local,
-            TriggerTypeSet({TriggerType::kForced})));
-    builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
-                    fsm_and_liftoff_time_publisher->get_input_port());
+    ///
+    /// Non IK conroller
+    ///
+
+    // Create Lcm subscriber for MPC's output
+    auto planner_output_subscriber =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
+            FLAGS_channel_y, &lcm_local));
+    // Create a system that translate MPC lcm into trajectory
+    int n_ignored = 2;
+    auto optimal_rom_traj_gen =
+        builder.AddSystem<SavedTrajReceiver>(n_ignored, true, true);
+    builder.Connect(planner_output_subscriber->get_output_port(),
+                    optimal_rom_traj_gen->get_input_port(0));
 
     // Create human high-level control
     Eigen::Vector2d global_target_position(gains.global_target_position_x,
@@ -291,15 +352,6 @@ int DoMain(int argc, char* argv[]) {
                     head_traj_gen->get_state_input_port());
     builder.Connect(high_level_command->get_yaw_output_port(),
                     head_traj_gen->get_yaw_input_port());
-
-    // Create Lcm subscriber for MPC's output
-    auto planner_output_subscriber =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
-            FLAGS_channel_y, &lcm_local));
-    // Create a system that translate MPC lcm into trajectory
-    auto optimal_rom_traj_gen = builder.AddSystem<OptimalRoMTrajReceiver>();
-    builder.Connect(planner_output_subscriber->get_output_port(),
-                    optimal_rom_traj_gen->get_input_port(0));
 
     // Create CoM trajectory generator
     double desired_com_height = gains.lipm_height;
@@ -437,36 +489,6 @@ int DoMain(int argc, char* argv[]) {
     osc->SetAccelerationCostForAllJoints(Q_accel);
 
     // Constraints in OSC
-    multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
-    // 1. fourbar constraint
-    auto left_loop = LeftLoopClosureEvaluator(plant_wo_springs);
-    auto right_loop = RightLoopClosureEvaluator(plant_wo_springs);
-    evaluators.add_evaluator(&left_loop);
-    evaluators.add_evaluator(&right_loop);
-    // Note that we are still using fixed-spring model in OSC, so we don't need
-    // the spring constraint below
-    //  // 2. fixed spring constriant
-    //  // Note that we set the position value to 0, but this is not used in
-    //  OSC,
-    //  // because OSC constraint only use JdotV and J.
-    //  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
-    //  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
-    //  auto left_fixed_knee_spring =
-    //      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
-    //                          vel_idx_map.at("knee_joint_leftdot"), 0);
-    //  auto right_fixed_knee_spring =
-    //      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_right"),
-    //                          vel_idx_map.at("knee_joint_rightdot"), 0);
-    //  auto left_fixed_ankle_spring = FixedJointEvaluator(
-    //      plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
-    //      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
-    //  auto right_fixed_ankle_spring = FixedJointEvaluator(
-    //      plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
-    //      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
-    //  evaluators.add_evaluator(&left_fixed_knee_spring);
-    //  evaluators.add_evaluator(&right_fixed_knee_spring);
-    //  evaluators.add_evaluator(&left_fixed_ankle_spring);
-    //  evaluators.add_evaluator(&right_fixed_ankle_spring);
     osc->AddKinematicConstraint(&evaluators);
 
     // Soft constraint
@@ -475,19 +497,7 @@ int DoMain(int argc, char* argv[]) {
     osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
     // Friction coefficient
     osc->SetContactFriction(gains.mu);
-    // Add contact points (The position doesn't matter. It's not used in OSC)
-    auto left_toe_evaluator = multibody::WorldPointEvaluator(
-        plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
-        Vector3d::Zero(), {1, 2});
-    auto left_heel_evaluator = multibody::WorldPointEvaluator(
-        plant_wo_springs, left_heel.first, left_heel.second,
-        Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-    auto right_toe_evaluator = multibody::WorldPointEvaluator(
-        plant_wo_springs, right_toe.first, right_toe.second,
-        Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
-    auto right_heel_evaluator = multibody::WorldPointEvaluator(
-        plant_wo_springs, right_heel.first, right_heel.second,
-        Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+    // Add contact points
     osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
     osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
     osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
@@ -659,7 +669,156 @@ int DoMain(int argc, char* argv[]) {
 
     loop.Simulate();
   } else {
-    
+    ///
+    /// IK conroller
+    ///
+
+    // TODO: think about how I want to construct the spline from IK.
+    //  Currently, I'm using CubicWithContinuousSecondDerivatives with 0 vel at
+    //  the end points.
+
+    // Create Lcm subscriber for IK output
+    auto IK_output_subscriber =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
+            FLAGS_channel_q_ik, &lcm_local));
+    // Create a system that translate IK lcm into trajectory
+    auto optimal_ik_traj_gen =
+        builder.AddSystem<SavedTrajReceiver>(0, false, false);
+    builder.Connect(IK_output_subscriber->get_output_port(),
+                    optimal_ik_traj_gen->get_input_port(0));
+
+    // Create Operational space control
+    auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
+        plant_w_spr, plant_wo_springs, context_w_spr.get(),
+        context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/);
+
+    // Cost
+    int n_v = plant_wo_springs.num_velocities();
+    MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
+    osc->SetAccelerationCostForAllJoints(Q_accel);
+
+    // Constraints in OSC
+    osc->AddKinematicConstraint(&evaluators);
+
+    // Soft constraint
+    // w_contact_relax shouldn't be too big, cause we want tracking error to be
+    // important
+    osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
+    // Friction coefficient
+    osc->SetContactFriction(gains.mu);
+    // Add contact points
+    osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
+    osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
+    osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
+    osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
+    if (!FLAGS_is_two_phase) {
+      osc->AddStateAndContactPoint(post_left_double_support_state,
+                                   &left_toe_evaluator);
+      osc->AddStateAndContactPoint(post_left_double_support_state,
+                                   &left_heel_evaluator);
+      osc->AddStateAndContactPoint(post_left_double_support_state,
+                                   &right_toe_evaluator);
+      osc->AddStateAndContactPoint(post_left_double_support_state,
+                                   &right_heel_evaluator);
+      osc->AddStateAndContactPoint(post_right_double_support_state,
+                                   &left_toe_evaluator);
+      osc->AddStateAndContactPoint(post_right_double_support_state,
+                                   &left_heel_evaluator);
+      osc->AddStateAndContactPoint(post_right_double_support_state,
+                                   &right_toe_evaluator);
+      osc->AddStateAndContactPoint(post_right_double_support_state,
+                                   &right_heel_evaluator);
+    }
+
+    // TODO: Add an API to OSC to allow vector weights (for W, Kp and Kd)
+
+    /*// TrackingData for left support phase
+    JointSpaceTrackingData left_support_traj(
+        "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+        gains.W_swing_toe, plant_w_spr, plant_wo_springs);
+    left_support_traj.AddStateAndJointToTrack(left_stance_state, , );
+    left_support_traj.AddStateAndJointToTrack(post_left_double_support_state,
+                                              , );
+    osc->AddTrackingData(&left_support_traj);
+
+    // TrackingData for right support phase
+    JointSpaceTrackingData right_support_traj(
+        "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+        gains.W_swing_toe, plant_w_spr, plant_wo_springs);
+    right_support_traj.AddStateAndJointToTrack(right_stance_state, , );
+    right_support_traj.AddStateAndJointToTrack(post_right_double_support_state,
+                                               , );
+    osc->AddTrackingData(&right_support_traj);*/
+
+    // Build OSC problem
+    osc->Build();
+    // Connect ports
+    builder.Connect(simulator_drift->get_output_port(0),
+                    osc->get_robot_output_input_port());
+    builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+    builder.Connect(optimal_ik_traj_gen->get_output_port(0),
+                    osc->get_tracking_data_input_port("optimal_rom_traj"));
+    builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+    if (FLAGS_publish_osc_data) {
+      // Create osc debug sender.
+      auto osc_debug_pub =
+          builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+              "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+      builder.Connect(osc->get_osc_debug_port(),
+                      osc_debug_pub->get_input_port());
+    }
+
+    // Create the diagram
+    auto owned_diagram = builder.Build();
+    owned_diagram->set_name("osc walking controller");
+
+    // Run lcm-driven simulation
+    systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+        &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
+        true);
+
+    // Get init traj from ROM planner result
+    const std::string dir_data =
+        "../dairlib_data/goldilocks_models/planning/robot_1/data/";
+    VectorXd time_at_knots =
+        readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
+    cout << "time_at_knots= " << time_at_knots.transpose() << endl;
+    MatrixXd state_at_knots =
+        readCSV(dir_data + std::string("state_at_knots.csv"));
+    // Initial message for the LCM subscriber. In the first timestep, the
+    // subscriber might not receive a solution yet
+    dairlib::lcmt_trajectory_block traj_msg0;
+    traj_msg0.trajectory_name = "";
+    traj_msg0.num_points = time_at_knots.size();
+    traj_msg0.num_datatypes = 2 * rom->n_y();
+    // Reserve space for vectors
+    traj_msg0.time_vec.resize(traj_msg0.num_points);
+    traj_msg0.datatypes.resize(traj_msg0.num_datatypes);
+    traj_msg0.datapoints.clear();
+    // Copy Eigentypes to std::vector
+    traj_msg0.time_vec = CopyVectorXdToStdVector(time_at_knots);
+    traj_msg0.datatypes = vector<std::string>(2 * rom->n_y());
+    for (int i = 0; i < traj_msg0.num_datatypes; ++i) {
+      traj_msg0.datapoints.push_back(
+          CopyVectorXdToStdVector(state_at_knots.row(i)));
+    }
+    dairlib::lcmt_saved_traj traj_msg;
+    traj_msg.num_trajectories = 1;
+    traj_msg.trajectories.push_back(traj_msg0);
+    traj_msg.trajectory_names.push_back("");
+
+    // Get context and initialize the lcm message of LcmSubsriber for
+    // lcmt_saved_traj
+    auto& diagram_context = loop.get_diagram_mutable_context();
+    auto& planner_subscriber_context =
+        loop.get_diagram()->GetMutableSubsystemContext(*IK_output_subscriber,
+                                                       &diagram_context);
+    // Note that currently the LcmSubscriber stores the lcm message in the first
+    // state of the leaf system (we hard coded index 0 here)
+    auto& mutable_state =
+        planner_subscriber_context
+            .get_mutable_abstract_state<dairlib::lcmt_saved_traj>(0);
+    mutable_state = traj_msg;
   }
 
   return 0;

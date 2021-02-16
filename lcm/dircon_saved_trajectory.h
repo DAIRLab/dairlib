@@ -49,6 +49,8 @@ class DirconTrajectory : public LcmTrajectory {
       const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
       const;
+  drake::trajectories::PiecewisePolynomial<double> ReconstructJointStateTrajectory(int joint_idx)
+      const;
 
   /// Returns a vector of polynomials describing the contact forces for each mode. For use when
   /// adding knot points to the initial guess

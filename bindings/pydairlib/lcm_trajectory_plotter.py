@@ -5,17 +5,17 @@ from pydrake.trajectories import PiecewisePolynomial
 
 def main():
     loadedTrajs = pydairlib.lcm_trajectory.LcmTrajectory()
-    # loadedTrajs.LoadFromFile(
-    #     "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/jumping_0.15h_0.3d_processed")
     loadedTrajs.LoadFromFile(
-        "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/walking_0.16.0_processed")
+        "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/jumping_0.15h_0.3d_processed")
+    # loadedTrajs.LoadFromFile(
+    #     "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/walking_0.16.0_processed")
 
     lcm_left_foot_traj = loadedTrajs.GetTrajectory("left_foot_trajectory0")
     lcm_right_foot_traj = loadedTrajs.GetTrajectory("right_foot_trajectory0")
 
     left_foot_traj = PiecewisePolynomial.CubicHermite(lcm_left_foot_traj.time_vector, lcm_left_foot_traj.datapoints[0:3], lcm_left_foot_traj.datapoints[3:6])
     right_foot_traj = PiecewisePolynomial.CubicHermite(lcm_right_foot_traj.time_vector, lcm_right_foot_traj.datapoints[0:3], lcm_right_foot_traj.datapoints[3:6])
-    for mode in range(1, 2):
+    for mode in range(1, 3):
         lcm_left_foot_traj = loadedTrajs.GetTrajectory("left_foot_trajectory" + str(mode))
         lcm_right_foot_traj = loadedTrajs.GetTrajectory("right_foot_trajectory" + str(mode))
 

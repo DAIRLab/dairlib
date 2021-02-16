@@ -369,6 +369,24 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_id_jumping_controller",
+    srcs = ["run_id_jumping_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/osc_jump",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "//systems/primitives:gaussian_noise_pass_through",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_osc_walking_controller_tracking",
     srcs = ["run_osc_walking_controller_tracking.cc"],
     deps = [
@@ -380,8 +398,8 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
         "//systems/controllers:fsm_event_time",
+        "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "//systems/primitives:gaussian_noise_pass_through",
         "@drake//:drake_shared_library",

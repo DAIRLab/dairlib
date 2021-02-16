@@ -1,4 +1,4 @@
-#include "pelvis_orientation_traj_generator.h"
+#include "basic_trajectory_generator.h"
 
 #include "multibody/multibody_utils.h"
 
@@ -9,22 +9,22 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::osc_jump {
 
-PelvisOrientationTrajGenerator::PelvisOrientationTrajGenerator(
-    const PiecewisePolynomial<double>& orientation_traj, std::string traj_name,
+BasicTrajectoryPassthrough::BasicTrajectoryPassthrough(
+    const PiecewisePolynomial<double>& traj, std::string traj_name,
     double time_offset)
-    : traj_(orientation_traj) {
+    : traj_(traj) {
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
 
   this->set_name(traj_name);
   this->DeclareAbstractOutputPort(traj_name, traj_inst,
-                                  &PelvisOrientationTrajGenerator::CalcTraj);
+                                  &BasicTrajectoryPassthrough::CalcTraj);
 
   // Shift trajectory by time_offset
   traj_.shiftRight(time_offset);
 }
 
-void PelvisOrientationTrajGenerator::CalcTraj(
+void BasicTrajectoryPassthrough::CalcTraj(
     const drake::systems::Context<double>& context,
     Trajectory<double>* traj) const {
   // Read in current state

@@ -9,7 +9,7 @@
 #include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
-#include "examples/Cassie/osc_jump/pelvis_orientation_traj_generator.h"
+#include "examples/Cassie/osc_jump/basic_trajectory_generator.h"
 #include "examples/Cassie/osc_walk/com_traj_generator.h"
 #include "examples/Cassie/osc_walk/swing_foot_traj_generator.h"
 #include "examples/Cassie/osc_walk/walking_event_based_fsm.h"
@@ -52,7 +52,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
-using examples::osc_jump::PelvisOrientationTrajGenerator;
+using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_walk::COMTrajGenerator;
 using examples::osc_walk::SwingFootTrajGenerator;
 using examples::osc_walk::WalkingEventFsm;
@@ -201,7 +201,7 @@ int DoMain(int argc, char* argv[]) {
       right_foot_trajectory);
 
   auto pelvis_rot_traj_generator =
-      builder.AddSystem<PelvisOrientationTrajGenerator>(pelvis_rot_trajectory,
+      builder.AddSystem<BasicTrajectoryPassthrough>(pelvis_rot_trajectory,
                                                         "pelvis_rot_traj");
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, transition_times, 0.0, gains.impact_threshold);

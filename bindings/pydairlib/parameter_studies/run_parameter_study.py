@@ -1,5 +1,6 @@
 import subprocess
 import time
+import fileinput
 
 import numpy as np
 
@@ -7,6 +8,7 @@ import numpy as np
 def main():
   trajectory_path = "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/"
   controller_type = "jumping"
+  simulator = 'DRAKE'
 
   gains_path = ''
   trajectory_name = ''
@@ -19,6 +21,7 @@ def main():
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/impact_invariance_param_study/"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/control_group_param_study/"
     results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/0.025/"
+    # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/mujoco/stiff/"
     sim_time = 5.0
     start_time = 0.0
   elif controller_type == 'walking':
@@ -30,11 +33,13 @@ def main():
 
   traj_name_controller = trajectory_name + "_processed"
 
+  terrain_heights = np.arange(0.000, 0.055, 0.005)
+  penetration_allowances = np.array([1e-5, 1e-4, 1e-3])
 
-  terrain_heights = np.arange(0.00, 0.05, 0.001)
-  penetration_allowances = np.array([1e-5, 5e-4, 1e-4, 1e-3])
+  # For MUJOCO
+  threshold_durations = np.arange(-0.01, 0.11, 0.01)
+  # penetration_allowances = np.array([1e-5])
 
-  # Override for single run
   realtime_rate = 0.5
 
   # Add an extra second to the runtime of the simulator process to account for start up and stopping time
@@ -46,9 +51,13 @@ def main():
   lcm_logger_cmd = ''
   save_gains_cmd = ''
 
-  for i in range(terrain_heights.shape[0]):
+  # for i in range(1, threshold_durations.shape[0]):
+  for i in range(0, terrain_heights.shape[0]):
     for k in range(penetration_allowances.shape[0]):
+
       log_suffix = 'height_%.4f-stiff_%.5f' % (terrain_heights[i], penetration_allowances[k])
+      if simulator == 'MUJOCO':
+        log_suffix = 'duration_%.3f_mujoco' % threshold_durations[i]
       log_path = results_folder + 'lcmlog-' + log_suffix
       print(log_path)
       if controller_type == 'walking':
@@ -76,30 +85,46 @@ def main():
                           '%s' % results_folder + 'osc_walking_gains' + log_suffix + '.yaml']
       elif controller_type == 'jumping':
         controller_cmd = ['bazel-bin/examples/Cassie/run_osc_jumping_controller',
-                        '--traj_name=%s' % trajectory_name,
-                        '--channel_u=CASSIE_INPUT',
-                        '--delay_time=2.0',
-                        '--contact_based_fsm=0',
-                        ]
-        simulator_cmd = ['bazel-bin/examples/Cassie/multibody_sim_init',
-                         '--folder_path=%s' % trajectory_path,
-                         '--traj_name=%s' % trajectory_name,
-                         '--publish_rate=%d' % 4000.0,
-                         '--end_time=%.3f' % sim_time,
-                         '--dt=%.5f' % 8e-5,
-                         '--terrain_height=%.4f' % terrain_heights[i],
-                         '--penetration_allowance=%.5f' %
-                         penetration_allowances[k],
-                         '--target_realtime_rate=%.2f' % realtime_rate,
-                         '--start_time=%.3f' % start_time,
-                         ]
+                          '--traj_name=%s' % trajectory_name,
+                          '--channel_u=CASSIE_INPUT',
+                          '--delay_time=2.0',
+                          '--contact_based_fsm=0',
+                          ]
+        if simulator == 'DRAKE':
+          simulator_cmd = ['bazel-bin/examples/Cassie/multibody_sim_init',
+                           '--folder_path=%s' % trajectory_path,
+                           '--traj_name=%s' % trajectory_name,
+                           '--publish_rate=%d' % 4000.0,
+                           '--end_time=%.3f' % sim_time,
+                           '--dt=%.5f' % 8e-5,
+                           '--terrain_height=%.4f' % terrain_heights[i],
+                           '--penetration_allowance=%.5f' %
+                           penetration_allowances[k],
+                           '--target_realtime_rate=%.2f' % realtime_rate,
+                           '--start_time=%.3f' % start_time,
+                           ]
+        elif simulator == 'MUJOCO':
+          simulator_cmd = ['/home/yangwill/workspace/cassie-mujoco-sim/test/cassiesim',
+                           '-r',
+                           '-s',
+                           ]
+          f = open(gains_path + 'osc_jumping_gains.yaml', 'r')
+          filedata = f.read()
+          f.close()
+
+          newdata = filedata.replace('impact_threshold: %.3f' % threshold_durations[i - 1],
+                                     'impact_threshold: %.3f' % threshold_durations[i])
+          f = open(gains_path + 'osc_jumping_gains.yaml', 'w')
+          f.write(newdata)
+          f.close()
+
+        save_gains_cmd = ['cp',
+                          '%s' % gains_path + 'osc_jumping_gains.yaml',
+                          '%s' % results_folder + 'osc_jumping_gains' + log_suffix + '.yaml']
         lcm_logger_cmd = ['lcm-logger',
                           '-f',
                           '%s' % log_path,
                           ]
-        save_gains_cmd = ['cp',
-                          '%s' % gains_path + 'osc_jumping_gains.yaml',
-                          '%s' % results_folder + 'osc_jumping_gains' + log_suffix + '.yaml']
 
       parameter_file.write(log_path + '\n')
       parameter_file.write(' '.join(controller_cmd) + '\n')

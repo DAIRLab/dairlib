@@ -13,11 +13,10 @@ namespace dairlib::examples::osc_jump {
 
 /// TODO (yangwill) This leaf system just passes through the trajectory.
 /// It might be worth making this a general class
-class PelvisOrientationTrajGenerator
-    : public drake::systems::LeafSystem<double> {
+class BasicTrajectoryPassthrough : public drake::systems::LeafSystem<double> {
  public:
-  PelvisOrientationTrajGenerator(
-      const drake::trajectories::PiecewisePolynomial<double>& orientation_traj,
+  BasicTrajectoryPassthrough(
+      const drake::trajectories::PiecewisePolynomial<double>& traj,
       std::string traj_name, double time_offset = 0.0);
 
  private:

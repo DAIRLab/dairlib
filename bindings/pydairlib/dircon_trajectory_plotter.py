@@ -8,7 +8,8 @@ import numpy as np
 
 def main():
   # Default filename for the example
-  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
+  # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
+  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15_0.3d")
   if len(sys.argv) == 2:
     filename = sys.argv[1]
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)

@@ -257,6 +257,23 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
   return state_traj;
 }
 
+PiecewisePolynomial<double> DirconTrajectory::ReconstructJointStateTrajectory(int joint_idx)
+    const {
+  PiecewisePolynomial<double> state_traj =
+      PiecewisePolynomial<double>::CubicHermite(
+          x_[0]->time_vector, x_[0]->datapoints.row(joint_idx), xdot_[0]->datapoints.row(joint_idx));
+
+  for (int mode = 1; mode < num_modes_; ++mode) {
+    // Cannot form trajectory with only a single break
+    if (x_[mode]->time_vector.size() < 2) {
+      continue;
+    }
+    state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        x_[mode]->time_vector, x_[mode]->datapoints.row(joint_idx), xdot_[mode]->datapoints.row(joint_idx)));
+  }
+  return state_traj;
+}
+
 PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory()
     const {
   PiecewisePolynomial<double> input_traj =

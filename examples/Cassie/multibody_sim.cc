@@ -182,7 +182,11 @@ int do_main(int argc, char* argv[]) {
   }
   plant.SetPositions(&plant_context, q_init);
   VectorXd v_init = VectorXd::Zero(plant.num_velocities());
-  v_init(4) += 0.3;
+  // TODO(yminchen): we should get a better initial state. Adding velocity to
+  //  the floating base is not good because the feet will move and it might
+  //  cause trouble to the planner.
+  // v_init(3) += 0.3;  // x, external disturbance for testing
+  // v_init(4) += 0.3;  // y, for stability
   plant.SetVelocities(&plant_context, v_init);
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));

@@ -225,13 +225,21 @@ RomTrajOpt::RomTrajOpt(
     }
 
     // Stitching x0 and xf (full-order model stance foot constraint)
-    PrintStatus("Adding full-order model stance foot constraint...");
+    PrintStatus("Adding full-order model stance foot pos constraint...");
     const auto& stance_contacts = left_stance ? left_contacts : right_contacts;
-    auto fom_sf_constraint =
-        std::make_shared<planning::FomStanceFootConstraint>(plant_,
-                                                            stance_contacts);
-    AddConstraint(fom_sf_constraint,
+    auto fom_sf_pos_constraint =
+        std::make_shared<planning::FomStanceFootPosConstraint>(plant_,
+                                                               stance_contacts);
+    AddConstraint(fom_sf_pos_constraint,
                   {x0_vars_by_mode(i).head(n_q), xf_vars_by_mode(i).head(n_q)});
+
+    // Zero velocity for stance foot
+    PrintStatus("Adding full-order model stance foot vel constraint...");
+    auto fom_sf_vel_constraint =
+        std::make_shared<planning::FomStanceFootVelConstraint>(plant_,
+                                                               stance_contacts);
+    AddConstraint(fom_sf_vel_constraint,
+                  {x0_vars_by_mode(i), xf_vars_by_mode(i)});
 
     // Stride length constraint
     // cout << "Adding stride length constraint for full-order model...\n";

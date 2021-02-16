@@ -116,6 +116,8 @@ def PlotCOM(rom_traj):
   # 3. If we relax only the floating base vel
   init_state[nq_FOM:nq_FOM + 6] = init_state[nq_FOM:nq_FOM + 6] + \
                                   FindVariableByName(rom_traj, 'eps_v0_FOM', 6)
+  # 4. If we don't relax anything
+  # do nothing.
 
   com, comdot = CalcCenterOfMass(init_state)
   figname = "COM before and after relaxing"
@@ -150,6 +152,8 @@ def FindVariableByName(rom_traj, name, var_length):
     if rom_traj.GetTrajectory("decision_vars").datatypes[i][:len(name)] == name:
       j = i
       break
+  if j == 0:
+    raise NameError(name + " doesn't exist")
   # We need to make a copy here. Otherwise, the returned object is not writable
   return rom_traj.GetTrajectory("decision_vars").datapoints[j:j + var_length,
          0].copy()

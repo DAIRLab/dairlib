@@ -40,7 +40,7 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace planning {
 
-FomStanceFootConstraint::FomStanceFootConstraint(
+FomStanceFootPosConstraint::FomStanceFootPosConstraint(
     const drake::multibody::MultibodyPlant<double>& plant,
     const vector<std::pair<const Vector3d, const Frame<double>&>>&
         stance_foot_contacts,
@@ -55,7 +55,7 @@ FomStanceFootConstraint::FomStanceFootConstraint(
       stance_foot_contacts_(stance_foot_contacts),
       n_q_(plant.num_positions()) {}
 
-void FomStanceFootConstraint::EvaluateConstraint(
+void FomStanceFootPosConstraint::EvaluateConstraint(
     const Eigen::Ref<const VectorX<double>>& x, VectorX<double>* y) const {
   VectorX<double> q0 = x.head(n_q_);
   VectorX<double> qf = x.tail(n_q_);
@@ -74,6 +74,54 @@ void FomStanceFootConstraint::EvaluateConstraint(
     this->plant_.CalcPointsPositions(*context_, contact.second, contact.first,
                                      world_, &pt_f);
     y->segment<3>(3 * i) = pt_0 - pt_f;
+  }
+}
+
+FomStanceFootVelConstraint::FomStanceFootVelConstraint(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const vector<std::pair<const Vector3d, const Frame<double>&>>&
+        stance_foot_contacts,
+    const std::string& description)
+    : NonlinearConstraint<double>(
+          6 * stance_foot_contacts.size(),
+          2 * (plant.num_positions() + plant.num_velocities()),
+          VectorXd::Zero(6 * stance_foot_contacts.size()),
+          VectorXd::Zero(6 * stance_foot_contacts.size()), description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      stance_foot_contacts_(stance_foot_contacts),
+      n_q_(plant.num_positions()),
+      n_x_(plant.num_positions() + plant.num_velocities()),
+      n_c_(stance_foot_contacts.size()) {}
+
+void FomStanceFootVelConstraint::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<double>>& x, VectorX<double>* y) const {
+  VectorX<double> x0 = x.head(n_x_);
+  VectorX<double> xf = x.tail(n_x_);
+
+  drake::MatrixX<double> J(3, plant_.num_velocities());
+
+  *y = VectorX<double>(6 * n_c_);
+  // Start of the mode
+  plant_.SetPositions(context_.get(), x0.head(n_q_));
+  for (int i = 0; i < n_c_; i++) {
+    const auto& contact = stance_foot_contacts_.at(i);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, drake::multibody::JacobianWrtVariable::kV, contact.second,
+        contact.first, world_, world_, &J);
+    // fill in velocity
+    y->segment<3>(3 * i) = J * x0.tail(plant_.num_velocities());
+  }
+  // End of the mode
+  plant_.SetPositions(context_.get(), xf.head(n_q_));
+  for (int i = 0; i < n_c_; i++) {
+    const auto& contact = stance_foot_contacts_.at(i);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, drake::multibody::JacobianWrtVariable::kV, contact.second,
+        contact.first, world_, world_, &J);
+    // fill in velocity
+    y->segment<3>(3 * i + 3 * n_c_) = J * xf.tail(plant_.num_velocities());
   }
 }
 

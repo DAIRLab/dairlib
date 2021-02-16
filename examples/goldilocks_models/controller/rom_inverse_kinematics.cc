@@ -118,6 +118,7 @@ void RomInverseKinematics::CalcIK(
     dairlib::lcmt_saved_traj* q_traj_msg) const {
   // Testing
   if (counter_ > 0) return;
+  counter_ += 1;
 
   // Get timestamp from context time (time from main thread's lcm)
   double current_time = context.get_time();
@@ -408,8 +409,6 @@ void RomInverseKinematics::CalcIK(
     q_traj_msg->trajectories[i] = traj_block;
     q_traj_msg->trajectory_names[i] = to_string(i);
   }
-
-  counter_ += 1;
 };
 
 }  // namespace goldilocks_models

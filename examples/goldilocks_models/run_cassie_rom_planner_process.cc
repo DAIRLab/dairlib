@@ -54,7 +54,7 @@ using systems::OutputVector;
 // Planner settings
 DEFINE_int32(rom_option, -1, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
-DEFINE_int32(sample, 1, "The sample # of the initial condition that you use");
+DEFINE_int32(sample, -1, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
@@ -145,7 +145,7 @@ int DoMain(int argc, char* argv[]) {
   param.rom_option =
       (FLAGS_rom_option >= 0) ? FLAGS_rom_option : gains.rom_option;
   param.iter = (FLAGS_iter >= 0) ? FLAGS_iter : gains.model_iter;
-  param.sample = FLAGS_sample;
+  param.sample = (FLAGS_sample >= 0) ? FLAGS_sample : gains.sample_idx;
   param.n_step = FLAGS_n_step;
   param.knots_per_mode = FLAGS_knots_per_mode;
   // TODO: temporarily commented out FLAGS_final_position for testing
@@ -276,7 +276,7 @@ int DoMain(int argc, char* argv[]) {
       cout << "x_init = " << x_init.transpose() << endl;
     } else {
       string model_dir_n_pref = param.dir_model + to_string(param.iter) +
-                                string("_") + to_string(FLAGS_sample) +
+                                string("_") + to_string(param.sample) +
                                 string("_");
       cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
       int n_sample_raw =

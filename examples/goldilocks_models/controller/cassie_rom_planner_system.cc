@@ -581,9 +581,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >
   //  0.5)) {
   //  if (!result.is_success()) {
-  //  if (counter_ == 0) {
-  //    counter_++;
-  if (debug_mode_ || (elapsed.count() > 0.8)) {
+  if (counter_ == 0) {
+    counter_++;
+    //  if (debug_mode_ || (elapsed.count() > 0.8)) {
     string dir_data = param_.dir_data;
 
     /// Save the solution vector

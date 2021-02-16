@@ -825,9 +825,9 @@ int DoMain(int argc, char* argv[]) {
 
     // TODO: modify LCM driven loop so that you don't need to initial it here.
     // Get init traj from ROM planner result
-    VectorXd time_at_knots(2);
-    time_at_knots << 0, 1;
-    MatrixXd pos_at_knots = MatrixXd::Zero(plant_wo_springs.num_positions(), 2);
+    VectorXd time_at_knots(3);
+    time_at_knots << 0, 1, 2;
+    MatrixXd pos_at_knots = MatrixXd::Zero(plant_wo_springs.num_positions(), 3);
     // Initial message for the LCM subscriber. In the first timestep, the
     // subscriber might not receive a solution yet
     dairlib::lcmt_trajectory_block traj_msg0;

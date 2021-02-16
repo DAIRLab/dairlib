@@ -71,6 +71,9 @@ class RomInverseKinematics : public drake::systems::LeafSystem<double> {
   std::unique_ptr<ReducedOrderModel> rom_;
   std::unique_ptr<MirroredReducedOrderModel> mirrored_rom_;
   StateMirror state_mirror_;
+
+  // Testing
+  mutable int counter_ = 0;
 };
 
 }  // namespace goldilocks_models

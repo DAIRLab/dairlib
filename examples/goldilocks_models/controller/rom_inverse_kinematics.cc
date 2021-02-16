@@ -1,9 +1,9 @@
 #include "examples/goldilocks_models/controller/rom_inverse_kinematics.h"
 
+#include "common/eigen_utils.h"
 #include "multibody/multipose_visualizer.h"
 #include "multibody/visualization_utils.h"
 #include "solvers/nonlinear_constraint.h"
-#include "common/eigen_utils.h"
 
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
@@ -37,8 +37,8 @@ using Eigen::VectorXd;
 using std::cout;
 using std::endl;
 using std::string;
-using std::vector;
 using std::to_string;
+using std::vector;
 
 double INF = std::numeric_limits<double>::infinity();
 
@@ -116,6 +116,9 @@ RomInverseKinematics::RomInverseKinematics(
 void RomInverseKinematics::CalcIK(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_saved_traj* q_traj_msg) const {
+  // Testing
+  if (counter_ > 0) return;
+
   // Get timestamp from context time (time from main thread's lcm)
   double current_time = context.get_time();
 
@@ -405,6 +408,8 @@ void RomInverseKinematics::CalcIK(
     q_traj_msg->trajectories[i] = traj_block;
     q_traj_msg->trajectory_names[i] = to_string(i);
   }
+
+  counter_ += 1;
 };
 
 }  // namespace goldilocks_models

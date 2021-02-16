@@ -137,6 +137,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   double min_time_difference_for_replanning_ = 0.01;
   mutable double timestamp_of_previous_plan_ = -1;
   mutable dairlib::lcmt_saved_traj previous_output_msg_;
+
+
+  // Testing
+  mutable int counter_ = 0;
 };
 
 }  // namespace goldilocks_models

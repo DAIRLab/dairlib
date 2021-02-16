@@ -393,10 +393,17 @@ class JointSpaceTrackingData final : public OscTrackingData {
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
+  // For single joint
   void AddJointToTrack(const std::string& joint_pos_name,
                        const std::string& joint_vel_name);
   void AddStateAndJointToTrack(int state, const std::string& joint_pos_name,
                                const std::string& joint_vel_name);
+  // For multi joints
+  void AddJointsToTrack(const std::vector<std::string>& joint_pos_names,
+                        const std::vector<std::string>& joint_vel_names);
+  void AddStateAndJointsToTrack(
+      int state, const std::vector<std::string>& joint_pos_names,
+      const std::vector<std::string>& joint_vel_names);
 
  private:
   void UpdateYAndError(
@@ -415,10 +422,10 @@ class JointSpaceTrackingData final : public OscTrackingData {
 
   // `joint_pos_idx_wo_spr` is the index of the joint position
   // `joint_vel_idx_wo_spr` is the index of the joint velocity
-  std::vector<int> joint_pos_idx_w_spr_;
-  std::vector<int> joint_vel_idx_w_spr_;
-  std::vector<int> joint_pos_idx_wo_spr_;
-  std::vector<int> joint_vel_idx_wo_spr_;
+  std::vector<std::vector<int>> joint_pos_idx_w_spr_;
+  std::vector<std::vector<int>> joint_vel_idx_w_spr_;
+  std::vector<std::vector<int>> joint_pos_idx_wo_spr_;
+  std::vector<std::vector<int>> joint_vel_idx_wo_spr_;
 };
 
 class OptimalRomTrackingData final : public OscTrackingData {

@@ -1,10 +1,10 @@
-group "1.controllers" {
+group "1.rom-space-controller" {
     cmd "1.original-walking-controller" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
         host = "localhost";
     }
     cmd "2.1.optimal-rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false";
         host = "localhost";
     }
     cmd "2.2.rom-planner" {
@@ -17,7 +17,26 @@ group "1.controllers" {
     }
 }
 
-group "2.drake-simulator" {
+group "2.ik-controller" {
+    cmd "1.1.optimal-rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=true";
+        host = "localhost";
+    }
+    cmd "1.2.rom-planner" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --sample=1 --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=1 ";
+        host = "localhost";
+    }
+    cmd "1.2.rom-planner (short time limit)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=0.21 --log_solver_info=false";
+        host = "localhost";
+    }
+    cmd "1.3.ik_process" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_ik_process";
+        host = "localhost";
+    }
+}
+
+group "3.drake-simulator" {
     cmd "1.simulator (with init state)" {
         exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false";
         host = "localhost";
@@ -27,7 +46,7 @@ group "2.drake-simulator" {
         host = "localhost";
     }
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=1 --target_realtime_rate=1";
         host = "localhost";
     }
 }

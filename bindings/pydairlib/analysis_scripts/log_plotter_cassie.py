@@ -173,20 +173,28 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
-  osc_traj0 = "swing_ft_traj"
-  osc_traj0 = "optimal_rom_traj"
+  osc_traj0 = "left_support_traj"
+  # osc_traj0 = "swing_ft_traj"
+  # osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
   osc_traj2 = "pelvis_balance_traj"
   osc_traj3 = "swing_hip_yaw_traj"
 
+  # for i in range(10):
+  #   plot_osc(osc_debug, osc_traj0, i, "pos")
+  # for i in range(10):
+  #   plot_osc(osc_debug, osc_traj0, i, "vel")
+  for i in range(10):
+    plot_osc(osc_debug, osc_traj0, i, "accel")
+
   #
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], 0.1 * fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], 0.1 * fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
-  plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], 0.1 * fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], 0.1 * fsm[t_u_slice])
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
   #
   # plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plot_osc(osc_debug, osc_traj0, 1, "vel")

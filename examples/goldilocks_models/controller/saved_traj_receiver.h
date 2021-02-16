@@ -19,7 +19,8 @@ namespace goldilocks_models {
 
 class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
  public:
-  SavedTrajReceiver(int n_tail_ignored, bool use_exp, bool both_pos_vel_in_traj);
+  SavedTrajReceiver(int n_tail_ignored, bool use_exp,
+                    bool both_pos_vel_in_traj);
 
  private:
   void CalcDesiredTraj(const drake::systems::Context<double>& context,
@@ -30,6 +31,25 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   int n_tail_ignored_;
   bool use_exp_;
   bool both_pos_vel_in_traj_;
+};
+
+// We have IKTrajReceiver beside SavedTrajReceiver, because it also extracts the
+// rows of the trajectory matrix that we want to track.
+class IKTrajReceiver : public drake::systems::LeafSystem<double> {
+ public:
+  IKTrajReceiver(const drake::multibody::MultibodyPlant<double>& plant,
+                 const std::vector<std::string>& ordered_pos_names);
+
+ private:
+  void CalcDesiredTraj(const drake::systems::Context<double>& context,
+                       drake::trajectories::Trajectory<double>* traj) const;
+
+  int saved_traj_lcm_port_;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::vector<int> ordered_indices_;
+
+  int nq_;
 };
 
 }  // namespace goldilocks_models

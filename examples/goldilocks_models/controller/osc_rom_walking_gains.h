@@ -80,6 +80,31 @@ struct OSCRomWalkingGains {
   MatrixXd K_p_hip_yaw;
   MatrixXd K_d_hip_yaw;
 
+  // IK gains
+  double kp_hip_roll_stance;
+  double kp_hip_yaw_stance;
+  double kp_hip_pitch_stance;
+  double kp_knee_stance;
+  double kp_toe_stance;
+
+  double kd_hip_roll_stance;
+  double kd_hip_yaw_stance;
+  double kd_hip_pitch_stance;
+  double kd_knee_stance;
+  double kd_toe_stance;
+
+  double kp_hip_roll_swing;
+  double kp_hip_yaw_swing;
+  double kp_hip_pitch_swing;
+  double kp_knee_swing;
+  double kp_toe_swing;
+
+  double kd_hip_roll_swing;
+  double kd_hip_yaw_swing;
+  double kd_hip_pitch_swing;
+  double kd_knee_swing;
+  double kd_toe_swing;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
@@ -144,6 +169,27 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(vel_scale_rot));
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
     a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
+    // IK gains
+    a->Visit(DRAKE_NVP(kp_hip_roll_stance));
+    a->Visit(DRAKE_NVP(kp_hip_yaw_stance));
+    a->Visit(DRAKE_NVP(kp_hip_pitch_stance));
+    a->Visit(DRAKE_NVP(kp_knee_stance));
+    a->Visit(DRAKE_NVP(kp_toe_stance));
+    a->Visit(DRAKE_NVP(kd_hip_roll_stance));
+    a->Visit(DRAKE_NVP(kd_hip_yaw_stance));
+    a->Visit(DRAKE_NVP(kd_hip_pitch_stance));
+    a->Visit(DRAKE_NVP(kd_knee_stance));
+    a->Visit(DRAKE_NVP(kd_toe_stance));
+    a->Visit(DRAKE_NVP(kp_hip_roll_swing));
+    a->Visit(DRAKE_NVP(kp_hip_yaw_swing));
+    a->Visit(DRAKE_NVP(kp_hip_pitch_swing));
+    a->Visit(DRAKE_NVP(kp_knee_swing));
+    a->Visit(DRAKE_NVP(kp_toe_swing));
+    a->Visit(DRAKE_NVP(kd_hip_roll_swing));
+    a->Visit(DRAKE_NVP(kd_hip_yaw_swing));
+    a->Visit(DRAKE_NVP(kd_hip_pitch_swing));
+    a->Visit(DRAKE_NVP(kd_knee_swing));
+    a->Visit(DRAKE_NVP(kd_toe_swing));
 
     W_rom = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

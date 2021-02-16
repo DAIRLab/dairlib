@@ -128,3 +128,28 @@ SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,
       0,    0,     1]
+
+# For IK controller
+kp_hip_roll_stance: 200  #400
+kp_hip_yaw_stance: 100  #200
+kp_hip_pitch_stance: 200  #500
+kp_knee_stance: 200  #500
+kp_toe_stance: 5  #10
+
+kd_hip_roll_stance: 5  #10
+kd_hip_yaw_stance: 2  #4
+kd_hip_pitch_stance: 7  #15
+kd_knee_stance: 7  #15
+kd_toe_stance: 1  #2
+
+kp_hip_roll_swing: 50  #100
+kp_hip_yaw_swing: 100  #200
+kp_hip_pitch_swing: 50  #100
+kp_knee_swing: 100  #200
+kp_toe_swing: 5  #10
+
+kd_hip_roll_swing: 10  #20
+kd_hip_yaw_swing: 2  #4
+kd_hip_pitch_swing: 10  #20
+kd_knee_swing: 7  #15
+kd_toe_swing: 1  #2

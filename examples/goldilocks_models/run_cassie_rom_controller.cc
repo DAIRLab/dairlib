@@ -677,13 +677,56 @@ int DoMain(int argc, char* argv[]) {
     //  Currently, I'm using CubicWithContinuousSecondDerivatives with 0 vel at
     //  the end points.
 
+    std::vector<std::string> ordered_pos_names = {
+        "hip_roll_left", "hip_yaw_left",   "hip_pitch_left", "knee_left",
+        "toe_left",      "hip_roll_right", "hip_yaw_right",  "hip_pitch_right",
+        "knee_right",    "toe_right"};
+    //    std::vector<std::string> ordered_pos_names = {
+    //        "hip_roll_left",  "hip_roll_right",  "hip_yaw_left",
+    //        "hip_yaw_right", "hip_pitch_left", "hip_pitch_right", "knee_left",
+    //        "knee_right", "toe_left",       "toe_right"};
+    std::vector<std::string> ordered_vel_names;
+    for (const auto& name : ordered_pos_names) {
+      ordered_vel_names.push_back(name + "dot");
+    }
+
+    int n_y = ordered_pos_names.size();
+
+    VectorXd Kp_stance(5);
+    Kp_stance << gains.kp_hip_roll_stance, gains.kp_hip_yaw_stance,
+        gains.kp_hip_pitch_stance, gains.kp_knee_stance, gains.kp_toe_stance;
+    VectorXd Kd_stance(5);
+    Kd_stance << gains.kd_hip_roll_stance, gains.kd_hip_yaw_stance,
+        gains.kd_hip_pitch_stance, gains.kd_knee_stance, gains.kd_toe_stance;
+    VectorXd Kp_swing(5);
+    Kp_swing << gains.kp_hip_roll_swing, gains.kp_hip_yaw_swing,
+        gains.kp_hip_pitch_swing, gains.kp_knee_swing, gains.kp_toe_swing;
+    VectorXd Kd_swing(5);
+    Kd_swing << gains.kd_hip_roll_swing, gains.kd_hip_yaw_swing,
+        gains.kd_hip_pitch_swing, gains.kd_knee_swing, gains.kd_toe_swing;
+
+    // Walking gains
+    Eigen::DiagonalMatrix<double, 10> K_p_left_stance;
+    K_p_left_stance.diagonal() << Kp_stance, Kp_swing;
+    Eigen::DiagonalMatrix<double, 10> K_d_left_stance;
+    K_d_left_stance.diagonal() << Kd_stance, Kd_swing;
+    Eigen::DiagonalMatrix<double, 10> K_p_right_stance;
+    K_p_right_stance.diagonal() << Kp_swing, Kp_stance;
+    Eigen::DiagonalMatrix<double, 10> K_d_right_stance;
+    K_d_right_stance.diagonal() << Kd_swing, Kd_stance;
+    // Cost weights
+    Eigen::DiagonalMatrix<double, 10> W_left_stance =
+        200 * VectorXd::Ones(10).asDiagonal();
+    Eigen::DiagonalMatrix<double, 10> W_right_stance =
+        200 * VectorXd::Ones(10).asDiagonal();
+
     // Create Lcm subscriber for IK output
     auto IK_output_subscriber =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
             FLAGS_channel_ik, &lcm_local));
     // Create a system that translate IK lcm into trajectory
     auto optimal_ik_traj_gen =
-        builder.AddSystem<SavedTrajReceiver>(0, false, false);
+        builder.AddSystem<IKTrajReceiver>(plant_wo_springs, ordered_pos_names);
     builder.Connect(IK_output_subscriber->get_output_port(),
                     optimal_ik_traj_gen->get_input_port(0));
 
@@ -731,24 +774,25 @@ int DoMain(int argc, char* argv[]) {
     }
 
     // TODO: Add an API to OSC to allow vector weights (for W, Kp and Kd)
-
-    /*// TrackingData for left support phase
+    // TrackingData for left support phase
     JointSpaceTrackingData left_support_traj(
-        "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
-        gains.W_swing_toe, plant_w_spr, plant_wo_springs);
-    left_support_traj.AddStateAndJointToTrack(left_stance_state, , );
-    left_support_traj.AddStateAndJointToTrack(post_left_double_support_state,
-                                              , );
+        "left_support_traj", K_p_left_stance, K_d_left_stance, W_left_stance,
+        plant_w_spr, plant_wo_springs);
+    left_support_traj.AddStateAndJointsToTrack(
+        left_stance_state, ordered_pos_names, ordered_vel_names);
+    left_support_traj.AddStateAndJointsToTrack(
+        post_left_double_support_state, ordered_pos_names, ordered_vel_names);
     osc->AddTrackingData(&left_support_traj);
 
     // TrackingData for right support phase
     JointSpaceTrackingData right_support_traj(
-        "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
-        gains.W_swing_toe, plant_w_spr, plant_wo_springs);
-    right_support_traj.AddStateAndJointToTrack(right_stance_state, , );
-    right_support_traj.AddStateAndJointToTrack(post_right_double_support_state,
-                                               , );
-    osc->AddTrackingData(&right_support_traj);*/
+        "right_support_traj", K_p_right_stance, K_d_right_stance,
+        W_right_stance, plant_w_spr, plant_wo_springs);
+    right_support_traj.AddStateAndJointsToTrack(
+        right_stance_state, ordered_pos_names, ordered_vel_names);
+    right_support_traj.AddStateAndJointsToTrack(
+        post_right_double_support_state, ordered_pos_names, ordered_vel_names);
+    osc->AddTrackingData(&right_support_traj);
 
     // Build OSC problem
     osc->Build();
@@ -757,7 +801,9 @@ int DoMain(int argc, char* argv[]) {
                     osc->get_robot_output_input_port());
     builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
     builder.Connect(optimal_ik_traj_gen->get_output_port(0),
-                    osc->get_tracking_data_input_port("optimal_rom_traj"));
+                    osc->get_tracking_data_input_port("left_support_traj"));
+    builder.Connect(optimal_ik_traj_gen->get_output_port(0),
+                    osc->get_tracking_data_input_port("right_support_traj"));
     builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
     if (FLAGS_publish_osc_data) {
       // Create osc debug sender.
@@ -777,30 +823,27 @@ int DoMain(int argc, char* argv[]) {
         &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
         true);
 
+    // TODO: modify LCM driven loop so that you don't need to initial it here.
     // Get init traj from ROM planner result
-    const std::string dir_data =
-        "../dairlib_data/goldilocks_models/planning/robot_1/data/";
-    VectorXd time_at_knots =
-        readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
-    cout << "time_at_knots= " << time_at_knots.transpose() << endl;
-    MatrixXd state_at_knots =
-        readCSV(dir_data + std::string("state_at_knots.csv"));
+    VectorXd time_at_knots(2);
+    time_at_knots << 0, 1;
+    MatrixXd pos_at_knots = MatrixXd::Zero(plant_wo_springs.num_positions(), 2);
     // Initial message for the LCM subscriber. In the first timestep, the
     // subscriber might not receive a solution yet
     dairlib::lcmt_trajectory_block traj_msg0;
     traj_msg0.trajectory_name = "";
     traj_msg0.num_points = time_at_knots.size();
-    traj_msg0.num_datatypes = 2 * rom->n_y();
+    traj_msg0.num_datatypes = plant_wo_springs.num_positions();
     // Reserve space for vectors
     traj_msg0.time_vec.resize(traj_msg0.num_points);
     traj_msg0.datatypes.resize(traj_msg0.num_datatypes);
     traj_msg0.datapoints.clear();
     // Copy Eigentypes to std::vector
     traj_msg0.time_vec = CopyVectorXdToStdVector(time_at_knots);
-    traj_msg0.datatypes = vector<std::string>(2 * rom->n_y());
+    traj_msg0.datatypes = vector<std::string>(plant_wo_springs.num_positions());
     for (int i = 0; i < traj_msg0.num_datatypes; ++i) {
       traj_msg0.datapoints.push_back(
-          CopyVectorXdToStdVector(state_at_knots.row(i)));
+          CopyVectorXdToStdVector(pos_at_knots.row(i)));
     }
     dairlib::lcmt_saved_traj traj_msg;
     traj_msg.num_trajectories = 1;
@@ -810,15 +853,17 @@ int DoMain(int argc, char* argv[]) {
     // Get context and initialize the lcm message of LcmSubsriber for
     // lcmt_saved_traj
     auto& diagram_context = loop.get_diagram_mutable_context();
-    auto& planner_subscriber_context =
+    auto& ik_subscriber_context =
         loop.get_diagram()->GetMutableSubsystemContext(*IK_output_subscriber,
                                                        &diagram_context);
     // Note that currently the LcmSubscriber stores the lcm message in the first
     // state of the leaf system (we hard coded index 0 here)
     auto& mutable_state =
-        planner_subscriber_context
+        ik_subscriber_context
             .get_mutable_abstract_state<dairlib::lcmt_saved_traj>(0);
     mutable_state = traj_msg;
+
+    loop.Simulate();
   }
 
   return 0;

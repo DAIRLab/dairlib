@@ -23,7 +23,7 @@ using dairlib::LcmTrajectory;
 
 DEFINE_int32(iteration_limit, 2500, "Max SNOPT iterations");
 DEFINE_double(height_cost, 0.1, "cost on height deviation");
-DEFINE_double(angular_vel_cost, 0.001, "Cost on angular velocity");
+DEFINE_double(angular_vel_cost, 0.1, "Cost on angular velocity");
 DEFINE_double(final_pos_cost, 0.05, "Cost on final position");
 DEFINE_double(final_pos_tol, 0.075, "Final Position Error Tolerance");
 DEFINE_double(theta, 0.2, "final_angle");
@@ -95,7 +95,7 @@ int doMain(int argc, char** argv){
       prog.AddQuadraticErrorCost(FLAGS_height_cost * Eigen::MatrixXd::Identity(1, 1),
           com0.tail(1), prog.modes()[i].state_vars_[j].segment(1,1));
 
-      prog.AddQuadraticCost(FLAGS_angular_vel_cost *Eigen::MatrixXd::Identity(1, 1),
+      prog.AddQuadraticCost(FLAGS_angular_vel_cost * Eigen::MatrixXd::Identity(1, 1),
                             Eigen::VectorXd::Zero(1),
                             prog.modes()[i].state_vars_[j].segment(
                                 kStateVars - kAngularDim, kAngularDim));

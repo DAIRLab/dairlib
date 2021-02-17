@@ -150,7 +150,7 @@ int DoMain(int argc, char* argv[]) {
   param.knots_per_mode = FLAGS_knots_per_mode;
   // TODO: temporarily commented out FLAGS_final_position for testing
   //  param.final_position_x = FLAGS_final_position;
-  param.final_position_x = STRIDE_LENGTH * FLAGS_n_step;
+  param.final_position_x = gains.stride_length * FLAGS_n_step;
   param.zero_touchdown_impact = FLAGS_zero_touchdown_impact;
   param.equalize_timestep_size = FLAGS_equalize_timestep_size;
   param.fix_duration = FLAGS_fix_duration;

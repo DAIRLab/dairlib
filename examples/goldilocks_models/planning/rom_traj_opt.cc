@@ -109,28 +109,34 @@ RomTrajOpt::RomTrajOpt(
     /// relax only the velocity
     // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
     PrintStatus("(relax only the velocity)");
-    int n_v_float = 6;  // n_v;
-    auto eps = NewContinuousVariables(n_v_float, "eps_v0_FOM");
+    int start_idx_v_relax = 3;
+    int len_v_relax = 3;
+    auto eps = NewContinuousVariables(len_v_relax, "eps_v0_FOM");
     const VectorXDecisionVariable& v0_float_vars =
-        x0_vars_by_mode(0).segment(n_q, n_v_float);
-    const VectorXd& v_init = x_init.segment(n_q, n_v_float);
+        x0_vars_by_mode(0).segment(n_q + start_idx_v_relax, len_v_relax);
+    const VectorXd& v_init =
+        x_init.segment(n_q + start_idx_v_relax, len_v_relax);
     MatrixXd Aeq = MatrixXd::Ones(1, 2);
-    for (int i = 0; i < n_v_float; i++) {
+    for (int i = 0; i < len_v_relax; i++) {
       AddLinearEqualityConstraint(
           Aeq, v_init.segment<1>(i),
           {v0_float_vars.segment<1>(i), eps.segment<1>(i)});
     }
-    MatrixXd Q_v0 = 1 * MatrixXd::Identity(n_v_float, n_v_float);
-    VectorXd b_v0 = VectorXd::Zero(n_v_float);
+    MatrixXd Q_v0 = 1 * MatrixXd::Identity(len_v_relax, len_v_relax);
+    VectorXd b_v0 = VectorXd::Zero(len_v_relax);
     AddQuadraticCost(Q_v0, b_v0, eps);
-    SetInitialGuess(eps, VectorXd::Zero(n_v_float));
+    SetInitialGuess(eps, VectorXd::Zero(len_v_relax));
     // The rest of the state should be hard-constrained
-    AddBoundingBoxConstraint(x_init.head(n_q), x_init.head(n_q),
-                             x0_vars_by_mode(0).head(n_q));
+    AddBoundingBoxConstraint(x_init.head(n_q + start_idx_v_relax),
+                             x_init.head(n_q + start_idx_v_relax),
+                             x0_vars_by_mode(0).head(n_q + start_idx_v_relax));
     AddBoundingBoxConstraint(
-        x_init.segment(n_q + n_v_float, n_v - n_v_float),
-        x_init.segment(n_q + n_v_float, n_v - n_v_float),
-        x0_vars_by_mode(0).segment(n_q + n_v_float, n_v - n_v_float));
+        x_init.segment(n_q + start_idx_v_relax + len_v_relax,
+                       n_v - start_idx_v_relax - len_v_relax),
+        x_init.segment(n_q + start_idx_v_relax + len_v_relax,
+                       n_v - start_idx_v_relax - len_v_relax),
+        x0_vars_by_mode(0).segment(n_q + start_idx_v_relax + len_v_relax,
+                                   n_v - start_idx_v_relax - len_v_relax));
   } else {
     AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
     // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);

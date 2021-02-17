@@ -114,8 +114,8 @@ def PlotCOM(rom_traj):
   # init_state[nq_FOM:] = init_state[nq_FOM:] + FindVariableByName(rom_traj,
   #   'eps_v0_FOM', nv_FOM)
   # 3. If we relax only the floating base vel
-  init_state[nq_FOM:nq_FOM + 6] = init_state[nq_FOM:nq_FOM + 6] + \
-                                  FindVariableByName(rom_traj, 'eps_v0_FOM', 6)
+  # init_state[nq_FOM:nq_FOM + 6] = init_state[nq_FOM:nq_FOM + 6] + \
+  #                                 FindVariableByName(rom_traj, 'eps_v0_FOM', 6)
   # 4. If we don't relax anything
   # do nothing.
 

@@ -20,7 +20,7 @@ def main():
     trajectory_name = "jumping_0.15h_0.3d"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/impact_invariance_param_study/"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/control_group_param_study/"
-    results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/0.025/"
+    results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/0.000/"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/mujoco/stiff/"
     sim_time = 5.0
     start_time = 0.0
@@ -33,12 +33,12 @@ def main():
 
   traj_name_controller = trajectory_name + "_processed"
 
-  terrain_heights = np.arange(0.000, 0.055, 0.005)
+  terrain_heights = np.arange(0.000, 0.005, 0.005)
   penetration_allowances = np.array([1e-5, 1e-4, 1e-3])
 
   # For MUJOCO
   threshold_durations = np.arange(-0.01, 0.11, 0.01)
-  # penetration_allowances = np.array([1e-5])
+  penetration_allowances = np.array([1e-5])
 
   realtime_rate = 0.5
 
@@ -54,7 +54,6 @@ def main():
   # for i in range(1, threshold_durations.shape[0]):
   for i in range(0, terrain_heights.shape[0]):
     for k in range(penetration_allowances.shape[0]):
-
       log_suffix = 'height_%.4f-stiff_%.5f' % (terrain_heights[i], penetration_allowances[k])
       if simulator == 'MUJOCO':
         log_suffix = 'duration_%.3f_mujoco' % threshold_durations[i]

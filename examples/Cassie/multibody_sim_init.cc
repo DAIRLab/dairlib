@@ -171,7 +171,7 @@ int do_main(int argc, char* argv[]) {
                   sensor_pub->get_input_port());
 
   //  if (FLAGS_terrain_height != 0.0) {
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+//  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   //  }
 
   auto diagram = builder.Build();
@@ -207,6 +207,9 @@ int do_main(int argc, char* argv[]) {
   }
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
+//  Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
+//  plant.CalcMassMatrix(plant_context, &M);
+//  std::cout << M << std::endl;
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

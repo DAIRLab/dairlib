@@ -2,15 +2,15 @@ w_input: 1
 w_accel: 0.000001
 w_soft_constraint: 8000
 
-impact_threshold: 0.000
+impact_threshold: 0.100
 landing_delay: 0.000
 
-mu: 0.8
+mu: 0.6
 
 JointW:
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 JointKp:
-  [50, 50, 50, 50, 50, 50, 50, 50, 1500, 1500]
+  [50, 50, 40, 40, 50, 50, 100, 100, 1500, 1500]
 JointKd:
-  [5, 5, 5, 5, 5, 5, 5, 5, 10, 10]
+  [5, 5, 2, 2, 5, 5, 10, 10, 15, 15]
 

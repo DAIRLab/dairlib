@@ -128,6 +128,13 @@ int DoMain(int argc, char* argv[]) {
 
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
+  VectorXd times(2);
+  MatrixXd end_pos(state_traj.value(0).rows(), 2);
+  end_pos << state_traj.value(state_traj.end_time()),
+      state_traj.value(state_traj.end_time());
+  times << state_traj.end_time(), 100.0;
+  state_traj.ConcatenateInTime(
+      PiecewisePolynomial<double>::ZeroOrderHold(times, end_pos));
 
   // For the time-based FSM (squatting by default)
   double flight_time =
@@ -221,10 +228,16 @@ int DoMain(int argc, char* argv[]) {
 
   osc->AddKinematicConstraint(&evaluators);
 
-  // Toe tracking flight phase
-  //  MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
-  //  MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
-  //  MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
+  MultibodyPlant<double> plant_wo_spr(0.0);  // non-zero timestep to avoid
+  //  Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
+  addCassieMultibody(&plant_wo_spr, nullptr, true,
+                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     true);
+  plant_wo_spr.Finalize();
+
+  // Create maps for joints
+  map<string, int> pos_map_wo_spr =
+      multibody::makeNameToPositionsMap(plant_wo_spr);
 
   std::vector<BasicTrajectoryPassthrough*> joint_trajs;
   std::vector<std::shared_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;
@@ -240,16 +253,12 @@ int DoMain(int argc, char* argv[]) {
     MatrixXd W = gains.JointW[joint_idx] * MatrixXd::Identity(1, 1);
     MatrixXd K_p = gains.JointKp[joint_idx] * MatrixXd::Identity(1, 1);
     MatrixXd K_d = gains.JointKd[joint_idx] * MatrixXd::Identity(1, 1);
-    //    JointSpaceTrackingData joint_tracking_data(joint_name + "_traj", K_p,
-    //    K_d,
-    //                                               W, plant_w_spr,
-    //                                               plant_w_spr);
     joint_tracking_data_vec.push_back(std::make_shared<JointSpaceTrackingData>(
         joint_name + "_traj", K_p, K_d, W, plant_w_spr, plant_w_spr));
     joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
                                                         joint_name + "dot");
-    auto joint_traj =
-        dircon_trajectory.ReconstructJointStateTrajectory(pos_map[joint_name]);
+    auto joint_traj = dircon_trajectory.ReconstructJointStateTrajectory(
+        pos_map_wo_spr[joint_name]);
     auto joint_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(
         joint_traj, joint_name + "_traj");
     joint_trajs.push_back(joint_traj_generator);

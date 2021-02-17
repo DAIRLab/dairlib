@@ -9,7 +9,7 @@ import numpy as np
 def main():
   # Default filename for the example
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
-  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15_0.3d")
+  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
   if len(sys.argv) == 2:
     filename = sys.argv[1]
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
@@ -35,14 +35,15 @@ def main():
     input_samples[i] = input_traj.value(t[i])[:, 0]
     force_samples[i] = force_traj[0].value(t[i])[:, 0]
 
+  import pdb; pdb.set_trace()
   # Plotting reconstructed state trajectories
   plt.figure("state trajectory")
-  plt.plot(t, state_samples)
-  plt.legend(state_datatypes)
+  plt.plot(t, state_samples[:, 7:11])
+  plt.legend(state_datatypes[7:11])
 
   plt.figure("input trajectory")
-  plt.plot(t, input_samples)
-  plt.legend(input_datatypes)
+  plt.plot(t, input_samples[:, 2:4])
+  plt.legend(input_datatypes[2:4])
 
   plt.figure("force trajectory")
   plt.plot(t, force_samples)

@@ -46,6 +46,8 @@ cc_binary(
     data = ["PlanarWalkerWithTorso.urdf"],
     deps = [
         "//common",
+        "//lcm:dircon_trajectory_saver",
+        "//lcm:lcm_trajectory_saver",
         "//systems/primitives",
         "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",

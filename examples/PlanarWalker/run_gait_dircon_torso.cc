@@ -16,9 +16,12 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
+#include "lcm/lcm_trajectory.h"
 
 DEFINE_double(strideLength, 0.1, "The stride length.");
 DEFINE_double(duration, 1, "The stride duration");
+DEFINE_string(file_name, "examples/PlanarWalker/trajectories/walking_traj.lcmtraj", "default filename");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 
 using drake::AutoDiffXd;
@@ -40,13 +43,14 @@ using systems::trajectory_optimization::DirconMode;
 using systems::trajectory_optimization::Dircon;
 using systems::trajectory_optimization::KinematicConstraintType;
 
+using dairlib::DirconTrajectory;
+
 using std::vector;
 using std::cout;
 using std::endl;
 
-template <typename T>
 void runDircon(
-    std::unique_ptr<MultibodyPlant<T>> plant_ptr,
+    std::unique_ptr<MultibodyPlant<double>> plant_ptr,
     MultibodyPlant<double>* plant_double_ptr,
     std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
     double stride_length,
@@ -55,10 +59,11 @@ void runDircon(
     PiecewisePolynomial<double> init_u_traj,
     vector<PiecewisePolynomial<double>> init_l_traj,
     vector<PiecewisePolynomial<double>> init_lc_traj,
-    vector<PiecewisePolynomial<double>> init_vc_traj) {
+    vector<PiecewisePolynomial<double>> init_vc_traj,
+    std::string savefile) {
 
   drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<T>& plant = *plant_ptr;
+  MultibodyPlant<double>& plant = *plant_ptr;
   SceneGraph<double>& scene_graph =
       *builder.AddSystem(std::move(scene_graph_ptr));
 
@@ -76,37 +81,37 @@ void runDircon(
   Vector3d pt(0, 0, -.5);
   double mu = 1;
 
-  auto left_foot_eval = multibody::WorldPointEvaluator<T>(plant, pt,
+  auto left_foot_eval = multibody::WorldPointEvaluator<double>(plant, pt,
       left_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
   left_foot_eval.set_frictional();
   left_foot_eval.set_mu(mu);
 
-  auto right_foot_eval = multibody::WorldPointEvaluator<T>(plant, pt,
+  auto right_foot_eval = multibody::WorldPointEvaluator<double>(plant, pt,
       right_lower_leg, Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
   right_foot_eval.set_frictional();
   right_foot_eval.set_mu(mu);
 
-  auto evaluators_left = multibody::KinematicEvaluatorSet<T>(plant);
+  auto evaluators_left = multibody::KinematicEvaluatorSet<double>(plant);
   evaluators_left.add_evaluator(&left_foot_eval);
-  auto evaluators_right = multibody::KinematicEvaluatorSet<T>(plant);
+  auto evaluators_right = multibody::KinematicEvaluatorSet<double>(plant);
   evaluators_right.add_evaluator(&right_foot_eval);
 
   int num_knotpoints = 10;
   double min_T = .1;
   double max_T = 3;
 
-  auto mode_left = DirconMode<T>(evaluators_left, num_knotpoints,
+  auto mode_left = DirconMode<double>(evaluators_left, num_knotpoints,
       min_T, max_T);
   mode_left.MakeConstraintRelative(0, 0);  // x-coordinate
 
-  auto mode_right = DirconMode<T>(evaluators_right, num_knotpoints,
+  auto mode_right = DirconMode<double>(evaluators_right, num_knotpoints,
       min_T, max_T);
   mode_right.MakeConstraintRelative(0, 0);  // x-coordinate
 
-  auto sequence = DirconModeSequence<T>(plant);
+  auto sequence = DirconModeSequence<double>(plant);
   sequence.AddMode(&mode_left);
   sequence.AddMode(&mode_right);
-  auto trajopt = Dircon<T>(sequence);
+  auto trajopt = Dircon<double>(sequence);
 
   trajopt.AddDurationBounds(duration, duration);
 
@@ -204,6 +209,11 @@ xf(nq + velocities_map["left_hip_pindot"]));
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
   std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
 
+  DirconTrajectory save_traj(*plant_double_ptr, trajopt, result, "walking_trajectory",
+                             "decision variables and state/input traj for walking");
+
+  save_traj.WriteToFile(savefile);
+
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
@@ -294,17 +304,9 @@ int main(int argc, char* argv[]) {
     init_vc_traj.push_back(init_vc_traj_j);
   }
 
-  if (FLAGS_autodiff) {
-    std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
-        drake::systems::System<double>::ToAutoDiffXd(*plant);
-    dairlib::runDircon<drake::AutoDiffXd>(
-      std::move(plant_autodiff), plant_vis.get(), std::move(scene_graph),
-      FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-      init_lc_traj, init_vc_traj);
-  } else {
-    dairlib::runDircon<double>(
-      std::move(plant), plant_vis.get(), std::move(scene_graph),
-      FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-      init_lc_traj, init_vc_traj);
-  }
+   dairlib::runDircon(
+   std::move(plant), plant_vis.get(), std::move(scene_graph),
+   FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+   init_lc_traj, init_vc_traj, FLAGS_file_name);
+
 }

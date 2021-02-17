@@ -12,6 +12,8 @@
 #include "common/find_resource.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
+
+
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"

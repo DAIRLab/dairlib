@@ -161,19 +161,19 @@ void runDircon(
   trajopt.AddLinearConstraint(x0(positions_map["right_knee_pin"]) ==
       xf(positions_map["left_knee_pin"]));
 
-int nq = plant.num_positions();
-trajopt.AddLinearConstraint(x0(nq + velocities_map["planar_zdot"]) ==
-xf(nq + velocities_map["planar_zdot"]));
+  int nq = plant.num_positions();
+  trajopt.AddLinearConstraint(x0(nq + velocities_map["planar_zdot"]) ==
+  xf(nq + velocities_map["planar_zdot"]));
 
-trajopt.AddLinearConstraint(x0(nq + velocities_map["left_knee_pindot"]) ==
-xf(nq + velocities_map["right_knee_pindot"]));
-trajopt.AddLinearConstraint(x0(nq + velocities_map["right_knee_pindot"]) ==
-xf(nq + velocities_map["left_knee_pindot"]));
+  trajopt.AddLinearConstraint(x0(nq + velocities_map["left_knee_pindot"]) ==
+  xf(nq + velocities_map["right_knee_pindot"]));
+  trajopt.AddLinearConstraint(x0(nq + velocities_map["right_knee_pindot"]) ==
+  xf(nq + velocities_map["left_knee_pindot"]));
 
-trajopt.AddLinearConstraint(x0(nq + velocities_map["left_hip_pindot"]) -
-x0(nq + velocities_map["right_hip_pindot"]) ==
-xf(nq + velocities_map["right_hip_pindot"]) -
-xf(nq + velocities_map["left_hip_pindot"]));
+  trajopt.AddLinearConstraint(x0(nq + velocities_map["left_hip_pindot"]) -
+  x0(nq + velocities_map["right_hip_pindot"]) ==
+  xf(nq + velocities_map["right_hip_pindot"]) -
+  xf(nq + velocities_map["left_hip_pindot"]));
 
   // // Knee joint limits
   auto x = trajopt.state();

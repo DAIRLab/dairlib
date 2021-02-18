@@ -31,6 +31,7 @@ def main():
   input_samples = np.zeros((n_points, input_traj.value(0).shape[0]))
   force_samples0 = np.zeros((n_points, force_traj0.value(0).shape[0]))
   force_samples1 = np.zeros((n_points, force_traj1.value(0).shape[0]))
+
   for i in range(n_points):
     state_samples[i] = state_traj.value(t[i])[:, 0]
     input_samples[i] = input_traj.value(t[i])[:, 0]

@@ -109,8 +109,8 @@ RomTrajOpt::RomTrajOpt(
     /// relax only the velocity
     // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
     PrintStatus("(relax only the velocity)");
-    int start_idx_v_relax = 3;
-    int len_v_relax = 3;
+    int start_idx_v_relax = 0;
+    int len_v_relax = 6;
     auto eps = NewContinuousVariables(len_v_relax, "eps_v0_FOM");
     const VectorXDecisionVariable& v0_float_vars =
         x0_vars_by_mode(0).segment(n_q + start_idx_v_relax, len_v_relax);

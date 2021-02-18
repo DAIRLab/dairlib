@@ -115,8 +115,16 @@ def PlotCOM(rom_traj):
   #   'eps_v0_FOM', nv_FOM)
   # 3. If we relax only the floating base vel
   # init_state[nq_FOM:nq_FOM + 6] = init_state[nq_FOM:nq_FOM + 6] + \
-  #                                 FindVariableByName(rom_traj, 'eps_v0_FOM', 6)
-  # 4. If we don't relax anything
+  #                                 FindVariableByName(rom_traj, 'eps_v0_FOM',6)
+  # 4. If we relax only the translational part of floating base vel
+  init_state[nq_FOM + 3:nq_FOM + 6] = init_state[nq_FOM + 3:nq_FOM + 6] + \
+                                      FindVariableByName(rom_traj, 'eps_v0_FOM',
+                                        3)
+  # 5. If we relax only the z compoment of the floating base vel
+  init_state[nq_FOM + 5:nq_FOM + 6] = init_state[nq_FOM + 5:nq_FOM + 6] + \
+                                      FindVariableByName(rom_traj, 'eps_v0_FOM',
+                                        1)
+  # 6. If we don't relax anything
   # do nothing.
 
   com, comdot = CalcCenterOfMass(init_state)

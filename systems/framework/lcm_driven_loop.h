@@ -246,7 +246,8 @@ class LcmDrivenLoop {
             std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::system_clock::now().time_since_epoch())
                 .count());
-        if (abs(time - 10) < 1e-3) {
+        if (time > 10 && have_not_logged_) {
+	  have_not_logged_ = false;
           std::cout << "Outputting to file: " << diagram_name_ + ".txt"
                     << std::endl;
           std::ofstream myfile;
@@ -320,6 +321,8 @@ class LcmDrivenLoop {
   std::vector<double> context_timestamps_;
   std::vector<long> loop_start_timestamps_;
   std::vector<long> loop_end_timestamps_;
+
+  bool have_not_logged_ = true;
 };
 
 }  // namespace systems

@@ -755,7 +755,8 @@ drake::math::saturate(2*(time_since_last_state_switch - 0.025) / 0.05, 0, 1);
           std::chrono::duration_cast<std::chrono::microseconds>(
               std::chrono::system_clock::now().time_since_epoch())
               .count());
-      if (abs(time - 10) < 1e-3) {
+      if (time > 10 && have_not_logged_) {
+	have_not_logged_ = false;
         std::cout << "Outputting to file: osc_solve_time.txt"
                   << std::endl;
         std::ofstream myfile;

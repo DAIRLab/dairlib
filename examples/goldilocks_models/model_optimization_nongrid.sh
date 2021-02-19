@@ -33,7 +33,7 @@ tr_max=0
 # Other parameters
 is_grid=false
 iter_expansion=50
-iter_start=0
+iter_start=1
 final_iter=200
 snopt_scaling=false
 N_rerun=2

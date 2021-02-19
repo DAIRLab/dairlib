@@ -1489,6 +1489,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   else{
     task_gen_expansion= ExpansionTasksGenerator
         (FLAGS_max_num_extending_task_space,true,task_gen->total_sample_number());
+    if(FLAGS_iter_start==1){
+      task_gen_expansion.set_num_extending_task_space(1);
+    }
   }
 
   // Tasks setup

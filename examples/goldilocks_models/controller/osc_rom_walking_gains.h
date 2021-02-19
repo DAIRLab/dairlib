@@ -10,6 +10,12 @@ struct OSCRomWalkingGains {
   int model_iter;
   int sample_idx;
   double stride_length;
+  double w_Q;
+  double w_R;
+  double w_rom_reg;
+  double w_reg_quat;
+  double w_reg_xy;
+  double w_reg_z_joints;
   double mu;
   double w_accel;
   double w_soft_constraint;
@@ -115,6 +121,12 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(model_iter));
     a->Visit(DRAKE_NVP(sample_idx));
     a->Visit(DRAKE_NVP(stride_length));
+    a->Visit(DRAKE_NVP(w_Q));
+    a->Visit(DRAKE_NVP(w_R));
+    a->Visit(DRAKE_NVP(w_rom_reg));
+    a->Visit(DRAKE_NVP(w_reg_quat));
+    a->Visit(DRAKE_NVP(w_reg_xy));
+    a->Visit(DRAKE_NVP(w_reg_z_joints));
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));

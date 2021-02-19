@@ -7,8 +7,8 @@
 #include "drake/solvers/solver_options.h"
 #include "drake/systems/framework/leaf_system.h"
 
-#include "dairlib/lcmt_trajectory_block.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
@@ -43,6 +43,10 @@ struct PlannerSetting {
   double w_Q;
   double w_R;
   double w_rom_reg;
+  // Regularization cost on FOM state
+  double w_reg_quat_;
+  double w_reg_xy_;
+  double w_reg_z_joints_;
 
   // Files parameters
   std::string dir_model;  // location of the model files
@@ -137,7 +141,6 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   double min_time_difference_for_replanning_ = 0.01;
   mutable double timestamp_of_previous_plan_ = -1;
   mutable dairlib::lcmt_saved_traj previous_output_msg_;
-
 
   // Testing
   mutable int counter_ = 0;

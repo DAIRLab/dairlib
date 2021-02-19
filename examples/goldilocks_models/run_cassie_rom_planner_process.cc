@@ -160,9 +160,12 @@ int DoMain(int argc, char* argv[]) {
   param.use_ipopt = FLAGS_use_ipopt;
   param.log_solver_info = FLAGS_log_solver_info;
   param.time_limit = FLAGS_time_limit;
-  param.w_Q = FLAGS_w_Q;
-  param.w_R = FLAGS_w_R;
-  param.w_rom_reg = FLAGS_w_rom_reg;
+  param.w_Q = gains.w_Q;
+  param.w_R = gains.w_R;
+  param.w_rom_reg = gains.w_rom_reg;
+  param.w_reg_quat_ = gains.w_reg_quat;
+  param.w_reg_xy_ = gains.w_reg_xy;
+  param.w_reg_z_joints_ = gains.w_reg_z_joints;
   param.dir_model =
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   param.dir_data = "../dairlib_data/goldilocks_models/planning/robot_1/data/";

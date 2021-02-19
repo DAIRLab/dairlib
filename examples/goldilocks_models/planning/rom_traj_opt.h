@@ -139,7 +139,8 @@ class RomTrajOptCassie : public RomTrajOpt {
   void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,
                              const Eigen::VectorXd& x_guess_right_in_front,
-                             bool straight_leg_cost);
+                             double w_reg_quat, double w_reg_xy,
+                             double w_reg_z_joints, bool straight_leg_cost);
 
   void SetAllInitialGuess(const Eigen::VectorXd& h_guess,
                           const Eigen::MatrixXd& r_guess,

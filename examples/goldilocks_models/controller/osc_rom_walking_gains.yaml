@@ -8,7 +8,15 @@ model_iter: 1 #150  #1 #30
 # The sample that we use to initialize planner
 sample_idx: 1 #21 works for iter150
 # Average stride length (for testing the planner)
-stride_length: 0.25
+stride_length: 0.1
+
+# Planner cost weight
+w_Q: 1
+w_R: 1
+w_rom_reg: 1
+w_reg_quat: 1
+w_reg_xy: 1
+w_reg_z_joints: 1
 
 ###
 # High level command gains (with radio)

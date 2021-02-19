@@ -376,7 +376,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   bool add_x_pose_in_cost = true;
   if (add_x_pose_in_cost) {
     trajopt.AddRegularizationCost(final_position, x_guess_left_in_front_,
-                                  x_guess_right_in_front_,
+                                  x_guess_right_in_front_, param_.w_reg_quat_,
+                                  param_.w_reg_xy_, param_.w_reg_z_joints_,
                                   false /*straight_leg_cost*/);
   } else {
     // Since there are multiple q that could be mapped to the same r, I

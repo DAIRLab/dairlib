@@ -91,7 +91,7 @@ RomTrajOpt::RomTrajOpt(
 
   // Initial pose constraint for the full order model
   PrintStatus("Adding initial pose constraint for full-order model...");
-  bool soft_init_constraint = true;
+  bool soft_init_constraint = false;
   if (soft_init_constraint) {
     /// relax the state
     /* PrintStatus("(relax the whole state)");
@@ -518,31 +518,31 @@ RomTrajOptCassie::RomTrajOptCassie(
 void RomTrajOptCassie::AddRegularizationCost(
     const Eigen::VectorXd& final_position,
     const Eigen::VectorXd& x_guess_left_in_front,
-    const Eigen::VectorXd& x_guess_right_in_front, bool straight_leg_cost) {
+    const Eigen::VectorXd& x_guess_right_in_front, double w_reg_quat,
+    double w_reg_xy, double w_reg_z_joints, bool straight_leg_cost) {
   PrintStatus("Adding regularization cost ...");
-
   int n_q = plant_.num_positions();
+
+  // Adding cost on FOM state increases convergence rate
+  // If we only add position (not velocity) in the cost, then higher cost
+  // results in spacing out each step more evenly
+  MatrixXd Id_quat = w_reg_quat * MatrixXd::Identity(4, 4);
+  MatrixXd Id_xy = w_reg_xy * MatrixXd::Identity(2, 2);
+  MatrixXd Id_z_joints = w_reg_z_joints * MatrixXd::Identity(n_q - 6, n_q - 6);
+
+  VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
+  VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
+  if (straight_leg_cost) {
+    /*Id_periodic(5, 5) = 10;
+    Id_periodic(6, 6) = 10;
+    modifixed_x_guess_left_in_front(5) = 0;
+    modifixed_x_guess_left_in_front(6) = 0;
+    modifixed_x_guess_right_in_front(5) = 0;
+    modifixed_x_guess_right_in_front(6) = 0;*/
+  }
 
   bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
-    // Adding cost on FOM state increases convergence rate
-    // If we only add position (not velocity) in the cost, then higher cost
-    // results in spacing out each step more evenly
-    MatrixXd Id_quat = 100 * MatrixXd::Identity(4, 4);
-    MatrixXd Id_xy = 100 * MatrixXd::Identity(2, 2);
-    MatrixXd Id_z_joints = 100 * MatrixXd::Identity(n_q - 6, n_q - 6);
-
-    VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
-    VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
-    if (straight_leg_cost) {
-      /*Id_periodic(5, 5) = 10;
-      Id_periodic(6, 6) = 10;
-      modifixed_x_guess_left_in_front(5) = 0;
-      modifixed_x_guess_left_in_front(6) = 0;
-      modifixed_x_guess_right_in_front(5) = 0;
-      modifixed_x_guess_right_in_front(6) = 0;*/
-    }
-
     auto x_0 = x0_vars_by_mode(i);
     auto x_f = xf_vars_by_mode(i);
     if (left_stance) {

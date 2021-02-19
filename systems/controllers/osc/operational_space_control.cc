@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "systems/controllers/osc/operational_space_control.h"
 
 #include <drake/math/saturate.h>
@@ -739,7 +741,32 @@ drake::math::saturate(2*(time_since_last_state_switch - 0.025) / 0.05, 0, 1);
   }
 
   // Solve the QP
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double time = robot_output->get_timestamp();
+
+      context_timestamps_.push_back(time);
+      loop_start_timestamps_.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count());
   const MathematicalProgramResult result = Solve(*prog_);
+      loop_end_timestamps_.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count());
+      if (abs(time - 10) < 1e-3) {
+        std::cout << "Outputting to file: osc_solve_time.txt"
+                  << std::endl;
+        std::ofstream myfile;
+        myfile.open("../osc_solve_time.txt");
+        for (int i = 0; i < context_timestamps_.size(); ++i) {
+          myfile << context_timestamps_[i] << "," << loop_start_timestamps_[i]
+                 << "," << loop_end_timestamps_[i] << "\n";
+        }
+        myfile.close();
+      }
+
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 

@@ -94,7 +94,7 @@ void TimeBasedFiniteStateMachine::CalcNearImpact(
         else{
           near_impact_data(0) = 1 - exp(- (impact_times_[i] + near_impact_threshold_ - remainder)/0.005);
         }
-        near_impact_data(1) = states_[i / 2];
+        near_impact_data(1) = i;
         break;
       }
     }

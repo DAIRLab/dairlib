@@ -135,6 +135,7 @@ def rabbit_main():
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
   state_traj = dircon_traj.ReconstructStateTrajectory()
   breaks = dircon_traj.GetBreaks()
+  import pdb; pdb.set_trace()
 
   x_pre = state_traj.value(dircon_traj.GetStateBreaks(0)[-1] - 1e-6)
   x_post = state_traj.value(dircon_traj.GetStateBreaks(1)[0])

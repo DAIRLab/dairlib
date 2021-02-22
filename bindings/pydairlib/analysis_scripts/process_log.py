@@ -2,6 +2,50 @@ import dairlib
 import drake
 import numpy as np
 
+
+# Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
+class lcmt_osc_tracking_data_t:
+  def __init__(self):
+    self.t = []
+    self.y_dim = 0
+    self.name = ""
+    self.is_active = []
+    self.y = []
+    self.y_des = []
+    self.error_y = []
+    self.ydot = []
+    self.ydot_des = []
+    self.error_ydot = []
+    self.yddot_des = []
+    self.yddot_command = []
+    self.yddot_command_sol = []
+
+  def append(self, msg, t):
+    self.t.append(t)
+    self.is_active.append(msg.is_active)
+    self.y.append(msg.y)
+    self.y_des.append(msg.y_des)
+    self.error_y.append(msg.error_y)
+    self.ydot.append(msg.ydot)
+    self.ydot_des.append(msg.ydot_des)
+    self.error_ydot.append(msg.error_ydot)
+    self.yddot_des.append(msg.yddot_des)
+    self.yddot_command.append(msg.yddot_command)
+    self.yddot_command_sol.append(msg.yddot_command_sol)
+
+  def convertToNP(self):
+    self.t = np.array(self.t)
+    self.is_active = np.array(self.is_active)
+    self.y = np.array(self.y)
+    self.y_des = np.array(self.y_des)
+    self.error_y = np.array(self.error_y)
+    self.ydot = np.array(self.ydot)
+    self.ydot_des = np.array(self.ydot_des)
+    self.error_ydot = np.array(self.error_ydot)
+    self.yddot_des = np.array(self.yddot_des)
+    self.yddot_command = np.array(self.yddot_command)
+    self.yddot_command_sol = np.array(self.yddot_command_sol)
+
 def process_log(log, pos_map, vel_map):
 
   t_state = []
@@ -12,9 +56,12 @@ def process_log(log, pos_map, vel_map):
   u = []
   contact_info = [[], []]
   contact_info_locs = [[], []]
+  osc_debug = dict()
+  osc_output = []
+  t_lcmlog_u = []
 
   for event in log:
-    if event.channel == "RABBIT_STATE_SIMULATION":
+    if event.channel == "RABBIT_STATE":
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]
       v_temp = [[] for i in range(len(msg.velocity))]
@@ -30,10 +77,16 @@ def process_log(log, pos_map, vel_map):
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_lqr.append(msg.utime / 1e6)
-    # if event.channel == "FSM":
-    #   msg = dairlib.lcmt_fsm_out.decode(event.data)
-    #   fsm.append(msg.fsm_state)
-    #   # t_fsm.append(msg.utime / 1e6)
+    if event.channel == "OSC_DEBUG_WALKING":
+      msg = dairlib.lcmt_osc_output.decode(event.data)
+      t_lcmlog_u.append(event.timestamp / 1e6)
+      osc_output.append(msg)
+      num_osc_tracking_data = len(msg.tracking_data)
+      for i in range(num_osc_tracking_data):
+        if msg.tracking_data[i].name not in osc_debug:
+          osc_debug[msg.tracking_data[i].name] = lcmt_osc_tracking_data_t()
+        osc_debug[msg.tracking_data[i].name].append(msg.tracking_data[i], msg.utime / 1e6)
+      fsm.append(msg.fsm_state)
     if event.channel == "CONTACT_RESULTS":
       # Need to distinguish between front and rear contact forces
       # Best way is to track the contact location and group by proximity
@@ -71,6 +124,7 @@ def process_log(log, pos_map, vel_map):
 
   t_state = np.array(t_state)
   t_lqr = np.array(t_lqr)
+  t_lcmlog_u = np.array(t_lcmlog_u)
   q = np.array(q)
   v = np.array(v)
   x = np.hstack((q, v))
@@ -78,5 +132,9 @@ def process_log(log, pos_map, vel_map):
   u = np.array(u)
   contact_info = -1 * np.array(contact_info)
   contact_info_locs = np.array(contact_info_locs)
+
+  for key in osc_debug:
+    osc_debug[key].convertToNP()
+
   return t_state, t_lqr, \
-         x, u, fsm, contact_info, contact_info_locs
+         x, u, fsm, contact_info, contact_info_locs, osc_debug, osc_output, t_lcmlog_u

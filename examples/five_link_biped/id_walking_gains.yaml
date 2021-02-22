@@ -1,0 +1,16 @@
+w_input: 0
+w_accel: 0.0
+w_soft_constraint: 1000000
+
+impact_threshold: 0.050
+landing_delay: 0.000
+
+mu: 0.4
+
+JointW:
+  [1, 1, 1, 1]
+JointKp:
+  [20, 20, 10, 10]
+JointKd:
+  [10, 10, 10, 10]
+

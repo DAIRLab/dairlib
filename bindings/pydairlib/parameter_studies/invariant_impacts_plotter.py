@@ -6,13 +6,12 @@ from pydairlib.common import FindResourceOrThrow
 from bindings.pydairlib.parameter_studies.plot_styler import PlotStyler
 from pydrake.trajectories import PiecewisePolynomial
 import pydairlib.lcm_trajectory
-from bindings.pydairlib.analysis_scripts.process_lcm_log import process_log
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 from pydairlib.cassie.cassie_utils import *
 import pydairlib.multibody
 
-1
+
 import matplotlib.pyplot as plt
 
 

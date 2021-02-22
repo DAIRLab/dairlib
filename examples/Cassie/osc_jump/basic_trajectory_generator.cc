@@ -31,7 +31,6 @@ void BasicTrajectoryPassthrough::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-
   *casted_traj = traj_;
 }
 

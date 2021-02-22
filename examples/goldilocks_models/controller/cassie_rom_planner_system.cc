@@ -136,8 +136,27 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                                (param_.knots_per_mode - 1));
       tau_guess_.col(i) = tau_guess_raw.col(idx_tau);
     }
-    x_guess_left_in_front_ = x_guess_left_in_front_raw;
-    x_guess_right_in_front_ = x_guess_right_in_front_raw;
+
+    bool use_standing_pose_as_init_FOM_guess = true;
+    if (use_standing_pose_as_init_FOM_guess) {
+      // Use standing pose for FOM guess
+      /*VectorXd x_standing_with_springs(45);
+      x_standing_with_springs << 1, 0, -2.21802e-13, 0, 0, 0, 1, 0.0194984,
+          -0.0194984, 0, 0, 0.479605, 0.479605, -1.1579, -1.1579, -0.0369181,
+          -0.0368807, 1.45305, 1.45306, -0.0253012, -1.61133, -0.0253716,
+          -1.61137, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0;*/
+      VectorXd x_standing_fixed_spring(37);
+      x_standing_fixed_spring << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
+          0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
+          1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0;
+      x_guess_left_in_front_ = x_standing_fixed_spring;
+      x_guess_right_in_front_ = x_standing_fixed_spring;
+    } else {
+      x_guess_left_in_front_ = x_guess_left_in_front_raw;
+      x_guess_right_in_front_ = x_guess_right_in_front_raw;
+    }
 
     cout << "initial guess duration ~ " << duration << endl;
     // cout << "h_guess = " << h_guess << endl;

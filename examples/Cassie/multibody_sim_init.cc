@@ -67,6 +67,7 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
+DEFINE_double(disturbance, 0.0, "Disturbance amount");
 DEFINE_double(start_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
@@ -110,7 +111,15 @@ int do_main(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  int nx = plant.num_positions() + plant.num_velocities();
+  int nq = plant.num_positions();
+  int nv = plant.num_velocities();
+  int nx = nq + nv;
+
+  // Create maps for joints
+  std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+  std::map<std::string, int> vel_map =
+      multibody::makeNameToVelocitiesMap(plant);
+  std::map<std::string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -171,7 +180,7 @@ int do_main(int argc, char* argv[]) {
                   sensor_pub->get_input_port());
 
   //  if (FLAGS_terrain_height != 0.0) {
-//  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  //  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   //  }
 
   auto diagram = builder.Build();
@@ -206,10 +215,9 @@ int do_main(int argc, char* argv[]) {
     x_init(6) -= FLAGS_terrain_height;
   }
 
+  x_init(plant.num_positions() + vel_map["base_vz"]) += FLAGS_disturbance;
+
   plant.SetPositionsAndVelocities(&plant_context, x_init);
-//  Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
-//  plant.CalcMassMatrix(plant_context, &M);
-//  std::cout << M << std::endl;
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

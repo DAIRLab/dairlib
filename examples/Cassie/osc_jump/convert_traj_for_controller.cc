@@ -19,7 +19,7 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-DEFINE_bool(are_feet_relative, true,
+DEFINE_bool(relative_feet, true,
             "Set to false if feet positions should "
             "be measured relative to the world "
             "instead of as an offset from the hips");
@@ -97,7 +97,8 @@ int DoMain() {
     VectorXd times = dircon_traj.GetStateBreaks(mode);
     std::cout << "times: " << times << std::endl;
     MatrixXd state_samples = dircon_traj.GetStateSamples(mode);
-    MatrixXd state_derivative_samples = dircon_traj.GetStateDerivativeSamples(mode);
+    MatrixXd state_derivative_samples =
+        dircon_traj.GetStateDerivativeSamples(mode);
     int n_points = times.size();
     MatrixXd l_foot_points(6, n_points);
     MatrixXd r_foot_points(6, n_points);
@@ -165,9 +166,10 @@ int DoMain() {
       r_hip_points.block(3, i, 3, 1) = J_r_hip * v_i;
     }
     pelvis_points = pelvis_points - 0.5 * (l_foot_points + r_foot_points);
-    l_foot_points = l_foot_points - l_hip_points;
-    r_foot_points = r_foot_points - r_hip_points;
-
+    if (FLAGS_relative_feet) {
+      l_foot_points = l_foot_points - l_hip_points;
+      r_foot_points = r_foot_points - r_hip_points;
+    }
     all_times.push_back(times);
     all_l_foot_points.push_back(l_foot_points);
     all_r_foot_points.push_back(r_foot_points);
@@ -225,8 +227,13 @@ int DoMain() {
                                       "Output trajectories "
                                       "for Cassie jumping");
 
-  processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
-                             "_processed");
+  if (FLAGS_relative_feet) {
+    processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+                               "_processed" + "_rel");
+  } else {
+    processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+                               "_processed");
+  }
   return 0;
 }
 

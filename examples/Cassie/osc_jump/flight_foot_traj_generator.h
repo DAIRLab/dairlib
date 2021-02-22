@@ -17,7 +17,7 @@ class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context, const std::string& hip_name,
       bool isLeftFoot,
-      const drake::trajectories::PiecewisePolynomial<double>& foot_traj,
+      const drake::trajectories::PiecewisePolynomial<double>& foot_traj, bool relative_feet = false,
       double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -41,6 +41,7 @@ class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
 
   drake::trajectories::PiecewisePolynomial<double> foot_traj_;
 
+  bool relative_feet_;
   int state_port_;
   int fsm_port_;
 };

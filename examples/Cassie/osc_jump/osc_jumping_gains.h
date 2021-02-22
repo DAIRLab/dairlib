@@ -34,6 +34,7 @@ struct OSCJumpingGains {
   double impact_threshold;
   double landing_delay;
   double mu;
+  bool relative_feet;
 
   MatrixXd W_com;
   MatrixXd K_p_com;
@@ -71,6 +72,7 @@ struct OSCJumpingGains {
     a->Visit(DRAKE_NVP(impact_threshold));
     a->Visit(DRAKE_NVP(landing_delay));
     a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(relative_feet));
 
     W_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

@@ -52,7 +52,6 @@ using drake::trajectories::PiecewisePolynomial;
 using examples::osc_jump::COMTrajGenerator;
 using examples::osc_jump::FlightFootTrajGenerator;
 using examples::osc_jump::JumpingEventFsm;
-using examples::osc_jump::JumpingEventFsm;
 using multibody::FixedJointEvaluator;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
@@ -130,8 +129,12 @@ int DoMain(int argc, char* argv[]) {
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
       FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
-  const LcmTrajectory& processed_trajs = LcmTrajectory(
-      FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name + "_processed"));
+  string output_traj_path = FLAGS_folder_path + FLAGS_traj_name + "_processed";
+  if (gains.relative_feet) {
+    output_traj_path += "_rel";
+  }
+  const LcmTrajectory& output_trajs =
+      LcmTrajectory(FindResourceOrThrow(output_traj_path));
 
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
@@ -143,17 +146,17 @@ int DoMain(int argc, char* argv[]) {
 
   for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
-        processed_trajs.GetTrajectory("pelvis_trans_trajectory" +
-                                      std::to_string(mode));
+        output_trajs.GetTrajectory("pelvis_trans_trajectory" +
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_foot_traj =
-        processed_trajs.GetTrajectory("left_foot_trajectory" +
-                                      std::to_string(mode));
+        output_trajs.GetTrajectory("left_foot_trajectory" +
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_foot_traj =
-        processed_trajs.GetTrajectory("right_foot_trajectory" +
-                                      std::to_string(mode));
+        output_trajs.GetTrajectory("right_foot_trajectory" +
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
-        processed_trajs.GetTrajectory("pelvis_rot_trajectory" +
-                                      std::to_string(mode));
+        output_trajs.GetTrajectory("pelvis_rot_trajectory" +
+                                   std::to_string(mode));
     pelvis_trans_traj.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_pelvis_trans_trajectory.time_vector,
@@ -212,10 +215,10 @@ int DoMain(int argc, char* argv[]) {
       FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
-      FLAGS_delay_time);
+      gains.relative_feet, FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
-      FLAGS_delay_time);
+      gains.relative_feet, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<osc_jump::BasicTrajectoryPassthrough>(
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);

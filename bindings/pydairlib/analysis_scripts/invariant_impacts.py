@@ -12,6 +12,7 @@ import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 from pydrake.trajectories import PiecewisePolynomial
+from bindings.pydairlib.parameter_studies.plot_styler import PlotStyler
 from pydairlib.cassie.cassie_utils import *
 
 import process_lcm_log
@@ -54,11 +55,11 @@ def cassie_main():
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
   state_traj = dircon_traj.ReconstructStateTrajectory()
 
-  x_pre = state_traj.value(dircon_traj.GetStateBreaks(1)[-1] - 1e-6)
+  impact_time = dircon_traj.GetStateBreaks(1)[-1]
+  x_pre = state_traj.value(impact_time - 1e-6)
   x_post = state_traj.value(dircon_traj.GetStateBreaks(2)[0])
 
   plant_wo_spr.SetPositionsAndVelocities(context_wo_spr, x_pre)
-
   M = plant_wo_spr.CalcMassMatrixViaInverseDynamics(context_wo_spr)
   M_inv = np.linalg.inv(M)
   J_l_f = plant_wo_spr.CalcJacobianTranslationalVelocity(context_wo_spr, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
@@ -70,19 +71,22 @@ def cassie_main():
   J = np.vstack((J_l_f, J_l_r[1:3, :], J_r_f, J_r_r[1:3, :]))
   M_Jt = M_inv @ J.T
   P = linalg.null_space(M_Jt.T).T
+  proj_ii = np.eye(nv) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
 
   transform = J @ M_inv @ J.T @ np.linalg.pinv(J @ M_inv @ J.T)
 
 
-  t_impact = dircon_traj.GetStateBreaks(1)[-1]
-  t = np.linspace(t_impact - 0.05, t_impact + 0.05, 100)
+  import pdb; pdb.set_trace()
+  t_impact = impact_time
+  t = np.arange(t_impact - 0.05, t_impact + 0.05, 0.001)
   vel = np.zeros((t.shape[0], nv))
-  cc_vel = np.zeros((t.shape[0], nv - nc))
+  cc_vel = np.zeros((t.shape[0], nv))
 
   for i in range(t.shape[0]):
     x = state_traj.value(t[i])
     vel[i] = x[-nv:, 0]
-    cc_vel[i] = P @ vel[i]
+    # cc_vel[i] = P @ vel[i]
+    cc_vel[i] = proj_ii @ vel[i]
 
   plt.figure("Joint Velocities around impacts")
   plt.plot(t, vel)
@@ -94,10 +98,7 @@ def cassie_main():
 
 
   M_Jct = M_inv @ J_l.T
-
-
-  import pdb; pdb.set_trace()
-
+  # import pdb; pdb.set_trace()
 
   plt.show()
 
@@ -167,7 +168,6 @@ def rabbit_main():
   t = np.linspace(t_impact - 0.05, t_impact + 0.05, 100)
 
   cc = np.eye(nv) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
-  import pdb; pdb.set_trace()
 
   # cc_vel = np.zeros((t.shape[0], nv - nc))
   cc_vel = np.zeros((t.shape[0], nv))
@@ -191,34 +191,26 @@ def rabbit_main():
   #   process_log.process_log(log, pos_map, vel_map)
 
   plt.figure("Generalized velocities around impacts")
-  plt.plot(t, vel)
-  plt.xlabel('time (s)')
-  plt.ylabel('velocity')
+  ps.plot(t, vel, xlabel='time (s)', ylabel='velocity (m/s)')
+  ps.save_fig('generalized_velocities_around_impact.png')
   plt.figure("Impact invariant projection")
-  plt.plot(t, cc_vel)
-  plt.xlabel('time (s)')
-  plt.ylabel('velocity')
+  ps.plot(t, cc_vel, xlabel='time (s)', ylabel='velocity (m/s)')
+  ps.save_fig('projected_velocities_around_impact.png')
 
-  plt.show()
 
-  t_start = 0.2
-  t_end = 0.25
-  t_start_idx = np.argwhere(np.abs(t_state - t_start) < 1e-3)[0][0]
-  t_end_idx = np.argwhere(np.abs(t_state - t_end) < 1e-3)[0][0]
-  t_slice = slice(t_start_idx, t_end_idx)
-  t_state = t_state[t_slice]
-
-  vel_sim = np.zeros((t_state.shape[0], nv))
-  cc_vel_sim = np.zeros((t_state.shape[0], nv - nc))
-  for i in range(t_state.shape[0]):
-    x_i = x[i, :]
-    vel_sim[i] = x_i[-nv:]
-    cc_vel_sim[i] = P @ vel_sim[i]
-
-  plt.figure("Joint Velocities around impacts sim data")
-  plt.plot(t_state, vel_sim)
-  plt.figure("Change of coordinates sim data")
-  plt.plot(t_state, cc_vel_sim, 'b')
+  # t_start = 0.2
+  # t_end = 0.25
+  # t_start_idx = np.argwhere(np.abs(t_state - t_start) < 1e-3)[0][0]
+  # t_end_idx = np.argwhere(np.abs(t_state - t_end) < 1e-3)[0][0]
+  # t_slice = slice(t_start_idx, t_end_idx)
+  # t_state = t_state[t_slice]
+  #
+  # vel_sim = np.zeros((t_state.shape[0], nv))
+  # cc_vel_sim = np.zeros((t_state.shape[0], nv - nc))
+  # for i in range(t_state.shape[0]):
+  #   x_i = x[i, :]
+  #   vel_sim[i] = x_i[-nv:]
+  #   cc_vel_sim[i] = P @ vel_sim[i]
 
   # plt.plot(t, TV_cc_vel, 'r')
   # plt.legend(["constant M and J", "constant M, q dependent J"])
@@ -228,6 +220,10 @@ def rabbit_main():
 
 
 if __name__ == '__main__':
+  global ps
+  ps = PlotStyler()
+  figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
+  ps.set_default_styling(directory=figure_directory)
   matplotlib.rcParams["savefig.directory"] = "/home/yangwill/Documents/research/presentations/"
   matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
   font = {'size'   : 20}

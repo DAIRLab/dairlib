@@ -73,10 +73,6 @@ DEFINE_bool(contact_based_fsm, false,
 DEFINE_double(transition_delay, 0.0,
               "Time to wait after trigger to "
               "transition between FSM states.");
-DEFINE_string(simulator, "DRAKE",
-              "Simulator used, important for determining how to interpret "
-              "contact information. Other options include MUJOCO and soon to "
-              "include contact results from the GM contact estimator.");
 DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
 DEFINE_string(gains_filename, "examples/Cassie/osc_jump/id_jumping_gains.yaml",
               "Filepath containing gains");
@@ -129,12 +125,15 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
   VectorXd times(2);
-  MatrixXd end_pos(state_traj.value(0).rows(), 2);
-  end_pos << state_traj.value(state_traj.end_time()),
-      state_traj.value(state_traj.end_time());
+  MatrixXd end_pos(19, 2);
+  MatrixXd end_vel = MatrixXd::Zero(18, 2);
+  MatrixXd end_state(37, 2);
+  end_pos << state_traj.value(state_traj.end_time()).topRows(nq),
+      state_traj.value(state_traj.end_time()).topRows(nq);
+  end_state << end_pos, end_vel;
   times << state_traj.end_time(), 100.0;
   state_traj.ConcatenateInTime(
-      PiecewisePolynomial<double>::ZeroOrderHold(times, end_pos));
+      PiecewisePolynomial<double>::ZeroOrderHold(times, end_state));
 
   // For the time-based FSM (squatting by default)
   double flight_time =

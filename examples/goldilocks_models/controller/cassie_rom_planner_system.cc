@@ -158,7 +158,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       x_guess_right_in_front_ = x_guess_right_in_front_raw;
     }
 
-    cout << "initial guess duration ~ " << duration << endl;
+    // cout << "initial guess duration ~ " << duration << endl;
     // cout << "h_guess = " << h_guess << endl;
     // cout << "r_guess = " << r_guess << endl;
     // cout << "dr_guess = " << dr_guess << endl;
@@ -595,6 +595,76 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// For debugging
   ///
+
+  // Check the cost (Q and R term)
+  if (counter_ == 0) {
+    double cost_ydot = 0;
+    double cost_u = 0;
+    /* // Hybrid version of cost
+    for (int i = 0; i < num_time_samples.size(); i++) {
+      VectorXd time_breaks_per_mode = time_breaks[i];
+      MatrixXd state_samples_per_mode = state_samples[i];
+
+      int n_knot = time_breaks_per_mode.size();
+
+      cost_ydot += (time_breaks_per_mode(1) - time_breaks_per_mode(0)) / 2 *
+                   ((state_samples_per_mode.col(0).tail(rom_->n_y()) * Q_ *
+                     state_samples_per_mode.col(0).tail(rom_->n_y()))(0));
+      for (int j = 1; j < num_time_samples[i] - 1; j++) {
+        cost_ydot +=
+            (time_breaks_per_mode(j + 1) - time_breaks_per_mode(j - 1)) / 2 *
+            ((state_samples_per_mode.col(j).tail(rom_->n_y()) * Q_ *
+              state_samples_per_mode.col(j).tail(rom_->n_y()))(0));
+      }
+      cost_ydot +=
+          (time_breaks_per_mode(n_knot - 1) -
+           time_breaks_per_mode(n_knot - 2)) /
+          2 *
+          ((state_samples_per_mode.col(n_knot - 1).tail(rom_->n_y()) * Q_ *
+            state_samples_per_mode.col(n_knot - 1).tail(rom_->n_y()))(0));
+    }
+    MatrixXd input_at_knots = trajopt.GetInputSamples(result);
+    int mode_start = 0;
+    for (int i = 0; i < num_time_samples.size(); i++) {
+      for (int j = 0; j < num_time_samples[i]; j++) {
+        int index = mode_start + j;
+        VectorXd uk = input_at_knots.col(index);
+        // Not finished
+      }
+      mode_start += num_time_samples[i] - 1;
+    }*/
+
+    VectorXd time_at_knots = trajopt.GetSampleTimes(result);
+    MatrixXd state_at_knots = trajopt.drake::systems::trajectory_optimization::
+                                  MultipleShooting::GetStateSamples(result);
+    MatrixXd input_at_knots = trajopt.GetInputSamples(result);
+    int N = time_at_knots.size();
+    cost_ydot += ((state_at_knots.col(0).tail(rom_->n_y()) * Q_ *
+                   state_at_knots.col(0).tail(rom_->n_y()))(0)) *
+                 (time_at_knots(1) - time_at_knots(0)) / 2;
+    for (int i = 1; i < N - 1; i++) {
+      cost_ydot += ((state_at_knots.col(i).tail(rom_->n_y()) * Q_ *
+                     state_at_knots.col(i).tail(rom_->n_y()))(0)) *
+                   (time_at_knots(i + 1) - time_at_knots(i - 1)) / 2;
+    }
+    cost_ydot += ((state_at_knots.col(N - 1).tail(rom_->n_y()) * Q_ *
+                   state_at_knots.col(N - 1).tail(rom_->n_y()))(0)) *
+                 (time_at_knots(N - 1) - time_at_knots(N - 2)) / 2;
+    cout << "cost_ydot = " << cost_ydot << endl;
+    if (input_at_knots.rows() > 0) {
+      cost_u += ((input_at_knots.col(0) * R_ * input_at_knots.col(0))(0)) *
+                (time_at_knots(1) - time_at_knots(0)) / 2;
+      for (int i = 1; i < N - 1; i++) {
+        cost_u += ((input_at_knots.col(i) * R_ * input_at_knots.col(i))(0)) *
+                  (time_at_knots(i + 1) - time_at_knots(i - 1)) / 2;
+      }
+      cost_u +=
+          ((input_at_knots.col(N - 1) * R_ * input_at_knots.col(N - 1))(0)) *
+          (time_at_knots(N - 1) - time_at_knots(N - 2)) / 2;
+
+      cout << "cost_u = " << cost_u << endl;
+    }
+  }
 
   // Extract and save solution into files (for debugging)
   //  if (debug_mode_) {

@@ -10,6 +10,7 @@
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -85,6 +86,11 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_saved_traj* traj_msg) const;
 
+  void WarmStartGuess(
+      const Eigen::VectorXd& final_position, int global_fsm_idx,
+      int first_mode_knot_idx,
+      dairlib::goldilocks_models::RomTrajOptCassie* trajopt) const;
+
   // Port indices
   int stance_foot_port_;
   int phase_port_;
@@ -128,6 +134,19 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd x_guess_left_in_front_;
   Eigen::VectorXd x_guess_right_in_front_;
 
+  // For warm start with previous solution
+  mutable int prev_global_fsm_idx_ = -1;
+  mutable int prev_first_mode_knot_idx_ = -1;
+  mutable std::vector<int> prev_mode_start_;
+  // Previous solutions
+  mutable std::vector<Eigen::VectorXd> time_breaks_;
+  mutable std::vector<Eigen::MatrixXd> state_samples_;
+  mutable Eigen::VectorXd h_solutions_;
+  mutable Eigen::MatrixXd state_at_knots_;
+  mutable Eigen::MatrixXd input_at_knots_;
+  mutable Eigen::MatrixXd FOM_x0_;
+  mutable Eigen::MatrixXd FOM_xf_;
+
   // For debugging
   bool debug_mode_;
 
@@ -144,6 +163,12 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   // Testing
   mutable int counter_ = 0;
+
+  // flags
+  bool use_standing_pose_as_init_FOM_guess_ = false;
+  // Although warm start helps most of the time, it could also make the solver
+  // not able to find the optimal solution from time to time
+  bool warm_start_with_previous_solution_ = true;
 };
 
 }  // namespace goldilocks_models

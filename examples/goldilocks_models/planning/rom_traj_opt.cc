@@ -91,7 +91,7 @@ RomTrajOpt::RomTrajOpt(
 
   // Initial pose constraint for the full order model
   PrintStatus("Adding initial pose constraint for full-order model...");
-  bool soft_init_constraint = false;
+  bool soft_init_constraint = true;
   if (soft_init_constraint) {
     /// relax the state
     /* PrintStatus("(relax the whole state)");
@@ -601,19 +601,20 @@ void RomTrajOptCassie::AddRegularizationCost(
                            xf_vars_by_mode(num_modes_ - 1).head(4));
 }
 
-void RomTrajOptCassie::SetAllInitialGuess(
+void RomTrajOptCassie::SetHeuristicInitialGuess(
     const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
     const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
     const Eigen::VectorXd& x_guess_left_in_front,
     const Eigen::VectorXd& x_guess_right_in_front,
-    const Eigen::VectorXd& final_position, int fisrt_mode_phase_index) {
+    const Eigen::VectorXd& final_position, int fisrt_mode_phase_index,
+    int starting_mode_index) {
   PrintStatus("Adding initial guess ...");
 
   MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
   y_guess << r_guess, dr_guess;
 
   bool left_stance = start_with_left_stance_;
-  for (int i = 0; i < num_modes_; i++) {
+  for (int i = starting_mode_index; i < num_modes_; i++) {
     // Time steps
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       SetInitialGuess(timestep(mode_start_[i] + j), h_guess.segment(1, 1));

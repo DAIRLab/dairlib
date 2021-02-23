@@ -96,7 +96,12 @@ class RomTrajOpt
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
 
+  int num_knots() const {
+    return std::accumulate(mode_lengths_.begin(), mode_lengths_.end(), 0) -
+           mode_lengths_.size() + 1;
+  }
   int num_modes() const { return num_modes_; }
+  const std::vector<int>& mode_start() const { return mode_start_; }
 
   const ReducedOrderModel& reduced_order_model() const { return rom_; }
 
@@ -142,14 +147,15 @@ class RomTrajOptCassie : public RomTrajOpt {
                              double w_reg_quat, double w_reg_xy,
                              double w_reg_z_joints, bool straight_leg_cost);
 
-  void SetAllInitialGuess(const Eigen::VectorXd& h_guess,
-                          const Eigen::MatrixXd& r_guess,
-                          const Eigen::MatrixXd& dr_guess,
-                          const Eigen::MatrixXd& tau_guess,
-                          const Eigen::VectorXd& x_guess_left_in_front,
-                          const Eigen::VectorXd& x_guess_right_in_front,
-                          const Eigen::VectorXd& final_position,
-                          int fisrt_mode_phase_index);
+  void SetHeuristicInitialGuess(const Eigen::VectorXd& h_guess,
+                                const Eigen::MatrixXd& r_guess,
+                                const Eigen::MatrixXd& dr_guess,
+                                const Eigen::MatrixXd& tau_guess,
+                                const Eigen::VectorXd& x_guess_left_in_front,
+                                const Eigen::VectorXd& x_guess_right_in_front,
+                                const Eigen::VectorXd& final_position,
+                                int fisrt_mode_phase_index,
+                                int starting_mode_index);
 
   // Testing -- AddRomRegularizationCost is SetAllInitialGuess except we replace
   // setting guess with setting cost

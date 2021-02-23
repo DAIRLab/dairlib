@@ -100,15 +100,6 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
-  for (auto pos_pair : pos_map) {
-    std::cout << "name: " << pos_pair.first << " idx: " << pos_pair.second
-              << std::endl;
-  }
-  for (auto vel_pair : vel_map) {
-    std::cout << "name: " << vel_pair.first << " idx: " << vel_pair.second
-              << std::endl;
-  }
-
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
   IDJumpingGains gains;
   const YAML::Node& root =
@@ -130,7 +121,7 @@ int DoMain(int argc, char* argv[]) {
   vector<int> fsm_states;
   vector<double> state_durations;
   fsm_states = {0, 1};
-  state_durations = {dircon_trajectory.GetStateBreaks(1)(0) + FLAGS_delay_time,
+  state_durations = {dircon_trajectory.GetStateBreaks(1)(0),
                      dircon_trajectory.GetStateBreaks(2)(0)};
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(

@@ -79,6 +79,8 @@ DEFINE_string(folder_path, "", "Folder path for the folder that contains the "
 DEFINE_int32(error_idx, 0, "Index in the state vector to inject error into");
 DEFINE_double(error, 0.0, "Value fo the error, see error_idx");
 
+VectorXd calcStateOffset(MultibodyPlant<double>& plant,
+                         Context<double>& context, VectorXd& x0);
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -169,17 +171,13 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   Eigen::VectorXd x0 = state_traj.value(0);
-
+  VectorXd vel_offset = calcStateOffset(plant, plant_context, x0);
+  x0.tail(nv) += vel_offset;
+//  x0(7 + 4) -= 0.5;
   plant.SetPositionsAndVelocities(&plant_context, x0);
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
-  //  if (!FLAGS_time_stepping) {
-  //    //
-  //    simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-  //    //        *diagram, FLAGS_dt, &simulator.get_mutable_context());
-  //    simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>(
-  //        plant, &simulator.get_mutable_context());
-  //  }
+
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
@@ -188,6 +186,37 @@ int do_main(int argc, char* argv[]) {
   simulator.AdvanceTo(FLAGS_sim_time);
 
   return 0;
+}
+
+
+VectorXd calcStateOffset(MultibodyPlant<double>& plant,
+                         Context<double>& context, VectorXd& x0) {
+  plant.SetPositionsAndVelocities(&context, x0);
+
+  // common frames
+  auto right_foot_frame = &plant
+      .GetBodyByName("right_foot").body_frame();
+  auto world = &plant.world_frame();
+  MatrixXd TXZ = MatrixXd(2,3);
+  TXZ << 1, 0, 0,
+         0, 0, 1;
+
+  MatrixXd J_foot_3d = MatrixXd::Zero(3, plant.num_velocities());
+  plant.CalcJacobianTranslationalVelocity(
+      context, drake::multibody::JacobianWrtVariable::kV, *right_foot_frame,
+      Eigen::Vector3d::Zero(), *world, *world, &J_foot_3d);
+  Eigen::Vector2d foot_vel_offset = Eigen::Vector2d::Zero();
+  foot_vel_offset(1) = FLAGS_error;
+  MatrixXd J_rfoot_angles = MatrixXd(2,2);
+  // Taking only the Jacobian wrt right leg angles
+  J_rfoot_angles << (TXZ * J_foot_3d).col(4), (TXZ * J_foot_3d).col(6);
+  VectorXd joint_rate_offsets =
+      J_rfoot_angles.colPivHouseholderQr().solve(foot_vel_offset);
+  //Remove floating base offsets
+  VectorXd v_offset = VectorXd::Zero(plant.num_velocities());
+  v_offset(4) = joint_rate_offsets(0);
+  v_offset(6) = joint_rate_offsets(1);
+  return v_offset;
 }
 
 

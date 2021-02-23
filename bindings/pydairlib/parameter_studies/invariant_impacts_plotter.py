@@ -61,8 +61,8 @@ def main():
   # duration = 'stiff'
 
 
-  construct_hardware_torque_plot()
-  # plot_vel_discontinuity_example(right_foot_traj)
+  # construct_hardware_torque_plot()
+  plot_vel_discontinuity_example(right_foot_traj)
   # construct_knee_efforts_plot()
   # for d in durations:
   #   load_logs('%.3f' % d)
@@ -97,14 +97,14 @@ def plot_vel_discontinuity_example(traj):
     accum_err += 0.1*(vel[i] - vel_err[i])
     # accum_err *= 0.6
   plt.figure("Velocity tracking during impact")
-  ps.plot(times - nominal_impact_time, vel[:, 2], xlabel='time since nominal impact time', ylabel='velocity (m/s)', linestyle=ps.blue)
-  ps.plot(times - nominal_impact_time, vel_err[:, 2], linestyle=ps.red)
-  ps.add_legend(['target velocity', 'actual velocity'])
+  ps.plot(1e3*(times - nominal_impact_time), vel[:, 2], xlabel='Time from Nominal Impact (ms)', ylabel='Velocity (m/s)', linestyle=ps.blue)
+  ps.plot(1e3*(times - nominal_impact_time), vel_err[:, 2], linestyle=ps.red)
+  ps.plot(1e3*(times - nominal_impact_time), vel_err[:, 2] - vel[:, 2], linestyle=ps.yellow)
+  ps.add_legend(['target velocity', 'actual velocity', 'tracking error'])
   ps.save_fig('velocity_tracking_during_impact.png')
-  plt.figure("Velocity error")
-  ps.plot(times - nominal_impact_time, vel[:, 2] - vel_err[:, 2], xlabel='time since nominal impact time', ylabel='velocity (m/s)', linestyle=ps.yellow)
-  ps.add_legend(['feedback error'])
-  ps.save_fig('velocity_error_during_impact.png')
+  # plt.figure("Velocity error")
+  # ps.add_legend(['feedback error'])
+  # ps.save_fig('velocity_error_during_impact.png')
   # ps.plot([nominal_impact_time, nominal_impact_time], [-5, 5], '--')
 
   # plt.legend(['x','y','z'])

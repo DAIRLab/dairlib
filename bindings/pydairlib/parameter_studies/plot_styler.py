@@ -22,7 +22,7 @@ class PlotStyler():
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 10, 6
+    matplotlib.rcParams['figure.figsize'] = 8, 6
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 18}
     matplotlib.rc('font', **font)

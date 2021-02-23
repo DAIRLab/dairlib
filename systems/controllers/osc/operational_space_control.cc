@@ -581,9 +581,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
+//  Invariant Impacts
+//  Only update when near an impact
   ii_lambda_sol_ = VectorXd::Zero(1);
-  // Invariant Impacts
-  // Only update when near an impact
   if (near_impact) {
     std::set<int> next_contact_set = {};
     auto map_iterator = contact_indices_map_.find(next_fsm_state);

@@ -71,9 +71,11 @@ bool OscTrackingData::Update(
 
     // Update feedback output (Calling virtual methods)
     UpdateYAndError(x_w_spr, context_w_spr);
+//    if (ii_proj.rows() > 1 || ii_proj.cols() > 1) {
     if (ii_proj.cols() > 1) {
       UpdateYdotAndError(x_w_spr, context_w_spr, ii_proj);
     } else {
+      //      error_ydot_ = VectorXd::Zero(n_ydot_);
       UpdateYdotAndError(x_w_spr, context_w_spr, (Eigen::VectorXd&)ii_proj);
     }
     UpdateYddotDes();

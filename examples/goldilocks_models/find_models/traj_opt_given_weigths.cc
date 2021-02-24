@@ -612,7 +612,7 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     is_success << 0;
   writeCSV(directory + prefix + string("is_success.csv"), is_success);
 
-  *(QPs.is_success_vec[sample_idx]) = result.is_success() ? 1 : 0;
+  *(QPs.is_success_vec[sample_idx]) = is_success(0);
 
   // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
   // result, 1e-5); cout << "constraint_satisfied = " << constraint_satisfied <<

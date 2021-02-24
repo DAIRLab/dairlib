@@ -1350,6 +1350,67 @@ bool HasAchievedOptimum(bool is_newton, double stopping_threshold,
   }
 }*/
 
+class SampleSuccessMonitor {
+ public:
+  explicit SampleSuccessMonitor(int n_sample) {
+    n_sample_ = n_sample;
+    is_success_vec_ = std::vector<double>(n_sample, -1);
+  }
+
+  double Read(int sample_idx) const { return is_success_vec_.at(sample_idx); };
+  void Write(int sample_idx, double data) {
+    is_success_vec_[sample_idx] = data;
+  };
+  void Print() const {
+    cout << "is_success_vec_ = ";
+    for (auto& mem : is_success_vec_) {
+      cout << mem << ", ";
+    }
+    cout << endl;
+  }
+
+  bool IsAllSuccess() const {
+    int n_successful_sample = 0;
+    for (const auto& is_success : is_success_vec_) {
+      if (is_success == 1) n_successful_sample++;
+    }
+    return (n_successful_sample == n_sample_);
+  }
+  bool IsNoFail() const {
+    bool no_fail = true;
+    for (const auto& is_success : is_success_vec_) {
+      if (is_success == 0) {
+        no_fail = false;
+        break;
+      }
+    }
+    return no_fail;
+  }
+  bool IsSuccessRateHighEnough(double fail_rate_threshold,
+                               bool is_get_nominal) {
+    bool success_rate_is_high_enough = true;
+    double fail_rate = double(GetNumberOfFailedSamples()) / double(n_sample_);
+    if (fail_rate > fail_rate_threshold) {
+      success_rate_is_high_enough = false;
+    } else if ((fail_rate > 0) && is_get_nominal) {
+      success_rate_is_high_enough = false;
+    }
+    return success_rate_is_high_enough;
+  }
+
+  int GetNumberOfFailedSamples() const {
+    int n_failed_sample = 0;
+    for (const auto& is_success : is_success_vec_) {
+      if (is_success == 0) n_failed_sample++;
+    }
+    return n_failed_sample;
+  }
+
+ private:
+  int n_sample_;
+  std::vector<double> is_success_vec_;  // -1 means unset
+};
+
 int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -1411,7 +1472,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
-          {0.3, 0, 0.5, FLAGS_turning_rate_center}, {0.015, 0.05, 0.04, 0.125}, is_stochastic);
+          {0.3, 0, 0.5, FLAGS_turning_rate_center}, {0.015, 0.05, 0.04, 0.125},
+          is_stochastic);
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_grid = GridTasksGenerator();
@@ -1916,15 +1978,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << "WILL EXTEND MODEL IN THIS ITERATION\n";
     }
 
-    // reset is_success_vec before trajectory optimization
-    for (int i = 0; i < N_sample; i++) {
-      *(QPs.is_success_vec[i]) = 0;
-    }
-
     // Run trajectory optimization for different tasks first
-    bool all_samples_succeeded = true;
-    bool no_sample_failed = true;
-    bool success_rate_is_high_enough = true;
+    SampleSuccessMonitor sample_monitor(N_sample);
     if (start_iterations_with_shrinking_stepsize) {
       // skip the sample evaluation
     } else {
@@ -1953,7 +2008,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Set up for feeding good sample solution to adjacent bad samples
       std::vector<double> sample_status(N_sample, -1);  // -1 means unset,
-                                                     // 0 is bad, 1 is good
+                                                        // 0 is bad, 1 is good
       // In the following int matrices, each row is a list that contains the
       // sample idx that can help (or helped)
       // -1 means empty.
@@ -1971,16 +2026,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
           N_sample, std::numeric_limits<double>::infinity());
 
       // Evaluate samples
-      int n_failed_sample = 0;
       while (!awaiting_sample_idx.empty() || !assigned_thread_idx.empty()) {
         /*cout << "awaiting_sample_idx = ";
         for (auto mem : awaiting_sample_idx) {
           cout << mem << ", ";
-        } cout << endl;
+        }
+        cout << endl;
         cout << "assigned_sample_idx = ";
         for (auto mem : assigned_thread_idx) {
           cout << mem.second << ", ";
-        } cout << endl;*/
+        }
+        cout << endl;*/
 
         // clang-format off
         //std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
@@ -2022,17 +2078,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // (Feature -- get initial guess from adjacent successful samples)
-          // If the current sample already finished N_rerun, then it means that
-          // there exists a adjacent sample that can help the current sample.
+          // If the current sample already finished N_rerun (and was queued back
+          // to here), then it means that there exists a adjacent sample that
+          // can help the current sample.
           int sample_idx_to_help = -1;
           if (get_good_sol_from_adjacent_sample) {
             if ((n_rerun[sample_idx] > N_rerun) &&
-                (sample_status[sample_idx] != 0.5)) {
-              cout << "sample_status = ";
-              for (auto& mem : sample_status) {
-                cout << mem << ", ";
-              }
-              cout << endl;
+                (sample_monitor.Read(sample_idx) != 0.5)) {
+              sample_monitor.Print();
               GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
                                 sample_idx_that_helped, sample_idx_to_help,
                                 task_gen->dim_nondeg());
@@ -2105,11 +2158,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Record success history
           prefix = to_string(iter) + "_" + to_string(sample_idx) + "_";
+          sample_monitor.Write(
+              sample_idx,
+              (readCSV(dir + prefix + string("is_success.csv")))(0, 0));
           bool sample_success =
               ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) == 1);
           bool sample_iteration_limit =
               ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) == 0.5);
-          bool sample_fail = !sample_success && !sample_iteration_limit;
 
           // Queue the current sample back if
           // 1. it's not the last evaluation for this sample, OR
@@ -2131,58 +2186,52 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Get good initial guess from adjacent samples's solution
           // (we dont' get help from adjacent samples when extending model,
           // because the length of decision variable is not the same)
-          if (get_good_sol_from_adjacent_sample && !extend_model_this_iter) {
-            if ((n_rerun[sample_idx] >= N_rerun) && !sample_iteration_limit) {
-              RecordSolutionQualityAndQueueList(
-                  dir, prefix, sample_idx, assigned_thread_idx,
-                  adjacent_sample_indices,
-                  max_cost_increase_rate_before_ask_for_help,
-                  max_adj_cost_diff_rate_before_ask_for_help,
-                  is_limit_difference_of_two_adjacent_costs, sample_success,
-                  current_sample_is_queued, task_gen->dim_nondeg(), n_rerun,
-                  N_rerun, local_each_min_cost_so_far, sample_status,
-                  sample_idx_waiting_to_help, sample_idx_that_helped,
-                  awaiting_sample_idx);
+          if (get_good_sol_from_adjacent_sample && !extend_model_this_iter &&
+              (n_rerun[sample_idx] >= N_rerun) && !sample_iteration_limit) {
+            RecordSolutionQualityAndQueueList(
+                dir, prefix, sample_idx, assigned_thread_idx,
+                adjacent_sample_indices,
+                max_cost_increase_rate_before_ask_for_help,
+                max_adj_cost_diff_rate_before_ask_for_help,
+                is_limit_difference_of_two_adjacent_costs, sample_success,
+                current_sample_is_queued, task_gen->dim_nondeg(), n_rerun,
+                N_rerun, local_each_min_cost_so_far, sample_status,
+                sample_idx_waiting_to_help, sample_idx_that_helped,
+                awaiting_sample_idx);
+
+            // If the current sample is queued again because it could be
+            // helped by adjacent samples, then don't conclude that it's a
+            // failure yet
+            auto it = find(awaiting_sample_idx.begin(),
+                           awaiting_sample_idx.end(), sample_idx);
+            if (it != awaiting_sample_idx.end()) {
+              sample_monitor.Write(sample_idx, -1);
             }
-          }
-          if (sample_iteration_limit) {
-            sample_status[sample_idx] = 0.5;
-          }
-
-          // If the current sample is queued again because it could be helped by
-          // adjacent samples, then don't conclude that it's a failure yet
-          auto it = find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
-                         sample_idx);
-          if (it != awaiting_sample_idx.end()) {
-            sample_success = true;
-          }
-
-          // Accumulate failed samples
-          if (sample_fail) {
-            // TODO: there might be a bug here. If a sample keeps failing even
-            // after the help from adjacent samples, it might over-count this
-            // failed sample
-            n_failed_sample++;
           }
 
           // Logic of fail or success
-          all_samples_succeeded = (all_samples_succeeded & sample_success);
-          no_sample_failed = no_sample_failed & sample_fail;
-          double fail_rate = double(n_failed_sample) / double(N_sample);
-          if (fail_rate > FLAGS_fail_threshold) {
-            success_rate_is_high_enough = false;
-          } else if ((fail_rate > 0) && is_get_nominal) {
-            success_rate_is_high_enough = false;
-          }
+          bool no_sample_failed_so_far = sample_monitor.IsNoFail();
+          bool success_rate_is_high_enough =
+              sample_monitor.IsSuccessRateHighEnough(FLAGS_fail_threshold,
+                                                     is_get_nominal);
+          cout << "Update success/fail flags...\n";
+          cout << "(no_sample_failed_so_far, "
+                  "success_rate_is_high_enough) = ("
+               << no_sample_failed_so_far << ", " << success_rate_is_high_enough
+               << ")\n";
 
           // Stop evaluating if
           // 1. any sample failed after a all-success iteration
           // 2. fail rate higher than threshold before seeing all-success
           // iteration
-          if ((has_been_all_success && no_sample_failed) ||
+          if ((has_been_all_success && no_sample_failed_so_far) ||
               (!has_been_all_success && (!success_rate_is_high_enough))) {
             // Wait for the assigned threads to join, and then break;
-            cout << n_failed_sample
+            cout << "(has_been_all_success, no_sample_failed_so_far, "
+                    "success_rate_is_high_enough) = ("
+                 << has_been_all_success << ", " << no_sample_failed_so_far
+                 << ", " << success_rate_is_high_enough << ")\n";
+            cout << sample_monitor.GetNumberOfFailedSamples()
                  << " # of samples failed to find solution."
                     " Latest failed sample is sample#"
                  << sample_idx
@@ -2211,6 +2260,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // for (int i = 0; i < 100; i++) {cout << '\a';}  // making noise to notify
     // break;
 
+    // Update some flags
+    bool all_samples_succeeded = sample_monitor.IsAllSuccess();
+    bool success_rate_is_high_enough = sample_monitor.IsSuccessRateHighEnough(
+        FLAGS_fail_threshold, is_get_nominal);
+
     // Logic for how to iterate
     if (start_iterations_with_shrinking_stepsize) {
       rerun_current_iteration = true;
@@ -2226,6 +2280,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Rerun the current iteration when the iteration was not successful
       rerun_current_iteration = !current_iter_is_success;
+
+      cout << "Decide how to iterate...\n";
+      cout << "has_been_all_success = " << has_been_all_success << endl;
+      cout << "all_samples_succeeded = " << all_samples_succeeded << endl;
+      cout << "success_rate_is_high_enough = " << success_rate_is_high_enough
+           << endl;
+      cout << "current_iter_is_success = " << current_iter_is_success << endl;
+      cout << "rerun_current_iteration = " << rerun_current_iteration << endl;
     }
 
     // Some checks to prevent wrong logic
@@ -2304,8 +2366,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Construct an index list for the successful sample
       std::vector<int> successful_idx_list;
-      for (uint i = 0; i < QPs.is_success_vec.size(); i++) {
-        if ((*(QPs.is_success_vec[i])) == 1) {
+      for (uint i = 0; i < N_sample; i++) {
+        if (sample_monitor.Read(i) == 1) {
           successful_idx_list.push_back(i);
         }
       }

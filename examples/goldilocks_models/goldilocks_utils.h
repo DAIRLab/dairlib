@@ -59,7 +59,7 @@ class SubQpData {
   std::vector<std::shared_ptr<Eigen::VectorXd>> ub_vec;
   std::vector<std::shared_ptr<Eigen::VectorXd>> y_vec;
   std::vector<std::shared_ptr<Eigen::MatrixXd>> B_vec;
-  std::vector<std::shared_ptr<int>> is_success_vec;
+  std::vector<std::shared_ptr<double>> is_success_vec;
 
   // Vectors/Matrices for the outer loop (when cost descent is successful)
   std::vector<std::shared_ptr<Eigen::MatrixXd>> A_active_vec;

@@ -86,8 +86,9 @@ class HybridDircon
   /// @param weld_frame_to_world The name of a frame to weld to the world frame
   ///   when parsing the model. Defaults to blank, which will not perform a weld
   void CreateVisualizationCallback(std::string model_file,
-      std::vector<unsigned int> poses_per_mode, double alpha = 1,
-      std::string weld_frame_to_world = "");
+                                   std::vector<unsigned int> poses_per_mode,
+                                   double alpha = 1,
+                                   std::string weld_frame_to_world = "");
 
   /// See CreateVisualizationCallback(std::string model_file,
   ///    std::vector<unsigned int> poses_per_mode,
@@ -98,8 +99,8 @@ class HybridDircon
   /// of frames in that mode. Since start/end poses per mdoe are required, must
   /// have num_poses >= num_modes + 1
   void CreateVisualizationCallback(std::string model_file,
-      unsigned int num_poses, double alpha = 1,
-      std::string weld_frame_to_world = "");
+                                   unsigned int num_poses, double alpha = 1,
+                                   std::string weld_frame_to_world = "");
 
   /// See CreateVisualizationCallback(std::string model_file,
   ///    unsigned int poses_per_mode,
@@ -107,7 +108,7 @@ class HybridDircon
   ///
   /// Creates a visualization callback that shows all knot points.
   void CreateVisualizationCallback(std::string model_file, double alpha = 1,
-      std::string weld_frame_to_world = "");
+                                   std::string weld_frame_to_world = "");
 
   /// Set the initial guess for the force variables for a specific mode
   /// @param mode the mode index
@@ -150,6 +151,13 @@ class HybridDircon
     return collocation_slack_vars_[mode];
   }
 
+  const drake::solvers::VectorXDecisionVariable collocation_slack_vars(
+      int mode_index, int collocation_index) const {
+    int n_lambda = num_kinematic_constraints_wo_skipping_[mode_index];
+    return collocation_slack_vars_.at(mode_index)
+        .segment(collocation_index * n_lambda, n_lambda);
+  }
+
   const drake::solvers::VectorXDecisionVariable& quaternion_slack_vars(
       int mode) const {
     return quaternion_slack_vars_[mode];
@@ -187,7 +195,7 @@ class HybridDircon
         num_kinematic_constraints_wo_skipping_[mode]);
   }
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-      collocation_force(int mode, int index) const {
+  collocation_force(int mode, int index) const {
     DRAKE_DEMAND(index < mode_lengths_[mode] - 1);
     return collocation_force_vars_[mode].segment(
         index * num_kinematic_constraints_wo_skipping_[mode],

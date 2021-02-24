@@ -221,8 +221,6 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // 3D Gip (general inverted pendulum)
     rom = std::make_unique<Gip>(plant, stance_foot, *mapping_basis,
                                 *dynamic_basis, 3);
-    // TODO: rom_option=8 is unfinished.
-    DRAKE_UNREACHABLE();
   } else {
     throw std::runtime_error("Not implemented");
   }

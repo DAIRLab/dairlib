@@ -116,6 +116,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     } else if (rom_option == 7) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           0, plant.num_positions(), skip_inds, "mapping basis");
+    } else if (rom_option == 8) {
+      mapping_basis = std::make_unique<MonomialFeatures>(
+          2, plant.num_positions(), skip_inds, "mapping basis");
     }
   }
   if (print_info) {
@@ -148,6 +151,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 7) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+  } else if (rom_option == 8) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * Lipm::kDimension(3) + 1, empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -211,6 +217,12 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     std::set<int> invariant_idx = {0, 1, 2};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
+  } else if (rom_option == 8) {
+    // 3D Gip (general inverted pendulum)
+    rom = std::make_unique<Gip>(plant, stance_foot, *mapping_basis,
+                                *dynamic_basis, 3);
+    // TODO: rom_option=8 is unfinished.
+    DRAKE_UNREACHABLE();
   } else {
     throw std::runtime_error("Not implemented");
   }

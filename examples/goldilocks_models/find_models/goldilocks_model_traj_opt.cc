@@ -115,6 +115,11 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         constraint_scale_map.insert(std::pair<int, double>(3, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(4, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(5, constraint_scale * 1.0 / 4000.0 * rom_scale));
+      } else if (rom_option == 8) {
+        // TODO: The scaling hasn't been tuned yet. These are just guessings
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 3200.0 * rom_scale));
       } else {
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);
@@ -205,6 +210,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     // TODO: need to tune variable as well.
     double tau1_scale = 26000.0;
     double tau2_scale = 4000.0;
+    double tau_scale_8 = 300;
     if (robot_option == 1) {
       int N_accum = 0;
       for (unsigned int i = 0; i < num_time_samples.size(); i++) {
@@ -225,6 +231,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
             dircon->SetVariableScaling(tau_k(0), tau1_scale);
             dircon->SetVariableScaling(tau_k(1), tau1_scale);
             dircon->SetVariableScaling(tau_k(2), tau2_scale);
+          } else if (rom_option == 8) {
+            // TODO: The scaling hasn't been tuned yet
+            dircon->SetVariableScaling(tau_k(0), tau_scale_8);
           }
         }
         N_accum += num_time_samples[i];
@@ -254,6 +263,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
               W(0, 0) /= (tau1_scale * tau1_scale);
               W(1, 1) /= (tau1_scale * tau1_scale);
               W(2, 2) /= (tau2_scale * tau2_scale);
+            } else if (rom_option == 8) {
+              // TODO: hasn't added
+              W(0, 0) /= (tau_scale_8 * tau_scale_8);
             }
           }
 

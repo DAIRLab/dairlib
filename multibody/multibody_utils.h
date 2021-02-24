@@ -137,5 +137,8 @@ Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q);
 Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
                                 const Eigen::MatrixXd& Jwrtqdot);
 
+// Get total mass of a given multibodyplant
+double GetTotalMass(const drake::multibody::MultibodyPlant<double>& plant);
+
 }  // namespace multibody
 }  // namespace dairlib

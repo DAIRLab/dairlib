@@ -239,7 +239,7 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
   int n_v_;
 
   std::vector<BodyIndex> body_indexes_;
-  double composite_mass_;
+  double composite_mass_ = 0;
 };
 
 class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {

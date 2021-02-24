@@ -155,8 +155,8 @@ class ReducedOrderModel {
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const = 0;
   virtual drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const = 0;
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const = 0;
   virtual drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v,
       const drake::systems::Context<double>& context) const = 0;
@@ -228,8 +228,8 @@ class Lipm : public ReducedOrderModel {
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const final;
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const final;
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v,
       const drake::systems::Context<double>& context) const final;
@@ -288,8 +288,8 @@ class LipmWithSwingFoot : public ReducedOrderModel {
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const final;
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const final;
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v,
       const drake::systems::Context<double>& context) const final;
@@ -342,8 +342,8 @@ class FixHeightAccel : public ReducedOrderModel {
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const final;
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const final;
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v,
       const drake::systems::Context<double>& context) const final;
@@ -396,8 +396,8 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const final;
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const final;
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v,
       const drake::systems::Context<double>& context) const final;
@@ -424,6 +424,66 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   // contact body frame and contact point of the swing foot
   const BodyPoint swing_contact_point_;
   bool is_quaternion_;
+};
+
+/// General inverted pendulum model (either 2D or 3D, determined by `world_dim`)
+class Gip : public ReducedOrderModel {
+ public:
+  static int kDimension(int world_dim) {
+    DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+    return world_dim;
+  };
+
+  Gip(const drake::multibody::MultibodyPlant<double>& plant,
+      const BodyPoint& stance_contact_point,
+      const MonomialFeatures& mapping_basis,
+      const MonomialFeatures& dynamic_basis, int world_dim,
+      const std::set<int>& invariant_elements = {});
+
+  // Copy constructor for the Clone() method
+  Gip(const Gip&);
+
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<Gip>(*this);
+  }
+
+  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+  drake::VectorX<double> EvalMappingFeat(
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
+  drake::VectorX<double> EvalDynamicFeat(
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const final;
+  drake::VectorX<double> EvalMappingFeatJV(
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
+  drake::VectorX<double> EvalMappingFeatJdotV(
+      const drake::VectorX<double>& q, const drake::VectorX<double>& v,
+      const drake::systems::Context<double>& context) const final;
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q,
+      const drake::systems::Context<double>& context) const final;
+
+  // Getters for copy constructor
+  const drake::multibody::MultibodyPlant<double>& plant() const {
+    return plant_;
+  };
+  const drake::multibody::BodyFrame<double>& world() const { return world_; };
+  const BodyPoint& stance_foot() const { return stance_contact_point_; };
+  int world_dim() const { return world_dim_; };
+
+ private:
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  // contact body frame and contact point of the stance foot
+  const BodyPoint stance_contact_point_;
+  bool is_quaternion_;
+  int world_dim_;
+
+  // Testing
+  BodyPoint pelvis_;
+
+  double total_mass_;
 };
 
 /// A class used to mirror the robot state
@@ -496,8 +556,8 @@ class MirroredReducedOrderModel : public ReducedOrderModel {
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>&) const final;
   drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const final;
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const final;
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v,
       const drake::systems::Context<double>&) const final;
@@ -557,8 +617,8 @@ class Com : public ReducedOrderModel {
       const drake::VectorX<double>& q,
       const drake::systems::Context<double>& context) const final;
   drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const final;
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const final;
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v,
       const drake::systems::Context<double>& context) const final;

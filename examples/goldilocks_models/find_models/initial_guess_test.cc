@@ -34,8 +34,8 @@ class DummyRom : public ReducedOrderModel {
     return mapping_basis().Eval(q);
   };
   drake::VectorX<double> EvalDynamicFeat(
-      const drake::VectorX<double>& y,
-      const drake::VectorX<double>& ydot) const final {
+      const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+      const drake::VectorX<double>& tau) const final {
     throw std::runtime_error("not implemented");
     return drake::VectorX<double>::Zero(0);
   };
@@ -81,7 +81,7 @@ int test_initial_guess(int iter, int sample, int robot) {
   Task task(task_gen->names());
   task.set(task_gen->NewTask(sample));
   // create rom
-  MonomialFeatures basis(1,2,{});
+  MonomialFeatures basis(1, 2, {});
   DummyRom dummy_rom(basis, basis);
   ReducedOrderModel* rom = &dummy_rom;
   int n_theta_y = rom->n_theta_y();

@@ -5,8 +5,10 @@
 
 using drake::MatrixX;
 using drake::VectorX;
+using drake::multibody::BodyIndex;
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
+using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::trajectories::PiecewisePolynomial;
@@ -349,7 +351,7 @@ VectorX<double> ReducedOrderModel::EvalMappingFunc(
 VectorX<double> ReducedOrderModel::EvalDynamicFunc(
     const VectorX<double>& y, const VectorX<double>& ydot,
     const VectorX<double>& tau) const {
-  VectorX<double> phi = EvalDynamicFeat(y, ydot);
+  VectorX<double> phi = EvalDynamicFeat(y, ydot, tau);
 
   VectorX<double> expression(n_yddot_);
   for (int i = 0; i < n_yddot_; i++) {
@@ -497,8 +499,9 @@ VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
   }
   return feature;
 }
-VectorX<double> Lipm::EvalDynamicFeat(const VectorX<double>& y,
-                                      const VectorX<double>& ydot) const {
+drake::VectorX<double> Lipm::EvalDynamicFeat(
+    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+    const drake::VectorX<double>& tau) const {
   VectorX<double> feature_extension = y.head(world_dim_ - 1);
   double z = y(world_dim_ - 1);
   if (z == 0) {
@@ -700,8 +703,9 @@ VectorX<double> LipmWithSwingFoot::EvalMappingFeat(
   }
   return feature;
 }
-VectorX<double> LipmWithSwingFoot::EvalDynamicFeat(
-    const VectorX<double>& y, const VectorX<double>& ydot) const {
+drake::VectorX<double> LipmWithSwingFoot::EvalDynamicFeat(
+    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+    const drake::VectorX<double>& tau) const {
   VectorX<double> feature_extension = y.head(world_dim_ - 1);
   double z = y(world_dim_ - 1);
   if (z == 0) {
@@ -881,8 +885,9 @@ VectorX<double> FixHeightAccel::EvalMappingFeat(
 
   return feature;
 }
-VectorX<double> FixHeightAccel::EvalDynamicFeat(
-    const VectorX<double>& y, const VectorX<double>& ydot) const {
+drake::VectorX<double> FixHeightAccel::EvalDynamicFeat(
+    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+    const drake::VectorX<double>& tau) const {
   VectorX<double> y_and_ydot(2 * kDimension);
   y_and_ydot << y, ydot;
 
@@ -1035,8 +1040,9 @@ VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeat(
 
   return feature;
 }
-VectorX<double> FixHeightAccelWithSwingFoot::EvalDynamicFeat(
-    const VectorX<double>& y, const VectorX<double>& ydot) const {
+drake::VectorX<double> FixHeightAccelWithSwingFoot::EvalDynamicFeat(
+    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+    const drake::VectorX<double>& tau) const {
   VectorX<double> y_and_ydot(2 * kDimension);
   y_and_ydot << y, ydot;
 
@@ -1126,6 +1132,219 @@ VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJdotV(
   return ret;
 }
 
+/// GIP
+// TODO: Need to make the code better:
+//  - implementation of B. Now that B is not always constant.
+// TODO: will need to add a feature to not optimize both mapping and dynamics
+// TODO: check again if the following is implmented correclty
+//  B
+//  n_feature_y
+//  n_feature_yddot
+//  only update dynamics funciton
+Gip::Gip(const MultibodyPlant<double>& plant,
+         const BodyPoint& stance_contact_point,
+         const MonomialFeatures& mapping_basis,
+         const MonomialFeatures& dynamic_basis, int world_dim,
+         const std::set<int>& invariant_elements)
+    : ReducedOrderModel(world_dim, 1, MatrixX<double>::Zero(world_dim, 1),
+                        world_dim + mapping_basis.length(),
+                        (world_dim + 1) + dynamic_basis.length(), mapping_basis,
+                        dynamic_basis, invariant_elements,
+                        to_string(world_dim) + "D GIP"),
+      plant_(plant),
+      world_(plant_.world_frame()),
+      stance_contact_point_(stance_contact_point),
+      world_dim_(world_dim),
+      pelvis_(std::pair<const Vector3d, const Frame<double>&>(
+          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
+  DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+
+  // Initialize model parameters (dependant on the feature vectors)
+  VectorX<double> theta_y =
+      VectorX<double>::Zero(varying_elements().size() * n_feature_y());
+  int row_index = 0;
+  for (auto element : varying_elements()) {
+    theta_y(element + row_index * n_feature_y()) = 1;
+    row_index++;
+  }
+  SetThetaY(theta_y);
+
+  VectorX<double> theta_yddot =
+      VectorX<double>::Zero(n_yddot() * n_feature_yddot());
+  int i;
+  for (i = 0; i < world_dim; i++) {
+    theta_yddot(i + i * n_feature_yddot()) = 1;
+  }
+  theta_yddot(i + (i - 1) * n_feature_yddot()) = 1;
+
+  SetThetaYddot(theta_yddot);
+
+  is_quaternion_ = isQuaternion(plant);
+
+  // Get total mass of the robot
+  total_mass_ = multibody::GetTotalMass(plant);
+
+  // Always check dimension after model construction
+  CheckModelConsistency();
+}
+
+// Copy constructor
+Gip::Gip(const Gip& old_obj)
+    : ReducedOrderModel(old_obj),
+      plant_(old_obj.plant()),
+      world_(old_obj.world()),
+      stance_contact_point_(old_obj.stance_foot()),
+      is_quaternion_(isQuaternion(old_obj.plant())),
+      world_dim_(old_obj.world_dim()),
+      pelvis_(std::pair<const Vector3d, const Frame<double>&>(
+          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {}
+
+VectorX<double> Gip::EvalMappingFeat(const VectorX<double>& q,
+                                     const Context<double>& context) const {
+  // Get CoM position
+  VectorX<double> CoM(3);
+  if (use_pelvis) {
+    // testing using pelvis
+    plant_.CalcPointsPositions(context, pelvis_.second, pelvis_.first,
+                               plant_.world_frame(), &CoM);
+  } else {
+    CoM = plant_.CalcCenterOfMassPosition(context);
+  }
+
+  // Stance foot position
+  VectorX<double> stance_foot_pos(3);
+  plant_.CalcPointsPositions(context, stance_contact_point_.second,
+                             stance_contact_point_.first, plant_.world_frame(),
+                             &stance_foot_pos);
+  VectorX<double> st_to_CoM = CoM - stance_foot_pos;
+
+  VectorX<double> feature(n_feature_y());
+  if (world_dim_ == 2) {
+    feature << st_to_CoM(0), st_to_CoM(2), mapping_basis().Eval(q);
+  } else {
+    feature << st_to_CoM, mapping_basis().Eval(q);
+  }
+  return feature;
+}
+drake::VectorX<double> Gip::EvalDynamicFeat(
+    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+    const drake::VectorX<double>& tau) const {
+  double l = y.norm();
+  if (l == 0) {
+    cout << "avoid singularity in dynamics_expression\n";
+    l = 1e-8;
+  }
+
+  VectorX<double> feature_extension(world_dim_ + 1);
+  feature_extension.head(world_dim_) = y / l * tau(0);
+  feature_extension.tail(1) << -9.80665 * total_mass_;
+
+  VectorX<double> y_ydot_and_tau(2 * n_y() + n_tau());
+  y_ydot_and_tau << y, ydot, tau;
+
+  VectorX<double> feature(n_feature_yddot());
+  feature << feature_extension, dynamic_basis().Eval(y_ydot_and_tau);
+  return feature;
+}
+VectorX<double> Gip::EvalMappingFeatJV(const VectorX<double>& q,
+                                       const VectorX<double>& v,
+                                       const Context<double>& context) const {
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  if (use_pelvis) {
+    // testing using pelvis
+    plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
+                                             pelvis_.second, pelvis_.first,
+                                             world_, world_, &J_com);
+  } else {
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  }
+  // Stance foot velocity
+  MatrixX<double> J_sf(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_, &J_sf);
+  VectorX<double> JV_st_to_CoM = (J_com - J_sf) * v;
+
+  // Convert v to qdot
+  VectorX<double> qdot(plant_.num_positions());
+  plant_.MapVelocityToQDot(context, v, &qdot);
+
+  VectorX<double> ret(n_feature_y());
+  if (world_dim_ == 2) {
+    ret << JV_st_to_CoM(0), JV_st_to_CoM(2), mapping_basis().EvalJV(q, qdot);
+  } else {
+    ret << JV_st_to_CoM, mapping_basis().EvalJV(q, qdot);
+  }
+  return ret;
+}
+MatrixX<double> Gip::EvalMappingFeatJ(const VectorX<double>& q,
+                                      const Context<double>& context) const {
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  if (use_pelvis) {
+    // testing using pelvis
+    plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
+                                             pelvis_.second, pelvis_.first,
+                                             world_, world_, &J_com);
+  } else {
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  }
+  // Stance foot velocity
+  MatrixX<double> J_sf(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_, &J_sf);
+  MatrixX<double> J_st_to_CoM = J_com - J_sf;
+
+  MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
+  if (world_dim_ == 2) {
+    ret << J_st_to_CoM.row(0), J_st_to_CoM.row(2),
+        is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                       : mapping_basis().EvalJwrtqdot(q);
+  } else {
+    ret << J_st_to_CoM,
+        is_quaternion_ ? JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q))
+                       : mapping_basis().EvalJwrtqdot(q);
+  }
+  return ret;
+}
+VectorX<double> Gip::EvalMappingFeatJdotV(
+    const VectorX<double>& q, const VectorX<double>& v,
+    const Context<double>& context) const {
+  // Get CoM JdotV
+  VectorX<double> JdotV_com(3);
+  if (use_pelvis) {
+    // Testing: use pelvis origin
+    JdotV_com = plant_.CalcBiasTranslationalAcceleration(
+        context, JacobianWrtVariable::kV, pelvis_.second, pelvis_.first, world_,
+        world_);
+  } else {
+    JdotV_com = plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+        context, JacobianWrtVariable::kV, world_, world_);
+  }
+  // Stance foot JdotV
+  VectorX<double> JdotV_st = plant_.CalcBiasTranslationalAcceleration(
+      context, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_);
+  VectorX<double> JdotV_st_to_com = JdotV_com - JdotV_st;
+
+  // Convert v to qdot
+  VectorX<double> qdot(plant_.num_positions());
+  plant_.MapVelocityToQDot(context, v, &qdot);
+
+  VectorX<double> ret(n_feature_y());
+  if (world_dim_ == 2) {
+    ret << JdotV_st_to_com(0), JdotV_st_to_com(2),
+        mapping_basis().EvalJdotV(q, qdot);
+  } else {
+    ret << JdotV_st_to_com, mapping_basis().EvalJdotV(q, qdot);
+  }
+  return ret;
+}
+
 /// State Mirror
 StateMirror::StateMirror(std::map<int, int> mirror_pos_index_map,
                          std::set<int> mirror_pos_sign_change_set,
@@ -1211,9 +1430,10 @@ VectorX<double> MirroredReducedOrderModel::EvalMappingFeat(
   return original_rom_.EvalMappingFeat(x_mirrored_.head(plant_.num_positions()),
                                        *context_mirrored_);
 }
-VectorX<double> MirroredReducedOrderModel::EvalDynamicFeat(
-    const VectorX<double>& y, const VectorX<double>& ydot) const {
-  return original_rom_.EvalDynamicFeat(y, ydot);
+drake::VectorX<double> MirroredReducedOrderModel::EvalDynamicFeat(
+    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+    const drake::VectorX<double>& tau) const {
+  return original_rom_.EvalDynamicFeat(y, ydot, tau);
 }
 VectorX<double> MirroredReducedOrderModel::EvalMappingFeatJV(
     const VectorX<double>& q, const VectorX<double>& v,
@@ -1308,8 +1528,9 @@ VectorX<double> testing::Com::EvalMappingFeat(
   feature << CoM, mapping_basis().Eval(q);
   return feature;
 };
-VectorX<double> testing::Com::EvalDynamicFeat(
-    const VectorX<double>& y, const VectorX<double>& ydot) const {
+drake::VectorX<double> testing::Com::EvalDynamicFeat(
+    const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
+    const drake::VectorX<double>& tau) const {
   VectorX<double> feature(n_feature_yddot());
   cout << "Warning: EvalDynamicFeat is not implemented\n";
   return feature;

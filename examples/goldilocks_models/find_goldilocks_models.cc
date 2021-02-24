@@ -2224,7 +2224,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // 1. any sample failed after a all-success iteration
           // 2. fail rate higher than threshold before seeing all-success
           // iteration
-          if ((has_been_all_success && no_sample_failed_so_far) ||
+          if ((has_been_all_success && !no_sample_failed_so_far) ||
               (!has_been_all_success && (!success_rate_is_high_enough))) {
             // Wait for the assigned threads to join, and then break;
             cout << "(has_been_all_success, no_sample_failed_so_far, "

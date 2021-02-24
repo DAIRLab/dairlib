@@ -1741,6 +1741,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.max_iter = max_inner_iter;
   inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
   inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
+  inner_loop_setting.snopt_log = true;
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
   inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;
@@ -1752,6 +1753,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << endl;
   cout << "cubic_spline_in_rom_constraint = "
        << inner_loop_setting.cubic_spline_in_rom_constraint << endl;
+  if (inner_loop_setting.snopt_log) {
+    cout << "WARNING: you are printing snopt log for Cassie (could slow down "
+            "the optimization)!\n";
+  }
 
   // Construct reduced order model
   cout << "\nReduced-order model setting:\n";

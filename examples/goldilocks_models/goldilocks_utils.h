@@ -30,6 +30,7 @@ class InnerLoopSetting {
   int max_iter;
   double major_optimality_tol;
   double major_feasibility_tol;
+  bool snopt_log;
   bool snopt_scaling;
   bool use_ipopt;
 

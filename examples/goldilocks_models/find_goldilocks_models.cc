@@ -2214,7 +2214,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           bool success_rate_is_high_enough =
               sample_monitor.IsSuccessRateHighEnough(FLAGS_fail_threshold,
                                                      is_get_nominal);
-          cout << "Update success/fail flags...\n";
+          cout << "Update success/fail flags after sample_idx #" << sample_idx
+               << "... ";
           cout << "(no_sample_failed_so_far, "
                   "success_rate_is_high_enough) = ("
                << no_sample_failed_so_far << ", " << success_rate_is_high_enough
@@ -2281,13 +2282,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Rerun the current iteration when the iteration was not successful
       rerun_current_iteration = !current_iter_is_success;
 
-      cout << "Decide how to iterate...\n";
+      cout << "\nDecide how to iterate...\n";
       cout << "has_been_all_success = " << has_been_all_success << endl;
       cout << "all_samples_succeeded = " << all_samples_succeeded << endl;
       cout << "success_rate_is_high_enough = " << success_rate_is_high_enough
            << endl;
       cout << "current_iter_is_success = " << current_iter_is_success << endl;
-      cout << "rerun_current_iteration = " << rerun_current_iteration << endl;
+      cout << "rerun_current_iteration = " << rerun_current_iteration << "\n\n";
     }
 
     // Some checks to prevent wrong logic

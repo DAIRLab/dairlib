@@ -1,6 +1,8 @@
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
 
 #include <chrono>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -3400,15 +3402,21 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   if (is_print_for_debugging) {
+    // Write to a file to keep standard output clean.
+    std::ofstream myfile;
+    myfile.open(setting.directory + setting.prefix +
+                    "trajopt_settings_and_cost_breakdown.txt",
+                std::ios::app);
+
     // w_sol is not assigned when snopt didn't solve the problem successfully
     if (w_sol.size() > 0) {
       // Impulse variable's value
       for (int i = w_sol.size() - rs_dataset.countConstraints() - 1;
            i < w_sol.size(); i++) {
-        cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
-             << w_sol[i] << endl;
+        myfile << i << ": " << gm_traj_opt.dircon->decision_variables()[i]
+               << ", " << w_sol[i] << endl;
       }
-      cout << endl;
+      myfile << endl;
     }
 
     // Extract result for printing
@@ -3417,23 +3425,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     MatrixXd input_at_knots = gm_traj_opt.dircon->GetInputSamples(result);
 
     // Print weight
-    cout << "\nw_Q = " << w_Q << endl;
-    cout << "w_Q_vy = " << w_Q_vy << endl;
-    cout << "w_Q_vz = " << w_Q_vz << endl;
-    cout << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
-    cout << "w_R = " << w_R << endl;
-    cout << "w_R_swing_toe = " << w_R_swing_toe << endl;
-    cout << "w_lambda = " << w_lambda << endl;
-    cout << "w_lambda_diff = " << w_lambda_diff << endl;
-    cout << "w_q_diff = " << w_q_diff << endl;
-    cout << "w_q_diff_swing_toe = " << w_q_diff_swing_toe << endl;
-    cout << "w_v_diff = " << w_v_diff << endl;
-    cout << "w_v_diff_swing_leg = " << w_v_diff_swing_leg << endl;
-    cout << "w_u_diff = " << w_u_diff << endl;
-    cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
-    cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
-    cout << "w_q_quat = " << w_q_quat << endl;
-    cout << "w_joint_accel = " << w_joint_accel << endl;
+    myfile << "\nw_Q = " << w_Q << endl;
+    myfile << "w_Q_vy = " << w_Q_vy << endl;
+    myfile << "w_Q_vz = " << w_Q_vz << endl;
+    myfile << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
+    myfile << "w_R = " << w_R << endl;
+    myfile << "w_R_swing_toe = " << w_R_swing_toe << endl;
+    myfile << "w_lambda = " << w_lambda << endl;
+    myfile << "w_lambda_diff = " << w_lambda_diff << endl;
+    myfile << "w_q_diff = " << w_q_diff << endl;
+    myfile << "w_q_diff_swing_toe = " << w_q_diff_swing_toe << endl;
+    myfile << "w_v_diff = " << w_v_diff << endl;
+    myfile << "w_v_diff_swing_leg = " << w_v_diff_swing_leg << endl;
+    myfile << "w_u_diff = " << w_u_diff << endl;
+    myfile << "w_q_hip_roll = " << w_q_hip_roll << endl;
+    myfile << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
+    myfile << "w_q_quat = " << w_q_quat << endl;
+    myfile << "w_joint_accel = " << w_joint_accel << endl;
 
     // Calculate each term of the cost
     double total_cost = 0;
@@ -3446,7 +3454,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       cost_x += ((v1.transpose() * W_Q * v1) * h / 2)(0);
     }
     total_cost += cost_x;
-    cout << "cost_x = " << cost_x << endl;
+    myfile << "cost_x = " << cost_x << endl;
     double cost_u = 0;
     for (int i = 0; i < N - 1; i++) {
       auto u0 = input_at_knots.col(i);
@@ -3462,7 +3470,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
           ((u_post_impact.transpose() * W_R * u_post_impact) * fixed_dt / 2)(0);
     }
     total_cost += cost_u;
-    cout << "cost_u = " << cost_u << endl;
+    myfile << "cost_u = " << cost_u << endl;
     double cost_lambda = 0;
     for (unsigned int i = 0; i < num_time_samples.size(); i++) {
       for (int j = 0; j < num_time_samples[i]; j++) {
@@ -3471,9 +3479,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
     }
     total_cost += cost_lambda;
-    cout << "cost_lambda (at knots) = " << cost_lambda << endl;
+    myfile << "cost_lambda (at knots) = " << cost_lambda << endl;
     // TODO: Sum collocation force cost
-    cout << "cost_lambda (at collocation points) = ..." << endl;
+    myfile << "cost_lambda (at collocation points) = ..." << endl;
     // cost on force difference wrt time
     double cost_lambda_diff = 0;
     for (int i = 0; i < N - 1; i++) {
@@ -3492,7 +3500,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
     }
     total_cost += cost_lambda_diff;
-    cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
+    myfile << "cost_lambda_diff = " << cost_lambda_diff << endl;
     // cost on pos difference wrt time
     double cost_pos_diff = 0;
     for (int i = 0; i < N - 1; i++) {
@@ -3501,7 +3509,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       cost_pos_diff += (q0 - q1).dot(Q_q_diff * (q0 - q1));
     }
     total_cost += cost_pos_diff;
-    cout << "cost_pos_diff = " << cost_pos_diff << endl;
+    myfile << "cost_pos_diff = " << cost_pos_diff << endl;
     // cost on vel difference wrt time
     double cost_vel_diff = 0;
     for (int i = 0; i < N - 1; i++) {
@@ -3510,7 +3518,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       cost_vel_diff += (v0 - v1).dot(Q_v_diff * (v0 - v1));
     }
     total_cost += cost_vel_diff;
-    cout << "cost_vel_diff = " << cost_vel_diff << endl;
+    myfile << "cost_vel_diff = " << cost_vel_diff << endl;
     // cost on input difference wrt time
     double cost_u_diff = 0;
     for (int i = 0; i < N - 1; i++) {
@@ -3519,7 +3527,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       cost_u_diff += w_u_diff * (u0 - u1).dot(u0 - u1);
     }
     total_cost += cost_u_diff;
-    cout << "cost_u_diff = " << cost_u_diff << endl;
+    myfile << "cost_u_diff = " << cost_u_diff << endl;
     // add cost on joint position
     double cost_q_hip_roll = 0;
     for (int i = 0; i < N; i++) {
@@ -3527,14 +3535,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       cost_q_hip_roll += w_q_hip_roll * q.transpose() * q;
     }
     total_cost += cost_q_hip_roll;
-    cout << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
+    myfile << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
     double cost_q_hip_yaw = 0;
     for (int i = 0; i < N; i++) {
       auto q = result.GetSolution(gm_traj_opt.dircon->state(i).segment(9, 2));
       cost_q_hip_yaw += w_q_hip_yaw * q.transpose() * q;
     }
     total_cost += cost_q_hip_yaw;
-    cout << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
+    myfile << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
     // add cost on quaternion
     double cost_q_quat_xyz = 0;
     for (int i = 0; i < N; i++) {
@@ -3548,7 +3556,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
           w_q_quat * (quat - desired_quat).transpose() * (quat - desired_quat);
     }
     total_cost += cost_q_quat_xyz;
-    cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
+    myfile << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
     double cost_joint_acceleration = 0;
     if (add_joint_acceleration_cost) {
       int n_mode =
@@ -3574,138 +3582,100 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
     }
     total_cost += cost_joint_acceleration;
-    cout << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
+    myfile << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
 
-    cout << "total_cost (only the nominal traj cost terms) = " << total_cost
-         << endl;
+    myfile << "total_cost (only the nominal traj cost terms) = " << total_cost
+           << endl;
 
     // Constraints
-    cout << endl;
-    cout << "swing_foot_ground_clearance = " << swing_foot_ground_clearance
-         << endl;
-    cout << "swing_foot_mid_xy = " << swing_foot_mid_xy << endl;
-    cout << "swing_leg_collision_avoidance = " << swing_leg_collision_avoidance
-         << endl;
-    cout << "periodic_quaternion (only effective when turning rate = 0) = "
-         << periodic_quaternion << endl;
-    cout << "periodic_joint_pos = " << periodic_joint_pos << endl;
-    cout << "periodic_floating_base_vel = " << periodic_floating_base_vel
-         << endl;
-    cout << "periodic_joint_vel = " << periodic_joint_vel << endl;
-    cout << "periodic_effort = " << periodic_effort << endl;
-    cout << "ground_normal_force_margin = " << ground_normal_force_margin
-         << endl;
-    cout << "zero_com_height_vel = " << zero_com_height_vel << endl;
-    cout << "zero_com_height_vel_difference = "
-         << zero_com_height_vel_difference << endl;
-    cout << "zero_pelvis_height_vel = " << zero_pelvis_height_vel << endl;
-    cout << "constrain_stance_leg_fourbar_force = "
-         << constrain_stance_leg_fourbar_force << endl;
-    cout << "four_bar_in_right_support = " << four_bar_in_right_support << endl;
+    myfile << endl;
+    myfile << "swing_foot_ground_clearance = " << swing_foot_ground_clearance
+           << endl;
+    myfile << "swing_foot_mid_xy = " << swing_foot_mid_xy << endl;
+    myfile << "swing_leg_collision_avoidance = "
+           << swing_leg_collision_avoidance << endl;
+    myfile << "periodic_quaternion (only effective when turning rate = 0) = "
+           << periodic_quaternion << endl;
+    myfile << "periodic_joint_pos = " << periodic_joint_pos << endl;
+    myfile << "periodic_floating_base_vel = " << periodic_floating_base_vel
+           << endl;
+    myfile << "periodic_joint_vel = " << periodic_joint_vel << endl;
+    myfile << "periodic_effort = " << periodic_effort << endl;
+    myfile << "ground_normal_force_margin = " << ground_normal_force_margin
+           << endl;
+    myfile << "zero_com_height_vel = " << zero_com_height_vel << endl;
+    myfile << "zero_com_height_vel_difference = "
+           << zero_com_height_vel_difference << endl;
+    myfile << "zero_pelvis_height_vel = " << zero_pelvis_height_vel << endl;
+    myfile << "constrain_stance_leg_fourbar_force = "
+           << constrain_stance_leg_fourbar_force << endl;
+    myfile << "four_bar_in_right_support = " << four_bar_in_right_support
+           << endl;
 
-    cout << endl;
-    cout << "only_one_mode = " << only_one_mode << endl;
+    myfile << endl;
+    myfile << "only_one_mode = " << only_one_mode << endl;
     if (only_one_mode) {
       if (one_mode_full_states_constraint_at_boundary) {
-        cout << "  one_mode_full_states_constraint_at_boundary" << endl;
+        myfile << "  one_mode_full_states_constraint_at_boundary" << endl;
       } else if (one_mode_full_positions_constraint_at_boundary) {
-        cout << "  one_mode_full_positions_constraint_at_boundary" << endl;
+        myfile << "  one_mode_full_positions_constraint_at_boundary" << endl;
       } else if (one_mode_base_x_constraint_at_boundary) {
-        cout << "  one_mode_base_x_constraint_at_boundary" << endl;
+        myfile << "  one_mode_base_x_constraint_at_boundary" << endl;
       }
     }
-    cout << "add_cost_on_collocation_vel = " << add_cost_on_collocation_vel
-         << endl;
-    cout << "add_joint_acceleration_cost = " << add_joint_acceleration_cost
-         << endl;
-    cout << "lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = "
-         << lower_bound_on_ground_reaction_force_at_the_first_and_last_knot
-         << endl;
-    cout << "not_trapo_integration_cost = " << not_trapo_integration_cost
-         << endl;
-    cout << "add_joint_acceleration_constraint = "
-         << add_joint_acceleration_constraint
-         << "; (lb, ub) = " << joint_accel_lb << ", " << joint_accel_ub << endl;
-    cout << "add_hip_roll_pos_constraint = " << add_hip_roll_pos_constraint
-         << "; (lb, ub) = " << hip_roll_pos_lb << ", " << hip_roll_pos_ub
-         << endl;
-    cout << "add_base_vy_constraint = " << add_base_vy_constraint
-         << "; (lb, ub) = " << base_vy_lb << ", " << base_vy_ub << endl;
+    myfile << "add_cost_on_collocation_vel = " << add_cost_on_collocation_vel
+           << endl;
+    myfile << "add_joint_acceleration_cost = " << add_joint_acceleration_cost
+           << endl;
+    myfile
+        << "lower_bound_on_ground_reaction_force_at_the_first_and_last_knot = "
+        << lower_bound_on_ground_reaction_force_at_the_first_and_last_knot
+        << endl;
+    myfile << "not_trapo_integration_cost = " << not_trapo_integration_cost
+           << endl;
+    myfile << "add_joint_acceleration_constraint = "
+           << add_joint_acceleration_constraint
+           << "; (lb, ub) = " << joint_accel_lb << ", " << joint_accel_ub
+           << endl;
+    myfile << "add_hip_roll_pos_constraint = " << add_hip_roll_pos_constraint
+           << "; (lb, ub) = " << hip_roll_pos_lb << ", " << hip_roll_pos_ub
+           << endl;
+    myfile << "add_base_vy_constraint = " << add_base_vy_constraint
+           << "; (lb, ub) = " << base_vy_lb << ", " << base_vy_ub << endl;
 
-    cout << "pre_and_post_impact_efforts = " << pre_and_post_impact_efforts
-         << endl;
+    myfile << "pre_and_post_impact_efforts = " << pre_and_post_impact_efforts
+           << endl;
     if (pre_and_post_impact_efforts) {
-      cout << "u_pre_impact = "
-           << result.GetSolution(gm_traj_opt.dircon->input(N - 1)).transpose()
-           << endl;
-      cout << "u_post_impact = "
-           << result
-                  .GetSolution(gm_traj_opt.dircon->input_vars_by_mode(
-                      num_time_samples.size() - 1,
-                      num_time_samples[num_time_samples.size() - 1] - 1))
-                  .transpose()
-           << endl;
+      myfile << "u_pre_impact = "
+             << result.GetSolution(gm_traj_opt.dircon->input(N - 1)).transpose()
+             << endl;
+      myfile << "u_post_impact = "
+             << result
+                    .GetSolution(gm_traj_opt.dircon->input_vars_by_mode(
+                        num_time_samples.size() - 1,
+                        num_time_samples[num_time_samples.size() - 1] - 1))
+                    .transpose()
+             << endl;
     }
 
-    cout << "remove_ankle_joint_from_periodicity = "
-         << remove_ankle_joint_from_periodicity << endl;
-    cout << "relax_vel_periodicity_constraint = "
-         << relax_vel_periodicity_constraint
-         << "; (eps_vel_period = " << eps_vel_period << ")\n";
-    cout << "relax_pos_periodicity_constraint = "
-         << relax_pos_periodicity_constraint
-         << "; (eps_pos_period = " << eps_pos_period << ")\n";
-    cout << "one_dof_periodic_floating_base_vel = "
-         << one_dof_periodic_floating_base_vel << endl;
+    myfile << "remove_ankle_joint_from_periodicity = "
+           << remove_ankle_joint_from_periodicity << endl;
+    myfile << "relax_vel_periodicity_constraint = "
+           << relax_vel_periodicity_constraint
+           << "; (eps_vel_period = " << eps_vel_period << ")\n";
+    myfile << "relax_pos_periodicity_constraint = "
+           << relax_pos_periodicity_constraint
+           << "; (eps_pos_period = " << eps_pos_period << ")\n";
+    myfile << "one_dof_periodic_floating_base_vel = "
+           << one_dof_periodic_floating_base_vel << endl;
 
-    cout << "much_bigger_weight_at_last_knot = "
-         << much_bigger_weight_at_last_knot
-         << " (note that it's not calculated in the solution costs above)\n";
+    myfile << "much_bigger_weight_at_last_knot = "
+           << much_bigger_weight_at_last_knot
+           << " (note that it's not calculated in the solution costs above)\n";
 
-    cout << endl;
+    myfile << endl;
 
-    // Testing -- checking Jacobian in impact and kinematic constraint
-    if (false) {
-      auto kin_constraint = gm_traj_opt.dircon->GetKinematicConstraintStart(1);
-
-      auto xi =
-          result.GetSolution(gm_traj_opt.dircon->state_vars_by_mode(1, 0));
-      auto ui = result.GetSolution(
-          (only_one_mode || !pre_and_post_impact_efforts)
-              ? gm_traj_opt.dircon->input(num_time_samples[0] - 1)
-              : gm_traj_opt.dircon->input_vars_by_mode(1, 0));
-      auto li = result.GetSolution(gm_traj_opt.dircon->force(1, 0));
-      auto offset = result.GetSolution(gm_traj_opt.dircon->offset_vars(1));
-
-      auto context = plant.CreateDefaultContext();
-      multibody::setContext<double>(plant, xi, ui, context.get());
-      auto data_set = kin_constraint->GetDirconKinematicDataSet();
-      data_set->updateData(*context, li);
-      std::cout << "in kinematics, J = \n"
-                << data_set->getJWithoutSkipping() << std::endl;
-    }
-    if (false) {
-      auto impact_constraint = gm_traj_opt.dircon->GetImpactConstraint(0);
-
-      auto xi = result.GetSolution(
-          gm_traj_opt.dircon->state_vars_by_mode(0, num_time_samples[0] - 1));
-      auto Li = result.GetSolution(gm_traj_opt.dircon->impulse_vars(0));
-      auto vp =
-          result.GetSolution(gm_traj_opt.dircon->v_post_impact_vars_by_mode(0));
-
-      const VectorX<double> u = VectorXd::Zero(plant.num_actuators());
-      auto context = plant.CreateDefaultContext();
-      multibody::setContext<double>(plant, xi, u, context.get());
-      auto data_set = impact_constraint->GetDirconKinematicDataSet();
-      data_set->updateData(*context, Li);
-      std::cout << "in impact, J = \n"
-                << data_set->getJWithoutSkipping() << std::endl;
-
-      cout << "J*v0 = " << data_set->getJWithoutSkipping() * xi.tail(n_v)
-           << endl;
-      cout << "J*vp = " << data_set->getJWithoutSkipping() * vp << endl;
-    }
-
+    myfile.close();
   }  // end if is_print_for_debugging
 }
 

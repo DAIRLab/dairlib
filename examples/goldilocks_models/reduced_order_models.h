@@ -199,6 +199,9 @@ class ReducedOrderModel {
   std::set<int> invariant_elements_;
 };
 
+/// Reminder: Must update the copy constructor when adding a new member to a ROM
+/// derived class. Otherwise, there will be a memory bug.
+
 /// Linear inverted pendulum model (either 2D or 3D, determined by `world_dim`)
 class Lipm : public ReducedOrderModel {
  public:
@@ -471,6 +474,7 @@ class Gip : public ReducedOrderModel {
   const drake::multibody::BodyFrame<double>& world() const { return world_; };
   const BodyPoint& stance_foot() const { return stance_contact_point_; };
   int world_dim() const { return world_dim_; };
+  double total_mass() const { return total_mass_; };
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -480,10 +484,10 @@ class Gip : public ReducedOrderModel {
   bool is_quaternion_;
   int world_dim_;
 
+  double total_mass_;
+
   // Testing
   BodyPoint pelvis_;
-
-  double total_mass_;
 };
 
 /// A class used to mirror the robot state

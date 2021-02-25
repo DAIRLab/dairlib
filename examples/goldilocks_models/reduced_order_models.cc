@@ -1183,6 +1183,8 @@ Gip::Gip(const MultibodyPlant<double>& plant,
 
   // Get total mass of the robot
   total_mass_ = multibody::GetTotalMass(plant);
+  cout << "total_mass_ = " << total_mass_ << endl;
+  DRAKE_DEMAND(total_mass_ > 0);
 
   // Always check dimension after model construction
   CheckModelConsistency();
@@ -1196,6 +1198,7 @@ Gip::Gip(const Gip& old_obj)
       stance_contact_point_(old_obj.stance_foot()),
       is_quaternion_(isQuaternion(old_obj.plant())),
       world_dim_(old_obj.world_dim()),
+      total_mass_(old_obj.total_mass()),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
           Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {}
 
@@ -1236,8 +1239,8 @@ drake::VectorX<double> Gip::EvalDynamicFeat(
   }
 
   VectorX<double> feature_extension(world_dim_ + 1);
-  feature_extension.head(world_dim_) = y / l * tau(0);
-  feature_extension.tail(1) << -9.80665 * total_mass_;
+  feature_extension.head(world_dim_) = y / l * tau(0) / total_mass_;
+  feature_extension.tail(1) << -9.80665;
 
   VectorX<double> y_ydot_and_tau(2 * n_y() + n_tau());
   y_ydot_and_tau << y, ydot, tau;

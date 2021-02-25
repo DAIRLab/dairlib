@@ -14,6 +14,7 @@ class PlotStyler():
     self.blue = '#011F5B'
     self.red = '#990000'
     self.yellow = '#F2C000'
+    self.grey = '#909090'
     self.directory = None
     return
 
@@ -70,8 +71,8 @@ class PlotStyler():
     plt.savefig(self.directory + filename, dpi=200)
     return
 
-  def add_legend(self, legend):
-    plt.legend(legend)
+  def add_legend(self, legend, loc=0):
+    plt.legend(legend, loc=loc)
     return
 
   def annotate(self, text, x, y, x_text, y_text, arrowprops=None):

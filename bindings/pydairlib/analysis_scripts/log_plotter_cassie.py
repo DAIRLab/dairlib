@@ -4,6 +4,7 @@ import lcm
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.linalg as linalg
 import process_lcm_log
 import pathlib
 from pydrake.multibody.parsing import Parser
@@ -16,6 +17,7 @@ import pydairlib.multibody
 from pydairlib.cassie.cassie_utils import *
 
 from pydairlib.common import FindResourceOrThrow
+from bindings.pydairlib.parameter_studies.plot_styler import PlotStyler
 
 
 def main():
@@ -32,6 +34,15 @@ def main():
   global act_map
   global controller_channel
   global td_time
+  global ps
+  global pos_map_spr_to_wo_spr
+  global vel_map_spr_to_wo_spr
+
+  load_maps()
+
+  figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
+  ps = PlotStyler()
+  ps.set_default_styling(directory=figure_directory)
 
   builder = DiagramBuilder()
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
@@ -60,6 +71,7 @@ def main():
   r_toe_frame = plant_w_spr.GetBodyByName("toe_right").body_frame()
   world = plant_w_spr.world_frame()
   context = plant_w_spr.CreateDefaultContext()
+  context_wo_spr = plant_wo_spr.CreateDefaultContext()
 
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
@@ -107,8 +119,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 2.5
-  # t_end = 2.8
+  t_start = 30.635
+  t_end = 30.68
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
@@ -122,8 +134,17 @@ def main():
   # plt.show()
 
   ### All plotting scripts here
+
+
+  # plt.figure("Impact_Event")
+  # t_u_slice = slice(np.argwhere(np.abs(osc_debug['com_traj'].t - (td_time)) < 1e-3)[0][0], np.argwhere(np.abs(t_u - (td_time + 0.2)) < 1e-3)[0][0])
+  # plot_osc(osc_debug, 'com_traj', 2, "vel")
+  # t_u_slice = slice(np.argwhere(np.abs(osc_debug['left_ft_traj'].t - (td_time - 0.2)) < 1e-3)[0][0], np.argwhere(np.abs(t_u - (td_time)) < 1e-3)[0][0])
+  # plot_osc(osc_debug, 'left_ft_traj', 2, "vel")
+
   # plot_status(full_log)
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  plot_ii_projection(t_x, x, plant_w_spr, context)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
 
   # u_nominal = np.zeros((t_u[t_u_slice].shape[0], nu))
   # for t in range(t_u[t_u_slice].shape[0]):
@@ -132,13 +153,12 @@ def main():
 
   # plot_contact_est(full_log)\
   # plt.figure("Impact Event")
-  # plt.plot(t_contact_info[t_slice], 1e-3 * (contact_info[0, t_slice, 2] + contact_info[1, t_slice, 2]), 'b-')
-  # plt.plot(t_contact_info[t_slice], 1e-3 * (contact_info[2, t_slice, 2] + contact_info[3, t_slice, 2]), 'r-')
+  # plt.plot(t_contact_info[t_slice], (contact_info[0, t_slice, s2] + contact_info[3, t_slice, 2]), 'r-')
   # plt.plot([td_time, td_time], [0, 10])
   # plt.legend(['left foot', 'right foot'])
   # plt.plot(t_u[t_u_slice], 100 * fsm[t_u_slice], 'k')
 
-  if True:
+  if False:
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "left_", "_front")
@@ -153,7 +173,7 @@ def main():
                         world, t_x, t_slice, "right_", "_rear")
     # plt.plot(t_u[t_u_slice], 0.025*fsm[t_u_slice])
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
   plt.show()
 
@@ -268,11 +288,12 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   #
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
   # plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plot_osc(osc_debug, osc_traj1, 1, "pos")
   # plot_osc(osc_debug, osc_traj1, 2, "pos")
+  plot_osc(osc_debug, osc_traj1, 2, "vel")
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
@@ -280,7 +301,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
+  plot_osc(osc_debug, osc_traj2, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "accel")
   # plot_osc(osc_debug, osc_traj1, 1, "accel")
@@ -392,23 +413,23 @@ def plot_id_debug(t_u, osc_debug, osc_output):
 def plot_osc(osc_debug, osc_traj, dim, derivative):
   fig = plt.figure(osc_traj + " " + derivative + " tracking " + str(dim))
   if (derivative == "pos"):
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].y_des[t_u_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].y[t_u_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_y[t_u_slice, dim])
-    plt.legend(["y_des", "y", "error_y"])
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].y_des[t_u_slice, dim])
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].y[t_u_slice, dim])
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_y[t_u_slice, dim])
+    ps.add_legend(["y_des", "y", "error_y"])
     # plt.legend(["y_des", "y"])
   elif (derivative == "vel"):
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot[t_u_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim] - osc_debug[osc_traj].ydot[t_u_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim])
-    plt.legend(["ydot_des", "ydot", "error_ydot", "corrected_error"])
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim], linestyle=ps.blue)
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot[t_u_slice, dim], linestyle=ps.red)
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim] - osc_debug[osc_traj].ydot[t_u_slice, dim], linestyle=ps.yellow)
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim], linestyle=ps.grey)
+    ps.add_legend(["ydot_des", "ydot", "error_ydot", "projected_error_ydot"])
     # plt.legend(["error_ydot", "corrected_error"])
   elif (derivative == "accel"):
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_des[t_u_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command[t_u_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command_sol[t_u_slice, dim])
-    plt.legend(["yddot_des", "yddot_command", "yddot_command_sol"])
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_des[t_u_slice, dim])
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command[t_u_slice, dim])
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command_sol[t_u_slice, dim])
+    ps.add_legend(["yddot_des", "yddot_command", "yddot_command_sol"])
 
 
 def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
@@ -423,7 +444,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world,
       world) @ x[i, -nv:]
   # fig = plt.figure('foot pos: ' + filename)
-  plt.figure("Impact Event")
+  # plt.figure("Impact Event")
 
   # state_indices = slice(4, 5)
   # state_indices = slice(2, 3)
@@ -488,6 +509,72 @@ def compare_ekf(log, pos_map, vel_map):
   plt.plot(t_x, imu, 'k-')
 
 
+def calc_loop_closure_jacobian(plant, context, x_pre):
+  front_contact_disp = np.array((-0.0457, 0.112, 0))
+  rear_contact_disp = np.array((0.088, 0, 0))
+  heel_disp = np.array((.11877, -.01, 0.0))
+  left_thigh_disp = np.array((0.0, 0.0, 0.045))
+  right_thigh_disp = np.array((0.0, 0.0, -0.045))
+  world = plant.world_frame()
+
+  l_thigh_frame = plant.GetBodyByName("thigh_left").body_frame()
+  r_thigh_frame = plant.GetBodyByName("thigh_right").body_frame()
+  l_heel_frame = plant.GetBodyByName("heel_spring_left").body_frame()
+  r_heel_frame = plant.GetBodyByName("heel_spring_right").body_frame()
+
+  left_heel = plant.CalcPointsPositions(context, l_heel_frame, heel_disp, world)
+  left_thigh = plant.CalcPointsPositions(context, l_thigh_frame, left_thigh_disp, world)
+  right_heel = plant.CalcPointsPositions(context, r_heel_frame, heel_disp, world)
+  right_thigh = plant.CalcPointsPositions(context, r_thigh_frame, right_thigh_disp, world)
+  left_rel_pos = left_heel - left_thigh
+  right_rel_pos = right_heel - right_thigh
+
+  J_l_heel = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, l_heel_frame, heel_disp, world, world)
+  J_l_thigh = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, l_thigh_frame, left_thigh_disp, world, world)
+  J_r_heel = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_heel_frame, heel_disp, world, world)
+  J_r_thigh = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_thigh_frame, right_thigh_disp, world, world)
+  J_l_loop = (left_rel_pos.transpose() @ (J_l_heel - J_l_thigh)) / np.linalg.norm(left_rel_pos)
+  J_r_loop = (right_rel_pos.transpose() @ (J_r_heel - J_r_thigh)) / np.linalg.norm(right_rel_pos)
+
+  return J_l_loop, J_r_loop
+
+def plot_ii_projection(t_x, x, plant, context):
+
+  t_pre = 30.557
+  t_idx = np.argwhere(np.abs(t_x - t_pre) < 1e-3)[0][0]
+  x_pre = x[t_idx]
+
+  l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
+  r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
+  front_contact_disp = np.array((-0.0457, 0.112, 0))
+  rear_contact_disp = np.array((0.088, 0, 0))
+  world = plant.world_frame()
+
+  # x_wo_spr = np.vstack((pos_map_spr_to_wo_spr @ x[:, :nq].T, vel_map_spr_to_wo_spr @ x[:, -nv:].T))
+  plant.SetPositionsAndVelocities(context, x_pre)
+  M = plant.CalcMassMatrixViaInverseDynamics(context)
+  M_inv = np.linalg.inv(M)
+  J_l_f = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
+  J_l_r = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
+  J_r_f = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
+  J_r_r = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
+  J_l_loop, J_r_loop = calc_loop_closure_jacobian(plant, context, x_pre)
+  J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r, J_l_loop, J_r_loop))
+  # J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r))
+  M_Jt = M_inv @ J.T
+  proj_ii = np.eye(nv) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
+  P = linalg.null_space(M_Jt.T).T
+
+  proj_vel = P @ x[t_slice, -nv:].T
+  # proj_vel = P @ x[t_slice, -nv:].T
+
+  plt.figure("joint velocities")
+  ps.plot(t_x[t_slice], x[t_slice, -nv:])
+  plt.ylim([-10, 10])
+  plt.figure("projected velocities")
+  ps.plot(t_x[t_slice], proj_vel.T)
+  plt.ylim([-10, 10])
+
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # pos_indices = slice(0 + 7, 23)
   vel_indices = slice(23 + 6, 45)
@@ -500,13 +587,13 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
 
-  # plt.figure("velocities: " + filename)
-  # plt.plot(t_x[t_slice], x[t_slice, vel_indices])
-  # plt.legend(x_datatypes[vel_indices])
+  plt.figure("velocities: " + filename)
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
+  plt.legend(x_datatypes[vel_indices])
 
   u_indices = slice(6, 8)
-  plt.figure("Combined knee motor efforts: " + filename)
-  # plt.figure("Impact Event")
+  # plt.figure("Combined knee motor efforts: " + filename)
+  plt.figure("Impact Event")
   plt.plot(t_u[t_u_slice], np.sum(u[t_u_slice, u_indices], axis=1))
   plt.legend(u_datatypes[u_indices])
   # u_indices = slice(8, 10)
@@ -551,6 +638,47 @@ def plot_status(full_log):
               'vel_limit',
               'act_limit',
               'act_delay'])
+
+def load_maps():
+  global pos_map_spr_to_wo_spr
+  pos_map_spr_to_wo_spr = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
+  global vel_map_spr_to_wo_spr
+  vel_map_spr_to_wo_spr = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
 
 if __name__ == "__main__":
   main()

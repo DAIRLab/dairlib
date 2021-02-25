@@ -65,13 +65,15 @@ def main():
 
 
   nominal_impact_time = dircon_traj.GetStateBreaks(1)[0]
-  t_start = nominal_impact_time + 0.01
+  t_impact = nominal_impact_time + 0.01
+  t_start = nominal_impact_time - 0.05
+  # t_start = nominal_impact_time - 0.1
   t_end = nominal_impact_time + 0.06
 
   # filename = sys.argv[1]
   log_dir = '/home/yangwill/Documents/research/projects/five_link_biped/invariant_impacts/'
   # log_files = ['lcmlog-0001', 'lcmlog-050', 'lcmlog-1001']
-  log_files = ['lcmlog-000', 'lcmlog-025', 'lcmlog-025_0KD']
+  log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
   # log_files = ['lcmlog-000_1', 'lcmlog-010', 'lcmlog-010_0KD_1']
   # log_files = ['lcmlog-0251']
   # log_files = ['lcmlog-0101']
@@ -121,7 +123,7 @@ def main():
     # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].error_ydot, linestyle='r')
     right_hip_pin_error = np.abs(osc_debug['right_hip_pin_traj'].ydot_des[t_slice] - osc_debug['right_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - t_lqr[t_u_start_idx]), right_knee_pin_error + right_hip_pin_error, xlabel='Time After Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Swing Leg Velocity Error (m/s)', linestyle=colors[color_idx])
     plt.figure("stance_leg_joints")
     # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
@@ -133,17 +135,25 @@ def main():
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].error_ydot, linestyle='r')
     left_hip_pin_error = np.abs(osc_debug['left_hip_pin_traj'].ydot_des[t_slice] - osc_debug['left_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - t_lqr[t_u_start_idx]), left_knee_pin_error + left_hip_pin_error, xlabel='Time After Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Stance Leg Velocity Error (m/s)', linestyle=colors[color_idx])
     color_idx += 1
 
   plt.figure("stance_leg_joints")
-  ps.add_legend(['All Feedback', 'Impact Invariant Feedback', 'No Feedback'])
-  plt.xlim([0, 50])
+  ax = plt.gca()
+  # projection_window_a = matplotlib.patches.Rectangle((50, 100), 40, 30, edgecolor=ps.grey, facecolor=ps.grey, alpha=1.0)
+  ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
+  ps.add_legend(['Default Controller', 'No Derivative Feedback', 'Impact Invariant Projection', 'Projection Window'], loc=3)
+  # ax.add_patch(projection_window_a)
+  plt.xlim([-50, 50])
   plt.ylim([0, 0.5])
   ps.save_fig('stance_leg_velocity_error.png')
   plt.figure("swing_leg_joints")
-  ps.add_legend(['All Feedback', 'Impact Invariant Feedback', 'No Feedback'])
-  plt.xlim([0, 50])
+  ax = plt.gca()
+  ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
+  ps.add_legend(['Default Controller', 'No Derivative Feedback', 'Impact Invariant Projection', 'Projection Window'], loc=3)
+  # projection_window_b = matplotlib.patches.Rectangle((50, 100), 40, 30, edgecolor=ps.grey, facecolor=ps.grey, alpha=1.0)
+  # ax.add_patch(projection_window_b)
+  plt.xlim([-50, 50])
   plt.ylim([0, 0.5])
   ps.save_fig('swing_leg_velocity_error.png')
   ps.show_fig()

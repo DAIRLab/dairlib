@@ -100,6 +100,7 @@ py_binary(
     deps = [
         ":lcm_trajectory_py",
         ":module_py",
+        ":plot_styler",
         ":process_lcm_log_py",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",

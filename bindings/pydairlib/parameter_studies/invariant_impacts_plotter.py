@@ -10,7 +10,7 @@ from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 from pydairlib.cassie.cassie_utils import *
 import pydairlib.multibody
-
+from pydairlib.analysis_scripts.process_lcm_log import process_log
 
 import matplotlib.pyplot as plt
 
@@ -62,15 +62,15 @@ def main():
 
 
   # construct_hardware_torque_plot()
-  plot_vel_discontinuity_example(right_foot_traj)
+  # plot_vel_discontinuity_example(right_foot_traj)
   # construct_knee_efforts_plot()
   # for d in durations:
   #   load_logs('%.3f' % d)
 
-  # for d in durations:
-  #   print('%.3f' % d)
+  for d in durations:
+    print('%.3f' % d)
     # count_successful_jumps('%.3f' % d, 'zvel_')
-    # count_successful_jumps('%.3f' % d)
+    count_successful_jumps('%.3f' % d)
 
   # count_successful_jumps(duration)
   # construct_knee_torque_bands_plot()
@@ -125,7 +125,8 @@ def load_logs(duration):
   nx = plant_w_spr.num_positions() + plant_w_spr.num_velocities()
   nu = plant_w_spr.num_actuators()
 
-  osc_traj = "com_traj"
+  osc_traj1 = "com_traj"
+  osc_traj2 = "pelvis_rot_tracking_data"
 
   # For full jumping traj
   t_samples = 19000
@@ -143,8 +144,10 @@ def load_logs(duration):
   t_u_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples))
   u_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples, nu))
   t_osc_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples))
-  osc_yddot_des_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples, 3))
-  osc_yddot_cmd_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples, 3))
+  com_yddot_des_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples, 3))
+  com_yddot_cmd_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples, 3))
+  pelvis_rot_yddot_des_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples, 3))
+  pelvis_rot_yddot_cmd_matrix = np.zeros((parameter_dim, penetration_allowances.shape[0], u_samples, 3))
   folder_path = '/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/' + duration + '/'
   # folder_path = '/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/mujoco/' + duration + '/'
 
@@ -170,17 +173,21 @@ def load_logs(duration):
       x_matrix[i, j, :, :] = x[:t_samples]
       t_u_matrix[i, j, :] = t_u[:u_samples]
       u_matrix[i, j, :, :] = u[:u_samples]
-      t_osc_matrix[i, j, :] = osc_debug[osc_traj].t[:u_samples]
-      osc_yddot_des_matrix[i, j, :, :] = osc_debug[osc_traj].yddot_des[:u_samples, :]
-      osc_yddot_cmd_matrix[i, j, :, :] = osc_debug[osc_traj].yddot_command[:u_samples, :]
+      t_osc_matrix[i, j, :] = osc_debug[osc_traj1].t[:u_samples]
+      com_yddot_des_matrix[i, j, :, :] = osc_debug[osc_traj1].yddot_des[:u_samples, :]
+      com_yddot_cmd_matrix[i, j, :, :] = osc_debug[osc_traj1].yddot_command[:u_samples, :]
+      pelvis_rot_yddot_des_matrix[i, j, :, :] = osc_debug[osc_traj2].yddot_des[:u_samples, :]
+      pelvis_rot_yddot_cmd_matrix[i, j, :, :] = osc_debug[osc_traj2].yddot_command[:u_samples, :]
 
   np.save(data_directory + 't_x_' + duration, t_matrix)
   np.save(data_directory + 'x_' + duration, x_matrix)
   np.save(data_directory + 't_u_' + duration, t_u_matrix)
   np.save(data_directory + 'u_' + duration, u_matrix)
   np.save(data_directory + 't_osc_com_' + duration, t_osc_matrix)
-  np.save(data_directory + 'osc_com_accel_des_' + duration, osc_yddot_des_matrix)
-  np.save(data_directory + 'osc_com_accel_cmd_' + duration, osc_yddot_cmd_matrix)
+  np.save(data_directory + 'osc_com_accel_des_' + duration, com_yddot_des_matrix)
+  np.save(data_directory + 'osc_com_accel_cmd_' + duration, com_yddot_cmd_matrix)
+  np.save(data_directory + 'osc_pelvis_rot_accel_des_' + duration, pelvis_rot_yddot_des_matrix)
+  np.save(data_directory + 'osc_pelvis_rot_accel_cmd_' + duration, pelvis_rot_yddot_cmd_matrix)
   return
 
 
@@ -192,6 +199,8 @@ def count_successful_jumps(duration, param = ''):
   t_osc_matrix = np.load(data_directory + 't_osc_com_' + duration + '.npy')
   osc_yddot_des_matrix = np.load(data_directory + 'osc_com_accel_des_' + param + duration + '.npy')
   osc_yddot_cmd_matrix = np.load(data_directory + 'osc_com_accel_cmd_' + param + duration + '.npy')
+  osc_pelvis_yddot_des_matrix = np.load(data_directory + 'osc_pelvis_rot_accel_des_' + param + duration + '.npy')
+  osc_pelvis_yddot_cmd_matrix = np.load(data_directory + 'osc_pelvis_rot_accel_cmd_' + param + duration + '.npy')
 
   # steady_state_time = 0.7
   steady_state_time = 3.0
@@ -205,32 +214,51 @@ def count_successful_jumps(duration, param = ''):
   accel_error = np.zeros((t_matrix.shape[0], t_matrix.shape[1]))
   u_slice = slice(0, 10)
 
+  W_CoM = np.zeros((3,3))
+  W_CoM[0, 0] = 2000
+  W_CoM[1, 1] = 200
+  W_CoM[2, 2] = 2000
+  W_pelvis = np.zeros((3,3))
+  W_pelvis[0, 0] = 100
+  W_pelvis[1, 1] = 100
+  W_pelvis[2, 2] = 100
+
   for i in range(terrain_heights.shape[0]):
     # for i in range(perturbations.shape[0]):
     for j in range(penetration_allowances.shape[0]):
       t_idx = np.argwhere(t_matrix[i, j] == steady_state_time)[0, 0]
       t_u_start_idx = np.argwhere(np.abs(t_u_matrix[i, j] - (impact_time - 0.1)) < 2e-3)[0, 0]
       t_u_end_idx = np.argwhere(np.abs(t_u_matrix[i, j] - (impact_time + 0.1)) < 2e-3)[0, 0]
-      t_u_eval_idx = np.argwhere(np.abs(t_osc_matrix[i, j] - accel_error_time) < 2e-3)[0, 0]
+      # t_u_eval_idx = np.argwhere(np.abs(t_osc_matrix[i, j] - accel_error_time) < 5e-3)[0, 0]
+      t_u_eval_idx = np.argwhere(np.abs(t_osc_matrix[i, j] - accel_error_time) < 1e-3)[:, 0]
+      # import pdb; pdb.set_trace()
       # if (x_matrix[i, j, t_idx, z_fb_idx] > (success_height + terrain_heights[i])):
       #   successes[i, j] = 1
       t_u_slice = slice(t_u_start_idx, t_u_end_idx)
       efforts[i, j] = trapz(np.square(np.sum(u_matrix[i, j, t_u_slice, u_slice], axis=1)),
                             t_u_matrix[i, j, t_u_slice])
       max_efforts[i, j] = np.max(u_matrix[i, j, t_u_slice, u_slice])
-      accel_error[i, j] = np.linalg.norm(osc_yddot_des_matrix[i, j, t_u_eval_idx, :] - osc_yddot_cmd_matrix[i, j, t_u_eval_idx, :])
+      for sample in range(t_u_eval_idx.shape[0]):
+        accel_error[i, j] += osc_yddot_des_matrix[i, j, t_u_eval_idx[sample], :] @ W_CoM @ osc_yddot_cmd_matrix[i, j, t_u_eval_idx[sample], :].T
+        accel_error[i, j] += osc_pelvis_yddot_des_matrix[i, j, t_u_eval_idx[sample], :] @ W_pelvis @ osc_pelvis_yddot_cmd_matrix[i, j, t_u_eval_idx[sample], :].T
+      accel_error[i, j] *= 1.0/(t_u_eval_idx.shape[0])
+      # import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
-  # import pdb; pdb.set_trace()
 
   # ps.plot(terrain_heights, np.average(max_efforts, axis=1), xlabel='terrain height (m)', ylabel='actuator saturation (% of max)')
   ps.plot(terrain_heights, np.average(accel_error, axis=1), xlabel='terrain height (m)', ylabel='average pelvis acceleration error (% of max)')
+  print('max effort: ')
   print(np.mean(max_efforts))
+  print('power loss: ')
+  print(np.mean(efforts))
   print('mean:' )
   print(np.mean(accel_error))
   print('median:' )
   print(np.median(accel_error))
   print('stdev:' )
   print(np.std(accel_error))
+  import pdb; pdb.set_trace()
   return
 
 

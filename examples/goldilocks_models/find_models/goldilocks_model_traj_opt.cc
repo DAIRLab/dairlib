@@ -117,9 +117,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         constraint_scale_map.insert(std::pair<int, double>(5, constraint_scale * 1.0 / 4000.0 * rom_scale));
       } else if (rom_option == 8) {
         // TODO: The scaling hasn't been tuned yet. These are just guessings
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 3200.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 2600.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 2600.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 640.0 * rom_scale));
       } else {
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);
@@ -250,30 +250,28 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         for (int j = 0; j < num_time_samples[i]; j++) {
           int time_index = N_accum + j;
 
-          if (robot_option == 1) {
-            if (rom_option == 1) {
-              W(0, 0) /= (tau1_scale * tau1_scale);
-              W(1, 1) /= (tau2_scale * tau2_scale);
-            } else if (rom_option == 3) {
-              // TODO: hasn't added
-              W(0, 0) /= (tau1_scale * tau1_scale);
-              W(1, 1) /= (tau2_scale * tau2_scale);
-            } else if ((rom_option == 5) || (rom_option == 6)) {
-              // TODO: hasn't added
-              W(0, 0) /= (tau1_scale * tau1_scale);
-              W(1, 1) /= (tau1_scale * tau1_scale);
-              W(2, 2) /= (tau2_scale * tau2_scale);
-            } else if (rom_option == 8) {
-              // TODO: hasn't added
-              W(0, 0) /= (tau_scale_8 * tau_scale_8);
-            }
-          }
-
           auto tau_k = pre_and_post_impact_efforts
                            ? tau_vars_by_mode(i, j)
                            : reduced_model_input(time_index);
           tau_cost_bindings.push_back(
               dircon->AddQuadraticCost(W, VectorXd::Zero(n_tau_), tau_k));
+        }
+        N_accum += num_time_samples[i];
+        N_accum -= 1;  // due to overlaps between modes
+      }
+    }
+
+    // Add constraint on input tau
+    if (rom_option == 8) {
+      int N_accum = 0;
+      for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+        for (int j = 0; j < num_time_samples[i]; j++) {
+          int time_index = N_accum + j;
+          auto tau_k = pre_and_post_impact_efforts
+                           ? tau_vars_by_mode(i, j)
+                           : reduced_model_input(time_index);
+          dircon->AddBoundingBoxConstraint(
+              0, std::numeric_limits<double>::infinity(), tau_k(0));
         }
         N_accum += num_time_samples[i];
         N_accum -= 1;  // due to overlaps between modes

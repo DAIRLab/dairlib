@@ -2336,7 +2336,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                               s * 1.0 / 600.0);
       options_list[i].setDynConstraintScaling({27, 28, 29, 30, 31, 32, 33, 34},
                                               s * 1.0 / 3000.0);
-      options_list[i].setDynConstraintScaling({35, 36}, s * 1.0 / 60000.0);
+      options_list[i].setDynConstraintScaling({35, 36}, s * 1.0 / 6000.0);
       // Kinematic constraints
       int n_l = options_list[i].getNumConstraints();
       options_list[i].setKinConstraintScaling({0, 1, 2, 3, 4}, s / 600.0);

@@ -28,6 +28,7 @@ def main():
   else:
     filename = FindResourceOrThrow(
       '../dairlib_data/goldilocks_models/find_models/robot_1/1_0_dircon_trajectory')
+  print("plotting " + filename)
 
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
 

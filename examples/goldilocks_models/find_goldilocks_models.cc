@@ -1848,12 +1848,21 @@ int findGoldilocksModels(int argc, char* argv[]) {
     for (int i = 0; i < N_sample; i++) {
       samples_are_success =
           samples_are_success &&
-          readCSV(dir + to_string(iter_check_all_success) + "_" + to_string(i) +
-                  string("_is_success.csv"))(0, 0);
+          (readCSV(dir + to_string(iter_check_all_success) + "_" +
+                   to_string(i) + string("_is_success.csv"))(0, 0) == 1);
     }
     has_been_all_success = samples_are_success;
+
+    cout << "has_been_all_success? " << has_been_all_success << " (breakdown: ";
+    for (int i = 0; i < N_sample; i++) {
+      cout << readCSV(dir + to_string(iter_check_all_success) + "_" +
+                      to_string(i) + string("_is_success.csv"))(0, 0)
+           << ", ";
+    }
+    cout << ")\n";
+  } else {
+    cout << "has_been_all_success? " << has_been_all_success << endl;
   }
-  cout << "has_been_all_success? " << has_been_all_success << endl;
   cout << "iteration #" << iter_start << " is a rerun? "
        << rerun_current_iteration << endl;
 
@@ -2167,15 +2176,21 @@ int findGoldilocksModels(int argc, char* argv[]) {
               sample_idx,
               (readCSV(dir + prefix + string("is_success.csv")))(0, 0));
           bool sample_success =
-              ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) == 1);
-          bool sample_iteration_limit =
-              ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) == 0.5);
+              ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) ==
+               SAMPLE_STATUS_CODE::SUCCESS);
+          // We don't allow infinite numbers of reruns due to snopt's iteration
+          // limit, so we cap it to 2*N_rerun
+          bool need_to_rerun_due_to_iteration_limit =
+              ((readCSV(dir + prefix + string("is_success.csv")))(0, 0) ==
+               SAMPLE_STATUS_CODE::ITERATION_LIMIT) &&
+              (n_rerun[sample_idx] < 2 * N_rerun);
 
           // Queue the current sample back if
           // 1. it's not the last evaluation for this sample, OR
-          // 2. it reached iteration limit
+          // 2. it reached solver's iteration limit (but not too many times)
           bool current_sample_is_queued = false;
-          if ((n_rerun[sample_idx] < N_rerun) || sample_iteration_limit) {
+          if ((n_rerun[sample_idx] < N_rerun) ||
+              need_to_rerun_due_to_iteration_limit) {
             awaiting_sample_idx.push_back(sample_idx);
             current_sample_is_queued = true;
           }
@@ -2192,7 +2207,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // (we dont' get help from adjacent samples when extending model,
           // because the length of decision variable is not the same)
           if (get_good_sol_from_adjacent_sample && !extend_model_this_iter &&
-              (n_rerun[sample_idx] >= N_rerun) && !sample_iteration_limit) {
+              (n_rerun[sample_idx] >= N_rerun) &&
+              !need_to_rerun_due_to_iteration_limit) {
             RecordSolutionQualityAndQueueList(
                 dir, prefix, sample_idx, assigned_thread_idx,
                 adjacent_sample_indices,

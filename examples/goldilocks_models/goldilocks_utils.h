@@ -15,6 +15,12 @@ namespace goldilocks_models {
 using BodyPoint =
     std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>;
 
+namespace SAMPLE_STATUS_CODE {
+const double SUCCESS = 1;
+const double ITERATION_LIMIT = 0.5;
+const double FAIL = 0;
+}  // namespace SAMPLE_CODE
+
 class InnerLoopSetting {
  public:
   InnerLoopSetting(){};

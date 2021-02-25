@@ -12,7 +12,7 @@ stride_length: 0.1
 
 # Planner cost weight
 w_Q: 1
-w_R: 1
+w_R: 2e-6
 w_rom_reg: 1
 w_reg_quat: 100
 w_reg_xy: 100

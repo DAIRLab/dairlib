@@ -424,7 +424,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int j = 0; j < num_time_samples[i]; j++) {
       if ((param_.rom_option == 0) || (param_.rom_option == 1)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
-      } else if (param_.rom_option == 4) {
+      } else if ((param_.rom_option == 4) || (param_.rom_option == 8)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(2), 1);
       } else {
         DRAKE_UNREACHABLE();
@@ -699,7 +699,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  0.5)) {
   //  if (!result.is_success()) {
   if (counter_ == 0) {
-    counter_++;
     //  if (debug_mode_ || (elapsed.count() > 0.8)) {
     string dir_data = param_.dir_data;
 
@@ -728,12 +727,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     writeCSV(dir_data + string("xf_each_mode.csv"), xf_each_mode);
 
     /// Save trajectory to lcm
-    string file_name = "rom_trajectory";
+    /*string file_name = "rom_trajectory";
     RomPlannerTrajectory saved_traj(
         trajopt, result, file_name,
         "Decision variables and state/input trajectories");
     saved_traj.WriteToFile(dir_data + file_name);
-    std::cout << "Wrote to file: " << dir_data + file_name << std::endl;
+    std::cout << "Wrote to file: " << dir_data + file_name << std::endl;*/
 
     /// Save files for reproducing the same result
     // cout << "x_init = " << x_init << endl;
@@ -743,6 +742,20 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     writeCSV(param_.dir_data + string("is_right_stance_test.csv"),
              is_right_stance * VectorXd::Ones(1));
   }
+
+  if (true) {
+    string dir_data = param_.dir_data;
+
+    /// Save trajectory to lcm
+    string file_name = "rom_trajectory" + to_string(counter_);
+    RomPlannerTrajectory saved_traj(
+        trajopt, result, file_name,
+        "Decision variables and state/input trajectories");
+    saved_traj.WriteToFile(dir_data + file_name);
+    std::cout << "Wrote to file: " << dir_data + file_name << std::endl;
+  }
+
+  counter_++;
 }
 
 void CassiePlannerWithMixedRomFom::WarmStartGuess(

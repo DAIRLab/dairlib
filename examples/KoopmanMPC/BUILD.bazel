@@ -1,0 +1,16 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "koopman_mpc",
+    srcs = [
+        "koopman_model.py",
+        "koopman_mpc.py",
+    ],
+    deps = [
+        "//bindings/pydairlib",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

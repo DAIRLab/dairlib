@@ -1,5 +1,6 @@
 import numpy as np
 import sympy as sp
+
 from scipy.special import factorial
 class KoopmanModel:
 
@@ -13,11 +14,6 @@ class KoopmanModel:
         self.robot = robot
 
     def sysID (self, x_samples, u_samples, x_order, u_order, basis_type):
+        return None
 
 
-    def CreateObservableBasisPolynomial(self, vars, deg):
-        nx = vars.shape[0]
-        N = factorial(nx + deg) / (factorial(nx) * factorial(deg))
-
-        for i in range(deg):
-            

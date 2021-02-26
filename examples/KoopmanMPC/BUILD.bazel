@@ -6,6 +6,7 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "koopman_mpc",
     srcs = [
+        "koopman_basis_utils.py",
         "koopman_model.py",
         "koopman_mpc.py",
     ],

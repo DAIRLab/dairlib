@@ -643,12 +643,12 @@ template <typename T>
 void Dircon<T>::SetInitialForceTrajectory(
     int mode_index, const PiecewisePolynomial<double>& traj_init_l,
     const PiecewisePolynomial<double>& traj_init_lc,
-    const PiecewisePolynomial<double>& traj_init_vc) {
+    const PiecewisePolynomial<double>& traj_init_vc,
+    const double start_time) {
   const auto& mode = get_mode(mode_index);
-  double start_time = 0;
   double h;
   if (timesteps_are_decision_variables())
-    h = GetInitialGuess(h_vars()[0]);
+    h = GetInitialGuess(h_vars()[get_mode_start(mode_index)]);
   else
     h = fixed_timestep();
 
@@ -722,6 +722,37 @@ void Dircon<T>::SetInitialForceTrajectory(
   SetInitialGuess(force_vars_[mode_index], guess_force);
   SetInitialGuess(collocation_force_vars_[mode_index], guess_collocation_force);
 }
+
+template <typename T>
+void Dircon<T>::SetInitialTrajectory(
+    int mode_index, const PiecewisePolynomial<double>& traj_init_x,
+    const PiecewisePolynomial<double>& traj_init_u,
+    const double start_time,
+    const double end_time) {
+  const auto& mode = get_mode(mode_index);
+  double h = (end_time - start_time) /(mode.num_knotpoints() - 1);
+
+  for (int i = 0; i < mode.num_knotpoints(); ++i) {
+    // State
+    VectorXd guess_state(state_vars(mode_index,i).size());
+    guess_state = traj_init_x.value(start_time + i * h);
+    SetInitialGuess(state_vars(mode_index,i), guess_state);
+
+    // Control
+    VectorXd guess_control(input_vars(mode_index, i).size());
+    guess_control = traj_init_u.value(start_time + i * h);
+    SetInitialGuess(input_vars(mode_index, i), guess_control);
+
+  }
+
+  for (int i = 0; i < mode.num_knotpoints()-1; ++i) {
+    // Time steps
+    VectorXd guess_time(1);
+    guess_time[0] = h;
+    SetInitialGuess(timestep(get_mode_start(mode_index)+i), guess_time);
+
+  }
+  }
 
 template <typename T>
 int Dircon<T>::num_modes() const {

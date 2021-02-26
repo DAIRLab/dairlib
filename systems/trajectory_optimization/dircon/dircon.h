@@ -116,7 +116,8 @@ class Dircon
       int mode,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_l,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_lc,
-      const drake::trajectories::PiecewisePolynomial<double>& traj_init_vc);
+      const drake::trajectories::PiecewisePolynomial<double>& traj_init_vc,
+      const double start_time = 0);
 
   /// Set the initial guess for the force variables for a specific mode.
   /// Sets both the contact forces lambda and the collocation forces lambda_c
@@ -126,6 +127,19 @@ class Dircon
   void SetInitialForceTrajectory(
       int mode,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_l);
+
+  /// Sets the initial guess for a specific mode's control, state, and time step. It will
+  /// properly set post impact velocity
+  /// @param mode_index the mode index
+  /// @param traj_init_x the state trajectory
+  /// @param traj_init_u the control trajectory
+  /// @param start_time the start time for the mode
+  /// @param end_time the end time for a mode
+  void SetInitialTrajectory(
+      int mode_index, const drake::trajectories::PiecewisePolynomial<double>& traj_init_x,
+      const drake::trajectories::PiecewisePolynomial<double>& traj_init_u,
+      const double start_time,
+      const double end_time);
 
   /// Get all knotpoint force variables associated with a specific mode and
   /// knotpoint

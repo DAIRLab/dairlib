@@ -274,6 +274,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool use_single_lambda_ = true;
   mutable Eigen::VectorXd ii_lambda_sol_;
   mutable Eigen::MatrixXd M_Jt_;
+  std::map<int, int> active_contact_dim_ = {};
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user

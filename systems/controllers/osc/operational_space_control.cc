@@ -264,6 +264,18 @@ void OperationalSpaceControl::Build() {
     n_c_active_ += evaluator->num_active();
   }
 
+  // Record the contact dimension per state
+  for (auto contact_map : contact_indices_map_){
+    int active_contact_dim = 0;
+    for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+      if (contact_map.second.find(i) != contact_map.second.end()) {
+        active_contact_dim +=
+            all_contacts_[i]->EvalFullJacobian(*context_wo_spr_).rows();
+      }
+    }
+    active_contact_dim_[contact_map.first] = active_contact_dim;
+  }
+
   // Initialize solution
   dv_sol_ = std::make_unique<Eigen::VectorXd>(n_v_);
   u_sol_ = std::make_unique<Eigen::VectorXd>(n_u_);
@@ -588,13 +600,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     std::set<int> next_contact_set = {};
     auto map_iterator = contact_indices_map_.find(next_fsm_state);
     next_contact_set = map_iterator->second;
-    int active_contact_dim = 0;
-    for (unsigned int i = 0; i < all_contacts_.size(); i++) {
-      if (next_contact_set.find(i) != next_contact_set.end()) {
-        active_contact_dim +=
-            all_contacts_[i]->EvalFullJacobian(*context_wo_spr_).rows();
-      }
-    }
+    int active_contact_dim = active_contact_dim_.at(next_fsm_state) + 2;
     MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
     int row_start = 0;
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
@@ -604,6 +610,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         row_start += kSpaceDim;
       }
     }
+    J_c_next.block(row_start, 0, 2, n_v_) = J_h;
     M_Jt_ = M.inverse() * J_c_next.transpose();
 
     if (use_single_lambda_) {

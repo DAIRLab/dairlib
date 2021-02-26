@@ -143,7 +143,8 @@ def main():
   # plot_osc(osc_debug, 'left_ft_traj', 2, "vel")
 
   # plot_status(full_log)
-  plot_ii_projection(t_x, x, plant_w_spr, context)
+  # plot_ii_projection(t_x, x, plant_w_spr, context)
+  plot_ii_projection(t_x, x, plant_wo_spr, context_wo_spr)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
 
   # u_nominal = np.zeros((t_u[t_u_slice].shape[0], nu))
@@ -550,7 +551,10 @@ def plot_ii_projection(t_x, x, plant, context):
   rear_contact_disp = np.array((0.088, 0, 0))
   world = plant.world_frame()
 
-  # x_wo_spr = np.vstack((pos_map_spr_to_wo_spr @ x[:, :nq].T, vel_map_spr_to_wo_spr @ x[:, -nv:].T))
+  x_wo_spr_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
+
+  x_wo_spr = np.vstack((pos_map_spr_to_wo_spr @ x[:, :nq].T, vel_map_spr_to_wo_spr @ x[:, -nv:].T)).T
+  x_pre = x_wo_spr[t_idx]
   plant.SetPositionsAndVelocities(context, x_pre)
   M = plant.CalcMassMatrixViaInverseDynamics(context)
   M_inv = np.linalg.inv(M)
@@ -562,18 +566,26 @@ def plot_ii_projection(t_x, x, plant, context):
   J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r, J_l_loop, J_r_loop))
   # J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r))
   M_Jt = M_inv @ J.T
-  proj_ii = np.eye(nv) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
+  # proj_ii = np.eye(18) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
   P = linalg.null_space(M_Jt.T).T
+  # import pdb; pdb.set_trace()
 
-  proj_vel = P @ x[t_slice, -nv:].T
+  proj_vel = P.T @ P @ x_wo_spr[t_slice, -18:].T
+  # proj_vel = proj_ii @ x_wo_spr[t_slice, -18:].T
   # proj_vel = P @ x[t_slice, -nv:].T
 
   plt.figure("joint velocities")
-  ps.plot(t_x[t_slice], x[t_slice, -nv:])
-  plt.ylim([-10, 10])
+  ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12:], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)')
+  # ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
+  plt.ylim([-8, 8])
+  ps.save_fig('joint_velocities_hardware.png')
+
   plt.figure("projected velocities")
-  ps.plot(t_x[t_slice], proj_vel.T)
-  plt.ylim([-10, 10])
+  joint_indices = [3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17]
+  ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, joint_indices], xlabel='Time since Start of Impact (ms)', ylabel='Projected Velocities (rad/s)')
+  # ps.add_legend(['%.0f' % i for i in range(18)])
+  plt.ylim([-2, 2])
+  ps.save_fig('projected_joint_velocities_hardware.png')
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # pos_indices = slice(0 + 7, 23)

@@ -109,13 +109,13 @@ def cassie_main():
   t_impact = impact_time
   t = np.arange(t_impact - 0.01, t_impact + 0.01, 0.0005)
   vel = np.zeros((t.shape[0], nv))
-  cc_vel = np.zeros((t.shape[0], 6))
-  # cc_vel = np.zeros((t.shape[0], 18))
+  # cc_vel = np.zeros((t.shape[0], 6))
+  cc_vel = np.zeros((t.shape[0], 18))
 
   for i in range(t.shape[0]):
     x = state_traj.value(t[i])
     vel[i] = x[-nv:, 0]
-    cc_vel[i] = P @ vel[i]
+    cc_vel[i] = P.T @ P @ vel[i]
     # cc_vel[i] = proj_ii @ vel[i]
 
   plt.figure("Joint Velocities around impacts")

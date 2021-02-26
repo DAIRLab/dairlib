@@ -8,20 +8,20 @@ import numpy as np
 def main():
   trajectory_path = "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/"
   controller_type = "jumping"
-  parameter = "pelvis_vel"
+  parameter = "terrain_height"
   simulator = 'DRAKE'
 
   gains_path = ''
   trajectory_name = ''
   results_folder = ''
-  delay_time = 0.0
+  delay_time = 2.0
   sim_time = 0
   start_time = 0
   if controller_type == 'jumping':
     gains_path = "/home/yangwill/workspace/dairlib/examples/Cassie/osc_jump/"
     trajectory_name = "jumping_0.15h_0.3d"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/impact_invariance_param_study/"
-    results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/0.100/"
+    results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/0.030/"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/id_controller/0.000/"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/mujoco/stiff/"
     sim_time = delay_time + 3.0
@@ -35,7 +35,7 @@ def main():
 
   traj_name_controller = trajectory_name + "_processed"
 
-  terrain_heights = np.arange(0.000, 0.030, 0.005)
+  terrain_heights = np.arange(0.000, 0.055, 0.005)
   disturbances = np.arange(-0.500, 0.600, 0.100)
   penetration_allowances = np.array([1e-5, 1e-4, 1e-3])
   threshold_durations = np.arange(-0.01, 0.11, 0.01)
@@ -62,8 +62,8 @@ def main():
   save_gains_cmd = ''
 
   # for i in range(1, threshold_durations.shape[0]):
-  for i in range(0, disturbances.shape[0]):
-  # for i in range(0, terrain_heights.shape[0]):
+  # for i in range(0, disturbances.shape[0]):
+  for i in range(0, terrain_heights.shape[0]):
     for k in range(penetration_allowances.shape[0]):
       log_suffix = ''
       if parameter == 'terrain_height':

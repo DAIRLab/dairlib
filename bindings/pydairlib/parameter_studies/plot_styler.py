@@ -40,9 +40,11 @@ class PlotStyler():
     if ylim:
       plt.ylim(ylim)
     if xlabel:
-      plt.xlabel(xlabel, fontweight="bold")
+      # plt.xlabel(xlabel, fontweight="bold")
+      plt.xlabel(xlabel)
     if ylabel:
-      plt.ylabel(ylabel, fontweight="bold")
+      # plt.ylabel(ylabel, fontweight="bold")
+      plt.ylabel(ylabel)
     if title:
       plt.title(title, fontweight="bold")
     if legend:

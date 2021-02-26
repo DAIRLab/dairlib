@@ -123,7 +123,7 @@ def main():
     # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].error_ydot, linestyle='r')
     right_hip_pin_error = np.abs(osc_debug['right_hip_pin_traj'].ydot_des[t_slice] - osc_debug['right_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Swing Leg Velocity Error (m/s)', linestyle=colors[color_idx])
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Swing Leg Velocity Error (rad/s)', linestyle=colors[color_idx])
     plt.figure("stance_leg_joints")
     # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
@@ -135,7 +135,7 @@ def main():
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].error_ydot, linestyle='r')
     left_hip_pin_error = np.abs(osc_debug['left_hip_pin_traj'].ydot_des[t_slice] - osc_debug['left_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Stance Leg Velocity Error (m/s)', linestyle=colors[color_idx])
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Stance Leg Velocity Error (rad/s)', linestyle=colors[color_idx])
     color_idx += 1
 
   plt.figure("stance_leg_joints")

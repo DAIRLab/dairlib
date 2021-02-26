@@ -47,9 +47,10 @@ def main():
   impact_time = nominal_impact_time + 2.0
   # impact_time = nominal_impact_time
 
-  terrain_heights = np.arange(0.00, 0.030, 0.005)
+  terrain_heights = np.arange(0.00, 0.055, 0.005)
   penetration_allowances = np.array([1e-5, 1e-4, 1e-3])
-  durations = np.arange(0.000, 0.125, 0.025)
+  # durations = np.arange(0.000, 0.125, 0.025)
+  durations = np.arange(0.000, 0.060, 0.010)
   perturbations = np.arange(-0.500, 0.600, 0.100)
 
   # For MUJOCO
@@ -61,16 +62,21 @@ def main():
   # duration = 'stiff'
 
 
-  # construct_hardware_torque_plot()
+  construct_hardware_torque_plot()
   # plot_vel_discontinuity_example(right_foot_traj)
   # construct_knee_efforts_plot()
   # for d in durations:
   #   load_logs('%.3f' % d)
 
-  for d in durations:
-    print('%.3f' % d)
-    # count_successful_jumps('%.3f' % d, 'zvel_')
-    count_successful_jumps('%.3f' % d)
+
+  # accel_error = np.zeros((durations.shape[0], terrain_heights.shape[0], penetration_allowances.shape[0]))
+  # power_loss = np.zeros((durations.shape[0], terrain_heights.shape[0], penetration_allowances.shape[0]))
+  # for i in range(durations.shape[0]):
+  #   print('%.3f' % durations[i])
+  #   accel_error[i], power_loss[i] = count_successful_jumps('%.3f' % durations[i])
+
+
+  # construct_param_study_plots(durations, accel_error, power_loss)
 
   # count_successful_jumps(duration)
   # construct_knee_torque_bands_plot()
@@ -97,11 +103,13 @@ def plot_vel_discontinuity_example(traj):
     accum_err += 0.1*(vel[i] - vel_err[i])
     # accum_err *= 0.6
   plt.figure("Velocity tracking during impact")
-  ps.plot(1e3*(times - nominal_impact_time), vel[:, 2], xlabel='Time from Nominal Impact (ms)', ylabel='Velocity (m/s)', linestyle=ps.blue)
-  ps.plot(1e3*(times - nominal_impact_time), vel_err[:, 2], linestyle=ps.red)
-  ps.plot(1e3*(times - nominal_impact_time), vel_err[:, 2] - vel[:, 2], linestyle=ps.yellow)
+  reference_time = nominal_impact_time - 0.1
+  ps.plot(1e3*(times - reference_time), vel[:, 2], xlabel='Time $t$ ', ylabel='Velocity $\dot y$', linestyle=ps.blue)
+  ps.plot(1e3*(times - reference_time), vel_err[:, 2], linestyle=ps.red)
+  ps.plot(1e3*(times - reference_time), vel_err[:, 2] - vel[:, 2], linestyle=ps.yellow)
   ps.add_legend(['target velocity', 'actual velocity', 'tracking error'])
   ps.save_fig('velocity_tracking_during_impact.png')
+  # ps.show_fig()
   # plt.figure("Velocity error")
   # ps.add_legend(['feedback error'])
   # ps.save_fig('velocity_error_during_impact.png')
@@ -190,6 +198,20 @@ def load_logs(duration):
   np.save(data_directory + 'osc_pelvis_rot_accel_cmd_' + duration, pelvis_rot_yddot_cmd_matrix)
   return
 
+def construct_param_study_plots(durations, accel_error, power_loss):
+  accel_error_norm = 2000 * (100 * 0.07)**2
+
+  for i in range(durations.shape[0]):
+    ps.plot(terrain_heights * 1e2, np.median(accel_error[i], axis=1) / accel_error_norm, xlabel='Platform Height (cm)', ylabel='Weighted Acceleration Error $J_{acc}$')
+    # ps.plot(penetration_allowances, np.median(accel_error[i] / accel_error_norm, axis=0), xlabel='Ground Stiffness', ylabel='Weighted Acceleration Error $J_{acc}$')
+    # ps.plot(terrain_heights * 1e2, np.median(power_loss[i], axis=1), xlabel='Platform Height (cm)', ylabel='Power Loss $J_{mot}$')
+    # ps.plot(penetration_allowances, np.median(power_loss[i], axis=0), xlabel='Ground Stiffness', ylabel='Power Loss $J_{mot}$')
+
+  ps.add_legend(['%.0f (ms)' % (d*1e3) for d in durations])
+  ps.save_fig('param_study_accel_err_height.png')
+  # ps.save_fig('param_study_accel_err_stiffness.png')
+  # ps.save_fig('param_study_power_loss_height.png')
+  # ps.save_fig('param_study_power_loss_stiffness.png')
 
 def count_successful_jumps(duration, param = ''):
   t_matrix = np.load(data_directory + 't_x_' + param + duration + '.npy')
@@ -204,7 +226,7 @@ def count_successful_jumps(duration, param = ''):
 
   # steady_state_time = 0.7
   steady_state_time = 3.0
-  max_adj_window = 0.100
+  max_adj_window = 0.050
   accel_error_time = impact_time + max_adj_window
   success_height = 0.75
   z_fb_idx = 6
@@ -227,10 +249,10 @@ def count_successful_jumps(duration, param = ''):
     # for i in range(perturbations.shape[0]):
     for j in range(penetration_allowances.shape[0]):
       t_idx = np.argwhere(t_matrix[i, j] == steady_state_time)[0, 0]
-      t_u_start_idx = np.argwhere(np.abs(t_u_matrix[i, j] - (impact_time - 0.1)) < 2e-3)[0, 0]
-      t_u_end_idx = np.argwhere(np.abs(t_u_matrix[i, j] - (impact_time + 0.1)) < 2e-3)[0, 0]
+      t_u_start_idx = np.argwhere(np.abs(t_u_matrix[i, j] - (impact_time - 0.05)) < 2e-3)[0, 0]
+      t_u_end_idx = np.argwhere(np.abs(t_u_matrix[i, j] - (impact_time + 0.05)) < 2e-3)[0, 0]
       # t_u_eval_idx = np.argwhere(np.abs(t_osc_matrix[i, j] - accel_error_time) < 5e-3)[0, 0]
-      t_u_eval_idx = np.argwhere(np.abs(t_osc_matrix[i, j] - accel_error_time) < 1e-3)[:, 0]
+      t_u_eval_idx = np.argwhere(np.abs(t_osc_matrix[i, j] - accel_error_time) < 1e-2)[:, 0]
       # import pdb; pdb.set_trace()
       # if (x_matrix[i, j, t_idx, z_fb_idx] > (success_height + terrain_heights[i])):
       #   successes[i, j] = 1
@@ -247,19 +269,19 @@ def count_successful_jumps(duration, param = ''):
 
 
   # ps.plot(terrain_heights, np.average(max_efforts, axis=1), xlabel='terrain height (m)', ylabel='actuator saturation (% of max)')
-  ps.plot(terrain_heights, np.average(accel_error, axis=1), xlabel='terrain height (m)', ylabel='average pelvis acceleration error (% of max)')
-  print('max effort: ')
-  print(np.mean(max_efforts))
-  print('power loss: ')
-  print(np.mean(efforts))
-  print('mean:' )
-  print(np.mean(accel_error))
-  print('median:' )
-  print(np.median(accel_error))
-  print('stdev:' )
-  print(np.std(accel_error))
-  import pdb; pdb.set_trace()
-  return
+  # ps.plot(terrain_heights, np.average(accel_error, axis=1), xlabel='terrain height (m)', ylabel='average pelvis acceleration error (% of max)')
+  # print('max effort: ')
+  # print(np.mean(max_efforts))
+  # print('power loss: ')
+  # print(np.mean(efforts, axis=1))
+  # print('mean:' )
+  # print(np.mean(accel_error, axis=1))
+  # print('median:' )
+  # print(np.median(accel_error, axis=1))
+  # print('stdev:' )
+  # print(np.std(accel_error, axis=1))
+  # import pdb; pdb.set_trace()
+  return accel_error, efforts
 
 
 def construct_knee_efforts_plot():

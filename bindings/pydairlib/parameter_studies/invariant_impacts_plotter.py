@@ -384,7 +384,7 @@ def construct_hardware_torque_plot():
     t_u_slice = slice(t_u_start_idx, t_u_end_idx)
     u_indices = slice(6, 8)
     plt.figure("Combined knee motor efforts")
-    ps.plot(t_u[t_u_slice] - hardware_impact, np.sum(u[t_u_slice, u_indices], axis=1), xlabel='Time Since Nominal Impact (ms)', ylabel='Combined Knee Motor Torque (Nm)')
+    ps.plot(t_u[t_u_slice] - hardware_impact, np.sum(u[t_u_slice, u_indices], axis=1), xlabel='Time Since Nominal Impact (s)', ylabel='Combined Knee Motor Torque (Nm)')
 
   durations = np.arange(0.0, 0.150, 0.05)
   ps.add_legend(['%.0f (ms)' % (d*1e3) for d in durations])

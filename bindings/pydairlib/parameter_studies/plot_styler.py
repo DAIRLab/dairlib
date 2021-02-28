@@ -46,7 +46,8 @@ class PlotStyler():
       # plt.ylabel(ylabel, fontweight="bold")
       plt.ylabel(ylabel)
     if title:
-      plt.title(title, fontweight="bold")
+      # plt.title(title, fontweight="bold")
+      plt.title(title)
     if legend:
       plt.legend(legend)
 

@@ -87,9 +87,9 @@ def main():
     x_nominal[i, :] = state_traj.value(t_samples[i])[:, 0]
     u_nominal[i, :] = input_traj.value(t_samples[i])[:, 0]
 
-  plt.figure("inputs")
-  ps.plot(t_samples, u_nominal[:, -4:])
-  ps.add_legend(u_datatypes[-4:])
+  # plt.figure("inputs")
+  # ps.plot(t_samples, u_nominal[:, -4:])
+  # ps.add_legend(u_datatypes[-4:])
 
   plt.figure("velocities")
   ps.plot(t_samples, x_nominal[:, -7:])
@@ -103,14 +103,16 @@ def main():
 
     plt.figure("velocities")
     ps.plot(t_state, x[:, -7:], linestyle=colors[color_idx])
-    plt.figure("inputs")
-    ps.plot(t_lqr, u, linestyle=colors[color_idx])
+
     # ps.plot(t_lqr, u)
-    ps.add_legend(u_datatypes)
+    # ps.add_legend(u_datatypes)
 
     t_u_start_idx = np.argwhere(np.abs(t_lqr - (t_start)) < 1e-3)[0, 0]
     t_u_end_idx = np.argwhere(np.abs(t_lqr - (t_end)) < 1e-3)[0, 0]
     t_slice = slice(t_u_start_idx, t_u_end_idx)
+
+    plt.figure("inputs")
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), u[t_slice], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', linestyle=colors[color_idx])
 
     plt.figure("swing_leg_joints")
     # ps.plot(t_lqr, osc_debug['right_knee_pin_traj'].ydot, linestyle=colors[color_idx])
@@ -123,7 +125,7 @@ def main():
     # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].error_ydot, linestyle='r')
     right_hip_pin_error = np.abs(osc_debug['right_hip_pin_traj'].ydot_des[t_slice] - osc_debug['right_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Swing Leg Velocity Error (rad/s)', linestyle=colors[color_idx])
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity Error (rad/s)', linestyle=colors[color_idx], title='Impacting Leg')
     plt.figure("stance_leg_joints")
     # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
@@ -135,7 +137,7 @@ def main():
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].error_ydot, linestyle='r')
     left_hip_pin_error = np.abs(osc_debug['left_hip_pin_traj'].ydot_des[t_slice] - osc_debug['left_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Stance Leg Velocity Error (rad/s)', linestyle=colors[color_idx])
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity Error (rad/s)', linestyle=colors[color_idx], title='Non-Impacting Leg')
     color_idx += 1
 
   plt.figure("stance_leg_joints")
@@ -146,7 +148,8 @@ def main():
   # ax.add_patch(projection_window_a)
   plt.xlim([-50, 50])
   plt.ylim([0, 0.5])
-  ps.save_fig('stance_leg_velocity_error.png')
+  # ps.save_fig('stance_leg_velocity_error.png')
+
   plt.figure("swing_leg_joints")
   ax = plt.gca()
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
@@ -155,7 +158,18 @@ def main():
   # ax.add_patch(projection_window_b)
   plt.xlim([-50, 50])
   plt.ylim([0, 0.5])
-  ps.save_fig('swing_leg_velocity_error.png')
+  # ps.save_fig('swing_leg_velocity_error.png')
+  plt.figure("inputs")
+  ax = plt.gca()
+  ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
+  legend_elements = [matplotlib.lines.Line2D([0], [0], color=colors[0], lw=4, label='Default Controller'),
+                     matplotlib.lines.Line2D([0], [0], color=colors[1], lw=4, label='No Derivative Feedback'),
+                     matplotlib.lines.Line2D([0], [0], color=colors[2], lw=4, label='Impact Invariant Projection'),
+                     matplotlib.patches.Patch(facecolor=ps.grey, label='Projection Window')]
+  ax.legend(handles = legend_elements, loc=2)
+  # ps.add_legend(u_datatypes)
+  plt.xlim([-50, 50])
+  ps.save_fig('rabbit_controller_efforts.png')
   ps.show_fig()
 
 def plot_foot_velocities(plant, context, t_state, x):

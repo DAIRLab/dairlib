@@ -117,9 +117,9 @@ def PlotCOM(rom_traj):
   # init_state[nq_FOM:nq_FOM + 6] = init_state[nq_FOM:nq_FOM + 6] + \
   #                                 FindVariableByName(rom_traj, 'eps_v0_FOM',6)
   # 4. If we relax only the translational part of floating base vel
-  init_state[nq_FOM + 3:nq_FOM + 6] = init_state[nq_FOM + 3:nq_FOM + 6] + \
-                                      FindVariableByName(rom_traj, 'eps_v0_FOM',
-                                        3)
+  # init_state[nq_FOM + 3:nq_FOM + 6] = init_state[nq_FOM + 3:nq_FOM + 6] + \
+  #                                     FindVariableByName(rom_traj, 'eps_v0_FOM',
+  #                                       3)
   # 5. If we relax only the z compoment of the floating base vel
   init_state[nq_FOM + 5:nq_FOM + 6] = init_state[nq_FOM + 5:nq_FOM + 6] + \
                                       FindVariableByName(rom_traj, 'eps_v0_FOM',
@@ -152,19 +152,32 @@ def CalcCenterOfMass(x):
   comdot = J @ x[nq_FOM:]
   return com, comdot
 
+def GetVarNameWithoutParanthesisIndex(var_name):
+  length = 0
+  for i in len(var_name):
+    if var_name[i] == '(':
+      break
+    length=length+1
+  return var_name[:length]
+
 
 def FindVariableByName(rom_traj, name, var_length):
   # returns solutions by variable names
-  j = 0
-  for i in range(len(rom_traj.GetTrajectory("decision_vars").datatypes)):
-    if rom_traj.GetTrajectory("decision_vars").datatypes[i][:len(name)] == name:
-      j = i
+  index = 0
+  vars = rom_traj.GetTrajectory("decision_vars")
+  for i in range(len(vars.datatypes)):
+    if vars.datatypes[i][:len(name)] == name:
+      index = i
       break
-  if j == 0:
+  if index == 0:
     raise NameError(name + " doesn't exist")
+  else:
+    for i in range(var_length):
+      if vars.datatypes[index + i][:len(name)] != name:
+        raise NameError(name + "'s length is shorter than " + str(i + 1))
+
   # We need to make a copy here. Otherwise, the returned object is not writable
-  return rom_traj.GetTrajectory("decision_vars").datapoints[j:j + var_length,
-         0].copy()
+  return vars.datapoints[index:index + var_length, 0].copy()
 
 
 def PrintAllDecisionVar(rom_traj):

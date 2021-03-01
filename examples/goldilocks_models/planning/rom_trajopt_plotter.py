@@ -88,7 +88,7 @@ def main():
   """
   Print the value of the solutions
   """
-  PrintAllDecisionVar(rom_traj)
+  # PrintAllDecisionVar(rom_traj)
 
   """
   Testing
@@ -105,40 +105,85 @@ def PlotCOM(rom_traj):
   # We assume that the initial state constraint is relaxed, and here
   # we reconstruct the robot's init state by adding back the slack variable
   # value
-  init_state = FindVariableByName(rom_traj, 'x0_FOM', nx_FOM)
-  com_relaxed, comdot_relaxed = CalcCenterOfMass(init_state)
+  n_mode = rom_traj.GetNumModes()
+  vars = rom_traj.GetTrajectory("decision_vars")
+
+  com_vec = np.zeros((n_mode + 1, 3))
+  comdot_vec = np.zeros((n_mode, 2, 3))
+
+  x0_FOM = FindVariableByName(vars, 'x0_FOM', nx_FOM)
+  com_relaxed, comdot_relaxed = CalcCenterOfMass(x0_FOM)
+  com_vec[0] = com_relaxed
+  comdot_vec[0][0] = comdot_relaxed
 
   # 1. If we relax the whole state
-  # init_state = init_state + FindVariableByName(rom_traj, 'eps_x0_FOM', nx_FOM)
+  # x0_FOM = x0_FOM + FindVariableByName(vars, 'eps_x0_FOM', nx_FOM)
   # 2. If we relax only the velocity
-  # init_state[nq_FOM:] = init_state[nq_FOM:] + FindVariableByName(rom_traj,
+  # x0_FOM[nq_FOM:] = x0_FOM[nq_FOM:] + FindVariableByName(vars,
   #   'eps_v0_FOM', nv_FOM)
   # 3. If we relax only the floating base vel
-  # init_state[nq_FOM:nq_FOM + 6] = init_state[nq_FOM:nq_FOM + 6] + \
-  #                                 FindVariableByName(rom_traj, 'eps_v0_FOM',6)
+  # x0_FOM[nq_FOM:nq_FOM + 6] = x0_FOM[nq_FOM:nq_FOM + 6] + \
+  #                                 FindVariableByName(vars, 'eps_v0_FOM',6)
   # 4. If we relax only the translational part of floating base vel
-  # init_state[nq_FOM + 3:nq_FOM + 6] = init_state[nq_FOM + 3:nq_FOM + 6] + \
-  #                                     FindVariableByName(rom_traj, 'eps_v0_FOM',
-  #                                       3)
+  # x0_FOM[nq_FOM + 3:nq_FOM + 6] = x0_FOM[nq_FOM + 3:nq_FOM + 6] + \
+  #                                     FindVariableByName(vars, 'eps_v0_FOM',3)
   # 5. If we relax only the z compoment of the floating base vel
-  init_state[nq_FOM + 5:nq_FOM + 6] = init_state[nq_FOM + 5:nq_FOM + 6] + \
-                                      FindVariableByName(rom_traj, 'eps_v0_FOM',
-                                        1)
+  x0_FOM[nq_FOM + 5:nq_FOM + 6] = x0_FOM[nq_FOM + 5:nq_FOM + 6] + \
+                                  FindVariableByName(vars, 'eps_v0_FOM', 1)
   # 6. If we don't relax anything
   # do nothing.
 
-  com, comdot = CalcCenterOfMass(init_state)
-  figname = "COM before and after relaxing"
+  com_non_relaxed, comdot_non_relaxed = CalcCenterOfMass(x0_FOM)
+
+  xf_FOM = FindVariableByName(vars, 'xf_FOM')
+  for i in range(n_mode):
+    com, comdot = CalcCenterOfMass(xf_FOM[i * nx_FOM: (i + 1) * nx_FOM])
+    com_vec[i + 1] = com
+    comdot_vec[i][1] = comdot
+
+  vp_FOM = FindVariableByName(vars, 'vp_FOM')
+  for i in range(1, n_mode):
+    x0_FOM = np.hstack([xf_FOM[i * nx_FOM: i * nx_FOM + nq_FOM],
+                        vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
+    _, comdot = CalcCenterOfMass(x0_FOM)
+    comdot_vec[i][0] = comdot
+
+  palette = ['r', 'b', 'g']
+  figname = "Full model: COM"
+  plt.figure(figname, figsize=figsize)
+  for i in range(n_mode):
+    for j in range(3):
+      plt.plot([i, i + 1], [com_vec[i][j], com_vec[i + 1][j]], palette[j],
+        markersize=4)
+  for i in range(3):
+    plt.plot([0], com_non_relaxed[i], palette[i] + 'o', markersize=4)
+  plt.ylabel('(m)')
+  plt.xlabel('mode index')
+  plt.legend(['x', 'y', 'z'])
+  figname = "Full model: COM vel"
+  plt.figure(figname, figsize=figsize)
+  for i in range(n_mode):
+    for j in range(3):
+      plt.plot([i, i + 1], [comdot_vec[i][0][j], comdot_vec[i][1][j]],
+        palette[j], markersize=4)
+  for i in range(3):
+    plt.plot([0], comdot_non_relaxed[i], palette[i] + 'o', markersize=4)
+  plt.ylabel('(m/s)')
+  plt.xlabel('mode index')
+  plt.legend(['x', 'y', 'z'])
+
+  # Only plot the init staet
+  figname = "Full model: COM before and after relaxing"
   plt.figure(figname, figsize=figsize)
   plt.plot([0, 1, 2], com_relaxed, 'ro', markersize=4)
-  plt.plot([0, 1, 2], com, 'bo', markersize=4)
+  plt.plot([0, 1, 2], com_non_relaxed, 'bo', markersize=4)
   plt.ylabel('(m)')
   plt.xlabel('index')
   plt.legend(['com_relaxed', 'com'])
-  figname = "COM vel before and after relaxing"
+  figname = "Full model: COM vel before and after relaxing"
   plt.figure(figname, figsize=figsize)
   plt.plot([0, 1, 2], comdot_relaxed, 'ro', markersize=4)
-  plt.plot([0, 1, 2], comdot, 'bo', markersize=4)
+  plt.plot([0, 1, 2], comdot_non_relaxed, 'bo', markersize=4)
   plt.ylabel('(m/s)')
   plt.xlabel('index')
   plt.legend(['comdot_relaxed', 'comdot'])
@@ -152,32 +197,49 @@ def CalcCenterOfMass(x):
   comdot = J @ x[nq_FOM:]
   return com, comdot
 
+
 def GetVarNameWithoutParanthesisIndex(var_name):
   length = 0
   for i in len(var_name):
     if var_name[i] == '(':
       break
-    length=length+1
+    length = length + 1
   return var_name[:length]
 
 
-def FindVariableByName(rom_traj, name, var_length):
-  # returns solutions by variable names
+def GetIndexStartGivenName(vars, name):
   index = 0
-  vars = rom_traj.GetTrajectory("decision_vars")
   for i in range(len(vars.datatypes)):
     if vars.datatypes[i][:len(name)] == name:
       index = i
       break
-  if index == 0:
+  return index
+
+
+def GetVarLengthGivenName(vars, name):
+  index_start = GetIndexStartGivenName(vars, name)
+  length = 0
+  for i in range(index_start, len(vars.datatypes)):
+    if vars.datatypes[i][:len(name)] != name:
+      break
+    length = length + 1
+  return length
+
+
+def FindVariableByName(vars, name, var_length=-1):
+  # returns solutions by variable names
+  if var_length == -1:
+    var_length = GetVarLengthGivenName(vars, name)
+
+  start_idx = GetIndexStartGivenName(vars, name)
+  if start_idx == 0:
     raise NameError(name + " doesn't exist")
   else:
     for i in range(var_length):
-      if vars.datatypes[index + i][:len(name)] != name:
+      if vars.datatypes[start_idx + i][:len(name)] != name:
         raise NameError(name + "'s length is shorter than " + str(i + 1))
-
   # We need to make a copy here. Otherwise, the returned object is not writable
-  return vars.datapoints[index:index + var_length, 0].copy()
+  return vars.datapoints[start_idx:start_idx + var_length, 0].copy()
 
 
 def PrintAllDecisionVar(rom_traj):

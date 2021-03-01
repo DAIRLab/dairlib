@@ -100,7 +100,7 @@ def cassie_main():
   J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r, J_l_loop, J_r_loop))
   # J = np.vstack((J_l_r, J_r_r))
   M_Jt = M_inv @ J.T
-  P = linalg.null_space(M_Jt.T).T
+  P = linalg.null_space(M_Jt.T)
   proj_ii = np.eye(nv) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
 
   # transform = J @ M_inv @ J.T @ np.linalg.pinv(J @ M_inv @ J.T)
@@ -111,17 +111,22 @@ def cassie_main():
   vel = np.zeros((t.shape[0], nv))
   # cc_vel = np.zeros((t.shape[0], 6))
   cc_vel = np.zeros((t.shape[0], 18))
+  cc_vel_back = np.zeros((t.shape[0], 18))
 
   for i in range(t.shape[0]):
     x = state_traj.value(t[i])
     vel[i] = x[-nv:, 0]
-    cc_vel[i] = P.T @ P @ vel[i]
+    cc_vel[i] = P @ P.T @ vel[i]
+    cc_vel_back[i] = (P @ P.T).T @ (P @ P.T) @ vel[i]
     # cc_vel[i] = proj_ii @ vel[i]
-
   plt.figure("Joint Velocities around impacts")
   plt.plot(t, vel)
   plt.figure("Change of coordinates")
-  plt.plot(t, cc_vel, 'b')
+  plt.plot(t, cc_vel)
+  plt.ylim([-10, 10])
+
+  plt.figure("Change of coordinates back")
+  plt.plot(t, cc_vel_back)
 
   v_pre = x_pre[-nv:]
   v_post = x_post[-nv:]

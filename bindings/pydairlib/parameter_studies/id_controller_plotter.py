@@ -73,7 +73,8 @@ def main():
   # filename = sys.argv[1]
   log_dir = '/home/yangwill/Documents/research/projects/five_link_biped/invariant_impacts/'
   # log_files = ['lcmlog-0001', 'lcmlog-050', 'lcmlog-1001']
-  log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
+  # log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
+  log_files = ['lcmlog-000', 'lcmlog-025']
   # log_files = ['lcmlog-000_1', 'lcmlog-010', 'lcmlog-010_0KD_1']
   # log_files = ['lcmlog-0251']
   # log_files = ['lcmlog-0101']
@@ -138,7 +139,7 @@ def main():
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].error_ydot, linestyle='r')
     left_hip_pin_error = np.abs(osc_debug['left_hip_pin_traj'].ydot_des[t_slice] - osc_debug['left_hip_pin_traj'].ydot[t_slice])
     ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity Error (rad/s)', linestyle=colors[color_idx], title='Non-Impacting Leg')
-    color_idx += 1
+    color_idx += 2
 
   plt.figure("stance_leg_joints")
   ax = plt.gca()
@@ -162,9 +163,9 @@ def main():
   plt.figure("inputs")
   ax = plt.gca()
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
-  legend_elements = [matplotlib.lines.Line2D([0], [0], color=colors[0], lw=4, label='Default Controller'),
-                     matplotlib.lines.Line2D([0], [0], color=colors[1], lw=4, label='No Derivative Feedback'),
-                     matplotlib.lines.Line2D([0], [0], color=colors[2], lw=4, label='Impact Invariant Projection'),
+  legend_elements = [matplotlib.lines.Line2D([0], [0], color=colors[0], lw=3, label='Default Controller'),
+                     # matplotlib.lines.Line2D([0], [0], color=colors[1], lw=4, label='No Derivative Feedback'),
+                     matplotlib.lines.Line2D([0], [0], color=colors[2], lw=3, label='Impact Invariant Projection'),
                      matplotlib.patches.Patch(facecolor=ps.grey, label='Projection Window')]
   ax.legend(handles = legend_elements, loc=2)
   # ps.add_legend(u_datatypes)

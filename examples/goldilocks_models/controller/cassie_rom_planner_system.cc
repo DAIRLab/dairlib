@@ -167,14 +167,13 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   }
 
   // Get foot contacts
-  bool double_contact_pts = true;
   auto left_toe = LeftToeFront(plant_controls);
   auto left_heel = LeftToeRear(plant_controls);
   // auto right_toe = RightToeFront(plant_controls);
   // auto right_heel = RightToeRear(plant_controls);
   Vector3d front_contact_point = left_toe.first;
   Vector3d rear_contact_point = left_heel.first;
-  if (double_contact_pts) {
+  if (param_.use_double_contact_points) {
     auto left_toe_front = BodyPoint(front_contact_point,
                                     plant_controls.GetFrameByName("toe_left"));
     auto left_toe_rear = BodyPoint(rear_contact_point,

@@ -28,6 +28,7 @@ struct PlannerSetting {
   double final_position_x;
 
   bool zero_touchdown_impact;
+  bool use_double_contact_points;
 
   bool equalize_timestep_size;
   bool fix_duration;

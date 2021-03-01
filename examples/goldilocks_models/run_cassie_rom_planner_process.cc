@@ -68,7 +68,8 @@ DEFINE_bool(fix_duration, true,
             "Fix the total time. (could lead to faster solve but possibly "
             "worse solution)");
 DEFINE_bool(equalize_timestep_size, true, "Make all timesteps the same size");
-DEFINE_bool(zero_touchdown_impact, true, "Zero impact at foot touchdown");
+DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
+DEFINE_bool(use_double_contact_points, true, "");
 DEFINE_double(opt_tol, 1e-2, "");
 DEFINE_double(feas_tol, 1e-2, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
@@ -152,6 +153,7 @@ int DoMain(int argc, char* argv[]) {
   //  param.final_position_x = FLAGS_final_position;
   param.final_position_x = gains.stride_length * FLAGS_n_step;
   param.zero_touchdown_impact = FLAGS_zero_touchdown_impact;
+  param.use_double_contact_points = FLAGS_use_double_contact_points;
   param.equalize_timestep_size = FLAGS_equalize_timestep_size;
   param.fix_duration = FLAGS_fix_duration;
   param.feas_tol = FLAGS_feas_tol;

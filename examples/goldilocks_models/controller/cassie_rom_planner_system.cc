@@ -167,17 +167,35 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   }
 
   // Get foot contacts
+  bool double_contact_pts = true;
   auto left_toe = LeftToeFront(plant_controls);
   auto left_heel = LeftToeRear(plant_controls);
   // auto right_toe = RightToeFront(plant_controls);
   // auto right_heel = RightToeRear(plant_controls);
-  Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
-  auto left_toe_mid =
-      BodyPoint(mid_contact_point, plant_controls.GetFrameByName("toe_left"));
-  auto right_toe_mid =
-      BodyPoint(mid_contact_point, plant_controls.GetFrameByName("toe_right"));
-  left_contacts_.push_back(left_toe_mid);
-  right_contacts_.push_back(right_toe_mid);
+  Vector3d front_contact_point = left_toe.first;
+  Vector3d rear_contact_point = left_heel.first;
+  if (double_contact_pts) {
+    auto left_toe_front = BodyPoint(front_contact_point,
+                                    plant_controls.GetFrameByName("toe_left"));
+    auto left_toe_rear = BodyPoint(rear_contact_point,
+                                   plant_controls.GetFrameByName("toe_left"));
+    auto right_toe_front = BodyPoint(
+        front_contact_point, plant_controls.GetFrameByName("toe_right"));
+    auto right_toe_rear = BodyPoint(rear_contact_point,
+                                    plant_controls.GetFrameByName("toe_right"));
+    left_contacts_.push_back(left_toe_front);
+    left_contacts_.push_back(left_toe_rear);
+    right_contacts_.push_back(right_toe_front);
+    right_contacts_.push_back(right_toe_rear);
+  } else {
+    Vector3d mid_contact_point = (front_contact_point + rear_contact_point) / 2;
+    auto left_toe_mid =
+        BodyPoint(mid_contact_point, plant_controls.GetFrameByName("toe_left"));
+    auto right_toe_mid = BodyPoint(mid_contact_point,
+                                   plant_controls.GetFrameByName("toe_right"));
+    left_contacts_.push_back(left_toe_mid);
+    right_contacts_.push_back(right_toe_mid);
+  }
 
   // Get joint limits of the robot
   std::vector<string> l_r_pair = {"_left", "_right"};

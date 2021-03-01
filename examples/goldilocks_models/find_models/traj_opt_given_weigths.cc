@@ -3374,6 +3374,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
 
+  writeCSV(setting.prefix + string("solve_time.csv"), duration*VectorXd::Ones(1));
+
   // Save trajectory to file
   string file_name = setting.prefix + "dircon_trajectory";
   DirconTrajectory saved_traj(

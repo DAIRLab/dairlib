@@ -2,8 +2,9 @@
 
 ##basic parameters##
 #SBATCH --job-name=run_model_opt
-#SBATCH --time=20:00
-#SBATCH --output=/scratch/jianshu/output/slurm-%A_%a.out  ##manually specify this directory
+#SBATCH --time=40:00
+#SBATCH --output=/scratch/jianshu/output/slurm-%A_%a.out
+#SBATCH --error=/scratch/jianshu/error/slurm-%A_%a.err
 
 ##email setting##
 #SBATCH --mail-user=jianshu@seas.upenn.edu
@@ -16,12 +17,14 @@
 #SBATCH --nodes=1
 #SBATCH --nodelist=node-2080ti-7
 
-#SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=2G
+#SBATCH --cpus-per-task=96
+#SBATCH --mem-per-cpu=4G
+
+#SBATCH --hint=multithread
 
 ##job setting##
 #SBATCH --ntasks=1
-#SBATCH --array=0-10%1
+#SBATCH --array=0-0%1
 
 cd /scratch/$USER/dairlib
 ##srun bazel build examples/goldilocks_models:find_goldilocks_models
@@ -29,13 +32,13 @@ cd /scratch/$USER/dairlib
 ###########model optimization setting##########
 # Set robot id and model id
 robot=1
-model=2 # 1Drom 2,3   2Drom 0,1  3Drom 4,5
+model=0 # 1Drom 2,3   2Drom 0,1  3Drom 4,5
 echo robot_option = $robot, rom_option = $model
 
 # Set sample size
-n_sl=1
-n_gi=1
-n_v=1
+n_sl=6
+n_gi=4
+n_v=2
 n_tr=1
 
 # Set optimization range
@@ -51,8 +54,8 @@ tr_max=0
 # large range
 # Other parameters
 is_grid=true
-snopt_scaling=true
-N_rerun=1
+snopt_scaling=false
+N_rerun=0
 
 # Delete and create a new data folder at the beginning
 if [ $SLURM_ARRAY_TASK_ID = 0 ]; then

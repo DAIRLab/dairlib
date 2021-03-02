@@ -3,7 +3,6 @@
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
-#include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -11,9 +10,9 @@
 
 namespace dairlib::examples::osc_jump {
 
-class COMTrajGenerator : public drake::systems::LeafSystem<double> {
+class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  COMTrajGenerator(
+  PelvisTransTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
       drake::trajectories::PiecewisePolynomial<double>& crouch_traj,
@@ -51,8 +50,8 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_;
 
   drake::systems::DiscreteStateIndex prev_fsm_idx_;
-  drake::systems::DiscreteStateIndex com_x_offset_idx_;
-  drake::systems::DiscreteStateIndex initial_com_idx_;
+  drake::systems::DiscreteStateIndex pelvis_x_offset_idx_;
+  drake::systems::DiscreteStateIndex initial_pelvis_pos_idx_;
   drake::systems::DiscreteStateIndex switch_time_idx_;
 
   // Center of mass trajectory
@@ -66,7 +65,6 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
-  drake::systems::InputPortIndex clock_port_;
 
   static constexpr double kTransitionSpeed = 200.0;  // 20 s/m
   // The trajectory optimization solution sets the final CoM very close to

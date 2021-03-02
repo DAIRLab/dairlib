@@ -102,7 +102,6 @@ int DoMain(int argc, char* argv[]) {
 
   int nq = plant_w_spr.num_positions();
   int nv = plant_w_spr.num_velocities();
-  int nx = nq + nv;
 
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);

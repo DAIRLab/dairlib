@@ -1,5 +1,8 @@
+#include <drake/common/yaml/yaml_read_archive.h>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 #include <drake/multibody/parsing/parser.h>
+#include <drake/systems/framework/diagram_builder.h>
+#include <drake/systems/lcm/lcm_publisher_system.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -17,18 +20,10 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/primitives/gaussian_noise_pass_through.h"
 #include "systems/robot_lcm_systems.h"
-#include "yaml-cpp/yaml.h"
-
-#include "drake/common/yaml/yaml_read_archive.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
 
 namespace dairlib {
 
-using std::cout;
-using std::endl;
 using std::map;
 using std::pair;
 using std::string;
@@ -49,11 +44,10 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
-using examples::osc_jump::COMTrajGenerator;
+using examples::osc_jump::FlightFootTrajGenerator;
 using examples::osc_jump::FlightFootTrajGenerator;
 using examples::osc_jump::JumpingEventFsm;
 using multibody::FixedJointEvaluator;
-using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
@@ -64,13 +58,12 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "OSC_JUMPING",
               "The name of the channel which publishes command");
-DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
-DEFINE_string(mode_name, "state_input_trajectory",
-              "Base name of each trajectory");
-DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
+DEFINE_double(delay_time, 0.0,
+              "Time to wait before executing jump. Useful for getting the "
+              "robot state into the desired initial state.");
 DEFINE_bool(contact_based_fsm, false,
             "The contact based fsm transitions "
             "between states using contact data.");
@@ -100,17 +93,13 @@ int DoMain(int argc, char* argv[]) {
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
 
-  // Get contact frames and position (doesn't matter whether we use
-  // plant_w_spr or plant_wo_springs because the contact frames exit in both
-  // plants)
+  // Get contact frames and position
   auto left_toe = LeftToeFront(plant_w_spr);
   auto left_heel = LeftToeRear(plant_w_spr);
   auto right_toe = RightToeFront(plant_w_spr);
   auto right_heel = RightToeRear(plant_w_spr);
 
-  int nq = plant_w_spr.num_positions();
   int nv = plant_w_spr.num_velocities();
-  int nx = nq + nv;
 
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
@@ -179,16 +168,15 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // For the time-based FSM (squatting by default)
-  double flight_time = FLAGS_delay_time + 100;
-  double land_time = FLAGS_delay_time + 200;
-  if (dircon_trajectory.GetNumModes() == 3) {  // Override for jumping
-    flight_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
-    land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) +
-                gains.landing_delay;
-  }
+  double flight_time =
+      FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
+  double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) +
+                     gains.landing_delay;
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};
 
+  // Offset the output trajectories to account for the starting global position
+  // of the robot
   Vector3d support_center_offset;
   support_center_offset << gains.x_offset, 0.0, 0.0;
   std::vector<double> breaks = pelvis_trans_traj.get_segment_times();
@@ -210,7 +198,9 @@ int DoMain(int argc, char* argv[]) {
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
-  auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
+  // This actually outputs the target position of the pelvis not the true
+  // center of mass
+  auto com_traj_generator = builder.AddSystem<PelvisTransTrajGenerator>(
       plant_w_spr, context_w_spr.get(), pelvis_trans_traj, feet_contact_points,
       FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
@@ -232,8 +222,7 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
-      FLAGS_print_osc); /*print_tracking_info*/
+      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -295,6 +284,7 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
+  // Fix the springs in the dynamics
   auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
   auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
   auto left_fixed_knee_spring =
@@ -343,7 +333,7 @@ int DoMain(int argc, char* argv[]) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
   }
 
-  // Yaw tracking
+  // Flight phase hip yaw tracking
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
@@ -360,7 +350,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&swing_hip_yaw_left_traj, VectorXd::Zero(1));
   osc->AddConstTrackingData(&swing_hip_yaw_right_traj, VectorXd::Zero(1));
 
-  // Toe tracking flight phase
+  // Flight phase toe pitch tracking
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
@@ -385,19 +375,10 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
 
-  //  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::CROUCH, "toe_left",
-  //                                              "toe_leftdot");
-  //  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::CROUCH,
-  //  "toe_right",
-  //                                               "toe_rightdot");
   left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
                                               "toe_leftdot");
   right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
                                                "toe_rightdot");
-  //  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_left",
-  //                                              "toe_leftdot");
-  //  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::LAND, "toe_right",
-  //                                               "toe_rightdot");
 
   osc->AddTrackingData(&pelvis_rot_tracking_data);
   osc->AddTrackingData(&left_foot_tracking_data);
@@ -436,8 +417,6 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_contact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_state_input_port());
-  //  builder.Connect(controller_switch_receiver->get_output_port(),
-  //                  fsm->get_switch_input_port());
 
   // Trajectory generator connections
   builder.Connect(state_receiver->get_output_port(0),

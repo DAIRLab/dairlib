@@ -2,10 +2,6 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 
-#include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
-#include "systems/controllers/control_utils.h"
-#include "systems/framework/output_vector.h"
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -17,7 +13,7 @@ class BasicTrajectoryPassthrough : public drake::systems::LeafSystem<double> {
  public:
   BasicTrajectoryPassthrough(
       const drake::trajectories::PiecewisePolynomial<double>& traj,
-      std::string traj_name, double time_offset = 0.0);
+      const std::string& traj_name, double time_offset = 0.0);
 
  private:
   void CalcTraj(const drake::systems::Context<double>& context,

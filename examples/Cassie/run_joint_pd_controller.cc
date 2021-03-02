@@ -79,16 +79,6 @@ int doMain(int argc, char* argv[]) {
   addCassieMultibody(&plant, &scene_graph_null, FLAGS_floating_base);
   plant.Finalize();
 
-  int nq = plant.num_positions();
-  int nx = plant.num_positions() + plant.num_velocities();
-  int nu = plant.num_actuators();
-//  const LcmTrajectory& original_traj =
-//      LcmTrajectory(FLAGS_folder_path + FLAGS_traj_name);
-//  const LcmTrajectory::Trajectory& lcm_state_traj =
-//      original_traj.GetTrajectory("state_trajectory");
-//  const LcmTrajectory::Trajectory& lcm_input_traj =
-//      original_traj.GetTrajectory("input_trajectory");
-
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
       FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
   PiecewisePolynomial<double> state_traj =

@@ -65,16 +65,11 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
   foot_traj_.shiftRight(time_offset);
 }
 
-/*
-  Move the feet relative to the COM
-  The trajectory of the COM cannot be altered, so must solve for
-  foot positions as a function of COM.
-*/
 PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
     const VectorXd& x, double t) const {
   if (relative_feet_) {
     plant_.SetPositionsAndVelocities(context_, x);
-    // Hip offset stuff
+    // Hip offset
     Vector3d zero_offset = Vector3d::Zero();
     Vector3d hip_pos = Vector3d::Zero();
     plant_.CalcPointsPositions(*context_, hip_frame_, zero_offset, world_,

@@ -301,9 +301,9 @@ DirconTrajectory::ReconstructLambdaTrajectory() const {
 std::vector<PiecewisePolynomial<double>>
 DirconTrajectory::ReconstructLambdaCTrajectory() const {
   std::vector<PiecewisePolynomial<double>> lambda_c_traj;
-  for (int mode_index = 0; mode_index < lambda_c_.size(); mode_index++) {
+  for (auto mode_index : lambda_c_) {
     lambda_c_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(
-        lambda_c_[mode_index]->time_vector, lambda_c_[mode_index]->datapoints));
+        mode_index->time_vector, mode_index->datapoints));
   }
   return lambda_c_traj;
 }
@@ -311,9 +311,9 @@ DirconTrajectory::ReconstructLambdaCTrajectory() const {
 std::vector<PiecewisePolynomial<double>>
 DirconTrajectory::ReconstructGammaCTrajectory() const {
   std::vector<PiecewisePolynomial<double>> gamma_c_traj;
-  for (int mode_index = 0; mode_index < gamma_c_.size(); mode_index++) {
+  for (auto mode_index : gamma_c_) {
     gamma_c_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(
-        gamma_c_[mode_index]->time_vector, gamma_c_[mode_index]->datapoints));
+        mode_index->time_vector, mode_index->datapoints));
   }
   return gamma_c_traj;
 }
@@ -333,10 +333,15 @@ void DirconTrajectory::LoadFromFile(const std::string& filepath) {
         &GetTrajectory("state_derivative_traj" + std::to_string(mode)));
     lambda_.push_back(&GetTrajectory("force_vars" + std::to_string(mode)));
     if (x_[mode]->time_vector.size() > 1) {
-      lambda_c_.push_back(
-          &GetTrajectory("collocation_force_vars" + std::to_string(mode)));
-      gamma_c_.push_back(
-          &GetTrajectory("collocation_slack_vars" + std::to_string(mode)));
+      try {
+        lambda_c_.push_back(
+            &GetTrajectory("collocation_force_vars" + std::to_string(mode)));
+        gamma_c_.push_back(
+            &GetTrajectory("collocation_slack_vars" + std::to_string(mode)));
+      }catch(std::exception&){
+        // Temporary fix to work with old versions of saved dircon trajectories
+        continue;
+      }
     }
   }
   u_ = &GetTrajectory("input_traj");

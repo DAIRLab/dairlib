@@ -265,7 +265,7 @@ void OperationalSpaceControl::Build() {
   }
 
   // Record the contact dimension per state
-  for (auto contact_map : contact_indices_map_){
+  for (auto contact_map : contact_indices_map_) {
     int active_contact_dim = 0;
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (contact_map.second.find(i) != contact_map.second.end()) {
@@ -440,7 +440,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 VectorXd OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
-    double time_since_last_state_switch, double near_impact,
+    double time_since_last_state_switch, double alpha,
     int next_fsm_state) const {
   // Get active contact indices
   std::set<int> active_contact_set = {};
@@ -593,13 +593,17 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
-//  Invariant Impacts
-//  Only update when near an impact
-  ii_lambda_sol_ = VectorXd::Zero(1);
+  //  Invariant Impacts
+  //  Only update when near an impact
+  bool near_impact = alpha != 0;
   if (near_impact) {
-    std::set<int> next_contact_set = {};
     auto map_iterator = contact_indices_map_.find(next_fsm_state);
-    next_contact_set = map_iterator->second;
+    if (map_iterator == contact_indices_map_.end()) {
+      throw std::out_of_range(
+          "Contact mode: " + std::to_string(next_fsm_state) +
+          " was not found in the OSC");
+    }
+    std::set<int> next_contact_set = map_iterator->second;
     int active_contact_dim = active_contact_dim_.at(next_fsm_state) + 2;
     MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
     int row_start = 0;
@@ -619,15 +623,14 @@ VectorXd OperationalSpaceControl::SolveQp(
         auto tracking_data = tracking_data_vec_->at(i);
 
         if (tracking_data->IsActive()) {
-          MatrixXd ii_proj = MatrixXd::Zero(n_v_, tracking_data->GetYDim());
+          VectorXd v_proj = VectorXd::Zero(n_v_);
           active_tracking_data_dim += tracking_data->GetYDim();
-
           if (fixed_position_vec_.at(i).size() != 0) {
             // Create constant trajectory and update
             tracking_data->Update(
                 x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
                 PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-                fsm_state, ii_proj);
+                fsm_state, v_proj);
           } else {
             // Read in traj from input port
             const string& traj_name = tracking_data->GetName();
@@ -638,8 +641,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                 input_traj
                     ->get_value<drake::trajectories::Trajectory<double>>();
             tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                                  *context_wo_spr_, traj, t, fsm_state,
-                                  ii_proj);
+                                  *context_wo_spr_, traj, t, fsm_state, v_proj);
           }
         }
       }
@@ -664,7 +666,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
-    MatrixXd ii_proj = MatrixXd::Zero(n_v_, tracking_data->GetYDim());
+    // When not using the projection, set it equal to zero
+    VectorXd v_proj = VectorXd::Zero(n_v_);
+
+    if (near_impact && tracking_data->IsActive()) {
+      // Need to call Update before this to get the updated jacobian
+      v_proj = alpha * M_Jt_ * ii_lambda_sol_;
+    }
 
     // Check whether or not it is a constant trajectory, and update TrackingData
     if (fixed_position_vec_.at(i).size() != 0) {
@@ -672,7 +680,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       tracking_data->Update(
           x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
           PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state,
-          ii_proj);
+          v_proj);
     } else {
       // Read in traj from input port
       const string& traj_name = tracking_data->GetName();
@@ -684,24 +692,7 @@ VectorXd OperationalSpaceControl::SolveQp(
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, traj, t, fsm_state, ii_proj);
-
-      if (near_impact && tracking_data->IsActive()) {
-        // Need to call Update before this to get the updated jacobian
-
-        if (use_single_lambda_) {
-          tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                                *context_wo_spr_, traj, t, fsm_state,
-                                M_Jt_ * ii_lambda_sol_);
-        } else {
-          MatrixXd A = tracking_data->GetJ() * M_Jt_;
-          MatrixXd A_pinv = A.completeOrthogonalDecomposition().pseudoInverse();
-          ii_proj = near_impact * M_Jt_ * A_pinv;
-          // Update again using correction
-          tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                                *context_wo_spr_, traj, t, fsm_state, ii_proj);
-        }
-      }
+                            *context_wo_spr_, traj, t, fsm_state, v_proj);
     }
     if (tracking_data->IsActive() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&

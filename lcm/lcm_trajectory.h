@@ -68,7 +68,8 @@ class LcmTrajectory {
     } catch (std::exception& e) {
       std::cerr << "Trajectory: " << trajectory_name << " does not exist."
                 << std::endl;
-      return Trajectory();
+//      return Trajectory();
+      throw std::out_of_range("");
     }
   }
 

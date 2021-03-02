@@ -1,7 +1,6 @@
 #include "examples/Cassie/osc_jump/com_traj_generator.h"
 
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -33,7 +32,7 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::osc_jump {
 
-COMTrajGenerator::COMTrajGenerator(
+PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     const MultibodyPlant<double>& plant, Context<double>* context,
     PiecewisePolynomial<double>& crouch_traj,
     const std::vector<std::pair<const Eigen::Vector3d,
@@ -54,33 +53,34 @@ COMTrajGenerator::COMTrajGenerator(
                                                         plant_.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
-  clock_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("com_traj", traj_inst,
-                                  &COMTrajGenerator::CalcTraj);
-  com_x_offset_idx_ = this->DeclareDiscreteState(1);
-  initial_com_idx_ = this->DeclareDiscreteState(3);
+                                  &PelvisTransTrajGenerator::CalcTraj);
+  pelvis_x_offset_idx_ = this->DeclareDiscreteState(1);
+  initial_pelvis_pos_idx_ = this->DeclareDiscreteState(3);
   switch_time_idx_ = this->DeclareDiscreteState(3);
   VectorXd init_fsm(1);
   init_fsm << init_fsm_state;
   prev_fsm_idx_ = this->DeclareDiscreteState(init_fsm);
 
-  DeclarePerStepDiscreteUpdateEvent(&COMTrajGenerator::DiscreteVariableUpdate);
+  DeclarePerStepDiscreteUpdateEvent(
+      &PelvisTransTrajGenerator::DiscreteVariableUpdate);
   crouch_traj_.shiftRight(time_offset_);
 }
 
-EventStatus COMTrajGenerator::DiscreteVariableUpdate(
+EventStatus PelvisTransTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   auto prev_fsm_state =
       discrete_state->get_mutable_vector(prev_fsm_idx_).get_mutable_value();
-  auto com_x_offset =
-      discrete_state->get_mutable_vector(com_x_offset_idx_).get_mutable_value();
-  auto initial_com =
-      discrete_state->get_mutable_vector(initial_com_idx_).get_mutable_value();
+  auto pelvis_x_offset =
+      discrete_state->get_mutable_vector(pelvis_x_offset_idx_)
+          .get_mutable_value();
+  auto initial_pelvis_pos =
+      discrete_state->get_mutable_vector(initial_pelvis_pos_idx_)
+          .get_mutable_value();
   auto switch_time =
       discrete_state->get_mutable_vector(switch_time_idx_).get_mutable_value();
 
@@ -96,45 +96,38 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
     VectorXd q = robot_output->GetPositions();
     plant_.SetPositions(context_, q);
-    //    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
-    VectorXd center_of_mass(3);
+    VectorXd pelvis_pos(3);
     plant_.CalcPointsPositions(*context_,
                                plant_.GetBodyByName("pelvis").body_frame(),
-                               VectorXd::Zero(3), world_, &center_of_mass);
+                               VectorXd::Zero(3), world_, &pelvis_pos);
     if (fsm_state(0) == BALANCE) {  // Either the simulator restarted or the
                                     // controller switch was triggered
-      initial_com << center_of_mass;
+      initial_pelvis_pos << pelvis_pos;
       switch_time << timestamp;
     }
-    com_x_offset(0) = kLandingOffset;
-    //        kLandingOffset + (center_of_mass(0) -
-    //        crouch_traj_.value(timestamp)(0));
-    // TODO(yangwill) Remove this or calculate it based on the robot's state.
-    // Actually, this is necessary due to the traj opt solution's placement
-    // of the final CoM
+    // Offset desired pelvis location based on final landing location
+    pelvis_x_offset(0) = kLandingOffset;
   }
-  if (initial_com == VectorXd::Zero(3)) {
+  if (initial_pelvis_pos == VectorXd::Zero(3)) {
     VectorXd q = robot_output->GetPositions();
     plant_.SetPositions(context_, q);
-    //    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
-    VectorXd center_of_mass(3);
+    VectorXd pelvis_pos(3);
     plant_.CalcPointsPositions(*context_,
                                plant_.GetBodyByName("pelvis").body_frame(),
-                               VectorXd::Zero(3), world_, &center_of_mass);
-    initial_com << center_of_mass;
+                               VectorXd::Zero(3), world_, &pelvis_pos);
+    initial_pelvis_pos << pelvis_pos;
   }
   return EventStatus::Succeeded();
 }
 
 drake::trajectories::PiecewisePolynomial<double>
-COMTrajGenerator::generateBalanceTraj(
+PelvisTransTrajGenerator::generateBalanceTraj(
     const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
     double time) const {
   plant_.SetPositionsAndVelocities(context_, x);
 
-  double clock = this->EvalVectorInput(context, clock_port_)->get_value()(0);
-  const auto& initial_com =
-      context.get_discrete_state(initial_com_idx_).get_value();
+  const auto& initial_pelvis_pos =
+      context.get_discrete_state(initial_pelvis_pos_idx_).get_value();
   const double switch_time =
       context.get_discrete_state(switch_time_idx_).get_value()(0);
 
@@ -147,25 +140,23 @@ COMTrajGenerator::generateBalanceTraj(
     contact_pos_sum += position;
   }
 
-  Vector3d target_com = crouch_traj_.value(time_offset_);
-  //  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d target_pelvis_pos = crouch_traj_.value(time_offset_);
 
   // generate a trajectory from current position to target position
-  MatrixXd centerOfMassPoints(3, 2);
-  centerOfMassPoints << initial_com, target_com + 0.5 * contact_pos_sum;
+  MatrixXd pelvis_traj_points(3, 2);
+  pelvis_traj_points << initial_pelvis_pos,
+      target_pelvis_pos + 0.5 * contact_pos_sum;
 
   VectorXd breaks_vector(2);
-  //  breaks_vector << switch_time,
-  //      switch_time + kTransitionSpeed * (curr_com - target_com).norm();
   breaks_vector << switch_time, switch_time + time_offset_;
 
   return PiecewisePolynomial<double>::CubicHermite(
-      breaks_vector, centerOfMassPoints, MatrixXd::Zero(3, 2));
+      breaks_vector, pelvis_traj_points, MatrixXd::Zero(3, 2));
 }
 
 drake::trajectories::PiecewisePolynomial<double>
-COMTrajGenerator::generateCrouchTraj(const Eigen::VectorXd& x,
-                                     double time) const {
+PelvisTransTrajGenerator::generateCrouchTraj(const Eigen::VectorXd& x,
+                                             double time) const {
   // This assumes that the crouch is starting at the exact position as the
   // start of the target trajectory which should be handled by balance
   // trajectory
@@ -189,7 +180,7 @@ COMTrajGenerator::generateCrouchTraj(const Eigen::VectorXd& x,
 }
 
 drake::trajectories::PiecewisePolynomial<double>
-COMTrajGenerator::generateLandingTraj(
+PelvisTransTrajGenerator::generateLandingTraj(
     const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
     double time) const {
   plant_.SetPositionsAndVelocities(context_, x);
@@ -201,11 +192,11 @@ COMTrajGenerator::generateLandingTraj(
     contact_pos_sum += position;
   }
 
-  const auto& com_x_offset =
-      context.get_discrete_state().get_vector(com_x_offset_idx_);
+  const auto& x_offset =
+      context.get_discrete_state().get_vector(pelvis_x_offset_idx_);
 
   // Only offset the x-position
-  Vector3d offset(com_x_offset[0], 0, 0);
+  Vector3d offset(x_offset[0], 0, 0);
   offset += 0.5 * contact_pos_sum;
 
   auto traj_segment =
@@ -213,12 +204,12 @@ COMTrajGenerator::generateLandingTraj(
   std::vector<double> breaks = traj_segment.get_segment_times();
   MatrixXd offset_matrix = offset.replicate(1, breaks.size());
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
-  PiecewisePolynomial<double> com_offset =
+  PiecewisePolynomial<double> pelvis_x_offset =
       PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, offset_matrix);
-  return traj_segment + com_offset;
+  return traj_segment + pelvis_x_offset;
 }
 
-void COMTrajGenerator::CalcTraj(
+void PelvisTransTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state

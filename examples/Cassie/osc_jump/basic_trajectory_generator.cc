@@ -2,15 +2,13 @@
 
 #include "multibody/multibody_utils.h"
 
-using dairlib::systems::OutputVector;
-using drake::systems::BasicVector;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::osc_jump {
 
 BasicTrajectoryPassthrough::BasicTrajectoryPassthrough(
-    const PiecewisePolynomial<double>& traj, std::string traj_name,
+    const PiecewisePolynomial<double>& traj, const std::string& traj_name,
     double time_offset)
     : traj_(traj) {
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));

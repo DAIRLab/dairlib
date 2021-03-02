@@ -26,11 +26,8 @@ DEFINE_bool(relative_feet, true,
 DEFINE_string(trajectory_name, "",
               "File name where the optimal trajectory is stored.");
 DEFINE_string(folder_path,
-              "/home/yangwill/Documents/research/projects/cassie"
-              "/jumping/saved_trajs/",
+              "",
               "Folder path for where the trajectory names are stored");
-DEFINE_string(mode_name, "state_input_trajectory",
-              "Base name of each trajectory");
 
 namespace dairlib {
 
@@ -54,10 +51,7 @@ int DoMain() {
 
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 
-  int nq = plant.num_positions();
   int nv = plant.num_velocities();
-  int nu = plant.num_actuators();
-  int nx = plant.num_positions() + plant.num_velocities();
 
   auto l_toe_frame = &plant.GetBodyByName("toe_left").body_frame();
   auto r_toe_frame = &plant.GetBodyByName("toe_right").body_frame();
@@ -78,17 +72,6 @@ int DoMain() {
   std::vector<MatrixXd> all_pelvis_orientation;
   std::vector<VectorXd> all_times;
   Vector3d zero_offset = Vector3d::Zero();
-
-  //  VectorXd times = dircon_traj.GetBreaks();
-
-  //  std::cout << "knot points: " << n_points << std::endl;
-
-  //  MatrixXd l_foot_points(6, n_points);
-  //  MatrixXd r_foot_points(6, n_points);
-  //  MatrixXd l_hip_points(6, n_points);
-  //  MatrixXd r_hip_points(6, n_points);
-  //  MatrixXd center_of_mass_points(6, n_points);
-  //  MatrixXd pelvis_orientation(8, n_points);
 
   for (int mode = 0; mode < dircon_traj.GetNumModes(); ++mode) {
     if (dircon_traj.GetStateBreaks(mode).size() <= 1) {

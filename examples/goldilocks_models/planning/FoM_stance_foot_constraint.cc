@@ -83,10 +83,10 @@ FomStanceFootVelConstraint::FomStanceFootVelConstraint(
         stance_foot_contacts,
     const std::string& description)
     : NonlinearConstraint<double>(
-          6 * stance_foot_contacts.size(),
-          2 * (plant.num_positions() + plant.num_velocities()),
-          VectorXd::Zero(6 * stance_foot_contacts.size()),
-          VectorXd::Zero(6 * stance_foot_contacts.size()), description),
+          3 * stance_foot_contacts.size(),
+          (plant.num_positions() + plant.num_velocities()),
+          VectorXd::Zero(3 * stance_foot_contacts.size()),
+          VectorXd::Zero(3 * stance_foot_contacts.size()), description),
       plant_(plant),
       world_(plant.world_frame()),
       context_(plant.CreateDefaultContext()),
@@ -97,31 +97,17 @@ FomStanceFootVelConstraint::FomStanceFootVelConstraint(
 
 void FomStanceFootVelConstraint::EvaluateConstraint(
     const Eigen::Ref<const VectorX<double>>& x, VectorX<double>* y) const {
-  VectorX<double> x0 = x.head(n_x_);
-  VectorX<double> xf = x.tail(n_x_);
-
   drake::MatrixX<double> J(3, plant_.num_velocities());
 
-  *y = VectorX<double>(6 * n_c_);
-  // Start of the mode
-  plant_.SetPositions(context_.get(), x0.head(n_q_));
+  *y = VectorX<double>(3 * n_c_);
+  plant_.SetPositions(context_.get(), x.head(n_q_));
   for (int i = 0; i < n_c_; i++) {
     const auto& contact = stance_foot_contacts_.at(i);
     plant_.CalcJacobianTranslationalVelocity(
         *context_, drake::multibody::JacobianWrtVariable::kV, contact.second,
         contact.first, world_, world_, &J);
     // fill in velocity
-    y->segment<3>(3 * i) = J * x0.tail(plant_.num_velocities());
-  }
-  // End of the mode
-  plant_.SetPositions(context_.get(), xf.head(n_q_));
-  for (int i = 0; i < n_c_; i++) {
-    const auto& contact = stance_foot_contacts_.at(i);
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, drake::multibody::JacobianWrtVariable::kV, contact.second,
-        contact.first, world_, world_, &J);
-    // fill in velocity
-    y->segment<3>(3 * i + 3 * n_c_) = J * xf.tail(plant_.num_velocities());
+    y->segment<3>(3 * i) = J * x.tail(plant_.num_velocities());
   }
 }
 

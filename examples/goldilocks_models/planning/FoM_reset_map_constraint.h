@@ -25,7 +25,7 @@ class FomResetMapConstraint : public solvers::NonlinearConstraint<double> {
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
           impact_foot_contacts,
-      const std::string& description = "");
+      const std::string& description = "fom_discrete_dyn_constraint");
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,

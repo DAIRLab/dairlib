@@ -88,7 +88,7 @@ def main():
   """
   Print the value of the solutions
   """
-  # PrintAllDecisionVar(rom_traj)
+  PrintAllDecisionVar(rom_traj)
 
   """
   Testing
@@ -125,11 +125,11 @@ def PlotCOM(rom_traj):
   # x0_FOM[nq_FOM:nq_FOM + 6] = x0_FOM[nq_FOM:nq_FOM + 6] + \
   #                                 FindVariableByName(vars, 'eps_v0_FOM',6)
   # 4. If we relax only the translational part of floating base vel
-  # x0_FOM[nq_FOM + 3:nq_FOM + 6] = x0_FOM[nq_FOM + 3:nq_FOM + 6] + \
-  #                                     FindVariableByName(vars, 'eps_v0_FOM',3)
+  x0_FOM[nq_FOM + 3:nq_FOM + 6] = x0_FOM[nq_FOM + 3:nq_FOM + 6] + \
+                                      FindVariableByName(vars, 'eps_v0_FOM',3)
   # 5. If we relax only the z compoment of the floating base vel
-  x0_FOM[nq_FOM + 5:nq_FOM + 6] = x0_FOM[nq_FOM + 5:nq_FOM + 6] + \
-                                  FindVariableByName(vars, 'eps_v0_FOM', 1)
+  # x0_FOM[nq_FOM + 5:nq_FOM + 6] = x0_FOM[nq_FOM + 5:nq_FOM + 6] + \
+  #                                 FindVariableByName(vars, 'eps_v0_FOM', 1)
   # 6. If we don't relax anything
   # do nothing.
 

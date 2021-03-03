@@ -28,7 +28,7 @@ class FomGuardConstraint : public solvers::NonlinearConstraint<double> {
                                   const drake::multibody::Frame<double>&>>&
           swing_foot_contacts,
       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-      const std::string& description = "");
+      const std::string& description = "fom_guard_constraint");
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,

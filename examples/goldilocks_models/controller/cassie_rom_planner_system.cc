@@ -485,6 +485,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     prev_mode_start_ = trajopt.mode_start();
   }
 
+  // Scaling
+  if (param_.rom_option == 4) {
+    //    cout << "Scaling constraints... \n";
+    //    trajopt.SetScalingForLIPM();
+  }
+
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "\nConstruction time:" << elapsed.count() << "\n";

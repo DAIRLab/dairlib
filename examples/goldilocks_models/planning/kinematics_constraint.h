@@ -22,7 +22,7 @@ class KinematicsConstraint : public solvers::NonlinearConstraint<double> {
                        const drake::multibody::MultibodyPlant<double>& plant,
                        bool left_stance,
                        const StateMirror& state_mirror = StateMirror(),
-                       const std::string& description = "");
+                       const std::string& description = "rom_fom_mapping_constraint");
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& zx,

@@ -109,8 +109,8 @@ RomTrajOpt::RomTrajOpt(
     /// relax only the velocity
     // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
     PrintStatus("(relax only the velocity)");
-    int start_idx_v_relax = 0;
-    int len_v_relax = 6;
+    int start_idx_v_relax = 3;
+    int len_v_relax = 3;
     auto eps = NewContinuousVariables(len_v_relax, "eps_v0_FOM");
     const VectorXDecisionVariable& v0_float_vars =
         x0_vars_by_mode(0).segment(n_q + start_idx_v_relax, len_v_relax);
@@ -155,8 +155,9 @@ RomTrajOpt::RomTrajOpt(
     // Add dynamics constraints at collocation points
     PrintStatus("Adding dynamics constraint...");
     auto dyn_constraint = std::make_shared<planning::DynamicsConstraint>(rom);
-    DRAKE_ASSERT(static_cast<int>(dyn_constraint->num_constraints()) ==
+    DRAKE_DEMAND(static_cast<int>(dyn_constraint->num_constraints()) ==
                  num_states());
+    dyn_constraint->SetConstraintScaling(rom_dyn_constraint_scaling_);
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
       AddConstraint(
@@ -173,6 +174,7 @@ RomTrajOpt::RomTrajOpt(
     PrintStatus("Adding RoM-FoM mapping constraint...");
     auto kin_constraint = std::make_shared<planning::KinematicsConstraint>(
         rom, plant, left_stance, state_mirror);
+    kin_constraint->SetConstraintScaling(rom_fom_mapping_constraint_scaling_);
     auto z_0 = state_vars_by_mode(i, 0);
     auto z_f = state_vars_by_mode(i, mode_lengths_[i] - 1);
     auto x_0 = x0_vars_by_mode(i);
@@ -183,6 +185,7 @@ RomTrajOpt::RomTrajOpt(
     // Add guard constraint
     PrintStatus("Adding guard constraint...");
     const auto& swing_contacts = left_stance ? right_contacts : left_contacts;
+    //    if (i != num_modes_ - 1) {
     VectorXd lb_per_contact = VectorXd::Zero(2);
     if (!zero_touchdown_impact)
       lb_per_contact << 0, -std::numeric_limits<double>::infinity();
@@ -193,7 +196,9 @@ RomTrajOpt::RomTrajOpt(
     VectorXd ub = VectorXd::Zero(2 * swing_contacts.size());
     auto guard_constraint = std::make_shared<planning::FomGuardConstraint>(
         plant, swing_contacts, lb, ub);
+    guard_constraint->SetConstraintScaling(fom_guard_constraint_scaling_);
     AddConstraint(guard_constraint, xf_vars_by_mode(i));
+    //    }
 
     // Add (impact) discrete map constraint
     if (i != 0) {
@@ -206,12 +211,13 @@ RomTrajOpt::RomTrajOpt(
         auto reset_map_constraint =
             std::make_shared<planning::FomResetMapConstraint>(plant_,
                                                               swing_contacts);
+        reset_map_constraint->SetConstraintScaling(
+            fom_discrete_dyn_constraint_scaling_);
         auto Lambda = NewContinuousVariables(3 * swing_contacts.size(),
                                              "Lambda_FOM_" + to_string(i));
         AddConstraint(
             reset_map_constraint,
-            {xf_vars_by_mode(i - 1),
-             x0_vars_by_mode(i).tail(plant.num_velocities()), Lambda});
+            {xf_vars_by_mode(i - 1), x0_vars_by_mode(i).tail(n_v), Lambda});
       }
     }
 
@@ -236,6 +242,8 @@ RomTrajOpt::RomTrajOpt(
     auto fom_sf_pos_constraint =
         std::make_shared<planning::FomStanceFootPosConstraint>(plant_,
                                                                stance_contacts);
+    fom_sf_pos_constraint->SetConstraintScaling(
+        fom_stance_ft_pos_constraint_scaling_);
     AddConstraint(fom_sf_pos_constraint,
                   {x0_vars_by_mode(i).head(n_q), xf_vars_by_mode(i).head(n_q)});
 
@@ -244,8 +252,12 @@ RomTrajOpt::RomTrajOpt(
     auto fom_sf_vel_constraint =
         std::make_shared<planning::FomStanceFootVelConstraint>(plant_,
                                                                stance_contacts);
-    AddConstraint(fom_sf_vel_constraint,
-                  {x0_vars_by_mode(i), xf_vars_by_mode(i)});
+    fom_sf_vel_constraint->SetConstraintScaling(
+        fom_stance_ft_vel_constraint_scaling_);
+    if (i != 0) {
+      AddConstraint(fom_sf_vel_constraint, x0_vars_by_mode(i));
+    }
+    AddConstraint(fom_sf_vel_constraint, xf_vars_by_mode(i));
 
     // Stride length constraint
     // cout << "Adding stride length constraint for full-order model...\n";
@@ -268,6 +280,64 @@ RomTrajOpt::RomTrajOpt(
     counter += mode_lengths_[i] - 1;
     left_stance = !left_stance;
   }
+}
+
+void addConstraintScaling(std::unordered_map<int, double>* map,
+                          vector<int> idx_vec, vector<double> s_vec) {
+  DRAKE_DEMAND(idx_vec.size() == s_vec.size());
+  for (int i = 0; i < idx_vec.size(); i++) {
+    int idx = idx_vec[i];
+    double s = s_vec[i];
+
+    DRAKE_DEMAND(0 <= idx);
+    DRAKE_DEMAND(0 < s);
+    if (map->find(idx) != map->end()) {
+      // Update the scaling factor
+      (*map)[idx] = s;
+    } else {
+      // Add a new scaling factor
+      map->insert(std::pair<int, double>(idx, s));
+    }
+  }
+}
+
+std::vector<int> CreateIdxVector(int size) {
+  vector<int> ret(size);
+  for (int i = 0; i < size; i++) {
+    ret[i] = i;
+  }
+  return ret;
+}
+
+void RomTrajOpt::SetScalingForLIPM() {
+  addConstraintScaling(
+      &fom_discrete_dyn_constraint_scaling_, CreateIdxVector(24),
+      {0.256749956352507, 0.256749956352507, 0.576854298141375,
+       0.030298256032383, 0.030298256032383, 0.030298256032383,
+       0.599067850424739, 0.807943702482811, 1.1232888099092,
+       0.779696697984484, 0.764239696138297, 0.718478549822895,
+       1.16295973251926,  1.09613666631956,  2.15622729223133,
+       3.78941464911915,  9.09810486475667,  61.721918070326,
+       0.368999605170422, 0.440482063570371, 0.464716406812742,
+       0.365366206548824, 0.459954096581161, 0.463550985972947});
+  addConstraintScaling(&fom_guard_constraint_scaling_, CreateIdxVector(4),
+                       {1, 0.040500915320686, 1, 0.038541734917656});
+  addConstraintScaling(&fom_stance_ft_pos_constraint_scaling_,
+                       CreateIdxVector(6),
+                       {0.523823492435989, 0.523823492435989, 1,
+                        0.52382074853985, 0.52382074853985, 0.884415710760686});
+  addConstraintScaling(
+      &fom_stance_ft_vel_constraint_scaling_, CreateIdxVector(6),
+      {0.28070333026431, 0.114098983149862, 0.288711940548437,
+       0.254999260502145, 0.107781849536538, 0.207878166764023});
+  addConstraintScaling(
+      &rom_dyn_constraint_scaling_, CreateIdxVector(6),
+      {0.02775672892501, 0.02775672892501, 0.027777777777778, 0.005674724775848,
+       0.006428925019448, 0.027777777777778});
+  addConstraintScaling(
+      &rom_fom_mapping_constraint_scaling_, CreateIdxVector(6),
+      {0.600254507911354, 0.600254507911354, 1, 0.277406361482681,
+       0.127149946660597, 0.324725931313971});
 }
 
 void RomTrajOpt::AddTimeStepConstraint(

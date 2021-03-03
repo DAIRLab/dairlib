@@ -18,7 +18,7 @@ namespace planning {
 class DynamicsConstraint : public solvers::NonlinearConstraint<double> {
  public:
   DynamicsConstraint(const ReducedOrderModel& rom,
-                     const std::string& description = "");
+                     const std::string& description = "rom_dyn_constraint");
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,

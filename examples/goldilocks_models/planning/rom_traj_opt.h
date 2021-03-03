@@ -105,6 +105,15 @@ class RomTrajOpt
 
   const ReducedOrderModel& reduced_order_model() const { return rom_; }
 
+  // Constraint scaling
+  void SetScalingForLIPM();
+  std::unordered_map<int, double> fom_discrete_dyn_constraint_scaling_;
+  std::unordered_map<int, double> fom_guard_constraint_scaling_;
+  std::unordered_map<int, double> fom_stance_ft_pos_constraint_scaling_;
+  std::unordered_map<int, double> fom_stance_ft_vel_constraint_scaling_;
+  std::unordered_map<int, double> rom_dyn_constraint_scaling_;
+  std::unordered_map<int, double> rom_fom_mapping_constraint_scaling_;
+
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;

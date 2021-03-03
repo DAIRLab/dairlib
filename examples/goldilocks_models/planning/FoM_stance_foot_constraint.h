@@ -24,7 +24,7 @@ class FomStanceFootPosConstraint : public solvers::NonlinearConstraint<double> {
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
           stance_foot_contacts,
-      const std::string& description = "");
+      const std::string& description = "fom_stance_ft_pos_constraint");
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
@@ -41,8 +41,7 @@ class FomStanceFootPosConstraint : public solvers::NonlinearConstraint<double> {
 };
 
 // Constraints are
-//   stance foot vel (start of the mode) = 0
-//   stance foot vel (end of the mode) = 0
+//   stance foot vel = 0
 class FomStanceFootVelConstraint : public solvers::NonlinearConstraint<double> {
  public:
   FomStanceFootVelConstraint(
@@ -50,7 +49,7 @@ class FomStanceFootVelConstraint : public solvers::NonlinearConstraint<double> {
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
           stance_foot_contacts,
-      const std::string& description = "");
+      const std::string& description = "fom_stance_ft_vel_constraint");
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,

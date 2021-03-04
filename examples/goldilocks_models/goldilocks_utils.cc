@@ -290,7 +290,7 @@ std::map<int, int> MirrorPosIndexMap(
 std::set<int> MirrorPosSignChangeSet(
     const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
   std::set<int> ret;
-  std::map<std::string, int> vel_map = multibody::makeNameToPositionsMap(plant);
+  std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
 
   if (robot_option == 0) {
     // No sign change
@@ -298,9 +298,13 @@ std::set<int> MirrorPosSignChangeSet(
     std::vector<std::string> asy_joint_names = {
         "base_qx",       "base_qz",       "base_y",      "hip_roll_right",
         "hip_yaw_right", "hip_roll_left", "hip_yaw_left"};
+    // Below also work, because the sign of qw is the rotation direction.
+    //        std::vector<std::string> asy_joint_names = {
+    //            "base_qw",       "base_qy",       "base_y", "hip_roll_right",
+    //            "hip_yaw_right", "hip_roll_left", "hip_yaw_left"};
 
     for (const auto& name : asy_joint_names) {
-      ret.insert(vel_map.at(name));
+      ret.insert(pos_map.at(name));
     }
   }
 
@@ -344,7 +348,7 @@ std::map<int, int> MirrorVelIndexMap(
 std::set<int> MirrorVelSignChangeSet(
     const drake::multibody::MultibodyPlant<double>& plant, int robot_option) {
   std::set<int> ret;
-  std::map<std::string, int> pos_map =
+  std::map<std::string, int> vel_map =
       multibody::makeNameToVelocitiesMap(plant);
 
   if (robot_option == 0) {
@@ -354,9 +358,14 @@ std::set<int> MirrorVelSignChangeSet(
         "base_wx",           "base_wz",          "base_vy",
         "hip_roll_rightdot", "hip_yaw_rightdot", "hip_roll_leftdot",
         "hip_yaw_leftdot"};
+    // We still need to obey the right hand rule for rotation, so below is
+    // incorrect.
+    //    std::vector<std::string> asy_joint_names = {
+    //        "base_wy",          "base_vy",          "hip_roll_rightdot",
+    //        "hip_yaw_rightdot", "hip_roll_leftdot", "hip_yaw_leftdot"};
 
     for (const auto& name : asy_joint_names) {
-      ret.insert(pos_map.at(name));
+      ret.insert(vel_map.at(name));
     }
   }
 

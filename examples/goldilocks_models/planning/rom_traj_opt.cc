@@ -93,6 +93,7 @@ RomTrajOpt::RomTrajOpt(
   PrintStatus("Adding initial pose constraint for full-order model...");
   bool soft_init_constraint = true;
   if (soft_init_constraint) {
+    VectorXDecisionVariable x0 = x0_vars_by_mode(0);
     /// relax the state
     /* PrintStatus("(relax the whole state)");
     auto eps = NewContinuousVariables(n_x_, "eps_x0_FOM");
@@ -100,7 +101,7 @@ RomTrajOpt::RomTrajOpt(
     for (int i = 0; i < n_x_; i++) {
       AddLinearEqualityConstraint(
           Aeq, x_init.segment<1>(i),
-          {x0_vars_by_mode(0).segment<1>(i), eps.segment<1>(i)});
+          {x0.segment<1>(i), eps.segment<1>(i)});
     }
     MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
     VectorXd b_x0 = VectorXd::Zero(n_x_);
@@ -113,8 +114,8 @@ RomTrajOpt::RomTrajOpt(
     int len_v_relax = 3;
     auto eps = NewContinuousVariables(len_v_relax, "eps_v0_FOM");
     const VectorXDecisionVariable& v0_float_vars =
-        x0_vars_by_mode(0).segment(n_q + start_idx_v_relax, len_v_relax);
-    const VectorXd& v_init =
+        x0.segment(n_q + start_idx_v_relax, len_v_relax);
+    const VectorXd v_init =
         x_init.segment(n_q + start_idx_v_relax, len_v_relax);
     MatrixXd Aeq = MatrixXd::Ones(1, 2);
     for (int i = 0; i < len_v_relax; i++) {
@@ -125,18 +126,18 @@ RomTrajOpt::RomTrajOpt(
     MatrixXd Q_v0 = 1 * MatrixXd::Identity(len_v_relax, len_v_relax);
     VectorXd b_v0 = VectorXd::Zero(len_v_relax);
     AddQuadraticCost(Q_v0, b_v0, eps);
-    SetInitialGuess(eps, VectorXd::Zero(len_v_relax));
+    SetInitialGuess(eps, 0 * VectorXd::Ones(len_v_relax));
     // The rest of the state should be hard-constrained
     AddBoundingBoxConstraint(x_init.head(n_q + start_idx_v_relax),
                              x_init.head(n_q + start_idx_v_relax),
-                             x0_vars_by_mode(0).head(n_q + start_idx_v_relax));
+                             x0.head(n_q + start_idx_v_relax));
     AddBoundingBoxConstraint(
         x_init.segment(n_q + start_idx_v_relax + len_v_relax,
                        n_v - start_idx_v_relax - len_v_relax),
         x_init.segment(n_q + start_idx_v_relax + len_v_relax,
                        n_v - start_idx_v_relax - len_v_relax),
-        x0_vars_by_mode(0).segment(n_q + start_idx_v_relax + len_v_relax,
-                                   n_v - start_idx_v_relax - len_v_relax));
+        x0.segment(n_q + start_idx_v_relax + len_v_relax,
+                   n_v - start_idx_v_relax - len_v_relax));
   } else {
     AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
     // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
@@ -151,6 +152,23 @@ RomTrajOpt::RomTrajOpt(
   for (int i = 0; i < num_modes_; i++) {
     PrintStatus("Mode " + std::to_string(i) + "============================");
     mode_start_.push_back(counter);
+
+    VectorXDecisionVariable x0 = x0_vars_by_mode(i);
+    VectorXDecisionVariable xf = xf_vars_by_mode(i);
+
+    // Testing -- penalize the velocity of the FOM states (help to
+    // regularize)
+    //    MatrixXd Q_v_FOM = 0.01 * MatrixXd::Identity(n_v, n_v);
+    //    VectorXd b_v_FOM = VectorXd::Zero(n_v);
+    // Version 1
+    //    if (i != 0) {
+    //      AddQuadraticCost(Q_v_FOM, b_v_FOM, x0.tail(n_v));
+    //    }
+    //    AddQuadraticCost(Q_v_FOM, b_v_FOM, xf.tail(n_v));
+    // Version 2
+    //    if (i == num_modes_ - 1) {
+    //      AddQuadraticCost(Q_v_FOM, b_v_FOM, xf.tail(n_v));
+    //    }
 
     // Add dynamics constraints at collocation points
     PrintStatus("Adding dynamics constraint...");
@@ -175,12 +193,10 @@ RomTrajOpt::RomTrajOpt(
     auto kin_constraint = std::make_shared<planning::KinematicsConstraint>(
         rom, plant, left_stance, state_mirror);
     kin_constraint->SetConstraintScaling(rom_fom_mapping_constraint_scaling_);
-    auto z_0 = state_vars_by_mode(i, 0);
-    auto z_f = state_vars_by_mode(i, mode_lengths_[i] - 1);
-    auto x_0 = x0_vars_by_mode(i);
-    auto x_f = xf_vars_by_mode(i);
-    AddConstraint(kin_constraint, {z_0, x_0});
-    AddConstraint(kin_constraint, {z_f, x_f});
+    VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
+    VectorXDecisionVariable z_f = state_vars_by_mode(i, mode_lengths_[i] - 1);
+    AddConstraint(kin_constraint, {z_0, x0});
+    AddConstraint(kin_constraint, {z_f, xf});
 
     // Add guard constraint
     PrintStatus("Adding guard constraint...");
@@ -197,15 +213,15 @@ RomTrajOpt::RomTrajOpt(
     auto guard_constraint = std::make_shared<planning::FomGuardConstraint>(
         plant, swing_contacts, lb, ub);
     guard_constraint->SetConstraintScaling(fom_guard_constraint_scaling_);
-    AddConstraint(guard_constraint, xf_vars_by_mode(i));
+    AddConstraint(guard_constraint, xf);
     //    }
 
     // Add (impact) discrete map constraint
     if (i != 0) {
+      VectorXDecisionVariable xf_prev = xf_vars_by_mode(i - 1);
       if (zero_touchdown_impact) {
         PrintStatus("Adding (FoM velocity) identity reset map constraint...");
-        AddLinearConstraint(xf_vars_by_mode(i - 1).segment(n_q, n_v) ==
-                            x0_vars_by_mode(i).segment(n_q, n_v));
+        AddLinearConstraint(xf_prev.segment(n_q, n_v) == x0.segment(n_q, n_v));
       } else {
         PrintStatus("Adding (FoM velocity) reset map constraint...");
         auto reset_map_constraint =
@@ -213,11 +229,14 @@ RomTrajOpt::RomTrajOpt(
                                                               swing_contacts);
         reset_map_constraint->SetConstraintScaling(
             fom_discrete_dyn_constraint_scaling_);
-        auto Lambda = NewContinuousVariables(3 * swing_contacts.size(),
-                                             "Lambda_FOM_" + to_string(i));
-        AddConstraint(
-            reset_map_constraint,
-            {xf_vars_by_mode(i - 1), x0_vars_by_mode(i).tail(n_v), Lambda});
+        int n_Lambda = 3 * swing_contacts.size();
+        auto Lambda =
+            NewContinuousVariables(n_Lambda, "Lambda_FOM_" + to_string(i));
+        AddConstraint(reset_map_constraint, {xf_prev, x0.tail(n_v), Lambda});
+        // Regularization term (there is a 1DoF null space in the force)
+        //  MatrixXd Q_lambda = 0.01 * MatrixXd::Identity(n_Lambda, n_Lambda);
+        //  VectorXd b_lambda = VectorXd::Zero(n_Lambda);
+        //  AddQuadraticCost(Q_lambda, b_lambda, Lambda);
       }
     }
 
@@ -227,13 +246,12 @@ RomTrajOpt::RomTrajOpt(
       if (i != 0) {
         // We don't impose constraint on the initial state (because it's
         // constrained already)
-        AddBoundingBoxConstraint(
-            std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
-            x0_vars_by_mode(i)(positions_map.at(std::get<0>(name_lb_ub))));
+        AddBoundingBoxConstraint(std::get<1>(name_lb_ub),
+                                 std::get<2>(name_lb_ub),
+                                 x0(positions_map.at(std::get<0>(name_lb_ub))));
       }
-      AddBoundingBoxConstraint(
-          std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
-          xf_vars_by_mode(i)(positions_map.at(std::get<0>(name_lb_ub))));
+      AddBoundingBoxConstraint(std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
+                               xf(positions_map.at(std::get<0>(name_lb_ub))));
     }
 
     // Stitching x0 and xf (full-order model stance foot constraint)
@@ -244,37 +262,36 @@ RomTrajOpt::RomTrajOpt(
                                                                stance_contacts);
     fom_sf_pos_constraint->SetConstraintScaling(
         fom_stance_ft_pos_constraint_scaling_);
-    AddConstraint(fom_sf_pos_constraint,
-                  {x0_vars_by_mode(i).head(n_q), xf_vars_by_mode(i).head(n_q)});
+    AddConstraint(fom_sf_pos_constraint, {x0.head(n_q), xf.head(n_q)});
 
     // Zero velocity for stance foot
     PrintStatus("Adding full-order model stance foot vel constraint...");
-    auto fom_sf_vel_constraint =
+    auto fom_ft_vel_constraint =
         std::make_shared<planning::FomStanceFootVelConstraint>(plant_,
                                                                stance_contacts);
-    fom_sf_vel_constraint->SetConstraintScaling(
+    fom_ft_vel_constraint->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
     if (i != 0) {
-      AddConstraint(fom_sf_vel_constraint, x0_vars_by_mode(i));
+      AddConstraint(fom_ft_vel_constraint, x0);
     }
-    AddConstraint(fom_sf_vel_constraint, xf_vars_by_mode(i));
+    AddConstraint(fom_ft_vel_constraint, xf);
 
     // Stride length constraint
     // cout << "Adding stride length constraint for full-order model...\n";
     // V1
-    // AddLinearConstraint(xf_vars_by_mode(i)(0) - x0_vars_by_mode(i)(0) ==
+    // AddLinearConstraint(xf(0) - x0(0) ==
     // 0.304389); V2
     /*VectorXd stride_length(1); stride_length << 0.304389 * 2;
     auto fom_sl_constraint =
     std::make_shared<planning::FomStrideLengthConstraint>( left_stance, n_q,
     stride_length); AddConstraint(fom_sl_constraint,
-    {x0_vars_by_mode(i).head(n_q), xf_vars_by_mode(i).head(n_q)
+    {x0.head(n_q), xf.head(n_q)
                                      });*/
 
     // Stride length cost
     /*if (i == num_modes_ - 1) {
       cout << "Adding final position cost for full-order model...\n";
-      this->AddLinearCost(-10 * xf_vars_by_mode(i)(0));
+      this->AddLinearCost(-10 * xf(0));
     }*/
 
     counter += mode_lengths_[i] - 1;

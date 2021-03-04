@@ -58,12 +58,13 @@ def main():
   context = plant_FOM.CreateDefaultContext()
   world = plant_FOM.world_frame()
   global l_toe_frame, r_toe_frame
-  global front_contact_disp, rear_contact_disp
+  global front_contact_disp, rear_contact_disp, mid_contact_disp
   global l_loop_closure, r_loop_closure
   l_toe_frame = plant_FOM.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant_FOM.GetBodyByName("toe_right").body_frame()
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
+  mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2
   l_loop_closure = LeftLoopClosureEvaluator(plant_FOM)
   r_loop_closure = RightLoopClosureEvaluator(plant_FOM)
   # MBP params
@@ -93,12 +94,112 @@ def main():
   """
   Testing
   """
-  PlotCOM(rom_traj)
+  com_vec, comdot_vec = PlotCOM(rom_traj)
+  feet_pos_vec, feet_vel_vec = PlotFeet(rom_traj)
+  PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec)
 
   # import pdb; pdb.set_trace()
 
   if not savefig:
     plt.show()
+
+
+def PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec,
+    start_with_left_stance=True):
+  com_wrt_stance_foot_vec = np.zeros(com_vec.shape)
+  comdot_wrt_stance_foot_vec = np.zeros(comdot_vec.shape)
+
+  n_mode = com_vec.shape[0]
+
+  left_stance = start_with_left_stance
+  for i in range(n_mode):
+    print("start_with_left_stance" + str(left_stance))
+    stance_foot_pos = feet_pos_vec[0][i] if left_stance else feet_pos_vec[1][i]
+    stance_foot_vel = feet_vel_vec[0][i] if left_stance else feet_vel_vec[1][i]
+    com_wrt_stance_foot_vec[i] = com_vec[i] - stance_foot_pos
+    comdot_wrt_stance_foot_vec[i] = comdot_vec[i] - stance_foot_vel
+    left_stance = not left_stance
+
+  palette = ['r', 'b', 'g']
+  figname = "Full model: COM wrt stance foot"
+  plt.figure(figname, figsize=figsize)
+  for i in range(n_mode):
+    for j in range(3):
+      plt.plot([i, i + 1], [com_wrt_stance_foot_vec[i][0][j],
+                            com_wrt_stance_foot_vec[i][1][j]],
+        palette[j], markersize=4)
+  plt.ylabel('(m)')
+  plt.xlabel('mode index')
+  plt.legend(['x', 'y', 'z'])
+  figname = "Full model: COM vel wrt stance foot"
+  plt.figure(figname, figsize=figsize)
+  for i in range(n_mode):
+    for j in range(3):
+      plt.plot([i, i + 1], [comdot_wrt_stance_foot_vec[i][0][j],
+                            comdot_wrt_stance_foot_vec[i][1][j]],
+        palette[j], markersize=4)
+  plt.ylabel('(m/s)')
+  plt.xlabel('mode index')
+  plt.legend(['x', 'y', 'z'])
+
+
+def PlotFeet(rom_traj):
+  n_mode = rom_traj.GetNumModes()
+  vars = rom_traj.GetTrajectory("decision_vars")
+
+  feet_pos_vec = np.zeros((2, n_mode, 2, 3))
+  feet_vel_vec = np.zeros((2, n_mode, 2, 3))
+
+  toe_frames = [l_toe_frame, r_toe_frame]
+  names = ["left", "right"]
+
+  for k in range(2):
+    x0_FOM = FindVariableByName(vars, 'x0_FOM', nx_FOM)
+    foot_pos_relaxed, foot_vel_relaxed = CalcPointPosAndVel(x0_FOM,
+      toe_frames[k],
+      mid_contact_disp)
+    feet_pos_vec[k][0][0] = foot_pos_relaxed
+    feet_vel_vec[k][0][0] = foot_vel_relaxed
+
+    xf_FOM = FindVariableByName(vars, 'xf_FOM')
+    for i in range(n_mode):
+      _, _dot = CalcPointPosAndVel(xf_FOM[i * nx_FOM: (i + 1) * nx_FOM],
+        toe_frames[k], mid_contact_disp)
+      feet_pos_vec[k][i][1] = _
+      feet_vel_vec[k][i][1] = _dot
+
+    vp_FOM = FindVariableByName(vars, 'vp_FOM')
+    for i in range(1, n_mode):
+      x0_FOM = np.hstack([xf_FOM[(i - 1) * nx_FOM: (i - 1) * nx_FOM + nq_FOM],
+                          vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
+      _, _dot = CalcPointPosAndVel(x0_FOM, toe_frames[k], mid_contact_disp)
+      feet_pos_vec[k][i][0] = _
+      feet_vel_vec[k][i][0] = _dot
+
+    palette = ['r', 'b', 'g']
+    figname = "Full model: " + names[k] + " foot pos"
+    plt.figure(figname, figsize=figsize)
+    for i in range(n_mode):
+      for j in range(3):
+        plt.plot([i, i + 1],
+          [feet_pos_vec[k][i][0][j], feet_pos_vec[k][i][1][j]],
+          palette[j], markersize=4)
+    plt.ylabel('(m)')
+    plt.xlabel('mode index')
+    plt.legend(['x', 'y', 'z'])
+    figname = "Full model: " + names[k] + " foot vel"
+    plt.figure(figname, figsize=figsize)
+    for i in range(n_mode):
+      for j in range(3):
+        plt.plot([i, i + 1],
+          [feet_vel_vec[k][i][0][j], feet_vel_vec[k][i][1][j]],
+          palette[j], markersize=4)
+    plt.ylabel('(m/s)')
+    plt.xlabel('mode index')
+    plt.legend(['x', 'y', 'z'])
+
+  # import pdb; pdb.set_trace()
+  return feet_pos_vec, feet_vel_vec
 
 
 def PlotCOM(rom_traj):
@@ -108,28 +209,27 @@ def PlotCOM(rom_traj):
   n_mode = rom_traj.GetNumModes()
   vars = rom_traj.GetTrajectory("decision_vars")
 
-  com_vec = np.zeros((n_mode + 1, 3))
+  com_vec = np.zeros((n_mode, 2, 3))
   comdot_vec = np.zeros((n_mode, 2, 3))
 
   x0_FOM = FindVariableByName(vars, 'x0_FOM', nx_FOM)
   com_relaxed, comdot_relaxed = CalcCenterOfMass(x0_FOM)
-  com_vec[0] = com_relaxed
+  com_vec[0][0] = com_relaxed
   comdot_vec[0][0] = comdot_relaxed
 
   # 1. If we relax the whole state
   # x0_FOM = x0_FOM + FindVariableByName(vars, 'eps_x0_FOM', nx_FOM)
   # 2. If we relax only the velocity
-  # x0_FOM[nq_FOM:] = x0_FOM[nq_FOM:] + FindVariableByName(vars,
-  #   'eps_v0_FOM', nv_FOM)
+  # x0_FOM[nq_FOM:] = x0_FOM[nq_FOM:] + FindVariableByName(vars, 'eps_v0_FOM')
   # 3. If we relax only the floating base vel
   # x0_FOM[nq_FOM:nq_FOM + 6] = x0_FOM[nq_FOM:nq_FOM + 6] + \
-  #                                 FindVariableByName(vars, 'eps_v0_FOM',6)
+  #                                 FindVariableByName(vars, 'eps_v0_FOM')
   # 4. If we relax only the translational part of floating base vel
   x0_FOM[nq_FOM + 3:nq_FOM + 6] = x0_FOM[nq_FOM + 3:nq_FOM + 6] + \
-                                      FindVariableByName(vars, 'eps_v0_FOM',3)
+                                  FindVariableByName(vars, 'eps_v0_FOM')
   # 5. If we relax only the z compoment of the floating base vel
   # x0_FOM[nq_FOM + 5:nq_FOM + 6] = x0_FOM[nq_FOM + 5:nq_FOM + 6] + \
-  #                                 FindVariableByName(vars, 'eps_v0_FOM', 1)
+  #                                 FindVariableByName(vars, 'eps_v0_FOM')
   # 6. If we don't relax anything
   # do nothing.
 
@@ -138,14 +238,15 @@ def PlotCOM(rom_traj):
   xf_FOM = FindVariableByName(vars, 'xf_FOM')
   for i in range(n_mode):
     com, comdot = CalcCenterOfMass(xf_FOM[i * nx_FOM: (i + 1) * nx_FOM])
-    com_vec[i + 1] = com
+    com_vec[i][1] = com
     comdot_vec[i][1] = comdot
 
   vp_FOM = FindVariableByName(vars, 'vp_FOM')
   for i in range(1, n_mode):
-    x0_FOM = np.hstack([xf_FOM[i * nx_FOM: i * nx_FOM + nq_FOM],
+    x0_FOM = np.hstack([xf_FOM[(i - 1) * nx_FOM: (i - 1) * nx_FOM + nq_FOM],
                         vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
-    _, comdot = CalcCenterOfMass(x0_FOM)
+    com, comdot = CalcCenterOfMass(x0_FOM)
+    com_vec[i][0] = com
     comdot_vec[i][0] = comdot
 
   palette = ['r', 'b', 'g']
@@ -153,7 +254,7 @@ def PlotCOM(rom_traj):
   plt.figure(figname, figsize=figsize)
   for i in range(n_mode):
     for j in range(3):
-      plt.plot([i, i + 1], [com_vec[i][j], com_vec[i + 1][j]], palette[j],
+      plt.plot([i, i + 1], [com_vec[i][0][j], com_vec[i][1][j]], palette[j],
         markersize=4)
   for i in range(3):
     plt.plot([0], com_non_relaxed[i], palette[i] + 'o', markersize=4)
@@ -172,21 +273,31 @@ def PlotCOM(rom_traj):
   plt.xlabel('mode index')
   plt.legend(['x', 'y', 'z'])
 
-  # Only plot the init staet
-  figname = "Full model: COM before and after relaxing"
-  plt.figure(figname, figsize=figsize)
-  plt.plot([0, 1, 2], com_relaxed, 'ro', markersize=4)
-  plt.plot([0, 1, 2], com_non_relaxed, 'bo', markersize=4)
-  plt.ylabel('(m)')
-  plt.xlabel('index')
-  plt.legend(['com_relaxed', 'com'])
-  figname = "Full model: COM vel before and after relaxing"
-  plt.figure(figname, figsize=figsize)
-  plt.plot([0, 1, 2], comdot_relaxed, 'ro', markersize=4)
-  plt.plot([0, 1, 2], comdot_non_relaxed, 'bo', markersize=4)
-  plt.ylabel('(m/s)')
-  plt.xlabel('index')
-  plt.legend(['comdot_relaxed', 'comdot'])
+  # # Only plot the init staet
+  # figname = "Full model: COM before and after relaxing"
+  # plt.figure(figname, figsize=figsize)
+  # plt.plot([0, 1, 2], com_relaxed, 'ro', markersize=4)
+  # plt.plot([0, 1, 2], com_non_relaxed, 'bo', markersize=4)
+  # plt.ylabel('(m)')
+  # plt.xlabel('index')
+  # plt.legend(['com_relaxed', 'com'])
+  # figname = "Full model: COM vel before and after relaxing"
+  # plt.figure(figname, figsize=figsize)
+  # plt.plot([0, 1, 2], comdot_relaxed, 'ro', markersize=4)
+  # plt.plot([0, 1, 2], comdot_non_relaxed, 'bo', markersize=4)
+  # plt.ylabel('(m/s)')
+  # plt.xlabel('index')
+  # plt.legend(['comdot_relaxed', 'comdot'])
+
+  return com_vec, comdot_vec
+
+
+def CalcPointPosAndVel(x, frame, point):
+  plant_FOM.SetPositionsAndVelocities(context, x)
+  pos = plant_FOM.CalcPointsPositions(context, frame, point, world)
+  vel = plant_FOM.CalcJacobianTranslationalVelocity(context,
+    JacobianWrtVariable.kV, frame, point, world, world) @ x[nq_FOM:]
+  return pos.flatten(), vel.flatten()
 
 
 def CalcCenterOfMass(x):

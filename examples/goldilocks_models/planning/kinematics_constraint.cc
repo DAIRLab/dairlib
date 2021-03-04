@@ -64,6 +64,29 @@ void KinematicsConstraint::EvaluateConstraint(
     x << state_mirror_.MirrorPos(zx.segment(n_z_, n_q_)),
         state_mirror_.MirrorVel(zx.segment(n_z_ + n_q_, n_v_));
   }
+  // Testing state mirroring
+  //  using std::cout;
+  //  using std::endl;
+  //  // Testing
+  //  std::cout << "before mirroring\n";
+  //  //  std::cout << "zx.tail(n_x_) = " << zx.tail(n_x_) << std::endl;
+  //  VectorXd x_before_mirror = zx.tail(n_x_);
+  //  plant_.SetPositionsAndVelocities(context_.get(), x_before_mirror);
+  //  VectorXd q_rom =  rom_.EvalMappingFunc(x_before_mirror.head(n_q_),
+  //  *context_); VectorXd v_rom = rom_.EvalMappingFuncJV(
+  //      x_before_mirror.head(n_q_), x_before_mirror.tail(n_v_), *context_);
+  //  cout << "q_rom =" << q_rom.transpose() << endl;
+  //  cout << "v_rom =" << v_rom.transpose() << endl;
+  //
+  //  std::cout << "=======================\n";
+  //  std::cout << "after mirroring\n";
+  //  //  std::cout << "x = \n" << x << std::endl;
+  //  plant_.SetPositionsAndVelocities(context_.get(), x);
+  //  q_rom =  rom_.EvalMappingFunc(x.head(n_q_), *context_);
+  //  v_rom = rom_.EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_), *context_);
+  //  cout << "q_rom =" << q_rom.transpose() << endl;
+  //  cout << "v_rom =" << v_rom.transpose() << endl;
+  //  DRAKE_DEMAND(false);
 
   // Update context
   plant_.SetPositionsAndVelocities(context_.get(), x);

@@ -198,6 +198,22 @@ RomTrajOpt::RomTrajOpt(
     AddConstraint(kin_constraint, {z_0, x0});
     AddConstraint(kin_constraint, {z_f, xf});
 
+    // Testing state mirroring
+    //    if (!left_stance) {
+    //      VectorXd x = VectorXd::Zero(n_z_ + n_x_);
+    //      x.tail(n_x_) << 0.95800512, 0.01326131, 0.10208891, 0.02493059,
+    //          -0.00357683, -0.07077365, 1.00229253, 0.06585518, 0.08007648,
+    //          -0.03271629, 0.04345352, 0.30198447, 0.49940965, -0.646,
+    //          -0.74489845, 1.40071356, 1.36480139, -1.67787617, -1.78524973,
+    //          0.2511753, -0.48393843, 0.19170832, -0.14228517, -0.55363658,
+    //          0.00499403, 0.33995008, 0.37624165, -0.14535965, -0.17715706,
+    //          -0.28741955, -0.62009629, 0.09105082, 0.35101321, -0.26117723,
+    //          -0.127291, 0.00350424, -0.09447938;
+    //      VectorXd y = VectorXd::Zero(n_z_);
+    //      kin_constraint.get()->Eval(x, &y);
+    //      DRAKE_DEMAND(false);
+    //    }
+
     // Add guard constraint
     PrintStatus("Adding guard constraint...");
     const auto& swing_contacts = left_stance ? right_contacts : left_contacts;

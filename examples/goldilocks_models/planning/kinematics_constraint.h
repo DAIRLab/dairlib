@@ -21,7 +21,7 @@ class KinematicsConstraint : public solvers::NonlinearConstraint<double> {
   KinematicsConstraint(const ReducedOrderModel& rom,
                        const drake::multibody::MultibodyPlant<double>& plant,
                        bool left_stance,
-                       const StateMirror& state_mirror = StateMirror(),
+                       const StateMirror& state_mirror,
                        const std::string& description = "rom_fom_mapping_constraint");
 
  private:

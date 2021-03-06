@@ -73,12 +73,13 @@ def main():
   # filename = sys.argv[1]
   log_dir = '/home/yangwill/Documents/research/projects/five_link_biped/invariant_impacts/'
   # log_files = ['lcmlog-0001', 'lcmlog-050', 'lcmlog-1001']
-  # log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
-  log_files = ['lcmlog-000', 'lcmlog-025']
+  log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
+  # log_files = ['lcmlog-000', 'lcmlog-025']
   # log_files = ['lcmlog-000_1', 'lcmlog-010', 'lcmlog-010_0KD_1']
   # log_files = ['lcmlog-0251']
   # log_files = ['lcmlog-0101']
-  colors = [ps.blue, ps.red, ps.yellow]
+  colors = [ps.blue, ps.orange, ps.red]
+  linestyles = ['-', 'dotted', '--', '-.']
   color_idx = 0
 
   t_samples = np.arange(0, 0.5, 0.00025)
@@ -103,7 +104,7 @@ def main():
     # import pdb; pdb.set_trace()
 
     plt.figure("velocities")
-    ps.plot(t_state, x[:, -7:], linestyle=colors[color_idx])
+    ps.plot(t_state, x[:, -7:], color=colors[color_idx])
 
     # ps.plot(t_lqr, u)
     # ps.add_legend(u_datatypes)
@@ -113,7 +114,8 @@ def main():
     t_slice = slice(t_u_start_idx, t_u_end_idx)
 
     plt.figure("inputs")
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), u[t_slice], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', linestyle=colors[color_idx])
+    for i, linestyle in enumerate(linestyles):
+      ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), u[t_slice, i], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', color=colors[color_idx], linestyle=linestyle)
 
     plt.figure("swing_leg_joints")
     # ps.plot(t_lqr, osc_debug['right_knee_pin_traj'].ydot, linestyle=colors[color_idx])
@@ -126,7 +128,7 @@ def main():
     # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].error_ydot, linestyle='r')
     right_hip_pin_error = np.abs(osc_debug['right_hip_pin_traj'].ydot_des[t_slice] - osc_debug['right_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity Error (rad/s)', linestyle=colors[color_idx], title='Impacting Leg')
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Impacting Leg')
     plt.figure("stance_leg_joints")
     # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
@@ -138,39 +140,52 @@ def main():
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].error_ydot, linestyle='r')
     left_hip_pin_error = np.abs(osc_debug['left_hip_pin_traj'].ydot_des[t_slice] - osc_debug['left_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity Error (rad/s)', linestyle=colors[color_idx], title='Non-Impacting Leg')
-    color_idx += 2
+    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Non-Impacting Leg')
+    color_idx += 1
 
   plt.figure("stance_leg_joints")
   ax = plt.gca()
   # projection_window_a = matplotlib.patches.Rectangle((50, 100), 40, 30, edgecolor=ps.grey, facecolor=ps.grey, alpha=1.0)
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
-  ps.add_legend(['Default Controller', 'No Derivative Feedback', 'Impact Invariant Projection', 'Projection Window'], loc=3)
+  # ps.add_legend(['Default Controller', 'No Derivative Feedback', 'Impact Invariant Projection', 'Projection Window'], loc=3)
   # ax.add_patch(projection_window_a)
   plt.xlim([-50, 50])
   plt.ylim([0, 0.5])
-  # ps.save_fig('stance_leg_velocity_error.png')
+  ps.save_fig('stance_leg_velocity_error.png')
 
   plt.figure("swing_leg_joints")
   ax = plt.gca()
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
-  ps.add_legend(['Default Controller', 'No Derivative Feedback', 'Impact Invariant Projection', 'Projection Window'], loc=3)
+  # ps.add_legend(['Default Controller', 'No Derivative Feedback', 'Impact Invariant Projection', 'Projection Window'], loc=3)
   # projection_window_b = matplotlib.patches.Rectangle((50, 100), 40, 30, edgecolor=ps.grey, facecolor=ps.grey, alpha=1.0)
   # ax.add_patch(projection_window_b)
   plt.xlim([-50, 50])
   plt.ylim([0, 0.5])
-  # ps.save_fig('swing_leg_velocity_error.png')
+  ps.save_fig('swing_leg_velocity_error.png')
   plt.figure("inputs")
   ax = plt.gca()
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
-  legend_elements = [matplotlib.lines.Line2D([0], [0], color=colors[0], lw=3, label='Default Controller'),
-                     # matplotlib.lines.Line2D([0], [0], color=colors[1], lw=4, label='No Derivative Feedback'),
-                     matplotlib.lines.Line2D([0], [0], color=colors[2], lw=3, label='Impact Invariant Projection'),
-                     matplotlib.patches.Patch(facecolor=ps.grey, label='Projection Window')]
-  ax.legend(handles = legend_elements, loc=2)
+
+
+
   # ps.add_legend(u_datatypes)
   plt.xlim([-50, 50])
-  ps.save_fig('rabbit_controller_efforts.png')
+  # ps.save_fig('rabbit_controller_efforts.png')
+
+  plt.figure("legend")
+  ax = plt.gca()
+  legend_elements = [matplotlib.lines.Line2D([0], [0], color=colors[0], lw=3, label='Default Controller'),
+                     matplotlib.lines.Line2D([0], [0], color=colors[1], lw=3, label='No Derivative Feedback'),
+                     matplotlib.lines.Line2D([0], [0], color=colors[2], lw=3, label='Impact Invariant Projection'),
+                     matplotlib.patches.Patch(facecolor=ps.grey, label='Projection Window')]
+  legend_elements_lines = [matplotlib.lines.Line2D([0], [0], color='k', linestyle=linestyles[0], lw=3, label='Hip (Non-Impacting Leg)'),
+                           matplotlib.lines.Line2D([0], [0], color='k', linestyle=linestyles[1], lw=3, label='Hip (Impacting Leg)'),
+                           matplotlib.lines.Line2D([0], [0], color='k', linestyle=linestyles[2], lw=3, label='Knee (Non-Impacting Leg)'),
+                           matplotlib.lines.Line2D([0], [0], color='k', linestyle=linestyles[3], lw=3, label='Knee (Impacting Leg)')]
+  line_legend = ax.legend(handles = legend_elements_lines, loc='lower left', ncol=1, edgecolor='k')
+  ax.add_artist(line_legend)
+  ax.legend(handles = legend_elements, loc=2, edgecolor='k')
+  ps.save_fig('rabbit_legend.png')
   ps.show_fig()
 
 def plot_foot_velocities(plant, context, t_state, x):

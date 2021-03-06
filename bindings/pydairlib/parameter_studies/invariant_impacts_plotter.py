@@ -48,7 +48,7 @@ def main():
   # impact_time = nominal_impact_time
 
   terrain_heights = np.arange(0.00, 0.055, 0.005)
-  penetration_allowances = np.array([1e-5, 1e-4, 1e-3])
+  penetration_allowances = np.array([1e-5, 1e-4, 1e-3, 5e-3])
   # durations = np.arange(0.000, 0.125, 0.025)
   durations = np.arange(0.000, 0.060, 0.010)
   perturbations = np.arange(-0.500, 0.600, 0.100)
@@ -62,26 +62,24 @@ def main():
   # duration = 'stiff'
 
 
-  construct_hardware_torque_plot()
+  # construct_hardware_torque_plot()
   # plot_vel_discontinuity_example(right_foot_traj)
   # construct_knee_efforts_plot()
   # for d in durations:
   #   load_logs('%.3f' % d)
 
 
-  # accel_error = np.zeros((durations.shape[0], terrain_heights.shape[0], penetration_allowances.shape[0]))
-  # power_loss = np.zeros((durations.shape[0], terrain_heights.shape[0], penetration_allowances.shape[0]))
-  # for i in range(durations.shape[0]):
-  #   print('%.3f' % durations[i])
-  #   accel_error[i], power_loss[i] = count_successful_jumps('%.3f' % durations[i])
-
-
-  # construct_param_study_plots(durations, accel_error, power_loss)
+  accel_error = np.zeros((durations.shape[0], terrain_heights.shape[0], penetration_allowances.shape[0]))
+  power_loss = np.zeros((durations.shape[0], terrain_heights.shape[0], penetration_allowances.shape[0]))
+  for i in range(durations.shape[0]):
+    print('%.3f' % durations[i])
+    accel_error[i], power_loss[i] = count_successful_jumps('%.3f' % durations[i])
+  construct_param_study_plots(durations, accel_error, power_loss)
 
   # count_successful_jumps(duration)
   # construct_knee_torque_bands_plot()
   # ps.add_legend(['%.0f (ms)' % (d*1e3) for d in durations])
-  # ps.show_fig()
+  ps.show_fig()
 
 
 def plot_vel_discontinuity_example(traj):
@@ -104,10 +102,12 @@ def plot_vel_discontinuity_example(traj):
     # accum_err *= 0.6
   plt.figure("Velocity tracking during impact")
   reference_time = nominal_impact_time - 0.1
-  ps.plot(1e3*(times - reference_time), vel[:, 2], xlabel='Time $t$ ', ylabel='Velocity $\dot y$', linestyle=ps.blue)
-  ps.plot(1e3*(times - reference_time), vel_err[:, 2], linestyle=ps.red)
-  ps.plot(1e3*(times - reference_time), vel_err[:, 2] - vel[:, 2], linestyle=ps.yellow)
+  ps.plot(1e3*(times - reference_time), vel[:, 2], xlabel='Time $t$ ', ylabel='Velocity $\dot y$', color=ps.blue)
+  ps.plot(1e3*(times - reference_time), vel_err[:, 2], color=ps.red)
+  ps.plot(1e3*(times - reference_time), vel_err[:, 2] - vel[:, 2], color=ps.grey)
   ps.add_legend(['target velocity', 'actual velocity', 'tracking error'])
+  plt.xticks([])
+  plt.yticks([])
   ps.save_fig('velocity_tracking_during_impact.png')
   # ps.show_fig()
   # plt.figure("Velocity error")
@@ -202,13 +202,13 @@ def construct_param_study_plots(durations, accel_error, power_loss):
   accel_error_norm = 2000 * (100 * 0.07)**2
 
   for i in range(durations.shape[0]):
-    ps.plot(terrain_heights * 1e2, np.median(accel_error[i], axis=1) / accel_error_norm, xlabel='Platform Height (cm)', ylabel='Weighted Acceleration Error $J_{acc}$')
-    # ps.plot(penetration_allowances, np.median(accel_error[i] / accel_error_norm, axis=0), xlabel='Ground Stiffness', ylabel='Weighted Acceleration Error $J_{acc}$')
-    # ps.plot(terrain_heights * 1e2, np.median(power_loss[i], axis=1), xlabel='Platform Height (cm)', ylabel='Power Loss $J_{mot}$')
-    # ps.plot(penetration_allowances, np.median(power_loss[i], axis=0), xlabel='Ground Stiffness', ylabel='Power Loss $J_{mot}$')
-
+    # ps.plot(terrain_heights * 1e2, accel_error[i, :, 0] / accel_error_norm, xlabel='Platform Height (cm)', ylabel='Weighted Acceleration Error $J_{acc}$')
+    # ps.plot(penetration_allowances, accel_error[i, 0, :] / accel_error_norm, xlabel='Ground Stiffness', ylabel='Weighted Acceleration Error $J_{acc}$')
+    # ps.plot(terrain_heights * 1e2, power_loss[i, :, 0], xlabel='Platform Height (cm)', ylabel='Control Effort $J_{mot}$')
+    ps.plot(penetration_allowances, power_loss[i, 0, :], xlabel='Ground Stiffness', ylabel='Control Effort $J_{mot}$')
+  plt.xscale('log')
   ps.add_legend(['%.0f (ms)' % (d*1e3) for d in durations])
-  ps.save_fig('param_study_accel_err_height.png')
+  # ps.save_fig('param_study_accel_err_height.png')
   # ps.save_fig('param_study_accel_err_stiffness.png')
   # ps.save_fig('param_study_power_loss_height.png')
   # ps.save_fig('param_study_power_loss_stiffness.png')
@@ -379,8 +379,8 @@ def construct_hardware_torque_plot():
     x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
     osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
     osc_output, full_log, t_lcmlog_u = process_log(log, pos_map, vel_map, act_map, controller_channel)
-    t_u_start_idx = np.argwhere(np.abs(t_u - (hardware_impact - 0.25)) < 2e-3)[0, 0]
-    t_u_end_idx = np.argwhere(np.abs(t_u - (hardware_impact + 0.5)) < 2e-3)[0, 0]
+    t_u_start_idx = np.argwhere(np.abs(t_u - (hardware_impact - 0.2)) < 2e-3)[0, 0]
+    t_u_end_idx = np.argwhere(np.abs(t_u - (hardware_impact + 0.3)) < 2e-3)[0, 0]
     t_u_slice = slice(t_u_start_idx, t_u_end_idx)
     u_indices = slice(6, 8)
     plt.figure("Combined knee motor efforts")

@@ -10,11 +10,13 @@ from matplotlib.patches import PathPatch
 class PlotStyler():
 
   def __init__(self):
-    self.cmap = plt.get_cmap('tab10')
+    # self.cmap = plt.get_cmap('tab10')
+    self.cmap = plt.get_cmap('tab20')
     self.blue = '#011F5B'
     self.red = '#990000'
-    self.yellow = '#F2C000'
+    self.yellow = '#F2C100'
     self.grey = '#909090'
+    self.orange = '#FE7F0E'
     self.directory = None
     return
 
@@ -23,18 +25,18 @@ class PlotStyler():
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 6
+    matplotlib.rcParams['figure.figsize'] = 8, 5
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 18}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 4
-    plt.set_cmap('tab10')
+    plt.set_cmap('tab20')
     self.directory = directory
 
-  def plot(self, xdata, ydata, xlim=None, ylim=None, linestyle=None,
+  def plot(self, xdata, ydata, xlim=None, ylim=None, color=None, linestyle=None,
            grid=True, xlabel=None, ylabel=None, title=None, legend=None):
 
-    plt.plot(xdata, ydata, color=linestyle)
+    plt.plot(xdata, ydata, color=color, linestyle=linestyle)
     if xlim:
       plt.xlim(xlim)
     if ylim:

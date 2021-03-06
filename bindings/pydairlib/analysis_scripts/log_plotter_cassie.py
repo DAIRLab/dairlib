@@ -37,6 +37,7 @@ def main():
   global ps
   global pos_map_spr_to_wo_spr
   global vel_map_spr_to_wo_spr
+  global nominal_impact_time
 
   load_maps()
 
@@ -60,6 +61,9 @@ def main():
   jumping_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
   input_traj = jumping_traj.ReconstructInputTrajectory()
   input_traj.shiftRight(delay_time)
+
+  nominal_impact_time = jumping_traj.GetStateBreaks(2)[0]
+
 
   # relevant MBP parameters
   nq = plant_w_spr.num_positions()
@@ -119,8 +123,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  t_start = 30.635
-  t_end = 30.68
+  # t_start = 30.47
+  # t_end = 31.0
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
@@ -144,7 +148,7 @@ def main():
 
   # plot_status(full_log)
   # plot_ii_projection(t_x, x, plant_w_spr, context)
-  plot_ii_projection(t_x, x, plant_wo_spr, context_wo_spr)
+  # plot_ii_projection(t_x, x, plant_wo_spr, context_wo_spr)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
 
   # u_nominal = np.zeros((t_u[t_u_slice].shape[0], nu))
@@ -152,7 +156,7 @@ def main():
   #   u_nominal[t] = input_traj.value(t_u[t_u_slice][t])[:,0]
   # plt.plot(t_u[t_u_slice], np.sum(u_nominal[:, 6:8], axis=1))
 
-  # plot_contact_est(full_log)\
+  # plot_contact_est(full_log)
   # plt.figure("Impact Event")
   # plt.plot(t_contact_info[t_slice], (contact_info[0, t_slice, s2] + contact_info[3, t_slice, 2]), 'r-')
   # plt.plot([td_time, td_time], [0, 10])
@@ -160,6 +164,7 @@ def main():
   # plt.plot(t_u[t_u_slice], 100 * fsm[t_u_slice], 'k')
 
   if False:
+    # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "left_", "_front")
@@ -174,7 +179,7 @@ def main():
                         world, t_x, t_slice, "right_", "_rear")
     # plt.plot(t_u[t_u_slice], 0.025*fsm[t_u_slice])
 
-  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
   plt.show()
 
@@ -187,17 +192,19 @@ def plot_contact_est(log):
   gm_contact_l = []
   gm_contact_r = []
   t_fsm_contact = []
-  fsm_contact = np.zeros((len(log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"]), 2))
-  for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_CONTACT_DISPATCHER"][i]
-    t_contact.append(msg.utime / 1e6)
-    contact.append(list(msg.contact))
-  for i in range(len(log["CASSIE_FILTERED_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
-    t_filtered_contact.append(msg.utime / 1e6)
-    contact_filtered.append(list(msg.contact))
-  for i in range(len(log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"])):
-    msg = log["CASSIE_CONTACT_FOR_FSM_DISPATCHER"][i]
+  hardware_impact = 30.0 + nominal_impact_time + 0.09
+
+  fsm_contact = np.zeros((len(log["CASSIE_GM_CONTACT_DISPATCHER"]), 2))
+  # for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
+  #   msg = log["CASSIE_CONTACT_DISPATCHER"][i]
+  #   t_contact.append(msg.utime / 1e6)
+  #   contact.append(list(msg.contact))
+  # for i in range(len(log["CASSIE_FILTERED_CONTACT_DISPATCHER"])):
+  #   msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
+  #   t_filtered_contact.append(msg.utime / 1e6)
+  #   contact_filtered.append(list(msg.contact))
+  for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
+    msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
     t_fsm_contact.append(msg.timestamp / 1e6)
     for j in range(msg.num_point_pair_contacts):
       fsm_contact[i][j] = msg.point_pair_contact_info[j].contact_force[2]
@@ -212,10 +219,13 @@ def plot_contact_est(log):
   plt.figure("Contact estimation")
   # plt.plot(t_contact[t_slice], contact[t_slice], '-')
   # plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
-  plt.plot(t_gm_contact[t_slice], gm_contact_l[t_slice, 2], 'b--')
-  plt.plot(t_gm_contact[t_slice], gm_contact_r[t_slice, 2], 'r--')
-  # plt.plot(t_fsm_contact, fsm_contact, 'k-')
-  plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt"])
+  # plt.plot(t_gm_contact[t_slice], gm_contact_l[t_slice, 2], 'b--')
+  # plt.plot(t_gm_contact[t_slice], gm_contact_r[t_slice, 2], 'r--')
+  ps.plot(t_fsm_contact[t_slice] - hardware_impact, fsm_contact[t_slice, 0], xlabel='Time Since Nominal Impact (s)', ylabel='Estimated Normal Contact Force (N)')
+  ps.plot(t_fsm_contact[t_slice] - hardware_impact, fsm_contact[t_slice, 1])
+  ps.add_legend(["Left Foot", "Right Foot"])
+  # import pdb; pdb.set_trace()
+  ps.save_fig('hardware_contact_est_' + filename + '.png')
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
@@ -261,6 +271,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     osc_traj3 = "left_toe_angle_traj"
     osc_traj4 = "right_toe_angle_traj"
     osc_traj5 = "swing_hip_yaw_left_traj"
+    osc_traj6 = "swing_hip_yaw_left_traj"
+    osc_traj7 = "pelvis_rot_tracking_data"
   else:
     # For Walking
     osc_traj0 = "lipm_traj"
@@ -322,7 +334,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj5, 0, "accel")
   # plot_osc(osc_debug, osc_traj5, 1, "accel")
   # plot_osc(osc_debug, osc_traj5, 2, "accel")
-  # plot_osc(osc_debug, osc_traj5, 0, "vel")
+  plot_osc(osc_debug, osc_traj7, 0, "vel")
 
 
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
@@ -420,10 +432,10 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
     ps.add_legend(["y_des", "y", "error_y"])
     # plt.legend(["y_des", "y"])
   elif (derivative == "vel"):
-    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim], linestyle=ps.blue)
-    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot[t_u_slice, dim], linestyle=ps.red)
-    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim] - osc_debug[osc_traj].ydot[t_u_slice, dim], linestyle=ps.yellow)
-    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim], linestyle=ps.grey)
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim], color=ps.blue)
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot[t_u_slice, dim], color=ps.red)
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim] - osc_debug[osc_traj].ydot[t_u_slice, dim], color=ps.yellow)
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim], color=ps.grey)
     ps.add_legend(["ydot_des", "ydot", "error_ydot", "projected_error_ydot"])
     # plt.legend(["error_ydot", "corrected_error"])
   elif (derivative == "accel"):
@@ -448,8 +460,8 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
   # plt.figure("Impact Event")
 
   # state_indices = slice(4, 5)
-  # state_indices = slice(2, 3)
-  state_indices = slice(5, 6)
+  state_indices = slice(2, 3)
+  # state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
@@ -565,27 +577,59 @@ def plot_ii_projection(t_x, x, plant, context):
   J_l_loop, J_r_loop = calc_loop_closure_jacobian(plant, context, x_pre)
   J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r, J_l_loop, J_r_loop))
   # J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r))
+
   M_Jt = M_inv @ J.T
   # proj_ii = np.eye(18) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
   P = linalg.null_space(M_Jt.T).T
   # import pdb; pdb.set_trace()
 
   proj_vel = P.T @ P @ x_wo_spr[t_slice, -18:].T
-  # proj_vel = proj_ii @ x_wo_spr[t_slice, -18:].T
-  # proj_vel = P @ x[t_slice, -nv:].T
 
+  # proj_vel = P @ x[t_slice, -nv:].T
+  # colors = ['B0', '']
   plt.figure("joint velocities")
-  ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12:], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)')
+  for i in range(6):
+    # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12:], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)')
+    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)', color=ps.cmap(2*i))
+    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)', color=ps.cmap(1 + 2*i))
+
+  joint_vel_datatypes = [r'$Hip\ Roll_L$',
+                         r'$Hip\ Roll_R$',
+                         r'$Hip\ Yaw_L$',
+                         r'$Hip\ Yaw_R$',
+                         r'$Hip\ Pitch_L$',
+                         r'$Hip\ Pitch_R$',
+                         r'$Knee_L$',
+                         r'$Knee_R$',
+                         r'$Ankle_L$',
+                         r'$Ankle_R$',
+                         r'$Toe_L$',
+                         r'$Toe_R$',
+                 ]
   # ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
+
+  # ps.add_legend(joint_vel_datatypes)
+
   plt.ylim([-8, 8])
-  ps.save_fig('joint_velocities_hardware.png')
+  # ps.save_fig('joint_velocities_hardware.png')
 
   plt.figure("projected velocities")
-  joint_indices = [3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17]
-  ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, joint_indices], xlabel='Time since Start of Impact (ms)', ylabel='Projected Velocities (rad/s)')
+  # joint_indices = [3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17]
+  for i in range(6):
+    ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Projected Velocities (rad/s)', color=ps.cmap(2*i))
+    ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Projected Velocities (rad/s)', color=ps.cmap(1 + 2*i))
   # ps.add_legend(['%.0f' % i for i in range(18)])
-  plt.ylim([-2, 2])
-  ps.save_fig('projected_joint_velocities_hardware.png')
+  plt.ylim([-3, 1])
+  legend_elements_lines = []
+  for i in range(len(joint_vel_datatypes)):
+    legend_elements_lines.append(matplotlib.lines.Line2D([0], [0], color=ps.cmap(i), lw=3, label=joint_vel_datatypes[i]))
+  # ps.save_fig('projected_joint_velocities_hardware.png')
+
+  plt.figure('blank')
+  ax = plt.gca()
+  ax.legend(handles = legend_elements_lines, loc='upper center',
+            fancybox=True, shadow=True, ncol=3)
+  # ps.save_fig('projected_velocities_legend.png')
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # pos_indices = slice(0 + 7, 23)

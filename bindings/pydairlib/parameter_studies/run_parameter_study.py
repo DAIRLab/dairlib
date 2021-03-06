@@ -21,7 +21,7 @@ def main():
     gains_path = "/home/yangwill/workspace/dairlib/examples/Cassie/osc_jump/"
     trajectory_name = "jumping_0.15h_0.3d"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/impact_invariance_param_study/"
-    results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/0.030/"
+    results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/0.050/"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/id_controller/0.000/"
     # results_folder = "/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/param_studies/mujoco/stiff/"
     sim_time = delay_time + 3.0
@@ -37,7 +37,8 @@ def main():
 
   terrain_heights = np.arange(0.000, 0.055, 0.005)
   disturbances = np.arange(-0.500, 0.600, 0.100)
-  penetration_allowances = np.array([1e-5, 1e-4, 1e-3])
+  # penetration_allowances = np.array([1e-5, 1e-4, 1e-3])
+  penetration_allowances = np.array([5e-3])
   threshold_durations = np.arange(-0.01, 0.11, 0.01)
 
   # For MUJOCO

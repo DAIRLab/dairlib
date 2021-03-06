@@ -79,19 +79,19 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
                      drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
 
   for event in log:
-    # if event.channel not in full_log and event.channel not in unknown_types:
-    #   for lcmtype in known_lcm_types:
-    #     try:
-    #       lcmtype.decode(event.data)
-    #       channel_to_type_map[event.channel] = lcmtype
-    #     except ValueError:
-    #       continue
-    #   if event.channel in channel_to_type_map:
-    #     full_log[event.channel] = []
-    #   else:
-    #     unknown_types.add(event.channel)
-    # if event.channel in full_log:
-    #   full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
+    if event.channel not in full_log and event.channel not in unknown_types:
+      for lcmtype in known_lcm_types:
+        try:
+          lcmtype.decode(event.data)
+          channel_to_type_map[event.channel] = lcmtype
+        except ValueError:
+          continue
+      if event.channel in channel_to_type_map:
+        full_log[event.channel] = []
+      else:
+        unknown_types.add(event.channel)
+    if event.channel in full_log:
+      full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
     if event.channel == "CASSIE_STATE_SIMULATION" or event.channel == "CASSIE_STATE_DISPATCHER":
     # if event.channel == "CASSIE_STATE_DISPATCHER":
       msg = dairlib.lcmt_robot_output.decode(event.data)

@@ -190,5 +190,30 @@ int CountConstraintRows(const MathematicalProgram& prog) {
   return n;
 }
 
+double EvalCostGivenSolution(
+    const drake::solvers::MathematicalProgram& prog,
+    const drake::solvers::MathematicalProgramResult& result,
+    const drake::solvers::Binding<drake::solvers::Cost>& cost_binding) {
+  auto const& c = cost_binding.evaluator();
+  // std::cout << c->get_description() << std::endl;
+  auto variables = cost_binding.variables();
+
+  drake::VectorX<double> sol = result.GetSolution(variables);
+  drake::VectorX<double> cost_val(1);
+  c.get()->Eval(sol, &cost_val);
+
+  return cost_val(0);
+};
+double EvalCostGivenSolution(
+    const drake::solvers::MathematicalProgram& prog,
+    const drake::solvers::MathematicalProgramResult& result,
+    const std::vector<drake::solvers::Binding<drake::solvers::Cost>>& c) {
+  double cost_val_sum = 0;
+  for (const auto& cost_binding : c) {
+    cost_val_sum += solvers::EvalCostGivenSolution(prog, result, cost_binding);
+  }
+  return cost_val_sum;
+}
+
 }  // namespace solvers
 }  // namespace dairlib

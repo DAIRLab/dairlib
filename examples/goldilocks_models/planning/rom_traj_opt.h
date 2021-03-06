@@ -16,6 +16,9 @@
 
 #include "examples/goldilocks_models/reduced_order_models.h"
 
+using drake::solvers::Binding;
+using drake::solvers::Cost;
+
 namespace dairlib {
 namespace goldilocks_models {
 
@@ -113,6 +116,13 @@ class RomTrajOpt
   std::unordered_map<int, double> fom_stance_ft_vel_constraint_scaling_;
   std::unordered_map<int, double> rom_dyn_constraint_scaling_;
   std::unordered_map<int, double> rom_fom_mapping_constraint_scaling_;
+
+  // Cost bindings
+  std::vector<Binding<Cost>> rom_state_cost_bindings_;
+  std::vector<Binding<Cost>> rom_input_cost_bindings_;
+  std::vector<Binding<Cost>> rom_regularization_cost_bindings_;
+  std::vector<Binding<Cost>> fom_regularization_cost_bindings_;
+  std::vector<Binding<Cost>> lambda_cost_bindings_;
 
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.

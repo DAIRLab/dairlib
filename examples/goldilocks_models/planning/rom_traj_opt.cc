@@ -253,6 +253,10 @@ RomTrajOpt::RomTrajOpt(
         //  MatrixXd Q_lambda = 0.01 * MatrixXd::Identity(n_Lambda, n_Lambda);
         //  VectorXd b_lambda = VectorXd::Zero(n_Lambda);
         //  AddQuadraticCost(Q_lambda, b_lambda, Lambda);
+
+        // debugging
+//        lambda_cost_bindings_.push_back(
+//            AddLinearCost(10 * Lambda(2) + 10 * Lambda(5)));
       }
     }
 
@@ -650,47 +654,49 @@ void RomTrajOptCassie::AddRegularizationCost(
     auto x_f = xf_vars_by_mode(i);
     if (left_stance) {
       if (i != 0) {
-        AddQuadraticErrorCost(
+        fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
             Id_z_joints, modifixed_x_guess_left_in_front.segment(6, n_q - 6),
-            x_0.segment(6, n_q - 6));
+            x_0.segment(6, n_q - 6)));
       }
-      AddQuadraticErrorCost(
+      fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
           Id_z_joints, modifixed_x_guess_right_in_front.segment(6, n_q - 6),
-          x_f.segment(6, n_q - 6));
-      //      AddQuadraticErrorCost(
+          x_f.segment(6, n_q - 6)));
+      //      fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
       //          Id_quat, modifixed_x_guess_left_in_front.head(4),
-      //          x_0.head(4));
-      //      AddQuadraticErrorCost(
+      //          x_0.head(4)));
+      //      fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
       //          Id_quat, modifixed_x_guess_right_in_front.head(4),
-      //          x_f.head(4));
+      //          x_f.head(4)));
     } else {
       if (i != 0) {
-        AddQuadraticErrorCost(
+        fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
             Id_z_joints, modifixed_x_guess_right_in_front.segment(6, n_q - 6),
-            x_0.segment(6, n_q - 6));
+            x_0.segment(6, n_q - 6)));
       }
-      AddQuadraticErrorCost(Id_z_joints,
-                            modifixed_x_guess_left_in_front.segment(6, n_q - 6),
-                            x_f.segment(6, n_q - 6));
-      //      AddQuadraticErrorCost(
+      fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+          Id_z_joints, modifixed_x_guess_left_in_front.segment(6, n_q - 6),
+          x_f.segment(6, n_q - 6)));
+      //      fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
       //          Id_quat, modifixed_x_guess_right_in_front.head(4),
-      //          x_0.head(4));
-      //      AddQuadraticErrorCost(
+      //          x_0.head(4)));
+      //      fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
       //          Id_quat, modifixed_x_guess_left_in_front.head(4),
-      //          x_f.head(4));
+      //          x_f.head(4)));
     }
     if (i != 0) {
-      AddQuadraticErrorCost(Id_xy, final_position * i / num_modes_,
-                            x_0.segment<2>(4));
+      fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+          Id_xy, final_position * i / num_modes_, x_0.segment<2>(4)));
     }
-    AddQuadraticErrorCost(Id_xy, final_position * (i + 1) / num_modes_,
-                          x_f.segment<2>(4));
+    fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_xy, final_position * (i + 1) / num_modes_, x_f.segment<2>(4)));
     VectorX<double> quat_identity(4);
     quat_identity << 1, 0, 0, 0;
     if (i != 0) {
-      AddQuadraticErrorCost(Id_quat, quat_identity, x_0.head(4));
+      fom_regularization_cost_bindings_.push_back(
+          AddQuadraticErrorCost(Id_quat, quat_identity, x_0.head(4)));
     }
-    AddQuadraticErrorCost(Id_quat, quat_identity, x_f.head(4));
+    fom_regularization_cost_bindings_.push_back(
+        AddQuadraticErrorCost(Id_quat, quat_identity, x_f.head(4)));
 
     left_stance = !left_stance;
   }
@@ -781,25 +787,27 @@ void RomTrajOptCassie::AddRomRegularizationCost(
   for (int i = 0; i < num_modes_; i++) {
     // Time steps
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
-      AddQuadraticErrorCost(I_h, h_guess.segment(1, 1),
-                            timestep(mode_start_[i] + j));
+      rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+          I_h, h_guess.segment(1, 1), timestep(mode_start_[i] + j)));
     }
     // Rom states and inputs
     for (int j = 0; j < mode_lengths_[i]; j++) {
       // The intial state might start in the middle of the stride
       if (i == 0) {
-        AddQuadraticErrorCost(I_z, y_guess.col(fisrt_mode_phase_index + j),
-                              state_vars_by_mode(i, j));
+        rom_regularization_cost_bindings_.push_back(
+            AddQuadraticErrorCost(I_z, y_guess.col(fisrt_mode_phase_index + j),
+                                  state_vars_by_mode(i, j)));
         int time_index = mode_start_[i] + j;
-        AddQuadraticErrorCost(
+        rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
             I_tau, tau_guess.col(fisrt_mode_phase_index + j),
-            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()));
+            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau())));
       } else {
-        AddQuadraticErrorCost(I_z, y_guess.col(j), state_vars_by_mode(i, j));
+        rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+            I_z, y_guess.col(j), state_vars_by_mode(i, j)));
         int time_index = mode_start_[i] + j;
-        AddQuadraticErrorCost(
+        rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
             I_tau, tau_guess.col(j),
-            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()));
+            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau())));
       }
     }
   }

@@ -6,6 +6,7 @@
 #include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "lcm/rom_planner_saved_trajectory.h"
+#include "solvers/optimization_utils.h"
 #include "systems/controllers/osc/osc_utils.h"
 
 #include "drake/solvers/choose_best_solver.h"
@@ -714,6 +715,16 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
       cout << "cost_u = " << cost_u << endl;
     }
+
+    double rom_regularization_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.rom_regularization_cost_bindings_);
+    cout << "rom_regularization_cost = " << rom_regularization_cost << endl;
+    double fom_regularization_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.fom_regularization_cost_bindings_);
+    cout << "fom_regularization_cost = " << fom_regularization_cost << endl;
+    double lambda_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.lambda_cost_bindings_);
+    cout << "lambda_cost = " << lambda_cost << endl;
   }
 
   // Extract and save solution into files (for debugging)

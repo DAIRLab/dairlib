@@ -59,5 +59,15 @@ double SecondOrderCost(const drake::solvers::MathematicalProgram& prog,
 /// the dimension of f(x)
 int CountConstraintRows(const drake::solvers::MathematicalProgram& prog);
 
+// Eval cost given the solutions
+double EvalCostGivenSolution(
+    const drake::solvers::MathematicalProgram& prog,
+    const drake::solvers::MathematicalProgramResult& result,
+    const drake::solvers::Binding<drake::solvers::Cost>& c);
+double EvalCostGivenSolution(
+    const drake::solvers::MathematicalProgram& prog,
+    const drake::solvers::MathematicalProgramResult& result,
+    const std::vector<drake::solvers::Binding<drake::solvers::Cost>>& c);
+
 }  // namespace solvers
 }  // namespace dairlib

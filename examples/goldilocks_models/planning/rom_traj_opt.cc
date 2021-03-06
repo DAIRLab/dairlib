@@ -275,6 +275,16 @@ RomTrajOpt::RomTrajOpt(
       AddBoundingBoxConstraint(std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
                                xf(positions_map.at(std::get<0>(name_lb_ub))));
     }
+    // Full order model vel limits
+    PrintStatus("Adding full-order model joint constraint...");
+    for (const auto& name_lb_ub : fom_joint_name_lb_ub) {
+      if (i != 0) {
+        // We don't impose constraint on the initial state (because it's
+        // constrained already)
+        AddBoundingBoxConstraint(-10, 10, x0);
+      }
+      AddBoundingBoxConstraint(-10, 10, xf);
+    }
 
     // Stitching x0 and xf (full-order model stance foot constraint)
     PrintStatus("Adding full-order model stance foot pos constraint...");

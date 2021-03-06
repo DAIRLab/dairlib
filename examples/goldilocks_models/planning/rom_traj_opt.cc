@@ -86,8 +86,10 @@ RomTrajOpt::RomTrajOpt(
   PrintStatus("Adding cost...");
   auto y = this->state();
   auto tau = this->input();
-  this->AddRunningCost(y.tail(rom.n_y()).transpose() * Q * y.tail(rom.n_y()));
-  this->AddRunningCost(tau.transpose() * R * tau);
+  this->DoAddRunningCost((y.tail(n_y_).transpose() * Q * y.tail(n_y_))(0, 0),
+                         &rom_state_cost_bindings_);
+  this->DoAddRunningCost((tau.transpose() * R * tau)(0, 0),
+                         &rom_input_cost_bindings_);
 
   // Initial pose constraint for the full order model
   PrintStatus("Adding initial pose constraint for full-order model...");
@@ -255,8 +257,8 @@ RomTrajOpt::RomTrajOpt(
         //  AddQuadraticCost(Q_lambda, b_lambda, Lambda);
 
         // debugging
-//        lambda_cost_bindings_.push_back(
-//            AddLinearCost(10 * Lambda(2) + 10 * Lambda(5)));
+        //        lambda_cost_bindings_.push_back(
+        //            AddLinearCost(10 * Lambda(2) + 10 * Lambda(5)));
       }
     }
 
@@ -496,6 +498,27 @@ void RomTrajOpt::DoAddRunningCost(const drake::symbolic::Expression& g) {
   }
   AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
           h_vars()(N() - 2) / 2);
+}
+
+// TODO: need to configure this to handle the hybrid discontinuities properly
+void RomTrajOpt::DoAddRunningCost(const drake::symbolic::Expression& g,
+                                  std::vector<Binding<Cost>>* bindings) {
+  // Trapezoidal integration:
+  //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
+  // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
+  // g_{N-1}*h_{N-2}/2.0.
+
+  bindings->push_back(
+      AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) *
+              h_vars()(0) / 2));
+  for (int i = 1; i <= N() - 2; i++) {
+    bindings->push_back(
+        AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
+                (h_vars()(i - 1) + h_vars()(i)) / 2));
+  }
+  bindings->push_back(
+      AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
+              h_vars()(N() - 2) / 2));
 }
 
 void RomTrajOpt::GetStateAndDerivativeSamples(

@@ -127,6 +127,9 @@ class RomTrajOpt
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
+  void DoAddRunningCost(const drake::symbolic::Expression& g,
+                        std::vector<Binding<Cost>>* bindings);
+
   const int num_modes_;
   const std::vector<int> mode_lengths_;
   std::vector<int> mode_start_;

@@ -174,11 +174,12 @@ RomTrajOpt::RomTrajOpt(
 
     // Add dynamics constraints at collocation points
     PrintStatus("Adding dynamics constraint...");
-    auto dyn_constraint = std::make_shared<planning::DynamicsConstraint>(rom);
-    DRAKE_DEMAND(static_cast<int>(dyn_constraint->num_constraints()) ==
-                 num_states());
-    dyn_constraint->SetConstraintScaling(rom_dyn_constraint_scaling_);
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
+      auto dyn_constraint = std::make_shared<planning::DynamicsConstraint>(
+          rom, "rom_dyn_" + to_string(i) + "_" + to_string(j));
+      DRAKE_DEMAND(static_cast<int>(dyn_constraint->num_constraints()) ==
+                   num_states());
+      dyn_constraint->SetConstraintScaling(rom_dyn_constraint_scaling_);
       int time_index = mode_start_[i] + j;
       AddConstraint(
           dyn_constraint,
@@ -192,13 +193,21 @@ RomTrajOpt::RomTrajOpt(
     // Add RoM-FoM mapping constraints
     // TODO: might need to rotate the local frame to align with the global
     PrintStatus("Adding RoM-FoM mapping constraint...");
-    auto kin_constraint = std::make_shared<planning::KinematicsConstraint>(
-        rom, plant, left_stance, state_mirror);
-    kin_constraint->SetConstraintScaling(rom_fom_mapping_constraint_scaling_);
+    auto kin_constraint_start =
+        std::make_shared<planning::KinematicsConstraint>(
+            rom, plant, left_stance, state_mirror,
+            "rom_fom_mapping_" + to_string(i) + "_start");
+    kin_constraint_start->SetConstraintScaling(
+        rom_fom_mapping_constraint_scaling_);
     VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
+    AddConstraint(kin_constraint_start, {z_0, x0});
+    auto kin_constraint_end = std::make_shared<planning::KinematicsConstraint>(
+        rom, plant, left_stance, state_mirror,
+        "rom_fom_mapping_" + to_string(i) + "_end");
+    kin_constraint_end->SetConstraintScaling(
+        rom_fom_mapping_constraint_scaling_);
     VectorXDecisionVariable z_f = state_vars_by_mode(i, mode_lengths_[i] - 1);
-    AddConstraint(kin_constraint, {z_0, x0});
-    AddConstraint(kin_constraint, {z_f, xf});
+    AddConstraint(kin_constraint_end, {z_f, xf});
 
     // Testing state mirroring
     //    if (!left_stance) {
@@ -229,7 +238,7 @@ RomTrajOpt::RomTrajOpt(
     }
     VectorXd ub = VectorXd::Zero(2 * swing_contacts.size());
     auto guard_constraint = std::make_shared<planning::FomGuardConstraint>(
-        plant, swing_contacts, lb, ub);
+        plant, swing_contacts, lb, ub, "fom_guard_" + to_string(i));
     guard_constraint->SetConstraintScaling(fom_guard_constraint_scaling_);
     AddConstraint(guard_constraint, xf);
     //    }
@@ -243,8 +252,8 @@ RomTrajOpt::RomTrajOpt(
       } else {
         PrintStatus("Adding (FoM velocity) reset map constraint...");
         auto reset_map_constraint =
-            std::make_shared<planning::FomResetMapConstraint>(plant_,
-                                                              swing_contacts);
+            std::make_shared<planning::FomResetMapConstraint>(
+                plant_, swing_contacts, "fom_discrete_dyn_" + to_string(i));
         reset_map_constraint->SetConstraintScaling(
             fom_discrete_dyn_constraint_scaling_);
         int n_Lambda = 3 * swing_contacts.size();
@@ -290,23 +299,30 @@ RomTrajOpt::RomTrajOpt(
     PrintStatus("Adding full-order model stance foot pos constraint...");
     const auto& stance_contacts = left_stance ? left_contacts : right_contacts;
     auto fom_sf_pos_constraint =
-        std::make_shared<planning::FomStanceFootPosConstraint>(plant_,
-                                                               stance_contacts);
+        std::make_shared<planning::FomStanceFootPosConstraint>(
+            plant_, stance_contacts, "fom_stance_ft_pos_" + to_string(i));
     fom_sf_pos_constraint->SetConstraintScaling(
         fom_stance_ft_pos_constraint_scaling_);
     AddConstraint(fom_sf_pos_constraint, {x0.head(n_q), xf.head(n_q)});
 
     // Zero velocity for stance foot
     PrintStatus("Adding full-order model stance foot vel constraint...");
-    auto fom_ft_vel_constraint =
-        std::make_shared<planning::FomStanceFootVelConstraint>(plant_,
-                                                               stance_contacts);
-    fom_ft_vel_constraint->SetConstraintScaling(
+    auto fom_ft_vel_constraint_start =
+        std::make_shared<planning::FomStanceFootVelConstraint>(
+            plant_, stance_contacts,
+            "fom_stance_ft_vel_" + to_string(i) + "_start");
+    fom_ft_vel_constraint_start->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
     if (i != 0) {
-      AddConstraint(fom_ft_vel_constraint, x0);
+      AddConstraint(fom_ft_vel_constraint_start, x0);
     }
-    AddConstraint(fom_ft_vel_constraint, xf);
+    auto fom_ft_vel_constraint_end =
+        std::make_shared<planning::FomStanceFootVelConstraint>(
+            plant_, stance_contacts,
+            "fom_stance_ft_vel_" + to_string(i) + "_end");
+    fom_ft_vel_constraint_end->SetConstraintScaling(
+        fom_stance_ft_vel_constraint_scaling_);
+    AddConstraint(fom_ft_vel_constraint_end, xf);
 
     // Stride length constraint
     // cout << "Adding stride length constraint for full-order model...\n";

@@ -666,6 +666,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "lambda_cost = " << lambda_cost << endl;
   }
 
+  // Check constraint violation
+  if (true) {
+    double tol = param_.feas_tol;
+    solvers::CheckGenericConstraints(trajopt, result, tol);
+  }
+
   // Extract and save solution into files (for debugging)
   //  if (debug_mode_) {
   //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >

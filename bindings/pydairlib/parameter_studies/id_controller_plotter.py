@@ -13,7 +13,7 @@ from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.trajectories import PiecewisePolynomial
 import pydairlib.lcm_trajectory
-
+from IPython import get_ipython
 
 from pydairlib.common import FindResourceOrThrow
 from bindings.pydairlib.parameter_studies.plot_styler import PlotStyler
@@ -26,6 +26,7 @@ from pydairlib.cassie.cassie_utils import *
 import pydairlib.multibody
 
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 
 def main():
@@ -38,6 +39,12 @@ def main():
   global perturbations
   global penetration_allowances
   global threshold_durations
+  global log_dir
+  global vel_map
+  global pos_map
+  global act_map
+  global t_start
+  global t_end
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
   figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
   ps = PlotStyler()
@@ -93,54 +100,116 @@ def main():
   # ps.plot(t_samples, u_nominal[:, -4:])
   # ps.add_legend(u_datatypes[-4:])
 
-  plt.figure("velocities")
-  ps.plot(t_samples, x_nominal[:, -7:])
-  ps.add_legend(x_datatypes[-7:])
+  animate_velocity_error(plant)
+
+
+  ps.show_fig()
+
+def animate_velocity_error(plant):
+  filename = 'lcmlog-025_0KD'
+  log = lcm.EventLog(log_dir + filename, "r")
+  t_state, t_osc, x, u, fsm, contact_info, contact_info_locs, osc_debug, osc_output, t_lcmlog_u = \
+    process_log(log, pos_map, vel_map)
+
+  t_u_start_idx = np.argwhere(np.abs(t_osc - (t_start)) < 1e-3)[0, 0]
+  t_u_end_idx = np.argwhere(np.abs(t_osc - (t_end)) < 1e-3)[0, 0]
+  t_slice = slice(t_u_start_idx, t_u_end_idx)
+
+  x_range = [-50, 50]
+  y_range = [-6, 0]
+
+  fig = plt.figure()
+  ax = plt.axes()
+  n_frames = 10
+  ax.set_xlim(x_range)
+  ax.set_ylim(y_range)
+  ps.plot(1e3*(t_osc[t_slice] - nominal_impact_time), osc_debug['right_knee_pin_traj'].ydot_des[t_slice], xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity (rad/s)', color=ps.blue)
+  ps.add_legend(['Reference Trajectory'])
+
+
+  def frame(i):
+    # ax.clear()
+
+    ax.set_xlim(x_range)
+    ax.set_ylim(y_range)
+
+    i = int(i / n_frames * t_osc[t_slice].shape[0])
+
+    plot = ps.plot(1e3*(t_osc[t_slice][i] - nominal_impact_time), osc_debug['right_knee_pin_traj'].ydot[t_slice][i], color=ps.red)
+
+    # if not ('google.colab' in str(get_ipython())):
+    #   plt.draw()
+    #   plt.pause(t_osc[t_slice][-1]/n_frames)
+    return plot
+
+  # if not ('google.colab' in str(get_ipython())):
+  plt.ion()
+  plt.show()
+  for i in range(n_frames):
+    frame(i)
+
+  anim = animation.FuncAnimation(fig, frame, frames=n_frames, blit=False, repeat=False)
+
+  # plt.close()
+  writervideo = animation.FFMpegWriter(fps=60)
+  anim.save(ps.directory + 'actual_velocity_right_knee.mp4', writervideo)
+  import pdb; pdb.set_trace()
+  ps.show_fig()
+
+def plot_ablation_study():
+  log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
+  # log_files = ['lcmlog-000', 'lcmlog-025']
+  # log_files = ['lcmlog-000_1', 'lcmlog-010', 'lcmlog-010_0KD_1']
+  # log_files = ['lcmlog-0251']
+  # log_files = ['lcmlog-0101']
+  colors = [ps.blue, ps.orange, ps.red]
+  linestyles = ['-', 'dotted', '--', '-.']
+  color_idx = 0
 
   for filename in log_files:
     log = lcm.EventLog(log_dir + filename, "r")
-    t_state, t_lqr, x, u, fsm, contact_info, contact_info_locs, osc_debug, osc_output, t_lcmlog_u = \
+    t_state, t_osc, x, u, fsm, contact_info, contact_info_locs, osc_debug, osc_output, t_lcmlog_u = \
       process_log(log, pos_map, vel_map)
     # import pdb; pdb.set_trace()
 
     plt.figure("velocities")
     ps.plot(t_state, x[:, -7:], color=colors[color_idx])
 
-    # ps.plot(t_lqr, u)
+    # ps.plot(t_osc, u)
     # ps.add_legend(u_datatypes)
 
-    t_u_start_idx = np.argwhere(np.abs(t_lqr - (t_start)) < 1e-3)[0, 0]
-    t_u_end_idx = np.argwhere(np.abs(t_lqr - (t_end)) < 1e-3)[0, 0]
+    t_u_start_idx = np.argwhere(np.abs(t_osc - (t_start)) < 1e-3)[0, 0]
+    t_u_end_idx = np.argwhere(np.abs(t_osc - (t_end)) < 1e-3)[0, 0]
     t_slice = slice(t_u_start_idx, t_u_end_idx)
 
     plt.figure("inputs")
     for i, linestyle in enumerate(linestyles):
-      ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), u[t_slice, i], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', color=colors[color_idx], linestyle=linestyle)
+      ps.plot(1e3*(t_osc[t_slice] - nominal_impact_time), u[t_slice, i], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', color=colors[color_idx], linestyle=linestyle)
 
     plt.figure("swing_leg_joints")
-    # ps.plot(t_lqr, osc_debug['right_knee_pin_traj'].ydot, linestyle=colors[color_idx])
-    # ps.plot(t_lqr, osc_debug['right_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
-    # ps.plot(t_lqr, osc_debug['right_knee_pin_traj'].error_ydot, linestyle='r')
+    # ps.plot(t_osc, osc_debug['right_knee_pin_traj'].ydot, linestyle=colors[color_idx])
+    # ps.plot(t_osc, osc_debug['right_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
+    # ps.plot(t_osc, osc_debug['right_knee_pin_traj'].error_ydot, linestyle='r')
     right_knee_pin_error = np.abs(osc_debug['right_knee_pin_traj'].ydot_des[t_slice] - osc_debug['right_knee_pin_traj'].ydot[t_slice])
-    # ps.plot(1e3*(t_lqr[t_slice] - t_start), right_knee_pin_error, xlabel='Time After Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
+    # ps.plot(1e3*(t_osc[t_slice] - t_start), right_knee_pin_error, xlabel='Time After Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
     # plt.figure("right_hip")
-    # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].ydot, linestyle=colors[color_idx])
-    # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
-    # ps.plot(t_lqr, osc_debug['right_hip_pin_traj'].error_ydot, linestyle='r')
+    # ps.plot(t_osc, osc_debug['right_hip_pin_traj'].ydot, linestyle=colors[color_idx])
+    # ps.plot(t_osc, osc_debug['right_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
+    # ps.plot(t_osc, osc_debug['right_hip_pin_traj'].error_ydot, linestyle='r')
     right_hip_pin_error = np.abs(osc_debug['right_hip_pin_traj'].ydot_des[t_slice] - osc_debug['right_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Impacting Leg')
+    ps.plot(1e3*(t_osc[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Impacting Leg')
     plt.figure("stance_leg_joints")
-    # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot, linestyle=colors[color_idx])
-    # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
-    # ps.plot(t_lqr, osc_debug['left_knee_pin_traj'].error_ydot, linestyle='r')
+    # ps.plot(t_osc, osc_debug['left_knee_pin_traj'].ydot, linestyle=colors[color_idx])
+    # ps.plot(t_osc, osc_debug['left_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
+    # ps.plot(t_osc, osc_debug['left_knee_pin_traj'].error_ydot, linestyle='r')
     left_knee_pin_error = np.abs(osc_debug['left_knee_pin_traj'].ydot_des[t_slice] - osc_debug['left_knee_pin_traj'].ydot[t_slice])
-    # ps.plot(1e3*(t_lqr[t_slice] - t_start), left_knee_pin_error, xlabel='Time After Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
+    # ps.plot(1e3*(t_osc[t_slice] - t_start), left_knee_pin_error, xlabel='Time After Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
     # plt.figure("left_hip")
-    # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].ydot, linestyle=colors[color_idx])
-    # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
-    # ps.plot(t_lqr, osc_debug['left_hip_pin_traj'].error_ydot, linestyle='r')
+    # ps.plot(t_osc, osc_debug['left_hip_pin_traj'].ydot, linestyle=colors[color_idx])
+    # ps.plot(t_osc, osc_debug['left_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
+    # ps.plot(t_osc, osc_debug['left_hip_pin_traj'].error_ydot, linestyle='r')
     left_hip_pin_error = np.abs(osc_debug['left_hip_pin_traj'].ydot_des[t_slice] - osc_debug['left_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_lqr[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Non-Impacting Leg')
+    ps.plot(1e3*(t_osc[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Non-Impacting Leg')
     color_idx += 1
 
   plt.figure("stance_leg_joints")
@@ -185,8 +254,7 @@ def main():
   line_legend = ax.legend(handles = legend_elements_lines, loc='lower left', ncol=1, edgecolor='k')
   ax.add_artist(line_legend)
   ax.legend(handles = legend_elements, loc=2, edgecolor='k')
-  ps.save_fig('rabbit_legend.png')
-  ps.show_fig()
+  # ps.save_fig('rabbit_legend.png')
 
 def plot_foot_velocities(plant, context, t_state, x):
   n_points = t_state.shape[0]

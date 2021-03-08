@@ -661,9 +661,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     double fom_regularization_cost = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.fom_regularization_cost_bindings_);
     cout << "fom_regularization_cost = " << fom_regularization_cost << endl;
+    double fom_xy_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.fom_xy_cost_bindings_);
+    cout << "fom_xy_cost = " << fom_xy_cost << endl;
     double lambda_cost = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.lambda_cost_bindings_);
     cout << "lambda_cost = " << lambda_cost << endl;
+    double x0_relax_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.x0_relax_cost_bindings_);
+    cout << "x0_relax_cost = " << x0_relax_cost << endl;
+    double v0_relax_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.v0_relax_cost_bindings_);
+    cout << "v0_relax_cost = " << v0_relax_cost << endl;
   }
 
   // Check constraint violation

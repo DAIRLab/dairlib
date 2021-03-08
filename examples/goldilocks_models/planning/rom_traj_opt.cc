@@ -107,7 +107,7 @@ RomTrajOpt::RomTrajOpt(
     }
     MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
     VectorXd b_x0 = VectorXd::Zero(n_x_);
-    AddQuadraticCost(Q_x0, b_x0, eps);
+    x0_relax_cost_bindings_.push_back(AddQuadraticCost(Q_x0, b_x0, eps));
     SetInitialGuess(eps, VectorXd::Zero(n_x_));*/
     /// relax only the velocity
     // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
@@ -127,7 +127,7 @@ RomTrajOpt::RomTrajOpt(
     }
     MatrixXd Q_v0 = 1 * MatrixXd::Identity(len_v_relax, len_v_relax);
     VectorXd b_v0 = VectorXd::Zero(len_v_relax);
-    AddQuadraticCost(Q_v0, b_v0, eps);
+    v0_relax_cost_bindings_.push_back(AddQuadraticCost(Q_v0, b_v0, eps));
     SetInitialGuess(eps, 0 * VectorXd::Ones(len_v_relax));
     // The rest of the state should be hard-constrained
     AddBoundingBoxConstraint(x_init.head(n_q + start_idx_v_relax),
@@ -733,10 +733,10 @@ void RomTrajOptCassie::AddRegularizationCost(
       //          x_f.head(4)));
     }
     if (i != 0) {
-      fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+      fom_xy_cost_bindings_.push_back(AddQuadraticErrorCost(
           Id_xy, final_position * i / num_modes_, x_0.segment<2>(4)));
     }
-    fom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+    fom_xy_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_xy, final_position * (i + 1) / num_modes_, x_f.segment<2>(4)));
     VectorX<double> quat_identity(4);
     quat_identity << 1, 0, 0, 0;

@@ -122,6 +122,9 @@ class RomTrajOpt
   std::vector<Binding<Cost>> rom_input_cost_bindings_;
   std::vector<Binding<Cost>> rom_regularization_cost_bindings_;
   std::vector<Binding<Cost>> fom_regularization_cost_bindings_;
+  std::vector<Binding<Cost>> fom_xy_cost_bindings_;
+  std::vector<Binding<Cost>> x0_relax_cost_bindings_;
+  std::vector<Binding<Cost>> v0_relax_cost_bindings_;
   std::vector<Binding<Cost>> lambda_cost_bindings_;
 
  protected:

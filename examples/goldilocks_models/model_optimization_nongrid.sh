@@ -6,35 +6,35 @@ model=4 # 1Drom 2,3   2Drom 0,1  3Drom 4,5
 echo robot_option = $robot, rom_option = $model
 
 # Set sample size
-n_sl=3
-n_gi=3
-n_v=2
+n_sl=4
+n_gi=1
+n_v=1
 n_tr=1
 
 # Set optimization range
 # small range
-#sl_min=0.25
-#sl_max=0.35
-#gi_min=-0.15
-#gi_max=0.15
+sl_min=-0.3
+sl_max=0.3
+gi_min=0
+gi_max=0
+v_min=0.5
+v_max=0.5
+tr_min=0
+tr_max=0
+# large range
+#sl_min=-0.3
+#sl_max=-0.2
+#gi_min=-0.3
+#gi_max=0.3
 #v_min=0.45
 #v_max=0.55
 #tr_min=0
 #tr_max=0
-# large range
-sl_min=0.2
-sl_max=0.3
-gi_min=-0.3
-gi_max=0.3
-v_min=0.45
-v_max=0.55
-tr_min=0
-tr_max=0
 # Other parameters
-is_grid=false
-iter_expansion=50
-iter_start=1
-final_iter=200
+is_grid=true
+iter_expansion=20
+iter_start=0
+final_iter=2
 snopt_scaling=false
 N_rerun=2
 momentum=0.5

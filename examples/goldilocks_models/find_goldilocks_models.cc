@@ -1496,8 +1496,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Tasks setup
   task_gen->PrintInfo();
-  DRAKE_DEMAND(task_gen->task_min("stride length") >= 0);
-  DRAKE_DEMAND(task_gen->task_min("velocity") >= 0);
+  //comment this for backward-walking
+//  DRAKE_DEMAND(task_gen->task_min("stride length") >= 0);
+//  DRAKE_DEMAND(task_gen->task_min("velocity") >= 0);
   int N_sample = task_gen->total_sample_number();
   Task task(task_gen->names());
   vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen->dim()));

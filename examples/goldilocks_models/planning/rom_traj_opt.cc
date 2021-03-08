@@ -97,7 +97,7 @@ RomTrajOpt::RomTrajOpt(
   if (soft_init_constraint) {
     VectorXDecisionVariable x0 = x0_vars_by_mode(0);
     /// relax the state
-    /* PrintStatus("(relax the whole state)");
+     PrintStatus("(relax the whole state)");
     auto eps = NewContinuousVariables(n_x_, "eps_x0_FOM");
     MatrixXd Aeq = MatrixXd::Ones(1, 2);
     for (int i = 0; i < n_x_; i++) {
@@ -108,10 +108,10 @@ RomTrajOpt::RomTrajOpt(
     MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
     VectorXd b_x0 = VectorXd::Zero(n_x_);
     x0_relax_cost_bindings_.push_back(AddQuadraticCost(Q_x0, b_x0, eps));
-    SetInitialGuess(eps, VectorXd::Zero(n_x_));*/
+    SetInitialGuess(eps, VectorXd::Zero(n_x_));
     /// relax only the velocity
     // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
-    PrintStatus("(relax only the velocity)");
+    /*PrintStatus("(relax only the velocity)");
     int start_idx_v_relax = 3;
     int len_v_relax = 3;
     auto eps = NewContinuousVariables(len_v_relax, "eps_v0_FOM");
@@ -139,7 +139,7 @@ RomTrajOpt::RomTrajOpt(
         x_init.segment(n_q + start_idx_v_relax + len_v_relax,
                        n_v - start_idx_v_relax - len_v_relax),
         x0.segment(n_q + start_idx_v_relax + len_v_relax,
-                   n_v - start_idx_v_relax - len_v_relax));
+                   n_v - start_idx_v_relax - len_v_relax));*/
   } else {
     AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
     // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
@@ -266,13 +266,13 @@ RomTrajOpt::RomTrajOpt(
         //  AddQuadraticCost(Q_lambda, b_lambda, Lambda);
 
         // debugging
-        //        lambda_cost_bindings_.push_back(
-        //            AddLinearCost(10 * Lambda(2) + 10 * Lambda(5)));
+        lambda_cost_bindings_.push_back(
+            AddLinearCost(10 * Lambda(2) + 10 * Lambda(5)));
       }
     }
 
     // Full order model joint limits
-    PrintStatus("Adding full-order model joint constraint...");
+    /*PrintStatus("Adding full-order model joint constraint...");
     for (const auto& name_lb_ub : fom_joint_name_lb_ub) {
       if (i != 0) {
         // We don't impose constraint on the initial state (because it's
@@ -283,7 +283,7 @@ RomTrajOpt::RomTrajOpt(
       }
       AddBoundingBoxConstraint(std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
                                xf(positions_map.at(std::get<0>(name_lb_ub))));
-    }
+    }*/
     // Full order model vel limits
     PrintStatus("Adding full-order model joint constraint...");
     for (const auto& name_lb_ub : fom_joint_name_lb_ub) {
@@ -833,7 +833,7 @@ void RomTrajOptCassie::AddRomRegularizationCost(
   MatrixXd I_z = w_reg * MatrixXd::Identity(n_z_, n_z_);
   MatrixXd I_tau = w_reg * MatrixXd::Identity(rom_.n_tau(), rom_.n_tau());
 
-  for (int i = 0; i < num_modes_; i++) {
+  /*for (int i = 0; i < num_modes_; i++) {
     // Time steps
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
@@ -859,7 +859,7 @@ void RomTrajOptCassie::AddRomRegularizationCost(
             u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau())));
       }
     }
-  }
+  }*/
 }
 
 RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(

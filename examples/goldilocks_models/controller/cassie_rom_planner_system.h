@@ -166,10 +166,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable int counter_ = 0;
 
   // flags
-  bool use_standing_pose_as_init_FOM_guess_ = false;
+  bool use_standing_pose_as_init_FOM_guess_ = true;
   // Although warm start helps most of the time, it could also make the solver
   // not able to find the optimal solution from time to time
-  bool warm_start_with_previous_solution_ = false;
+  bool warm_start_with_previous_solution_ = true;
 };
 
 }  // namespace goldilocks_models

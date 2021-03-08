@@ -96,6 +96,13 @@ void KinematicsConstraint::EvaluateConstraint(
       zx.segment(n_y_, n_y_) -
           rom_.EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_), *context_);
 
+  /*if (this->get_description() == "rom_fom_mapping_0_start") {
+    using std::cout;
+    using std::endl;
+    cout << "y = " << zx.segment(0, n_y_).transpose() << endl;
+    cout << "r(q) = " << rom_.EvalMappingFunc(x.head(n_q_), *context_).transpose() << endl;
+  }*/
+
   // Impose constraint
   *output = value;
 }

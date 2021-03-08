@@ -530,6 +530,46 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << solution_result << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
+  // Testing
+  // Pick solver
+  drake::solvers::SolverId solver_id("");
+  solver_id = drake::solvers::SnoptSolver().id();
+  cout << "Solver: " << solver_id.name() << endl;
+  std::unique_ptr<drake::solvers::SolverInterface>  solver = drake::solvers::MakeSolver(solver_id);
+  drake::solvers::SolverOptions solver_option;
+  // Set solver option
+  if (param_.log_solver_info) {
+    solver_option.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
+                             "../snopt_planning.out");
+    cout << "Note that you are logging snopt result.\n";
+  }
+  if (param_.time_limit > 0) {
+    solver_option.SetOption(drake::solvers::SnoptSolver::id(), "Time limit",
+                             param_.time_limit);
+    solver_option.SetOption(drake::solvers::SnoptSolver::id(),
+                             "Timing level", 3);
+  }
+  solver_option.SetOption(drake::solvers::SnoptSolver::id(),
+                           "Major iterations limit", param_.max_iter);
+  solver_option.SetOption(drake::solvers::SnoptSolver::id(), "Verify level",
+                           0);
+  solver_option.SetOption(drake::solvers::SnoptSolver::id(),
+                           "Major optimality tolerance", param_.opt_tol);
+  solver_option.SetOption(drake::solvers::SnoptSolver::id(),
+                           "Major feasibility tolerance", param_.feas_tol);
+  cout << "\nSolving optimization problem again with the previous solution...\n";
+  start = std::chrono::high_resolution_clock::now();
+  drake::solvers::MathematicalProgramResult result2;
+  solver->Solve(trajopt, result.GetSolution(), solver_option, &result2);
+  finish = std::chrono::high_resolution_clock::now();
+  elapsed = finish - start;
+  cout << "    Time of arrival: " << current_time << " | ";
+  cout << "Solve time:" << elapsed.count() << " | ";
+  SolutionResult solution_result2 = result2.get_solution_result();
+  cout << solution_result2 << " | ";
+  cout << "Cost:" << result2.get_optimal_cost() << "\n";
+
+
   // Get solution
   // The time starts at 0. (by accumulating dt's)
   time_breaks_.clear();
@@ -677,7 +717,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Check constraint violation
   if (true) {
-    double tol = param_.feas_tol;
+//    double tol = param_.feas_tol;
+    double tol = 1e-3;
     solvers::CheckGenericConstraints(trajopt, result, tol);
   }
 

@@ -8,7 +8,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "2.2.rom-planner" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=2 --n_step=3";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=10 --zero_touchdown_impact=false --feas_tol=1e-4";
         host = "localhost";
     }
     cmd "2.2.rom-planner (short time limit)" {
@@ -46,7 +46,7 @@ group "3.drake-simulator" {
         host = "localhost";
     }
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=1 --target_realtime_rate=0.1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=3 --target_realtime_rate=0.1";
         host = "localhost";
     }
 }

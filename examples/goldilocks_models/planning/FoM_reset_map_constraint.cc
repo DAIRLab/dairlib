@@ -1,5 +1,7 @@
 #include "examples/goldilocks_models/planning/FoM_reset_map_constraint.h"
 
+using std::cout;
+using std::endl;
 using std::isinf;
 using std::isnan;
 using std::list;
@@ -9,8 +11,6 @@ using std::map;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-using std::cout;
-using std::endl;
 
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
@@ -47,7 +47,7 @@ FomResetMapConstraint::FomResetMapConstraint(
         impact_foot_contacts,
     const std::string& description)
     : NonlinearConstraint<double>(
-          plant.num_velocities() + 3 * impact_foot_contacts.size(),
+          plant.num_velocities(),
           2 * plant.num_velocities() + plant.num_positions() +
               3 * impact_foot_contacts.size(),
           VectorXd::Zero(plant.num_velocities() +
@@ -86,8 +86,8 @@ void FomResetMapConstraint::EvaluateConstraint(
     J_impact_foot.block(3 * i, 0, 3, n_v_) = J_per_contact;
   }
 
-  *y = VectorX<double>(n_v_ + n_lambda_);
-  *y << M * (vp - vm) - J_impact_foot.transpose() * Lambda, J_impact_foot * vp;
+  *y = VectorX<double>(n_v_);
+  *y << M * (vp - vm) - J_impact_foot.transpose() * Lambda;
 }
 
 }  // namespace planning

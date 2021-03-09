@@ -427,15 +427,13 @@ std::vector<int> CreateIdxVector(int size) {
 
 void RomTrajOpt::SetScalingForLIPM() {
   addConstraintScaling(
-      &fom_discrete_dyn_constraint_scaling_, CreateIdxVector(24),
+      &fom_discrete_dyn_constraint_scaling_, CreateIdxVector(18),
       {0.256749956352507, 0.256749956352507, 0.576854298141375,
        0.030298256032383, 0.030298256032383, 0.030298256032383,
        0.599067850424739, 0.807943702482811, 1.1232888099092,
        0.779696697984484, 0.764239696138297, 0.718478549822895,
        1.16295973251926,  1.09613666631956,  2.15622729223133,
-       3.78941464911915,  9.09810486475667,  61.721918070326,
-       0.368999605170422, 0.440482063570371, 0.464716406812742,
-       0.365366206548824, 0.459954096581161, 0.463550985972947});
+       3.78941464911915,  9.09810486475667,  61.721918070326});
   addConstraintScaling(&fom_guard_constraint_scaling_, CreateIdxVector(4),
                        {1, 0.040500915320686, 1, 0.038541734917656});
   addConstraintScaling(&fom_stance_ft_pos_constraint_scaling_,

@@ -50,11 +50,8 @@ FomResetMapConstraint::FomResetMapConstraint(
           plant.num_velocities(),
           2 * plant.num_velocities() + plant.num_positions() +
               3 * impact_foot_contacts.size(),
-          VectorXd::Zero(plant.num_velocities() +
-                         3 * impact_foot_contacts.size()),
-          VectorXd::Zero(plant.num_velocities() +
-                         3 * impact_foot_contacts.size()),
-          description),
+          VectorXd::Zero(plant.num_velocities()),
+          VectorXd::Zero(plant.num_velocities()), description),
       plant_(plant),
       world_(plant.world_frame()),
       context_(plant.CreateDefaultContext()),

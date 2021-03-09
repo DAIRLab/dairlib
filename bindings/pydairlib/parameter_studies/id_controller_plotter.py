@@ -16,7 +16,7 @@ import pydairlib.lcm_trajectory
 from IPython import get_ipython
 
 from pydairlib.common import FindResourceOrThrow
-from bindings.pydairlib.parameter_studies.plot_styler import PlotStyler
+from pydairlib.parameter_studies.plot_styler import PlotStyler
 from pydrake.trajectories import PiecewisePolynomial
 import pydairlib.lcm_trajectory
 from bindings.pydairlib.analysis_scripts.process_log import process_log
@@ -100,8 +100,8 @@ def main():
   # ps.plot(t_samples, u_nominal[:, -4:])
   # ps.add_legend(u_datatypes[-4:])
 
-  animate_velocity_error(plant)
-
+  # animate_velocity_error(plant)
+  plot_ablation_study()
 
   ps.show_fig()
 
@@ -244,7 +244,6 @@ def plot_ablation_study():
   plt.figure("legend")
   ax = plt.gca()
   legend_elements = [matplotlib.lines.Line2D([0], [0], color=colors[0], lw=3, label='Default Controller'),
-                     matplotlib.lines.Line2D([0], [0], color=colors[1], lw=3, label='No Derivative Feedback'),
                      matplotlib.lines.Line2D([0], [0], color=colors[2], lw=3, label='Impact Invariant Projection'),
                      matplotlib.patches.Patch(facecolor=ps.grey, label='Projection Window')]
   legend_elements_lines = [matplotlib.lines.Line2D([0], [0], color='k', linestyle=linestyles[0], lw=3, label='Hip (Non-Impacting Leg)'),
@@ -254,7 +253,7 @@ def plot_ablation_study():
   line_legend = ax.legend(handles = legend_elements_lines, loc='lower left', ncol=1, edgecolor='k')
   ax.add_artist(line_legend)
   ax.legend(handles = legend_elements, loc=2, edgecolor='k')
-  # ps.save_fig('rabbit_legend.png')
+  ps.save_fig('rabbit_legend_for_video.png')
 
 def plot_foot_velocities(plant, context, t_state, x):
   n_points = t_state.shape[0]

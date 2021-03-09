@@ -51,6 +51,7 @@ def main():
   penetration_allowances = np.array([1e-5, 1e-4, 1e-3, 5e-3])
   # durations = np.arange(0.000, 0.125, 0.025)
   durations = np.arange(0.000, 0.060, 0.010)
+  durations = np.array([0.00, 0.03])
   perturbations = np.arange(-0.500, 0.600, 0.100)
 
   # For MUJOCO
@@ -200,17 +201,22 @@ def load_logs(duration):
 
 def construct_param_study_plots(durations, accel_error, power_loss):
   accel_error_norm = 2000 * (100 * 0.07)**2
-
+  colors = [ps.blue, ps.red]
+  color_idx = 0
   for i in range(durations.shape[0]):
-    # ps.plot(terrain_heights * 1e2, accel_error[i, :, 0] / accel_error_norm, xlabel='Platform Height (cm)', ylabel='Weighted Acceleration Error $J_{acc}$')
+    # ps.plot(terrain_heights * 1e2, accel_error[i, :, 0] / accel_error_norm, xlabel='Platform Height (cm)', ylabel='Weighted Acceleration Error $J_{acc}$', color = colors[color_idx])
+    # ps.plot(terrain_heights * 1e2, accel_error[i, :, 0] / accel_error_norm, xlabel='Platform Height (cm)', ylabel='Tracking Error', color = colors[color_idx])
     # ps.plot(penetration_allowances, accel_error[i, 0, :] / accel_error_norm, xlabel='Ground Stiffness', ylabel='Weighted Acceleration Error $J_{acc}$')
-    # ps.plot(terrain_heights * 1e2, power_loss[i, :, 0], xlabel='Platform Height (cm)', ylabel='Control Effort $J_{mot}$')
-    ps.plot(penetration_allowances, power_loss[i, 0, :], xlabel='Ground Stiffness', ylabel='Control Effort $J_{mot}$')
-  plt.xscale('log')
-  ps.add_legend(['%.0f (ms)' % (d*1e3) for d in durations])
-  # ps.save_fig('param_study_accel_err_height.png')
+    # ps.plot(terrain_heights * 1e2, power_loss[i, :, 0], xlabel='Platform Height (cm)', ylabel='Control Effort $J_{mot}$', color=colors[color_idx])
+    ps.plot(terrain_heights * 1e2, power_loss[i, :, 0], xlabel='Platform Height (cm)', ylabel='Control Effort', color=colors[color_idx])
+    # ps.plot(penetration_allowances, power_loss[i, 0, :], xlabel='Ground Stiffness', ylabel='Control Effort $J_{mot}$')
+    color_idx += 1
+  # plt.xscale('log')
+  # ps.add_legend(['%.0f (ms)' % (d*1e3) for d in durations])
+  ps.add_legend(['Default Controller', 'Impact Invariant Controller'], loc=2)
+  # ps.save_fig('param_study_accel_err_height_for_video.png')
   # ps.save_fig('param_study_accel_err_stiffness.png')
-  # ps.save_fig('param_study_power_loss_height.png')
+  ps.save_fig('param_study_power_loss_height_for_video.png')
   # ps.save_fig('param_study_power_loss_stiffness.png')
 
 def count_successful_jumps(duration, param = ''):
@@ -369,8 +375,10 @@ def construct_hardware_torque_plot():
 
   hardware_impact = 30.0 + nominal_impact_time + 0.09
   # Drake logs
-  log_indices = ['12', '14', '15']
+  log_indices = ['12', '15']
   hardware_log_path = '/home/yangwill/Documents/research/projects/cassie/hardware/logs/01_27_21/'
+  colors = [ps.blue, ps.red]
+  color_idx = 0
   for log_idx in log_indices:
     log_path = hardware_log_path + 'lcmlog-' + log_idx
 
@@ -384,11 +392,13 @@ def construct_hardware_torque_plot():
     t_u_slice = slice(t_u_start_idx, t_u_end_idx)
     u_indices = slice(6, 8)
     plt.figure("Combined knee motor efforts")
-    ps.plot(t_u[t_u_slice] - hardware_impact, np.sum(u[t_u_slice, u_indices], axis=1), xlabel='Time Since Nominal Impact (s)', ylabel='Combined Knee Motor Torque (Nm)')
+    ps.plot(t_u[t_u_slice] - hardware_impact, np.sum(u[t_u_slice, u_indices], axis=1), xlabel='Time Since Nominal Impact (s)', ylabel='Combined Knee Motor Torque (Nm)', color=colors[color_idx])
+    color_idx += 1
 
-  durations = np.arange(0.0, 0.150, 0.05)
-  ps.add_legend(['%.0f (ms)' % (d*1e3) for d in durations])
-  ps.save_fig('jan_27_hardware_knee_efforts.png')
+  durations = np.arange(0.0, 0.200, 0.1)
+  # ps.add_legend(['%.0f (ms)' % (d*1e3) for d in durations])
+  ps.add_legend(['Default Controller', 'Impact Invariant Controller'])
+  ps.save_fig('jan_27_hardware_knee_efforts_for_video.png')
   ps.show_fig()
 
 if __name__ == '__main__':

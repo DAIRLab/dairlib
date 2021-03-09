@@ -170,6 +170,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // Although warm start helps most of the time, it could also make the solver
   // not able to find the optimal solution from time to time
   bool warm_start_with_previous_solution_ = true;
+
+  // Init state relaxation (relax the mapping function)
+  std::set<int> relax_index_ = {3, 4, 5};
 };
 
 }  // namespace goldilocks_models

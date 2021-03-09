@@ -45,7 +45,8 @@ class RomTrajOpt
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
              Eigen::VectorXd x_init, bool start_with_left_stance,
-             bool zero_touchdown_impact, bool print_status = true);
+             bool zero_touchdown_impact, const std::set<int>& relax_index,
+             bool print_status = true);
 
   ~RomTrajOpt() override {}
 
@@ -125,6 +126,7 @@ class RomTrajOpt
   std::vector<Binding<Cost>> fom_xy_cost_bindings_;
   std::vector<Binding<Cost>> x0_relax_cost_bindings_;
   std::vector<Binding<Cost>> v0_relax_cost_bindings_;
+  std::vector<Binding<Cost>> init_rom_relax_cost_bindings_;
   std::vector<Binding<Cost>> lambda_cost_bindings_;
 
  protected:
@@ -148,7 +150,7 @@ class RomTrajOpt
   bool start_with_left_stance_;
 
   void PrintStatus(const std::string& msg) const {
-    if (print_status_) std::cout << msg << std::endl;
+    /*if (print_status_) */ std::cout << msg << std::endl;
   };
   bool print_status_;
 };
@@ -164,7 +166,8 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const std::vector<std::tuple<std::string, double, double>>&
                        fom_joint_name_lb_ub,
                    Eigen::VectorXd x_init, bool start_with_left_stance,
-                   bool zero_touchdown_impact, bool print_status = true);
+                   bool zero_touchdown_impact, const std::set<int>& relax_index,
+                   bool print_status = true);
 
   void AddRegularizationCost(const Eigen::VectorXd& final_position,
                              const Eigen::VectorXd& x_guess_left_in_front,

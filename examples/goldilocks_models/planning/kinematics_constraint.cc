@@ -36,17 +36,21 @@ namespace planning {
 KinematicsConstraint::KinematicsConstraint(
     const ReducedOrderModel& rom,
     const drake::multibody::MultibodyPlant<double>& plant, bool left_stance,
-    const StateMirror& state_mirror, const std::string& description)
-    : NonlinearConstraint<double>(
-          2 * rom.n_y(),
-          2 * rom.n_y() + plant.num_positions() + plant.num_velocities(),
-          VectorXd::Zero(2 * rom.n_y()), VectorXd::Zero(2 * rom.n_y()),
-          description),
+    const StateMirror& state_mirror, const std::set<int>& relax_index,
+    const std::string& description)
+    : NonlinearConstraint<double>(2 * rom.n_y(),
+                                  2 * rom.n_y() + plant.num_positions() +
+                                      plant.num_velocities() +
+                                      relax_index.size(),
+                                  VectorXd::Zero(2 * rom.n_y()),
+                                  VectorXd::Zero(2 * rom.n_y()), description),
       rom_(rom),
       plant_(plant),
       context_(plant.CreateDefaultContext()),
       left_stance_(left_stance),
       state_mirror_(state_mirror),
+      relax_index_(relax_index),
+      n_eps_(relax_index.size()),
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
       n_q_(plant.num_positions()),
@@ -54,15 +58,15 @@ KinematicsConstraint::KinematicsConstraint(
       n_x_(plant.num_positions() + plant.num_velocities()) {}
 
 void KinematicsConstraint::EvaluateConstraint(
-    const Eigen::Ref<const drake::VectorX<double>>& zx,
+    const Eigen::Ref<const drake::VectorX<double>>& zxeps,
     drake::VectorX<double>* output) const {
   // Extract elements
   VectorX<double> x(n_x_);
   if (left_stance_) {
-    x = zx.tail(n_x_);
+    x = zxeps.segment(n_z_, n_x_);
   } else {
-    x << state_mirror_.MirrorPos(zx.segment(n_z_, n_q_)),
-        state_mirror_.MirrorVel(zx.segment(n_z_ + n_q_, n_v_));
+    x << state_mirror_.MirrorPos(zxeps.segment(n_z_, n_q_)),
+        state_mirror_.MirrorVel(zxeps.segment(n_z_ + n_q_, n_v_));
   }
   // Testing state mirroring
   //  using std::cout;
@@ -92,15 +96,24 @@ void KinematicsConstraint::EvaluateConstraint(
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
   VectorX<double> value(n_z_);
-  value << zx.segment(0, n_y_) - rom_.EvalMappingFunc(x.head(n_q_), *context_),
-      zx.segment(n_y_, n_y_) -
+  value << zxeps.segment(0, n_y_) -
+               rom_.EvalMappingFunc(x.head(n_q_), *context_),
+      zxeps.segment(n_y_, n_y_) -
           rom_.EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_), *context_);
+
+  VectorX<double> eps(n_eps_);
+  int i = 0;
+  for (const auto& idx : relax_index_) {
+    value(idx) += eps(i);
+    i++;
+  }
 
   /*if (this->get_description() == "rom_fom_mapping_0_start") {
     using std::cout;
     using std::endl;
     cout << "y = " << zx.segment(0, n_y_).transpose() << endl;
-    cout << "r(q) = " << rom_.EvalMappingFunc(x.head(n_q_), *context_).transpose() << endl;
+    cout << "r(q) = " << rom_.EvalMappingFunc(x.head(n_q_),
+  *context_).transpose() << endl;
   }*/
 
   // Impose constraint

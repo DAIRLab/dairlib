@@ -218,7 +218,7 @@ def PlotCOM(rom_traj):
   comdot_vec[0][0] = comdot_relaxed
 
   # 1. If we relax the whole state
-  x0_FOM = x0_FOM + FindVariableByName(vars, 'eps_x0_FOM')
+  # x0_FOM = x0_FOM + FindVariableByName(vars, 'eps_x0_FOM')
   # 2. If we relax only the velocity
   # x0_FOM[nq_FOM:] = x0_FOM[nq_FOM:] + FindVariableByName(vars, 'eps_v0_FOM')
   # 3. If we relax only the floating base vel

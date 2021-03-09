@@ -53,7 +53,7 @@ RomTrajOpt::RomTrajOpt(
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
     VectorXd x_init, bool start_with_left_stance, bool zero_touchdown_impact,
-    bool print_status)
+    const std::set<int>& relax_index, bool print_status)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -93,11 +93,14 @@ RomTrajOpt::RomTrajOpt(
 
   // Initial pose constraint for the full order model
   PrintStatus("Adding initial pose constraint for full-order model...");
-  bool soft_init_constraint = true;
+  bool soft_init_constraint = false;
   if (soft_init_constraint) {
+    // Relaxing only the velocity would help with the infeasibility issue,
+    // because both pelvis and stance foot shift with the floating base
+    // coordinates
     VectorXDecisionVariable x0 = x0_vars_by_mode(0);
     /// relax the state
-     PrintStatus("(relax the whole state)");
+    /* PrintStatus("(relax the whole state)");
     auto eps = NewContinuousVariables(n_x_, "eps_x0_FOM");
     MatrixXd Aeq = MatrixXd::Ones(1, 2);
     for (int i = 0; i < n_x_; i++) {
@@ -108,7 +111,7 @@ RomTrajOpt::RomTrajOpt(
     MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
     VectorXd b_x0 = VectorXd::Zero(n_x_);
     x0_relax_cost_bindings_.push_back(AddQuadraticCost(Q_x0, b_x0, eps));
-    SetInitialGuess(eps, VectorXd::Zero(n_x_));
+    SetInitialGuess(eps, VectorXd::Zero(n_x_));*/
     /// relax only the velocity
     // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
     /*PrintStatus("(relax only the velocity)");
@@ -193,16 +196,32 @@ RomTrajOpt::RomTrajOpt(
     // Add RoM-FoM mapping constraints
     // TODO: might need to rotate the local frame to align with the global
     PrintStatus("Adding RoM-FoM mapping constraint...");
-    auto kin_constraint_start =
-        std::make_shared<planning::KinematicsConstraint>(
-            rom, plant, left_stance, state_mirror,
-            "rom_fom_mapping_" + to_string(i) + "_start");
-    kin_constraint_start->SetConstraintScaling(
-        rom_fom_mapping_constraint_scaling_);
-    VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
-    AddConstraint(kin_constraint_start, {z_0, x0});
+    std::set<int> empty_idx = {};
+    if (false /*i == 0*/) {
+      int n_eps = relax_index.size();
+      auto eps_rom = NewContinuousVariables(n_eps, "eps_rom");
+      init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
+          MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps), eps_rom));
+      auto kin_constraint_start =
+          std::make_shared<planning::KinematicsConstraint>(
+              rom, plant, left_stance, state_mirror, relax_index,
+              "rom_fom_mapping_" + to_string(i) + "_start");
+      kin_constraint_start->SetConstraintScaling(
+          rom_fom_mapping_constraint_scaling_);
+      VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
+      AddConstraint(kin_constraint_start, {z_0, x0, eps_rom});
+    } else {
+      auto kin_constraint_start =
+          std::make_shared<planning::KinematicsConstraint>(
+              rom, plant, left_stance, state_mirror, empty_idx,
+              "rom_fom_mapping_" + to_string(i) + "_start");
+      kin_constraint_start->SetConstraintScaling(
+          rom_fom_mapping_constraint_scaling_);
+      VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
+      AddConstraint(kin_constraint_start, {z_0, x0});
+    }
     auto kin_constraint_end = std::make_shared<planning::KinematicsConstraint>(
-        rom, plant, left_stance, state_mirror,
+        rom, plant, left_stance, state_mirror, empty_idx,
         "rom_fom_mapping_" + to_string(i) + "_end");
     kin_constraint_end->SetConstraintScaling(
         rom_fom_mapping_constraint_scaling_);
@@ -251,28 +270,60 @@ RomTrajOpt::RomTrajOpt(
         AddLinearConstraint(xf_prev.segment(n_q, n_v) == x0.segment(n_q, n_v));
       } else {
         PrintStatus("Adding (FoM velocity) reset map constraint...");
+        const auto& prev_swing_contacts =
+            left_stance ? left_contacts : right_contacts;
         auto reset_map_constraint =
             std::make_shared<planning::FomResetMapConstraint>(
-                plant_, swing_contacts, "fom_discrete_dyn_" + to_string(i));
+                plant_, prev_swing_contacts,
+                "fom_discrete_dyn_" + to_string(i));
         reset_map_constraint->SetConstraintScaling(
             fom_discrete_dyn_constraint_scaling_);
-        int n_Lambda = 3 * swing_contacts.size();
+        int n_Lambda = 3 * prev_swing_contacts.size();
         auto Lambda =
             NewContinuousVariables(n_Lambda, "Lambda_FOM_" + to_string(i));
         AddConstraint(reset_map_constraint, {xf_prev, x0.tail(n_v), Lambda});
+
+        // Constraint on impact impulse
+        ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
+        ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
+        ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
+        ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
+        ///                           lambda_c(3*i+2) >= 0
+        /// The last inequality is implemented as bounding box constraint
+        double mu = 1;
+        MatrixXd A = MatrixXd::Zero(4, 3);
+        A.block(0, 2, 4, 1) = mu * VectorXd::Ones(4, 1);
+        A(0, 0) = -1;
+        A(1, 0) = 1;
+        A(2, 1) = -1;
+        A(3, 1) = 1;
+        auto friction_constraint =
+            std::make_shared<drake::solvers::LinearConstraint>(
+                A, VectorXd::Zero(4),
+                VectorXd::Ones(4) * std::numeric_limits<double>::infinity());
+        for (int k = 0; k < prev_swing_contacts.size(); k++) {
+          AddConstraint(friction_constraint, Lambda.segment(3 * k, 3));
+          AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
+                                   Lambda(3 * k + 2));
+        }
+
+        // SetInitialGuess(Lambda, VectorXd::Zero(n_Lambda));
+
         // Regularization term (there is a 1DoF null space in the force)
         //  MatrixXd Q_lambda = 0.01 * MatrixXd::Identity(n_Lambda, n_Lambda);
         //  VectorXd b_lambda = VectorXd::Zero(n_Lambda);
         //  AddQuadraticCost(Q_lambda, b_lambda, Lambda);
 
         // debugging
-        lambda_cost_bindings_.push_back(
-            AddLinearCost(10 * Lambda(2) + 10 * Lambda(5)));
+        // Somehow this speed up the solve...???
+        //        PrintStatus("Debugging -- encourage contact force...");
+        //        lambda_cost_bindings_.push_back(
+        //            AddLinearCost(-1 * (Lambda(2) + Lambda(5))));
       }
     }
 
     // Full order model joint limits
-    /*PrintStatus("Adding full-order model joint constraint...");
+    PrintStatus("Adding full-order model joint constraint...");
     for (const auto& name_lb_ub : fom_joint_name_lb_ub) {
       if (i != 0) {
         // We don't impose constraint on the initial state (because it's
@@ -283,7 +334,7 @@ RomTrajOpt::RomTrajOpt(
       }
       AddBoundingBoxConstraint(std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
                                xf(positions_map.at(std::get<0>(name_lb_ub))));
-    }*/
+    }
     // Full order model vel limits
     PrintStatus("Adding full-order model joint constraint...");
     for (const auto& name_lb_ub : fom_joint_name_lb_ub) {
@@ -666,10 +717,12 @@ RomTrajOptCassie::RomTrajOptCassie(
     const vector<BodyPoint>& right_contacts,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
     Eigen::VectorXd x_init, bool start_with_left_stance,
-    bool zero_touchdown_impact, bool print_status)
+    bool zero_touchdown_impact, const std::set<int>& relax_index,
+    bool print_status)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
-                 start_with_left_stance, zero_touchdown_impact, print_status) {}
+                 start_with_left_stance, zero_touchdown_impact, relax_index,
+                 print_status) {}
 
 void RomTrajOptCassie::AddRegularizationCost(
     const Eigen::VectorXd& final_position,
@@ -873,7 +926,7 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
-                 start_with_left_stance, zero_touchdown_impact) {}
+                 start_with_left_stance, zero_touchdown_impact, {}) {}
 
 void RomTrajOptFiveLinkRobot::AddRegularizationCost(
     const Eigen::VectorXd& final_position,

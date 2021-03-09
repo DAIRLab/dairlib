@@ -18,14 +18,14 @@ namespace planning {
 
 class KinematicsConstraint : public solvers::NonlinearConstraint<double> {
  public:
-  KinematicsConstraint(const ReducedOrderModel& rom,
-                       const drake::multibody::MultibodyPlant<double>& plant,
-                       bool left_stance,
-                       const StateMirror& state_mirror,
-                       const std::string& description = "rom_fom_mapping_constraint");
+  KinematicsConstraint(
+      const ReducedOrderModel& rom,
+      const drake::multibody::MultibodyPlant<double>& plant, bool left_stance,
+      const StateMirror& state_mirror, const std::set<int>& relax_index,
+      const std::string& description = "rom_fom_mapping_constraint");
 
  private:
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& zx,
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& zxeps,
                           drake::VectorX<double>* output) const override;
 
   const ReducedOrderModel& rom_;
@@ -33,6 +33,8 @@ class KinematicsConstraint : public solvers::NonlinearConstraint<double> {
   std::unique_ptr<drake::systems::Context<double>> context_;
   bool left_stance_;
   const StateMirror& state_mirror_;
+  std::set<int> relax_index_;
+  int n_eps_;
   int n_y_;
   int n_z_;
   int n_q_;

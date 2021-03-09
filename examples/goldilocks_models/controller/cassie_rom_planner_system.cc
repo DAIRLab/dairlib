@@ -367,7 +367,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
                            state_mirror_, left_contacts_, right_contacts_,
                            joint_name_lb_ub_, x_init, start_with_left_stance,
-                           param_.zero_touchdown_impact,
+                           param_.zero_touchdown_impact, relax_index_,
                            debug_mode_ /*print_status*/);
 
   if (debug_mode_) {
@@ -685,6 +685,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     double v0_relax_cost = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.v0_relax_cost_bindings_);
     cout << "v0_relax_cost = " << v0_relax_cost << endl;
+    double init_rom_relax_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.init_rom_relax_cost_bindings_);
+    cout << "init_rom_relax_cost = " << init_rom_relax_cost << endl;
   }
 
   // Check constraint violation

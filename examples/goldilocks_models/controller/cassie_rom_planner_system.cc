@@ -556,6 +556,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     drake::solvers::MathematicalProgramResult result2;
     solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
                          &result2);
+    //                         &result);
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start;
     cout << "    Time of arrival: " << current_time << " | ";
@@ -695,12 +696,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     double rom_regularization_cost = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.rom_regularization_cost_bindings_);
     cout << "rom_regularization_cost = " << rom_regularization_cost << endl;
-    double fom_regularization_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.fom_regularization_cost_bindings_);
-    cout << "fom_regularization_cost = " << fom_regularization_cost << endl;
+    double fom_reg_quat_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.fom_reg_quat_cost_bindings_);
+    cout << "fom_reg_quat_cost = " << fom_reg_quat_cost << endl;
     double fom_xy_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.fom_xy_cost_bindings_);
+        trajopt, result, trajopt.fom_reg_xy_cost_bindings_);
     cout << "fom_xy_cost = " << fom_xy_cost << endl;
+    double fom_reg_z_joint_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.fom_reg_z_joint_cost_bindings_);
+    cout << "fom_reg_z_joint_cost = " << fom_reg_z_joint_cost << endl;
     double lambda_cost = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.lambda_cost_bindings_);
     cout << "lambda_cost = " << lambda_cost << endl;

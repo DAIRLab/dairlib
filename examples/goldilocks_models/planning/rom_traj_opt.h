@@ -122,8 +122,9 @@ class RomTrajOpt
   std::vector<Binding<Cost>> rom_state_cost_bindings_;
   std::vector<Binding<Cost>> rom_input_cost_bindings_;
   std::vector<Binding<Cost>> rom_regularization_cost_bindings_;
-  std::vector<Binding<Cost>> fom_regularization_cost_bindings_;
-  std::vector<Binding<Cost>> fom_xy_cost_bindings_;
+  std::vector<Binding<Cost>> fom_reg_quat_cost_bindings_;
+  std::vector<Binding<Cost>> fom_reg_xy_cost_bindings_;
+  std::vector<Binding<Cost>> fom_reg_z_joint_cost_bindings_;
   std::vector<Binding<Cost>> x0_relax_cost_bindings_;
   std::vector<Binding<Cost>> v0_relax_cost_bindings_;
   std::vector<Binding<Cost>> init_rom_relax_cost_bindings_;

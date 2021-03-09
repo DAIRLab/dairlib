@@ -78,7 +78,7 @@ DEFINE_string(traj_name, "", "File to load saved trajectories from");
 DEFINE_string(
     simulator, "DRAKE",
     "Simulator used, important for determining how to interpret "
-    "contact information. Other options include MUJOCO and possibly GAZEBO.");
+    "contact information. Other options include MUJOCO.");
 DEFINE_bool(add_noise, false,
             "Whether to add gaussian noise to state "
             "inputted to controller");

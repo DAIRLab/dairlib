@@ -9,11 +9,11 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc_jump/basic_trajectory_generator.h"
-#include "examples/Cassie/osc_jump/com_traj_generator.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
 #include "examples/Cassie/osc_jump/flight_toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
+#include "examples/Cassie/osc_jump/pelvis_trans_traj_generator.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -46,6 +46,8 @@ using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
 using examples::osc_jump::FlightFootTrajGenerator;
 using examples::osc_jump::FlightFootTrajGenerator;
+using examples::osc_jump::PelvisTransTrajGenerator;
+using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_jump::JumpingEventFsm;
 using multibody::FixedJointEvaluator;
 using systems::controllers::JointSpaceTrackingData;
@@ -210,7 +212,7 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
       gains.relative_feet, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
-      builder.AddSystem<osc_jump::BasicTrajectoryPassthrough>(
+      builder.AddSystem<BasicTrajectoryPassthrough>(
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,

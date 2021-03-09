@@ -68,18 +68,12 @@ void FlightToeAngleTrajGenerator::CalcTraj(
   // Read in current state
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
-  VectorXd x = robot_output->GetState();
-  double timestamp = robot_output->get_timestamp();
 
   // Read in finite state machine
-  const auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
-
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  //  if (fsm_state[0] == examples::osc_jump::FLIGHT) {
   *casted_traj = CalcToeAngle(robot_output->GetPositions());
-  //  }
 }
 
 }  // namespace dairlib::cassie::osc_jump

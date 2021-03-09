@@ -16,6 +16,19 @@ cc_binary(
 )
 
 cc_binary(
+    name = "visualizer",
+    srcs = ["visualizer.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_id_walking_controller",
     srcs = ["run_id_walking_controller.cc"],
     data = [":five_link_biped.urdf"],

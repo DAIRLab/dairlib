@@ -2,8 +2,6 @@
 
 #include "multibody/multibody_utils.h"
 
-using std::cout;
-using std::endl;
 
 using Eigen::Map;
 using Eigen::MatrixXd;
@@ -12,7 +10,6 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using std::string;
 
-using dairlib::multibody::createContext;
 using dairlib::systems::OutputVector;
 using drake::multibody::BodyFrame;
 using drake::multibody::Frame;
@@ -23,7 +20,6 @@ using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
-using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 

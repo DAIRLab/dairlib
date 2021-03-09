@@ -1,4 +1,4 @@
-#include "examples/Cassie/osc_jump/com_traj_generator.h"
+#include "examples/Cassie/osc_jump/pelvis_trans_traj_generator.h"
 
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -6,10 +6,6 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
-using dairlib::multibody::createContext;
-using std::cout;
-using std::endl;
-using std::pair;
 using std::string;
 using std::vector;
 
@@ -26,7 +22,6 @@ using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
-using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 

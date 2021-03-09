@@ -3,7 +3,6 @@
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
-#include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"

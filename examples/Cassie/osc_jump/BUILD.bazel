@@ -6,20 +6,20 @@ cc_library(
     name = "osc_jump",
     deps = [
         "//examples/Cassie/osc_jump:basic_trajectory_generator",
-        "//examples/Cassie/osc_jump:com_traj_generator",
         "//examples/Cassie/osc_jump:flight_foot_traj_generator",
         "//examples/Cassie/osc_jump:flight_toe_angle_traj_generator",
         "//examples/Cassie/osc_jump:id_jumping_gains",
         "//examples/Cassie/osc_jump:jumping_event_based_fsm",
         "//examples/Cassie/osc_jump:osc_jumping_gains",
+        "//examples/Cassie/osc_jump:pelvis_trans_traj_generator",
         "//systems/controllers/osc:operational_space_control",
     ],
 )
 
 cc_library(
-    name = "com_traj_generator",
-    srcs = ["com_traj_generator.cc"],
-    hdrs = ["com_traj_generator.h"],
+    name = "pelvis_trans_traj_generator",
+    srcs = ["pelvis_trans_traj_generator.cc"],
+    hdrs = ["pelvis_trans_traj_generator.h"],
     deps = [
         ":jumping_event_based_fsm",
         "//multibody:utils",

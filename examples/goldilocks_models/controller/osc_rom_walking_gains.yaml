@@ -18,7 +18,12 @@ w_reg_quat: 0.01
 w_reg_xy: 0.01
 w_reg_z_joints: 0.01
 
-###
+### For both planner and controller
+left_support_duration: 0.23   # 0.23 # 0.35 # 0.4
+right_support_duration: 0.23  # 0.23 # 0.35 # 0.4
+double_support_duration: 0.02
+
+### For controller only
 # High level command gains (with radio)
 vel_scale_rot: -1
 vel_scale_trans_sagital: 0.25

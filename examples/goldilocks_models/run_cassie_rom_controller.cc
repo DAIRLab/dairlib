@@ -210,9 +210,9 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = RIGHT_STANCE;
   int post_left_double_support_state = POST_LEFT_DOUBLE_STANCE;
   int post_right_double_support_state = POST_RIGHT_DOUBLE_STANCE;
-  double left_support_duration = LEFT_SUPPORT_DURATION;
-  double right_support_duration = RIGHT_SUPPORT_DURATION;
-  double double_support_duration = DOUBLE_SUPPORT_DURATION;
+  double left_support_duration = gains.left_support_duration;
+  double right_support_duration = gains.right_support_duration;
+  double double_support_duration = gains.double_support_duration;
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {

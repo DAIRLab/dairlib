@@ -209,7 +209,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create a block that compute the phase of the first mode
   // TODO(yminchen): stride_period value should change
-  double stride_period = LEFT_SUPPORT_DURATION + DOUBLE_SUPPORT_DURATION;
+  double stride_period =
+      gains.left_support_duration + gains.double_support_duration;
   auto init_phase_calculator =
       builder.AddSystem<PhaseInFirstMode>(plant_feedback, stride_period);
   builder.Connect(state_receiver->get_output_port(0),

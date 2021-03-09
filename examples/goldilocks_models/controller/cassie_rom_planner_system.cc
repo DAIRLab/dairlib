@@ -564,6 +564,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "Cost:" << result2.get_optimal_cost() << "\n";
   }
 
+  // Testing -- store the initial guess to the result (to visualize init guess)
+  // result.set_x_val(trajopt.initial_guess());
+
   // Get solution
   // The time starts at 0. (by accumulating dt's)
   time_breaks_.clear();

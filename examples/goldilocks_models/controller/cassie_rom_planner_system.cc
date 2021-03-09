@@ -551,15 +551,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Testing -- solve with another solver
-  start = std::chrono::high_resolution_clock::now();
-  solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
-                       &result);
-  finish = std::chrono::high_resolution_clock::now();
-  elapsed = finish - start;
-  cout << "    Time of arrival: " << current_time << " | ";
-  cout << "Solve time:" << elapsed.count() << " | ";
-  cout << result.get_solution_result() << " | ";
-  cout << "Cost:" << result.get_optimal_cost() << "\n";
+  if (true) {
+    start = std::chrono::high_resolution_clock::now();
+    drake::solvers::MathematicalProgramResult result2;
+    solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
+                         &result2);
+    finish = std::chrono::high_resolution_clock::now();
+    elapsed = finish - start;
+    cout << "    Time of arrival: " << current_time << " | ";
+    cout << "Solve time:" << elapsed.count() << " | ";
+    cout << result2.get_solution_result() << " | ";
+    cout << "Cost:" << result2.get_optimal_cost() << "\n";
+  }
 
   // Get solution
   // The time starts at 0. (by accumulating dt's)

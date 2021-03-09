@@ -117,8 +117,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   std::vector<BodyPoint> left_contacts_;
   std::vector<BodyPoint> right_contacts_;
   std::vector<std::tuple<std::string, double, double>> joint_name_lb_ub_;
-  drake::solvers::SolverOptions solver_option_;
-  std::unique_ptr<drake::solvers::SolverInterface> solver_;
+  drake::solvers::SolverOptions solver_option_ipopt_;
+  drake::solvers::SolverOptions solver_option_snopt_;
+  std::unique_ptr<drake::solvers::SolverInterface> solver_ipopt_;
+  std::unique_ptr<drake::solvers::SolverInterface> solver_snopt_;
 
   // Parameters for traj opt
   const PlannerSetting& param_;

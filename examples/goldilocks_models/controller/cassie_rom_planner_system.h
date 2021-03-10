@@ -149,6 +149,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable Eigen::MatrixXd input_at_knots_;
   mutable Eigen::MatrixXd FOM_x0_;
   mutable Eigen::MatrixXd FOM_xf_;
+  mutable Eigen::MatrixXd FOM_Lambda_;
 
   // For debugging
   bool debug_mode_;

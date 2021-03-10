@@ -285,6 +285,13 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Initialization
   FOM_x0_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
   FOM_xf_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
+  FOM_Lambda_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
+  if (param_.zero_touchdown_impact) {
+    FOM_Lambda_ = Eigen::MatrixXd::Zero(0, (param_.n_step - 1));
+  } else {
+    FOM_Lambda_ =
+        Eigen::MatrixXd::Zero(3 * left_contacts_.size(), (param_.n_step - 1));
+  }
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
@@ -461,7 +468,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Initial guess for all variables
   if (!param_.init_file.empty()) {
-    PrintStatus("Set initial guess from a file...");
+    PrintStatus("Set initial guess from the file " + param_.init_file);
     VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
     int n_dec = trajopt.decision_variables().size();
     if (n_dec > z0.rows()) {
@@ -497,17 +504,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       prev_first_mode_knot_idx_ = first_mode_knot_idx;
       prev_mode_start_ = trajopt.mode_start();
     }
-  }
 
-  // Avoid zero-value initial guess!
-  // This sped up the solve and sometimes unstuck the solver!
-  const auto& all_vars = trajopt.decision_variables();
-  int n_var = all_vars.size();
-  VectorXd rand = 0.01 * VectorXd::Random(n_var);
-  for (int i = 0; i < n_var; i++) {
-    double init_guess = trajopt.GetInitialGuess(all_vars(i));
-    if (init_guess == 0 || isnan(init_guess)) {
-      trajopt.SetInitialGuess(all_vars(i), rand(i));
+    // Avoid zero-value initial guess!
+    // This sped up the solve and sometimes unstuck the solver!
+    const auto& all_vars = trajopt.decision_variables();
+    int n_var = all_vars.size();
+    VectorXd rand = 0.01 * VectorXd::Random(n_var);
+    for (int i = 0; i < n_var; i++) {
+      double init_guess = trajopt.GetInitialGuess(all_vars(i));
+      if (init_guess == 0 || isnan(init_guess)) {
+        cout << all_vars(i) << " init guess was " << init_guess << endl;
+        trajopt.SetInitialGuess(all_vars(i), rand(i));
+      }
     }
   }
 
@@ -690,6 +698,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   state_at_knots_ = trajopt.drake::systems::trajectory_optimization::
                         MultipleShooting::GetStateSamples(result);
   input_at_knots_ = trajopt.GetInputSamples(result);
+  for (int i = 1; i < param_.n_step; i++) {
+    FOM_Lambda_.col(i - 1) = result.GetSolution(trajopt.impulse_vars(i - 1));
+  }
 
   ///
   /// For debugging
@@ -741,24 +752,27 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >
   //  0.5)) {
   //  if (!result.is_success()) {
-  if (counter_ == 0) {
+  if (true /*counter_ == 0*/) {
     //  if (debug_mode_ || (elapsed.count() > 0.8)) {
     string dir_data = param_.dir_data;
+    string prefix = debug_mode_ ? "debug_" : to_string(counter_) + "_";
 
     /// Save the solution vector
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
-    writeCSV(dir_data + string("z.csv"), z_sol);
+    writeCSV(dir_data + string(prefix + "z.csv"), z_sol);
     // cout << trajopt.decision_variables() << endl;
 
     /// Save traj to csv
     for (int i = 0; i < param_.n_step; i++) {
-      writeCSV(dir_data + string("time_at_knots" + to_string(i) + ".csv"),
-               time_breaks_[i]);
-      writeCSV(dir_data + string("state_at_knots" + to_string(i) + ".csv"),
-               state_samples_[i]);
+      writeCSV(
+          dir_data + string(prefix + "time_at_knots" + to_string(i) + ".csv"),
+          time_breaks_[i]);
+      writeCSV(
+          dir_data + string(prefix + "state_at_knots" + to_string(i) + ".csv"),
+          state_samples_[i]);
     }
     MatrixXd input_at_knots = trajopt.GetInputSamples(result);
-    writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
+    writeCSV(dir_data + string(prefix + "input_at_knots.csv"), input_at_knots);
 
     MatrixXd x0_each_mode(nx_, num_time_samples.size());
     MatrixXd xf_each_mode(nx_, num_time_samples.size());
@@ -766,8 +780,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
       xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
     }
-    writeCSV(dir_data + string("x0_each_mode.csv"), x0_each_mode);
-    writeCSV(dir_data + string("xf_each_mode.csv"), xf_each_mode);
+    writeCSV(dir_data + string(prefix + "x0_each_mode.csv"), x0_each_mode);
+    writeCSV(dir_data + string(prefix + "xf_each_mode.csv"), xf_each_mode);
 
     /// Save trajectory to lcm
     /*string file_name = "rom_trajectory";
@@ -779,18 +793,21 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
     /// Save files for reproducing the same result
     // cout << "x_init = " << x_init << endl;
-    writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
-    writeCSV(param_.dir_data + string("init_phase_test.csv"),
+    writeCSV(param_.dir_data + prefix + string("x_init.csv"), x_init);
+    writeCSV(param_.dir_data + prefix + string("init_phase.csv"),
              init_phase * VectorXd::Ones(1));
-    writeCSV(param_.dir_data + string("is_right_stance_test.csv"),
+    writeCSV(param_.dir_data + prefix + string("is_right_stance.csv"),
              is_right_stance * VectorXd::Ones(1));
+    writeCSV(param_.dir_data + prefix + string("init_file.csv"),
+             trajopt.initial_guess());
   }
 
   if (true) {
     string dir_data = param_.dir_data;
+    string prefix = debug_mode_ ? "debug_" : to_string(counter_) + "_";
 
     /// Save trajectory to lcm
-    string file_name = "rom_trajectory" + to_string(counter_);
+    string file_name = prefix + "rom_trajectory";
     RomPlannerTrajectory saved_traj(
         trajopt, result, file_name,
         "Decision variables and state/input trajectories");
@@ -863,6 +880,11 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
         if (knot_idx == param_.knots_per_mode - 1) {
           trajopt->SetInitialGuess(trajopt->xf_vars_by_mode(local_fsm_idx),
                                    FOM_xf_.col(prev_local_fsm_idx));
+        }
+        // 7. FOM impulse
+        if ((knot_idx == 0) && (local_fsm_idx != 0)) {
+          trajopt->SetInitialGuess(trajopt->impulse_vars(local_fsm_idx - 1),
+                                   FOM_Lambda_.col(prev_local_fsm_idx - 1));
         }
 
         knot_idx++;

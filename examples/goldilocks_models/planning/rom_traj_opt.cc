@@ -71,9 +71,16 @@ RomTrajOpt::RomTrajOpt(
           "xf_FOM")),
       v_post_impact_vars_(NewContinuousVariables(
           plant.num_velocities() * (num_time_samples.size() - 1), "vp_FOM")),
+      impulse_vars_(
+          zero_touchdown_impact
+              ? NewContinuousVariables(0, "Lambda_FOM")
+              : NewContinuousVariables(
+                    3 * left_contacts.size() * (num_time_samples.size() - 1),
+                    "Lambda_FOM")),
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
       n_x_(plant.num_positions() + plant.num_velocities()),
+      n_lambda_(3 * left_contacts.size()),
       plant_(plant),
       rom_(rom),
       start_with_left_stance_(start_with_left_stance),
@@ -288,9 +295,7 @@ RomTrajOpt::RomTrajOpt(
                 "fom_discrete_dyn_" + to_string(i));
         reset_map_constraint->SetConstraintScaling(
             fom_discrete_dyn_constraint_scaling_);
-        int n_Lambda = 3 * prev_swing_contacts.size();
-        auto Lambda =
-            NewContinuousVariables(n_Lambda, "Lambda_FOM_" + to_string(i));
+        VectorXDecisionVariable Lambda = impulse_vars(i - 1);
         AddConstraint(reset_map_constraint, {xf_prev, x0.tail(n_v), Lambda});
 
         // Constraint on impact impulse
@@ -582,6 +587,11 @@ VectorXDecisionVariable RomTrajOpt::state_vars_by_mode(int mode,
     // num_states())  << std::endl; return
     // Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0, num_states());
   }
+}
+
+drake::solvers::VectorXDecisionVariable RomTrajOpt::impulse_vars(
+    int mode) const {
+  return impulse_vars_.segment(n_lambda_ * mode, n_lambda_);
 }
 
 // TODO: need to configure this to handle the hybrid discontinuities properly

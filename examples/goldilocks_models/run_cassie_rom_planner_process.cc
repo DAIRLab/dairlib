@@ -81,7 +81,8 @@ DEFINE_double(time_limit, 0, "time limit for the solver.");
 
 // Flag for debugging
 DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
-DEFINE_bool(read_from_file, false, "Files for input port values");
+DEFINE_int32(solve_idx_for_read_from_file, -1,
+             "Files index for input port values");
 
 // LCM channels (non debug mode)
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -126,6 +127,10 @@ int DoMain(int argc, char* argv[]) {
     // When using with controller, we need to align the steps with the FSM
     DRAKE_DEMAND(FLAGS_fix_duration);
     DRAKE_DEMAND(FLAGS_equalize_timestep_size);
+  }
+
+  if (FLAGS_solve_idx_for_read_from_file >= 0) {
+    DRAKE_DEMAND(FLAGS_debug_mode);
   }
 
   // Build Cassie MBP
@@ -262,10 +267,13 @@ int DoMain(int argc, char* argv[]) {
     // Initialize some values
     double init_phase;
     double is_right_stance;
-    if (FLAGS_read_from_file) {
-      init_phase = readCSV(param.dir_data + "init_phase_test.csv")(0, 0);
-      is_right_stance =
-          readCSV(param.dir_data + "is_right_stance_test.csv")(0, 0);
+    if (FLAGS_solve_idx_for_read_from_file >= 0) {
+      init_phase = readCSV(param.dir_data +
+                           to_string(FLAGS_solve_idx_for_read_from_file) +
+                           "_init_phase.csv")(0, 0);
+      is_right_stance = readCSV(param.dir_data +
+                                to_string(FLAGS_solve_idx_for_read_from_file) +
+                                "_is_right_stance.csv")(0, 0);
     } else {
       init_phase = FLAGS_init_phase;
       is_right_stance = !FLAGS_start_with_left_stance;
@@ -275,9 +283,11 @@ int DoMain(int argc, char* argv[]) {
     /// Read in initial robot state
     ///
     VectorXd x_init;  // we assume that solution from files are in left stance
-    if (FLAGS_read_from_file) {
+    if (FLAGS_solve_idx_for_read_from_file >= 0) {
       // Testing -- read x_init directly from a file
-      x_init = readCSV(param.dir_data + "x_init_test.csv");
+      x_init = readCSV(param.dir_data +
+                       to_string(FLAGS_solve_idx_for_read_from_file) +
+                       "_x_init.csv");
 
       cout << "x_init = " << x_init.transpose() << endl;
     } else {

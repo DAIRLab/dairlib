@@ -96,6 +96,8 @@ class RomTrajOpt
   drake::solvers::VectorXDecisionVariable state_vars_by_mode(
       int mode, int time_index) const;
 
+  drake::solvers::VectorXDecisionVariable impulse_vars(int mode) const;
+
   drake::VectorX<drake::symbolic::Expression> SubstitutePlaceholderVariables(
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
@@ -106,6 +108,8 @@ class RomTrajOpt
   }
   int num_modes() const { return num_modes_; }
   const std::vector<int>& mode_start() const { return mode_start_; }
+
+  int n_lambda() const { return n_lambda_; }
 
   const ReducedOrderModel& reduced_order_model() const { return rom_; }
 
@@ -143,9 +147,11 @@ class RomTrajOpt
   const drake::solvers::VectorXDecisionVariable x0_var_;
   const drake::solvers::VectorXDecisionVariable xf_vars_;
   const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
+  const drake::solvers::VectorXDecisionVariable impulse_vars_;
   const int n_y_;
   const int n_z_;
   const int n_x_;
+  const int n_lambda_;
   const drake::multibody::MultibodyPlant<double>& plant_;
   const ReducedOrderModel& rom_;
   bool start_with_left_stance_;

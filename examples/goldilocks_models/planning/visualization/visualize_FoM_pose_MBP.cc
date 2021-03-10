@@ -45,6 +45,9 @@ namespace planning {
 
 DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 
+// File source
+DEFINE_int32(solve_idx, -1, "");
+
 // There are two modes of this visualizer.
 // The first mode visualizes all poses at once, and the second mode visualizes
 // them in sequence
@@ -75,8 +78,19 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
                      : readCSV(directory + string("n_step.csv"))(0, 0) - 1;
 
   // Read in pose
-  MatrixXd x0_each_mode = readCSV(directory + string("x0_each_mode.csv"));
-  MatrixXd xf_each_mode = readCSV(directory + string("xf_each_mode.csv"));
+  MatrixXd x0_each_mode;
+  MatrixXd xf_each_mode;
+  if (FLAGS_solve_idx >= 0) {
+    cout << "Drawing solve_idx " << FLAGS_solve_idx << endl;
+    x0_each_mode = readCSV(
+        directory + string(to_string(FLAGS_solve_idx) + "_x0_each_mode.csv"));
+    xf_each_mode = readCSV(
+        directory + string(to_string(FLAGS_solve_idx) + "_xf_each_mode.csv"));
+  } else {
+    cout << "Drawing debug_ files\n";
+    x0_each_mode = readCSV(directory + string("debug_x0_each_mode.csv"));
+    xf_each_mode = readCSV(directory + string("debug_xf_each_mode.csv"));
+  }
 
   if (FLAGS_view_multipose_at_once) {
     MatrixXd poses;

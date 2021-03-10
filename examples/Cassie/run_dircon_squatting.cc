@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <drake/geometry/drake_visualizer.h>
 #include <gflags/gflags.h>
 
 #include "common/file_utils.h"
@@ -621,7 +622,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
   // **************************************
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (FLAGS_playback) {

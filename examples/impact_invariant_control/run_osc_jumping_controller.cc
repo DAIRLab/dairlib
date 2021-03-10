@@ -10,10 +10,10 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
-#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
 #include "examples/Cassie/osc_jump/pelvis_trans_traj_generator.h"
+#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -44,9 +44,9 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
-using examples::osc_jump::BasicTrajectoryPassthrough;
-using examples::osc_jump::FlightFootTrajGenerator;
 using examples::osc_jump::JumpingEventFsm;
+using examples::osc_jump::FlightFootTrajGenerator;
+using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_jump::PelvisTransTrajGenerator;
 using multibody::FixedJointEvaluator;
 using systems::controllers::JointSpaceTrackingData;
@@ -139,16 +139,16 @@ int DoMain(int argc, char* argv[]) {
   for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
         output_trajs.GetTrajectory("pelvis_trans_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_foot_traj =
         output_trajs.GetTrajectory("left_foot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_foot_traj =
         output_trajs.GetTrajectory("right_foot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
         output_trajs.GetTrajectory("pelvis_rot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     pelvis_trans_traj.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_pelvis_trans_trajectory.time_vector,
@@ -174,7 +174,7 @@ int DoMain(int argc, char* argv[]) {
   double flight_time =
       FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
   double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) +
-      gains.landing_delay;
+                     gains.landing_delay;
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};
 
@@ -273,8 +273,7 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
-  vector<osc_jump::FSM_STATE> stance_modes = {osc_jump::BALANCE,
-                                              osc_jump::CROUCH, osc_jump::LAND};
+  vector<osc_jump::FSM_STATE> stance_modes = {osc_jump::BALANCE, osc_jump::CROUCH, osc_jump::LAND};
   for (auto mode : stance_modes) {
     osc->AddStateAndContactPoint(mode, &left_toe_evaluator);
     osc->AddStateAndContactPoint(mode, &left_heel_evaluator);

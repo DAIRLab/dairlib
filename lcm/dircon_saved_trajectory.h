@@ -46,24 +46,26 @@ class DirconTrajectory : public LcmTrajectory {
       const std::string& name, const std::string& description);
 
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
-      const;
+  const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
-      const;
+  const;
+  drake::trajectories::PiecewisePolynomial<double> ReconstructJointTrajectory(int joint_idx)
+  const;
 
   /// Returns a vector of polynomials describing the contact forces for each mode. For use when
   /// adding knot points to the initial guess
   std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaTrajectory()
-      const;
+  const;
 
   /// Returns a vector of polynomials describing the collocation forces for each mode. For use
   /// when adding knot points to the initial guess
   std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaCTrajectory()
-      const;
+  const;
 
   /// Returns a vector of polynomials describing the collocation slack vars. For use when adding
   /// knot points to the initial guess
   std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructGammaCTrajectory()
-      const;
+  const;
 
   /// Loads the saved state and input trajectory as well as the decision
   /// variables

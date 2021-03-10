@@ -8,15 +8,17 @@ cc_library(
         "//examples/Cassie/osc_jump:com_traj_generator",
         "//examples/Cassie/osc_jump:flight_foot_traj_generator",
         "//examples/Cassie/osc_jump:jumping_event_based_fsm",
+        "//examples/Cassie/osc_jump:osc_jumping_gains",
         "//examples/Cassie/osc_jump:pelvis_orientation_traj_generator",
+        "//examples/Cassie/osc_jump:toe_angle_traj_generator",
         "//systems/controllers/osc:operational_space_control",
     ],
 )
 
 cc_library(
     name = "com_traj_generator",
-    srcs = ["com_traj_generator.cc"],
-    hdrs = ["com_traj_generator.h"],
+    srcs = ["pelvis_trans_traj_generator.cc"],
+    hdrs = ["pelvis_trans_traj_generator.h"],
     deps = [
         ":jumping_event_based_fsm",
         "//multibody:utils",
@@ -39,9 +41,22 @@ cc_library(
 )
 
 cc_library(
+    name = "toe_angle_traj_generator",
+    srcs = ["toe_angle_traj_generator.cc"],
+    hdrs = ["toe_angle_traj_generator.h"],
+    deps = [
+        ":jumping_event_based_fsm",
+        "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "pelvis_orientation_traj_generator",
-    srcs = ["pelvis_orientation_traj_generator.cc"],
-    hdrs = ["pelvis_orientation_traj_generator.h"],
+    srcs = ["basic_trajectory_passthrough.cc"],
+    hdrs = ["basic_trajectory_passthrough.h"],
     deps = [
         ":jumping_event_based_fsm",
         "//multibody:utils",
@@ -59,6 +74,14 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "osc_jumping_gains",
+    hdrs = ["osc_jumping_gains.h"],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

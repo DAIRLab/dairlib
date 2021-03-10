@@ -1,5 +1,6 @@
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 
+#include <dairlib/lcmt_controller_switch.hpp>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 using dairlib::systems::OutputVector;
@@ -15,15 +16,16 @@ using std::vector;
 
 namespace dairlib {
 namespace examples {
+namespace osc_jump {
 
 JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
                                  bool contact_based, double delay_time,
-                                 FSM_STATE init_state)
-    : plant_(plant),
-      transition_times_(transition_times),
+                                 double impact_threshold, FSM_STATE init_state)
+    : transition_times_(transition_times),
       contact_based_(contact_based),
       transition_delay_(delay_time),
+      impact_threshold_(impact_threshold),
       init_state_(init_state) {
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -33,17 +35,23 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
 
   // Configure the contact info port for the particular simulator
   contact_port_ = this->DeclareAbstractInputPort(
-                          "lcmt_contact_info",
-                          drake::Value<drake::lcmt_contact_results_for_viz>{})
-                      .get_index();
-  this->DeclareVectorOutputPort(BasicVector<double>(1),
-                                &JumpingEventFsm::CalcFiniteState);
+      "lcmt_contact_info",
+      drake::Value<drake::lcmt_contact_results_for_viz>{})
+      .get_index();
+  fsm_output_port_ =
+      this->DeclareVectorOutputPort(BasicVector<double>(1),
+                                    &JumpingEventFsm::CalcFiniteState)
+          .get_index();
+  near_impact_output_port =
+      this->DeclareVectorOutputPort(BasicVector<double>(2),
+                                    &JumpingEventFsm::CalcNearImpact)
+          .get_index();
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
 
   BasicVector<double> init_prev_time = BasicVector<double>(VectorXd::Zero(1));
   BasicVector<double> init_state_trigger_time =
       BasicVector<double>(VectorXd::Zero(1));
-  BasicVector<double> init_fsm_state = BasicVector<double>(VectorXd::Zero(1));
+  BasicVector<double> init_fsm_state = BasicVector<double>(VectorXd::Zero(2));
   init_state_trigger_time.get_mutable_value()(0) = -1.0;
   init_fsm_state.get_mutable_value()(0) = init_state_;
 
@@ -81,10 +89,16 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   if (timestamp < prev_time(0)) {
     std::cout << "Simulator has restarted!" << std::endl;
     fsm_state << init_state_;
-    prev_time(0) = timestamp;
     transition_flag(0) = false;
+    //    prev_switch_time << switch_signal->utime;
   }
+  prev_time << timestamp;
 
+  if (abs(transition_times_[BALANCE] - timestamp -
+      round(transition_times_[BALANCE] - timestamp)) < 1e-4) {
+    std::cout << "Time until crouch: "
+              << round(transition_times_[BALANCE] - timestamp) << std::endl;
+  }
   // To test delayed switching times, there is an "intermediate" state
   // between each state change when the guard condition is first triggered
   // The fsm state will change transition_delay_ seconds after the guard
@@ -98,12 +112,11 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       std::cout << "Setting fsm to CROUCH" << std::endl;
       std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
       transition_flag(0) = false;
-      prev_time(0) = timestamp;
     }
   } else if (fsm_state(0) == CROUCH) {
     if (DetectGuardCondition(contact_based_
-                                 ? num_contacts == 0
-                                 : timestamp > transition_times_[CROUCH],
+                             ? num_contacts == 0
+                             : timestamp > transition_times_[CROUCH],
                              timestamp, discrete_state)) {
       state_trigger_time(0) = timestamp;
       transition_flag(0) = true;
@@ -116,12 +129,11 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       std::cout << "Setting fsm to FLIGHT" << std::endl;
       std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
       transition_flag(0) = false;
-      prev_time(0) = timestamp;
     }
   } else if (fsm_state(0) == FLIGHT) {
     if (DetectGuardCondition(contact_based_
-                                 ? num_contacts != 0
-                                 : timestamp > transition_times_[FLIGHT],
+                             ? num_contacts != 0
+                             : timestamp > transition_times_[FLIGHT],
                              timestamp, discrete_state)) {
       state_trigger_time(0) = timestamp;
       transition_flag(0) = true;
@@ -135,7 +147,6 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
                 << "\n";
       std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
       transition_flag(0) = false;
-      prev_time(0) = timestamp;
     }
   } else if (fsm_state(0) == LAND) {
     // no more transitions
@@ -150,6 +161,28 @@ void JumpingEventFsm::CalcFiniteState(const Context<double>& context,
       context.get_discrete_state().get_vector(fsm_idx_).get_value();
 }
 
+void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
+                                     BasicVector<double>* near_impact) const {
+  VectorXd fsm_state = context.get_discrete_state(fsm_idx_).get_value();
+  // Read in lcm message time
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double timestamp = robot_output->get_timestamp();
+
+  VectorXd is_near_impact = VectorXd::Zero(2);
+  // Get current finite state
+  if (abs(timestamp - transition_times_[FLIGHT]) < impact_threshold_) {
+    if(timestamp < transition_times_[FLIGHT]){
+      is_near_impact(0) = 1 - exp(- (timestamp - transition_times_[FLIGHT] + impact_threshold_)/0.005);
+    }
+    else{
+      is_near_impact(0) = 1 - exp(- (transition_times_[FLIGHT] + impact_threshold_ - timestamp)/0.005);
+    }
+    is_near_impact(1) = LAND;
+  }
+  near_impact->get_mutable_value() = is_near_impact;
+}
+
 bool JumpingEventFsm::DetectGuardCondition(
     bool guard_condition, double current_time,
     DiscreteValues<double>* discrete_state) const {
@@ -160,5 +193,6 @@ bool JumpingEventFsm::DetectGuardCondition(
   return guard_condition && !(bool)transition_flag(0);
 }
 
+}  // namespace osc_jump
 }  // namespace examples
 }  // namespace dairlib

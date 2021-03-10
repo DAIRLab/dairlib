@@ -15,6 +15,9 @@ using std::cout;
 
 const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
                                        Eigen::DontAlignCols, ", ", "\n");
+const static Eigen::IOFormat CSVFormatFullPrec(Eigen::FullPrecision,
+                                               Eigen::DontAlignCols, ", ",
+                                               "\n");
 
 namespace dairlib {
 
@@ -40,10 +43,14 @@ MatrixXd readCSV(const string & path) {
         values.data(), rows, values.size()/rows);
 }
 
-void writeCSV(const std::string& path, const MatrixXd& M) {
+void writeCSV(const std::string& path, const MatrixXd& M, bool full_precision) {
   ofstream outfile;
   outfile.open(path);
-  outfile << M.format(CSVFormat);
+  if (full_precision) {
+    outfile << M.format(CSVFormatFullPrec);
+  } else {
+    outfile << M.format(CSVFormat);
+  }
   outfile.close();
 }
 

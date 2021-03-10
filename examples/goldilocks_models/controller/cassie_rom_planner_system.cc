@@ -792,14 +792,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     std::cout << "Wrote to file: " << dir_data + file_name << std::endl;*/
 
     /// Save files for reproducing the same result
-    // cout << "x_init = " << x_init << endl;
-    writeCSV(param_.dir_data + prefix + string("x_init.csv"), x_init);
+     cout << "x_init = " << x_init << endl;
+    writeCSV(param_.dir_data + prefix + string("x_init.csv"), x_init, true);
     writeCSV(param_.dir_data + prefix + string("init_phase.csv"),
-             init_phase * VectorXd::Ones(1));
+             init_phase * VectorXd::Ones(1), true);
     writeCSV(param_.dir_data + prefix + string("is_right_stance.csv"),
-             is_right_stance * VectorXd::Ones(1));
+             is_right_stance * VectorXd::Ones(1), true);
     writeCSV(param_.dir_data + prefix + string("init_file.csv"),
-             trajopt.initial_guess());
+             trajopt.initial_guess(), true);
   }
 
   if (true) {

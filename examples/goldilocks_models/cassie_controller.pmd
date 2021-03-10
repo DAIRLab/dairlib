@@ -8,7 +8,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "2.2.rom-planner" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=10 --zero_touchdown_impact=false --feas_tol=1e-4 --use_ipopt=true";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=3 --time_limit=60 --zero_touchdown_impact=false --feas_tol=1e-4 --use_ipopt=true";
         host = "localhost";
     }
     cmd "2.2.rom-planner (short time limit)" {

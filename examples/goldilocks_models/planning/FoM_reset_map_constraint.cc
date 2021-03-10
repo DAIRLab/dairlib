@@ -71,7 +71,7 @@ void FomResetMapConstraint::EvaluateConstraint(
 
   MatrixXd M = MatrixXd(n_v_, n_v_);
   plant_.SetPositions(context_.get(), qm);
-  plant_.CalcMassMatrixViaInverseDynamics(*context_, &M);
+  plant_.CalcMassMatrix(*context_, &M);
 
   MatrixX<double> J_impact_foot(n_lambda_, n_v_);
   MatrixX<double> J_per_contact(3, n_v_);

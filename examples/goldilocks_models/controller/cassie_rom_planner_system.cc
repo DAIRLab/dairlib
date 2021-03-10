@@ -460,43 +460,43 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   PrintStatus("Initial guesses ===============");
 
   // Initial guess for all variables
-  if (debug_mode_) {
-    if (!param_.init_file.empty()) {
-      PrintStatus("Set initial guess from a file...");
-      VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
-      int n_dec = trajopt.decision_variables().size();
-      if (n_dec > z0.rows()) {
-        cout << "dim(initial guess) < dim(decision var). "
-                "Fill the rest with zero's.\n";
-        VectorXd old_z0 = z0;
-        z0.resize(n_dec);
-        z0 = VectorXd::Zero(n_dec);
-        z0.head(old_z0.rows()) = old_z0;
-      }
-      trajopt.SetInitialGuessForAllVariables(z0);
-    } else {
-      // Set heuristic initial guess for all variables
-      PrintStatus("Set heuristic initial guess...");
-      trajopt.SetHeuristicInitialGuess(
-          h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-          x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
+  if (!param_.init_file.empty()) {
+    PrintStatus("Set initial guess from a file...");
+    VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
+    int n_dec = trajopt.decision_variables().size();
+    if (n_dec > z0.rows()) {
+      cout << "dim(initial guess) < dim(decision var). "
+              "Fill the rest with zero's.\n";
+      VectorXd old_z0 = z0;
+      z0.resize(n_dec);
+      z0 = VectorXd::Zero(n_dec);
+      z0.head(old_z0.rows()) = old_z0;
     }
+    trajopt.SetInitialGuessForAllVariables(z0);
   } else {
-    int global_fsm_idx = int(current_time / stride_period_);
-    if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
-      PrintStatus("Warm start initial guess with previous solution...");
-      WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,
-                     &trajopt);
-    } else {
+    if (debug_mode_) {
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(
           h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
           x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
+    } else {
+      int global_fsm_idx = int(current_time / stride_period_);
+      if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
+        PrintStatus("Warm start initial guess with previous solution...");
+        WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,
+                       &trajopt);
+      } else {
+        // Set heuristic initial guess for all variables
+        PrintStatus("Set heuristic initial guess...");
+        trajopt.SetHeuristicInitialGuess(
+            h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
+            x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
+      }
+      prev_global_fsm_idx_ = global_fsm_idx;
+      prev_first_mode_knot_idx_ = first_mode_knot_idx;
+      prev_mode_start_ = trajopt.mode_start();
     }
-    prev_global_fsm_idx_ = global_fsm_idx;
-    prev_first_mode_knot_idx_ = first_mode_knot_idx;
-    prev_mode_start_ = trajopt.mode_start();
   }
 
   // Avoid zero-value initial guess!

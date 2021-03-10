@@ -67,7 +67,7 @@ DEFINE_double(tol, 1e-6, "Tolerance for constraint violation and dual gap");
 DEFINE_string(load_filename, "", "File to load decision vars from.");
 DEFINE_string(
     data_directory,
-    "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/",
+    "examples/impact_invariant_control/saved_trajectories",
     "Directory path to save decision vars to.");
 DEFINE_string(save_filename, "default_filename",
               "Filename to save decision "

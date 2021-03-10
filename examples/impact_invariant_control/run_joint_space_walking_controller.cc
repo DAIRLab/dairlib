@@ -51,7 +51,7 @@ DEFINE_string(channel_x, "RABBIT_STATE",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "RABBIT_INPUT",
               "The name of the channel which publishes command");
-DEFINE_string(folder_path, "examples/five_link_biped/saved_trajectories/",
+DEFINE_string(folder_path, "examples/impact_invariant_control/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "rabbit_walking",
               "File to load saved trajectories from");
@@ -69,7 +69,7 @@ int DoMain(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
   std::string full_name =
-      FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf");
+      FindResourceOrThrow("examples/impact_invariant_control/five_link_biped.urdf");
   parser.AddModelFromFile(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());

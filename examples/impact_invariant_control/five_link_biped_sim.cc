@@ -79,8 +79,8 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(FLAGS_dt);
   Parser parser(&plant, &scene_graph);
-  std::string full_name =
-      FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf");
+  std::string full_name = FindResourceOrThrow(
+      "examples/impact_invariant_control/five_link_biped.urdf");
   parser.AddModelFromFile(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
@@ -111,7 +111,7 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_channel_x, lcm, 1.0 / FLAGS_publish_rate));
   ContactResultsToLcmSystem<double>& contact_viz =
-  *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
+      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
@@ -141,7 +141,7 @@ int do_main(int argc, char* argv[]) {
   auto diagram = builder.Build();
   // Create a context for this system:
   std::unique_ptr<Context<double>> diagram_context =
-                                       diagram->CreateDefaultContext();
+      diagram->CreateDefaultContext();
   diagram_context->EnableCaching();
   diagram->SetDefaultContext(diagram_context.get());
   Context<double>& plant_context =

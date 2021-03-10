@@ -42,16 +42,11 @@ DEFINE_double(height, 0.75, "The jump height wrt to the torso COM (m)");
 DEFINE_int64(knot_points, 10, "Number of knot points per mode");
 
 DEFINE_double(max_duration, 1.0, "Maximum trajectory duration (s)");
-// DEFINE_string(file_name, "", "Filename for saving trajectories");
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
-// DEFINE_bool(save_traj, false,
-//            "Whether or not to save the generated "
-//            "trajectory as a LCM trajectory");
 DEFINE_string(data_directory,
-              "/home/yangwill/Documents/research/projects/five_link_biped/"
-              "walking/saved_trajs/",
+              "examples/impact_invariant_control/saved_trajectories",
               "Directory path to save decision vars to.");
 DEFINE_string(save_filename, "rabbit_walking",
               "Filename to save decision "
@@ -268,7 +263,6 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   return trajopt->ReconstructStateTrajectory(result);
 }
 
-
 int doMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   DiagramBuilder<double> builder;
@@ -277,8 +271,8 @@ int doMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
-  std::string full_name =
-      FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf");
+  std::string full_name = FindResourceOrThrow(
+      "examples/impact_invariant_control/five_link_biped.urdf");
   parser.AddModelFromFile(full_name);
   plant.mutable_gravity_field().set_gravity_vector(-FLAGS_gravity *
                                                    Eigen::Vector3d::UnitZ());

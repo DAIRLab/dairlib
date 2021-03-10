@@ -564,13 +564,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     drake::solvers::MathematicalProgramResult result2;
     solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
                          &result2);
-    //                         &result);
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start;
     cout << "    Time of arrival: " << current_time << " | ";
     cout << "Solve time:" << elapsed.count() << " | ";
     cout << result2.get_solution_result() << " | ";
     cout << "Cost:" << result2.get_optimal_cost() << "\n";
+    if (!param_.use_ipopt) {
+      result = result2;
+    }
   }
 
   // Testing -- store the initial guess to the result (to visualize init guess)

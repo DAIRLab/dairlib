@@ -44,11 +44,10 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
-using examples::osc_jump::FlightFootTrajGenerator;
-using examples::osc_jump::FlightFootTrajGenerator;
-using examples::osc_jump::PelvisTransTrajGenerator;
 using examples::osc_jump::BasicTrajectoryPassthrough;
+using examples::osc_jump::FlightFootTrajGenerator;
 using examples::osc_jump::JumpingEventFsm;
+using examples::osc_jump::PelvisTransTrajGenerator;
 using multibody::FixedJointEvaluator;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
@@ -56,13 +55,12 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 namespace examples {
 
-DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
-              "The name of the channel which receives state");
+DEFINE_string(
+    channel_x, "CASSIE_STATE_SIMULATION",
+    "The name of the channel where state estimation is published. Set to "
+    "CASSIE_STATE_DISPATCHER for use on hardware with the state estimator");
 DEFINE_string(channel_u, "OSC_JUMPING",
-              "The name of the channel which publishes command");
-DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
-              "Folder path for where the trajectory names are stored");
-DEFINE_string(traj_name, "", "File to load saved trajectories from");
+              "The name of the channel where control efforts are published");
 DEFINE_double(delay_time, 0.0,
               "Time to wait before executing jump. Useful for getting the "
               "robot state into the desired initial state.");
@@ -77,6 +75,9 @@ DEFINE_string(simulator, "DRAKE",
               "contact information. Other options include MUJOCO and soon to "
               "include contact results from the GM contact estimator.");
 DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
+DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
+              "Folder path for where the trajectory names are stored");
+DEFINE_string(traj_name, "", "File to load saved trajectories from");
 DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
               "Filepath containing gains");
 
@@ -229,6 +230,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
 
+  // For contact-based fsm
   LcmSubscriberSystem* contact_results_sub = nullptr;
   if (FLAGS_simulator == "DRAKE") {
     contact_results_sub = builder.AddSystem(

@@ -25,11 +25,11 @@ class PlotStyler():
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 4
+    matplotlib.rcParams['figure.figsize'] = 8, 5
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 18}
     matplotlib.rc('font', **font)
-    matplotlib.rcParams['lines.linewidth'] = 4
+    matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')
     self.directory = directory
 
@@ -53,7 +53,7 @@ class PlotStyler():
     if legend:
       plt.legend(legend)
 
-    # plt.grid(grid, which='major')
+    plt.grid(grid, which='major')
 
   def plot_bands(self, x_low, x_high, y_low, y_high, color='C0'):
     vertices = np.block([[x_low, x_high[::-1]],

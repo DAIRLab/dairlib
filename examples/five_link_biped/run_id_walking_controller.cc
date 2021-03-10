@@ -1,4 +1,3 @@
-#include <drake/lcmt_contact_results_for_viz.hpp>
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
@@ -23,8 +22,6 @@
 
 namespace dairlib {
 
-using std::cout;
-using std::endl;
 using std::map;
 using std::pair;
 using std::string;
@@ -46,10 +43,7 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
 using examples::osc_jump::BasicTrajectoryPassthrough;
-using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
-using systems::controllers::RotTaskSpaceTrackingData;
-using systems::controllers::TransTaskSpaceTrackingData;
 
 namespace examples {
 
@@ -57,15 +51,10 @@ DEFINE_string(channel_x, "RABBIT_STATE",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "RABBIT_INPUT",
               "The name of the channel which publishes command");
-DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_string(folder_path, "examples/five_link_biped/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "rabbit_walking",
               "File to load saved trajectories from");
-DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
-DEFINE_double(transition_delay, 0.0,
-              "Time to wait after trigger to "
-              "transition between FSM states.");
 DEFINE_string(gains_filename, "examples/five_link_biped/id_walking_gains.yaml",
               "Filepath containing gains");
 
@@ -91,9 +80,7 @@ int DoMain(int argc, char* argv[]) {
   // Get contact frames and position (doesn't matter whether we use
   // plant or plant_wo_springs because the contact frames exit in both
   // plants)
-  int nq = plant.num_positions();
   int nv = plant.num_velocities();
-  int nx = nq + nv;
 
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
@@ -109,8 +96,6 @@ int DoMain(int argc, char* argv[]) {
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
       FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
-  //  const DirconTrajectory& dircon_trajectory = DirconTrajectory(
-  //      FindResourceOrThrow(FLAGS_traj_name));
 
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
@@ -131,14 +116,10 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true,
-      FLAGS_print_osc); /*print_tracking_info*/
+      plant, plant, plant_context.get(), plant_context.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_WALKING", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  //  LcmSubscriberSystem* contact_results_sub = builder.AddSystem(
-  //      LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
-  //          "RABBIT_CONTACT_DRAKE", &lcm));
 
   /**** OSC setup ****/
   // Cost
@@ -218,7 +199,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("id walking controller"));
+  owned_diagram->set_name(("id_walking_controller"));
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

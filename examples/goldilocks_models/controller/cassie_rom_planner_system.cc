@@ -365,9 +365,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       0;*/
 
   // Construct
-  if (debug_mode_) {
-    cout << "\nConstructing optimization problem...\n";
-  }
+  PrintStatus("\nConstructing optimization problem...");
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
                            state_mirror_, left_contacts_, right_contacts_,
@@ -375,9 +373,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                            param_.zero_touchdown_impact, relax_index_,
                            debug_mode_ /*print_status*/);
 
-  if (debug_mode_) {
-    cout << "Other constraints/costs and initial guess===============\n";
-  }
+  PrintStatus("Other constraints and costs ===============");
   // Time step constraints
   double first_mode_duration =
       stride_period_ - fmod(current_time, stride_period_);
@@ -388,34 +384,40 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar
-  // linkage relationship. You shouldn't add constraint to the initial pose here
-  // TODO: update this part.
-  /*double fourbar_angle = 13.0 / 180.0 * M_PI;
+  // linkage relationship.
+  // I believe we shouldn't impose this constraint on the init pose because we
+  // use a model without spring in the planner (while in the sim and real life,
+  // we use model with springs). The constraint here will conflict the initial
+  // FOM pose constraint
+  double fourbar_angle = 13.0 / 180.0 * M_PI;
+  MatrixXd Aeq = MatrixXd::Ones(1, 2);
+  VectorXd angle = fourbar_angle * VectorXd::Ones(1);
+  /*
   auto q0_var =
   trajopt.x0_vars_by_mode(0).head(nq_);
   trajopt.AddLinearEqualityConstraint(
-      q0_var(positions_map.at("knee_left")) +
-      q0_var(positions_map.at("ankle_joint_left")), fourbar_angle);
+      q0_var(positions_map_.at("knee_left")) +
+      q0_var(positions_map_.at("ankle_joint_left")), fourbar_angle);
   trajopt.AddLinearEqualityConstraint(
-      q0_var(positions_map.at("knee_right")) +
-      q0_var(positions_map.at("ankle_joint_right")), fourbar_angle);*/
-  /*for (int i = 0; i < num_time_samples.size(); i++) {
-    auto qf_var = trajopt.xf_vars_by_mode(i);
+      q0_var(positions_map_.at("knee_right")) +
+      q0_var(positions_map_.at("ankle_joint_right")), fourbar_angle);*/
+  for (int i = 0; i < num_time_samples.size(); i++) {
+    auto xf = trajopt.xf_vars_by_mode(i);
     trajopt.AddLinearEqualityConstraint(
-        qf_var(positions_map.at("knee_left")) +
-        qf_var(positions_map.at("ankle_joint_left")), fourbar_angle);
+        Aeq, angle,
+        {xf.segment<1>(positions_map_.at("knee_left")),
+         xf.segment<1>(positions_map_.at("ankle_joint_left"))});
     trajopt.AddLinearEqualityConstraint(
-        qf_var(positions_map.at("knee_right")) +
-        qf_var(positions_map.at("ankle_joint_right")), fourbar_angle);
-  }*/
+        Aeq, angle,
+        {xf.segment<1>(positions_map_.at("knee_right")),
+         xf.segment<1>(positions_map_.at("ankle_joint_right"))});
+  }
 
   // Final goal position constraint
-  if (debug_mode_) {
-    cout << "Adding final position constraint for full-order model...\n";
-  }
+  /*PrintStatus("Adding constraint -- FoM final position");
   trajopt.AddBoundingBoxConstraint(
       final_position, final_position,
-      trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));
+      trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));*/
 
   // Add robot state in cost
   bool add_x_pose_in_cost = true;
@@ -455,9 +457,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     }
   }
 
+  PrintStatus("Initial guesses ===============");
+
   // Initial guess for all variables
   if (debug_mode_) {
     if (!param_.init_file.empty()) {
+      PrintStatus("Set initial guess from a file...");
       VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
       int n_dec = trajopt.decision_variables().size();
       if (n_dec > z0.rows()) {
@@ -471,6 +476,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       trajopt.SetInitialGuessForAllVariables(z0);
     } else {
       // Set heuristic initial guess for all variables
+      PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(
           h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
           x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
@@ -478,10 +484,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   } else {
     int global_fsm_idx = int(current_time / stride_period_);
     if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
+      PrintStatus("Warm start initial guess with previous solution...");
       WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,
                      &trajopt);
     } else {
       // Set heuristic initial guess for all variables
+      PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(
           h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
           x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);

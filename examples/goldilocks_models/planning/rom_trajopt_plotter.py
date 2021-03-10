@@ -168,13 +168,14 @@ def PlotFeet(rom_traj):
       feet_pos_vec[k][i][1] = _
       feet_vel_vec[k][i][1] = _dot
 
-    vp_FOM = FindVariableByName(vars, 'vp_FOM')
-    for i in range(1, n_mode):
-      x0_FOM = np.hstack([xf_FOM[(i - 1) * nx_FOM: (i - 1) * nx_FOM + nq_FOM],
-                          vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
-      _, _dot = CalcPointPosAndVel(x0_FOM, toe_frames[k], mid_contact_disp)
-      feet_pos_vec[k][i][0] = _
-      feet_vel_vec[k][i][0] = _dot
+    if n_mode > 1:
+      vp_FOM = FindVariableByName(vars, 'vp_FOM')
+      for i in range(1, n_mode):
+        x0_FOM = np.hstack([xf_FOM[(i - 1) * nx_FOM: (i - 1) * nx_FOM + nq_FOM],
+                            vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
+        _, _dot = CalcPointPosAndVel(x0_FOM, toe_frames[k], mid_contact_disp)
+        feet_pos_vec[k][i][0] = _
+        feet_vel_vec[k][i][0] = _dot
 
     palette = ['r', 'b', 'g']
     figname = "Full model: " + names[k] + " foot pos"
@@ -241,13 +242,14 @@ def PlotCOM(rom_traj):
     com_vec[i][1] = com
     comdot_vec[i][1] = comdot
 
-  vp_FOM = FindVariableByName(vars, 'vp_FOM')
-  for i in range(1, n_mode):
-    x0_FOM = np.hstack([xf_FOM[(i - 1) * nx_FOM: (i - 1) * nx_FOM + nq_FOM],
-                        vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
-    com, comdot = CalcCenterOfMass(x0_FOM)
-    com_vec[i][0] = com
-    comdot_vec[i][0] = comdot
+  if n_mode > 1:
+    vp_FOM = FindVariableByName(vars, 'vp_FOM')
+    for i in range(1, n_mode):
+      x0_FOM = np.hstack([xf_FOM[(i - 1) * nx_FOM: (i - 1) * nx_FOM + nq_FOM],
+                          vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
+      com, comdot = CalcCenterOfMass(x0_FOM)
+      com_vec[i][0] = com
+      comdot_vec[i][0] = comdot
 
   palette = ['r', 'b', 'g']
   figname = "Full model: COM"

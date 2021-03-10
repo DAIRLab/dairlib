@@ -152,6 +152,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   // For debugging
   bool debug_mode_;
+  void PrintStatus(const std::string& msg) const {
+    /*if (debug_mode_) */ std::cout << msg << std::endl;
+  };
 
   // Since sometimes the planner replan every 1ms in the beginning of the
   // simulation (e.g. at 0, 1, 2 ms), we use min_time_difference_for_replanning_

@@ -71,6 +71,7 @@ cc_library(
     srcs = ["jumping_event_based_fsm.cc"],
     hdrs = ["jumping_event_based_fsm.h"],
     deps = [
+        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
         "//lcmtypes:lcmt_robot",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",

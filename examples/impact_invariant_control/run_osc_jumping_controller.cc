@@ -67,9 +67,6 @@ DEFINE_double(delay_time, 0.0,
 DEFINE_bool(contact_based_fsm, false,
             "The contact based fsm transitions "
             "between states using contact data.");
-DEFINE_double(transition_delay, 0.0,
-              "Time to wait after trigger to "
-              "transition between FSM states.");
 DEFINE_string(simulator, "DRAKE",
               "Simulator used, important for determining how to interpret "
               "contact information. Other options include MUJOCO and soon to "
@@ -217,7 +214,7 @@ int DoMain(int argc, char* argv[]) {
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
-      FLAGS_transition_delay, gains.impact_threshold,
+      gains.impact_threshold,
       (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(

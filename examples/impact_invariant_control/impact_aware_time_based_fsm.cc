@@ -15,12 +15,13 @@ using systems::OutputVector;
 ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<int>& states, const std::vector<double>& state_durations,
-    double t0, double near_impact_threshold)
+    double t0, double near_impact_threshold, BLEND_FUNC blend_func)
     : TimeBasedFiniteStateMachine(plant, states, state_durations, t0),
       states_(states),
       state_durations_(state_durations),
       t0_(t0),
-      near_impact_threshold_(near_impact_threshold) {
+      near_impact_threshold_(near_impact_threshold),
+      blend_func_(blend_func){
   near_impact_port_ =
       this->DeclareVectorOutputPort(
               BasicVector<double>(2),
@@ -36,29 +37,49 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   period_ = sum;
 }
 
+double alpha_sigmoid(double t, double tau, double near_impact_threshold) {
+  double x = (t + near_impact_threshold) / tau;
+  return exp(x) / (1 + exp(x));
+}
+
+double alpha_exp(double t, double tau, double near_impact_threshold) {
+  return 1 - exp(-(t + near_impact_threshold) / tau);
+}
+
 void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
     const Context<double>& context, BasicVector<double>* near_impact) const {
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
+  auto current_time = static_cast<double>(robot_output->get_timestamp());
 
-  double remainder = fmod(current_sim_time, period_);
+  double remainder = fmod(current_time, period_);
 
   VectorXd near_impact_data = VectorXd::Zero(2);
   // Get current finite state
-  if (current_sim_time >= t0_) {
+  if (current_time >= t0_) {
     //    for (unsigned int i : impact_states_) {
     for (int i = 0; i < impact_states_.size(); ++i) {
-      if (abs(remainder - impact_times_[i]) < near_impact_threshold_) {
+      double blend_window = blend_func_ == SIGMOID
+                                ? 1.5 * near_impact_threshold_
+                                : near_impact_threshold_;
+      if (abs(remainder - impact_times_[i]) < blend_window) {
         if (remainder < impact_times_[i]) {
-          near_impact_data(0) =
-              1 - exp(-(remainder - impact_times_[i] + near_impact_threshold_) /
-                      0.005);
+          if (blend_func_ == SIGMOID) {
+            near_impact_data(0) = alpha_sigmoid(remainder - impact_times_[i],
+                                                tau_, near_impact_threshold_);
+          } else {
+            near_impact_data(0) = alpha_exp(remainder - impact_times_[i], tau_,
+                                            near_impact_threshold_);
+          }
         } else {
-          near_impact_data(0) =
-              1 - exp(-(impact_times_[i] + near_impact_threshold_ - remainder) /
-                      0.005);
+          if (blend_func_ == SIGMOID) {
+            near_impact_data(0) = alpha_sigmoid(impact_times_[i] - remainder,
+                                                tau_, near_impact_threshold_);
+          } else {
+            near_impact_data(0) = alpha_exp(impact_times_[i] - remainder, tau_,
+                                            near_impact_threshold_);
+          }
         }
         near_impact_data(1) = impact_states_[i];
         break;

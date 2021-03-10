@@ -10,6 +10,8 @@
 
 namespace dairlib {
 
+enum BLEND_FUNC {SIGMOID, EXP};
+
 class ImpactTimeBasedFiniteStateMachine
     : public systems::TimeBasedFiniteStateMachine {
  public:
@@ -17,7 +19,8 @@ class ImpactTimeBasedFiniteStateMachine
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::vector<int>& states,
       const std::vector<double>& state_durations, double t0 = 0,
-      double near_impact_threshold = 0);
+      double near_impact_threshold = 0,
+      BLEND_FUNC blend_func = SIGMOID);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -43,7 +46,9 @@ class ImpactTimeBasedFiniteStateMachine
   std::vector<double> impact_states_;
   std::vector<double> impact_times_;
   double period_;
+  double tau_ = 0.0025;
   double near_impact_threshold_;
+  BLEND_FUNC blend_func_;
 };
 
 }  // namespace dairlib

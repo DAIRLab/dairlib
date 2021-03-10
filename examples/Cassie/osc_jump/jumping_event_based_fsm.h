@@ -1,5 +1,6 @@
 #pragma once
 
+#include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -23,9 +24,8 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
  public:
   JumpingEventFsm(const drake::multibody::MultibodyPlant<double>& plant,
                   const std::vector<double>& transition_times,
-                  bool contact_based = true, double delay_time = 0.0,
-                  double impact_threshold = 0.0,
-                  FSM_STATE init_state = BALANCE);
+                  bool contact_based = true, double impact_threshold = 0.0,
+                  FSM_STATE init_state = BALANCE, BLEND_FUNC blend_func = SIGMOID);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -58,10 +58,6 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   void CalcNearImpact(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* fsm_state) const;
 
-  bool DetectGuardCondition(
-      bool guard_condition, double current_time,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
-
   int state_port_;
   int contact_port_;
   int switch_signal_port_;
@@ -71,14 +67,14 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
 
   bool contact_based_;
 
-  double transition_delay_;
+  double tau_ = 0.0025;
   double impact_threshold_;
   int fsm_idx_;
   int prev_time_idx_;
   int guard_trigger_time_idx_;
-  int transition_flag_idx_;
 
   const FSM_STATE init_state_;
+  BLEND_FUNC blend_func_;
 };
 
 }  // namespace osc_jump

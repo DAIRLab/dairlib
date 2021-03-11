@@ -308,6 +308,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd x_init = robot_output->GetState();
 
+  // Testing
+  //  x_init.segment(nq_, 3) << 0, 0, 0;
+
   // Get phase in the first mode
   const BasicVector<double>* phase_port =
       this->EvalVectorInput(context, phase_port_);
@@ -327,13 +330,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       this->EvalVectorInput(context, fsm_and_lo_time_port_);
   double lift_off_time = fsm_and_lo_time_port->get_value()(1);*/
 
-  if (debug_mode_) {
-    cout << "Used for the planner: \n";
-    cout << "  x_init  = " << x_init.transpose() << endl;
-    cout << "  current_time  = " << current_time << endl;
-    cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
-    cout << "  init_phase  = " << init_phase << endl;
-  }
+  //  if (debug_mode_) {
+  cout.precision(dbl::max_digits10);
+  cout << "Used for the planner: \n";
+  cout << "  x_init  = " << x_init << endl;
+  cout << "  current_time  = " << current_time << endl;
+  cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
+  cout << "  init_phase  = " << init_phase << endl;
+  //  }
 
   // Testing
   //  init_phase =
@@ -573,13 +577,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "\nSolving optimization problem...\n";
   start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result;
-  //  solver_ipopt_->Solve(trajopt, trajopt.initial_guess(),
-  //  solver_option_ipopt_,
-  //                       &result);
-  solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
-                       &result);
-  //  solver_snopt_->Solve(trajopt, trajopt.initial_guess(),
-  //  solver_option_snopt_, &result);
+  if (param_.use_ipopt) {
+    solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,
+                         &result);
+  } else {
+    solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
+                         &result);
+  }
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   cout << "    Time of arrival: " << current_time << " | ";
@@ -592,24 +596,23 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (true) {
     start = std::chrono::high_resolution_clock::now();
     drake::solvers::MathematicalProgramResult result2;
-    solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,
-                         &result2);
-    //    solver_snopt_->Solve(trajopt, trajopt.initial_guess(),
-    //    solver_option_snopt_,
-    //                         &result2);
+    if (param_.use_ipopt) {
+      solver_ipopt_->Solve(trajopt, trajopt.initial_guess(),
+                           solver_option_ipopt_, &result2);
+    } else {
+      solver_snopt_->Solve(trajopt, trajopt.initial_guess(),
+                           solver_option_snopt_, &result2);
+    }
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start;
     cout << "    Time of arrival: " << current_time << " | ";
     cout << "Solve time:" << elapsed.count() << " | ";
     cout << result2.get_solution_result() << " | ";
     cout << "Cost:" << result2.get_optimal_cost() << "\n";
-    if (!param_.use_ipopt) {
-      result = result2;
-    }
   }
 
   // Testing -- print all param, costs and constriants for debugging
-  PrintAllCostsAndConstraints(trajopt);
+  // PrintAllCostsAndConstraints(trajopt);
 
   // Testing -- store the initial guess to the result (to visualize init guess)
   // result.set_x_val(trajopt.initial_guess());
@@ -770,9 +773,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Check constraint violation
   if (true) {
-    //    double tol = param_.feas_tol;
+    double tol = param_.feas_tol;
     //    //    double tol = 1e-3;
-    //    solvers::CheckGenericConstraints(trajopt, result, tol);
+    solvers::CheckGenericConstraints(trajopt, result, tol);
   }
 
   // Extract and save solution into files (for debugging)

@@ -96,6 +96,10 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   // Parameters for traj opt
   double final_position_x_;
   int n_step_;
+
+  // Testing
+  const drake::multibody::MultibodyPlant<double>& plant_feedback_;
+  const drake::multibody::MultibodyPlant<double>& plant_controls_;
 };
 
 }  // namespace goldilocks_models

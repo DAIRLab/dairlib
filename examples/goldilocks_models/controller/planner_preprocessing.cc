@@ -1,4 +1,6 @@
 #include "examples/goldilocks_models/controller/planner_preprocessing.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "systems/controllers/osc/osc_utils.h"
 
 using std::cout;
@@ -123,7 +125,9 @@ InitialStateForPlanner::InitialStateForPlanner(
     double final_position_x, int n_step)
     : nq_(plant_controls.num_positions()),
       final_position_x_(final_position_x),
-      n_step_(n_step) {
+      n_step_(n_step),
+      plant_feedback_(plant_feedback),
+      plant_controls_(plant_controls) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
                         OutputVector<double>(plant_feedback.num_positions(),
@@ -150,6 +154,51 @@ InitialStateForPlanner::InitialStateForPlanner(
   // Create index maps
   positions_map_ = multibody::makeNameToPositionsMap(plant_controls);
 }
+
+using drake::multibody::JacobianWrtVariable;
+void CalcCOM(const drake::multibody::MultibodyPlant<double>& plant,
+             VectorXd state) {
+  auto context = plant.CreateDefaultContext();
+
+  auto left_toe = LeftToeFront(plant);
+  auto left_heel = LeftToeRear(plant);
+  Vector3d front_contact_point = left_toe.first;
+  Vector3d rear_contact_point = left_heel.first;
+  Vector3d mid_contact_point = (front_contact_point + rear_contact_point) / 2;
+  auto left_toe_mid =
+      BodyPoint(mid_contact_point, plant.GetFrameByName("toe_left"));
+
+  // Get CoM position
+  VectorXd CoM(3);
+  CoM = plant.CalcCenterOfMassPosition(*context);
+
+  // Stance foot position
+  VectorXd stance_foot_pos(3);
+  plant.CalcPointsPositions(*context, left_toe_mid.second, left_toe_mid.first,
+                            plant.world_frame(), &stance_foot_pos);
+  VectorXd pos_st_to_CoM = CoM - stance_foot_pos;
+  cout << "CoM = " << CoM.transpose() << endl;
+  cout << "stance_foot_pos = " << stance_foot_pos.transpose() << endl;
+  cout << "pos_st_to_CoM = " << pos_st_to_CoM.transpose() << endl;
+
+  // Get CoM velocity
+  Eigen::MatrixXd J_com(3, plant.num_velocities());
+  plant.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context, JacobianWrtVariable::kV, plant.world_frame(),
+      plant.world_frame(), &J_com);
+  // Stance foot velocity
+  Eigen::MatrixXd J_sf(3, plant.num_velocities());
+  plant.CalcJacobianTranslationalVelocity(
+      *context, JacobianWrtVariable::kV, left_toe_mid.second,
+      left_toe_mid.first, plant.world_frame(), plant.world_frame(), &J_sf);
+  VectorXd CoM_vel = J_com * state.tail(plant.num_velocities());
+  VectorXd stance_foot_vel = J_sf * state.tail(plant.num_velocities());
+  VectorXd vel_st_to_CoM = CoM_vel - stance_foot_vel;
+  cout << "\n";
+  cout << "CoM_vel= " << CoM_vel.transpose() << endl;
+  cout << "stance_foot_vel= " << stance_foot_vel.transpose() << endl;
+  cout << "vel_st_to_CoM= " << vel_st_to_CoM.transpose() << endl;
+};
 
 void InitialStateForPlanner::CalcState(
     const drake::systems::Context<double>& context,
@@ -211,6 +260,16 @@ void InitialStateForPlanner::CalcState(
   ///
   output->SetState(x_init);
   output->set_timestamp(robot_output->get_timestamp());
+
+  // Testing -- check the model difference (springs vs no springs).
+  cout << "=== COM and stance foot ===\n";
+  cout << "cassie without springs:\n";
+  CalcCOM(plant_controls_, x_init);
+  cout << "cassie with springs:\n";
+  CalcCOM(plant_feedback_, robot_output->GetState());
+  cout << "=== states ===\n\n";
+  cout << "FOM state (without springs) = \n" << x_init << endl;
+  cout << "FOM state (with springs) = \n" << robot_output->GetState() << endl;
 }
 
 }  // namespace goldilocks_models

@@ -54,6 +54,7 @@ def main():
 
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
+  mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2
 
   pos_map = pydairlib.multibody.makeNameToPositionsMap(plant_w_spr)
   vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant_w_spr)
@@ -106,6 +107,10 @@ def main():
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+
+  plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
+    t_x, t_slice, "left foot")
+
   plt.show()
 
 
@@ -259,7 +264,7 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
 
 
 def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
-                        t_x, t_x_slice, foot_type, contact_type):
+                        t_x, t_x_slice, foot_type):
   foot_x = np.zeros((6, t_x.size))
   for i in range(t_x.size):
     plant.SetPositionsAndVelocities(context, x[i, :])
@@ -271,12 +276,11 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world) @ x[i, -nv:]
   fig = plt.figure('foot pos: ' + filename)
   # state_indices = slice(4, 5)
-  state_indices = slice(2, 3)
+  state_indices = slice(2, 6)
   # state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
-  state_names = [name + contact_type for name in state_names]
   plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
            label=state_names[state_indices])
   plt.legend()

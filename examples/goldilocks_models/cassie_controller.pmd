@@ -46,7 +46,7 @@ group "3.drake-simulator" {
         host = "localhost";
     }
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=2 --target_realtime_rate=0.1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=10 --target_realtime_rate=0.1";
         host = "localhost";
     }
 }

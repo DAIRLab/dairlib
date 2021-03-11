@@ -13,8 +13,8 @@ cc_library(
         "//examples/goldilocks_models/planning:rom_traj_opt",
         "//lcm:rom_planner_trajectory_saver",
         "//lcmtypes:lcmt_robot",
-        "//solvers:optimization_utils",
         "//multibody:utils",
+        "//solvers:optimization_utils",
         "//systems/controllers/osc:osc_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
@@ -27,6 +27,8 @@ cc_library(
     hdrs = ["planner_preprocessing.h"],
     deps = [
         "//common:eigen_utils",
+        "//examples/Cassie:cassie_utils",
+        "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
         "//systems/controllers/osc:osc_utils",
         "//systems/framework:vector",

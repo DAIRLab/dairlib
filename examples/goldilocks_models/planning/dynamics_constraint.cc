@@ -4,6 +4,8 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace planning {
 
+using std::cout;
+using std::endl;
 using std::isinf;
 using std::isnan;
 using std::list;
@@ -63,6 +65,17 @@ void DynamicsConstraint::EvaluateConstraint(
 
   // Assign dynamics constraint value
   *y = (z_iplus1 - z_i) / h_i(0) - (g_i + 4 * g(z_c, tau_c) + g_iplus1) / 6;
+
+  /*if (this->get_description() == "rom_dyn_1_0") {
+    cout << "z_iplus1 = " << z_iplus1 << endl;
+    cout << "z_i = " << z_i << endl;
+    cout << "h_i = " << h_i << endl;
+    cout << "g_i = " << g_i << endl;
+    cout << "z_c = " << z_c << endl;
+    cout << "tau_c = " << tau_c << endl;
+    cout << "g_iplus1 = " << g_iplus1 << endl;
+    cout << "g(z_c, tau_c) = " << g(z_c, tau_c) << endl;
+  }*/
 }
 
 VectorX<double> DynamicsConstraint::g(const VectorX<double>& z,

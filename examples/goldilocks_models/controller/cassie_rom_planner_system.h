@@ -15,6 +15,9 @@
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 
+using std::cout;
+using std::endl;
+
 namespace dairlib {
 namespace goldilocks_models {
 
@@ -54,6 +57,34 @@ struct PlannerSetting {
   std::string dir_model;  // location of the model files
   std::string dir_data;   // location to store the opt result
   std::string init_file;
+
+  void PrintAll() const {
+    cout << "rom_option" << rom_option << endl;
+    cout << "iter" << iter << endl;
+    cout << "sample" << sample << endl;
+    cout << "n_step" << n_step << endl;
+    cout << "knots_per_mode" << knots_per_mode << endl;
+    cout << "final_position_x" << final_position_x << endl;
+    cout << "zero_touchdown_impact" << zero_touchdown_impact << endl;
+    cout << "use_double_contact_points" << use_double_contact_points << endl;
+    cout << "equalize_timestep_size" << equalize_timestep_size << endl;
+    cout << "fix_duration" << fix_duration << endl;
+    cout << "feas_tol" << feas_tol << endl;
+    cout << "opt_tol" << opt_tol << endl;
+    cout << "max_iter" << max_iter << endl;
+    cout << "use_ipopt" << use_ipopt << endl;
+    cout << "log_solver_info" << log_solver_info << endl;
+    cout << "time_limit" << time_limit << endl;
+    cout << "w_Q" << w_Q << endl;
+    cout << "w_R" << w_R << endl;
+    cout << "w_rom_reg" << w_rom_reg << endl;
+    cout << "w_reg_quat_" << w_reg_quat_ << endl;
+    cout << "w_reg_xy_" << w_reg_xy_ << endl;
+    cout << "w_reg_z_joints_" << w_reg_z_joints_ << endl;
+    cout << "dir_model" << dir_model << endl;
+    cout << "dir_data" << dir_data << endl;
+    cout << "init_file" << init_file << endl;
+  }
 };
 
 /// Assumption:

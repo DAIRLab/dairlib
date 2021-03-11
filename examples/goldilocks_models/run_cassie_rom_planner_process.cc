@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>  // sleep/usleep
 #include <cmath>
+#include <fstream>
 #include <string>
 #include <gflags/gflags.h>
 
@@ -213,7 +214,6 @@ int DoMain(int argc, char* argv[]) {
                   stance_foot_getter->get_input_port_fsm_and_lo_time());
 
   // Create a block that compute the phase of the first mode
-  // TODO(yminchen): stride_period value should change
   double stride_period =
       gains.left_support_duration + gains.double_support_duration;
   auto init_phase_calculator =
@@ -249,6 +249,15 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("MPC");
 
+  std::string name = "../" + owned_diagram->get_name() + "_diagram_graph";
+  std::ofstream out(name);
+  out << owned_diagram->GetGraphvizString();
+  out.close();
+  std::string cmd = "dot -Tps " + name + " -o " + name + ".ps";
+  cout << std::system(cmd.c_str());
+  // cmd = "xdg-open " + name + ".ps";
+  // cout << std::system(cmd.c_str());
+
   // Run lcm-driven simulation
   std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers = {
       fsm_and_liftoff_time_receiver, state_receiver};
@@ -267,6 +276,7 @@ int DoMain(int argc, char* argv[]) {
     // Initialize some values
     double init_phase;
     double is_right_stance;
+    double current_time;
     if (FLAGS_solve_idx_for_read_from_file >= 0) {
       init_phase = readCSV(param.dir_data +
                            to_string(FLAGS_solve_idx_for_read_from_file) +
@@ -274,9 +284,19 @@ int DoMain(int argc, char* argv[]) {
       is_right_stance = readCSV(param.dir_data +
                                 to_string(FLAGS_solve_idx_for_read_from_file) +
                                 "_is_right_stance.csv")(0, 0);
+      current_time = readCSV(param.dir_data +
+                             to_string(FLAGS_solve_idx_for_read_from_file) +
+                             "_current_time.csv")(0, 0);
+      // writeCSV(param.dir_data + "testing_" + string("init_phase.csv"),
+      //         init_phase * VectorXd::Ones(1), true);
+      // writeCSV(param.dir_data + "testing_" + string("is_right_stance.csv"),
+      //         is_right_stance * VectorXd::Ones(1), true);
+      // writeCSV(param.dir_data + "testing_" + string("current_time.csv"),
+      //         current_time * VectorXd::Ones(1), true);
     } else {
       init_phase = FLAGS_init_phase;
       is_right_stance = !FLAGS_start_with_left_stance;
+      current_time = 0;
     }
 
     ///
@@ -288,6 +308,8 @@ int DoMain(int argc, char* argv[]) {
       x_init = readCSV(param.dir_data +
                        to_string(FLAGS_solve_idx_for_read_from_file) +
                        "_x_init.csv");
+      // writeCSV(param.dir_data + "testing_" + string("x_init.csv"), x_init,
+      // true);
 
       cout << "x_init = " << x_init.transpose() << endl;
     } else {
@@ -380,7 +402,6 @@ int DoMain(int argc, char* argv[]) {
 
     // Construct robot output (init state and current time)
     double prev_lift_off_time = 0;
-    double current_time = init_phase * stride_period;
     OutputVector<double> robot_output(
         x_init.head(plant_control.num_positions()),
         x_init.tail(plant_control.num_velocities()),

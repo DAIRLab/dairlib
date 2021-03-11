@@ -320,13 +320,27 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   auto current_time = static_cast<double>(timestamp);
 
   // Get lift-off time
-  const BasicVector<double>* fsm_and_lo_time_port =
+  /*const BasicVector<double>* fsm_and_lo_time_port =
       this->EvalVectorInput(context, fsm_and_lo_time_port_);
-  double lift_off_time = fsm_and_lo_time_port->get_value()(1);
+  double lift_off_time = fsm_and_lo_time_port->get_value()(1);*/
 
   if (debug_mode_) {
-    cout << "x_init used for the planner = " << x_init.transpose() << endl;
+    cout << "Used for the planner: \n";
+    cout << "  x_init  = " << x_init.transpose() << endl;
+    cout << "  current_time  = " << current_time << endl;
+    cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
+    cout << "  init_phase  = " << init_phase << endl;
   }
+
+  // Testing
+  //  init_phase =
+  //      readCSV(param_.dir_data + to_string(1) + "_init_phase.csv")(0, 0);
+  //  is_right_stance =
+  //      readCSV(param_.dir_data + to_string(1) + "_is_right_stance.csv")(0,
+  //      0);
+  //  current_time =
+  //      readCSV(param_.dir_data + to_string(1) + "_current_time.csv")(0, 0);
+  //  x_init = readCSV(param_.dir_data + to_string(1) + "_x_init.csv");
 
   ///
   /// Decide if we need to re-plan (not ideal code. See header file)
@@ -470,6 +484,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (!param_.init_file.empty()) {
     PrintStatus("Set initial guess from the file " + param_.init_file);
     VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
+    // writeCSV(param_.dir_data + "testing_" + string("init_file.csv"), z0,
+    // true);
     int n_dec = trajopt.decision_variables().size();
     if (n_dec > z0.rows()) {
       cout << "dim(initial guess) < dim(decision var). "
@@ -554,7 +570,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "\nSolving optimization problem...\n";
   start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result;
-  solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,
+  //  solver_ipopt_->Solve(trajopt, trajopt.initial_guess(),
+  //  solver_option_ipopt_,
+  //                       &result);
+  solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
                        &result);
   //  solver_snopt_->Solve(trajopt, trajopt.initial_guess(),
   //  solver_option_snopt_, &result);
@@ -567,11 +586,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Testing -- solve with another solver
-  if (true) {
+  if (false) {
     start = std::chrono::high_resolution_clock::now();
     drake::solvers::MathematicalProgramResult result2;
-    solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
+    solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,
                          &result2);
+    //    solver_snopt_->Solve(trajopt, trajopt.initial_guess(),
+    //    solver_option_snopt_,
+    //                         &result2);
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start;
     cout << "    Time of arrival: " << current_time << " | ";
@@ -581,6 +603,48 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     if (!param_.use_ipopt) {
       result = result2;
     }
+  }
+
+  // Testing -- print all param, costs and constriants for debugging
+  bool print_all_costs_and_constraints = false;
+  if (print_all_costs_and_constraints) {
+    param_.PrintAll();
+
+    auto constraints = trajopt.GetAllConstraints();
+    int i = 0;
+    for (auto const& binding : constraints) {
+      auto const& c = binding.evaluator();
+      //      if (c->get_description() != "rom_dyn_1_0") {
+      //        continue;
+      //      }
+      cout << "================== i = " << i << ": ";
+      std::cout << c->get_description() << std::endl;
+      int n = c->num_constraints();
+      VectorXd lb = c->lower_bound();
+      VectorXd ub = c->upper_bound();
+      VectorXd input = trajopt.GetInitialGuess(binding.variables());
+      // cout << "eval point = " << input << endl;
+      drake::VectorX<double> output(n);
+      c.get()->Eval(input, &output);
+      for (int j = 0; j < n; j++) {
+        cout << lb(j) << ", " << output(j) << ", " << ub(j) << endl;
+      }
+      i++;
+    }
+
+    /*auto costs = trajopt.GetAllCosts();
+    int i = 0;
+    for (auto const& binding : costs) {
+      auto const& c = binding.evaluator();
+      cout << "================== i = " << i << ": ";
+      std::cout << c->get_description() << std::endl;
+      VectorXd input = trajopt.GetInitialGuess(binding.variables());
+      //    cout << "eval point = " << input << endl;
+      drake::VectorX<double> output(1);
+      c.get()->Eval(input, &output);
+      cout << output(0) << endl;
+      i++;
+    }*/
   }
 
   // Testing -- store the initial guess to the result (to visualize init guess)
@@ -742,9 +806,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Check constraint violation
   if (true) {
-    double tol = param_.feas_tol;
-    //    double tol = 1e-3;
-    solvers::CheckGenericConstraints(trajopt, result, tol);
+    //    double tol = param_.feas_tol;
+    //    //    double tol = 1e-3;
+    //    solvers::CheckGenericConstraints(trajopt, result, tol);
   }
 
   // Extract and save solution into files (for debugging)
@@ -792,7 +856,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     std::cout << "Wrote to file: " << dir_data + file_name << std::endl;*/
 
     /// Save files for reproducing the same result
-     cout << "x_init = " << x_init << endl;
+    // cout << "x_init = " << x_init << endl;
     writeCSV(param_.dir_data + prefix + string("x_init.csv"), x_init, true);
     writeCSV(param_.dir_data + prefix + string("init_phase.csv"),
              init_phase * VectorXd::Ones(1), true);
@@ -800,6 +864,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
              is_right_stance * VectorXd::Ones(1), true);
     writeCSV(param_.dir_data + prefix + string("init_file.csv"),
              trajopt.initial_guess(), true);
+    writeCSV(param_.dir_data + prefix + string("current_time.csv"),
+             current_time * VectorXd::Ones(1), true);
   }
 
   if (true) {

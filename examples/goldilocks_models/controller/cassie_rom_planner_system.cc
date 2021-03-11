@@ -589,7 +589,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Testing -- solve with another solver
-  if (false) {
+  if (true) {
     start = std::chrono::high_resolution_clock::now();
     drake::solvers::MathematicalProgramResult result2;
     solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,
@@ -609,49 +609,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Testing -- print all param, costs and constriants for debugging
-  bool print_all_costs_and_constraints = false;
-  if (print_all_costs_and_constraints) {
-    cout.precision(dbl::max_digits10);
-    //    cout << "dbl::max_digits10 = " << dbl::max_digits10 << endl;
-    // cout << "trajopt.initial_guess() = " << trajopt.initial_guess() << endl;
-    /*param_.PrintAll();
-
-    auto constraints = trajopt.GetAllConstraints();
-    int i = 0;
-    for (auto const& binding : constraints) {
-      auto const& c = binding.evaluator();
-      if (c->get_description() != "rom_dyn_1_0") {
-        continue;
-      }
-      cout << "================== i = " << i << ": ";
-      std::cout << c->get_description() << std::endl;
-      int n = c->num_constraints();
-      VectorXd lb = c->lower_bound();
-      VectorXd ub = c->upper_bound();
-      VectorXd input = trajopt.GetInitialGuess(binding.variables());
-      // cout << "eval point = " << input << endl;
-      drake::VectorX<double> output(n);
-      c.get()->Eval(input, &output);
-      for (int j = 0; j < n; j++) {
-        cout << lb(j) << ", " << output(j) << ", " << ub(j) << endl;
-      }
-      i++;
-    }*/
-
-    /*auto costs = trajopt.GetAllCosts();
-    int i = 0;
-    for (auto const& binding : costs) {
-      auto const& c = binding.evaluator();
-      cout << "================== i = " << i << ": ";
-      std::cout << c->get_description() << std::endl;
-      VectorXd input = trajopt.GetInitialGuess(binding.variables());
-      //    cout << "eval point = " << input << endl;
-      drake::VectorX<double> output(1);
-      c.get()->Eval(input, &output);
-      cout << output(0) << endl;
-      i++;
-    }*/
-  }
+  PrintAllCostsAndConstraints(trajopt);
 
   // Testing -- store the initial guess to the result (to visualize init guess)
   // result.set_x_val(trajopt.initial_guess());
@@ -888,6 +846,50 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   counter_++;
+}
+
+void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(
+    const RomTrajOptCassie& trajopt) const {
+  cout.precision(dbl::max_digits10);
+  //    cout << "dbl::max_digits10 = " << dbl::max_digits10 << endl;
+  // cout << "trajopt.initial_guess() = " << trajopt.initial_guess() << endl;
+  // param_.PrintAll();
+
+  auto constraints = trajopt.GetAllConstraints();
+  int i = 0;
+  for (auto const& binding : constraints) {
+    auto const& c = binding.evaluator();
+    if (c->get_description() != "rom_dyn_1_0") {
+      continue;
+    }
+    cout << "================== i = " << i << ": ";
+    std::cout << c->get_description() << std::endl;
+    int n = c->num_constraints();
+    VectorXd lb = c->lower_bound();
+    VectorXd ub = c->upper_bound();
+    VectorXd input = trajopt.GetInitialGuess(binding.variables());
+    // cout << "eval point = " << input << endl;
+    drake::VectorX<double> output(n);
+    c.get()->Eval(input, &output);
+    for (int j = 0; j < n; j++) {
+      cout << lb(j) << ", " << output(j) << ", " << ub(j) << endl;
+    }
+    i++;
+  }
+
+  /*auto costs = trajopt.GetAllCosts();
+  int i = 0;
+  for (auto const& binding : costs) {
+    auto const& c = binding.evaluator();
+    cout << "================== i = " << i << ": ";
+    std::cout << c->get_description() << std::endl;
+    VectorXd input = trajopt.GetInitialGuess(binding.variables());
+    //    cout << "eval point = " << input << endl;
+    drake::VectorX<double> output(1);
+    c.get()->Eval(input, &output);
+    cout << output(0) << endl;
+    i++;
+  }*/
 }
 
 void CassiePlannerWithMixedRomFom::WarmStartGuess(

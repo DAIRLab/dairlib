@@ -118,6 +118,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_saved_traj* traj_msg) const;
 
+  void PrintAllCostsAndConstraints(const RomTrajOptCassie &trajopt) const;
   void WarmStartGuess(
       const Eigen::VectorXd& final_position, int global_fsm_idx,
       int first_mode_knot_idx,

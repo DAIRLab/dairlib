@@ -597,11 +597,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     start = std::chrono::high_resolution_clock::now();
     drake::solvers::MathematicalProgramResult result2;
     if (param_.use_ipopt) {
-      solver_ipopt_->Solve(trajopt, trajopt.initial_guess(),
-                           solver_option_ipopt_, &result2);
-    } else {
       solver_snopt_->Solve(trajopt, trajopt.initial_guess(),
                            solver_option_snopt_, &result2);
+    } else {
+      solver_ipopt_->Solve(trajopt, trajopt.initial_guess(),
+                           solver_option_ipopt_, &result2);
     }
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start;

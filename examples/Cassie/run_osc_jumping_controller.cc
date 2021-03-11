@@ -10,10 +10,10 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
-#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
 #include "examples/Cassie/osc_jump/pelvis_trans_traj_generator.h"
+#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -72,9 +72,11 @@ DEFINE_string(simulator, "DRAKE",
               "contact information. Other options include MUJOCO and soon to "
               "include contact results from the GM contact estimator.");
 DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
-DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
+DEFINE_string(folder_path,
+              "examples/impact_invariant_control/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
-DEFINE_string(traj_name, "", "File to load saved trajectories from");
+DEFINE_string(traj_name, "jumping_0.15h_0.3d",
+              "File to load saved trajectories from");
 DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
               "Filepath containing gains");
 
@@ -136,16 +138,16 @@ int DoMain(int argc, char* argv[]) {
   for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
         output_trajs.GetTrajectory("pelvis_trans_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_foot_traj =
         output_trajs.GetTrajectory("left_foot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_foot_traj =
         output_trajs.GetTrajectory("right_foot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
         output_trajs.GetTrajectory("pelvis_rot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     pelvis_trans_traj.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_pelvis_trans_trajectory.time_vector,
@@ -171,7 +173,7 @@ int DoMain(int argc, char* argv[]) {
   double flight_time =
       FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
   double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) +
-      gains.landing_delay;
+                     gains.landing_delay;
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};
 
@@ -214,8 +216,7 @@ int DoMain(int argc, char* argv[]) {
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
-      gains.impact_threshold,
-      (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
+      gains.impact_threshold, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

@@ -271,7 +271,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   mutable double solve_time_;
 
-  bool use_single_lambda_ = true;
   mutable Eigen::VectorXd ii_lambda_sol_;
   mutable Eigen::MatrixXd M_Jt_;
   std::map<int, int> active_contact_dim_ = {};

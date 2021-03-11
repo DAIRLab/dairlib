@@ -2,6 +2,7 @@
 
 #include <math.h>     /* fmod */
 #include <algorithm>  // std::max
+#include <limits>
 
 #include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
@@ -15,6 +16,8 @@
 #include "drake/solvers/solve.h"
 
 #include <string>
+
+typedef std::numeric_limits<double> dbl;
 
 using std::cout;
 using std::endl;
@@ -608,15 +611,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Testing -- print all param, costs and constriants for debugging
   bool print_all_costs_and_constraints = false;
   if (print_all_costs_and_constraints) {
-    param_.PrintAll();
+    cout.precision(dbl::max_digits10);
+    //    cout << "dbl::max_digits10 = " << dbl::max_digits10 << endl;
+    // cout << "trajopt.initial_guess() = " << trajopt.initial_guess() << endl;
+    /*param_.PrintAll();
 
     auto constraints = trajopt.GetAllConstraints();
     int i = 0;
     for (auto const& binding : constraints) {
       auto const& c = binding.evaluator();
-      //      if (c->get_description() != "rom_dyn_1_0") {
-      //        continue;
-      //      }
+      if (c->get_description() != "rom_dyn_1_0") {
+        continue;
+      }
       cout << "================== i = " << i << ": ";
       std::cout << c->get_description() << std::endl;
       int n = c->num_constraints();
@@ -630,7 +636,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         cout << lb(j) << ", " << output(j) << ", " << ub(j) << endl;
       }
       i++;
-    }
+    }*/
 
     /*auto costs = trajopt.GetAllCosts();
     int i = 0;

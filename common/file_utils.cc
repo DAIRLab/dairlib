@@ -1,23 +1,27 @@
-#include <vector>
 #include "common/file_utils.h"
+#include <limits>
+#include <vector>
 #include "drake/common/drake_assert.h"
 
-using Eigen::MatrixXd;
-using Eigen::Matrix;
 using Eigen::Dynamic;
 using Eigen::Map;
+using Eigen::Matrix;
+using Eigen::MatrixXd;
 using Eigen::RowMajor;
-using std::ofstream;
+using std::cout;
 using std::ifstream;
-using std::cout;
+using std::ofstream;
 using std::string;
-using std::cout;
 
 const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
                                        Eigen::DontAlignCols, ", ", "\n");
 const static Eigen::IOFormat CSVFormatFullPrec(Eigen::FullPrecision,
                                                Eigen::DontAlignCols, ", ",
                                                "\n");
+
+typedef std::numeric_limits<double> dbl;
+const static Eigen::IOFormat CSVFormatManuallySpecifiedPrecision(
+    dbl::max_digits10, Eigen::DontAlignCols, ", ", "\n");
 
 namespace dairlib {
 
@@ -47,7 +51,7 @@ void writeCSV(const std::string& path, const MatrixXd& M, bool full_precision) {
   ofstream outfile;
   outfile.open(path);
   if (full_precision) {
-    outfile << M.format(CSVFormatFullPrec);
+    outfile << M.format(CSVFormatManuallySpecifiedPrecision);
   } else {
     outfile << M.format(CSVFormat);
   }

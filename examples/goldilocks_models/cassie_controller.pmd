@@ -46,7 +46,7 @@ group "3.drake-simulator" {
         host = "localhost";
     }
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=3 --target_realtime_rate=0.1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=2 --target_realtime_rate=0.1";
         host = "localhost";
     }
 }
@@ -60,8 +60,12 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image   --script examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
-    cmd "2. cassie planner pose (multi-pose)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false";
+    cmd "2.0. cassie planner pose (multi-pose)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=0";
+        host = "localhost";
+    }
+    cmd "2.1. cassie planner pose (multi-pose); files with debug_ prefix" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=-1";
         host = "localhost";
     }
 }

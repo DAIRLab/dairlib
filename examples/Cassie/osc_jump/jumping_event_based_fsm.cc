@@ -150,28 +150,19 @@ void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
   double timestamp = robot_output->get_timestamp();
 
   VectorXd is_near_impact = VectorXd::Zero(2);
+  auto alpha_func = blend_func_ == SIGMOID ? &alpha_sigmoid : &alpha_exp;
+
   // Get current finite state
   if (abs(timestamp - transition_times_[FLIGHT]) < impact_threshold_) {
-    double blend_window = blend_func_ == SIGMOID
-                          ? 1.5 * impact_threshold_
-                          : impact_threshold_;
+    double blend_window =
+        blend_func_ == SIGMOID ? 1.5 * impact_threshold_ : impact_threshold_;
     if (abs(timestamp - transition_times_[FLIGHT]) < blend_window) {
       if (timestamp < transition_times_[FLIGHT]) {
-        if (blend_func_ == SIGMOID) {
-          is_near_impact(0) = alpha_sigmoid(timestamp - transition_times_[FLIGHT],
-                                              tau_, impact_threshold_);
-        } else {
-          is_near_impact(0) = alpha_exp(timestamp - transition_times_[FLIGHT], tau_,
-                                          impact_threshold_);
-        }
+        is_near_impact(0) = alpha_func(timestamp - transition_times_[FLIGHT],
+                                       tau_, impact_threshold_);
       } else {
-        if (blend_func_ == SIGMOID) {
-          is_near_impact(0) = alpha_sigmoid(transition_times_[FLIGHT] - timestamp,
-                                              tau_, impact_threshold_);
-        } else {
-          is_near_impact(0) = alpha_exp(transition_times_[FLIGHT] - timestamp, tau_,
-                                          impact_threshold_);
-        }
+        is_near_impact(0) = alpha_func(transition_times_[FLIGHT] - timestamp,
+                                       tau_, impact_threshold_);
       }
       is_near_impact(1) = LAND;
     }

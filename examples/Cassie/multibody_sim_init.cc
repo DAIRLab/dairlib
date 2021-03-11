@@ -5,10 +5,8 @@
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/dircon_saved_trajectory.h"
-#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
@@ -19,16 +17,14 @@
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
-#include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
-#include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
-namespace dairlib {
+
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
@@ -39,15 +35,13 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 
 using drake::systems::lcm::LcmPublisherSystem;
-using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
 using drake::systems::lcm::LcmSubscriberSystem;
 
 using drake::math::RotationMatrix;
 using drake::trajectories::PiecewisePolynomial;
-using Eigen::Matrix3d;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
+
+namespace dairlib {
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -96,7 +90,7 @@ int do_main(int argc, char* argv[]) {
     std::string terrain_name =
         FindResourceOrThrow("examples/impact_invaraint_control/platform.urdf");
     parser.AddModelFromFile(terrain_name);
-    Vector3d offset;
+    Eigen::Vector3d offset;
     offset << 0.15, 0, FLAGS_terrain_height;
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                      drake::math::RigidTransform<double>(offset));
@@ -112,7 +106,6 @@ int do_main(int argc, char* argv[]) {
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
-  int nx = nq + nv;
 
   // Create maps for joints
   std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
@@ -140,7 +133,7 @@ int do_main(int argc, char* argv[]) {
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
-  *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
+      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
@@ -178,15 +171,15 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-  //  if (FLAGS_terrain_height != 0.0) {
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
-  //  }
+  if (FLAGS_terrain_height != 0.0) {
+    drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  }
 
   auto diagram = builder.Build();
 
   // Create a context for this system:
   std::unique_ptr<Context<double>> diagram_context =
-                                       diagram->CreateDefaultContext();
+      diagram->CreateDefaultContext();
   diagram_context->EnableCaching();
   diagram->SetDefaultContext(diagram_context.get());
   Context<double>& plant_context =
@@ -207,12 +200,8 @@ int do_main(int argc, char* argv[]) {
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
 
-  VectorXd x_init =
+  Eigen::VectorXd x_init =
       map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
-
-  if (FLAGS_terrain_height < 0.0) {
-    x_init(6) -= FLAGS_terrain_height;
-  }
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 

@@ -15,7 +15,7 @@ group "0.operator" {
 
 group "5.trajectory-optimization" {
     cmd "dircon_jumping" {
-        exec = "bazel-bin/examples/Cassie/run_dircon_jumping --height=0.15 --distance=0.3 --start_height=0.8 --knot_points=8 --save_filename=\"jumping_0.15h_0.3d\" --load_filename=\"jumping_0.2h_0.3d\"";
+        exec = "bazel-bin/examples/Cassie/run_dircon_jumping --height=0.15 --distance=0.3 --start_height=0.8 --knot_points=8 --save_filename=\"jumping_0.15h_0.3d\" --load_filename=\"jumping_0.15h_0.3d\"";
         host = "localhost";
     }
     cmd "visualize_jumping_trajectory" {
@@ -24,14 +24,6 @@ group "5.trajectory-optimization" {
     }
     cmd "convert_traj_for_controller" {
         exec = "bazel-bin/examples/Cassie/osc_jump/convert_traj_for_controller --folder_path=\"/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/\" --trajectory_name=\"jumping_0.15h_0.3d\" --relative_feet=1";
-        host = "localhost";
-    }
-    cmd "visualize_walking_trajectory" {
-        exec = "bazel-bin/examples/Cassie/visualize_trajectory --folder_path=\"/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/\"  --trajectory_name=\"walking_0.16.0\" --realtime_rate=0.1 --num_poses=6 --visualize_mode=1 --use_transparency=1";
-        host = "localhost";
-    }
-    cmd "dircon_walking" {
-        exec = "bazel-bin/examples/Cassie/run_dircon_walking --stride_length=0.2 --knot_points=16 --save_filename=walking_0.16.0 --load_filename=walking_0.16.6 --duration=0.8 --scale_constraints=1";
         host = "localhost";
     }
 }

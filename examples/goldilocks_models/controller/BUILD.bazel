@@ -30,6 +30,7 @@ cc_library(
         "//examples/Cassie:cassie_utils",
         "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "//systems/controllers/osc:osc_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

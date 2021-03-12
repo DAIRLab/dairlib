@@ -89,7 +89,8 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
-  std::map<std::string, int> positions_map_;
+  std::map<std::string, int> pos_map_;
+  std::map<std::string, int> vel_map_;
 
   int nq_;
 
@@ -100,6 +101,10 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   // Testing
   const drake::multibody::MultibodyPlant<double>& plant_feedback_;
   const drake::multibody::MultibodyPlant<double>& plant_controls_;
+
+  // IK
+  double ik_feas_tol_ = 1e-2;
+  double ik_opt_tol_ = 1e-2;
 };
 
 }  // namespace goldilocks_models

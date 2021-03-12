@@ -593,7 +593,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Testing -- solve with another solver
-  if (true) {
+  if (false) {
     start = std::chrono::high_resolution_clock::now();
     drake::solvers::MathematicalProgramResult result2;
     if (param_.use_ipopt) {

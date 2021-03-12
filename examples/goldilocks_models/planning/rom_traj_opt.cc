@@ -345,7 +345,8 @@ RomTrajOpt::RomTrajOpt(
       }
     }
 
-    // TODO: Quaternion unity norm constraint.
+    // Quaternion unit norm constraint (it solves faster with this constraint)
+    PrintStatus("Adding constraint -- full-order model unit norm quaternion");
     auto quat_norm_constraint =
         std::make_shared<drake::solvers::QuadraticConstraint>(
             2 * MatrixXd::Identity(4, 4), VectorXd::Zero(4), 1, 1);

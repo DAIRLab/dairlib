@@ -333,7 +333,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  if (debug_mode_) {
   cout.precision(dbl::max_digits10);
   cout << "Used for the planner: \n";
-  cout << "  x_init  = " << x_init << endl;
+  //  cout << "  x_init  = " << x_init << endl;
   cout << "  current_time  = " << current_time << endl;
   cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
   cout << "  init_phase  = " << init_phase << endl;
@@ -488,7 +488,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   PrintStatus("Initial guesses ===============");
 
   // Initial guess for all variables
-  if (!param_.init_file.empty()) {
+  //  if (!param_.init_file.empty()) {
+  if (counter_ == 0 && !param_.init_file.empty()) {
     PrintStatus("Set initial guess from the file " + param_.init_file);
     VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
     // writeCSV(param_.dir_data + "testing_" + string("init_file.csv"), z0,
@@ -602,6 +603,27 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     } else {
       solver_ipopt_->Solve(trajopt, trajopt.initial_guess(),
                            solver_option_ipopt_, &result2);
+    }
+    finish = std::chrono::high_resolution_clock::now();
+    elapsed = finish - start;
+    cout << "    Time of arrival: " << current_time << " | ";
+    cout << "Solve time:" << elapsed.count() << " | ";
+    cout << result2.get_solution_result() << " | ";
+    cout << "Cost:" << result2.get_optimal_cost() << "\n";
+  }
+
+  // Testing -- solve with another solver and feed it with solution as init
+  // guess
+  if (false) {
+    cout << "Use previous solution as a initial condition...\n";
+    start = std::chrono::high_resolution_clock::now();
+    drake::solvers::MathematicalProgramResult result2;
+    if (param_.use_ipopt) {
+      solver_snopt_->Solve(trajopt, result.GetSolution(), solver_option_snopt_,
+                           &result2);
+    } else {
+      solver_ipopt_->Solve(trajopt, result.GetSolution(), solver_option_ipopt_,
+                           &result2);
     }
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start;

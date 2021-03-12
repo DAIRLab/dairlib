@@ -299,10 +299,10 @@ void InitialStateForPlanner::CalcState(
   // Read in current robot state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd x_init(map_position_from_spring_to_no_spring_.rows() +
-                  map_velocity_from_spring_to_no_spring_.rows());
-  x_init << map_position_from_spring_to_no_spring_ *
-                robot_output->GetPositions(),
+  VectorXd x_init_original(map_position_from_spring_to_no_spring_.rows() +
+                           map_velocity_from_spring_to_no_spring_.rows());
+  x_init_original << map_position_from_spring_to_no_spring_ *
+                         robot_output->GetPositions(),
       map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
 
   // Get phase in the first mode
@@ -324,6 +324,7 @@ void InitialStateForPlanner::CalcState(
 
   // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
   // frame is in the world’s x-z plane and toward world’s x axis.
+  VectorXd x_init = x_init_original;
   Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
   Vector3d pelvis_x = quat.toRotationMatrix().col(0);
   pelvis_x(2) = 0;
@@ -363,13 +364,12 @@ void InitialStateForPlanner::CalcState(
               " =======================\n\n";
   cout << "=== COM and stance foot ===\n";
   cout << "\ncassie without springs:\n";
-  CalcCOM(plant_controls_, x_init);
+  CalcCOM(plant_controls_, x_init_original);
   cout << "\ncassie with springs:\n";
   CalcCOM(plant_feedback_, robot_output->GetState());
   cout << "=== states ===\n\n";
-  cout << "FOM state (without springs) = \n" << x_init << endl;
-  cout << "FOM state (with springs) = \n" << robot_output->GetState() <<
-  "\n\n";
+  cout << "FOM state (without springs) = \n" << x_init_original << endl;
+  cout << "FOM state (with springs) = \n" << robot_output->GetState() << "\n\n";
   cout << "\n";
 
   // Testing -- use IK to get a state of the model without springs so that the
@@ -399,8 +399,8 @@ void InitialStateForPlanner::CalcState(
   // Configuration constraint
   // We try full position bounding box constraint for now
   ik.get_mutable_prog()->AddBoundingBoxConstraint(
-      x_init.head(plant_controls_.num_positions()),
-      x_init.head(plant_controls_.num_positions()), ik.q());
+      x_init_original.head(plant_controls_.num_positions()),
+      x_init_original.head(plant_controls_.num_positions()), ik.q());
 
   // Four bar linkage constraint (without spring)
   // Skipped because we have configuration constraint
@@ -408,7 +408,7 @@ void InitialStateForPlanner::CalcState(
   // Foot vel constraint
   auto context_wo_spr = plant_controls_.CreateDefaultContext();
   plant_controls_.SetPositions(context_wo_spr.get(),
-                               x_init.head(plant_controls_.num_positions()));
+                               x_init_original.head(plant_controls_.num_positions()));
   auto left_toe_origin =
       BodyPoint(Vector3d::Zero(), plant_controls_.GetFrameByName("toe_left"));
   auto right_toe_origin =
@@ -428,7 +428,7 @@ void InitialStateForPlanner::CalcState(
       vel_map_.at("ankle_joint_leftdot"), vel_map_.at("ankle_joint_rightdot")};
   auto foot_vel_constraint = std::make_shared<FootVelConstraint>(
       left_foot_vel, right_foot_vel, plant_controls_,
-      x_init.tail(plant_controls_.num_velocities()), J_lf_wo_spr, J_rf_wo_spr,
+      x_init_original.tail(plant_controls_.num_velocities()), J_lf_wo_spr, J_rf_wo_spr,
       idx_list);
   ik.get_mutable_prog()->AddConstraint(
       foot_vel_constraint,

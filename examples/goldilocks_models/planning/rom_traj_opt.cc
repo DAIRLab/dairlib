@@ -210,7 +210,7 @@ RomTrajOpt::RomTrajOpt(
     // Add RoM-FoM mapping constraints
     // TODO: might need to rotate the local frame to align with the global
     std::set<int> empty_idx = {};
-    if (false /*i == 0*/) {
+    if (i == 0 && false) {
       PrintStatus(
           "Adding constraint -- RoM-FoM mapping (start of mode; relaxed)");
       int n_eps = relax_index.size();
@@ -345,6 +345,13 @@ RomTrajOpt::RomTrajOpt(
       }
     }
 
+    // TODO: Quaternion unity norm constraint.
+    auto quat_norm_constraint =
+        std::make_shared<drake::solvers::QuadraticConstraint>(
+            2 * MatrixXd::Identity(4, 4), VectorXd::Zero(4), 1, 1);
+    AddConstraint(quat_norm_constraint, x0.head(4));
+    AddConstraint(quat_norm_constraint, xf.head(4));
+
     // Full order model joint limits
     PrintStatus("Adding constraint -- full-order model joint limit");
     for (const auto& name_lb_ub : fom_joint_name_lb_ub) {
@@ -358,16 +365,25 @@ RomTrajOpt::RomTrajOpt(
       AddBoundingBoxConstraint(std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
                                xf(positions_map.at(std::get<0>(name_lb_ub))));
     }
+    PrintStatus(
+        "Adding constraint -- full-order model floating base pos (with "
+        "heuristics!)");
+    // TODO: make a bound on the quaternion. E.g. We don't want the robot to
+    //  turn to the back.
     if (i != 0) {
       // We don't impose constraint on the initial state (because it's
       // constrained already)
       AddBoundingBoxConstraint(0, 1, x0(0));
-      AddBoundingBoxConstraint(-1, 1, x0.segment(1, 3));
-      AddBoundingBoxConstraint(-2, 2, x0.segment(4, 3));
+      AddBoundingBoxConstraint(-1, 1, x0.segment<3>(1));
+      AddBoundingBoxConstraint(-2, 2, x0.segment<2>(4));
+      // Heuristics -- prevent the pelvis go too low
+      AddBoundingBoxConstraint(0.6, 1, x0.segment<1>(6));
     }
     AddBoundingBoxConstraint(0, 1, xf(0));
-    AddBoundingBoxConstraint(-1, 1, xf.segment(1, 3));
-    AddBoundingBoxConstraint(-2, 2, xf.segment(4, 3));
+    AddBoundingBoxConstraint(-1, 1, xf.segment<3>(1));
+    AddBoundingBoxConstraint(-2, 2, xf.segment<2>(4));
+    // Heuristics -- prevent the pelvis go too low
+    AddBoundingBoxConstraint(0.5, 1.1, xf.segment<1>(6));
 
     // Full order model vel limits
     PrintStatus("Adding constraint -- full-order model joint vel");

@@ -498,6 +498,8 @@ void InitialStateForPlanner::CalcState(
       result.GetSolution(ankle_joint_right);
   CalcCOM(plant_controls_, x_init_adjusted);
   cout << "\n\n";
+
+  output->SetState(x_init_adjusted);
 }
 
 }  // namespace goldilocks_models

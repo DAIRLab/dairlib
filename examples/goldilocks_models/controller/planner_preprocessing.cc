@@ -452,22 +452,18 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
       vel_map_.at("knee_leftdot"), vel_map_.at("knee_rightdot"),
       vel_map_.at("ankle_joint_leftdot"), vel_map_.at("ankle_joint_rightdot")};
 
-  drake::multibody::InverseKinematics ik(plant_controls_);
-  auto knee_left =
-      ik.get_mutable_prog()->NewContinuousVariables<1>("knee_left");
-  auto knee_right =
-      ik.get_mutable_prog()->NewContinuousVariables<1>("knee_right");
-  auto ankle_joint_left =
-      ik.get_mutable_prog()->NewContinuousVariables<1>("ankle_joint_left");
-  auto ankle_joint_right =
-      ik.get_mutable_prog()->NewContinuousVariables<1>("ankle_joint_right");
-  auto vel_eps = ik.get_mutable_prog()->NewContinuousVariables<6>("eps");
+  MathematicalProgram ik;
+  auto knee_left = ik.NewContinuousVariables<1>("knee_left");
+  auto knee_right = ik.NewContinuousVariables<1>("knee_right");
+  auto ankle_joint_left = ik.NewContinuousVariables<1>("ankle_joint_left");
+  auto ankle_joint_right = ik.NewContinuousVariables<1>("ankle_joint_right");
+  auto vel_eps = ik.NewContinuousVariables<6>("eps");
 
   // Configuration constraint
   // We try full position bounding box constraint for now
-  ik.get_mutable_prog()->AddBoundingBoxConstraint(
+  /*ik.AddBoundingBoxConstraint(
       x_init_original.head(plant_controls_.num_positions()),
-      x_init_original.head(plant_controls_.num_positions()), ik.q());
+      x_init_original.head(plant_controls_.num_positions()), ik.q());*/
 
   // Four bar linkage constraint (without spring)
   // Skipped because we have configuration constraint
@@ -495,40 +491,35 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
       left_foot_vel, right_foot_vel, plant_controls_,
       x_init_original.tail(plant_controls_.num_velocities()), J_lf_wo_spr,
       J_rf_wo_spr, idx_list);
-  ik.get_mutable_prog()->AddConstraint(
+  ik.AddConstraint(
       foot_vel_constraint,
       {knee_left, knee_right, ankle_joint_left, ankle_joint_right, vel_eps});
 
   // Add cost
-  ik.get_mutable_prog()->AddQuadraticCost(MatrixXd::Identity(6, 6),
-                                          VectorXd::Zero(6), vel_eps);
+  ik.AddQuadraticCost(MatrixXd::Identity(6, 6), VectorXd::Zero(6), vel_eps);
   // Initial guess
-  ik.get_mutable_prog()->SetInitialGuess(knee_left, 0.01 * VectorXd::Random(1));
-  ik.get_mutable_prog()->SetInitialGuess(knee_right,
-                                         0.01 * VectorXd::Random(1));
-  ik.get_mutable_prog()->SetInitialGuess(ankle_joint_left,
-                                         0.01 * VectorXd::Random(1));
-  ik.get_mutable_prog()->SetInitialGuess(ankle_joint_right,
-                                         0.01 * VectorXd::Random(1));
-  ik.get_mutable_prog()->SetInitialGuess(vel_eps, 0.01 * VectorXd::Random(6));
+  ik.SetInitialGuess(knee_left, 0.01 * VectorXd::Random(1));
+  ik.SetInitialGuess(knee_right, 0.01 * VectorXd::Random(1));
+  ik.SetInitialGuess(ankle_joint_left, 0.01 * VectorXd::Random(1));
+  ik.SetInitialGuess(ankle_joint_right, 0.01 * VectorXd::Random(1));
+  ik.SetInitialGuess(vel_eps, 0.01 * VectorXd::Random(6));
 
   /// Solve
   //  if (debug_mode_) {
   if (true) {
-    ik.get_mutable_prog()->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                                           "Print file",
-                                           "../snopt_ik_for_feet.out");
+    ik.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                       "../snopt_ik_for_feet.out");
   }
-  ik.get_mutable_prog()->SetSolverOption(
-      drake::solvers::SnoptSolver::id(), "Major optimality tolerance",
-      ik_feas_tol_);  // target nonlinear constraint violation
-  ik.get_mutable_prog()->SetSolverOption(
+  ik.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                     "Major optimality tolerance",
+                     ik_feas_tol_);  // target nonlinear constraint violation
+  ik.SetSolverOption(
       drake::solvers::SnoptSolver::id(), "Major feasibility tolerance",
       ik_opt_tol_);  // target complementarity gap
                      // TODO: can I move SnoptSolver outside to speed up?
   drake::solvers::SnoptSolver snopt_solver;
   auto start_solve = std::chrono::high_resolution_clock::now();
-  const auto result = snopt_solver.Solve(ik.prog(), ik.prog().initial_guess());
+  const auto result = snopt_solver.Solve(ik, ik.initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double> elapsed_build = start_solve - start_build;

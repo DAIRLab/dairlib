@@ -20,6 +20,7 @@ using drake::multibody::JacobianWrtVariable;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::SolutionResult;
+using drake::solvers::VectorXDecisionVariable;
 using drake::systems::BasicVector;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
@@ -350,7 +351,6 @@ void InitialStateForPlanner::CalcState(
   //  cout << "FOM state (without springs, adjusted) = \n" << x_init << endl;
   //  cout << "FOM state (with springs) = \n" << robot_output->GetState() <<
   //  "\n\n";
-  cout << "\n=== Feet vel differences ===\n";
   Vector3d left_foot_vel_wo_spr_original;
   Vector3d right_foot_vel_wo_spr_original;
   Vector3d left_foot_vel_wo_spr;
@@ -359,10 +359,12 @@ void InitialStateForPlanner::CalcState(
               &right_foot_vel_wo_spr_original);
   CalcFeetVel(plant_controls_, x_init, &left_foot_vel_wo_spr,
               &right_foot_vel_wo_spr);
+  //  if (true) {
   if ((left_foot_vel_w_spr - left_foot_vel_wo_spr).norm() +
           (right_foot_vel_w_spr - right_foot_vel_wo_spr).norm() >
       (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).norm() +
           (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).norm()) {
+    cout << "\n=== Feet vel differences ===\n";
     cout << "left_foot_vel_w_spr = " << left_foot_vel_w_spr.transpose() << endl;
     cout << "right_foot_vel_w_spr = " << right_foot_vel_w_spr.transpose()
          << endl;
@@ -452,23 +454,7 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
       vel_map_.at("knee_leftdot"), vel_map_.at("knee_rightdot"),
       vel_map_.at("ankle_joint_leftdot"), vel_map_.at("ankle_joint_rightdot")};
 
-  MathematicalProgram ik;
-  auto knee_left = ik.NewContinuousVariables<1>("knee_left");
-  auto knee_right = ik.NewContinuousVariables<1>("knee_right");
-  auto ankle_joint_left = ik.NewContinuousVariables<1>("ankle_joint_left");
-  auto ankle_joint_right = ik.NewContinuousVariables<1>("ankle_joint_right");
-  auto vel_eps = ik.NewContinuousVariables<6>("eps");
-
-  // Configuration constraint
-  // We try full position bounding box constraint for now
-  /*ik.AddBoundingBoxConstraint(
-      x_init_original.head(plant_controls_.num_positions()),
-      x_init_original.head(plant_controls_.num_positions()), ik.q());*/
-
-  // Four bar linkage constraint (without spring)
-  // Skipped because we have configuration constraint
-
-  // Foot vel constraint
+  // Get Jacobian for the feet
   auto context_wo_spr = plant_controls_.CreateDefaultContext();
   plant_controls_.SetPositions(
       context_wo_spr.get(),
@@ -487,26 +473,76 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
       *context_wo_spr, JacobianWrtVariable::kV, right_toe_origin.second,
       right_toe_origin.first, plant_controls_.world_frame(),
       plant_controls_.world_frame(), &J_rf_wo_spr);
-  auto foot_vel_constraint = std::make_shared<FootVelConstraint>(
-      left_foot_vel, right_foot_vel, plant_controls_,
-      x_init_original.tail(plant_controls_.num_velocities()), J_lf_wo_spr,
-      J_rf_wo_spr, idx_list);
-  ik.AddConstraint(
-      foot_vel_constraint,
-      {knee_left, knee_right, ankle_joint_left, ankle_joint_right, vel_eps});
 
-  // Add cost
-  ik.AddQuadraticCost(MatrixXd::Identity(6, 6), VectorXd::Zero(6), vel_eps);
+  // Construct MP
+  MathematicalProgram ik;
+  auto knee_left = ik.NewContinuousVariables<1>("knee_left");
+  auto knee_right = ik.NewContinuousVariables<1>("knee_right");
+  auto ankle_joint_left = ik.NewContinuousVariables<1>("ankle_joint_left");
+  auto ankle_joint_right = ik.NewContinuousVariables<1>("ankle_joint_right");
+
+  bool constraint_version = false;
+  int n_eps = constraint_version ? 6 : 0;
+  VectorXDecisionVariable vel_eps =
+      constraint_version ? ik.NewContinuousVariables(n_eps, "eps")
+                         : ik.NewContinuousVariables(0, "eps");
+  if (constraint_version) {
+    // 1. Constraint version
+
+    // Foot vel constraint
+    auto foot_vel_constraint = std::make_shared<FootVelConstraint>(
+        left_foot_vel, right_foot_vel, plant_controls_,
+        x_init_original.tail(plant_controls_.num_velocities()), J_lf_wo_spr,
+        J_rf_wo_spr, idx_list);
+    ik.AddConstraint(
+        foot_vel_constraint,
+        {knee_left, knee_right, ankle_joint_left, ankle_joint_right, vel_eps});
+
+    // Add cost
+    ik.AddQuadraticCost(MatrixXd::Identity(6, 6), VectorXd::Zero(6), vel_eps);
+  } else {
+    // 2. Cost-only version
+
+    // Update fill in zero vel for the variables
+    VectorXd v = x_init_original.tail(plant_controls_.num_velocities());
+    for (int i = 0; i < 4; i++) {
+      v(idx_list.at(i)) = 0;
+    }
+
+    // Get matrix A
+    // TODO: if you want to speed up the solve, you can make the A matrix 3x2.
+    //  This is probably unnecessary because the current solve time is 1e-5
+    //  seconds
+    MatrixXd A_lf(3, 4);
+    MatrixXd A_rf(3, 4);
+    for (int i = 0; i < 4; i++) {
+      A_lf.col(i) = J_lf_wo_spr.col(idx_list.at(i));
+      A_rf.col(i) = J_rf_wo_spr.col(idx_list.at(i));
+    }
+    //    cout << "A_lf = \n" << A_lf << endl;
+    //    cout << "A_rf = \n" << A_rf << endl;
+
+    VectorXd b_lf = left_foot_vel - J_lf_wo_spr * v;
+    VectorXd b_rf = right_foot_vel - J_rf_wo_spr * v;
+
+    ik.AddL2NormCost(
+        A_lf, b_lf,
+        {knee_left, knee_right, ankle_joint_left, ankle_joint_right});
+    ik.AddL2NormCost(
+        A_rf, b_rf,
+        {knee_left, knee_right, ankle_joint_left, ankle_joint_right});
+  }
+
   // Initial guess
   ik.SetInitialGuess(knee_left, 0.01 * VectorXd::Random(1));
   ik.SetInitialGuess(knee_right, 0.01 * VectorXd::Random(1));
   ik.SetInitialGuess(ankle_joint_left, 0.01 * VectorXd::Random(1));
   ik.SetInitialGuess(ankle_joint_right, 0.01 * VectorXd::Random(1));
-  ik.SetInitialGuess(vel_eps, 0.01 * VectorXd::Random(6));
+  ik.SetInitialGuess(vel_eps, 0.01 * VectorXd::Random(n_eps));
 
   /// Solve
   //  if (debug_mode_) {
-  if (true) {
+  /*if (true) {
     ik.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
                        "../snopt_ik_for_feet.out");
   }
@@ -517,30 +553,32 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
       drake::solvers::SnoptSolver::id(), "Major feasibility tolerance",
       ik_opt_tol_);  // target complementarity gap
                      // TODO: can I move SnoptSolver outside to speed up?
-  drake::solvers::SnoptSolver snopt_solver;
+  drake::solvers::SnoptSolver snopt_solver;*/
   auto start_solve = std::chrono::high_resolution_clock::now();
-  const auto result = snopt_solver.Solve(ik, ik.initial_guess());
+  //  const auto result = snopt_solver.Solve(ik, ik.initial_guess());
+  const auto result = Solve(ik, ik.initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double> elapsed_build = start_solve - start_build;
   std::chrono::duration<double> elapsed_solve = finish - start_solve;
   SolutionResult solution_result = result.get_solution_result();
+  /*cout << "Solver:" << result.get_solver_id().name() << " | ";
   cout << "Build time:" << elapsed_build.count() << " | ";
   cout << "Solve time:" << elapsed_solve.count() << " | ";
   cout << solution_result << " | ";
-  cout << "Cost:" << result.get_optimal_cost() << "\n";
+  cout << "Cost:" << result.get_optimal_cost() << "\n";*/
 
   /// Get solution
   /*const auto q_sol = result.GetSolution(ik.q());
   VectorXd q_sol_normd(nq_);
   q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(nq_ - 4);*/
 
-  cout << "knee_left= " << result.GetSolution(knee_left) << endl;
+  /*cout << "knee_left= " << result.GetSolution(knee_left) << endl;
   cout << "knee_right= " << result.GetSolution(knee_right) << endl;
   cout << "ankle_joint_left= " << result.GetSolution(ankle_joint_left) << endl;
   cout << "ankle_joint_right= " << result.GetSolution(ankle_joint_right)
        << endl;
-  cout << "vel_eps= " << result.GetSolution(vel_eps) << endl;
+  cout << "vel_eps= " << result.GetSolution(vel_eps) << endl;*/
 
   /// Assign
   x_init->segment<1>(plant_controls_.num_positions() + idx_list[0]) =

@@ -188,9 +188,9 @@ void CalcCOM(const drake::multibody::MultibodyPlant<double>& plant,
   plant.CalcPointsPositions(*context, left_toe_mid.second, left_toe_mid.first,
                             plant.world_frame(), &stance_foot_pos);
   VectorXd pos_st_to_CoM = CoM - stance_foot_pos;
-  cout << "CoM = " << CoM.transpose() << endl;
+  /*cout << "CoM = " << CoM.transpose() << endl;
   cout << "stance_foot_pos = " << stance_foot_pos.transpose() << endl;
-  cout << "pos_st_to_CoM = " << pos_st_to_CoM.transpose() << endl;
+  cout << "pos_st_to_CoM = " << pos_st_to_CoM.transpose() << endl;*/
 
   // Get CoM velocity
   Eigen::MatrixXd J_com(3, plant.num_velocities());
@@ -205,9 +205,9 @@ void CalcCOM(const drake::multibody::MultibodyPlant<double>& plant,
   VectorXd CoM_vel = J_com * state.tail(plant.num_velocities());
   VectorXd stance_foot_vel = J_sf * state.tail(plant.num_velocities());
   VectorXd vel_st_to_CoM = CoM_vel - stance_foot_vel;
-  cout << "CoM_vel= " << CoM_vel.transpose() << endl;
+  /*cout << "CoM_vel= " << CoM_vel.transpose() << endl;
   cout << "stance_foot_vel= " << stance_foot_vel.transpose() << endl;
-  cout << "vel_st_to_CoM= " << vel_st_to_CoM.transpose() << endl;
+  cout << "vel_st_to_CoM= " << vel_st_to_CoM.transpose() << endl;*/
 };
 
 void CalcFeetVel(const drake::multibody::MultibodyPlant<double>& plant,
@@ -229,12 +229,12 @@ void CalcFeetVel(const drake::multibody::MultibodyPlant<double>& plant,
       *context, JacobianWrtVariable::kV, left_toe_origin.second,
       left_toe_origin.first, plant.world_frame(), plant.world_frame(), &J);
   (*left_foot_vel) = J * state.tail(plant.num_velocities());
-  cout << "left_foot_vel= " << left_foot_vel->transpose() << endl;
+  //  cout << "left_foot_vel= " << left_foot_vel->transpose() << endl;
   plant.CalcJacobianTranslationalVelocity(
       *context, JacobianWrtVariable::kV, right_toe_origin.second,
       right_toe_origin.first, plant.world_frame(), plant.world_frame(), &J);
   (*right_foot_vel) = J * state.tail(plant.num_velocities());
-  cout << "right_foot_vel= " << right_foot_vel->transpose() << endl;
+  //  cout << "right_foot_vel= " << right_foot_vel->transpose() << endl;
 }
 
 class FootVelConstraint : public solvers::NonlinearConstraint<double> {
@@ -313,6 +313,92 @@ void InitialStateForPlanner::CalcState(
   //    cout << "init_phase of the state we got = " << init_phase << endl;
 
   ///
+  /// Adjust the knee/ankle joints to match the feet vel between the two models
+  ///
+
+  // Use IK to get a state of the model without springs so that the
+  //  feet velocity match well with the real robot's
+  VectorXd x_w_spr = robot_output->GetState();
+  Vector3d left_foot_vel_w_spr;
+  Vector3d right_foot_vel_w_spr;
+  CalcFeetVel(plant_feedback_, x_w_spr, &left_foot_vel_w_spr,
+              &right_foot_vel_w_spr);
+
+  VectorXd x_init = x_init_original;
+  cout << "\n================= Time = " +
+              std::to_string(robot_output->get_timestamp()) +
+              " =======================\n\n";
+  //  cout << "  IK || Time of arrival: " << robot_output->get_timestamp() << "
+  //  | ";
+  AdjustKneeAndAnkleVel(left_foot_vel_w_spr, right_foot_vel_w_spr,
+                        x_init_original, &x_init);
+
+  ///
+  /// Testing
+  ///
+
+  // Testing -- check the model difference (springs vs no springs).
+  // cout << "=== COM and stance foot ===\n";
+  //  cout << "\ncassie without springs:\n";
+  CalcCOM(plant_controls_, x_init_original);
+  //  cout << "\ncassie with springs:\n";
+  CalcCOM(plant_feedback_, robot_output->GetState());
+  //  cout << "\ncassie without springs (after adjustment):\n";
+  CalcCOM(plant_controls_, x_init);
+  //  cout << "=== states ===\n\n";
+  //  cout << "FOM state (without springs) = \n" << x_init_original << endl;
+  //  cout << "FOM state (without springs, adjusted) = \n" << x_init << endl;
+  //  cout << "FOM state (with springs) = \n" << robot_output->GetState() <<
+  //  "\n\n";
+  cout << "\n=== Feet vel differences ===\n";
+  Vector3d left_foot_vel_wo_spr_original;
+  Vector3d right_foot_vel_wo_spr_original;
+  Vector3d left_foot_vel_wo_spr;
+  Vector3d right_foot_vel_wo_spr;
+  CalcFeetVel(plant_controls_, x_init_original, &left_foot_vel_wo_spr_original,
+              &right_foot_vel_wo_spr_original);
+  CalcFeetVel(plant_controls_, x_init, &left_foot_vel_wo_spr,
+              &right_foot_vel_wo_spr);
+  if ((left_foot_vel_w_spr - left_foot_vel_wo_spr).norm() +
+          (right_foot_vel_w_spr - right_foot_vel_wo_spr).norm() >
+      (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).norm() +
+          (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).norm()) {
+    cout << "left_foot_vel_w_spr = " << left_foot_vel_w_spr.transpose() << endl;
+    cout << "right_foot_vel_w_spr = " << right_foot_vel_w_spr.transpose()
+         << endl;
+    cout << "left_foot_vel_wo_spr_original = "
+         << left_foot_vel_wo_spr_original.transpose() << endl;
+    cout << "right_foot_vel_wo_spr_original = "
+         << right_foot_vel_wo_spr_original.transpose() << endl;
+    cout << "left_foot_vel_wo_spr = " << left_foot_vel_wo_spr.transpose()
+         << endl;
+    cout << "right_foot_vel_wo_spr = " << right_foot_vel_wo_spr.transpose()
+         << endl;
+    cout << "before adjustment:\n";
+    cout << "  left difference = "
+         << (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).transpose()
+         << endl;
+    cout << "  right difference = "
+         << (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).transpose()
+         << endl;
+    cout << "  norm = "
+         << (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).norm() +
+                (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).norm()
+         << endl;
+    cout << "after adjustment:\n";
+    cout << "  left difference = "
+         << (left_foot_vel_w_spr - left_foot_vel_wo_spr).transpose() << endl;
+    cout << "  right difference = "
+         << (right_foot_vel_w_spr - right_foot_vel_wo_spr).transpose() << endl;
+    cout << "  norm = "
+         << (left_foot_vel_w_spr - left_foot_vel_wo_spr).norm() +
+                (right_foot_vel_w_spr - right_foot_vel_wo_spr).norm()
+         << endl;
+    cout << "\n";
+  }
+  cout << "\n\n";
+
+  ///
   /// Shift and rotate Cassie's floating base configuration
   ///
   // Rotate Cassie's floating base configuration to face toward world's x
@@ -324,7 +410,6 @@ void InitialStateForPlanner::CalcState(
 
   // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
   // frame is in the world’s x-z plane and toward world’s x axis.
-  VectorXd x_init = x_init_original;
   Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
   Vector3d pelvis_x = quat.toRotationMatrix().col(0);
   pelvis_x(2) = 0;
@@ -353,37 +438,19 @@ void InitialStateForPlanner::CalcState(
   ///
   output->SetState(x_init);
   output->set_timestamp(robot_output->get_timestamp());
+}
 
-  ///
-  /// Testing
-  ///
-
-  // Testing -- check the model difference (springs vs no springs).
-  cout << "\n================= Time = " +
-              std::to_string(robot_output->get_timestamp()) +
-              " =======================\n\n";
-  cout << "=== COM and stance foot ===\n";
-  cout << "\ncassie without springs:\n";
-  CalcCOM(plant_controls_, x_init_original);
-  cout << "\ncassie with springs:\n";
-  CalcCOM(plant_feedback_, robot_output->GetState());
-  cout << "=== states ===\n\n";
-  cout << "FOM state (without springs) = \n" << x_init_original << endl;
-  cout << "FOM state (with springs) = \n" << robot_output->GetState() << "\n\n";
-  cout << "\n";
-
-  // Testing -- use IK to get a state of the model without springs so that the
-  //  feet velocity match well with the real robot's
-
+void InitialStateForPlanner::AdjustKneeAndAnkleVel(
+    const Vector3d& left_foot_vel, const Vector3d& right_foot_vel,
+    const VectorXd& x_init_original, VectorXd* x_init) const {
   // TODO -- we can probably also have two stages of the IK. THe first one match
   //  the position and the second matches the vel.
 
   auto start_build = std::chrono::high_resolution_clock::now();
 
-  VectorXd x_w_spr = robot_output->GetState();
-  Vector3d left_foot_vel;
-  Vector3d right_foot_vel;
-  CalcFeetVel(plant_feedback_, x_w_spr, &left_foot_vel, &right_foot_vel);
+  std::vector<int> idx_list = {
+      vel_map_.at("knee_leftdot"), vel_map_.at("knee_rightdot"),
+      vel_map_.at("ankle_joint_leftdot"), vel_map_.at("ankle_joint_rightdot")};
 
   drake::multibody::InverseKinematics ik(plant_controls_);
   auto knee_left =
@@ -407,8 +474,9 @@ void InitialStateForPlanner::CalcState(
 
   // Foot vel constraint
   auto context_wo_spr = plant_controls_.CreateDefaultContext();
-  plant_controls_.SetPositions(context_wo_spr.get(),
-                               x_init_original.head(plant_controls_.num_positions()));
+  plant_controls_.SetPositions(
+      context_wo_spr.get(),
+      x_init_original.head(plant_controls_.num_positions()));
   auto left_toe_origin =
       BodyPoint(Vector3d::Zero(), plant_controls_.GetFrameByName("toe_left"));
   auto right_toe_origin =
@@ -423,13 +491,10 @@ void InitialStateForPlanner::CalcState(
       *context_wo_spr, JacobianWrtVariable::kV, right_toe_origin.second,
       right_toe_origin.first, plant_controls_.world_frame(),
       plant_controls_.world_frame(), &J_rf_wo_spr);
-  std::vector<int> idx_list = {
-      vel_map_.at("knee_leftdot"), vel_map_.at("knee_rightdot"),
-      vel_map_.at("ankle_joint_leftdot"), vel_map_.at("ankle_joint_rightdot")};
   auto foot_vel_constraint = std::make_shared<FootVelConstraint>(
       left_foot_vel, right_foot_vel, plant_controls_,
-      x_init_original.tail(plant_controls_.num_velocities()), J_lf_wo_spr, J_rf_wo_spr,
-      idx_list);
+      x_init_original.tail(plant_controls_.num_velocities()), J_lf_wo_spr,
+      J_rf_wo_spr, idx_list);
   ik.get_mutable_prog()->AddConstraint(
       foot_vel_constraint,
       {knee_left, knee_right, ankle_joint_left, ankle_joint_right, vel_eps});
@@ -460,7 +525,7 @@ void InitialStateForPlanner::CalcState(
   ik.get_mutable_prog()->SetSolverOption(
       drake::solvers::SnoptSolver::id(), "Major feasibility tolerance",
       ik_opt_tol_);  // target complementarity gap
-  // TODO: can I move SnoptSolver outside to speed up?
+                     // TODO: can I move SnoptSolver outside to speed up?
   drake::solvers::SnoptSolver snopt_solver;
   auto start_solve = std::chrono::high_resolution_clock::now();
   const auto result = snopt_solver.Solve(ik.prog(), ik.prog().initial_guess());
@@ -468,17 +533,17 @@ void InitialStateForPlanner::CalcState(
 
   std::chrono::duration<double> elapsed_build = start_solve - start_build;
   std::chrono::duration<double> elapsed_solve = finish - start_solve;
-  cout << "  IK || Time of arrival: " << robot_output->get_timestamp() << " | ";
+  SolutionResult solution_result = result.get_solution_result();
   cout << "Build time:" << elapsed_build.count() << " | ";
   cout << "Solve time:" << elapsed_solve.count() << " | ";
-  SolutionResult solution_result = result.get_solution_result();
   cout << solution_result << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   /// Get solution
-  const auto q_sol = result.GetSolution(ik.q());
+  /*const auto q_sol = result.GetSolution(ik.q());
   VectorXd q_sol_normd(nq_);
-  q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(nq_ - 4);
+  q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(nq_ - 4);*/
+
   cout << "knee_left= " << result.GetSolution(knee_left) << endl;
   cout << "knee_right= " << result.GetSolution(knee_right) << endl;
   cout << "ankle_joint_left= " << result.GetSolution(ankle_joint_left) << endl;
@@ -486,20 +551,15 @@ void InitialStateForPlanner::CalcState(
        << endl;
   cout << "vel_eps= " << result.GetSolution(vel_eps) << endl;
 
-  cout << "\ncassie without springs (after adjustment):\n";
-  VectorXd x_init_adjusted = x_init;
-  x_init_adjusted.segment<1>(plant_controls_.num_positions() + idx_list[0]) =
+  /// Assign
+  x_init->segment<1>(plant_controls_.num_positions() + idx_list[0]) =
       result.GetSolution(knee_left);
-  x_init_adjusted.segment<1>(plant_controls_.num_positions() + idx_list[1]) =
+  x_init->segment<1>(plant_controls_.num_positions() + idx_list[1]) =
       result.GetSolution(knee_right);
-  x_init_adjusted.segment<1>(plant_controls_.num_positions() + idx_list[2]) =
+  x_init->segment<1>(plant_controls_.num_positions() + idx_list[2]) =
       result.GetSolution(ankle_joint_left);
-  x_init_adjusted.segment<1>(plant_controls_.num_positions() + idx_list[3]) =
+  x_init->segment<1>(plant_controls_.num_positions() + idx_list[3]) =
       result.GetSolution(ankle_joint_right);
-  CalcCOM(plant_controls_, x_init_adjusted);
-  cout << "\n\n";
-
-  output->SetState(x_init_adjusted);
 }
 
 }  // namespace goldilocks_models

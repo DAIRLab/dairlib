@@ -103,8 +103,12 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_controls_;
 
   // IK
-  double ik_feas_tol_ = 1e-2;
-  double ik_opt_tol_ = 1e-2;
+  double ik_feas_tol_ = 1e-4;  // 1e-2
+  double ik_opt_tol_ = 1e-4;   // 1e-2
+  void AdjustKneeAndAnkleVel(const Eigen::Vector3d& left_foot_vel,
+                             const Eigen::Vector3d& right_foot_vel,
+                             const Eigen::VectorXd& x_init_original,
+                             Eigen::VectorXd* x_init) const;
 };
 
 }  // namespace goldilocks_models

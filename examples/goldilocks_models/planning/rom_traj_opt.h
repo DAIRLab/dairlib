@@ -157,7 +157,7 @@ class RomTrajOpt
   bool start_with_left_stance_;
 
   void PrintStatus(const std::string& msg) const {
-    /*if (print_status_) */ std::cout << msg << std::endl;
+    if (print_status_)  std::cout << msg << std::endl;
   };
   bool print_status_;
 };

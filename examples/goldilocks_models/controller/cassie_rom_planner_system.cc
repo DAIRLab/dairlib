@@ -330,14 +330,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       this->EvalVectorInput(context, fsm_and_lo_time_port_);
   double lift_off_time = fsm_and_lo_time_port->get_value()(1);*/
 
-  //  if (debug_mode_) {
-  cout.precision(dbl::max_digits10);
-  cout << "Used for the planner: \n";
-  //  cout << "  x_init  = " << x_init << endl;
-  cout << "  current_time  = " << current_time << endl;
-  cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
-  cout << "  init_phase  = " << init_phase << endl;
-  //  }
+  if (debug_mode_) {
+    cout.precision(dbl::max_digits10);
+    cout << "Used for the planner: \n";
+    //  cout << "  x_init  = " << x_init << endl;
+    cout << "  current_time  = " << current_time << endl;
+    cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
+    cout << "  init_phase  = " << init_phase << endl;
+  }
 
   // Testing
   //  init_phase =
@@ -537,7 +537,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int i = 0; i < n_var; i++) {
       double init_guess = trajopt.GetInitialGuess(all_vars(i));
       if (init_guess == 0 || isnan(init_guess)) {
-        cout << all_vars(i) << " init guess was " << init_guess << endl;
+        // cout << all_vars(i) << " init guess was " << init_guess << endl;
         trajopt.SetInitialGuess(all_vars(i), rand(i));
       }
     }
@@ -587,9 +587,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
+  SolutionResult solution_result = result.get_solution_result();
   cout << "    Time of arrival: " << current_time << " | ";
   cout << "Solve time:" << elapsed.count() << " | ";
-  SolutionResult solution_result = result.get_solution_result();
   cout << solution_result << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
@@ -760,7 +760,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
 
   // Check the cost (Q and R term)
-  if (true /*counter_ == 0*/) {
+  if (false /*counter_ == 0*/) {
     double cost_ydot = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.rom_state_cost_bindings_);
     cout << "cost_ydot = " << cost_ydot << endl;

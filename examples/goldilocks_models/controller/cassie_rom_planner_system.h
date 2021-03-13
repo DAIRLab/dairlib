@@ -118,7 +118,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_saved_traj* traj_msg) const;
 
-  void PrintAllCostsAndConstraints(const RomTrajOptCassie &trajopt) const;
+  void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;
   void WarmStartGuess(
       const Eigen::VectorXd& final_position, int global_fsm_idx,
       int first_mode_knot_idx,
@@ -186,7 +186,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // For debugging
   bool debug_mode_;
   void PrintStatus(const std::string& msg) const {
-    if (debug_mode_)  std::cout << msg << std::endl;
+    if (debug_mode_) std::cout << msg << std::endl;
   };
 
   // Since sometimes the planner replan every 1ms in the beginning of the
@@ -210,7 +210,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   bool warm_start_with_previous_solution_ = true;
 
   // Init state relaxation (relax the mapping function)
-  std::set<int> relax_index_ = {3, 4, 5};
+  std::set<int> relax_index_ = {5};  //{3, 4, 5};
 };
 
 }  // namespace goldilocks_models

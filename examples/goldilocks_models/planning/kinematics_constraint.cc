@@ -101,7 +101,7 @@ void KinematicsConstraint::EvaluateConstraint(
       zxeps.segment(n_y_, n_y_) -
           rom_.EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_), *context_);
 
-  VectorX<double> eps(n_eps_);
+  VectorX<double> eps = zxeps.tail(n_eps_);
   int i = 0;
   for (const auto& idx : relax_index_) {
     value(idx) += eps(i);

@@ -96,7 +96,8 @@ def main():
   """
   com_vec, comdot_vec = PlotCOM(rom_traj)
   feet_pos_vec, feet_vel_vec = PlotFeet(rom_traj)
-  PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec)
+  PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec, True)
+  PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec, False)
 
   # import pdb; pdb.set_trace()
 
@@ -120,8 +121,10 @@ def PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec,
     comdot_wrt_stance_foot_vec[i] = comdot_vec[i] - stance_foot_vel
     left_stance = not left_stance
 
+  suffix = " (assuming start with left foot)" if start_with_left_stance else " (assuming start with right foot)"
+
   palette = ['r', 'b', 'g']
-  figname = "Full model: COM wrt stance foot"
+  figname = "Full model: COM wrt stance foot" + suffix
   plt.figure(figname, figsize=figsize)
   for i in range(n_mode):
     for j in range(3):
@@ -131,7 +134,7 @@ def PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec,
   plt.ylabel('(m)')
   plt.xlabel('mode index')
   plt.legend(['x', 'y', 'z'])
-  figname = "Full model: COM vel wrt stance foot"
+  figname = "Full model: COM vel wrt stance foot" + suffix
   plt.figure(figname, figsize=figsize)
   for i in range(n_mode):
     for j in range(3):

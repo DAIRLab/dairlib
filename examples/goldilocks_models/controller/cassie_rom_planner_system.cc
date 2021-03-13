@@ -537,7 +537,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int i = 0; i < n_var; i++) {
       double init_guess = trajopt.GetInitialGuess(all_vars(i));
       if (init_guess == 0 || isnan(init_guess)) {
-        // cout << all_vars(i) << " init guess was " << init_guess << endl;
+        cout << all_vars(i) << " init guess was " << init_guess << endl;
         trajopt.SetInitialGuess(all_vars(i), rand(i));
       }
     }
@@ -760,7 +760,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
 
   // Check the cost (Q and R term)
-  if (false /*counter_ == 0*/) {
+  if (true /*counter_ == 0*/) {
     double cost_ydot = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.rom_state_cost_bindings_);
     cout << "cost_ydot = " << cost_ydot << endl;

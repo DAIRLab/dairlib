@@ -210,7 +210,7 @@ RomTrajOpt::RomTrajOpt(
     // Add RoM-FoM mapping constraints
     // TODO: might need to rotate the local frame to align with the global
     std::set<int> empty_idx = {};
-    if (i == 0 && false) {
+    if (i == 0) {
       PrintStatus(
           "Adding constraint -- RoM-FoM mapping (start of mode; relaxed)");
       int n_eps = relax_index.size();

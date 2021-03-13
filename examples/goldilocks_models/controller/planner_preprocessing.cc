@@ -316,9 +316,10 @@ void InitialStateForPlanner::CalcState(
   ///
   /// Adjust the knee/ankle joints to match the feet vel between the two models
   ///
+  // Use IK to get a state of the model without springs so that the feet
+  // velocity match well with the real robot's.
+  // The max vel error after the adjustment seems to be always below 0.045 m/s.
 
-  // Use IK to get a state of the model without springs so that the
-  //  feet velocity match well with the real robot's
   VectorXd x_w_spr = robot_output->GetState();
   Vector3d left_foot_vel_w_spr;
   Vector3d right_foot_vel_w_spr;

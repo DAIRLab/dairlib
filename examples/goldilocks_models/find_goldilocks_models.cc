@@ -1482,6 +1482,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   MediateTasksGenerator task_gen_mediate = MediateTasksGenerator
       (mediate_sample_number,task_gen->dim());
   ExpansionTasksGenerator task_gen_expansion ;
+  DRAKE_DEMAND(FLAGS_max_num_extending_task_space>1);
   if(is_grid_task||(FLAGS_iter_start>1)) {
     task_gen_expansion= ExpansionTasksGenerator
         (0,false,task_gen->total_sample_number());
@@ -2401,10 +2402,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
         task_gen_mediate.set_start_finding_mediate_sample(false);
       }
     }
-    //set the parameter of starting to expand task space;
+    //set the parameter of starting and stopping to expand task space;
     if(task_gen_expansion.currently_extend_task_space()){
       task_gen_expansion.set_num_extending_task_space(
           task_gen_expansion.num_extending_task_space()+1);
+    }
+    if(task_gen_expansion.num_extending_task_space()>=
+        task_gen_expansion.max_num_extending_task_space())
+    {
+      task_gen_expansion.set_currently_extend_task_space(false);
     }
     // Update parameters, adjusting step size or extend model
     step_size_shrinked_last_loop = false;
@@ -2416,13 +2422,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       rerun_current_iteration = false;
       // expansion process is restricted in iteration 1
       DRAKE_DEMAND(iter==1);
-      if(task_gen_expansion.num_extending_task_space()>=
-          task_gen_expansion.max_num_extending_task_space())
-      {
-        task_gen_expansion.set_currently_extend_task_space(false);
-      }else{
-        iter=iter-1;
-      }
+      iter=iter-1;
       continue;
     }
     else if (extend_model_this_iter) {  // Extend the model

@@ -322,8 +322,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   bool start_with_left_stance = !is_right_stance;
 
   // Get current time
-  double timestamp = robot_output->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
+  auto current_time = context.get_time();
 
   // Get lift-off time
   /*const BasicVector<double>* fsm_and_lo_time_port =
@@ -537,7 +536,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int i = 0; i < n_var; i++) {
       double init_guess = trajopt.GetInitialGuess(all_vars(i));
       if (init_guess == 0 || isnan(init_guess)) {
-        cout << all_vars(i) << " init guess was " << init_guess << endl;
+        // cout << all_vars(i) << " init guess was " << init_guess << endl;
         trajopt.SetInitialGuess(all_vars(i), rand(i));
       }
     }

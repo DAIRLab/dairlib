@@ -94,26 +94,26 @@ PhaseInFirstMode::PhaseInFirstMode(
 void PhaseInFirstMode::CalcPhase(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* init_phase_output) const {
-  // Read in current robot state
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-
   // Read in fsm state and lift-off time
   const BasicVector<double>* fsm_and_lo_time_port =
       this->EvalVectorInput(context, fsm_and_lo_time_port_);
   double lift_off_time = fsm_and_lo_time_port->get_value()(1);
 
   // Get time
-  double timestamp = robot_output->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
+  auto current_time = context.get_time();
 
   double time_in_first_mode = current_time - lift_off_time;
 
   // Calc phase
   double init_phase = time_in_first_mode / stride_period_;
   if (init_phase >= 1) {
-    cout << "WARNING: phase >= 1. There might be a bug somewhere, "
+    cout << "WARNING: phase = " << init_phase
+         << " (>= 1). There might be a bug somewhere, "
             "since we are using a time-based fsm\n";
+    cout << "lift_off_time = " << lift_off_time << endl;
+    cout << "current_time = " << current_time << endl;
+    cout << "time_in_first_mode = " << time_in_first_mode << endl;
+    DRAKE_UNREACHABLE();
     init_phase = 1 - 1e-8;
   }
 
@@ -328,9 +328,9 @@ void InitialStateForPlanner::CalcState(
 
   VectorXd x_init = x_init_original;
   cout << "\n================= Time = " +
-              std::to_string(robot_output->get_timestamp()) +
+              std::to_string(context.get_time()) +
               " =======================\n\n";
-  //  cout << "  IK || Time of arrival: " << robot_output->get_timestamp() << "
+  //  cout << "  IK || Time of arrival: " << context.get_time() << "
   //  | ";
   AdjustKneeAndAnkleVel(left_foot_vel_w_spr, right_foot_vel_w_spr,
                         x_init_original, &x_init);
@@ -440,7 +440,7 @@ void InitialStateForPlanner::CalcState(
   /// Assign
   ///
   output->SetState(x_init);
-  output->set_timestamp(robot_output->get_timestamp());
+  output->set_timestamp(context.get_time());
 }
 
 void InitialStateForPlanner::AdjustKneeAndAnkleVel(

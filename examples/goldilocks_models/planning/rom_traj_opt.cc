@@ -80,7 +80,7 @@ RomTrajOpt::RomTrajOpt(
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
       n_x_(plant.num_positions() + plant.num_velocities()),
-      n_lambda_(3 * left_contacts.size()),
+      n_lambda_(zero_touchdown_impact ? 0 : 3 * left_contacts.size()),
       plant_(plant),
       rom_(rom),
       start_with_left_stance_(start_with_left_stance),
@@ -217,6 +217,15 @@ RomTrajOpt::RomTrajOpt(
       auto eps_rom = NewContinuousVariables(n_eps, "eps_rom");
       init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
           MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps), eps_rom));
+      /* // "linear cost + lower bound" version
+      if (relax_index.size() == 1 && *(relax_index.begin()) == 5) {
+        init_rom_relax_cost_bindings_.push_back(AddLinearCost(eps_rom(0)));
+        AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
+                                 eps_rom);
+      } else {
+        init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
+            MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps), eps_rom));
+      }*/
       auto kin_constraint_start =
           std::make_shared<planning::KinematicsConstraint>(
               rom, plant, left_stance, state_mirror, relax_index,
@@ -384,7 +393,7 @@ RomTrajOpt::RomTrajOpt(
     AddBoundingBoxConstraint(-1, 1, xf.segment<3>(1));
     AddBoundingBoxConstraint(-2, 2, xf.segment<2>(4));
     // Heuristics -- prevent the pelvis go too low
-    AddBoundingBoxConstraint(0.5, 1.1, xf.segment<1>(6));
+    AddBoundingBoxConstraint(0.8, 1.1, xf.segment<1>(6));
 
     // Full order model vel limits
     PrintStatus("Adding constraint -- full-order model joint vel");
@@ -423,6 +432,8 @@ RomTrajOpt::RomTrajOpt(
     fom_ft_vel_constraint_end->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
     AddConstraint(fom_ft_vel_constraint_end, xf);
+
+    // TODO: might need to add a collision avoidance between left and right foot
 
     // Stride length constraint
     // cout << "Adding stride length constraint for full-order model...\n";

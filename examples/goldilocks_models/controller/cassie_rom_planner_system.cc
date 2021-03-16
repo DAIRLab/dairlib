@@ -288,7 +288,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Initialization
   FOM_x0_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
   FOM_xf_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
-  FOM_Lambda_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
   if (param_.zero_touchdown_impact) {
     FOM_Lambda_ = Eigen::MatrixXd::Zero(0, (param_.n_step - 1));
   } else {
@@ -299,6 +298,20 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     const Context<double>& context, dairlib::lcmt_saved_traj* traj_msg) const {
+  ///
+  /// Decide if we need to re-plan (not ideal code. See header file)
+  ///
+
+  // Get current time
+  auto current_time = context.get_time();
+
+  bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
+                         min_time_difference_for_replanning_);
+  if (!need_to_replan) {
+    *traj_msg = previous_output_msg_;
+    return;
+  }
+
   ///
   /// Read from input ports
   ///
@@ -320,9 +333,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   bool is_right_stance =
       (bool)this->EvalVectorInput(context, stance_foot_port_)->get_value()(0);
   bool start_with_left_stance = !is_right_stance;
-
-  // Get current time
-  auto current_time = context.get_time();
 
   // Get lift-off time
   /*const BasicVector<double>* fsm_and_lo_time_port =
@@ -347,17 +357,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  current_time =
   //      readCSV(param_.dir_data + to_string(1) + "_current_time.csv")(0, 0);
   //  x_init = readCSV(param_.dir_data + to_string(1) + "_x_init.csv");
-
-  ///
-  /// Decide if we need to re-plan (not ideal code. See header file)
-  ///
-
-  bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
-                         min_time_difference_for_replanning_);
-  if (!need_to_replan) {
-    *traj_msg = previous_output_msg_;
-    return;
-  }
 
   ///
   /// Construct rom traj opt

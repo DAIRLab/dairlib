@@ -88,10 +88,10 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_terrain_height != 0) {
     Parser parser(&plant, &scene_graph);
     std::string terrain_name =
-        FindResourceOrThrow("examples/impact_invaraint_control/platform.urdf");
+        FindResourceOrThrow("examples/impact_invariant_control/platform.urdf");
     parser.AddModelFromFile(terrain_name);
     Eigen::Vector3d offset;
-    offset << 0.15, 0, FLAGS_terrain_height;
+    offset << 0.16, 0, FLAGS_terrain_height;
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                      drake::math::RigidTransform<double>(offset));
   }

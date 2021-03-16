@@ -44,6 +44,10 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
+    return this->get_output_port(fsm_port_);
+  }
+
  protected:
   int state_port_;
   int fsm_port_;

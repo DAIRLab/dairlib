@@ -9,6 +9,7 @@
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -196,7 +197,7 @@ int DoMain(int argc, char* argv[]) {
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
   }
-  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
+  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations, 0.0, gains.impact_threshold);
 
 
@@ -462,6 +463,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_impact(), osc->get_near_impact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -497,8 +499,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(walking_speed_control->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_sc());
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
-  builder.Connect(fsm->get_output_port_impact(),
-                  osc->get_near_impact_input_port());
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),

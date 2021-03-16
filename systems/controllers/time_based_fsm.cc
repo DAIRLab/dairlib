@@ -25,7 +25,7 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
                                                         plant.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorOutputPort(BasicVector<double>(1),
-                                &TimeBasedFiniteStateMachine::CalcFiniteState).get_index();
+                                            &TimeBasedFiniteStateMachine::CalcFiniteState).get_index();
 
   // Accumulate the durations to get timestamps
   double sum = 0;
@@ -40,7 +40,7 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
     const Context<double>& context, BasicVector<double>* fsm_state) const {
   // Read in lcm message time
   const OutputVector<double>* robot_output =
-  (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
 
   //  double m = floor((current_sim_time - t0_) / period_);

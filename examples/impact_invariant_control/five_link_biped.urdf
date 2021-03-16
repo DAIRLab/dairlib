@@ -262,8 +262,6 @@
         <mechanicalReduction>1</mechanicalReduction>
     </transmission>
     <collision_filter_group name="robot_links">
-        <!-- <member link="left_foot"/> -->
-        <!-- <member link="right_foot"/> -->
         <member link="left_lower_leg_mass"/>
         <member link="right_lower_leg_mass"/>
         <member link="left_lower_leg"/>

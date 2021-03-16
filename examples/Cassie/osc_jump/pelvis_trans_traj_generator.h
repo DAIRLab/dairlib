@@ -18,7 +18,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
       drake::trajectories::PiecewisePolynomial<double>& crouch_traj,
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
-          feet_contact_points,
+      feet_contact_points,
       double time_offset = 0.0, FSM_STATE init_fsm_state = BALANCE);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {

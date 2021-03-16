@@ -604,7 +604,7 @@ VectorXd OperationalSpaceControl::SolveQp(
           " was not found in the OSC");
     }
     std::set<int> next_contact_set = map_iterator->second;
-    int active_contact_dim = active_contact_dim_.at(next_fsm_state) + 2;
+    int active_contact_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
     MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
     int row_start = 0;
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
@@ -614,52 +614,52 @@ VectorXd OperationalSpaceControl::SolveQp(
         row_start += kSpaceDim;
       }
     }
-    J_c_next.block(row_start, 0, 2, n_v_) = J_h;
+    // Holonomic constraints
+    if(n_h_ > 0){
+      J_c_next.block(row_start, 0, n_h_, n_v_) = J_h;
+    }
     M_Jt_ = M.inverse() * J_c_next.transpose();
 
-    if (use_single_lambda_) {
-      int active_tracking_data_dim = 0;
-      for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-        auto tracking_data = tracking_data_vec_->at(i);
+    int active_tracking_data_dim = 0;
+    for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
+      auto tracking_data = tracking_data_vec_->at(i);
 
-        if (tracking_data->IsActive()) {
-          VectorXd v_proj = VectorXd::Zero(n_v_);
-          active_tracking_data_dim += tracking_data->GetYDim();
-          if (fixed_position_vec_.at(i).size() != 0) {
-            // Create constant trajectory and update
-            tracking_data->Update(
-                x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
-                PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-                fsm_state, v_proj);
-          } else {
-            // Read in traj from input port
-            const string& traj_name = tracking_data->GetName();
-            int port_index = traj_name_to_port_index_map_.at(traj_name);
-            const drake::AbstractValue* input_traj =
-                this->EvalAbstractInput(context, port_index);
-            const auto& traj =
-                input_traj
-                    ->get_value<drake::trajectories::Trajectory<double>>();
-            tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                                  *context_wo_spr_, traj, t, fsm_state, v_proj);
-          }
+      if (tracking_data->IsActive()) {
+        VectorXd v_proj = VectorXd::Zero(n_v_);
+        active_tracking_data_dim += tracking_data->GetYDim();
+        if (fixed_position_vec_.at(i).size() != 0) {
+          // Create constant trajectory and update
+          tracking_data->Update(
+              x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
+              PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
+              fsm_state, v_proj);
+        } else {
+          // Read in traj from input port
+          const string& traj_name = tracking_data->GetName();
+          int port_index = traj_name_to_port_index_map_.at(traj_name);
+          const drake::AbstractValue* input_traj =
+              this->EvalAbstractInput(context, port_index);
+          const auto& traj =
+              input_traj->get_value<drake::trajectories::Trajectory<double>>();
+          tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                                *context_wo_spr_, traj, t, fsm_state, v_proj);
         }
       }
-      MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_contact_dim);
-      VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
-      int start_row = 0;
-      for (auto tracking_data : *tracking_data_vec_) {
-        if (tracking_data->IsActive()) {
-          A.block(start_row, 0, tracking_data->GetYDim(), active_contact_dim) =
-              tracking_data->GetJ() * M_Jt_;
-          ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
-              tracking_data->GetErrorYdot();
-          start_row += tracking_data->GetYDim();
-        }
-      }
-
-      ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
     }
+    MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_contact_dim);
+    VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
+    int start_row = 0;
+    for (auto tracking_data : *tracking_data_vec_) {
+      if (tracking_data->IsActive()) {
+        A.block(start_row, 0, tracking_data->GetYDim(), active_contact_dim) =
+            tracking_data->GetJ() * M_Jt_;
+        ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
+            tracking_data->GetErrorYdot();
+        start_row += tracking_data->GetYDim();
+      }
+    }
+
+    ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
   }
 
   // Update costs

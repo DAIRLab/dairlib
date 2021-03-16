@@ -95,7 +95,6 @@ template <typename T>
 std::vector<std::string> createActuatorNameVectorFromMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
-///
 /// \param plant_w_spr
 /// \param plant_wo_spr
 template <typename T>

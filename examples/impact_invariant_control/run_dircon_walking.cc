@@ -42,16 +42,12 @@ DEFINE_double(height, 0.75, "The jump height wrt to the torso COM (m)");
 DEFINE_int64(knot_points, 10, "Number of knot points per mode");
 
 DEFINE_double(max_duration, 1.0, "Maximum trajectory duration (s)");
-//DEFINE_string(file_name, "", "Filename for saving trajectories");
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
-//DEFINE_bool(save_traj, false,
-//            "Whether or not to save the generated "
-//            "trajectory as a LCM trajectory");
 DEFINE_string(data_directory,
-    "/home/yangwill/Documents/research/projects/five_link_biped/walking/saved_trajs/",
-    "Directory path to save decision vars to.");
+              "examples/impact_invariant_control/saved_trajectories",
+              "Directory path to save decision vars to.");
 DEFINE_string(save_filename, "rabbit_walking",
               "Filename to save decision "
               "vars to.");
@@ -81,40 +77,7 @@ using systems::trajectory_optimization::DirconOptions;
 using systems::trajectory_optimization::HybridDircon;
 
 namespace examples {
-namespace jumping {
-
-VectorXd generate_time_matrix(const PiecewisePolynomial<double>& state_traj,
-                              int num_timesteps) {
-  vector<double> time_segments = state_traj.get_segment_times();
-  double endtime = time_segments.back();
-  return VectorXd::LinSpaced(num_timesteps, 0.0, endtime);
-}
-
-MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,
-                                     const PiecewisePolynomial<double>& inputs,
-                                     VectorXd times) {
-  std::cout << "x0: " << states.value(0) << std::endl;
-  int num_states = states.value(0).size();
-  int num_inputs = inputs.value(0).size();
-  auto state_derivatives = states.MakeDerivative(1);
-  MatrixXd states_matrix = MatrixXd::Zero(num_states, times.size());
-  MatrixXd state_derivatives_matrix = MatrixXd::Zero(num_states, times.size());
-  MatrixXd inputs_matrix = MatrixXd::Zero(num_inputs, times.size());
-
-  for (int i = 0; i < times.size(); ++i) {
-    states_matrix.col(i) = states.value(times[i]);
-    state_derivatives_matrix.col(i) = state_derivatives->value(times[i]);
-    inputs_matrix.col(i) = inputs.value(times[i]);
-  }
-  MatrixXd states_and_inputs(num_states + num_states + num_inputs,
-                             times.size());
-  states_and_inputs.topRows(num_states) = states_matrix;
-  states_and_inputs.block(num_states, 0, num_states, times.size()) =
-      state_derivatives_matrix;
-  states_and_inputs.bottomRows(num_inputs) = inputs_matrix;
-
-  return states_and_inputs;
-}
+namespace impact_invariant_control {
 
 drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
     MultibodyPlant<double>* plant, PiecewisePolynomial<double> init_x_traj,
@@ -216,14 +179,6 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   auto u = trajopt->input();
   auto x = trajopt->state();
 
-  //  Eigen::VectorXd fixed_initial_conds(14);
-  //  fixed_initial_conds << 0, 0.798974, -0.00197771, -0.0560623, -0.316157,
-  //  0.1,
-  //      0.75, 0.221125, 0.00177739, 0.149304, 0.127445,
-  //      -0.787641, 2.55158e-05, 0.0816434;
-  //  trajopt->AddLinearConstraint(x0 == fixed_initial_conds);
-  //  trajopt->AddLinearConstraint(x0 == fixed_initial_conds);
-
   // "forward" constraints
   trajopt->AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
   trajopt->AddLinearConstraint(x_mid_point(positions_map["planar_x"]) == 0.15);
@@ -297,10 +252,6 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "Solve result: " << result.get_solution_result() << std::endl;
 
-  //  const PiecewisePolynomial<double>& state_traj =
-  //      trajopt->ReconstructStateTrajectory(result);
-  //  const PiecewisePolynomial<double>& input_traj =
-  //      trajopt->ReconstructInputTrajectory(result);
   DirconTrajectory saved_traj(*plant, *trajopt, result,
                               "rabbit_walking_trajectory",
                               "Decision variables and state/input trajectories "
@@ -308,105 +259,8 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   saved_traj.WriteToFile(FLAGS_data_directory + FLAGS_save_filename);
   std::cout << "Wrote to file: " << FLAGS_data_directory + FLAGS_save_filename
             << std::endl;
-  //  if (FLAGS_save_traj) {
-  //    int num_modes = 3;
-  //    //    Vector3d segment_times(num_modes + 1);
-  //    //    segment_times << 0,
-  //    //    state_traj.get_segment_times().at(FLAGS_knot_points),
-  //    //        state_traj.get_segment_times().at(2 * FLAGS_knot_points),
-  //    //        state_traj.end_time();
-  //    std::vector<LcmTrajectory::Trajectory> trajectories;
-  //    std::vector<std::string> trajectory_names;
-  //
-  //    VectorXd segment_times(2 * num_modes);
-  //    std::vector<double> breaks_copy = state_traj.get_segment_times();
-  //    VectorXd full_breaks =
-  //        Eigen::Map<Eigen::VectorXd>(breaks_copy.data(), breaks_copy.size());
-  //    //    segment_times << 0,
-  //    //        state_traj.get_segment_times().at(FLAGS_knot_points - 1),
-  //    //        state_traj.get_segment_times().at(FLAGS_knot_points),
-  //    //        state_traj.get_segment_times().at(2 * FLAGS_knot_points - 1),
-  //    //        state_traj.get_segment_times().at(2 * FLAGS_knot_points),
-  //    //        state_traj.end_time();
-  //    for (int mode = 0; mode < num_modes; ++mode) {
-  //      LcmTrajectory::Trajectory traj_block;
-  //      traj_block.traj_name = "walking_trajectory_x_u" +
-  //      std::to_string(mode);
-  //      //      traj_block.time_vector = generate_time_matrix(state_traj,
-  //      1000);
-  //      //      traj_block.time_vector = VectorXd::LinSpaced(1000,
-  //      //      segment_times(2*mode),
-  //      // segment_times(2*mode
-  //      //                                                   + 1));
-  //      traj_block.time_vector =
-  //          full_breaks.segment(FLAGS_knot_points * mode, FLAGS_knot_points);
-  //      traj_block.datapoints = generate_state_input_matrix(
-  //          state_traj, input_traj, traj_block.time_vector);
-  //      traj_block.datatypes = {"planar_x",
-  //                              "planar_z",
-  //                              "planar_roty",
-  //                              "left_hip",
-  //                              "right_hip",
-  //                              "left_knee",
-  //                              "right_knee",
-  //                              "planar_xdot",
-  //                              "planar_zdot",
-  //                              "planar_rotydot",
-  //                              "left_hipdot",
-  //                              "right_hipdot",
-  //                              "left_kneedot",
-  //                              "right_kneedot",
-  //                              "planar_xdot",
-  //                              "planar_zdot",
-  //                              "planar_rotydot",
-  //                              "left_hipdot",
-  //                              "right_hipdot",
-  //                              "left_kneedot",
-  //                              "right_kneedot",
-  //                              "planar_xdotdot",
-  //                              "planar_zdotdot",
-  //                              "planar_rotydotdot",
-  //                              "left_hipdotdot",
-  //                              "right_hipdotdot",
-  //                              "left_kneedotdot",
-  //                              "right_kneedotdot",
-  //                              "u_lh",
-  //                              "u_rh",
-  //                              "u_lk",
-  //                              "u_rk"};
-  //      trajectories.push_back(traj_block);
-  //      trajectory_names.push_back(traj_block.traj_name);
-  //    }
-  //    //  traj_block.datatypes = multibody::makeStateNamesVector(plant);
-  //    LcmTrajectory saved_traj(
-  //        trajectories, trajectory_names, "walking_trajectory",
-  //        "State and input trajectory for walking (2 contacts)");
-  //    saved_traj.writeToFile(
-  //        "../projects/five_link_biped/hybrid_lqr/saved_trajs"
-  //        "/" +
-  //        FLAGS_file_name);
-  //    writeTimeTrajToFile(state_traj,
-  //                        "../projects/hybrid_lqr/walking_state_traj.txt");
-  //    writeTimeTrajToFile(input_traj,
-  //                        "../projects/hybrid_lqr/walking_input_traj.txt");
-  //
-  //    for (double t : state_traj.get_segment_times()) {
-  //      std::cout << "t: " << t << std::endl;
-  //    }
-  //  }
+
   return trajopt->ReconstructStateTrajectory(result);
-}
-
-void print_state_map(MultibodyPlant<double>* plant) {
-  // output initial states
-  auto positions_map = multibody::makeNameToPositionsMap(*plant);
-  auto velocities_map = multibody::makeNameToVelocitiesMap(*plant);
-  for (auto const& element : positions_map)
-    cout << element.first << " = " << element.second << endl;
-  for (auto const& element : velocities_map)
-    cout << element.first << " = " << element.second << endl;
-
-  return;
 }
 
 int doMain(int argc, char* argv[]) {
@@ -417,8 +271,8 @@ int doMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
-  std::string full_name =
-      FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf");
+  std::string full_name = FindResourceOrThrow(
+      "examples/impact_invariant_control/five_link_biped.urdf");
   parser.AddModelFromFile(full_name);
   plant.mutable_gravity_field().set_gravity_vector(-FLAGS_gravity *
                                                    Eigen::Vector3d::UnitZ());
@@ -496,25 +350,13 @@ int doMain(int argc, char* argv[]) {
                    init_vc_traj);
   multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                          optimal_traj);
-
-  auto diagram = builder.Build();
-
-  while (true) {
-    //    std::this_thread::sleep_for(std::chrono::seconds(2));
-    drake::systems::Simulator<double> simulator(*diagram);
-
-    simulator.set_target_realtime_rate(FLAGS_realtime_factor);
-    simulator.Initialize();
-    simulator.AdvanceTo(optimal_traj.end_time());
-  }
-
   return 0;
 }
 
-}  // namespace jumping
+}  // namespace impact_invariant_control
 }  // namespace examples
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) {
-  return dairlib::examples::jumping::doMain(argc, argv);
+  return dairlib::examples::impact_invariant_control::doMain(argc, argv);
 }

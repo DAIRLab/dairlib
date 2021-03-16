@@ -62,8 +62,8 @@ bool OscTrackingData::Update(
       ydot_des_ = traj.EvalDerivative(t, 1);
       yddot_des_ = traj.EvalDerivative(t, 2);
     }
-    // TODO (yangwill): Remove this edge case after EvalDerivative has been
-    // implemented for ExponentialPlusPiecewisePolynomial
+      // TODO (yangwill): Remove this edge case after EvalDerivative has been
+      // implemented for ExponentialPlusPiecewisePolynomial
     else {
       ydot_des_ = traj.MakeDerivative(1)->value(t);
       yddot_des_ = traj.MakeDerivative(2)->value(t);
@@ -313,7 +313,7 @@ void RotTaskSpaceTrackingData::UpdateYAndError(
       context_w_spr,
       plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
   Quaterniond y_quat(transform_mat.rotation() *
-                     frame_pose_.at(GetStateIdx()).linear());
+      frame_pose_.at(GetStateIdx()).linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
@@ -339,7 +339,7 @@ void RotTaskSpaceTrackingData::UpdateYdotAndError(
       frame_pose_.at(GetStateIdx()).translation(), world_w_spr_, world_w_spr_,
       &J_spatial);
   ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
-          x_w_spr.tail(plant_w_spr_.num_velocities());
+      x_w_spr.tail(plant_w_spr_.num_velocities());
   // Transform qdot to w
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
   Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
@@ -371,12 +371,12 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void RotTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
-               .CalcBiasSpatialAcceleration(
-                   context_wo_spr, JacobianWrtVariable::kV,
-                   *body_frames_wo_spr_.at(GetStateIdx()),
-                   frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
-                   world_wo_spr_)
-               .rotational();
+      .CalcBiasSpatialAcceleration(
+          context_wo_spr, JacobianWrtVariable::kV,
+          *body_frames_wo_spr_.at(GetStateIdx()),
+          frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
+          world_wo_spr_)
+      .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
@@ -457,8 +457,8 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
   DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == joint_pos_idx_wo_spr_.size());
   DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == joint_vel_idx_wo_spr_.size());
   DRAKE_DEMAND(state_.empty() ||
-               ((state_.size() == joint_pos_idx_wo_spr_.size()) &&
-                (state_.size() == joint_vel_idx_wo_spr_.size())));
+      ((state_.size() == joint_pos_idx_wo_spr_.size()) &&
+          (state_.size() == joint_vel_idx_wo_spr_.size())));
   if (state_.empty()) {
     DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == 1);
     DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == 1);

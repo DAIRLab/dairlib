@@ -43,13 +43,9 @@ cc_library(
         "//examples/Cassie:dispatcher_robot_in",
         "//examples/Cassie:dispatcher_robot_out",
         "//examples/Cassie:multibody_sim",
-        "//examples/Cassie:run_controller_switch",
-        "//examples/Cassie:run_osc_jumping_controller",
         "//examples/Cassie:run_osc_standing_controller",
         "//examples/Cassie:run_osc_walking_controller",
-        "//examples/Cassie:run_pd_controller",
         "//examples/Cassie/osc",
-        "//examples/Cassie/osc_jump",
     ],
 )
 
@@ -177,23 +173,6 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "run_joint_pd_controller",
-    srcs = ["run_joint_pd_controller.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//common",
-        "//lcm:dircon_trajectory_saver",
-        "//lcm:trajectory_saver",
-        "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -369,45 +348,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_id_jumping_controller",
-    srcs = ["run_id_jumping_controller.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//examples/Cassie/osc_jump",
-        "//lcm:trajectory_saver",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "//systems/primitives:gaussian_noise_pass_through",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "run_osc_walking_controller_tracking",
-    srcs = ["run_osc_walking_controller_tracking.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//examples/Cassie/osc",
-        "//examples/Cassie/osc_jump",
-        "//examples/Cassie/osc_walk",
-        "//lcm:trajectory_saver",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems/controllers:fsm_event_time",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "//systems/primitives:gaussian_noise_pass_through",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "run_osc_walking_controller",
     srcs = ["run_osc_walking_controller.cc"],
     deps = [
@@ -468,7 +408,7 @@ cc_binary(
         ":cassie_fixed_point_solver",
         ":cassie_utils",
         "//common",
-        "//lcm:trajectory_saver",
+        "//lcm:dircon_trajectory_saver",
         "//multibody/kinematic",
         "//solvers:optimization_utils",
         "//systems/primitives",
@@ -486,7 +426,8 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
-        "//lcm:trajectory_saver",
+        "//lcm:dircon_trajectory_saver",
+        "//lcm:lcm_trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
@@ -502,7 +443,7 @@ cc_binary(
     deps = [
         ":cassie_utils",
         "//common",
-        "//lcm:trajectory_saver",
+        "//lcm:dircon_trajectory_saver",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
@@ -527,28 +468,10 @@ cc_binary(
     srcs = ["visualize_trajectory.cc"],
     deps = [
         ":cassie_utils",
-        "//lcm:trajectory_saver",
+        "//lcm:dircon_trajectory_saver",
+        "//lcm:lcm_trajectory_saver",
         "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-)
-
-py_binary(
-    name = "cassie_virtual_remote_py",
-    srcs = ["cassie_virtual_remote.py"],
-    data = [
-        "@lcm//:lcm-python",
-    ],
-    main = "cassie_virtual_remote.py",
-    deps = [
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
-
-drake_runfiles_binary(
-    name = "cassie_virtual_remote",
-    target = "cassie_virtual_remote_py",
 )

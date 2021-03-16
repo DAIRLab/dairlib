@@ -29,8 +29,6 @@ struct OSCJumpingGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
-  double t_delay_ft_pos;
-  double t_delay_toe_ang;
   double impact_threshold;
   double landing_delay;
   double mu;
@@ -67,40 +65,38 @@ struct OSCJumpingGains {
     a->Visit(DRAKE_NVP(w_hip_yaw));
     a->Visit(DRAKE_NVP(hip_yaw_kp));
     a->Visit(DRAKE_NVP(hip_yaw_kd));
-    a->Visit(DRAKE_NVP(t_delay_ft_pos));
-    a->Visit(DRAKE_NVP(t_delay_toe_ang));
     a->Visit(DRAKE_NVP(impact_threshold));
     a->Visit(DRAKE_NVP(landing_delay));
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(relative_feet));
 
     W_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->CoMW.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->CoMW.data(), 3, 3);
     K_p_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->CoMKp.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->CoMKp.data(), 3, 3);
     K_d_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->CoMKd.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->CoMKd.data(), 3, 3);
     W_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->PelvisRotW.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisRotW.data(), 3, 3);
     K_p_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->PelvisRotKp.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisRotKp.data(), 3, 3);
     K_d_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->PelvisRotKd.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisRotKd.data(), 3, 3);
     W_flight_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->FlightFootW.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->FlightFootW.data(), 3, 3);
     K_p_flight_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->FlightFootKp.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->FlightFootKp.data(), 3, 3);
     K_d_flight_foot = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      this->FlightFootKd.data(), 3, 3);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->FlightFootKd.data(), 3, 3);
 
   }
 };

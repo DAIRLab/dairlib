@@ -3,7 +3,7 @@
 
 using Eigen::MatrixXd;
 
-struct IDWalkingGains {
+struct JointSpaceWalkingGains {
   // costs
   double w_input;
   double w_accel;
@@ -12,7 +12,6 @@ struct IDWalkingGains {
   std::vector<double> JointKp;
   std::vector<double> JointKd;
   double impact_threshold;
-  double landing_delay;
   double mu;
 
   template <typename Archive>
@@ -24,7 +23,6 @@ struct IDWalkingGains {
     a->Visit(DRAKE_NVP(JointKp));
     a->Visit(DRAKE_NVP(JointKd));
     a->Visit(DRAKE_NVP(impact_threshold));
-    a->Visit(DRAKE_NVP(landing_delay));
     a->Visit(DRAKE_NVP(mu));
   }
 };

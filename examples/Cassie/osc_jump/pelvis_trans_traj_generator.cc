@@ -32,7 +32,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     PiecewisePolynomial<double>& crouch_traj,
     const std::vector<std::pair<const Eigen::Vector3d,
                                 const drake::multibody::Frame<double>&>>&
-        feet_contact_points,
+    feet_contact_points,
     double time_offset, FSM_STATE init_fsm_state)
     : plant_(plant),
       context_(context),
@@ -96,7 +96,7 @@ EventStatus PelvisTransTrajGenerator::DiscreteVariableUpdate(
                                plant_.GetBodyByName("pelvis").body_frame(),
                                VectorXd::Zero(3), world_, &pelvis_pos);
     if (fsm_state(0) == BALANCE) {  // Either the simulator restarted or the
-                                    // controller switch was triggered
+      // controller switch was triggered
       initial_pelvis_pos << pelvis_pos;
       switch_time << timestamp;
     }

@@ -337,6 +337,7 @@ vector<string> createActuatorNameVectorFromMap(
   return actuator_names;
 }
 
+
 template <typename T>
 Eigen::MatrixXd createWithSpringsToWithoutSpringsMap(
     const drake::multibody::MultibodyPlant<T>& plant_w_spr,

@@ -4,14 +4,14 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/Cassie/osc_jump/basic_trajectory_generator.h"
-#include "examples/Cassie/osc_jump/id_jumping_gains.h"
+#include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
+#include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
+#include "examples/impact_invariant_control/joint_space_walking_gains.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
-#include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
@@ -51,12 +51,15 @@ DEFINE_string(channel_x, "RABBIT_STATE",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "RABBIT_INPUT",
               "The name of the channel which publishes command");
-DEFINE_string(folder_path, "examples/five_link_biped/saved_trajectories/",
+DEFINE_string(folder_path,
+              "examples/impact_invariant_control/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "rabbit_walking",
               "File to load saved trajectories from");
-DEFINE_string(gains_filename, "examples/five_link_biped/id_walking_gains.yaml",
-              "Filepath containing gains");
+DEFINE_string(
+    gains_filename,
+    "examples/impact_invariant_control/joint_space_walking_gains.yaml",
+    "Filepath containing gains");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -68,8 +71,8 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
-  std::string full_name =
-      FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf");
+  std::string full_name = FindResourceOrThrow(
+      "examples/impact_invariant_control/five_link_biped.urdf");
   parser.AddModelFromFile(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
@@ -88,7 +91,7 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  IDJumpingGains gains;
+  JointSpaceWalkingGains gains;
   const YAML::Node& root =
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
@@ -105,11 +108,12 @@ int DoMain(int argc, char* argv[]) {
 
   vector<int> fsm_states;
   vector<double> state_durations;
-  fsm_states = {0, 1};
+  fsm_states = {0, 1, 0};
   state_durations = {dircon_trajectory.GetStateBreaks(1)(0),
-                     dircon_trajectory.GetStateBreaks(2)(0)};
+                     dircon_trajectory.GetStateBreaks(2)(0) - dircon_trajectory.GetStateBreaks(1)(0),
+                     state_traj.end_time() - dircon_trajectory.GetStateBreaks(2)(0)};
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
+  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations, 0.0, gains.impact_threshold);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -162,7 +166,7 @@ int DoMain(int argc, char* argv[]) {
         joint_name + "_traj", K_p, K_d, W, plant, plant));
     joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
                                                         joint_name + "dot");
-    auto joint_traj = dircon_trajectory.ReconstructJointStateTrajectory(
+    auto joint_traj = dircon_trajectory.ReconstructJointTrajectory(
         pos_map_wo_spr[joint_name]);
     auto joint_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(
         joint_traj, joint_name + "_traj");

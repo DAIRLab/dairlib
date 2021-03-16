@@ -79,8 +79,8 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(FLAGS_dt);
   Parser parser(&plant, &scene_graph);
-  std::string full_name =
-      FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf");
+  std::string full_name = FindResourceOrThrow(
+      "examples/impact_invariant_control/five_link_biped.urdf");
   parser.AddModelFromFile(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());

@@ -8,12 +8,12 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc_jump/basic_trajectory_generator.h"
+#include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
-#include "examples/Cassie/osc_jump/flight_toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
 #include "examples/Cassie/osc_jump/pelvis_trans_traj_generator.h"
+#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -67,17 +67,16 @@ DEFINE_double(delay_time, 0.0,
 DEFINE_bool(contact_based_fsm, false,
             "The contact based fsm transitions "
             "between states using contact data.");
-DEFINE_double(transition_delay, 0.0,
-              "Time to wait after trigger to "
-              "transition between FSM states.");
 DEFINE_string(simulator, "DRAKE",
               "Simulator used, important for determining how to interpret "
               "contact information. Other options include MUJOCO and soon to "
               "include contact results from the GM contact estimator.");
 DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
-DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
+DEFINE_string(folder_path,
+              "examples/impact_invariant_control/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
-DEFINE_string(traj_name, "", "File to load saved trajectories from");
+DEFINE_string(traj_name, "jumping_0.15h_0.3d",
+              "File to load saved trajectories from");
 DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
               "Filepath containing gains");
 
@@ -217,8 +216,7 @@ int DoMain(int argc, char* argv[]) {
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
-      FLAGS_transition_delay, gains.impact_threshold,
-      (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
+      gains.impact_threshold, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

@@ -46,7 +46,7 @@ int DoMain() {
   parser.AddModelFromFile(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
   plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
+      Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
@@ -78,7 +78,6 @@ int DoMain() {
       continue;
     }
     VectorXd times = dircon_traj.GetStateBreaks(mode);
-    std::cout << "times: " << times << std::endl;
     MatrixXd state_samples = dircon_traj.GetStateSamples(mode);
     MatrixXd state_derivative_samples =
         dircon_traj.GetStateDerivativeSamples(mode);
@@ -212,10 +211,10 @@ int DoMain() {
 
   if (FLAGS_relative_feet) {
     processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
-                               "_processed" + "_rel");
+        "_processed" + "_rel");
   } else {
     processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
-                               "_processed");
+        "_processed");
   }
   return 0;
 }

@@ -55,6 +55,9 @@ int do_main(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+  if (FLAGS_floating_base) {
+    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8);
+  }
 
   plant.Finalize();
 
@@ -116,6 +119,9 @@ int do_main(int argc, char* argv[]) {
   }
 
   drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+
+  // state_receiver->set_publish_period(1.0/30.0);  // framerate
+
   auto diagram = builder.Build();
 
   auto context = diagram->CreateDefaultContext();

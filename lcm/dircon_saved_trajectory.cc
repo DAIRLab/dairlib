@@ -166,7 +166,7 @@ DirconTrajectory::DirconTrajectory(
          ++i) {
       force_names.push_back("lambda_" + std::to_string(num_forces));
       collocation_force_names.push_back("lambda_c_" +
-                                        std::to_string(num_forces));
+          std::to_string(num_forces));
       ++num_forces;
     }
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -241,7 +241,7 @@ DirconTrajectory::DirconTrajectory(
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
-    const {
+const {
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(
           x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
@@ -257,8 +257,8 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
   return state_traj;
 }
 
-PiecewisePolynomial<double> DirconTrajectory::ReconstructJointStateTrajectory(int joint_idx)
-    const {
+PiecewisePolynomial<double> DirconTrajectory::ReconstructJointTrajectory(int joint_idx)
+const {
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(
           x_[0]->time_vector, x_[0]->datapoints.row(joint_idx), xdot_[0]->datapoints.row(joint_idx));
@@ -275,7 +275,7 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructJointStateTrajectory(in
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory()
-    const {
+const {
   PiecewisePolynomial<double> input_traj =
       PiecewisePolynomial<double>::FirstOrderHold(u_->time_vector,
                                                   u_->datapoints);
@@ -353,8 +353,8 @@ Eigen::VectorXd DirconTrajectory::GetCollocationPoints(
   // using a + (b - a) / 2 midpoint
   int num_knotpoints = time_vector.size();
   return time_vector.head(num_knotpoints - 1) +
-         0.5 * (time_vector.tail(num_knotpoints - 1) -
-                time_vector.head(num_knotpoints - 1));
+      0.5 * (time_vector.tail(num_knotpoints - 1) -
+          time_vector.head(num_knotpoints - 1));
 }
 
 }  // namespace dairlib

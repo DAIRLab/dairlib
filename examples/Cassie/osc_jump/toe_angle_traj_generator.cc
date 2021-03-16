@@ -1,4 +1,4 @@
-#include "flight_toe_angle_traj_generator.h"
+#include "toe_angle_traj_generator.h"
 
 #include "multibody/multibody_utils.h"
 
@@ -17,7 +17,7 @@ FlightToeAngleTrajGenerator::FlightToeAngleTrajGenerator(
     drake::systems::Context<double>* context, int swing_toe_idx,
     const std::vector<std::pair<const Eigen::Vector3d,
                                 const drake::multibody::Frame<double>&>>&
-        feet_contact_points,
+    feet_contact_points,
     const std::string& traj_name)
     : plant_(plant),
       context_(context),
@@ -71,8 +71,8 @@ void FlightToeAngleTrajGenerator::CalcTraj(
 
   // Read in finite state machine
   auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
+  (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+      traj);
   *casted_traj = CalcToeAngle(robot_output->GetPositions());
 }
 

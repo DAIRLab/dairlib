@@ -419,6 +419,20 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                         param_.final_position_x,
       0;*/
 
+  // Get the desired xy positions for the FOM states
+  vector<VectorXd> des_xy_pos =
+      vector<VectorXd>(param_.n_step + 1, VectorXd::Zero(2));
+  int n_segment_total =
+      std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
+      num_time_samples.size();
+  VectorXd adjusted_final_pos = final_position * n_segment_total /
+                                (param_.n_step * (param_.knots_per_mode - 1));
+  for (int i = 1; i < des_xy_pos.size(); i++) {
+    des_xy_pos[i] = des_xy_pos[i - 1] + adjusted_final_pos *
+                                            (num_time_samples.at(i - 1) - 1) /
+                                            n_segment_total;
+  }
+
   // Construct
   PrintStatus("\nConstructing optimization problem...");
   auto start = std::chrono::high_resolution_clock::now();
@@ -470,13 +484,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Final goal position constraint
   /*PrintStatus("Adding constraint -- FoM final position");
   trajopt.AddBoundingBoxConstraint(
-      final_position, final_position,
+      adjusted_final_position, adjusted_final_position,
       trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));*/
 
   // Add robot state in cost
   bool add_x_pose_in_cost = true;
   if (add_x_pose_in_cost) {
-    trajopt.AddRegularizationCost(final_position, x_guess_left_in_front_,
+    trajopt.AddRegularizationCost(des_xy_pos, x_guess_left_in_front_,
                                   x_guess_right_in_front_, param_.w_reg_quat_,
                                   param_.w_reg_xy_, param_.w_reg_z_joints_,
                                   false /*straight_leg_cost*/);
@@ -500,7 +514,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Default initial guess to avoid singularity (which messes with gradient)
   for (int i = 0; i < num_time_samples.size(); i++) {
-    for (int j = 0; j < num_time_samples[i]; j++) {
+    for (int j = 0; j < num_time_samples.at(i); j++) {
       if ((param_.rom_option == 0) || (param_.rom_option == 1)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
       } else if ((param_.rom_option == 4) || (param_.rom_option == 8)) {
@@ -534,17 +548,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     trajopt.SetInitialGuessForAllVariables(z0);
   } else {
     int global_fsm_idx = int((current_time + 1e-8) / stride_period_);
-    PrintStatus("global_fsm_idx = " + to_string(global_fsm_idx));
+    //    PrintStatus("global_fsm_idx = " + to_string(global_fsm_idx));
+    cout << "global_fsm_idx = " + to_string(global_fsm_idx) << endl;
     if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
-      WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,
-                     &trajopt);
+      WarmStartGuess(des_xy_pos, global_fsm_idx, first_mode_knot_idx, &trajopt);
     } else {
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(
           h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-          x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
+          x_guess_right_in_front_, des_xy_pos, first_mode_knot_idx, 0);
     }
     trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
     prev_global_fsm_idx_ = global_fsm_idx;
@@ -963,8 +977,8 @@ void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(
 }
 
 void CassiePlannerWithMixedRomFom::WarmStartGuess(
-    const VectorXd& final_position, int global_fsm_idx, int first_mode_knot_idx,
-    RomTrajOptCassie* trajopt) const {
+    const vector<VectorXd>& des_xy_pos, int global_fsm_idx,
+    int first_mode_knot_idx, RomTrajOptCassie* trajopt) const {
   int starting_mode_idx_for_heuristic =
       (param_.n_step - 1) - (global_fsm_idx - prev_global_fsm_idx_) + 1;
 
@@ -973,11 +987,11 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     // Set heuristic initial guess for all variables
     trajopt->SetHeuristicInitialGuess(
         h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-        x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
+        x_guess_right_in_front_, des_xy_pos, first_mode_knot_idx, 0);
   } else {
     trajopt->SetHeuristicInitialGuess(
         h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-        x_guess_right_in_front_, final_position, first_mode_knot_idx,
+        x_guess_right_in_front_, des_xy_pos, first_mode_knot_idx,
         starting_mode_idx_for_heuristic);
 
     // Reuse the solution

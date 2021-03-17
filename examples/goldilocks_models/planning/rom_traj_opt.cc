@@ -788,7 +788,7 @@ RomTrajOptCassie::RomTrajOptCassie(
                  print_status) {}
 
 void RomTrajOptCassie::AddRegularizationCost(
-    const Eigen::VectorXd& final_position,
+    const std::vector<Eigen::VectorXd>& des_xy_pos,
     const Eigen::VectorXd& x_guess_left_in_front,
     const Eigen::VectorXd& x_guess_right_in_front, double w_reg_quat,
     double w_reg_xy, double w_reg_z_joints, bool straight_leg_cost) {
@@ -849,11 +849,11 @@ void RomTrajOptCassie::AddRegularizationCost(
       //          x_f.head(4)));
     }
     if (i != 0) {
-      fom_reg_xy_cost_bindings_.push_back(AddQuadraticErrorCost(
-          Id_xy, final_position * i / num_modes_, x_0.segment<2>(4)));
+      fom_reg_xy_cost_bindings_.push_back(
+          AddQuadraticErrorCost(Id_xy, des_xy_pos.at(i), x_0.segment<2>(4)));
     }
-    fom_reg_xy_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_xy, final_position * (i + 1) / num_modes_, x_f.segment<2>(4)));
+    fom_reg_xy_cost_bindings_.push_back(
+        AddQuadraticErrorCost(Id_xy, des_xy_pos.at(i + 1), x_f.segment<2>(4)));
     VectorX<double> quat_identity(4);
     quat_identity << 1, 0, 0, 0;
     if (i != 0) {
@@ -880,7 +880,7 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
     const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
     const Eigen::VectorXd& x_guess_left_in_front,
     const Eigen::VectorXd& x_guess_right_in_front,
-    const Eigen::VectorXd& final_position, int fisrt_mode_phase_index,
+    const std::vector<Eigen::VectorXd>& des_xy_pos, int fisrt_mode_phase_index,
     int starting_mode_index) {
   // PrintStatus("Adding initial guess ...");
 
@@ -925,8 +925,8 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
                       x_guess_right_in_front.tail(n_x_ - 6));
       SetInitialGuess(x_f.tail(n_x_ - 6), x_guess_left_in_front.tail(n_x_ - 6));
     }
-    SetInitialGuess(x_0.segment(4, 2), final_position * i / num_modes_);
-    SetInitialGuess(x_f.segment(4, 2), final_position * (i + 1) / num_modes_);
+    SetInitialGuess(x_0.segment(4, 2), des_xy_pos.at(i));
+    SetInitialGuess(x_f.segment(4, 2), des_xy_pos.at(i + 1));
     VectorX<double> quat_identity(4);
     quat_identity << 1, 0, 0, 0;
     SetInitialGuess(x_0.head(4), quat_identity);

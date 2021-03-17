@@ -87,6 +87,8 @@ struct PlannerSetting {
     cout << "dir_model" << dir_model << endl;
     cout << "dir_data" << dir_data << endl;
     cout << "init_file" << init_file << endl;
+    cout << "solve_idx_for_read_from_file" << solve_idx_for_read_from_file
+         << endl;
   }
 };
 
@@ -123,7 +125,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;
   void WarmStartGuess(
-      const Eigen::VectorXd& final_position, int global_fsm_idx,
+      const std::vector<Eigen::VectorXd>& des_xy_pos, int global_fsm_idx,
       int first_mode_knot_idx,
       dairlib::goldilocks_models::RomTrajOptCassie* trajopt) const;
 

@@ -176,7 +176,7 @@ class RomTrajOptCassie : public RomTrajOpt {
                    bool zero_touchdown_impact, const std::set<int>& relax_index,
                    bool print_status = true);
 
-  void AddRegularizationCost(const Eigen::VectorXd& final_position,
+  void AddRegularizationCost(const std::vector<Eigen::VectorXd>& des_xy_pos,
                              const Eigen::VectorXd& x_guess_left_in_front,
                              const Eigen::VectorXd& x_guess_right_in_front,
                              double w_reg_quat, double w_reg_xy,
@@ -188,7 +188,7 @@ class RomTrajOptCassie : public RomTrajOpt {
                                 const Eigen::MatrixXd& tau_guess,
                                 const Eigen::VectorXd& x_guess_left_in_front,
                                 const Eigen::VectorXd& x_guess_right_in_front,
-                                const Eigen::VectorXd& final_position,
+                                const std::vector<Eigen::VectorXd>& des_xy_pos,
                                 int fisrt_mode_phase_index,
                                 int starting_mode_index);
 

@@ -73,10 +73,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   phase_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_controls.num_positions(),
-                                             plant_controls.num_velocities(),
-                                             plant_controls.num_actuators()))
-                    .get_index();
+          OutputVector<double>(plant_controls.num_positions(),
+                               plant_controls.num_velocities(),
+                               plant_controls.num_actuators()))
+      .get_index();
   fsm_and_lo_time_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
@@ -100,8 +100,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   int n_y = rom_->n_y();
   int n_tau = rom_->n_tau();
   string model_dir_n_pref = param_.dir_model + to_string(param_.iter) +
-                            string("_") + to_string(param_.sample) +
-                            string("_");
+      string("_") + to_string(param_.sample) +
+      string("_");
   h_guess_ = VectorXd(param_.knots_per_mode);
   r_guess_ = MatrixXd(n_y, param_.knots_per_mode);
   dr_guess_ = MatrixXd(n_y, param_.knots_per_mode);
@@ -131,15 +131,15 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     for (int i = 0; i < param_.knots_per_mode; i++) {
       int n_mat_col_r = r_guess_raw.cols();
       int idx_r = (int)round(double(i * (n_mat_col_r - 1)) /
-                             (param_.knots_per_mode - 1));
+          (param_.knots_per_mode - 1));
       r_guess_.col(i) = r_guess_raw.col(idx_r);
       int n_mat_col_dr = dr_guess_raw.cols();
       int idx_dr = (int)round(double(i * (n_mat_col_dr - 1)) /
-                              (param_.knots_per_mode - 1));
+          (param_.knots_per_mode - 1));
       dr_guess_.col(i) = dr_guess_raw.col(idx_dr);
       int n_mat_col_tau = tau_guess_raw.cols();
       int idx_tau = (int)round(double(i * (n_mat_col_tau - 1)) /
-                               (param_.knots_per_mode - 1));
+          (param_.knots_per_mode - 1));
       tau_guess_.col(i) = tau_guess_raw.col(idx_tau);
     }
 
@@ -311,7 +311,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   auto current_time = context.get_time();
 
   bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
-                         min_time_difference_for_replanning_);
+      min_time_difference_for_replanning_);
   if (!need_to_replan) {
     *traj_msg = previous_output_msg_;
     return;
@@ -347,7 +347,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (debug_mode_) {
     cout.precision(dbl::max_digits10);
     cout << "Used for the planner: \n";
-    //  cout << "  x_init  = " << x_init << endl;
+    cout << "  x_init  = " << x_init.transpose() << endl;
     cout << "  current_time  = " << current_time << endl;
     cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
     cout << "  init_phase  = " << init_phase << endl;
@@ -515,6 +515,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
           x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
     } else {
       int global_fsm_idx = int((current_time + 1e-12) / stride_period_);
+      PrintStatus("global_fsm_idx= " + to_string(global_fsm_idx));
       if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
         PrintStatus("Warm start initial guess with previous solution...");
         WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,
@@ -526,6 +527,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
             h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
             x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
       }
+      trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
       prev_global_fsm_idx_ = global_fsm_idx;
       prev_first_mode_knot_idx_ = first_mode_knot_idx;
       prev_mode_start_ = trajopt.mode_start();
@@ -539,7 +541,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int i = 0; i < n_var; i++) {
       double init_guess = trajopt.GetInitialGuess(all_vars(i));
       if (init_guess == 0 || isnan(init_guess)) {
-        // cout << all_vars(i) << " init guess was " << init_guess << endl;
+        cout << all_vars(i) << " init guess was " << init_guess << endl;
         trajopt.SetInitialGuess(all_vars(i), rand(i));
       }
     }
@@ -596,7 +598,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Testing -- solve with another solver
-  if (false) {
+  if (true) {
     start = std::chrono::high_resolution_clock::now();
     drake::solvers::MathematicalProgramResult result2;
     if (param_.use_ipopt) {
@@ -751,7 +753,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     h_solutions_(i) = sample_times(i + 1) - sample_times(i);
   }
   state_at_knots_ = trajopt.drake::systems::trajectory_optimization::
-                        MultipleShooting::GetStateSamples(result);
+  MultipleShooting::GetStateSamples(result);
   input_at_knots_ = trajopt.GetInputSamples(result);
   for (int i = 1; i < param_.n_step; i++) {
     FOM_Lambda_.col(i - 1) = result.GetSolution(trajopt.impulse_vars(i - 1));
@@ -937,6 +939,7 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
       (param_.n_step - 1) - (global_fsm_idx - prev_global_fsm_idx_) + 1;
 
   if (starting_mode_idx_for_heuristic <= 0) {
+    PrintStatus("Set heuristic initial guess for all variables");
     // Set heuristic initial guess for all variables
     trajopt->SetHeuristicInitialGuess(
         h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
@@ -959,8 +962,8 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
             (i == global_fsm_idx) ? knot_idx - first_mode_knot_idx : knot_idx;
         int prev_local_fsm_idx = i - prev_global_fsm_idx_;
         int prev_local_knot_idx = (i == prev_global_fsm_idx_)
-                                      ? knot_idx - prev_first_mode_knot_idx_
-                                      : knot_idx;
+                                  ? knot_idx - prev_first_mode_knot_idx_
+                                  : knot_idx;
         // Trajopt index
         int trajopt_idx = trajopt->mode_start()[local_fsm_idx] + local_knot_idx;
         int prev_trajopt_idx =
@@ -985,8 +988,12 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
         }
         // 5. FOM start
         if (knot_idx == 0) {
-          trajopt->SetInitialGuess(trajopt->x0_vars_by_mode(local_fsm_idx),
-                                   FOM_x0_.col(prev_local_fsm_idx));
+          if (local_fsm_idx == 0) {
+            // Use x_init for initial guess (I set it outside this function)
+          } else {
+            trajopt->SetInitialGuess(trajopt->x0_vars_by_mode(local_fsm_idx),
+                                     FOM_x0_.col(prev_local_fsm_idx));
+          }
         }
         // 6. FOM end
         if (knot_idx == param_.knots_per_mode - 1) {

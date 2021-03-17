@@ -406,8 +406,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
-  double first_mode_duration =
-      stride_period_ - fmod(current_time, stride_period_);
+  double first_mode_duration = stride_period_ * (1 - init_phase);
   double remaining_mode_duration = stride_period_;
   trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
                                 param_.equalize_timestep_size,
@@ -515,7 +514,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
           h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
           x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
     } else {
-      int global_fsm_idx = int(current_time / stride_period_);
+      int global_fsm_idx = int(current_time + 1e-12 / stride_period_);
       if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
         PrintStatus("Warm start initial guess with previous solution...");
         WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,

@@ -514,7 +514,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
           h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
           x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
     } else {
-      int global_fsm_idx = int(current_time + 1e-12 / stride_period_);
+      int global_fsm_idx = int((current_time + 1e-12) / stride_period_);
       if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
         PrintStatus("Warm start initial guess with previous solution...");
         WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,

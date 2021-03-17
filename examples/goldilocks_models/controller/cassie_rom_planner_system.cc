@@ -2,6 +2,8 @@
 
 #include <math.h>     /* fmod */
 #include <algorithm>  // std::max
+#include <fstream>
+#include <iostream>
 #include <limits>
 
 #include "common/eigen_utils.h"
@@ -244,7 +246,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_option_ipopt_.SetOption(id, "nlp_upper_bound_inf", 1e6);
   if (param_.log_solver_info) {
     solver_option_ipopt_.SetOption(id, "print_timing_statistics", "yes");
-    solver_option_ipopt_.SetOption(id, "print_level", 5);
+    solver_option_ipopt_.SetOption(id, "print_level", 0);
+    solver_option_ipopt_.SetOption(id, "output_file",
+                                   "../ipopt_planning_latest.out");
+    solver_option_ipopt_.SetOption(id, "file_print_level", 5);
   } else {
     solver_option_ipopt_.SetOption(id, "print_timing_statistics", "no");
     solver_option_ipopt_.SetOption(id, "print_level", 0);
@@ -756,6 +761,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// For debugging
   ///
+
+  if (param_.use_ipopt) {
+    // Ipopt doesn't seem to have the append feature, so we do it manually
+    std::system(
+        "cat ../ipopt_planning_latest.out >> ../ipopt_planning_combined.out");
+    //    std::ofstream outfile;
+    //    outfile.open("../ipopt_planning_combined.out", std::ios_base::app);
+    //    std::ifstream ifs("../ipopt_planning_latest.out");
+    //    outfile << ifs.rdbuf();
+    //    outfile.close();
+  }
 
   // Check the cost (Q and R term)
   if (true /*counter_ == 0*/) {

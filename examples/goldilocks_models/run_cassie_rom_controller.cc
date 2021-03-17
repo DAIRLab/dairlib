@@ -606,7 +606,14 @@ int DoMain(int argc, char* argv[]) {
 
     // Create the diagram
     auto owned_diagram = builder.Build();
-    owned_diagram->set_name("osc walking controller");
+    owned_diagram->set_name("osc_walking_controller");
+
+    std::string name = "../" + owned_diagram->get_name() + "_diagram_graph";
+    std::ofstream out(name);
+    out << owned_diagram->GetGraphvizString();
+    out.close();
+    std::string cmd = "dot -Tps " + name + " -o " + name + ".ps";
+    cout << std::system(cmd.c_str());
 
     // Run lcm-driven simulation
     systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

@@ -63,6 +63,11 @@ void FiniteStateMachineEventTime::AssignStartTimeOfStateOfInterest(
   // Read in current finite state machine state
   double fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
+  cout << "-----------------------------------------\n";
+  cout << "fsm_state = " << fsm_state << endl;
+  cout << "prev_fsm_state1_ = " << prev_fsm_state1_ << endl;
+  cout << "context.get_time() = " << context.get_time() << endl;
+
   // when entering a new state which is in fsm_states_of_interest
   if (fsm_state != prev_fsm_state1_) {
     prev_fsm_state1_ = fsm_state;
@@ -74,8 +79,10 @@ void FiniteStateMachineEventTime::AssignStartTimeOfStateOfInterest(
     if (is_state_of_interest) {
       // Record time
       prev_time_of_state_of_interest_ = context.get_time();
+      cout << "Change to a new state!!!!!!!!!!!!!!\n";
     }
   }
+  cout << "prev_time_of_state_of_interest_ = " << prev_time_of_state_of_interest_ << endl;
 
   // Assign
   state_start_time->get_mutable_value() << prev_time_of_state_of_interest_;

@@ -36,6 +36,9 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
   period_ = sum;
 }
 
+typedef std::numeric_limits<double> dbl;
+
+
 void TimeBasedFiniteStateMachine::CalcFiniteState(
     const Context<double>& context, BasicVector<double>* fsm_state) const {
   // Read in lcm message time
@@ -46,12 +49,27 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
   double m = floor((current_sim_time - t0_) / period_);
   double remainder = (current_sim_time - t0_) - m * period_;
 
+  double eps = 0;//1e-12;
+//  cout.precision(dbl::max_digits10);
+  cout << "================================== start of FSM ====================================\n";
+  cout << "(output time, context time) = " << current_sim_time << ", "<<  context.get_time() << endl;
+
   // Get current finite state
   VectorXd current_finite_state(1);
   if (current_sim_time >= t0_) {
+
+    cout << "states_ = ";
+    for (auto mem : states_) {
+      cout << mem << ", ";
+    }
+    cout << "\naccu_state_durations_ = ";
     for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
-      if (remainder < accu_state_durations_[i]) {
+      cout << accu_state_durations_[i] << " ("<< accu_state_durations_[i] - remainder<<"), ";
+      if (remainder < accu_state_durations_[i] - eps) {
         current_finite_state << states_[i];
+        cout << "\n";
+        cout << "in if statement: remainder = " << remainder << endl;
+        cout << "in if statement: current_finite_state = " << current_finite_state << endl;
         break;
       }
     }

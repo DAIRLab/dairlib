@@ -51,6 +51,24 @@ void DrakeSignalSender::PackVectorIntoLcm(const Context<double>& context,
     msg->coord[i] = signal_names_[i];
   }
   msg->utime = context.get_time() * 1e6;
+
+  // Testing -- Calc phase
+  using std::cout;
+  using std::endl;
+  double lift_off_time = input_vector->get_value()(1);
+  double time_in_first_mode = context.get_time() - lift_off_time;
+  double stride_period_ = 0.32;
+  double init_phase = time_in_first_mode / stride_period_;
+  if (init_phase > 1) {
+    cout << "WARNING: phase = " << init_phase
+         << " (>= 1). There might be a bug somewhere, "
+            "since we are using a time-based fsm\n";
+    cout << "lift_off_time = " << lift_off_time << endl;
+    cout << "current_time = " << context.get_time() << endl;
+    cout << "time_in_first_mode = " << time_in_first_mode << endl;
+    cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
+    DRAKE_UNREACHABLE();
+  }
 }
 
 }  // namespace systems

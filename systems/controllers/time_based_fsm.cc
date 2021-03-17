@@ -15,7 +15,7 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<int>& states, const std::vector<double>& state_durations,
     double t0)
-    : states_(states), state_durations_(state_durations), t0_(t0) {
+    : states_(states), t0_(t0) {
   DRAKE_DEMAND(states.size() == state_durations.size());
 
   // Input/Output Setup
@@ -31,13 +31,14 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
   double sum = 0;
   for (auto& duration_i : state_durations) {
     sum += duration_i;
-    accu_state_durations_.push_back(sum);
+    accu_state_durations_.push_back(sum - eps_);
   }
   period_ = sum;
+
+  // Add one more state to loop back
+  accu_state_durations_.push_back(period_ + state_durations[0]);
+  states_.push_back(states[0]);
 }
-
-typedef std::numeric_limits<double> dbl;
-
 
 void TimeBasedFiniteStateMachine::CalcFiniteState(
     const Context<double>& context, BasicVector<double>* fsm_state) const {
@@ -46,30 +47,14 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
 
-  double m = floor((current_sim_time - t0_) / period_);
-  double remainder = (current_sim_time - t0_) - m * period_;
-
-  double eps = 0;//1e-12;
-//  cout.precision(dbl::max_digits10);
-  cout << "================================== start of FSM ====================================\n";
-  cout << "(output time, context time) = " << current_sim_time << ", "<<  context.get_time() << endl;
+  double remainder = fmod(current_sim_time, period_);
 
   // Get current finite state
   VectorXd current_finite_state(1);
   if (current_sim_time >= t0_) {
-
-    cout << "states_ = ";
-    for (auto mem : states_) {
-      cout << mem << ", ";
-    }
-    cout << "\naccu_state_durations_ = ";
     for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
-      cout << accu_state_durations_[i] << " ("<< accu_state_durations_[i] - remainder<<"), ";
-      if (remainder < accu_state_durations_[i] - eps) {
+      if (remainder < accu_state_durations_[i]) {
         current_finite_state << states_[i];
-        cout << "\n";
-        cout << "in if statement: remainder = " << remainder << endl;
-        cout << "in if statement: current_finite_state = " << current_finite_state << endl;
         break;
       }
     }

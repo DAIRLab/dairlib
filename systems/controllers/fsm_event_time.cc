@@ -19,12 +19,18 @@ namespace dairlib {
 namespace systems {
 
 FiniteStateMachineEventTime::FiniteStateMachineEventTime(
+    const drake::multibody::MultibodyPlant<double>& plant,
     std::vector<int> fsm_states_of_interest)
     : fsm_states_of_interest_(fsm_states_of_interest) {
   this->set_name("fsm_event_time");
 
   // Input/Output Setup
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  robot_output_port_ =
+      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+          .get_index();
   start_time_port_ =
       this->DeclareVectorOutputPort(
               BasicVector<double>(1),
@@ -50,7 +56,11 @@ void FiniteStateMachineEventTime::AssignStartTimeOfCurrentState(
     prev_fsm_state0_ = fsm_state;
 
     // Record time
-    prev_time_ = context.get_time();
+    const OutputVector<double>* robot_output =
+        (OutputVector<double>*)this->EvalVectorInput(context, robot_output_port_);
+    prev_time_ = static_cast<double>(robot_output->get_timestamp());
+          cout << "prev_time_ = " << prev_time_ << endl;
+
   }
 
   // Assign
@@ -78,7 +88,10 @@ void FiniteStateMachineEventTime::AssignStartTimeOfStateOfInterest(
     bool is_state_of_interest = it != fsm_states_of_interest_.end();
     if (is_state_of_interest) {
       // Record time
-      prev_time_of_state_of_interest_ = context.get_time();
+      const OutputVector<double>* robot_output =
+          (OutputVector<double>*)this->EvalVectorInput(context, robot_output_port_);
+      prev_time_of_state_of_interest_ = static_cast<double>(robot_output->get_timestamp());
+//      cout << "prev_time_of_state_of_interest_ = " << prev_time_of_state_of_interest_ << endl;
       cout << "Change to a new state!!!!!!!!!!!!!!\n";
     }
   }

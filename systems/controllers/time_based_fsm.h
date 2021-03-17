@@ -51,12 +51,13 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
   int state_port_;
 
   std::vector<int> states_;
-  std::vector<double> state_durations_;
   int initial_state_ = -1;
   double t0_;
 
   std::vector<double> accu_state_durations_;
   double period_;
+
+  double eps_ = 1e-12;
 };
 
 }  // namespace systems

@@ -178,6 +178,7 @@ int DoMain(int argc, char* argv[]) {
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   param.dir_data = "../dairlib_data/goldilocks_models/planning/robot_1/data/";
   param.init_file = FLAGS_init_file;
+  param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
 
   if (FLAGS_debug_mode) {
     if (!CreateFolderIfNotExist(param.dir_model)) return 0;
@@ -406,11 +407,13 @@ int DoMain(int argc, char* argv[]) {
         x_init.head(plant_control.num_positions()),
         x_init.tail(plant_control.num_velocities()),
         VectorXd::Zero(plant_control.num_actuators()));
-    robot_output.set_timestamp(current_time);
+    // The current time is not set in the robot output anymore
+    robot_output.set_timestamp(-1);
 
     // Get contexts
     auto diagram_ptr = loop.get_diagram();
     auto& diagram_context = loop.get_diagram_mutable_context();
+    diagram_context.SetTime(current_time);
     auto& planner_context =
         diagram_ptr->GetMutableSubsystemContext(*rom_planner, &diagram_context);
 

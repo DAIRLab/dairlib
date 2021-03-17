@@ -58,6 +58,9 @@ struct PlannerSetting {
   std::string dir_data;   // location to store the opt result
   std::string init_file;
 
+  // Testing
+  int solve_idx_for_read_from_file;
+
   void PrintAll() const {
     cout << "rom_option" << rom_option << endl;
     cout << "iter" << iter << endl;

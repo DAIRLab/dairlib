@@ -110,11 +110,23 @@ void PhaseInFirstMode::CalcPhase(
     cout << "WARNING: phase = " << init_phase
          << " (>= 1). There might be a bug somewhere, "
             "since we are using a time-based fsm\n";
+    cout << "fsm_state = " << fsm_and_lo_time_port->get_value()(0) << endl;
     cout << "lift_off_time = " << lift_off_time << endl;
     cout << "current_time = " << current_time << endl;
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
     DRAKE_UNREACHABLE();
     init_phase = 1 - 1e-8;
+  }
+  if (init_phase < 0) {
+    cout << "WARNING: phase = " << init_phase
+         << " (< 0). There might be a bug somewhere, "
+            "since we are using a time-based fsm\n";
+    cout << "fsm_state = " << fsm_and_lo_time_port->get_value()(0) << endl;
+    cout << "lift_off_time = " << lift_off_time << endl;
+    cout << "current_time = " << current_time << endl;
+    cout << "time_in_first_mode = " << time_in_first_mode << endl;
+    DRAKE_UNREACHABLE();
+    init_phase = 0;
   }
 
   // Assign init_phase
@@ -327,8 +339,7 @@ void InitialStateForPlanner::CalcState(
               &right_foot_vel_w_spr);
 
   VectorXd x_init = x_init_original;
-  cout << "\n================= Time = " +
-              std::to_string(context.get_time()) +
+  cout << "\n================= Time = " + std::to_string(context.get_time()) +
               " =======================\n\n";
   //  cout << "  IK || Time of arrival: " << context.get_time() << "
   //  | ";

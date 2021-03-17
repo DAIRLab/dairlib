@@ -73,10 +73,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   phase_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   state_port_ = this->DeclareVectorInputPort(
-          OutputVector<double>(plant_controls.num_positions(),
-                               plant_controls.num_velocities(),
-                               plant_controls.num_actuators()))
-      .get_index();
+                        OutputVector<double>(plant_controls.num_positions(),
+                                             plant_controls.num_velocities(),
+                                             plant_controls.num_actuators()))
+                    .get_index();
   fsm_and_lo_time_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
@@ -100,8 +100,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   int n_y = rom_->n_y();
   int n_tau = rom_->n_tau();
   string model_dir_n_pref = param_.dir_model + to_string(param_.iter) +
-      string("_") + to_string(param_.sample) +
-      string("_");
+                            string("_") + to_string(param_.sample) +
+                            string("_");
   h_guess_ = VectorXd(param_.knots_per_mode);
   r_guess_ = MatrixXd(n_y, param_.knots_per_mode);
   dr_guess_ = MatrixXd(n_y, param_.knots_per_mode);
@@ -131,15 +131,15 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     for (int i = 0; i < param_.knots_per_mode; i++) {
       int n_mat_col_r = r_guess_raw.cols();
       int idx_r = (int)round(double(i * (n_mat_col_r - 1)) /
-          (param_.knots_per_mode - 1));
+                             (param_.knots_per_mode - 1));
       r_guess_.col(i) = r_guess_raw.col(idx_r);
       int n_mat_col_dr = dr_guess_raw.cols();
       int idx_dr = (int)round(double(i * (n_mat_col_dr - 1)) /
-          (param_.knots_per_mode - 1));
+                              (param_.knots_per_mode - 1));
       dr_guess_.col(i) = dr_guess_raw.col(idx_dr);
       int n_mat_col_tau = tau_guess_raw.cols();
       int idx_tau = (int)round(double(i * (n_mat_col_tau - 1)) /
-          (param_.knots_per_mode - 1));
+                               (param_.knots_per_mode - 1));
       tau_guess_.col(i) = tau_guess_raw.col(idx_tau);
     }
 
@@ -299,6 +299,30 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     FOM_Lambda_ =
         Eigen::MatrixXd::Zero(3 * left_contacts_.size(), (param_.n_step - 1));
   }
+
+  // Initilaization
+  prev_mode_start_ = std::vector<int>(param_.n_step, -1);
+
+  // Initialization for warm starting in debug mode
+  if (param_.init_file.empty()) {
+    if (warm_start_with_previous_solution_ &&
+        param_.solve_idx_for_read_from_file > 0) {
+      prev_global_fsm_idx_ = readCSV(
+          param_.dir_data + to_string(param_.solve_idx_for_read_from_file) +
+          "_prev_global_fsm_idx.csv")(0, 0);
+      prev_first_mode_knot_idx_ = readCSV(
+          param_.dir_data + to_string(param_.solve_idx_for_read_from_file) +
+          "_prev_first_mode_knot_idx.csv")(0, 0);
+      VectorXd in_eigen =
+          readCSV(param_.dir_data +
+                  to_string(param_.solve_idx_for_read_from_file) +
+                  "_prev_mode_start.csv")
+              .col(0);
+      for (int i = 0; i < prev_mode_start_.size(); i++) {
+        prev_mode_start_[i] = int(in_eigen(i));
+      }
+    }
+  }
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
@@ -311,7 +335,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   auto current_time = context.get_time();
 
   bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
-      min_time_difference_for_replanning_);
+                         min_time_difference_for_replanning_);
   if (!need_to_replan) {
     *traj_msg = previous_output_msg_;
     return;
@@ -504,34 +528,28 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       z0.resize(n_dec);
       z0 = VectorXd::Zero(n_dec);
       z0.head(old_z0.rows()) = old_z0;
+    } else if (n_dec < z0.rows()) {
+      cout << "The init file is longer than the length of decision variable\n";
     }
     trajopt.SetInitialGuessForAllVariables(z0);
   } else {
-    if (debug_mode_) {
+    int global_fsm_idx = int((current_time + 1e-8) / stride_period_);
+    PrintStatus("global_fsm_idx = " + to_string(global_fsm_idx));
+    if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
+      PrintStatus("Warm start initial guess with previous solution...");
+      WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,
+                     &trajopt);
+    } else {
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(
           h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
           x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
-    } else {
-      int global_fsm_idx = int((current_time + 1e-12) / stride_period_);
-      PrintStatus("global_fsm_idx= " + to_string(global_fsm_idx));
-      if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
-        PrintStatus("Warm start initial guess with previous solution...");
-        WarmStartGuess(final_position, global_fsm_idx, first_mode_knot_idx,
-                       &trajopt);
-      } else {
-        // Set heuristic initial guess for all variables
-        PrintStatus("Set heuristic initial guess...");
-        trajopt.SetHeuristicInitialGuess(
-            h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-            x_guess_right_in_front_, final_position, first_mode_knot_idx, 0);
-      }
-      trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
-      prev_global_fsm_idx_ = global_fsm_idx;
-      prev_first_mode_knot_idx_ = first_mode_knot_idx;
-      prev_mode_start_ = trajopt.mode_start();
     }
+    trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
+    prev_global_fsm_idx_ = global_fsm_idx;
+    prev_first_mode_knot_idx_ = first_mode_knot_idx;
+    prev_mode_start_ = trajopt.mode_start();
 
     // Avoid zero-value initial guess!
     // This sped up the solve and sometimes unstuck the solver!
@@ -753,7 +771,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     h_solutions_(i) = sample_times(i + 1) - sample_times(i);
   }
   state_at_knots_ = trajopt.drake::systems::trajectory_optimization::
-  MultipleShooting::GetStateSamples(result);
+                        MultipleShooting::GetStateSamples(result);
   input_at_knots_ = trajopt.GetInputSamples(result);
   for (int i = 1; i < param_.n_step; i++) {
     FOM_Lambda_.col(i - 1) = result.GetSolution(trajopt.impulse_vars(i - 1));
@@ -824,6 +842,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     //  if (debug_mode_ || (elapsed.count() > 0.8)) {
     string dir_data = param_.dir_data;
     string prefix = debug_mode_ ? "debug_" : to_string(counter_) + "_";
+    string prefix_next = debug_mode_ ? "debug_" : to_string(counter_ + 1) + "_";
 
     /// Save the solution vector
     VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
@@ -870,6 +889,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
              trajopt.initial_guess(), true);
     writeCSV(param_.dir_data + prefix + string("current_time.csv"),
              current_time * VectorXd::Ones(1), true);
+    writeCSV(param_.dir_data + prefix_next + string("prev_global_fsm_idx.csv"),
+             prev_global_fsm_idx_ * VectorXd::Ones(1), true);
+    writeCSV(
+        param_.dir_data + prefix_next + string("prev_first_mode_knot_idx.csv"),
+        prev_first_mode_knot_idx_ * VectorXd::Ones(1), true);
+    VectorXd in_eigen(param_.n_step);
+    for (int i = 0; i < param_.n_step; i++) {
+      in_eigen(i) = prev_mode_start_[i];
+    }
+    writeCSV(param_.dir_data + prefix_next + string("prev_mode_start.csv"),
+             in_eigen, true);
   }
 
   if (true) {
@@ -962,8 +992,8 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
             (i == global_fsm_idx) ? knot_idx - first_mode_knot_idx : knot_idx;
         int prev_local_fsm_idx = i - prev_global_fsm_idx_;
         int prev_local_knot_idx = (i == prev_global_fsm_idx_)
-                                  ? knot_idx - prev_first_mode_knot_idx_
-                                  : knot_idx;
+                                      ? knot_idx - prev_first_mode_knot_idx_
+                                      : knot_idx;
         // Trajopt index
         int trajopt_idx = trajopt->mode_start()[local_fsm_idx] + local_knot_idx;
         int prev_trajopt_idx =

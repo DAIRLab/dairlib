@@ -39,8 +39,8 @@ DrakeSignalSender::DrakeSignalSender(
   this->DeclareAbstractOutputPort(&DrakeSignalSender::PackVectorIntoLcm);
 }
 
-void DrakeSignalSender::PackVectorIntoLcm(const Context<double>& context,
-                                          dairlib::lcmt_dairlib_signal* msg) const {
+void DrakeSignalSender::PackVectorIntoLcm(
+    const Context<double>& context, dairlib::lcmt_dairlib_signal* msg) const {
   const auto* input_vector = this->EvalVectorInput(context, 0);
 
   msg->dim = signal_size_;
@@ -63,6 +63,17 @@ void DrakeSignalSender::PackVectorIntoLcm(const Context<double>& context,
     cout << "WARNING: phase = " << init_phase
          << " (>= 1). There might be a bug somewhere, "
             "since we are using a time-based fsm\n";
+    cout << "fsm state = " << input_vector->get_value()(0) << endl;
+    cout << "lift_off_time = " << lift_off_time << endl;
+    cout << "current_time = " << context.get_time() << endl;
+    cout << "time_in_first_mode = " << time_in_first_mode << endl;
+    cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
+    DRAKE_UNREACHABLE();
+  } else if (init_phase < 0) {
+    cout << "WARNING: phase = " << init_phase
+         << " (<0). There might be a bug somewhere, "
+            "since we are using a time-based fsm\n";
+    cout << "fsm state = " << input_vector->get_value()(0) << endl;
     cout << "lift_off_time = " << lift_off_time << endl;
     cout << "current_time = " << context.get_time() << endl;
     cout << "time_in_first_mode = " << time_in_first_mode << endl;

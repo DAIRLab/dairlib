@@ -245,8 +245,10 @@ int DoMain(int argc, char* argv[]) {
   std::vector<int> single_support_states = {left_stance_state,
                                             right_stance_state};
   auto event_time = builder.AddSystem<systems::FiniteStateMachineEventTime>(
-      single_support_states);
+      plant_w_spr, single_support_states);
   builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
+  builder.Connect(simulator_drift->get_output_port(0),
+                  event_time->get_input_port_state());
 
   // Create a multiplexer which combines current finite state machine state
   // and the latest lift-off event time, and create publisher for this

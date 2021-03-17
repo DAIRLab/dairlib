@@ -1,5 +1,7 @@
 #include "systems/controllers/fsm_event_time.h"
 
+#include <limits>
+
 using std::cout;
 using std::endl;
 using std::string;
@@ -43,62 +45,66 @@ FiniteStateMachineEventTime::FiniteStateMachineEventTime(
                 &FiniteStateMachineEventTime::AssignStartTimeOfStateOfInterest)
             .get_index();
   }
+
+  // Per-step update to record the previous state and the previous event time
+  DeclarePerStepDiscreteUpdateEvent(
+      &FiniteStateMachineEventTime::DiscreteVariableUpdate);
+  // The start time of the current fsm state
+  prev_time_idx_ = this->DeclareDiscreteState(1);
+  // The start time of the most recent fsm state that we are interested
+  prev_time_of_state_of_interest_idx_ = this->DeclareDiscreteState(1);
+  // The last state of FSM
+  prev_fsm_state_idx_ = this->DeclareDiscreteState(
+      -std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
+}
+
+EventStatus FiniteStateMachineEventTime::DiscreteVariableUpdate(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  // Read in current finite state machine state
+  VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
+  // Read in previous finite state machine state
+  auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
+                            .get_mutable_value();
+
+  // when entering a new state which is in fsm_states_of_interest
+  if (fsm_state(0) != prev_fsm_state(0)) {
+    prev_fsm_state(0) = fsm_state(0);
+
+    // Record time
+    const OutputVector<double>* robot_output =
+        (OutputVector<double>*)this->EvalVectorInput(context,
+                                                     robot_output_port_);
+    discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value()
+        << static_cast<double>(robot_output->get_timestamp());
+
+    // Check if the current state is of our interest
+    auto it = find(fsm_states_of_interest_.begin(),
+                   fsm_states_of_interest_.end(), int(fsm_state(0)));
+    bool is_state_of_interest = it != fsm_states_of_interest_.end();
+    if (is_state_of_interest) {
+      // Record time
+      discrete_state->get_mutable_vector(prev_time_of_state_of_interest_idx_)
+              .get_mutable_value()
+          << static_cast<double>(robot_output->get_timestamp());
+    }
+  }
+
+  return EventStatus::Succeeded();
 }
 
 void FiniteStateMachineEventTime::AssignStartTimeOfCurrentState(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* current_state_start_time) const {
-  // Read in current finite state machine state
-  double fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
-
-  // when entering a new state which is in fsm_states_of_interest
-  if (fsm_state != prev_fsm_state0_) {
-    prev_fsm_state0_ = fsm_state;
-
-    // Record time
-    const OutputVector<double>* robot_output =
-        (OutputVector<double>*)this->EvalVectorInput(context, robot_output_port_);
-    prev_time_ = static_cast<double>(robot_output->get_timestamp());
-          cout << "prev_time_ = " << prev_time_ << endl;
-
-  }
-
-  // Assign
-  current_state_start_time->get_mutable_value() << prev_time_;
+  current_state_start_time->get_mutable_value() =
+      context.get_discrete_state(prev_time_idx_).get_value();
 }
-
 void FiniteStateMachineEventTime::AssignStartTimeOfStateOfInterest(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* state_start_time) const {
-  // Read in current finite state machine state
-  double fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
-
-  cout << "-----------------------------------------\n";
-  cout << "fsm_state = " << fsm_state << endl;
-  cout << "prev_fsm_state1_ = " << prev_fsm_state1_ << endl;
-  cout << "context.get_time() = " << context.get_time() << endl;
-
-  // when entering a new state which is in fsm_states_of_interest
-  if (fsm_state != prev_fsm_state1_) {
-    prev_fsm_state1_ = fsm_state;
-
-    // Check if the current state is of our interest
-    auto it = find(fsm_states_of_interest_.begin(),
-                   fsm_states_of_interest_.end(), int(fsm_state));
-    bool is_state_of_interest = it != fsm_states_of_interest_.end();
-    if (is_state_of_interest) {
-      // Record time
-      const OutputVector<double>* robot_output =
-          (OutputVector<double>*)this->EvalVectorInput(context, robot_output_port_);
-      prev_time_of_state_of_interest_ = static_cast<double>(robot_output->get_timestamp());
-//      cout << "prev_time_of_state_of_interest_ = " << prev_time_of_state_of_interest_ << endl;
-      cout << "Change to a new state!!!!!!!!!!!!!!\n";
-    }
-  }
-  cout << "prev_time_of_state_of_interest_ = " << prev_time_of_state_of_interest_ << endl;
-
-  // Assign
-  state_start_time->get_mutable_value() << prev_time_of_state_of_interest_;
+  state_start_time->get_mutable_value() =
+      context.get_discrete_state(prev_time_of_state_of_interest_idx_)
+          .get_value();
 }
 
 }  // namespace systems

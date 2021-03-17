@@ -34,6 +34,9 @@ class FiniteStateMachineEventTime : public drake::systems::LeafSystem<double> {
   }
 
  private:
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
   void AssignStartTimeOfCurrentState(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* current_state_start_time) const;
@@ -47,15 +50,12 @@ class FiniteStateMachineEventTime : public drake::systems::LeafSystem<double> {
   int start_time_port_;
   int start_time_of_interest_port_;
 
-  std::vector<int> fsm_states_of_interest_;
+  // Discrete state index
+  int prev_fsm_state_idx_;
+  int prev_time_idx_;
+  int prev_time_of_state_of_interest_idx_;
 
-  // Internal states of this leafsystem
-  // prev_fsm_state0_ is used for AssignStartTimeOfCurrentState()
-  // prev_fsm_state1_ is used for AssignStartTimeOfStateOfInterest()
-  mutable double prev_fsm_state0_ = -std::numeric_limits<double>::infinity();
-  mutable double prev_fsm_state1_ = -std::numeric_limits<double>::infinity();
-  mutable double prev_time_;
-  mutable double prev_time_of_state_of_interest_;
+  std::vector<int> fsm_states_of_interest_;
 };
 
 }  // namespace systems

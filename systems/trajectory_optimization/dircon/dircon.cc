@@ -577,7 +577,7 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
 }
 
 template<typename T>
-void Dircon<T>::AddVelocityCost(const double velocityCostGain){
+void Dircon<T>::AddVelocityCost(const double velocity_cost_gain){
   double n_v = plant_.num_velocities();
 
   // Add velocity cost handling discontinuities
@@ -600,7 +600,7 @@ void Dircon<T>::AddVelocityCost(const double velocityCostGain){
       }
 
       // Add cost
-      AddCost(hi/2.0 * velocityCostGain * (vel_sq + vel_sq_up));
+      AddCost(hi/2.0 * velocity_cost_gain * (vel_sq + vel_sq_up));
     }
   }
 

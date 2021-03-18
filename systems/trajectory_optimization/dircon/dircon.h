@@ -189,7 +189,7 @@ class Dircon
 
   /// Adds cost on sum of velocities squared while properly handling the
   /// discontinuities from impacts
-  void AddVelocityCost(const double velocityCostGain);
+  void AddVelocityCost(const double velocity_cost_gain);
 
   const multibody::KinematicEvaluatorSet<T>& get_evaluator_set(int mode) const {
     return mode_sequence_.mode(mode).evaluators();

@@ -454,6 +454,22 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_dircon_running",
+    srcs = ["run_dircon_running.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        ":cassie_utils",
+        "//common",
+        "//lcm:dircon_trajectory_saver",
+        "//solvers:optimization_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_controller_switch",
     srcs = ["run_controller_switch.cc"],
     deps = [

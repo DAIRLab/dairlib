@@ -82,10 +82,6 @@ namespace dairlib {
 void setKinematicConstraints(HybridDircon<double>* trajopt,
                              const MultibodyPlant<double>& plant,
                              std::vector<DirconKinematicDataSet<double>*>);
-vector<VectorXd> GetInitGuessForQStance(int num_knot_points,
-                                        const MultibodyPlant<double>& plant);
-vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
-                                        const MultibodyPlant<double>& plant);
 vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
                                   const MultibodyPlant<double>& plant);
 MatrixXd loadSavedDecisionVars(const string& filepath);

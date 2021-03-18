@@ -21,6 +21,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def_readwrite("git_commit_hash", &lcmt_metadata::git_commit_hash);
 
   py::class_<LcmTrajectory::Trajectory>(m, "Trajectory")
+      .def(py::init<>())
       .def_readwrite("traj_name", &LcmTrajectory::Trajectory::traj_name)
       .def_readwrite("time_vector", &LcmTrajectory::Trajectory::time_vector)
       .def_readwrite("datapoints", &LcmTrajectory::Trajectory::datapoints)
@@ -31,14 +32,20 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def(py::init<const std::string&>())
       .def("LoadFromFile", &LcmTrajectory::LoadFromFile,
            py::arg("trajectory_name"))
+      .def("WriteToFile", &LcmTrajectory::WriteToFile,
+           py::arg("trajectory_name"))
       .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)
       .def("GetMetadata", &LcmTrajectory::GetMetadata)
+      .def("AddTrajectory", &DirconTrajectory::AddTrajectory)
       .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
            py::arg("trajectory_name"));
   py::class_<DirconTrajectory>(m, "DirconTrajectory")
       .def(py::init<const std::string&>())
+      .def("WriteToFile", &LcmTrajectory::WriteToFile,
+           py::arg("trajectory_name"))
       .def("GetMetadata", &LcmTrajectory::GetMetadata)
       .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)
+      .def("AddTrajectory", &DirconTrajectory::AddTrajectory)
       .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
            py::arg("trajectory_name"))
       .def("GetStateSamples", &DirconTrajectory::GetStateSamples)

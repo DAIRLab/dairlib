@@ -61,6 +61,7 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
+DEFINE_double(platform_x, 0.0, "x location of the  landing terrain");
 DEFINE_double(start_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
@@ -91,7 +92,7 @@ int do_main(int argc, char* argv[]) {
         FindResourceOrThrow("examples/impact_invariant_control/platform.urdf");
     parser.AddModelFromFile(terrain_name);
     Eigen::Vector3d offset;
-    offset << 0.16, 0, FLAGS_terrain_height;
+    offset << FLAGS_platform_x, 0, FLAGS_terrain_height;
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                      drake::math::RigidTransform<double>(offset));
   }

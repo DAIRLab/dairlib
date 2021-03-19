@@ -76,6 +76,7 @@ InputSupervisor::InputSupervisor(
   K_(7, 13) = -1;
   K_(8, 19) = -1;
   K_(9, 21) = -1;
+  K_ = 10 * K_;
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,

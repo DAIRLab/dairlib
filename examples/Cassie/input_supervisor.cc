@@ -76,7 +76,6 @@ InputSupervisor::InputSupervisor(
   K_(7, 13) = -1;
   K_(8, 19) = -1;
   K_(9, 21) = -1;
-  K_ = 10 * K_;
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
@@ -110,7 +109,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
 
   if (cassie_out->pelvis.radio.channel[15] == -1) {
     Eigen::VectorXd u = -K_ * state->get_value();
-    output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
+    output->SetDataVector(u);
     return;
   }
 

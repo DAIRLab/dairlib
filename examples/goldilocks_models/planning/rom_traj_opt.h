@@ -128,7 +128,8 @@ class RomTrajOpt
   std::vector<Binding<Cost>> rom_regularization_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_quat_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_xy_cost_bindings_;
-  std::vector<Binding<Cost>> fom_reg_z_joint_cost_bindings_;
+  std::vector<Binding<Cost>> fom_reg_z_cost_bindings_;
+  std::vector<Binding<Cost>> fom_reg_joint_cost_bindings_;
   std::vector<Binding<Cost>> x0_relax_cost_bindings_;
   std::vector<Binding<Cost>> v0_relax_cost_bindings_;
   std::vector<Binding<Cost>> init_rom_relax_cost_bindings_;
@@ -157,7 +158,7 @@ class RomTrajOpt
   bool start_with_left_stance_;
 
   void PrintStatus(const std::string& msg) const {
-    if (print_status_)  std::cout << msg << std::endl;
+    if (print_status_) std::cout << msg << std::endl;
   };
   bool print_status_;
 };
@@ -179,8 +180,8 @@ class RomTrajOptCassie : public RomTrajOpt {
   void AddRegularizationCost(const std::vector<Eigen::VectorXd>& des_xy_pos,
                              const Eigen::VectorXd& x_guess_left_in_front,
                              const Eigen::VectorXd& x_guess_right_in_front,
-                             double w_reg_quat, double w_reg_xy,
-                             double w_reg_z_joints, bool straight_leg_cost);
+                             double w_reg_quat, double w_reg_xy, double w_reg_z,
+                             double w_reg_joints, bool straight_leg_cost);
 
   void SetHeuristicInitialGuess(const Eigen::VectorXd& h_guess,
                                 const Eigen::MatrixXd& r_guess,

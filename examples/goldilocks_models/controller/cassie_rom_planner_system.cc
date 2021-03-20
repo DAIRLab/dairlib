@@ -408,6 +408,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (n_knots_first_mode == 2) {
     min_dt[0] = 1e-3;
   }
+  cout << "start_with_left_stance  = " << start_with_left_stance << endl;
   cout << "init_phase = " << init_phase << endl;
   cout << "n_knots_first_mode = " << n_knots_first_mode << endl;
   cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
@@ -490,10 +491,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Add robot state in cost
   bool add_x_pose_in_cost = true;
   if (add_x_pose_in_cost) {
-    trajopt.AddRegularizationCost(des_xy_pos, x_guess_left_in_front_,
-                                  x_guess_right_in_front_, param_.w_reg_quat_,
-                                  param_.w_reg_xy_, param_.w_reg_z_joints_,
-                                  false /*straight_leg_cost*/);
+    trajopt.AddRegularizationCost(
+        des_xy_pos, x_guess_left_in_front_, x_guess_right_in_front_,
+        param_.w_reg_quat_, param_.w_reg_xy_, param_.w_reg_z_,
+        param_.w_reg_joints_, false /*straight_leg_cost*/);
   } else {
     // Since there are multiple q that could be mapped to the same r, I
     // penalize on q so it get close to a certain configuration
@@ -573,7 +574,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int i = 0; i < n_var; i++) {
       double init_guess = trajopt.GetInitialGuess(all_vars(i));
       if (init_guess == 0 || isnan(init_guess)) {
-        cout << all_vars(i) << " init guess was " << init_guess << endl;
+        // cout << all_vars(i) << " init guess was " << init_guess << endl;
         trajopt.SetInitialGuess(all_vars(i), rand(i));
       }
     }
@@ -823,9 +824,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     double fom_xy_cost = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.fom_reg_xy_cost_bindings_);
     cout << "fom_xy_cost = " << fom_xy_cost << endl;
-    double fom_reg_z_joint_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.fom_reg_z_joint_cost_bindings_);
-    cout << "fom_reg_z_joint_cost = " << fom_reg_z_joint_cost << endl;
+    double fom_reg_z_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.fom_reg_z_cost_bindings_);
+    cout << "fom_reg_z_cost = " << fom_reg_z_cost << endl;
+    double fom_reg_joint_cost = solvers::EvalCostGivenSolution(
+        trajopt, result, trajopt.fom_reg_joint_cost_bindings_);
+    cout << "fom_reg_joint_cost = " << fom_reg_joint_cost << endl;
     double lambda_cost = solvers::EvalCostGivenSolution(
         trajopt, result, trajopt.lambda_cost_bindings_);
     cout << "lambda_cost = " << lambda_cost << endl;

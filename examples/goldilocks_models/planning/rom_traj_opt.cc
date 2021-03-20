@@ -393,7 +393,7 @@ RomTrajOpt::RomTrajOpt(
     AddBoundingBoxConstraint(-1, 1, xf.segment<3>(1));
     AddBoundingBoxConstraint(-2, 2, xf.segment<2>(4));
     // Heuristics -- prevent the pelvis go too low
-    AddBoundingBoxConstraint(0.8, 1.1, xf.segment<1>(6));
+    AddBoundingBoxConstraint(0.5, 1.1, xf.segment<1>(6));
 
     // Full order model vel limits
     PrintStatus("Adding constraint -- full-order model joint vel");
@@ -791,7 +791,8 @@ void RomTrajOptCassie::AddRegularizationCost(
     const std::vector<Eigen::VectorXd>& des_xy_pos,
     const Eigen::VectorXd& x_guess_left_in_front,
     const Eigen::VectorXd& x_guess_right_in_front, double w_reg_quat,
-    double w_reg_xy, double w_reg_z_joints, bool straight_leg_cost) {
+    double w_reg_xy, double w_reg_z, double w_reg_joints,
+    bool straight_leg_cost) {
   PrintStatus("Adding regularization cost ...");
   int n_q = plant_.num_positions();
 
@@ -800,7 +801,8 @@ void RomTrajOptCassie::AddRegularizationCost(
   // results in spacing out each step more evenly
   MatrixXd Id_quat = w_reg_quat * MatrixXd::Identity(4, 4);
   MatrixXd Id_xy = w_reg_xy * MatrixXd::Identity(2, 2);
-  MatrixXd Id_z_joints = w_reg_z_joints * MatrixXd::Identity(n_q - 6, n_q - 6);
+  MatrixXd Id_z = w_reg_z * MatrixXd::Identity(1, 1);
+  MatrixXd Id_joints = w_reg_joints * MatrixXd::Identity(n_q - 7, n_q - 7);
 
   VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
   VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
@@ -819,13 +821,19 @@ void RomTrajOptCassie::AddRegularizationCost(
     auto x_f = xf_vars_by_mode(i);
     if (left_stance) {
       if (i != 0) {
-        fom_reg_z_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
-            Id_z_joints, modifixed_x_guess_left_in_front.segment(6, n_q - 6),
-            x_0.segment(6, n_q - 6)));
+        fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
+            Id_z, modifixed_x_guess_left_in_front.segment(6, 1),
+            x_0.segment(6, 1)));
+        fom_reg_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
+            Id_joints, modifixed_x_guess_left_in_front.segment(7, n_q - 7),
+            x_0.segment(7, n_q - 7)));
       }
-      fom_reg_z_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
-          Id_z_joints, modifixed_x_guess_right_in_front.segment(6, n_q - 6),
-          x_f.segment(6, n_q - 6)));
+      fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
+          Id_z, modifixed_x_guess_right_in_front.segment(6, 1),
+          x_f.segment(6, 1)));
+      fom_reg_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
+          Id_joints, modifixed_x_guess_right_in_front.segment(7, n_q - 7),
+          x_f.segment(7, n_q - 7)));
       //      fom_reg_quat_cost_bindings_.push_back(AddQuadraticErrorCost(
       //          Id_quat, modifixed_x_guess_left_in_front.head(4),
       //          x_0.head(4)));
@@ -834,13 +842,19 @@ void RomTrajOptCassie::AddRegularizationCost(
       //          x_f.head(4)));
     } else {
       if (i != 0) {
-        fom_reg_z_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
-            Id_z_joints, modifixed_x_guess_right_in_front.segment(6, n_q - 6),
-            x_0.segment(6, n_q - 6)));
+        fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
+            Id_z, modifixed_x_guess_right_in_front.segment(6, 1),
+            x_0.segment(6, 1)));
+        fom_reg_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
+            Id_joints, modifixed_x_guess_right_in_front.segment(7, n_q - 7),
+            x_0.segment(7, n_q - 7)));
       }
-      fom_reg_z_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
-          Id_z_joints, modifixed_x_guess_left_in_front.segment(6, n_q - 6),
-          x_f.segment(6, n_q - 6)));
+      fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
+          Id_z, modifixed_x_guess_left_in_front.segment(6, 1),
+          x_f.segment(6, 1)));
+      fom_reg_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
+          Id_joints, modifixed_x_guess_left_in_front.segment(7, n_q - 7),
+          x_f.segment(7, n_q - 7)));
       //      fom_reg_quat_cost_bindings_.push_back(AddQuadraticErrorCost(
       //          Id_quat, modifixed_x_guess_right_in_front.head(4),
       //          x_0.head(4)));

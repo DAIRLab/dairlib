@@ -371,11 +371,18 @@ void InitialStateForPlanner::CalcState(
               &right_foot_vel_wo_spr_original);
   CalcFeetVel(plant_controls_, x_init, &left_foot_vel_wo_spr,
               &right_foot_vel_wo_spr);
+  double left_error_original =
+      (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).norm();
+  double left_error_improved =
+      (left_foot_vel_w_spr - left_foot_vel_wo_spr).norm();
+  double right_error_original =
+      (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).norm();
+  double right_error_improved =
+      (right_foot_vel_w_spr - right_foot_vel_wo_spr).norm();
   //  if (true) {
-  if ((left_foot_vel_w_spr - left_foot_vel_wo_spr).norm() +
-          (right_foot_vel_w_spr - right_foot_vel_wo_spr).norm() >
-      (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).norm() +
-          (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).norm()) {
+  if ((left_error_improved > left_error_original) ||
+      (right_error_improved > right_error_original) ||
+      (left_error_improved > 0.06) || (right_error_improved > 0.06)) {
     cout << "\n=== Feet vel differences ===\n";
     cout << "left_foot_vel_w_spr = " << left_foot_vel_w_spr.transpose() << endl;
     cout << "right_foot_vel_w_spr = " << right_foot_vel_w_spr.transpose()
@@ -395,20 +402,20 @@ void InitialStateForPlanner::CalcState(
     cout << "  right difference = "
          << (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).transpose()
          << endl;
-    cout << "  norm = "
-         << (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).norm() +
-                (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).norm()
-         << endl;
+    cout << "  norm (left, right) = " << left_error_original << ", "
+         << right_error_original << endl;
     cout << "after adjustment:\n";
     cout << "  left difference = "
          << (left_foot_vel_w_spr - left_foot_vel_wo_spr).transpose() << endl;
     cout << "  right difference = "
          << (right_foot_vel_w_spr - right_foot_vel_wo_spr).transpose() << endl;
-    cout << "  norm = "
-         << (left_foot_vel_w_spr - left_foot_vel_wo_spr).norm() +
-                (right_foot_vel_w_spr - right_foot_vel_wo_spr).norm()
-         << endl;
+    cout << "  norm (left, right) = " << left_error_improved << ", "
+         << right_error_improved << endl;
     cout << "\n";
+    cout << "robot_output->GetState() = " << robot_output->GetState() << endl;
+    // TODO: before you put the code on the hardware, you need to disable all
+    //  the DRAKE_UNREACHABLE()
+    DRAKE_UNREACHABLE();  // Put a check here for future investigation
   }
   cout << "\n\n";
 

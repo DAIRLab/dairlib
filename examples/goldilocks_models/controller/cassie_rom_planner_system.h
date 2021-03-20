@@ -51,7 +51,8 @@ struct PlannerSetting {
   // Regularization cost on FOM state
   double w_reg_quat_;
   double w_reg_xy_;
-  double w_reg_z_joints_;
+  double w_reg_z_;
+  double w_reg_joints_;
 
   // Files parameters
   std::string dir_model;  // location of the model files
@@ -83,7 +84,8 @@ struct PlannerSetting {
     cout << "w_rom_reg" << w_rom_reg << endl;
     cout << "w_reg_quat_" << w_reg_quat_ << endl;
     cout << "w_reg_xy_" << w_reg_xy_ << endl;
-    cout << "w_reg_z_joints_" << w_reg_z_joints_ << endl;
+    cout << "w_reg_z_" << w_reg_z_ << endl;
+    cout << "w_reg_joints_" << w_reg_joints_ << endl;
     cout << "dir_model" << dir_model << endl;
     cout << "dir_data" << dir_data << endl;
     cout << "init_file" << init_file << endl;

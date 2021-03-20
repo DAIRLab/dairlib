@@ -173,7 +173,8 @@ int DoMain(int argc, char* argv[]) {
   param.w_rom_reg = gains.w_rom_reg;
   param.w_reg_quat_ = gains.w_reg_quat;
   param.w_reg_xy_ = gains.w_reg_xy;
-  param.w_reg_z_joints_ = gains.w_reg_z_joints;
+  param.w_reg_z_ = gains.w_reg_z;
+  param.w_reg_joints_ = gains.w_reg_joints;
   param.dir_model =
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   param.dir_data = "../dairlib_data/goldilocks_models/planning/robot_1/data/";

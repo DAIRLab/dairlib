@@ -175,8 +175,9 @@ InitialStateForPlanner::InitialStateForPlanner(
                                                             plant_controls);
 
   // Create index maps
-  pos_map_ = multibody::makeNameToPositionsMap(plant_controls);
-  vel_map_ = multibody::makeNameToVelocitiesMap(plant_controls);
+  pos_map_w_spr_ = multibody::makeNameToPositionsMap(plant_feedback);
+  pos_map_wo_spr_ = multibody::makeNameToPositionsMap(plant_controls);
+  vel_map_wo_spr_ = multibody::makeNameToVelocitiesMap(plant_controls);
 }
 
 void CalcCOM(const drake::multibody::MultibodyPlant<double>& plant,
@@ -222,6 +223,32 @@ void CalcCOM(const drake::multibody::MultibodyPlant<double>& plant,
   cout << "stance_foot_vel= " << stance_foot_vel.transpose() << endl;
   cout << "vel_st_to_CoM= " << vel_st_to_CoM.transpose() << endl;*/
 };
+
+void CalcFeetPos(const drake::multibody::MultibodyPlant<double>& plant,
+                 const VectorXd& state, Vector3d* left_foot_pos,
+                 Vector3d* right_foot_pos) {
+  // The position of the origin of the toe body frame
+
+  auto context = plant.CreateDefaultContext();
+  plant.SetPositions(context.get(), state.head(plant.num_positions()));
+
+  auto left_toe_origin =
+      BodyPoint(Vector3d::Zero(), plant.GetFrameByName("toe_left"));
+  auto right_toe_origin =
+      BodyPoint(Vector3d::Zero(), plant.GetFrameByName("toe_right"));
+
+  Vector3d foot_pos = Vector3d::Zero();
+  plant.CalcPointsPositions(*context, left_toe_origin.second,
+                            left_toe_origin.first, plant.world_frame(),
+                            &foot_pos);
+  (*left_foot_pos) = foot_pos;
+  //  cout << "left_foot_pos= " << left_foot_pos->transpose() << endl;
+  plant.CalcPointsPositions(*context, right_toe_origin.second,
+                            right_toe_origin.first, plant.world_frame(),
+                            &foot_pos);
+  (*right_foot_pos) = foot_pos;
+  //  cout << "right_foot_pos= " << right_foot_pos->transpose() << endl;
+}
 
 void CalcFeetVel(const drake::multibody::MultibodyPlant<double>& plant,
                  const VectorXd& state, Vector3d* left_foot_vel,
@@ -312,10 +339,10 @@ void InitialStateForPlanner::CalcState(
   // Read in current robot state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd x_init_original(map_position_from_spring_to_no_spring_.rows() +
-                           map_velocity_from_spring_to_no_spring_.rows());
-  x_init_original << map_position_from_spring_to_no_spring_ *
-                         robot_output->GetPositions(),
+  VectorXd x_original(map_position_from_spring_to_no_spring_.rows() +
+                      map_velocity_from_spring_to_no_spring_.rows());
+  x_original << map_position_from_spring_to_no_spring_ *
+                    robot_output->GetPositions(),
       map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
 
   // Get phase in the first mode
@@ -333,18 +360,25 @@ void InitialStateForPlanner::CalcState(
   // The max vel error after the adjustment seems to be always below 0.045 m/s.
 
   VectorXd x_w_spr = robot_output->GetState();
+  Vector3d left_foot_pos_w_spr;
+  Vector3d right_foot_pos_w_spr;
   Vector3d left_foot_vel_w_spr;
   Vector3d right_foot_vel_w_spr;
+  CalcFeetPos(plant_feedback_, x_w_spr, &left_foot_pos_w_spr,
+              &right_foot_pos_w_spr);
   CalcFeetVel(plant_feedback_, x_w_spr, &left_foot_vel_w_spr,
               &right_foot_vel_w_spr);
 
-  VectorXd x_init = x_init_original;
   cout << "\n================= Time = " + std::to_string(context.get_time()) +
               " =======================\n\n";
   //  cout << "  IK || Time of arrival: " << context.get_time() << "
   //  | ";
-  AdjustKneeAndAnkleVel(left_foot_vel_w_spr, right_foot_vel_w_spr,
-                        x_init_original, &x_init);
+  VectorXd x_adjusted1 = x_original;
+  AdjustKneeAndAnklePos(x_w_spr, left_foot_pos_w_spr, right_foot_pos_w_spr,
+                        x_original, &x_adjusted1);
+  VectorXd x_adjusted2 = x_adjusted1;
+  AdjustKneeAndAnkleVel(left_foot_vel_w_spr, right_foot_vel_w_spr, x_adjusted1,
+                        &x_adjusted2);
 
   ///
   /// Testing
@@ -353,36 +387,96 @@ void InitialStateForPlanner::CalcState(
   // Testing -- check the model difference (springs vs no springs).
   // cout << "=== COM and stance foot ===\n";
   //  cout << "\ncassie without springs:\n";
-  CalcCOM(plant_controls_, x_init_original);
+  CalcCOM(plant_controls_, x_original);
   //  cout << "\ncassie with springs:\n";
   CalcCOM(plant_feedback_, robot_output->GetState());
   //  cout << "\ncassie without springs (after adjustment):\n";
-  CalcCOM(plant_controls_, x_init);
+  CalcCOM(plant_controls_, x_adjusted2);
   //  cout << "=== states ===\n\n";
-  //  cout << "FOM state (without springs) = \n" << x_init_original << endl;
-  //  cout << "FOM state (without springs, adjusted) = \n" << x_init << endl;
-  //  cout << "FOM state (with springs) = \n" << robot_output->GetState() <<
+  //  cout << "FOM state (without springs) = \n" << x_original << endl;
+  //  cout << "FOM state (without springs, adjusted) = \n" << x_adjusted2 <<
+  //  endl; cout << "FOM state (with springs) = \n" << robot_output->GetState()
+  //  <<
   //  "\n\n";
+
+  // Comparing positions
+  Vector3d left_foot_pos_wo_spr_original;
+  Vector3d right_foot_pos_wo_spr_original;
+  Vector3d left_foot_pos_wo_spr;
+  Vector3d right_foot_pos_wo_spr;
+  CalcFeetPos(plant_controls_, x_original, &left_foot_pos_wo_spr_original,
+              &right_foot_pos_wo_spr_original);
+  CalcFeetPos(plant_controls_, x_adjusted2, &left_foot_pos_wo_spr,
+              &right_foot_pos_wo_spr);
+  double left_pos_error_original =
+      (left_foot_pos_w_spr - left_foot_pos_wo_spr_original).norm();
+  double left_pos_error_improved =
+      (left_foot_pos_w_spr - left_foot_pos_wo_spr).norm();
+  double right_pos_error_original =
+      (right_foot_pos_w_spr - right_foot_pos_wo_spr_original).norm();
+  double right_pos_error_improved =
+      (right_foot_pos_w_spr - right_foot_pos_wo_spr).norm();
+  //  if (true) {
+  if ((left_pos_error_improved > left_pos_error_original) ||
+      (right_pos_error_improved > right_pos_error_original) ||
+      (left_pos_error_improved > 0.01) || (right_pos_error_improved > 0.01)) {
+    cout << "\n=== Feet pos differences ===\n";
+    cout << "left_foot_pos_w_spr = " << left_foot_pos_w_spr.transpose() << endl;
+    cout << "right_foot_pos_w_spr = " << right_foot_pos_w_spr.transpose()
+         << endl;
+    cout << "left_foot_pos_wo_spr_original = "
+         << left_foot_pos_wo_spr_original.transpose() << endl;
+    cout << "right_foot_pos_wo_spr_original = "
+         << right_foot_pos_wo_spr_original.transpose() << endl;
+    cout << "left_foot_pos_wo_spr = " << left_foot_pos_wo_spr.transpose()
+         << endl;
+    cout << "right_foot_pos_wo_spr = " << right_foot_pos_wo_spr.transpose()
+         << endl;
+    cout << "before adjustment:\n";
+    cout << "  left difference = "
+         << (left_foot_pos_w_spr - left_foot_pos_wo_spr_original).transpose()
+         << endl;
+    cout << "  right difference = "
+         << (right_foot_pos_w_spr - right_foot_pos_wo_spr_original).transpose()
+         << endl;
+    cout << "  norm (left, right) = " << left_pos_error_original << ", "
+         << right_pos_error_original << endl;
+    cout << "after adjustment:\n";
+    cout << "  left difference = "
+         << (left_foot_pos_w_spr - left_foot_pos_wo_spr).transpose() << endl;
+    cout << "  right difference = "
+         << (right_foot_pos_w_spr - right_foot_pos_wo_spr).transpose() << endl;
+    cout << "  norm (left, right) = " << left_pos_error_improved << ", "
+         << right_pos_error_improved << endl;
+    cout << "\n";
+    cout << "robot_output->GetState() = " << robot_output->GetState() << endl;
+    // TODO: before you put the code on the hardware, you need to disable all
+    //  the DRAKE_UNREACHABLE()
+    DRAKE_UNREACHABLE();  // Put a check here for future investigation
+  }
+  cout << "\n\n";
+
+  // Comparing velocities
   Vector3d left_foot_vel_wo_spr_original;
   Vector3d right_foot_vel_wo_spr_original;
   Vector3d left_foot_vel_wo_spr;
   Vector3d right_foot_vel_wo_spr;
-  CalcFeetVel(plant_controls_, x_init_original, &left_foot_vel_wo_spr_original,
+  CalcFeetVel(plant_controls_, x_original, &left_foot_vel_wo_spr_original,
               &right_foot_vel_wo_spr_original);
-  CalcFeetVel(plant_controls_, x_init, &left_foot_vel_wo_spr,
+  CalcFeetVel(plant_controls_, x_adjusted2, &left_foot_vel_wo_spr,
               &right_foot_vel_wo_spr);
-  double left_error_original =
+  double left_vel_error_original =
       (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).norm();
-  double left_error_improved =
+  double left_vel_error_improved =
       (left_foot_vel_w_spr - left_foot_vel_wo_spr).norm();
-  double right_error_original =
+  double right_vel_error_original =
       (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).norm();
-  double right_error_improved =
+  double right_vel_error_improved =
       (right_foot_vel_w_spr - right_foot_vel_wo_spr).norm();
   //  if (true) {
-  if ((left_error_improved > left_error_original) ||
-      (right_error_improved > right_error_original) ||
-      (left_error_improved > 0.06) || (right_error_improved > 0.06)) {
+  if ((left_vel_error_improved > left_vel_error_original) ||
+      (right_vel_error_improved > right_vel_error_original) ||
+      (left_vel_error_improved > 0.01) || (right_vel_error_improved > 0.01)) {
     cout << "\n=== Feet vel differences ===\n";
     cout << "left_foot_vel_w_spr = " << left_foot_vel_w_spr.transpose() << endl;
     cout << "right_foot_vel_w_spr = " << right_foot_vel_w_spr.transpose()
@@ -402,15 +496,15 @@ void InitialStateForPlanner::CalcState(
     cout << "  right difference = "
          << (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).transpose()
          << endl;
-    cout << "  norm (left, right) = " << left_error_original << ", "
-         << right_error_original << endl;
+    cout << "  norm (left, right) = " << left_vel_error_original << ", "
+         << right_vel_error_original << endl;
     cout << "after adjustment:\n";
     cout << "  left difference = "
          << (left_foot_vel_w_spr - left_foot_vel_wo_spr).transpose() << endl;
     cout << "  right difference = "
          << (right_foot_vel_w_spr - right_foot_vel_wo_spr).transpose() << endl;
-    cout << "  norm (left, right) = " << left_error_improved << ", "
-         << right_error_improved << endl;
+    cout << "  norm (left, right) = " << left_vel_error_improved << ", "
+         << right_vel_error_improved << endl;
     cout << "\n";
     cout << "robot_output->GetState() = " << robot_output->GetState() << endl;
     // TODO: before you put the code on the hardware, you need to disable all
@@ -431,47 +525,74 @@ void InitialStateForPlanner::CalcState(
 
   // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
   // frame is in the world’s x-z plane and toward world’s x axis.
-  Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
+  Quaterniond quat(x_adjusted2(0), x_adjusted2(1), x_adjusted2(2),
+                   x_adjusted2(3));
   Vector3d pelvis_x = quat.toRotationMatrix().col(0);
   pelvis_x(2) = 0;
   Vector3d world_x(1, 0, 0);
   Quaterniond relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
   Quaterniond rotated_quat = relative_qaut * quat;
-  x_init.head(4) << rotated_quat.w(), rotated_quat.vec();
+  x_adjusted2.head(4) << rotated_quat.w(), rotated_quat.vec();
   // cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
   // cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() <<
   // endl;
 
   // Shift pelvis in x, y direction
-  x_init(pos_map_.at("base_x")) = init_phase * final_position_x_ / n_step_;
-  x_init(pos_map_.at("base_y")) = 0;
-  // cout << "x(\"base_x\") = " << x_init(pos_map_.at("base_x")) << endl;
-  // cout << "x(\"base_y\") = " << x_init(pos_map_.at("base_y")) << endl;
+  x_adjusted2(pos_map_wo_spr_.at("base_x")) =
+      init_phase * final_position_x_ / n_step_;
+  x_adjusted2(pos_map_wo_spr_.at("base_y")) = 0;
+  // cout << "x(\"base_x\") = " << x_adjusted2(pos_map_wo_spr_.at("base_x")) <<
+  // endl; cout << "x(\"base_y\") = " <<
+  // x_adjusted2(pos_map_wo_spr_.at("base_y")) << endl;
 
   // Also need to rotate floating base velocities (wrt global frame)
-  x_init.segment<3>(nq_) =
-      relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_);
-  x_init.segment<3>(nq_ + 3) =
-      relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_ + 3);
+  x_adjusted2.segment<3>(nq_) =
+      relative_qaut.toRotationMatrix() * x_adjusted2.segment<3>(nq_);
+  x_adjusted2.segment<3>(nq_ + 3) =
+      relative_qaut.toRotationMatrix() * x_adjusted2.segment<3>(nq_ + 3);
 
   ///
   /// Assign
   ///
-  output->SetState(x_init);
+  output->SetState(x_adjusted2);
   output->set_timestamp(context.get_time());
+}
+
+void InitialStateForPlanner::AdjustKneeAndAnklePos(
+    const VectorXd& x_w_spr, const Vector3d& left_foot_pos,
+    const Vector3d& right_foot_pos, const VectorXd& x_init_original,
+    VectorXd* x_init) const {
+  // A rough adjusting. To make it more precise, we will need to change the
+  // ankle joint as well.
+  // Note that after the adjustment, the four bar linkage constraint is not
+  // satisfied anymore.
+  std::vector<int> idx_list_spring = {
+      pos_map_w_spr_.at("knee_joint_left"),
+      pos_map_w_spr_.at("knee_joint_right"),
+      pos_map_w_spr_.at("ankle_spring_joint_left"),
+      pos_map_w_spr_.at("ankle_spring_joint_right")};
+
+  std::vector<int> idx_list = {pos_map_wo_spr_.at("knee_left"),
+                               pos_map_wo_spr_.at("knee_right"),
+                               pos_map_wo_spr_.at("ankle_joint_left"),
+                               pos_map_wo_spr_.at("ankle_joint_right")};
+
+  /// Assign
+  x_init->segment<1>(idx_list[0]) += x_w_spr.segment<1>(idx_list_spring[0]);
+  x_init->segment<1>(idx_list[1]) += x_w_spr.segment<1>(idx_list_spring[1]);
+  //  x_init->segment<1>(idx_list[2]) -= x_w_spr.segment<1>(idx_list_spring[2]);
+  //  x_init->segment<1>(idx_list[3]) -= x_w_spr.segment<1>(idx_list_spring[3]);
 }
 
 void InitialStateForPlanner::AdjustKneeAndAnkleVel(
     const Vector3d& left_foot_vel, const Vector3d& right_foot_vel,
     const VectorXd& x_init_original, VectorXd* x_init) const {
-  // TODO -- we can probably also have two stages of the IK. THe first one match
-  //  the position and the second matches the vel.
-
   auto start_build = std::chrono::high_resolution_clock::now();
 
-  std::vector<int> idx_list = {
-      vel_map_.at("knee_leftdot"), vel_map_.at("knee_rightdot"),
-      vel_map_.at("ankle_joint_leftdot"), vel_map_.at("ankle_joint_rightdot")};
+  std::vector<int> idx_list = {vel_map_wo_spr_.at("knee_leftdot"),
+                               vel_map_wo_spr_.at("knee_rightdot"),
+                               vel_map_wo_spr_.at("ankle_joint_leftdot"),
+                               vel_map_wo_spr_.at("ankle_joint_rightdot")};
 
   // Get Jacobian for the feet
   auto context_wo_spr = plant_controls_.CreateDefaultContext();

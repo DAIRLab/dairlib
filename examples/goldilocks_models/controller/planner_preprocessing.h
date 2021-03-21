@@ -89,8 +89,9 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
-  std::map<std::string, int> pos_map_;
-  std::map<std::string, int> vel_map_;
+  std::map<std::string, int> pos_map_w_spr_;
+  std::map<std::string, int> pos_map_wo_spr_;
+  std::map<std::string, int> vel_map_wo_spr_;
 
   int nq_;
 
@@ -105,6 +106,11 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   // IK
   double ik_feas_tol_ = 1e-4;  // 1e-2
   double ik_opt_tol_ = 1e-4;   // 1e-2
+  void AdjustKneeAndAnklePos(const Eigen::VectorXd& x_w_spr,
+                             const Eigen::Vector3d& left_foot_pos,
+                             const Eigen::Vector3d& right_foot_pos,
+                             const Eigen::VectorXd& x_init_original,
+                             Eigen::VectorXd* x_init) const;
   void AdjustKneeAndAnkleVel(const Eigen::Vector3d& left_foot_vel,
                              const Eigen::Vector3d& right_foot_vel,
                              const Eigen::VectorXd& x_init_original,

@@ -7,6 +7,7 @@
 #include "drake/systems/framework/leaf_system.h"
 
 static constexpr double kMaxControllerDelay = 0.1;
+static constexpr double kEStopGain = 5.0;
 
 namespace dairlib {
 
@@ -92,6 +93,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   double input_limit_;
   mutable double blend_duration_ = 0.0;
   int status_vars_index_;
+  int soft_estop_flag_index_;
   int n_fails_index_;
   int status_index_;
   int switch_time_index_;

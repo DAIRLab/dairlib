@@ -76,7 +76,7 @@ EventStatus FiniteStateMachineEventTime::DiscreteVariableUpdate(
         (OutputVector<double>*)this->EvalVectorInput(context,
                                                      robot_output_port_);
     discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value()
-        << static_cast<double>(robot_output->get_timestamp());
+        << robot_output->get_timestamp();
 
     // Check if the current state is of our interest
     auto it = find(fsm_states_of_interest_.begin(),
@@ -86,7 +86,7 @@ EventStatus FiniteStateMachineEventTime::DiscreteVariableUpdate(
       // Record time
       discrete_state->get_mutable_vector(prev_time_of_state_of_interest_idx_)
               .get_mutable_value()
-          << static_cast<double>(robot_output->get_timestamp());
+          << robot_output->get_timestamp();
     }
   }
 

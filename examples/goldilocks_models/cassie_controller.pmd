@@ -36,7 +36,7 @@ group "2.ik-controller" {
     }
 }
 
-group "3.drake-simulator" {
+group "5.attic" {
     cmd "1.simulator (with init state)" {
         exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false";
         host = "localhost";
@@ -45,8 +45,11 @@ group "3.drake-simulator" {
         exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false --start_with_right_stance=true";
         host = "localhost";
     }
+}
+
+group "3.drake-simulator" {
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=10 --target_realtime_rate=0.1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=2 --target_realtime_rate=0.1";
         host = "localhost";
     }
 }
@@ -79,6 +82,10 @@ group "4.lcm-tools" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";
     }
+    cmd "2. lcm-logger" {
+        exec = "lcm-logger -f /home/yuming/Desktop/temp/log";
+        host = "localhost";
+    }
 }
 
 
@@ -93,6 +100,13 @@ script "run-rom-walking" {
     start cmd "2.2.rom-planner (short time limit)";
     start cmd "2.1.optimal-rom-walking-controller";
     wait ms 200;
+    start cmd "0.simulator";
+}
+
+script "run-rom-walking-test" {
+    restart cmd "2.1.optimal-rom-walking-controller";
+    wait ms 200;
+    restart cmd "2. lcm-logger";
     start cmd "0.simulator";
 }
 

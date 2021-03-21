@@ -79,6 +79,7 @@ void DrakeSignalSender::PackVectorIntoLcm(
     cout << "utime_wo_eps = " << utime_wo_eps << endl;
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
     cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
+    cout << '\a';  // making noise to notify
     DRAKE_UNREACHABLE();
   } else if (init_phase < 0) {
     cout.precision(dbl::max_digits10);
@@ -92,6 +93,7 @@ void DrakeSignalSender::PackVectorIntoLcm(
     cout << "utime_wo_eps = " << utime_wo_eps << endl;
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
     cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
+    cout << '\a';  // making noise to notify
     DRAKE_UNREACHABLE();
   }
 }

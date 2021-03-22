@@ -53,18 +53,14 @@ void DrakeSignalSender::PackVectorIntoLcm(
     msg->val[i] = input_vector->get_value()(i);
     msg->coord[i] = signal_names_[i];
   }
-  // msg->utime = context.get_time() * 1e6;
-  // I'm suspecting we should add eps avoid error from converting double to int.
+  // Add epsilon to avoid error from converting double to int.
   msg->utime = (context.get_time() + 1e-12) * 1e6;
 
   // Testing -- Calc phase
-  int utime_wo_eps = context.get_time() * 1e6;
-
   using std::cout;
   using std::endl;
   double lift_off_time = input_vector->get_value()(1);
-  double time_in_first_mode = (utime_wo_eps * 1e-6) - lift_off_time;
-  //  double time_in_first_mode = (msg->utime * 1e-6) - lift_off_time;
+  double time_in_first_mode = (msg->utime * 1e-6) - lift_off_time;
   double stride_period_ = 0.32;
   double init_phase = time_in_first_mode / stride_period_;
   if (init_phase > 1) {
@@ -76,7 +72,6 @@ void DrakeSignalSender::PackVectorIntoLcm(
     cout << "fsm state = " << input_vector->get_value()(0) << endl;
     cout << "lift_off_time = " << lift_off_time << endl;
     cout << "current_time = " << context.get_time() << endl;
-    cout << "utime_wo_eps = " << utime_wo_eps << endl;
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
     cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
     cout << '\a';  // making noise to notify
@@ -90,7 +85,6 @@ void DrakeSignalSender::PackVectorIntoLcm(
     cout << "fsm state = " << input_vector->get_value()(0) << endl;
     cout << "lift_off_time = " << lift_off_time << endl;
     cout << "current_time = " << context.get_time() << endl;
-    cout << "utime_wo_eps = " << utime_wo_eps << endl;
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
     cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
     cout << '\a';  // making noise to notify

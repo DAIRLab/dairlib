@@ -187,9 +187,9 @@ class Dircon
   /// Get the number of knotpoints in a specified mode
   int mode_length(int mode_index) const; 
 
-  /// Adds cost on sum of velocities squared while properly handling the
-  /// discontinuities from impacts
-  void AddVelocityCost(const double velocity_cost_gain);
+  /// Adds cost on integral of velocities squared while properly handling the
+  /// discontinuities from impacts. Cost has form J = v'*Q*v
+  void AddVelocityCost(const Eigen::MatrixXd& velocity_cost_gain);
 
   const multibody::KinematicEvaluatorSet<T>& get_evaluator_set(int mode) const {
     return mode_sequence_.mode(mode).evaluators();

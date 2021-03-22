@@ -577,7 +577,7 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
 }
 
 template<typename T>
-void Dircon<T>::AddVelocityCost(const double velocity_cost_gain){
+void Dircon<T>::AddVelocityCost(const MatrixXd& velocity_cost_gain){
   double n_v = plant_.num_velocities();
 
   // Add velocity cost handling discontinuities
@@ -592,20 +592,14 @@ void Dircon<T>::AddVelocityCost(const double velocity_cost_gain){
       drake::symbolic::Expression hi = timestep(mode_start_[mode_index] + knot_index)[0];
 
       // Loop through and calculate sum of velocities squared
-      drake::symbolic::Expression vel_sq = 0;
-      drake::symbolic::Expression vel_sq_up = 0;
-      for(int i = 0; i< n_v; i++){
-        vel_sq += vel[i] * vel[i];
-        vel_sq_up += vel_up[i] * vel_up[i];
-      }
+      drake::symbolic::Expression vel_sq = (vel.transpose() * velocity_cost_gain * vel)[0];
+      drake::symbolic::Expression vel_sq_up = (vel_up.transpose() * velocity_cost_gain * vel_up)[0];
 
       // Add cost
-      AddCost(hi/2.0 * velocity_cost_gain * (vel_sq + vel_sq_up));
+      AddCost(hi/2.0 * (vel_sq + vel_sq_up));
     }
   }
-
 }
-
 template <typename T>
 void Dircon<T>::GetStateAndDerivativeSamples(
     const drake::solvers::MathematicalProgramResult& result,

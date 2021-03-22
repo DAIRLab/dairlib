@@ -1,7 +1,14 @@
 #pragma once
 
 #include <vector>
+
 #include <memory.h>
+
+#include "multibody/multipose_visualizer.h"
+#include "systems/trajectory_optimization/dircon_kinematic_data.h"
+#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "systems/trajectory_optimization/dircon_options.h"
 
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic.h"
@@ -10,12 +17,6 @@
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
-
-#include "systems/trajectory_optimization/dircon_kinematic_data.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/trajectory_optimization/dircon_options.h"
-#include "multibody/multipose_visualizer.h"
 
 namespace dairlib {
 namespace systems {
@@ -85,8 +86,9 @@ class HybridDircon
   /// @param weld_frame_to_world The name of a frame to weld to the world frame
   ///   when parsing the model. Defaults to blank, which will not perform a weld
   void CreateVisualizationCallback(std::string model_file,
-      std::vector<unsigned int> poses_per_mode, double alpha = 1,
-      std::string weld_frame_to_world = "");
+                                   std::vector<unsigned int> poses_per_mode,
+                                   double alpha = 1,
+                                   std::string weld_frame_to_world = "");
 
   /// See CreateVisualizationCallback(std::string model_file,
   ///    std::vector<unsigned int> poses_per_mode,
@@ -97,8 +99,8 @@ class HybridDircon
   /// of frames in that mode. Since start/end poses per mdoe are required, must
   /// have num_poses >= num_modes + 1
   void CreateVisualizationCallback(std::string model_file,
-      unsigned int num_poses, double alpha = 1,
-      std::string weld_frame_to_world = "");
+                                   unsigned int num_poses, double alpha = 1,
+                                   std::string weld_frame_to_world = "");
 
   /// See CreateVisualizationCallback(std::string model_file,
   ///    unsigned int poses_per_mode,
@@ -106,7 +108,7 @@ class HybridDircon
   ///
   /// Creates a visualization callback that shows all knot points.
   void CreateVisualizationCallback(std::string model_file, double alpha = 1,
-      std::string weld_frame_to_world = "");
+                                   std::string weld_frame_to_world = "");
 
   /// Set the initial guess for the force variables for a specific mode
   /// @param mode the mode index
@@ -127,6 +129,9 @@ class HybridDircon
   }
 
   int num_modes() const { return num_modes_; }
+
+  /// Get the number of knotpoints in a specified mode
+  int mode_length(int mode_index) const { return mode_lengths()[mode_index]; };
 
   std::vector<int> mode_lengths() const { return mode_lengths_; }
 
@@ -179,7 +184,7 @@ class HybridDircon
         num_kinematic_constraints_wo_skipping_[mode]);
   }
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-      collocation_force(int mode, int index) const {
+  collocation_force(int mode, int index) const {
     DRAKE_DEMAND(index < mode_lengths_[mode] - 1);
     return collocation_force_vars_[mode].segment(
         index * num_kinematic_constraints_wo_skipping_[mode],
@@ -189,6 +194,12 @@ class HybridDircon
   drake::VectorX<drake::symbolic::Expression> SubstitutePlaceholderVariables(
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
+
+  /// Substitute the velocity variables in the expression with
+  /// v_post_impact_vars_ for the corresponding mode
+  /// It is up to the user to make sure this is used only on the first knotpoint
+  drake::symbolic::Expression SubstitutePostImpactVelocityVariables(
+      const drake::symbolic::Expression& e, int mode) const;
 
   using drake::systems::trajectory_optimization::MultipleShooting::N;
   using drake::systems::trajectory_optimization::MultipleShooting::
@@ -227,6 +238,10 @@ class HybridDircon
   std::vector<int> num_kinematic_constraints_wo_skipping_;
 
   std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
+
+  std::vector<std::pair<drake::VectorX<drake::symbolic::Variable>,
+                        drake::VectorX<drake::symbolic::Expression>>>
+      v_post_impact_vars_substitute_;
 };
 
 }  // namespace trajectory_optimization

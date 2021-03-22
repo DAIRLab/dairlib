@@ -69,7 +69,6 @@ InputSupervisor::InputSupervisor(
 
   K_ = plant_.MakeActuationMatrix().transpose();
   K_ *= kEStopGain;
-  std::cout << K_ << std::endl;
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
@@ -95,7 +94,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
                        context.get_discrete_state(prev_efforts_time_index_)[0] >
                    kMaxControllerDelay);
   is_error =
-      is_error || context.get_discrete_state(soft_estop_flag_index_)[0] != 0;
+      is_error || context.get_discrete_state(soft_estop_flag_index_)[0] == 1;
   if ((command->get_timestamp() -
            context.get_discrete_state(prev_efforts_time_index_)[0] >
        kMaxControllerDelay)) {

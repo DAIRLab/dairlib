@@ -51,9 +51,9 @@ def main():
   reflected_state_samples = state_samples @ M
   # Plotting reconstructed state trajectories
   plt.figure("state trajectory")
-  plt.plot(t, state_samples[:, 0:7])
-  plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 0:7])
-  # plt.plot(t, state_samples[:, 7:13])
+  # plt.plot(t, state_samples[:, 0:7])
+  # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 0:7])
+  plt.plot(t, state_samples[:, -18:])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 7:13])
   # plt.plot(t, state_samples[:, 25:31])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 25:31])
@@ -67,7 +67,7 @@ def main():
   plt.plot(t, force_samples)
   plt.legend(force_datatypes)
 
-  # plt.show()
+  plt.show()
 
 
 

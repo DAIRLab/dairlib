@@ -514,22 +514,12 @@ void setKinematicConstraints(Dircon<double>& trajopt,
     trajopt.AddBoundingBoxConstraint(-1.8, -1.5, x_i[pos_map["toe_left"]]);
     trajopt.AddBoundingBoxConstraint(-1.8, -1.5, x_i[pos_map["toe_right"]]);
   }
-  //  for (unsigned int mode = 0; mode < mode_lengths.size(); mode++) {
-  //    for (int index = 0; index < mode_lengths[mode]; index++) {
-  //      auto lambda = trajopt.force_vars(mode, index);
-  //      trajopt.AddLinearConstraint(lambda(2) >= 10);
-  //      trajopt.AddLinearConstraint(lambda(5) >= 10);
-  //    }
-  //  }
 
   std::cout << "Adding costs: " << std::endl;
-  MatrixXd Q = 1e-7 * MatrixXd::Identity(n_v, n_v);
-  MatrixXd R = 0.001 * MatrixXd::Identity(n_u, n_u);
+  MatrixXd Q = 1e-2 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd R = 1e-4 * MatrixXd::Identity(n_u, n_u);
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose() * R * u);
-  //  MatrixXd Q0 = 1e-1 * MatrixXd::Identity(n_v, n_v);
-  //  trajopt.AddQuadraticCost(x0.tail(n_v).transpose() * Q * x0.tail(n_v));
-  // Add some cost to hip roll and yaw
 }
 
 void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,

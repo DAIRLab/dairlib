@@ -23,7 +23,9 @@ def main():
   # filename = abs_path + "/rom_trajectory"
   # filename = "../rom_trajectory"
   if len(sys.argv) == 2 and sys.argv[1] != "save":
-    filename = sys.argv[1]
+    filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+               sys.argv[1] + "_rom_trajectory"
+    # filename = sys.argv[1]
   else:
     filename = FindResourceOrThrow(
       '../dairlib_data/goldilocks_models/planning/robot_1/data/rom_trajectory')

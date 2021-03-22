@@ -10,7 +10,7 @@ def main():
   # Default filename for the example
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
-  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/running_0.4d")
+  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/running_0.5")
   if len(sys.argv) == 2:
     filename = sys.argv[1]
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
@@ -36,7 +36,7 @@ def main():
 
 
   dircon_traj.AddTrajectory('mirror_matrix', mirror_traj)
-  dircon_traj.WriteToFile(FindResourceOrThrow("examples/Cassie/saved_trajectories/running_0.4d"))
+  dircon_traj.WriteToFile(FindResourceOrThrow("examples/Cassie/saved_trajectories/running_0.5"))
 
   n_points = 500
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)

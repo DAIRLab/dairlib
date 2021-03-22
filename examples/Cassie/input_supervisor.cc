@@ -110,7 +110,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   if (cassie_out->pelvis.radio.channel[15] == -1) {
     Eigen::VectorXd u = -K_ * state->get_value();
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
-    return;1
+    return;
   }
 
   // If there has not been an error, copy over the command.

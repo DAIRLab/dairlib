@@ -37,6 +37,9 @@ using std::string;
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
+DEFINE_string(
+    cassie_out_channel, "CASSIE_OUTPUT_ECHO",
+    "The name of the channel to receive the cassie out structure from.");
 DEFINE_double(max_joint_velocity, 5,
               "Maximum joint velocity before error is triggered");
 DEFINE_double(input_limit, -1,
@@ -87,6 +90,9 @@ int do_main(int argc, char* argv[]) {
   auto controller_switch_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>(switch_channel,
                                                                  &lcm_local));
+  auto cassie_out_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+          FLAGS_cassie_out_channel, &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto input_supervisor_status_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_input_supervisor_status>(
@@ -110,6 +116,8 @@ int do_main(int argc, char* argv[]) {
                   input_supervisor->get_input_port_controller_switch());
   builder.Connect(input_supervisor->get_output_port_status(),
                   input_supervisor_status_pub->get_input_port());
+  builder.Connect(cassie_out_receiver->get_output_port(),
+                  input_supervisor->get_input_port_cassie());
 
   // Create and connect translator
   auto input_translator =

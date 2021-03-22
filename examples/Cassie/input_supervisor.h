@@ -55,6 +55,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(controller_switch_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_cassie() const {
+    return this->get_input_port(cassie_input_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_command() const {
     return this->get_output_port(command_output_port_);
   }
@@ -96,8 +100,13 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   int state_input_port_;
   int command_input_port_;
   int controller_switch_input_port_;
+  int cassie_input_port_;
   int command_output_port_;
   int status_output_port_;
+
+  Eigen::MatrixXd K_;
+
+//  mutable Eigen::VectorXd prev_commanded_effort_;
 };
 
 }  // namespace dairlib

@@ -1,5 +1,7 @@
 #include "examples/Cassie/input_supervisor.h"
 
+#include <dairlib/lcmt_cassie_out.hpp>
+
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "systems/framework/output_vector.h"
 
@@ -22,7 +24,7 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
-  if(input_limit_ == std::numeric_limits<double>::max()){
+  if (input_limit_ == std::numeric_limits<double>::max()) {
     std::cout << "Warning. No input limits have been set." << std::endl;
   }
 
@@ -38,6 +40,10 @@ InputSupervisor::InputSupervisor(
       this->DeclareAbstractInputPort(
               "lcmt_controller_switch",
               drake::Value<dairlib::lcmt_controller_switch>{})
+          .get_index();
+  cassie_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_cassie_out",
+                                     drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
 
   // Create output port for commands
@@ -59,6 +65,18 @@ InputSupervisor::InputSupervisor(
   prev_efforts_time_index_ = DeclareDiscreteState(1);
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
+  K_ = Eigen::MatrixXd::Zero(num_actuators_, num_velocities_);
+  K_(0, 6) = -1;
+  K_(1, 7) = -1;
+  K_(2, 8) = -1;
+  K_(3, 9) = -1;
+  K_(4, 10) = -1;
+  K_(5, 11) = -1;
+  K_(6, 12) = -1;
+  K_(7, 13) = -1;
+  K_(8, 19) = -1;
+  K_(9, 21) = -1;
+
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
                                      &InputSupervisor::UpdateErrorFlag);
@@ -69,6 +87,11 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
+  const OutputVector<double>* state =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+
+  const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
+      context, cassie_input_port_);
 
   bool is_error =
       context.get_discrete_state(status_vars_index_)[n_fails_index_] >=
@@ -82,6 +105,12 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
        kMaxControllerDelay)) {
     std::cout << "Delay between controller commands is too long, shutting down"
               << std::endl;
+  }
+
+  if (cassie_out->pelvis.radio.channel[15] == -1) {
+    Eigen::VectorXd u = -K_ * state->get_value();
+    output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
+    return;1
   }
 
   // If there has not been an error, copy over the command.
@@ -160,9 +189,9 @@ void InputSupervisor::SetStatus(
     output->shutdown = true;
   }
 
-  if((command->get_timestamp() -
-      context.get_discrete_state(prev_efforts_time_index_)[0] >
-      kMaxControllerDelay)){
+  if ((command->get_timestamp() -
+           context.get_discrete_state(prev_efforts_time_index_)[0] >
+       kMaxControllerDelay)) {
     output->act_delay = true;
     output->shutdown = true;
   }

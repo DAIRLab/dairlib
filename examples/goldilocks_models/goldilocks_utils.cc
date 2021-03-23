@@ -3,6 +3,7 @@
 #include <sys/stat.h>  // Check the existence of a file/folder
 #include <cstdlib>  // System call to create folder (and also parent directory)
 #include <iostream>
+#include <fstream>
 
 #include "drake/multibody/parsing/parser.h"
 
@@ -580,6 +581,22 @@ BodyPoint FiveLinkRobotLeftContact(const MultibodyPlant<double>& plant) {
 BodyPoint FiveLinkRobotRightContact(const MultibodyPlant<double>& plant) {
   return BodyPoint(Vector3d(0, 0, -0.5),
                    plant.GetFrameByName("right_lower_leg_mass"));
+}
+
+void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram) {
+  // Current it cannot handle names with white spaces
+  for (char const& c : diagram.get_name()) {
+    DRAKE_DEMAND(c != ' ');
+  }
+
+  std::string name = "../" + diagram.get_name() + "_diagram_graph";
+  std::ofstream out(name);
+  out << diagram.GetGraphvizString();
+  out.close();
+  std::string cmd = "dot -Tps " + name + " -o " + name + ".ps";
+  cout << "Running command " + cmd << ": " << std::system(cmd.c_str());
+  // cmd = "xdg-open " + name + ".ps";
+  // cout << std::system(cmd.c_str());
 }
 
 }  // namespace goldilocks_models

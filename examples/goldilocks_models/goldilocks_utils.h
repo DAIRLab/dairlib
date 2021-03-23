@@ -19,7 +19,7 @@ namespace SAMPLE_STATUS_CODE {
 const double SUCCESS = 1;
 const double ITERATION_LIMIT = 0.5;
 const double FAIL = 0;
-}  // namespace SAMPLE_CODE
+}  // namespace SAMPLE_STATUS_CODE
 
 class InnerLoopSetting {
  public:
@@ -150,6 +150,9 @@ BodyPoint FiveLinkRobotLeftContact(
     const drake::multibody::MultibodyPlant<double>& plant);
 BodyPoint FiveLinkRobotRightContact(
     const drake::multibody::MultibodyPlant<double>& plant);
+
+// Draw a diagram and save to a file
+void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram);
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

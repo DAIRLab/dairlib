@@ -1,3 +1,4 @@
+
 #include <drake/common/yaml/yaml_read_archive.h>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 #include <drake/multibody/parsing/parser.h>

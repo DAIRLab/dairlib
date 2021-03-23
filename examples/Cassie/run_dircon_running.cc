@@ -54,17 +54,17 @@ using drake::solvers::VectorXDecisionVariable;
 using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
-DEFINE_int32(knot_points, 10, "Number of knot points per stance mode");
+DEFINE_int32(knot_points, 16, "Number of knot points per stance mode");
 DEFINE_double(stride_length, 0.2, "Stride length.");
-DEFINE_double(start_height, 0.85, "Starting pelvis height for the trajectory.");
-DEFINE_double(stance_T, 0.15, "Single stance duration (s).");
-DEFINE_double(flight_phase_T, 0.05, "Flight phase duration (s).");
+DEFINE_double(start_height, 0.90, "Starting pelvis height for the trajectory.");
+DEFINE_double(stance_T, 0.2, "Single stance duration (s).");
+DEFINE_double(flight_phase_T, 0.1, "Flight phase duration (s).");
 DEFINE_int32(scale_option, 2,
              "Scale option of SNOPT"
              "Use 2 if seeing snopta exit 40 in log file");
 DEFINE_bool(scale_variables, true, "Set to false if using default scaling");
 DEFINE_bool(scale_constraints, true, "Set to false if using default scaling");
-DEFINE_double(tol, 1e-6, "Tolerance for constraint violation and dual gap");
+DEFINE_double(tol, 1e-7, "Tolerance for constraint violation and dual gap");
 DEFINE_string(load_filename, "", "File to load decision vars from.");
 DEFINE_string(data_directory, "examples/Cassie/saved_trajectories/",
               "Directory path to save decision vars to.");
@@ -306,12 +306,12 @@ void DoMain() {
   drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
-  while (true) {
-    drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(0.1);
-    simulator.Initialize();
-    simulator.AdvanceTo(optimal_traj.end_time());
-  }
+//  while (true) {
+//    drake::systems::Simulator<double> simulator(*diagram);
+//    simulator.set_target_realtime_rate(0.1);
+//    simulator.Initialize();
+//    simulator.AdvanceTo(optimal_traj.end_time());
+//  }
 }
 
 void setKinematicConstraints(Dircon<double>& trajopt,
@@ -514,10 +514,10 @@ void setKinematicConstraints(Dircon<double>& trajopt,
 
   std::cout << "Miscellaneous constraints" << std::endl;
   // Miscellaneous constraints
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_left")) >= -0.1);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_left")) <= 0.1);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) >= -0.1);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) <= 0.1);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_left")) >= -0.05);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_left")) <= 0.05);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) >= -0.05);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) <= 0.05);
   // Miscellaneous constraints
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) >= 0.0);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) <= 0.2);

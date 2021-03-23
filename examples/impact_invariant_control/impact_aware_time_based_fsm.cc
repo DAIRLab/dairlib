@@ -68,6 +68,9 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   // Get current finite state
   if (current_time >= t0_) {
     for (int i = 0; i < impact_states_.size(); ++i) {
+      if(impact_states_[i] == 2){
+        continue;
+      }
       double blend_window = blend_func_ == SIGMOID
                                 ? 1.5 * near_impact_threshold_
                                 : near_impact_threshold_;

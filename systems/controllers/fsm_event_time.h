@@ -13,6 +13,10 @@ namespace systems {
 /// state machine. If the user provides `fsm_states_of_interest` to the
 /// constructor, FiniteStateMachineEventTime creates a second output port that
 /// sends out the start time of the state that the user is interested in.
+///
+/// We connect this leafsystem to OutputVector in order to get the current time.
+/// We note that context.time is always at least one timestep older robot's
+/// output time when we use LcmDrivenLoop.
 class FiniteStateMachineEventTime : public drake::systems::LeafSystem<double> {
  public:
   FiniteStateMachineEventTime(

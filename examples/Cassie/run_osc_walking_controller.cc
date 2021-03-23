@@ -207,16 +207,20 @@ int DoMain(int argc, char* argv[]) {
                                             right_stance_state};
   auto liftoff_event_time =
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
-          single_support_states);
+          plant_w_spr, single_support_states);
   liftoff_event_time->set_name("liftoff_time");
   builder.Connect(fsm->get_output_port(0),
                   liftoff_event_time->get_input_port_fsm());
+  builder.Connect(simulator_drift->get_output_port(0),
+                  liftoff_event_time->get_input_port_state());
   auto touchdown_event_time =
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
-          std::vector<int>(1, double_support_state));
+          plant_w_spr, std::vector<int>(1, double_support_state));
   touchdown_event_time->set_name("touchdown_time");
   builder.Connect(fsm->get_output_port(0),
                   touchdown_event_time->get_input_port_fsm());
+  builder.Connect(simulator_drift->get_output_port(0),
+                  touchdown_event_time->get_input_port_state());
 
   // Create CoM trajectory generator
   // Note that we are tracking COM acceleration instead of position and velocity

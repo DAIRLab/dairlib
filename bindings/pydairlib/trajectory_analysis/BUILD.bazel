@@ -11,6 +11,17 @@ load(
     "pybind_py_library",
 )
 
+py_binary(
+    name = "cost_analysis",
+    srcs = ["cost_analysis.py"],
+    deps = [
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -22,19 +33,17 @@ py_library(
     ],
     imports = PACKAGE_INFO.py_imports,
     deps = [
+        "//bindings/pydairlib:module_py",
     ],
 )
 
 PY_LIBRARIES = [
-    ":module_py",
-    "//bindings/pydairlib/common",
-    "//bindings/pydairlib/lcm",
-    "//bindings/pydairlib/multibody",
+    ":cost_analysis",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "pydairlib",
-    visibility = ["//visibility:public"],
+    name = "trajectory_analysis",
+    imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

@@ -12,7 +12,7 @@ import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 from pydrake.trajectories import PiecewisePolynomial
-from bindings.pydairlib.parameter_studies.plot_styler import PlotStyler
+from bindings.pydairlib.common.plot_styler import PlotStyler
 from pydairlib.cassie.cassie_utils import *
 
 import process_lcm_log

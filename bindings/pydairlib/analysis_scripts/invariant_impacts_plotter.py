@@ -3,7 +3,7 @@ import lcm
 from scipy.integrate import trapz
 
 from pydairlib.common import FindResourceOrThrow
-from bindings.pydairlib.parameter_studies.plot_styler import PlotStyler
+from bindings.pydairlib.common.plot_styler import PlotStyler
 from pydrake.trajectories import PiecewisePolynomial
 import pydairlib.lcm_trajectory
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph

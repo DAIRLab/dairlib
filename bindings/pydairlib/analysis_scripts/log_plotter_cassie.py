@@ -17,7 +17,7 @@ import pydairlib.multibody
 from pydairlib.cassie.cassie_utils import *
 
 from pydairlib.common import FindResourceOrThrow
-from bindings.pydairlib.parameter_studies.plot_styler import PlotStyler
+from bindings.pydairlib.common.plot_styler import PlotStyler
 
 
 def main():

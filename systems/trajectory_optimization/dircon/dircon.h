@@ -112,6 +112,7 @@ class Dircon
   /// @param traj_init_l contact forces lambda (interpreted at knot points)
   /// @param traj_init_lc contact forces (interpreted at collocation points)
   /// @param traj_init_vc velocity constraint slack variables (at collocation)
+  /// @param start_time the start time for the mode (defaults to 0)
   void SetInitialForceTrajectory(
       int mode,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_l,

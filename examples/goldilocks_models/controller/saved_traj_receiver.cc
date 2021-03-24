@@ -17,13 +17,12 @@ namespace dairlib {
 namespace goldilocks_models {
 
 SavedTrajReceiver::SavedTrajReceiver(
-    const drake::multibody::MultibodyPlant<double>& plant, bool use_exp,
+    const drake::multibody::MultibodyPlant<double>& plant,
     bool both_pos_vel_in_traj)
     : plant_control_(plant),
       nq_(plant.num_positions()),
       nv_(plant.num_velocities()),
       nx_(plant.num_positions() + plant.num_velocities()),
-      use_exp_(use_exp),
       both_pos_vel_in_traj_(both_pos_vel_in_traj) {
   saved_traj_lcm_port_ =
       this->DeclareAbstractInputPort("saved_traj_lcm",
@@ -31,28 +30,20 @@ SavedTrajReceiver::SavedTrajReceiver(
           .get_index();
 
   // Provide an instance to allocate the memory first (for the output)
-  if (use_exp) {
-    ExponentialPlusPiecewisePolynomial<double> exp;
-    drake::trajectories::Trajectory<double>& traj_inst = exp;
-    this->DeclareAbstractOutputPort("saved_traj", traj_inst,
-                                    &SavedTrajReceiver::CalcDesiredTraj);
-
-  } else {
-    PiecewisePolynomial<double> pp;
-    drake::trajectories::Trajectory<double>& traj_inst = pp;
-    this->DeclareAbstractOutputPort("saved_traj", traj_inst,
-                                    &SavedTrajReceiver::CalcDesiredTraj);
-  }
-};
+  PiecewisePolynomial<double> pp;
+  drake::trajectories::Trajectory<double>& traj_inst = pp;
+  this->DeclareAbstractOutputPort("saved_traj", traj_inst,
+                                  &SavedTrajReceiver::CalcDesiredTraj);
+}
 
 void SavedTrajReceiver::CalcDesiredTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Construct rom planner data from lcm message
+  // Benchmark: The unpacking time is about 10-20 us.
   RomPlannerTrajectory traj_data(
       *(this->EvalInputValue<dairlib::lcmt_saved_traj>(context,
                                                        saved_traj_lcm_port_)));
-  const auto& traj_names = traj_data.GetTrajectoryNames();
 
   int n_mode = traj_data.GetNumModes();
   int n_y = traj_data.GetTrajectory("state_traj0").datatypes.size();
@@ -60,20 +51,8 @@ void SavedTrajReceiver::CalcDesiredTraj(
 
   VectorXd zero_vec = VectorXd::Zero(n_y);
 
-  // TODO: looks like you can simplify the code below. Just create an empty traj
-  //  frist and than concatenate. Ref:
-  //  https://github.com/RobotLocomotion/drake/blob/b09e40db4b1c01232b22f7705fb98aa99ef91f87/common/trajectories/piecewise_polynomial.cc#L303
-
-  const LcmTrajectory::Trajectory& traj0 =
-      traj_data.GetTrajectory("state_traj0");
-  PiecewisePolynomial<double> pp_part =
-      both_pos_vel_in_traj_
-          ? PiecewisePolynomial<double>::CubicHermite(
-                traj0.time_vector, traj0.datapoints.topRows(n_y),
-                traj0.datapoints.bottomRows(n_y))
-          : PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-                traj0.time_vector, traj0.datapoints, zero_vec, zero_vec);
-  for (int mode = 1; mode < n_mode; ++mode) {
+  PiecewisePolynomial<double> pp_part;
+  for (int mode = 0; mode < n_mode; ++mode) {
     const LcmTrajectory::Trajectory& traj_i =
         traj_data.GetTrajectory("state_traj" + std::to_string(mode));
     pp_part.ConcatenateInTime(
@@ -86,16 +65,8 @@ void SavedTrajReceiver::CalcDesiredTraj(
   }
 
   // Cast traj and assign traj
-  if (use_exp_) {
-    auto* traj_casted =
-        (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
-            ExponentialPlusPiecewisePolynomial<double>*>(traj);
-    *traj_casted = ExponentialPlusPiecewisePolynomial<double>(pp_part);
-  } else {
-    auto* traj_casted = (PiecewisePolynomial<double>*)dynamic_cast<
-        PiecewisePolynomial<double>*>(traj);
-    *traj_casted = pp_part;
-  }
+  auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
+  *traj_casted = pp_part;
 };
 
 void SavedTrajReceiver::CalcSwingFootTraj(
@@ -126,7 +97,6 @@ void SavedTrajReceiver::CalcSwingFootTraj(
                traj_data.get_x0_FOM()->time_vector(2));
 
   // TODO: Rotate the states back to global frame
-
 
   // Construct PP
   PiecewisePolynomial<double> pp;

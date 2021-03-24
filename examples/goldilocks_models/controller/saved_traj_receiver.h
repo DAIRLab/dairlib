@@ -20,7 +20,7 @@ namespace goldilocks_models {
 class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
  public:
   SavedTrajReceiver(const drake::multibody::MultibodyPlant<double>& plant,
-                    bool use_exp, bool both_pos_vel_in_traj);
+                    bool both_pos_vel_in_traj);
 
  private:
   void CalcDesiredTraj(const drake::systems::Context<double>& context,
@@ -34,7 +34,6 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   int nq_;
   int nv_;
   int nx_;
-  bool use_exp_;
   bool both_pos_vel_in_traj_;
 };
 

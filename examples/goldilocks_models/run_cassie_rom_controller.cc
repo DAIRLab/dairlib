@@ -325,7 +325,7 @@ int DoMain(int argc, char* argv[]) {
             FLAGS_channel_y, &lcm_local));
     // Create a system that translate MPC lcm into trajectory
     auto optimal_rom_traj_gen =
-        builder.AddSystem<SavedTrajReceiver>(plant_wo_springs, true, true);
+        builder.AddSystem<SavedTrajReceiver>(plant_wo_springs, true);
     builder.Connect(planner_output_subscriber->get_output_port(),
                     optimal_rom_traj_gen->get_input_port(0));
 

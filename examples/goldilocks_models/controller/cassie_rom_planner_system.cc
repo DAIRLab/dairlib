@@ -49,6 +49,7 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
 using dairlib::systems::OutputVector;
+using dairlib::systems::TimestampedVector;
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -78,7 +79,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                                              plant_controls.num_actuators()))
                     .get_index();
   fsm_and_lo_time_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
+      this->DeclareVectorInputPort(TimestampedVector<double>(2)).get_index();
+  quat_xyz_shift_port_ =
+      this->DeclareVectorInputPort(TimestampedVector<double>(7)).get_index();
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
 
   // Create index maps
@@ -332,6 +335,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
 
   // Get current time
+  // Note that we can use context time here becasue this is an output function
+  // instead of discrete update function
   auto current_time = context.get_time();
 
   bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
@@ -697,13 +702,25 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
+  // TODO: you can potentially use RomPlannerTrajectory. You can have a lighter
+  //  verison which do not store and publish the ROM input and all decision
+  //  variable
+
   // Note that the trajectory is discontinuous between mode (even the position
   // jumps because left vs right stance leg).
-  traj_msg->metadata.description = drake::solvers::to_string(solution_result);
-  traj_msg->num_trajectories = param_.n_step + 2;
 
-  traj_msg->trajectory_names.resize(param_.n_step + 2);
-  traj_msg->trajectories.resize(param_.n_step + 2);
+  VectorXd quat_xyz_shift = VectorXd::Zero(7);
+  if (!debug_mode_) {
+    quat_xyz_shift = static_cast<const TimestampedVector<double>*>(
+                         this->EvalVectorInput(context, quat_xyz_shift_port_))
+                         ->get_data();
+  }
+
+  /*traj_msg->metadata.description = drake::solvers::to_string(solution_result);
+  traj_msg->num_trajectories = param_.n_step + 4;
+
+  traj_msg->trajectory_names.resize(param_.n_step + 4);
+  traj_msg->trajectories.resize(param_.n_step + 4);
 
   // 1. ROM trajectory
   lcmt_trajectory_block traj_block;
@@ -738,10 +755,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   traj_block.trajectory_name = "FOM";
   traj_block.num_points = 2 * param_.n_step;
   traj_block.time_vec.resize(2 * param_.n_step);
-  // TODO: you can actually use the touchdown time here, but not sure if it's
-  //  worth it
-  traj_block.time_vec = vector<double>(2 * param_.n_step, 0);
-  // traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+  for (traj_idx = 0; traj_idx < param_.n_step; traj_idx++) {
+    traj_block.time_vec[2 * traj_idx] = time_breaks_[traj_idx].head<1>()(0);
+    traj_block.time_vec[2 * traj_idx + 1] = time_breaks_[traj_idx].tail<1>()(0);
+  }
   traj_block.datapoints.clear();
   Eigen::MatrixXd FOM_eigen_matrix(nx_, 2 * param_.n_step);
   for (int i = 0; i < param_.n_step; ++i) {
@@ -772,6 +789,42 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   traj_msg->trajectories[traj_idx] = traj_block;
   traj_msg->trajectory_names[traj_idx] = "stance_foot";
   traj_idx++;
+  // 4. x, y, z and yaw shift.
+  traj_block.num_datatypes = 7;
+  traj_block.datatypes.resize(7);
+  traj_block.datatypes = {"quat_w", "quat_x", "quat_y", "quat_z",
+                          "x",      "y",      "z"};
+  traj_block.trajectory_name = "quat_xyz_shift";
+  traj_block.num_points = 1;
+  traj_block.time_vec.resize(1);
+  traj_block.time_vec = vector<double>(1, 0);
+  traj_block.datapoints.resize(7);
+  traj_block.datapoints = {{quat_xyz_shift(0)}, {quat_xyz_shift(1)},
+                           {quat_xyz_shift(2)}, {quat_xyz_shift(3)},
+                           {quat_xyz_shift(4)}, {quat_xyz_shift(5)},
+                           {quat_xyz_shift(6)}};
+  traj_msg->trajectories[traj_idx] = traj_block;
+  traj_msg->trajectory_names[traj_idx] = "quat_xyz_shift";
+  traj_idx++;
+  // 5. n_step
+  traj_block.num_datatypes = 1;
+  traj_block.datatypes.resize(1);
+  traj_block.datatypes = {"n_step"};
+  traj_block.trajectory_name = "n_step";
+  traj_block.num_points = 1;
+  traj_block.time_vec.resize(1);
+  traj_block.time_vec = vector<double>(1, 0);
+  traj_block.datapoints.resize(1);
+  traj_block.datapoints = {{double(param_.n_step)}};
+  traj_msg->trajectories[traj_idx] = traj_block;
+  traj_msg->trajectory_names[traj_idx] = "n_step";
+  traj_idx++;
+  // Sanity check
+  DRAKE_DEMAND(traj_msg->num_trajectories == traj_idx);*/
+
+  RomPlannerTrajectory saved_traj(trajopt, result, quat_xyz_shift, "", "",
+                                  true);
+  *traj_msg = saved_traj.GenerateLcmObject();
 
   // Store the previous message
   previous_output_msg_ = *traj_msg;
@@ -888,14 +941,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     writeCSV(dir_data + string(prefix + "x0_each_mode.csv"), x0_each_mode);
     writeCSV(dir_data + string(prefix + "xf_each_mode.csv"), xf_each_mode);
 
-    /// Save trajectory to lcm
-    /*string file_name = "rom_trajectory";
-    RomPlannerTrajectory saved_traj(
-        trajopt, result, file_name,
-        "Decision variables and state/input trajectories");
-    saved_traj.WriteToFile(dir_data + file_name);
-    std::cout << "Wrote to file: " << dir_data + file_name << std::endl;*/
-
     /// Save files for reproducing the same result
     // cout << "x_init = " << x_init << endl;
     writeCSV(param_.dir_data + prefix + string("x_init.csv"), x_init, true);
@@ -927,7 +972,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     /// Save trajectory to lcm
     string file_name = prefix + "rom_trajectory";
     RomPlannerTrajectory saved_traj(
-        trajopt, result, file_name,
+        trajopt, result, quat_xyz_shift, file_name,
         "Decision variables and state/input trajectories");
     saved_traj.WriteToFile(dir_data + file_name);
     std::cout << "Wrote to file: " << dir_data + file_name << std::endl;

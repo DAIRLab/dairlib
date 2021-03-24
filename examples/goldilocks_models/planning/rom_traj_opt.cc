@@ -46,6 +46,8 @@ using drake::trajectories::PiecewisePolynomial;
 // variables (the so-called "slack variable") with linear constraint actually
 // solves faster than without the variable. About 20% faster...
 
+// We are currently using the same ROM input for pre/post impacts
+
 RomTrajOpt::RomTrajOpt(
     vector<int> num_time_samples, MatrixXd Q, MatrixXd R,
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,

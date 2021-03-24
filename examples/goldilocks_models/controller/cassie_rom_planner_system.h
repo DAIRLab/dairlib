@@ -120,6 +120,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       const {
     return this->get_input_port(fsm_and_lo_time_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_quat_xyz_shift()
+      const {
+    return this->get_input_port(quat_xyz_shift_port_);
+  }
 
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
@@ -136,6 +140,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int phase_port_;
   int state_port_;
   int fsm_and_lo_time_port_;
+  int quat_xyz_shift_port_;
 
   // Map position/velocity from model with spring to without spring
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;

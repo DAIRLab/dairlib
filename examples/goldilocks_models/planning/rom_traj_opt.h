@@ -110,6 +110,8 @@ class RomTrajOpt
   const std::vector<int>& mode_start() const { return mode_start_; }
 
   int n_lambda() const { return n_lambda_; }
+  int n_x_FOM() const { return n_x_; }
+  bool start_with_left_stance() const { return start_with_left_stance_; }
 
   const ReducedOrderModel& reduced_order_model() const { return rom_; }
 

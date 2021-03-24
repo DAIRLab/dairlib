@@ -1,15 +1,28 @@
 #include "examples/goldilocks_models/controller/saved_traj_receiver.h"
 
+#include "examples/goldilocks_models/controller/control_parameters.h"
+#include "lcm/rom_planner_saved_trajectory.h"
+
+#include <string>
+
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
+using Eigen::MatrixXd;
 using Eigen::VectorXd;
+
+using std::cout;
+using std::endl;
 
 namespace dairlib {
 namespace goldilocks_models {
 
-SavedTrajReceiver::SavedTrajReceiver(int n_tail_ignored, bool use_exp,
-                                     bool both_pos_vel_in_traj)
-    : n_tail_ignored_(n_tail_ignored),
+SavedTrajReceiver::SavedTrajReceiver(
+    const drake::multibody::MultibodyPlant<double>& plant, bool use_exp,
+    bool both_pos_vel_in_traj)
+    : plant_control_(plant),
+      nq_(plant.num_positions()),
+      nv_(plant.num_velocities()),
+      nx_(plant.num_positions() + plant.num_velocities()),
       use_exp_(use_exp),
       both_pos_vel_in_traj_(both_pos_vel_in_traj) {
   saved_traj_lcm_port_ =
@@ -35,13 +48,14 @@ SavedTrajReceiver::SavedTrajReceiver(int n_tail_ignored, bool use_exp,
 void SavedTrajReceiver::CalcDesiredTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  // Construct traj from lcm message
-  LcmTrajectory traj_data(*(this->EvalInputValue<dairlib::lcmt_saved_traj>(
-      context, saved_traj_lcm_port_)));
+  // Construct rom planner data from lcm message
+  RomPlannerTrajectory traj_data(
+      *(this->EvalInputValue<dairlib::lcmt_saved_traj>(context,
+                                                       saved_traj_lcm_port_)));
   const auto& traj_names = traj_data.GetTrajectoryNames();
 
-  int n_mode = traj_names.size() - n_tail_ignored_;
-  int n_y = traj_data.GetTrajectory(traj_names[0]).datatypes.size();
+  int n_mode = traj_data.GetNumModes();
+  int n_y = traj_data.GetTrajectory("state_traj0").datatypes.size();
   if (both_pos_vel_in_traj_) n_y /= 2;
 
   VectorXd zero_vec = VectorXd::Zero(n_y);
@@ -51,7 +65,7 @@ void SavedTrajReceiver::CalcDesiredTraj(
   //  https://github.com/RobotLocomotion/drake/blob/b09e40db4b1c01232b22f7705fb98aa99ef91f87/common/trajectories/piecewise_polynomial.cc#L303
 
   const LcmTrajectory::Trajectory& traj0 =
-      traj_data.GetTrajectory(traj_names[0]);
+      traj_data.GetTrajectory("state_traj0");
   PiecewisePolynomial<double> pp_part =
       both_pos_vel_in_traj_
           ? PiecewisePolynomial<double>::CubicHermite(
@@ -61,7 +75,7 @@ void SavedTrajReceiver::CalcDesiredTraj(
                 traj0.time_vector, traj0.datapoints, zero_vec, zero_vec);
   for (int mode = 1; mode < n_mode; ++mode) {
     const LcmTrajectory::Trajectory& traj_i =
-        traj_data.GetTrajectory(traj_names[mode]);
+        traj_data.GetTrajectory("state_traj" + std::to_string(mode));
     pp_part.ConcatenateInTime(
         both_pos_vel_in_traj_
             ? PiecewisePolynomial<double>::CubicHermite(
@@ -82,6 +96,62 @@ void SavedTrajReceiver::CalcDesiredTraj(
         PiecewisePolynomial<double>*>(traj);
     *traj_casted = pp_part;
   }
+};
+
+void SavedTrajReceiver::CalcSwingFootTraj(
+    const drake::systems::Context<double>& context,
+    drake::trajectories::Trajectory<double>* traj) const {
+  // TODO: You can save time by moving CalcDesiredTraj and CalcSwingFootTraj to
+  //  a perstep update, and only update the trajs (internal states) when the
+  //  start time of the new traj is different. And the output functions of this
+  //  leafsystem only copies the state
+
+  // TODO: currently we set the touchdown time to be at the end of single
+  //  support, but this is not consistent with the touchdown time in the
+  //  planner. Should find a way to incorporate the double support phase.
+
+  // TODO: note that we haven't rotated the velocity back to the global frame
+
+  // Construct rom planner data from lcm message
+  RomPlannerTrajectory traj_data(
+      *(this->EvalInputValue<dairlib::lcmt_saved_traj>(context,
+                                                       saved_traj_lcm_port_)));
+
+  // Get states and stance_foot
+  const MatrixXd& x0 = traj_data.get_x0_FOM()->datapoints;
+  const MatrixXd& xf = traj_data.get_xf_FOM()->datapoints;
+  const VectorXd& stance_foot = traj_data.get_stance_foot();
+  const VectorXd& quat_xyz_shift = traj_data.get_quat_xyz_shift();
+  DRAKE_DEMAND(traj_data.get_x0_FOM()->time_vector(1) ==
+               traj_data.get_x0_FOM()->time_vector(2));
+
+  // TODO: Rotate the states back to global frame
+
+
+  // Construct PP
+  PiecewisePolynomial<double> pp;
+
+  int n_mode = traj_data.GetNumModes();
+  bool left_stance = abs(stance_foot(0)) < 1e-12;
+  for (int j = 0; j < n_mode; j++) {
+    // We assume the start and the end vel of the swing foot are 0
+
+    // TODO: construct swing foot traj
+
+    // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
+    // make the traj smooth at the mid point
+    /*PiecewisePolynomial<double> swing_foot_spline =
+        PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+            T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));*/
+
+    left_stance = !left_stance;
+  }
+
+  // Cast traj and assign traj
+  auto* traj_casted =
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+          traj);
+  *traj_casted = pp;
 };
 
 IKTrajReceiver::IKTrajReceiver(

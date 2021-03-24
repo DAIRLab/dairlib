@@ -19,16 +19,21 @@ namespace goldilocks_models {
 
 class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
  public:
-  SavedTrajReceiver(int n_tail_ignored, bool use_exp,
-                    bool both_pos_vel_in_traj);
+  SavedTrajReceiver(const drake::multibody::MultibodyPlant<double>& plant,
+                    bool use_exp, bool both_pos_vel_in_traj);
 
  private:
   void CalcDesiredTraj(const drake::systems::Context<double>& context,
                        drake::trajectories::Trajectory<double>* traj) const;
+  void CalcSwingFootTraj(const drake::systems::Context<double>& context,
+                         drake::trajectories::Trajectory<double>* traj) const;
 
   int saved_traj_lcm_port_;
 
-  int n_tail_ignored_;
+  const drake::multibody::MultibodyPlant<double>& plant_control_;
+  int nq_;
+  int nv_;
+  int nx_;
   bool use_exp_;
   bool both_pos_vel_in_traj_;
 };

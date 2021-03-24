@@ -42,7 +42,9 @@ cc_library(
     srcs = ["saved_traj_receiver.cc"],
     hdrs = ["saved_traj_receiver.h"],
     deps = [
+        ":control_parameters",
         "//lcm:lcm_trajectory_saver",
+        "//lcm:rom_planner_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",

@@ -39,6 +39,7 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "dairlib/lcmt_dairlib_signal.hpp"
+#include "lcm/rom_planner_saved_trajectory.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -323,9 +324,8 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
             FLAGS_channel_y, &lcm_local));
     // Create a system that translate MPC lcm into trajectory
-    int n_ignored = 2;
     auto optimal_rom_traj_gen =
-        builder.AddSystem<SavedTrajReceiver>(n_ignored, true, true);
+        builder.AddSystem<SavedTrajReceiver>(plant_wo_springs, true, true);
     builder.Connect(planner_output_subscriber->get_output_port(),
                     optimal_rom_traj_gen->get_input_port(0));
 
@@ -608,14 +608,9 @@ int DoMain(int argc, char* argv[]) {
 
     // Create the diagram
     auto owned_diagram = builder.Build();
-    owned_diagram->set_name("osc_walking_controller");
+    owned_diagram->set_name("rom_walking_controller");
 
-    std::string name = "../" + owned_diagram->get_name() + "_diagram_graph";
-    std::ofstream out(name);
-    out << owned_diagram->GetGraphvizString();
-    out.close();
-    std::string cmd = "dot -Tps " + name + " -o " + name + ".ps";
-    cout << std::system(cmd.c_str());
+    CreateDiagramFigure(*owned_diagram);
 
     // Run lcm-driven simulation
     systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
@@ -623,7 +618,7 @@ int DoMain(int argc, char* argv[]) {
         true);
 
     // Get init traj from ROM planner result
-    const std::string dir_data =
+    /*const std::string dir_data =
         "../dairlib_data/goldilocks_models/planning/robot_1/data/";
     VectorXd time_at_knots =
         readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
@@ -648,9 +643,16 @@ int DoMain(int argc, char* argv[]) {
           CopyVectorXdToStdVector(state_at_knots.row(i)));
     }
     dairlib::lcmt_saved_traj traj_msg;
+    traj_msg.metadata.name = "init";
     traj_msg.num_trajectories = 1;
     traj_msg.trajectories.push_back(traj_msg0);
     traj_msg.trajectory_names.push_back("");
+     */
+    const std::string dir_data =
+        "../dairlib_data/goldilocks_models/planning/robot_1/data/"
+        "init_rom_trajectory";
+    RomPlannerTrajectory saved_traj(dir_data, true);
+    dairlib::lcmt_saved_traj traj_msg = saved_traj.GenerateLcmObject();
 
     // Get context and initialize the lcm message of LcmSubsriber for
     // lcmt_saved_traj
@@ -825,7 +827,9 @@ int DoMain(int argc, char* argv[]) {
 
     // Create the diagram
     auto owned_diagram = builder.Build();
-    owned_diagram->set_name("osc walking controller");
+    owned_diagram->set_name("rom_ik_walking_controller");
+
+    CreateDiagramFigure(*owned_diagram);
 
     // Run lcm-driven simulation
     systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

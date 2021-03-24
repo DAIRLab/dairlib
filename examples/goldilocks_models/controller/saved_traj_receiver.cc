@@ -7,7 +7,10 @@
 
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
+using Eigen::Matrix3d;
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
+using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using std::cout;
@@ -18,12 +21,16 @@ namespace goldilocks_models {
 
 SavedTrajReceiver::SavedTrajReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
-    bool both_pos_vel_in_traj)
+    const std::vector<BodyPoint>& left_right_foot, bool both_pos_vel_in_traj,
+    double double_support_duration)
     : plant_control_(plant),
+      left_right_foot_(left_right_foot),
+      context_(plant.CreateDefaultContext()),
       nq_(plant.num_positions()),
       nv_(plant.num_velocities()),
       nx_(plant.num_positions() + plant.num_velocities()),
-      both_pos_vel_in_traj_(both_pos_vel_in_traj) {
+      both_pos_vel_in_traj_(both_pos_vel_in_traj),
+      double_support_duration_(double_support_duration) {
   saved_traj_lcm_port_ =
       this->DeclareAbstractInputPort("saved_traj_lcm",
                                      drake::Value<dairlib::lcmt_saved_traj>{})
@@ -32,11 +39,19 @@ SavedTrajReceiver::SavedTrajReceiver(
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp;
   drake::trajectories::Trajectory<double>& traj_inst = pp;
-  this->DeclareAbstractOutputPort("saved_traj", traj_inst,
-                                  &SavedTrajReceiver::CalcDesiredTraj);
+  rom_traj_port_ =
+      this->DeclareAbstractOutputPort("rom_traj", traj_inst,
+                                      &SavedTrajReceiver::CalcRomTraj)
+          .get_index();
+  PiecewisePolynomial<double> pp2;
+  drake::trajectories::Trajectory<double>& traj_inst2 = pp2;
+  swing_foot_traj_port_ =
+      this->DeclareAbstractOutputPort("swing_foot_traj", traj_inst2,
+                                      &SavedTrajReceiver::CalcSwingFootTraj)
+          .get_index();
 }
 
-void SavedTrajReceiver::CalcDesiredTraj(
+void SavedTrajReceiver::CalcRomTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Construct rom planner data from lcm message
@@ -72,7 +87,7 @@ void SavedTrajReceiver::CalcDesiredTraj(
 void SavedTrajReceiver::CalcSwingFootTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  // TODO: You can save time by moving CalcDesiredTraj and CalcSwingFootTraj to
+  // TODO: You can save time by moving CalcRomTraj and CalcSwingFootTraj to
   //  a perstep update, and only update the trajs (internal states) when the
   //  start time of the new traj is different. And the output functions of this
   //  leafsystem only copies the state
@@ -81,46 +96,99 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   //  support, but this is not consistent with the touchdown time in the
   //  planner. Should find a way to incorporate the double support phase.
 
-  // TODO: note that we haven't rotated the velocity back to the global frame
+  // TODO: the code in CalcSwingFootTraj hasn't been tested yet
+
+  // We assume the start and the end velocity of the swing foot are 0
 
   // Construct rom planner data from lcm message
   RomPlannerTrajectory traj_data(
       *(this->EvalInputValue<dairlib::lcmt_saved_traj>(context,
                                                        saved_traj_lcm_port_)));
+  int n_mode = traj_data.GetNumModes();
 
   // Get states and stance_foot
+  // Not sure if we are actually using reference here
   const MatrixXd& x0 = traj_data.get_x0_FOM()->datapoints;
+  const VectorXd& x0_time = traj_data.get_x0_FOM()->time_vector;
   const MatrixXd& xf = traj_data.get_xf_FOM()->datapoints;
+  const VectorXd& xf_time = traj_data.get_xf_FOM()->time_vector;
   const VectorXd& stance_foot = traj_data.get_stance_foot();
   const VectorXd& quat_xyz_shift = traj_data.get_quat_xyz_shift();
-  DRAKE_DEMAND(traj_data.get_x0_FOM()->time_vector(1) ==
-               traj_data.get_x0_FOM()->time_vector(2));
+  DRAKE_DEMAND(xf_time(0) == x0_time(1));
 
-  // TODO: Rotate the states back to global frame
+  // Rotate the states back to global frame
+  MatrixXd x0_global = x0;
+  MatrixXd xf_global = xf;
+  Quaterniond relative_quat = Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1),
+                                          quat_xyz_shift(2), quat_xyz_shift(3))
+                                  .conjugate();
+  Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
+  for (int j = 0; j < n_mode; j++) {
+    // x0
+    Quaterniond x0_quat_global =
+        relative_quat * Quaterniond(x0_global.col(j)(0), x0_global.col(j)(1),
+                                    x0_global.col(j)(2), x0_global.col(j)(3));
+    x0_global.col(j).segment<4>(0) << x0_quat_global.w(), x0_quat_global.vec();
+    x0_global.col(j).segment<3>(4)
+        << x0_global.col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
+    x0_global.col(j).segment<3>(nq_)
+        << relative_rot_mat * x0_global.col(j).segment<3>(nq_);
+    x0_global.col(j).segment<3>(nq_ + 3)
+        << relative_rot_mat * x0_global.col(j).segment<3>(nq_ + 3);
+    // xf
+    Quaterniond xf_quat_global =
+        relative_quat * Quaterniond(xf_global.col(j)(0), xf_global.col(j)(1),
+                                    xf_global.col(j)(2), xf_global.col(j)(3));
+    xf_global.col(j).segment<4>(0) << xf_quat_global.w(), xf_quat_global.vec();
+    xf_global.col(j).segment<3>(4)
+        << xf_global.col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
+    xf_global.col(j).segment<3>(nq_)
+        << relative_rot_mat * xf_global.col(j).segment<3>(nq_);
+    xf_global.col(j).segment<3>(nq_ + 3)
+        << relative_rot_mat * xf_global.col(j).segment<3>(nq_ + 3);
+  }
 
   // Construct PP
   PiecewisePolynomial<double> pp;
-
-  int n_mode = traj_data.GetNumModes();
+  std::vector<double> T_waypoint = std::vector<double>(3, 0);
+  std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
+  Vector3d foot_pos;
   bool left_stance = abs(stance_foot(0)) < 1e-12;
   for (int j = 0; j < n_mode; j++) {
-    // We assume the start and the end vel of the swing foot are 0
-
-    // TODO: construct swing foot traj
-
+    T_waypoint.at(0) = x0_time(j);
+    T_waypoint.at(2) = xf_time(j);
+    /*cout << "T_waypoint.at(0) = " << T_waypoint.at(0) << endl;
+    cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
+    cout << "double_support_duration_ = " << double_support_duration_ << endl;
+    if (T_waypoint.at(2) != 0) {
+      T_waypoint.at(2) -= double_support_duration_;
+    }*/
+    T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
+    plant_control_.SetPositionsAndVelocities(context_.get(), x0_global.col(j));
+    plant_control_.CalcPointsPositions(
+        *context_, left_right_foot_.at(left_stance ? 1 : 0).second,
+        left_right_foot_.at(left_stance ? 1 : 0).first,
+        plant_control_.world_frame(), &foot_pos);
+    Y.at(0) = foot_pos;
+    plant_control_.SetPositionsAndVelocities(context_.get(), xf_global.col(j));
+    plant_control_.CalcPointsPositions(
+        *context_, left_right_foot_.at(left_stance ? 1 : 0).second,
+        left_right_foot_.at(left_stance ? 1 : 0).first,
+        plant_control_.world_frame(), &foot_pos);
+    Y.at(2) = foot_pos;
+    Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
+    Y.at(1)(1) += 0.1;
     // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
     // make the traj smooth at the mid point
-    /*PiecewisePolynomial<double> swing_foot_spline =
+    pp.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-            T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));*/
+            T_waypoint, Y, VectorXd::Zero(3), VectorXd::Zero(3)));
 
     left_stance = !left_stance;
   }
 
   // Cast traj and assign traj
-  auto* traj_casted =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
+  auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
   *traj_casted = pp;
 };
 

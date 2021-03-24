@@ -324,8 +324,10 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
             FLAGS_channel_y, &lcm_local));
     // Create a system that translate MPC lcm into trajectory
-    auto optimal_rom_traj_gen =
-        builder.AddSystem<SavedTrajReceiver>(plant_wo_springs, true);
+    vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
+        left_toe_origin, right_toe_origin};
+    auto optimal_rom_traj_gen = builder.AddSystem<SavedTrajReceiver>(
+        plant_wo_springs, left_right_foot, true, double_support_duration);
     builder.Connect(planner_output_subscriber->get_output_port(),
                     optimal_rom_traj_gen->get_input_port(0));
 
@@ -412,8 +414,6 @@ int DoMain(int argc, char* argv[]) {
                                                  right_stance_state};
     vector<double> left_right_support_state_durations = {
         left_support_duration, right_support_duration};
-    vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
-        left_toe_origin, right_toe_origin};
     auto swing_ft_traj_generator =
         builder.AddSystem<systems::SwingFootTrajGenerator>(
             plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
@@ -584,10 +584,12 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(simulator_drift->get_output_port(0),
                     osc->get_robot_output_input_port());
     builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-    builder.Connect(optimal_rom_traj_gen->get_output_port(0),
+    builder.Connect(optimal_rom_traj_gen->get_output_port_rom(),
                     osc->get_tracking_data_input_port("optimal_rom_traj"));
-    builder.Connect(swing_ft_traj_generator->get_output_port(0),
+    builder.Connect(optimal_rom_traj_gen->get_output_port_swing_foot(),
                     osc->get_tracking_data_input_port("swing_ft_traj"));
+    //    builder.Connect(swing_ft_traj_generator->get_output_port(0),
+    //                    osc->get_tracking_data_input_port("swing_ft_traj"));
     builder.Connect(head_traj_gen->get_output_port(0),
                     osc->get_tracking_data_input_port("pelvis_balance_traj"));
     builder.Connect(head_traj_gen->get_output_port(0),

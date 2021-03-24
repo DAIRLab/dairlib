@@ -1,5 +1,6 @@
 #pragma once
 
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
@@ -20,21 +21,37 @@ namespace goldilocks_models {
 class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
  public:
   SavedTrajReceiver(const drake::multibody::MultibodyPlant<double>& plant,
-                    bool both_pos_vel_in_traj);
+                    const std::vector<BodyPoint>& left_right_foot,
+                    bool both_pos_vel_in_traj, double double_support_duration);
+
+  const drake::systems::OutputPort<double>& get_output_port_rom() const {
+    return this->get_output_port(rom_traj_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_swing_foot() const {
+    return this->get_output_port(swing_foot_traj_port_);
+  }
 
  private:
-  void CalcDesiredTraj(const drake::systems::Context<double>& context,
-                       drake::trajectories::Trajectory<double>* traj) const;
+  void CalcRomTraj(const drake::systems::Context<double>& context,
+                   drake::trajectories::Trajectory<double>* traj) const;
   void CalcSwingFootTraj(const drake::systems::Context<double>& context,
                          drake::trajectories::Trajectory<double>* traj) const;
 
   int saved_traj_lcm_port_;
+  int rom_traj_port_;
+  int swing_foot_traj_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_control_;
+  const std::vector<BodyPoint>& left_right_foot_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+
   int nq_;
   int nv_;
   int nx_;
   bool both_pos_vel_in_traj_;
+
+  // hacks
+  double double_support_duration_;
 };
 
 // We have IKTrajReceiver beside SavedTrajReceiver, because it also extracts the

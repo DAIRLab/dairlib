@@ -693,11 +693,22 @@ void InitialStateForPlanner::CheckAdjustemnt(
       (right_foot_pos_w_spr - right_foot_pos_wo_spr_original).norm();
   double right_pos_error_improved =
       (right_foot_pos_w_spr - right_foot_pos_wo_spr).norm();
+  bool left_pos_did_not_improve =
+      left_pos_error_improved > left_pos_error_original;
+  bool right_pos_did_not_improve =
+      right_pos_error_improved > right_pos_error_original;
+  bool left_pos_error_still_too_large = left_pos_error_improved > 0.01;
+  bool right_pos_error_still_too_large = right_pos_error_improved > 0.01;
   //  if (true) {
-  if ((left_pos_error_improved > left_pos_error_original) ||
-      (right_pos_error_improved > right_pos_error_original) ||
-      (left_pos_error_improved > 0.01) || (right_pos_error_improved > 0.01)) {
+  if (left_pos_did_not_improve || right_pos_did_not_improve ||
+      left_pos_error_still_too_large || right_pos_error_still_too_large) {
     cout << "\n=== Feet pos differences ===\n";
+    cout << "left_pos_did_not_improve?" << left_pos_did_not_improve << endl;
+    cout << "right_pos_did_not_improve?" << right_pos_did_not_improve << endl;
+    cout << "left_pos_error_still_too_large?" << left_pos_error_still_too_large
+         << endl;
+    cout << "right_pos_error_still_too_large?"
+         << right_pos_error_still_too_large << endl;
     cout << "left_foot_pos_w_spr = " << left_foot_pos_w_spr.transpose() << endl;
     cout << "right_foot_pos_w_spr = " << right_foot_pos_w_spr.transpose()
          << endl;
@@ -729,7 +740,7 @@ void InitialStateForPlanner::CheckAdjustemnt(
     cout << "x_w_spr = " << x_w_spr << endl;
     // TODO: before you put the code on the hardware, you need to disable all
     //  the DRAKE_UNREACHABLE()
-    DRAKE_UNREACHABLE();  // Put a check here for future investigation
+    //DRAKE_UNREACHABLE();  // Put a check here for future investigation
   }
   cout << "\n\n";
 
@@ -750,13 +761,27 @@ void InitialStateForPlanner::CheckAdjustemnt(
       (right_foot_vel_w_spr - right_foot_vel_wo_spr_original).norm();
   double right_vel_error_improved =
       (right_foot_vel_w_spr - right_foot_vel_wo_spr_improved).norm();
+  bool left_vel_did_not_improve =
+      left_vel_error_improved > left_vel_error_original;
+  bool right_vel_did_not_improve =
+      right_vel_error_improved > right_vel_error_original;
+  bool left_vel_error_still_too_large = left_vel_error_improved > 0.02;
+  bool right_vel_error_still_too_large = right_vel_error_improved > 0.02;
+  bool stance_foot_vel_too_big =
+      (left_foot_vel_wo_spr_improved.norm() > 0.2) &&
+      (right_foot_vel_wo_spr_improved.norm() > 0.2);
   //  if (true) {
-  if ((left_vel_error_improved > left_vel_error_original) ||
-      (right_vel_error_improved > right_vel_error_original) ||
-      (left_vel_error_improved > 0.015) || (right_vel_error_improved > 0.015) ||
-      ((left_foot_vel_wo_spr_improved.norm() > 0.15) &&
-       (right_foot_vel_wo_spr_improved.norm() > 0.15))) {
+  if (left_vel_did_not_improve || right_vel_did_not_improve ||
+      left_vel_error_still_too_large || right_vel_error_still_too_large ||
+      stance_foot_vel_too_big) {
     cout << "\n=== Feet vel differences ===\n";
+    cout << "left_vel_did_not_improve?" << left_vel_did_not_improve << endl;
+    cout << "right_vel_did_not_improve?" << right_vel_did_not_improve << endl;
+    cout << "left_vel_error_still_too_large?" << left_vel_error_still_too_large
+         << endl;
+    cout << "right_vel_error_still_too_large?"
+         << right_vel_error_still_too_large << endl;
+    cout << "stance_foot_vel_too_big?" << stance_foot_vel_too_big << endl;
     cout << "left_foot_vel_w_spr = " << left_foot_vel_w_spr.transpose() << endl;
     cout << "right_foot_vel_w_spr = " << right_foot_vel_w_spr.transpose()
          << endl;
@@ -790,7 +815,7 @@ void InitialStateForPlanner::CheckAdjustemnt(
     cout << "x_w_spr = " << x_w_spr << endl;
     // TODO: before you put the code on the hardware, you need to disable all
     //  the DRAKE_UNREACHABLE()
-    DRAKE_UNREACHABLE();  // Put a check here for future investigation
+    //DRAKE_UNREACHABLE();  // Put a check here for future investigation
   }
   cout << "\n\n";
 }

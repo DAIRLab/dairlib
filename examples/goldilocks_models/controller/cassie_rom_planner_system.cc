@@ -723,7 +723,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   timestamp_of_previous_plan_ = current_time;
 
   // Store previous solutions
-  // TODO: check if Eigen allows the size to change
   VectorXd sample_times = trajopt.GetSampleTimes(result);
   int N = trajopt.num_knots();
   h_solutions_.resize(N - 1);

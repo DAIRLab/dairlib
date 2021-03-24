@@ -648,7 +648,7 @@ void Dircon<T>::SetInitialForceTrajectory(
   const auto& mode = get_mode(mode_index);
   double h;
   if (timesteps_are_decision_variables())
-    h = GetInitialGuess(h_vars()[get_mode_start(mode_index)]);
+    h = GetInitialGuess(h_vars()[mode_start_[mode_index]]);
   else
     h = fixed_timestep();
 
@@ -749,7 +749,7 @@ void Dircon<T>::SetInitialTrajectory(
     // Time steps
     VectorXd guess_time(1);
     guess_time[0] = h;
-    SetInitialGuess(timestep(get_mode_start(mode_index)+i), guess_time);
+    SetInitialGuess(timestep(mode_start_[mode_index]+i), guess_time);
 
   }
   }

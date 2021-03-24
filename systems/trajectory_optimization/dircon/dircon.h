@@ -136,7 +136,7 @@ class Dircon
   /// @param traj_init_u the control trajectory
   /// @param start_time the start time for the mode
   /// @param end_time the end time for a mode
-  void SetInitialTrajectory(
+  void SetInitialDiscontinuousTrajectory(
       int mode_index, const drake::trajectories::PiecewisePolynomial<double>& traj_init_x,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_u,
       const double start_time,

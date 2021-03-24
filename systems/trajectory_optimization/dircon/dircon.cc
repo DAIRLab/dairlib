@@ -724,7 +724,7 @@ void Dircon<T>::SetInitialForceTrajectory(
 }
 
 template <typename T>
-void Dircon<T>::SetInitialTrajectory(
+void Dircon<T>::SetInitialDiscontinuousTrajectory(
     int mode_index, const PiecewisePolynomial<double>& traj_init_x,
     const PiecewisePolynomial<double>& traj_init_u,
     const double start_time,

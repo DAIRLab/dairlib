@@ -67,7 +67,8 @@ DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "running_0.00",
               "File to load saved trajectories from");
-DEFINE_string(gains_filename, "examples/Cassie/osc_run/osc_running_gains.yaml",
+DEFINE_string(gains_filename,
+              "examples/Cassie/osc_run/joint_space_running_gains.yaml",
               "Filepath containing gains");
 
 int DoMain(int argc, char* argv[]) {
@@ -218,125 +219,42 @@ int DoMain(int argc, char* argv[]) {
   std::vector<BasicTrajectoryPassthrough*> joint_trajs;
   std::vector<std::shared_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;
   /**** Tracking Data *****/
+  std::cout << "Creating joint space controller. " << std::endl;
+  /**** Convert the gains from the yaml struct to Eigen Matrices ****/
+  JointSpaceRunningGains joint_space_gains;
+  drake::yaml::YamlReadArchive(root).Accept(&joint_space_gains);
 
-  std::cout << "Creating osc controller. " << std::endl;
-  OSCRunningGains osc_gains;
-  drake::yaml::YamlReadArchive(root).Accept(&osc_gains);
+  std::vector<std::string> actuated_joint_names = {
+      "hip_roll_left",  "hip_roll_right",  "hip_yaw_left", "hip_yaw_right",
+      "hip_pitch_left", "hip_pitch_right", "knee_left",    "knee_right",
+      "toe_left",       "toe_right"};
 
-  string output_traj_path = FLAGS_folder_path + FLAGS_traj_name + "_processed";
-  const LcmTrajectory& output_trajs =
-      LcmTrajectory(FindResourceOrThrow(output_traj_path));
-  PiecewisePolynomial<double> pelvis_trans_traj;
-  PiecewisePolynomial<double> l_foot_trajectory;
-  PiecewisePolynomial<double> r_foot_trajectory;
-  PiecewisePolynomial<double> pelvis_rot_trajectory;
+  for (int joint_idx = 0; joint_idx < actuated_joint_names.size();
+       ++joint_idx) {
+    string joint_name = actuated_joint_names[joint_idx];
+    MatrixXd W = joint_space_gains.JointW[joint_idx] * MatrixXd::Identity(1, 1);
+    MatrixXd K_p =
+        joint_space_gains.JointKp[joint_idx] * MatrixXd::Identity(1, 1);
+    MatrixXd K_d =
+        joint_space_gains.JointKd[joint_idx] * MatrixXd::Identity(1, 1);
+    joint_tracking_data_vec.push_back(std::make_shared<JointSpaceTrackingData>(
+        joint_name + "_traj", K_p, K_d, W, plant, plant));
+    joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
+                                                        joint_name + "dot");
+    auto joint_traj = dircon_trajectory.ReconstructJointTrajectory(
+        pos_map_wo_spr[joint_name]);
+    auto mirror_joint_traj = dircon_trajectory.ReconstructMirrorJointTrajectory(
+        pos_map_wo_spr[joint_name]);
+    mirror_joint_traj.shiftRight(joint_traj.end_time());
+    joint_traj.ConcatenateInTime(mirror_joint_traj);
+    auto joint_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(
+        joint_traj, joint_name + "_traj");
+    joint_trajs.push_back(joint_traj_generator);
+    osc->AddTrackingData(joint_tracking_data_vec[joint_idx].get());
 
-  for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
-    const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
-        output_trajs.GetTrajectory("pelvis_trans_trajectory" +
-                                   std::to_string(mode));
-    const LcmTrajectory::Trajectory lcm_left_foot_traj =
-        output_trajs.GetTrajectory("left_foot_trajectory" +
-                                   std::to_string(mode));
-    const LcmTrajectory::Trajectory lcm_right_foot_traj =
-        output_trajs.GetTrajectory("right_foot_trajectory" +
-                                   std::to_string(mode));
-    const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
-        output_trajs.GetTrajectory("pelvis_rot_trajectory" +
-                                   std::to_string(mode));
-    pelvis_trans_traj.ConcatenateInTime(
-        PiecewisePolynomial<double>::CubicHermite(
-            lcm_pelvis_trans_trajectory.time_vector,
-            lcm_pelvis_trans_trajectory.datapoints.topRows(3),
-            lcm_pelvis_trans_trajectory.datapoints.bottomRows(3)));
-    l_foot_trajectory.ConcatenateInTime(
-        PiecewisePolynomial<double>::CubicHermite(
-            lcm_left_foot_traj.time_vector,
-            lcm_left_foot_traj.datapoints.topRows(3),
-            lcm_left_foot_traj.datapoints.bottomRows(3)));
-    r_foot_trajectory.ConcatenateInTime(
-        PiecewisePolynomial<double>::CubicHermite(
-            lcm_right_foot_traj.time_vector,
-            lcm_right_foot_traj.datapoints.topRows(3),
-            lcm_right_foot_traj.datapoints.bottomRows(3)));
-    pelvis_rot_trajectory.ConcatenateInTime(
-        PiecewisePolynomial<double>::FirstOrderHold(
-            lcm_pelvis_rot_traj.time_vector,
-            lcm_pelvis_rot_traj.datapoints.topRows(4)));
+    builder.Connect(joint_trajs[joint_idx]->get_output_port(),
+                    osc->get_tracking_data_input_port(joint_name + "_traj"));
   }
-
-  auto pelvis_trans_traj_generator =
-      builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), pelvis_trans_traj, feet_contact_points);
-  auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant, plant_context.get(), "hip_left", true, l_foot_trajectory);
-  auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant, plant_context.get(), "hip_right", false, r_foot_trajectory);
-
-  TransTaskSpaceTrackingData pelvis_tracking_data(
-      "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
-      osc_gains.W_pelvis, plant, plant);
-  TransTaskSpaceTrackingData left_foot_tracking_data(
-      "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
-  TransTaskSpaceTrackingData right_foot_tracking_data(
-      "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
-  pelvis_tracking_data.AddPointToTrack("pelvis");
-  left_foot_tracking_data.AddStateAndPointToTrack(right_stance_state,
-                                                  "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
-                                                   "toe_right");
-  osc->AddTrackingData(&pelvis_tracking_data);
-  osc->AddTrackingData(&left_foot_tracking_data);
-  osc->AddTrackingData(&right_foot_tracking_data);
-
-  // Swing toe joint trajectory
-  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
-      left_heel, left_toe};
-  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
-      right_heel, right_toe};
-  auto left_toe_angle_traj_gen = builder.AddSystem<SwingToeTrajGenerator>(
-      plant, plant_context.get(), pos_map["toe_left"], left_foot_points,
-      "left_toe_angle_traj");
-  auto right_toe_angle_traj_gen = builder.AddSystem<SwingToeTrajGenerator>(
-      plant, plant_context.get(), pos_map["toe_right"], right_foot_points,
-      "right_toe_angle_traj");
-
-  // Swing toe joint tracking
-  JointSpaceTrackingData swing_toe_traj_left(
-      "left_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
-      osc_gains.W_swing_toe, plant, plant);
-  JointSpaceTrackingData swing_toe_traj_right(
-      "right_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
-      osc_gains.W_swing_toe, plant, plant);
-  swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                               "toe_rightdot");
-  swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                              "toe_leftdot");
-  osc->AddTrackingData(&swing_toe_traj_left);
-  osc->AddTrackingData(&swing_toe_traj_right);
-
-  // Swing hip yaw joint tracking
-  JointSpaceTrackingData swing_hip_yaw_traj(
-      "swing_hip_yaw_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
-      osc_gains.W_hip_yaw, plant, plant);
-  swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
-                                             "hip_yaw_rightdot");
-  swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
-                                             "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
-
-  builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_trans_traj"));
-  builder.Connect(l_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_ft_traj"));
-  builder.Connect(r_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_ft_traj"));
-  builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
-  builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
 
   // Build OSC problem
   osc->Build();
@@ -373,7 +291,7 @@ int DoMain(int argc, char* argv[]) {
   loop.Simulate();
 
   return 0;
-}  // namespace examples
+}
 }  // namespace examples
 }  // namespace dairlib
 

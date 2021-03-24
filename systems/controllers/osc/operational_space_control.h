@@ -116,6 +116,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_clock_input_port() const {
+    return this->get_input_port(clock_port_);
+  }
   const drake::systems::InputPort<double>& get_near_impact_input_port() const {
     return this->get_input_port(near_impact_port_);
   }
@@ -196,6 +199,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int osc_debug_port_;
   int osc_output_port_;
   int state_port_;
+  int clock_port_;
   int fsm_port_;
   int near_impact_port_;
 

@@ -397,6 +397,7 @@ int DoMain(int argc, char* argv[]) {
 
   // OSC connections
   builder.Connect(fsm->get_fsm_output_port(), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_clock_output_port(), osc->get_clock_input_port());
   builder.Connect(fsm->get_impact_output_port(),
                   osc->get_near_impact_input_port());
   builder.Connect(state_receiver->get_output_port(0),

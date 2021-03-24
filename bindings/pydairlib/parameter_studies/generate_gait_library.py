@@ -19,11 +19,12 @@ def main():
   trajectory_path = "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/"
   gait_type = "running"
 
-  stride_lengths = np.arange(0.00, 0.5, 0.01)
+  stride_lengths = np.arange(0.00, -0.51, -0.01)
   costs = np.inf * np.ones(stride_lengths.shape)
   costs[0] = 2
 
   for i, stride_length in enumerate(stride_lengths):
+    # Initial seed
     if i == 0:
       continue
     load_stride_length = stride_lengths[i-1]

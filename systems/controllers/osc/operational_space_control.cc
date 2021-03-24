@@ -72,6 +72,8 @@ OperationalSpaceControl::OperationalSpaceControl(
   state_port_ = this->DeclareVectorInputPort(
                         OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
                     .get_index();
+  clock_port_ = this->DeclareVectorInputPort(BasicVector<double>(1))
+                    .get_index();
   this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
                                 &OperationalSpaceControl::CalcOptimalInput);
   if (used_with_finite_state_machine) {
@@ -884,6 +886,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Read in current state and time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
@@ -891,7 +894,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   x_w_spr << q_w_spr, v_w_spr;
 
   double timestamp = robot_output->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
+  double current_time = timestamp;
   if (print_tracking_info_) {
     cout << "\n\ncurrent_time = " << current_time << endl;
   }
@@ -907,13 +910,15 @@ void OperationalSpaceControl::CalcOptimalInput(
         (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
     const BasicVector<double>* near_impact =
         (BasicVector<double>*)this->EvalVectorInput(context, near_impact_port_);
+    const BasicVector<double>* clock =
+        (BasicVector<double>*)this->EvalVectorInput(context, clock_port_);
     VectorXd fsm_state = fsm_output->get_value();
+    double clock_time = clock->get_value()(0);
 
     // Get discrete states
     const auto prev_event_time =
         context.get_discrete_state(prev_event_time_idx_).get_value();
-
-    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, fsm_state(0),
+    u_sol = SolveQp(x_w_spr, x_wo_spr, context, clock_time, fsm_state(0),
                     current_time - prev_event_time(0),
                     near_impact->get_value()(0), near_impact->get_value()(1));
   } else {

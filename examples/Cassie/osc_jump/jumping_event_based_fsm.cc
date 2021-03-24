@@ -42,6 +42,10 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       this->DeclareVectorOutputPort(BasicVector<double>(1),
                                     &JumpingEventFsm::CalcFiniteState)
           .get_index();
+  clock_output_port_ =
+      this->DeclareVectorOutputPort(BasicVector<double>(1),
+                                    &JumpingEventFsm::CalcClock)
+          .get_index();
   near_impact_output_port =
       this->DeclareVectorOutputPort(BasicVector<double>(2),
                                     &JumpingEventFsm::CalcNearImpact)
@@ -130,6 +134,12 @@ void JumpingEventFsm::CalcFiniteState(const Context<double>& context,
                                       BasicVector<double>* fsm_state) const {
   fsm_state->get_mutable_value() =
       context.get_discrete_state().get_vector(fsm_idx_).get_value();
+}
+
+void JumpingEventFsm::CalcClock(const Context<double>& context,
+                                BasicVector<double>* clock) const {
+  clock->get_mutable_value()
+      << context.get_discrete_state(prev_time_idx_).get_value();
 }
 
 double alpha_sigmoid(double t, double tau, double near_impact_threshold) {

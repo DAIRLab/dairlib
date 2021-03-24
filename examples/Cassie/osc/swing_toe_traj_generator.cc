@@ -10,7 +10,7 @@ using drake::trajectories::Trajectory;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-namespace dairlib::cassie::osc {
+namespace dairlib::osc {
 
 SwingToeTrajGenerator::SwingToeTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,

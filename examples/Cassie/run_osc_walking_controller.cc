@@ -290,11 +290,11 @@ int DoMain(int argc, char* argv[]) {
   vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
       right_heel, right_toe};
   auto left_toe_angle_traj_gen =
-      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+      builder.AddSystem<osc::SwingToeTrajGenerator>(
           plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
           left_foot_points, "left_toe_angle_traj");
   auto right_toe_angle_traj_gen =
-      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+      builder.AddSystem<osc::SwingToeTrajGenerator>(
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
 

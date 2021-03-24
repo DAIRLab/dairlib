@@ -88,7 +88,6 @@ void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
 vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
                                             const map<string, int>& vel_map,
                                             const map<string, int>& act_map);
-
 void DoMain() {
   // Drake system initialization stuff
   drake::systems::DiagramBuilder<double> builder;
@@ -256,6 +255,20 @@ void DoMain() {
         VectorXd::Random(trajopt.decision_variables().size()));
   }
 
+  auto loaded_traj =
+      DirconTrajectory(FLAGS_data_directory + FLAGS_load_filename);
+
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> x_trajs;
+  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
+      loaded_traj.GetStateBreaks(0), loaded_traj.GetStateSamples(0),
+      loaded_traj.GetStateDerivativeSamples(0)));
+  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
+      loaded_traj.GetStateBreaks(1), loaded_traj.GetStateSamples(1),
+      loaded_traj.GetStateDerivativeSamples(1)));
+  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
+      loaded_traj.GetStateBreaks(2), loaded_traj.GetStateSamples(2),
+      loaded_traj.GetStateDerivativeSamples(2)));
+
   // To avoid NaN quaternions
   for (int i = 0; i < trajopt.N(); i++) {
     auto xi = trajopt.state(i);
@@ -306,7 +319,9 @@ void DoMain() {
   drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
-//  while (true) {
+
+
+  //  while (true) {
 //    drake::systems::Simulator<double> simulator(*diagram);
 //    simulator.set_target_realtime_rate(0.1);
 //    simulator.Initialize();
@@ -520,15 +535,15 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) <= 0.05);
   // Miscellaneous constraints
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) >= 0.0);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) <= 0.2);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) >= -0.2);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) <= 0.10);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) >= -0.10);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) <= 0.0);
 
   std::cout << "Adding costs: " << std::endl;
-  MatrixXd Q = 1e-2 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q = 1e-1 * MatrixXd::Identity(n_v, n_v);
   Q(2,2) = 1.0;
   Q(3,3) = 1.0;
-  MatrixXd R = 1e-4 * MatrixXd::Identity(n_u, n_u);
+  MatrixXd R = 1e-5 * MatrixXd::Identity(n_u, n_u);
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose() * R * u);
 }

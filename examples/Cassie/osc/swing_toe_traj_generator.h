@@ -8,7 +8,7 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
-namespace dairlib::cassie::osc {
+namespace dairlib::osc {
 
 class SwingToeTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
@@ -41,4 +41,4 @@ class SwingToeTrajGenerator : public drake::systems::LeafSystem<double> {
 
   int state_port_;
 };
-}  // namespace dairlib::cassie::osc
+}  // namespace dairlib::osc

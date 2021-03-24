@@ -26,6 +26,8 @@ cc_library(
     name = "osc_run",
     deps = [
         ":joint_space_running_gains",
+        ":osc_running_gains",
+        ":running_gait_library",
     ],
 )
 
@@ -33,6 +35,26 @@ cc_library(
     name = "joint_space_running_gains",
     hdrs = ["joint_space_running_gains.h"],
     deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "osc_running_gains",
+    hdrs = ["osc_running_gains.h"],
+    deps = [
+        "//systems/controllers/osc:osc_gains",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "running_gait_library",
+    srcs = ["running_gait_library.cc"],
+    hdrs = ["running_gait_library.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

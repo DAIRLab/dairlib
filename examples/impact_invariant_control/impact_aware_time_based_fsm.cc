@@ -27,6 +27,11 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
               BasicVector<double>(2),
               &ImpactTimeBasedFiniteStateMachine::CalcNearImpact)
           .get_index();
+  clock_port_ =
+      this->DeclareVectorOutputPort(
+              BasicVector<double>(1),
+              &ImpactTimeBasedFiniteStateMachine::CalcClock)
+          .get_index();
 
   // Accumulate the durations to get timestamps
   double sum = 0;
@@ -88,6 +93,18 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
     }
   }
   near_impact->get_mutable_value() = near_impact_data;
+}
+
+void ImpactTimeBasedFiniteStateMachine::CalcClock(
+    const Context<double>& context, BasicVector<double>* clock) const {
+  // Read in lcm message time
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  auto current_time = static_cast<double>(robot_output->get_timestamp());
+
+  double remainder = fmod(current_time, period_);
+
+  clock->get_mutable_value()(0) = remainder;
 }
 
 }  // namespace dairlib

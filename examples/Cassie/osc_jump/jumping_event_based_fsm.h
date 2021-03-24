@@ -25,7 +25,8 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   JumpingEventFsm(const drake::multibody::MultibodyPlant<double>& plant,
                   const std::vector<double>& transition_times,
                   bool contact_based = true, double impact_threshold = 0.0,
-                  FSM_STATE init_state = BALANCE, BLEND_FUNC blend_func = SIGMOID);
+                  FSM_STATE init_state = BALANCE,
+                  BLEND_FUNC blend_func = SIGMOID);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -43,6 +44,10 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
     return this->get_output_port(fsm_output_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_clock_output_port() const {
+    return this->get_output_port(clock_output_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_impact_output_port() const {
     return this->get_output_port(near_impact_output_port);
   }
@@ -55,6 +60,9 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   void CalcFiniteState(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* fsm_state) const;
 
+  void CalcClock(const drake::systems::Context<double>& context,
+                 drake::systems::BasicVector<double>* clock) const;
+
   void CalcNearImpact(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* fsm_state) const;
 
@@ -62,6 +70,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   int contact_port_;
   int switch_signal_port_;
   int fsm_output_port_;
+  int clock_output_port_;
   int near_impact_output_port;
   std::vector<double> transition_times_;
 

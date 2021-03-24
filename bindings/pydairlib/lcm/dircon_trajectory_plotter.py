@@ -57,14 +57,14 @@ def main():
   plt.legend(state_datatypes[0:7])
 
   plt.figure("input trajectory")
-  plt.plot(t, input_samples[:, 2:4])
-  plt.legend(input_datatypes[2:4])
+  plt.plot(t, input_samples[:, :])
+  plt.legend(input_datatypes[:])
 
   plt.figure("force trajectory")
   plt.plot(t, force_samples)
   plt.legend(force_datatypes)
 
-
+  # plt.show()
 
 def reflected_joints():
 

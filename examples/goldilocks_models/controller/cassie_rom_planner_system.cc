@@ -702,10 +702,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
-  // TODO: you can potentially use RomPlannerTrajectory. You can have a lighter
-  //  verison which do not store and publish the ROM input and all decision
-  //  variable
-
   // Note that the trajectory is discontinuous between mode (even the position
   // jumps because left vs right stance leg).
 
@@ -716,112 +712,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                          ->get_data();
   }
 
-  /*traj_msg->metadata.description = drake::solvers::to_string(solution_result);
-  traj_msg->num_trajectories = param_.n_step + 4;
-
-  traj_msg->trajectory_names.resize(param_.n_step + 4);
-  traj_msg->trajectories.resize(param_.n_step + 4);
-
-  // 1. ROM trajectory
-  lcmt_trajectory_block traj_block;
-  int traj_idx;
-  traj_block.num_datatypes = state_samples_[0].rows();
-  traj_block.datatypes.resize(traj_block.num_datatypes);
-  traj_block.datatypes = vector<string>(traj_block.num_datatypes, "");
-  for (traj_idx = 0; traj_idx < param_.n_step; traj_idx++) {
-    /// Create lcmt_trajectory_block
-    traj_block.trajectory_name = to_string(traj_idx);
-    traj_block.num_points = time_breaks_[traj_idx].size();
-
-    // Reserve space for vectors, then copy Eigentypes to std::vector
-    traj_block.time_vec.resize(traj_block.num_points);
-    traj_block.time_vec = CopyVectorXdToStdVector(time_breaks_[traj_idx]);
-
-    traj_block.datapoints.clear();
-    for (int j = 0; j < traj_block.num_datatypes; ++j) {
-      traj_block.datapoints.push_back(
-          CopyVectorXdToStdVector(state_samples_[traj_idx].row(j)));
-    }
-
-    /// Assign lcmt_trajectory_block
-    traj_msg->trajectories[traj_idx] = traj_block;
-    traj_msg->trajectory_names[traj_idx] = to_string(traj_idx);
-  }
-  // 2. Store start/end FOM states into one trajectory block
-  // The order is mode_0_start, mode_0_end, mode_1_start, ...
-  traj_block.num_datatypes = nx_;
-  traj_block.datatypes.resize(nx_);
-  traj_block.datatypes = vector<string>(nx_, "");
-  traj_block.trajectory_name = "FOM";
-  traj_block.num_points = 2 * param_.n_step;
-  traj_block.time_vec.resize(2 * param_.n_step);
-  for (traj_idx = 0; traj_idx < param_.n_step; traj_idx++) {
-    traj_block.time_vec[2 * traj_idx] = time_breaks_[traj_idx].head<1>()(0);
-    traj_block.time_vec[2 * traj_idx + 1] = time_breaks_[traj_idx].tail<1>()(0);
-  }
-  traj_block.datapoints.clear();
-  Eigen::MatrixXd FOM_eigen_matrix(nx_, 2 * param_.n_step);
-  for (int i = 0; i < param_.n_step; ++i) {
-    FOM_eigen_matrix.col(2 * i) = FOM_x0_.col(i);
-    FOM_eigen_matrix.col(2 * i + 1) = FOM_xf_.col(i);
-  }
-  for (int j = 0; j < nx_; ++j) {
-    traj_block.datapoints.push_back(
-        CopyVectorXdToStdVector(FOM_eigen_matrix.row(j)));
-  }
-  traj_msg->trajectories[traj_idx] = traj_block;
-  traj_msg->trajectory_names[traj_idx] = "FOM";
-  traj_idx++;
-  // 3. stance foot (left is 0, right is 1)
-  traj_block.num_datatypes = 1;
-  traj_block.datatypes.resize(1);
-  traj_block.datatypes = vector<string>(1, "");
-  traj_block.trajectory_name = "stance_foot";
-  traj_block.num_points = param_.n_step;
-  traj_block.time_vec.resize(param_.n_step);
-  traj_block.time_vec = vector<double>(param_.n_step, 0);
-  traj_block.datapoints.clear();
-  VectorXd stance_foot_vec = VectorXd::Zero(param_.n_step);
-  for (int i = start_with_left_stance ? 1 : 0; i < param_.n_step; i += 2) {
-    stance_foot_vec(i) = 1;
-  }
-  traj_block.datapoints.push_back(CopyVectorXdToStdVector(stance_foot_vec));
-  traj_msg->trajectories[traj_idx] = traj_block;
-  traj_msg->trajectory_names[traj_idx] = "stance_foot";
-  traj_idx++;
-  // 4. x, y, z and yaw shift.
-  traj_block.num_datatypes = 7;
-  traj_block.datatypes.resize(7);
-  traj_block.datatypes = {"quat_w", "quat_x", "quat_y", "quat_z",
-                          "x",      "y",      "z"};
-  traj_block.trajectory_name = "quat_xyz_shift";
-  traj_block.num_points = 1;
-  traj_block.time_vec.resize(1);
-  traj_block.time_vec = vector<double>(1, 0);
-  traj_block.datapoints.resize(7);
-  traj_block.datapoints = {{quat_xyz_shift(0)}, {quat_xyz_shift(1)},
-                           {quat_xyz_shift(2)}, {quat_xyz_shift(3)},
-                           {quat_xyz_shift(4)}, {quat_xyz_shift(5)},
-                           {quat_xyz_shift(6)}};
-  traj_msg->trajectories[traj_idx] = traj_block;
-  traj_msg->trajectory_names[traj_idx] = "quat_xyz_shift";
-  traj_idx++;
-  // 5. n_step
-  traj_block.num_datatypes = 1;
-  traj_block.datatypes.resize(1);
-  traj_block.datatypes = {"n_step"};
-  traj_block.trajectory_name = "n_step";
-  traj_block.num_points = 1;
-  traj_block.time_vec.resize(1);
-  traj_block.time_vec = vector<double>(1, 0);
-  traj_block.datapoints.resize(1);
-  traj_block.datapoints = {{double(param_.n_step)}};
-  traj_msg->trajectories[traj_idx] = traj_block;
-  traj_msg->trajectory_names[traj_idx] = "n_step";
-  traj_idx++;
-  // Sanity check
-  DRAKE_DEMAND(traj_msg->num_trajectories == traj_idx);*/
-
+  // Benchmark: for n_step = 3, the packing time is about 60us and the message
+  // size is about 4.5KB (use WriteToFile() to check).
   RomPlannerTrajectory saved_traj(trajopt, result, quat_xyz_shift, "", "",
                                   true);
   *traj_msg = saved_traj.GenerateLcmObject();

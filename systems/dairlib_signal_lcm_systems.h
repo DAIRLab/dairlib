@@ -5,6 +5,8 @@
 #include <vector>
 
 #include "dairlib/lcmt_dairlib_signal.hpp"
+#include "systems/framework/timestamped_vector.h"
+
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -18,7 +20,7 @@ class DairlibSignalReceiver : public drake::systems::LeafSystem<double> {
 
  private:
   void UnpackLcmIntoVector(const drake::systems::Context<double>& context,
-                           drake::systems::BasicVector<double>* output) const;
+                           systems::TimestampedVector<double>* output) const;
 
   int signal_size_;
 };

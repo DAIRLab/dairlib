@@ -18,18 +18,20 @@ DairlibSignalReceiver::DairlibSignalReceiver(int signal_size)
     : signal_size_(signal_size) {
   this->DeclareAbstractInputPort("lcmt_dairlib_signal",
                                  drake::Value<dairlib::lcmt_dairlib_signal>{});
-  this->DeclareVectorOutputPort(BasicVector<double>(signal_size),
+  this->DeclareVectorOutputPort(TimestampedVector<double>(signal_size),
                                 &DairlibSignalReceiver::UnpackLcmIntoVector);
 }
 
 void DairlibSignalReceiver::UnpackLcmIntoVector(
-    const Context<double>& context, BasicVector<double>* output) const {
+    const Context<double>& context, TimestampedVector<double>* output) const {
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& input_msg = input->get_value<dairlib::lcmt_dairlib_signal>();
   for (int i = 0; i < signal_size_; i++) {
+    // We assume that the order of the vector is [data, timestamp]
     output->get_mutable_value()(i) = input_msg.val[i];
   }
+  output->set_timestamp(input_msg.utime * 1e-6);
 }
 
 /*--------------------------------------------------------------------------*/

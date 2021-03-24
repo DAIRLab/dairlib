@@ -76,14 +76,37 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_init_phase() const {
     return this->get_input_port(phase_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
+      const {
+    return this->get_input_port(fsm_and_lo_time_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_adjusted_state()
+      const {
+    return this->get_output_port(adjusted_state_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_adjustment() const {
+    return this->get_output_port(adjustment_port_);
+  }
 
  private:
-  void CalcState(const drake::systems::Context<double>& context,
-                 systems::OutputVector<double>* output) const;
+  void CopyAdjustedState(const drake::systems::Context<double>& context,
+                         systems::OutputVector<double>* output) const;
+  void CopyAdjustment(const drake::systems::Context<double>& context,
+                      systems::TimestampedVector<double>* output) const;
+
+  drake::systems::EventStatus AdjustState(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   // Port indices
   int state_port_;
   int phase_port_;
+  int fsm_and_lo_time_port_;
+  int adjusted_state_port_;
+  int adjustment_port_;
+
+  int adjusted_state_idx_;
+  int quat_xyz_shift_idx_;
 
   // Map position/velocity from model with spring to without spring
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;
@@ -115,6 +138,13 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
                              const Eigen::Vector3d& right_foot_vel,
                              const Eigen::VectorXd& x_init_original,
                              Eigen::VectorXd* x_init) const;
+  void CheckAdjustemnt(const Eigen::VectorXd& x_w_spr,
+                       const Eigen::VectorXd& x_original,
+                       const Eigen::VectorXd& x_adjusted2,
+                       const Eigen::Vector3d& left_foot_pos_w_spr,
+                       const Eigen::Vector3d& right_foot_pos_w_spr,
+                       const Eigen::Vector3d& left_foot_vel_w_spr,
+                       const Eigen::Vector3d& right_foot_vel_w_spr) const;
 };
 
 }  // namespace goldilocks_models

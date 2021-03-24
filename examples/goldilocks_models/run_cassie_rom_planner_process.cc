@@ -226,12 +226,14 @@ int DoMain(int argc, char* argv[]) {
                   init_phase_calculator->get_input_port_fsm_and_lo_time());
 
   // Create a block that computes the initial state for the planner
-  auto init_state_calculator = builder.AddSystem<InitialStateForPlanner>(
+  auto x_init_calculator = builder.AddSystem<InitialStateForPlanner>(
       plant_feedback, plant_control, param.final_position_x, param.n_step);
   builder.Connect(state_receiver->get_output_port(0),
-                  init_state_calculator->get_input_port_state());
+                  x_init_calculator->get_input_port_state());
   builder.Connect(init_phase_calculator->get_output_port(0),
-                  init_state_calculator->get_input_port_init_phase());
+                  x_init_calculator->get_input_port_init_phase());
+  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
+                  x_init_calculator->get_input_port_fsm_and_lo_time());
 
   // Create optimal rom trajectory generator
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
@@ -240,10 +242,12 @@ int DoMain(int argc, char* argv[]) {
                   rom_planner->get_input_port_stance_foot());
   builder.Connect(init_phase_calculator->get_output_port(0),
                   rom_planner->get_input_port_init_phase());
-  builder.Connect(init_state_calculator->get_output_port(0),
+  builder.Connect(x_init_calculator->get_output_port_adjusted_state(),
                   rom_planner->get_input_port_state());
-  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
-                  rom_planner->get_input_port_fsm_and_lo_time());
+  builder.Connect(x_init_calculator->get_output_port_adjustment(),
+                  rom_planner->get_input_port_quat_xyz_shift());
+  //  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
+  //                  rom_planner->get_input_port_fsm_and_lo_time());
   builder.Connect(rom_planner->get_output_port(0),
                   traj_publisher->get_input_port());
 
@@ -251,14 +255,7 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("MPC");
 
-  std::string name = "../" + owned_diagram->get_name() + "_diagram_graph";
-  std::ofstream out(name);
-  out << owned_diagram->GetGraphvizString();
-  out.close();
-  std::string cmd = "dot -Tps " + name + " -o " + name + ".ps";
-  cout << std::system(cmd.c_str());
-  // cmd = "xdg-open " + name + ".ps";
-  // cout << std::system(cmd.c_str());
+  CreateDiagramFigure(*owned_diagram);
 
   // Run lcm-driven simulation
   std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers = {

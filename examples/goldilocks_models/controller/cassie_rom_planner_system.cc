@@ -715,7 +715,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
   RomPlannerTrajectory saved_traj(trajopt, result, quat_xyz_shift, "", "",
-                                  true);
+                                  true, current_time);
   *traj_msg = saved_traj.GenerateLcmObject();
 
   // Store the previous message

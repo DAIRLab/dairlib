@@ -17,7 +17,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
     const RomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
     const VectorXd& quat_xyz_shift, const std::string& name,
-    const std::string& description, bool lightweight) {
+    const std::string& description, bool lightweight, double time_shift) {
   num_modes_ = trajopt.num_modes();
 
   // Create state and input names
@@ -39,7 +39,6 @@ RomPlannerTrajectory::RomPlannerTrajectory(
     }
   }
 
-  // State trajectory and force trajectory
   std::vector<Eigen::MatrixXd> x;
   std::vector<Eigen::MatrixXd> xdot;
   std::vector<Eigen::VectorXd> time_breaks;
@@ -48,6 +47,13 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   } else {
     trajopt.GetStateAndDerivativeSamples(result, &x, &xdot, &time_breaks);
   }
+
+  // Shift the timestamps by the current time
+  for (auto& time_break_per_mode : time_breaks) {
+    time_break_per_mode.array() += time_shift;
+  }
+
+  // State trajectory and force trajectory
   for (int mode = 0; mode < num_modes_; ++mode) {
     LcmTrajectory::Trajectory state_traj;
     LcmTrajectory::Trajectory state_derivative_traj;

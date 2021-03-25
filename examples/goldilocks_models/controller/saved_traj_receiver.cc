@@ -155,34 +155,45 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   Vector3d foot_pos;
   bool left_stance = abs(stance_foot(0)) < 1e-12;
   for (int j = 0; j < n_mode; j++) {
-    T_waypoint.at(0) = x0_time(j);
-    T_waypoint.at(2) = xf_time(j);
-    /*cout << "T_waypoint.at(0) = " << T_waypoint.at(0) << endl;
-    cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
-    cout << "double_support_duration_ = " << double_support_duration_ << endl;
-    if (T_waypoint.at(2) != 0) {
-      T_waypoint.at(2) -= double_support_duration_;
-    }*/
-    T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
-    plant_control_.SetPositionsAndVelocities(context_.get(), x0_global.col(j));
-    plant_control_.CalcPointsPositions(
-        *context_, left_right_foot_.at(left_stance ? 1 : 0).second,
-        left_right_foot_.at(left_stance ? 1 : 0).first,
-        plant_control_.world_frame(), &foot_pos);
-    Y.at(0) = foot_pos;
-    plant_control_.SetPositionsAndVelocities(context_.get(), xf_global.col(j));
-    plant_control_.CalcPointsPositions(
-        *context_, left_right_foot_.at(left_stance ? 1 : 0).second,
-        left_right_foot_.at(left_stance ? 1 : 0).first,
-        plant_control_.world_frame(), &foot_pos);
-    Y.at(2) = foot_pos;
-    Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
-    Y.at(1)(1) += 0.1;
-    // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
-    // make the traj smooth at the mid point
-    pp.ConcatenateInTime(
-        PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-            T_waypoint, Y, VectorXd::Zero(3), VectorXd::Zero(3)));
+    if (xf_time(j) - double_support_duration_ > x0_time(j)) {
+      T_waypoint.at(0) = x0_time(j);
+      T_waypoint.at(2) = xf_time(j) - double_support_duration_;
+      /*cout << "T_waypoint.at(0) = " << T_waypoint.at(0) << endl;
+      cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
+      cout << "double_support_duration_ = " << double_support_duration_ <<
+      endl;*/
+      T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
+      plant_control_.SetPositionsAndVelocities(context_.get(),
+                                               x0_global.col(j));
+      plant_control_.CalcPointsPositions(
+          *context_, left_right_foot_.at(left_stance ? 1 : 0).second,
+          left_right_foot_.at(left_stance ? 1 : 0).first,
+          plant_control_.world_frame(), &foot_pos);
+      Y.at(0) = foot_pos;
+      plant_control_.SetPositionsAndVelocities(context_.get(),
+                                               xf_global.col(j));
+      plant_control_.CalcPointsPositions(
+          *context_, left_right_foot_.at(left_stance ? 1 : 0).second,
+          left_right_foot_.at(left_stance ? 1 : 0).first,
+          plant_control_.world_frame(), &foot_pos);
+      Y.at(2) = foot_pos;
+      Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
+      Y.at(1)(1) += 0.1;
+      // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
+      // make the traj smooth at the mid point
+      pp.ConcatenateInTime(
+          PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+              T_waypoint, Y, VectorXd::Zero(3), VectorXd::Zero(3)));
+    }
+
+    // Fill in the double support phase with a constant zero traj
+    VectorXd T_double_support(2);
+    T_double_support << T_waypoint.at(2), xf_time(j);
+    /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
+    cout << "xf_time(j) = " << xf_time(j) << endl;*/
+    MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
+    pp.ConcatenateInTime(PiecewisePolynomial<double>::ZeroOrderHold(
+        T_double_support, Y_double_support));
 
     left_stance = !left_stance;
   }

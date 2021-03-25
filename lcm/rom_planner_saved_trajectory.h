@@ -22,7 +22,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
                        const drake::solvers::MathematicalProgramResult& result,
                        const Eigen::VectorXd& quat_xyz_shift,
                        const std::string& name, const std::string& description,
-                       bool lightweight = false);
+                       bool lightweight = false, double time_shift = 0);
 
   explicit RomPlannerTrajectory(const lcmt_saved_traj& traj);
   explicit RomPlannerTrajectory(const std::string& filepath,

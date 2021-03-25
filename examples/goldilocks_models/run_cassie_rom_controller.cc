@@ -81,7 +81,6 @@ using multibody::FixedJointEvaluator;
 using multibody::JwrtqdotToJwrtv;
 
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
-DEFINE_double(const_walking_speed_x, 0.5, "Walking speed in local x axis");
 
 DEFINE_bool(start_with_left_stance, true, "");
 
@@ -119,6 +118,9 @@ int DoMain(int argc, char* argv[]) {
   OSCRomWalkingGains gains;
   const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
+  if (gains.const_walking_speed_x > 0) {
+    DRAKE_DEMAND(FLAGS_const_walking_speed);
+  }
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -260,7 +262,8 @@ int DoMain(int argc, char* argv[]) {
                   mux->get_input_port(1));
   std::vector<std::string> singal_names = {"fsm", "t_lo"};
   auto fsm_and_liftoff_time_sender =
-      builder.AddSystem<systems::DrakeSignalSender>(singal_names);
+      builder.AddSystem<systems::DrakeSignalSender>(
+          singal_names, left_support_duration + double_support_duration);
   builder.Connect(mux->get_output_port(0),
                   fsm_and_liftoff_time_sender->get_input_port(0));
   auto fsm_and_liftoff_time_publisher =
@@ -586,10 +589,10 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
     builder.Connect(optimal_rom_traj_gen->get_output_port_rom(),
                     osc->get_tracking_data_input_port("optimal_rom_traj"));
-    builder.Connect(optimal_rom_traj_gen->get_output_port_swing_foot(),
-                    osc->get_tracking_data_input_port("swing_ft_traj"));
-    //    builder.Connect(swing_ft_traj_generator->get_output_port(0),
+    //    builder.Connect(optimal_rom_traj_gen->get_output_port_swing_foot(),
     //                    osc->get_tracking_data_input_port("swing_ft_traj"));
+    builder.Connect(swing_ft_traj_generator->get_output_port(0),
+                    osc->get_tracking_data_input_port("swing_ft_traj"));
     builder.Connect(head_traj_gen->get_output_port(0),
                     osc->get_tracking_data_input_port("pelvis_balance_traj"));
     builder.Connect(head_traj_gen->get_output_port(0),
@@ -677,7 +680,7 @@ int DoMain(int argc, char* argv[]) {
       walking_speed_control->get_input_port_des_hor_vel().FixValue(
           &walking_speed_control_context,
           drake::systems::BasicVector<double>(
-              {FLAGS_const_walking_speed_x, 0}));
+              {gains.const_walking_speed_x, 0}));
     }
 
     loop.Simulate();

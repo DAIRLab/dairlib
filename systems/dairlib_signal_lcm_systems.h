@@ -29,7 +29,8 @@ class DairlibSignalReceiver : public drake::systems::LeafSystem<double> {
 /// lcm_drake_signal.
 class DrakeSignalSender : public drake::systems::LeafSystem<double> {
  public:
-  explicit DrakeSignalSender(const std::vector<std::string>& signal_names);
+  explicit DrakeSignalSender(const std::vector<std::string>& signal_names,
+                             double stride_period);
 
  private:
   void PackVectorIntoLcm(const drake::systems::Context<double>& context,
@@ -37,6 +38,9 @@ class DrakeSignalSender : public drake::systems::LeafSystem<double> {
 
   std::vector<std::string> signal_names_;
   int signal_size_;
+
+  // For testing
+  double stride_period_;
 };
 
 }  // namespace systems

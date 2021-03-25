@@ -17,7 +17,6 @@
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
-#include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -462,7 +461,8 @@ int DoMain(int argc, char* argv[]) {
                   command_pub->get_input_port());
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
+//  builder.Connect(fsm->get_output_port_clock(), osc->get_clock_input_port());
   builder.Connect(fsm->get_output_port_impact(), osc->get_near_impact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());

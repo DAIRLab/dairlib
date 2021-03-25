@@ -48,6 +48,17 @@ cc_library(
     ],
 )
 
+#cc_library(
+#    name = "pelvis_trans_traj_generator",
+#    srcs = ["pelvis_trans_traj_generator.cc"],
+#    hdrs = ["pelvis_trans_traj_generator.h"],
+#    deps = [
+#        "//multibody:utils",
+#        "//systems/controllers/osc:osc_gains",
+#        "@drake//:drake_shared_library",
+#    ],
+#)
+
 cc_library(
     name = "running_gait_library",
     srcs = ["running_gait_library.cc"],

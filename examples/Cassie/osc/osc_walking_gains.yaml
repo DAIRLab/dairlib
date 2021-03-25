@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.025
+impact_threshold: 0.000
 use_traj_opt_feet_traj: true
 
 # High level command gains (with radio)

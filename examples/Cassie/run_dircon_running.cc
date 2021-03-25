@@ -319,14 +319,12 @@ void DoMain() {
   drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
-
-
   //  while (true) {
-//    drake::systems::Simulator<double> simulator(*diagram);
-//    simulator.set_target_realtime_rate(0.1);
-//    simulator.Initialize();
-//    simulator.AdvanceTo(optimal_traj.end_time());
-//  }
+  //    drake::systems::Simulator<double> simulator(*diagram);
+  //    simulator.set_target_realtime_rate(0.1);
+  //    simulator.Initialize();
+  //    simulator.AdvanceTo(optimal_traj.end_time());
+  //  }
 }
 
 void setKinematicConstraints(Dircon<double>& trajopt,
@@ -361,7 +359,8 @@ void setKinematicConstraints(Dircon<double>& trajopt,
                               xf(pos_map.at("base_x")));
   trajopt.AddBoundingBoxConstraint(start_height, start_height,
                                    x0(pos_map.at("base_z")));
-
+//  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) <= 0.05);
+//  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) >= -0.05);
   // initial fb orientation constraint
   VectorXd quat_identity(4);
   quat_identity << 1, 0, 0, 0;
@@ -418,13 +417,6 @@ void setKinematicConstraints(Dircon<double>& trajopt,
       trajopt.AddLinearConstraint(
           x0(n_q + vel_map.at(sym_joint_name + l_r_pair.first + "dot")) ==
           xf(n_q + vel_map.at(sym_joint_name + l_r_pair.second + "dot")));
-      //      trajopt.AddLinearConstraint(
-      //          x0(pos_map[sym_joint_name + l_r_pair.first]) ==
-      //          xf(pos_map[sym_joint_name + l_r_pair.second]));
-      //      trajopt.AddLinearConstraint(
-      //          x0(n_q + vel_map.at(sym_joint_name + l_r_pair.first + "dot"))
-      //          == xf(n_q + vel_map.at(sym_joint_name + l_r_pair.second +
-      //          "dot")));
       if (sym_joint_name != "ankle_joint") {  // No actuator at ankle
         trajopt.AddLinearConstraint(
             u0(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) ==
@@ -536,13 +528,14 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   // Miscellaneous constraints
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) >= 0.0);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) <= 0.10);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) >= -0.10);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) >=
+                                       -0.10);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) <= 0.0);
 
   std::cout << "Adding costs: " << std::endl;
   MatrixXd Q = 1e-1 * MatrixXd::Identity(n_v, n_v);
-  Q(2,2) = 1.0;
-  Q(3,3) = 1.0;
+  Q(2, 2) = 1.0;
+  Q(3, 3) = 1.0;
   MatrixXd R = 1e-5 * MatrixXd::Identity(n_u, n_u);
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose() * R * u);

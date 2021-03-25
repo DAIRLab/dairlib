@@ -11,6 +11,7 @@ namespace trajectory_optimization {
 using drake::VectorX;
 using drake::multibody::MultibodyPlant;
 using drake::solvers::MathematicalProgramResult;
+using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Expression;
 using drake::systems::Context;
@@ -40,8 +41,8 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
                   const DirconModeSequence<T>* ext_sequence,
                   const MultibodyPlant<T>& plant, int num_knotpoints)
     : drake::systems::trajectory_optimization::MultipleShooting(
-          plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
-          num_knotpoints, 1e-8, 1e8),
+    plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
+    num_knotpoints, 1e-8, 1e8),
       my_sequence_(std::move(my_sequence)),
       plant_(plant),
       mode_sequence_(ext_sequence ? *ext_sequence : *my_sequence_),
@@ -69,7 +70,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
       for (int j = 0; j < mode.num_knotpoints() - 2; j++) {
         // all timesteps must be equal
         AddLinearConstraint(timestep(mode_start_[i_mode] + j) ==
-                            timestep(mode_start_[i_mode] + j + 1));
+            timestep(mode_start_[i_mode] + j + 1));
       }
     }
 
@@ -102,6 +103,11 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     if (i_mode > 0) {
       v_post_impact_vars_.push_back(NewContinuousVariables(
           plant_.num_velocities(), "v_p[" + std::to_string(i_mode) + "]"));
+      v_post_impact_vars_substitute_.push_back(
+          {state().tail(plant_.num_velocities()),
+           Eigen::Map<MatrixXDecisionVariable>(
+               v_post_impact_vars_.back().data(), plant_.num_velocities(), 1)
+               .cast<Expression>()});
     }
 
     // Constraint offset variables for relative constraints
@@ -250,7 +256,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
             state_vars(i_mode - 1, pre_impact_index)
                 .tail(plant_.num_velocities());
         AddLinearConstraint(pre_impact_velocity ==
-                            post_impact_velocity_vars(i_mode - 1));
+            post_impact_velocity_vars(i_mode - 1));
       }
     }
 
@@ -365,9 +371,9 @@ const VectorXDecisionVariable Dircon<T>::state_vars(int mode_index,
   // If first knot of a mode after the first, use post impact velocity variables
   if (knotpoint_index == 0 && mode_index > 0) {
     VectorXDecisionVariable ret(plant_.num_positions() +
-                                plant_.num_velocities());
+        plant_.num_velocities());
     ret << x_vars().segment(mode_start_[mode_index] * (plant_.num_positions() +
-                                                       plant_.num_velocities()),
+                                plant_.num_velocities()),
                             plant_.num_positions()),
         post_impact_velocity_vars(mode_index - 1);
     return ret;
@@ -423,13 +429,13 @@ void Dircon<T>::CreateVisualizationCallback(
   int num_poses = num_modes() + 1;
   for (int i = 0; i < num_modes(); i++) {
     DRAKE_DEMAND(poses_per_mode.at(i) == 0 ||
-                 (poses_per_mode.at(i) + 2 <= (uint)mode_length(i)));
+        (poses_per_mode.at(i) + 2 <= (uint)mode_length(i)));
     num_poses += poses_per_mode.at(i);
   }
 
   // Assemble variable list
   drake::solvers::VectorXDecisionVariable vars(num_poses *
-                                               plant_.num_positions());
+      plant_.num_positions());
 
   int index = 0;
   for (int i = 0; i < num_modes(); i++) {
@@ -520,7 +526,7 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
     for (int i_mode = 0; i_mode < num_modes(); i_mode++) {
       double fractional_value =
           num_poses_without_ends * (mode_length(i_mode) - 2) -
-          num_poses_per_mode.at(i_mode) * mode_sum;
+              num_poses_per_mode.at(i_mode) * mode_sum;
 
       if (fractional_value > value) {
         value = fractional_value;
@@ -554,7 +560,19 @@ VectorX<Expression> Dircon<T>::SubstitutePlaceholderVariables(
   return ret;
 }
 
-// TODO: need to configure this to handle the hybrid discontinuities properly
+template <typename T>
+Expression Dircon<T>::SubstitutePostImpactVelocityVariables(
+    const drake::symbolic::Expression& e, int mode) const {
+  DRAKE_DEMAND(mode > 0);
+  drake::symbolic::Substitution s;
+  for (int i = 0; i < v_post_impact_vars_substitute_[mode - 1].first.size();
+       ++i) {
+    s.emplace(v_post_impact_vars_substitute_[mode - 1].first[i],
+              v_post_impact_vars_substitute_[mode - 1].second[i]);
+  }
+  return e.Substitute(s);
+}
+
 template <typename T>
 void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Trapezoidal integration:
@@ -566,14 +584,26 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // polynomial of degree 3 which Drake can handle, although the
   // documentation says it only supports up to second order.
 
-  AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) * h_vars()(0) /
-          2);
-  for (int i = 1; i <= N() - 2; i++) {
-    AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
-            (h_vars()(i - 1) + h_vars()(i)) / 2);
+  for (int mode = 0; mode < num_modes(); ++mode) {
+    int mode_start = mode_start_[mode];
+    int mode_end = mode_start_[mode] + mode_length(mode);
+    // Substitute the velocity vars with the correct post-impact velocity vars
+    // before substituting the rest of the expression
+    if (mode > 0) {
+      AddCost(MultipleShooting::SubstitutePlaceholderVariables(
+          SubstitutePostImpactVelocityVariables(g, mode), mode_start) *
+          (h_vars()(mode_start) / 2));
+    } else {
+      AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, mode_start) *
+          (h_vars()(mode_start) / 2));
+    }
+    for (int i = mode_start + 1; i < mode_end - 1; ++i) {
+      AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
+          (h_vars()(i - 1) + h_vars()(i)) / 2);
+    }
+    AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, mode_end - 1) *
+        h_vars()(mode_end - 2) / 2);
   }
-  AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
-          h_vars()(N() - 2) / 2);
 }
 
 template <typename T>
@@ -601,7 +631,7 @@ void Dircon<T>::GetStateAndDerivativeSamples(
 
       states_i.col(j) = drake::math::DiscardGradient(xk);
       auto xdot = get_mode(mode).evaluators().CalcTimeDerivativesWithForce(
-        context.get(), result.GetSolution(force_vars(mode, j)));
+          context.get(), result.GetSolution(force_vars(mode, j)));
       derivatives_i.col(j) = drake::math::DiscardGradient(xdot);
       times_i(j) = times(k);
     }
@@ -756,7 +786,7 @@ void Dircon<T>::ScaleQuaternionSlackVariables(double scale) {
 template <typename T>
 void Dircon<T>::ScaleStateVariable(int state_index, double scale) {
   DRAKE_DEMAND(0 <= state_index &&
-               state_index < plant_.num_positions() + plant_.num_velocities());
+      state_index < plant_.num_positions() + plant_.num_velocities());
 
   // x_vars_ in MathematicalProgram
   for (int j_knot = 0; j_knot < N(); j_knot++) {

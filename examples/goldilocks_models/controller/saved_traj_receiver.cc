@@ -2,6 +2,7 @@
 
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "lcm/rom_planner_saved_trajectory.h"
+#include "multibody/multipose_visualizer.h"
 
 #include <string>
 
@@ -107,7 +108,6 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   int n_mode = traj_data.GetNumModes();
 
   // Get states and stance_foot
-  // Not sure if we are actually using reference here
   const MatrixXd& x0 = traj_data.get_x0_FOM()->datapoints;
   const VectorXd& x0_time = traj_data.get_x0_FOM()->time_vector;
   const MatrixXd& xf = traj_data.get_xf_FOM()->datapoints;
@@ -201,6 +201,22 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   // Cast traj and assign traj
   auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
   *traj_casted = pp;
+  
+  // TODO: instead of plotting the poses here, maybe we could store the poses in
+  //  both local and global frames into files.
+  // Testing -- visualize the poses
+  /*MatrixXd poses = MatrixXd(x0_global.rows(), 2 * x0_global.cols());
+  for (int i = 0; i < x0_global.cols(); i++) {
+    poses.col(2 * i) = x0_global.col(i);
+    poses.col(2 * i + 1) = xf_global.col(i);
+  }
+  VectorXd alpha_vec = 0.3 * VectorXd::Ones(poses.cols());
+  alpha_vec.head(1) << 1;
+  alpha_vec.tail(1) << 1;
+  multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+      poses.cols(), alpha_vec);
+  visualizer.DrawPoses(poses);*/
 };
 
 IKTrajReceiver::IKTrajReceiver(

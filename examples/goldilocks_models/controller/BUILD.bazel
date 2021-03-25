@@ -47,6 +47,7 @@ cc_library(
         "//lcm:lcm_trajectory_saver",
         "//lcm:rom_planner_trajectory_saver",
         "//lcmtypes:lcmt_robot",
+        "//multibody:multipose_visualizer",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

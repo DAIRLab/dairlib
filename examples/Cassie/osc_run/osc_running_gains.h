@@ -12,6 +12,9 @@ struct OSCRunningGains : OSCGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
+  double w_hip_pitch;
+  double hip_pitch_kp;
+  double hip_pitch_kd;
   // swing foot tracking
   std::vector<double> SwingFootW;
   std::vector<double> SwingFootKp;
@@ -20,10 +23,17 @@ struct OSCRunningGains : OSCGains {
   std::vector<double> PelvisW;
   std::vector<double> PelvisKp;
   std::vector<double> PelvisKd;
+  // pelvis orientation tracking
+  //  std::vector<double> PelvisRotW;
+  //  std::vector<double> PelvisRotKp;
+  //  std::vector<double> PelvisRotKd;
 
   MatrixXd W_pelvis;
   MatrixXd K_p_pelvis;
   MatrixXd K_d_pelvis;
+//  MatrixXd W_pelvis_rot;
+//  MatrixXd K_p_pelvis_rot;
+//  MatrixXd K_d_pelvis_rot;
   MatrixXd W_swing_foot;
   MatrixXd K_p_swing_foot;
   MatrixXd K_d_swing_foot;
@@ -33,6 +43,9 @@ struct OSCRunningGains : OSCGains {
   MatrixXd W_hip_yaw;
   MatrixXd K_p_hip_yaw;
   MatrixXd K_d_hip_yaw;
+  MatrixXd W_hip_pitch;
+  MatrixXd K_p_hip_pitch;
+  MatrixXd K_d_hip_pitch;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -46,6 +59,9 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(PelvisKp));
     a->Visit(DRAKE_NVP(PelvisKd));
+    //    a->Visit(DRAKE_NVP(PelvisRotW));
+    //    a->Visit(DRAKE_NVP(PelvisRotKp));
+    //    a->Visit(DRAKE_NVP(PelvisRotKd));
     a->Visit(DRAKE_NVP(SwingFootW));
     a->Visit(DRAKE_NVP(SwingFootKp));
     a->Visit(DRAKE_NVP(SwingFootKd));
@@ -55,6 +71,9 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(w_hip_yaw));
     a->Visit(DRAKE_NVP(hip_yaw_kp));
     a->Visit(DRAKE_NVP(hip_yaw_kd));
+    a->Visit(DRAKE_NVP(w_hip_pitch));
+    a->Visit(DRAKE_NVP(hip_pitch_kp));
+    a->Visit(DRAKE_NVP(hip_pitch_kd));
 
     W_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
@@ -74,6 +93,15 @@ struct OSCRunningGains : OSCGains {
     K_d_pelvis = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->PelvisKd.data(), 3, 3);
+//    W_pelvis_rot = Eigen::Map<
+//        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+//        this->PelvisRotW.data(), 3, 3);
+//    K_p_pelvis_rot = Eigen::Map<
+//        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+//        this->PelvisRotKp.data(), 3, 3);
+//    K_d_pelvis_rot = Eigen::Map<
+//        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+//        this->PelvisRotKd.data(), 3, 3);
 
     W_swing_toe = this->w_swing_toe * MatrixXd::Identity(1, 1);
     K_p_swing_toe = this->swing_toe_kp * MatrixXd::Identity(1, 1);
@@ -81,5 +109,8 @@ struct OSCRunningGains : OSCGains {
     W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
     K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
+    W_hip_pitch = this->w_hip_pitch * MatrixXd::Identity(1, 1);
+    K_p_hip_pitch = this->hip_pitch_kp * MatrixXd::Identity(1, 1);
+    K_d_hip_pitch = this->hip_pitch_kd * MatrixXd::Identity(1, 1);
   }
 };

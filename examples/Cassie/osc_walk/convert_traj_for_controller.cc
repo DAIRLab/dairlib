@@ -29,7 +29,6 @@ namespace dairlib {
 int ComputeCoeffMatrix(const std::vector<double>& breaks,
                        const std::vector<VectorXd>& samples, int dim,
                        MatrixXd* A, VectorXd* b) {
-
   const std::vector<double>& times = breaks;
   const std::vector<VectorXd>& Y = samples;
   int N = static_cast<int>(times.size());
@@ -122,6 +121,8 @@ int DoMain() {
   PiecewisePolynomial<double> state_traj =
       dircon_traj.ReconstructStateTrajectory();
 
+  double end_time = state_traj.end_time();
+
   std::vector<MatrixXd> all_l_foot_points;
   std::vector<MatrixXd> all_r_foot_points;
   std::vector<MatrixXd> all_l_hip_points;
@@ -138,6 +139,7 @@ int DoMain() {
     VectorXd times = dircon_traj.GetStateBreaks(mode);
     std::cout << "times: " << times << std::endl;
     MatrixXd state_samples = dircon_traj.GetStateSamples(mode);
+
     int n_points = times.size();
     MatrixXd l_foot_points(9, n_points);
     MatrixXd r_foot_points(9, n_points);
@@ -200,6 +202,13 @@ int DoMain() {
       r_foot_points.block(6, i, 3, 1) =
           JdotV_r_foot + J_r_foot * xdot_i.tail(nv);
     }
+    // For mirroring the trajectory
+    double l_foot_x_offset = l_foot_points(0, times.size()) - r_foot_points(0, times.size());
+    l_foot_points = r_foot_points;
+    l_foot_points.row(0) += l_foot_x_offset * VectorXd::Ones(times.size());
+    l_foot_points.row(1) = -l_foot_points.row(1);
+    l_foot_points.row(4) = -l_foot_points.row(4);
+
     all_times.push_back(times);
     all_l_foot_points.push_back(l_foot_points);
     all_r_foot_points.push_back(r_foot_points);
@@ -230,7 +239,9 @@ int DoMain() {
     auto lfoot_traj_block = LcmTrajectory::Trajectory();
     lfoot_traj_block.traj_name = "left_foot_trajectory" + std::to_string(mode);
     lfoot_traj_block.datapoints = all_l_foot_points[mode];
-    lfoot_traj_block.time_vector = all_times[mode];
+    //    lfoot_traj_block.time_vector = all_times[mode];
+    lfoot_traj_block.time_vector =
+        all_times[mode] + end_time * VectorXd::Ones(all_times[mode].size());
     lfoot_traj_block.datatypes = {"lfoot_x",    "lfoot_y",    "lfoot_z",
                                   "lfoot_xdot", "lfoot_ydot", "lfoot_zdot"};
 
@@ -238,6 +249,8 @@ int DoMain() {
     rfoot_traj_block.traj_name = "right_foot_trajectory" + std::to_string(mode);
     rfoot_traj_block.datapoints = all_r_foot_points[mode];
     rfoot_traj_block.time_vector = all_times[mode];
+    //    rfoot_traj_block.time_vector = all_times[mode] + end_time *
+    //    VectorXd::Ones(all_times[mode].size());
     rfoot_traj_block.datatypes = {"rfoot_x",    "rfoot_y",    "rfoot_z",
                                   "rfoot_xdot", "rfoot_ydot", "rfoot_zdot"};
 

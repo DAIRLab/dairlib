@@ -15,8 +15,9 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
       drake::trajectories::PiecewisePolynomial<double>& traj,
-      const std::vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>&
+      const std::unordered_map<
+          int, std::vector<std::pair<const Eigen::Vector3d,
+                                     const drake::multibody::Frame<double>&>>>&
           feet_contact_points);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -25,8 +26,14 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_clock_input_port() const {
+    return this->get_input_port(clock_port_);
+  }
 
  private:
+  drake::trajectories::PiecewisePolynomial<double> GeneratePelvisTraj(
+      const Eigen::VectorXd& x, double t, int fsm_state) const;
+
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -38,18 +45,20 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
 
-  drake::systems::DiscreteStateIndex prev_fsm_idx_;
+  //  drake::systems::DiscreteStateIndex prev_fsm_idx_;
 
-  // Center of mass trajectory
+  // pelvis trajectory
   drake::trajectories::PiecewisePolynomial<double> traj_;
 
   // A list of pairs of contact body frame and contact point
-  const std::vector<
-      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
+  const std::unordered_map<
+      int, std::vector<std::pair<const Eigen::Vector3d,
+                                 const drake::multibody::Frame<double>&>>>&
       feet_contact_points_;
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
+  drake::systems::InputPortIndex clock_port_;
 };
 
 }  // namespace dairlib::examples::osc

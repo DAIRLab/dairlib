@@ -48,8 +48,9 @@ py_binary(
 
 py_library(
     name = "process_lcm_log_py",
-    srcs = ["process_lcm_log.py"],
+    srcs = [":process_lcm_log.py"],
     deps = [
+        ":module_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
@@ -78,7 +79,7 @@ PY_LIBRARIES = [
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "lcm",
+    name = "lcm_utils",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

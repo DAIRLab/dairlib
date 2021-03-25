@@ -31,8 +31,9 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     drake::trajectories::PiecewisePolynomial<double>& traj,
-    const std::vector<std::pair<const Eigen::Vector3d,
-                                const drake::multibody::Frame<double>&>>&
+    const std::unordered_map<
+        int, std::vector<std::pair<const Eigen::Vector3d,
+                                   const drake::multibody::Frame<double>&>>>&
         feet_contact_points)
     : plant_(plant),
       context_(context),
@@ -47,12 +48,13 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
                                                         plant_.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  clock_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("pelvis_trans_traj", traj_inst,
                                   &PelvisTransTrajGenerator::CalcTraj);
-  //  prev_fsm_idx_ = this->DeclareDiscreteState(init_fsm);
 
   DeclarePerStepDiscreteUpdateEvent(
       &PelvisTransTrajGenerator::DiscreteVariableUpdate);
@@ -61,51 +63,30 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
 EventStatus PelvisTransTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  auto prev_fsm_state =
-      discrete_state->get_mutable_vector(prev_fsm_idx_).get_mutable_value();
-  auto pelvis_x_offset =
-      discrete_state->get_mutable_vector(pelvis_x_offset_idx_)
-          .get_mutable_value();
-  auto initial_pelvis_pos =
-      discrete_state->get_mutable_vector(initial_pelvis_pos_idx_)
-          .get_mutable_value();
-  auto switch_time =
-      discrete_state->get_mutable_vector(switch_time_idx_).get_mutable_value();
-
-  const BasicVector<double>* fsm_output =
-      this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
-
-  const auto robot_output =
-      this->template EvalVectorInput<OutputVector>(context, state_port_);
-  double timestamp = robot_output->get_timestamp();
-
-  if (prev_fsm_state(0) != fsm_state(0)) {  // When to reset the clock
-    prev_fsm_state(0) = fsm_state(0);
-    VectorXd q = robot_output->GetPositions();
-    plant_.SetPositions(context_, q);
-    VectorXd pelvis_pos(3);
-    plant_.CalcPointsPositions(*context_,
-                               plant_.GetBodyByName("pelvis").body_frame(),
-                               VectorXd::Zero(3), world_, &pelvis_pos);
-    if (fsm_state(0) == BALANCE) {  // Either the simulator restarted or the
-      // controller switch was triggered
-      initial_pelvis_pos << pelvis_pos;
-      switch_time << timestamp;
-    }
-    // Offset desired pelvis location based on final landing location
-    pelvis_x_offset(0) = kLandingOffset;
-  }
-  if (initial_pelvis_pos == VectorXd::Zero(3)) {
-    VectorXd q = robot_output->GetPositions();
-    plant_.SetPositions(context_, q);
-    VectorXd pelvis_pos(3);
-    plant_.CalcPointsPositions(*context_,
-                               plant_.GetBodyByName("pelvis").body_frame(),
-                               VectorXd::Zero(3), world_, &pelvis_pos);
-    initial_pelvis_pos << pelvis_pos;
-  }
   return EventStatus::Succeeded();
+}
+
+PiecewisePolynomial<double> PelvisTransTrajGenerator::GeneratePelvisTraj(
+    const VectorXd& x, double t, int fsm_state) const {
+  plant_.SetPositionsAndVelocities(context_, x);
+  Vector3d contact_pos_sum = Vector3d::Zero();
+  Vector3d position;
+  for (const auto& point_and_frame : feet_contact_points_.at(fsm_state)) {
+    plant_.CalcPointsPositions(*context_, point_and_frame.second,
+                               VectorXd::Zero(3), world_, &position);
+    contact_pos_sum += position;
+  }
+  contact_pos_sum(2) = 0;
+
+  std::vector<double> breaks = traj_.get_segment_times();
+  VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
+  MatrixXd offset_matrix = 0.5 * contact_pos_sum.replicate(1, breaks.size());
+
+  PiecewisePolynomial<double> com_offset =
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_matrix);
+
+//  return traj_ + com_offset;
+  return traj_;
 }
 
 void PelvisTransTrajGenerator::CalcTraj(
@@ -114,23 +95,20 @@ void PelvisTransTrajGenerator::CalcTraj(
   // Read in current state
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
-  double time = robot_output->get_timestamp();
-
   // Read in finite state machine
   const auto& fsm_state =
-      this->EvalVectorInput(context, fsm_port_)->get_value();
+      this->EvalVectorInput(context, fsm_port_)->get_value()(0);
+  const auto& clock =
+      this->EvalVectorInput(context, clock_port_)->get_value()(0);
 
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  const drake::VectorX<double>& x = robot_output->GetState();
-
-  if (fsm_state[0] == BALANCE)
-    *casted_traj = generateBalanceTraj(context, x, time);
-  else if (fsm_state[0] == CROUCH)
-    *casted_traj = generateCrouchTraj(x, time);
-  else if (fsm_state[0] == LAND)
-    *casted_traj = generateLandingTraj(context, x, time);
+//  const drake::VectorX<double>& x = robot_output->GetState();
+  if (fsm_state == 0 || fsm_state == 1) {
+    *casted_traj =
+        GeneratePelvisTraj(robot_output->GetState(), clock, fsm_state);
+  }
 }
 
 }  // namespace dairlib::examples::osc

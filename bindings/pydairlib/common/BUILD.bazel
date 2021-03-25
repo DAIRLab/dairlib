@@ -26,7 +26,7 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-py_binary(
+py_library(
     name = "plot_styler",
     srcs = ["plot_styler.py"],
     deps = [

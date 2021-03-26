@@ -180,6 +180,7 @@ int DoMain(int argc, char* argv[]) {
   param.dir_data = "../dairlib_data/goldilocks_models/planning/robot_1/data/";
   param.init_file = FLAGS_init_file;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
+  param.gains = gains;
 
   if (FLAGS_debug_mode) {
     if (!CreateFolderIfNotExist(param.dir_model)) return 0;

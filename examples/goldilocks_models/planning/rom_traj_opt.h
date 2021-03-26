@@ -132,6 +132,7 @@ class RomTrajOpt
   std::vector<Binding<Cost>> fom_reg_xy_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_z_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_joint_cost_bindings_;
+  std::vector<Binding<Cost>> fom_reg_vel_cost_bindings_;
   std::vector<Binding<Cost>> x0_relax_cost_bindings_;
   std::vector<Binding<Cost>> v0_relax_cost_bindings_;
   std::vector<Binding<Cost>> init_rom_relax_cost_bindings_;
@@ -153,6 +154,8 @@ class RomTrajOpt
   const drake::solvers::VectorXDecisionVariable impulse_vars_;
   const int n_y_;
   const int n_z_;
+  const int n_q_;
+  const int n_v_;
   const int n_x_;
   const int n_lambda_;
   const drake::multibody::MultibodyPlant<double>& plant_;

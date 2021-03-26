@@ -14,6 +14,7 @@
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
+#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 
 using std::cout;
 using std::endl;
@@ -61,6 +62,8 @@ struct PlannerSetting {
 
   // Testing
   int solve_idx_for_read_from_file;
+
+  OSCRomWalkingGains gains;
 
   void PrintAll() const {
     cout << "rom_option" << rom_option << endl;
@@ -129,6 +132,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_saved_traj* traj_msg) const;
 
+  void PrintCost(const RomTrajOptCassie& trajopt,
+                 const drake::solvers::MathematicalProgramResult& result) const;
   void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;
   void WarmStartGuess(
       const std::vector<Eigen::VectorXd>& des_xy_pos, int global_fsm_idx,

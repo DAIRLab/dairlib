@@ -81,6 +81,8 @@ RomTrajOpt::RomTrajOpt(
                     "Lambda_FOM")),
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
+      n_q_(plant.num_positions()),
+      n_v_(plant.num_velocities()),
       n_x_(plant.num_positions() + plant.num_velocities()),
       n_lambda_(zero_touchdown_impact ? 0 : 3 * left_contacts.size()),
       plant_(plant),
@@ -88,8 +90,6 @@ RomTrajOpt::RomTrajOpt(
       start_with_left_stance_(start_with_left_stance),
       print_status_(print_status) {
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
-  int n_q = plant_.num_positions();
-  int n_v = plant_.num_velocities();
 
   // Add cost
   PrintStatus("Adding cost...");
@@ -295,7 +295,10 @@ RomTrajOpt::RomTrajOpt(
       VectorXDecisionVariable xf_prev = xf_vars_by_mode(i - 1);
       if (zero_touchdown_impact) {
         PrintStatus("Adding constraint -- FoM identity reset map");
-        AddLinearConstraint(xf_prev.segment(n_q, n_v) == x0.segment(n_q, n_v));
+        // TODO: could use a more specific API so that drake doesn't have to
+        //  parse the expression
+        AddLinearConstraint(xf_prev.segment(n_q_, n_v_) ==
+                            x0.segment(n_q_, n_v_));
       } else {
         PrintStatus("Adding constraint -- FoM identity impact map");
         const auto& prev_swing_contacts =
@@ -307,7 +310,7 @@ RomTrajOpt::RomTrajOpt(
         reset_map_constraint->SetConstraintScaling(
             fom_discrete_dyn_constraint_scaling_);
         VectorXDecisionVariable Lambda = impulse_vars(i - 1);
-        AddConstraint(reset_map_constraint, {xf_prev, x0.tail(n_v), Lambda});
+        AddConstraint(reset_map_constraint, {xf_prev, x0.tail(n_v_), Lambda});
 
         // Constraint on impact impulse
         ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
@@ -402,9 +405,9 @@ RomTrajOpt::RomTrajOpt(
     if (i != 0) {
       // We don't impose constraint on the initial state (because it's
       // constrained already)
-      AddBoundingBoxConstraint(-10, 10, x0.tail(n_v));
+      AddBoundingBoxConstraint(-10, 10, x0.tail(n_v_));
     }
-    AddBoundingBoxConstraint(-10, 10, xf.tail(n_v));
+    AddBoundingBoxConstraint(-10, 10, xf.tail(n_v_));
 
     // Stitching x0 and xf (full-order model stance foot constraint)
     PrintStatus("Adding constraint -- full-order model stance foot pos");
@@ -414,7 +417,7 @@ RomTrajOpt::RomTrajOpt(
             plant_, stance_contacts, "fom_stance_ft_pos_" + to_string(i));
     fom_sf_pos_constraint->SetConstraintScaling(
         fom_stance_ft_pos_constraint_scaling_);
-    AddConstraint(fom_sf_pos_constraint, {x0.head(n_q), xf.head(n_q)});
+    AddConstraint(fom_sf_pos_constraint, {x0.head(n_q_), xf.head(n_q_)});
 
     // Zero velocity for stance foot
     PrintStatus("Adding constraint -- full-order model stance foot vel");
@@ -444,9 +447,9 @@ RomTrajOpt::RomTrajOpt(
     // 0.304389); V2
     /*VectorXd stride_length(1); stride_length << 0.304389 * 2;
     auto fom_sl_constraint =
-    std::make_shared<planning::FomStrideLengthConstraint>( left_stance, n_q,
+    std::make_shared<planning::FomStrideLengthConstraint>( left_stance, n_q_,
     stride_length); AddConstraint(fom_sl_constraint,
-    {x0.head(n_q), xf.head(n_q)
+    {x0.head(n_q_), xf.head(n_q_)
                                      });*/
 
     // Stride length cost
@@ -796,7 +799,6 @@ void RomTrajOptCassie::AddRegularizationCost(
     double w_reg_xy, double w_reg_z, double w_reg_joints,
     bool straight_leg_cost) {
   PrintStatus("Adding regularization cost ...");
-  int n_q = plant_.num_positions();
 
   // Adding cost on FOM state increases convergence rate
   // If we only add position (not velocity) in the cost, then higher cost
@@ -804,7 +806,8 @@ void RomTrajOptCassie::AddRegularizationCost(
   MatrixXd Id_quat = w_reg_quat * MatrixXd::Identity(4, 4);
   MatrixXd Id_xy = w_reg_xy * MatrixXd::Identity(2, 2);
   MatrixXd Id_z = w_reg_z * MatrixXd::Identity(1, 1);
-  MatrixXd Id_joints = w_reg_joints * MatrixXd::Identity(n_q - 7, n_q - 7);
+  MatrixXd Id_joints = w_reg_joints * MatrixXd::Identity(n_q_ - 7, n_q_ - 7);
+  MatrixXd Id_vel = 0.0 * MatrixXd::Identity(n_v_, n_v_);
 
   VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
   VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
@@ -829,9 +832,14 @@ void RomTrajOptCassie::AddRegularizationCost(
           x_0.segment<1>(6)));
       fom_reg_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
           Id_joints,
-          left_stance ? modifixed_x_guess_left_in_front.segment(7, n_q - 7)
-                      : modifixed_x_guess_right_in_front.segment(7, n_q - 7),
-          x_0.segment(7, n_q - 7)));
+          left_stance ? modifixed_x_guess_left_in_front.segment(7, n_q_ - 7)
+                      : modifixed_x_guess_right_in_front.segment(7, n_q_ - 7),
+          x_0.segment(7, n_q_ - 7)));
+      /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
+          Id_vel,
+          left_stance ? modifixed_x_guess_left_in_front.segment(n_q_, n_v_)
+                      : modifixed_x_guess_right_in_front.segment(n_q_, n_v_),
+          x_0.segment(n_q_, n_v_)));*/
     }
     fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_z,
@@ -840,9 +848,14 @@ void RomTrajOptCassie::AddRegularizationCost(
         x_f.segment<1>(6)));
     fom_reg_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_joints,
-        left_stance ? modifixed_x_guess_right_in_front.segment(7, n_q - 7)
-                    : modifixed_x_guess_left_in_front.segment(7, n_q - 7),
-        x_f.segment(7, n_q - 7)));
+        left_stance ? modifixed_x_guess_right_in_front.segment(7, n_q_ - 7)
+                    : modifixed_x_guess_left_in_front.segment(7, n_q_ - 7),
+        x_f.segment(7, n_q_ - 7)));
+    /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_vel,
+        left_stance ? modifixed_x_guess_right_in_front.segment(n_q_, n_v_)
+                    : modifixed_x_guess_left_in_front.segment(n_q_, n_v_),
+        x_f.segment(n_q_, n_v_)));*/
     if (i != 0) {
       fom_reg_xy_cost_bindings_.push_back(
           AddQuadraticErrorCost(Id_xy, des_xy_pos.at(i), x_0.segment<2>(4)));
@@ -984,7 +997,10 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
-                 start_with_left_stance, zero_touchdown_impact, {}) {}
+                 start_with_left_stance, zero_touchdown_impact, {}) {
+  DRAKE_UNREACHABLE();  // I added a few things to RomTrajOpt which are not
+                        // generalized to the five-link robot.
+}
 
 void RomTrajOptFiveLinkRobot::AddRegularizationCost(
     const Eigen::VectorXd& final_position,

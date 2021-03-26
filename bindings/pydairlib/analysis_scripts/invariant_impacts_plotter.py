@@ -5,7 +5,7 @@ from scipy.integrate import trapz
 from pydairlib.common import FindResourceOrThrow
 from bindings.pydairlib.common.plot_styler import PlotStyler
 from pydrake.trajectories import PiecewisePolynomial
-import pydairlib.lcm_trajectory
+from pydairlib.lcm import lcm_trajectory
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 from pydairlib.cassie.cassie_utils import *

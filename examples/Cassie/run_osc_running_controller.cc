@@ -238,7 +238,7 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> r_foot_trajectory;
   PiecewisePolynomial<double> pelvis_rot_trajectory;
 
-  for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
+  for (int mode = 0; mode < dircon_trajectory.GetNumModes() * 2; ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
         output_trajs.GetTrajectory("pelvis_trans_trajectory" +
                                    std::to_string(mode));
@@ -251,21 +251,36 @@ int DoMain(int argc, char* argv[]) {
     const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
         output_trajs.GetTrajectory("pelvis_rot_trajectory" +
                                    std::to_string(mode));
+//    pelvis_trans_traj.ConcatenateInTime(
+//        PiecewisePolynomial<double>::CubicHermite(
+//            lcm_pelvis_trans_trajectory.time_vector,
+//            lcm_pelvis_trans_trajectory.datapoints.topRows(3),
+//            lcm_pelvis_trans_trajectory.datapoints.bottomRows(3)));
+//    l_foot_trajectory.ConcatenateInTime(
+//        PiecewisePolynomial<double>::CubicHermite(
+//            lcm_left_foot_traj.time_vector,
+//            lcm_left_foot_traj.datapoints.topRows(3),
+//            lcm_left_foot_traj.datapoints.bottomRows(3)));
+//    r_foot_trajectory.ConcatenateInTime(
+//        PiecewisePolynomial<double>::CubicHermite(
+//            lcm_right_foot_traj.time_vector,
+//            lcm_right_foot_traj.datapoints.topRows(3),
+//            lcm_right_foot_traj.datapoints.bottomRows(3)));
     pelvis_trans_traj.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_pelvis_trans_trajectory.time_vector,
             lcm_pelvis_trans_trajectory.datapoints.topRows(3),
-            lcm_pelvis_trans_trajectory.datapoints.bottomRows(3)));
+            lcm_pelvis_trans_trajectory.datapoints.topRows(6).bottomRows(3)));
     l_foot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_left_foot_traj.time_vector,
             lcm_left_foot_traj.datapoints.topRows(3),
-            lcm_left_foot_traj.datapoints.bottomRows(3)));
+            lcm_left_foot_traj.datapoints.topRows(6).bottomRows(3)));
     r_foot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_right_foot_traj.time_vector,
             lcm_right_foot_traj.datapoints.topRows(3),
-            lcm_right_foot_traj.datapoints.bottomRows(3)));
+            lcm_right_foot_traj.datapoints.topRows(6).bottomRows(3)));
     pelvis_rot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::FirstOrderHold(
             lcm_pelvis_rot_traj.time_vector,

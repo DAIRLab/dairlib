@@ -89,7 +89,7 @@ int ComputeCoeffMatrix(const std::vector<double>& breaks,
   return row_idx;
 }
 
-/// This program pre-computes the output trajectories (center of mass, pelvis
+/// This program pre-pelvisputes the output trajectories (center of mass, pelvis
 /// orientation, feet trajectories) for the OSC controller.
 ///
 
@@ -121,6 +121,8 @@ int DoMain() {
   PiecewisePolynomial<double> state_traj =
       dircon_traj.ReconstructStateTrajectory();
 
+  MatrixXd M = dircon_traj.GetTrajectory("mirror_matrix").datapoints;
+
   double end_time = state_traj.end_time();
 
   std::vector<MatrixXd> all_l_foot_points;
@@ -137,7 +139,6 @@ int DoMain() {
       continue;
     }
     VectorXd times = dircon_traj.GetStateBreaks(mode);
-    std::cout << "times: " << times << std::endl;
     MatrixXd state_samples = dircon_traj.GetStateSamples(mode);
 
     int n_points = times.size();
@@ -202,12 +203,89 @@ int DoMain() {
       r_foot_points.block(6, i, 3, 1) =
           JdotV_r_foot + J_r_foot * xdot_i.tail(nv);
     }
-    // For mirroring the trajectory
-    double l_foot_x_offset = l_foot_points(0, times.size()) - r_foot_points(0, times.size());
-    l_foot_points = r_foot_points;
-    l_foot_points.row(0) += l_foot_x_offset * VectorXd::Ones(times.size());
-    l_foot_points.row(1) = -l_foot_points.row(1);
-    l_foot_points.row(4) = -l_foot_points.row(4);
+
+    all_times.push_back(times);
+    all_l_foot_points.push_back(l_foot_points);
+    all_r_foot_points.push_back(r_foot_points);
+    all_l_hip_points.push_back(l_hip_points);
+    all_r_hip_points.push_back(r_hip_points);
+    all_pelvis_points.push_back(pelvis_points);
+    all_pelvis_orientation.push_back(pelvis_orientation);
+  }
+
+  double x_offset = state_traj.value(state_traj.end_time())(4) -
+                    state_traj.value(state_traj.start_time())(4);
+  // Extended trajectory
+  for (int mode = 0; mode < dircon_traj.GetNumModes(); ++mode) {
+    if (dircon_traj.GetStateBreaks(mode).size() <= 1) {
+      continue;
+    }
+    VectorXd times = dircon_traj.GetStateBreaks(mode) + end_time * VectorXd::Ones(dircon_traj.GetStateBreaks(mode).size());
+    MatrixXd state_samples = dircon_traj.GetStateSamples(mode);
+
+    int n_points = times.size();
+    MatrixXd l_foot_points(9, n_points);
+    MatrixXd r_foot_points(9, n_points);
+    MatrixXd l_hip_points(9, n_points);
+    MatrixXd r_hip_points(9, n_points);
+    MatrixXd pelvis_points(9, n_points);
+    MatrixXd pelvis_orientation(12, n_points);
+
+    for (unsigned int i = 0; i < times.size(); ++i) {
+      VectorXd x_i = M * state_samples.col(i).head(nx);
+      VectorXd xdot_i = M * state_samples.col(i).tail(nx);
+      x_i(4) = x_i(4) + x_offset;
+
+      plant.SetPositionsAndVelocities(context.get(), x_i);
+      Eigen::Ref<Eigen::MatrixXd> pelvis_pos_block =
+          pelvis_points.block(0, i, 3, 1);
+      Eigen::Ref<Eigen::MatrixXd> l_foot_pos_block =
+          l_foot_points.block(0, i, 3, 1);
+      Eigen::Ref<Eigen::MatrixXd> r_foot_pos_block =
+          r_foot_points.block(0, i, 3, 1);
+      plant.CalcPointsPositions(*context, *pelvis_frame, zero_offset, *world,
+                                &pelvis_pos_block);
+      plant.CalcPointsPositions(*context, *l_toe_frame, zero_offset, *world,
+                                &l_foot_pos_block);
+      plant.CalcPointsPositions(*context, *r_toe_frame, zero_offset, *world,
+                                &r_foot_pos_block);
+
+      pelvis_orientation.block(0, i, 4, 1) = x_i.head(4);
+      pelvis_orientation.block(4, i, 4, 1) = xdot_i.head(4);
+
+      MatrixXd J_CoM(3, nv);
+      MatrixXd J_l_foot(3, nv);
+      MatrixXd J_r_foot(3, nv);
+      plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
+                                              *pelvis_frame, zero_offset,
+                                              *world, *world, &J_CoM);
+      plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
+                                              *l_toe_frame, zero_offset, *world,
+                                              *world, &J_l_foot);
+      plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
+                                              *r_toe_frame, zero_offset, *world,
+                                              *world, &J_r_foot);
+      VectorXd v_i = x_i.tail(nv);
+      pelvis_points.block(3, i, 3, 1) = J_CoM * v_i;
+      l_foot_points.block(3, i, 3, 1) = J_l_foot * v_i;
+      r_foot_points.block(3, i, 3, 1) = J_r_foot * v_i;
+
+      VectorXd JdotV_CoM = plant.CalcBiasTranslationalAcceleration(
+          *context, JacobianWrtVariable::kV, *pelvis_frame, zero_offset, *world,
+          *world);
+      VectorXd JdotV_l_foot = plant.CalcBiasTranslationalAcceleration(
+          *context, JacobianWrtVariable::kV, *l_toe_frame, zero_offset, *world,
+          *world);
+      VectorXd JdotV_r_foot = plant.CalcBiasTranslationalAcceleration(
+          *context, JacobianWrtVariable::kV, *r_toe_frame, zero_offset, *world,
+          *world);
+
+      pelvis_points.block(6, i, 3, 1) = JdotV_CoM + J_CoM * xdot_i.tail(nv);
+      l_foot_points.block(6, i, 3, 1) =
+          JdotV_l_foot + J_l_foot * xdot_i.tail(nv);
+      r_foot_points.block(6, i, 3, 1) =
+          JdotV_r_foot + J_r_foot * xdot_i.tail(nv);
+    }
 
     all_times.push_back(times);
     all_l_foot_points.push_back(l_foot_points);
@@ -226,22 +304,21 @@ int DoMain() {
   //  l_foot_points.row(4) = -r_foot_points.row(4);
 
   //  std::vector<LcmTrajectory::Trajectory> converted_trajectories = {
-  //      lfoot_traj_block, rfoot_traj_block, com_traj_block,
+  //      lfoot_traj_block, rfoot_traj_block, pelvis_traj_block,
   //      pelvis_orientation_block};
   //  std::vector<std::string> trajectory_names = {
   //      lfoot_traj_block.traj_name, rfoot_traj_block.traj_name,
-  //      com_traj_block.traj_name, pelvis_orientation_block.traj_name};
+  //      pelvis_traj_block.traj_name, pelvis_orientation_block.traj_name};
 
   std::vector<LcmTrajectory::Trajectory> converted_trajectories;
   std::vector<std::string> trajectory_names;
 
+  std::cout << "num_modes: " << all_times.size() << std::endl;
   for (int mode = 0; mode < all_times.size(); ++mode) {
     auto lfoot_traj_block = LcmTrajectory::Trajectory();
     lfoot_traj_block.traj_name = "left_foot_trajectory" + std::to_string(mode);
     lfoot_traj_block.datapoints = all_l_foot_points[mode];
-    //    lfoot_traj_block.time_vector = all_times[mode];
-    lfoot_traj_block.time_vector =
-        all_times[mode] + end_time * VectorXd::Ones(all_times[mode].size());
+    lfoot_traj_block.time_vector = all_times[mode];
     lfoot_traj_block.datatypes = {"lfoot_x",    "lfoot_y",    "lfoot_z",
                                   "lfoot_xdot", "lfoot_ydot", "lfoot_zdot"};
 
@@ -249,17 +326,15 @@ int DoMain() {
     rfoot_traj_block.traj_name = "right_foot_trajectory" + std::to_string(mode);
     rfoot_traj_block.datapoints = all_r_foot_points[mode];
     rfoot_traj_block.time_vector = all_times[mode];
-    //    rfoot_traj_block.time_vector = all_times[mode] + end_time *
-    //    VectorXd::Ones(all_times[mode].size());
     rfoot_traj_block.datatypes = {"rfoot_x",    "rfoot_y",    "rfoot_z",
                                   "rfoot_xdot", "rfoot_ydot", "rfoot_zdot"};
 
-    auto com_traj_block = LcmTrajectory::Trajectory();
-    com_traj_block.traj_name = "pelvis_trans_trajectory" + std::to_string(mode);
-    com_traj_block.datapoints = all_pelvis_points[mode];
-    com_traj_block.time_vector = all_times[mode];
-    com_traj_block.datatypes = {"com_x",    "com_y",    "com_z",
-                                "com_xdot", "com_ydot", "com_zdot"};
+    auto pelvis_traj_block = LcmTrajectory::Trajectory();
+    pelvis_traj_block.traj_name = "pelvis_trans_trajectory" + std::to_string(mode);
+    pelvis_traj_block.datapoints = all_pelvis_points[mode];
+    pelvis_traj_block.time_vector = all_times[mode];
+    pelvis_traj_block.datatypes = {"pelvis_x",    "pelvis_y",    "pelvis_z",
+                                "pelvis_xdot", "pelvis_ydot", "pelvis_zdot"};
 
     auto pelvis_orientation_block = LcmTrajectory::Trajectory();
     pelvis_orientation_block.traj_name =
@@ -272,11 +347,11 @@ int DoMain() {
 
     converted_trajectories.push_back(lfoot_traj_block);
     converted_trajectories.push_back(rfoot_traj_block);
-    converted_trajectories.push_back(com_traj_block);
+    converted_trajectories.push_back(pelvis_traj_block);
     converted_trajectories.push_back(pelvis_orientation_block);
     trajectory_names.push_back(lfoot_traj_block.traj_name);
     trajectory_names.push_back(rfoot_traj_block.traj_name);
-    trajectory_names.push_back(com_traj_block.traj_name);
+    trajectory_names.push_back(pelvis_traj_block.traj_name);
     trajectory_names.push_back(pelvis_orientation_block.traj_name);
   }
 

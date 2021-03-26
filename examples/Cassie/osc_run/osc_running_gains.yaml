@@ -1,6 +1,7 @@
 w_input: 0
 w_accel: 0.0
-w_soft_constraint: 1000000
+#w_soft_constraint: 1000000
+w_soft_constraint: 10
 
 impact_threshold: 0.025
 

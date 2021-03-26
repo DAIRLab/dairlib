@@ -83,10 +83,11 @@ void StandingComTraj::CalcDesiredTraj(
     target_height = kTargetHeightMean + kTargetHeightScale * cassie_out->pelvis.radio.channel[6];
   }
 
-  target_height = drake::math::saturate(target_height, kMinHeight, kMaxHeight);
-
   // Add offset position from sticks
   target_height += kHeightScale * cassie_out->pelvis.radio.channel[0];
+
+  // Saturate based on min and max height
+  target_height = drake::math::saturate(target_height, kMinHeight, kMaxHeight);
   double x_offset = kCoMXScale * cassie_out->pelvis.radio.channel[4];
   double y_offset = kCoMYScale * cassie_out->pelvis.radio.channel[5];
   VectorXd q = robot_output->GetPositions();

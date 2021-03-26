@@ -73,14 +73,14 @@ void StandingComTraj::CalcDesiredTraj(
   double target_height = height_;
 
   // Get target height from radio or lcm
-  if (!use_radio_) {
+  if (use_radio_) {
+    target_height = kTargetHeightMean + kTargetHeightScale * cassie_out->pelvis.radio.channel[6];
+  } else {
     if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
         context, target_height_port_)->timestamp > 1e-3) {
       target_height = this->EvalInputValue<dairlib::lcmt_target_standing_height>(
           context, target_height_port_)->target_height;
     }
-  } else {
-    target_height = kTargetHeightMean + kTargetHeightScale * cassie_out->pelvis.radio.channel[6];
   }
 
   // Add offset position from sticks

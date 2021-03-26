@@ -291,26 +291,24 @@ RomTrajOpt::RomTrajOpt(
     //    }
 
     // Add (impact) discrete map constraint
-    if (i != 0) {
-      VectorXDecisionVariable xf_prev = xf_vars_by_mode(i - 1);
+    if (i != num_modes_ - 1) {
+      VectorXDecisionVariable x0_post = x0_vars_by_mode(i + 1);
       if (zero_touchdown_impact) {
         PrintStatus("Adding constraint -- FoM identity reset map");
         // TODO: could use a more specific API so that drake doesn't have to
         //  parse the expression
-        AddLinearConstraint(xf_prev.segment(n_q_, n_v_) ==
-                            x0.segment(n_q_, n_v_));
+        AddLinearConstraint(xf.segment(n_q_, n_v_) ==
+                            x0_post.segment(n_q_, n_v_));
       } else {
         PrintStatus("Adding constraint -- FoM identity impact map");
-        const auto& prev_swing_contacts =
-            left_stance ? left_contacts : right_contacts;
         auto reset_map_constraint =
             std::make_shared<planning::FomResetMapConstraint>(
-                plant_, prev_swing_contacts,
+                plant_, swing_contacts,
                 "fom_discrete_dyn_" + to_string(i));
         reset_map_constraint->SetConstraintScaling(
             fom_discrete_dyn_constraint_scaling_);
-        VectorXDecisionVariable Lambda = impulse_vars(i - 1);
-        AddConstraint(reset_map_constraint, {xf_prev, x0.tail(n_v_), Lambda});
+        VectorXDecisionVariable Lambda = impulse_vars(i);
+        AddConstraint(reset_map_constraint, {xf, x0_post.tail(n_v_), Lambda});
 
         // Constraint on impact impulse
         ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
@@ -331,12 +329,12 @@ RomTrajOpt::RomTrajOpt(
             std::make_shared<drake::solvers::LinearConstraint>(
                 A, VectorXd::Zero(4),
                 VectorXd::Ones(4) * std::numeric_limits<double>::infinity());
-        for (int k = 0; k < prev_swing_contacts.size(); k++) {
+        for (int k = 0; k < swing_contacts.size(); k++) {
           AddConstraint(friction_constraint, Lambda.segment(3 * k, 3));
         }
         PrintStatus("Adding constraint -- bounding box on FoM impulse");
         double impulse_limit = 50;
-        for (int k = 0; k < prev_swing_contacts.size(); k++) {
+        for (int k = 0; k < swing_contacts.size(); k++) {
           AddBoundingBoxConstraint(-impulse_limit, impulse_limit,
                                    Lambda(3 * k + 0));
           AddBoundingBoxConstraint(-impulse_limit, impulse_limit,

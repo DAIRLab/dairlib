@@ -30,7 +30,8 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
           feet_contact_points,
-      double height = 0.9);
+      double height = 0.9,
+      bool use_radio = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -64,6 +65,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
       feet_contact_points_;
 
   double height_;
+  bool use_radio_;
 };
 
 }  // namespace osc

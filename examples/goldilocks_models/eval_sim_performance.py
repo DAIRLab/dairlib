@@ -114,8 +114,12 @@ def main():
   # Override here #
   # t_start = 5
   # t_end = 6
-  t_start = stride_period * (int(t_end / stride_period) - n_step)
-  t_end = stride_period * int(t_end / stride_period)
+  step_idx_start = int(t_end / stride_period) - n_step
+  step_idx_end = int(t_end / stride_period)
+  step_idx_start = 14
+  step_idx_end = step_idx_start + n_step
+  t_start = stride_period * step_idx_start
+  t_end = stride_period * step_idx_end
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -153,6 +157,8 @@ def main():
   cost_u *= (w_R * dt_u / n_step)
 
   total_cost = cost_x + cost_u
+  print("step_idx_start = " + str(step_idx_start))
+  print("step_idx_end = " + str(step_idx_end))
   print("t_start = " + str(t_start))
   print("t_end = " + str(t_end))
   print("n_x_data = " + str(n_x_data))

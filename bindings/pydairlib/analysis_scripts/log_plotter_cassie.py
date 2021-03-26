@@ -339,18 +339,18 @@ def compare_ekf(log, pos_map, vel_map):
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   # pos_indices = slice(0 + 7, 23, 2)
-  vel_indices = slice(23 + 6, 45, 2)
+  # vel_indices = slice(23 + 6, 45, 2)
   pos_indices = slice(0,7)
-  # vel_indices = slice(23, 23 + 6)
+  vel_indices = slice(23, 23 + 6)
   u_indices = slice(6, 8)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
 
   plt.figure("positions: " + filename)
-  plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
-  plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
-  # plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
+  # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
   plt.figure("velocities: " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])

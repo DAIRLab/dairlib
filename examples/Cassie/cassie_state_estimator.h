@@ -87,14 +87,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   /// The methods are set to be public in order to unit test them.
 
   void EstimateContactForEkf(const systems::OutputVector<double>& output,
-                             int* left_contact, int* right_contact) const;
+                             double* left_contact, double* right_contact) const;
   void EstimateContactForController(const systems::OutputVector<double>& output,
                                     int* left_contact,
                                     int* right_contact) const;
   void EstimateContactForces(const drake::systems::Context<double>& context,
                              const systems::OutputVector<double>& output,
-                             Eigen::VectorXd& lambda, int& left_contact,
-                             int& right_contact) const;
+                             Eigen::VectorXd& lambda, double* left_contact,
+                             double* right_contact) const;
 
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,
@@ -216,7 +216,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const double knee_spring_threshold_ekf_ = -0.015;
   const double heel_spring_threshold_ctrl_ = -0.01;
   const double heel_spring_threshold_ekf_ = -0.01;
-  const double w_soft_constraint_ = 100;  // Soft constraint cost
+//  const double w_soft_constraint_ = 100;  // Soft constraint cost
 
   // flag for testing and tuning
   std::unique_ptr<drake::systems::Context<double>> context_gt_;

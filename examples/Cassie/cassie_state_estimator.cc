@@ -475,8 +475,8 @@ void CassieStateEstimator::AssignFloatingBaseStateToOutputVector(
 /// Warning: UpdateContactEstimationCosts() should be called to update the costs
 /// before calling EstimateContactForEkf().
 void CassieStateEstimator::EstimateContactForEkf(
-    const systems::OutputVector<double>& output, int* left_contact,
-    int* right_contact) const {
+    const systems::OutputVector<double>& output, double* left_contact,
+    double* right_contact) const {
   // Initialize
   *left_contact = 0;
   *right_contact = 0;
@@ -719,17 +719,25 @@ EventStatus CassieStateEstimator::Update(
 
   // Step 3 - Estimate which foot/feet are in contact with the ground
   // Estimate feet contacts
-  int left_contact = 0;
-  int right_contact = 0;
+  double spring_left_contact = 0;
+  double spring_right_contact = 0;
+  double gm_left_contact = 0;
+  double gm_right_contact = 0;
 
   VectorXd lambda_est = VectorXd::Zero(num_contacts_ * 3);
   if (test_with_ground_truth_state_) {
-    EstimateContactForEkf(output_gt, &left_contact, &right_contact);
+    EstimateContactForEkf(output_gt, &spring_left_contact,
+                          &spring_right_contact);
   } else {
-    EstimateContactForEkf(filtered_output, &left_contact, &right_contact);
-    EstimateContactForces(context, filtered_output, lambda_est, left_contact,
-                          right_contact);
+    EstimateContactForEkf(filtered_output, &spring_left_contact,
+                          &spring_right_contact);
+    EstimateContactForces(context, filtered_output, lambda_est,
+                          &gm_left_contact, &gm_right_contact);
   }
+  bool left_contact =
+      (0.25 * (spring_left_contact) + 0.75 * (gm_left_contact)) > 0.7;
+  bool right_contact =
+      (0.25 * (spring_right_contact) + 0.75 * (gm_right_contact)) > 0.7;
   state->get_mutable_discrete_state(contact_forces_idx_).get_mutable_value()
       << lambda_est;
 
@@ -998,7 +1006,7 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 }
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
-    VectorXd& lambda, int& left_contact, int& right_contact) const {
+    VectorXd& lambda, double* left_contact, double* right_contact) const {
   // TODO(yangwill) add a discrete time filter to the force estimate
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
@@ -1028,8 +1036,8 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  left_contact = lambda[2] > 50;
-  right_contact = lambda[5] > 50;
+  *left_contact = lambda[2] / 50;
+  *right_contact = lambda[5] / 50;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

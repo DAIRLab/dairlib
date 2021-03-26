@@ -148,6 +148,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
     if (use_standing_pose_as_init_FOM_guess_) {
       // Use standing pose for FOM guess
+      // Note that it's dangerous to hard-code the state here because the MBP
+      // joint order might change depending on upstream (Drake)
       /*VectorXd x_standing_with_springs(45);
       x_standing_with_springs << 1, 0, -2.21802e-13, 0, 0, 0, 1, 0.0194984,
           -0.0194984, 0, 0, 0.479605, 0.479605, -1.1579, -1.1579, -0.0369181,
@@ -157,8 +159,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       VectorXd x_standing_fixed_spring(37);
       x_standing_fixed_spring << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
           0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
-          1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0;
+          1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0,
+          param.gains.const_walking_speed_x, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0;
       x_guess_left_in_front_ = x_standing_fixed_spring;
       x_guess_right_in_front_ = x_standing_fixed_spring;
     } else {
@@ -714,8 +717,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
-  RomPlannerTrajectory saved_traj(trajopt, result, quat_xyz_shift, "", "",
-                                  true, current_time);
+  RomPlannerTrajectory saved_traj(trajopt, result, quat_xyz_shift, "", "", true,
+                                  current_time);
   *traj_msg = saved_traj.GenerateLcmObject();
 
   // Store the previous message
@@ -751,41 +754,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     //    outfile.close();
   }
 
-  // Check the cost (Q and R term)
+  // Check the cost
   if (true /*counter_ == 0*/) {
-    double cost_ydot = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.rom_state_cost_bindings_);
-    cout << "cost_ydot = " << cost_ydot << endl;
-    double cost_u = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.rom_input_cost_bindings_);
-    cout << "cost_u = " << cost_u << endl;
-    double rom_regularization_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.rom_regularization_cost_bindings_);
-    cout << "rom_regularization_cost = " << rom_regularization_cost << endl;
-    double fom_reg_quat_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.fom_reg_quat_cost_bindings_);
-    cout << "fom_reg_quat_cost = " << fom_reg_quat_cost << endl;
-    double fom_xy_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.fom_reg_xy_cost_bindings_);
-    cout << "fom_xy_cost = " << fom_xy_cost << endl;
-    double fom_reg_z_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.fom_reg_z_cost_bindings_);
-    cout << "fom_reg_z_cost = " << fom_reg_z_cost << endl;
-    double fom_reg_joint_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.fom_reg_joint_cost_bindings_);
-    cout << "fom_reg_joint_cost = " << fom_reg_joint_cost << endl;
-    double lambda_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.lambda_cost_bindings_);
-    cout << "lambda_cost = " << lambda_cost << endl;
-    double x0_relax_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.x0_relax_cost_bindings_);
-    cout << "x0_relax_cost = " << x0_relax_cost << endl;
-    double v0_relax_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.v0_relax_cost_bindings_);
-    cout << "v0_relax_cost = " << v0_relax_cost << endl;
-    double init_rom_relax_cost = solvers::EvalCostGivenSolution(
-        trajopt, result, trajopt.init_rom_relax_cost_bindings_);
-    cout << "init_rom_relax_cost = " << init_rom_relax_cost << endl;
+    PrintCost(trajopt, result);
   }
 
   // Check constraint violation
@@ -870,6 +841,47 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   counter_++;
+}
+
+void CassiePlannerWithMixedRomFom::PrintCost(
+    const RomTrajOptCassie& trajopt,
+    const MathematicalProgramResult& result) const {
+  double cost_ydot = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.rom_state_cost_bindings_);
+  cout << "cost_ydot = " << cost_ydot << endl;
+  double cost_u = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.rom_input_cost_bindings_);
+  cout << "cost_u = " << cost_u << endl;
+  double rom_regularization_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.rom_regularization_cost_bindings_);
+  cout << "rom_regularization_cost = " << rom_regularization_cost << endl;
+  double fom_reg_quat_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.fom_reg_quat_cost_bindings_);
+  cout << "fom_reg_quat_cost = " << fom_reg_quat_cost << endl;
+  double fom_xy_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.fom_reg_xy_cost_bindings_);
+  cout << "fom_xy_cost = " << fom_xy_cost << endl;
+  double fom_reg_z_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.fom_reg_z_cost_bindings_);
+  cout << "fom_reg_z_cost = " << fom_reg_z_cost << endl;
+  double fom_reg_joint_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.fom_reg_joint_cost_bindings_);
+  cout << "fom_reg_joint_cost = " << fom_reg_joint_cost << endl;
+  double fom_reg_vel_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.fom_reg_vel_cost_bindings_);
+  cout << "fom_reg_vel_cost = " << fom_reg_vel_cost << endl;
+  double lambda_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.lambda_cost_bindings_);
+  cout << "lambda_cost = " << lambda_cost << endl;
+  double x0_relax_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.x0_relax_cost_bindings_);
+  cout << "x0_relax_cost = " << x0_relax_cost << endl;
+  double v0_relax_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.v0_relax_cost_bindings_);
+  cout << "v0_relax_cost = " << v0_relax_cost << endl;
+  double init_rom_relax_cost = solvers::EvalCostGivenSolution(
+      trajopt, result, trajopt.init_rom_relax_cost_bindings_);
+  cout << "init_rom_relax_cost = " << init_rom_relax_cost << endl;
 }
 
 void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(

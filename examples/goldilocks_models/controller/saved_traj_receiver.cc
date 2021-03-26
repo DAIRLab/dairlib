@@ -201,7 +201,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   // Cast traj and assign traj
   auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
   *traj_casted = pp;
-  
+
   // TODO: instead of plotting the poses here, maybe we could store the poses in
   //  both local and global frames into files.
   // Testing -- visualize the poses

@@ -274,7 +274,9 @@ void CassieStateEstimator::solveFourbarLinkage(
     Vector3d sol_1_cross_sol_2 = sol_1_wrt_heel_base.cross(sol_2_wrt_heel_base);
 
     // Pick the only physically feasible solution from the two intersections
-    Vector3d r_sol_wrt_heel_base =
+
+    // Old method
+    /*Vector3d r_sol_wrt_heel_base =
         (sol_1_cross_sol_2(2) >= 0) ? sol_2_wrt_heel_base : sol_1_wrt_heel_base;
 
     // Get the heel spring deflection direction and magnitude
@@ -284,6 +286,20 @@ void CassieStateEstimator::solveFourbarLinkage(
              (r_sol_wrt_heel_base.norm() * spring_rest_dir.norm()));
     Vector3d r_rest_dir_cross_r_hs_to_sol =
         spring_rest_dir.cross(r_sol_wrt_heel_base);
+    int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1 : -1;*/
+
+    //    Vector3d spring_rest_dir = heel_spring_rot_mat.col(0);
+    Vector3d r_sol_wrt_heel_base =
+        (sol_2_wrt_heel_base(0) >= sol_1_wrt_heel_base(0))
+            ? sol_2_wrt_heel_base
+            : sol_1_wrt_heel_base;
+    // Get the heel spring deflection direction and magnitude
+    const Vector3d spring_rest_dir_wrt_spring_base(1, 0, 0);
+    double heel_spring_angle = acos(
+        r_sol_wrt_heel_base.dot(spring_rest_dir_wrt_spring_base) /
+        (r_sol_wrt_heel_base.norm() * spring_rest_dir_wrt_spring_base.norm()));
+    Vector3d r_rest_dir_cross_r_hs_to_sol =
+        spring_rest_dir_wrt_spring_base.cross(r_sol_wrt_heel_base);
     int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1 : -1;
     if (i == 0)
       *left_heel_spring =

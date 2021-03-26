@@ -70,14 +70,11 @@ void StandingComTraj::CalcDesiredTraj(
   const auto& cassie_out =
       this->EvalInputValue<dairlib::lcmt_cassie_out>(context, radio_port_);
 
-  // When there is no message, the value at the input port will use the default
-  // constructor which has a timestamp of 0.
-  // If this is the case, we use the default height: height_
-  if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
-              context, target_height_port_)->timestamp < 1e-3) {
-    target_height = height_;
-  }
+  // Get target height from radio
+  target_height = kTargetHeightMean + kTargetHeightScale * cassie_out->pelvis.radio.channel[6];
   target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
+
+  // Add offset position from sticks
   target_height += kHeightScale * cassie_out->pelvis.radio.channel[0];
   double x_offset = kCoMXScale * cassie_out->pelvis.radio.channel[4];
   double y_offset = kCoMYScale * cassie_out->pelvis.radio.channel[5];

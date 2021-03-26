@@ -17,6 +17,10 @@ static constexpr double kMinHeight = 0.3;
 static constexpr double kHeightScale = 0.2;
 static constexpr double kCoMXScale = 0.05;
 static constexpr double kCoMYScale = -0.05;
+static constexpr double kMaxTargetHeight = 0.9;
+static constexpr double kMinTargetHeight = 0.35;
+static constexpr double kTargetHeightMean = (kMinTargetHeight + kMaxTargetHeight) / 2.0;
+static constexpr double kTargetHeightScale = (kMaxTargetHeight - kMinTargetHeight) / 2.0;
 
 class StandingComTraj : public drake::systems::LeafSystem<double> {
  public:

@@ -173,6 +173,8 @@ void LcmTrajectory::LoadFromFile(const std::string& filepath) {
 void LcmTrajectory::AddTrajectory(const std::string& trajectory_name,
                                   const LcmTrajectory::Trajectory& trajectory) {
   DRAKE_ASSERT(trajectories_.find(trajectory_name) == trajectories_.end());
+  DRAKE_DEMAND(trajectory.datapoints.rows() == trajectory.datatypes.size());
+  DRAKE_DEMAND(trajectory.datapoints.cols() == trajectory.time_vector.size());
   trajectory_names_.push_back(trajectory_name);
   trajectories_[trajectory_name] = trajectory;
 }

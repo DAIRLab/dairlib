@@ -150,30 +150,37 @@ RomPlannerTrajectory::RomPlannerTrajectory(
         drake::solvers::to_string(result.get_solution_result());
   }
 
-  // 2. FOM x0 and xf
-  MatrixXd x0_FOM = MatrixXd::Zero(trajopt.n_x_FOM(), num_modes_);
-  MatrixXd xf_FOM = MatrixXd::Zero(trajopt.n_x_FOM(), num_modes_);
+  // 2.a FOM x0
+  MatrixXd x0_FOM = MatrixXd::Zero(trajopt.n_x_FOM(), num_modes_ + 1);
   for (int i = 0; i < num_modes_; ++i) {
     x0_FOM.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
-    xf_FOM.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
   }
-  VectorXd time_vec(num_modes_);
+  x0_FOM.col(num_modes_) =
+      result.GetSolution(trajopt.x0_vars_by_mode(num_modes_));
+  VectorXd time_vec_x0(num_modes_ + 1);
   for (int i = 0; i < num_modes_; i++) {
-    time_vec(i) = time_breaks[i].head<1>()(0);
+    time_vec_x0(i) = time_breaks[i].head<1>()(0);
   }
+  time_vec_x0(num_modes_) = time_breaks[num_modes_ - 1].tail<1>()(0);
   LcmTrajectory::Trajectory x0_traj;
   x0_traj.traj_name = "x0_FOM";
   x0_traj.datapoints = x0_FOM;
-  x0_traj.time_vector = time_vec;
+  x0_traj.time_vector = time_vec_x0;
   x0_traj.datatypes = vector<string>(trajopt.n_x_FOM(), "");
   AddTrajectory(x0_traj.traj_name, x0_traj);
+  // 2.b FOM xf
+  MatrixXd xf_FOM = MatrixXd::Zero(trajopt.n_x_FOM(), num_modes_);
+  for (int i = 0; i < num_modes_; ++i) {
+    xf_FOM.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
+  }
+  VectorXd time_vec_xf(num_modes_);
   for (int i = 0; i < num_modes_; i++) {
-    time_vec(i) = time_breaks[i].tail<1>()(0);
+    time_vec_xf(i) = time_breaks[i].tail<1>()(0);
   }
   LcmTrajectory::Trajectory xf_traj;
   xf_traj.traj_name = "xf_FOM";
   xf_traj.datapoints = xf_FOM;
-  xf_traj.time_vector = time_vec;
+  xf_traj.time_vector = time_vec_xf;
   xf_traj.datatypes = vector<string>(trajopt.n_x_FOM(), "");
   AddTrajectory(xf_traj.traj_name, xf_traj);
 

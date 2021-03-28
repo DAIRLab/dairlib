@@ -297,13 +297,13 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   //  }
 
   // Initialization
-  FOM_x0_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
+  FOM_x0_ = Eigen::MatrixXd::Zero(nx_, param_.n_step + 1);
   FOM_xf_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
   if (param_.zero_touchdown_impact) {
-    FOM_Lambda_ = Eigen::MatrixXd::Zero(0, (param_.n_step - 1));
+    FOM_Lambda_ = Eigen::MatrixXd::Zero(0, (param_.n_step));
   } else {
     FOM_Lambda_ =
-        Eigen::MatrixXd::Zero(3 * left_contacts_.size(), (param_.n_step - 1));
+        Eigen::MatrixXd::Zero(3 * left_contacts_.size(), param_.n_step);
   }
 
   // Initilaization
@@ -693,6 +693,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     FOM_x0_.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
     FOM_xf_.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
   }
+  FOM_x0_.col(param_.n_step) =
+      result.GetSolution(trajopt.x0_vars_by_mode(param_.n_step));
 
   // Shift the timestamps by the current time
   for (auto& time_break_per_mode : time_breaks_) {
@@ -735,8 +737,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   state_at_knots_ = trajopt.drake::systems::trajectory_optimization::
                         MultipleShooting::GetStateSamples(result);
   input_at_knots_ = trajopt.GetInputSamples(result);
-  for (int i = 1; i < param_.n_step; i++) {
-    FOM_Lambda_.col(i - 1) = result.GetSolution(trajopt.impulse_vars(i - 1));
+  for (int i = 0; i < param_.n_step; i++) {
+    FOM_Lambda_.col(i) = result.GetSolution(trajopt.impulse_vars(i));
   }
 
   ///
@@ -950,13 +952,14 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     int knot_idx = first_mode_knot_idx;
     for (int i = global_fsm_idx; i < prev_global_fsm_idx_ + param_.n_step;
          i++) {
+      // Global fsm and knot index pair are (i, knot_idx)
+      // Local fsm index
+      int local_fsm_idx = i - global_fsm_idx;
+      int prev_local_fsm_idx = i - prev_global_fsm_idx_;
       while (knot_idx < param_.knots_per_mode) {
-        // Global fsm and knot index pair are (i, knot_idx)
-        // Local fsm and knot index
-        int local_fsm_idx = i - global_fsm_idx;
+        // Local knot index
         int local_knot_idx =
             (i == global_fsm_idx) ? knot_idx - first_mode_knot_idx : knot_idx;
-        int prev_local_fsm_idx = i - prev_global_fsm_idx_;
         int prev_local_knot_idx = (i == prev_global_fsm_idx_)
                                       ? knot_idx - prev_first_mode_knot_idx_
                                       : knot_idx;
@@ -982,29 +985,24 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
               trajopt->state_vars_by_mode(local_fsm_idx, local_knot_idx),
               state_samples_[prev_local_fsm_idx].col(prev_local_knot_idx));
         }
-        // 5. FOM start
-        if (knot_idx == 0) {
-          if (local_fsm_idx == 0) {
-            // Use x_init for initial guess (I set it outside this function)
-          } else {
-            trajopt->SetInitialGuess(trajopt->x0_vars_by_mode(local_fsm_idx),
-                                     FOM_x0_.col(prev_local_fsm_idx));
-          }
-        }
-        // 6. FOM end
-        if (knot_idx == param_.knots_per_mode - 1) {
-          trajopt->SetInitialGuess(trajopt->xf_vars_by_mode(local_fsm_idx),
-                                   FOM_xf_.col(prev_local_fsm_idx));
-        }
-        // 7. FOM impulse
-        if ((knot_idx == 0) && (local_fsm_idx != 0)) {
-          trajopt->SetInitialGuess(trajopt->impulse_vars(local_fsm_idx - 1),
-                                   FOM_Lambda_.col(prev_local_fsm_idx - 1));
-        }
 
         knot_idx++;
       }
       knot_idx = 0;
+
+      // 5. FOM init
+      if (local_fsm_idx == 0) {
+        // Use x_init as a guess (I set it outside this warm-start function)
+      }
+      // 6. FOM pre-impact
+      trajopt->SetInitialGuess(trajopt->xf_vars_by_mode(local_fsm_idx),
+                               FOM_xf_.col(prev_local_fsm_idx));
+      // 7. FOM post-impact
+      trajopt->SetInitialGuess(trajopt->x0_vars_by_mode(local_fsm_idx + 1),
+                               FOM_x0_.col(prev_local_fsm_idx + 1));
+      // 8. FOM impulse
+      trajopt->SetInitialGuess(trajopt->impulse_vars(local_fsm_idx),
+                               FOM_Lambda_.col(prev_local_fsm_idx));
     }
   }
 }

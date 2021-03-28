@@ -72,13 +72,12 @@ RomTrajOpt::RomTrajOpt(
               num_time_samples.size(),
           "xf_FOM")),
       v_post_impact_vars_(NewContinuousVariables(
-          plant.num_velocities() * (num_time_samples.size() - 1), "vp_FOM")),
-      impulse_vars_(
-          zero_touchdown_impact
-              ? NewContinuousVariables(0, "Lambda_FOM")
-              : NewContinuousVariables(
-                    3 * left_contacts.size() * (num_time_samples.size() - 1),
-                    "Lambda_FOM")),
+          plant.num_velocities() * num_time_samples.size(), "vp_FOM")),
+      impulse_vars_(zero_touchdown_impact
+                        ? NewContinuousVariables(0, "Lambda_FOM")
+                        : NewContinuousVariables(3 * left_contacts.size() *
+                                                     num_time_samples.size(),
+                                                 "Lambda_FOM")),
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
       n_q_(plant.num_positions()),
@@ -169,6 +168,7 @@ RomTrajOpt::RomTrajOpt(
 
     VectorXDecisionVariable x0 = x0_vars_by_mode(i);
     VectorXDecisionVariable xf = xf_vars_by_mode(i);
+    VectorXDecisionVariable x0_post = x0_vars_by_mode(i + 1);
 
     // Testing -- penalize the velocity of the FOM states (help to
     // regularize)
@@ -291,90 +291,82 @@ RomTrajOpt::RomTrajOpt(
     //    }
 
     // Add (impact) discrete map constraint
-    if (i != num_modes_ - 1) {
-      VectorXDecisionVariable x0_post = x0_vars_by_mode(i + 1);
-      if (zero_touchdown_impact) {
-        PrintStatus("Adding constraint -- FoM identity reset map");
-        // TODO: could use a more specific API so that drake doesn't have to
-        //  parse the expression
-        AddLinearConstraint(xf.segment(n_q_, n_v_) ==
-                            x0_post.segment(n_q_, n_v_));
-      } else {
-        PrintStatus("Adding constraint -- FoM identity impact map");
-        auto reset_map_constraint =
-            std::make_shared<planning::FomResetMapConstraint>(
-                plant_, swing_contacts,
-                "fom_discrete_dyn_" + to_string(i));
-        reset_map_constraint->SetConstraintScaling(
-            fom_discrete_dyn_constraint_scaling_);
-        VectorXDecisionVariable Lambda = impulse_vars(i);
-        AddConstraint(reset_map_constraint, {xf, x0_post.tail(n_v_), Lambda});
+    if (zero_touchdown_impact) {
+      PrintStatus("Adding constraint -- FoM identity reset map");
+      // TODO: could use a more specific API so that drake doesn't have to
+      //  parse the expression
+      AddLinearConstraint(xf.segment(n_q_, n_v_) ==
+                          x0_post.segment(n_q_, n_v_));
+    } else {
+      PrintStatus("Adding constraint -- FoM identity impact map");
+      auto reset_map_constraint =
+          std::make_shared<planning::FomResetMapConstraint>(
+              plant_, swing_contacts, "fom_discrete_dyn_" + to_string(i));
+      reset_map_constraint->SetConstraintScaling(
+          fom_discrete_dyn_constraint_scaling_);
+      VectorXDecisionVariable Lambda = impulse_vars(i);
+      AddConstraint(reset_map_constraint, {xf, x0_post.tail(n_v_), Lambda});
 
-        // Constraint on impact impulse
-        ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
-        ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
-        ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
-        ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
-        ///                           lambda_c(3*i+2) >= 0
-        /// The last inequality is implemented as bounding box constraint
-        PrintStatus("Adding constraint -- FoM impulse friction");
-        double mu = 1;
-        MatrixXd A = MatrixXd::Zero(4, 3);
-        A.block(0, 2, 4, 1) = mu * VectorXd::Ones(4, 1);
-        A(0, 0) = -1;
-        A(1, 0) = 1;
-        A(2, 1) = -1;
-        A(3, 1) = 1;
-        auto friction_constraint =
-            std::make_shared<drake::solvers::LinearConstraint>(
-                A, VectorXd::Zero(4),
-                VectorXd::Ones(4) * std::numeric_limits<double>::infinity());
-        for (int k = 0; k < swing_contacts.size(); k++) {
-          AddConstraint(friction_constraint, Lambda.segment(3 * k, 3));
-        }
-        PrintStatus("Adding constraint -- bounding box on FoM impulse");
-        double impulse_limit = 50;
-        for (int k = 0; k < swing_contacts.size(); k++) {
-          AddBoundingBoxConstraint(-impulse_limit, impulse_limit,
-                                   Lambda(3 * k + 0));
-          AddBoundingBoxConstraint(-impulse_limit, impulse_limit,
-                                   Lambda(3 * k + 1));
-          AddBoundingBoxConstraint(0, impulse_limit, Lambda(3 * k + 2));
-        }
-
-        // SetInitialGuess(Lambda, VectorXd::Zero(n_Lambda));
-
-        // Regularization term (there is a 1DoF null space in the force)
-        //  MatrixXd Q_lambda = 0.01 * MatrixXd::Identity(n_Lambda, n_Lambda);
-        //  VectorXd b_lambda = VectorXd::Zero(n_Lambda);
-        //  AddQuadraticCost(Q_lambda, b_lambda, Lambda);
-
-        // debugging
-        // Somehow this speed up the solve...???
-        //        PrintStatus("Debugging -- encourage contact force...");
-        //        lambda_cost_bindings_.push_back(
-        //            AddLinearCost(-1 * (Lambda(2) + Lambda(5))));
+      // Constraint on impact impulse
+      ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
+      ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
+      ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
+      ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
+      ///                           lambda_c(3*i+2) >= 0
+      /// The last inequality is implemented as bounding box constraint
+      PrintStatus("Adding constraint -- FoM impulse friction");
+      double mu = 1;
+      MatrixXd A = MatrixXd::Zero(4, 3);
+      A.block(0, 2, 4, 1) = mu * VectorXd::Ones(4, 1);
+      A(0, 0) = -1;
+      A(1, 0) = 1;
+      A(2, 1) = -1;
+      A(3, 1) = 1;
+      auto friction_constraint =
+          std::make_shared<drake::solvers::LinearConstraint>(
+              A, VectorXd::Zero(4),
+              VectorXd::Ones(4) * std::numeric_limits<double>::infinity());
+      for (int k = 0; k < swing_contacts.size(); k++) {
+        AddConstraint(friction_constraint, Lambda.segment(3 * k, 3));
       }
+      PrintStatus("Adding constraint -- bounding box on FoM impulse");
+      double impulse_limit = 50;
+      for (int k = 0; k < swing_contacts.size(); k++) {
+        AddBoundingBoxConstraint(-impulse_limit, impulse_limit,
+                                 Lambda(3 * k + 0));
+        AddBoundingBoxConstraint(-impulse_limit, impulse_limit,
+                                 Lambda(3 * k + 1));
+        AddBoundingBoxConstraint(0, impulse_limit, Lambda(3 * k + 2));
+      }
+
+      // SetInitialGuess(Lambda, VectorXd::Zero(n_Lambda));
+
+      // Regularization term (there is a 1DoF null space in the force)
+      //  MatrixXd Q_lambda = 0.01 * MatrixXd::Identity(n_Lambda, n_Lambda);
+      //  VectorXd b_lambda = VectorXd::Zero(n_Lambda);
+      //  AddQuadraticCost(Q_lambda, b_lambda, Lambda);
+
+      // debugging
+      // Somehow this speed up the solve...???
+      //        PrintStatus("Debugging -- encourage contact force...");
+      //        lambda_cost_bindings_.push_back(
+      //            AddLinearCost(-1 * (Lambda(2) + Lambda(5))));
     }
+
+    /// Constraints on FOM states
+    // Note that we don't impose constraint on the initial state (because it's
+    // constrained already)
 
     // Quaternion unit norm constraint (it solves faster with this constraint)
     PrintStatus("Adding constraint -- full-order model unit norm quaternion");
     auto quat_norm_constraint =
         std::make_shared<drake::solvers::QuadraticConstraint>(
             2 * MatrixXd::Identity(4, 4), VectorXd::Zero(4), 1, 1);
-    AddConstraint(quat_norm_constraint, x0.head(4));
     AddConstraint(quat_norm_constraint, xf.head(4));
 
     // Full order model joint limits
     PrintStatus("Adding constraint -- full-order model joint limit");
     for (const auto& name_lb_ub : fom_joint_name_lb_ub) {
-      if (i != 0) {
-        // We don't impose constraint on the initial state (because it's
-        // constrained already)
-        AddBoundingBoxConstraint(std::get<1>(name_lb_ub),
-                                 std::get<2>(name_lb_ub),
-                                 x0(positions_map.at(std::get<0>(name_lb_ub))));
-      }
       AddBoundingBoxConstraint(std::get<1>(name_lb_ub), std::get<2>(name_lb_ub),
                                xf(positions_map.at(std::get<0>(name_lb_ub))));
     }
@@ -383,15 +375,6 @@ RomTrajOpt::RomTrajOpt(
         "heuristics!)");
     // TODO: make a bound on the quaternion. E.g. We don't want the robot to
     //  turn to the back.
-    if (i != 0) {
-      // We don't impose constraint on the initial state (because it's
-      // constrained already)
-      AddBoundingBoxConstraint(0, 1, x0(0));
-      AddBoundingBoxConstraint(-1, 1, x0.segment<3>(1));
-      AddBoundingBoxConstraint(-2, 2, x0.segment<2>(4));
-      // Heuristics -- prevent the pelvis go too low
-      AddBoundingBoxConstraint(0.6, 1, x0.segment<1>(6));
-    }
     AddBoundingBoxConstraint(0, 1, xf(0));
     AddBoundingBoxConstraint(-1, 1, xf.segment<3>(1));
     AddBoundingBoxConstraint(-2, 2, xf.segment<2>(4));
@@ -400,12 +383,8 @@ RomTrajOpt::RomTrajOpt(
 
     // Full order model vel limits
     PrintStatus("Adding constraint -- full-order model joint vel");
-    if (i != 0) {
-      // We don't impose constraint on the initial state (because it's
-      // constrained already)
-      AddBoundingBoxConstraint(-10, 10, x0.tail(n_v_));
-    }
     AddBoundingBoxConstraint(-10, 10, xf.tail(n_v_));
+    AddBoundingBoxConstraint(-10, 10, x0_post.tail(n_v_));
 
     // Stitching x0 and xf (full-order model stance foot constraint)
     PrintStatus("Adding constraint -- full-order model stance foot pos");
@@ -419,22 +398,22 @@ RomTrajOpt::RomTrajOpt(
 
     // Zero velocity for stance foot
     PrintStatus("Adding constraint -- full-order model stance foot vel");
-    auto fom_ft_vel_constraint_start =
+    auto fom_ft_vel_constraint_preimpact =
         std::make_shared<planning::FomStanceFootVelConstraint>(
             plant_, stance_contacts,
-            "fom_stance_ft_vel_" + to_string(i) + "_start");
-    fom_ft_vel_constraint_start->SetConstraintScaling(
+            "fom_stance_ft_vel_" + to_string(i) + "_preimpact");
+    fom_ft_vel_constraint_preimpact->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
-    if (i != 0) {
-      AddConstraint(fom_ft_vel_constraint_start, x0);
-    }
-    auto fom_ft_vel_constraint_end =
+    AddConstraint(fom_ft_vel_constraint_preimpact, xf);
+    const auto& post_stance_contacts =
+        left_stance ? right_contacts : left_contacts;
+    auto fom_ft_vel_constraint_postimpact =
         std::make_shared<planning::FomStanceFootVelConstraint>(
-            plant_, stance_contacts,
-            "fom_stance_ft_vel_" + to_string(i) + "_end");
-    fom_ft_vel_constraint_end->SetConstraintScaling(
+            plant_, post_stance_contacts,
+            "fom_stance_ft_vel_" + to_string(i) + "_postimpact");
+    fom_ft_vel_constraint_postimpact->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
-    AddConstraint(fom_ft_vel_constraint_end, xf);
+    AddConstraint(fom_ft_vel_constraint_postimpact, x0_post);
 
     // TODO: might need to add a collision avoidance between left and right foot
 

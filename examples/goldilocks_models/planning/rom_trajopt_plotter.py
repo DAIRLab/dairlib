@@ -96,10 +96,12 @@ def main():
   """
   Testing
   """
-  com_vec, comdot_vec = PlotCOM(rom_traj)
-  feet_pos_vec, feet_vel_vec = PlotFeet(rom_traj)
-  PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec, True)
-  PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec, False)
+  com_vec, comdot_vec, comdot_end = PlotCOM(rom_traj)
+  feet_pos_vec, feet_vel_vec, feet_vel_end = PlotFeet(rom_traj)
+  PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end, feet_pos_vec,
+    feet_vel_vec, feet_vel_end, True)
+  PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end, feet_pos_vec,
+    feet_vel_vec, feet_vel_end, False)
 
   # import pdb; pdb.set_trace()
 
@@ -107,12 +109,15 @@ def main():
     plt.show()
 
 
-def PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec,
+def PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end,
+    feet_pos_vec, feet_vel_vec, feet_vel_end,
     start_with_left_stance=True):
   com_wrt_stance_foot_vec = np.zeros(com_vec.shape)
   comdot_wrt_stance_foot_vec = np.zeros(comdot_vec.shape)
+  comdot_wrt_stance_foot_end = np.zeros(3)
 
   n_mode = com_vec.shape[0]
+  x0_time = rom_traj.get_x0_time()
 
   left_stance = start_with_left_stance
   for i in range(n_mode):
@@ -122,6 +127,9 @@ def PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec,
     com_wrt_stance_foot_vec[i] = com_vec[i] - stance_foot_pos
     comdot_wrt_stance_foot_vec[i] = comdot_vec[i] - stance_foot_vel
     left_stance = not left_stance
+  print("start_with_left_stance" + str(left_stance))
+  stance_foot_vel = feet_vel_end[0][i] if left_stance else feet_vel_end[1][i]
+  comdot_wrt_stance_foot_end = comdot_end - stance_foot_vel
 
   suffix = " (assuming start with left foot)" if start_with_left_stance else " (assuming start with right foot)"
 
@@ -130,8 +138,8 @@ def PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec,
   plt.figure(figname, figsize=figsize)
   for i in range(n_mode):
     for j in range(3):
-      plt.plot([i, i + 1], [com_wrt_stance_foot_vec[i][0][j],
-                            com_wrt_stance_foot_vec[i][1][j]],
+      plt.plot(x0_time[i: i + 2], [com_wrt_stance_foot_vec[i][0][j],
+                                   com_wrt_stance_foot_vec[i][1][j]],
         palette[j], markersize=4)
   plt.ylabel('(m)')
   plt.xlabel('mode index')
@@ -140,9 +148,12 @@ def PlotCOMWrtStanceFoot(com_vec, comdot_vec, feet_pos_vec, feet_vel_vec,
   plt.figure(figname, figsize=figsize)
   for i in range(n_mode):
     for j in range(3):
-      plt.plot([i, i + 1], [comdot_wrt_stance_foot_vec[i][0][j],
-                            comdot_wrt_stance_foot_vec[i][1][j]],
+      plt.plot(x0_time[i: i + 2], [comdot_wrt_stance_foot_vec[i][0][j],
+                                   comdot_wrt_stance_foot_vec[i][1][j]],
         palette[j], markersize=4)
+  for i in range(3):
+    plt.plot(x0_time[n_mode], comdot_wrt_stance_foot_end[i], palette[i] + 'o',
+      markersize=4)
   plt.ylabel('(m/s)')
   plt.xlabel('mode index')
   plt.legend(['x', 'y', 'z'])
@@ -154,40 +165,31 @@ def PlotFeet(rom_traj):
 
   feet_pos_vec = np.zeros((2, n_mode, 2, 3))
   feet_vel_vec = np.zeros((2, n_mode, 2, 3))
+  feet_vel_end = np.zeros((2, 3))
 
   toe_frames = [l_toe_frame, r_toe_frame]
   names = ["left", "right"]
 
+  x0 = rom_traj.get_x0()
+  x0_time = rom_traj.get_x0_time()
+  xf = rom_traj.get_xf()
+  xf_time = rom_traj.get_xf_time()
+
   for k in range(2):
-    x0_FOM = FindVariableByName(vars, 'x0_FOM', nx_FOM)
-    foot_pos_relaxed, foot_vel_relaxed = CalcPointPosAndVel(x0_FOM,
-      toe_frames[k],
-      mid_contact_disp)
-    feet_pos_vec[k][0][0] = foot_pos_relaxed
-    feet_vel_vec[k][0][0] = foot_vel_relaxed
-
-    xf_FOM = FindVariableByName(vars, 'xf_FOM')
     for i in range(n_mode):
-      _, _dot = CalcPointPosAndVel(xf_FOM[i * nx_FOM: (i + 1) * nx_FOM],
-        toe_frames[k], mid_contact_disp)
-      feet_pos_vec[k][i][1] = _
-      feet_vel_vec[k][i][1] = _dot
-
-    if n_mode > 1:
-      vp_FOM = FindVariableByName(vars, 'vp_FOM')
-      for i in range(1, n_mode):
-        x0_FOM = np.hstack([xf_FOM[(i - 1) * nx_FOM: (i - 1) * nx_FOM + nq_FOM],
-                            vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
-        _, _dot = CalcPointPosAndVel(x0_FOM, toe_frames[k], mid_contact_disp)
-        feet_pos_vec[k][i][0] = _
-        feet_vel_vec[k][i][0] = _dot
+      feet_pos_vec[k][i][0], feet_vel_vec[k][i][0] = CalcPointPosAndVel(
+        x0[:, i], toe_frames[k], mid_contact_disp)
+      feet_pos_vec[k][i][1], feet_vel_vec[k][i][1] = CalcPointPosAndVel(
+        xf[:, i], toe_frames[k], mid_contact_disp)
+    _, feet_vel_end[k] = CalcPointPosAndVel(x0[:, n_mode], toe_frames[k],
+      mid_contact_disp)
 
     palette = ['r', 'b', 'g']
     figname = "Full model: " + names[k] + " foot pos"
     plt.figure(figname, figsize=figsize)
     for i in range(n_mode):
       for j in range(3):
-        plt.plot([i, i + 1],
+        plt.plot(x0_time[i: i + 2],
           [feet_pos_vec[k][i][0][j], feet_pos_vec[k][i][1][j]],
           palette[j], markersize=4)
     plt.ylabel('(m)')
@@ -197,74 +199,45 @@ def PlotFeet(rom_traj):
     plt.figure(figname, figsize=figsize)
     for i in range(n_mode):
       for j in range(3):
-        plt.plot([i, i + 1],
+        plt.plot(x0_time[i: i + 2],
           [feet_vel_vec[k][i][0][j], feet_vel_vec[k][i][1][j]],
           palette[j], markersize=4)
+    for i in range(3):
+      plt.plot(x0_time[n_mode], feet_vel_end[k][i], palette[i] + 'o',
+        markersize=4)
     plt.ylabel('(m/s)')
     plt.xlabel('mode index')
     plt.legend(['x', 'y', 'z'])
 
-  # import pdb; pdb.set_trace()
-  return feet_pos_vec, feet_vel_vec
+  return feet_pos_vec, feet_vel_vec, feet_vel_end
 
 
 def PlotCOM(rom_traj):
-  # We assume that the initial state constraint is relaxed, and here
-  # we reconstruct the robot's init state by adding back the slack variable
-  # value
   n_mode = rom_traj.GetNumModes()
   vars = rom_traj.GetTrajectory("decision_vars")
 
   com_vec = np.zeros((n_mode, 2, 3))
   comdot_vec = np.zeros((n_mode, 2, 3))
+  comdot_end = np.zeros(3)
 
-  x0_FOM = FindVariableByName(vars, 'x0_FOM', nx_FOM)
-  com_relaxed, comdot_relaxed = CalcCenterOfMass(x0_FOM)
-  com_vec[0][0] = com_relaxed
-  comdot_vec[0][0] = comdot_relaxed
+  x0 = rom_traj.get_x0()
+  x0_time = rom_traj.get_x0_time()
+  xf = rom_traj.get_xf()
+  xf_time = rom_traj.get_xf_time()
 
-  # 1. If we relax the whole state
-  # x0_FOM = x0_FOM + FindVariableByName(vars, 'eps_x0_FOM')
-  # 2. If we relax only the velocity
-  # x0_FOM[nq_FOM:] = x0_FOM[nq_FOM:] + FindVariableByName(vars, 'eps_v0_FOM')
-  # 3. If we relax only the floating base vel
-  # x0_FOM[nq_FOM:nq_FOM + 6] = x0_FOM[nq_FOM:nq_FOM + 6] + \
-  #                                 FindVariableByName(vars, 'eps_v0_FOM')
-  # 4. If we relax only the translational part of floating base vel
-  # x0_FOM[nq_FOM + 3:nq_FOM + 6] = x0_FOM[nq_FOM + 3:nq_FOM + 6] + \
-  #                                 FindVariableByName(vars, 'eps_v0_FOM')
-  # 5. If we relax only the z compoment of the floating base vel
-  # x0_FOM[nq_FOM + 5:nq_FOM + 6] = x0_FOM[nq_FOM + 5:nq_FOM + 6] + \
-  #                                 FindVariableByName(vars, 'eps_v0_FOM')
-  # 6. If we don't relax anything
-  # do nothing.
-
-  com_non_relaxed, comdot_non_relaxed = CalcCenterOfMass(x0_FOM)
-
-  xf_FOM = FindVariableByName(vars, 'xf_FOM')
   for i in range(n_mode):
-    com, comdot = CalcCenterOfMass(xf_FOM[i * nx_FOM: (i + 1) * nx_FOM])
-    com_vec[i][1] = com
-    comdot_vec[i][1] = comdot
-
-  if n_mode > 1:
-    vp_FOM = FindVariableByName(vars, 'vp_FOM')
-    for i in range(1, n_mode):
-      x0_FOM = np.hstack([xf_FOM[(i - 1) * nx_FOM: (i - 1) * nx_FOM + nq_FOM],
-                          vp_FOM[(i - 1) * nv_FOM: i * nv_FOM]])
-      com, comdot = CalcCenterOfMass(x0_FOM)
-      com_vec[i][0] = com
-      comdot_vec[i][0] = comdot
+    com_vec[i][0], comdot_vec[i][0] = CalcCenterOfMass(x0[:, i])
+    com_vec[i][1], comdot_vec[i][1] = CalcCenterOfMass(xf[:, i])
+  _, comdot_end = CalcCenterOfMass(x0[:, n_mode])
 
   palette = ['r', 'b', 'g']
   figname = "Full model: COM"
   plt.figure(figname, figsize=figsize)
   for i in range(n_mode):
     for j in range(3):
-      plt.plot([i, i + 1], [com_vec[i][0][j], com_vec[i][1][j]], palette[j],
+      plt.plot(x0_time[i: i + 2], [com_vec[i][0][j], com_vec[i][1][j]],
+        palette[j],
         markersize=4)
-  for i in range(3):
-    plt.plot([0], com_non_relaxed[i], palette[i] + 'o', markersize=4)
   plt.ylabel('(m)')
   plt.xlabel('mode index')
   plt.legend(['x', 'y', 'z'])
@@ -272,31 +245,15 @@ def PlotCOM(rom_traj):
   plt.figure(figname, figsize=figsize)
   for i in range(n_mode):
     for j in range(3):
-      plt.plot([i, i + 1], [comdot_vec[i][0][j], comdot_vec[i][1][j]],
+      plt.plot(x0_time[i: i + 2], [comdot_vec[i][0][j], comdot_vec[i][1][j]],
         palette[j], markersize=4)
   for i in range(3):
-    plt.plot([0], comdot_non_relaxed[i], palette[i] + 'o', markersize=4)
+    plt.plot(x0_time[n_mode], comdot_end[i], palette[i] + 'o', markersize=4)
   plt.ylabel('(m/s)')
   plt.xlabel('mode index')
   plt.legend(['x', 'y', 'z'])
 
-  # # Only plot the init staet
-  # figname = "Full model: COM before and after relaxing"
-  # plt.figure(figname, figsize=figsize)
-  # plt.plot([0, 1, 2], com_relaxed, 'ro', markersize=4)
-  # plt.plot([0, 1, 2], com_non_relaxed, 'bo', markersize=4)
-  # plt.ylabel('(m)')
-  # plt.xlabel('index')
-  # plt.legend(['com_relaxed', 'com'])
-  # figname = "Full model: COM vel before and after relaxing"
-  # plt.figure(figname, figsize=figsize)
-  # plt.plot([0, 1, 2], comdot_relaxed, 'ro', markersize=4)
-  # plt.plot([0, 1, 2], comdot_non_relaxed, 'bo', markersize=4)
-  # plt.ylabel('(m/s)')
-  # plt.xlabel('index')
-  # plt.legend(['comdot_relaxed', 'comdot'])
-
-  return com_vec, comdot_vec
+  return com_vec, comdot_vec, comdot_end
 
 
 def CalcPointPosAndVel(x, frame, point):

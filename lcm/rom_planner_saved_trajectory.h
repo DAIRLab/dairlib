@@ -74,8 +74,10 @@ class RomPlannerTrajectory : public LcmTrajectory {
     return decision_vars_->datapoints;
   }
 
-  const Trajectory* get_x0_FOM() const { return x0_FOM_; };
-  const Trajectory* get_xf_FOM() const { return xf_FOM_; };
+  const Eigen::MatrixXd& get_x0() const { return x0_FOM_->datapoints; };
+  const Eigen::VectorXd& get_x0_time() const { return x0_FOM_->time_vector; };
+  const Eigen::MatrixXd& get_xf() const { return xf_FOM_->datapoints; };
+  const Eigen::VectorXd& get_xf_time() const { return xf_FOM_->time_vector; };
   const Eigen::VectorXd& get_stance_foot() const { return stance_foot_; };
   const Eigen::VectorXd& get_quat_xyz_shift() const { return quat_xyz_shift_; };
 

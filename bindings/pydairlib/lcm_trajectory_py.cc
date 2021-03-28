@@ -76,7 +76,19 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("ReconstructStateTrajectory",
            &RomPlannerTrajectory::ReconstructStateTrajectory)
       .def("ReconstructInputTrajectory",
-           &RomPlannerTrajectory::ReconstructInputTrajectory);
+           &RomPlannerTrajectory::ReconstructInputTrajectory)
+      .def("get_x0",
+           &RomPlannerTrajectory::get_x0)
+      .def("get_x0_time",
+           &RomPlannerTrajectory::get_x0_time)
+      .def("get_xf",
+           &RomPlannerTrajectory::get_xf)
+      .def("get_xf_time",
+           &RomPlannerTrajectory::get_xf_time)
+      .def("get_stance_foot",
+           &RomPlannerTrajectory::get_stance_foot)
+      .def("get_quat_xyz_shift",
+           &RomPlannerTrajectory::get_quat_xyz_shift);
 }
 
 }  // namespace pydairlib

@@ -108,10 +108,10 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   int n_mode = traj_data.GetNumModes();
 
   // Get states and stance_foot
-  const MatrixXd& x0 = traj_data.get_x0_FOM()->datapoints;
-  const VectorXd& x0_time = traj_data.get_x0_FOM()->time_vector;
-  const MatrixXd& xf = traj_data.get_xf_FOM()->datapoints;
-  const VectorXd& xf_time = traj_data.get_xf_FOM()->time_vector;
+  const MatrixXd& x0 = traj_data.get_x0();
+  const VectorXd& x0_time = traj_data.get_x0_time();
+  const MatrixXd& xf = traj_data.get_xf();
+  const VectorXd& xf_time = traj_data.get_xf_time();
   const VectorXd& stance_foot = traj_data.get_stance_foot();
   const VectorXd& quat_xyz_shift = traj_data.get_quat_xyz_shift();
   DRAKE_DEMAND(xf_time(0) == x0_time(1));

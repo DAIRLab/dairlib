@@ -59,6 +59,7 @@ cc_library(
     ],
     deps = [
         "//common:eigen_utils",
+        "//examples/goldilocks_models/find_models:sobol",
         ":goldilocks_utils",
         "@drake//:drake_shared_library",
     ],
@@ -140,6 +141,20 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers/osc:osc_utils",
         "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "sobol_test",
+    srcs = ["sobol_test.cc"],
+    deps = [
+        ":goldilocks_utils",
+        "//common:eigen_utils",
+        "//common:file_utils",
+        "//examples/Cassie:cassie_utils",
+        "//examples/goldilocks_models/find_models:sobol",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

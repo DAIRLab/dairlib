@@ -147,6 +147,21 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "sobol",
+    srcs = [
+        "sobol.cpp",
+    ],
+    hdrs = [
+        "sobol.hpp",
+    ],
+    deps = [
+        "//common:file_utils",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_test(
     name = "initial_guess_test",
     srcs = ["initial_guess_test.cc"],

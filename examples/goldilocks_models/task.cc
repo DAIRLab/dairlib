@@ -176,7 +176,8 @@ void GridTasksGenerator::RunThroughIndex(
 // Tasks are randomly generated from the whole optimization space
 UniformTasksGenerator::UniformTasksGenerator(
     int task_dim, std::vector<string> names, std::vector<int> N_sample_vec,
-    const std::vector<double>& task_min, const std::vector<double>& task_max)
+    const std::vector<double>& task_min, const std::vector<double>& task_max,
+    bool backward, int uniform_type)
     : TasksGenerator(task_dim, names, N_sample_vec) {
   DRAKE_DEMAND(task_min.size() == (unsigned)task_dim);
   DRAKE_DEMAND(task_max.size() == (unsigned)task_dim);
@@ -189,6 +190,10 @@ UniformTasksGenerator::UniformTasksGenerator(
     // Distribution
     distribution_.emplace_back(task_min_range_[i], task_max_range_[i]);
   }
+
+  backward_walking_ = backward;
+  uniform_type_ = uniform_type;
+  skip_index_sobol_ = 1;
 
 }
 
@@ -203,25 +208,37 @@ void UniformTasksGenerator::PrintInfo() const {
 
 vector<double> UniformTasksGenerator::NewTask(string dir,int sample_idx) {
   vector<double> ret(task_dim_, 0);
-
-  //fix the task space range
-  for (int i = 0; i < task_dim_; i++) {
-    ret[i] = distribution_[i](random_eng_);
+  if (uniform_type_ == 0) {
+    //fix the task space range
+    for (int i = 0; i < task_dim_; i++) {
+      ret[i] = distribution_[i](random_eng_);
+    }
+  }else if(uniform_type_ == 1){
+    // quasi-uniform
+    double *sobol_data = i8_sobol_generate(task_dim_, N_sample_,
+        skip_index_sobol_*N_sample_);
+    skip_index_sobol_ += 1;
+    for (int i = 0; i < task_dim_; i++) {
+      ret[i] = sobol_data[sample_idx*task_dim_+i]*(task_max_range_[i]-
+          task_min_range_[i])+task_min_range_[i];
+    }
   }
 
-  //create a random variable to decide the sign of stride length and velocity
-  std::bernoulli_distribution bi_distribution(0.5);
-  double sign;
-  if(bi_distribution(random_eng_)){
-    sign = 1;
+  if(backward_walking_){
+    //create a random variable to decide the sign of stride length and velocity
+    std::bernoulli_distribution bi_distribution(0.5);
+    double sign;
+    if(bi_distribution(random_eng_)){
+      sign = 1;
+    }
+    else
+    {
+      sign = -1;
+    }
+    //set the sign of velocity the same with stride length
+    ret[name_to_index_map_["stride length"]] = sign*ret[name_to_index_map_["stride length"]];
+    ret[name_to_index_map_["velocity"]] = sign*ret[name_to_index_map_["velocity"]];
   }
-  else
-  {
-    sign = -1;
-  }
-  //set the sign of velocity the same with stride length
-  ret[name_to_index_map_["stride length"]] = sign*ret[name_to_index_map_["stride length"]];
-  ret[name_to_index_map_["velocity"]] = sign*ret[name_to_index_map_["velocity"]];
 
   return ret;
 }
@@ -248,19 +265,21 @@ vector<double> ExpansionTasksGenerator::NewTask(string dir,int sample_idx,
     ret[i] = new_distribution(random_eng_);
   }
 
-  //create a random variable to decide the sign of stride length and velocity
-  std::bernoulli_distribution bi_distribution(0.5);
-  double sign;
-  if(bi_distribution(random_eng_)){
-    sign = 1;
+  if(backward_walking_){
+    //create a random variable to decide the sign of stride length and velocity
+    std::bernoulli_distribution bi_distribution(0.5);
+    double sign;
+    if(bi_distribution(random_eng_)){
+      sign = 1;
+    }
+    else
+    {
+      sign = -1;
+    }
+    //set the sign of velocity the same with stride length
+    ret[0] = sign*ret[0];
+    ret[2] = sign*ret[2];
   }
-  else
-  {
-    sign = -1;
-  }
-  //set the sign of velocity the same with stride length
-  ret[0] = sign*ret[0];
-  ret[2] = sign*ret[2];
 
   return ret;
 }

@@ -9,6 +9,7 @@
 #include <vector>
 #include <Eigen/Dense>
 
+#include "examples/goldilocks_models/find_models/sobol.hpp"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "drake/common/drake_assert.h"
 
@@ -150,7 +151,8 @@ class UniformTasksGenerator : public TasksGenerator {
   UniformTasksGenerator(int task_dim, std::vector<string> names,
                         std::vector<int> N_sample_vec,
                         const std::vector<double>& task_min,
-                        const std::vector<double>& task_max);
+                        const std::vector<double>& task_max,
+                        bool backward, int uniform_type);
 
   // Default constructor
   UniformTasksGenerator() = default;
@@ -160,16 +162,22 @@ class UniformTasksGenerator : public TasksGenerator {
 
   // Printing message
   void PrintInfo() const override;
+ private:
+  bool backward_walking_;
+  int uniform_type_;
+  int skip_index_sobol_;
 };
 
 
 class ExpansionTasksGenerator{
  public:
-  ExpansionTasksGenerator(int max_num,bool extend,int total_sample_number){
+  ExpansionTasksGenerator(int max_num,bool extend,int total_sample_number,
+      bool backward){
     currently_extend_task_space_ = extend;
     num_extending_task_space_ = 0;
     max_num_extending_task_space_ = max_num;
     total_sample_number_ = total_sample_number;
+    backward_walking_ = backward;
   };
   ExpansionTasksGenerator(){};
 
@@ -192,6 +200,7 @@ class ExpansionTasksGenerator{
   int num_extending_task_space_;
   int max_num_extending_task_space_;
   int total_sample_number_;
+  bool backward_walking_;
 
   std::default_random_engine random_eng_;
 };

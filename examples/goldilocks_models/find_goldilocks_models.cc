@@ -76,6 +76,11 @@ DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 DEFINE_bool(is_grid_task, true,
     "Uniform grid of task space. If non-uniform grid, use the interpolated "
     "initial guess and restrict the number of samples");
+DEFINE_bool(backward_walking, false,
+    "Include backward walking in the task space or not");
+DEFINE_int32(uniform_type, 0,
+"Type of uniform distribution. 0: uniform distribution "
+"1:quasi-uniform distribution");
 
 // inner loop
 DEFINE_string(init_file, "",
@@ -124,6 +129,8 @@ DEFINE_int32(max_num_extending_task_space,100,
     "to get enough samples in the whole task space."
     "It is recommended that using a small number for small optimization range "
     "while using a large number for large optimization range.");
+DEFINE_int32(mediate_sample_number, 10,
+    "This number decide how many samples are used in the mediate iteration");
 DEFINE_int32(max_num_shrinking_step,4,
     "For non-grid method, we will use intermediate samples to help failed "
     "samples after shrinking step size for several times. This flag is used to"
@@ -1431,6 +1438,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Parameters for tasks
   cout << "\nTasks settings:\n";
   bool is_grid_task = FLAGS_is_grid_task;
+  bool backward = FLAGS_backward_walking;
+  int uniform_type = FLAGS_uniform_type;
   TasksGenerator* task_gen;
   GridTasksGenerator task_gen_grid;
   UniformTasksGenerator task_gen_uniform;
@@ -1463,14 +1472,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
           3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min},
-          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max});
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max}, backward, uniform_type);
     } else if (FLAGS_robot_option == 1) {
       task_gen_uniform = UniformTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min, FLAGS_tr_min},
-          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max});
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max}, backward,
+          uniform_type);
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_uniform = UniformTasksGenerator();
@@ -1478,18 +1488,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
     task_gen = &task_gen_uniform;
   }
 
-  int mediate_sample_number = 10;
+  int mediate_sample_number = FLAGS_mediate_sample_number;
   MediateTasksGenerator task_gen_mediate = MediateTasksGenerator
       (mediate_sample_number,task_gen->dim());
   ExpansionTasksGenerator task_gen_expansion ;
   DRAKE_DEMAND(FLAGS_max_num_extending_task_space>1);
   if(is_grid_task||(FLAGS_iter_start>1)) {
     task_gen_expansion= ExpansionTasksGenerator
-        (0,false,task_gen->total_sample_number());
+        (0,false,task_gen->total_sample_number(), backward);
   }
   else{
     task_gen_expansion= ExpansionTasksGenerator
-        (FLAGS_max_num_extending_task_space,true,task_gen->total_sample_number());
+        (FLAGS_max_num_extending_task_space,true,task_gen->total_sample_number(),
+            backward);
     if(FLAGS_iter_start==1){
       task_gen_expansion.set_num_extending_task_space(1);
     }

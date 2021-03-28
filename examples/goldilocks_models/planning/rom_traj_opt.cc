@@ -784,69 +784,60 @@ void RomTrajOptCassie::AddRegularizationCost(
   MatrixXd Id_xy = w_reg_xy * MatrixXd::Identity(2, 2);
   MatrixXd Id_z = w_reg_z * MatrixXd::Identity(1, 1);
   MatrixXd Id_joints = w_reg_joints * MatrixXd::Identity(n_q_ - 7, n_q_ - 7);
-  MatrixXd Id_vel = 0.0 * MatrixXd::Identity(n_v_, n_v_);
+  //  MatrixXd Id_vel = 0.0 * MatrixXd::Identity(n_v_, n_v_);
+  MatrixXd Id_x_vel = 0.1 * MatrixXd::Identity(1, 1);
 
-  VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
-  VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
+  VectorXd modified_x_guess_left_in_front = x_guess_left_in_front;
+  VectorXd modified_x_guess_right_in_front = x_guess_right_in_front;
   if (straight_leg_cost) {
     /*Id_periodic(5, 5) = 10;
     Id_periodic(6, 6) = 10;
-    modifixed_x_guess_left_in_front(5) = 0;
-    modifixed_x_guess_left_in_front(6) = 0;
-    modifixed_x_guess_right_in_front(5) = 0;
-    modifixed_x_guess_right_in_front(6) = 0;*/
+    modified_x_guess_left_in_front(5) = 0;
+    modified_x_guess_left_in_front(6) = 0;
+    modified_x_guess_right_in_front(5) = 0;
+    modified_x_guess_right_in_front(6) = 0;*/
   }
 
   bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
-    auto x_0 = x0_vars_by_mode(i);
     auto x_f = xf_vars_by_mode(i);
-    if (i != 0) {
-      fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
-          Id_z,
-          left_stance ? modifixed_x_guess_left_in_front.segment<1>(6)
-                      : modifixed_x_guess_right_in_front.segment<1>(6),
-          x_0.segment<1>(6)));
-      fom_reg_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
-          Id_joints,
-          left_stance ? modifixed_x_guess_left_in_front.segment(7, n_q_ - 7)
-                      : modifixed_x_guess_right_in_front.segment(7, n_q_ - 7),
-          x_0.segment(7, n_q_ - 7)));
-      /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-          Id_vel,
-          left_stance ? modifixed_x_guess_left_in_front.segment(n_q_, n_v_)
-                      : modifixed_x_guess_right_in_front.segment(n_q_, n_v_),
-          x_0.segment(n_q_, n_v_)));*/
-    }
+    auto x_0_post = x0_vars_by_mode(i + 1);
+
+    const VectorXd& modified_x_guess = left_stance
+                                           ? modified_x_guess_right_in_front
+                                           : modified_x_guess_left_in_front;
+
+    // 1. Position
     fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_z,
-        left_stance ? modifixed_x_guess_right_in_front.segment<1>(6)
-                    : modifixed_x_guess_left_in_front.segment<1>(6),
-        x_f.segment<1>(6)));
-    fom_reg_joint_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_joints,
-        left_stance ? modifixed_x_guess_right_in_front.segment(7, n_q_ - 7)
-                    : modifixed_x_guess_left_in_front.segment(7, n_q_ - 7),
-        x_f.segment(7, n_q_ - 7)));
-    /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_vel,
-        left_stance ? modifixed_x_guess_right_in_front.segment(n_q_, n_v_)
-                    : modifixed_x_guess_left_in_front.segment(n_q_, n_v_),
-        x_f.segment(n_q_, n_v_)));*/
-    if (i != 0) {
-      fom_reg_xy_cost_bindings_.push_back(
-          AddQuadraticErrorCost(Id_xy, des_xy_pos.at(i), x_0.segment<2>(4)));
-    }
+        Id_z, modified_x_guess.segment<1>(6), x_f.segment<1>(6)));
+    fom_reg_joint_cost_bindings_.push_back(
+        AddQuadraticErrorCost(Id_joints, modified_x_guess.segment(7, n_q_ - 7),
+                              x_f.segment(7, n_q_ - 7)));
     fom_reg_xy_cost_bindings_.push_back(
         AddQuadraticErrorCost(Id_xy, des_xy_pos.at(i + 1), x_f.segment<2>(4)));
     VectorX<double> quat_identity(4);
     quat_identity << 1, 0, 0, 0;
-    if (i != 0) {
-      fom_reg_quat_cost_bindings_.push_back(
-          AddQuadraticErrorCost(Id_quat, quat_identity, x_0.head(4)));
-    }
     fom_reg_quat_cost_bindings_.push_back(
         AddQuadraticErrorCost(Id_quat, quat_identity, x_f.head(4)));
+
+    // 2. Velocity
+    // Preimpact
+    /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_vel, modified_x_guess.segment(n_q_, n_v_),
+        x_f.segment(n_q_, n_v_)));*/
+    fom_reg_vel_cost_bindings_.push_back(
+        AddQuadraticErrorCost(Id_x_vel, modified_x_guess.segment(n_q_ + 3, 1),
+                              x_f.segment(n_q_ + 3, 1)));
+    // Postimpact
+    //    if (i == num_modes_ - 1) {
+    //      Id_x_vel *= 1000000;
+    //    }
+    /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_vel, modified_x_guess.segment(n_q_, n_v_),
+        x_0_post.segment(n_q_, n_v_)));*/
+    fom_reg_vel_cost_bindings_.push_back(
+        AddQuadraticErrorCost(Id_x_vel, modified_x_guess.segment(n_q_ + 3, 1),
+                              x_0_post.segment(n_q_ + 3, 1)));
 
     left_stance = !left_stance;
   }
@@ -997,32 +988,32 @@ void RomTrajOptFiveLinkRobot::AddRegularizationCost(
     MatrixXd Id_1 = 100 * MatrixXd::Identity(1, 1);
 
     double torso_lean_forward_angle = 0.1;
-    VectorXd modifixed_x_guess_left_in_front = x_guess_left_in_front;
-    // modifixed_x_guess_left_in_front(2) = torso_lean_forward_angle;
-    VectorXd modifixed_x_guess_right_in_front = x_guess_right_in_front;
-    // modifixed_x_guess_right_in_front(2) = torso_lean_forward_angle;
+    VectorXd modified_x_guess_left_in_front = x_guess_left_in_front;
+    // modified_x_guess_left_in_front(2) = torso_lean_forward_angle;
+    VectorXd modified_x_guess_right_in_front = x_guess_right_in_front;
+    // modified_x_guess_right_in_front(2) = torso_lean_forward_angle;
     if (straight_leg_cost) {
       Id_7(5, 5) = 10;
       Id_7(6, 6) = 10;
-      modifixed_x_guess_left_in_front(5) = 0;
-      modifixed_x_guess_left_in_front(6) = 0;
-      modifixed_x_guess_right_in_front(5) = 0;
-      modifixed_x_guess_right_in_front(6) = 0;
+      modified_x_guess_left_in_front(5) = 0;
+      modified_x_guess_left_in_front(6) = 0;
+      modified_x_guess_right_in_front(5) = 0;
+      modified_x_guess_right_in_front(6) = 0;
     }
 
     if (left_stance) {
       AddQuadraticErrorCost(
-          Id_7, modifixed_x_guess_left_in_front.head(n_q).tail(n_q - 1),
+          Id_7, modified_x_guess_left_in_front.head(n_q).tail(n_q - 1),
           x0_vars_by_mode(i).head(n_q).tail(n_q - 1));
       AddQuadraticErrorCost(
-          Id_7, modifixed_x_guess_right_in_front.head(n_q).tail(n_q - 1),
+          Id_7, modified_x_guess_right_in_front.head(n_q).tail(n_q - 1),
           xf_vars_by_mode(i).head(n_q).tail(n_q - 1));
     } else {
       AddQuadraticErrorCost(
-          Id_7, modifixed_x_guess_right_in_front.head(n_q).tail(n_q - 1),
+          Id_7, modified_x_guess_right_in_front.head(n_q).tail(n_q - 1),
           x0_vars_by_mode(i).head(n_q).tail(n_q - 1));
       AddQuadraticErrorCost(
-          Id_7, modifixed_x_guess_left_in_front.head(n_q).tail(n_q - 1),
+          Id_7, modified_x_guess_left_in_front.head(n_q).tail(n_q - 1),
           xf_vars_by_mode(i).head(n_q).tail(n_q - 1));
     }
     AddQuadraticErrorCost(Id_1,

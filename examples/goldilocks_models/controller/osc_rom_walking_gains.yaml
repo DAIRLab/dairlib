@@ -17,7 +17,7 @@ sample_idx: 1 #21 works for iter150
 stride_length: 0.217  #It seems to solve faster when using 0.1m instead of 0.2m
 
 # Planner cost weight
-w_Q: 10
+w_Q: 5
 w_R: 2e-6
 w_rom_reg: 0
 w_reg_quat: 10

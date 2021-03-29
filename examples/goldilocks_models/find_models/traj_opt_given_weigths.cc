@@ -539,23 +539,6 @@ void extractResult(VectorXd& w_sol, const GoldilocksModelTrajOpt& trajopt,
   double tau_cost =
       solvers::EvalCostGivenSolution(result, trajopt.cost_tau_bindings_);
 
-  /*cout << "sample_idx# = " << sample_idx << endl;
-  cout << "    stride_length = " << stride_length << " | "
-       << "ground_incline = " << ground_incline << " | "
-       << "init_file = " << init_file << endl;
-  cout << "    Solve time:" << elapsed.count() << " | ";
-  cout << solution_result <<  " | ";
-  cout << "Cost:" << result.get_optimal_cost() <<
-       " (tau cost = " << tau_cost << ")\n";*/
-  /*string string_to_print = "sample #" + to_string(sample_idx) +
-                           " (rerun #" + to_string(n_rerun) + ")"
-                           "\n    stride_length = " + to_string(stride_length) +
-                           " | ground_incline = " + to_string(ground_incline) +
-                           " | init_file = " + init_file +
-                           "\n    Solve time:" + to_string(elapsed.count()) +
-                           " | " + to_string(solution_result) +
-                           " | Cost:" + to_string(result.get_optimal_cost()) +
-                           " (tau cost = " + to_string(tau_cost) + ")\n";*/
   string string_to_print =
       "  " + to_string(sample_idx) + " (" + to_string(n_rerun) + ")";
   for (auto& task : task.get()) {
@@ -667,70 +650,6 @@ void extractResult(VectorXd& w_sol, const GoldilocksModelTrajOpt& trajopt,
 
   QPs.c_vec[sample_idx]->resizeLike(c);
   *(QPs.c_vec[sample_idx]) = c;
-
-  // Testing
-  /*bool is_check_tau = true;
-  if (is_check_tau) {
-    int N_accum = 0;
-    for (unsigned int l = 0; l < num_time_samples.size() ; l++) {
-      for (int m = 0; m < num_time_samples[l] - 1 ; m++) {
-        int i = N_accum + m;
-        cout << "i = " << i << endl;
-        // Get tau_append
-        auto x_i = trajopt.state_vars_by_mode(l, m);
-        auto tau_i = pre_and_post_impact_efforts
-                       ? trajopt.tau_vars_by_mode(l, m)
-                       : trajopt.reduced_model_input(i);
-        auto x_iplus1 = trajopt.state_vars_by_mode(l, m + 1);
-        auto tau_iplus1 = pre_and_post_impact_efforts
-                       ? trajopt.tau_vars_by_mode(l, m + 1)
-                       : trajopt.reduced_model_input(i + 1);
-        auto h_btwn_knot_i_iplus1 = trajopt.timestep(i);
-        VectorXd x_i_sol = result.GetSolution(x_i);
-        VectorXd tau_i_sol = result.GetSolution(tau_i);
-        VectorXd x_iplus1_sol = result.GetSolution(x_iplus1);
-        VectorXd tau_iplus1_sol = result.GetSolution(tau_iplus1);
-        VectorXd h_i_sol = result.GetSolution(h_btwn_knot_i_iplus1);
-
-        VectorXd tau_append_head =
-          trajopt.dynamics_constraint_at_head->computeTauToExtendModel(
-            x_i_sol, x_iplus1_sol, h_i_sol, theta_y);
-        cout << "tau_head = " << tau_append_head.transpose() << endl;
-      }
-      N_accum += num_time_samples[l];
-      N_accum -= 1;  // due to overlaps between modes
-    }
-  }*/
-
-  // Testing: print out the timesteps
-  // for(int i = 0; i<N-1 ; i++){
-  //   auto h_i = trajopt.timestep(i);
-  //   VectorXd h_i_sol = trajopt.GetSolution(h_i);
-  //   cout << "h_"<< i <<"_sol = " << h_i_sol << endl;
-  // }
-  /*auto h_0 = trajopt.timestep(0);
-  VectorXd h_0_sol = result.GetSolution(h_0);
-  cout << "timestep = " << h_0_sol << endl << endl;*/
-
-  // Testing: print out the vertical pos
-  /*for(int i = 0; i<N ; i++){
-    auto x_i = trajopt.state(i);
-    VectorXd x_i_sol = result.GetSolution(x_i);
-    cout << "x1_"<< i <<"_sol = " << x_i_sol(1) << endl;
-  }*/
-
-  // Testing: see what are the decision varaibles
-  // cout << "\nAll decision variable:\n"
-  //   << trajopt.decision_variables() << endl;
-
-  // Testing - see the solution values (to decide how big we should scale them)
-  // VectorXd z = result.GetSolution(
-  //                    trajopt.decision_variables());
-  // for(int i = 0; i<z.size(); i++){
-  //   cout << trajopt.decision_variables()[i] << ", " << z[i] <<
-  //   endl;
-  // }
-  // cout << endl;
 }
 
 void postProcessing(const VectorXd& w_sol,
@@ -753,9 +672,9 @@ void postProcessing(const VectorXd& w_sol,
   const VectorXd& theta_y = rom.theta_y();
   const VectorXd& theta_yddot = rom.theta_yddot();
 
-  string directory = setting.directory;
-  string prefix = setting.prefix;
-  //  string dir_pref = setting.directory + setting.prefix;
+  const string& directory = setting.directory;
+  const string& prefix = setting.prefix;
+  const string& dir_pref = setting.directory + setting.prefix;
 
   if (is_get_nominal || !result.is_success()) {
     // Do nothing.
@@ -801,8 +720,8 @@ void postProcessing(const VectorXd& w_sol,
     // store new w_sol
     VectorXd w_sol_new(w_sol.rows() + n_extend * N);
     w_sol_new << w_sol.head(w_sol.rows() - n_tau * N), tau_new;
-    writeCSV(directory + prefix + string("w (no extension).csv"), w_sol);
-    writeCSV(directory + prefix + string("w.csv"), w_sol_new);
+    writeCSV(dir_pref + string("w (no extension).csv"), w_sol);
+    writeCSV(dir_pref + string("w.csv"), w_sol_new);
 
     // Create a file that shows the new index of theta_yddot
     // Assume that the new features include all the old features (in dynamics)
@@ -917,34 +836,22 @@ void postProcessing(const VectorXd& w_sol,
       VectorXd ind_start = solvers::GetConstraintRows(
           trajopt, trajopt.dynamics_constraint_at_knot_bindings[0]);
       // cout << "ind_start = " << ind_start(0) << endl;
-      int N_accum = 0;
+      int i_binding = 0;
       for (unsigned int l = 0; l < num_time_samples.size(); l++) {
         for (int m = 0; m < num_time_samples[l]; m++) {
-          int time_index = N_accum + m;
-          // cout << "i = " << i << endl;
-          // Get the gradient value first
-          auto x_i = trajopt.state_vars_by_mode(l, m);
-          auto u_i = trajopt.input(time_index);
-          auto lambda_i = trajopt.force(l, m);
-          auto tau_i = pre_and_post_impact_efforts
-                           ? trajopt.tau_vars_by_mode(l, m)
-                           : trajopt.reduced_model_input(time_index);
-          VectorXd x_i_sol = result.GetSolution(x_i);
-          VectorXd u_i_sol = result.GetSolution(u_i);
-          VectorXd lambda_i_sol = result.GetSolution(lambda_i);
-          VectorXd tau_i_sol = result.GetSolution(tau_i);
-
           MatrixXd dyn_gradient =
               trajopt.dynamics_constraint_at_knot[l]->getGradientWrtTheta(
-                  x_i_sol, u_i_sol, lambda_i_sol, tau_i_sol);
+                  result.GetSolution(
+                      trajopt.dynamics_constraint_at_knot_bindings[i_binding]
+                          .variables()));
 
           // Fill in B matrix
-          B.block(ind_start(0) + time_index * n_yddot, 0, n_yddot, n_theta) =
+          B.block(ind_start(0) + i_binding * n_yddot, 0, n_yddot, n_theta) =
               dyn_gradient;
           // cout << "row " << ind_start(0) + i * 2 * n_yddot << endl;
+
+          i_binding++;
         }
-        N_accum += num_time_samples[l];
-        N_accum -= 1;  // due to overlaps between modes
       }
     }
 
@@ -955,13 +862,13 @@ void postProcessing(const VectorXd& w_sol,
 
     // Store the vectors and matrices
     // cout << "\nStoring vectors and matrices into csv.\n";
-    /*writeCSV(directory + prefix + string("H.csv"), H);
-    writeCSV(directory + prefix + string("b.csv"), b);
-    writeCSV(directory + prefix + string("A.csv"), A);
-    writeCSV(directory + prefix + string("lb.csv"), lb);
-    writeCSV(directory + prefix + string("ub.csv"), ub);
-    writeCSV(directory + prefix + string("y.csv"), y);
-    writeCSV(directory + prefix + string("B.csv"), B);*/
+    /*writeCSV(dir_pref + string("H.csv"), H);
+    writeCSV(dir_pref + string("b.csv"), b);
+    writeCSV(dir_pref + string("A.csv"), A);
+    writeCSV(dir_pref + string("lb.csv"), lb);
+    writeCSV(dir_pref + string("ub.csv"), ub);
+    writeCSV(dir_pref + string("y.csv"), y);
+    writeCSV(dir_pref + string("B.csv"), B);*/
 
     //    auto start = std::chrono::high_resolution_clock::now();
     QPs.w_sol_vec[sample_idx]->resizeLike(w_sol);
@@ -1038,58 +945,50 @@ void postProcessing(const VectorXd& w_sol,
       storeTau(h_vec, tau_vec, directory, prefix);
       // CheckSplineOfY(h_vec, yddot_vec, s_spline);
     } else {
-      // Only store the data of the first mode now
-      MatrixXd t_and_y(1 + n_y, num_time_samples[0]);
-      MatrixXd t_and_ydot(1 + n_y, num_time_samples[0]);
-      MatrixXd t_and_yddot(1 + n_y, num_time_samples[0]);
-      MatrixXd t_and_tau(1 + n_tau, num_time_samples[0]);
-      t_and_y(0, 0) = 0;
-      t_and_ydot(0, 0) = 0;
-      t_and_yddot(0, 0) = 0;
-      t_and_tau(0, 0) = 0;
-      int N_accum = 0;
-      for (unsigned int l = 0; l < 1; l++) {
+      int i_binding = 0;
+      for (unsigned int l = 0; l < num_time_samples.size(); l++) {
+        MatrixXd y_samples(n_y, num_time_samples[l]);
+        MatrixXd ydot_samples(n_y, num_time_samples[l]);
+        MatrixXd yddot_samples(n_y, num_time_samples[l]);
+        MatrixXd tau_samples(n_tau, num_time_samples[l]);
+
         for (int m = 0; m < num_time_samples[l]; m++) {
-          int i = N_accum + m;
-          auto x_i = trajopt.state_vars_by_mode(l, m);
-          auto tau_i = pre_and_post_impact_efforts
-                           ? trajopt.tau_vars_by_mode(l, m)
-                           : trajopt.reduced_model_input(i);
-          VectorXd x_i_sol = result.GetSolution(x_i);
-          VectorXd tau_i_sol = result.GetSolution(tau_i);
+          VectorXd y;
+          VectorXd ydot;
+          VectorXd yddot;
+          trajopt.dynamics_constraint_at_knot[l]->GetYYdotAndYddot(
+              result.GetSolution(
+                  trajopt.dynamics_constraint_at_knot_bindings[i_binding]
+                      .variables()),
+              &y, &ydot, &yddot);
+          VectorXd tau =
+              trajopt.dynamics_constraint_at_knot[l]->GetTau(result.GetSolution(
+                  trajopt.dynamics_constraint_at_knot_bindings[i_binding]
+                      .variables()));
 
-          VectorXd y =
-              trajopt.dynamics_constraint_at_knot[l]->GetY(x_i_sol.head(n_q));
-          VectorXd ydot =
-              trajopt.dynamics_constraint_at_knot[l]->GetYdot(x_i_sol);
-          VectorXd yddot = trajopt.dynamics_constraint_at_knot[l]->GetYddot(
-              y, ydot, tau_i_sol);
-          t_and_y.block(1, m, n_y, 1) = y;
-          t_and_ydot.block(1, m, n_y, 1) = ydot;
-          t_and_yddot.block(1, m, n_y, 1) = yddot;
-          t_and_tau.block(1, m, n_tau, 1) = tau_i_sol;
+          y_samples.col(m) = y;
+          ydot_samples.col(m) = ydot;
+          yddot_samples.col(m) = yddot;
+          tau_samples.col(m) = tau;
 
-          if (m < num_time_samples[l] - 1) {
-            auto h_i = trajopt.timestep(i);
-            VectorXd h_i_sol = result.GetSolution(h_i);
-            t_and_y(0, m + 1) = t_and_y(0, m) + h_i_sol(0);
-            t_and_ydot(0, m + 1) = t_and_ydot(0, m) + h_i_sol(0);
-            t_and_yddot(0, m + 1) = t_and_yddot(0, m) + h_i_sol(0);
-            t_and_tau(0, m + 1) = t_and_tau(0, m) + h_i_sol(0);
-          }
+          i_binding++;
         }
-        N_accum += num_time_samples[l];
-        N_accum -= 1;  // due to overlaps between modes
+
+        writeCSV(dir_pref + string("y_samples" + to_string(l) + ".csv"),
+                 y_samples);
+        writeCSV(dir_pref + string("ydot_samples" + to_string(l) + ".csv"),
+                 ydot_samples);
+        writeCSV(dir_pref + string("yddot_samples" + to_string(l) + ".csv"),
+                 yddot_samples);
+        writeCSV(dir_pref + string("tau_samples" + to_string(l) + ".csv"),
+                 tau_samples);
+
+        // TODO: still need to test if the data is saved correctly
+        //      cout << "t_and_y = \n" << t_and_y << endl;
+        //      cout << "t_and_ydot = \n" << t_and_ydot << endl;
+        //      cout << "t_and_yddot = \n" << t_and_yddot << endl;
+        //      cout << "t_and_tau = \n" << t_and_tau << endl;
       }
-      writeCSV(directory + prefix + string("t_and_y.csv"), t_and_y);
-      writeCSV(directory + prefix + string("t_and_ydot.csv"), t_and_ydot);
-      writeCSV(directory + prefix + string("t_and_yddot.csv"), t_and_yddot);
-      writeCSV(directory + prefix + string("t_and_tau.csv"), t_and_tau);
-      // TODO: still need to test if the data is saved correctly
-      //      cout << "t_and_y = \n" << t_and_y << endl;
-      //      cout << "t_and_ydot = \n" << t_and_ydot << endl;
-      //      cout << "t_and_yddot = \n" << t_and_yddot << endl;
-      //      cout << "t_and_tau = \n" << t_and_tau << endl;
     }
 
     // Below are all for debugging /////////////////////////////////////////////

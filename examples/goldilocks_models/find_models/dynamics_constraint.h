@@ -118,11 +118,17 @@ class DynamicsConstraintV2 : public solvers::NonlinearConstraint<double> {
   Eigen::VectorXd GetYddot(const Eigen::VectorXd& y,
                            const Eigen::VectorXd& ydot,
                            const Eigen::VectorXd& tau) const;
+  void GetYYdotAndYddot(const Eigen::VectorXd& x_u_lambda_tau,
+                        Eigen::VectorXd* y, Eigen::VectorXd* ydot,
+                        Eigen::VectorXd* yddot) const;
+  Eigen::VectorXd GetTau(const Eigen::VectorXd& x_u_lambda_tau) const;
 
-  Eigen::MatrixXd getGradientWrtTheta(const Eigen::VectorXd& x_i,
-                                      const Eigen::VectorXd& u_i,
-                                      const Eigen::VectorXd& lambda_i,
-                                      const Eigen::VectorXd& tau_i) const;
+  void ExtractInputVariables(const Eigen::VectorXd& x_u_lambda_tau,
+                             Eigen::VectorXd* x, Eigen::VectorXd* u,
+                             Eigen::VectorXd* lambda,
+                             Eigen::VectorXd* tau) const;
+  Eigen::MatrixXd getGradientWrtTheta(
+      const Eigen::VectorXd& x_u_lambda_tau) const;
 
   // Extend the model by assuming the parameters of the new dynamics row are 0's
   // the new dynamics row = tau.
@@ -131,12 +137,12 @@ class DynamicsConstraintV2 : public solvers::NonlinearConstraint<double> {
       const Eigen::VectorXd& h_i, const Eigen::VectorXd& theta_y_append);
 
  private:
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override;
+  void EvaluateConstraint(
+      const Eigen::Ref<const drake::VectorX<double>>& x_u_lambda_tau,
+      drake::VectorX<double>* y) const override;
   Eigen::VectorXd EvalConstraintWithModelParams(
-      const Eigen::VectorXd& x_i, const Eigen::VectorXd& u_i,
-      const Eigen::VectorXd& lambda_i, const Eigen::VectorXd& tau_i,
-      const Eigen::VectorXd& theta_y, const Eigen::VectorXd& theta_yddot) const;
+      const Eigen::VectorXd& x_u_lambda_tau, const Eigen::VectorXd& theta_y,
+      const Eigen::VectorXd& theta_yddot) const;
 
   std::unique_ptr<ReducedOrderModel> rom_;
 

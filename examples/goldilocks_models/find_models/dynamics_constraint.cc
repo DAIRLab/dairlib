@@ -43,7 +43,7 @@ namespace goldilocks_models {
 namespace find_models {
 
 ///
-/// First version
+/// First version -- impose constraint at collocation points
 ///
 
 DynamicsConstraint::DynamicsConstraint(const ReducedOrderModel& rom,
@@ -298,7 +298,7 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 }
 
 ///
-/// Second version
+/// Second version -- impose constraint at knot points
 ///
 
 DynamicsConstraintV2::DynamicsConstraintV2(
@@ -333,34 +333,69 @@ VectorXd DynamicsConstraintV2::GetYdot(
 };
 VectorXd DynamicsConstraintV2::GetY(const VectorXd& q) const {
   plant_.SetPositions(context_.get(), q);
-  return rom_->EvalMappingFunc(q, *context_);
+  return GetY(q, *context_);
 };
 VectorXd DynamicsConstraintV2::GetYdot(const VectorXd& x) const {
   plant_.SetPositionsAndVelocities(context_.get(), x);
-  return rom_->EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_), *context_);
+  return GetYdot(x, *context_);
 };
 VectorXd DynamicsConstraintV2::GetYddot(const VectorXd& y, const VectorXd& ydot,
                                         const VectorXd& tau) const {
   return rom_->EvalDynamicFunc(y, ydot, tau);
 };
+VectorXd DynamicsConstraintV2::GetTau(const Eigen::VectorXd& x_u_lambda_tau) const {
+  // Extract our input variables:
+  VectorXd x_i;
+  VectorXd u_i;
+  VectorXd lambda_i;
+  VectorXd tau_i;
+  ExtractInputVariables(x_u_lambda_tau, &x_i, &u_i, &lambda_i, &tau_i);
+  return tau_i;
+}
+
+void DynamicsConstraintV2::GetYYdotAndYddot(const VectorXd& x_u_lambda_tau,
+                                            VectorXd* y, VectorXd* ydot,
+                                            VectorXd* yddot) const {
+  // Extract our input variables:
+  VectorXd x_i;
+  VectorXd u_i;
+  VectorXd lambda_i;
+  VectorXd tau_i;
+  ExtractInputVariables(x_u_lambda_tau, &x_i, &u_i, &lambda_i, &tau_i);
+
+  *y = GetY(x_i.head(n_q_));
+  *ydot = GetYdot(x_i);
+  *yddot = GetYddot(*y, *ydot, tau_i);
+}
+
+void DynamicsConstraintV2::ExtractInputVariables(const VectorXd& x_u_lambda_tau,
+                                                 VectorXd* x, VectorXd* u,
+                                                 VectorXd* lambda,
+                                                 VectorXd* tau) const {
+  // Extract our input variables:
+  (*x) = x_u_lambda_tau.head(n_x_);
+  (*u) = x_u_lambda_tau.segment(n_x_, n_u_);
+  (*lambda) = x_u_lambda_tau.segment(n_x_ + n_u_, n_lambda_);
+  (*tau) = x_u_lambda_tau.segment(n_x_ + n_u_ + n_lambda_, n_tau_);
+}
 
 void DynamicsConstraintV2::EvaluateConstraint(
-    const Eigen::Ref<const drake::VectorX<double>>& x,
+    const Eigen::Ref<const drake::VectorX<double>>& x_u_lambda_tau,
     drake::VectorX<double>* y) const {
-  // Extract our input variables:
-  VectorXd x_i = x.head(n_x_);
-  VectorXd u_i = x.segment(n_x_, n_u_);
-  VectorXd lambda_i = x.segment(n_x_ + n_u_, n_lambda_);
-  VectorXd tau_i = x.segment(n_x_ + n_u_ + n_lambda_, n_tau_);
-
-  *y = EvalConstraintWithModelParams(x_i, u_i, lambda_i, tau_i, rom_->theta_y(),
+  *y = EvalConstraintWithModelParams(x_u_lambda_tau, rom_->theta_y(),
                                      rom_->theta_yddot());
 }
 
 VectorXd DynamicsConstraintV2::EvalConstraintWithModelParams(
-    const VectorXd& x_i, const VectorXd& u_i, const VectorXd& lambda_i,
-    const VectorXd& tau_i, const VectorXd& theta_y,
+    const VectorXd& x_u_lambda_tau, const VectorXd& theta_y,
     const VectorXd& theta_yddot) const {
+  // Extract our input variables:
+  VectorXd x_i;
+  VectorXd u_i;
+  VectorXd lambda_i;
+  VectorXd tau_i;
+  ExtractInputVariables(x_u_lambda_tau, &x_i, &u_i, &lambda_i, &tau_i);
+
   // Set model parameter
   rom_->SetThetaY(theta_y);
   rom_->SetThetaYddot(theta_yddot);
@@ -380,12 +415,11 @@ VectorXd DynamicsConstraintV2::EvalConstraintWithModelParams(
   VectorXd ydot = GetYdot(x_i, *context_);
 
   // Get constraint value
-  return J * vdot + JdotV - rom_->EvalDynamicFunc(y, ydot, tau_i);
+  return J * vdot + JdotV - GetYddot(y, ydot, tau_i);
 }
 
 MatrixXd DynamicsConstraintV2::getGradientWrtTheta(
-    const VectorXd& x_i, const VectorXd& u_i, const VectorXd& lambda_i,
-    const VectorXd& tau_i) const {
+    const VectorXd& x_u_lambda_tau) const {
   // It's a nonlinear function in theta, so we use autoDiff to get the gradient.
   // The calculation here will not be the same as the one in eval(), because
   // we have totally different autodiff, and the second autodiff requires
@@ -414,7 +448,7 @@ MatrixXd DynamicsConstraintV2::getGradientWrtTheta(
       //                                         x_i, x_iplus1, h_i,
       //                                         theta_y, theta_yddot)));
       y_vec.push_back(EvalConstraintWithModelParams(
-                        x_i, u_i, lambda_i, tau_i,
+                        x_u_lambda_tau,
                         theta_y, theta_yddot));
 
       theta(k) -= shift;
@@ -440,7 +474,7 @@ MatrixXd DynamicsConstraintV2::getGradientWrtTheta(
       //                                         theta.head(rom_->n_theta_y()),
       //                                         theta.tail(rom_->n_theta_yddot())));
       y_vec.push_back(EvalConstraintWithModelParams(
-          x_i, u_i, lambda_i, tau_i, theta.head(rom_->n_theta_y()),
+          x_u_lambda_tau, theta.head(rom_->n_theta_y()),
           theta.tail(rom_->n_theta_yddot())));
 
       theta(k) -= shift;
@@ -473,7 +507,7 @@ MatrixXd DynamicsConstraintV2::getGradientWrtTheta(
       //                                         x_i, x_iplus1, h_i,
       //                                         theta_y, theta_yddot)));
       y_vec.push_back(EvalConstraintWithModelParams(
-                        x_i, u_i, lambda_i, tau_i,
+                        x_u_lambda_tau,
                         theta_y, theta_yddot));
 
       theta(k) -= shift;

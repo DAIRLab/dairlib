@@ -180,8 +180,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   // Initial guesses
   Eigen::VectorXd h_guess_;
-  Eigen::MatrixXd r_guess_;
-  Eigen::MatrixXd dr_guess_;
+  Eigen::MatrixXd y_guess_;
+  Eigen::MatrixXd dy_guess_;
   Eigen::MatrixXd tau_guess_;
   Eigen::VectorXd x_guess_left_in_front_pre_;
   Eigen::VectorXd x_guess_right_in_front_pre_;

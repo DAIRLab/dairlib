@@ -106,37 +106,31 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                             string("_") + to_string(param_.sample) +
                             string("_");
   h_guess_ = VectorXd(param_.knots_per_mode);
-  r_guess_ = MatrixXd(n_y, param_.knots_per_mode);
-  dr_guess_ = MatrixXd(n_y, param_.knots_per_mode);
+  y_guess_ = MatrixXd(n_y, param_.knots_per_mode);
+  dy_guess_ = MatrixXd(n_y, param_.knots_per_mode);
   tau_guess_ = MatrixXd(n_tau, param_.knots_per_mode);
   if (with_init_guess) {
-    VectorXd h_guess_raw =
-        readCSV(model_dir_n_pref + string("time_at_knots.csv")).col(0);
-    MatrixXd r_guess_raw =
-        readCSV(model_dir_n_pref + string("t_and_y.csv")).bottomRows(n_y);
-    MatrixXd dr_guess_raw =
-        readCSV(model_dir_n_pref + string("t_and_ydot.csv")).bottomRows(n_y);
-    MatrixXd tau_guess_raw =
-        readCSV(model_dir_n_pref + string("t_and_tau.csv")).bottomRows(n_tau);
+    // Construct cubic spline from y and ydot and resample, and construct
+    // first-order hold from tau and resample.
+    // Note that this is an approximation. In the model optimization stage, we
+    // do not construct cubic spline (for the version where we impose
+    // constraint at the knot points)
+    PiecewisePolynomial<double> y_traj =
+        PiecewisePolynomial<double>::CubicHermite(
+            readCSV(model_dir_n_pref + string("t_breaks.csv")).col(0),
+            readCSV(model_dir_n_pref + string("y_samples0.csv")),
+            readCSV(model_dir_n_pref + string("ydot_samples0.csv")));
+    PiecewisePolynomial<double> tau_traj =
+        PiecewisePolynomial<double>::FirstOrderHold(
+            readCSV(model_dir_n_pref + string("t_breaks.csv")).col(0),
+            readCSV(model_dir_n_pref + string("tau_samples0.csv")));
 
-    // TODO: reconstruct cubic spline and resample
-    double duration = h_guess_raw.tail(1)(0);
+    double duration = y_traj.end_time();
     for (int i = 0; i < param_.knots_per_mode; i++) {
       h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
-    }
-    for (int i = 0; i < param_.knots_per_mode; i++) {
-      int n_mat_col_r = r_guess_raw.cols();
-      int idx_r = (int)round(double(i * (n_mat_col_r - 1)) /
-                             (param_.knots_per_mode - 1));
-      r_guess_.col(i) = r_guess_raw.col(idx_r);
-      int n_mat_col_dr = dr_guess_raw.cols();
-      int idx_dr = (int)round(double(i * (n_mat_col_dr - 1)) /
-                              (param_.knots_per_mode - 1));
-      dr_guess_.col(i) = dr_guess_raw.col(idx_dr);
-      int n_mat_col_tau = tau_guess_raw.cols();
-      int idx_tau = (int)round(double(i * (n_mat_col_tau - 1)) /
-                               (param_.knots_per_mode - 1));
-      tau_guess_.col(i) = tau_guess_raw.col(idx_tau);
+      y_guess_.col(i) = y_traj.value(h_guess_(i));
+      dy_guess_.col(i) = y_traj.EvalDerivative(h_guess_(i), 1);
+      tau_guess_.col(i) = tau_traj.value(h_guess_(i));
     }
 
     if (use_standing_pose_as_init_FOM_guess_) {
@@ -528,7 +522,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Add rom state in cost
   bool add_rom_regularization = true;
   if (add_rom_regularization) {
-    trajopt.AddRomRegularizationCost(h_guess_, r_guess_, dr_guess_, tau_guess_,
+    trajopt.AddRomRegularizationCost(h_guess_, y_guess_, dy_guess_, tau_guess_,
                                      first_mode_knot_idx, param_.w_rom_reg);
   }
 
@@ -577,7 +571,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(
-          h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_pre_,
+          h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
           x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
           x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx, 0);
     }
@@ -952,12 +946,12 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     PrintStatus("Set heuristic initial guess for all variables");
     // Set heuristic initial guess for all variables
     trajopt->SetHeuristicInitialGuess(
-        h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_pre_,
+        h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
         x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
         x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx, 0);
   } else {
     trajopt->SetHeuristicInitialGuess(
-        h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_pre_,
+        h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
         x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
         x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx,
         starting_mode_idx_for_heuristic);

@@ -117,20 +117,24 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     // constraint at the knot points)
     PiecewisePolynomial<double> y_traj =
         PiecewisePolynomial<double>::CubicHermite(
-            readCSV(model_dir_n_pref + string("t_breaks.csv")).col(0),
+            readCSV(model_dir_n_pref + string("t_breaks0.csv")).col(0),
             readCSV(model_dir_n_pref + string("y_samples0.csv")),
             readCSV(model_dir_n_pref + string("ydot_samples0.csv")));
-    PiecewisePolynomial<double> tau_traj =
-        PiecewisePolynomial<double>::FirstOrderHold(
-            readCSV(model_dir_n_pref + string("t_breaks.csv")).col(0),
-            readCSV(model_dir_n_pref + string("tau_samples0.csv")));
+    PiecewisePolynomial<double> tau_traj;
+    if (n_tau != 0) {
+      tau_traj = PiecewisePolynomial<double>::FirstOrderHold(
+          readCSV(model_dir_n_pref + string("t_breaks0.csv")).col(0),
+          readCSV(model_dir_n_pref + string("tau_samples0.csv")));
+    }
 
     double duration = y_traj.end_time();
     for (int i = 0; i < param_.knots_per_mode; i++) {
       h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
       y_guess_.col(i) = y_traj.value(h_guess_(i));
       dy_guess_.col(i) = y_traj.EvalDerivative(h_guess_(i), 1);
-      tau_guess_.col(i) = tau_traj.value(h_guess_(i));
+      if (n_tau != 0) {
+        tau_guess_.col(i) = tau_traj.value(h_guess_(i));
+      }
     }
 
     if (use_standing_pose_as_init_FOM_guess_) {

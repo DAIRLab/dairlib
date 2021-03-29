@@ -884,8 +884,6 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
     // FOM floating base position
     SetInitialGuess(x_preimpact.segment(4, 2), des_xy_pos.at(i + 1));
     Eigen::Vector4d quat_identity(1, 0, 0, 0);
-    cout << "!!!Checking: quat_identity = " << quat_identity.transpose()
-         << endl;
     SetInitialGuess(x_preimpact.head(4), quat_identity);
     // FOM states
     SetInitialGuess(x_preimpact.tail(n_x_ - 6),

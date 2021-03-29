@@ -536,7 +536,7 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   // Extract solution
   SolutionResult solution_result = result.get_solution_result();
   double tau_cost =
-      solvers::EvalCostGivenSolution(result, gm_traj_opt.tau_cost_bindings);
+      solvers::EvalCostGivenSolution(result, gm_traj_opt.tau_cost_bindings_);
 
   /*cout << "sample_idx# = " << sample_idx << endl;
   cout << "    stride_length = " << stride_length << " | "
@@ -3394,11 +3394,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       myfile << endl;
     }
 
-    // Extract result for printing
-    VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
-    MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
-    MatrixXd input_at_knots = gm_traj_opt.dircon->GetInputSamples(result);
-
     // Print weight
     myfile << "\nw_Q = " << w_Q << endl;
     myfile << "w_Q_vy = " << w_Q_vy << endl;
@@ -3417,6 +3412,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     myfile << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
     myfile << "w_q_quat = " << w_q_quat << endl;
     myfile << "w_joint_accel = " << w_joint_accel << endl;
+
+    // Extract result for printing
+    VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
+    MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
+    MatrixXd input_at_knots = gm_traj_opt.dircon->GetInputSamples(result);
 
     // Calculate each term of the cost
     double total_cost = 0;
@@ -3561,6 +3561,63 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
     myfile << "total_cost (only the nominal traj cost terms) = " << total_cost
            << endl;
+
+    // Print each term of the cost to a file
+    // TODO: before we can use the following code, we have to make
+    //  GoldilocksModelTrajOpt a derived class from HybridDircon, so that we can
+    //  save the cost bindings.
+    /*double total_cost = 0;
+    double cost_x =
+        solvers::EvalCostGivenSolution(result, gm_traj_opt.cost_x_bindings_);
+    myfile << "cost_x = " << cost_x << endl;
+    total_cost += cost_x;
+    double cost_u =
+        solvers::EvalCostGivenSolution(result, gm_traj_opt.cost_u_bindings_);
+    myfile << "cost_u = " << cost_u << endl;
+    total_cost += cost_u;
+    double cost_lambda_at_knots = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_lambda_at_knots_bindings_);
+    myfile << "cost_lambda_at_knots = " << cost_lambda_at_knots << endl;
+    total_cost += cost_lambda_at_knots;
+    // TODO: Sum collocation force cost
+    myfile << "cost_lambda (at collocation points) = ..." << endl;
+    double cost_lambda_diff = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_lambda_diff_bindings_);
+    myfile << "cost_lambda_diff = " << cost_lambda_diff << endl;
+    total_cost += cost_lambda_diff;
+    double cost_pos_diff = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_pos_diff_bindings_);
+    myfile << "cost_pos_diff = " << cost_pos_diff << endl;
+    total_cost += cost_pos_diff;
+    double cost_vel_diff = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_vel_diff_bindings_);
+    myfile << "cost_vel_diff = " << cost_vel_diff << endl;
+    total_cost += cost_vel_diff;
+    double cost_u_diff = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_u_diff_bindings_);
+    myfile << "cost_u_diff = " << cost_u_diff << endl;
+    total_cost += cost_u_diff;
+    double cost_q_hip_roll = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_q_hip_roll_bindings_);
+    myfile << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
+    total_cost += cost_q_hip_roll;
+    double cost_q_hip_yaw = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_q_hip_yaw_bindings_);
+    myfile << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
+    total_cost += cost_q_hip_yaw;
+    double cost_q_quat_xyz = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_q_quat_xyz_bindings_);
+    myfile << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
+    total_cost += cost_q_quat_xyz;
+    double cost_joint_acceleration = solvers::EvalCostGivenSolution(
+        result, gm_traj_opt.cost_joint_acceleration_bindings_);
+    myfile << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
+    total_cost += cost_joint_acceleration;
+    double tau_cost =
+        solvers::EvalCostGivenSolution(result, gm_traj_opt.tau_cost_bindings_);
+    myfile << "tau_cost = " << tau_cost << endl;
+    total_cost += tau_cost;
+    myfile << "total_cost = " << total_cost << endl;*/
 
     // Constraints
     myfile << endl;

@@ -25,6 +25,10 @@
 namespace dairlib {
 namespace goldilocks_models {
 
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::Cost;
+
 class GoldilocksModelTrajOpt {
  public:
   GoldilocksModelTrajOpt(
@@ -45,29 +49,39 @@ class GoldilocksModelTrajOpt {
   // Eigen::VectorBlock<const VectorXDecisionVariable> reduced_model_position(
   //     int index, int n_s) const;
 
+  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
+  tau_post_impact_vars_by_mode(int mode) const;
+  drake::solvers::VectorXDecisionVariable tau_vars_by_mode(
+      int mode, int time_index) const;
+
   std::unique_ptr<systems::trajectory_optimization::HybridDircon<double>>
       dircon;
 
   // Version 1 of dynamics constraints
   std::shared_ptr<find_models::DynamicsConstraint> dynamics_constraint_at_head;
-  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
-      dynamics_constraint_at_head_bindings;
+  std::vector<Binding<Constraint>> dynamics_constraint_at_head_bindings;
   std::shared_ptr<find_models::DynamicsConstraint> dynamics_constraint_at_tail;
-  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
-      dynamics_constraint_at_tail_bindings;
+  std::vector<Binding<Constraint>> dynamics_constraint_at_tail_bindings;
 
   // Version 2 of dynamics constraints
   std::vector<std::shared_ptr<find_models::DynamicsConstraintV2>>
       dynamics_constraint_at_knot;
-  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
-      dynamics_constraint_at_knot_bindings;
+  std::vector<Binding<Constraint>> dynamics_constraint_at_knot_bindings;
 
-  std::vector<drake::solvers::Binding<drake::solvers::Cost>> tau_cost_bindings;
+  // Collections of costs
+  std::vector<Binding<Cost>> cost_x_bindings_;
+  std::vector<Binding<Cost>> cost_u_bindings_;
+  std::vector<Binding<Cost>> cost_lambda_at_knots_bindings_;
+  std::vector<Binding<Cost>> cost_lambda_diff_bindings_;
+  std::vector<Binding<Cost>> cost_pos_diff_bindings_;
+  std::vector<Binding<Cost>> cost_vel_diff_bindings_;
+  std::vector<Binding<Cost>> cost_u_diff_bindings_;
+  std::vector<Binding<Cost>> cost_q_hip_roll_bindings_;
+  std::vector<Binding<Cost>> cost_q_hip_yaw_bindings_;
+  std::vector<Binding<Cost>> cost_q_quat_xyz_bindings_;
+  std::vector<Binding<Cost>> cost_joint_acceleration_bindings_;
 
-  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-  tau_post_impact_vars_by_mode(int mode) const;
-  drake::solvers::VectorXDecisionVariable tau_vars_by_mode(
-      int mode, int time_index) const;
+  std::vector<Binding<Cost>> tau_cost_bindings_;
 
  private:
   int num_knots_;

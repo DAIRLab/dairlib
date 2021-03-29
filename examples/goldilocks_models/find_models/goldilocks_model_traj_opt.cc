@@ -242,7 +242,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     }
 
     // Add cost for the input tau
-    double w_tau = 0;//1e-6;
+    double w_tau = 0;  // 1e-6;
     MatrixXd W = w_tau * MatrixXd::Identity(n_tau_, n_tau_);
     if (is_add_tau_in_cost) {
       int N_accum = 0;
@@ -253,7 +253,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
           auto tau_k = pre_and_post_impact_efforts
                            ? tau_vars_by_mode(i, j)
                            : reduced_model_input(time_index);
-          tau_cost_bindings.push_back(
+          tau_cost_bindings_.push_back(
               dircon->AddQuadraticCost(W, VectorXd::Zero(n_tau_), tau_k));
         }
         N_accum += num_time_samples[i];

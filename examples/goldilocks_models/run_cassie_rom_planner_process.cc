@@ -319,7 +319,7 @@ int DoMain(int argc, char* argv[]) {
       cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
       int n_sample_raw =
           readCSV(model_dir_n_pref + string("time_at_knots.csv")).size();
-      x_init = readCSV(model_dir_n_pref + string("state_at_knots.csv"))
+      x_init = readCSV(model_dir_n_pref + string("x_samples.csv"))
                    .col(int(round((n_sample_raw - 1) * init_phase)));
 
       // Mirror x_init if it's right stance

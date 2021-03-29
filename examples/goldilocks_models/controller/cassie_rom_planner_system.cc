@@ -118,13 +118,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
         readCSV(model_dir_n_pref + string("t_and_ydot.csv")).bottomRows(n_y);
     MatrixXd tau_guess_raw =
         readCSV(model_dir_n_pref + string("t_and_tau.csv")).bottomRows(n_tau);
-    VectorXd x_guess_left_in_front_raw =
-        readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
-    VectorXd x_guess_right_in_front_raw =
-        readCSV(model_dir_n_pref + string("state_at_knots.csv")).rightCols(1);
-    cout << "\nWARNING: last column of state_at_knots.csv should be pre-impact "
-            "state.\n";
-    // TODO: store both pre and post impact in rom optimization
 
     // TODO: reconstruct cubic spline and resample
     double duration = h_guess_raw.tail(1)(0);
@@ -162,11 +155,28 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
           1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0,
           param.gains.const_walking_speed_x, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
           0, 0;
-      x_guess_left_in_front_ = x_standing_fixed_spring;
-      x_guess_right_in_front_ = x_standing_fixed_spring;
+      x_guess_left_in_front_pre_ = x_standing_fixed_spring;
+      x_guess_right_in_front_pre_ = x_standing_fixed_spring;
+      x_guess_left_in_front_post_ = x_standing_fixed_spring;
+      x_guess_right_in_front_post_ = x_standing_fixed_spring;
     } else {
-      x_guess_left_in_front_ = x_guess_left_in_front_raw;
-      x_guess_right_in_front_ = x_guess_right_in_front_raw;
+      VectorXd x_guess_right_in_front_pre =
+          readCSV(model_dir_n_pref + string("x_samples0.csv")).rightCols(1);
+      VectorXd x_guess_right_in_front_post =
+          readCSV(model_dir_n_pref + string("x_samples1.csv")).col(0);
+      VectorXd x_guess_left_in_front_pre(nx_);
+      x_guess_left_in_front_pre
+          << state_mirror_.MirrorPos(x_guess_right_in_front_pre.head(nq_)),
+          state_mirror_.MirrorVel(x_guess_right_in_front_pre.tail(nv_));
+      VectorXd x_guess_left_in_front_post(nx_);
+      x_guess_left_in_front_post
+          << state_mirror_.MirrorPos(x_guess_right_in_front_post.head(nq_)),
+          state_mirror_.MirrorVel(x_guess_right_in_front_post.tail(nv_));
+
+      x_guess_right_in_front_pre_ = x_guess_right_in_front_pre;
+      x_guess_right_in_front_post_ = x_guess_right_in_front_post;
+      x_guess_left_in_front_pre_ = x_guess_left_in_front_pre;
+      x_guess_left_in_front_post_ = x_guess_left_in_front_post;
     }
 
     // cout << "initial guess duration ~ " << duration << endl;
@@ -500,7 +510,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   bool add_x_pose_in_cost = true;
   if (add_x_pose_in_cost) {
     trajopt.AddRegularizationCost(
-        des_xy_pos, x_guess_left_in_front_, x_guess_right_in_front_,
+        des_xy_pos, x_guess_left_in_front_pre_, x_guess_right_in_front_pre_,
+        x_guess_left_in_front_post_, x_guess_right_in_front_post_,
         param_.w_reg_quat_, param_.w_reg_xy_, param_.w_reg_z_,
         param_.w_reg_joints_, false /*straight_leg_cost*/);
   } else {
@@ -566,8 +577,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(
-          h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-          x_guess_right_in_front_, des_xy_pos, first_mode_knot_idx, 0);
+          h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_pre_,
+          x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
+          x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx, 0);
     }
     trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
     prev_global_fsm_idx_ = global_fsm_idx;
@@ -848,41 +860,41 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 void CassiePlannerWithMixedRomFom::PrintCost(
     const RomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result) const {
-  double cost_ydot = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.rom_state_cost_bindings_);
+  double cost_ydot =
+      solvers::EvalCostGivenSolution(result, trajopt.rom_state_cost_bindings_);
   cout << "cost_ydot = " << cost_ydot << endl;
-  double cost_u = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.rom_input_cost_bindings_);
+  double cost_u =
+      solvers::EvalCostGivenSolution(result, trajopt.rom_input_cost_bindings_);
   cout << "cost_u = " << cost_u << endl;
   double rom_regularization_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.rom_regularization_cost_bindings_);
+      result, trajopt.rom_regularization_cost_bindings_);
   cout << "rom_regularization_cost = " << rom_regularization_cost << endl;
   double fom_reg_quat_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.fom_reg_quat_cost_bindings_);
+      result, trajopt.fom_reg_quat_cost_bindings_);
   cout << "fom_reg_quat_cost = " << fom_reg_quat_cost << endl;
-  double fom_xy_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.fom_reg_xy_cost_bindings_);
+  double fom_xy_cost =
+      solvers::EvalCostGivenSolution(result, trajopt.fom_reg_xy_cost_bindings_);
   cout << "fom_xy_cost = " << fom_xy_cost << endl;
-  double fom_reg_z_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.fom_reg_z_cost_bindings_);
+  double fom_reg_z_cost =
+      solvers::EvalCostGivenSolution(result, trajopt.fom_reg_z_cost_bindings_);
   cout << "fom_reg_z_cost = " << fom_reg_z_cost << endl;
   double fom_reg_joint_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.fom_reg_joint_cost_bindings_);
+      result, trajopt.fom_reg_joint_cost_bindings_);
   cout << "fom_reg_joint_cost = " << fom_reg_joint_cost << endl;
   double fom_reg_vel_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.fom_reg_vel_cost_bindings_);
+      result, trajopt.fom_reg_vel_cost_bindings_);
   cout << "fom_reg_vel_cost = " << fom_reg_vel_cost << endl;
-  double lambda_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.lambda_cost_bindings_);
+  double lambda_cost =
+      solvers::EvalCostGivenSolution(result, trajopt.lambda_cost_bindings_);
   cout << "lambda_cost = " << lambda_cost << endl;
-  double x0_relax_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.x0_relax_cost_bindings_);
+  double x0_relax_cost =
+      solvers::EvalCostGivenSolution(result, trajopt.x0_relax_cost_bindings_);
   cout << "x0_relax_cost = " << x0_relax_cost << endl;
-  double v0_relax_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.v0_relax_cost_bindings_);
+  double v0_relax_cost =
+      solvers::EvalCostGivenSolution(result, trajopt.v0_relax_cost_bindings_);
   cout << "v0_relax_cost = " << v0_relax_cost << endl;
   double init_rom_relax_cost = solvers::EvalCostGivenSolution(
-      trajopt, result, trajopt.init_rom_relax_cost_bindings_);
+      result, trajopt.init_rom_relax_cost_bindings_);
   cout << "init_rom_relax_cost = " << init_rom_relax_cost << endl;
 }
 
@@ -940,12 +952,14 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     PrintStatus("Set heuristic initial guess for all variables");
     // Set heuristic initial guess for all variables
     trajopt->SetHeuristicInitialGuess(
-        h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-        x_guess_right_in_front_, des_xy_pos, first_mode_knot_idx, 0);
+        h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_pre_,
+        x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
+        x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx, 0);
   } else {
     trajopt->SetHeuristicInitialGuess(
-        h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_,
-        x_guess_right_in_front_, des_xy_pos, first_mode_knot_idx,
+        h_guess_, r_guess_, dr_guess_, tau_guess_, x_guess_left_in_front_pre_,
+        x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
+        x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx,
         starting_mode_idx_for_heuristic);
 
     // Reuse the solution

@@ -107,7 +107,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                             to_string(FLAGS_sample) + string("_");
   cout << "model_dir_n_pref = " << model_dir_n_pref << endl;
   VectorXd init_state =
-      readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
+      readCSV(model_dir_n_pref + string("x_samples.csv")).col(0);
   if (FLAGS_disturbance != 0) {
     init_state(9) += FLAGS_disturbance / 1;  // add to floating base angle
   }
@@ -130,10 +130,10 @@ int planningWithRomAndFom(int argc, char* argv[]) {
     MatrixXd tau_guess_raw =
         readCSV(model_dir_n_pref + string("t_and_tau.csv")).bottomRows(n_tau);
     VectorXd x_guess_left_in_front_raw =
-        readCSV(model_dir_n_pref + string("state_at_knots.csv")).col(0);
+        readCSV(model_dir_n_pref + string("x_samples.csv")).col(0);
     VectorXd x_guess_right_in_front_raw =
-        readCSV(model_dir_n_pref + string("state_at_knots.csv")).rightCols(1);
-    cout << "\nWARNING: last column of state_at_knots.csv should be pre-impact "
+        readCSV(model_dir_n_pref + string("x_samples.csv")).rightCols(1);
+    cout << "\nWARNING: last column of x_samples.csv should be pre-impact "
             "state.\n";
     // TODO: store both pre and post impact in rom optimization
 

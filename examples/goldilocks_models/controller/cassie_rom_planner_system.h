@@ -9,12 +9,12 @@
 
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
+#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
-#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 
 using std::cout;
 using std::endl;
@@ -183,8 +183,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd r_guess_;
   Eigen::MatrixXd dr_guess_;
   Eigen::MatrixXd tau_guess_;
-  Eigen::VectorXd x_guess_left_in_front_;
-  Eigen::VectorXd x_guess_right_in_front_;
+  Eigen::VectorXd x_guess_left_in_front_pre_;
+  Eigen::VectorXd x_guess_right_in_front_pre_;
+  Eigen::VectorXd x_guess_left_in_front_post_;
+  Eigen::VectorXd x_guess_right_in_front_post_;
 
   // For warm start with previous solution
   mutable int prev_global_fsm_idx_ = -1;

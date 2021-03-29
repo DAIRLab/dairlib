@@ -191,7 +191,6 @@ int CountConstraintRows(const MathematicalProgram& prog) {
 }
 
 double EvalCostGivenSolution(
-    const drake::solvers::MathematicalProgram& prog,
     const drake::solvers::MathematicalProgramResult& result,
     const drake::solvers::Binding<drake::solvers::Cost>& cost_binding) {
   auto const& c = cost_binding.evaluator();
@@ -205,12 +204,11 @@ double EvalCostGivenSolution(
   return cost_val(0);
 };
 double EvalCostGivenSolution(
-    const drake::solvers::MathematicalProgram& prog,
     const drake::solvers::MathematicalProgramResult& result,
     const std::vector<drake::solvers::Binding<drake::solvers::Cost>>& c) {
   double cost_val_sum = 0;
   for (const auto& cost_binding : c) {
-    cost_val_sum += solvers::EvalCostGivenSolution(prog, result, cost_binding);
+    cost_val_sum += solvers::EvalCostGivenSolution(result, cost_binding);
   }
   return cost_val_sum;
 }

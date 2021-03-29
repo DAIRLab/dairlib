@@ -530,24 +530,13 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
                    const ReducedOrderModel& rom, const Task& task,
                    const SubQpData& QPs, int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
-                   vector<DirconKinematicDataSet<double>*> dataset_list,
                    bool is_print_for_debugging) {
-  string directory = setting.directory;
-  string prefix = setting.prefix;
+  string dir_pref = setting.directory + setting.prefix;
 
   // Extract solution
   SolutionResult solution_result = result.get_solution_result();
-  double tau_cost = 0;
-  if (setting.is_add_tau_in_cost) {
-    // Way 1
-    for (auto const& binding : gm_traj_opt.tau_cost_bindings) {
-      const auto& tau_i = binding.variables();
-      VectorXd tau_i_double = result.GetSolution(tau_i);
-      VectorXd y_val(1);
-      binding.evaluator()->Eval(tau_i_double, &y_val);
-      tau_cost += y_val(0);
-    }
-  }
+  double tau_cost =
+      solvers::EvalCostGivenSolution(result, gm_traj_opt.tau_cost_bindings);
 
   /*cout << "sample_idx# = " << sample_idx << endl;
   cout << "    stride_length = " << stride_length << " | "
@@ -612,7 +601,7 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     is_success << SAMPLE_STATUS_CODE::ITERATION_LIMIT;
   else
     is_success << SAMPLE_STATUS_CODE::FAIL;
-  writeCSV(directory + prefix + string("is_success.csv"), is_success);
+  writeCSV(dir_pref + string("is_success.csv"), is_success);
 
   *(QPs.is_success_vec[sample_idx]) = is_success(0);
 
@@ -620,23 +609,11 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   // result, 1e-5); cout << "constraint_satisfied = " << constraint_satisfied <<
   // endl;
 
-  // Store time, state, and its derivatives for cubic spline reconstruction
-  VectorXd t_cubic_spline;
-  MatrixXd x_cubic_spline;
-  MatrixXd xdot_cubic_spline;
-  gm_traj_opt.ConstructStateCubicSplineInfo(
-      result, plant, num_time_samples, dataset_list, &t_cubic_spline,
-      &x_cubic_spline, &xdot_cubic_spline);
-  writeCSV(directory + prefix + string("t_cubic_spline.csv"), t_cubic_spline);
-  writeCSV(directory + prefix + string("x_cubic_spline.csv"), x_cubic_spline);
-  writeCSV(directory + prefix + string("xdot_cubic_spline.csv"),
-           xdot_cubic_spline);
-
   // Get the solution of all the decision variable
   w_sol = result.GetSolution(gm_traj_opt.dircon->decision_variables());
-  writeCSV(directory + prefix + string("w.csv"), w_sol);
+  writeCSV(dir_pref + string("w.csv"), w_sol);
   // if (result.is_success())
-  //   writeCSV(directory + prefix + string("w (success).csv"), w_sol);
+  //   writeCSV(dir_pref + string("w (success).csv"), w_sol);
   if (is_print_for_debugging) {
     for (int i = 0; i < w_sol.size(); i++) {
       cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
@@ -645,31 +622,28 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
     cout << endl;
   }
 
-  // Store the time, state, and input at knot points
-  // TODO: store states from different modes into different files
-  VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
-  MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
-  MatrixXd input_at_knots = gm_traj_opt.dircon->GetInputSamples(result);
-  auto xf = gm_traj_opt.dircon->state_vars_by_mode(
-      num_time_samples.size() - 1,
-      num_time_samples[num_time_samples.size() - 1] - 1);
-  //  state_at_knots.col(N - 1) = result.GetSolution(xf);
-  // cout << "you'll need to update state_at_knots if it's multiple modes\n";
-  writeCSV(directory + prefix + string("time_at_knots.csv"), time_at_knots);
-  writeCSV(directory + prefix + string("state_at_knots.csv"), state_at_knots);
-  writeCSV(directory + prefix + string("input_at_knots.csv"), input_at_knots);
+  // Save time, state, and its derivatives at knot points
+  std::vector<Eigen::MatrixXd> x_samples;
+  std::vector<Eigen::MatrixXd> xdot_samples;
+  std::vector<Eigen::VectorXd> t_breaks;
+  gm_traj_opt.dircon->GetStateAndDerivativeSamples(result, &x_samples,
+                                                   &xdot_samples, &t_breaks);
+  for (int i = 0; i < t_breaks.size(); i++) {
+    writeCSV(dir_pref + "x_samples" + to_string(i) + ".csv", x_samples[i]);
+    writeCSV(dir_pref + "xdot_samples" + to_string(i) + ".csv",
+             xdot_samples[i]);
+    writeCSV(dir_pref + "t_breaks" + to_string(i) + ".csv", t_breaks[i]);
+  }
   if (is_print_for_debugging) {
-    cout << "time_at_knots = \n" << time_at_knots << "\n";
-    cout << "state_at_knots = \n" << state_at_knots << "\n";
-    //  cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
-    cout << "input_at_knots = \n" << input_at_knots << "\n";
+    cout << "x_samples[0] = \n" << x_samples[0] << "\n";
+    cout << "xdot_samples[0] = \n" << xdot_samples[0] << "\n";
+    cout << "t_breaks[0] = \n" << t_breaks[0] << "\n";
   }
 
   // Also store lambda. We might need to look at it in the future!
   // (save it so we don't need to rerun)
   std::ofstream ofile;
-  ofile.open(directory + prefix + string("lambda_at_knots.txt"),
-             std::ofstream::out);
+  ofile.open(dir_pref + "lambda_at_knots.txt", std::ofstream::out);
   // cout << "lambda_at_knots = \n";
   for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
@@ -682,12 +656,13 @@ void extractResult(VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
   }
   ofile.close();
 
+  // Save costs
   VectorXd c(1);
   c << result.get_optimal_cost();
   VectorXd c_without_tau(1);
   c_without_tau << c(0) - tau_cost;
-  writeCSV(directory + prefix + string("c.csv"), c);
-  writeCSV(directory + prefix + string("c_without_tau.csv"), c_without_tau);
+  writeCSV(dir_pref + string("c.csv"), c);
+  writeCSV(dir_pref + string("c_without_tau.csv"), c_without_tau);
 
   QPs.c_vec[sample_idx]->resizeLike(c);
   *(QPs.c_vec[sample_idx]) = c;
@@ -778,6 +753,7 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
   string directory = setting.directory;
   string prefix = setting.prefix;
+  //  string dir_pref = setting.directory + setting.prefix;
 
   if (is_get_nominal || !result.is_success()) {
     // Do nothing.
@@ -1968,8 +1944,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   VectorXd w_sol;
   extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
                 plant_autoDiff, setting, rom, task, QPs, sample_idx, n_rerun,
-                cost_threshold_for_update, N_rerun, dataset_list,
-                is_print_for_debugging);
+                cost_threshold_for_update, N_rerun, is_print_for_debugging);
   postProcessing(w_sol, gm_traj_opt, result, num_time_samples, N, plant,
                  plant_autoDiff, setting, rom, QPs, is_get_nominal,
                  extend_model, sample_idx, n_rerun, cost_threshold_for_update,
@@ -3390,8 +3365,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   VectorXd w_sol;
   extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
                 plant_autoDiff, setting, rom, task, QPs, sample_idx, n_rerun,
-                cost_threshold_for_update, N_rerun, dataset_list,
-                is_print_for_debugging);
+                cost_threshold_for_update, N_rerun, is_print_for_debugging);
   postProcessing(w_sol, gm_traj_opt, result, num_time_samples, N, plant,
                  plant_autoDiff, setting, rom, QPs, is_get_nominal,
                  extend_model, sample_idx, n_rerun, cost_threshold_for_update,

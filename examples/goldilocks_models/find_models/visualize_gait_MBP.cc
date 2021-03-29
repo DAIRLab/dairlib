@@ -133,7 +133,7 @@ void visualizeGait(int argc, char* argv[]) {
       time_mat = readCSV(directory + to_string(iter) + string("_") +
                          to_string(sample) + string("_time_at_knots.csv"));
       state_mat = readCSV(directory + to_string(iter) + string("_") +
-                          to_string(sample) + string("_state_at_knots.csv"));
+                          to_string(sample) + string("_x_samples.csv"));
     } else {
       time_mat = readCSV(directory + to_string(iter) + string("_") +
                          to_string(sample) + string("_t_cubic_spline.csv"));

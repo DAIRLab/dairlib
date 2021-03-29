@@ -91,8 +91,8 @@ if os.path.isfile(data_path+str(iteration)+'_'+str(sample_idx)+'_time_at_knots.c
 
 for iteration in range(iteration_start,iteration_end+1):
     ax = fig.gca()
-    if os.path.isfile(data_path+str(iteration)+'_'+str(sample_idx)+'_state_at_knots.csv'):
-        matrix = np.genfromtxt (data_path+str(iteration)+'_'+str(sample_idx)+'_state_at_knots.csv', delimiter=",")
+    if os.path.isfile(data_path+str(iteration)+'_'+str(sample_idx)+'_x_samples.csv'):
+        matrix = np.genfromtxt (data_path+str(iteration)+'_'+str(sample_idx)+'_x_samples.csv', delimiter=",")
         for state_idx in range(state_idx_start, state_idx_end):
             state = matrix[state_idx,:]
             ax.plot(t, state, label=inv_state_map[state_idx])

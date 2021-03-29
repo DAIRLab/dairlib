@@ -183,20 +183,22 @@ class RomTrajOptCassie : public RomTrajOpt {
                    bool print_status = true);
 
   void AddRegularizationCost(const std::vector<Eigen::VectorXd>& des_xy_pos,
-                             const Eigen::VectorXd& x_guess_left_in_front,
-                             const Eigen::VectorXd& x_guess_right_in_front,
+                             const Eigen::VectorXd& x_guess_left_in_front_pre,
+                             const Eigen::VectorXd& x_guess_right_in_front_pre,
+                             const Eigen::VectorXd& x_guess_left_in_front_post,
+                             const Eigen::VectorXd& x_guess_right_in_front_post,
                              double w_reg_quat, double w_reg_xy, double w_reg_z,
                              double w_reg_joints, bool straight_leg_cost);
 
-  void SetHeuristicInitialGuess(const Eigen::VectorXd& h_guess,
-                                const Eigen::MatrixXd& r_guess,
-                                const Eigen::MatrixXd& dr_guess,
-                                const Eigen::MatrixXd& tau_guess,
-                                const Eigen::VectorXd& x_guess_left_in_front,
-                                const Eigen::VectorXd& x_guess_right_in_front,
-                                const std::vector<Eigen::VectorXd>& des_xy_pos,
-                                int fisrt_mode_phase_index,
-                                int starting_mode_index);
+  void SetHeuristicInitialGuess(
+      const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
+      const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
+      const Eigen::VectorXd& x_guess_left_in_front_pre,
+      const Eigen::VectorXd& x_guess_right_in_front_pre,
+      const Eigen::VectorXd& x_guess_left_in_front_post,
+      const Eigen::VectorXd& x_guess_right_in_front_post,
+      const std::vector<Eigen::VectorXd>& des_xy_pos,
+      int fisrt_mode_phase_index, int starting_mode_index);
 
   // Testing -- AddRomRegularizationCost is SetAllInitialGuess except we replace
   // setting guess with setting cost

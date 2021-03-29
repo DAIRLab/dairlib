@@ -629,7 +629,7 @@ int DoMain(int argc, char* argv[]) {
         readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
     cout << "time_at_knots= " << time_at_knots.transpose() << endl;
     MatrixXd state_at_knots =
-        readCSV(dir_data + std::string("state_at_knots.csv"));
+        readCSV(dir_data + std::string("x_samples.csv"));
     // Initial message for the LCM subscriber. In the first timestep, the
     // subscriber might not receive a solution yet
     dairlib::lcmt_trajectory_block traj_msg0;

@@ -124,7 +124,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   cout << "xf_each_mode = \n" << xf_each_mode << endl;
 
   // Read in states
-  MatrixXd states = readCSV(data_directory + string("state_at_knots.csv"));
+  MatrixXd states = readCSV(data_directory + string("x_samples.csv"));
   DRAKE_DEMAND(states.cols() == n_step * n_nodes - (n_step - 1));
   DRAKE_DEMAND(n_y * 2 == states.rows());
 

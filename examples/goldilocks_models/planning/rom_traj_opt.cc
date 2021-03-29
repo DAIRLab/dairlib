@@ -771,8 +771,10 @@ RomTrajOptCassie::RomTrajOptCassie(
 
 void RomTrajOptCassie::AddRegularizationCost(
     const std::vector<Eigen::VectorXd>& des_xy_pos,
-    const Eigen::VectorXd& x_guess_left_in_front,
-    const Eigen::VectorXd& x_guess_right_in_front, double w_reg_quat,
+    const Eigen::VectorXd& x_guess_left_in_front_pre,
+    const Eigen::VectorXd& x_guess_right_in_front_pre,
+    const Eigen::VectorXd& x_guess_left_in_front_post,
+    const Eigen::VectorXd& x_guess_right_in_front_post, double w_reg_quat,
     double w_reg_xy, double w_reg_z, double w_reg_joints,
     bool straight_leg_cost) {
   PrintStatus("Adding regularization cost ...");
@@ -787,31 +789,21 @@ void RomTrajOptCassie::AddRegularizationCost(
   //  MatrixXd Id_vel = 0.0 * MatrixXd::Identity(n_v_, n_v_);
   MatrixXd Id_x_vel = 0.1 * MatrixXd::Identity(1, 1);
 
-  VectorXd modified_x_guess_left_in_front = x_guess_left_in_front;
-  VectorXd modified_x_guess_right_in_front = x_guess_right_in_front;
-  if (straight_leg_cost) {
-    /*Id_periodic(5, 5) = 10;
-    Id_periodic(6, 6) = 10;
-    modified_x_guess_left_in_front(5) = 0;
-    modified_x_guess_left_in_front(6) = 0;
-    modified_x_guess_right_in_front(5) = 0;
-    modified_x_guess_right_in_front(6) = 0;*/
-  }
-
   bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
     auto x_preimpact = xf_vars_by_mode(i);
     auto x_postimpact = x0_vars_by_mode(i + 1);
 
-    const VectorXd& modified_x_guess = left_stance
-                                           ? modified_x_guess_right_in_front
-                                           : modified_x_guess_left_in_front;
+    const VectorXd& x_guess_pre =
+        left_stance ? x_guess_right_in_front_pre : x_guess_left_in_front_pre;
+    const VectorXd& x_guess_post =
+        left_stance ? x_guess_right_in_front_post : x_guess_left_in_front_post;
 
     // 1. Position
     fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_z, modified_x_guess.segment<1>(6), x_preimpact.segment<1>(6)));
+        Id_z, x_guess_pre.segment<1>(6), x_preimpact.segment<1>(6)));
     fom_reg_joint_cost_bindings_.push_back(
-        AddQuadraticErrorCost(Id_joints, modified_x_guess.segment(7, n_q_ - 7),
+        AddQuadraticErrorCost(Id_joints, x_guess_pre.segment(7, n_q_ - 7),
                               x_preimpact.segment(7, n_q_ - 7)));
     fom_reg_xy_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_xy, des_xy_pos.at(i + 1), x_preimpact.segment<2>(4)));
@@ -823,20 +815,17 @@ void RomTrajOptCassie::AddRegularizationCost(
     // 2. Velocity
     // Preimpact
     /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_vel, modified_x_guess.segment(n_q_, n_v_),
+        Id_vel, x_guess_pre.segment(n_q_, n_v_),
         x_preimpact.segment(n_q_, n_v_)));*/
     fom_reg_vel_cost_bindings_.push_back(
-        AddQuadraticErrorCost(Id_x_vel, modified_x_guess.segment(n_q_ + 3, 1),
+        AddQuadraticErrorCost(Id_x_vel, x_guess_pre.segment(n_q_ + 3, 1),
                               x_preimpact.segment(n_q_ + 3, 1)));
     // Postimpact
-    //    if (i == num_modes_ - 1) {
-    //      Id_x_vel *= 1000000;
-    //    }
     /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_vel, modified_x_guess.segment(n_q_, n_v_),
+        Id_vel, x_guess_post.segment(n_q_, n_v_),
         x_postimpact.segment(n_q_, n_v_)));*/
     fom_reg_vel_cost_bindings_.push_back(
-        AddQuadraticErrorCost(Id_x_vel, modified_x_guess.segment(n_q_ + 3, 1),
+        AddQuadraticErrorCost(Id_x_vel, x_guess_post.segment(n_q_ + 3, 1),
                               x_postimpact.segment(n_q_ + 3, 1)));
 
     left_stance = !left_stance;
@@ -854,8 +843,10 @@ void RomTrajOptCassie::AddRegularizationCost(
 void RomTrajOptCassie::SetHeuristicInitialGuess(
     const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
     const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
-    const Eigen::VectorXd& x_guess_left_in_front,
-    const Eigen::VectorXd& x_guess_right_in_front,
+    const Eigen::VectorXd& x_guess_left_in_front_pre,
+    const Eigen::VectorXd& x_guess_right_in_front_pre,
+    const Eigen::VectorXd& x_guess_left_in_front_post,
+    const Eigen::VectorXd& x_guess_right_in_front_post,
     const std::vector<Eigen::VectorXd>& des_xy_pos, int fisrt_mode_phase_index,
     int starting_mode_index) {
   // PrintStatus("Adding initial guess ...");
@@ -887,21 +878,22 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
             tau_guess.col(j));
       }
     }
-    // FOM states
+
     auto x_preimpact = xf_vars_by_mode(i);
     auto x_postimpact = x0_vars_by_mode(i + 1);
-    // TODO: we should have preimpact and postimpact of x_guess
-    SetInitialGuess(x_preimpact.tail(n_x_ - 6),
-                    left_stance ? x_guess_right_in_front.tail(n_x_ - 6)
-                                : x_guess_left_in_front.tail(n_x_ - 6));
-    SetInitialGuess(x_postimpact.tail(n_x_ - 6),
-                    left_stance ? x_guess_right_in_front.tail(n_x_ - 6)
-                                : x_guess_left_in_front.tail(n_x_ - 6));
-    // Floating base position
+    // FOM floating base position
     SetInitialGuess(x_preimpact.segment(4, 2), des_xy_pos.at(i + 1));
-    VectorX<double> quat_identity(4);
-    quat_identity << 1, 0, 0, 0;
+    Eigen::Vector4d quat_identity(1, 0, 0, 0);
+    cout << "!!!Checking: quat_identity = " << quat_identity.transpose()
+         << endl;
     SetInitialGuess(x_preimpact.head(4), quat_identity);
+    // FOM states
+    SetInitialGuess(x_preimpact.tail(n_x_ - 6),
+                    left_stance ? x_guess_right_in_front_pre.tail(n_x_ - 6)
+                                : x_guess_left_in_front_pre.tail(n_x_ - 6));
+    SetInitialGuess(x_postimpact.tail(n_x_ - 6),
+                    left_stance ? x_guess_right_in_front_post.tail(n_x_ - 6)
+                                : x_guess_left_in_front_post.tail(n_x_ - 6));
 
     left_stance = !left_stance;
   }

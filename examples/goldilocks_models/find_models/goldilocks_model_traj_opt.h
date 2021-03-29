@@ -64,14 +64,6 @@ class GoldilocksModelTrajOpt {
 
   std::vector<drake::solvers::Binding<drake::solvers::Cost>> tau_cost_bindings;
 
-  void ConstructStateCubicSplineInfo(
-      const drake::solvers::MathematicalProgramResult& result,
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const std::vector<int>& num_time_samples,
-      std::vector<DirconKinematicDataSet<double>*> constraints,
-      Eigen::VectorXd* times, Eigen::MatrixXd* states,
-      Eigen::MatrixXd* derivatives) const;
-
   const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
   tau_post_impact_vars_by_mode(int mode) const;
   drake::solvers::VectorXDecisionVariable tau_vars_by_mode(

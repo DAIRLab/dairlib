@@ -25,23 +25,23 @@
 namespace dairlib {
 namespace goldilocks_models {
 
+using dairlib::systems::trajectory_optimization::DirconOptions;
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::Cost;
 
-class GoldilocksModelTrajOpt {
+class GoldilocksModelTrajOpt
+    : public systems::trajectory_optimization::HybridDircon<double> {
  public:
   GoldilocksModelTrajOpt(
-      const ReducedOrderModel& rom,
-      std::unique_ptr<systems::trajectory_optimization::HybridDircon<double>>
-          dircon_in,
       const drake::multibody::MultibodyPlant<double>& plant,
-      const std::vector<int>& num_time_samples,
+      std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
+      std::vector<double> maximum_timestep,
       std::vector<DirconKinematicDataSet<double>*> constraints,
+      std::vector<DirconOptions> options, const ReducedOrderModel& rom,
       bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
       int robot_option, double constraint_scale,
       bool pre_and_post_impact_efforts = false);
-  GoldilocksModelTrajOpt(){};
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
   reduced_model_input(int index) const;
@@ -53,9 +53,6 @@ class GoldilocksModelTrajOpt {
   tau_post_impact_vars_by_mode(int mode) const;
   drake::solvers::VectorXDecisionVariable tau_vars_by_mode(
       int mode, int time_index) const;
-
-  std::unique_ptr<systems::trajectory_optimization::HybridDircon<double>>
-      dircon;
 
   // Version 1 of dynamics constraints
   std::shared_ptr<find_models::DynamicsConstraint> dynamics_constraint_at_head;

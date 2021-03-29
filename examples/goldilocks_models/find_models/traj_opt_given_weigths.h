@@ -20,9 +20,9 @@ void trajOptGivenWeights(
     int robot_option);
 
 void addRegularization(bool is_get_nominal, double eps_reg,
-                       GoldilocksModelTrajOpt& gm_traj_opt);
+                       GoldilocksModelTrajOpt* trajopt);
 void setInitialGuessFromFile(const string& directory, const string& init_file,
-                             GoldilocksModelTrajOpt& gm_traj_opt);
+                             GoldilocksModelTrajOpt* trajopt);
 void augmentConstraintToFixThetaScaling(MatrixXd& B, MatrixXd& A, VectorXd& y,
                                         VectorXd& lb, VectorXd& ub, int n_s,
                                         int n_feature_s,

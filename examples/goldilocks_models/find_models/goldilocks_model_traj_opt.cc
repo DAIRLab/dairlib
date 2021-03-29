@@ -34,14 +34,17 @@ namespace goldilocks_models {
 
 // Constructor
 GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
-    const ReducedOrderModel& rom,
-    std::unique_ptr<HybridDircon<double>> dircon_in,
-    const MultibodyPlant<double>& plant,
-    const std::vector<int>& num_time_samples,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    std::vector<int> num_time_samples, std::vector<double> minimum_timestep,
+    std::vector<double> maximum_timestep,
     std::vector<DirconKinematicDataSet<double>*> constraints,
+    std::vector<DirconOptions> options, const ReducedOrderModel& rom,
     bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
     int robot_option, double constraint_scale, bool pre_and_post_impact_efforts)
-    : n_tau_(rom.n_tau()) {
+    : HybridDircon<double>(plant, num_time_samples, minimum_timestep,
+                           maximum_timestep, constraints, options,
+                           pre_and_post_impact_efforts),
+      n_tau_(rom.n_tau()) {
   // Parameters
   bool is_add_tau_in_cost = setting.is_add_tau_in_cost;
   bool cubic_spline_in_rom_constraint =
@@ -53,15 +56,14 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
   N -= num_time_samples.size() - 1;  // Overlaps between modes
 
   // Members assignment
-  dircon = std::move(dircon_in);
   num_knots_ = N;
 
   // Create decision variables
   // (Since VectorX allows 0-size vector, the trajectory optimization works even
   // when n_tau_ = 0.)
-  tau_vars_ = dircon->NewContinuousVariables(n_tau_ * N, "tau");
-  tau_post_impact_vars_ = dircon->NewContinuousVariables(
-      n_tau_ * (num_time_samples.size() - 1), "tau_p");
+  tau_vars_ = NewContinuousVariables(n_tau_ * N, "tau");
+  tau_post_impact_vars_ =
+      NewContinuousVariables(n_tau_ * (num_time_samples.size() - 1), "tau_p");
 
   // Constraints
   // clang-format off
@@ -159,26 +161,25 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       int N_accum = 0;
       for (unsigned int i = 0; i < num_time_samples.size(); i++) {
         for (int j = 0; j < num_time_samples[i] - 1; j++) {
-          auto x_at_knot_k = dircon->state_vars_by_mode(i, j);
+          auto x_at_knot_k = state_vars_by_mode(i, j);
           auto tau_at_knot_k = pre_and_post_impact_efforts
                                    ? tau_vars_by_mode(i, j)
                                    : reduced_model_input(N_accum + j);
-          auto x_at_knot_kplus1 = dircon->state_vars_by_mode(i, j + 1);
+          auto x_at_knot_kplus1 = state_vars_by_mode(i, j + 1);
           auto tau_at_knot_kplus1 = pre_and_post_impact_efforts
                                         ? tau_vars_by_mode(i, j + 1)
                                         : reduced_model_input(N_accum + j + 1);
-          auto h_btwn_knot_k_iplus1 = dircon->timestep(N_accum + j);
-          dynamics_constraint_at_head_bindings.push_back(dircon->AddConstraint(
-              dynamics_constraint_at_head,
-              {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1, tau_at_knot_kplus1,
-               h_btwn_knot_k_iplus1}));
+          auto h_btwn_knot_k_iplus1 = timestep(N_accum + j);
+          dynamics_constraint_at_head_bindings.push_back(
+              AddConstraint(dynamics_constraint_at_head,
+                            {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1,
+                             tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));
           if (j == num_time_samples[i] - 2) {
             // Add constraint to the end of the last segment
             dynamics_constraint_at_tail_bindings.push_back(
-                dircon->AddConstraint(
-                    dynamics_constraint_at_tail,
-                    {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1,
-                     tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));
+                AddConstraint(dynamics_constraint_at_tail,
+                              {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1,
+                               tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));
           }
         }
         N_accum += num_time_samples[i];
@@ -190,15 +191,14 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       for (unsigned int i = 0; i < num_time_samples.size(); i++) {
         for (int j = 0; j < num_time_samples[i]; j++) {
           int time_index = N_accum + j;
-          auto x_k = dircon->state_vars_by_mode(i, j);
-          auto u_k = pre_and_post_impact_efforts
-                         ? dircon->input_vars_by_mode(i, j)
-                         : dircon->input(time_index);
-          auto lambda_k = dircon->force(i, j);
+          auto x_k = state_vars_by_mode(i, j);
+          auto u_k = pre_and_post_impact_efforts ? input_vars_by_mode(i, j)
+                                                 : input(time_index);
+          auto lambda_k = force(i, j);
           auto tau_k = pre_and_post_impact_efforts
                            ? tau_vars_by_mode(i, j)
                            : reduced_model_input(time_index);
-          dynamics_constraint_at_knot_bindings.push_back(dircon->AddConstraint(
+          dynamics_constraint_at_knot_bindings.push_back(AddConstraint(
               dynamics_constraint_at_knot[i], {x_k, u_k, lambda_k, tau_k}));
         }
         N_accum += num_time_samples[i];
@@ -220,20 +220,20 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
                            ? tau_vars_by_mode(i, j)
                            : reduced_model_input(time_index);
           if (rom_option == 1) {
-            dircon->SetVariableScaling(tau_k(0), tau1_scale);
-            dircon->SetVariableScaling(tau_k(1), tau2_scale);
+            SetVariableScaling(tau_k(0), tau1_scale);
+            SetVariableScaling(tau_k(1), tau2_scale);
           } else if (rom_option == 3) {
             // TODO: The scaling hasn't been tuned yet
-            dircon->SetVariableScaling(tau_k(0), tau1_scale);
-            dircon->SetVariableScaling(tau_k(1), tau2_scale);
+            SetVariableScaling(tau_k(0), tau1_scale);
+            SetVariableScaling(tau_k(1), tau2_scale);
           } else if ((rom_option == 5) || (rom_option == 6)) {
             // TODO: The scaling hasn't been tuned yet
-            dircon->SetVariableScaling(tau_k(0), tau1_scale);
-            dircon->SetVariableScaling(tau_k(1), tau1_scale);
-            dircon->SetVariableScaling(tau_k(2), tau2_scale);
+            SetVariableScaling(tau_k(0), tau1_scale);
+            SetVariableScaling(tau_k(1), tau1_scale);
+            SetVariableScaling(tau_k(2), tau2_scale);
           } else if (rom_option == 8) {
             // TODO: The scaling hasn't been tuned yet
-            dircon->SetVariableScaling(tau_k(0), tau_scale_8);
+            SetVariableScaling(tau_k(0), tau_scale_8);
           }
         }
         N_accum += num_time_samples[i];
@@ -254,7 +254,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
                            ? tau_vars_by_mode(i, j)
                            : reduced_model_input(time_index);
           tau_cost_bindings_.push_back(
-              dircon->AddQuadraticCost(W, VectorXd::Zero(n_tau_), tau_k));
+              AddQuadraticCost(W, VectorXd::Zero(n_tau_), tau_k));
         }
         N_accum += num_time_samples[i];
         N_accum -= 1;  // due to overlaps between modes
@@ -270,8 +270,8 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
           auto tau_k = pre_and_post_impact_efforts
                            ? tau_vars_by_mode(i, j)
                            : reduced_model_input(time_index);
-          dircon->AddBoundingBoxConstraint(
-              0, std::numeric_limits<double>::infinity(), tau_k(0));
+          AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
+                                   tau_k(0));
         }
         N_accum += num_time_samples[i];
         N_accum -= 1;  // due to overlaps between modes
@@ -303,7 +303,7 @@ VectorXDecisionVariable GoldilocksModelTrajOpt::tau_vars_by_mode(
   if (time_index == 0 && mode > 0) {
     return tau_post_impact_vars_by_mode(mode - 1);
   } else {
-    return tau_vars_.segment((dircon->mode_start()[mode] + time_index) * n_tau_,
+    return tau_vars_.segment((mode_start()[mode] + time_index) * n_tau_,
                              n_tau_);
   }
 }

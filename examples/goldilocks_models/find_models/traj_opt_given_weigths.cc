@@ -450,7 +450,8 @@ void addRegularization(bool is_get_nominal, double eps_reg,
   if (!is_get_nominal) {
     auto w = trajopt->decision_variables();
     for (int i = 0; i < w.size(); i++)
-      trajopt->AddQuadraticCost(eps_reg * w(i) * w(i));
+      trajopt->cost_regularization_bindings_.push_back(
+          trajopt->AddQuadraticCost(eps_reg * w(i) * w(i)));
     // cout << "w = " << w << endl;
     // cout << "Check the order of decisiion variable: \n";
     // for (int i = 0; i < w.size(); i++)
@@ -536,7 +537,7 @@ void extractResult(VectorXd& w_sol, const GoldilocksModelTrajOpt& trajopt,
   // Extract solution
   SolutionResult solution_result = result.get_solution_result();
   double tau_cost =
-      solvers::EvalCostGivenSolution(result, trajopt.tau_cost_bindings_);
+      solvers::EvalCostGivenSolution(result, trajopt.cost_tau_bindings_);
 
   /*cout << "sample_idx# = " << sample_idx << endl;
   cout << "    stride_length = " << stride_length << " | "
@@ -3073,31 +3074,39 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   for (int i = 0; i < N - 1; i++) {
     auto v0 = trajopt.state(i).tail(n_v);
     auto v1 = trajopt.state(i + 1).tail(n_v);
-    trajopt.AddCost(((v0.transpose() * W_Q * v0) * fixed_dt / 2)(0));
-    trajopt.AddCost(((v1.transpose() * W_Q * v1) * fixed_dt / 2)(0));
+    trajopt.cost_x_bindings_.push_back(
+        trajopt.AddCost(((v0.transpose() * W_Q * v0) * fixed_dt / 2)(0)));
+    trajopt.cost_x_bindings_.push_back(
+        trajopt.AddCost(((v1.transpose() * W_Q * v1) * fixed_dt / 2)(0)));
   }
   for (int i = 0; i < N - 1; i++) {
     auto u0 = trajopt.input(i);
     auto u1 = trajopt.input(i + 1);
-    trajopt.AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0));
-    trajopt.AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0));
+    trajopt.cost_u_bindings_.push_back(
+        trajopt.AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0)));
+    trajopt.cost_u_bindings_.push_back(
+        trajopt.AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0)));
   }
   if (pre_and_post_impact_efforts) {
     // This block assume that there is only once knot in the second mode
     auto u_post_impact = trajopt.u_post_impact_vars_by_mode(0);
-    trajopt.AddCost(
-        ((u_post_impact.transpose() * W_R * u_post_impact) * fixed_dt / 2)(0));
+    trajopt.cost_u_bindings_.push_back(trajopt.AddCost(
+        ((u_post_impact.transpose() * W_R * u_post_impact) * fixed_dt / 2)(0)));
   }
   // Not use trapozoidal integration
   if (not_trapo_integration_cost) {
     auto v0 = trajopt.state(0).tail(n_v);
     auto v1 = trajopt.state(N - 1).tail(n_v);
-    trajopt.AddCost(((v0.transpose() * W_Q * v0) * fixed_dt / 2)(0));
-    trajopt.AddCost(((v1.transpose() * W_Q * v1) * fixed_dt / 2)(0));
+    trajopt.cost_x_bindings_.push_back(
+        trajopt.AddCost(((v0.transpose() * W_Q * v0) * fixed_dt / 2)(0)));
+    trajopt.cost_x_bindings_.push_back(
+        trajopt.AddCost(((v1.transpose() * W_Q * v1) * fixed_dt / 2)(0)));
     auto u0 = trajopt.input(0);
     auto u1 = trajopt.input(N - 1);
-    trajopt.AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0));
-    trajopt.AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0));
+    trajopt.cost_u_bindings_.push_back(
+        trajopt.AddCost(((u0.transpose() * W_R * u0) * fixed_dt / 2)(0)));
+    trajopt.cost_u_bindings_.push_back(
+        trajopt.AddCost(((u1.transpose() * W_R * u1) * fixed_dt / 2)(0)));
   }
 
   // Testing -- Make the last knot point weight much bigger
@@ -3114,15 +3123,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
             "first mode"
          << multiplier_big_last_knot << " times bigger \n";
     auto u1 = trajopt.input(N - 1);
-    trajopt.AddCost(((u1.transpose() * W_R * u1) * multiplier_big_last_knot *
-                     fixed_dt / 2)(0));
+    trajopt.cost_u_bindings_.push_back(
+        trajopt.AddCost(((u1.transpose() * W_R * u1) *
+                         multiplier_big_last_knot * fixed_dt / 2)(0)));
   }
-
-  // Testing
-  //  auto v0 = trajopt.state(0).tail(n_v);
-  //  auto v1 = trajopt.state(N - 1).tail(n_v);
-  //  trajopt.AddCost(((v0.transpose() * W_Q * v0) * 100 * fixed_dt / 2)(0));
-  //  trajopt.AddCost(((v1.transpose() * W_Q * v1) * 100 * fixed_dt / 2)(0));
 
   // add cost on force difference wrt time
   bool diff_with_force_at_collocation = false;
@@ -3132,13 +3136,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       auto lambda1 = trajopt.force(0, i + 1);
       auto lambdac = trajopt.collocation_force(0, i);
       if (diff_with_force_at_collocation) {
-        trajopt.AddCost(w_lambda_diff *
-                        (lambda0 - lambdac).dot(lambda0 - lambdac));
-        trajopt.AddCost(w_lambda_diff *
-                        (lambdac - lambda1).dot(lambdac - lambda1));
+        trajopt.cost_lambda_diff_bindings_.push_back(trajopt.AddCost(
+            w_lambda_diff * (lambda0 - lambdac).dot(lambda0 - lambdac)));
+        trajopt.cost_lambda_diff_bindings_.push_back(trajopt.AddCost(
+            w_lambda_diff * (lambdac - lambda1).dot(lambdac - lambda1)));
       } else {
-        trajopt.AddCost(w_lambda_diff *
-                        (lambda0 - lambda1).dot(lambda0 - lambda1));
+        trajopt.cost_lambda_diff_bindings_.push_back(trajopt.AddCost(
+            w_lambda_diff * (lambda0 - lambda1).dot(lambda0 - lambda1)));
       }
     }
   }
@@ -3149,7 +3153,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     for (int i = 0; i < N - 1; i++) {
       auto q0 = trajopt.state(i).head(n_q);
       auto q1 = trajopt.state(i + 1).head(n_q);
-      trajopt.AddCost((q0 - q1).dot(Q_q_diff * (q0 - q1)));
+      trajopt.cost_pos_diff_bindings_.push_back(
+          trajopt.AddCost((q0 - q1).dot(Q_q_diff * (q0 - q1))));
     }
   }
   // add cost on pos difference wrt time
@@ -3164,7 +3169,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     for (int i = 0; i < N - 1; i++) {
       auto v0 = trajopt.state(i).tail(n_v);
       auto v1 = trajopt.state(i + 1).tail(n_v);
-      trajopt.AddCost((v0 - v1).dot(Q_v_diff * (v0 - v1)));
+      trajopt.cost_vel_diff_bindings_.push_back(
+          trajopt.AddCost((v0 - v1).dot(Q_v_diff * (v0 - v1))));
     }
   }
   // add cost on input difference wrt time
@@ -3172,20 +3178,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     for (int i = 0; i < N - 1; i++) {
       auto u0 = trajopt.input(i);
       auto u1 = trajopt.input(i + 1);
-      trajopt.AddCost(w_u_diff * (u0 - u1).dot(u0 - u1));
+      trajopt.cost_u_diff_bindings_.push_back(
+          trajopt.AddCost(w_u_diff * (u0 - u1).dot(u0 - u1)));
     }
   }
   // add cost on joint position
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt.state(i).segment(7, 2);
-      trajopt.AddCost(w_q_hip_roll * q.transpose() * q);
+      trajopt.cost_q_hip_roll_bindings_.push_back(
+          trajopt.AddCost(w_q_hip_roll * q.transpose() * q));
     }
   }
   if (w_q_hip_yaw) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt.state(i).segment(9, 2);
-      trajopt.AddCost(w_q_hip_yaw * q.transpose() * q);
+      trajopt.cost_q_hip_yaw_bindings_.push_back(
+          trajopt.AddCost(w_q_hip_yaw * q.transpose() * q));
     }
   }
   if (w_q_quat) {
@@ -3196,8 +3205,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       desired_quat << cos(turning_angle_i / 2), 0, 0, sin(turning_angle_i / 2);
 
       auto quat = trajopt.state(i).head(4);
-      trajopt.AddCost(w_q_quat * (quat - desired_quat).transpose() *
-                      (quat - desired_quat));
+      trajopt.cost_q_quat_xyz_bindings_.push_back(
+          trajopt.AddCost(w_q_quat * (quat - desired_quat).transpose() *
+                          (quat - desired_quat)));
     }
   }
 
@@ -3211,7 +3221,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       auto b = MatrixXd::Zero(n_lambda, 1);
       for (int j = 0; j < num_time_samples[i] - 1; j++) {
         // Add || Ax - b ||^2
-        trajopt.AddL2NormCost(A, b, trajopt.collocation_force(i, j));
+        trajopt.cost_collocation_lambda_bindings_.push_back(
+            trajopt.AddL2NormCost(A, b, trajopt.collocation_force(i, j)));
       }
     }
   }
@@ -3246,7 +3257,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                       ? trajopt.input(idx_start + index)
                       : trajopt.input_vars_by_mode(mode, index);
         auto li = trajopt.force(mode, index);
-        trajopt.AddCost(joint_accel_cost, {xi, ui, li});
+        trajopt.cost_joint_acceleration_bindings_.push_back(
+            trajopt.AddCost(joint_accel_cost, {xi, ui, li}));
       }
       idx_start += num_time_samples[mode] - 1;
     }
@@ -3396,209 +3408,65 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     myfile << "w_q_quat = " << w_q_quat << endl;
     myfile << "w_joint_accel = " << w_joint_accel << endl;
 
-    // Extract result for printing
-    VectorXd time_at_knots = trajopt.GetSampleTimes(result);
-    MatrixXd state_at_knots = trajopt.GetStateSamples(result);
-    MatrixXd input_at_knots = trajopt.GetInputSamples(result);
-
-    // Calculate each term of the cost
-    double total_cost = 0;
-    double cost_x = 0;
-    for (int i = 0; i < N - 1; i++) {
-      auto v0 = state_at_knots.col(i).tail(n_v);
-      auto v1 = state_at_knots.col(i + 1).tail(n_v);
-      auto h = time_at_knots(i + 1) - time_at_knots(i);
-      cost_x += ((v0.transpose() * W_Q * v0) * h / 2)(0);
-      cost_x += ((v1.transpose() * W_Q * v1) * h / 2)(0);
-    }
-    total_cost += cost_x;
-    myfile << "cost_x = " << cost_x << endl;
-    double cost_u = 0;
-    for (int i = 0; i < N - 1; i++) {
-      auto u0 = input_at_knots.col(i);
-      auto u1 = input_at_knots.col(i + 1);
-      auto h = time_at_knots(i + 1) - time_at_knots(i);
-      cost_u += ((u0.transpose() * W_R * u0) * h / 2)(0);
-      cost_u += ((u1.transpose() * W_R * u1) * h / 2)(0);
-    }
-    if (pre_and_post_impact_efforts) {
-      auto u_post_impact =
-          result.GetSolution(trajopt.u_post_impact_vars_by_mode(0));
-      cost_u +=
-          ((u_post_impact.transpose() * W_R * u_post_impact) * fixed_dt / 2)(0);
-    }
-    total_cost += cost_u;
-    myfile << "cost_u = " << cost_u << endl;
-    double cost_lambda = 0;
-    for (unsigned int i = 0; i < num_time_samples.size(); i++) {
-      for (int j = 0; j < num_time_samples[i]; j++) {
-        auto lambda = result.GetSolution(trajopt.force(i, j));
-        cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();
-      }
-    }
-    total_cost += cost_lambda;
-    myfile << "cost_lambda (at knots) = " << cost_lambda << endl;
-    // TODO: Sum collocation force cost
-    myfile << "cost_lambda (at collocation points) = ..." << endl;
-    // cost on force difference wrt time
-    double cost_lambda_diff = 0;
-    for (int i = 0; i < N - 1; i++) {
-      auto lambda0 = result.GetSolution(trajopt.force(0, i));
-      auto lambda1 = result.GetSolution(trajopt.force(0, i + 1));
-      auto lambdac = result.GetSolution(trajopt.collocation_force(0, i));
-      if (diff_with_force_at_collocation) {
-        cost_lambda_diff +=
-            w_lambda_diff * (lambda0 - lambdac).dot(lambda0 - lambdac);
-        cost_lambda_diff +=
-            w_lambda_diff * (lambdac - lambda1).dot(lambdac - lambda1);
-      } else {
-        cost_lambda_diff +=
-            w_lambda_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
-      }
-    }
-    total_cost += cost_lambda_diff;
-    myfile << "cost_lambda_diff = " << cost_lambda_diff << endl;
-    // cost on pos difference wrt time
-    double cost_pos_diff = 0;
-    for (int i = 0; i < N - 1; i++) {
-      auto q0 = result.GetSolution(trajopt.state(i).head(n_q));
-      auto q1 = result.GetSolution(trajopt.state(i + 1).head(n_q));
-      cost_pos_diff += (q0 - q1).dot(Q_q_diff * (q0 - q1));
-    }
-    total_cost += cost_pos_diff;
-    myfile << "cost_pos_diff = " << cost_pos_diff << endl;
-    // cost on vel difference wrt time
-    double cost_vel_diff = 0;
-    for (int i = 0; i < N - 1; i++) {
-      auto v0 = result.GetSolution(trajopt.state(i).tail(n_v));
-      auto v1 = result.GetSolution(trajopt.state(i + 1).tail(n_v));
-      cost_vel_diff += (v0 - v1).dot(Q_v_diff * (v0 - v1));
-    }
-    total_cost += cost_vel_diff;
-    myfile << "cost_vel_diff = " << cost_vel_diff << endl;
-    // cost on input difference wrt time
-    double cost_u_diff = 0;
-    for (int i = 0; i < N - 1; i++) {
-      auto u0 = result.GetSolution(trajopt.input(i));
-      auto u1 = result.GetSolution(trajopt.input(i + 1));
-      cost_u_diff += w_u_diff * (u0 - u1).dot(u0 - u1);
-    }
-    total_cost += cost_u_diff;
-    myfile << "cost_u_diff = " << cost_u_diff << endl;
-    // add cost on joint position
-    double cost_q_hip_roll = 0;
-    for (int i = 0; i < N; i++) {
-      auto q = result.GetSolution(trajopt.state(i).segment(7, 2));
-      cost_q_hip_roll += w_q_hip_roll * q.transpose() * q;
-    }
-    total_cost += cost_q_hip_roll;
-    myfile << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
-    double cost_q_hip_yaw = 0;
-    for (int i = 0; i < N; i++) {
-      auto q = result.GetSolution(trajopt.state(i).segment(9, 2));
-      cost_q_hip_yaw += w_q_hip_yaw * q.transpose() * q;
-    }
-    total_cost += cost_q_hip_yaw;
-    myfile << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
-    // add cost on quaternion
-    double cost_q_quat_xyz = 0;
-    for (int i = 0; i < N; i++) {
-      // get desired turning rate at knot point i
-      double turning_angle_i = turning_angle * i / (N - 1);
-      VectorXd desired_quat(4);
-      desired_quat << cos(turning_angle_i / 2), 0, 0, sin(turning_angle_i / 2);
-
-      auto quat = result.GetSolution(trajopt.state(i).head(4));
-      cost_q_quat_xyz +=
-          w_q_quat * (quat - desired_quat).transpose() * (quat - desired_quat);
-    }
-    total_cost += cost_q_quat_xyz;
-    myfile << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
-    double cost_joint_acceleration = 0;
-    if (add_joint_acceleration_cost) {
-      int n_mode =
-          joint_accel_cost_in_second_mode ? num_time_samples.size() : 1;
-      int idx_start = 0;
-      for (unsigned int mode = 0; mode < n_mode; mode++) {
-        for (int index = 0; index < num_time_samples[mode]; index++) {
-          auto xi = result.GetSolution(trajopt.state_vars_by_mode(mode, index));
-          auto ui =
-              result.GetSolution((only_one_mode || !pre_and_post_impact_efforts)
-                                     ? trajopt.input(idx_start + index)
-                                     : trajopt.input_vars_by_mode(mode, index));
-          auto li = result.GetSolution(trajopt.force(mode, index));
-
-          Eigen::VectorXd x_val(xi.size() + ui.size() + li.size());
-          x_val << xi, ui, li;
-          Eigen::VectorXd y_val(1);
-          joint_accel_cost->Eval(x_val, &y_val);
-          cost_joint_acceleration += y_val(0);
-        }
-        idx_start += num_time_samples[mode] - 1;
-      }
-    }
-    total_cost += cost_joint_acceleration;
-    myfile << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
-
-    myfile << "total_cost (only the nominal traj cost terms) = " << total_cost
-           << endl;
-
     // Print each term of the cost to a file
-    // TODO: before we can use the following code, we have to make
-    //  GoldilocksModelTrajOpt a derived class from HybridDircon, so that we can
-    //  save the cost bindings.
-    /*double total_cost = 0;
+    double sub_total_cost = 0;
     double cost_x =
         solvers::EvalCostGivenSolution(result, trajopt.cost_x_bindings_);
     myfile << "cost_x = " << cost_x << endl;
-    total_cost += cost_x;
+    sub_total_cost += cost_x;
     double cost_u =
         solvers::EvalCostGivenSolution(result, trajopt.cost_u_bindings_);
     myfile << "cost_u = " << cost_u << endl;
-    total_cost += cost_u;
-    double cost_lambda_at_knots = solvers::EvalCostGivenSolution(
-        result, trajopt.cost_lambda_at_knots_bindings_);
-    myfile << "cost_lambda_at_knots = " << cost_lambda_at_knots << endl;
-    total_cost += cost_lambda_at_knots;
-    // TODO: Sum collocation force cost
-    myfile << "cost_lambda (at collocation points) = ..." << endl;
+    sub_total_cost += cost_u;
     double cost_lambda_diff = solvers::EvalCostGivenSolution(
         result, trajopt.cost_lambda_diff_bindings_);
     myfile << "cost_lambda_diff = " << cost_lambda_diff << endl;
-    total_cost += cost_lambda_diff;
-    double cost_pos_diff = solvers::EvalCostGivenSolution(
-        result, trajopt.cost_pos_diff_bindings_);
+    sub_total_cost += cost_lambda_diff;
+    double cost_pos_diff =
+        solvers::EvalCostGivenSolution(result, trajopt.cost_pos_diff_bindings_);
     myfile << "cost_pos_diff = " << cost_pos_diff << endl;
-    total_cost += cost_pos_diff;
-    double cost_vel_diff = solvers::EvalCostGivenSolution(
-        result, trajopt.cost_vel_diff_bindings_);
+    sub_total_cost += cost_pos_diff;
+    double cost_vel_diff =
+        solvers::EvalCostGivenSolution(result, trajopt.cost_vel_diff_bindings_);
     myfile << "cost_vel_diff = " << cost_vel_diff << endl;
-    total_cost += cost_vel_diff;
-    double cost_u_diff = solvers::EvalCostGivenSolution(
-        result, trajopt.cost_u_diff_bindings_);
+    sub_total_cost += cost_vel_diff;
+    double cost_u_diff =
+        solvers::EvalCostGivenSolution(result, trajopt.cost_u_diff_bindings_);
     myfile << "cost_u_diff = " << cost_u_diff << endl;
-    total_cost += cost_u_diff;
+    sub_total_cost += cost_u_diff;
     double cost_q_hip_roll = solvers::EvalCostGivenSolution(
         result, trajopt.cost_q_hip_roll_bindings_);
     myfile << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
-    total_cost += cost_q_hip_roll;
+    sub_total_cost += cost_q_hip_roll;
     double cost_q_hip_yaw = solvers::EvalCostGivenSolution(
         result, trajopt.cost_q_hip_yaw_bindings_);
     myfile << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
-    total_cost += cost_q_hip_yaw;
+    sub_total_cost += cost_q_hip_yaw;
     double cost_q_quat_xyz = solvers::EvalCostGivenSolution(
         result, trajopt.cost_q_quat_xyz_bindings_);
     myfile << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
-    total_cost += cost_q_quat_xyz;
+    sub_total_cost += cost_q_quat_xyz;
+    double cost_lambda =
+        solvers::EvalCostGivenSolution(result, trajopt.cost_lambda_bindings_);
+    myfile << "cost_lambda = " << cost_lambda << endl;
+    sub_total_cost += cost_lambda;
+    double cost_collocation_lambda = solvers::EvalCostGivenSolution(
+        result, trajopt.cost_collocation_lambda_bindings_);
+    myfile << "cost_collocation_lambda = " << cost_collocation_lambda << endl;
+    sub_total_cost += cost_collocation_lambda;
     double cost_joint_acceleration = solvers::EvalCostGivenSolution(
         result, trajopt.cost_joint_acceleration_bindings_);
     myfile << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
-    total_cost += cost_joint_acceleration;
-    double tau_cost =
-        solvers::EvalCostGivenSolution(result, trajopt.tau_cost_bindings_);
-    myfile << "tau_cost = " << tau_cost << endl;
-    total_cost += tau_cost;
-    myfile << "total_cost = " << total_cost << endl;*/
+    sub_total_cost += cost_joint_acceleration;
+    double cost_tau =
+        solvers::EvalCostGivenSolution(result, trajopt.cost_tau_bindings_);
+    myfile << "cost_tau = " << cost_tau << endl;
+    sub_total_cost += cost_tau;
+    double cost_regularization = solvers::EvalCostGivenSolution(
+        result, trajopt.cost_regularization_bindings_);
+    myfile << "cost_regularization = " << cost_regularization << endl;
+    sub_total_cost += cost_regularization;
+    myfile << "sub_total_cost = " << sub_total_cost << endl;
 
     // Constraints
     myfile << endl;
@@ -3688,6 +3556,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     myfile << endl;
 
     myfile.close();
+
   }  // end if is_print_for_debugging
 }
 

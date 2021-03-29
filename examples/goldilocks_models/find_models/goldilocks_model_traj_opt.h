@@ -68,7 +68,7 @@ class GoldilocksModelTrajOpt
   // Collections of costs
   std::vector<Binding<Cost>> cost_x_bindings_;
   std::vector<Binding<Cost>> cost_u_bindings_;
-  std::vector<Binding<Cost>> cost_lambda_at_knots_bindings_;
+  std::vector<Binding<Cost>> cost_collocation_lambda_bindings_;
   std::vector<Binding<Cost>> cost_lambda_diff_bindings_;
   std::vector<Binding<Cost>> cost_pos_diff_bindings_;
   std::vector<Binding<Cost>> cost_vel_diff_bindings_;
@@ -77,8 +77,9 @@ class GoldilocksModelTrajOpt
   std::vector<Binding<Cost>> cost_q_hip_yaw_bindings_;
   std::vector<Binding<Cost>> cost_q_quat_xyz_bindings_;
   std::vector<Binding<Cost>> cost_joint_acceleration_bindings_;
+  std::vector<Binding<Cost>> cost_regularization_bindings_;
 
-  std::vector<Binding<Cost>> tau_cost_bindings_;
+  std::vector<Binding<Cost>> cost_tau_bindings_;
 
  private:
   int num_knots_;

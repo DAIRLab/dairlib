@@ -235,6 +235,9 @@ class HybridDircon
     return impact_constraints_[mode];
   }
 
+  std::vector<drake::solvers::Binding<drake::solvers::Cost>>
+      cost_lambda_bindings_;
+
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   const drake::multibody::MultibodyPlant<T>& plant_;

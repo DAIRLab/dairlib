@@ -253,7 +253,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
           auto tau_k = pre_and_post_impact_efforts
                            ? tau_vars_by_mode(i, j)
                            : reduced_model_input(time_index);
-          tau_cost_bindings_.push_back(
+          cost_tau_bindings_.push_back(
               AddQuadraticCost(W, VectorXd::Zero(n_tau_), tau_k));
         }
         N_accum += num_time_samples[i];

@@ -5,6 +5,7 @@
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "systems/framework/output_vector.h"
 
+using drake::multibody::JointActuatorIndex;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 
@@ -64,18 +65,10 @@ InputSupervisor::InputSupervisor(
   switch_time_index_ = DeclareDiscreteState(1);
   prev_efforts_time_index_ = DeclareDiscreteState(1);
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
+  soft_estop_flag_index_ = DeclareDiscreteState(1);
 
-  K_ = Eigen::MatrixXd::Zero(num_actuators_, num_velocities_);
-  K_(0, 6) = -1;
-  K_(1, 7) = -1;
-  K_(2, 8) = -1;
-  K_(3, 9) = -1;
-  K_(4, 10) = -1;
-  K_(5, 11) = -1;
-  K_(6, 12) = -1;
-  K_(7, 13) = -1;
-  K_(8, 19) = -1;
-  K_(9, 21) = -1;
+  K_ = plant_.MakeActuationMatrix().transpose();
+  K_ *= kEStopGain;
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
@@ -100,6 +93,8 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
       is_error || (command->get_timestamp() -
                        context.get_discrete_state(prev_efforts_time_index_)[0] >
                    kMaxControllerDelay);
+  is_error =
+      is_error || context.get_discrete_state(soft_estop_flag_index_)[0] == 1;
   if ((command->get_timestamp() -
            context.get_discrete_state(prev_efforts_time_index_)[0] >
        kMaxControllerDelay)) {
@@ -107,9 +102,11 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
               << std::endl;
   }
 
+  // If the soft estop signal is triggered, applying only damping regardless of
+  // any other controller signal
   if (cassie_out->pelvis.radio.channel[15] == -1) {
-    Eigen::VectorXd u = -K_ * state->get_value();
-    output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
+    Eigen::VectorXd u = -K_ * state->GetVelocities();
+    output->SetDataVector(u);
     return;
   }
 
@@ -208,6 +205,8 @@ void InputSupervisor::UpdateErrorFlag(
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
+  const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
+      context, cassie_input_port_);
 
   if (command->get_timestamp() -
           discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] >
@@ -216,6 +215,10 @@ void InputSupervisor::UpdateErrorFlag(
   } else {
     discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] =
         command->get_timestamp();
+  }
+
+  if (cassie_out->pelvis.radio.channel[15] == -1) {
+    discrete_state->get_mutable_vector(soft_estop_flag_index_)[0] = 1;
   }
 
   const Eigen::VectorXd& velocities = state->GetVelocities();

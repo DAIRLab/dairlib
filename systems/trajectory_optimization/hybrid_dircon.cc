@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "multibody/multibody_utils.h"
+
 #include "drake/math/autodiff.h"
 #include "drake/solvers/decision_variable.h"
 
@@ -20,6 +21,7 @@ using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
+using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Expression;
 using drake::systems::trajectory_optimization::MultipleShooting;
@@ -37,10 +39,10 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
                               vector<DirconKinematicDataSet<T>*> constraints,
                               vector<DirconOptions> options)
     : MultipleShooting(
-          plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
-          std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
-              num_time_samples.size() + 1,
-          1e-8, 1e8),
+    plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
+    std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
+        num_time_samples.size() + 1,
+    1e-8, 1e8),
       plant_(plant),
       constraints_(constraints),
       num_modes_(num_time_samples.size()),
@@ -67,7 +69,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     for (int j = 0; j < mode_lengths_[i] - 2; j++) {
       // all timesteps must be equal
       AddLinearConstraint(timestep(mode_start_[i] + j) ==
-                          timestep(mode_start_[i] + j + 1));
+          timestep(mode_start_[i] + j + 1));
     }
 
     // initialize constraint lengths
@@ -107,6 +109,17 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           constraints_[i]->countConstraintsWithoutSkipping(),
           "impulse[" + std::to_string(i) + "]"));
     }
+    //  Post-impact variables. Note: impulse variables declared below.
+    if (i > 0) {
+      v_post_impact_vars_substitute_.push_back(
+          {state().tail(plant_.num_velocities()),
+           Eigen::Map<MatrixXDecisionVariable>(
+               ((drake::solvers::VectorXDecisionVariable)
+                   v_post_impact_vars_by_mode(i))
+                   .data(),
+               plant_.num_velocities(), 1)
+               .cast<Expression>()});
+    }
 
     // For N-1 timesteps, add a constraint which depends on the knot
     // value along with the state and input vectors at that knot and the
@@ -128,7 +141,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     auto dynamic_constraint = std::make_shared<DirconDynamicConstraint<T>>(
         plant_, *constraints_[i], is_quaternion);
     DRAKE_ASSERT(static_cast<int>(dynamic_constraint->num_constraints()) ==
-                 num_states());
+        num_states());
     dynamic_constraint->SetConstraintScaling(
         options[i].getDynConstraintScaling());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
@@ -221,8 +234,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     // Add force to cost function
     if (options[i].getForceCost() != 0) {
       auto A = options[i].getForceCost() *
-               MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),
-                                  num_kinematic_constraints_wo_skipping(i));
+          MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),
+                             num_kinematic_constraints_wo_skipping(i));
       auto b = MatrixXd::Zero(num_kinematic_constraints_wo_skipping(i), 1);
       for (int j = 0; j < mode_lengths_[i]; j++) {
         // Add || Ax - b ||^2
@@ -256,7 +269,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       } else {
         auto x_vars_prev = state_vars_by_mode(i - 1, mode_lengths_[i - 1] - 1);
         AddConstraint(v_post_impact_vars_by_mode(i - 1) ==
-                      x_vars_prev.tail(plant.num_velocities()));
+            x_vars_prev.tail(plant.num_velocities()));
       }
     }
 
@@ -305,7 +318,19 @@ VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(
   }
 }
 
-// TODO: need to configure this to handle the hybrid discontinuities properly
+template <typename T>
+Expression HybridDircon<T>::SubstitutePostImpactVelocityVariables(
+    const drake::symbolic::Expression& e, int mode) const {
+  DRAKE_DEMAND(mode > 0);
+  drake::symbolic::Substitution s;
+  for (int i = 0; i < v_post_impact_vars_substitute_[mode - 1].first.size();
+       ++i) {
+    s.emplace(v_post_impact_vars_substitute_[mode - 1].first[i],
+              v_post_impact_vars_substitute_[mode - 1].second[i]);
+  }
+  return e.Substitute(s);
+}
+
 template <typename T>
 void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Trapezoidal integration:
@@ -316,14 +341,26 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Here, we add the cost using symbolic expression. The expression is a
   // polynomial of degree 3 which Drake can handle, although the
   // documentation says it only supports up to second order.
-  AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) * h_vars()(0) /
-          2);
-  for (int i = 1; i <= N() - 2; i++) {
-    AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
-            (h_vars()(i - 1) + h_vars()(i)) / 2);
+  for (int mode = 0; mode < num_modes(); ++mode) {
+    int mode_start = mode_start_[mode];
+    int mode_end = mode_start_[mode] + mode_length(mode);
+    // Substitute the velocity vars with the correct post-impact velocity vars
+    // before substituting the rest of the expression
+    if (mode > 0) {
+      AddCost(MultipleShooting::SubstitutePlaceholderVariables(
+          SubstitutePostImpactVelocityVariables(g, mode), mode_start) *
+          (h_vars()(mode_start) / 2));
+    } else {
+      AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, mode_start) *
+          (h_vars()(mode_start) / 2));
+    }
+    for (int i = mode_start + 1; i < mode_end - 1; ++i) {
+      AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
+          (h_vars()(i - 1) + h_vars()(i)) / 2);
+    }
+    AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, mode_end - 1) *
+        h_vars()(mode_end - 2) / 2);
   }
-  AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
-          h_vars()(N() - 2) / 2);
 }
 
 template <typename T>
@@ -380,7 +417,7 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
                                                 derivatives[0]);
   for (int mode = 1; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
-    if(mode_lengths_[mode] < 2){
+    if (mode_lengths_[mode] < 2) {
       continue;
     }
     state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
@@ -564,47 +601,46 @@ void HybridDircon<T>::ScaleKinConstraintSlackVariables(
 }
 
 template <typename T>
-void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
-    std::vector<unsigned int> poses_per_mode, double alpha,
-    std::string weld_frame_to_world) {
+void HybridDircon<T>::CreateVisualizationCallback(
+    std::string model_file, std::vector<unsigned int> poses_per_mode,
+    double alpha, std::string weld_frame_to_world) {
   DRAKE_DEMAND(!callback_visualizer_);  // Cannot be set twice
-  DRAKE_DEMAND(poses_per_mode.size() == (uint) num_modes_);
+  DRAKE_DEMAND(poses_per_mode.size() == (uint)num_modes_);
 
   // Count number of total poses
-  int num_poses = num_modes_ + 1; // start and finish of every mode
+  int num_poses = num_modes_ + 1;  // start and finish of every mode
   for (int i = 0; i < num_modes_; i++) {
-    DRAKE_DEMAND(poses_per_mode.at(i) == 0 || 
-        (poses_per_mode.at(i) + 2 <= (uint) mode_lengths_.at(i)));
+    DRAKE_DEMAND(poses_per_mode.at(i) == 0 ||
+        (poses_per_mode.at(i) + 2 <= (uint)mode_lengths_.at(i)));
     num_poses += poses_per_mode.at(i);
   }
 
   // Assemble variable list
-  drake::solvers::VectorXDecisionVariable vars(
-      num_poses * plant_.num_positions());
+  drake::solvers::VectorXDecisionVariable vars(num_poses *
+      plant_.num_positions());
 
   int index = 0;
   for (int i = 0; i < num_modes_; i++) {
     // Set variable block, extracting positions only
-    vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
-      state_vars_by_mode(i, 0).head(plant_.num_positions());
+    vars.segment(index * plant_.num_positions(), plant_.num_positions()) =
+        state_vars_by_mode(i, 0).head(plant_.num_positions());
     index++;
 
     for (uint j = 0; j < poses_per_mode.at(i); j++) {
-
       // The jth element in mode i, counting in between the start/end poses
       int modei_index =
-          (j + 1) * (mode_lengths_.at(i) - 1)/(poses_per_mode.at(i) + 1);
+          (j + 1) * (mode_lengths_.at(i) - 1) / (poses_per_mode.at(i) + 1);
 
-      vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
+      vars.segment(index * plant_.num_positions(), plant_.num_positions()) =
           state_vars_by_mode(i, modei_index).head(plant_.num_positions());
       index++;
-    } 
+    }
   }
 
   // Final state
-  vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
-      state_vars_by_mode(num_modes_ - 1, mode_lengths_.at(num_modes_ - 1) - 1).
-          head(plant_.num_positions());
+  vars.segment(index * plant_.num_positions(), plant_.num_positions()) =
+      state_vars_by_mode(num_modes_ - 1, mode_lengths_.at(num_modes_ - 1) - 1)
+          .head(plant_.num_positions());
 
   // Create transparency vector
   VectorXd alpha_vec = VectorXd::Constant(num_poses, alpha);
@@ -613,13 +649,13 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
 
   // Create visualizer
   callback_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-    model_file, num_poses, alpha_vec, weld_frame_to_world);
+      model_file, num_poses, alpha_vec, weld_frame_to_world);
 
   // Callback lambda function
   auto my_callback = [this, num_poses](const Eigen::Ref<const VectorXd>& vars) {
     VectorXd vars_copy = vars;
     Eigen::Map<MatrixXd> states(vars_copy.data(), this->plant_.num_positions(),
-        num_poses);
+                                num_poses);
 
     this->callback_visualizer_->DrawPoses(states);
   };
@@ -628,11 +664,12 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
 }
 
 template <typename T>
-void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
-      unsigned int num_poses, double alpha, std::string weld_frame_to_world) {
+void HybridDircon<T>::CreateVisualizationCallback(
+    std::string model_file, unsigned int num_poses, double alpha,
+    std::string weld_frame_to_world) {
   // Check that there is an appropriate number of poses
-  DRAKE_DEMAND(num_poses >= (uint) num_modes_ + 1);
-  DRAKE_DEMAND(num_poses <= (uint) N());
+  DRAKE_DEMAND(num_poses >= (uint)num_modes_ + 1);
+  DRAKE_DEMAND(num_poses <= (uint)N());
 
   // sum of mode lengths, excluding ends
   int mode_sum = 0;
@@ -645,7 +682,7 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
   // Split up num_poses per modes, rounding down
   // If NP is the total number of  poses to visualize, excluding ends (interior)
   //   S is mode_sum, the total number of the interior knot points
-  //   and N the number of interior knot points for a particular mode, then 
+  //   and N the number of interior knot points for a particular mode, then
   //
   //   poses = (NP * N )/S
   unsigned int num_poses_without_ends = num_poses - num_modes_ - 1;
@@ -667,7 +704,7 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
     double value = 0;
     for (int i = 0; i < num_modes_; i++) {
       double fractional_value =
-          num_poses_without_ends * (mode_lengths_.at(i) - 2) - 
+          num_poses_without_ends * (mode_lengths_.at(i) - 2) -
               num_poses_per_mode.at(i) * mode_sum;
 
       if (fractional_value > value) {
@@ -681,16 +718,16 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
   }
 
   std::cout << "poses per mode: " << std::endl;
-  for (auto& n : num_poses_per_mode){
+  for (auto& n : num_poses_per_mode) {
     std::cout << n << std::endl;
   }
   CreateVisualizationCallback(model_file, num_poses_per_mode, alpha,
-      weld_frame_to_world);
+                              weld_frame_to_world);
 }
 
 template <typename T>
-void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
-      double alpha, std::string weld_frame_to_world) {
+void HybridDircon<T>::CreateVisualizationCallback(
+    std::string model_file, double alpha, std::string weld_frame_to_world) {
   CreateVisualizationCallback(model_file, N(), alpha, weld_frame_to_world);
 }
 

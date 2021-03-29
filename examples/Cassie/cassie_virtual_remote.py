@@ -28,6 +28,8 @@ class KeyboardManager():
         self.trim_y = 0
         self.delta_vx = 0.1
         self.delta_vy = 0.05
+        self.delta_z = 0.05
+        self.height_adjust = 0
 
 
     def switch_motion_key(self, key):
@@ -44,6 +46,13 @@ class KeyboardManager():
             if event.type == QUIT:
                 sys.exit(0)
             elif event.type == KEYDOWN:
+                if (event.key == K_u):
+                    self.height_adjust += self.delta_z
+                    return
+                elif (event.key == K_d):
+                    self.height_adjust -= self.delta_z
+                    return
+
                 self.vel += self.switch_motion_key(event.key)
                 if np.abs(self.vel[0]) < 1e-2:
                     self.vel[0] = 0.0

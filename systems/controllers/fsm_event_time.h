@@ -1,5 +1,9 @@
 #pragma once
 
+#include <limits>
+
+#include "systems/framework/output_vector.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -9,12 +13,21 @@ namespace systems {
 /// state machine. If the user provides `fsm_states_of_interest` to the
 /// constructor, FiniteStateMachineEventTime creates a second output port that
 /// sends out the start time of the state that the user is interested in.
+///
+/// We connect this leafsystem to OutputVector in order to get the current time.
+/// We note that context.time is always at least one timestep older robot's
+/// output time when we use LcmDrivenLoop.
 class FiniteStateMachineEventTime : public drake::systems::LeafSystem<double> {
  public:
-  FiniteStateMachineEventTime(std::vector<int> fsm_states_of_interest = {});
+  FiniteStateMachineEventTime(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      std::vector<int> fsm_states_of_interest = {});
 
   const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(robot_output_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_event_time() const {
     return this->get_output_port(start_time_port_);
@@ -37,6 +50,7 @@ class FiniteStateMachineEventTime : public drake::systems::LeafSystem<double> {
 
   // Port index
   int fsm_port_;
+  int robot_output_port_;
   int start_time_port_;
   int start_time_of_interest_port_;
 

@@ -800,8 +800,8 @@ void RomTrajOptCassie::AddRegularizationCost(
 
   bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
-    auto x_f = xf_vars_by_mode(i);
-    auto x_0_post = x0_vars_by_mode(i + 1);
+    auto x_preimpact = xf_vars_by_mode(i);
+    auto x_postimpact = x0_vars_by_mode(i + 1);
 
     const VectorXd& modified_x_guess = left_stance
                                            ? modified_x_guess_right_in_front
@@ -809,35 +809,35 @@ void RomTrajOptCassie::AddRegularizationCost(
 
     // 1. Position
     fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_z, modified_x_guess.segment<1>(6), x_f.segment<1>(6)));
+        Id_z, modified_x_guess.segment<1>(6), x_preimpact.segment<1>(6)));
     fom_reg_joint_cost_bindings_.push_back(
         AddQuadraticErrorCost(Id_joints, modified_x_guess.segment(7, n_q_ - 7),
-                              x_f.segment(7, n_q_ - 7)));
-    fom_reg_xy_cost_bindings_.push_back(
-        AddQuadraticErrorCost(Id_xy, des_xy_pos.at(i + 1), x_f.segment<2>(4)));
+                              x_preimpact.segment(7, n_q_ - 7)));
+    fom_reg_xy_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_xy, des_xy_pos.at(i + 1), x_preimpact.segment<2>(4)));
     VectorX<double> quat_identity(4);
     quat_identity << 1, 0, 0, 0;
     fom_reg_quat_cost_bindings_.push_back(
-        AddQuadraticErrorCost(Id_quat, quat_identity, x_f.head(4)));
+        AddQuadraticErrorCost(Id_quat, quat_identity, x_preimpact.head(4)));
 
     // 2. Velocity
     // Preimpact
     /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_vel, modified_x_guess.segment(n_q_, n_v_),
-        x_f.segment(n_q_, n_v_)));*/
+        x_preimpact.segment(n_q_, n_v_)));*/
     fom_reg_vel_cost_bindings_.push_back(
         AddQuadraticErrorCost(Id_x_vel, modified_x_guess.segment(n_q_ + 3, 1),
-                              x_f.segment(n_q_ + 3, 1)));
+                              x_preimpact.segment(n_q_ + 3, 1)));
     // Postimpact
     //    if (i == num_modes_ - 1) {
     //      Id_x_vel *= 1000000;
     //    }
     /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_vel, modified_x_guess.segment(n_q_, n_v_),
-        x_0_post.segment(n_q_, n_v_)));*/
+        x_postimpact.segment(n_q_, n_v_)));*/
     fom_reg_vel_cost_bindings_.push_back(
         AddQuadraticErrorCost(Id_x_vel, modified_x_guess.segment(n_q_ + 3, 1),
-                              x_0_post.segment(n_q_ + 3, 1)));
+                              x_postimpact.segment(n_q_ + 3, 1)));
 
     left_stance = !left_stance;
   }
@@ -888,25 +888,20 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
       }
     }
     // FOM states
-    auto x_0 = x0_vars_by_mode(i);
-    auto x_f = xf_vars_by_mode(i);
-    if (left_stance) {
-      SetInitialGuess(x_0.tail(n_x_ - 6), x_guess_left_in_front.tail(n_x_ - 6));
-      // TODO: this should be preimpact
-      SetInitialGuess(x_f.tail(n_x_ - 6),
-                      x_guess_right_in_front.tail(n_x_ - 6));
-    } else {
-      // TODO: this should be preimpact
-      SetInitialGuess(x_0.tail(n_x_ - 6),
-                      x_guess_right_in_front.tail(n_x_ - 6));
-      SetInitialGuess(x_f.tail(n_x_ - 6), x_guess_left_in_front.tail(n_x_ - 6));
-    }
-    SetInitialGuess(x_0.segment(4, 2), des_xy_pos.at(i));
-    SetInitialGuess(x_f.segment(4, 2), des_xy_pos.at(i + 1));
+    auto x_preimpact = xf_vars_by_mode(i);
+    auto x_postimpact = x0_vars_by_mode(i + 1);
+    // TODO: we should have preimpact and postimpact of x_guess
+    SetInitialGuess(x_preimpact.tail(n_x_ - 6),
+                    left_stance ? x_guess_right_in_front.tail(n_x_ - 6)
+                                : x_guess_left_in_front.tail(n_x_ - 6));
+    SetInitialGuess(x_postimpact.tail(n_x_ - 6),
+                    left_stance ? x_guess_right_in_front.tail(n_x_ - 6)
+                                : x_guess_left_in_front.tail(n_x_ - 6));
+    // Floating base position
+    SetInitialGuess(x_preimpact.segment(4, 2), des_xy_pos.at(i + 1));
     VectorX<double> quat_identity(4);
     quat_identity << 1, 0, 0, 0;
-    SetInitialGuess(x_0.head(4), quat_identity);
-    SetInitialGuess(x_f.head(4), quat_identity);
+    SetInitialGuess(x_preimpact.head(4), quat_identity);
 
     left_stance = !left_stance;
   }

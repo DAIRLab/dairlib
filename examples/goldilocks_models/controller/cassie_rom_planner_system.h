@@ -49,11 +49,6 @@ struct PlannerSetting {
   double w_Q;
   double w_R;
   double w_rom_reg;
-  // Regularization cost on FOM state
-  double w_reg_quat_;
-  double w_reg_xy_;
-  double w_reg_z_;
-  double w_reg_joints_;
 
   // Files parameters
   std::string dir_model;  // location of the model files
@@ -85,10 +80,11 @@ struct PlannerSetting {
     cout << "w_Q" << w_Q << endl;
     cout << "w_R" << w_R << endl;
     cout << "w_rom_reg" << w_rom_reg << endl;
-    cout << "w_reg_quat_" << w_reg_quat_ << endl;
-    cout << "w_reg_xy_" << w_reg_xy_ << endl;
-    cout << "w_reg_z_" << w_reg_z_ << endl;
-    cout << "w_reg_joints_" << w_reg_joints_ << endl;
+    cout << "w_reg_quat_" << gains.w_reg_quat << endl;
+    cout << "w_reg_xy_" << gains.w_reg_xy << endl;
+    cout << "w_reg_z_" << gains.w_reg_z << endl;
+    cout << "w_reg_joints_" << gains.w_reg_joints << endl;
+    cout << "w_reg_hip_yaw_" << gains.w_reg_hip_yaw << endl;
     cout << "dir_model" << dir_model << endl;
     cout << "dir_data" << dir_data << endl;
     cout << "init_file" << init_file << endl;
@@ -108,7 +104,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   CassiePlannerWithMixedRomFom(
       const drake::multibody::MultibodyPlant<double>& plant_controls,
-      double stride_period, double double_support_duration,const PlannerSetting& param, bool debug_mode);
+      double stride_period, double double_support_duration,
+      const PlannerSetting& param, bool debug_mode);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);

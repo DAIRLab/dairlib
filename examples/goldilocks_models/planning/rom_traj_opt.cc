@@ -793,7 +793,7 @@ void RomTrajOptCassie::AddRegularizationCost(
     const Eigen::VectorXd& x_guess_right_in_front_pre,
     const Eigen::VectorXd& x_guess_left_in_front_post,
     const Eigen::VectorXd& x_guess_right_in_front_post, double w_reg_quat,
-    double w_reg_xy, double w_reg_z, double w_reg_joints,
+    double w_reg_xy, double w_reg_z, double w_reg_joints, double w_reg_hip_yaw,
     bool straight_leg_cost) {
   PrintStatus("Adding regularization cost ...");
 
@@ -804,6 +804,8 @@ void RomTrajOptCassie::AddRegularizationCost(
   MatrixXd Id_xy = w_reg_xy * MatrixXd::Identity(2, 2);
   MatrixXd Id_z = w_reg_z * MatrixXd::Identity(1, 1);
   MatrixXd Id_joints = w_reg_joints * MatrixXd::Identity(n_q_ - 7, n_q_ - 7);
+  Id_joints(2, 2) = w_reg_hip_yaw;  // left hip yaw
+  Id_joints(3, 3) = w_reg_hip_yaw;  // right hip yaw
   //  MatrixXd Id_vel = 0.0 * MatrixXd::Identity(n_v_, n_v_);
   MatrixXd Id_x_vel = 0.1 * MatrixXd::Identity(1, 1);
 

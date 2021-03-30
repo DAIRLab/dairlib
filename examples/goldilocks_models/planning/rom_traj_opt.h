@@ -190,7 +190,8 @@ class RomTrajOptCassie : public RomTrajOpt {
                              const Eigen::VectorXd& x_guess_left_in_front_post,
                              const Eigen::VectorXd& x_guess_right_in_front_post,
                              double w_reg_quat, double w_reg_xy, double w_reg_z,
-                             double w_reg_joints, bool straight_leg_cost);
+                             double w_reg_joints, double w_reg_hip_yaw,
+                             bool straight_leg_cost);
 
   void SetHeuristicInitialGuess(
       const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,

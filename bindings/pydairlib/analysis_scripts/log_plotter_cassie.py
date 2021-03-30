@@ -238,8 +238,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     print(name)
     print(tracking_cost_map[name])
 
-  plt.figure("qp solve time")
-  plt.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
+  # plt.figure("qp solve time")
+  # plt.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
 
   plt.figure("costs")
   plt.plot(t_u[t_u_slice], input_cost[t_u_slice])
@@ -287,22 +287,22 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj0, 2, "pos")
 
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "vel")
-  # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plot_osc(osc_debug, osc_traj0, 0, "vel")
+  plot_osc(osc_debug, osc_traj0, 1, "vel")
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
 
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "accel")
-  # plot_osc(osc_debug, osc_traj0, 1, "accel")
-  # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  plot_osc(osc_debug, osc_traj0, 0, "accel")
+  plot_osc(osc_debug, osc_traj0, 1, "accel")
+  plot_osc(osc_debug, osc_traj0, 2, "accel")
 
-  plot_osc(osc_debug, osc_traj1, 0, "pos")
-  plot_osc(osc_debug, osc_traj1, 1, "pos")
-  plot_osc(osc_debug, osc_traj1, 2, "pos")
+  # plot_osc(osc_debug, osc_traj1, 0, "pos")
+  # plot_osc(osc_debug, osc_traj1, 1, "pos")
+  # plot_osc(osc_debug, osc_traj1, 2, "pos")
 
-  plot_osc(osc_debug, osc_traj2, 0, "pos")
-  plot_osc(osc_debug, osc_traj2, 1, "pos")
-  plot_osc(osc_debug, osc_traj2, 2, "pos")
+  # plot_osc(osc_debug, osc_traj2, 0, "pos")
+  # plot_osc(osc_debug, osc_traj2, 1, "pos")
+  # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj2, 0, "vel")

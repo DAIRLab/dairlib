@@ -3,9 +3,9 @@ w_accel: 0.0
 #w_soft_constraint: 1000000
 w_soft_constraint: 10
 
-impact_threshold: 0.025
+impact_threshold: 0.000
 
-mu: 0.4
+mu: 0.8
 
 w_swing_toe: 0.1
 swing_toe_kp: 1500

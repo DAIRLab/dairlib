@@ -66,7 +66,6 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
-DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
 DEFINE_double(delay, 0.0, "Delay in commanded to actual motor inputs");
 
 int do_main(int argc, char* argv[]) {
@@ -88,21 +87,6 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_v2.urdf";
   } else {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-  }
-
-  Parser parser(&plant, &scene_graph);
-  std::string terrain_name =
-      FindResourceOrThrow("examples/simple_examples/terrain.urdf");
-  Vector3d offset;
-  if (FLAGS_terrain_height >= 0.0) {
-    offset << 0.25, 0, FLAGS_terrain_height;
-  } else {
-    offset << -0.25, 0, -FLAGS_terrain_height;
-  }
-  if (FLAGS_terrain_height != 0.0) {
-    parser.AddModelFromFile(terrain_name);
-    plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                     drake::math::RigidTransform<double>(offset));
   }
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
@@ -170,9 +154,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-  if (FLAGS_terrain_height != 0.0)
-    ConnectDrakeVisualizer(&builder, scene_graph);
-
   auto diagram = builder.Build();
 
   // Create a context for this system:
@@ -205,12 +186,6 @@ int do_main(int argc, char* argv[]) {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
   }
-
-  if (FLAGS_terrain_height < 0) {
-    q_init(6) -= FLAGS_terrain_height;
-  }
-
-  std::cout << q_init << std::endl;
 
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));

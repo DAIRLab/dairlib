@@ -134,8 +134,6 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
 
-
-
   // Add emulator for floating base drift
   Eigen::VectorXd drift_mean =
       Eigen::VectorXd::Zero(plant_w_spr.num_positions());
@@ -149,7 +147,6 @@ int DoMain(int argc, char* argv[]) {
 
   auto simulator_drift =
       builder.AddSystem<SimulatorDrift>(plant_w_spr, drift_mean, drift_cov);
-
 
   // Create human high-level control
   Eigen::Vector2d global_target_position(gains.global_target_position_x,
@@ -172,11 +169,9 @@ int DoMain(int argc, char* argv[]) {
         params_of_no_turning);
   }
 
-
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
       plant_w_spr, context_w_spr.get());
-
 
   // Create finite state machine
   int left_stance_state = 0;
@@ -199,20 +194,18 @@ int DoMain(int argc, char* argv[]) {
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations, 0.0, gains.impact_threshold);
 
-
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,
                                             right_stance_state};
   auto liftoff_event_time =
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
-          single_support_states);
+          plant_w_spr, single_support_states);
   liftoff_event_time->set_name("liftoff_time");
 
   auto touchdown_event_time =
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
-          std::vector<int>(1, double_support_state));
+          plant_w_spr, std::vector<int>(1, double_support_state));
   touchdown_event_time->set_name("touchdown_time");
-
 
   // Create CoM trajectory generator
   // Note that we are tracking COM acceleration instead of position and velocity
@@ -241,7 +234,6 @@ int DoMain(int argc, char* argv[]) {
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state);
 
-
   // We can use the same desired_com_height for pelvis_traj_generator as we use
   // for lipm_traj_generator, even though one is pelvis and the other is COM.
   // This is because we don't use the COM desired height in
@@ -252,14 +244,12 @@ int DoMain(int argc, char* argv[]) {
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state, false);
 
-
   // Create velocity control by foot placement
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
           gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
           left_support_duration);
-
 
   // Create swing leg trajectory generator
   // Since the ground is soft in the simulation, we raise the desired final
@@ -282,20 +272,17 @@ int DoMain(int argc, char* argv[]) {
           gains.final_foot_velocity_z, gains.max_CoM_to_footstep_dist,
           gains.footstep_offset, gains.center_line_offset);
 
-
   // Swing toe joint trajectory
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
   vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
       right_heel, right_toe};
-  auto left_toe_angle_traj_gen =
-      builder.AddSystem<osc::SwingToeTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
-          left_foot_points, "left_toe_angle_traj");
-  auto right_toe_angle_traj_gen =
-      builder.AddSystem<osc::SwingToeTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
-          right_foot_points, "right_toe_angle_traj");
+  auto left_toe_angle_traj_gen = builder.AddSystem<osc::SwingToeTrajGenerator>(
+      plant_w_spr, context_w_spr.get(), pos_map["toe_left"], left_foot_points,
+      "left_toe_angle_traj");
+  auto right_toe_angle_traj_gen = builder.AddSystem<osc::SwingToeTrajGenerator>(
+      plant_w_spr, context_w_spr.get(), pos_map["toe_right"], right_foot_points,
+      "right_toe_angle_traj");
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -367,8 +354,6 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(double_support_state, &right_heel_evaluator);
   }
 
-
-
   // Swing foot tracking
   TransTaskSpaceTrackingData swing_foot_traj(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
@@ -432,11 +417,11 @@ int DoMain(int argc, char* argv[]) {
   // Build OSC problem
   osc->Build();
 
-
-
   // Connect ports
   builder.Connect(fsm->get_output_port_fsm(),
                   touchdown_event_time->get_input_port_fsm());
+  builder.Connect(simulator_drift->get_output_port(0),
+                  touchdown_event_time->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   simulator_drift->get_input_port_state());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -445,6 +430,8 @@ int DoMain(int argc, char* argv[]) {
                   head_traj_gen->get_yaw_input_port());
   builder.Connect(fsm->get_output_port_fsm(),
                   liftoff_event_time->get_input_port_fsm());
+  builder.Connect(simulator_drift->get_output_port(0),
+                  liftoff_event_time->get_input_port_state());
   builder.Connect(fsm->get_output_port(0),
                   pelvis_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
@@ -462,8 +449,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
-//  builder.Connect(fsm->get_output_port_clock(), osc->get_clock_input_port());
-  builder.Connect(fsm->get_output_port_impact(), osc->get_near_impact_input_port());
+  //  builder.Connect(fsm->get_output_port_clock(),
+  //  osc->get_clock_input_port());
+  builder.Connect(fsm->get_output_port_impact(),
+                  osc->get_near_impact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
   builder.Connect(simulator_drift->get_output_port(0),

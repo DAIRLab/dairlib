@@ -353,8 +353,6 @@ void setKinematicConstraints(Dircon<double>& trajopt,
 
   // position constraints
   trajopt.AddBoundingBoxConstraint(-0.25, 0.25, x0(pos_map.at("base_x")));
-  //  trajopt.AddBoundingBoxConstraint(FLAGS_stride_length, FLAGS_stride_length,
-  //                                   xf(pos_map.at("base_x")));
   trajopt.AddLinearConstraint(x0(pos_map.at("base_x")) + FLAGS_stride_length ==
                               xf(pos_map.at("base_x")));
   trajopt.AddBoundingBoxConstraint(start_height, start_height,
@@ -537,8 +535,25 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   Q(2, 2) = 1.0;
   Q(3, 3) = 1.0;
   MatrixXd R = 1e-5 * MatrixXd::Identity(n_u, n_u);
-  trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
-  trajopt.AddRunningCost(u.transpose() * R * u);
+//  trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+//  trajopt.AddRunningCost(u.transpose() * R * u);
+
+  MatrixXd S = MatrixXd::Zero(n_u, n_v);
+  S(0, 6) = 1;
+  S(1, 7) = 1;
+  S(2, 8) = 1;
+  S(3, 9) = 1;
+  S(4, 10) = 1;
+  S(5, 11) = 1;
+  S(6, 12) = 1;
+  S(7, 13) = 1;
+  S(8, 16) = 1;
+  S(9, 17) = 1;
+//  const drake::symbolic::Expression e_max_{max(static_cast<const AutoDiffScalar<VectorXd>>(
+//              u.transpose() * S * x.tail(n_v) + u.transpose() * R * u), VectorXd::Zero(1))};
+//  drake::symbolic::max(u.transpose() * S * x.tail(n_v), 0);
+//  trajopt.AddRunningCost(drake::symbolic::max(u.transpose() * S * x.tail(n_v), 0));
+  trajopt.AddRunningCost(u.transpose() * S * x.tail(n_v) + u.transpose() * R * u);
 }
 
 void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,

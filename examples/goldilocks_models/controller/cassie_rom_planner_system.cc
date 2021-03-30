@@ -56,12 +56,18 @@ namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_controls, double stride_period,
-    const PlannerSetting& param, bool debug_mode)
+    double double_support_duration, const PlannerSetting& param,
+    bool debug_mode)
     : nq_(plant_controls.num_positions()),
       nv_(plant_controls.num_velocities()),
       nx_(plant_controls.num_positions() + plant_controls.num_velocities()),
       plant_controls_(plant_controls),
       stride_period_(stride_period),
+      double_support_duration_(double_support_duration),
+      left_origin_(BodyPoint(Vector3d::Zero(),
+                             plant_controls.GetFrameByName("toe_left"))),
+      right_origin_(BodyPoint(Vector3d::Zero(),
+                              plant_controls.GetFrameByName("toe_right"))),
       param_(param),
       debug_mode_(debug_mode) {
   this->set_name("planner_traj");
@@ -453,11 +459,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Construct
   PrintStatus("\nConstructing optimization problem...");
   auto start = std::chrono::high_resolution_clock::now();
-  RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
-                           state_mirror_, left_contacts_, right_contacts_,
-                           joint_name_lb_ub_, x_init, start_with_left_stance,
-                           param_.zero_touchdown_impact, relax_index_,
-                           debug_mode_ /*print_status*/);
+  RomTrajOptCassie trajopt(
+      num_time_samples, Q_, R_, *rom_, plant_controls_, state_mirror_,
+      left_contacts_, right_contacts_, left_origin_, right_origin_,
+      joint_name_lb_ub_, x_init, start_with_left_stance,
+      param_.zero_touchdown_impact, relax_index_, debug_mode_ /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
@@ -466,6 +472,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
                                 param_.equalize_timestep_size,
                                 first_mode_duration, remaining_mode_duration);
+
+  // Swing foot travel distance constraint for the first mode (we take the
+  // double support phase into account)
+  double remaining_time_til_touchdown = first_mode_duration;
+  //  double remaining_time_til_touchdown =
+  //      std::max(0.0, first_mode_duration - double_support_duration_);
+  trajopt.AddInitSwingFootConstraint(start_with_left_stance, left_origin_,
+                                     right_origin_, x_init,
+                                     remaining_time_til_touchdown);
+  cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
+       << endl;
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar

@@ -42,6 +42,7 @@ class RomTrajOpt
              const StateMirror& state_mirror,
              const std::vector<BodyPoint>& left_contacts,
              const std::vector<BodyPoint>& right_contacts,
+             const BodyPoint& left_origin, const BodyPoint& right_origin,
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
              Eigen::VectorXd x_init, bool start_with_left_stance,
@@ -176,6 +177,7 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const StateMirror& state_mirror,
                    const std::vector<BodyPoint>& left_contacts,
                    const std::vector<BodyPoint>& right_contacts,
+                   const BodyPoint& left_origin, const BodyPoint& right_origin,
                    const std::vector<std::tuple<std::string, double, double>>&
                        fom_joint_name_lb_ub,
                    Eigen::VectorXd x_init, bool start_with_left_stance,
@@ -207,6 +209,12 @@ class RomTrajOptCassie : public RomTrajOpt {
                                 const Eigen::MatrixXd& dr_guess,
                                 const Eigen::MatrixXd& tau_guess,
                                 int fisrt_mode_phase_index, double w_reg);
+
+  void AddInitSwingFootConstraint(bool start_with_left_stance,
+                                  const BodyPoint& left_origin,
+                                  const BodyPoint& right_origin,
+                                  const Eigen::VectorXd& x_init,
+                                  double remaining_time_til_touchdown);
 };
 
 class RomTrajOptFiveLinkRobot : public RomTrajOpt {

@@ -42,6 +42,7 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace planning {
 
+/// Guard constraint
 FomGuardConstraint::FomGuardConstraint(
     const drake::multibody::MultibodyPlant<double>& plant,
     const vector<std::pair<const Vector3d, const Frame<double>&>>&
@@ -76,6 +77,67 @@ void FomGuardConstraint::EvaluateConstraint(
         contact.first, world_, world_, &J);
     y->segment<1>(2 * i + 1) = J.row(2) * x.tail(plant_.num_velocities());
   }
+}
+
+/// Swing foot position constraint
+FomSwingFootPosConstraint::FomSwingFootPosConstraint(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Frame<double>& pelvis_frame,
+    const std::pair<const Vector3d, const Frame<double>&>& swing_foot_origin,
+    const Eigen::Vector2d& lb, const Eigen::Vector2d& ub,
+    const std::string& description)
+    : NonlinearConstraint<double>(2, plant.num_positions(), lb, ub,
+                                  description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      pelvis_frame_(pelvis_frame),
+      swing_foot_origin_(swing_foot_origin),
+      n_q_(plant.num_positions()) {}
+
+void FomSwingFootPosConstraint::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<double>>& q, VectorX<double>* y) const {
+  plant_.SetPositions(context_.get(), q);
+
+  // Swing foot position
+  drake::VectorX<double> pt(3);
+  this->plant_.CalcPointsPositions(*context_, swing_foot_origin_.second,
+                                   swing_foot_origin_.first, world_, &pt);
+  // Pelvis pose
+  auto pelvis_pose = pelvis_frame_.CalcPoseInWorld(*context_);
+  const Vector3d& pelvis_pos = pelvis_pose.translation();
+  const auto& pelvis_rot_mat = pelvis_pose.rotation();
+
+  Vector3d foot_pos_in_local_frame =
+      pelvis_rot_mat.transpose() * (pt - pelvis_pos);
+
+  *y = VectorX<double>(2);
+  *y = foot_pos_in_local_frame.head<2>();
+}
+
+/// Swing foot distance constraint (first mode)
+FomSwingFootDistanceConstraint::FomSwingFootDistanceConstraint(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::pair<const Vector3d, const Frame<double>&>& swing_foot_origin,
+    const Eigen::Vector3d& swing_foot_init_pos, double distance,
+    const std::string& description)
+    : NonlinearConstraint<double>(1, plant.num_positions(), VectorXd::Zero(1),
+                                  distance * VectorXd::Ones(1), description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      swing_foot_origin_(swing_foot_origin),
+      swing_foot_init_pos_(swing_foot_init_pos),
+      n_q_(plant.num_positions()) {}
+
+void FomSwingFootDistanceConstraint::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<double>>& q, VectorX<double>* y) const {
+  *y = VectorX<double>(1);
+  plant_.SetPositions(context_.get(), q);
+  drake::VectorX<double> pt(3);
+  this->plant_.CalcPointsPositions(*context_, swing_foot_origin_.second,
+                                   swing_foot_origin_.first, world_, &pt);
+  y->head<1>() << (pt - swing_foot_init_pos_).norm();
 }
 
 }  // namespace planning

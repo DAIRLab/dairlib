@@ -41,6 +41,63 @@ class FomGuardConstraint : public solvers::NonlinearConstraint<double> {
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
       swing_foot_contacts_;
 };
+
+// Swing foot position distance constraint for collision avoidance
+// Constraints are
+class FomSwingFootPosConstraint : public solvers::NonlinearConstraint<double> {
+ public:
+  FomSwingFootPosConstraint(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::multibody::Frame<double>& pelvis_frame,
+      const std::pair<const Eigen::Vector3d,
+                      const drake::multibody::Frame<double>&>&
+          swing_foot_origin,
+      const Eigen::Vector2d& lb, const Eigen::Vector2d& ub,
+      const std::string& description = "fom_swing_ft_pos_constraint");
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& q,
+                          drake::VectorX<double>* y) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const drake::multibody::Frame<double>& pelvis_frame_;
+  const std::pair<const Eigen::Vector3d,
+                  const drake::multibody::Frame<double>&>& swing_foot_origin_;
+
+  int n_q_;
+};
+
+// Swing foot travel distance constraint for the first mode
+// Constraints are
+class FomSwingFootDistanceConstraint
+    : public solvers::NonlinearConstraint<double> {
+ public:
+  FomSwingFootDistanceConstraint(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::pair<const Eigen::Vector3d,
+                      const drake::multibody::Frame<double>&>&
+          swing_foot_origin,
+      const Eigen::Vector3d& swing_foot_init_pos, double distance,
+      const std::string& description = "fom_swing_ft_dist_constraint");
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& q,
+                          drake::VectorX<double>* y) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const std::pair<const Eigen::Vector3d,
+                  const drake::multibody::Frame<double>&>& swing_foot_origin_;
+
+  Eigen::Vector3d swing_foot_init_pos_;
+  double distance_;
+
+  int n_q_;
+};
+
 }  // namespace planning
 }  // namespace goldilocks_models
 }  // namespace dairlib

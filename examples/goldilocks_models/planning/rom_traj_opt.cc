@@ -52,7 +52,8 @@ RomTrajOpt::RomTrajOpt(
     vector<int> num_time_samples, MatrixXd Q, MatrixXd R,
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
-    const vector<BodyPoint>& right_contacts,
+    const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
+    const BodyPoint& right_origin,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
     VectorXd x_init, bool start_with_left_stance, bool zero_touchdown_impact,
     const std::set<int>& relax_index, bool print_status)
@@ -279,13 +280,13 @@ RomTrajOpt::RomTrajOpt(
     VectorXd lb_per_contact = VectorXd::Zero(2);
     if (!zero_touchdown_impact)
       lb_per_contact << 0, -std::numeric_limits<double>::infinity();
-    VectorXd lb(2 * swing_contacts.size());
+    VectorXd lb_guard(2 * swing_contacts.size());
     for (int i = 0; i < swing_contacts.size(); i++) {
-      lb.segment<2>(2 * i) = lb_per_contact;
+      lb_guard.segment<2>(2 * i) = lb_per_contact;
     }
-    VectorXd ub = VectorXd::Zero(2 * swing_contacts.size());
+    VectorXd ub_guard = VectorXd::Zero(2 * swing_contacts.size());
     auto guard_constraint = std::make_shared<planning::FomGuardConstraint>(
-        plant, swing_contacts, lb, ub, "fom_guard_" + to_string(i));
+        plant, swing_contacts, lb_guard, ub_guard, "fom_guard_" + to_string(i));
     guard_constraint->SetConstraintScaling(fom_guard_constraint_scaling_);
     AddConstraint(guard_constraint, xf);
     //    }
@@ -375,11 +376,11 @@ RomTrajOpt::RomTrajOpt(
         "heuristics!)");
     // TODO: make a bound on the quaternion. E.g. We don't want the robot to
     //  turn to the back.
-    AddBoundingBoxConstraint(0, 1, xf(0));
-    AddBoundingBoxConstraint(-1, 1, xf.segment<3>(1));
-    AddBoundingBoxConstraint(-2, 2, xf.segment<2>(4));
+    AddBoundingBoxConstraint(0, 1, xf(0));              // qw
+    AddBoundingBoxConstraint(-1, 1, xf.segment<3>(1));  // qx, qy, qz
+    AddBoundingBoxConstraint(-2, 2, xf.segment<2>(4));  // x,y
     // Heuristics -- prevent the pelvis go too low
-    AddBoundingBoxConstraint(0.5, 1.1, xf.segment<1>(6));
+    AddBoundingBoxConstraint(0.5, 1.1, xf.segment<1>(6));  // z
 
     // Full order model vel limits
     PrintStatus("Adding constraint -- full-order model joint vel");
@@ -415,7 +416,23 @@ RomTrajOpt::RomTrajOpt(
         fom_stance_ft_vel_constraint_scaling_);
     AddConstraint(fom_ft_vel_constraint_postimpact, x0_post);
 
-    // TODO: might need to add a collision avoidance between left and right foot
+    // Foot collision avoidance (full-order model swing foot constraint)
+    const auto& swing_origin = left_stance ? right_origin : left_origin;
+    const double back_limit = -0.5;
+    const double front_limit = 0.5;
+    const double right_limit = 0.03;
+    const double left_limit = 0.4;
+    Eigen::Vector2d lb_swing(back_limit,
+                             left_stance ? -left_limit : right_limit);
+    Eigen::Vector2d ub_swing(front_limit,
+                             left_stance ? -right_limit : left_limit);
+    PrintStatus(
+        "Adding constraint -- FOM swing collision avoidance (end of mode)");
+    auto fom_sw_ft_pos_constraint =
+        std::make_shared<planning::FomSwingFootPosConstraint>(
+            plant_, plant.GetFrameByName("pelvis"), swing_origin, lb_swing,
+            ub_swing, "fom_swing_ft_pos_" + to_string(i));
+    AddConstraint(fom_sw_ft_pos_constraint, xf.head(n_q_));
 
     // Stride length constraint
     // cout << "Adding stride length constraint for full-order model...\n";
@@ -759,15 +776,16 @@ RomTrajOptCassie::RomTrajOptCassie(
     const ReducedOrderModel& rom,
     const drake::multibody::MultibodyPlant<double>& plant,
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
-    const vector<BodyPoint>& right_contacts,
+    const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
+    const BodyPoint& right_origin,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
     Eigen::VectorXd x_init, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
     bool print_status)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
-                 left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
-                 start_with_left_stance, zero_touchdown_impact, relax_index,
-                 print_status) {}
+                 left_contacts, right_contacts, left_origin, right_origin,
+                 fom_joint_name_lb_ub, x_init, start_with_left_stance,
+                 zero_touchdown_impact, relax_index, print_status) {}
 
 void RomTrajOptCassie::AddRegularizationCost(
     const std::vector<Eigen::VectorXd>& des_xy_pos,
@@ -939,6 +957,32 @@ void RomTrajOptCassie::AddRomRegularizationCost(
   }*/
 }
 
+void RomTrajOptCassie::AddInitSwingFootConstraint(
+    bool start_with_left_stance, const BodyPoint& left_origin,
+    const BodyPoint& right_origin, const Eigen::VectorXd& x_init,
+    double remaining_time_til_touchdown) {
+  // Foot travel distance constraint (full-order model swing foot constraint)
+  const auto& swing_origin =
+      start_with_left_stance ? right_origin : left_origin;
+
+  Eigen::Vector3d swing_foot_init_pos;
+  auto context = plant_.CreateDefaultContext();
+  plant_.SetPositions(context.get(), x_init.head(n_q_));
+  this->plant_.CalcPointsPositions(*context, swing_origin.second,
+                                   swing_origin.first, plant_.world_frame(),
+                                   &swing_foot_init_pos);
+
+  double MAX_FOOT_SPEED = 2;  // m/s
+
+  PrintStatus("Adding constraint -- FOM swing foot travel distance");
+  auto fom_sw_ft_dist_constraint =
+      std::make_shared<planning::FomSwingFootDistanceConstraint>(
+          plant_, swing_origin, swing_foot_init_pos,
+          MAX_FOOT_SPEED * remaining_time_til_touchdown);
+  VectorXDecisionVariable xf = xf_vars_by_mode(0);
+  AddConstraint(fom_sw_ft_dist_constraint, xf.head(n_q_));
+}
+
 RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     vector<int> num_time_samples, Eigen::MatrixXd Q, Eigen::MatrixXd R,
     const ReducedOrderModel& rom,
@@ -949,7 +993,8 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     Eigen::VectorXd x_init, bool start_with_left_stance,
     bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
-                 left_contacts, right_contacts, fom_joint_name_lb_ub, x_init,
+                 left_contacts, right_contacts, left_contacts.at(0),
+                 right_contacts.at(0), fom_joint_name_lb_ub, x_init,
                  start_with_left_stance, zero_touchdown_impact, {}) {
   DRAKE_UNREACHABLE();  // I added a few things to RomTrajOpt which are not
                         // generalized to the five-link robot.

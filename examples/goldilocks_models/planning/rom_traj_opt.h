@@ -36,8 +36,8 @@ class RomTrajOpt
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RomTrajOpt)
 
-  RomTrajOpt(std::vector<int> num_time_samples, Eigen::MatrixXd Q,
-             Eigen::MatrixXd R, const ReducedOrderModel& rom,
+  RomTrajOpt(const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
+             const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
              const drake::multibody::MultibodyPlant<double>& plant,
              const StateMirror& state_mirror,
              const std::vector<BodyPoint>& left_contacts,
@@ -171,8 +171,9 @@ class RomTrajOpt
 
 class RomTrajOptCassie : public RomTrajOpt {
  public:
-  RomTrajOptCassie(std::vector<int> num_time_samples, Eigen::MatrixXd Q,
-                   Eigen::MatrixXd R, const ReducedOrderModel& rom,
+  RomTrajOptCassie(const std::vector<int>& num_time_samples,
+                   const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
+                   const ReducedOrderModel& rom,
                    const drake::multibody::MultibodyPlant<double>& plant,
                    const StateMirror& state_mirror,
                    const std::vector<BodyPoint>& left_contacts,
@@ -221,8 +222,8 @@ class RomTrajOptCassie : public RomTrajOpt {
 class RomTrajOptFiveLinkRobot : public RomTrajOpt {
  public:
   RomTrajOptFiveLinkRobot(
-      std::vector<int> num_time_samples, Eigen::MatrixXd Q, Eigen::MatrixXd R,
-      const ReducedOrderModel& rom,
+      const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
+      const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
       const drake::multibody::MultibodyPlant<double>& plant,
       const StateMirror& state_mirror,
       const std::vector<BodyPoint>& left_contacts,

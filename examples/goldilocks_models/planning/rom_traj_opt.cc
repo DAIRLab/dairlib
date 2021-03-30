@@ -49,7 +49,7 @@ using drake::trajectories::PiecewisePolynomial;
 // We are currently using the same ROM input for pre/post impacts
 
 RomTrajOpt::RomTrajOpt(
-    vector<int> num_time_samples, MatrixXd Q, MatrixXd R,
+    const vector<int>& num_time_samples, const MatrixXd& Q, const MatrixXd& R,
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
@@ -772,8 +772,8 @@ PiecewisePolynomial<double> RomTrajOpt::ReconstructStateTrajectory(
 }
 
 RomTrajOptCassie::RomTrajOptCassie(
-    vector<int> num_time_samples, Eigen::MatrixXd Q, Eigen::MatrixXd R,
-    const ReducedOrderModel& rom,
+    const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
+    const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
     const drake::multibody::MultibodyPlant<double>& plant,
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
@@ -986,8 +986,8 @@ void RomTrajOptCassie::AddInitSwingFootConstraint(
 }
 
 RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
-    vector<int> num_time_samples, Eigen::MatrixXd Q, Eigen::MatrixXd R,
-    const ReducedOrderModel& rom,
+    const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
+    const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
     const drake::multibody::MultibodyPlant<double>& plant,
     const StateMirror& state_mirror, const vector<BodyPoint>& left_contacts,
     const vector<BodyPoint>& right_contacts,

@@ -456,33 +456,33 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                                             n_segment_total;
   }
 
+  // Maximum step length
+  double MAX_FOOT_SPEED = 2;  // m/s
+  double first_mode_duration = stride_period_ * (1 - init_phase);
+  double remaining_time_til_touchdown = first_mode_duration;
+  // Take into account the double stance duration
+  //  double remaining_time_til_touchdown =
+  //      std::max(0.0, first_mode_duration - double_support_duration_);
+  vector<double> max_step_distance =
+      vector<double>(param_.n_step, MAX_FOOT_SPEED * stride_period_);
+  max_step_distance[0] = MAX_FOOT_SPEED * remaining_time_til_touchdown;
+  cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
+       << endl;
+
   // Construct
   PrintStatus("\nConstructing optimization problem...");
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(
       num_time_samples, Q_, R_, *rom_, plant_controls_, state_mirror_,
       left_contacts_, right_contacts_, left_origin_, right_origin_,
-      joint_name_lb_ub_, x_init, start_with_left_stance,
+      joint_name_lb_ub_, x_init, max_step_distance, start_with_left_stance,
       param_.zero_touchdown_impact, relax_index_, debug_mode_ /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
-  double first_mode_duration = stride_period_ * (1 - init_phase);
-  double remaining_mode_duration = stride_period_;
   trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
                                 param_.equalize_timestep_size,
-                                first_mode_duration, remaining_mode_duration);
-
-  // Swing foot travel distance constraint for the first mode (we take the
-  // double support phase into account)
-  double remaining_time_til_touchdown = first_mode_duration;
-  //  double remaining_time_til_touchdown =
-  //      std::max(0.0, first_mode_duration - double_support_duration_);
-  trajopt.AddInitSwingFootConstraint(start_with_left_stance, left_origin_,
-                                     right_origin_, x_init,
-                                     remaining_time_til_touchdown);
-  cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
-       << endl;
+                                first_mode_duration, stride_period_);
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar

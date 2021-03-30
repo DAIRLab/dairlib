@@ -15,6 +15,8 @@
 #include "examples/goldilocks_models/planning/dynamics_constraint.h"
 #include "examples/goldilocks_models/planning/kinematics_constraint.h"
 
+typedef std::numeric_limits<double> dbl;
+
 namespace dairlib {
 namespace goldilocks_models {
 
@@ -55,7 +57,8 @@ RomTrajOpt::RomTrajOpt(
     const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
     const BodyPoint& right_origin,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    VectorXd x_init, bool start_with_left_stance, bool zero_touchdown_impact,
+    VectorXd x_init, const std::vector<double>& max_step_distance,
+    bool start_with_left_stance, bool zero_touchdown_impact,
     const std::set<int>& relax_index, bool print_status)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
@@ -89,8 +92,44 @@ RomTrajOpt::RomTrajOpt(
       rom_(rom),
       start_with_left_stance_(start_with_left_stance),
       print_status_(print_status) {
-  map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
+  DRAKE_DEMAND(max_step_distance.size() == num_time_samples.size());
 
+  /// Some paramters
+  double impulse_limit = 50;
+  const double back_limit = -0.5;
+  const double front_limit = 0.5;
+  const double right_limit = 0.03;
+  const double left_limit = 0.4;
+
+  /// Setups
+  PrintStatus("Getting things needed for costs and constraints");
+  map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
+  // Initial swing foot position
+  Eigen::Vector3d swing_foot_init_pos;
+  auto context = plant_.CreateDefaultContext();
+  plant_.SetPositions(context.get(), x_init.head(n_q_));
+  const auto& swing_origin =
+      start_with_left_stance ? right_origin : left_origin;
+  this->plant_.CalcPointsPositions(*context, swing_origin.second,
+                                   swing_origin.first, plant_.world_frame(),
+                                   &swing_foot_init_pos);
+  // Friction cone constraint
+  //     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
+  //     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
+  //     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
+  //     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
+  double mu = 1;
+  MatrixXd A = MatrixXd::Zero(4, 3);
+  A.block(0, 2, 4, 1) = mu * VectorXd::Ones(4, 1);
+  A(0, 0) = -1;
+  A(1, 0) = 1;
+  A(2, 1) = -1;
+  A(3, 1) = 1;
+  auto friction_constraint = std::make_shared<drake::solvers::LinearConstraint>(
+      A, VectorXd::Zero(4),
+      std::numeric_limits<double>::infinity() * VectorXd::Ones(4));
+
+  /// Adding costs and constraints
   // Add cost
   PrintStatus("Adding cost...");
   auto y = this->state();
@@ -155,9 +194,6 @@ RomTrajOpt::RomTrajOpt(
   } else {
     AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
     // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
-  }
-  if (print_status_) {
-    cout << "x_init = " << x_init.transpose() << endl;
   }
 
   // Loop over modes to add more constraints
@@ -257,22 +293,6 @@ RomTrajOpt::RomTrajOpt(
     VectorXDecisionVariable z_f = state_vars_by_mode(i, mode_lengths_[i] - 1);
     AddConstraint(kin_constraint_end, {z_f, xf});
 
-    // Testing state mirroring
-    //    if (!left_stance) {
-    //      VectorXd x = VectorXd::Zero(n_z_ + n_x_);
-    //      x.tail(n_x_) << 0.95800512, 0.01326131, 0.10208891, 0.02493059,
-    //          -0.00357683, -0.07077365, 1.00229253, 0.06585518, 0.08007648,
-    //          -0.03271629, 0.04345352, 0.30198447, 0.49940965, -0.646,
-    //          -0.74489845, 1.40071356, 1.36480139, -1.67787617, -1.78524973,
-    //          0.2511753, -0.48393843, 0.19170832, -0.14228517, -0.55363658,
-    //          0.00499403, 0.33995008, 0.37624165, -0.14535965, -0.17715706,
-    //          -0.28741955, -0.62009629, 0.09105082, 0.35101321, -0.26117723,
-    //          -0.127291, 0.00350424, -0.09447938;
-    //      VectorXd y = VectorXd::Zero(n_z_);
-    //      kin_constraint.get()->Eval(x, &y);
-    //      DRAKE_DEMAND(false);
-    //    }
-
     // Add guard constraint
     PrintStatus("Adding constraint -- guard");
     const auto& swing_contacts = left_stance ? right_contacts : left_contacts;
@@ -309,29 +329,11 @@ RomTrajOpt::RomTrajOpt(
       AddConstraint(reset_map_constraint, {xf, x0_post.tail(n_v_), Lambda});
 
       // Constraint on impact impulse
-      ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
-      ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
-      ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
-      ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
-      ///                           lambda_c(3*i+2) >= 0
-      /// The last inequality is implemented as bounding box constraint
       PrintStatus("Adding constraint -- FoM impulse friction");
-      double mu = 1;
-      MatrixXd A = MatrixXd::Zero(4, 3);
-      A.block(0, 2, 4, 1) = mu * VectorXd::Ones(4, 1);
-      A(0, 0) = -1;
-      A(1, 0) = 1;
-      A(2, 1) = -1;
-      A(3, 1) = 1;
-      auto friction_constraint =
-          std::make_shared<drake::solvers::LinearConstraint>(
-              A, VectorXd::Zero(4),
-              VectorXd::Ones(4) * std::numeric_limits<double>::infinity());
       for (int k = 0; k < swing_contacts.size(); k++) {
         AddConstraint(friction_constraint, Lambda.segment(3 * k, 3));
       }
       PrintStatus("Adding constraint -- bounding box on FoM impulse");
-      double impulse_limit = 50;
       for (int k = 0; k < swing_contacts.size(); k++) {
         AddBoundingBoxConstraint(-impulse_limit, impulse_limit,
                                  Lambda(3 * k + 0));
@@ -418,10 +420,6 @@ RomTrajOpt::RomTrajOpt(
 
     // Foot collision avoidance (full-order model swing foot constraint)
     const auto& swing_origin = left_stance ? right_origin : left_origin;
-    const double back_limit = -0.5;
-    const double front_limit = 0.5;
-    const double right_limit = 0.03;
-    const double left_limit = 0.4;
     Eigen::Vector2d lb_swing(back_limit,
                              left_stance ? -left_limit : right_limit);
     Eigen::Vector2d ub_swing(front_limit,
@@ -433,6 +431,18 @@ RomTrajOpt::RomTrajOpt(
             plant_, plant.GetFrameByName("pelvis"), swing_origin, lb_swing,
             ub_swing, "fom_swing_ft_pos_" + to_string(i));
     AddConstraint(fom_sw_ft_pos_constraint, xf.head(n_q_));
+
+    // Foot travel distance constraint (full-order model swing foot constraint)
+    PrintStatus("Adding constraint -- FOM swing foot travel distance");
+    auto fom_sw_ft_dist_constraint =
+        std::make_shared<planning::FomSwingFootDistanceConstraint>(
+            plant_, swing_origin, swing_foot_init_pos, max_step_distance.at(i),
+            i == 0, "fom_swing_ft_dist_constraint" + to_string(i));
+    if (i == 0) {
+      AddConstraint(fom_sw_ft_dist_constraint, xf.head(n_q_));
+    } else {
+      AddConstraint(fom_sw_ft_dist_constraint, {x0.head(n_q_), xf.head(n_q_)});
+    }
 
     // Stride length constraint
     // cout << "Adding stride length constraint for full-order model...\n";
@@ -779,13 +789,14 @@ RomTrajOptCassie::RomTrajOptCassie(
     const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
     const BodyPoint& right_origin,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd x_init, bool start_with_left_stance,
-    bool zero_touchdown_impact, const std::set<int>& relax_index,
-    bool print_status)
+    Eigen::VectorXd x_init, const std::vector<double>& max_step_distance,
+    bool start_with_left_stance, bool zero_touchdown_impact,
+    const std::set<int>& relax_index, bool print_status)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, left_origin, right_origin,
-                 fom_joint_name_lb_ub, x_init, start_with_left_stance,
-                 zero_touchdown_impact, relax_index, print_status) {}
+                 fom_joint_name_lb_ub, x_init, max_step_distance,
+                 start_with_left_stance, zero_touchdown_impact, relax_index,
+                 print_status) {}
 
 void RomTrajOptCassie::AddRegularizationCost(
     const std::vector<Eigen::VectorXd>& des_xy_pos,
@@ -959,32 +970,6 @@ void RomTrajOptCassie::AddRomRegularizationCost(
   }*/
 }
 
-void RomTrajOptCassie::AddInitSwingFootConstraint(
-    bool start_with_left_stance, const BodyPoint& left_origin,
-    const BodyPoint& right_origin, const Eigen::VectorXd& x_init,
-    double remaining_time_til_touchdown) {
-  // Foot travel distance constraint (full-order model swing foot constraint)
-  const auto& swing_origin =
-      start_with_left_stance ? right_origin : left_origin;
-
-  Eigen::Vector3d swing_foot_init_pos;
-  auto context = plant_.CreateDefaultContext();
-  plant_.SetPositions(context.get(), x_init.head(n_q_));
-  this->plant_.CalcPointsPositions(*context, swing_origin.second,
-                                   swing_origin.first, plant_.world_frame(),
-                                   &swing_foot_init_pos);
-
-  double MAX_FOOT_SPEED = 2;  // m/s
-
-  PrintStatus("Adding constraint -- FOM swing foot travel distance");
-  auto fom_sw_ft_dist_constraint =
-      std::make_shared<planning::FomSwingFootDistanceConstraint>(
-          plant_, swing_origin, swing_foot_init_pos,
-          MAX_FOOT_SPEED * remaining_time_til_touchdown);
-  VectorXDecisionVariable xf = xf_vars_by_mode(0);
-  AddConstraint(fom_sw_ft_dist_constraint, xf.head(n_q_));
-}
-
 RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
     const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
@@ -996,7 +981,7 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, left_contacts.at(0),
-                 right_contacts.at(0), fom_joint_name_lb_ub, x_init,
+                 right_contacts.at(0), fom_joint_name_lb_ub, x_init, {},
                  start_with_left_stance, zero_touchdown_impact, {}) {
   DRAKE_UNREACHABLE();  // I added a few things to RomTrajOpt which are not
                         // generalized to the five-link robot.

@@ -120,24 +120,38 @@ FomSwingFootDistanceConstraint::FomSwingFootDistanceConstraint(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::pair<const Vector3d, const Frame<double>&>& swing_foot_origin,
     const Eigen::Vector3d& swing_foot_init_pos, double distance,
-    const std::string& description)
-    : NonlinearConstraint<double>(1, plant.num_positions(), VectorXd::Zero(1),
-                                  distance * VectorXd::Ones(1), description),
+    bool constant_start_pose, const std::string& description)
+    : NonlinearConstraint<double>(
+          1,
+          constant_start_pose ? plant.num_positions()
+                              : 2 * plant.num_positions(),
+          VectorXd::Zero(1), distance * VectorXd::Ones(1), description),
       plant_(plant),
       world_(plant.world_frame()),
       context_(plant.CreateDefaultContext()),
       swing_foot_origin_(swing_foot_origin),
       swing_foot_init_pos_(swing_foot_init_pos),
+      constant_start_pose_(constant_start_pose),
       n_q_(plant.num_positions()) {}
 
 void FomSwingFootDistanceConstraint::EvaluateConstraint(
-    const Eigen::Ref<const VectorX<double>>& q, VectorX<double>* y) const {
-  *y = VectorX<double>(1);
-  plant_.SetPositions(context_.get(), q);
-  drake::VectorX<double> pt(3);
+    const Eigen::Ref<const VectorX<double>>& x, VectorX<double>* y) const {
+  drake::VectorX<double> pt_f(3);
+  plant_.SetPositions(context_.get(), x.tail(n_q_));
   this->plant_.CalcPointsPositions(*context_, swing_foot_origin_.second,
-                                   swing_foot_origin_.first, world_, &pt);
-  y->head<1>() << (pt - swing_foot_init_pos_).norm();
+                                   swing_foot_origin_.first, world_, &pt_f);
+
+  drake::VectorX<double> pt_0(3);
+  if (constant_start_pose_) {
+    pt_0 = swing_foot_init_pos_;
+  } else {
+    plant_.SetPositions(context_.get(), x.head(n_q_));
+    this->plant_.CalcPointsPositions(*context_, swing_foot_origin_.second,
+                                     swing_foot_origin_.first, world_, &pt_0);
+  }
+
+  *y = VectorX<double>(1);
+  y->head<1>() << (pt_f - pt_0).norm();
 }
 
 }  // namespace planning

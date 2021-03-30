@@ -80,6 +80,7 @@ class FomSwingFootDistanceConstraint
                       const drake::multibody::Frame<double>&>&
           swing_foot_origin,
       const Eigen::Vector3d& swing_foot_init_pos, double distance,
+      bool constant_start_pose,
       const std::string& description = "fom_swing_ft_dist_constraint");
 
  private:
@@ -93,7 +94,8 @@ class FomSwingFootDistanceConstraint
                   const drake::multibody::Frame<double>&>& swing_foot_origin_;
 
   Eigen::Vector3d swing_foot_init_pos_;
-  double distance_;
+
+  bool constant_start_pose_;
 
   int n_q_;
 };

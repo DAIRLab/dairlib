@@ -45,9 +45,10 @@ class RomTrajOpt
              const BodyPoint& left_origin, const BodyPoint& right_origin,
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
-             Eigen::VectorXd x_init, bool start_with_left_stance,
-             bool zero_touchdown_impact, const std::set<int>& relax_index,
-             bool print_status = true);
+             Eigen::VectorXd x_init,
+             const std::vector<double>& max_step_distance,
+             bool start_with_left_stance, bool zero_touchdown_impact,
+             const std::set<int>& relax_index, bool print_status = true);
 
   ~RomTrajOpt() override {}
 
@@ -181,9 +182,10 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const BodyPoint& left_origin, const BodyPoint& right_origin,
                    const std::vector<std::tuple<std::string, double, double>>&
                        fom_joint_name_lb_ub,
-                   Eigen::VectorXd x_init, bool start_with_left_stance,
-                   bool zero_touchdown_impact, const std::set<int>& relax_index,
-                   bool print_status = true);
+                   Eigen::VectorXd x_init,
+                   const std::vector<double>& max_step_distance,
+                   bool start_with_left_stance, bool zero_touchdown_impact,
+                   const std::set<int>& relax_index, bool print_status = true);
 
   void AddRegularizationCost(const std::vector<Eigen::VectorXd>& des_xy_pos,
                              const Eigen::VectorXd& x_guess_left_in_front_pre,
@@ -211,12 +213,6 @@ class RomTrajOptCassie : public RomTrajOpt {
                                 const Eigen::MatrixXd& dr_guess,
                                 const Eigen::MatrixXd& tau_guess,
                                 int fisrt_mode_phase_index, double w_reg);
-
-  void AddInitSwingFootConstraint(bool start_with_left_stance,
-                                  const BodyPoint& left_origin,
-                                  const BodyPoint& right_origin,
-                                  const Eigen::VectorXd& x_init,
-                                  double remaining_time_til_touchdown);
 };
 
 class RomTrajOptFiveLinkRobot : public RomTrajOpt {

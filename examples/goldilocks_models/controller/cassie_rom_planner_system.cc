@@ -457,15 +457,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Maximum step length
-  double MAX_FOOT_SPEED = 2;  // m/s
+  double MAX_FOOT_SPEED = 1.5;  // m/s
   double first_mode_duration = stride_period_ * (1 - init_phase);
   double remaining_time_til_touchdown = first_mode_duration;
   // Take into account the double stance duration
   //  double remaining_time_til_touchdown =
   //      std::max(0.0, first_mode_duration - double_support_duration_);
-  vector<double> max_step_distance =
+  vector<double> max_swing_distance =
       vector<double>(param_.n_step, MAX_FOOT_SPEED * stride_period_);
-  max_step_distance[0] = MAX_FOOT_SPEED * remaining_time_til_touchdown;
+  max_swing_distance[0] = MAX_FOOT_SPEED * remaining_time_til_touchdown;
   cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
        << endl;
 
@@ -475,7 +475,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   RomTrajOptCassie trajopt(
       num_time_samples, Q_, R_, *rom_, plant_controls_, state_mirror_,
       left_contacts_, right_contacts_, left_origin_, right_origin_,
-      joint_name_lb_ub_, x_init, max_step_distance, start_with_left_stance,
+      joint_name_lb_ub_, x_init, max_swing_distance, start_with_left_stance,
       param_.zero_touchdown_impact, relax_index_, debug_mode_ /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
@@ -564,6 +564,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   PrintStatus("Initial guesses ===============");
 
   // Initial guess for all variables
+  int global_fsm_idx = int((current_time + 1e-8) / stride_period_);
   //  if (!param_.init_file.empty()) {
   if (counter_ == 0 && !param_.init_file.empty()) {
     PrintStatus("Set initial guess from the file " + param_.init_file);
@@ -583,7 +584,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     }
     trajopt.SetInitialGuessForAllVariables(z0);
   } else {
-    int global_fsm_idx = int((current_time + 1e-8) / stride_period_);
     //    PrintStatus("global_fsm_idx = " + to_string(global_fsm_idx));
     cout << "global_fsm_idx = " + to_string(global_fsm_idx) << endl;
     if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
@@ -598,9 +598,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
           x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx, 0);
     }
     trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
-    prev_global_fsm_idx_ = global_fsm_idx;
-    prev_first_mode_knot_idx_ = first_mode_knot_idx;
-    prev_mode_start_ = trajopt.mode_start();
 
     // Avoid zero-value initial guess!
     // This sped up the solve and sometimes unstuck the solver!
@@ -712,23 +709,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Testing -- store the initial guess to the result (to visualize init guess)
   // result.set_x_val(trajopt.initial_guess());
 
-  // Get solution
-  // The time starts at 0. (by accumulating dt's)
-  time_breaks_.clear();
-  state_samples_.clear();
-  trajopt.GetStateSamples(result, &state_samples_, &time_breaks_);
-  for (int i = 0; i < param_.n_step; ++i) {
-    FOM_x0_.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
-    FOM_xf_.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
-  }
-  FOM_x0_.col(param_.n_step) =
-      result.GetSolution(trajopt.x0_vars_by_mode(param_.n_step));
-
-  // Shift the timestamps by the current time
-  for (auto& time_break_per_mode : time_breaks_) {
-    time_break_per_mode.array() += current_time;
-  }
-
   // TODO(yminchen): Note that you will to rotate the coordinates back if the
   //  ROM is dependent on robot's x, y and yaw.
 
@@ -755,7 +735,23 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   previous_output_msg_ = *traj_msg;
   timestamp_of_previous_plan_ = current_time;
 
-  // Store previous solutions
+  ///
+  /// Save solutions for either logging for warm-starting
+  ///
+
+  // TODO: use RomPlannerTrajectory to clean the following codes up
+
+  // TODO: maybe don't save the trajectory for warmstart if the solver didn't
+  //  find an optimal solution
+
+  time_breaks_.clear();  // The time starts at 0. (by accumulating dt's)
+  state_samples_.clear();
+  trajopt.GetStateSamples(result, &state_samples_, &time_breaks_);
+  // Shift the timestamps by the current time
+  for (auto& time_break_per_mode : time_breaks_) {
+    time_break_per_mode.array() += current_time;
+  }
+
   VectorXd sample_times = trajopt.GetSampleTimes(result);
   int N = trajopt.num_knots();
   h_solutions_.resize(N - 1);
@@ -765,9 +761,19 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   state_at_knots_ = trajopt.drake::systems::trajectory_optimization::
                         MultipleShooting::GetStateSamples(result);
   input_at_knots_ = trajopt.GetInputSamples(result);
+  for (int i = 0; i < param_.n_step; ++i) {
+    FOM_x0_.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
+    FOM_xf_.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
+  }
+  FOM_x0_.col(param_.n_step) =
+      result.GetSolution(trajopt.x0_vars_by_mode(param_.n_step));
   for (int i = 0; i < param_.n_step; i++) {
     FOM_Lambda_.col(i) = result.GetSolution(trajopt.impulse_vars(i));
   }
+  
+  prev_global_fsm_idx_ = global_fsm_idx;
+  prev_first_mode_knot_idx_ = first_mode_knot_idx;
+  prev_mode_start_ = trajopt.mode_start();
 
   ///
   /// For debugging

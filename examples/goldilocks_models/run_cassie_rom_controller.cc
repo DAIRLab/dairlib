@@ -589,10 +589,14 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
     builder.Connect(optimal_rom_traj_gen->get_output_port_rom(),
                     osc->get_tracking_data_input_port("optimal_rom_traj"));
-    //    builder.Connect(optimal_rom_traj_gen->get_output_port_swing_foot(),
-    //                    osc->get_tracking_data_input_port("swing_ft_traj"));
-    builder.Connect(swing_ft_traj_generator->get_output_port(0),
-                    osc->get_tracking_data_input_port("swing_ft_traj"));
+    bool get_swing_foot_from_planner = false;
+    if (get_swing_foot_from_planner) {
+      builder.Connect(optimal_rom_traj_gen->get_output_port_swing_foot(),
+                      osc->get_tracking_data_input_port("swing_ft_traj"));
+    } else {
+      builder.Connect(swing_ft_traj_generator->get_output_port(0),
+                      osc->get_tracking_data_input_port("swing_ft_traj"));
+    }
     builder.Connect(head_traj_gen->get_output_port(0),
                     osc->get_tracking_data_input_port("pelvis_balance_traj"));
     builder.Connect(head_traj_gen->get_output_port(0),

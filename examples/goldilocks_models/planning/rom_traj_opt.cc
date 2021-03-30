@@ -57,7 +57,7 @@ RomTrajOpt::RomTrajOpt(
     const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
     const BodyPoint& right_origin,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    VectorXd x_init, const std::vector<double>& max_step_distance,
+    VectorXd x_init, const std::vector<double>& max_swing_distance,
     bool start_with_left_stance, bool zero_touchdown_impact,
     const std::set<int>& relax_index, bool print_status)
     : MultipleShooting(
@@ -92,7 +92,7 @@ RomTrajOpt::RomTrajOpt(
       rom_(rom),
       start_with_left_stance_(start_with_left_stance),
       print_status_(print_status) {
-  DRAKE_DEMAND(max_step_distance.size() == num_time_samples.size());
+  DRAKE_DEMAND(max_swing_distance.size() == num_time_samples.size());
 
   /// Some paramters
   double impulse_limit = 50;
@@ -436,7 +436,7 @@ RomTrajOpt::RomTrajOpt(
     PrintStatus("Adding constraint -- FOM swing foot travel distance");
     auto fom_sw_ft_dist_constraint =
         std::make_shared<planning::FomSwingFootDistanceConstraint>(
-            plant_, swing_origin, swing_foot_init_pos, max_step_distance.at(i),
+            plant_, swing_origin, swing_foot_init_pos, max_swing_distance.at(i),
             i == 0, "fom_swing_ft_dist_constraint" + to_string(i));
     if (i == 0) {
       AddConstraint(fom_sw_ft_dist_constraint, xf.head(n_q_));
@@ -789,12 +789,12 @@ RomTrajOptCassie::RomTrajOptCassie(
     const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
     const BodyPoint& right_origin,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd x_init, const std::vector<double>& max_step_distance,
+    Eigen::VectorXd x_init, const std::vector<double>& max_swing_distance,
     bool start_with_left_stance, bool zero_touchdown_impact,
     const std::set<int>& relax_index, bool print_status)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, left_origin, right_origin,
-                 fom_joint_name_lb_ub, x_init, max_step_distance,
+                 fom_joint_name_lb_ub, x_init, max_swing_distance,
                  start_with_left_stance, zero_touchdown_impact, relax_index,
                  print_status) {}
 

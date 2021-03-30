@@ -46,7 +46,7 @@ class RomTrajOpt
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
              Eigen::VectorXd x_init,
-             const std::vector<double>& max_step_distance,
+             const std::vector<double>& max_swing_distance,
              bool start_with_left_stance, bool zero_touchdown_impact,
              const std::set<int>& relax_index, bool print_status = true);
 
@@ -183,7 +183,7 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const std::vector<std::tuple<std::string, double, double>>&
                        fom_joint_name_lb_ub,
                    Eigen::VectorXd x_init,
-                   const std::vector<double>& max_step_distance,
+                   const std::vector<double>& max_swing_distance,
                    bool start_with_left_stance, bool zero_touchdown_impact,
                    const std::set<int>& relax_index, bool print_status = true);
 

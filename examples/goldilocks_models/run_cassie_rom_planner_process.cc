@@ -294,6 +294,8 @@ int DoMain(int argc, char* argv[]) {
       is_right_stance = !FLAGS_start_with_left_stance;
       current_time = 0;
     }
+    cout << "Warning: we are not using quat_xyz_shift port for debug mode.\n";
+    VectorXd quat_xyz_shift = VectorXd::Zero(7 + 1);
 
     ///
     /// Read in initial robot state
@@ -419,9 +421,11 @@ int DoMain(int argc, char* argv[]) {
                                                       init_phase);
     rom_planner->get_input_port_state().FixValue(&planner_context,
                                                  robot_output);
+    rom_planner->get_input_port_quat_xyz_shift().FixValue(&planner_context,
+                                                          quat_xyz_shift);
     rom_planner->get_input_port_fsm_and_lo_time().FixValue(
-        &planner_context,
-        drake::systems::BasicVector({fsm_state, prev_lift_off_time}));
+        &planner_context, drake::systems::BasicVector(
+                              {fsm_state, prev_lift_off_time, current_time}));
 
     ///
     /// Eval output port and store data
@@ -444,6 +448,7 @@ int DoMain(int argc, char* argv[]) {
     LcmTrajectory traj_data(traj_msg);
     cout << "\nFirst-mode trajectory in the lcmt_saved_traj:\n";
     string traj_name_0 = traj_data.GetTrajectoryNames()[0];
+    cout << "traj_name = " << traj_name_0 << endl;
     cout << "time_vector = \n"
          << traj_data.GetTrajectory(traj_name_0).time_vector.transpose()
          << endl;

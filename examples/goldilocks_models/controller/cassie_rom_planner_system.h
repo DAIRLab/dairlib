@@ -13,6 +13,7 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 
@@ -151,6 +152,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int nq_;
   int nv_;
   int nx_;
+  int n_tau_;
 
   const drake::multibody::MultibodyPlant<double>& plant_controls_;
   double stride_period_;
@@ -190,13 +192,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable int prev_first_mode_knot_idx_ = -1;
   mutable std::vector<int> prev_mode_start_;
   // Previous solutions
-  mutable std::vector<Eigen::VectorXd> time_breaks_;
-  mutable std::vector<Eigen::MatrixXd> state_samples_;
+  mutable RomPlannerTrajectory lightweight_saved_traj_;
   mutable Eigen::VectorXd h_solutions_;
   mutable Eigen::MatrixXd state_at_knots_;
   mutable Eigen::MatrixXd input_at_knots_;
-  mutable Eigen::MatrixXd FOM_x0_;
-  mutable Eigen::MatrixXd FOM_xf_;
   mutable Eigen::MatrixXd FOM_Lambda_;
 
   // For debugging

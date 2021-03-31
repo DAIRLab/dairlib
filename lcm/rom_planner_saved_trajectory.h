@@ -17,6 +17,8 @@ namespace dairlib {
 
 class RomPlannerTrajectory : public LcmTrajectory {
  public:
+  RomPlannerTrajectory& operator=(const RomPlannerTrajectory& old);
+
   // The lightweight flag is used for online lcm communication between processes
   RomPlannerTrajectory(const goldilocks_models::RomTrajOpt& trajopt,
                        const drake::solvers::MathematicalProgramResult& result,
@@ -29,6 +31,8 @@ class RomPlannerTrajectory : public LcmTrajectory {
                                 bool lightweight = false) {
     LoadFromFile(filepath, lightweight);
   }
+
+  RomPlannerTrajectory(){};
 
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
       const;
@@ -51,25 +55,13 @@ class RomPlannerTrajectory : public LcmTrajectory {
     DRAKE_DEMAND(mode < num_modes_);
     return xdot_[mode]->datapoints;
   }
-  Eigen::MatrixXd GetStateBreaks(int mode) const {
+  Eigen::VectorXd GetStateBreaks(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
     return x_[mode]->time_vector;
   }
   Eigen::MatrixXd GetInputSamples() const { return u_->datapoints; }
   Eigen::MatrixXd GetBreaks() const { return u_->time_vector; }
-  /*Eigen::MatrixXd GetForceSamples(int mode) const {
-    return lambda_[mode]->datapoints;
-  }
-  Eigen::MatrixXd GetForceBreaks(int mode) const {
-    return lambda_[mode]->time_vector;
-  }
-  Eigen::MatrixXd GetCollocationForceSamples(int mode) const {
-    return lambda_c_[mode]->datapoints;
-  }
-  Eigen::MatrixXd GetCollocationForceBreaks(int mode) const {
-    return lambda_c_[mode]->time_vector;
-  }*/
   Eigen::VectorXd GetDecisionVariables() const {
     return decision_vars_->datapoints;
   }
@@ -88,8 +80,6 @@ class RomPlannerTrajectory : public LcmTrajectory {
 
   const Trajectory* decision_vars_;
   const Trajectory* u_;
-  // std::vector<const Trajectory*> lambda_;
-  // std::vector<const Trajectory*> lambda_c_;
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 

@@ -8,7 +8,6 @@
 
 #include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
-#include "lcm/rom_planner_saved_trajectory.h"
 #include "solvers/optimization_utils.h"
 #include "systems/controllers/osc/osc_utils.h"
 
@@ -107,14 +106,14 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Provide initial guess
   bool with_init_guess = true;
   int n_y = rom_->n_y();
-  int n_tau = rom_->n_tau();
+  n_tau_ = rom_->n_tau();
   string model_dir_n_pref = param_.dir_model + to_string(param_.iter) +
                             string("_") + to_string(param_.sample) +
                             string("_");
   h_guess_ = VectorXd(param_.knots_per_mode);
   y_guess_ = MatrixXd(n_y, param_.knots_per_mode);
   dy_guess_ = MatrixXd(n_y, param_.knots_per_mode);
-  tau_guess_ = MatrixXd(n_tau, param_.knots_per_mode);
+  tau_guess_ = MatrixXd(n_tau_, param_.knots_per_mode);
   if (with_init_guess) {
     // Construct cubic spline from y and ydot and resample, and construct
     // first-order hold from tau and resample.
@@ -127,7 +126,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
             readCSV(model_dir_n_pref + string("y_samples0.csv")),
             readCSV(model_dir_n_pref + string("ydot_samples0.csv")));
     PiecewisePolynomial<double> tau_traj;
-    if (n_tau != 0) {
+    if (n_tau_ != 0) {
       tau_traj = PiecewisePolynomial<double>::FirstOrderHold(
           readCSV(model_dir_n_pref + string("t_breaks0.csv")).col(0),
           readCSV(model_dir_n_pref + string("tau_samples0.csv")));
@@ -138,7 +137,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
       y_guess_.col(i) = y_traj.value(h_guess_(i));
       dy_guess_.col(i) = y_traj.EvalDerivative(h_guess_(i), 1);
-      if (n_tau != 0) {
+      if (n_tau_ != 0) {
         tau_guess_.col(i) = tau_traj.value(h_guess_(i));
       }
     }
@@ -239,7 +238,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
   // Cost weight
   Q_ = param_.w_Q * MatrixXd::Identity(n_y, n_y);
-  R_ = param_.w_R * MatrixXd::Identity(n_tau, n_tau);
+  R_ = param_.w_R * MatrixXd::Identity(n_tau_, n_tau_);
 
   // Pick solver
   drake::solvers::SolverId solver_id("");
@@ -311,8 +310,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   //  }
 
   // Initialization
-  FOM_x0_ = Eigen::MatrixXd::Zero(nx_, param_.n_step + 1);
-  FOM_xf_ = Eigen::MatrixXd::Zero(nx_, param_.n_step);
   if (param_.zero_touchdown_impact) {
     FOM_Lambda_ = Eigen::MatrixXd::Zero(0, (param_.n_step));
   } else {
@@ -326,7 +323,27 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Initialization for warm starting in debug mode
   if (param_.init_file.empty()) {
     if (warm_start_with_previous_solution_ &&
+        // Load the saved traj (not light weight) for the first iteration
         param_.solve_idx_for_read_from_file > 0) {
+      lightweight_saved_traj_ = RomPlannerTrajectory(
+          param_.dir_data + to_string(param_.solve_idx_for_read_from_file - 1) +
+          "_rom_trajectory");
+      h_solutions_ = readCSV(param_.dir_data +
+                             to_string(param_.solve_idx_for_read_from_file) +
+                             "_prev_h_solutions.csv");
+      input_at_knots_ =
+          (n_tau_ == 0)
+              ? MatrixXd::Zero(0, h_solutions_.size() + 1)
+              : readCSV(param_.dir_data +
+                        to_string(param_.solve_idx_for_read_from_file) +
+                        "_prev_input_at_knots.csv");
+      FOM_Lambda_ =
+          param_.zero_touchdown_impact
+              ? Eigen::MatrixXd::Zero(0, (param_.n_step))
+              : readCSV(param_.dir_data +
+                        to_string(param_.solve_idx_for_read_from_file) +
+                        "_prev_FOM_Lambda.csv");
+
       prev_global_fsm_idx_ = readCSV(
           param_.dir_data + to_string(param_.solve_idx_for_read_from_file) +
           "_prev_global_fsm_idx.csv")(0, 0);
@@ -727,9 +744,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
-  RomPlannerTrajectory saved_traj(trajopt, result, quat_xyz_shift, "", "", true,
-                                  current_time);
-  *traj_msg = saved_traj.GenerateLcmObject();
+  lightweight_saved_traj_ = RomPlannerTrajectory(
+      trajopt, result, quat_xyz_shift, "", "", true, current_time);
+  *traj_msg = lightweight_saved_traj_.GenerateLcmObject();
 
   // Store the previous message
   previous_output_msg_ = *traj_msg;
@@ -739,34 +756,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   /// Save solutions for either logging for warm-starting
   ///
 
-  // TODO: use RomPlannerTrajectory to clean the following codes up
-
   // TODO: maybe don't save the trajectory for warmstart if the solver didn't
   //  find an optimal solution
 
-  time_breaks_.clear();  // The time starts at 0. (by accumulating dt's)
-  state_samples_.clear();
-  trajopt.GetStateSamples(result, &state_samples_, &time_breaks_);
-  // Shift the timestamps by the current time
-  for (auto& time_break_per_mode : time_breaks_) {
-    time_break_per_mode.array() += current_time;
-  }
-
-  VectorXd sample_times = trajopt.GetSampleTimes(result);
-  int N = trajopt.num_knots();
-  h_solutions_.resize(N - 1);
-  for (int i = 0; i < N - 1; i++) {
-    h_solutions_(i) = sample_times(i + 1) - sample_times(i);
-  }
-  state_at_knots_ = trajopt.drake::systems::trajectory_optimization::
-                        MultipleShooting::GetStateSamples(result);
+  h_solutions_ = trajopt.GetTimeStepSolution(result);
   input_at_knots_ = trajopt.GetInputSamples(result);
-  for (int i = 0; i < param_.n_step; ++i) {
-    FOM_x0_.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
-    FOM_xf_.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
-  }
-  FOM_x0_.col(param_.n_step) =
-      result.GetSolution(trajopt.x0_vars_by_mode(param_.n_step));
+
   for (int i = 0; i < param_.n_step; i++) {
     FOM_Lambda_.col(i) = result.GetSolution(trajopt.impulse_vars(i));
   }
@@ -836,10 +831,10 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
   for (int i = 0; i < param_.n_step; i++) {
     writeCSV(
         dir_data + string(prefix + "time_at_knots" + to_string(i) + ".csv"),
-        time_breaks_[i]);
+        lightweight_saved_traj_.GetStateBreaks(i));
     writeCSV(
         dir_data + string(prefix + "state_at_knots" + to_string(i) + ".csv"),
-        state_samples_[i]);
+        lightweight_saved_traj_.GetStateSamples(i));
   }
   MatrixXd input_at_knots = trajopt.GetInputSamples(result);
   writeCSV(dir_data + string(prefix + "input_at_knots.csv"), input_at_knots);
@@ -864,6 +859,13 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
            trajopt.initial_guess(), true);
   writeCSV(param_.dir_data + prefix + string("current_time.csv"),
            current_time * VectorXd::Ones(1), true);
+  // for warm-start
+  writeCSV(param_.dir_data + prefix + string("prev_h_solutions.csv"),
+           h_solutions_, true);
+  writeCSV(param_.dir_data + prefix + string("prev_input_at_knots.csv"),
+           input_at_knots_, true);
+  writeCSV(param_.dir_data + prefix + string("prev_FOM_Lambda.csv"),
+           FOM_Lambda_, true);
   writeCSV(param_.dir_data + prefix_next + string("prev_global_fsm_idx.csv"),
            prev_global_fsm_idx_ * VectorXd::Ones(1), true);
   writeCSV(
@@ -1007,18 +1009,14 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
           trajopt->SetInitialGuess(trajopt->timestep(trajopt_idx),
                                    h_solutions_.segment<1>(prev_trajopt_idx));
         }
-        // 2. rom state
-        trajopt->SetInitialGuess(trajopt->state(trajopt_idx),
-                                 state_at_knots_.col(prev_trajopt_idx));
+        // 2. rom state (including both pre and post impact)
+        trajopt->SetInitialGuess(
+            trajopt->state_vars_by_mode(local_fsm_idx, local_knot_idx),
+            lightweight_saved_traj_.GetStateSamples(prev_local_fsm_idx)
+                .col(prev_local_knot_idx));
         // 3. rom input
         trajopt->SetInitialGuess(trajopt->input(trajopt_idx),
                                  input_at_knots_.col(prev_trajopt_idx));
-        // 4. post-impact rom state
-        if ((knot_idx == 0) && (local_fsm_idx != 0)) {
-          trajopt->SetInitialGuess(
-              trajopt->state_vars_by_mode(local_fsm_idx, local_knot_idx),
-              state_samples_[prev_local_fsm_idx].col(prev_local_knot_idx));
-        }
 
         knot_idx++;
       }
@@ -1029,11 +1027,13 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
         // Use x_init as a guess (I set it outside this warm-start function)
       }
       // 6. FOM pre-impact
-      trajopt->SetInitialGuess(trajopt->xf_vars_by_mode(local_fsm_idx),
-                               FOM_xf_.col(prev_local_fsm_idx));
+      trajopt->SetInitialGuess(
+          trajopt->xf_vars_by_mode(local_fsm_idx),
+          lightweight_saved_traj_.get_xf().col(prev_local_fsm_idx));
       // 7. FOM post-impact
-      trajopt->SetInitialGuess(trajopt->x0_vars_by_mode(local_fsm_idx + 1),
-                               FOM_x0_.col(prev_local_fsm_idx + 1));
+      trajopt->SetInitialGuess(
+          trajopt->x0_vars_by_mode(local_fsm_idx + 1),
+          lightweight_saved_traj_.get_x0().col(prev_local_fsm_idx + 1));
       // 8. FOM impulse
       trajopt->SetInitialGuess(trajopt->impulse_vars(local_fsm_idx),
                                FOM_Lambda_.col(prev_local_fsm_idx));

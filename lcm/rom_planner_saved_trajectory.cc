@@ -13,11 +13,43 @@ using std::vector;
 namespace dairlib {
 using goldilocks_models::RomTrajOpt;
 
+// Assignment operator (for the lightweight version!)
+RomPlannerTrajectory& RomPlannerTrajectory::operator=(
+    const RomPlannerTrajectory& old) {
+  // Base class (LcmTrajectory)
+  LcmTrajectory::operator=(old);
+
+  // Derived class (RomPlannerTrajectory)
+  num_modes_ = old.GetNumModes();
+
+  x_.clear();
+  for (int mode = 0; mode < num_modes_; ++mode) {
+    x_.push_back(&GetTrajectory("state_traj" + std::to_string(mode)));
+  }
+
+  x0_FOM_ = &GetTrajectory("x0_FOM");
+  xf_FOM_ = &GetTrajectory("xf_FOM");
+
+  stance_foot_ = old.get_stance_foot();
+  quat_xyz_shift_ = old.get_quat_xyz_shift();
+
+  // We do not copy the following data, because this copy assignment is only
+  // used for the lightweight version
+  //   u_ = &GetTrajectory("input_traj");
+  //   decision_vars_;
+  //   lambda_;
+  //   lambda_c_;
+  //   xdot_;
+
+  return *this;
+}
+
 RomPlannerTrajectory::RomPlannerTrajectory(
     const RomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
     const VectorXd& quat_xyz_shift, const std::string& name,
-    const std::string& description, bool lightweight, double time_shift) {
+    const std::string& description, bool lightweight, double time_shift)
+    : LcmTrajectory() {
   num_modes_ = trajopt.num_modes();
 
   // Create state and input names
@@ -55,66 +87,27 @@ RomPlannerTrajectory::RomPlannerTrajectory(
 
   // State trajectory and force trajectory
   for (int mode = 0; mode < num_modes_; ++mode) {
-    LcmTrajectory::Trajectory state_traj;
-    LcmTrajectory::Trajectory state_derivative_traj;
-    // LcmTrajectory::Trajectory force_traj;
-
     // State
+    LcmTrajectory::Trajectory state_traj;
     state_traj.traj_name = "state_traj" + std::to_string(mode);
     state_traj.datapoints = x[mode];
     state_traj.time_vector = time_breaks[mode];
     state_traj.datatypes = state_names;
     AddTrajectory(state_traj.traj_name, state_traj);
+    x_.push_back(&GetTrajectory(state_traj.traj_name));
 
+    // State derivatives
     if (!lightweight) {
-      // State derivatives
+      LcmTrajectory::Trajectory state_derivative_traj;
       state_derivative_traj.traj_name =
           "state_derivative_traj" + std::to_string(mode);
       state_derivative_traj.datapoints = xdot[mode];
       state_derivative_traj.time_vector = time_breaks[mode];
       state_derivative_traj.datatypes = state_names;
       AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
-
-      /*// Force vars
-      force_traj.traj_name = "force_vars" + std::to_string(mode);
-      std::vector<std::string> force_names;
-      std::vector<std::string> collocation_force_names;
-      int num_forces = 0;
-      for (int i = 0; i < trajopt.num_kinematic_constraints_wo_skipping(mode);
-           ++i) {
-        force_names.push_back("lambda_" + std::to_string(num_forces));
-        collocation_force_names.push_back("lambda_c_" +
-                                          std::to_string(num_forces));
-        ++num_forces;
-      }
-      force_traj.traj_name = "force_vars" + std::to_string(mode);
-      force_traj.time_vector = time_breaks[mode];
-      force_traj.datapoints =
-          Map<MatrixXd>(result.GetSolution(trajopt.force_vars(mode)).data(),
-                        num_forces, force_traj.time_vector.size());
-      force_traj.datatypes = force_names;
-      // AddTrajectory(force_traj.traj_name, force_traj);
-
-      // Collocation force vars
-      if (time_breaks[mode].size() > 1) {
-        LcmTrajectory::Trajectory collocation_force_traj;
-        collocation_force_traj.traj_name =
-            "collocation_force_vars" + std::to_string(mode);
-        collocation_force_traj.datatypes = collocation_force_names;
-        collocation_force_traj.time_vector =
-            GetCollocationPoints(time_breaks[mode]);
-        collocation_force_traj.datapoints = Map<MatrixXd>(
-            result.GetSolution(trajopt.collocation_force_vars(mode)).data(),
-            num_forces, collocation_force_traj.time_vector.size());
-        AddTrajectory(collocation_force_traj.traj_name, collocation_force_traj);
-        lambda_c_.push_back(&collocation_force_traj);
-      }*/
+      xdot_.push_back(&GetTrajectory(state_derivative_traj.traj_name));
     }
-
-    // x_.push_back(&state_traj);
-    // xdot_.push_back(&state_derivative_traj);
-    // lambda_.push_back(&force_traj);
-  }
+  }  // end for
 
   // Input trajectory
   if (!lightweight) {
@@ -168,6 +161,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   x0_traj.time_vector = time_vec_x0;
   x0_traj.datatypes = vector<string>(trajopt.n_x_FOM(), "");
   AddTrajectory(x0_traj.traj_name, x0_traj);
+  x0_FOM_ = &GetTrajectory(x0_traj.traj_name);
   // 2.b FOM xf
   MatrixXd xf_FOM = MatrixXd::Zero(trajopt.n_x_FOM(), num_modes_);
   for (int i = 0; i < num_modes_; ++i) {
@@ -183,6 +177,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   xf_traj.time_vector = time_vec_xf;
   xf_traj.datatypes = vector<string>(trajopt.n_x_FOM(), "");
   AddTrajectory(xf_traj.traj_name, xf_traj);
+  xf_FOM_ = &GetTrajectory(xf_traj.traj_name);
 
   // 3. stance foot (left is 0, right is 1)
   MatrixXd stance_foot_mat = MatrixXd::Zero(1, num_modes_);
@@ -246,17 +241,12 @@ void RomPlannerTrajectory::LoadFromFile(const std::string& filepath,
     }
   }
 
-  // State and forces
+  // State
   for (int mode = 0; mode < num_modes_; ++mode) {
     x_.push_back(&GetTrajectory("state_traj" + std::to_string(mode)));
     if (!lightweight) {
       xdot_.push_back(
           &GetTrajectory("state_derivative_traj" + std::to_string(mode)));
-      /*lambda_.push_back(&GetTrajectory("force_vars" + std::to_string(mode)));
-      if (x_[mode]->time_vector.size() > 1) {
-        lambda_c_.push_back(
-            &GetTrajectory("collocation_force_vars" + std::to_string(mode)));
-      }*/
     }
   }
 

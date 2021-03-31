@@ -104,6 +104,11 @@ class RomTrajOpt
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
 
+  Eigen::VectorXd GetTimeStepSolution(
+      const drake::solvers::MathematicalProgramResult& result) const {
+    return result.GetSolution(h_vars());
+  }
+
   int num_knots() const {
     return std::accumulate(mode_lengths_.begin(), mode_lengths_.end(), 0) -
            mode_lengths_.size() + 1;

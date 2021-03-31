@@ -129,9 +129,6 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_saved_traj* traj_msg) const;
 
-  void PrintCost(const RomTrajOptCassie& trajopt,
-                 const drake::solvers::MathematicalProgramResult& result) const;
-  void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;
   void WarmStartGuess(
       const std::vector<Eigen::VectorXd>& des_xy_pos, int global_fsm_idx,
       int first_mode_knot_idx,
@@ -207,6 +204,20 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void PrintStatus(const std::string& msg) const {
     if (debug_mode_) std::cout << msg << std::endl;
   };
+  void SaveTrajIntoLcmBinary(
+      const RomTrajOptCassie& trajopt,
+      const drake::solvers::MathematicalProgramResult& result,
+      const Eigen::VectorXd& quat_xyz_shift, const std::string& dir_data,
+      const std::string& prefix) const;
+  void SaveDataIntoFiles(
+      double current_time, const Eigen::VectorXd& x_init, double init_phase,
+      bool is_right_stance, const RomTrajOptCassie& trajopt,
+      const drake::solvers::MathematicalProgramResult& result,
+      const std::string& dir_data, const std::string& prefix,
+      const std::string& prefix_next) const;
+  void PrintCost(const RomTrajOptCassie& trajopt,
+                 const drake::solvers::MathematicalProgramResult& result) const;
+  void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;
 
   // Since sometimes the planner replan every 1ms in the beginning of the
   // simulation (e.g. at 0, 1, 2 ms), we use min_time_difference_for_replanning_

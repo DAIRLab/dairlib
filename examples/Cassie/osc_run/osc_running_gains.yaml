@@ -17,11 +17,14 @@ hip_yaw_kd: 1
 w_hip_pitch: 100
 hip_pitch_kp: 40
 hip_pitch_kd: 1
+w_hip_roll: 100
+hip_roll_kp: 40
+hip_roll_kd: 1
 
 PelvisW:
-  [0,     0,    0,
-   0,     0,    0,
-   0,     0, 2000]
+  [10,     0,    0,
+    0,    10,    0,
+    0,     0, 2000]
 PelvisKp:
   [ 0,   0,    0,
     0,   0,    0,

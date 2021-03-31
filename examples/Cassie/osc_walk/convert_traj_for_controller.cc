@@ -232,6 +232,7 @@ int DoMain() {
   if (FLAGS_mirror_traj) {
     double x_offset = state_traj.value(state_traj.end_time())(4) -
                       state_traj.value(state_traj.start_time())(4);
+    std::cout << "x_offset: " << x_offset << std::endl;
     // Extended trajectory
     for (int mode = 0; mode < dircon_traj.GetNumModes(); ++mode) {
       if (dircon_traj.GetStateBreaks(mode).size() <= 1) {
@@ -255,9 +256,9 @@ int DoMain() {
       for (unsigned int i = 0; i < times.size(); ++i) {
         //      VectorXd x_i = M * state_samples.col(i).head(nx);
         //      VectorXd xdot_i = M * state_samples.col(i).tail(nx);
-        //      x_i(4) = x_i(4) + x_offset;
         VectorXd x_i = x_samples.col(i);
         VectorXd xdot_i = xdot_samples.col(i);
+        x_i(4) = x_i(4) + x_offset;
 
         plant.SetPositionsAndVelocities(context.get(), x_i);
         Eigen::Ref<Eigen::MatrixXd> pelvis_pos_block =

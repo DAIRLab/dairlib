@@ -19,7 +19,7 @@ def main():
   trajectory_path = "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/"
   gait_type = "running"
 
-  stride_lengths = np.arange(0.00, -0.51, -0.01)
+  stride_lengths = np.arange(0.00, 0.51, 0.05)
   costs = np.inf * np.ones(stride_lengths.shape)
   costs[0] = 2
 

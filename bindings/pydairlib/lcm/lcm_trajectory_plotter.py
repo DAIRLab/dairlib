@@ -35,7 +35,7 @@ def main():
                                                      lcm_right_foot_traj.datapoints[xdot_slice])
   pelvis_traj = PiecewisePolynomial.CubicHermite(lcm_pelvis_traj.time_vector, lcm_pelvis_traj.datapoints[x_slice],
                                                  lcm_pelvis_traj.datapoints[xdot_slice])
-  for mode in range(1, 3):
+  for mode in range(1, 6):
     lcm_left_foot_traj = loadedTrajs.GetTrajectory("left_foot_trajectory" + str(mode))
     lcm_right_foot_traj = loadedTrajs.GetTrajectory("right_foot_trajectory" + str(mode))
     lcm_pelvis_traj = loadedTrajs.GetTrajectory("pelvis_trans_trajectory" + str(mode))

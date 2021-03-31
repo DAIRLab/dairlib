@@ -335,6 +335,25 @@ int DoMain(int argc, char* argv[]) {
       right_stance_state, "hip_pitch_right", "hip_pitch_rightdot");
   osc->AddTrackingData(&hip_pitch_tracking_data);
 
+  // Stance hip roll trajectory
+  auto hip_roll_traj = dircon_trajectory.ReconstructJointTrajectory(
+      pos_map_wo_spr["hip_roll_left"]);
+  auto hip_roll_right_traj =
+      dircon_trajectory.ReconstructMirrorJointTrajectory(
+          pos_map_wo_spr["hip_roll_left"]);
+  hip_roll_right_traj.shiftRight(hip_roll_traj.end_time());
+  hip_roll_traj.ConcatenateInTime(hip_roll_right_traj);
+  auto hip_roll_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(
+      hip_roll_traj, "hip_roll_traj");
+  JointSpaceTrackingData hip_roll_tracking_data(
+      "hip_roll_traj", osc_gains.W_hip_roll, osc_gains.K_p_hip_roll,
+      osc_gains.K_d_hip_roll, plant, plant);
+  hip_roll_tracking_data.AddStateAndJointToTrack(
+      left_stance_state, "hip_roll_left", "hip_roll_leftdot");
+  hip_roll_tracking_data.AddStateAndJointToTrack(
+      right_stance_state, "hip_roll_right", "hip_roll_rightdot");
+  osc->AddTrackingData(&hip_roll_tracking_data);
+
   // Swing toe joint trajectory
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
@@ -415,6 +434,8 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(hip_pitch_traj_generator->get_output_port(),
                   osc->get_tracking_data_input_port("hip_pitch_traj"));
+  builder.Connect(hip_roll_traj_generator->get_output_port(),
+                  osc->get_tracking_data_input_port("hip_roll_traj"));
   // OSC connections
   builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_trans_traj"));

@@ -102,7 +102,7 @@ void ImpactTimeBasedFiniteStateMachine::CalcClock(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto current_time = static_cast<double>(robot_output->get_timestamp());
 
-  double remainder = fmod(current_time, period_);
+  double remainder = fmod(current_time, 2*period_);
 
   clock->get_mutable_value()(0) = remainder;
 }

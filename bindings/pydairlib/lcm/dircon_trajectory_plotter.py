@@ -64,7 +64,7 @@ def main():
   plt.plot(t, force_samples)
   plt.legend(force_datatypes)
 
-  plt.show()
+  # plt.show()
 
 def reflected_joints():
 
@@ -76,13 +76,11 @@ def reflected_joints():
   asy_indices = {7, 9, 25, 27}
   mirror[1, 1] = -1
   mirror[3, 3] = -1
-  # mirror[4, 4] = 1
   mirror[5, 5] = -1
-  # mirror[3, 3] = -1
-  mirror[20, 20] = -1
+
+  mirror[19, 19] = -1
   mirror[21, 21] = -1
   mirror[23, 23] = -1
-  # mirror[22, 22] = -1
   for i in joint_slice:
     if(i in asy_indices):
       mirror[i,i+1] = -1

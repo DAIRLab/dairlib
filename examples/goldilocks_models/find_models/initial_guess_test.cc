@@ -136,7 +136,7 @@ int test_initial_guess(int iter, int sample, int robot) {
     }
   }
   ExpansionTasksGenerator task_gen_expansion =
-      ExpansionTasksGenerator(0,false,task_gen->total_sample_number());
+      ExpansionTasksGenerator(0,false,task_gen->total_sample_number(),false);
   string initial_file = SetInitialGuessByInterpolation(
       dir, iter, sample, task_gen, task, *rom,task_gen_expansion);
   return 1;

@@ -28,7 +28,7 @@ def main():
     # filename = sys.argv[1]
   else:
     filename = FindResourceOrThrow(
-      '../dairlib_data/goldilocks_models/planning/robot_1/data/rom_trajectory')
+      '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
 
   rom_traj = pydairlib.lcm_trajectory.RomPlannerTrajectory(filename)
 

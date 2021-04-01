@@ -793,7 +793,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (true) {
     string dir_data = param_.dir_data;
     string prefix = debug_mode_ ? "debug_" : to_string(counter_) + "_";
-    string prefix_next = debug_mode_ ? "debug_" : to_string(counter_ + 1) + "_";
+    string prefix_next = debug_mode_ ? "debug_next_" : to_string(counter_ + 1) + "_";
 
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
                       trajopt, result, dir_data, prefix, prefix_next);
@@ -860,11 +860,11 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
   writeCSV(param_.dir_data + prefix + string("current_time.csv"),
            current_time * VectorXd::Ones(1), true);
   // for warm-start
-  writeCSV(param_.dir_data + prefix + string("prev_h_solutions.csv"),
+  writeCSV(param_.dir_data + prefix_next + string("prev_h_solutions.csv"),
            h_solutions_, true);
-  writeCSV(param_.dir_data + prefix + string("prev_input_at_knots.csv"),
+  writeCSV(param_.dir_data + prefix_next + string("prev_input_at_knots.csv"),
            input_at_knots_, true);
-  writeCSV(param_.dir_data + prefix + string("prev_FOM_Lambda.csv"),
+  writeCSV(param_.dir_data + prefix_next + string("prev_FOM_Lambda.csv"),
            FOM_Lambda_, true);
   writeCSV(param_.dir_data + prefix_next + string("prev_global_fsm_idx.csv"),
            prev_global_fsm_idx_ * VectorXd::Ones(1), true);

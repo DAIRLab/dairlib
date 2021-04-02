@@ -216,6 +216,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       const std::string& prefix_next) const;
   void PrintCost(const RomTrajOptCassie& trajopt,
                  const drake::solvers::MathematicalProgramResult& result) const;
+  void BookKeeping(
+      bool start_with_left_stance, const std::chrono::duration<double>& elapsed,
+      const drake::solvers::MathematicalProgramResult& result) const;
   void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;
 
   // Since sometimes the planner replan every 1ms in the beginning of the
@@ -229,9 +232,6 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable double timestamp_of_previous_plan_ = -1;
   mutable dairlib::lcmt_saved_traj previous_output_msg_;
 
-  // Testing
-  mutable int counter_ = 0;
-
   // flags
   bool use_standing_pose_as_init_FOM_guess_ = true;
   // Although warm start helps most of the time, it could also make the solver
@@ -240,6 +240,20 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   // Init state relaxation (relax the mapping function)
   std::set<int> relax_index_ = {5};  //{3, 4, 5};
+
+  // Testing
+  mutable int counter_ = 0;
+
+  mutable double total_solve_time_ = 0;
+  mutable double max_solve_time_ = 0;
+
+  mutable bool past_is_left_stance_ = true;
+  mutable int total_number_of_first_solve_of_the_mode_ = 0;
+  mutable double total_solve_time_of_first_solve_of_the_mode_ = 0;
+  mutable double max_solve_time_of_first_solve_of_the_mode_ = 0;
+
+  mutable int num_failed_solve_ = 0;
+  mutable int latest_failed_solve_idx_ = -1;
 };
 
 }  // namespace goldilocks_models

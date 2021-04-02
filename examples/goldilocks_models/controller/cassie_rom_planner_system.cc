@@ -790,6 +790,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Check the cost
   PrintCost(trajopt, result);
 
+  // Keep track of solve time and stuffs
+  BookKeeping(start_with_left_stance, elapsed, result);
+
   // Check constraint violation
   //    //    double tol = 1e-3;
   double tol = param_.feas_tol;
@@ -887,40 +890,95 @@ void CassiePlannerWithMixedRomFom::PrintCost(
     const MathematicalProgramResult& result) const {
   double cost_ydot =
       solvers::EvalCostGivenSolution(result, trajopt.rom_state_cost_bindings_);
-  cout << "cost_ydot = " << cost_ydot << endl;
+  if (cost_ydot > 0) {
+    cout << "cost_ydot = " << cost_ydot << endl;
+  }
   double cost_u =
       solvers::EvalCostGivenSolution(result, trajopt.rom_input_cost_bindings_);
-  cout << "cost_u = " << cost_u << endl;
+  if (cost_u > 0) {
+    cout << "cost_u = " << cost_u << endl;
+  }
   double rom_regularization_cost = solvers::EvalCostGivenSolution(
       result, trajopt.rom_regularization_cost_bindings_);
-  cout << "rom_regularization_cost = " << rom_regularization_cost << endl;
+  if (rom_regularization_cost > 0) {
+    cout << "rom_regularization_cost = " << rom_regularization_cost << endl;
+  }
   double fom_reg_quat_cost = solvers::EvalCostGivenSolution(
       result, trajopt.fom_reg_quat_cost_bindings_);
-  cout << "fom_reg_quat_cost = " << fom_reg_quat_cost << endl;
+  if (fom_reg_quat_cost > 0) {
+    cout << "fom_reg_quat_cost = " << fom_reg_quat_cost << endl;
+  }
   double fom_xy_cost =
       solvers::EvalCostGivenSolution(result, trajopt.fom_reg_xy_cost_bindings_);
-  cout << "fom_xy_cost = " << fom_xy_cost << endl;
+  if (fom_xy_cost > 0) {
+    cout << "fom_xy_cost = " << fom_xy_cost << endl;
+  }
   double fom_reg_z_cost =
       solvers::EvalCostGivenSolution(result, trajopt.fom_reg_z_cost_bindings_);
-  cout << "fom_reg_z_cost = " << fom_reg_z_cost << endl;
+  if (fom_reg_z_cost > 0) {
+    cout << "fom_reg_z_cost = " << fom_reg_z_cost << endl;
+  }
   double fom_reg_joint_cost = solvers::EvalCostGivenSolution(
       result, trajopt.fom_reg_joint_cost_bindings_);
-  cout << "fom_reg_joint_cost = " << fom_reg_joint_cost << endl;
+  if (fom_reg_joint_cost > 0) {
+    cout << "fom_reg_joint_cost = " << fom_reg_joint_cost << endl;
+  }
   double fom_reg_vel_cost = solvers::EvalCostGivenSolution(
       result, trajopt.fom_reg_vel_cost_bindings_);
-  cout << "fom_reg_vel_cost = " << fom_reg_vel_cost << endl;
+  if (fom_reg_vel_cost > 0) {
+    cout << "fom_reg_vel_cost = " << fom_reg_vel_cost << endl;
+  }
   double lambda_cost =
       solvers::EvalCostGivenSolution(result, trajopt.lambda_cost_bindings_);
-  cout << "lambda_cost = " << lambda_cost << endl;
+  if (lambda_cost > 0) {
+    cout << "lambda_cost = " << lambda_cost << endl;
+  }
   double x0_relax_cost =
       solvers::EvalCostGivenSolution(result, trajopt.x0_relax_cost_bindings_);
-  cout << "x0_relax_cost = " << x0_relax_cost << endl;
+  if (x0_relax_cost > 0) {
+    cout << "x0_relax_cost = " << x0_relax_cost << endl;
+  }
   double v0_relax_cost =
       solvers::EvalCostGivenSolution(result, trajopt.v0_relax_cost_bindings_);
-  cout << "v0_relax_cost = " << v0_relax_cost << endl;
+  if (v0_relax_cost > 0) {
+    cout << "v0_relax_cost = " << v0_relax_cost << endl;
+  }
   double init_rom_relax_cost = solvers::EvalCostGivenSolution(
       result, trajopt.init_rom_relax_cost_bindings_);
-  cout << "init_rom_relax_cost = " << init_rom_relax_cost << endl;
+  if (init_rom_relax_cost > 0) {
+    cout << "init_rom_relax_cost = " << init_rom_relax_cost << endl;
+  }
+}
+
+void CassiePlannerWithMixedRomFom::BookKeeping(
+    bool start_with_left_stance, const std::chrono::duration<double>& elapsed,
+    const MathematicalProgramResult& result) const {
+  // Keep track of solve time and stuffs
+
+  total_solve_time_ += elapsed.count();
+  if (elapsed.count() > max_solve_time_) {
+    max_solve_time_ = elapsed.count();
+  }
+  if (!result.is_success()) {
+    num_failed_solve_++;
+    latest_failed_solve_idx_ = counter_;
+  }
+  if (counter_ == 0 || past_is_left_stance_ != start_with_left_stance) {
+    total_solve_time_of_first_solve_of_the_mode_ += elapsed.count();
+    if (elapsed.count() > max_solve_time_of_first_solve_of_the_mode_) {
+      max_solve_time_of_first_solve_of_the_mode_ = elapsed.count();
+    }
+    total_number_of_first_solve_of_the_mode_++;
+    past_is_left_stance_ = start_with_left_stance;
+  }
+  cout << "\nsolve time (average) = " << total_solve_time_ / counter_ << endl;
+  cout << "solve time of the first solve of the mode (average, max) = "
+       << total_solve_time_of_first_solve_of_the_mode_ /
+              total_number_of_first_solve_of_the_mode_
+       << ", " << max_solve_time_ << endl;
+  cout << "num_failed_solve_ = " << num_failed_solve_
+       << " (latest failed index: " << latest_failed_solve_idx_ << ")"
+       << "\n\n";
 }
 
 void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(

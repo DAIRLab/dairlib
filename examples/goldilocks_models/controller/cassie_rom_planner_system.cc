@@ -416,15 +416,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "  init_phase  = " << init_phase << endl;
   }
 
-  // Testing
-  //  init_phase =
-  //      readCSV(param_.dir_data + to_string(1) + "_init_phase.csv")(0, 0);
-  //  is_right_stance =
-  //      readCSV(param_.dir_data + to_string(1) + "_is_right_stance.csv")(0,
-  //      0);
-  //  current_time =
-  //      readCSV(param_.dir_data + to_string(1) + "_current_time.csv")(0, 0);
-  //  x_init = readCSV(param_.dir_data + to_string(1) + "_x_init.csv");
+  // For data logging
+  string prefix = debug_mode_ ? "debug_" : to_string(counter_) + "_";
+  string prefix_next =
+      debug_mode_ ? "debug_next_" : to_string(counter_ + 1) + "_";
 
   ///
   /// Construct rom traj opt
@@ -681,7 +676,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Testing -- solve with another solver
-  if (true) {
+  if (false) {
     start = std::chrono::high_resolution_clock::now();
     drake::solvers::MathematicalProgramResult result2;
     if (param_.use_ipopt) {
@@ -697,6 +692,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "Solve time:" << elapsed.count() << " | ";
     cout << result2.get_solution_result() << " | ";
     cout << "Cost:" << result2.get_optimal_cost() << "\n";
+
+    /// For visualization of the second solver
+    MatrixXd x0_each_mode(nx_, trajopt.num_modes());
+    MatrixXd xf_each_mode(nx_, trajopt.num_modes());
+    for (uint i = 0; i < trajopt.num_modes(); i++) {
+      x0_each_mode.col(i) = result2.GetSolution(trajopt.x0_vars_by_mode(i));
+      xf_each_mode.col(i) = result2.GetSolution(trajopt.xf_vars_by_mode(i));
+    }
+    writeCSV(param_.dir_data + string(prefix + "x0_each_mode_snopt.csv"),
+             x0_each_mode);
+    writeCSV(param_.dir_data + string(prefix + "xf_each_mode_snopt.csv"),
+             xf_each_mode);
   }
 
   // Testing -- solve with another solver and feed it with solution as init
@@ -784,22 +791,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   PrintCost(trajopt, result);
 
   // Check constraint violation
-  double tol = param_.feas_tol;
   //    //    double tol = 1e-3;
+  double tol = param_.feas_tol;
   solvers::CheckGenericConstraints(trajopt, result, tol);
 
   // Extract and save solution into files (for debugging)
   //  if (debug_mode_) {
   if (true) {
-    string dir_data = param_.dir_data;
-    string prefix = debug_mode_ ? "debug_" : to_string(counter_) + "_";
-    string prefix_next = debug_mode_ ? "debug_next_" : to_string(counter_ + 1) + "_";
-
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
-                      trajopt, result, dir_data, prefix, prefix_next);
-
-    /// Save trajectory to lcm
-    SaveTrajIntoLcmBinary(trajopt, result, quat_xyz_shift, dir_data, prefix);
+                      trajopt, result, param_.dir_data, prefix, prefix_next);
+    // Save trajectory to lcm
+    SaveTrajIntoLcmBinary(trajopt, result, quat_xyz_shift, param_.dir_data,
+                          prefix);
   }
 
   counter_++;

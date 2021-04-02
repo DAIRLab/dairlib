@@ -357,10 +357,10 @@ int DoMain(int argc, char* argv[]) {
     }
 
     // Visualize the initial pose
-    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+    /*multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
         FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
         1);
-    visualizer.DrawPoses(x_init);
+    visualizer.DrawPoses(x_init);*/
 
     // Testing
     std::vector<string> name_list = {"base_qw",

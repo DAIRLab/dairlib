@@ -100,6 +100,7 @@ class LcmDrivenLoop {
     diagram_ptr_ = diagram.get();
     simulator_ =
         std::make_unique<drake::systems::Simulator<double>>(std::move(diagram));
+    simulator_->set_publish_every_time_step(true);
 
     // Create subscriber for the switch (in the case of multi-input)
     DRAKE_DEMAND(!input_channels.empty());
@@ -232,6 +233,7 @@ class LcmDrivenLoop {
           simulator_->get_mutable_context().SetTime(time);
         }
         context_timestamps_.push_back(simulator_->get_context().get_time());
+        msg_timestamps_.push_back(time);
         loop_start_timestamps_.push_back(
             std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::system_clock::now().time_since_epoch())
@@ -239,7 +241,7 @@ class LcmDrivenLoop {
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram
-          diagram_ptr_->Publish(diagram_context);
+//          diagram_ptr_->Publish(diagram_context);
         }
 
         loop_end_timestamps_.push_back(
@@ -253,7 +255,7 @@ class LcmDrivenLoop {
           std::ofstream myfile;
           myfile.open("../" + diagram_name_ + ".txt");
           for (int i = 0; i < context_timestamps_.size(); ++i) {
-            myfile << context_timestamps_[i] << "," << loop_start_timestamps_[i]
+            myfile << context_timestamps_[i] << "," << msg_timestamps_[i] << "," << loop_start_timestamps_[i]
                    << "," << loop_end_timestamps_[i] << "\n";
           }
           myfile.close();
@@ -319,6 +321,7 @@ class LcmDrivenLoop {
   bool is_forced_publish_;
 
   std::vector<double> context_timestamps_;
+  std::vector<double> msg_timestamps_;
   std::vector<long> loop_start_timestamps_;
   std::vector<long> loop_end_timestamps_;
 

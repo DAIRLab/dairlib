@@ -971,11 +971,12 @@ void CassiePlannerWithMixedRomFom::BookKeeping(
     total_number_of_first_solve_of_the_mode_++;
     past_is_left_stance_ = start_with_left_stance;
   }
-  cout << "\nsolve time (average) = " << total_solve_time_ / counter_ << endl;
+  cout << "\nsolve time (average, max) = " << total_solve_time_ / counter_
+      << ", " << max_solve_time_ << endl;
   cout << "solve time of the first solve of the mode (average, max) = "
        << total_solve_time_of_first_solve_of_the_mode_ /
               total_number_of_first_solve_of_the_mode_
-       << ", " << max_solve_time_ << endl;
+       << ", " << max_solve_time_of_first_solve_of_the_mode_ << endl;
   cout << "num_failed_solve_ = " << num_failed_solve_
        << " (latest failed index: " << latest_failed_solve_idx_ << ")"
        << "\n\n";

@@ -47,6 +47,7 @@ DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 
 // File source
 DEFINE_int32(solve_idx, -1, "");
+DEFINE_bool(snopt_suffix, false, "");
 
 // There are two modes of this visualizer.
 // The first mode visualizes all poses at once, and the second mode visualizes
@@ -80,16 +81,21 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   // Read in pose
   MatrixXd x0_each_mode;
   MatrixXd xf_each_mode;
+  string suffix = FLAGS_snopt_suffix ? "_snopt" : "";
   if (FLAGS_solve_idx >= 0) {
     cout << "Drawing solve_idx " << FLAGS_solve_idx << endl;
-    x0_each_mode = readCSV(
-        directory + string(to_string(FLAGS_solve_idx) + "_x0_each_mode.csv"));
-    xf_each_mode = readCSV(
-        directory + string(to_string(FLAGS_solve_idx) + "_xf_each_mode.csv"));
+    x0_each_mode =
+        readCSV(directory + string(to_string(FLAGS_solve_idx) +
+                                   "_x0_each_mode" + suffix + ".csv"));
+    xf_each_mode =
+        readCSV(directory + string(to_string(FLAGS_solve_idx) +
+                                   "_xf_each_mode" + suffix + ".csv"));
   } else {
     cout << "Drawing debug_ files\n";
-    x0_each_mode = readCSV(directory + string("debug_x0_each_mode.csv"));
-    xf_each_mode = readCSV(directory + string("debug_xf_each_mode.csv"));
+    x0_each_mode =
+        readCSV(directory + string("debug_x0_each_mode" + suffix + ".csv"));
+    xf_each_mode =
+        readCSV(directory + string("debug_xf_each_mode" + suffix + ".csv"));
   }
 
   if (FLAGS_view_multipose_at_once) {

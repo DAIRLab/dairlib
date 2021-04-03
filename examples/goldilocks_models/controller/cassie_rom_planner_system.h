@@ -171,7 +171,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   std::unique_ptr<drake::solvers::SolverInterface> solver_snopt_;
 
   // Parameters for traj opt
-  const PlannerSetting& param_;
+  //  const PlannerSetting& param_;
+  mutable PlannerSetting param_;
 
   // Cost weight
   Eigen::MatrixXd Q_;

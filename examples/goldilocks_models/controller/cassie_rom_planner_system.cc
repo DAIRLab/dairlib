@@ -303,10 +303,11 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                  "Verify level", 0);
   solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
-                                 "Major optimality tolerance", param_.opt_tol);
+                                 "Major optimality tolerance",
+                                 param_.opt_tol /* * 0.01*/);
   solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                  "Major feasibility tolerance",
-                                 param_.feas_tol);
+                                 param_.feas_tol /* * 0.01*/);
   //  }
 
   // Initialization
@@ -317,7 +318,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
         Eigen::MatrixXd::Zero(3 * left_contacts_.size(), param_.n_step);
   }
 
-  // Initilaization
+  // Initialization
   prev_mode_start_ = std::vector<int>(param_.n_step, -1);
 
   // Initialization for warm starting in debug mode
@@ -808,6 +809,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                           prefix);
   }
 
+  // Switch to snopt after one iteration (use ipopt to get a good solution for
+  // the first loop)
+  if (counter_ == 0) {
+    cout << "***\n*** WARNING: switch to snopt solver\n ***\n";
+    param_.use_ipopt = false;
+  }
+
   counter_++;
 }
 
@@ -972,7 +980,7 @@ void CassiePlannerWithMixedRomFom::BookKeeping(
     past_is_left_stance_ = start_with_left_stance;
   }
   cout << "\nsolve time (average, max) = " << total_solve_time_ / counter_
-      << ", " << max_solve_time_ << endl;
+       << ", " << max_solve_time_ << endl;
   cout << "solve time of the first solve of the mode (average, max) = "
        << total_solve_time_of_first_solve_of_the_mode_ /
               total_number_of_first_solve_of_the_mode_

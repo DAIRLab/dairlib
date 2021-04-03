@@ -781,6 +781,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// For debugging
   ///
+  start = std::chrono::high_resolution_clock::now();
 
   if (param_.use_ipopt) {
     // Ipopt doesn't seem to have the append feature, so we do it manually
@@ -812,10 +813,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Switch to snopt after one iteration (use ipopt to get a good solution for
   // the first loop)
   if (counter_ == 0) {
-    cout << "***\n*** WARNING: switch to snopt solver\n ***\n";
+    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
     param_.use_ipopt = false;
   }
 
+  finish = std::chrono::high_resolution_clock::now();
+  elapsed = finish - start;
+  cout << "Runtime for data saving (for debugging):" << elapsed.count() << endl;
+
+  ///
   counter_++;
 }
 

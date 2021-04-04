@@ -165,8 +165,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   BodyPoint left_origin_;
   BodyPoint right_origin_;
   std::vector<std::tuple<std::string, double, double>> joint_name_lb_ub_;
-  drake::solvers::SolverOptions solver_option_ipopt_;
-  drake::solvers::SolverOptions solver_option_snopt_;
+  mutable drake::solvers::SolverOptions solver_option_ipopt_;
+  mutable drake::solvers::SolverOptions solver_option_snopt_;
   std::unique_ptr<drake::solvers::SolverInterface> solver_ipopt_;
   std::unique_ptr<drake::solvers::SolverInterface> solver_snopt_;
 

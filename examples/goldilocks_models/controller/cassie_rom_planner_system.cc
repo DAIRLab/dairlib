@@ -253,6 +253,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_snopt_ = drake::solvers::MakeSolver(solver_id);
 
   // Set solver option
+  double time_limit_for_first_loop = 60;
   //  if (param_.use_ipopt) {
   // Ipopt settings adapted from CaSaDi and FROST
   auto id = drake::solvers::IpoptSolver::id();
@@ -274,7 +275,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     solver_option_ipopt_.SetOption(id, "print_level", 0);
   }
   if (param_.time_limit > 0) {
-    solver_option_ipopt_.SetOption(id, "max_cpu_time", param_.time_limit);
+    solver_option_ipopt_.SetOption(id, "max_cpu_time",
+                                   time_limit_for_first_loop);
+    //    solver_option_ipopt_.SetOption(id, "max_cpu_time", param_.time_limit);
   }
 
   // Set to ignore overall tolerance/dual infeasibility, but terminate when
@@ -294,7 +297,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   }
   if (param_.time_limit > 0) {
     solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
-                                   "Time limit", param_.time_limit);
+                                   "Time limit", time_limit_for_first_loop);
+    //    solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
+    //                                   "Time limit", param_.time_limit);
     solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                    "Timing level", 3);
   }
@@ -813,8 +818,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Switch to snopt after one iteration (use ipopt to get a good solution for
   // the first loop)
   if (counter_ == 0) {
-    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
-    param_.use_ipopt = false;
+    //    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
+    //    param_.use_ipopt = false;
+
+    if (param_.time_limit > 0) {
+      solver_option_ipopt_.SetOption(drake::solvers::IpoptSolver::id(),
+                                     "max_cpu_time", param_.time_limit);
+      solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
+                                     "Time limit", param_.time_limit);
+      solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
+                                     "Timing level", 3);
+    }
   }
 
   finish = std::chrono::high_resolution_clock::now();

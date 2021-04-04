@@ -385,9 +385,11 @@ RomTrajOpt::RomTrajOpt(
     AddBoundingBoxConstraint(0.5, 1.1, xf.segment<1>(6));  // z
 
     // Full order model vel limits
-    PrintStatus("Adding constraint -- full-order model joint vel");
-    AddBoundingBoxConstraint(-10, 10, xf.tail(n_v_));
-    AddBoundingBoxConstraint(-10, 10, x0_post.tail(n_v_));
+    PrintStatus("Adding constraint -- full-order model generalized vel");
+    AddBoundingBoxConstraint(-2, 2, xf.segment<6>(n_q_));
+    AddBoundingBoxConstraint(-2, 2, x0_post.segment<6>(n_q_));
+    AddBoundingBoxConstraint(-10, 10, xf.tail(n_v_ - 6));
+    AddBoundingBoxConstraint(-10, 10, x0_post.tail(n_v_ - 6));
 
     // Stitching x0 and xf (full-order model stance foot constraint)
     PrintStatus("Adding constraint -- full-order model stance foot pos");

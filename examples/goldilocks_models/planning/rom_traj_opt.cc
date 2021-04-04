@@ -386,8 +386,10 @@ RomTrajOpt::RomTrajOpt(
 
     // Full order model vel limits
     PrintStatus("Adding constraint -- full-order model generalized vel");
-    AddBoundingBoxConstraint(-2, 2, xf.segment<6>(n_q_));
-    AddBoundingBoxConstraint(-2, 2, x0_post.segment<6>(n_q_));
+    AddBoundingBoxConstraint(-10, 10, xf.segment<3>(n_q_));
+    AddBoundingBoxConstraint(-10, 10, x0_post.segment<3>(n_q_));
+    AddBoundingBoxConstraint(-10, 10, xf.segment<3>(n_q_ + 3));
+    AddBoundingBoxConstraint(-10, 10, x0_post.segment<3>(n_q_ + 3));
     AddBoundingBoxConstraint(-10, 10, xf.tail(n_v_ - 6));
     AddBoundingBoxConstraint(-10, 10, x0_post.tail(n_v_ - 6));
 

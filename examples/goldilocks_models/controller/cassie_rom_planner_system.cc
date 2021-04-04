@@ -794,17 +794,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         "cat ../ipopt_planning_latest.out >> ../ipopt_planning_combined.out");
   }
 
-  // Check the cost
-  PrintCost(trajopt, result);
-
-  // Keep track of solve time and stuffs
-  BookKeeping(start_with_left_stance, elapsed, result);
-
-  // Check constraint violation
-  //    //    double tol = 1e-3;
-  double tol = param_.feas_tol;
-  solvers::CheckGenericConstraints(trajopt, result, tol);
-
   // Extract and save solution into files (for debugging)
   //  if (debug_mode_) {
   if (true) {
@@ -815,19 +804,29 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                           prefix);
   }
 
+  // Check the cost
+  PrintCost(trajopt, result);
+
+  // Check constraint violation
+  //    //    double tol = 1e-3;
+  double tol = param_.feas_tol;
+  solvers::CheckGenericConstraints(trajopt, result, tol);
+
+  // Keep track of solve time and stuffs
+  BookKeeping(start_with_left_stance, elapsed, result);
+
   // Switch to snopt after one iteration (use ipopt to get a good solution for
   // the first loop)
   if (counter_ == 0) {
-    //    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
-    //    param_.use_ipopt = false;
+    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
+    param_.use_ipopt = false;
 
     if (param_.time_limit > 0) {
+      cout << "Save the time limit back to " << param_.time_limit << endl;
       solver_option_ipopt_.SetOption(drake::solvers::IpoptSolver::id(),
                                      "max_cpu_time", param_.time_limit);
       solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                      "Time limit", param_.time_limit);
-      solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
-                                     "Timing level", 3);
     }
   }
 

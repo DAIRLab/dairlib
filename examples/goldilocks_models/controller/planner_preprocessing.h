@@ -8,6 +8,7 @@
 
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -122,6 +123,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> vel_map_wo_spr_;
 
   int nq_;
+  int nv_;
 
   // Parameters for traj opt
   double final_position_x_;
@@ -133,6 +135,15 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
 
   // IK
   drake::solvers::EqualityConstrainedQPSolver qp_solver_;
+  std::vector<int> spring_pos_idx_list_w_spr_;
+  std::vector<int> knee_ankle_pos_idx_list_;
+  std::vector<int> knee_ankle_vel_idx_list_;
+  std::vector<int> joint_vel_idx_list_left_;
+  std::vector<int> joint_vel_idx_list_right_;
+  std::unique_ptr<drake::systems::Context<double>> context_feedback_;
+  std::unique_ptr<drake::systems::Context<double>> context_control_;
+  BodyPoint toe_origin_left_;
+  BodyPoint toe_origin_right_;
   double ik_feas_tol_ = 1e-4;  // 1e-2
   double ik_opt_tol_ = 1e-4;   // 1e-2
   void AdjustKneeAndAnklePos(const Eigen::VectorXd& x_w_spr,

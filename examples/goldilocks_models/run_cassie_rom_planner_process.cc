@@ -224,6 +224,8 @@ int DoMain(int argc, char* argv[]) {
   // Create a block that computes the initial state for the planner
   auto x_init_calculator = builder.AddSystem<InitialStateForPlanner>(
       plant_feedback, plant_control, param.final_position_x, param.n_step);
+  builder.Connect(stance_foot_getter->get_output_port(0),
+                  x_init_calculator->get_input_port_stance_foot());
   builder.Connect(state_receiver->get_output_port(0),
                   x_init_calculator->get_input_port_state());
   builder.Connect(init_phase_calculator->get_output_port(0),

@@ -309,6 +309,8 @@ InitialStateForPlanner::InitialStateForPlanner(
       plant_feedback_(plant_feedback),
       plant_controls_(plant_controls) {
   // Input/Output Setup
+  stance_foot_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   state_port_ = this->DeclareVectorInputPort(
                         OutputVector<double>(plant_feedback.num_positions(),
                                              plant_feedback.num_velocities(),
@@ -368,6 +370,11 @@ EventStatus InitialStateForPlanner::AdjustState(
       this->EvalVectorInput(context, phase_port_);
   double init_phase = phase_port->get_value()(0);
 
+  // Get stance foot
+  bool is_right_stance =
+      (bool)this->EvalVectorInput(context, stance_foot_port_)->get_value()(0);
+  bool is_left_stance = !is_right_stance;
+
   //    cout << "init_phase of the state we got = " << init_phase << endl;
 
   ///
@@ -401,6 +408,16 @@ EventStatus InitialStateForPlanner::AdjustState(
   VectorXd x_adjusted2 = x_adjusted1;
   AdjustKneeAndAnkleVel(left_foot_vel_w_spr, right_foot_vel_w_spr, x_adjusted1,
                         &x_adjusted2);
+
+  ///
+  /// Zero out the stance foot velocity
+  ///
+  if (is_left_stance) {
+    left_foot_vel_w_spr = Vector3d::Zero();
+  } else {
+    right_foot_vel_w_spr = Vector3d::Zero();
+  }
+  ZeroOutStanceFootVel(is_left_stance, &x_adjusted2);
 
   ///
   /// Testing
@@ -621,17 +638,17 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
   drake::solvers::SnoptSolver snopt_solver;*/
   auto start_solve = std::chrono::high_resolution_clock::now();
   //  const auto result = snopt_solver.Solve(ik, ik.initial_guess());
-  const auto result = Solve(ik, ik.initial_guess());
+  const auto result = qp_solver_.Solve(ik, ik.initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double> elapsed_build = start_solve - start_build;
   std::chrono::duration<double> elapsed_solve = finish - start_solve;
   SolutionResult solution_result = result.get_solution_result();
-  /*cout << "Solver:" << result.get_solver_id().name() << " | ";
+  cout << "Solver:" << result.get_solver_id().name() << " | ";
   cout << "Build time:" << elapsed_build.count() << " | ";
   cout << "Solve time:" << elapsed_solve.count() << " | ";
   cout << solution_result << " | ";
-  cout << "Cost:" << result.get_optimal_cost() << "\n";*/
+  cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   /// Get solution
   /*const auto q_sol = result.GetSolution(ik.q());
@@ -654,6 +671,83 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
       result.GetSolution(ankle_joint_left);
   x_init->segment<1>(plant_controls_.num_positions() + idx_list[3]) =
       result.GetSolution(ankle_joint_right);
+}
+
+void InitialStateForPlanner::ZeroOutStanceFootVel(bool is_left_stance,
+                                                  VectorXd* x_init) const {
+  auto start_build = std::chrono::high_resolution_clock::now();
+
+  // TODO: Clean up code to have only one bodypoint, one context
+
+  int n_v = plant_controls_.num_velocities();
+
+  VectorXd x_original = *x_init;
+
+  std::string left_or_right = is_left_stance ? "left" : "right";
+
+  BodyPoint toe_origin = BodyPoint(
+      Vector3d::Zero(), plant_controls_.GetFrameByName("toe_" + left_or_right));
+  // Get Jacobian for the feet
+  auto context_wo_spr = plant_controls_.CreateDefaultContext();
+  plant_controls_.SetPositions(
+      context_wo_spr.get(), x_original.head(plant_controls_.num_positions()));
+  Eigen::MatrixXd J(3, plant_controls_.num_velocities());
+  plant_controls_.CalcJacobianTranslationalVelocity(
+      *context_wo_spr, JacobianWrtVariable::kV, toe_origin.second,
+      toe_origin.first, plant_controls_.world_frame(),
+      plant_controls_.world_frame(), &J);
+
+  // Construct MP
+  MathematicalProgram ik;
+  int n_eps = 6;
+  auto v_eps = ik.NewContinuousVariables(n_eps, "v_eps");
+
+  std::vector<int> idx_list = {
+      vel_map_wo_spr_.at("hip_roll_" + left_or_right + "dot"),
+      vel_map_wo_spr_.at("hip_yaw_" + left_or_right + "dot"),
+      vel_map_wo_spr_.at("hip_pitch_" + left_or_right + "dot"),
+      vel_map_wo_spr_.at("knee_" + left_or_right + "dot"),
+      vel_map_wo_spr_.at("ankle_joint_" + left_or_right + "dot"),
+      vel_map_wo_spr_.at("toe_" + left_or_right + "dot")};
+
+  // Get matrix A
+  MatrixXd A(3, n_eps);
+  for (int i = 0; i < n_eps; i++) {
+    A.col(i) = J.col(idx_list.at(i));
+  }
+  // Get vector b
+  VectorXd b(3);
+  b = -J * x_original.tail(n_v);
+
+  ik.AddLinearEqualityConstraint(A, b, v_eps);
+  ik.AddQuadraticErrorCost(MatrixXd::Identity(n_eps, n_eps),
+                           VectorXd::Zero(n_eps), v_eps);
+  //  ik.AddL2NormCost(A, b, v_eps);
+
+  // Initial guess
+  ik.SetInitialGuess(v_eps, 0.01 * VectorXd::Random(n_eps));
+
+  /// Solve
+  auto start_solve = std::chrono::high_resolution_clock::now();
+  const auto result = qp_solver_.Solve(ik, ik.initial_guess());
+  //  const auto result = Solve(ik, ik.initial_guess());
+  auto finish = std::chrono::high_resolution_clock::now();
+
+  std::chrono::duration<double> elapsed_build = start_solve - start_build;
+  std::chrono::duration<double> elapsed_solve = finish - start_solve;
+  SolutionResult solution_result = result.get_solution_result();
+  /*cout << "Solver:" << result.get_solver_id().name() << " | ";
+  cout << "Build time:" << elapsed_build.count() << " | ";
+  cout << "Solve time:" << elapsed_solve.count() << " | ";
+  cout << solution_result << " | ";
+  cout << "Cost:" << result.get_optimal_cost() << "\n";*/
+
+  /// Assign
+  auto v_eps_sol = result.GetSolution(v_eps);
+  for (int i = 0; i < n_eps; i++) {
+    x_init->segment<1>(plant_controls_.num_positions() + idx_list[i]) +=
+        v_eps_sol.segment<1>(i);
+  }
 }
 
 void InitialStateForPlanner::CheckAdjustemnt(
@@ -740,7 +834,7 @@ void InitialStateForPlanner::CheckAdjustemnt(
     cout << "x_w_spr = " << x_w_spr << endl;
     // TODO: before you put the code on the hardware, you need to disable all
     //  the DRAKE_UNREACHABLE()
-    //DRAKE_UNREACHABLE();  // Put a check here for future investigation
+    // DRAKE_UNREACHABLE();  // Put a check here for future investigation
   }
   cout << "\n\n";
 
@@ -767,9 +861,8 @@ void InitialStateForPlanner::CheckAdjustemnt(
       right_vel_error_improved > right_vel_error_original;
   bool left_vel_error_still_too_large = left_vel_error_improved > 0.02;
   bool right_vel_error_still_too_large = right_vel_error_improved > 0.02;
-  bool stance_foot_vel_too_big =
-      (left_foot_vel_wo_spr_improved.norm() > 0.2) &&
-      (right_foot_vel_wo_spr_improved.norm() > 0.2);
+  bool stance_foot_vel_too_big = (left_foot_vel_wo_spr_improved.norm() > 0.2) &&
+                                 (right_foot_vel_wo_spr_improved.norm() > 0.2);
   //  if (true) {
   if (left_vel_did_not_improve || right_vel_did_not_improve ||
       left_vel_error_still_too_large || right_vel_error_still_too_large ||
@@ -815,7 +908,7 @@ void InitialStateForPlanner::CheckAdjustemnt(
     cout << "x_w_spr = " << x_w_spr << endl;
     // TODO: before you put the code on the hardware, you need to disable all
     //  the DRAKE_UNREACHABLE()
-    //DRAKE_UNREACHABLE();  // Put a check here for future investigation
+    // DRAKE_UNREACHABLE();  // Put a check here for future investigation
   }
   cout << "\n\n";
 }

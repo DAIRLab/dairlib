@@ -3,6 +3,7 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/equality_constrained_qp_solver.h"
 #include "drake/systems/framework/leaf_system.h"
 
 #include "multibody/multibody_utils.h"
@@ -70,6 +71,9 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant_controls,
       double final_position_x, int n_step);
 
+  const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
+    return this->get_input_port(stance_foot_port_);
+  }
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
@@ -99,6 +103,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   // Port indices
+  int stance_foot_port_;
   int state_port_;
   int phase_port_;
   int fsm_and_lo_time_port_;
@@ -127,6 +132,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_controls_;
 
   // IK
+  drake::solvers::EqualityConstrainedQPSolver qp_solver_;
   double ik_feas_tol_ = 1e-4;  // 1e-2
   double ik_opt_tol_ = 1e-4;   // 1e-2
   void AdjustKneeAndAnklePos(const Eigen::VectorXd& x_w_spr,
@@ -138,6 +144,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
                              const Eigen::Vector3d& right_foot_vel,
                              const Eigen::VectorXd& x_init_original,
                              Eigen::VectorXd* x_init) const;
+  void ZeroOutStanceFootVel(bool is_left_stance, Eigen::VectorXd* x_init) const;
   void CheckAdjustemnt(const Eigen::VectorXd& x_w_spr,
                        const Eigen::VectorXd& x_original,
                        const Eigen::VectorXd& x_adjusted2,

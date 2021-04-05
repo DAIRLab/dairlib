@@ -594,7 +594,7 @@ void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram) {
   out << diagram.GetGraphvizString();
   out.close();
   std::string cmd = "dot -Tps " + name + " -o " + name + ".ps";
-  cout << "Running command " + cmd << ": " << std::system(cmd.c_str());
+  cout << "Running command " + cmd << ": " << std::system(cmd.c_str()) << endl;
   // cmd = "xdg-open " + name + ".ps";
   // cout << std::system(cmd.c_str());
 }

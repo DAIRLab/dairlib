@@ -518,15 +518,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   double fourbar_angle = 13.0 / 180.0 * M_PI;
   MatrixXd Aeq = MatrixXd::Ones(1, 2);
   VectorXd angle = fourbar_angle * VectorXd::Ones(1);
-  /*
-  auto q0_var =
-  trajopt.x0_vars_by_mode(0).head(nq_);
-  trajopt.AddLinearEqualityConstraint(
-      q0_var(positions_map_.at("knee_left")) +
-      q0_var(positions_map_.at("ankle_joint_left")), fourbar_angle);
-  trajopt.AddLinearEqualityConstraint(
-      q0_var(positions_map_.at("knee_right")) +
-      q0_var(positions_map_.at("ankle_joint_right")), fourbar_angle);*/
   for (int i = 0; i < num_time_samples.size(); i++) {
     auto xf = trajopt.xf_vars_by_mode(i);
     trajopt.AddLinearEqualityConstraint(
@@ -670,6 +661,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Set time limit in the solver dynamically if no time_limit specified
   if (!fixed_time_limit_ && counter_ > 0) {
+    // allowed time =
+    //   last traj's end time - current time - time for lcm packing/traveling
     double time_limit =
         lightweight_saved_traj_.GetStateBreaks(param_.n_step - 1).tail(1)(0) -
         current_time - buffer_;
@@ -812,7 +805,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         "cat ../ipopt_planning_latest.out >> ../ipopt_planning_combined.out");
   }
 
-  bool log_data_and_check_solution = false;
+  bool log_data_and_check_solution = true;
   if (log_data_and_check_solution) {
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,

@@ -20,7 +20,8 @@ namespace goldilocks_models {
 
 class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
  public:
-  SavedTrajReceiver(const drake::multibody::MultibodyPlant<double>& plant,
+  SavedTrajReceiver(const ReducedOrderModel& rom,
+                    const drake::multibody::MultibodyPlant<double>& plant,
                     const std::vector<BodyPoint>& left_right_foot,
                     bool both_pos_vel_in_traj, double double_support_duration);
 
@@ -41,6 +42,7 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   int rom_traj_port_;
   int swing_foot_traj_port_;
 
+  int ny_;
   const drake::multibody::MultibodyPlant<double>& plant_control_;
   const std::vector<BodyPoint>& left_right_foot_;
   std::unique_ptr<drake::systems::Context<double>> context_;

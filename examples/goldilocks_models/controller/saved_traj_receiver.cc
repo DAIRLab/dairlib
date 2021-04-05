@@ -21,10 +21,12 @@ namespace dairlib {
 namespace goldilocks_models {
 
 SavedTrajReceiver::SavedTrajReceiver(
+    const ReducedOrderModel& rom,
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<BodyPoint>& left_right_foot, bool both_pos_vel_in_traj,
     double double_support_duration)
-    : plant_control_(plant),
+    : ny_(rom.n_y()),
+      plant_control_(plant),
       left_right_foot_(left_right_foot),
       context_(plant.CreateDefaultContext()),
       nq_(plant.num_positions()),
@@ -55,34 +57,50 @@ SavedTrajReceiver::SavedTrajReceiver(
 void SavedTrajReceiver::CalcRomTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
+  // Cast traj
+  auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
+
+  // Read lcm message
+  auto lcm_traj = this->EvalInputValue<dairlib::lcmt_saved_traj>(
+      context, saved_traj_lcm_port_);
+
+  // Check if traj is empty (if it's empty, it means we are haven't gotten the
+  // traj from the planner yet)
+  if (lcm_traj->num_trajectories == 0) {
+    cout << "WARNING (CalcRomTraj): trajectory size is 0!\n";
+    *traj_casted = PiecewisePolynomial<double>(VectorXd::Zero(ny_));
+    return;
+  }
+
   // Construct rom planner data from lcm message
   // Benchmark: The unpacking time is about 10-20 us.
-  RomPlannerTrajectory traj_data(
-      *(this->EvalInputValue<dairlib::lcmt_saved_traj>(context,
-                                                       saved_traj_lcm_port_)));
+  RomPlannerTrajectory traj_data(*lcm_traj);
+
+  // TODO: Examine why we are not using the latest desired traj! (it's also the
+  //  previous one!)
+  cout << "context time = " << context.get_time() << endl;
+  cout << "time = "
+       << traj_data.GetTrajectory("state_traj0").time_vector.transpose()
+       << endl;
 
   int n_mode = traj_data.GetNumModes();
-  int n_y = traj_data.GetTrajectory("state_traj0").datatypes.size();
-  if (both_pos_vel_in_traj_) n_y /= 2;
+  VectorXd zero_vec = VectorXd::Zero(ny_);
 
-  VectorXd zero_vec = VectorXd::Zero(n_y);
-
-  PiecewisePolynomial<double> pp_part;
+  PiecewisePolynomial<double> pp;
   for (int mode = 0; mode < n_mode; ++mode) {
     const LcmTrajectory::Trajectory& traj_i =
         traj_data.GetTrajectory("state_traj" + std::to_string(mode));
-    pp_part.ConcatenateInTime(
+    pp.ConcatenateInTime(
         both_pos_vel_in_traj_
             ? PiecewisePolynomial<double>::CubicHermite(
-                  traj_i.time_vector, traj_i.datapoints.topRows(n_y),
-                  traj_i.datapoints.bottomRows(n_y))
+                  traj_i.time_vector, traj_i.datapoints.topRows(ny_),
+                  traj_i.datapoints.bottomRows(ny_))
             : PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
                   traj_i.time_vector, traj_i.datapoints, zero_vec, zero_vec));
   }
 
-  // Cast traj and assign traj
-  auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
-  *traj_casted = pp_part;
+  // Assign traj
+  *traj_casted = pp;
 };
 
 void SavedTrajReceiver::CalcSwingFootTraj(
@@ -101,10 +119,23 @@ void SavedTrajReceiver::CalcSwingFootTraj(
 
   // We assume the start and the end velocity of the swing foot are 0
 
+  // Cast traj
+  auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
+
+  // Read the lcm message
+  auto lcm_traj = this->EvalInputValue<dairlib::lcmt_saved_traj>(
+      context, saved_traj_lcm_port_);
+
+  // Check if traj is empty (if it's empty, it means we are haven't gotten the
+  // traj from the planner yet)
+  if (lcm_traj->num_trajectories == 0) {
+    cout << "WARNING (CalcSwingFootTraj): trajectory size is 0!\n";
+    *traj_casted = PiecewisePolynomial<double>(Vector3d::Zero());
+    return;
+  }
+
   // Construct rom planner data from lcm message
-  RomPlannerTrajectory traj_data(
-      *(this->EvalInputValue<dairlib::lcmt_saved_traj>(context,
-                                                       saved_traj_lcm_port_)));
+  RomPlannerTrajectory traj_data(*lcm_traj);
   int n_mode = traj_data.GetNumModes();
 
   // Get states and stance_foot
@@ -198,8 +229,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
     left_stance = !left_stance;
   }
 
-  // Cast traj and assign traj
-  auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
+  // Assign traj
   *traj_casted = pp;
 
   // TODO: instead of plotting the poses here, maybe we could store the poses in

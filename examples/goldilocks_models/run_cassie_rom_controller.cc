@@ -84,6 +84,11 @@ DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 
 DEFINE_bool(start_with_left_stance, true, "");
 
+DEFINE_string(init_traj_file_name, "",
+              "This won't be necessary if the simulation is run at a much "
+              "slower speed than realtime. "
+              "An example file name is 0_rom_trajectory");
+
 //
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -330,7 +335,7 @@ int DoMain(int argc, char* argv[]) {
     vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
         left_toe_origin, right_toe_origin};
     auto optimal_rom_traj_gen = builder.AddSystem<SavedTrajReceiver>(
-        plant_wo_springs, left_right_foot, true, double_support_duration);
+        *rom, plant_wo_springs, left_right_foot, true, double_support_duration);
     builder.Connect(planner_output_subscriber->get_output_port(),
                     optimal_rom_traj_gen->get_input_port(0));
 
@@ -627,41 +632,17 @@ int DoMain(int argc, char* argv[]) {
         true);
 
     // Get init traj from ROM planner result
-    /*const std::string dir_data =
-        "../dairlib_data/goldilocks_models/planning/robot_1/data/";
-    VectorXd time_at_knots =
-        readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
-    cout << "time_at_knots= " << time_at_knots.transpose() << endl;
-    MatrixXd state_at_knots =
-        readCSV(dir_data + std::string("x_samples.csv"));
-    // Initial message for the LCM subscriber. In the first timestep, the
-    // subscriber might not receive a solution yet
-    dairlib::lcmt_trajectory_block traj_msg0;
-    traj_msg0.trajectory_name = "";
-    traj_msg0.num_points = time_at_knots.size();
-    traj_msg0.num_datatypes = 2 * rom->n_y();
-    // Reserve space for vectors
-    traj_msg0.time_vec.resize(traj_msg0.num_points);
-    traj_msg0.datatypes.resize(traj_msg0.num_datatypes);
-    traj_msg0.datapoints.clear();
-    // Copy Eigentypes to std::vector
-    traj_msg0.time_vec = CopyVectorXdToStdVector(time_at_knots);
-    traj_msg0.datatypes = vector<std::string>(2 * rom->n_y());
-    for (int i = 0; i < traj_msg0.num_datatypes; ++i) {
-      traj_msg0.datapoints.push_back(
-          CopyVectorXdToStdVector(state_at_knots.row(i)));
-    }
     dairlib::lcmt_saved_traj traj_msg;
-    traj_msg.metadata.name = "init";
-    traj_msg.num_trajectories = 1;
-    traj_msg.trajectories.push_back(traj_msg0);
-    traj_msg.trajectory_names.push_back("");
-     */
-    const std::string dir_data =
-        "../dairlib_data/goldilocks_models/planning/robot_1/data/"
-        "init_rom_trajectory";
-    RomPlannerTrajectory saved_traj(dir_data, true);
-    dairlib::lcmt_saved_traj traj_msg = saved_traj.GenerateLcmObject();
+    if (!FLAGS_init_traj_file_name.empty()) {
+      const std::string dir_data =
+          "../dairlib_data/goldilocks_models/planning/robot_1/data/" +
+          FLAGS_init_traj_file_name;
+      RomPlannerTrajectory saved_traj(dir_data, true);
+      traj_msg = saved_traj.GenerateLcmObject();
+    } else {
+      traj_msg.metadata.name = "";
+      traj_msg.num_trajectories = 0;
+    }
 
     // Get context and initialize the lcm message of LcmSubsriber for
     // lcmt_saved_traj

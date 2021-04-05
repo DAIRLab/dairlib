@@ -104,6 +104,7 @@ def main():
 
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  plt.plot(t_u[t_u_slice], 10 * fsm[t_u_slice], 'r')
 
   # plot_contact_est(full_log)
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
@@ -121,11 +122,11 @@ def main():
   #                       rear_contact_disp,
   #                       world, t_x, t_slice, "right_", "_rear")
 
-  investigate_ekf(context, front_contact_disp, fsm, full_log, l_toe_frame,
-                  plant_w_spr, r_toe_frame, rear_contact_disp, t_slice, t_u,
-                  t_u_slice, t_x, world, x, x_datatypes)
+  # investigate_ekf(context, front_contact_disp, fsm, full_log, l_toe_frame,
+  #                 plant_w_spr, r_toe_frame, rear_contact_disp, t_slice, t_u,
+  #                 t_u_slice, t_x, world, x, x_datatypes)
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plt.show()
 
 
@@ -260,28 +261,28 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj1, 1, "vel")
   # plot_osc(osc_debug, osc_traj1, 2, "vel")
 
-  # plot_osc(osc_debug, osc_traj2, 0, "pos")
+  plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  # plot_osc(osc_debug, osc_traj2, 2, "pos")
+  plot_osc(osc_debug, osc_traj2, 1, "pos")
+  plot_osc(osc_debug, osc_traj2, 2, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  #
-  # plot_osc(osc_debug, osc_traj2, 0, "vel")
-  # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "accel")
-  # plot_osc(osc_debug, osc_traj1, 1, "accel")
-  # plot_osc(osc_debug, osc_traj1, 2, "accel")
+  plot_osc(osc_debug, osc_traj2, 0, "vel")
+  plot_osc(osc_debug, osc_traj2, 1, "vel")
+  plot_osc(osc_debug, osc_traj2, 2, "vel")
 
-  # plot_osc(osc_debug, osc_traj2, 0, "accel")
-  # plot_osc(osc_debug, osc_traj2, 1, "accel")
-  # plot_osc(osc_debug, osc_traj2, 2, "accel")
+  plot_osc(osc_debug, osc_traj1, 0, "accel")
+  plot_osc(osc_debug, osc_traj1, 1, "accel")
+  plot_osc(osc_debug, osc_traj1, 2, "accel")
 
-  # plot_osc(osc_debug, osc_traj3, 0, "accel")
-  # plot_osc(osc_debug, osc_traj3, 0, "pos")
+  plot_osc(osc_debug, osc_traj2, 0, "accel")
+  plot_osc(osc_debug, osc_traj2, 1, "accel")
+  plot_osc(osc_debug, osc_traj2, 2, "accel")
+
+  plot_osc(osc_debug, osc_traj3, 0, "accel")
+  plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj3, 0, "vel")
+  plot_osc(osc_debug, osc_traj3, 0, "vel")
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
@@ -384,7 +385,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   vel_indices = slice(23 + 6, 45, 2)
   pos_indices = slice(0,7)
   # vel_indices = slice(23, 23 + 6)
-  u_indices = slice(6, 8)
+  u_indices = slice(0, 10)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)

@@ -172,6 +172,7 @@ cc_binary(
         "//common",
         "//systems:robot_lcm_systems",
         "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
         "//systems/controllers:pd_config_lcm",
         "@drake//:drake_shared_library",
         "@gflags",

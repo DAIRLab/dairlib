@@ -328,6 +328,9 @@ int do_main(int argc, char* argv[]) {
                          *state_estimator, &diagram_context);
     }
 
+    std::vector<double> context_timestamps_;
+    std::vector<long> loop_start_timestamps_;
+    std::vector<long> loop_end_timestamps_;
     drake::log()->info("dispatcher_robot_out started");
     while (true) {
       // Wait for an lcmt_cassie_out message.
@@ -350,10 +353,29 @@ int do_main(int argc, char* argv[]) {
       }
 
       state_estimator->set_next_message_time(time);
-
+      context_timestamps_.push_back(time);
+      loop_start_timestamps_.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count());
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
       diagram.Publish(diagram_context);
+      loop_end_timestamps_.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count());
+      if (abs(time - 10) < 1e-3) {
+        std::cout << "Outputting to file: dispatcher_robot_out.txt"
+                  << std::endl;
+        std::ofstream myfile;
+        myfile.open("../dispatcher_robot_out.txt");
+        for (int i = 0; i < context_timestamps_.size(); ++i) {
+          myfile << context_timestamps_[i] << "," << loop_start_timestamps_[i]
+                 << "," << loop_end_timestamps_[i] << "\n";
+        }
+        myfile.close();
+      }
     }
   } else {
     auto& output_sender_context =

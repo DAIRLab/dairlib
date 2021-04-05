@@ -234,11 +234,13 @@ class LcmDrivenLoop {
         }
         context_timestamps_.push_back(simulator_->get_context().get_time());
         msg_timestamps_.push_back(time);
+//        std::cout << diagram_name_ << " driven_loop start time: " << time << std::endl;
         loop_start_timestamps_.push_back(
             std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::system_clock::now().time_since_epoch())
                 .count());
         simulator_->AdvanceTo(time);
+//        std::cout << diagram_name_ << " driven_loop end time: " << time << std::endl;
         if (is_forced_publish_) {
           // Force-publish via the diagram
 //          diagram_ptr_->Publish(diagram_context);

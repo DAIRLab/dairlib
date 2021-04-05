@@ -197,7 +197,7 @@ void CassieUDPSubscriber::CalcSerializerOutputValue(
 }
 
 void CassieUDPSubscriber::HandleMessage(const void* buffer, int size) {
-  SPDLOG_TRACE(drake::log(), "Receiving CASSIE message");
+//  SPDLOG_TRACE(drake::log(), "Receiving CASSIE message");
   // std::cout << "Handling message!" << std::endl;
 
   const uint8_t* const rbuf_begin = static_cast<const uint8_t*>(buffer);

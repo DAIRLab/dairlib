@@ -305,7 +305,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   mutable  std::vector<double> context_timestamps_;
   mutable  std::vector<long> loop_start_timestamps_;
   mutable   std::vector<long> loop_end_timestamps_;
-
+  mutable double last_msg_time_ = -1;
+  mutable Eigen::VectorXd last_effort_;
   mutable bool have_not_logged_ = true;
 
 };

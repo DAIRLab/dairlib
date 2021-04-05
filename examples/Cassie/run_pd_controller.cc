@@ -1,18 +1,19 @@
 #include <gflags/gflags.h>
 
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
-
 #include "dairlib/lcmt_pd_config.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
+#include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 namespace dairlib {
 
@@ -41,6 +42,7 @@ int doMain(int argc, char* argv[]) {
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
       "udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   SceneGraph<double>& scene_graph_null = *builder_null.AddSystem<SceneGraph>();
@@ -58,8 +60,8 @@ int doMain(int argc, char* argv[]) {
   auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, lcm));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
+//  builder.Connect(state_sub->get_output_port(),
+//                  state_receiver->get_input_port(0));
 
   // Create config receiver.
   auto config_sub = builder.AddSystem(
@@ -100,16 +102,20 @@ int doMain(int argc, char* argv[]) {
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
-      *diagram, std::move(context));
-  stepper->set_publish_every_time_step(false);
-  stepper->set_publish_at_initialization(false);
-  stepper->set_target_realtime_rate(1.0);
-  stepper->Initialize();
+//  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
+//      *diagram, std::move(context));
+//  stepper->set_publish_every_time_step(false);
+//  stepper->set_publish_at_initialization(false);
+//  stepper->set_target_realtime_rate(1.0);
+//  stepper->Initialize();
 
-  drake::log()->info("controller started");
+//  drake::log()->info("controller started");
 
-  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
+  // Run lcm-driven simulation
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      &lcm_local, std::move(diagram), state_receiver, FLAGS_channel_x,
+      true);
+  loop.Simulate();
 
   return 0;
 }

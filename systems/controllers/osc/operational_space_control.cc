@@ -1,6 +1,6 @@
-#include <fstream>
-
 #include "systems/controllers/osc/operational_space_control.h"
+
+#include <fstream>
 
 #include <drake/math/saturate.h>
 #include <drake/multibody/plant/multibody_plant.h>
@@ -744,30 +744,27 @@ drake::math::saturate(2*(time_since_last_state_switch - 0.025) / 0.05, 0, 1);
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double time = robot_output->get_timestamp();
-
-      context_timestamps_.push_back(time);
-      loop_start_timestamps_.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(
-              std::chrono::system_clock::now().time_since_epoch())
-              .count());
+  context_timestamps_.push_back(time);
+  loop_start_timestamps_.push_back(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count());
   const MathematicalProgramResult result = Solve(*prog_);
-      loop_end_timestamps_.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(
-              std::chrono::system_clock::now().time_since_epoch())
-              .count());
-      if (time > 10 && have_not_logged_) {
-	have_not_logged_ = false;
-        std::cout << "Outputting to file: osc_solve_time.txt"
-                  << std::endl;
-        std::ofstream myfile;
-        myfile.open("../osc_solve_time.txt");
-        for (int i = 0; i < context_timestamps_.size(); ++i) {
-          myfile << context_timestamps_[i] << "," << loop_start_timestamps_[i]
-                 << "," << loop_end_timestamps_[i] << "\n";
-        }
-        myfile.close();
-      }
-
+  loop_end_timestamps_.push_back(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count());
+  if (time > 10 && have_not_logged_) {
+    have_not_logged_ = false;
+    std::cout << "Outputting to file: osc_solve_time.txt" << std::endl;
+    std::ofstream myfile;
+    myfile.open("../osc_solve_time.txt");
+    for (int i = 0; i < context_timestamps_.size(); ++i) {
+      myfile << context_timestamps_[i] << "," << loop_start_timestamps_[i]
+             << "," << loop_end_timestamps_[i] << "\n";
+    }
+    myfile.close();
+  }
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
@@ -943,9 +940,8 @@ void OperationalSpaceControl::CalcOptimalInput(
   x_w_spr << q_w_spr, v_w_spr;
 
   double timestamp = robot_output->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
   if (print_tracking_info_) {
-    cout << "\n\ncurrent_time = " << current_time << endl;
+    cout << "\n\ncurrent_time = " << timestamp << endl;
   }
 
   VectorXd x_wo_spr(n_q_ + n_v_);
@@ -953,21 +949,29 @@ void OperationalSpaceControl::CalcOptimalInput(
       map_velocity_from_spring_to_no_spring_ * v_w_spr;
 
   VectorXd u_sol(n_u_);
-  if (used_with_finite_state_machine_) {
-    // Read in finite state machine
-    const BasicVector<double>* fsm_output =
-        (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-    VectorXd fsm_state = fsm_output->get_value();
 
-    // Get discrete states
-    const auto prev_event_time =
-        context.get_discrete_state(prev_event_time_idx_).get_value();
-
-    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, fsm_state(0),
-                    current_time - prev_event_time(0));
-  } else {
-    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time);
+  if(timestamp == last_msg_time_){
+    u_sol = last_effort_;
   }
+  else{
+    if (used_with_finite_state_machine_) {
+      // Read in finite state machine
+      const BasicVector<double>* fsm_output =
+          (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+      VectorXd fsm_state = fsm_output->get_value();
+
+      // Get discrete states
+      const auto prev_event_time =
+          context.get_discrete_state(prev_event_time_idx_).get_value();
+
+      u_sol = SolveQp(x_w_spr, x_wo_spr, context, timestamp, fsm_state(0),
+                      timestamp - prev_event_time(0));
+    } else {
+      u_sol = SolveQp(x_w_spr, x_wo_spr, context, timestamp, -1, timestamp);
+    }
+  }
+  last_msg_time_ = timestamp;
+  last_effort_ = u_sol;
 
   // Assign the control input
   control->SetDataVector(u_sol);

@@ -379,12 +379,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // instead of discrete update function
   auto current_time = context.get_time();
 
-  bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
-                         min_time_difference_for_replanning_);
-  if (!need_to_replan) {
-    *traj_msg = previous_output_msg_;
-    return;
-  }
+  // Commented out this code because we are clearing the lcm message twice in
+  // the LcmDrivenLoop class (this is another workaround).
+  //  bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
+  //                         min_time_difference_for_replanning_);
+  //  if (!need_to_replan) {
+  //    *traj_msg = previous_output_msg_;
+  //    return;
+  //  }
 
   ///
   /// Read from input ports
@@ -818,8 +820,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Switch to snopt after one iteration (use ipopt to get a good solution for
   // the first loop)
   if (counter_ == 0) {
-    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
-    param_.use_ipopt = false;
+    //    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
+    //    param_.use_ipopt = false;
 
     if (param_.time_limit > 0) {
       cout << "Save the time limit back to " << param_.time_limit << endl;

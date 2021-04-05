@@ -229,6 +229,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // avoiding using old message in the lcm subscriber. However, somehow there is
   // still old message in the lcm subscriber after I clear the listening
   // channel. (it's gone and then come back)
+  // Note that another workaround is to clear the lcm message twice in the
+  // LcmDrivenLoop class.
   double min_time_difference_for_replanning_ = 0.01;
   mutable double timestamp_of_previous_plan_ = -1;
   mutable dairlib::lcmt_saved_traj previous_output_msg_;

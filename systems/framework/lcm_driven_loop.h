@@ -369,21 +369,6 @@ class TwoLcmDrivenLoop {
     ///  }
     drake::log()->info(diagram_name_ + " started");
     while (time < end_time) {
-      // Wait for new InputMessageType messages and SwitchMessageType messages.
-      LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
-        return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
-      });
-      /*
-      // We might still read the old message even when we clear() once already
-      // (Michael said it's related to the lcm buffer).
-      // I found that if we clear again here, we would read a (second) latest
-      // message instead of the old message.
-      subscriber0_.clear();
-      subscriber1_.clear();
-      LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
-        return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
-      });*/
-
       // Write the InputMessageType message into the context
       lcm_parsers_[0]->get_input_port(0).FixValue(
           &(diagram_ptr_->GetMutableSubsystemContext(*(lcm_parsers_[0]),
@@ -418,6 +403,20 @@ class TwoLcmDrivenLoop {
       // Clear messages in the input channels
       subscriber0_.clear();
       subscriber1_.clear();
+
+      // Wait for new InputMessageType messages and SwitchMessageType messages.
+      LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
+        return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
+      });
+      // We might still read the old message even when we clear() once already
+      // (Michael said it's related to the lcm buffer).
+      // I found that if we clear again here, we would read a (second) latest
+      // message instead of the old message.
+      subscriber0_.clear();
+      subscriber1_.clear();
+      LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
+        return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
+      });
     }
   };
 

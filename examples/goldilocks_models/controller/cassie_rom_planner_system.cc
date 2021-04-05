@@ -806,29 +806,29 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   start = std::chrono::high_resolution_clock::now();
 
-  if (param_.use_ipopt) {
+  if (param_.log_solver_info && param_.use_ipopt) {
     // Ipopt doesn't seem to have the append feature, so we do it manually
     std::system(
         "cat ../ipopt_planning_latest.out >> ../ipopt_planning_combined.out");
   }
 
-  // Extract and save solution into files (for debugging)
-  //  if (debug_mode_) {
-  if (true) {
+  bool log_data_and_check_solution = false;
+  if (log_data_and_check_solution) {
+    // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
                       trajopt, result, param_.dir_data, prefix, prefix_next);
     // Save trajectory to lcm
     SaveTrajIntoLcmBinary(trajopt, result, quat_xyz_shift, param_.dir_data,
                           prefix);
+
+    // Check the cost
+    PrintCost(trajopt, result);
+
+    // Check constraint violation
+    //    //    double tol = 1e-3;
+    double tol = param_.feas_tol;
+    solvers::CheckGenericConstraints(trajopt, result, tol);
   }
-
-  // Check the cost
-  PrintCost(trajopt, result);
-
-  // Check constraint violation
-  //    //    double tol = 1e-3;
-  double tol = param_.feas_tol;
-  solvers::CheckGenericConstraints(trajopt, result, tol);
 
   // Keep track of solve time and stuffs
   BookKeeping(start_with_left_stance, elapsed, result);
@@ -1015,7 +1015,8 @@ void CassiePlannerWithMixedRomFom::BookKeeping(
               total_number_of_first_solve_of_the_mode_
        << ", " << max_solve_time_of_first_solve_of_the_mode_ << endl;
   cout << "num_failed_solve_ = " << num_failed_solve_
-       << " (latest failed index: " << latest_failed_solve_idx_ << ")"
+       << " (latest failed index: " << latest_failed_solve_idx_
+       << ", total solves = " << counter_ << ")"
        << "\n\n";
 }
 

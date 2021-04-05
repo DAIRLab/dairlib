@@ -139,6 +139,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   if (!lightweight) {
     ConstructMetadataObject(name, description);
   } else {
+    metadata_.name = name;
     metadata_.description =
         drake::solvers::to_string(result.get_solution_result());
   }

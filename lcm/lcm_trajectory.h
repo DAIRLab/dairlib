@@ -60,7 +60,7 @@ class LcmTrajectory {
   /// reading/opening the file
   virtual void LoadFromFile(const std::string& filepath);
 
-  lcmt_metadata GetMetadata() const { return metadata_; }
+  const lcmt_metadata& GetMetadata() const { return metadata_; }
 
   const Trajectory& GetTrajectory(const std::string& trajectory_name) const {
     return trajectories_.at(trajectory_name);

@@ -170,9 +170,8 @@ int DoMain(int argc, char* argv[]) {
   param.time_limit = FLAGS_time_limit;
   param.w_Q = gains.w_Q;
   param.w_R = gains.w_R;
-  param.dir_model =
-      "../dairlib_data/goldilocks_models/planning/robot_1/models/";
-  param.dir_data = "../dairlib_data/goldilocks_models/planning/robot_1/data/";
+  param.dir_model = DIR_MODEL;
+  param.dir_data = DIR_DATA;
   param.init_file = FLAGS_init_file;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
@@ -343,8 +342,7 @@ int DoMain(int argc, char* argv[]) {
 
       cout << "x_init = " << x_init.transpose() << endl;
 
-      // Perturbing the initial floating base configuration for testing
-      // trajopt
+      // Perturbing the initial floating base configuration for testing trajopt
       srand((unsigned int)time(0));
       if (FLAGS_yaw_disturbance > 0) {
         double theta = M_PI * VectorXd::Random(1)(0) * FLAGS_yaw_disturbance;
@@ -359,39 +357,11 @@ int DoMain(int argc, char* argv[]) {
     }
 
     // Visualize the initial pose
-    /*multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+    /*multibody::MultiposeVisualizer visualizer =
+    multibody::MultiposeVisualizer(
         FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
         1);
     visualizer.DrawPoses(x_init);*/
-
-    // Testing
-    std::vector<string> name_list = {"base_qw",
-                                     "base_qx",
-                                     "base_qy",
-                                     "base_qz",
-                                     "base_x",
-                                     "base_y",
-                                     "base_z",
-                                     "hip_roll_left",
-                                     "hip_roll_right",
-                                     "hip_yaw_left",
-                                     "hip_yaw_right",
-                                     "hip_pitch_left",
-                                     "hip_pitch_right",
-                                     "knee_left",
-                                     "knee_right",
-                                     "ankle_joint_left",
-                                     "ankle_joint_right",
-                                     "toe_left",
-                                     "toe_right"};
-    std::map<string, int> positions_map =
-        multibody::makeNameToPositionsMap(plant_control);
-    /*for (auto name : name_list) {
-      cout << name << ", " << init_state(positions_map.at(name)) << endl;
-    }*/
-    // TODO: find out why the initial left knee position is not within the
-    //  joint limits.
-    //  Could be that the constraint tolerance is too high in rom optimization
 
     ///
     /// Set input ports
@@ -445,7 +415,7 @@ int DoMain(int argc, char* argv[]) {
 
     // Testing - checking the planner output
     const auto* abstract_value = output->get_data(0);
-    const dairlib::lcmt_saved_traj& traj_msg =
+    const auto& traj_msg =
         abstract_value->get_value<dairlib::lcmt_saved_traj>();
     LcmTrajectory traj_data(traj_msg);
     cout << "\nFirst-mode trajectory in the lcmt_saved_traj:\n";

@@ -210,6 +210,8 @@ void SavedTrajReceiver::CalcSwingFootTraj(
           plant_control_.world_frame(), &foot_pos);
       Y.at(2) = foot_pos;
       Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
+      // TODO: there is a bug here. For the first mode, it's not always at the
+      //  middle of the mode (the length varies)
       Y.at(1)(1) += 0.1;
       // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
       // make the traj smooth at the mid point
@@ -233,21 +235,12 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   // Assign traj
   *traj_casted = pp;
 
-  // TODO: instead of plotting the poses here, maybe we could store the poses in
-  //  both local and global frames into files.
-  // Testing -- visualize the poses
-  /*MatrixXd poses = MatrixXd(x0_global.rows(), 2 * x0_global.cols());
-  for (int i = 0; i < x0_global.cols(); i++) {
-    poses.col(2 * i) = x0_global.col(i);
-    poses.col(2 * i + 1) = xf_global.col(i);
-  }
-  VectorXd alpha_vec = 0.3 * VectorXd::Ones(poses.cols());
-  alpha_vec.head(1) << 1;
-  alpha_vec.tail(1) << 1;
-  multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
-      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
-      poses.cols(), alpha_vec);
-  visualizer.DrawPoses(poses);*/
+  // Debugging -- save poses for debugging
+  std::string name = traj_data.GetMetadata().name;
+  writeCSV(DIR_DATA + name + "controller_received_x0.csv", x0);
+  writeCSV(DIR_DATA + name + "controller_received_xf.csv", xf);
+  writeCSV(DIR_DATA + name + "controller_received_global_x0.csv", x0_global);
+  writeCSV(DIR_DATA + name + "controller_received_global_xf.csv", xf_global);
 };
 
 IKTrajReceiver::IKTrajReceiver(

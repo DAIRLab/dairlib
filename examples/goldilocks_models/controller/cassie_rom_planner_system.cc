@@ -769,7 +769,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
   lightweight_saved_traj_ = RomPlannerTrajectory(
-      trajopt, result, quat_xyz_shift, "", "", true, current_time);
+      trajopt, result, quat_xyz_shift, prefix, "", true, current_time);
   *traj_msg = lightweight_saved_traj_.GenerateLcmObject();
 
   // Store the previous message
@@ -875,12 +875,14 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
   MatrixXd input_at_knots = trajopt.GetInputSamples(result);
   writeCSV(dir_data + string(prefix + "input_at_knots.csv"), input_at_knots);
 
-  MatrixXd x0_each_mode(nx_, trajopt.num_modes());
+  MatrixXd x0_each_mode(nx_, trajopt.num_modes() + 1);
   MatrixXd xf_each_mode(nx_, trajopt.num_modes());
   for (uint i = 0; i < trajopt.num_modes(); i++) {
     x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
     xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
   }
+  x0_each_mode.col(trajopt.num_modes()) =
+      result.GetSolution(trajopt.x0_vars_by_mode(trajopt.num_modes()));
   writeCSV(dir_data + string(prefix + "x0_each_mode.csv"), x0_each_mode);
   writeCSV(dir_data + string(prefix + "xf_each_mode.csv"), xf_each_mode);
 

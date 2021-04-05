@@ -152,11 +152,9 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel = RightToeRear(plant_wo_springs);
 
   // Reduced order model
-  const std::string dir_model =
-      "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(gains.rom_option, 1 /*robot_option*/, plant_wo_springs, true);
-  ReadModelParameters(rom.get(), dir_model, gains.model_iter);
+  ReadModelParameters(rom.get(), DIR_MODEL, gains.model_iter);
 
   // Mirrored reduced order model
   int robot_option = 1;
@@ -634,10 +632,8 @@ int DoMain(int argc, char* argv[]) {
     // Get init traj from ROM planner result
     dairlib::lcmt_saved_traj traj_msg;
     if (!FLAGS_init_traj_file_name.empty()) {
-      const std::string dir_data =
-          "../dairlib_data/goldilocks_models/planning/robot_1/data/" +
-          FLAGS_init_traj_file_name;
-      RomPlannerTrajectory saved_traj(dir_data, true);
+      RomPlannerTrajectory saved_traj(DIR_DATA + FLAGS_init_traj_file_name,
+                                      true);
       traj_msg = saved_traj.GenerateLcmObject();
     } else {
       traj_msg.metadata.name = "";

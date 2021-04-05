@@ -49,7 +49,11 @@ group "5.attic" {
 
 group "3.drake-simulator" {
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=5 --target_realtime_rate=0.05";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=0 --target_realtime_rate=0.1";
+        host = "localhost";
+    }
+    cmd "0.simulator(realtime)" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=0 --target_realtime_rate=1";
         host = "localhost";
     }
 }
@@ -64,7 +68,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=30";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=0";
         host = "localhost";
     }
     cmd "2.2. cassie planner pose (multi-pose); files with debug_ prefix" {
@@ -73,6 +77,10 @@ group "0.operator" {
     }
     cmd "2.1. cassie planner pose (multi-pose); files with snopt suffix" {
         exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false  --snopt_suffix=true --solve_idx=0";
+        host = "localhost";
+    }
+    cmd "2.3. cassie planner pose (multi-pose); from controller thread" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --controller_received=true --global=true --solve_idx=1";
         host = "localhost";
     }
 }
@@ -88,6 +96,17 @@ group "4.lcm-tools" {
     }
     cmd "2. lcm-logger" {
         exec = "lcm-logger -f /home/yuming/Desktop/temp/log";
+        host = "localhost";
+    }
+}
+
+group "1.rom-space-controller-with-init-traj" {
+    cmd "2.1.optimal-rom-walking-controller (w init)" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --init_traj_file_name=0_rom_trajectory";
+        host = "localhost";
+    }
+    cmd "2.2.rom-planner (w init)" {
+        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --n_step=3 --log_solver_info=true --time_limit=2 --init_file=0_z.csv";
         host = "localhost";
     }
 }

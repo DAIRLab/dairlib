@@ -829,8 +829,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Switch to snopt after one iteration (use ipopt to get a good solution for
   // the first loop)
   if (counter_ == 0) {
-    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
-    param_.use_ipopt = false;
+    //    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
+    //    param_.use_ipopt = false;
   }
 
   finish = std::chrono::high_resolution_clock::now();

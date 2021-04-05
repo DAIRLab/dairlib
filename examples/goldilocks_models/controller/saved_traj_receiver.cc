@@ -318,11 +318,11 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   *traj_casted = pp;
 
   // Debugging -- save poses for debugging
-  /*std::string name = traj_data.GetMetadata().name;
+  std::string name = traj_data.GetMetadata().name;
   writeCSV(DIR_DATA + name + "controller_received_x0.csv", x0);
   writeCSV(DIR_DATA + name + "controller_received_xf.csv", xf);
   writeCSV(DIR_DATA + name + "controller_received_global_x0.csv", x0_global);
-  writeCSV(DIR_DATA + name + "controller_received_global_xf.csv", xf_global);*/
+  writeCSV(DIR_DATA + name + "controller_received_global_xf.csv", xf_global);
 };
 
 IKTrajReceiver::IKTrajReceiver(

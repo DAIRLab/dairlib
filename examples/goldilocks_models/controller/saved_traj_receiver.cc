@@ -76,13 +76,6 @@ void SavedTrajReceiver::CalcRomTraj(
   // Benchmark: The unpacking time is about 10-20 us.
   RomPlannerTrajectory traj_data(*lcm_traj);
 
-  // TODO: Examine why we are not using the latest desired traj! (it's also the
-  //  previous one!)
-  cout << "context time = " << context.get_time() << endl;
-  cout << "time = "
-       << traj_data.GetTrajectory("state_traj0").time_vector.transpose()
-       << endl;
-
   int n_mode = traj_data.GetNumModes();
   VectorXd zero_vec = VectorXd::Zero(ny_);
 
@@ -97,6 +90,14 @@ void SavedTrajReceiver::CalcRomTraj(
                   traj_i.datapoints.bottomRows(ny_))
             : PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
                   traj_i.time_vector, traj_i.datapoints, zero_vec, zero_vec));
+  }
+
+  // cout << "current context time / traj start time / traj end time\n";
+  // cout << context.get_time() << " / " << pp.start_time() << " / "
+  //      << pp.end_time() << endl;
+
+  if (context.get_time() > pp.end_time()) {
+    cout << "WARNING: exceeded trajectory's end time!\n";
   }
 
   // Assign traj

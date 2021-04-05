@@ -244,6 +244,11 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // Init state relaxation (relax the mapping function)
   std::set<int> relax_index_ = {5};  //{3, 4, 5};
 
+  // Time limit
+  bool fixed_time_limit_;
+  double time_limit_for_first_loop_ = 60;
+  double buffer_ = 0.02;  // time for lcm packing/traveling, data saving, etc
+
   // Testing
   mutable int counter_ = 0;
 

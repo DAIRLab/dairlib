@@ -3,9 +3,15 @@
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/multipose_visualizer.h"
+#include "systems/framework/output_vector.h"
 
 #include <string>
 
+using drake::systems::BasicVector;
+using drake::systems::Context;
+using drake::systems::DiscreteUpdateEvent;
+using drake::systems::DiscreteValues;
+using drake::systems::EventStatus;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::Matrix3d;
@@ -17,27 +23,43 @@ using Eigen::VectorXd;
 using std::cout;
 using std::endl;
 
+using dairlib::systems::OutputVector;
+
 namespace dairlib {
 namespace goldilocks_models {
 
 SavedTrajReceiver::SavedTrajReceiver(
     const ReducedOrderModel& rom,
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const std::vector<BodyPoint>& left_right_foot, bool both_pos_vel_in_traj,
-    double double_support_duration)
+    const drake::multibody::MultibodyPlant<double>& plant_feedback,
+    const drake::multibody::MultibodyPlant<double>& plant_control,
+    drake::systems::Context<double>* context_feedback,
+    const std::vector<BodyPoint>& left_right_foot,
+    std::vector<int> left_right_support_fsm_states, bool both_pos_vel_in_traj,
+    double single_support_duration, double double_support_duration)
     : ny_(rom.n_y()),
-      plant_control_(plant),
+      plant_feedback_(plant_feedback),
+      plant_control_(plant_control),
+      context_feedback_(context_feedback),
+      context_control_(plant_control.CreateDefaultContext()),
       left_right_foot_(left_right_foot),
-      context_(plant.CreateDefaultContext()),
-      nq_(plant.num_positions()),
-      nv_(plant.num_velocities()),
-      nx_(plant.num_positions() + plant.num_velocities()),
+      left_right_support_fsm_states_(left_right_support_fsm_states),
+      nq_(plant_control.num_positions()),
+      nv_(plant_control.num_velocities()),
+      nx_(plant_control.num_positions() + plant_control.num_velocities()),
       both_pos_vel_in_traj_(both_pos_vel_in_traj),
+      single_support_duration_(single_support_duration),
       double_support_duration_(double_support_duration) {
   saved_traj_lcm_port_ =
       this->DeclareAbstractInputPort("saved_traj_lcm",
                                      drake::Value<dairlib::lcmt_saved_traj>{})
           .get_index();
+  // Input ports for swing foot
+  state_port_ = this->DeclareVectorInputPort(
+                        OutputVector<double>(plant_feedback.num_positions(),
+                                             plant_feedback.num_velocities(),
+                                             plant_feedback.num_actuators()))
+                    .get_index();
+  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp;
@@ -52,6 +74,17 @@ SavedTrajReceiver::SavedTrajReceiver(
       this->DeclareAbstractOutputPort("swing_foot_traj", traj_inst2,
                                       &SavedTrajReceiver::CalcSwingFootTraj)
           .get_index();
+
+  // Discrete update for the swing foot at touchdown
+  DeclarePerStepDiscreteUpdateEvent(&SavedTrajReceiver::DiscreteVariableUpdate);
+  // The swing foot position in the beginning of the swing phase
+  liftoff_swing_foot_pos_idx_ = this->DeclareDiscreteState(Vector3d::Zero());
+
+  // Construct maps
+  swing_foot_map_.insert(
+      {left_right_support_fsm_states.at(0), left_right_foot.at(1)});
+  swing_foot_map_.insert(
+      {left_right_support_fsm_states.at(1), left_right_foot.at(0)});
 }
 
 void SavedTrajReceiver::CalcRomTraj(
@@ -104,6 +137,45 @@ void SavedTrajReceiver::CalcRomTraj(
   *traj_casted = pp;
 };
 
+EventStatus SavedTrajReceiver::DiscreteVariableUpdate(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  // Read in finite state machine
+  VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
+
+  // Find fsm_state in left_right_support_fsm_states
+  auto it = find(left_right_support_fsm_states_.begin(),
+                 left_right_support_fsm_states_.end(), int(fsm_state(0)));
+  // swing phase if current state is in left_right_support_fsm_states_
+  bool is_single_support_phase = it != left_right_support_fsm_states_.end();
+
+  // when entering a new state which is in left_right_support_fsm_states
+  if ((fsm_state(0) != prev_fsm_state_) && is_single_support_phase) {
+    prev_fsm_state_ = fsm_state(0);
+
+    auto swing_foot_pos_at_liftoff =
+        discrete_state->get_mutable_vector(liftoff_swing_foot_pos_idx_)
+            .get_mutable_value();
+
+    // Read in current state
+    const OutputVector<double>* robot_output =
+        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
+    multibody::SetPositionsIfNew<double>(
+        plant_feedback_, robot_output->GetPositions(), context_feedback_);
+
+    // Swing foot position (Forward Kinematics) at touchdown
+    const BodyPoint& swing_foot = swing_foot_map_.at(int(fsm_state(0)));
+    plant_feedback_.CalcPointsPositions(
+        *context_feedback_, swing_foot.second, swing_foot.first,
+        plant_feedback_.world_frame(), &swing_foot_pos_at_liftoff);
+
+    lift_off_time_ = robot_output->get_timestamp();
+  }
+
+  return EventStatus::Succeeded();
+}
+
 void SavedTrajReceiver::CalcSwingFootTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
@@ -148,6 +220,10 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   const VectorXd& quat_xyz_shift = traj_data.get_quat_xyz_shift();
   DRAKE_DEMAND(xf_time(0) == x0_time(1));
 
+  // TODO: I think the correct way of doing this is to send the global state
+  //  instead of local state from the planner thread to the controller thread
+  //  This would avoid extra conversion and make lcm slightly lighter
+
   // Rotate the states back to global frame
   MatrixXd x0_global = x0;
   MatrixXd xf_global = xf;
@@ -188,30 +264,36 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   bool left_stance = abs(stance_foot(0)) < 1e-12;
   for (int j = 0; j < n_mode; j++) {
     if (xf_time(j) - double_support_duration_ > x0_time(j)) {
-      T_waypoint.at(0) = x0_time(j);
+      // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
+      T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
+                                        double_support_duration_
+                                  : x0_time(j);
       T_waypoint.at(2) = xf_time(j) - double_support_duration_;
       /*cout << "T_waypoint.at(0) = " << T_waypoint.at(0) << endl;
       cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
       cout << "double_support_duration_ = " << double_support_duration_ <<
       endl;*/
       T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
-      plant_control_.SetPositionsAndVelocities(context_.get(),
+      plant_control_.SetPositionsAndVelocities(context_control_.get(),
                                                x0_global.col(j));
-      plant_control_.CalcPointsPositions(
-          *context_, left_right_foot_.at(left_stance ? 1 : 0).second,
-          left_right_foot_.at(left_stance ? 1 : 0).first,
-          plant_control_.world_frame(), &foot_pos);
+      if (j == 0) {
+        foot_pos =
+            context.get_discrete_state(liftoff_swing_foot_pos_idx_).get_value();
+      } else {
+        plant_control_.CalcPointsPositions(
+            *context_control_, left_right_foot_.at(left_stance ? 1 : 0).second,
+            left_right_foot_.at(left_stance ? 1 : 0).first,
+            plant_control_.world_frame(), &foot_pos);
+      }
       Y.at(0) = foot_pos;
-      plant_control_.SetPositionsAndVelocities(context_.get(),
+      plant_control_.SetPositionsAndVelocities(context_control_.get(),
                                                xf_global.col(j));
       plant_control_.CalcPointsPositions(
-          *context_, left_right_foot_.at(left_stance ? 1 : 0).second,
+          *context_control_, left_right_foot_.at(left_stance ? 1 : 0).second,
           left_right_foot_.at(left_stance ? 1 : 0).first,
           plant_control_.world_frame(), &foot_pos);
       Y.at(2) = foot_pos;
       Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
-      // TODO: there is a bug here. For the first mode, it's not always at the
-      //  middle of the mode (the length varies)
       Y.at(1)(1) += 0.1;
       // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
       // make the traj smooth at the mid point
@@ -236,11 +318,11 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   *traj_casted = pp;
 
   // Debugging -- save poses for debugging
-  std::string name = traj_data.GetMetadata().name;
+  /*std::string name = traj_data.GetMetadata().name;
   writeCSV(DIR_DATA + name + "controller_received_x0.csv", x0);
   writeCSV(DIR_DATA + name + "controller_received_xf.csv", xf);
   writeCSV(DIR_DATA + name + "controller_received_global_x0.csv", x0_global);
-  writeCSV(DIR_DATA + name + "controller_received_global_xf.csv", xf_global);
+  writeCSV(DIR_DATA + name + "controller_received_global_xf.csv", xf_global);*/
 };
 
 IKTrajReceiver::IKTrajReceiver(

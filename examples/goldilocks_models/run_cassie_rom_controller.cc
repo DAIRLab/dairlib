@@ -329,13 +329,22 @@ int DoMain(int argc, char* argv[]) {
     auto planner_output_subscriber =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
             FLAGS_channel_y, &lcm_local));
+
     // Create a system that translate MPC lcm into trajectory
     vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
         left_toe_origin, right_toe_origin};
+    vector<int> left_right_support_fsm_states = {left_stance_state,
+                                                 right_stance_state};
     auto optimal_rom_traj_gen = builder.AddSystem<SavedTrajReceiver>(
-        *rom, plant_wo_springs, left_right_foot, true, double_support_duration);
+        *rom, plant_w_spr, plant_wo_springs, context_w_spr.get(),
+        left_right_foot, left_right_support_fsm_states, true,
+        left_support_duration, double_support_duration);
     builder.Connect(planner_output_subscriber->get_output_port(),
-                    optimal_rom_traj_gen->get_input_port(0));
+                    optimal_rom_traj_gen->get_input_port_lcm_traj());
+    builder.Connect(fsm->get_output_port(0),
+                    optimal_rom_traj_gen->get_input_port_fsm());
+    builder.Connect(simulator_drift->get_output_port(0),
+                    optimal_rom_traj_gen->get_input_port_state());
 
     // Create human high-level control
     Eigen::Vector2d global_target_position(gains.global_target_position_x,
@@ -416,8 +425,6 @@ int DoMain(int argc, char* argv[]) {
                     walking_speed_control->get_input_port_fsm_switch_time());
 
     // Create swing leg trajectory generator
-    vector<int> left_right_support_fsm_states = {left_stance_state,
-                                                 right_stance_state};
     vector<double> left_right_support_state_durations = {
         left_support_duration, right_support_duration};
     auto swing_ft_traj_generator =

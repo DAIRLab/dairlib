@@ -20,10 +20,24 @@ namespace goldilocks_models {
 
 class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
  public:
-  SavedTrajReceiver(const ReducedOrderModel& rom,
-                    const drake::multibody::MultibodyPlant<double>& plant,
-                    const std::vector<BodyPoint>& left_right_foot,
-                    bool both_pos_vel_in_traj, double double_support_duration);
+  SavedTrajReceiver(
+      const ReducedOrderModel& rom,
+      const drake::multibody::MultibodyPlant<double>& plant_feedback,
+      const drake::multibody::MultibodyPlant<double>& plant_control,
+      drake::systems::Context<double>* context_feedback,
+      const std::vector<BodyPoint>& left_right_foot,
+      std::vector<int> left_right_support_fsm_states, bool both_pos_vel_in_traj,
+      double single_support_duration, double double_support_duration);
+
+  const drake::systems::InputPort<double>& get_input_port_lcm_traj() const {
+    return this->get_input_port(saved_traj_lcm_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(state_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_fsm() const {
+    return this->get_input_port(fsm_port_);
+  }
 
   const drake::systems::OutputPort<double>& get_output_port_rom() const {
     return this->get_output_port(rom_traj_port_);
@@ -37,22 +51,38 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
                    drake::trajectories::Trajectory<double>* traj) const;
   void CalcSwingFootTraj(const drake::systems::Context<double>& context,
                          drake::trajectories::Trajectory<double>* traj) const;
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   int saved_traj_lcm_port_;
+  int state_port_;
+  int fsm_port_;
+
   int rom_traj_port_;
   int swing_foot_traj_port_;
 
+  int liftoff_swing_foot_pos_idx_;
+  mutable double prev_fsm_state_ = -1;
+  mutable double lift_off_time_ = 0;
+
   int ny_;
+  const drake::multibody::MultibodyPlant<double>& plant_feedback_;
   const drake::multibody::MultibodyPlant<double>& plant_control_;
+  drake::systems::Context<double>* context_feedback_;
+  std::unique_ptr<drake::systems::Context<double>> context_control_;
   const std::vector<BodyPoint>& left_right_foot_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
+  std::vector<int> left_right_support_fsm_states_;
 
   int nq_;
   int nv_;
   int nx_;
   bool both_pos_vel_in_traj_;
 
+  std::map<int, BodyPoint> swing_foot_map_;
+
   // hacks
+  double single_support_duration_;
   double double_support_duration_;
 };
 

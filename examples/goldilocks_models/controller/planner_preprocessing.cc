@@ -272,7 +272,7 @@ InitialStateForPlanner::InitialStateForPlanner(
               &InitialStateForPlanner::CopyAdjustedState)
           .get_index();
   adjustment_port_ =
-      this->DeclareVectorOutputPort(TimestampedVector<double>(7),
+      this->DeclareVectorOutputPort(BasicVector<double>(7),
                                     &InitialStateForPlanner::CopyAdjustment)
           .get_index();
 
@@ -462,13 +462,9 @@ void InitialStateForPlanner::CopyAdjustedState(
 
 void InitialStateForPlanner::CopyAdjustment(
     const drake::systems::Context<double>& context,
-    TimestampedVector<double>* output) const {
-  output->SetDataVector(
-      context.get_discrete_state(quat_xyz_shift_idx_).get_value());
-  output->set_timestamp(
-      static_cast<const TimestampedVector<double>*>(
-          this->EvalVectorInput(context, fsm_and_lo_time_port_))
-          ->get_timestamp());
+    BasicVector<double>* output) const {
+  output->get_mutable_value() =
+      context.get_discrete_state(quat_xyz_shift_idx_).get_value();
 }
 
 void InitialStateForPlanner::AdjustKneeAndAnklePos(

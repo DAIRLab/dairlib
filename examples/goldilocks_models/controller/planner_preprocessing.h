@@ -6,9 +6,9 @@
 #include "drake/solvers/equality_constrained_qp_solver.h"
 #include "drake/systems/framework/leaf_system.h"
 
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
-#include "examples/goldilocks_models/reduced_order_models.h"
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -97,7 +97,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   void CopyAdjustedState(const drake::systems::Context<double>& context,
                          systems::OutputVector<double>* output) const;
   void CopyAdjustment(const drake::systems::Context<double>& context,
-                      systems::TimestampedVector<double>* output) const;
+                      drake::systems::BasicVector<double>* output) const;
 
   drake::systems::EventStatus AdjustState(
       const drake::systems::Context<double>& context,

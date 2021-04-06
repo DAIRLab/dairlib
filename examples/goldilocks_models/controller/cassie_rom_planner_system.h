@@ -211,7 +211,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       const std::string& prefix) const;
   void SaveDataIntoFiles(
       double current_time, const Eigen::VectorXd& x_init, double init_phase,
-      bool is_right_stance, const RomTrajOptCassie& trajopt,
+      bool is_right_stance, const Eigen::VectorXd& quat_xyz_shift,
+      const RomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& dir_data, const std::string& prefix,
       const std::string& prefix_next) const;

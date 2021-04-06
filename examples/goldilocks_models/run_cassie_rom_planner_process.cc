@@ -274,6 +274,7 @@ int DoMain(int argc, char* argv[]) {
     double init_phase;
     double is_right_stance;
     double current_time;
+    VectorXd quat_xyz_shift = VectorXd::Zero(7);
     if (FLAGS_solve_idx_for_read_from_file >= 0) {
       init_phase = readCSV(param.dir_data +
                            to_string(FLAGS_solve_idx_for_read_from_file) +
@@ -290,13 +291,15 @@ int DoMain(int argc, char* argv[]) {
       //         is_right_stance * VectorXd::Ones(1), true);
       // writeCSV(param.dir_data + "testing_" + string("current_time.csv"),
       //         current_time * VectorXd::Ones(1), true);
+      quat_xyz_shift = readCSV(param.dir_data +
+                               to_string(FLAGS_solve_idx_for_read_from_file) +
+                               "_quat_xyz_shift.csv")
+                           .col(0);
     } else {
       init_phase = FLAGS_init_phase;
       is_right_stance = !FLAGS_start_with_left_stance;
       current_time = 0;
     }
-    cout << "Warning: we are not using quat_xyz_shift port for debug mode.\n";
-    VectorXd quat_xyz_shift = VectorXd::Zero(7 + 1);
 
     ///
     /// Read in initial robot state

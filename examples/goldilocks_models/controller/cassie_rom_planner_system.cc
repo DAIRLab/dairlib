@@ -86,7 +86,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   fsm_and_lo_time_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(2)).get_index();
   quat_xyz_shift_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(7)).get_index();
+      this->DeclareVectorInputPort(BasicVector<double>(7)).get_index();
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
 
   // Create index maps
@@ -779,9 +779,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   VectorXd quat_xyz_shift = VectorXd::Zero(7);
   if (!debug_mode_) {
-    quat_xyz_shift = static_cast<const TimestampedVector<double>*>(
-                         this->EvalVectorInput(context, quat_xyz_shift_port_))
-                         ->get_data();
+    quat_xyz_shift =
+        this->EvalVectorInput(context, quat_xyz_shift_port_)->get_value();
   }
 
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
@@ -827,7 +826,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (log_data_and_check_solution) {
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
-                      trajopt, result, param_.dir_data, prefix, prefix_next);
+                      quat_xyz_shift, trajopt, result, param_.dir_data, prefix,
+                      prefix_next);
     // Save trajectory to lcm
     SaveTrajIntoLcmBinary(trajopt, result, quat_xyz_shift, param_.dir_data,
                           prefix);
@@ -873,9 +873,10 @@ void CassiePlannerWithMixedRomFom::SaveTrajIntoLcmBinary(
 
 void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
     double current_time, const VectorXd& x_init, double init_phase,
-    bool is_right_stance, const RomTrajOptCassie& trajopt,
-    const MathematicalProgramResult& result, const string& dir_data,
-    const string& prefix, const string& prefix_next) const {
+    bool is_right_stance, const VectorXd& quat_xyz_shift,
+    const RomTrajOptCassie& trajopt, const MathematicalProgramResult& result,
+    const string& dir_data, const string& prefix,
+    const string& prefix_next) const {
   /// Save the solution vector
   VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
   writeCSV(dir_data + string(prefix + "z.csv"), z_sol);
@@ -911,6 +912,8 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
            init_phase * VectorXd::Ones(1), true);
   writeCSV(param_.dir_data + prefix + string("is_right_stance.csv"),
            is_right_stance * VectorXd::Ones(1), true);
+  writeCSV(param_.dir_data + prefix + string("quat_xyz_shift.csv"),
+           quat_xyz_shift * VectorXd::Ones(1), true);
   writeCSV(param_.dir_data + prefix + string("init_file.csv"),
            trajopt.initial_guess(), true);
   writeCSV(param_.dir_data + prefix + string("current_time.csv"),

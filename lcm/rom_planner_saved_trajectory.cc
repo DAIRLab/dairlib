@@ -27,11 +27,10 @@ RomPlannerTrajectory& RomPlannerTrajectory::operator=(
     x_.push_back(&GetTrajectory("state_traj" + std::to_string(mode)));
   }
 
-  x0_FOM_ = &GetTrajectory("x0_FOM");
-  xf_FOM_ = &GetTrajectory("xf_FOM");
+  global_x0_FOM_ = &GetTrajectory("x0_FOM");
+  global_xf_FOM_ = &GetTrajectory("xf_FOM");
 
   stance_foot_ = old.get_stance_foot();
-  quat_xyz_shift_ = old.get_quat_xyz_shift();
 
   // We do not copy the following data, because this copy assignment is only
   // used for the lightweight version
@@ -47,7 +46,8 @@ RomPlannerTrajectory& RomPlannerTrajectory::operator=(
 RomPlannerTrajectory::RomPlannerTrajectory(
     const RomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
-    const VectorXd& quat_xyz_shift, const std::string& name,
+    const Eigen::MatrixXd& x0_global,
+    const Eigen::MatrixXd& xf_global, const std::string& name,
     const std::string& description, bool lightweight, double time_shift)
     : LcmTrajectory() {
   num_modes_ = trajopt.num_modes();
@@ -145,12 +145,6 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   }
 
   // 2.a FOM x0
-  MatrixXd x0_FOM = MatrixXd::Zero(trajopt.n_x_FOM(), num_modes_ + 1);
-  for (int i = 0; i < num_modes_; ++i) {
-    x0_FOM.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
-  }
-  x0_FOM.col(num_modes_) =
-      result.GetSolution(trajopt.x0_vars_by_mode(num_modes_));
   VectorXd time_vec_x0(num_modes_ + 1);
   for (int i = 0; i < num_modes_; i++) {
     time_vec_x0(i) = time_breaks[i].head<1>()(0);
@@ -158,27 +152,23 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   time_vec_x0(num_modes_) = time_breaks[num_modes_ - 1].tail<1>()(0);
   LcmTrajectory::Trajectory x0_traj;
   x0_traj.traj_name = "x0_FOM";
-  x0_traj.datapoints = x0_FOM;
+  x0_traj.datapoints = x0_global;
   x0_traj.time_vector = time_vec_x0;
   x0_traj.datatypes = vector<string>(trajopt.n_x_FOM(), "");
   AddTrajectory(x0_traj.traj_name, x0_traj);
-  x0_FOM_ = &GetTrajectory(x0_traj.traj_name);
+  global_x0_FOM_ = &GetTrajectory(x0_traj.traj_name);
   // 2.b FOM xf
-  MatrixXd xf_FOM = MatrixXd::Zero(trajopt.n_x_FOM(), num_modes_);
-  for (int i = 0; i < num_modes_; ++i) {
-    xf_FOM.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
-  }
   VectorXd time_vec_xf(num_modes_);
   for (int i = 0; i < num_modes_; i++) {
     time_vec_xf(i) = time_breaks[i].tail<1>()(0);
   }
   LcmTrajectory::Trajectory xf_traj;
   xf_traj.traj_name = "xf_FOM";
-  xf_traj.datapoints = xf_FOM;
+  xf_traj.datapoints = xf_global;
   xf_traj.time_vector = time_vec_xf;
   xf_traj.datatypes = vector<string>(trajopt.n_x_FOM(), "");
   AddTrajectory(xf_traj.traj_name, xf_traj);
-  xf_FOM_ = &GetTrajectory(xf_traj.traj_name);
+  global_xf_FOM_ = &GetTrajectory(xf_traj.traj_name);
 
   // 3. stance foot (left is 0, right is 1)
   MatrixXd stance_foot_mat = MatrixXd::Zero(1, num_modes_);
@@ -192,15 +182,6 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   stance_foot_traj.time_vector = VectorXd::Zero(num_modes_);
   stance_foot_traj.datatypes = vector<string>(1, "");
   AddTrajectory(stance_foot_traj.traj_name, stance_foot_traj);
-
-  // 4. x, y, z and yaw shift.
-  LcmTrajectory::Trajectory quat_xyz_shift_traj;
-  quat_xyz_shift_traj.traj_name = "quat_xyz_shift";
-  quat_xyz_shift_traj.datapoints = quat_xyz_shift;
-  quat_xyz_shift_traj.time_vector = VectorXd::Zero(1);
-  quat_xyz_shift_traj.datatypes = {"quat_w", "quat_x", "quat_y", "quat_z",
-                                   "x",      "y",      "z"};
-  AddTrajectory(quat_xyz_shift_traj.traj_name, quat_xyz_shift_traj);
 }
 
 RomPlannerTrajectory::RomPlannerTrajectory(const lcmt_saved_traj& traj)
@@ -221,14 +202,11 @@ RomPlannerTrajectory::RomPlannerTrajectory(const lcmt_saved_traj& traj)
   }
 
   // x0_FOM, xf_FOM
-  x0_FOM_ = &GetTrajectory("x0_FOM");
-  xf_FOM_ = &GetTrajectory("xf_FOM");
+  global_x0_FOM_ = &GetTrajectory("x0_FOM");
+  global_xf_FOM_ = &GetTrajectory("xf_FOM");
 
   // stance_foot
   stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
-
-  // quat_xyz_shift
-  quat_xyz_shift_ = GetTrajectory("quat_xyz_shift").datapoints.col(0);
 }
 
 void RomPlannerTrajectory::LoadFromFile(const std::string& filepath,
@@ -258,14 +236,11 @@ void RomPlannerTrajectory::LoadFromFile(const std::string& filepath,
   }
 
   // x0_FOM, xf_FOM
-  x0_FOM_ = &GetTrajectory("x0_FOM");
-  xf_FOM_ = &GetTrajectory("xf_FOM");
+  global_x0_FOM_ = &GetTrajectory("x0_FOM");
+  global_xf_FOM_ = &GetTrajectory("xf_FOM");
 
   // stance_foot
   stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
-
-  // quat_xyz_shift
-  quat_xyz_shift_ = GetTrajectory("quat_xyz_shift").datapoints.col(0);
 }
 
 Eigen::VectorXd RomPlannerTrajectory::GetCollocationPoints(

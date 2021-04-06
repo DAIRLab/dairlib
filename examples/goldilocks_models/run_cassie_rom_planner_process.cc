@@ -274,7 +274,7 @@ int DoMain(int argc, char* argv[]) {
     double init_phase;
     double is_right_stance;
     double current_time;
-    VectorXd quat_xyz_shift = VectorXd::Zero(7);
+    VectorXd quat_xyz_shift(7);
     if (FLAGS_solve_idx_for_read_from_file >= 0) {
       init_phase = readCSV(param.dir_data +
                            to_string(FLAGS_solve_idx_for_read_from_file) +
@@ -299,6 +299,7 @@ int DoMain(int argc, char* argv[]) {
       init_phase = FLAGS_init_phase;
       is_right_stance = !FLAGS_start_with_left_stance;
       current_time = 0;
+      quat_xyz_shift << 1, 0, 0, 0, 0, 0, 0;
     }
 
     ///

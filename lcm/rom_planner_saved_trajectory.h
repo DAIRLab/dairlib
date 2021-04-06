@@ -22,7 +22,8 @@ class RomPlannerTrajectory : public LcmTrajectory {
   // The lightweight flag is used for online lcm communication between processes
   RomPlannerTrajectory(const goldilocks_models::RomTrajOpt& trajopt,
                        const drake::solvers::MathematicalProgramResult& result,
-                       const Eigen::VectorXd& quat_xyz_shift,
+                       const Eigen::MatrixXd& x0_global,
+                       const Eigen::MatrixXd& xf_global,
                        const std::string& name, const std::string& description,
                        bool lightweight = false, double time_shift = 0);
 
@@ -66,12 +67,15 @@ class RomPlannerTrajectory : public LcmTrajectory {
     return decision_vars_->datapoints;
   }
 
-  const Eigen::MatrixXd& get_x0() const { return x0_FOM_->datapoints; };
-  const Eigen::VectorXd& get_x0_time() const { return x0_FOM_->time_vector; };
-  const Eigen::MatrixXd& get_xf() const { return xf_FOM_->datapoints; };
-  const Eigen::VectorXd& get_xf_time() const { return xf_FOM_->time_vector; };
+  const Eigen::MatrixXd& get_x0() const { return global_x0_FOM_->datapoints; };
+  const Eigen::VectorXd& get_x0_time() const {
+    return global_x0_FOM_->time_vector;
+  };
+  const Eigen::MatrixXd& get_xf() const { return global_xf_FOM_->datapoints; };
+  const Eigen::VectorXd& get_xf_time() const {
+    return global_xf_FOM_->time_vector;
+  };
   const Eigen::VectorXd& get_stance_foot() const { return stance_foot_; };
-  const Eigen::VectorXd& get_quat_xyz_shift() const { return quat_xyz_shift_; };
 
  private:
   static Eigen::VectorXd GetCollocationPoints(
@@ -83,11 +87,9 @@ class RomPlannerTrajectory : public LcmTrajectory {
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 
-  const Trajectory* x0_FOM_;
-  const Trajectory* xf_FOM_;
+  const Trajectory* global_x0_FOM_;
+  const Trajectory* global_xf_FOM_;
   Eigen::VectorXd stance_foot_;
-  Eigen::VectorXd quat_xyz_shift_;
   //  const Eigen::MatrixXd* stance_foot_;
-  //  const Eigen::MatrixXd* quat_xyz_shift_;
 };
 }  // namespace dairlib

@@ -86,9 +86,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("get_xf_time",
            &RomPlannerTrajectory::get_xf_time)
       .def("get_stance_foot",
-           &RomPlannerTrajectory::get_stance_foot)
-      .def("get_quat_xyz_shift",
-           &RomPlannerTrajectory::get_quat_xyz_shift);
+           &RomPlannerTrajectory::get_stance_foot);
 }
 
 }  // namespace pydairlib

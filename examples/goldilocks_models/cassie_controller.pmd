@@ -72,7 +72,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=305";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=14";
         host = "localhost";
     }
     cmd "2.2. cassie planner pose (multi-pose); files with debug_ prefix" {
@@ -83,8 +83,8 @@ group "0.operator" {
         exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false  --snopt_suffix=true --solve_idx=0";
         host = "localhost";
     }
-    cmd "2.3. cassie planner pose (multi-pose); from controller thread" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --controller_received=true --global=true --solve_idx=1";
+    cmd "2.3. cassie planner pose (multi-pose); global frame" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=14";
         host = "localhost";
     }
 }

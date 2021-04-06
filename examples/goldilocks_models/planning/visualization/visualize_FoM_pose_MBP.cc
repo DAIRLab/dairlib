@@ -48,7 +48,6 @@ DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 // File source
 DEFINE_int32(solve_idx, -1, "");
 DEFINE_bool(snopt_suffix, false, "");
-DEFINE_bool(controller_received, false, "");
 DEFINE_bool(global, false, "");
 
 // There are two modes of this visualizer.
@@ -84,30 +83,21 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   MatrixXd x0_each_mode;
   MatrixXd xf_each_mode;
   string suffix = FLAGS_snopt_suffix ? "_snopt" : "";
+  string global = FLAGS_global ? "_global_" : "_local_";
   if (FLAGS_solve_idx >= 0) {
     cout << "Drawing solve_idx " << FLAGS_solve_idx << endl;
-    if (FLAGS_controller_received) {
-      string global = FLAGS_global ? "global_" : "";
-      x0_each_mode = readCSV(directory + string(to_string(FLAGS_solve_idx) +
-                                                "_controller_received_" +
-                                                global + "x0.csv"));
-      xf_each_mode = readCSV(directory + string(to_string(FLAGS_solve_idx) +
-                                                "_controller_received_" +
-                                                global + "xf.csv"));
-    } else {
-      x0_each_mode =
-          readCSV(directory + string(to_string(FLAGS_solve_idx) +
-                                     "_x0_each_mode" + suffix + ".csv"));
-      xf_each_mode =
-          readCSV(directory + string(to_string(FLAGS_solve_idx) +
-                                     "_xf_each_mode" + suffix + ".csv"));
-    }
+    x0_each_mode =
+        readCSV(directory + string(to_string(FLAGS_solve_idx) + global +
+                                   "x0_FOM" + suffix + ".csv"));
+    xf_each_mode =
+        readCSV(directory + string(to_string(FLAGS_solve_idx) + global +
+                                   "xf_FOM" + suffix + ".csv"));
   } else {
     cout << "Drawing debug_ files\n";
-    x0_each_mode =
-        readCSV(directory + string("debug_x0_each_mode" + suffix + ".csv"));
-    xf_each_mode =
-        readCSV(directory + string("debug_xf_each_mode" + suffix + ".csv"));
+    x0_each_mode = readCSV(
+        directory + string("debug" + global + "x0_FOM" + suffix + ".csv"));
+    xf_each_mode = readCSV(
+        directory + string("debug" + global + "xf_FOM" + suffix + ".csv"));
   }
 
   if (FLAGS_view_multipose_at_once) {

@@ -210,50 +210,13 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   RomPlannerTrajectory traj_data(*lcm_traj);
   int n_mode = traj_data.GetNumModes();
 
-  // Get states and stance_foot
+  // Get states (in global frame) and stance_foot
   const MatrixXd& x0 = traj_data.get_x0();
   const VectorXd& x0_time = traj_data.get_x0_time();
   const MatrixXd& xf = traj_data.get_xf();
   const VectorXd& xf_time = traj_data.get_xf_time();
   const VectorXd& stance_foot = traj_data.get_stance_foot();
-  const VectorXd& quat_xyz_shift = traj_data.get_quat_xyz_shift();
   DRAKE_DEMAND(xf_time(0) == x0_time(1));
-
-  // TODO: I think the correct way of doing this is to send the global state
-  //  instead of local state from the planner thread to the controller thread
-  //  This would avoid extra conversion and make lcm slightly lighter
-
-  // Rotate the states back to global frame
-  MatrixXd x0_global = x0;
-  MatrixXd xf_global = xf;
-  Quaterniond relative_quat = Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1),
-                                          quat_xyz_shift(2), quat_xyz_shift(3))
-                                  .conjugate();
-  Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
-  for (int j = 0; j < n_mode; j++) {
-    // x0
-    Quaterniond x0_quat_global =
-        relative_quat * Quaterniond(x0_global.col(j)(0), x0_global.col(j)(1),
-                                    x0_global.col(j)(2), x0_global.col(j)(3));
-    x0_global.col(j).segment<4>(0) << x0_quat_global.w(), x0_quat_global.vec();
-    x0_global.col(j).segment<3>(4)
-        << x0_global.col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
-    x0_global.col(j).segment<3>(nq_)
-        << relative_rot_mat * x0_global.col(j).segment<3>(nq_);
-    x0_global.col(j).segment<3>(nq_ + 3)
-        << relative_rot_mat * x0_global.col(j).segment<3>(nq_ + 3);
-    // xf
-    Quaterniond xf_quat_global =
-        relative_quat * Quaterniond(xf_global.col(j)(0), xf_global.col(j)(1),
-                                    xf_global.col(j)(2), xf_global.col(j)(3));
-    xf_global.col(j).segment<4>(0) << xf_quat_global.w(), xf_quat_global.vec();
-    xf_global.col(j).segment<3>(4)
-        << xf_global.col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
-    xf_global.col(j).segment<3>(nq_)
-        << relative_rot_mat * xf_global.col(j).segment<3>(nq_);
-    xf_global.col(j).segment<3>(nq_ + 3)
-        << relative_rot_mat * xf_global.col(j).segment<3>(nq_ + 3);
-  }
 
   // Construct PP
   PiecewisePolynomial<double> pp;
@@ -274,7 +237,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
       endl;*/
       T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
       plant_control_.SetPositionsAndVelocities(context_control_.get(),
-                                               x0_global.col(j));
+                                               x0.col(j));
       if (j == 0) {
         foot_pos =
             context.get_discrete_state(liftoff_swing_foot_pos_idx_).get_value();
@@ -286,7 +249,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
       }
       Y.at(0) = foot_pos;
       plant_control_.SetPositionsAndVelocities(context_control_.get(),
-                                               xf_global.col(j));
+                                               xf.col(j));
       plant_control_.CalcPointsPositions(
           *context_control_, left_right_foot_.at(left_stance ? 1 : 0).second,
           left_right_foot_.at(left_stance ? 1 : 0).first,
@@ -315,13 +278,6 @@ void SavedTrajReceiver::CalcSwingFootTraj(
 
   // Assign traj
   *traj_casted = pp;
-
-  // Debugging -- save poses for debugging
-  std::string name = traj_data.GetMetadata().name;
-  writeCSV(DIR_DATA + name + "controller_received_x0.csv", x0);
-  writeCSV(DIR_DATA + name + "controller_received_xf.csv", xf);
-  writeCSV(DIR_DATA + name + "controller_received_global_x0.csv", x0_global);
-  writeCSV(DIR_DATA + name + "controller_received_global_xf.csv", xf_global);
 };
 
 IKTrajReceiver::IKTrajReceiver(

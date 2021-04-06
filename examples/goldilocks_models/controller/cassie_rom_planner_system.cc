@@ -746,14 +746,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         result.GetSolution(trajopt.x0_vars_by_mode(trajopt.num_modes()));
     MatrixXd global_x0_FOM = x0_each_mode;
     MatrixXd global_xf_FOM = xf_each_mode;
-    RotateFromLocalToGlobal(quat_xyz_shift, &global_x0_FOM, &global_xf_FOM);
-    writeCSV(param_.dir_data + string(prefix + "local_x0_FOM_snopt.csv"),
-             x0_each_mode);
-    writeCSV(param_.dir_data + string(prefix + "local_xf_FOM_snopt.csv"),
-             xf_each_mode);
-    writeCSV(param_.dir_data + string(prefix + "global_x0_FOM_snopt.csv"),
+    RotateFromLocalToGlobal(quat_xyz_shift, x0_each_mode, xf_each_mode,
+                            &global_x0_FOM, &global_xf_FOM);
+    writeCSV(param_.dir_data + prefix + "local_x0_FOM_snopt.csv", x0_each_mode);
+    writeCSV(param_.dir_data + prefix + "local_xf_FOM_snopt.csv", xf_each_mode);
+    writeCSV(param_.dir_data + prefix + "global_x0_FOM_snopt.csv",
              global_x0_FOM);
-    writeCSV(param_.dir_data + string(prefix + "global_xf_FOM_snopt.csv"),
+    writeCSV(param_.dir_data + prefix + "global_xf_FOM_snopt.csv",
              global_xf_FOM);
   }
 
@@ -802,7 +801,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       result.GetSolution(trajopt.x0_vars_by_mode(param_.n_step));
   MatrixXd global_x0_FOM = local_x0_FOM_;
   MatrixXd global_xf_FOM = local_xf_FOM_;
-  RotateFromLocalToGlobal(quat_xyz_shift, &global_x0_FOM, &global_xf_FOM);
+  RotateFromLocalToGlobal(quat_xyz_shift, local_x0_FOM_, local_xf_FOM_,
+                          &global_x0_FOM, &global_xf_FOM);
 
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
@@ -882,7 +882,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 }
 
 void CassiePlannerWithMixedRomFom::RotateFromLocalToGlobal(
-    const VectorXd& quat_xyz_shift, MatrixXd* global_x0_FOM,
+    const VectorXd& quat_xyz_shift, const MatrixXd& local_x0_FOM,
+    const MatrixXd& local_xf_FOM, MatrixXd* global_x0_FOM,
     MatrixXd* global_xf_FOM) const {
   Quaterniond relative_quat = Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1),
                                           quat_xyz_shift(2), quat_xyz_shift(3))
@@ -892,30 +893,30 @@ void CassiePlannerWithMixedRomFom::RotateFromLocalToGlobal(
     // x0
     Quaterniond x0_quat_global =
         relative_quat *
-        Quaterniond(global_x0_FOM->col(j)(0), global_x0_FOM->col(j)(1),
-                    global_x0_FOM->col(j)(2), global_x0_FOM->col(j)(3));
+        Quaterniond(local_x0_FOM.col(j)(0), local_x0_FOM.col(j)(1),
+                    local_x0_FOM.col(j)(2), local_x0_FOM.col(j)(3));
     global_x0_FOM->col(j).segment<4>(0) << x0_quat_global.w(),
         x0_quat_global.vec();
     global_x0_FOM->col(j).segment<3>(4)
-        << global_x0_FOM->col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
+        << local_x0_FOM.col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
     global_x0_FOM->col(j).segment<3>(nq_)
-        << relative_rot_mat * global_x0_FOM->col(j).segment<3>(nq_);
+        << relative_rot_mat * local_x0_FOM.col(j).segment<3>(nq_);
     global_x0_FOM->col(j).segment<3>(nq_ + 3)
-        << relative_rot_mat * global_x0_FOM->col(j).segment<3>(nq_ + 3);
+        << relative_rot_mat * local_x0_FOM.col(j).segment<3>(nq_ + 3);
     // xf
     if (j != param_.n_step) {
       Quaterniond xf_quat_global =
           relative_quat *
-          Quaterniond(global_xf_FOM->col(j)(0), global_xf_FOM->col(j)(1),
-                      global_xf_FOM->col(j)(2), global_xf_FOM->col(j)(3));
+          Quaterniond(local_xf_FOM.col(j)(0), local_xf_FOM.col(j)(1),
+                      local_xf_FOM.col(j)(2), local_xf_FOM.col(j)(3));
       global_xf_FOM->col(j).segment<4>(0) << xf_quat_global.w(),
           xf_quat_global.vec();
       global_xf_FOM->col(j).segment<3>(4)
-          << global_xf_FOM->col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
+          << local_xf_FOM.col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
       global_xf_FOM->col(j).segment<3>(nq_)
-          << relative_rot_mat * global_xf_FOM->col(j).segment<3>(nq_);
+          << relative_rot_mat * local_xf_FOM.col(j).segment<3>(nq_);
       global_xf_FOM->col(j).segment<3>(nq_ + 3)
-          << relative_rot_mat * global_xf_FOM->col(j).segment<3>(nq_ + 3);
+          << relative_rot_mat * local_xf_FOM.col(j).segment<3>(nq_ + 3);
     }
   }
 }

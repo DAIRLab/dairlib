@@ -131,6 +131,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
                     dairlib::lcmt_saved_traj* traj_msg) const;
 
   void RotateFromLocalToGlobal(const Eigen::VectorXd& quat_xyz_shift,
+                               const Eigen::MatrixXd& local_x0_FOM,
+                               const Eigen::MatrixXd& local_xf_FOM,
                                Eigen::MatrixXd* global_x0_FOM,
                                Eigen::MatrixXd* global_xf_FOM) const;
   void BookKeeping(

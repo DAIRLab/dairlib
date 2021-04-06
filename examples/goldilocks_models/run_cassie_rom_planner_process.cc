@@ -234,8 +234,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create optimal rom trajectory generator
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
-      plant_control, stride_period, gains.double_support_duration, param,
-      FLAGS_debug_mode);
+      plant_control, stride_period, param, FLAGS_debug_mode);
   builder.Connect(stance_foot_getter->get_output_port(0),
                   rom_planner->get_input_port_stance_foot());
   builder.Connect(init_phase_calculator->get_output_port(0),

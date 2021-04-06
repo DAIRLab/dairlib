@@ -56,14 +56,14 @@ namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_controls, double stride_period,
-    double double_support_duration, const PlannerSetting& param,
-    bool debug_mode)
+    const PlannerSetting& param, bool debug_mode)
     : nq_(plant_controls.num_positions()),
       nv_(plant_controls.num_velocities()),
       nx_(plant_controls.num_positions() + plant_controls.num_velocities()),
       plant_controls_(plant_controls),
       stride_period_(stride_period),
-      double_support_duration_(double_support_duration),
+      single_support_duration_(param.gains.left_support_duration),
+      double_support_duration_(param.gains.double_support_duration),
       left_origin_(BodyPoint(Vector3d::Zero(),
                              plant_controls.GetFrameByName("toe_left"))),
       right_origin_(BodyPoint(Vector3d::Zero(),
@@ -495,13 +495,21 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Maximum step length
   double MAX_FOOT_SPEED = 2;  // 2;  // m/s
   double first_mode_duration = stride_period_ * (1 - init_phase);
-  double remaining_time_til_touchdown = first_mode_duration;
+  //  double remaining_time_til_touchdown = first_mode_duration;
   // Take into account the double stance duration
-  //  double remaining_time_til_touchdown =
-  //      std::max(0.0, first_mode_duration - double_support_duration_);
+  double remaining_time_til_touchdown =
+      std::max(0.0, first_mode_duration - double_support_duration_);
+  // Linearly decrease the max speed to 0 after mid-swing
+  MAX_FOOT_SPEED *= std::min(
+      1.0, 2 * remaining_time_til_touchdown / single_support_duration_);
   vector<double> max_swing_distance =
       vector<double>(param_.n_step, MAX_FOOT_SPEED * stride_period_);
   max_swing_distance[0] = MAX_FOOT_SPEED * remaining_time_til_touchdown;
+  cout << "MAX_FOOT_SPEED = " << MAX_FOOT_SPEED << endl;
+  cout << "scale weight = "
+       << std::min(1.0,
+                   2 * remaining_time_til_touchdown / single_support_duration_)
+       << endl;
   cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
        << endl;
 

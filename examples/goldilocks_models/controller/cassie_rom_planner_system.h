@@ -105,8 +105,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   CassiePlannerWithMixedRomFom(
       const drake::multibody::MultibodyPlant<double>& plant_controls,
-      double stride_period, double double_support_duration,
-      const PlannerSetting& param, bool debug_mode);
+      double stride_period, const PlannerSetting& param, bool debug_mode);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -164,6 +163,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_controls_;
   double stride_period_;
+  double single_support_duration_;
   double double_support_duration_;
 
   std::unique_ptr<ReducedOrderModel> rom_;

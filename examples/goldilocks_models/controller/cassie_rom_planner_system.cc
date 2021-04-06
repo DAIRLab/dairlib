@@ -240,6 +240,11 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   Q_ = param_.w_Q * MatrixXd::Identity(n_y, n_y);
   R_ = param_.w_R * MatrixXd::Identity(n_tau_, n_tau_);
 
+  // Time limit
+  fixed_time_limit_ = param_.time_limit > 0;
+  min_solve_time_preserved_for_next_loop_ =
+      ((param_.n_step - 1) * stride_period) / 2;
+
   // Pick solver
   drake::solvers::SolverId solver_id("");
   //  if (param_.use_ipopt) {
@@ -253,7 +258,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_snopt_ = drake::solvers::MakeSolver(solver_id);
 
   // Set solver option
-  fixed_time_limit_ = param_.time_limit > 0;
   //  if (param_.use_ipopt) {
   // Ipopt settings adapted from CaSaDi and FROST
   auto id = drake::solvers::IpoptSolver::id();
@@ -672,6 +676,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     double time_limit =
         lightweight_saved_traj_.GetStateBreaks(param_.n_step - 1).tail(1)(0) -
         current_time - buffer_;
+    if (global_fsm_idx == prev_global_fsm_idx_) {
+      time_limit -= min_solve_time_preserved_for_next_loop_;
+    }
     cout << "Set the time limit to " << time_limit << endl;
     solver_option_ipopt_.SetOption(drake::solvers::IpoptSolver::id(),
                                    "max_cpu_time", time_limit);

@@ -248,6 +248,12 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   bool fixed_time_limit_;
   double time_limit_for_first_loop_ = 60;
   double buffer_ = 0.02;  // time for lcm packing/traveling, data saving, etc
+  // We don't want the solver to use all the remaining time. Otherwise, there
+  // won't be enough time in the next loop.
+  // I think min_solve_time_preserved_for_next_loop_ could be set to half of the
+  // potentailly-shortest time horizon of the planner (reserve time equally for
+  // the current and the next loop)
+  double min_solve_time_preserved_for_next_loop_;
 
   // Testing
   mutable int counter_ = 0;

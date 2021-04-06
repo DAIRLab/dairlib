@@ -125,12 +125,11 @@ void SavedTrajReceiver::CalcRomTraj(
                   traj_i.time_vector, traj_i.datapoints, zero_vec, zero_vec));
   }
 
-  // cout << "current context time / traj start time / traj end time\n";
-  // cout << context.get_time() << " / " << pp.start_time() << " / "
-  //      << pp.end_time() << endl;
-
   if (context.get_time() > pp.end_time()) {
-    cout << "WARNING: exceeded trajectory's end time!\n";
+    cout << "WARNING: exceeded trajectory's end time! ";
+    // cout << "current context time / traj start time / traj end time\n";
+    cout << context.get_time() << " / " << pp.start_time() << " / "
+         << pp.end_time() << endl;
   }
 
   // Assign traj

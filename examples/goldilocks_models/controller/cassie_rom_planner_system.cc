@@ -481,7 +481,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Maximum step length
-  double MAX_FOOT_SPEED = 1.5;  // m/s
+  double MAX_FOOT_SPEED = 2;  // 2;  // m/s
   double first_mode_duration = stride_period_ * (1 - init_phase);
   double remaining_time_til_touchdown = first_mode_duration;
   // Take into account the double stance duration
@@ -618,7 +618,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     // This sped up the solve and sometimes unstuck the solver!
     const auto& all_vars = trajopt.decision_variables();
     int n_var = all_vars.size();
-    VectorXd rand = 0.01 * VectorXd::Random(n_var);
+    VectorXd rand = 0.001 * VectorXd::Random(n_var);
+    if (debug_mode_ && param_.solve_idx_for_read_from_file > 0) {
+      // If we are in debug mode, then we want to use the same random numbers
+      rand = readCSV(param_.dir_data +
+                     to_string(param_.solve_idx_for_read_from_file) +
+                     "_init_file.csv");
+    }
     for (int i = 0; i < n_var; i++) {
       double init_guess = trajopt.GetInitialGuess(all_vars(i));
       if (init_guess == 0 || isnan(init_guess)) {
@@ -829,8 +835,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Switch to snopt after one iteration (use ipopt to get a good solution for
   // the first loop)
   if (counter_ == 0) {
-    //    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
-    //    param_.use_ipopt = false;
+    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
+    param_.use_ipopt = false;
   }
 
   finish = std::chrono::high_resolution_clock::now();

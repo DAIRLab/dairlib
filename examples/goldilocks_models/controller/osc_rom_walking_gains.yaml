@@ -7,14 +7,18 @@ cols: 3
 #   double + single support duration: 0.418216
 #   const_walking_speed_x: 0.5
 
+# To walk in place, you can simply change the parameters to
+#   stride_length: 0
+#   const_walking_speed_x: 0
+
 ### ROM parameter
 rom_option: 4
 # The iteration number of the theta that you use. has to be >=1
-model_iter: 20 #150  #1 #30
+model_iter: 1 #150  #1 #30
 # The sample that we use to initialize planner
 sample_idx: 1 #21 works for iter150
 # Average stride length (for testing the planner)
-stride_length: 0.21  #It seems to solve faster when using 0.1m instead of 0.2m
+stride_length: 0  #It seems to solve faster when using 0.1m instead of 0.2m
 
 # Planner cost weight
 w_Q: 0.1  #try 1?  #5
@@ -38,7 +42,7 @@ vel_scale_trans_sagital: 0.25
 vel_scale_trans_lateral: -0.15
 
 # High level command gains (without radio)
-const_walking_speed_x: 0.5  # Walking speed in local x axis
+const_walking_speed_x: 0.0  # Walking speed in local x axis
 
 global_target_position_x: 0
 global_target_position_y: 0

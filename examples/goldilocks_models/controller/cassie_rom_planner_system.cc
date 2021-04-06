@@ -399,6 +399,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Read from input ports
   ///
+  auto start = std::chrono::high_resolution_clock::now();
 
   // Read in current robot state
   const OutputVector<double>* robot_output =
@@ -497,9 +498,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
        << endl;
 
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  cout << "\nTime for reading input ports:" << elapsed.count() << "\n";
+
   // Construct
   PrintStatus("\nConstructing optimization problem...");
-  auto start = std::chrono::high_resolution_clock::now();
+  start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(
       num_time_samples, Q_, R_, *rom_, plant_controls_, state_mirror_,
       left_contacts_, right_contacts_, left_origin_, right_origin_,
@@ -644,10 +649,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     //    trajopt.SetScalingForLIPM();
   }
 
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  cout << "\nConstruction time:" << elapsed.count() << "\n";
-
   // Testing
   if (true /*debug_mode_*/) {
     // Print out the scaling factor
@@ -685,6 +686,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                    "Time limit", time_limit);
   }
+
+  finish = std::chrono::high_resolution_clock::now();
+  elapsed = finish - start;
+  cout << "\nConstruction time:" << elapsed.count() << "\n";
 
   // Solve
   cout << "\nSolving optimization problem...\n";

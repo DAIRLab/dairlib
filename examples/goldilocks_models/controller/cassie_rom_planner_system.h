@@ -129,15 +129,17 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_saved_traj* traj_msg) const;
 
-  void RotateFromLocalToGlobal(const Eigen::VectorXd& quat_xyz_shift,
-                               const Eigen::MatrixXd& local_x0_FOM,
-                               const Eigen::MatrixXd& local_xf_FOM,
-                               Eigen::MatrixXd* global_x0_FOM,
-                               Eigen::MatrixXd* global_xf_FOM) const;
+  void RotateBetweenGlobalAndLocalFrame(bool rotate_from_global_to_local,
+                                        const Eigen::VectorXd& quat_xyz_shift,
+                                        const Eigen::MatrixXd& original_x0_FOM,
+                                        const Eigen::MatrixXd& original_xf_FOM,
+                                        Eigen::MatrixXd* rotated_x0_FOM,
+                                        Eigen::MatrixXd* rotated_xf_FOM) const;
   void BookKeeping(
       bool start_with_left_stance, const std::chrono::duration<double>& elapsed,
       const drake::solvers::MathematicalProgramResult& result) const;
   void WarmStartGuess(
+      const Eigen::VectorXd& quat_xyz_shift,
       const std::vector<Eigen::VectorXd>& des_xy_pos, int global_fsm_idx,
       int first_mode_knot_idx,
       dairlib::goldilocks_models::RomTrajOptCassie* trajopt) const;
@@ -204,9 +206,11 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable RomPlannerTrajectory lightweight_saved_traj_;
   mutable Eigen::VectorXd h_solutions_;
   mutable Eigen::MatrixXd input_at_knots_;
-  mutable Eigen::MatrixXd FOM_Lambda_;
-  mutable Eigen::MatrixXd local_x0_FOM_;
-  mutable Eigen::MatrixXd local_xf_FOM_;
+  // TODO: we will need to store global not local for better warm-start. Same
+  //  reason as x0_FOM_
+  mutable Eigen::MatrixXd local_Lambda_FOM_;
+  mutable Eigen::MatrixXd global_x0_FOM_;
+  mutable Eigen::MatrixXd global_xf_FOM_;
   mutable Eigen::VectorXd touchdown_foot_pos_;
 
   // Init state relaxation (relax the mapping function)
@@ -218,9 +222,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   double buffer_ = 0.02;  // time for lcm packing/traveling, data saving, etc
   // We don't want the solver to use all the remaining time. Otherwise, there
   // won't be enough time in the next loop.
-  // I think min_solve_time_preserved_for_next_loop_ could be set to half of the
-  // potentailly-shortest time horizon of the planner (reserve time equally for
-  // the current and the next loop)
+  // I think min_solve_time_preserved_for_next_loop_ could be set to half of
+  // the potentailly-shortest time horizon of the planner (reserve time
+  // equally for the current and the next loop)
   double min_solve_time_preserved_for_next_loop_;
 
   // Swing foot distance
@@ -259,6 +263,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SaveDataIntoFiles(
       double current_time, const Eigen::VectorXd& x_init, double init_phase,
       bool is_right_stance, const Eigen::VectorXd& quat_xyz_shift,
+      const Eigen::MatrixXd& local_x0_FOM, const Eigen::MatrixXd& local_xf_FOM,
       const RomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& dir_data, const std::string& prefix,
@@ -268,14 +273,14 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;
 
   // Since sometimes the planner replan every 1ms in the beginning of the
-  // simulation (e.g. at 0, 1, 2 ms), we use min_time_difference_for_replanning_
-  // to avoid replanning when the current time is too close to the previous
-  // time. This method is just a workaround. The best solution should be
-  // avoiding using old message in the lcm subscriber. However, somehow there is
-  // still old message in the lcm subscriber after I clear the listening
-  // channel. (it's gone and then come back)
-  // Note that another workaround is to clear the lcm message twice in the
-  // LcmDrivenLoop class.
+  // simulation (e.g. at 0, 1, 2 ms), we use
+  // min_time_difference_for_replanning_ to avoid replanning when the current
+  // time is too close to the previous time. This method is just a workaround.
+  // The best solution should be avoiding using old message in the lcm
+  // subscriber. However, somehow there is still old message in the lcm
+  // subscriber after I clear the listening channel. (it's gone and then come
+  // back) Note that another workaround is to clear the lcm message twice in
+  // the LcmDrivenLoop class.
   double min_time_difference_for_replanning_ = 0.01;
   mutable double timestamp_of_previous_plan_ = -1;
   mutable dairlib::lcmt_saved_traj previous_output_msg_;

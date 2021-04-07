@@ -330,13 +330,13 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
   // Allocate memory
   if (param_.zero_touchdown_impact) {
-    FOM_Lambda_ = Eigen::MatrixXd::Zero(0, (param_.n_step));
+    local_Lambda_FOM_ = Eigen::MatrixXd::Zero(0, (param_.n_step));
   } else {
-    FOM_Lambda_ =
+    local_Lambda_FOM_ =
         Eigen::MatrixXd::Zero(3 * left_contacts_.size(), param_.n_step);
   }
-  local_x0_FOM_ = MatrixXd(nx_, param_.n_step + 1);
-  local_xf_FOM_ = MatrixXd(nx_, param_.n_step);
+  global_x0_FOM_ = MatrixXd(nx_, param_.n_step + 1);
+  global_xf_FOM_ = MatrixXd(nx_, param_.n_step);
 
   // Initialization
   prev_mode_start_ = std::vector<int>(param_.n_step, -1);
@@ -358,7 +358,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
               : readCSV(param_.dir_data +
                         to_string(param_.solve_idx_for_read_from_file) +
                         "_prev_input_at_knots.csv");
-      FOM_Lambda_ =
+      // TODO: you also need local_x0_FOM_ and local_xf_FOM_. This is not
+      //  necessary if you use init_file to initialize the guess
+      local_Lambda_FOM_ =
           param_.zero_touchdown_impact
               ? Eigen::MatrixXd::Zero(0, (param_.n_step))
               : readCSV(param_.dir_data +
@@ -627,7 +629,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "global_fsm_idx = " + to_string(global_fsm_idx) << endl;
     if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
-      WarmStartGuess(des_xy_pos, global_fsm_idx, first_mode_knot_idx, &trajopt);
+      WarmStartGuess(quat_xyz_shift, des_xy_pos, global_fsm_idx,
+                     first_mode_knot_idx, &trajopt);
     } else {
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
@@ -754,8 +757,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         result.GetSolution(trajopt.x0_vars_by_mode(trajopt.num_modes()));
     MatrixXd global_x0_FOM = x0_each_mode;
     MatrixXd global_xf_FOM = xf_each_mode;
-    RotateFromLocalToGlobal(quat_xyz_shift, x0_each_mode, xf_each_mode,
-                            &global_x0_FOM, &global_xf_FOM);
+    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, x0_each_mode,
+                                     xf_each_mode, &global_x0_FOM,
+                                     &global_xf_FOM);
     writeCSV(param_.dir_data + prefix + "local_x0_FOM_snopt.csv", x0_each_mode);
     writeCSV(param_.dir_data + prefix + "local_xf_FOM_snopt.csv", xf_each_mode);
     writeCSV(param_.dir_data + prefix + "global_x0_FOM_snopt.csv",
@@ -801,21 +805,24 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // jumps because left vs right stance leg).
 
   // Rotate the local state to global state
+  MatrixXd local_x0_FOM(nx_, trajopt.num_modes() + 1);
+  MatrixXd local_xf_FOM(nx_, trajopt.num_modes());
   for (int i = 0; i < param_.n_step; ++i) {
-    local_x0_FOM_.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
-    local_xf_FOM_.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
+    local_x0_FOM.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
+    local_xf_FOM.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
   }
-  local_x0_FOM_.col(param_.n_step) =
+  local_x0_FOM.col(param_.n_step) =
       result.GetSolution(trajopt.x0_vars_by_mode(param_.n_step));
-  MatrixXd global_x0_FOM = local_x0_FOM_;
-  MatrixXd global_xf_FOM = local_xf_FOM_;
-  RotateFromLocalToGlobal(quat_xyz_shift, local_x0_FOM_, local_xf_FOM_,
-                          &global_x0_FOM, &global_xf_FOM);
+  global_x0_FOM_ = local_x0_FOM;
+  global_xf_FOM_ = local_xf_FOM;
+  RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, local_x0_FOM,
+                                   local_xf_FOM, &global_x0_FOM_,
+                                   &global_xf_FOM_);
 
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
   lightweight_saved_traj_ =
-      RomPlannerTrajectory(trajopt, result, global_x0_FOM, global_xf_FOM,
+      RomPlannerTrajectory(trajopt, result, global_x0_FOM_, global_xf_FOM_,
                            prefix, "", true, current_time);
   *traj_msg = lightweight_saved_traj_.GenerateLcmObject();
 
@@ -834,7 +841,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   input_at_knots_ = trajopt.GetInputSamples(result);
 
   for (int i = 0; i < param_.n_step; i++) {
-    FOM_Lambda_.col(i) = result.GetSolution(trajopt.impulse_vars(i));
+    local_Lambda_FOM_.col(i) = result.GetSolution(trajopt.impulse_vars(i));
   }
 
   prev_global_fsm_idx_ = global_fsm_idx;
@@ -856,10 +863,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (log_data_and_check_solution) {
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
-                      quat_xyz_shift, trajopt, result, param_.dir_data, prefix,
-                      prefix_next);
+                      quat_xyz_shift, local_x0_FOM, local_xf_FOM, trajopt,
+                      result, param_.dir_data, prefix, prefix_next);
     // Save trajectory to lcm
-    SaveTrajIntoLcmBinary(trajopt, result, global_x0_FOM, global_xf_FOM,
+    SaveTrajIntoLcmBinary(trajopt, result, global_x0_FOM_, global_xf_FOM_,
                           param_.dir_data, prefix);
 
     // Check the cost
@@ -889,42 +896,49 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   counter_++;
 }
 
-void CassiePlannerWithMixedRomFom::RotateFromLocalToGlobal(
-    const VectorXd& quat_xyz_shift, const MatrixXd& local_x0_FOM,
-    const MatrixXd& local_xf_FOM, MatrixXd* global_x0_FOM,
-    MatrixXd* global_xf_FOM) const {
-  Quaterniond relative_quat = Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1),
-                                          quat_xyz_shift(2), quat_xyz_shift(3))
-                                  .conjugate();
+void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
+    bool rotate_from_global_to_local, const VectorXd& quat_xyz_shift,
+    const MatrixXd& original_x0_FOM, const MatrixXd& original_xf_FOM,
+    MatrixXd* rotated_x0_FOM, MatrixXd* rotated_xf_FOM) const {
+  Quaterniond relative_quat =
+      rotate_from_global_to_local
+          ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
+                        quat_xyz_shift(3))
+          : Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
+                        quat_xyz_shift(3))
+                .conjugate();
   Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
+  double sign = rotate_from_global_to_local ? 1 : -1;
   for (int j = 0; j < param_.n_step + 1; j++) {
     // x0
-    Quaterniond x0_quat_global =
+    Quaterniond rotated_x0_quat =
         relative_quat *
-        Quaterniond(local_x0_FOM.col(j)(0), local_x0_FOM.col(j)(1),
-                    local_x0_FOM.col(j)(2), local_x0_FOM.col(j)(3));
-    global_x0_FOM->col(j).segment<4>(0) << x0_quat_global.w(),
-        x0_quat_global.vec();
-    global_x0_FOM->col(j).segment<3>(4)
-        << local_x0_FOM.col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
-    global_x0_FOM->col(j).segment<3>(nq_)
-        << relative_rot_mat * local_x0_FOM.col(j).segment<3>(nq_);
-    global_x0_FOM->col(j).segment<3>(nq_ + 3)
-        << relative_rot_mat * local_x0_FOM.col(j).segment<3>(nq_ + 3);
+        Quaterniond(original_x0_FOM.col(j)(0), original_x0_FOM.col(j)(1),
+                    original_x0_FOM.col(j)(2), original_x0_FOM.col(j)(3));
+    rotated_x0_FOM->col(j).segment<4>(0) << rotated_x0_quat.w(),
+        rotated_x0_quat.vec();
+    rotated_x0_FOM->col(j).segment<3>(4)
+        << original_x0_FOM.col(j).segment<3>(4) +
+               sign * quat_xyz_shift.segment<3>(4);
+    rotated_x0_FOM->col(j).segment<3>(nq_)
+        << relative_rot_mat * original_x0_FOM.col(j).segment<3>(nq_);
+    rotated_x0_FOM->col(j).segment<3>(nq_ + 3)
+        << relative_rot_mat * original_x0_FOM.col(j).segment<3>(nq_ + 3);
     // xf
     if (j != param_.n_step) {
-      Quaterniond xf_quat_global =
+      Quaterniond rotated_xf_quat =
           relative_quat *
-          Quaterniond(local_xf_FOM.col(j)(0), local_xf_FOM.col(j)(1),
-                      local_xf_FOM.col(j)(2), local_xf_FOM.col(j)(3));
-      global_xf_FOM->col(j).segment<4>(0) << xf_quat_global.w(),
-          xf_quat_global.vec();
-      global_xf_FOM->col(j).segment<3>(4)
-          << local_xf_FOM.col(j).segment<3>(4) - quat_xyz_shift.segment<3>(4);
-      global_xf_FOM->col(j).segment<3>(nq_)
-          << relative_rot_mat * local_xf_FOM.col(j).segment<3>(nq_);
-      global_xf_FOM->col(j).segment<3>(nq_ + 3)
-          << relative_rot_mat * local_xf_FOM.col(j).segment<3>(nq_ + 3);
+          Quaterniond(original_xf_FOM.col(j)(0), original_xf_FOM.col(j)(1),
+                      original_xf_FOM.col(j)(2), original_xf_FOM.col(j)(3));
+      rotated_xf_FOM->col(j).segment<4>(0) << rotated_xf_quat.w(),
+          rotated_xf_quat.vec();
+      rotated_xf_FOM->col(j).segment<3>(4)
+          << original_xf_FOM.col(j).segment<3>(4) +
+                 sign * quat_xyz_shift.segment<3>(4);
+      rotated_xf_FOM->col(j).segment<3>(nq_)
+          << relative_rot_mat * original_xf_FOM.col(j).segment<3>(nq_);
+      rotated_xf_FOM->col(j).segment<3>(nq_ + 3)
+          << relative_rot_mat * original_xf_FOM.col(j).segment<3>(nq_ + 3);
     }
   }
 }
@@ -943,6 +957,7 @@ void CassiePlannerWithMixedRomFom::SaveTrajIntoLcmBinary(
 void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
     double current_time, const VectorXd& x_init, double init_phase,
     bool is_right_stance, const VectorXd& quat_xyz_shift,
+    const MatrixXd& local_x0_FOM, const MatrixXd& local_xf_FOM,
     const RomTrajOptCassie& trajopt, const MathematicalProgramResult& result,
     const string& dir_data, const string& prefix,
     const string& prefix_next) const {
@@ -961,8 +976,8 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
   MatrixXd input_at_knots = trajopt.GetInputSamples(result);
   writeCSV(dir_data + prefix + "input_at_knots.csv", input_at_knots);
 
-  writeCSV(dir_data + prefix + "local_x0_FOM.csv", local_x0_FOM_);
-  writeCSV(dir_data + prefix + "local_xf_FOM.csv", local_xf_FOM_);
+  writeCSV(dir_data + prefix + "local_x0_FOM.csv", local_x0_FOM);
+  writeCSV(dir_data + prefix + "local_xf_FOM.csv", local_xf_FOM);
   writeCSV(dir_data + prefix + "global_x0_FOM.csv",
            lightweight_saved_traj_.get_x0());
   writeCSV(dir_data + prefix + "global_xf_FOM.csv",
@@ -987,7 +1002,7 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
   writeCSV(param_.dir_data + prefix_next + string("prev_input_at_knots.csv"),
            input_at_knots_, true);
   writeCSV(param_.dir_data + prefix_next + string("prev_FOM_Lambda.csv"),
-           FOM_Lambda_, true);
+           local_Lambda_FOM_, true);
   writeCSV(param_.dir_data + prefix_next + string("prev_global_fsm_idx.csv"),
            prev_global_fsm_idx_ * VectorXd::Ones(1), true);
   writeCSV(
@@ -1144,8 +1159,9 @@ void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(
 }
 
 void CassiePlannerWithMixedRomFom::WarmStartGuess(
-    const vector<VectorXd>& des_xy_pos, int global_fsm_idx,
-    int first_mode_knot_idx, RomTrajOptCassie* trajopt) const {
+    const VectorXd& quat_xyz_shift, const vector<VectorXd>& des_xy_pos,
+    int global_fsm_idx, int first_mode_knot_idx,
+    RomTrajOptCassie* trajopt) const {
   int starting_mode_idx_for_heuristic =
       (param_.n_step - 1) - (global_fsm_idx - prev_global_fsm_idx_) + 1;
 
@@ -1163,7 +1179,16 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
         x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx,
         starting_mode_idx_for_heuristic);
 
-    // Reuse the solution
+    /// Reuse the solution
+    // Rotate the previous global x floating base state according to the current
+    // global-to-local-shift
+    // TODO: also need to do the same thing to local_Lambda_FOM_
+    MatrixXd local_x0_FOM = global_x0_FOM_;
+    MatrixXd local_xf_FOM = global_xf_FOM_;
+    RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
+                                     global_xf_FOM_, &local_x0_FOM,
+                                     &local_xf_FOM);
+
     int knot_idx = first_mode_knot_idx;
     for (int i = global_fsm_idx; i < prev_global_fsm_idx_ + param_.n_step;
          i++) {
@@ -1207,13 +1232,13 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
       }
       // 6. FOM pre-impact
       trajopt->SetInitialGuess(trajopt->xf_vars_by_mode(local_fsm_idx),
-                               local_xf_FOM_.col(prev_local_fsm_idx));
+                               local_xf_FOM.col(prev_local_fsm_idx));
       // 7. FOM post-impact
       trajopt->SetInitialGuess(trajopt->x0_vars_by_mode(local_fsm_idx + 1),
-                               local_x0_FOM_.col(prev_local_fsm_idx + 1));
+                               local_x0_FOM.col(prev_local_fsm_idx + 1));
       // 8. FOM impulse
       trajopt->SetInitialGuess(trajopt->impulse_vars(local_fsm_idx),
-                               FOM_Lambda_.col(prev_local_fsm_idx));
+                               local_Lambda_FOM_.col(prev_local_fsm_idx));
     }
   }
 }

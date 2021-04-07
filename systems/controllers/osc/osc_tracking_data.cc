@@ -72,12 +72,12 @@ bool OscTrackingData::Update(
     // Update feedback output (Calling virtual methods)
     UpdateYAndError(x_w_spr, context_w_spr);
     UpdateYdotAndError(x_w_spr, context_w_spr);
-    if(impact_invariant_projection_){
-      error_ydot_ -= GetJ() * v_proj;
-    }
     UpdateYddotDes();
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
+    if(impact_invariant_projection_){
+      error_ydot_ -= GetJ() * v_proj;
+    }
 
     // Update command output (desired output with pd control)
     yddot_command_ =

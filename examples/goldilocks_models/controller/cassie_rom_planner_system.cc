@@ -510,8 +510,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       param_.gains.max_foot_speed *
       std::min(1.0,
                2 * remaining_time_til_touchdown / single_support_duration_);
+  // We need a bit of slack because the swing foot travel distance constraint is
+  // imposed on toe origin, while stance foot position stitching constraint is
+  // imposed on the two contact points.
+  // Ideally we should impose the travel distance constraint through the two
+  // contact points, so that we don't need this artificial slack
+  double slack_to_avoid_overconstraint = 0.01;
   max_swing_distance_[0] =
-      max_foot_speed_first_mode * remaining_time_til_touchdown;
+      std::max(slack_to_avoid_overconstraint,
+               max_foot_speed_first_mode * remaining_time_til_touchdown);
   cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
        << endl;
 

@@ -246,6 +246,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   min_solve_time_preserved_for_next_loop_ =
       ((param_.n_step - 1) * stride_period) / 2;
 
+  // Swing foot distance
+  max_swing_distance_ = vector<double>(
+      param_.n_step, param_.gains.max_foot_speed * stride_period_);
+
   // Pick solver
   drake::solvers::SolverId solver_id("");
   //  if (param_.use_ipopt) {
@@ -495,8 +499,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Maximum step length
   double first_mode_duration = stride_period_ * (1 - init_phase);
   double remaining_time_til_touchdown = first_mode_duration;
-  vector<double> max_swing_distance = vector<double>(
-      param_.n_step, param_.gains.max_foot_speed * stride_period_);
   // Update date the step length of the first mode
   // Take into account the double stance duration
   remaining_time_til_touchdown =
@@ -506,7 +508,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       param_.gains.max_foot_speed *
       std::min(1.0,
                2 * remaining_time_til_touchdown / single_support_duration_);
-  max_swing_distance[0] =
+  max_swing_distance_[0] =
       max_foot_speed_first_mode * remaining_time_til_touchdown;
   cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
        << endl;
@@ -521,7 +523,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   RomTrajOptCassie trajopt(
       num_time_samples, Q_, R_, *rom_, plant_controls_, state_mirror_,
       left_contacts_, right_contacts_, left_origin_, right_origin_,
-      joint_name_lb_ub_, x_init, max_swing_distance, start_with_left_stance,
+      joint_name_lb_ub_, x_init, max_swing_distance_, start_with_left_stance,
       param_.zero_touchdown_impact, relax_index_, debug_mode_ /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");

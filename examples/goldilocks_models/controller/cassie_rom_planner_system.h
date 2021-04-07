@@ -209,7 +209,43 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable Eigen::MatrixXd local_xf_FOM_;
   mutable Eigen::VectorXd touchdown_foot_pos_;
 
-  // For debugging
+  // Init state relaxation (relax the mapping function)
+  std::set<int> relax_index_ = {5};  //{3, 4, 5};
+
+  // Time limit
+  bool fixed_time_limit_;
+  double time_limit_for_first_loop_ = 60;
+  double buffer_ = 0.02;  // time for lcm packing/traveling, data saving, etc
+  // We don't want the solver to use all the remaining time. Otherwise, there
+  // won't be enough time in the next loop.
+  // I think min_solve_time_preserved_for_next_loop_ could be set to half of the
+  // potentailly-shortest time horizon of the planner (reserve time equally for
+  // the current and the next loop)
+  double min_solve_time_preserved_for_next_loop_;
+
+  // Swing foot distance
+  mutable std::vector<double> max_swing_distance_;
+
+  // Flags
+  bool use_standing_pose_as_init_FOM_guess_ = true;
+  // Although warm start helps most of the time, it could also make the solver
+  // not able to find the optimal solution from time to time
+  bool warm_start_with_previous_solution_ = true;
+
+  // For debugging and data logging
+  mutable int counter_ = 0;
+
+  mutable double total_solve_time_ = 0;
+  mutable double max_solve_time_ = 0;
+
+  mutable bool past_is_left_stance_ = true;
+  mutable int total_number_of_first_solve_of_the_mode_ = 0;
+  mutable double total_solve_time_of_first_solve_of_the_mode_ = 0;
+  mutable double max_solve_time_of_first_solve_of_the_mode_ = 0;
+
+  mutable int num_failed_solve_ = 0;
+  mutable int latest_failed_solve_idx_ = -1;
+
   bool debug_mode_;
   void PrintStatus(const std::string& msg) const {
     if (debug_mode_) std::cout << msg << std::endl;
@@ -243,40 +279,6 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   double min_time_difference_for_replanning_ = 0.01;
   mutable double timestamp_of_previous_plan_ = -1;
   mutable dairlib::lcmt_saved_traj previous_output_msg_;
-
-  // flags
-  bool use_standing_pose_as_init_FOM_guess_ = true;
-  // Although warm start helps most of the time, it could also make the solver
-  // not able to find the optimal solution from time to time
-  bool warm_start_with_previous_solution_ = true;
-
-  // Init state relaxation (relax the mapping function)
-  std::set<int> relax_index_ = {5};  //{3, 4, 5};
-
-  // Time limit
-  bool fixed_time_limit_;
-  double time_limit_for_first_loop_ = 60;
-  double buffer_ = 0.02;  // time for lcm packing/traveling, data saving, etc
-  // We don't want the solver to use all the remaining time. Otherwise, there
-  // won't be enough time in the next loop.
-  // I think min_solve_time_preserved_for_next_loop_ could be set to half of the
-  // potentailly-shortest time horizon of the planner (reserve time equally for
-  // the current and the next loop)
-  double min_solve_time_preserved_for_next_loop_;
-
-  // Testing
-  mutable int counter_ = 0;
-
-  mutable double total_solve_time_ = 0;
-  mutable double max_solve_time_ = 0;
-
-  mutable bool past_is_left_stance_ = true;
-  mutable int total_number_of_first_solve_of_the_mode_ = 0;
-  mutable double total_solve_time_of_first_solve_of_the_mode_ = 0;
-  mutable double max_solve_time_of_first_solve_of_the_mode_ = 0;
-
-  mutable int num_failed_solve_ = 0;
-  mutable int latest_failed_solve_idx_ = -1;
 };
 
 }  // namespace goldilocks_models

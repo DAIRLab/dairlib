@@ -51,7 +51,7 @@ rom = rom3
 task_space = task_space5
 method ='(nongrid)'
 iter_start = 1
-iter_end = 700
+iter_end = 140
 dir1 = file_dir+robot+'robot_1/'
 label1 = 'optimizing '+rom+' over '+task_space+method
 line_type1 = 'k-'
@@ -137,7 +137,7 @@ def average_cost_several_iter(iter_start, iter_end, n, dir, line_type, label_nam
 
 fig1 = plt.figure(num=1, figsize=(6.4, 4.8))
 ax1 = fig1.gca()
-average_cost_several_iter(iter_start, iter_end, 5, dir1, line_type1, label1, normalized_cost, use_landscape_for_nominal, dir1)
+average_cost_several_iter(iter_start, iter_end, 1, dir1, line_type1, label1, normalized_cost, use_landscape_for_nominal, dir1)
 # average_cost_several_iter(1, 2000, 20, dir2, line_type2, label2, normalized_cost, use_landscape_for_nominal, dir2)
 # average_cost_several_iter(1, 100, 10, dir3, line_type3, label3, normalized_cost, use_landscape_for_nominal, dir_landscape)
 plt.xlabel('Iteration')

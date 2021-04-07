@@ -102,7 +102,7 @@ RomTrajOpt::RomTrajOpt(
 
   /// Setups
   PrintStatus("Getting things needed for costs and constraints");
-  map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
+  std::map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
   // Initial swing/stance foot position
   auto context = plant_.CreateDefaultContext();
   Eigen::Vector3d swing_foot_init_pos;
@@ -441,8 +441,7 @@ RomTrajOpt::RomTrajOpt(
       const auto& swing_origin = left_stance ? right_origin : left_origin;
 
       // Foot variable equation constraint
-      PrintStatus(
-          "Adding constraint -- FOM swing foot equation (end of mode)");
+      PrintStatus("Adding constraint -- FOM swing foot equation (end of mode)");
       auto fom_sw_ft_pos_var_constraint =
           std::make_shared<planning::FomSwingFootPosVariableConstraint>(
               plant_, swing_origin, "fom_swing_ft_pos_var_" + to_string(i));
@@ -502,8 +501,10 @@ RomTrajOpt::RomTrajOpt(
                       {touchdown_foot_var, touchdown_foot_var_2step_ago});
       }
     } else {
-      // Foot collision avoidance (full-order model swing foot constraint)
       const auto& swing_origin = left_stance ? right_origin : left_origin;
+      const auto& stance_origin = left_stance ? left_origin : right_origin;
+
+      // Foot collision avoidance (full-order model swing foot constraint)
       Eigen::Vector2d lb_swing(back_limit,
                                left_stance ? -left_limit : right_limit);
       Eigen::Vector2d ub_swing(front_limit,
@@ -532,7 +533,19 @@ RomTrajOpt::RomTrajOpt(
       }
 
       // Stride length constraint
-
+      PrintStatus("Adding constraint -- FOM step length distance");
+      double max_step_length = 0.7;
+      auto fom_step_length_constraint =
+          std::make_shared<planning::FomStepLengthConstraint>(
+              plant_, stance_origin, swing_origin, stance_foot_init_pos,
+              max_step_length, i == 0,
+              "fom_step_length_constraint" + to_string(i));
+      if (i == 0) {
+        AddConstraint(fom_step_length_constraint, xf.head(n_q_));
+      } else {
+        AddConstraint(fom_step_length_constraint,
+                      {x0.head(n_q_), xf.head(n_q_)});
+      }
     }
 
     // Stride length constraint

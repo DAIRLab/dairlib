@@ -69,7 +69,7 @@ class FomSwingFootPosConstraint : public solvers::NonlinearConstraint<double> {
   int n_q_;
 };
 
-// Swing foot travel distance constraint for the first mode
+// Swing foot travel distance constraint
 // Constraints are
 class FomSwingFootDistanceConstraint
     : public solvers::NonlinearConstraint<double> {
@@ -99,6 +99,44 @@ class FomSwingFootDistanceConstraint
 
   int n_q_;
 };
+
+
+// Step length constraint (from stance foot to swing foot)
+// Constraints are
+class FomStepLengthConstraint
+    : public solvers::NonlinearConstraint<double> {
+ public:
+  FomStepLengthConstraint(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::pair<const Eigen::Vector3d,
+                      const drake::multibody::Frame<double>&>&
+      stance_foot_origin,
+      const std::pair<const Eigen::Vector3d,
+                      const drake::multibody::Frame<double>&>&
+      swing_foot_origin,
+      const Eigen::Vector3d& swing_foot_init_pos, double distance,
+      bool constant_start_pose,
+      const std::string& description = "fom_step_length_constraint");
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& q,
+                          drake::VectorX<double>* y) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const std::pair<const Eigen::Vector3d,
+                  const drake::multibody::Frame<double>&>& stance_foot_origin_;
+  const std::pair<const Eigen::Vector3d,
+                  const drake::multibody::Frame<double>&>& swing_foot_origin_;
+
+  Eigen::Vector3d stance_foot_init_pos_;
+
+  bool constant_start_pose_;
+
+  int n_q_;
+};
+
 
 /// V2 for swing foot constraint
 /// V2 takes swing foot position as decision variable

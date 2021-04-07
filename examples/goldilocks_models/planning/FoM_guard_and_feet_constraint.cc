@@ -115,7 +115,7 @@ void FomSwingFootPosConstraint::EvaluateConstraint(
   *y = foot_pos_in_local_frame.head<2>();
 }
 
-/// Swing foot distance constraint (first mode)
+/// Swing foot distance constraint
 FomSwingFootDistanceConstraint::FomSwingFootDistanceConstraint(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::pair<const Vector3d, const Frame<double>&>& swing_foot_origin,
@@ -148,6 +148,47 @@ void FomSwingFootDistanceConstraint::EvaluateConstraint(
     plant_.SetPositions(context_.get(), x.head(n_q_));
     this->plant_.CalcPointsPositions(*context_, swing_foot_origin_.second,
                                      swing_foot_origin_.first, world_, &pt_0);
+  }
+
+  *y = VectorX<double>(1);
+  y->head<1>() << (pt_f - pt_0).norm();
+}
+
+/// Step length constraint
+FomStepLengthConstraint::FomStepLengthConstraint(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::pair<const Vector3d, const Frame<double>&>& stance_foot_origin,
+    const std::pair<const Vector3d, const Frame<double>&>& swing_foot_origin,
+    const Eigen::Vector3d& stance_foot_init_pos, double distance,
+    bool constant_start_pose, const std::string& description)
+    : NonlinearConstraint<double>(
+          1,
+          constant_start_pose ? plant.num_positions()
+                              : 2 * plant.num_positions(),
+          VectorXd::Zero(1), distance * VectorXd::Ones(1), description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      stance_foot_origin_(stance_foot_origin),
+      swing_foot_origin_(swing_foot_origin),
+      stance_foot_init_pos_(stance_foot_init_pos),
+      constant_start_pose_(constant_start_pose),
+      n_q_(plant.num_positions()) {}
+
+void FomStepLengthConstraint::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<double>>& x, VectorX<double>* y) const {
+  drake::VectorX<double> pt_f(3);
+  plant_.SetPositions(context_.get(), x.tail(n_q_));
+  this->plant_.CalcPointsPositions(*context_, swing_foot_origin_.second,
+                                   swing_foot_origin_.first, world_, &pt_f);
+
+  drake::VectorX<double> pt_0(3);
+  if (constant_start_pose_) {
+    pt_0 = stance_foot_init_pos_;
+  } else {
+    plant_.SetPositions(context_.get(), x.head(n_q_));
+    this->plant_.CalcPointsPositions(*context_, stance_foot_origin_.second,
+                                     stance_foot_origin_.first, world_, &pt_0);
   }
 
   *y = VectorX<double>(1);

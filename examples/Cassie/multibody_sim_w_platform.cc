@@ -24,7 +24,6 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
 
-
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
@@ -106,6 +105,7 @@ int do_main(int argc, char* argv[]) {
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
+  int nx = nq + nv;
 
   // Create maps for joints
   std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
@@ -191,8 +191,10 @@ int do_main(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      true);
   plant_wo_spr.Finalize();
-  Eigen::MatrixXd map_no_spring_to_spring =
-      multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
+  Eigen::MatrixXd map_no_spring_to_spring_pos =
+      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant, plant_wo_spr);
+  Eigen::MatrixXd map_no_spring_to_spring_vel =
+      multibody::CreateWithSpringsToWithoutSpringsMapVel(plant, plant_wo_spr);
 
   const DirconTrajectory& dircon_trajectory =
       DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
@@ -200,8 +202,10 @@ int do_main(int argc, char* argv[]) {
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
 
-  Eigen::VectorXd x_init =
-      map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
+  Eigen::VectorXd x_init(nx);
+  Eigen::VectorXd x_init_no_spring = state_traj.value(FLAGS_start_time);
+  x_init << map_no_spring_to_spring_pos * x_init_no_spring.head(plant_wo_spr.num_positions()),
+      map_no_spring_to_spring_vel * x_init_no_spring.tail(plant_wo_spr.num_velocities());
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 

@@ -3,6 +3,7 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
+#include <drake/systems/primitives/constant_value_source.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -202,9 +203,10 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
   // This actually outputs the target position of the pelvis not the true
   // center of mass
-  auto com_traj_generator = builder.AddSystem<PelvisTransTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), pelvis_trans_traj, feet_contact_points,
-      FLAGS_delay_time);
+  auto pelvis_trans_traj_generator =
+      builder.AddSystem<PelvisTransTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pelvis_trans_traj,
+          feet_contact_points, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
       gains.relative_feet, FLAGS_delay_time);
@@ -309,13 +311,13 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  TransTaskSpaceTrackingData com_tracking_data("com_traj", gains.K_p_com,
-                                               gains.K_d_com, gains.W_com,
-                                               plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData pelvis_tracking_data("pelvis_traj", gains.K_p_com,
+                                                  gains.K_d_com, gains.W_com,
+                                                  plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
-    com_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
+    pelvis_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
   }
-  osc->AddTrackingData(&com_tracking_data);
+  osc->AddTrackingData(&pelvis_tracking_data);
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
@@ -382,11 +384,17 @@ int DoMain(int argc, char* argv[]) {
   right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
                                                "toe_rightdot");
 
+  pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
+  left_foot_tracking_data.SetImpactInvariantProjection(true);
+  right_foot_tracking_data.SetImpactInvariantProjection(true);
+  left_toe_angle_traj.SetImpactInvariantProjection(true);
+  right_toe_angle_traj.SetImpactInvariantProjection(true);
   osc->AddTrackingData(&pelvis_rot_tracking_data);
   osc->AddTrackingData(&left_foot_tracking_data);
   osc->AddTrackingData(&right_foot_tracking_data);
   osc->AddTrackingData(&left_toe_angle_traj);
   osc->AddTrackingData(&right_toe_angle_traj);
+
 
   // Build OSC problem
   osc->Build();
@@ -400,8 +408,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_near_impact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(com_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("com_traj"));
+  builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
@@ -422,7 +430,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Trajectory generator connections
   builder.Connect(state_receiver->get_output_port(0),
-                  com_traj_generator->get_state_input_port());
+                  pelvis_trans_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
@@ -432,7 +440,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
-                  com_traj_generator->get_fsm_input_port());
+                  pelvis_trans_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
                   l_foot_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),

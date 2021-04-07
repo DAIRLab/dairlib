@@ -234,8 +234,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "multibody_sim_init",
-    srcs = ["multibody_sim_init.cc"],
+    name = "multibody_sim_w_platform",
+    srcs = ["multibody_sim_w_platform.cc"],
     deps = [
         ":cassie_fixed_point_solver",
         ":cassie_urdf",

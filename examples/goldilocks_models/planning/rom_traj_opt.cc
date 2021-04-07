@@ -8,10 +8,9 @@
 #include "drake/math/autodiff.h"
 #include "drake/solvers/decision_variable.h"
 
-#include "examples/goldilocks_models/planning/FoM_guard_constraint.h"
+#include "examples/goldilocks_models/planning/FoM_guard_and_feet_constraint.h"
 #include "examples/goldilocks_models/planning/FoM_reset_map_constraint.h"
 #include "examples/goldilocks_models/planning/FoM_stance_foot_constraint.h"
-#include "examples/goldilocks_models/planning/FoM_stride_length_constraint.h"
 #include "examples/goldilocks_models/planning/dynamics_constraint.h"
 #include "examples/goldilocks_models/planning/kinematics_constraint.h"
 
@@ -437,6 +436,7 @@ RomTrajOpt::RomTrajOpt(
     AddConstraint(fom_ft_vel_constraint_postimpact, x0_post);
 
     if (use_foot_variable) {
+      // TODO: need to add stride length constraint for use_foot_variable = true
       auto touchdown_foot_var = touchdown_foot_pos_vars(i);
       const auto& swing_origin = left_stance ? right_origin : left_origin;
 
@@ -530,6 +530,9 @@ RomTrajOpt::RomTrajOpt(
         AddConstraint(fom_sw_ft_dist_constraint,
                       {x0.head(n_q_), xf.head(n_q_)});
       }
+
+      // Stride length constraint
+
     }
 
     // Stride length constraint

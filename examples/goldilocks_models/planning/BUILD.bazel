@@ -16,10 +16,9 @@ cc_library(
     srcs = ["rom_traj_opt.cc"],
     hdrs = ["rom_traj_opt.h"],
     deps = [
-        ":FoM_guard_constraint",
+        ":FoM_guard_and_feet_constraint",
         ":FoM_reset_map_constraint",
         ":FoM_stance_foot_constraint",
-        ":FoM_stride_length_constraint",
         ":dynamics_constraint",
         ":kinematics_constraint",
         "//examples/goldilocks_models:goldilocks_utils",
@@ -64,12 +63,12 @@ cc_library(
 )
 
 cc_library(
-    name = "FoM_guard_constraint",
+    name = "FoM_guard_and_feet_constraint",
     srcs = [
-        "FoM_guard_constraint.cc",
+        "FoM_guard_and_feet_constraint.cc",
     ],
     hdrs = [
-        "FoM_guard_constraint.h",
+        "FoM_guard_and_feet_constraint.h",
     ],
     deps = [
         "//multibody:utils",
@@ -100,21 +99,6 @@ cc_library(
     ],
     hdrs = [
         "FoM_stance_foot_constraint.h",
-    ],
-    deps = [
-        "//multibody:utils",
-        "//solvers:nonlinear_constraint",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "FoM_stride_length_constraint",
-    srcs = [
-        "FoM_stride_length_constraint.cc",
-    ],
-    hdrs = [
-        "FoM_stride_length_constraint.h",
     ],
     deps = [
         "//multibody:utils",

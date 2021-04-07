@@ -1087,7 +1087,7 @@ void CassiePlannerWithMixedRomFom::BookKeeping(
     total_number_of_first_solve_of_the_mode_++;
     past_is_left_stance_ = start_with_left_stance;
   }
-  cout << "\nsolve time (average, max) = " << total_solve_time_ / counter_
+  cout << "\nsolve time (average, max) = " << total_solve_time_ / (counter_ + 1)
        << ", " << max_solve_time_ << endl;
   cout << "solve time of the first solve of the mode (average, max) = "
        << total_solve_time_of_first_solve_of_the_mode_ /

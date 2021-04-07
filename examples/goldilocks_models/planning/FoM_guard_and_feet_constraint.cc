@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/planning/FoM_guard_constraint.h"
+#include "examples/goldilocks_models/planning/FoM_guard_and_feet_constraint.h"
 
 using std::cout;
 using std::endl;

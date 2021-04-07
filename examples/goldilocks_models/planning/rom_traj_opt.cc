@@ -104,15 +104,22 @@ RomTrajOpt::RomTrajOpt(
   /// Setups
   PrintStatus("Getting things needed for costs and constraints");
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
-  // Initial swing foot position
-  Eigen::Vector3d swing_foot_init_pos;
+  // Initial swing/stance foot position
   auto context = plant_.CreateDefaultContext();
+  Eigen::Vector3d swing_foot_init_pos;
   plant_.SetPositions(context.get(), x_init.head(n_q_));
-  const auto& swing_origin =
+  const auto& swing_origin0 =
       start_with_left_stance ? right_origin : left_origin;
-  this->plant_.CalcPointsPositions(*context, swing_origin.second,
-                                   swing_origin.first, plant_.world_frame(),
+  this->plant_.CalcPointsPositions(*context, swing_origin0.second,
+                                   swing_origin0.first, plant_.world_frame(),
                                    &swing_foot_init_pos);
+  Eigen::Vector3d stance_foot_init_pos;
+  plant_.SetPositions(context.get(), x_init.head(n_q_));
+  const auto& stance_origin0 =
+      start_with_left_stance ? left_origin : right_origin;
+  this->plant_.CalcPointsPositions(*context, stance_origin0.second,
+                                   stance_origin0.first, plant_.world_frame(),
+                                   &stance_foot_init_pos);
   // Friction cone constraint
   //     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
   //     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
@@ -128,6 +135,14 @@ RomTrajOpt::RomTrajOpt(
   auto friction_constraint = std::make_shared<drake::solvers::LinearConstraint>(
       A, VectorXd::Zero(4),
       std::numeric_limits<double>::infinity() * VectorXd::Ones(4));
+
+  /// Add more decision variables
+  bool use_foot_variable = false;
+  // TODO: haven't finished foot variable; need to warm start it
+  if (use_foot_variable) {
+    touchdown_foot_pos_vars_ = NewContinuousVariables(
+        3 * num_time_samples.size(), "touchdown_foot_pos");
+  }
 
   /// Adding costs and constraints
   // Add cost
@@ -224,7 +239,6 @@ RomTrajOpt::RomTrajOpt(
     // Add dynamics constraints at collocation points
     PrintStatus("Adding constraint -- bounding box on ROM state");
     for (int j = 0; j < mode_lengths_[i]; j++) {
-      int time_index = mode_start_[i] + j;
       AddBoundingBoxConstraint(-10, 10, state_vars_by_mode(i, j));
     }
 
@@ -319,7 +333,7 @@ RomTrajOpt::RomTrajOpt(
       AddLinearConstraint(xf.segment(n_q_, n_v_) ==
                           x0_post.segment(n_q_, n_v_));
     } else {
-      PrintStatus("Adding constraint -- FoM identity impact map");
+      PrintStatus("Adding constraint -- FoM impact map");
       auto reset_map_constraint =
           std::make_shared<planning::FomResetMapConstraint>(
               plant_, swing_contacts, "fom_discrete_dyn_" + to_string(i));
@@ -422,30 +436,100 @@ RomTrajOpt::RomTrajOpt(
         fom_stance_ft_vel_constraint_scaling_);
     AddConstraint(fom_ft_vel_constraint_postimpact, x0_post);
 
-    // Foot collision avoidance (full-order model swing foot constraint)
-    const auto& swing_origin = left_stance ? right_origin : left_origin;
-    Eigen::Vector2d lb_swing(back_limit,
-                             left_stance ? -left_limit : right_limit);
-    Eigen::Vector2d ub_swing(front_limit,
-                             left_stance ? -right_limit : left_limit);
-    PrintStatus(
-        "Adding constraint -- FOM swing collision avoidance (end of mode)");
-    auto fom_sw_ft_pos_constraint =
-        std::make_shared<planning::FomSwingFootPosConstraint>(
-            plant_, plant.GetFrameByName("pelvis"), swing_origin, lb_swing,
-            ub_swing, "fom_swing_ft_pos_" + to_string(i));
-    AddConstraint(fom_sw_ft_pos_constraint, xf.head(n_q_));
+    if (use_foot_variable) {
+      auto touchdown_foot_var = touchdown_foot_pos_vars(i);
+      const auto& swing_origin = left_stance ? right_origin : left_origin;
 
-    // Foot travel distance constraint (full-order model swing foot constraint)
-    PrintStatus("Adding constraint -- FOM swing foot travel distance");
-    auto fom_sw_ft_dist_constraint =
-        std::make_shared<planning::FomSwingFootDistanceConstraint>(
-            plant_, swing_origin, swing_foot_init_pos, max_swing_distance.at(i),
-            i == 0, "fom_swing_ft_dist_constraint" + to_string(i));
-    if (i == 0) {
-      AddConstraint(fom_sw_ft_dist_constraint, xf.head(n_q_));
+      // Foot variable equation constraint
+      PrintStatus(
+          "Adding constraint -- FOM swing foot equation (end of mode)");
+      auto fom_sw_ft_pos_var_constraint =
+          std::make_shared<planning::FomSwingFootPosVariableConstraint>(
+              plant_, swing_origin, "fom_swing_ft_pos_var_" + to_string(i));
+      AddConstraint(fom_sw_ft_pos_var_constraint,
+                    {xf.head(n_q_), touchdown_foot_var});
+
+      // Foot collision avoidance (full-order model swing foot constraint)
+      Eigen::Vector2d lb_swing(back_limit,
+                               left_stance ? -left_limit : right_limit);
+      Eigen::Vector2d ub_swing(front_limit,
+                               left_stance ? -right_limit : left_limit);
+      PrintStatus(
+          "Adding constraint -- FOM swing collision avoidance (end of mode)");
+      auto fom_sw_ft_pos_constraint =
+          std::make_shared<planning::FomSwingFootPosConstraintV2>(
+              plant_, plant.GetFrameByName("pelvis"), lb_swing, ub_swing,
+              "fom_swing_ft_pos_" + to_string(i));
+      AddConstraint(fom_sw_ft_pos_constraint,
+                    {xf.head(n_q_), touchdown_foot_var});
+
+      // Foot travel distance constraint (full-order model swing foot
+      // constraint)
+      PrintStatus("Adding constraint -- FOM swing foot travel distance");
+      if (i == 0) {
+        // use swing_foot_init_pos
+        auto fom_sw_ft_dist_constraint =
+            std::make_shared<drake::solvers::QuadraticConstraint>(
+                2 * MatrixXd::Identity(3, 3), -2 * swing_foot_init_pos,
+                -swing_foot_init_pos.squaredNorm(),
+                std::pow(max_swing_distance.at(i), 2) -
+                    swing_foot_init_pos.squaredNorm());
+        AddConstraint(fom_sw_ft_dist_constraint, touchdown_foot_var);
+      } else if (i == 1) {
+        // use stance_foot_init_pos
+        auto fom_sw_ft_dist_constraint =
+            std::make_shared<drake::solvers::QuadraticConstraint>(
+                2 * MatrixXd::Identity(3, 3), -2 * stance_foot_init_pos,
+                -stance_foot_init_pos.squaredNorm(),
+                std::pow(max_swing_distance.at(i), 2) -
+                    stance_foot_init_pos.squaredNorm());
+        AddConstraint(fom_sw_ft_dist_constraint, touchdown_foot_var);
+      } else {
+        MatrixXd Q_dist_2var = MatrixXd::Identity(6, 6);
+        Q_dist_2var(0, 3) = -1;
+        Q_dist_2var(3, 0) = -1;
+        Q_dist_2var(1, 4) = -1;
+        Q_dist_2var(4, 1) = -1;
+        Q_dist_2var(2, 5) = -1;
+        Q_dist_2var(5, 2) = -1;
+        Q_dist_2var *= 2;
+        auto fom_sw_ft_dist_constraint =
+            std::make_shared<drake::solvers::QuadraticConstraint>(
+                Q_dist_2var, VectorXd::Zero(6), 0,
+                std::pow(max_swing_distance.at(i), 2));
+        auto touchdown_foot_var_2step_ago = touchdown_foot_pos_vars(i - 2);
+        AddConstraint(fom_sw_ft_dist_constraint,
+                      {touchdown_foot_var, touchdown_foot_var_2step_ago});
+      }
     } else {
-      AddConstraint(fom_sw_ft_dist_constraint, {x0.head(n_q_), xf.head(n_q_)});
+      // Foot collision avoidance (full-order model swing foot constraint)
+      const auto& swing_origin = left_stance ? right_origin : left_origin;
+      Eigen::Vector2d lb_swing(back_limit,
+                               left_stance ? -left_limit : right_limit);
+      Eigen::Vector2d ub_swing(front_limit,
+                               left_stance ? -right_limit : left_limit);
+      PrintStatus(
+          "Adding constraint -- FOM swing collision avoidance (end of mode)");
+      auto fom_sw_ft_pos_constraint =
+          std::make_shared<planning::FomSwingFootPosConstraint>(
+              plant_, plant.GetFrameByName("pelvis"), swing_origin, lb_swing,
+              ub_swing, "fom_swing_ft_pos_" + to_string(i));
+      AddConstraint(fom_sw_ft_pos_constraint, xf.head(n_q_));
+
+      // Foot travel distance constraint (full-order model swing foot
+      // constraint)
+      PrintStatus("Adding constraint -- FOM swing foot travel distance");
+      auto fom_sw_ft_dist_constraint =
+          std::make_shared<planning::FomSwingFootDistanceConstraint>(
+              plant_, swing_origin, swing_foot_init_pos,
+              max_swing_distance.at(i), i == 0,
+              "fom_swing_ft_dist_constraint" + to_string(i));
+      if (i == 0) {
+        AddConstraint(fom_sw_ft_dist_constraint, xf.head(n_q_));
+      } else {
+        AddConstraint(fom_sw_ft_dist_constraint,
+                      {x0.head(n_q_), xf.head(n_q_)});
+      }
     }
 
     // Stride length constraint
@@ -459,12 +543,6 @@ RomTrajOpt::RomTrajOpt(
     stride_length); AddConstraint(fom_sl_constraint,
     {x0.head(n_q_), xf.head(n_q_)
                                      });*/
-
-    // Stride length cost
-    /*if (i == num_modes_ - 1) {
-      cout << "Adding final position cost for full-order model...\n";
-      this->AddLinearCost(-10 * xf(0));
-    }*/
 
     counter += mode_lengths_[i] - 1;
     left_stance = !left_stance;
@@ -633,6 +711,11 @@ VectorXDecisionVariable RomTrajOpt::state_vars_by_mode(int mode,
 drake::solvers::VectorXDecisionVariable RomTrajOpt::impulse_vars(
     int mode) const {
   return impulse_vars_.segment(n_lambda_ * mode, n_lambda_);
+}
+
+drake::solvers::VectorXDecisionVariable RomTrajOpt::touchdown_foot_pos_vars(
+    int mode) const {
+  return touchdown_foot_pos_vars_.segment<3>(3 * mode);
 }
 
 // TODO: need to configure this to handle the hybrid discontinuities properly

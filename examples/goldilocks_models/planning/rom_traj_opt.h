@@ -100,6 +100,9 @@ class RomTrajOpt
 
   drake::solvers::VectorXDecisionVariable impulse_vars(int mode) const;
 
+  drake::solvers::VectorXDecisionVariable touchdown_foot_pos_vars(
+      int mode) const;
+
   drake::VectorX<drake::symbolic::Expression> SubstitutePlaceholderVariables(
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
@@ -159,6 +162,7 @@ class RomTrajOpt
   const drake::solvers::VectorXDecisionVariable xf_vars_;
   const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
   const drake::solvers::VectorXDecisionVariable impulse_vars_;
+  drake::solvers::VectorXDecisionVariable touchdown_foot_pos_vars_;
   const int n_y_;
   const int n_z_;
   const int n_q_;

@@ -207,6 +207,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable Eigen::MatrixXd FOM_Lambda_;
   mutable Eigen::MatrixXd local_x0_FOM_;
   mutable Eigen::MatrixXd local_xf_FOM_;
+  mutable Eigen::VectorXd touchdown_foot_pos_;
 
   // For debugging
   bool debug_mode_;

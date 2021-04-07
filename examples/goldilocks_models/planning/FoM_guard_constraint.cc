@@ -154,6 +154,66 @@ void FomSwingFootDistanceConstraint::EvaluateConstraint(
   y->head<1>() << (pt_f - pt_0).norm();
 }
 
+/// V2 for swing foot constraint
+/// V2 takes swing foot position as decision variable
+
+/// Swing foot position variable constraint
+FomSwingFootPosVariableConstraint::FomSwingFootPosVariableConstraint(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::pair<const Vector3d, const Frame<double>&>& swing_foot_origin,
+    const std::string& description)
+    : NonlinearConstraint<double>(3, plant.num_positions() + 3,
+                                  Vector3d::Zero(), Vector3d::Zero(),
+                                  description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      swing_foot_origin_(swing_foot_origin),
+      n_q_(plant.num_positions()) {}
+
+void FomSwingFootPosVariableConstraint::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<double>>& q_and_ft_pos,
+    VectorX<double>* y) const {
+  plant_.SetPositions(context_.get(), q_and_ft_pos.head(n_q_));
+
+  // Swing foot position
+  drake::VectorX<double> pt(3);
+  this->plant_.CalcPointsPositions(*context_, swing_foot_origin_.second,
+                                   swing_foot_origin_.first, world_, &pt);
+
+  *y = pt - q_and_ft_pos.segment<3>(n_q_);
+}
+
+/// Swing foot position constraint
+FomSwingFootPosConstraintV2::FomSwingFootPosConstraintV2(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Frame<double>& pelvis_frame, const Eigen::Vector2d& lb,
+    const Eigen::Vector2d& ub, const std::string& description)
+    : NonlinearConstraint<double>(2, plant.num_positions() + 3, lb, ub,
+                                  description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      pelvis_frame_(pelvis_frame),
+      n_q_(plant.num_positions()) {}
+
+void FomSwingFootPosConstraintV2::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<double>>& q_and_ft_pos,
+    VectorX<double>* y) const {
+  plant_.SetPositions(context_.get(), q_and_ft_pos.head(n_q_));
+
+  // Pelvis pose
+  auto pelvis_pose = pelvis_frame_.CalcPoseInWorld(*context_);
+  const Vector3d& pelvis_pos = pelvis_pose.translation();
+  const auto& pelvis_rot_mat = pelvis_pose.rotation();
+
+  Vector3d foot_pos_in_local_frame =
+      pelvis_rot_mat.transpose() * (q_and_ft_pos.segment<3>(n_q_) - pelvis_pos);
+
+  *y = VectorX<double>(2);
+  *y = foot_pos_in_local_frame.head<2>();
+}
+
 }  // namespace planning
 }  // namespace goldilocks_models
 }  // namespace dairlib

@@ -100,6 +100,57 @@ class FomSwingFootDistanceConstraint
   int n_q_;
 };
 
+/// V2 for swing foot constraint
+/// V2 takes swing foot position as decision variable
+
+// Swing foot position distance constraint for collision avoidance
+// Constraints are
+class FomSwingFootPosVariableConstraint
+    : public solvers::NonlinearConstraint<double> {
+ public:
+  FomSwingFootPosVariableConstraint(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::pair<const Eigen::Vector3d,
+                      const drake::multibody::Frame<double>&>&
+          swing_foot_origin,
+      const std::string& description = "fom_swing_ft_pos_var_constraint");
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& q,
+                          drake::VectorX<double>* y) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const std::pair<const Eigen::Vector3d,
+                  const drake::multibody::Frame<double>&>& swing_foot_origin_;
+
+  int n_q_;
+};
+
+// Swing foot position distance constraint for collision avoidance
+// Constraints are
+class FomSwingFootPosConstraintV2
+    : public solvers::NonlinearConstraint<double> {
+ public:
+  FomSwingFootPosConstraintV2(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::multibody::Frame<double>& pelvis_frame,
+      const Eigen::Vector2d& lb, const Eigen::Vector2d& ub,
+      const std::string& description = "fom_swing_ft_pos_constraint");
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& q,
+                          drake::VectorX<double>* y) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const drake::multibody::Frame<double>& pelvis_frame_;
+
+  int n_q_;
+};
+
 }  // namespace planning
 }  // namespace goldilocks_models
 }  // namespace dairlib

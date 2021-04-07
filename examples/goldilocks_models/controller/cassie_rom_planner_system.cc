@@ -493,24 +493,21 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Maximum step length
-  double MAX_FOOT_SPEED = 2;  // 2;  // m/s
   double first_mode_duration = stride_period_ * (1 - init_phase);
   double remaining_time_til_touchdown = first_mode_duration;
-  vector<double> max_swing_distance =
-      vector<double>(param_.n_step, MAX_FOOT_SPEED * stride_period_);
+  vector<double> max_swing_distance = vector<double>(
+      param_.n_step, param_.gains.max_foot_speed * stride_period_);
   // Update date the step length of the first mode
   // Take into account the double stance duration
   remaining_time_til_touchdown =
       std::max(0.0, remaining_time_til_touchdown - double_support_duration_);
   // Linearly decrease the max speed to 0 after mid-swing
-  MAX_FOOT_SPEED *= std::min(
-      1.0, 2 * remaining_time_til_touchdown / single_support_duration_);
-  max_swing_distance[0] = MAX_FOOT_SPEED * remaining_time_til_touchdown;
-  cout << "MAX_FOOT_SPEED = " << MAX_FOOT_SPEED << endl;
-  cout << "scale weight = "
-       << std::min(1.0,
-                   2 * remaining_time_til_touchdown / single_support_duration_)
-       << endl;
+  double max_foot_speed_first_mode =
+      param_.gains.max_foot_speed *
+      std::min(1.0,
+               2 * remaining_time_til_touchdown / single_support_duration_);
+  max_swing_distance[0] =
+      max_foot_speed_first_mode * remaining_time_til_touchdown;
   cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
        << endl;
 

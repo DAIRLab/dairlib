@@ -49,8 +49,12 @@ class RomTrajOpt
              const std::vector<double>& max_swing_distance,
              bool start_with_left_stance, bool zero_touchdown_impact,
              const std::set<int>& relax_index, bool print_status = true);
-
   ~RomTrajOpt() override {}
+
+  void AddConstraintAndCostForLastFootStep(double w_predict_lipm_v,
+                                           double desired_local_vel_x,
+                                           double desired_local_vel_y,
+                                           double stride_period);
 
   void AddTimeStepConstraint(std::vector<double> minimum_timestep,
                              std::vector<double> maximum_timestep,
@@ -147,6 +151,7 @@ class RomTrajOpt
   std::vector<Binding<Cost>> v0_relax_cost_bindings_;
   std::vector<Binding<Cost>> init_rom_relax_cost_bindings_;
   std::vector<Binding<Cost>> lambda_cost_bindings_;
+  std::vector<Binding<Cost>> predict_lipm_v_bindings_;
 
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.
@@ -172,6 +177,8 @@ class RomTrajOpt
   const drake::multibody::MultibodyPlant<double>& plant_;
   const ReducedOrderModel& rom_;
   bool start_with_left_stance_;
+  const BodyPoint& left_origin_;
+  const BodyPoint& right_origin_;
 
   void PrintStatus(const std::string& msg) const {
     if (print_status_) std::cout << msg << std::endl;

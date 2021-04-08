@@ -16,6 +16,7 @@ using Eigen::AutoDiffScalar;
 using Eigen::Dynamic;
 using Eigen::Matrix;
 using Eigen::MatrixXd;
+using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
@@ -69,13 +70,14 @@ void FomGuardConstraint::EvaluateConstraint(
     // fill in position
     this->plant_.CalcPointsPositions(*context_, contact.second, contact.first,
                                      world_, &pt);
-    y->segment<1>(2 * i) = pt.row(2);
+    y->segment<1>(2 * i) = pt.tail<1>();
 
     // fill in velocity
     plant_.CalcJacobianTranslationalVelocity(
         *context_, drake::multibody::JacobianWrtVariable::kV, contact.second,
         contact.first, world_, world_, &J);
-    y->segment<1>(2 * i + 1) = J.row(2) * x.tail(plant_.num_velocities());
+    y->segment<1>(2 * i + 1) =
+        J.bottomRows<1>() * x.tail(plant_.num_velocities());
   }
 }
 
@@ -193,6 +195,58 @@ void FomStepLengthConstraint::EvaluateConstraint(
 
   *y = VectorX<double>(1);
   y->head<1>() << (pt_f - pt_0).norm();
+}
+
+/// Constraint for velocity one step after horizon
+OneStepAheadVelConstraint::OneStepAheadVelConstraint(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::pair<const Vector3d, const Frame<double>&>& stance_foot_origin,
+    double stride_period, const std::string& description)
+    : NonlinearConstraint<double>(
+          2, plant.num_positions() + plant.num_velocities() + 2,
+          Vector2d::Zero(), Vector2d::Zero(), description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      stance_foot_origin_(stance_foot_origin),
+      n_q_(plant.num_positions()),
+      n_v_(plant.num_velocities()),
+      n_x_(plant.num_positions() + plant.num_velocities()) {
+  double height = 0.85;  // approximation
+  sqrt_omega_ = std::sqrt(9.81 / height);
+  pos_exp_ = std::exp(sqrt_omega_ * stride_period);
+  neg_exp_ = std::exp(-sqrt_omega_ * stride_period);
+}
+
+void OneStepAheadVelConstraint::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<double>>& x_and_ft_vel,
+    VectorX<double>* y) const {
+  plant_.SetPositions(context_.get(), x_and_ft_vel.head(n_q_));
+
+  // Stance foot position (I use toe origin as approximation)
+  drake::VectorX<double> pt(3);
+  this->plant_.CalcPointsPositions(*context_, stance_foot_origin_.second,
+                                   stance_foot_origin_.first, world_, &pt);
+  // COM position and velocity
+  Vector2d CoM;
+  Vector2d CoM_dot;
+  CoM = plant_.CalcCenterOfMassPosition(*context_).head<2>();
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, drake::multibody::JacobianWrtVariable::kV, world_, world_,
+      &J_com);
+  CoM_dot = J_com.topRows<2>() * x_and_ft_vel.segment(n_q_, n_v_);
+
+  // Testing -- Use pelvis as a proxy to COM
+  //  CoM = x_and_ft_vel.segment<2>(4);
+  //  CoM_dot = x_and_ft_vel.segment<2>(n_q_ + 3);
+
+  // Velocity at the end of mode after horizon
+  Vector2d v;
+  v = sqrt_omega_ * (CoM.head(2) - pt.head(2)) * (pos_exp_ + neg_exp_) / 2 +
+      CoM_dot.head(2) * (pos_exp_ - neg_exp_) / 2;
+
+  *y = v - x_and_ft_vel.segment<2>(n_x_);
 }
 
 /// V2 for swing foot constraint

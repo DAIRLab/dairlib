@@ -100,20 +100,18 @@ class FomSwingFootDistanceConstraint
   int n_q_;
 };
 
-
 // Step length constraint (from stance foot to swing foot)
 // Constraints are
-class FomStepLengthConstraint
-    : public solvers::NonlinearConstraint<double> {
+class FomStepLengthConstraint : public solvers::NonlinearConstraint<double> {
  public:
   FomStepLengthConstraint(
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::pair<const Eigen::Vector3d,
                       const drake::multibody::Frame<double>&>&
-      stance_foot_origin,
+          stance_foot_origin,
       const std::pair<const Eigen::Vector3d,
                       const drake::multibody::Frame<double>&>&
-      swing_foot_origin,
+          swing_foot_origin,
       const Eigen::Vector3d& swing_foot_init_pos, double distance,
       bool constant_start_pose,
       const std::string& description = "fom_step_length_constraint");
@@ -137,6 +135,35 @@ class FomStepLengthConstraint
   int n_q_;
 };
 
+// The constraint that gives the COM velocity at the end of mode AFTER the
+// planner's horizon, based on LIPM dynamics (an approxiation).
+// Constraints are
+class OneStepAheadVelConstraint : public solvers::NonlinearConstraint<double> {
+ public:
+  OneStepAheadVelConstraint(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::pair<const Eigen::Vector3d,
+                      const drake::multibody::Frame<double>&>&
+          stance_foot_origin,
+      double stride_period,
+      const std::string& description = "one_step_ahead_vel_constraint");
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const std::pair<const Eigen::Vector3d,
+                  const drake::multibody::Frame<double>&>& stance_foot_origin_;
+  double sqrt_omega_;
+  double pos_exp_;
+  double neg_exp_;
+  int n_q_;
+  int n_v_;
+  int n_x_;
+};
 
 /// V2 for swing foot constraint
 /// V2 takes swing foot position as decision variable

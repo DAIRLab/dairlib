@@ -90,6 +90,8 @@ RomTrajOpt::RomTrajOpt(
       plant_(plant),
       rom_(rom),
       start_with_left_stance_(start_with_left_stance),
+      left_origin_(left_origin),
+      right_origin_(right_origin),
       print_status_(print_status) {
   DRAKE_DEMAND(max_swing_distance.size() == num_time_samples.size());
 
@@ -102,7 +104,8 @@ RomTrajOpt::RomTrajOpt(
 
   /// Setups
   PrintStatus("Getting things needed for costs and constraints");
-  std::map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
+  std::map<string, int> positions_map =
+      multibody::makeNameToPositionsMap(plant);
   // Initial swing/stance foot position
   auto context = plant_.CreateDefaultContext();
   Eigen::Vector3d swing_foot_init_pos;
@@ -372,6 +375,9 @@ RomTrajOpt::RomTrajOpt(
     /// Constraints on FOM states
     // Note that we don't impose constraint on the initial state (because it's
     // constrained already)
+    const auto& stance_contacts = left_stance ? left_contacts : right_contacts;
+    const auto& post_stance_contacts =
+        left_stance ? right_contacts : left_contacts;
 
     // Quaternion unit norm constraint (it solves faster with this constraint)
     PrintStatus("Adding constraint -- full-order model unit norm quaternion");
@@ -408,7 +414,6 @@ RomTrajOpt::RomTrajOpt(
 
     // Stitching x0 and xf (full-order model stance foot constraint)
     PrintStatus("Adding constraint -- full-order model stance foot pos");
-    const auto& stance_contacts = left_stance ? left_contacts : right_contacts;
     auto fom_sf_pos_constraint =
         std::make_shared<planning::FomStanceFootPosConstraint>(
             plant_, stance_contacts, "fom_stance_ft_pos_" + to_string(i));
@@ -425,8 +430,6 @@ RomTrajOpt::RomTrajOpt(
     fom_ft_vel_constraint_preimpact->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
     AddConstraint(fom_ft_vel_constraint_preimpact, xf);
-    const auto& post_stance_contacts =
-        left_stance ? right_contacts : left_contacts;
     auto fom_ft_vel_constraint_postimpact =
         std::make_shared<planning::FomStanceFootVelConstraint>(
             plant_, post_stance_contacts,
@@ -435,10 +438,11 @@ RomTrajOpt::RomTrajOpt(
         fom_stance_ft_vel_constraint_scaling_);
     AddConstraint(fom_ft_vel_constraint_postimpact, x0_post);
 
+    const auto& swing_origin = left_stance ? right_origin : left_origin;
+    const auto& stance_origin = left_stance ? left_origin : right_origin;
     if (use_foot_variable) {
       // TODO: need to add stride length constraint for use_foot_variable = true
       auto touchdown_foot_var = touchdown_foot_pos_vars(i);
-      const auto& swing_origin = left_stance ? right_origin : left_origin;
 
       // Foot variable equation constraint
       PrintStatus("Adding constraint -- FOM swing foot equation (end of mode)");
@@ -501,9 +505,6 @@ RomTrajOpt::RomTrajOpt(
                       {touchdown_foot_var, touchdown_foot_var_2step_ago});
       }
     } else {
-      const auto& swing_origin = left_stance ? right_origin : left_origin;
-      const auto& stance_origin = left_stance ? left_origin : right_origin;
-
       // Foot collision avoidance (full-order model swing foot constraint)
       Eigen::Vector2d lb_swing(back_limit,
                                left_stance ? -left_limit : right_limit);
@@ -548,21 +549,40 @@ RomTrajOpt::RomTrajOpt(
       }
     }
 
-    // Stride length constraint
-    // cout << "Adding stride length constraint for full-order model...\n";
-    // V1
-    // AddLinearConstraint(xf(0) - x0(0) ==
-    // 0.304389); V2
-    /*VectorXd stride_length(1); stride_length << 0.304389 * 2;
-    auto fom_sl_constraint =
-    std::make_shared<planning::FomStrideLengthConstraint>( left_stance, n_q_,
-    stride_length); AddConstraint(fom_sl_constraint,
-    {x0.head(n_q_), xf.head(n_q_)
-                                     });*/
-
     counter += mode_lengths_[i] - 1;
     left_stance = !left_stance;
   }
+}
+
+void RomTrajOpt::AddConstraintAndCostForLastFootStep(double w_predict_lipm_v,
+                                                     double desired_local_vel_x,
+                                                     double desired_local_vel_y,
+                                                     double stride_period) {
+  VectorXDecisionVariable predicted_com_vel =
+      NewContinuousVariables(2, "predicted_com_vel");
+  // stance foot for after the planner's horizon
+  const auto& stance_ft_origin =
+      (((num_modes_ % 2 == 0) && start_with_left_stance_) ||
+       ((num_modes_ % 2 == 1) && !start_with_left_stance_))
+          ? left_origin_
+          : right_origin_;
+
+  // Foot variable equation constraint
+  PrintStatus("Adding constraint -- predicted com vel one step after horizon");
+  auto fom_sw_ft_pos_var_constraint =
+      std::make_shared<planning::OneStepAheadVelConstraint>(
+          plant_, stance_ft_origin, stride_period);
+  AddConstraint(fom_sw_ft_pos_var_constraint,
+                {x0_vars_by_mode(num_modes_), predicted_com_vel});
+
+  // Cost for tracking velocity
+  PrintStatus("Adding cost -- predicted com vel one step after horizon");
+  predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
+      w_predict_lipm_v * MatrixXd::Identity(1, 1),
+      desired_local_vel_x * VectorXd::Ones(1), predicted_com_vel.head(1)));
+  predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
+      w_predict_lipm_v * MatrixXd::Identity(1, 1),
+      desired_local_vel_y * VectorXd::Ones(1), predicted_com_vel.tail(1)));
 }
 
 void addConstraintScaling(std::unordered_map<int, double>* map,

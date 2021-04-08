@@ -563,6 +563,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
          xf.segment<1>(positions_map_.at("ankle_joint_right"))});
   }
 
+  // Constraint and cost for the last foot step location
+  trajopt.AddConstraintAndCostForLastFootStep(
+      param_.gains.w_predict_lipm_v, param_.gains.const_walking_speed_x, 0,
+      stride_period_);
+
   // Final goal position constraint
   /*PrintStatus("Adding constraint -- FoM final position");
   trajopt.AddBoundingBoxConstraint(
@@ -1085,6 +1090,11 @@ void CassiePlannerWithMixedRomFom::PrintCost(
       result, trajopt.init_rom_relax_cost_bindings_);
   if (init_rom_relax_cost > 0) {
     cout << "init_rom_relax_cost = " << init_rom_relax_cost << endl;
+  }
+  double predict_lipm_v_cost =
+      solvers::EvalCostGivenSolution(result, trajopt.predict_lipm_v_bindings_);
+  if (predict_lipm_v_cost > 0) {
+    cout << "predict_lipm_v_cost = " << predict_lipm_v_cost << endl;
   }
 }
 

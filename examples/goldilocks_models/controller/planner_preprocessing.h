@@ -69,7 +69,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
  public:
   InitialStateForPlanner(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
-      const drake::multibody::MultibodyPlant<double>& plant_controls,
+      const drake::multibody::MultibodyPlant<double>& plant_control,
       double final_position_x, int n_step);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
@@ -129,9 +129,21 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   double final_position_x_;
   int n_step_;
 
+  // Stance foot height
+  BodyPoint toe_mid_left_;
+  BodyPoint toe_mid_right_;
+  // It doesn't matter what initial value of prev_is_left_stance_ is, because
+  // stance_foot_height_ in the beginning is always 0 (assuming the robot starts
+  // when the feet are on the ground).
+  mutable bool prev_is_left_stance_ = false;
+  mutable double stance_foot_height_ = 0;
+  double GetStanceFootHeight(
+      const BodyPoint& stance_toe_mid,
+      const drake::systems::Context<double>& context) const;
+
   // Testing
   const drake::multibody::MultibodyPlant<double>& plant_feedback_;
-  const drake::multibody::MultibodyPlant<double>& plant_controls_;
+  const drake::multibody::MultibodyPlant<double>& plant_control_;
 
   // IK
   drake::solvers::EqualityConstrainedQPSolver qp_solver_;

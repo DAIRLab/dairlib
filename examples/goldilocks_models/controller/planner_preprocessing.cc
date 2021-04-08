@@ -237,20 +237,28 @@ void CalcFeetVel(const drake::multibody::MultibodyPlant<double>& plant,
 
 InitialStateForPlanner::InitialStateForPlanner(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
-    const drake::multibody::MultibodyPlant<double>& plant_controls,
+    const drake::multibody::MultibodyPlant<double>& plant_control,
     double final_position_x, int n_step)
-    : nq_(plant_controls.num_positions()),
-      nv_(plant_controls.num_velocities()),
+    : nq_(plant_control.num_positions()),
+      nv_(plant_control.num_velocities()),
       final_position_x_(final_position_x),
       n_step_(n_step),
       plant_feedback_(plant_feedback),
-      plant_controls_(plant_controls),
+      plant_control_(plant_control),
       context_feedback_(plant_feedback.CreateDefaultContext()),
-      context_control_(plant_controls.CreateDefaultContext()),
+      context_control_(plant_control.CreateDefaultContext()),
+      toe_mid_left_(BodyPoint((LeftToeFront(plant_control).first +
+                               LeftToeRear(plant_control).first) /
+                                  2,
+                              plant_control.GetFrameByName("toe_left"))),
+      toe_mid_right_(BodyPoint((LeftToeFront(plant_control).first +
+                                LeftToeRear(plant_control).first) /
+                                   2,
+                               plant_control.GetFrameByName("toe_right"))),
       toe_origin_left_(BodyPoint(Vector3d::Zero(),
-                                 plant_controls_.GetFrameByName("toe_left"))),
-      toe_origin_right_(BodyPoint(
-          Vector3d::Zero(), plant_controls_.GetFrameByName("toe_right"))) {
+                                 plant_control_.GetFrameByName("toe_left"))),
+      toe_origin_right_(BodyPoint(Vector3d::Zero(),
+                                  plant_control_.GetFrameByName("toe_right"))) {
   // Input/Output Setup
   stance_foot_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
@@ -266,9 +274,9 @@ InitialStateForPlanner::InitialStateForPlanner(
 
   adjusted_state_port_ =
       this->DeclareVectorOutputPort(
-              OutputVector<double>(plant_controls.num_positions(),
-                                   plant_controls.num_velocities(),
-                                   plant_controls.num_actuators()),
+              OutputVector<double>(plant_control.num_positions(),
+                                   plant_control.num_velocities(),
+                                   plant_control.num_actuators()),
               &InitialStateForPlanner::CopyAdjustedState)
           .get_index();
   adjustment_port_ =
@@ -279,21 +287,21 @@ InitialStateForPlanner::InitialStateForPlanner(
   // Discrete update
   DeclarePerStepDiscreteUpdateEvent(&InitialStateForPlanner::AdjustState);
   adjusted_state_idx_ = this->DeclareDiscreteState(
-      plant_controls.num_positions() + plant_controls.num_velocities());
+      plant_control.num_positions() + plant_control.num_velocities());
   quat_xyz_shift_idx_ = this->DeclareDiscreteState(7);
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
       systems::controllers::PositionMapFromSpringToNoSpring(plant_feedback,
-                                                            plant_controls);
+                                                            plant_control);
   map_velocity_from_spring_to_no_spring_ =
       systems::controllers::VelocityMapFromSpringToNoSpring(plant_feedback,
-                                                            plant_controls);
+                                                            plant_control);
 
   // Create index maps
   pos_map_w_spr_ = multibody::makeNameToPositionsMap(plant_feedback);
-  pos_map_wo_spr_ = multibody::makeNameToPositionsMap(plant_controls);
-  vel_map_wo_spr_ = multibody::makeNameToVelocitiesMap(plant_controls);
+  pos_map_wo_spr_ = multibody::makeNameToPositionsMap(plant_control);
+  vel_map_wo_spr_ = multibody::makeNameToVelocitiesMap(plant_control);
 
   spring_pos_idx_list_w_spr_ = {pos_map_w_spr_.at("knee_joint_left"),
                                 pos_map_w_spr_.at("knee_joint_right"),
@@ -430,6 +438,16 @@ EventStatus InitialStateForPlanner::AdjustState(
   // endl; cout << "x(\"base_y\") = " <<
   // x_adjusted3(pos_map_wo_spr_.at("base_y")) << endl;
 
+  // Shift pelvis in z direction
+  if (prev_is_left_stance_ != is_left_stance) {
+    prev_is_left_stance_ = is_left_stance;
+    // Get stance foot height
+    plant_control_.SetPositions(context_control_.get(), x_adjusted3.head(nq_));
+    stance_foot_height_ = GetStanceFootHeight(
+        is_left_stance ? toe_mid_left_ : toe_mid_right_, *context_control_);
+  }
+  x_adjusted3(pos_map_wo_spr_.at("base_y")) -= stance_foot_height_;
+
   // Also need to rotate floating base velocities (wrt global frame)
   x_adjusted3.segment<3>(nq_) =
       relative_qaut.toRotationMatrix() * x_adjusted3.segment<3>(nq_);
@@ -467,6 +485,16 @@ void InitialStateForPlanner::CopyAdjustment(
       context.get_discrete_state(quat_xyz_shift_idx_).get_value();
 }
 
+double InitialStateForPlanner::GetStanceFootHeight(
+    const BodyPoint& stance_toe_mid,
+    const drake::systems::Context<double>& context) const {
+  drake::VectorX<double> pt(3);
+  this->plant_control_.CalcPointsPositions(context, stance_toe_mid.second,
+                                           stance_toe_mid.first,
+                                           plant_control_.world_frame(), &pt);
+  return pt(2);
+}
+
 void InitialStateForPlanner::AdjustKneeAndAnklePos(
     const VectorXd& x_w_spr, const Vector3d& left_foot_pos,
     const Vector3d& right_foot_pos, const VectorXd& x_init_original,
@@ -493,18 +521,18 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
   //  auto start_build = std::chrono::high_resolution_clock::now();
 
   // Get Jacobian for the feet
-  plant_controls_.SetPositions(context_control_.get(),
-                               x_init_original.head(nq_));
+  plant_control_.SetPositions(context_control_.get(),
+                              x_init_original.head(nq_));
   Eigen::MatrixXd J_lf_wo_spr(3, nv_);
-  plant_controls_.CalcJacobianTranslationalVelocity(
+  plant_control_.CalcJacobianTranslationalVelocity(
       *context_control_, JacobianWrtVariable::kV, toe_origin_left_.second,
-      toe_origin_left_.first, plant_controls_.world_frame(),
-      plant_controls_.world_frame(), &J_lf_wo_spr);
+      toe_origin_left_.first, plant_control_.world_frame(),
+      plant_control_.world_frame(), &J_lf_wo_spr);
   Eigen::MatrixXd J_rf_wo_spr(3, nv_);
-  plant_controls_.CalcJacobianTranslationalVelocity(
+  plant_control_.CalcJacobianTranslationalVelocity(
       *context_control_, JacobianWrtVariable::kV, toe_origin_right_.second,
-      toe_origin_right_.first, plant_controls_.world_frame(),
-      plant_controls_.world_frame(), &J_rf_wo_spr);
+      toe_origin_right_.first, plant_control_.world_frame(),
+      plant_control_.world_frame(), &J_rf_wo_spr);
 
   // Construct MP
   MathematicalProgram ik;
@@ -584,12 +612,12 @@ void InitialStateForPlanner::ZeroOutStanceFootVel(bool is_left_stance,
       is_left_stance ? joint_vel_idx_list_left_ : joint_vel_idx_list_right_;
 
   // Get Jacobian for the feet
-  plant_controls_.SetPositions(context_control_.get(), x_init->head(nq_));
+  plant_control_.SetPositions(context_control_.get(), x_init->head(nq_));
   Eigen::MatrixXd J(3, nv_);
-  plant_controls_.CalcJacobianTranslationalVelocity(
+  plant_control_.CalcJacobianTranslationalVelocity(
       *context_control_, JacobianWrtVariable::kV, toe_origin.second,
-      toe_origin.first, plant_controls_.world_frame(),
-      plant_controls_.world_frame(), &J);
+      toe_origin.first, plant_control_.world_frame(),
+      plant_control_.world_frame(), &J);
 
   // Construct MP
   MathematicalProgram ik;
@@ -643,15 +671,15 @@ void InitialStateForPlanner::CheckAdjustemnt(
   // Testing -- check the model difference (springs vs no springs).
   // cout << "=== COM and stance foot ===\n";
   //  cout << "\ncassie without springs:\n";
-  plant_controls_.SetPositions(context_control_.get(), x_original.head(nq_));
-  CalcCOM(plant_controls_, *context_control_, x_original);
+  plant_control_.SetPositions(context_control_.get(), x_original.head(nq_));
+  CalcCOM(plant_control_, *context_control_, x_original);
   //  cout << "\ncassie with springs:\n";
   plant_feedback_.SetPositions(context_feedback_.get(),
                                x_w_spr.head(plant_feedback_.num_positions()));
   CalcCOM(plant_feedback_, *context_feedback_, x_w_spr);
   //  cout << "\ncassie without springs (after adjustment):\n";
-  plant_controls_.SetPositions(context_control_.get(), x_adjusted.head(nq_));
-  CalcCOM(plant_controls_, *context_control_, x_adjusted);
+  plant_control_.SetPositions(context_control_.get(), x_adjusted.head(nq_));
+  CalcCOM(plant_control_, *context_control_, x_adjusted);
   //  cout << "=== states ===\n\n";
   //  cout << "FOM state (without springs) = \n" << x_original << endl;
   //  cout << "FOM state (without springs, adjusted) = \n" << x_adjusted <<
@@ -664,11 +692,11 @@ void InitialStateForPlanner::CheckAdjustemnt(
   Vector3d right_foot_pos_wo_spr_original;
   Vector3d left_foot_pos_wo_spr;
   Vector3d right_foot_pos_wo_spr;
-  plant_controls_.SetPositions(context_control_.get(), x_original.head(nq_));
-  CalcFeetPos(plant_controls_, *context_control_, x_original,
+  plant_control_.SetPositions(context_control_.get(), x_original.head(nq_));
+  CalcFeetPos(plant_control_, *context_control_, x_original,
               &left_foot_pos_wo_spr_original, &right_foot_pos_wo_spr_original);
-  plant_controls_.SetPositions(context_control_.get(), x_adjusted.head(nq_));
-  CalcFeetPos(plant_controls_, *context_control_, x_adjusted,
+  plant_control_.SetPositions(context_control_.get(), x_adjusted.head(nq_));
+  CalcFeetPos(plant_control_, *context_control_, x_adjusted,
               &left_foot_pos_wo_spr, &right_foot_pos_wo_spr);
   double left_pos_error_original =
       (left_foot_pos_w_spr - left_foot_pos_wo_spr_original).norm();
@@ -734,11 +762,11 @@ void InitialStateForPlanner::CheckAdjustemnt(
   Vector3d right_foot_vel_wo_spr_original;
   Vector3d left_foot_vel_wo_spr_improved;
   Vector3d right_foot_vel_wo_spr_improved;
-  plant_controls_.SetPositions(context_control_.get(), x_original.head(nq_));
-  CalcFeetVel(plant_controls_, *context_control_, x_original,
+  plant_control_.SetPositions(context_control_.get(), x_original.head(nq_));
+  CalcFeetVel(plant_control_, *context_control_, x_original,
               &left_foot_vel_wo_spr_original, &right_foot_vel_wo_spr_original);
-  plant_controls_.SetPositions(context_control_.get(), x_adjusted.head(nq_));
-  CalcFeetVel(plant_controls_, *context_control_, x_adjusted,
+  plant_control_.SetPositions(context_control_.get(), x_adjusted.head(nq_));
+  CalcFeetVel(plant_control_, *context_control_, x_adjusted,
               &left_foot_vel_wo_spr_improved, &right_foot_vel_wo_spr_improved);
   double left_vel_error_original =
       (left_foot_vel_w_spr - left_foot_vel_wo_spr_original).norm();

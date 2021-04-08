@@ -52,6 +52,8 @@ using drake::trajectories::PiecewisePolynomial;
 
 using systems::OutputVector;
 
+DEFINE_bool(broadcast, false, "broadcast between controller thread and planner thread");
+
 // Planner settings
 DEFINE_int32(rom_option, -1, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
@@ -185,6 +187,7 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
   // We probably cannot have two lcmsubsribers listening to the same channel?
   // https://github.com/RobotLocomotion/drake/blob/master/lcm/drake_lcm_interface.h#L242
@@ -202,7 +205,8 @@ int DoMain(int argc, char* argv[]) {
   // Create mpc traj publisher
   auto traj_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_saved_traj>(
-          FLAGS_channel_y, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+          FLAGS_channel_y, FLAGS_broadcast? &lcm_network: &lcm_local, 
+          TriggerTypeSet({TriggerType::kForced})));
 
   // Create a block that gets the stance leg
   std::vector<int> ss_fsm_states = {LEFT_STANCE, RIGHT_STANCE};
@@ -261,8 +265,8 @@ int DoMain(int argc, char* argv[]) {
                                              FLAGS_channel_x};
   systems::TwoLcmDrivenLoop<dairlib::lcmt_dairlib_signal,
                             dairlib::lcmt_robot_output>
-      loop(&lcm_local, std::move(owned_diagram), lcm_parsers, input_channels,
-           true);
+      loop(FLAGS_broadcast? &lcm_network: &lcm_local, std::move(owned_diagram), 
+      	   lcm_parsers, input_channels, true);
   if (!FLAGS_debug_mode) {
     loop.Simulate();
   } else {

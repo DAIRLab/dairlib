@@ -39,6 +39,8 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 
+DEFINE_bool(broadcast_robot_state, false, "broadcast to planner thread");
+
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive on.");
 DEFINE_int64(port, 25001, "Port to receive on.");
@@ -232,7 +234,8 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+          "CASSIE_STATE_DISPATCHER", FLAGS_broadcast_robot_state? 
+          &lcm_network : &lcm_local, {TriggerType::kForced}));
 
   // Create and connect contact estimation publisher.
   auto contact_pub =
@@ -246,12 +249,6 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_gm_contact_output_port(),
                   gm_contact_pub->get_input_port());
-
-  // Create and connect RobotOutput publisher (low-rate for the network)
-  auto net_state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
-          {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // Pass through to drop all but positions and velocities
   auto state_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
@@ -286,7 +283,15 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(*robot_output_sender, *state_pub);
 
-  builder.Connect(*robot_output_sender, *net_state_pub);
+  if (!FLAGS_broadcast_robot_state) {
+    // Create and connect RobotOutput publisher (low-rate for the network)
+    auto net_state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
+            {TriggerType::kPeriodic}, FLAGS_pub_rate));
+
+    builder.Connect(*robot_output_sender, *net_state_pub);
+  }
 
   // Create the diagram, simulator, and context.
   auto owned_diagram = builder.Build();

@@ -52,7 +52,8 @@ using drake::trajectories::PiecewisePolynomial;
 
 using systems::OutputVector;
 
-DEFINE_bool(broadcast, false, "broadcast between controller thread and planner thread");
+DEFINE_bool(broadcast, false,
+            "broadcast between controller thread and planner thread");
 
 // Planner settings
 DEFINE_int32(rom_option, -1, "See find_goldilocks_models.cc");
@@ -136,6 +137,12 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_debug_mode);
   }
 
+  // Create data folder if it doesn't exist
+  if (!CreateFolderIfNotExist(DIR_DATA)) return 0;
+  if (FLAGS_debug_mode) {
+    if (!CreateFolderIfNotExist(DIR_MODEL)) return 0;
+  }
+
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_feedback(0.0);
   addCassieMultibody(&plant_feedback, nullptr, true /*floating base*/,
@@ -178,11 +185,6 @@ int DoMain(int argc, char* argv[]) {
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
 
-  if (FLAGS_debug_mode) {
-    if (!CreateFolderIfNotExist(param.dir_model)) return 0;
-    if (!CreateFolderIfNotExist(param.dir_data)) return 0;
-  }
-
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
@@ -205,7 +207,7 @@ int DoMain(int argc, char* argv[]) {
   // Create mpc traj publisher
   auto traj_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_saved_traj>(
-          FLAGS_channel_y, FLAGS_broadcast? &lcm_network: &lcm_local, 
+          FLAGS_channel_y, FLAGS_broadcast ? &lcm_network : &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 
   // Create a block that gets the stance leg
@@ -265,8 +267,8 @@ int DoMain(int argc, char* argv[]) {
                                              FLAGS_channel_x};
   systems::TwoLcmDrivenLoop<dairlib::lcmt_dairlib_signal,
                             dairlib::lcmt_robot_output>
-      loop(FLAGS_broadcast? &lcm_network: &lcm_local, std::move(owned_diagram), 
-      	   lcm_parsers, input_channels, true);
+      loop(FLAGS_broadcast ? &lcm_network : &lcm_local,
+           std::move(owned_diagram), lcm_parsers, input_channels, true);
   if (!FLAGS_debug_mode) {
     loop.Simulate();
   } else {

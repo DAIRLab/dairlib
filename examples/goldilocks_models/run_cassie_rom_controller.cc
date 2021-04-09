@@ -331,7 +331,7 @@ int DoMain(int argc, char* argv[]) {
     // Create Lcm subscriber for MPC's output
     auto planner_output_subscriber =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
-            FLAGS_channel_y, lcm_local));
+            FLAGS_channel_y, FLAGS_broadcast? &lcm_network: &lcm_local));
 
     // Create a system that translate MPC lcm into trajectory
     vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {

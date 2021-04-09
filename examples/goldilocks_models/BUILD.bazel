@@ -186,3 +186,13 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
+
+cc_binary(
+    name = "run_rom_controller_switch",
+    srcs = ["run_rom_controller_switch.cc"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

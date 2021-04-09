@@ -5,6 +5,7 @@
 
 #include <string>
 #include <gflags/gflags.h>
+#include <dairlib/lcmt_target_standing_height.hpp>
 
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -81,6 +82,7 @@ using multibody::FixedJointEvaluator;
 using multibody::JwrtqdotToJwrtv;
 
 DEFINE_bool(broadcast, false, "broadcast between controller thread and planner thread");
+DEFINE_bool(hardware, false, "");
 
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 
@@ -245,10 +247,18 @@ int DoMain(int argc, char* argv[]) {
                          right_support_duration, double_support_duration};
     }
   }
-  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      plant_w_spr, fsm_states, state_durations);
+  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachineWithTrigger>(
+      plant_w_spr, fsm_states, state_durations, FLAGS_hardware);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
+  if (FLAGS_hardware) {
+    // Create Lcm subsriber for lcmt_target_standing_height
+    auto trigger_receiver = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_target_standing_height>(
+            "MPC_SWITCH", &lcm_local));
+    builder.Connect(trigger_receiver->get_output_port(),
+                    fsm->get_input_port_trigger());
+  }
 
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,

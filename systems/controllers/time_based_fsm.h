@@ -60,5 +60,41 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
   double eps_ = 1e-12;
 };
 
+
+class TimeBasedFiniteStateMachineWithTrigger :
+    public drake::systems::LeafSystem<double> {
+ public:
+  TimeBasedFiniteStateMachineWithTrigger(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::vector<int>& states,
+      const std::vector<double>& state_durations,
+      bool with_trigger_input_port = false);
+
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(state_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_trigger() const {
+    return this->get_input_port(trigger_port_);
+  }
+
+ private:
+  void CalcFiniteState(const drake::systems::Context<double>& context,
+                       drake::systems::BasicVector<double>* fsm_state) const;
+
+  int state_port_;
+  int trigger_port_;
+
+  std::vector<int> states_;
+  int initial_state_ = -1;
+  mutable double t0_ = -1;
+  bool with_trigger_input_port_;
+
+  std::vector<double> accu_state_durations_;
+  double period_;
+
+  double eps_ = 1e-12;
+};
+
+
 }  // namespace systems
 }  // namespace dairlib

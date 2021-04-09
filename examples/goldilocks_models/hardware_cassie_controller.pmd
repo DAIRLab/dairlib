@@ -1,12 +1,4 @@
 group "1.rom-space-controller" {
-    cmd "1.original-walking-controller" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
-        host = "localhost";
-    }
-    cmd "2.1.optimal-rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false";
-        host = "localhost";
-    }
     cmd "3.1.rom-planner (short time limit)" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false";
         host = "localhost";
@@ -23,55 +15,14 @@ group "1.rom-space-controller" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --n_step=2 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=false --log_solver_info=false --broadcast=true --channel_x=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
-    cmd "4.dispatcher-robot-out (lcm, floating-base)" {
+    cmd "1.dispatcher-robot-out (lcm, floating-base)" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=true";
         host = "dair-cassie";
     }
 }
 
-group "2.ik-controller" {
-    cmd "1.1.optimal-rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=true";
-        host = "localhost";
-    }
-    cmd "1.2.rom-planner" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=3 --time_limit=2 ";
-        host = "localhost";
-    }
-    cmd "1.2.rom-planner (short time limit)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=0.21 --log_solver_info=false";
-        host = "localhost";
-    }
-    cmd "1.3.ik_process" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_ik_process";
-        host = "localhost";
-    }
-}
-
-group "5.attic" {
-    cmd "1.simulator (with init state)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false";
-        host = "localhost";
-    }
-    cmd "2.simulator (with init state, mirrored robot)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false --start_with_right_stance=true";
-        host = "localhost";
-    }
-}
-
-group "3.drake-simulator" {
-    cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=0 --target_realtime_rate=0.1";
-        host = "localhost";
-    }
-    cmd "0.simulator(realtime)" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --init_height=1.0 --pause_second=4 --target_realtime_rate=1";
-        host = "localhost";
-    }
-}
-
 group "0.operator" {
-    cmd "1.state-visualizer-floating (from simulation)" {
+    cmd "1.state-visualizer-floating (from cassie dispatcher)" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }

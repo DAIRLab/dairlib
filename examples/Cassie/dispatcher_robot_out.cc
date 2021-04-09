@@ -294,9 +294,8 @@ int do_main(int argc, char* argv[]) {
     auto net_state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
             "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
-            {TriggerType::kPeriodic}, 0.01));*/
-
-    builder.Connect(*robot_output_sender, *net_state_pub);
+            {TriggerType::kPeriodic}, 0.01));
+    builder.Connect(*robot_output_sender, *net_state_pub);*/
 
     // Option 3 -- find a way to only publish to network after receiving message
     // from the planner.

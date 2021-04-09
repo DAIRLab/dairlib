@@ -191,6 +191,10 @@ int do_main(int argc, char* argv[]) {
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
+  // Set the current time for testing
+  //  auto& sim_diagram_context = simulator.get_mutable_context();
+  //  sim_diagram_context.SetTime(13.1415926);
+
   if (!FLAGS_time_stepping) {
     // simulator.get_mutable_integrator()->set_maximum_step_size(0.01);
     // simulator.get_mutable_integrator()->set_target_accuracy(1e-1);

@@ -149,6 +149,17 @@ cc_library(
 )
 
 cc_library(
+    name = "koopman_mpc",
+    srcs = ["koopman_mpc.cc"],
+    hdrs = ["koopman_mpc.h"],
+    deps = [
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "endeffector_position_controller",
     srcs = ["endeffector_position_controller.cc"],
     hdrs = ["endeffector_position_controller.h"],

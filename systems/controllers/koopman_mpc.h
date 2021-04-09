@@ -29,8 +29,8 @@
 namespace dairlib::systems::controllers {
 
 enum koopMpcStance {
-  kLeft,
-  kRight
+  kLeft=0,
+  kRight=1
 };
 
 typedef Eigen::VectorXd (*KoopmanLiftingFunc)(const Eigen::VectorXd& x);
@@ -42,13 +42,17 @@ typedef struct KoopmanDynamics {
   Eigen::MatrixXd b;
 };
 
+
 typedef struct KoopmanMpcMode {
   koopMpcStance stance;
   KoopmanDynamics dynamics;
   int N;
-  std::vector<drake::solvers::VectorXDecisionVariable> xx_;
-  std::vector<drake::solvers::VectorXDecisionVariable> uu_;
-
+  std::vector<drake::solvers::VectorXDecisionVariable> zz;
+  std::vector<drake::solvers::VectorXDecisionVariable> uu;
+  std::vector<drake::solvers::LinearEqualityConstraint*> stance_foot_constraints;
+  std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints;
+  std::vector<drake::solvers::LinearConstraint*> friction_constraints;
+  std::vector<drake::solvers::LinearConstraint*> reachability_constraints;
 };
 
 
@@ -58,7 +62,10 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
              const drake::systems::Context<double>* plant_context, double dt,
              bool planar, bool used_with_finite_state_machine = true);
 
-  void AddMode(KoopmanMpcMode mode) { modes_.push_back(mode); }
+  void AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, int N);
+
+  void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
+  void AddInputRegularization(const Eigen::MatrixXd& R);
 
   void BuildController();
 
@@ -74,14 +81,24 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
     return this->get_input_port(x_des_port_);
   }
 
+  void SetReachabilityLimit(const Eigen::MatrixXd& kl,
+      const std::vector<Eigen::VectorXd>& kn);
+
  private:
 
   Eigen::VectorXd SolveQp(const Eigen::VectorXd x,
                           const drake::systems::Context<double>& context);
+
   void MakeStanceFootConstraints();
   void MakeKinematicReachabilityConstraints();
   void MakeDynamicsConstraints();
   void MakeFrictionConeConstraints();
+  void MakeStateKnotConstraints();
+  void MakeInitialStateConstraint();
+  void UpdateInitialStateConstraint(const Eigen::VectorXd& x0);
+  void UpdateTrackingObjective(const Eigen::VectorXd& xdes);
+
+  Eigen::VectorXd CalcCentroidalStateFromPlant();
 
   // parameters
   bool use_fsm_;
@@ -98,8 +115,9 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  // system matrices
   std::vector<KoopmanMpcMode> modes_;
+  Eigen::VectorXd kin_lim_;
+  std::vector<Eigen::VectorXd> kin_nominal_;
 
   // variable counts
   int nx_;  // number of floating base states
@@ -107,21 +125,23 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int nxi_; // number of inflated states
   int nz_;  // number of koopman states
 
-  // constraints
-  std::vector<drake::solvers::LinearEqualityConstraint*> stance_foot_constraints_;
-  std::vector<drake::solvers::LinearConstraint*> reachability_constraints_;
-  std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
-  std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  int kLinearDim_;
+  int kAngularDim_;
 
+  // Solver
+  mutable drake::solvers::MathematicalProgram prog_;
+
+  // constraints
+  std::vector<drake::solvers::LinearEqualityConstraint*> state_knot_constraints_;
+  std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  std::vector<drake::solvers::QuadraticCost*> input_cost_;
+  drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
 
   // drake boilerplate
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::systems::Context<double>* plant_context_;
 
-  virtual Eigen::VectorXd LiftState(Eigen::VectorXd x) = 0;
-  virtual Eigen::VectorXd LiftInput(Eigen::VectorXd u) = 0;
-
+  // constants
   const int kNxPlanar = 6;
   const int kNx3d = 13;
   const int kNuPlanar = 6;

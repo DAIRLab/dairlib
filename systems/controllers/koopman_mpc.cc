@@ -10,10 +10,10 @@ using drake::systems::Context;
 namespace dairlib::systems::controllers{
 
 KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
-                       const Context<double> *plant_context,
+                       const Context<double> *plant_context, double dt,
                        bool planar, bool used_with_finite_state_machine) :
                        plant_(plant),
-                       plant_context_(plant_context){
+                       plant_context_(plant_context), dt_(dt){
 
   nx_ = planar ? kNxPlanar : kNx3d;
   nu_ = planar ? kNuPlanar : kNu3d;
@@ -31,5 +31,12 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   }
 }
 
+void KoopmanMPC::BuildController() {
+  DRAKE_DEMAND(!modes_.empty());
+  MakeDynamicsConstraints();
+  MakeFrictionConeConstraints();
+  MakeStanceFootConstraints();
+  MakeKinematicReachabilityConstraints();
+}
 
 }

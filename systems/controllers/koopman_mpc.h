@@ -28,31 +28,40 @@
 
 namespace dairlib::systems::controllers {
 
-/// Koopman MPC is an abstract class, requiring specific implementations to
-/// define the koopman lifting functions
-
 enum koopMpcStance {
   kLeft,
   kRight
 };
 
-typedef struct koopMpcMode {
-  koopMpcStance stance;
-  int N;
-  std::vector<drake::solvers::VectorXDecisionVariable> state_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> input_vars_;
+typedef Eigen::VectorXd (*KoopmanLiftingFunc)(const Eigen::VectorXd& x);
 
-} KoopmanMode;
+typedef struct KoopmanDynamics {
+  KoopmanLiftingFunc x_basis_func;
+  Eigen::MatrixXd A;
+  Eigen::MatrixXd B;
+  Eigen::MatrixXd b;
+};
+
+typedef struct KoopmanMpcMode {
+  koopMpcStance stance;
+  KoopmanDynamics dynamics;
+  int N;
+  std::vector<drake::solvers::VectorXDecisionVariable> xx_;
+  std::vector<drake::solvers::VectorXDecisionVariable> uu_;
+
+};
 
 
 class KoopmanMPC : public drake::systems::LeafSystem<double> {
  public:
   KoopmanMPC(const drake::multibody::MultibodyPlant<double>& plant,
-             const drake::systems::Context<double>* plant_context,
+             const drake::systems::Context<double>* plant_context, double dt,
              bool planar, bool used_with_finite_state_machine = true);
 
-  void AddMode(koopMpcMode mode, const Eigen::MatrixXd& A,
-               const Eigen::MatrixXd& B, const Eigen::MatrixXd& b);
+  void AddMode(KoopmanMpcMode mode) { modes_.push_back(mode); }
+
+  void BuildController();
+
 
   // Input ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -66,8 +75,17 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   }
 
  private:
+
+  Eigen::VectorXd SolveQp(const Eigen::VectorXd x,
+                          const drake::systems::Context<double>& context);
+  void MakeStanceFootConstraints();
+  void MakeKinematicReachabilityConstraints();
+  void MakeDynamicsConstraints();
+  void MakeFrictionConeConstraints();
+
   // parameters
   bool use_fsm_;
+  double dt_;
 
 
   // port indices
@@ -81,7 +99,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   // system matrices
-  std::vector<koopMpcMode> modes_;
+  std::vector<KoopmanMpcMode> modes_;
 
   // variable counts
   int nx_;  // number of floating base states
@@ -89,11 +107,9 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int nxi_; // number of inflated states
   int nz_;  // number of koopman states
 
-  // decision variables
-  std::vector<drake::solvers::VectorXDecisionVariable> xx_;
-  std::vector<drake::solvers::VectorXDecisionVariable> uu_;
-
   // constraints
+  std::vector<drake::solvers::LinearEqualityConstraint*> stance_foot_constraints_;
+  std::vector<drake::solvers::LinearConstraint*> reachability_constraints_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;

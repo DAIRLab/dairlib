@@ -1,8 +1,4 @@
 group "1.rom-space-controller" {
-    cmd "3.1.rom-planner (short time limit)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true";
-        host = "localhost";
-    }
     cmd "3.2.rom-planner (debug a given solve_idx)" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=false --n_step=2 --log_solver_info=true --debug_mode=true --solve_idx_for_read_from_file=325 --init_file=325_init_file.csv";
         host = "localhost";
@@ -12,19 +8,23 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "3.1.rom-planner" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --n_step=2 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=false --log_solver_info=false --broadcast=true --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER --broadcast=false";
         host = "localhost";
     }
-    cmd "1.dispatcher-robot-out (lcm, floating-base)" {
+    cmd "1.dispatcher-robot-out" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=true";
         host = "dair-cassie";
     }
-    cmd "1.dispatcher-robot-out (lcm, floating-base)" {
+    cmd "1.dispatcher-robot-out (run local)" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=false";
         host = "dair-cassie";
     }
-    cmd "2.2.optimal-rom-walking-controller" {
+    cmd "2.2.optimal-rom-walking-controller (run local)" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true";
+        host = "dair-cassie";
+    }
+    cmd "3.1.rom-planner (run local)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true";
         host = "dair-cassie";
     }
 }
@@ -39,7 +39,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=201";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=7";
         host = "localhost";
     }
     cmd "2.2. cassie planner pose (multi-pose); files with debug_ prefix" {
@@ -51,7 +51,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=14";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=13";
         host = "localhost";
     }
 }

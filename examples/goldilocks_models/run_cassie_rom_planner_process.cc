@@ -185,6 +185,12 @@ int DoMain(int argc, char* argv[]) {
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
 
+  // Store data
+  writeCSV(param.dir_data + string("n_step.csv"),
+           param.n_step * VectorXd::Ones(1));
+  writeCSV(param.dir_data + string("nodes_per_step.csv"),
+           param.knots_per_mode * VectorXd::Ones(1));
+
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
@@ -415,12 +421,6 @@ int DoMain(int argc, char* argv[]) {
     // Calc output
     auto output = rom_planner->AllocateOutput();
     rom_planner->CalcOutput(planner_context, output.get());
-
-    // Store data
-    writeCSV(param.dir_data + string("n_step.csv"),
-             param.n_step * VectorXd::Ones(1));
-    writeCSV(param.dir_data + string("nodes_per_step.csv"),
-             param.knots_per_mode * VectorXd::Ones(1));
 
     // Testing - checking the planner output
     const auto* abstract_value = output->get_data(0);

@@ -3,7 +3,7 @@ w_accel: 0.0
 #w_soft_constraint: 1000000
 w_soft_constraint: 10
 
-impact_threshold: 0.000
+impact_threshold: 0.025
 
 mu: 0.8
 
@@ -11,7 +11,7 @@ w_swing_toe: 0.1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 100
+w_hip_yaw: 10000
 hip_yaw_kp: 40
 hip_yaw_kd: 1
 w_hip_pitch: 100
@@ -22,8 +22,8 @@ hip_roll_kp: 40
 hip_roll_kd: 1
 
 PelvisW:
-  [10,     0,    0,
-    0,    10,    0,
+  [ 0,     0,    0,
+    0,     0,    0,
     0,     0, 2000]
 PelvisKp:
   [ 0,   0,    0,
@@ -52,7 +52,7 @@ SwingFootW:
 SwingFootKp:
   [200,   0,    0,
    0,   200,    0,
-   0,     0,  400]
+   0,     0,  100]
 SwingFootKd:
   [ 5,   0,   0,
     0,   5,   0,

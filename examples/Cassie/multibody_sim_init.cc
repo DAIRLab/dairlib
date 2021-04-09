@@ -68,6 +68,7 @@ DEFINE_double(start_time, 0.0,
 DEFINE_string(traj_name, "", "Name of the saved trajectory");
 DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
+DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -83,8 +84,6 @@ int do_main(int argc, char* argv[]) {
     multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
   }
 
-  std::string urdf;
-  urdf = "examples/Cassie/urdf/cassie_v2.urdf";
 
   if (FLAGS_terrain_height != 0) {
     Parser parser(&plant, &scene_graph);
@@ -96,12 +95,18 @@ int do_main(int argc, char* argv[]) {
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                      drake::math::RigidTransform<double>(offset));
   }
+  std::string urdf;
+  if (FLAGS_spring_model) {
+    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  } else {
+    urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  }
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf, true,
-                     true);
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+                     FLAGS_spring_model, true);
 
   plant.Finalize();
 
@@ -201,10 +206,11 @@ int do_main(int argc, char* argv[]) {
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
 
-  Eigen::VectorXd x_init =
-      map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
-
+  Eigen::VectorXd x_init = state_traj.value(FLAGS_start_time);
+  if(FLAGS_spring_model)
+    x_init = map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
   plant.SetPositionsAndVelocities(&plant_context, x_init);
+
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

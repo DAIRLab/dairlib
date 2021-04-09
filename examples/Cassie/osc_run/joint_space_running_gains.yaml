@@ -1,14 +1,14 @@
 # General OSC gains
 w_input: 0
 w_accel: 0.0
-w_soft_constraint: 1000000
-impact_threshold: 0.050
-mu: 0.4
+w_soft_constraint: 10000
+impact_threshold: 0.000
+mu: 0.8
 
 JointW:
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 JointKp:
-  [20, 20, 10, 10, 20, 20, 10, 10, 1000, 1000]
+  [200, 200, 200, 200, 200, 200, 200, 200, 1000, 1000]
 JointKd:
   [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
 

@@ -1,6 +1,6 @@
 group "1.rom-space-controller" {
     cmd "3.1.rom-planner (short time limit)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true";
         host = "localhost";
     }
     cmd "3.2.rom-planner (debug a given solve_idx)" {
@@ -19,11 +19,19 @@ group "1.rom-space-controller" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=true";
         host = "dair-cassie";
     }
+    cmd "1.dispatcher-robot-out (lcm, floating-base)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=false";
+        host = "dair-cassie";
+    }
+    cmd "2.2.optimal-rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true";
+        host = "dair-cassie";
+    }
 }
 
 group "0.operator" {
     cmd "1.state-visualizer-floating (from cassie dispatcher)" {
-        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=NETWORK_CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
     cmd "0.drake-director" {

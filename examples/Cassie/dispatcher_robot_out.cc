@@ -232,10 +232,6 @@ int do_main(int argc, char* argv[]) {
   // Create and connect RobotOutput publisher.
   auto robot_output_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
-  auto state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE_DISPATCHER", FLAGS_broadcast_robot_state? 
-          &lcm_network : &lcm_local, {TriggerType::kForced}));
 
   // Create and connect contact estimation publisher.
   auto contact_pub =
@@ -243,9 +239,9 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_contact_output_port(),
                   contact_pub->get_input_port());
-  //TODO(yangwill): Consider filtering contact estimation
-  auto gm_contact_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+  // TODO(yangwill): Consider filtering contact estimation
+  auto gm_contact_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_gm_contact_output_port(),
                   gm_contact_pub->get_input_port());
@@ -263,7 +259,8 @@ int do_main(int argc, char* argv[]) {
 
   auto imu_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
       state_estimator->get_robot_output_port().size(),
-      robot_output_sender->get_input_port_state().size() + robot_output_sender->get_input_port_effort().size(),
+      robot_output_sender->get_input_port_state().size() +
+          robot_output_sender->get_input_port_effort().size(),
       robot_output_sender->get_input_port_imu().size());
 
   builder.Connect(state_estimator->get_robot_output_port(),
@@ -280,10 +277,36 @@ int do_main(int argc, char* argv[]) {
                   imu_passthrough->get_input_port());
   builder.Connect(imu_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_imu());
+  if (FLAGS_broadcast_robot_state) {
+    // TODO: decide which one to use
+    // Option 1 -- publish only with one channel, 500 Hz
+    auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE_DISPATCHER", &lcm_network, {TriggerType::kPeriodic},
+            0.002));
+    builder.Connect(*robot_output_sender, *state_pub);
 
-  builder.Connect(*robot_output_sender, *state_pub);
+    // Option 2 -- two channels. One fast (200Hz) and one slower (100Hz).
+    /*auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(*robot_output_sender, *state_pub);
+    auto net_state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
+            {TriggerType::kPeriodic}, 0.01));*/
 
-  if (!FLAGS_broadcast_robot_state) {
+    builder.Connect(*robot_output_sender, *net_state_pub);
+
+    // Option 3 -- find a way to only publish to network after receiving message
+    // from the planner.
+
+  } else {
+    auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(*robot_output_sender, *state_pub);
+
     // Create and connect RobotOutput publisher (low-rate for the network)
     auto net_state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(

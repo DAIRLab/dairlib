@@ -2198,7 +2198,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       joint_names_for_joint_limit.push_back(asy_joint_name + l_r_pair.first);
     }
     for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
-      joint_names_for_joint_limit.push_back(sym_joint_names[i] + l_r_pair.first);
+      joint_names_for_joint_limit.push_back(sym_joint_names[i] +
+                                            l_r_pair.first);
     }
   }
 
@@ -2668,11 +2669,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                      -xf(n_q + vel_map.at("base_vy")));
         if (!one_dof_periodic_floating_base_vel) {
           trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                       xf(n_q + vel_map.at("base_wx")));
+                                       -xf(n_q + vel_map.at("base_wx")));
           trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                       -xf(n_q + vel_map.at("base_wy")));
+                                       xf(n_q + vel_map.at("base_wy")));
           trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                       xf(n_q + vel_map.at("base_wz")));
+                                       -xf(n_q + vel_map.at("base_wz")));
           trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
                                        xf(n_q + vel_map.at("base_vx")));
           trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
@@ -2717,11 +2718,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       //  in practice anyway)
       if (periodic_floating_base_vel) {
         trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                                     xf(n_q + vel_map.at("base_wx")));
+                                     -xf(n_q + vel_map.at("base_wx")));
         trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                                     -xf(n_q + vel_map.at("base_wy")));
+                                     xf(n_q + vel_map.at("base_wy")));
         trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                                     xf(n_q + vel_map.at("base_wz")));
+                                     -xf(n_q + vel_map.at("base_wz")));
         trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
                                      xf(n_q + vel_map.at("base_vx")));
         trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
@@ -2808,6 +2809,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         x(pos_map.at(member)) >=
         plant.GetJointByName(member).position_lower_limits()(0));
   }
+  /* // TODO: You can try this version:
+   prog_->AddBoundingBoxConstraint(plant.GetPositionLowerLimits(),
+                                  plant.GetPositionUpperLimits(), q_);*/
 
   // u limit
   if (pre_and_post_impact_efforts) {
@@ -3396,7 +3400,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   if (is_print_for_debugging) {
-    // w_sol is not assigned when snopt didn't solve the problem successfully 
+    // w_sol is not assigned when snopt didn't solve the problem successfully
     if (w_sol.size() > 0) {
       // Impulse variable's value
       for (int i = w_sol.size() - rs_dataset.countConstraints() - 1;

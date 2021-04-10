@@ -1,5 +1,6 @@
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 
+#include <math.h>     /* fmod */
 #include <algorithm>  // std::max
 
 #include "common/eigen_utils.h"
@@ -12,7 +13,6 @@
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
-#include <math.h>
 #include <string>
 
 using std::cout;
@@ -48,14 +48,12 @@ namespace dairlib {
 namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
-    const MultibodyPlant<double>& plant_feedback,
-    const MultibodyPlant<double>& plant_controls,
-    const std::vector<int>& left_right_support_fsm_states, double stride_period,
+    const MultibodyPlant<double>& plant_controls, double stride_period,
     const PlannerSetting& param, bool debug_mode)
     : nq_(plant_controls.num_positions()),
       nv_(plant_controls.num_velocities()),
+      nx_(plant_controls.num_positions() + plant_controls.num_velocities()),
       plant_controls_(plant_controls),
-      left_right_support_fsm_states_(left_right_support_fsm_states),
       stride_period_(stride_period),
       param_(param),
       debug_mode_(debug_mode) {
@@ -64,22 +62,18 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   DRAKE_DEMAND(param_.knots_per_mode > 0);
 
   // Input/Output Setup
+  stance_foot_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  phase_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_feedback.num_positions(),
-                                             plant_feedback.num_velocities(),
-                                             plant_feedback.num_actuators()))
+                        OutputVector<double>(plant_controls.num_positions(),
+                                             plant_controls.num_velocities(),
+                                             plant_controls.num_actuators()))
                     .get_index();
   fsm_and_lo_time_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
-
-  // Initialize the mapping from spring to no spring
-  map_position_from_spring_to_no_spring_ =
-      systems::controllers::PositionMapFromSpringToNoSpring(plant_feedback,
-                                                            plant_controls);
-  map_velocity_from_spring_to_no_spring_ =
-      systems::controllers::VelocityMapFromSpringToNoSpring(plant_feedback,
-                                                            plant_controls);
 
   // Create index maps
   positions_map_ = multibody::makeNameToPositionsMap(plant_controls);
@@ -249,100 +243,53 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
-    const Context<double>& context,
-    dairlib::lcmt_trajectory_block* traj_msg) const {
+    const Context<double>& context, dairlib::lcmt_saved_traj* traj_msg) const {
+  ///
+  /// Read from input ports
+  ///
+
   // Read in current robot state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd x_init(map_position_from_spring_to_no_spring_.rows() +
-                  map_velocity_from_spring_to_no_spring_.rows());
-  x_init << map_position_from_spring_to_no_spring_ *
-                robot_output->GetPositions(),
-      map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
+  VectorXd x_init = robot_output->GetState();
 
-  // Read in fsm state and lift-off time
-  const BasicVector<double>* fsm_and_lo_time_port =
-      this->EvalVectorInput(context, fsm_and_lo_time_port_);
-  int fsm_state = (int)fsm_and_lo_time_port->get_value()(0);
-  double lift_off_time = fsm_and_lo_time_port->get_value()(1);
+  // Get phase in the first mode
+  const BasicVector<double>* phase_port =
+      this->EvalVectorInput(context, phase_port_);
+  double init_phase = phase_port->get_value()(0);
 
-  // Get time
+  // Get stance foot
+  bool is_right_stance =
+      (bool)this->EvalVectorInput(context, stance_foot_port_)->get_value()(0);
+  bool start_with_left_stance = !is_right_stance;
+
+  // Get current time
   double timestamp = robot_output->get_timestamp();
   auto current_time = static_cast<double>(timestamp);
 
-  // Get time in the first mode
-  // TODO(yminchen):
-  //  1. move time_in_first_mode out to a new block
-  //  2. move x_init rotation and translation to a new block
-  //  The above change would help readability and presentation. It helps you in
-  //  testing the code as well.
-  // TODO(yminchen): think about if you need to rotate the coordinates back
-  //  after solver gives a desired traj
-
-  double time_in_first_mode = current_time - lift_off_time;
-
-  // Calc phase
-  double init_phase = time_in_first_mode / stride_period_;
-  if (init_phase >= 1) {
-    cout << "WARNING: phase >= 1. There might be a bug somewhere, "
-            "since we are using a time-based fsm\n";
-    init_phase = 1 - 1e-8;
-  }
-
-  ///
-  /// Rotate Cassie's floating base configuration
-  ///
-  // Rotate Cassie's floating base configuration to face toward world's x
-  // direction and translate the x and y position to the origin
-
-  // TODO: Our original plan was to move the touchdown state to the origin.
-  //  But right now we move the current state (instead of touchdown state) to
-  //  the corresponding x-y position based on init phase and desired traj
-
-  // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
-  // frame is in the world’s x-z plane and toward world’s x axis.
-  Quaterniond quat(x_init(0), x_init(1), x_init(2), x_init(3));
-  Vector3d pelvis_x = quat.toRotationMatrix().col(0);
-  pelvis_x(2) = 0;
-  Vector3d world_x(1, 0, 0);
-  Quaterniond relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
-  Quaterniond rotated_quat = relative_qaut * quat;
-  x_init.head(4) << rotated_quat.w(), rotated_quat.vec();
-  // cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
-  // cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() <<
-  // endl;
-
-  // Shift pelvis in x, y direction
-  x_init(positions_map_.at("base_x")) =
-      init_phase * param_.final_position_x / param_.n_step;
-  x_init(positions_map_.at("base_y")) = 0;
-  // cout << "x(\"base_x\") = " << x_init(positions_map_.at("base_x")) << endl;
-  // cout << "x(\"base_y\") = " << x_init(positions_map_.at("base_y")) << endl;
-
-  // Also need to rotate floating base velocities (wrt global frame)
-  x_init.segment<3>(nq_) =
-      relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_);
-  x_init.segment<3>(nq_ + 3) =
-      relative_qaut.toRotationMatrix() * x_init.segment<3>(nq_ + 3);
+  // Get lift-off time
+  const BasicVector<double>* fsm_and_lo_time_port =
+      this->EvalVectorInput(context, fsm_and_lo_time_port_);
+  double lift_off_time = fsm_and_lo_time_port->get_value()(1);
 
   if (debug_mode_) {
     cout << "x_init used for the planner = " << x_init.transpose() << endl;
   }
 
   ///
-  /// Construct rom traj opt
+  /// Decide if we need to re-plan (not ideal code. See header file)
   ///
 
-  // Find fsm_state in left_right_support_fsm_states_
-  bool is_single_support_phase =
-      find(left_right_support_fsm_states_.begin(),
-           left_right_support_fsm_states_.end(),
-           fsm_state) != left_right_support_fsm_states_.end();
-  if (!is_single_support_phase) {
-    // do nothing here to use the previous start_with_left_stance_
-  } else {
-    start_with_left_stance_ = fsm_state == left_right_support_fsm_states_.at(0);
+  bool need_to_replan = ((current_time - timestamp_of_previous_plan_) >
+                         min_time_difference_for_replanning_);
+  if (!need_to_replan) {
+    *traj_msg = previous_output_msg_;
+    return;
   }
+
+  ///
+  /// Construct rom traj opt
+  ///
 
   // Prespecify the number of knot points
   std::vector<int> num_time_samples;
@@ -361,7 +308,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (knots_first_mode == 2) {
     min_dt[0] = 1e-3;
   }
-  cout << "time_in_first_mode = " << time_in_first_mode << endl;
   cout << "init_phase = " << init_phase << endl;
   cout << "knots_first_mode = " << knots_first_mode << endl;
   cout << "first_mode_phase_index = " << first_mode_phase_index << endl;
@@ -380,7 +326,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   auto start = std::chrono::high_resolution_clock::now();
   RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
                            state_mirror_, left_contacts_, right_contacts_,
-                           joint_name_lb_ub_, x_init, start_with_left_stance_,
+                           joint_name_lb_ub_, x_init, start_with_left_stance,
                            param_.zero_touchdown_impact,
                            debug_mode_ /*print_status*/);
 
@@ -388,32 +334,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "Other constraints/costs and initial guess===============\n";
   }
   // Time step constraints
-  int n_time_samples =
-      std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
-      num_time_samples.size() + 1;
-  // TODO: play with dt_value. Also don't hard-coded dt_value
-  double dt_value =
-      stride_period_ / (param_.knots_per_mode - 1);  // h_guess_(1);
-  if (knots_first_mode == 2) {
-    // Note that the timestep size of the first mode should be different from
-    // the rest because the robot could be very close to the touchdown
-    double remaining_time_of_first_mode =
-        std::max(stride_period_ - time_in_first_mode, min_dt[0]);
-    // duration of the whole trajopt = first mode's time + the rest modes'
-    double duration =
-        remaining_time_of_first_mode + dt_value * (n_time_samples - 2);
-    trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration, duration,
-                                  param_.equalize_timestep_size,
-                                  remaining_time_of_first_mode);
-  } else {
-    trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
-                                  dt_value * (n_time_samples - 1),
-                                  param_.equalize_timestep_size);
-  }
+  double first_mode_duration =
+      stride_period_ - fmod(current_time, stride_period_);
+  double remaining_mode_duration = stride_period_;
+  trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
+                                param_.equalize_timestep_size,
+                                first_mode_duration, remaining_mode_duration);
 
   // Constraints for fourbar linkage
   // Note that if the initial pose in the constraint doesn't obey the fourbar
   // linkage relationship. You shouldn't add constraint to the initial pose here
+  // TODO: update this part.
   /*double fourbar_angle = 13.0 / 180.0 * M_PI;
   auto q0_var =
   trajopt.x0_vars_by_mode(0).head(nq_);
@@ -536,98 +467,162 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   solver_->Solve(trajopt, trajopt.initial_guess(), solver_option_, &result);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
-  cout << "    Current time: " << current_time << " | ";
+  cout << "    Time of arrival: " << current_time << " | ";
   cout << "Solve time:" << elapsed.count() << " | ";
   SolutionResult solution_result = result.get_solution_result();
   cout << solution_result << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
   // Get solution
-  VectorXd time_at_knots = trajopt.GetSampleTimes(result);
-  MatrixXd state_at_knots = trajopt.GetStateSamples(result);
+  // The time starts at 0. (by accumulating dt's)
+  std::vector<Eigen::VectorXd> time_breaks;
+  std::vector<Eigen::MatrixXd> state_samples;
+  trajopt.GetStateSamples(result, &state_samples, &time_breaks);
 
-  // Shift the timestamps by lift-off time
-  time_at_knots.array() += lift_off_time;
-
-  // Extract and save solution into files
-  //  if (debug_mode_) {
-  //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >
-  //  0.5)) { if (!result.is_success()) {
-  if (elapsed.count() > 0.8) {
-    VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
-    writeCSV(param_.dir_data + string("z.csv"), z_sol);
-    // cout << trajopt.decision_variables() << endl;
-
-    MatrixXd input_at_knots = trajopt.GetInputSamples(result);
-    writeCSV(param_.dir_data + string("time_at_knots.csv"), time_at_knots);
-    writeCSV(param_.dir_data + string("state_at_knots.csv"), state_at_knots);
-    writeCSV(param_.dir_data + string("input_at_knots.csv"), input_at_knots);
-
-    MatrixXd x0_each_mode(nq_ + nv_, num_time_samples.size());
-    MatrixXd xf_each_mode(nq_ + nv_, num_time_samples.size());
-    for (uint i = 0; i < num_time_samples.size(); i++) {
-      x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
-      xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
-    }
-    writeCSV(param_.dir_data + string("x0_each_mode.csv"), x0_each_mode);
-    writeCSV(param_.dir_data + string("xf_each_mode.csv"), xf_each_mode);
-
-    // Save trajectory to file
-    string file_name = "rom_trajectory";
-    RomPlannerTrajectory saved_traj(
-        trajopt, result, file_name,
-        "Decision variables and state/input trajectories");
-    saved_traj.WriteToFile(param_.dir_data + file_name);
-    std::cout << "Wrote to file: " << param_.dir_data + file_name << std::endl;
+  // Shift the timestamps by the current time
+  for (auto& time_break_per_mode : time_breaks) {
+    time_break_per_mode.array() += current_time;
   }
+
+  // TODO(yminchen): Note that you will to rotate the coordinates back if the
+  //  ROM is dependent on robot's x, y and yaw.
 
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
-  // TODO(yminchen): there is a bug: you are currenlty using
-  //  trajopt.GetStateSamples(result), but the trajectory is discontinous
-  //  between mode (even the position jumps because left vs right stance leg).
-  //  You probably need to send bigger lcmtypes with multiple blocks, and
-  //  reconstruct it into piecewise polynomial in rom_traj_receiver.cc
+  // Note that the trajectory is discontinuous between mode (even the position
+  // jumps because left vs right stance leg).
+  traj_msg->metadata.description = drake::solvers::to_string(solution_result);
+  traj_msg->num_trajectories = param_.n_step + 2;
 
-  //  if (true) {
-  //  if (!result.is_success() || !start_with_left_stance_) {
-  if (!result.is_success()) {
-    // If the solution failed, send an empty-size data. This tells the
-    // controller thread to fall back to LIPM traj
-    // Note that we cannot really send an empty traj because we use CubicHermite
-    // in construction in rom_traj_receiver. We need at least one segment
-    // TODO(yminchen): you can create lcmt_planner_traj which contains a flag
-    //  solutino_found and a lcmt_trajectory_block
-    time_at_knots.resize(2);
-    time_at_knots << -std::numeric_limits<double>::infinity(), 0;
-    state_at_knots.resize(state_at_knots.rows(), 2);
+  traj_msg->trajectory_names.resize(param_.n_step + 2);
+  traj_msg->trajectories.resize(param_.n_step + 2);
+
+  // 1. ROM trajectory
+  lcmt_trajectory_block traj_block;
+  int traj_idx;
+  traj_block.num_datatypes = state_samples[0].rows();
+  traj_block.datatypes.resize(traj_block.num_datatypes);
+  traj_block.datatypes = vector<string>(traj_block.num_datatypes, "");
+  for (traj_idx = 0; traj_idx < param_.n_step; traj_idx++) {
+    /// Create lcmt_trajectory_block
+    traj_block.trajectory_name = to_string(traj_idx);
+    traj_block.num_points = time_breaks[traj_idx].size();
+
+    // Reserve space for vectors, then copy Eigentypes to std::vector
+    traj_block.time_vec.resize(traj_block.num_points);
+    traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[traj_idx]);
+
+    traj_block.datapoints.clear();
+    for (int j = 0; j < traj_block.num_datatypes; ++j) {
+      traj_block.datapoints.push_back(
+          CopyVectorXdToStdVector(state_samples[traj_idx].row(j)));
+    }
+
+    /// Assign lcmt_trajectory_block
+    traj_msg->trajectories[traj_idx] = traj_block;
+    traj_msg->trajectory_names[traj_idx] = to_string(traj_idx);
   }
-
-  traj_msg->trajectory_name = "";
-  traj_msg->num_points = time_at_knots.size();
-  traj_msg->num_datatypes = state_at_knots.rows();
-
-  // Reserve space for vectors
-  traj_msg->time_vec.resize(traj_msg->num_points);
-  traj_msg->datatypes.resize(traj_msg->num_datatypes);
-  traj_msg->datapoints.clear();
-
-  // Copy Eigentypes to std::vector
-  traj_msg->time_vec = CopyVectorXdToStdVector(time_at_knots);
-  traj_msg->datatypes = vector<string>(traj_msg->num_datatypes, "");
-  for (int i = 0; i < traj_msg->num_datatypes; ++i) {
-    traj_msg->datapoints.push_back(
-        CopyVectorXdToStdVector(state_at_knots.row(i)));
+  // 2. Store start/end FOM states into one trajectory block
+  // The order is mode_0_start, mode_0_end, mode_1_start, ...
+  traj_block.num_datatypes = nx_;
+  traj_block.datatypes.resize(nx_);
+  traj_block.datatypes = vector<string>(nx_, "");
+  traj_block.trajectory_name = "FOM";
+  traj_block.num_points = 2 * param_.n_step;
+  traj_block.time_vec.resize(2 * param_.n_step);
+  // TODO: you can actually use the touchdown time here, but not sure if it's
+  //  worth it
+  traj_block.time_vec = vector<double>(2 * param_.n_step, 0);
+  // traj_block.time_vec = CopyVectorXdToStdVector(time_breaks[i]);
+  traj_block.datapoints.clear();
+  Eigen::MatrixXd FOM_eigen_matrix(nx_, 2 * param_.n_step);
+  for (int i = 0; i < param_.n_step; ++i) {
+    FOM_eigen_matrix.col(2 * i) =
+        result.GetSolution(trajopt.x0_vars_by_mode(i));
+    FOM_eigen_matrix.col(2 * i + 1) =
+        result.GetSolution(trajopt.xf_vars_by_mode(i));
   }
+  for (int j = 0; j < nx_; ++j) {
+    traj_block.datapoints.push_back(
+        CopyVectorXdToStdVector(FOM_eigen_matrix.row(j)));
+  }
+  traj_msg->trajectories[traj_idx] = traj_block;
+  traj_msg->trajectory_names[traj_idx] = "FOM";
+  traj_idx++;
+  // 3. stance foot (left is 0, right is 1)
+  traj_block.num_datatypes = 1;
+  traj_block.datatypes.resize(1);
+  traj_block.datatypes = vector<string>(1, "");
+  traj_block.trajectory_name = "stance_foot";
+  traj_block.num_points = param_.n_step;
+  traj_block.time_vec.resize(param_.n_step);
+  traj_block.time_vec = vector<double>(param_.n_step, 0);
+  traj_block.datapoints.clear();
+  VectorXd stance_foot_vec = VectorXd::Zero(param_.n_step);
+  for (int i = start_with_left_stance ? 1 : 0; i < param_.n_step; i += 2) {
+    stance_foot_vec(i) = 1;
+  }
+  traj_block.datapoints.push_back(CopyVectorXdToStdVector(stance_foot_vec));
+  traj_msg->trajectories[traj_idx] = traj_block;
+  traj_msg->trajectory_names[traj_idx] = "stance_foot";
+  traj_idx++;
 
-  // Testing
-  //  if (elapsed.count() > 0.5) {
-  if ((elapsed.count() > 0.7) && start_with_left_stance_) {
-    //  if (!result.is_success() && start_with_left_stance_) {
-    //  if ((result.get_optimal_cost() > 50) && start_with_left_stance_) {
-    cout << "x_init = " << x_init << endl;
+  // Store the previous message
+  previous_output_msg_ = *traj_msg;
+  timestamp_of_previous_plan_ = current_time;
+
+  ///
+  /// For debugging
+  ///
+
+  // Extract and save solution into files (for debugging)
+  //  if (debug_mode_) {
+  //  if (debug_mode_ || (result.get_optimal_cost() > 50) || (elapsed.count() >
+  //  0.5)) {
+  //  if (!result.is_success()) {
+  if (debug_mode_ || (elapsed.count() > 0.8)) {
+    string dir_data = param_.dir_data;
+
+    /// Save the solution vector
+    VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
+    writeCSV(dir_data + string("z.csv"), z_sol);
+    // cout << trajopt.decision_variables() << endl;
+
+    /// Save traj to csv
+    for (int i = 0; i < param_.n_step; i++) {
+      writeCSV(dir_data + string("time_at_knots" + to_string(i) + ".csv"),
+               time_breaks[i]);
+      writeCSV(dir_data + string("state_at_knots" + to_string(i) + ".csv"),
+               state_samples[i]);
+    }
+    MatrixXd input_at_knots = trajopt.GetInputSamples(result);
+    writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
+
+    MatrixXd x0_each_mode(nx_, num_time_samples.size());
+    MatrixXd xf_each_mode(nx_, num_time_samples.size());
+    for (uint i = 0; i < num_time_samples.size(); i++) {
+      x0_each_mode.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
+      xf_each_mode.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
+    }
+    writeCSV(dir_data + string("x0_each_mode.csv"), x0_each_mode);
+    writeCSV(dir_data + string("xf_each_mode.csv"), xf_each_mode);
+
+    /// Save trajectory to lcm
+    string file_name = "rom_trajectory";
+    RomPlannerTrajectory saved_traj(
+        trajopt, result, file_name,
+        "Decision variables and state/input trajectories");
+    saved_traj.WriteToFile(dir_data + file_name);
+    std::cout << "Wrote to file: " << dir_data + file_name << std::endl;
+
+    /// Save files for reproducing the same result
+    // cout << "x_init = " << x_init << endl;
     writeCSV(param_.dir_data + string("x_init_test.csv"), x_init);
+    writeCSV(param_.dir_data + string("init_phase_test.csv"),
+             init_phase * VectorXd::Ones(1));
+    writeCSV(param_.dir_data + string("is_right_stance_test.csv"),
+             is_right_stance * VectorXd::Ones(1));
   }
 }
 

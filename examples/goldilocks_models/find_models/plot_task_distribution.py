@@ -27,17 +27,15 @@ rom = rom3
 task_space = task_space3
 method ='(nongrid)'
 iter_start = 2
-iter_end = 140
+iter_end = 200
 samples_number = 36
-directory = file_dir+robot+'3D_LIP/4D_task_space/' \
-                           'nongrid_large_gi_sl_v_tr_without_snopt_scaling_third_monomial_much_smaller_momentum/'
+directory = file_dir+robot+'robot_1/'
 label_name = ['stride_length', 'ground_incline', 'velocity', 'turning_rate']
 
 
 def plot_task():
     task = np.zeros([(iter_end-iter_start+1)*samples_number, 4])
     for i in range(iter_start, iter_end+1):
-        print(i)
         for j in range(samples_number):
             task[(i-iter_start)*samples_number+j, :] = np.genfromtxt(directory+str(i)+'_'+str(j)+'_task.csv', delimiter=",")
     axs[0, 0].scatter(range(task.shape[0]), task[:, 0], label=label_name[0])

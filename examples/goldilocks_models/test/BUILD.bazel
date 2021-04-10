@@ -30,25 +30,3 @@ cc_binary(
         "@gflags",
     ],
 )
-
-cc_binary(
-    name = "run_cassie_walking_controller_test2",
-    srcs = ["run_cassie_walking_controller_test2.cc"],
-    deps = [
-        "//common:eigen_utils",
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie:simulator_drift",
-        "//examples/Cassie/osc",
-        "//examples/goldilocks_models:goldilocks_utils",
-        "//examples/goldilocks_models:reduced_order_models",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems/controllers:fsm_event_time",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/framework:vector",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)

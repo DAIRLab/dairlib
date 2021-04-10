@@ -1,4 +1,4 @@
-#include "systems/drake_signal_lcm_systems.h"
+#include "systems/dairlib_signal_lcm_systems.h"
 
 namespace dairlib {
 namespace systems {
@@ -9,21 +9,21 @@ using drake::systems::LeafSystem;
 using std::string;
 
 /*--------------------------------------------------------------------------*/
-// methods implementation for DrakeSignalReceiver.
+// methods implementation for DairlibSignalReceiver.
 
-DrakeSignalReceiver::DrakeSignalReceiver(int signal_size)
+DairlibSignalReceiver::DairlibSignalReceiver(int signal_size)
     : signal_size_(signal_size) {
-  this->DeclareAbstractInputPort("lcmt_drake_signal",
-                                 drake::Value<drake::lcmt_drake_signal>{});
+  this->DeclareAbstractInputPort("lcmt_dairlib_signal",
+                                 drake::Value<dairlib::lcmt_dairlib_signal>{});
   this->DeclareVectorOutputPort(BasicVector<double>(signal_size),
-                                &DrakeSignalReceiver::UnpackLcmIntoVector);
+                                &DairlibSignalReceiver::UnpackLcmIntoVector);
 }
 
-void DrakeSignalReceiver::UnpackLcmIntoVector(
+void DairlibSignalReceiver::UnpackLcmIntoVector(
     const Context<double>& context, BasicVector<double>* output) const {
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
-  const auto& input_msg = input->get_value<drake::lcmt_drake_signal>();
+  const auto& input_msg = input->get_value<dairlib::lcmt_dairlib_signal>();
   for (int i = 0; i < signal_size_; i++) {
     output->get_mutable_value()(i) = input_msg.val[i];
   }
@@ -40,7 +40,7 @@ DrakeSignalSender::DrakeSignalSender(
 }
 
 void DrakeSignalSender::PackVectorIntoLcm(const Context<double>& context,
-                                          drake::lcmt_drake_signal* msg) const {
+                                          dairlib::lcmt_dairlib_signal* msg) const {
   const auto* input_vector = this->EvalVectorInput(context, 0);
 
   msg->dim = signal_size_;
@@ -50,7 +50,7 @@ void DrakeSignalSender::PackVectorIntoLcm(const Context<double>& context,
     msg->val[i] = input_vector->get_value()(i);
     msg->coord[i] = signal_names_[i];
   }
-  msg->timestamp = context.get_time() * 1e6;
+  msg->utime = context.get_time() * 1e6;
 }
 
 }  // namespace systems

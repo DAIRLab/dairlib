@@ -12,8 +12,8 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
-
 #include "drake/common/yaml/yaml_read_archive.h"
+
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -261,9 +261,13 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
-  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
-                                      W_com * FLAGS_cost_weight_multiplier,
-                                      plant_w_springs, plant_wo_springs);
+  //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
+  //                                      W_com * FLAGS_cost_weight_multiplier,
+  //                                      plant_w_springs, plant_wo_springs);
+  TransTaskSpaceTrackingData center_of_mass_traj(
+      "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
+      plant_w_springs, plant_wo_springs);
+  center_of_mass_traj.AddPointToTrack("pelvis");
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   RotTaskSpaceTrackingData pelvis_rot_traj(

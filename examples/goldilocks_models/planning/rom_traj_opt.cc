@@ -248,34 +248,28 @@ RomTrajOpt::RomTrajOpt(
   }
 }
 
-void RomTrajOpt::AddTimeStepConstraint(std::vector<double> minimum_timestep,
-                                       std::vector<double> maximum_timestep,
-                                       bool fix_duration, double duration,
-                                       bool equalize_timestep_size,
-                                       double dt_0) {
-  if (equalize_timestep_size && fix_duration) {
-    if (dt_0 > 0) {
-      double dt_value = (duration - dt_0) / (N() - 2);
-      PrintStatus("Fix all timestep size (except the first one) to " +
-                  to_string(dt_value));
-      AddBoundingBoxConstraint(dt_0, dt_0, timestep(0));
-      for (int i = 1; i < this->N() - 1; i++) {
-        AddBoundingBoxConstraint(dt_value, dt_value, timestep(i));
-      }
-    } else {
-      double dt_value = duration / (N() - 1);
-      PrintStatus("Fix all timestep size to " + to_string(dt_value));
-      for (int i = 0; i < this->N() - 1; i++) {
-        AddBoundingBoxConstraint(dt_value, dt_value, timestep(i));
+void RomTrajOpt::AddTimeStepConstraint(
+    std::vector<double> minimum_timestep, std::vector<double> maximum_timestep,
+    bool fix_duration, bool equalize_timestep_size, double first_mode_duration,
+    double remaining_mode_duration_per_mode) {
+  if (fix_duration && equalize_timestep_size) {
+    double dt_first_mode = first_mode_duration / (mode_lengths_[0] - 1);
+    PrintStatus("Fix all timestep size in the first mode " +
+                to_string(dt_first_mode));
+    for (int i = 0; i < mode_lengths_[0] - 1; i++) {
+      AddBoundingBoxConstraint(dt_first_mode, dt_first_mode, timestep(i));
+    }
+    if (num_modes_ > 1) {
+      double dt_rest_of_modes =
+          remaining_mode_duration_per_mode / (mode_lengths_[1] - 1);
+      PrintStatus("Fix all timestep size in the rest of the modes to " +
+                  to_string(dt_rest_of_modes));
+      for (int i = mode_lengths_[0] - 1; i < this->N() - 1; i++) {
+        AddBoundingBoxConstraint(dt_rest_of_modes, dt_rest_of_modes,
+                                 timestep(i));
       }
     }
   } else {
-    // Duration bound
-    if (fix_duration) {
-      PrintStatus("Fix time duration: total duration = " + to_string(duration));
-      AddDurationBounds(duration, duration);
-    }
-
     for (int i = 0; i < num_modes_; i++) {
       // Set timestep bounds
       for (int j = 0; j < mode_lengths_[i] - 1; j++) {
@@ -290,20 +284,21 @@ void RomTrajOpt::AddTimeStepConstraint(std::vector<double> minimum_timestep,
       }
     }
 
-    // Make the timesteps between modes the same
+    // Duration bound
+    if (fix_duration) {
+      double duration = first_mode_duration +
+                        remaining_mode_duration_per_mode * (num_modes_ - 1);
+      PrintStatus("Fix time duration: total duration = " + to_string(duration));
+      AddDurationBounds(duration, duration);
+    }
+
+    // Make the timesteps between modes the same (except the first one)
     if (equalize_timestep_size) {
-      PrintStatus("Equalize time steps between modes");
-      for (int i = 1; i < num_modes_; i++) {
+      PrintStatus("Equalize time steps between modes (except the first one)");
+      for (int i = 2; i < num_modes_; i++) {
         if (mode_start_[i] > 0) {
-          if (i == 1) {
-            if (dt_0 <= 0) {
-              AddLinearConstraint(timestep(mode_start_[i] - 1) ==
-                                  timestep(mode_start_[i]));
-            }
-          } else {
-            AddLinearConstraint(timestep(mode_start_[i] - 1) ==
-                                timestep(mode_start_[i]));
-          }
+          AddLinearConstraint(timestep(mode_start_[i] - 1) ==
+                              timestep(mode_start_[i]));
         }
       }
     }
@@ -408,6 +403,31 @@ void RomTrajOpt::GetStateAndDerivativeSamples(
     }
     state_samples->push_back(states_i);
     derivative_samples->push_back(derivatives_i);
+    state_breaks->push_back(times_i);
+  }
+}
+
+void RomTrajOpt::GetStateSamples(
+    const drake::solvers::MathematicalProgramResult& result,
+    std::vector<Eigen::MatrixXd>* state_samples,
+    std::vector<Eigen::VectorXd>* state_breaks) const {
+  DRAKE_ASSERT(state_samples->empty());
+  DRAKE_ASSERT(state_breaks->empty());
+
+  VectorXd times(GetSampleTimes(result));
+
+  for (int i = 0; i < num_modes_; i++) {
+    MatrixXd states_i(num_states(), mode_lengths_[i]);
+    VectorXd times_i(mode_lengths_[i]);
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      int k_data = mode_start_[i] + j;
+
+      VectorX<double> zk = result.GetSolution(state_vars_by_mode(i, j));
+
+      states_i.col(j) = drake::math::DiscardGradient(zk);
+      times_i(j) = times(k_data);
+    }
+    state_samples->push_back(states_i);
     state_breaks->push_back(times_i);
   }
 }

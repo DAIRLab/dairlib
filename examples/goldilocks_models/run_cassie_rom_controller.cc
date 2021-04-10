@@ -1,7 +1,7 @@
 // (This file is modified from examples/Cassie/run_osc_walking_controller.cc)
 
-// TODO(yminchen): this file will be the main file that publish OSC output for
-//  ROM MPC
+// TODO(yminchen): Keep in mind that you need to rotate the planned traj back
+//  from local to global frame if the ROM is dependent on x, y or yaw.
 
 #include <string>
 #include <gflags/gflags.h>
@@ -9,15 +9,18 @@
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_vector.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "examples/goldilocks_models/controller/local_lipm_traj_gen.h"
+#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 #include "examples/goldilocks_models/controller/planned_traj_guard.h"
 #include "examples/goldilocks_models/controller/rom_traj_receiver.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
@@ -30,13 +33,14 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
-#include "systems/drake_signal_lcm_systems.h"
+#include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/lcmt_drake_signal.hpp"
+#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/primitives/multiplexer.h"
@@ -75,14 +79,10 @@ using multibody::FixedJointEvaluator;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_double(
-    max_solve_time, 0.2,
-    "Maximum solve time for the planner before we switch to backup trajs");
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_double(const_walking_speed_x, 0.5, "Walking speed in local x axis");
 
-DEFINE_int32(iter, 30, "The iteration # of the theta that you use");
-DEFINE_bool(start_with_right_stance, false, "");
+DEFINE_bool(start_with_left_stance, true, "");
 
 //
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -103,20 +103,16 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
-DEFINE_int32(
-    footstep_option, 1,
-    "0 uses the capture point\n"
-    "1 uses the neutral point derived from LIPM given the stance duration");
 
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
-// Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
-// publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
-// performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
-// Maybe we need to update the lcm driven loop to clear the queue of lcm message
-// if it's more than one message?
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  // Read-in the parameters
+  OSCRomWalkingGains gains;
+  const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -146,8 +142,8 @@ int DoMain(int argc, char* argv[]) {
   const std::string dir_model =
       "../dairlib_data/goldilocks_models/planning/robot_1/models/";
   std::unique_ptr<ReducedOrderModel> rom =
-      CreateRom(4 /*rom_option*/, 1 /*robot_option*/, plant_wo_springs, true);
-  ReadModelParameters(rom.get(), dir_model, FLAGS_iter);
+      CreateRom(gains.rom_option, 1 /*robot_option*/, plant_wo_springs, true);
+  ReadModelParameters(rom.get(), dir_model, gains.model_iter);
 
   // Mirrored reduced order model
   int robot_option = 1;
@@ -163,31 +159,31 @@ int DoMain(int argc, char* argv[]) {
       "../dairlib_data/goldilocks_models/planning/robot_1/data/";
   VectorXd time_at_knots =
       readCSV(dir_data + std::string("time_at_knots.csv")).col(0);
+  cout << "time_at_knots= " << time_at_knots.transpose() << endl;
   MatrixXd state_at_knots =
       readCSV(dir_data + std::string("state_at_knots.csv"));
 
   // Initial message for the LCM subscriber. In the first timestep, the
   // subscriber might not receive a solution yet
-  dairlib::lcmt_trajectory_block traj_msg;
-  traj_msg.trajectory_name = "";
-  traj_msg.num_points = time_at_knots.size();
-  traj_msg.num_datatypes = 2 * rom->n_y();
+  dairlib::lcmt_trajectory_block traj_msg0;
+  traj_msg0.trajectory_name = "";
+  traj_msg0.num_points = time_at_knots.size();
+  traj_msg0.num_datatypes = 2 * rom->n_y();
   // Reserve space for vectors
-  traj_msg.time_vec.resize(traj_msg.num_points);
-  traj_msg.datatypes.resize(traj_msg.num_datatypes);
-  traj_msg.datapoints.clear();
+  traj_msg0.time_vec.resize(traj_msg0.num_points);
+  traj_msg0.datatypes.resize(traj_msg0.num_datatypes);
+  traj_msg0.datapoints.clear();
   // Copy Eigentypes to std::vector
-  traj_msg.time_vec = CopyVectorXdToStdVector(time_at_knots);
-  traj_msg.datatypes = vector<std::string>(2 * rom->n_y());
-  for (int i = 0; i < traj_msg.num_datatypes; ++i) {
-    traj_msg.datapoints.push_back(
+  traj_msg0.time_vec = CopyVectorXdToStdVector(time_at_knots);
+  traj_msg0.datatypes = vector<std::string>(2 * rom->n_y());
+  for (int i = 0; i < traj_msg0.num_datatypes; ++i) {
+    traj_msg0.datapoints.push_back(
         CopyVectorXdToStdVector(state_at_knots.row(i)));
   }
-
-  // Read in the end time of the trajectory
-  int knots_per_foot_step = readCSV(dir_data + "nodes_per_step.csv")(0, 0);
-  double end_time_of_first_step =
-      readCSV(dir_data + "time_at_knots.csv")(knots_per_foot_step, 0);
+  dairlib::lcmt_saved_traj traj_msg;
+  traj_msg.num_trajectories = 1;
+  traj_msg.trajectories.push_back(traj_msg0);
+  traj_msg.trajectory_names.push_back("");
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -236,19 +232,20 @@ int DoMain(int argc, char* argv[]) {
                   simulator_drift->get_input_port_state());
 
   // Create human high-level control
-  Eigen::Vector2d global_target_position(1, 0);
+  Eigen::Vector2d global_target_position(gains.global_target_position_x,
+                                         gains.global_target_position_y);
   if (FLAGS_const_walking_speed) {
     // So that the desired yaw angle always points at x direction)
     global_target_position(0) = std::numeric_limits<double>::infinity();
   }
-  Eigen::Vector2d params_of_no_turning(5, 1);
-  // Logistic function 1/(1+5*exp(x-1))
-  // The function ouputs 0.0007 when x = 0
-  //                     0.5    when x = 1
-  //                     0.9993 when x = 2
+  Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
+                                       gains.yaw_deadband_radius);
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), global_target_position,
-      params_of_no_turning, FLAGS_footstep_option);
+      plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
+      gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
+      gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
+      gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
+      params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
@@ -271,7 +268,7 @@ int DoMain(int argc, char* argv[]) {
   vector<int> fsm_states;
   vector<double> state_durations;
   if (FLAGS_is_two_phase) {
-    if (FLAGS_start_with_right_stance) {
+    if (!FLAGS_start_with_left_stance) {
       fsm_states = {right_stance_state, left_stance_state};
       state_durations = {right_support_duration, left_support_duration};
     } else {
@@ -279,7 +276,7 @@ int DoMain(int argc, char* argv[]) {
       state_durations = {left_support_duration, right_support_duration};
     }
   } else {
-    if (FLAGS_start_with_right_stance) {
+    if (!FLAGS_start_with_left_stance) {
       fsm_states = {right_stance_state, post_right_double_support_state,
                     left_stance_state, post_left_double_support_state};
       state_durations = {right_support_duration, double_support_duration,
@@ -316,23 +313,23 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(mux->get_output_port(0),
                   fsm_and_liftoff_time_sender->get_input_port(0));
   auto fsm_and_liftoff_time_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_drake_signal>(
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_dairlib_signal>(
           FLAGS_channel_fsm_t, &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
                   fsm_and_liftoff_time_publisher->get_input_port());
 
   // Create Lcm subscriber for MPC's output
-  auto planner_output_subscriber = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_trajectory_block>(FLAGS_channel_y,
-                                                                &lcm_local));
+  auto planner_output_subscriber =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
+          FLAGS_channel_y, &lcm_local));
   // Create a system that translate MPC lcm into trajectory
   auto optimal_rom_traj_gen = builder.AddSystem<OptimalRoMTrajReceiver>();
   builder.Connect(planner_output_subscriber->get_output_port(),
                   optimal_rom_traj_gen->get_input_port(0));
 
   // Create CoM trajectory generator
-  double desired_com_height = 0.89;
+  double desired_com_height = gains.lipm_height;
   vector<int> unordered_fsm_states;
   vector<double> unordered_state_durations;
   vector<vector<std::pair<const Vector3d, const Frame<double>&>>>
@@ -361,49 +358,28 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(event_time->get_output_port_event_time(),
-                  lipm_traj_generator->get_input_port_fsm_switch_time());
+                  lipm_traj_generator->get_input_port_touchdown_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
-  bool use_predicted_com_vel = true;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
-          plant_w_spr, context_w_spr.get(), FLAGS_footstep_option,
-          use_predicted_com_vel ? left_support_duration : 0);
+          plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
+          gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
+          left_support_duration);
   if (!FLAGS_const_walking_speed) {
     builder.Connect(high_level_command->get_xy_output_port(),
                     walking_speed_control->get_input_port_des_hor_vel());
   }
   builder.Connect(simulator_drift->get_output_port(0),
                   walking_speed_control->get_input_port_state());
-  if (use_predicted_com_vel) {
-    builder.Connect(lipm_traj_generator->get_output_port(0),
-                    walking_speed_control->get_input_port_com());
-    builder.Connect(event_time->get_output_port_event_time_of_interest(),
-                    walking_speed_control->get_input_port_fsm_switch_time());
-  }
+  builder.Connect(lipm_traj_generator->get_output_port(0),
+                  walking_speed_control->get_input_port_com());
+  builder.Connect(event_time->get_output_port_event_time_of_interest(),
+                  walking_speed_control->get_input_port_fsm_switch_time());
 
-  // Create swing leg trajectory generator (capture point)
-  double mid_foot_height = 0.07;
-  // Since the ground is soft in the simulation, we raise the desired final
-  // foot height by 1 cm. The controller is sensitive to this number, should
-  // tune this every time we change the simulation parameter or when we move
-  // to the hardware testing.
-  // Additionally, implementing a double support phase might mitigate the
-  // instability around state transition.
-  double desired_final_foot_height = 0.0;
-  double desired_final_vertical_foot_velocity = 0;  //-1;
-  double max_CoM_to_footstep_dist = 0.5;
-  double footstep_offset;
-  double center_line_offset;
-  if (FLAGS_footstep_option == 0) {
-    footstep_offset = 0.06;
-    center_line_offset = 0.06;
-  } else if (FLAGS_footstep_option == 1) {
-    footstep_offset = 0.06;
-    center_line_offset = 0.06;
-  }
+  // Create swing leg trajectory generator
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
@@ -414,10 +390,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::SwingFootTrajGenerator>(
           plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
           left_right_support_state_durations, left_right_foot, "pelvis",
-          mid_foot_height, desired_final_foot_height,
-          desired_final_vertical_foot_velocity, max_CoM_to_footstep_dist,
-          footstep_offset, center_line_offset, true, true, true,
-          FLAGS_footstep_option);
+          gains.mid_foot_height, gains.final_foot_height,
+          gains.final_foot_velocity_z, gains.max_CoM_to_footstep_dist,
+          gains.footstep_offset, gains.center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(event_time->get_output_port_event_time_of_interest(),
@@ -429,12 +404,38 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(walking_speed_control->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_sc());
 
-  // lipm traj for ROM (com wrt to stance foot)
+  // Swing toe joint trajectory
+  std::map<std::string, int> pos_map =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
+      left_heel, left_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
+      right_heel, right_toe};
+  auto left_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
+          left_foot_points, "left_toe_angle_traj");
+  auto right_toe_angle_traj_gen =
+      builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
+          right_foot_points, "right_toe_angle_traj");
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_toe_angle_traj_gen->get_state_input_port());
+
+  /*// lipm traj for ROM (com wrt to stance foot)
+  vector<bool> flip_in_y;
+  if (FLAGS_is_two_phase) {
+    flip_in_y = {false, true};
+  } else {
+    flip_in_y = {false, true, false, true};
+  }
   auto local_lipm_traj_generator =
       builder.AddSystem<systems::LocalLIPMTrajGenerator>(
           plant_w_spr, context_w_spr.get(), desired_com_height,
           unordered_fsm_states, unordered_state_durations,
-          contact_points_in_each_state);
+          contact_points_in_each_state, flip_in_y);
   builder.Connect(fsm->get_output_port(0),
                   local_lipm_traj_generator->get_input_port_fsm());
   builder.Connect(event_time->get_output_port_event_time(),
@@ -443,16 +444,13 @@ int DoMain(int argc, char* argv[]) {
                   local_lipm_traj_generator->get_input_port_state());
 
   // Create a guard for the planner in case it doesn't finish solving in time
-  // TODO: test optimal ROM traj. Currently we are using backup controller all
-  //  the time (if-statement insdie the class PlannedTrajGuard)
   auto optimal_traj_planner_guard =
-      builder.AddSystem<goldilocks_models::PlannedTrajGuard>(
-          FLAGS_max_solve_time);
+      builder.AddSystem<goldilocks_models::PlannedTrajGuard>();
   builder.Connect(
       optimal_rom_traj_gen->get_output_port(0),
       optimal_traj_planner_guard->get_input_port_optimal_rom_traj());
   builder.Connect(local_lipm_traj_generator->get_output_port(0),
-                  optimal_traj_planner_guard->get_input_port_lipm_traj());
+                  optimal_traj_planner_guard->get_input_port_lipm_traj());*/
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -461,7 +459,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Cost
   int n_v = plant_wo_springs.num_velocities();
-  MatrixXd Q_accel = 2 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
   // Constraints in OSC
@@ -499,11 +497,9 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  double w_contact_relax = 2000;
-  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
   // Friction coefficient
-  double mu = 0.4;
-  osc->SetContactFriction(mu);
+  osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
@@ -541,96 +537,53 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Swing foot tracking
-  MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
-  MatrixXd K_p_sw_ft = 200 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj", K_p_sw_ft,
-                                             K_d_sw_ft, W_swing_foot,
-                                             plant_w_spr, plant_wo_springs);
+  TransTaskSpaceTrackingData swing_foot_traj(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_wo_springs);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // "Center of mass" tracking (Using RomTrackingData with initial ROM being
   // COM)
-  // TODO: we also want ComTrackingData for backup controller. To switch between
-  //  ComTrackingData and OptimalRomTrackingData, we probably need a external
-  //  flag to OSC
-  MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2;
-  W_com(1, 1) = 2;
-  W_com(2, 2) = 2000;
-  MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  OptimalRomTrackingData optimal_rom_traj("optimal_rom_traj", rom->n_y(),
-                                          K_p_com, K_d_com, W_com, plant_w_spr,
-                                          plant_wo_springs);
+  OptimalRomTrackingData optimal_rom_traj(
+      "optimal_rom_traj", rom->n_y(), gains.K_p_rom, gains.K_d_rom, gains.W_rom,
+      plant_w_spr, plant_wo_springs);
   optimal_rom_traj.AddStateAndRom(left_stance_state, *rom);
   optimal_rom_traj.AddStateAndRom(post_left_double_support_state, *rom);
   optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
   optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
                                   mirrored_rom);
-  //  optimal_rom_traj.AddRom(*rom);
-  // TODO(yminchen): I think currently there are two potential issues.
-  //  1. the optimal ROM is ~COM_wrt_stance_foot, but the LIPM traj is wrt world
-  //  2. mirroring of the ROM
-  //  we have two models and two input trajectories. So keep this in mind when
-  //  you design the controller. Make sure everything is consistent
-  // TODO(yminchen): After you ROM plannar gave an output, you should probably also rotate it from local to global? (probably not?)
   osc->AddTrackingData(&optimal_rom_traj);
   // Pelvis rotation tracking (pitch and roll)
-  double w_pelvis_balance = 200;
-  double k_p_pelvis_balance = 200;
-  double k_d_pelvis_balance = 80;
-  Matrix3d W_pelvis_balance = MatrixXd::Zero(3, 3);
-  W_pelvis_balance(0, 0) = w_pelvis_balance;
-  W_pelvis_balance(1, 1) = w_pelvis_balance;
-  Matrix3d K_p_pelvis_balance = MatrixXd::Zero(3, 3);
-  K_p_pelvis_balance(0, 0) = k_p_pelvis_balance;
-  K_p_pelvis_balance(1, 1) = k_p_pelvis_balance;
-  Matrix3d K_d_pelvis_balance = MatrixXd::Zero(3, 3);
-  K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
-  K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj(
-      "pelvis_balance_traj", K_p_pelvis_balance, K_d_pelvis_balance,
-      W_pelvis_balance, plant_w_spr, plant_wo_springs);
+      "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
+      gains.W_pelvis_balance, plant_w_spr, plant_wo_springs);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
-  double w_heading = 200;
-  double k_p_heading = 50;
-  double k_d_heading = 40;
-  Matrix3d W_pelvis_heading = MatrixXd::Zero(3, 3);
-  W_pelvis_heading(2, 2) = w_heading;
-  Matrix3d K_p_pelvis_heading = MatrixXd::Zero(3, 3);
-  K_p_pelvis_heading(2, 2) = k_p_heading;
-  Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
-  K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj(
-      "pelvis_heading_traj", K_p_pelvis_heading, K_d_pelvis_heading,
-      W_pelvis_heading, plant_w_spr, plant_wo_springs);
+      "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
+      gains.W_pelvis_heading, plant_w_spr, plant_wo_springs);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
-  // Swing toe joint tracking (Currently use fix position)
-  // The desired position, -1.5, was derived heuristically. It is roughly the
-  // toe angle when Cassie stands on the ground.
-  MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_toe_traj("swing_toe_traj", K_p_swing_toe,
-                                        K_d_swing_toe, W_swing_toe, plant_w_spr,
-                                        plant_wo_springs);
-  swing_toe_traj.AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                         "toe_rightdot");
-  swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                         "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
+  osc->AddTrackingData(&pelvis_heading_traj,
+                       gains.period_of_no_heading_control);
+  // Swing toe joint tracking
+  JointSpaceTrackingData swing_toe_traj_left(
+      "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+      gains.W_swing_toe, plant_w_spr, plant_wo_springs);
+  JointSpaceTrackingData swing_toe_traj_right(
+      "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+      gains.W_swing_toe, plant_w_spr, plant_wo_springs);
+  swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
+                                               "toe_rightdot");
+  swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
+                                              "toe_leftdot");
+  osc->AddTrackingData(&swing_toe_traj_left);
+  osc->AddTrackingData(&swing_toe_traj_right);
   // Swing hip yaw joint tracking
-  MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", K_p_hip_yaw,
-                                            K_d_hip_yaw, W_hip_yaw, plant_w_spr,
-                                            plant_wo_springs);
+  JointSpaceTrackingData swing_hip_yaw_traj(
+      "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      gains.W_hip_yaw, plant_w_spr, plant_wo_springs);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
@@ -642,7 +595,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(optimal_traj_planner_guard->get_output_port(0),
+  builder.Connect(optimal_rom_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("optimal_rom_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
@@ -650,6 +603,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("pelvis_balance_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
+  builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+  builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.
@@ -669,7 +626,7 @@ int DoMain(int argc, char* argv[]) {
       true);
 
   // Get context and initialize the lcm message of LcmSubsriber for
-  // lcmt_trajectory_block
+  // lcmt_saved_traj
   auto& diagram_context = loop.get_diagram_mutable_context();
   auto& planner_subscriber_context =
       loop.get_diagram()->GetMutableSubsystemContext(*planner_output_subscriber,
@@ -678,7 +635,7 @@ int DoMain(int argc, char* argv[]) {
   // state of the leaf system (we hard coded index 0 here)
   auto& mutable_state =
       planner_subscriber_context
-          .get_mutable_abstract_state<dairlib::lcmt_trajectory_block>(0);
+          .get_mutable_abstract_state<dairlib::lcmt_saved_traj>(0);
   mutable_state = traj_msg;
 
   // Set constant walking speed

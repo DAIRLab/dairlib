@@ -246,8 +246,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         impulse_vars_.push_back(NewContinuousVariables(0, ""));
 
         // Linear equality constraint on velocity variables
-        auto pre_impact_velocity = state_vars(i_mode - 1, pre_impact_index)
-                                       .tail(plant_.num_velocities());
+        VectorXDecisionVariable pre_impact_velocity =
+            state_vars(i_mode - 1, pre_impact_index)
+                .tail(plant_.num_velocities());
         AddLinearConstraint(pre_impact_velocity ==
                             post_impact_velocity_vars(i_mode - 1));
       }
@@ -285,7 +286,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
                   mode.evaluators().evaluator_full_start(k), e.num_full()));
         }
 
-        if (i_mode > 0) {
+        if (i_mode > 0 && is_impact) {
           // Add to impulse variables
           AddConstraint(force_constraint,
                         impulse_vars(i_mode - 1)
@@ -601,7 +602,7 @@ void Dircon<T>::GetStateAndDerivativeSamples(
       states_i.col(j) = drake::math::DiscardGradient(xk);
       auto xdot = get_mode(mode).evaluators().CalcTimeDerivativesWithForce(
         context.get(), result.GetSolution(force_vars(mode, j)));
-      derivatives_i.col(k) = drake::math::DiscardGradient(xdot);
+      derivatives_i.col(j) = drake::math::DiscardGradient(xdot);
       times_i(j) = times(k);
     }
     state_samples->push_back(states_i);

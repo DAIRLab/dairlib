@@ -1,9 +1,9 @@
 #pragma once
 
 #include "systems/framework/output_vector.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
 
 namespace dairlib {
 namespace cassie {
@@ -45,7 +45,9 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
  public:
   WalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
                       drake::systems::Context<double>* context,
-                      int footstep_option, double swing_phase_duration = 0);
+                      double k_ff_lateral, double k_fb_lateral,
+                      double k_ff_sagittal, double k_fb_sagittal,
+                      double swing_phase_duration = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -81,12 +83,19 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
   int fsm_switch_time_port_;
   int com_port_;
 
-  // Foot placement control (Sagital) parameters
-  double k_fp_ff_sagital_;
-  double k_fp_fb_sagital_;
   // Foot placement control (Lateral) parameters
   double k_fp_ff_lateral_;
   double k_fp_fb_lateral_;
+  // Foot placement control (Sagittal) parameters
+  double k_fp_ff_sagittal_;
+  double k_fp_fb_sagittal_;
+
+  // COM vel filtering
+  // TODO(yminchen): extract this filter out of WalkingSpeedControl and
+  //  SwingFootTrajGen
+  double cutoff_freq_ = 10;  // in Hz.
+  mutable Eigen::Vector3d filterred_com_vel_ = Eigen::Vector3d::Zero();
+  mutable double last_timestamp_ = 0;
 };
 
 }  // namespace osc

@@ -209,8 +209,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Time step cosntraints
   trajopt.AddTimeStepConstraint(min_dt, max_dt, FLAGS_fix_duration,
-                                h_guess.tail(1)(0) * num_time_samples.size(),
-                                FLAGS_equalize_timestep_size);
+                                FLAGS_equalize_timestep_size,
+                                h_guess.tail(1)(0), h_guess.tail(1)(0));
 
   // Final goal position constraint
   cout << "Adding final position constraint for full-order model...\n";
@@ -317,11 +317,19 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   // cout << trajopt.decision_variables() << endl;
 
   VectorXd time_at_knots = trajopt.GetSampleTimes(result);
-  MatrixXd state_at_knots = trajopt.GetStateSamples(result);
   MatrixXd input_at_knots = trajopt.GetInputSamples(result);
   writeCSV(dir_data + string("time_at_knots.csv"), time_at_knots);
-  writeCSV(dir_data + string("state_at_knots.csv"), state_at_knots);
   writeCSV(dir_data + string("input_at_knots.csv"), input_at_knots);
+
+  std::vector<Eigen::VectorXd> time_breaks;
+  std::vector<Eigen::MatrixXd> state_samples;
+  trajopt.GetStateSamples(result, &state_samples, &time_breaks);
+  for (int i = 0; i < n_step; i++) {
+    writeCSV(dir_data + string("time_at_knots" + to_string(i) + ".csv"),
+             time_breaks[i]);
+    writeCSV(dir_data + string("state_at_knots" + to_string(i) + ".csv"),
+             state_samples[i]);
+  }
 
   MatrixXd x0_each_mode(plant.num_positions() + plant.num_velocities(),
                         num_time_samples.size());

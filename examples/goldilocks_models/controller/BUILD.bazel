@@ -21,6 +21,19 @@ cc_library(
 )
 
 cc_library(
+    name = "planner_preprocessing",
+    srcs = ["planner_preprocessing.cc"],
+    hdrs = ["planner_preprocessing.h"],
+    deps = [
+        "//common:eigen_utils",
+        "//multibody:utils",
+        "//systems/controllers/osc:osc_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "rom_traj_receiver",
     srcs = ["rom_traj_receiver.cc"],
     hdrs = ["rom_traj_receiver.h"],
@@ -60,6 +73,31 @@ cc_library(
     deps = [
         "//multibody:utils",
         "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "osc_rom_walking_gains",
+    hdrs = ["osc_rom_walking_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "rom_inverse_kinematics",
+    srcs = ["rom_inverse_kinematics.cc"],
+    hdrs = ["rom_inverse_kinematics.h"],
+    deps = [
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:reduced_order_models",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:multipose_visualizer",
+        "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

@@ -6,6 +6,7 @@
 #include "drake/systems/framework/leaf_system.h"
 
 #include "dairlib/lcmt_trajectory_block.hpp"
+#include "dairlib/lcmt_saved_traj.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 #include "lcm/lcm_trajectory.h"

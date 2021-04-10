@@ -5,7 +5,6 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
-#include "dairlib/lcmt_trajectory_block.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -15,7 +14,7 @@ namespace goldilocks_models {
 
 class PlannedTrajGuard : public drake::systems::LeafSystem<double> {
  public:
-  PlannedTrajGuard(double max_solve_time);
+  PlannedTrajGuard();
 
   const drake::systems::InputPort<double>& get_input_port_optimal_rom_traj()
       const {
@@ -31,11 +30,6 @@ class PlannedTrajGuard : public drake::systems::LeafSystem<double> {
 
   int optimal_rom_traj_port_;
   int lipm_port_;
-
-  double max_solve_time_;
-
-  mutable double prev_message_arrival_time_ = 0;
-  mutable double prev_traj_start_time_ = 0;  // used to identify a new traj
 
   // Debugging
   mutable int previous_traj_ = 0;

@@ -8,6 +8,7 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using dairlib::multibody::WorldPointEvaluator;
 
 namespace dairlib::systems::controllers{
 
@@ -17,16 +18,20 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
                        plant_(plant),
                        plant_context_(plant_context), dt_(dt){
 
+  nq_ = plant.num_positions();
+  nv_ = plant.num_velocities();
+  nu_p_ = plant.num_actuators();
+
   nx_ = planar ? kNxPlanar : kNx3d;
-  nu_ = planar ? kNuPlanar : kNu3d;
+  nu_c_ = planar ? kNuPlanar : kNu3d;
   kLinearDim_ = planar ? 2 : 3;
   kAngularDim_ = planar ? 1 : 4;
 
-  nxi_ = nx_ + nu_;
+  nxi_ = nx_ + nu_c_;
 
   // Create Ports
   state_port_ = this->DeclareVectorInputPort(
-      BasicVector<double>(nx_)).get_index();
+      OutputVector<double>(nq_, nv_, nu_p_)).get_index();
 
   x_des_port_ = this->DeclareVectorInputPort(
       BasicVector<double>(nx_)).get_index();
@@ -35,6 +40,8 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
     fsm_port_ = this->DeclareVectorInputPort(
         BasicVector<double>(2)).get_index();
   }
+
+  this->DeclareAbstractOutputPort(&KoopmanMPC::CalcOptimalMotionPlan);
 
 }
 
@@ -54,9 +61,15 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, 
     mode.zz.push_back(prog_.NewContinuousVariables(nz_, "z_" + std::to_string(i)));
   }
   for (int i = 0; i < N; i++) {
-    mode.uu.push_back(prog_.NewContinuousVariables(nu_, "u_" + std::to_string(i+1)));
+    mode.uu.push_back(prog_.NewContinuousVariables(nu_c_, "u_" + std::to_string(i+1)));
   }
   modes_.push_back(mode);
+}
+
+void KoopmanMPC::AddContactPoint(const WorldPointEvaluator<double>* evaluator,
+    koopMpcStance stance) {
+  DRAKE_ASSERT(contact_points_.size() == stance)
+  contact_points_.push_back(evaluator);
 }
 
 void KoopmanMPC::SetReachabilityLimit(const Eigen::MatrixXd &kl,
@@ -99,10 +112,10 @@ void KoopmanMPC::MakeStanceFootConstraints() {
 
 void KoopmanMPC::MakeDynamicsConstraints() {
   for (auto & mode : modes_) {
-    MatrixXd dyn = MatrixXd::Zero(nz_, 2 * nz_ + nu_);
+    MatrixXd dyn = MatrixXd::Zero(nz_, 2 * nz_ + nu_c_);
     dyn.block(0, 0, nz_, nz_) = mode.dynamics.A;
-    dyn.block(0, nz_, nz_, nu_) = mode.dynamics.B;
-    dyn.block(0, nz_, nz_ + nu_, nz_) = -MatrixXd::Identity(nz_, nz_);
+    dyn.block(0, nz_, nz_, nu_c_) = mode.dynamics.B;
+    dyn.block(0, nz_, nz_ + nu_c_, nz_) = -MatrixXd::Identity(nz_, nz_);
     for (int i = 0; i < mode.N; i++) {
       mode.dynamics_constraints.push_back(
           prog_.AddLinearEqualityConstraint(
@@ -114,12 +127,16 @@ void KoopmanMPC::MakeDynamicsConstraints() {
   }
 }
 
+/// TODO(@Brian-Acosta): Update initial state constraints to allow for
+/// any xx to be x0
 void KoopmanMPC::MakeInitialStateConstraint() {
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(nz_, nz_), VectorXd::Zero(nz_),
       modes_.front().zz.front())
        .evaluator()
        .get();
+
+
 }
 
 void KoopmanMPC::MakeKinematicReachabilityConstraints() {
@@ -170,14 +187,24 @@ void KoopmanMPC::MakeFrictionConeConstraints() {
 }
 
 void KoopmanMPC::MakeStateKnotConstraints() {
+  MatrixXd Aeq = MatrixXd::Identity(nz_, 2 * nz_);
+  Aeq.block(0, nz_, nz_, nz_) = -MatrixXd::Identity(nz_, nz_);
+  Aeq.block(0, nz_, nz_, nz_) = -MatrixXd::Identity(nz_, nz_);
   for (int i = 0; i < modes_.size() - 1; i++) {
-
     state_knot_constraints_.push_back(
-        prog_.AddLinearEqualityConstraint(
-            modes_.at(i).zz.back() == modes_.at(i+1).zz.front())
+        prog_.AddLinearEqualityConstraint( Aeq, VectorXd::Zero(nz_),
+            {modes_.at(i).zz.back(), modes_.at(i+1).zz.front()})
             .evaluator()
             .get());
   }
+
+  // Dummy constraint to be used when cycling modes
+  state_knot_constraints_.push_back(
+      prog_.AddLinearEqualityConstraint( MatrixXd::Zero(1, 2*nz_),
+          VectorXd::Zero(1),
+          {modes_.back().zz.back(), modes_.front().zz.front()})
+          .evaluator()
+          .get());
 }
 
 void KoopmanMPC::AddTrackingObjective(const Eigen::VectorXd &xdes,
@@ -198,11 +225,19 @@ void KoopmanMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
   for(auto & mode : modes_) {
     for (int i = 0; i < mode.N; i++) {
       input_cost_.push_back(
-          prog_.AddQuadraticCost(R, VectorXd::Zero(nu_), mode.uu.at(i))
+          prog_.AddQuadraticCost(R, VectorXd::Zero(nu_c_), mode.uu.at(i))
           .evaluator()
           .get());
     }
   }
 }
+
+
+VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(Eigen::VectorXd x,
+    double t) {
+
+}
+
+
 
 } // dairlib::systems::controllers

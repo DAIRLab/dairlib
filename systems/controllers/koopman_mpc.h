@@ -9,6 +9,7 @@
 #include <vector>
 #include <set>
 #include <drake/multibody/plant/multibody_plant.h>
+#include <dairlib/lcmt_saved_traj.hpp>
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -64,11 +65,13 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   void AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, int N);
 
+  void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator,
+      koopMpcStance stance);
+
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
   void AddInputRegularization(const Eigen::MatrixXd& R);
 
   void BuildController();
-
 
   // Input ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -88,8 +91,17 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
  private:
 
-  Eigen::VectorXd SolveQp(const Eigen::VectorXd x,
-                          const drake::systems::Context<double>& context);
+  void CalcOptimalMotionPlan(const drake::systems::Context<double>& context,
+      dairlib::lcmt_saved_traj* traj_msg) const;
+
+
+  double CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies);
+
+  /// Calculate the total rotational inertia about point frame_about
+  /// expressed in frame frame_express
+  drake::multibody::RotationalInertia<double>
+  CalcCentroialInertiaFromListOfBodies(std::vector<std::string> bodies,
+      const drake::multibody::Frame<double>& frame_express);
 
   void MakeStanceFootConstraints();
   void MakeKinematicReachabilityConstraints();
@@ -98,10 +110,13 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void MakeStateKnotConstraints();
   void MakeInitialStateConstraint();
 
+  drake::trajectories::PiecewisePolynomial<double> MakeTrajFromSol(
+      drake::solvers::MathematicalProgramResult result);
+
   void UpdateInitialStateConstraint(const Eigen::VectorXd& x0);
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes);
 
-  Eigen::VectorXd CalcCentroidalStateFromPlant();
+  Eigen::VectorXd CalcCentroidalStateFromPlant(Eigen::VectorXd x, double t);
 
   // parameters
   bool use_fsm_;
@@ -118,21 +133,28 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  std::vector<const multibody::WorldPointEvaluator<double>*> contact_points_;
   std::vector<KoopmanMpcMode> modes_;
-  Eigen::VectorXd kin_lim_;
   std::vector<Eigen::VectorXd> kin_nominal_;
+  Eigen::VectorXd kin_lim_;
+
 
   // variable counts
   int nx_;  // number of floating base states
-  int nu_;  // number of inputs
+  int nu_c_;  // number of centroidal model inputs
   int nxi_; // number of inflated states
   int nz_;  // number of koopman states
+
+  int nq_;    // number of plant gerenalized positions
+  int nv_;    // number of plant generalized velocities
+  int nu_p_;  // number of plant actuators (needed?)
 
   int kLinearDim_;
   int kAngularDim_;
 
   // Solver
   mutable drake::solvers::MathematicalProgram prog_;
+  mutable int x0_idx_[2] = {0, 0};
 
   // constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> state_knot_constraints_;
@@ -150,6 +172,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   const int kNuPlanar = 6;
   const int kNu3d = 9;
   double mu_ = 0;
+  double mass_ = 0;
+  drake::multibody::RotationalInertia<double> rotational_inertia_;
 
 };
 } // dairlib::systems::controllers

@@ -98,6 +98,11 @@ TimeBasedFiniteStateMachineWithTrigger::TimeBasedFiniteStateMachineWithTrigger(
   // Add one more state to loop back
   accu_state_durations_.push_back(period_ + state_durations[0]);
   states_.push_back(states[0]);
+
+  // If not using the trigger port, then set t0 = 0.
+  if (!with_trigger_input_port) {
+    t0_ = 0;
+  }
 }
 
 void TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState(

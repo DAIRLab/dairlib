@@ -180,4 +180,29 @@ void KoopmanMPC::MakeStateKnotConstraints() {
   }
 }
 
+void KoopmanMPC::AddTrackingObjective(const Eigen::VectorXd &xdes,
+                                      const Eigen::MatrixXd &Q) {
+  for (auto & mode : modes_) {
+    for (int i = 0; i < mode.N+1; i++ ) {
+      if (i != 0) {
+        tracking_cost_.push_back(
+            prog_.AddQuadraticErrorCost(
+                Q, xdes, mode.zz.at(i).head(nxi_))
+            .evaluator().get());
+      }
+    }
+  }
+}
+
+void KoopmanMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
+  for(auto & mode : modes_) {
+    for (int i = 0; i < mode.N; i++) {
+      input_cost_.push_back(
+          prog_.AddQuadraticCost(R, VectorXd::Zero(nu_), mode.uu.at(i))
+          .evaluator()
+          .get());
+    }
+  }
+}
+
 } // dairlib::systems::controllers

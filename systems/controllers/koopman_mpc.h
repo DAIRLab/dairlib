@@ -41,8 +41,7 @@ typedef struct KoopmanDynamics {
   Eigen::MatrixXd A;
   Eigen::MatrixXd B;
   Eigen::MatrixXd b;
-};
-
+} KoopmanDynamics;
 
 typedef struct KoopmanMpcMode {
   koopMpcStance stance;
@@ -54,7 +53,7 @@ typedef struct KoopmanMpcMode {
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints;
   std::vector<drake::solvers::LinearConstraint*> reachability_constraints;
-};
+} KoopmanMpcMode;
 
 
 class KoopmanMPC : public drake::systems::LeafSystem<double> {

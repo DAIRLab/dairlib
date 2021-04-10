@@ -22,6 +22,7 @@
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
+#include "solvers/constraint_factory.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
@@ -84,6 +85,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void SetReachabilityLimit(const Eigen::MatrixXd& kl,
       const std::vector<Eigen::VectorXd>& kn);
 
+  void SetMu(double mu) { mu_ = mu; }
+
  private:
 
   Eigen::VectorXd SolveQp(const Eigen::VectorXd x,
@@ -95,6 +98,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void MakeFrictionConeConstraints();
   void MakeStateKnotConstraints();
   void MakeInitialStateConstraint();
+
   void UpdateInitialStateConstraint(const Eigen::VectorXd& x0);
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes);
 
@@ -146,6 +150,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   const int kNx3d = 13;
   const int kNuPlanar = 6;
   const int kNu3d = 9;
+  double mu_ = 0;
 
 };
 } // dairlib::systems::controllers

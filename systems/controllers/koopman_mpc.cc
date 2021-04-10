@@ -28,13 +28,14 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   state_port_ = this->DeclareVectorInputPort(
       BasicVector<double>(nx_)).get_index();
 
-   x_des_port_ = this->DeclareVectorInputPort(
+  x_des_port_ = this->DeclareVectorInputPort(
       BasicVector<double>(nx_)).get_index();
 
   if ( use_fsm_ ) {
     fsm_port_ = this->DeclareVectorInputPort(
         BasicVector<double>(2)).get_index();
   }
+
 }
 
 void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, int N) {
@@ -58,8 +59,10 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, 
   modes_.push_back(mode);
 }
 
-void KoopmanMPC::SetReachabilityLimit(const Eigen::MatrixXd &kl, const std::vector<Eigen::VectorXd> &kn) {
+void KoopmanMPC::SetReachabilityLimit(const Eigen::MatrixXd &kl,
+    const std::vector<Eigen::VectorXd> &kn) {
   DRAKE_DEMAND(kl.size() == kLinearDim_);
+
   kin_lim_ = kl;
   for (auto pos : kn) {
     kin_nominal_.push_back(pos);
@@ -70,6 +73,7 @@ void KoopmanMPC::BuildController() {
   DRAKE_DEMAND(!modes_.empty());
   DRAKE_DEMAND(!tracking_cost_.empty());
   DRAKE_DEMAND(!input_cost_.empty());
+  DRAKE_DEMAND(mu_ > 0 );
 
   MakeDynamicsConstraints();
   MakeFrictionConeConstraints();
@@ -85,7 +89,8 @@ void KoopmanMPC::MakeStanceFootConstraints() {
     for (int i = 0; i < mode.N; i++) {
       mode.stance_foot_constraints.push_back(
           prog_.AddLinearEqualityConstraint(
-              mode.uu.at(i).segment(mode.stance * kLinearDim_, kLinearDim_ ) == VectorXd::Zero(kLinearDim_))
+              S, VectorXd::Zero(kLinearDim_),
+              mode.uu.at(i).segment(mode.stance * kLinearDim_, kLinearDim_ ))
               .evaluator()
               .get());
     }
@@ -94,10 +99,15 @@ void KoopmanMPC::MakeStanceFootConstraints() {
 
 void KoopmanMPC::MakeDynamicsConstraints() {
   for (auto & mode : modes_) {
+    MatrixXd dyn = MatrixXd::Zero(nz_, 2 * nz_ + nu_);
+    dyn.block(0, 0, nz_, nz_) = mode.dynamics.A;
+    dyn.block(0, nz_, nz_, nu_) = mode.dynamics.B;
+    dyn.block(0, nz_, nz_ + nu_, nz_) = -MatrixXd::Identity(nz_, nz_);
     for (int i = 0; i < mode.N; i++) {
       mode.dynamics_constraints.push_back(
           prog_.AddLinearEqualityConstraint(
-              mode.zz.at(i+1) == mode.dynamics.A * mode.zz.at(i) + mode.dynamics.B * mode.uu.at(i) + mode.dynamics.b)
+             dyn, -mode.dynamics.b,
+             {mode.zz.at(i), mode.uu.at(i), mode.zz.at(i+1)})
               .evaluator()
               .get());
     }
@@ -106,15 +116,68 @@ void KoopmanMPC::MakeDynamicsConstraints() {
 
 void KoopmanMPC::MakeInitialStateConstraint() {
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
-      modes_.front().zz.front() == modes_.front().dynamics.x_basis_func(VectorXd::Zero(nxi_)))
-       .evaluator().get();
+      MatrixXd::Identity(nz_, nz_), VectorXd::Zero(nz_),
+      modes_.front().zz.front())
+       .evaluator()
+       .get();
 }
 
 void KoopmanMPC::MakeKinematicReachabilityConstraints() {
+  MatrixXd S = MatrixXd::Zero(kLinearDim_, kLinearDim_ * 2);
+
+  S.block(0, 0, kLinearDim_, kLinearDim_) =
+      -MatrixXd::Identity(kLinearDim_, kLinearDim_);
+  S.block(0, kLinearDim_, kLinearDim_, kLinearDim_) =
+      MatrixXd::Identity(kLinearDim_, kLinearDim_);
+
   for (auto & mode : modes_) {
     for (int i = 0; i < mode.N; i++) {
-      
+      mode.reachability_constraints.push_back(
+          prog_.AddLinearConstraint(S,
+              -kin_lim_ + kin_nominal_.at(mode.stance),
+              kin_lim_ + kin_nominal_.at(mode.stance),
+              {mode.zz.at(i).head(kLinearDim_),
+               mode.zz.at(i).segment(nx_ + kLinearDim_ * mode.stance,
+                   kLinearDim_)})
+               .evaluator()
+               .get());
     }
   }
 }
+
+void KoopmanMPC::MakeFrictionConeConstraints() {
+  for (auto & mode : modes_) {
+    for (int i = 0; i <= mode.N; i++) {
+      if (kLinearDim_ == 3) {
+        mode.friction_constraints.push_back(
+            prog_.AddConstraint(
+                solvers::CreateLinearFrictionConstraint(mu_),
+                mode.zz.at(i).segment(nxi_ - kLinearDim_, kLinearDim_))
+                .evaluator().get());
+      } else {
+        MatrixXd cone(kLinearDim_, kLinearDim_);
+        cone << -1, mu_, 1, mu_;
+        mode.friction_constraints.push_back(
+            prog_.AddLinearConstraint(
+                cone, VectorXd::Zero(kLinearDim_),
+                VectorXd::Constant(kLinearDim_, std::numeric_limits<double>::infinity()),
+                mode.zz.at(i).segment(nxi_ - kLinearDim_, kLinearDim_))
+                .evaluator()
+                .get());
+      }
+    }
+  }
 }
+
+void KoopmanMPC::MakeStateKnotConstraints() {
+  for (int i = 0; i < modes_.size() - 1; i++) {
+
+    state_knot_constraints_.push_back(
+        prog_.AddLinearEqualityConstraint(
+            modes_.at(i).zz.back() == modes_.at(i+1).zz.front())
+            .evaluator()
+            .get());
+  }
+}
+
+} // dairlib::systems::controllers

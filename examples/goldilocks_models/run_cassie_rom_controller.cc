@@ -4,8 +4,8 @@
 //  from local to global frame if the ROM is dependent on x, y or yaw.
 
 #include <string>
-#include <gflags/gflags.h>
 #include <dairlib/lcmt_target_standing_height.hpp>
+#include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -81,7 +81,8 @@ using multibody::FixedJointEvaluator;
 
 using multibody::JwrtqdotToJwrtv;
 
-DEFINE_bool(broadcast, false, "broadcast between controller thread and planner thread");
+DEFINE_bool(broadcast, false,
+            "broadcast between controller thread and planner thread");
 DEFINE_bool(hardware, false, "");
 
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
@@ -264,7 +265,11 @@ int DoMain(int argc, char* argv[]) {
   std::vector<int> single_support_states = {left_stance_state,
                                             right_stance_state};
   auto event_time = builder.AddSystem<systems::FiniteStateMachineEventTime>(
-      plant_w_spr, single_support_states);
+      plant_w_spr, single_support_states,
+      FLAGS_hardware ? (FLAGS_start_with_left_stance ? left_stance_state
+                                                     : right_stance_state)
+                     : -std::numeric_limits<int>::infinity(),
+      FLAGS_hardware);
   builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
                   event_time->get_input_port_state());
@@ -284,7 +289,7 @@ int DoMain(int argc, char* argv[]) {
                   fsm_and_liftoff_time_sender->get_input_port(0));
   auto fsm_and_liftoff_time_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_dairlib_signal>(
-          FLAGS_channel_fsm_t, FLAGS_broadcast? &lcm_network: &lcm_local,
+          FLAGS_channel_fsm_t, FLAGS_broadcast ? &lcm_network : &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(fsm_and_liftoff_time_sender->get_output_port(0),
                   fsm_and_liftoff_time_publisher->get_input_port());

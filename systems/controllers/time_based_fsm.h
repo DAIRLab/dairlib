@@ -85,7 +85,6 @@ class TimeBasedFiniteStateMachineWithTrigger :
   int trigger_port_;
 
   std::vector<int> states_;
-  int initial_state_ = -1;
   mutable double t0_ = -1;
   bool with_trigger_input_port_;
 

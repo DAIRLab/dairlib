@@ -68,12 +68,12 @@ void DrakeSignalSender::PackVectorIntoLcm(
   double time_in_first_mode = (msg->utime * 1e-6) - lift_off_time;
   double init_phase = time_in_first_mode / stride_period_;
 
-  cout << "init_phase = " << init_phase<<"\n";
+  /*cout << "init_phase = " << init_phase<<"\n";
   cout << "fsm state = " << input_vector->get_value()(0) << endl;
   cout << "lift_off_time = " << lift_off_time << endl;
   cout << "current_time = " << context.get_time() << endl;
   cout << "time_in_first_mode = " << time_in_first_mode << endl;
-  cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
+  cout << "input_vector->get_value() = " << input_vector->get_value() << endl;*/
 
   if (init_phase > 1) {
     cout.precision(dbl::max_digits10);
@@ -87,7 +87,12 @@ void DrakeSignalSender::PackVectorIntoLcm(
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
     cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
     cout << '\a';  // making noise to notify
-    DRAKE_UNREACHABLE();
+    cout << "======================\n";
+    cout << "======================\n";
+    cout << "======================\n";
+    cout << "======================\n";
+    cout << "======================\n";
+    //    DRAKE_UNREACHABLE();
   } else if (init_phase < 0) {
     cout.precision(dbl::max_digits10);
 
@@ -100,7 +105,12 @@ void DrakeSignalSender::PackVectorIntoLcm(
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
     cout << "input_vector->get_value() = " << input_vector->get_value() << endl;
     cout << '\a';  // making noise to notify
-    DRAKE_UNREACHABLE();
+    cout << "======================\n";
+    cout << "======================\n";
+    cout << "======================\n";
+    cout << "======================\n";
+    cout << "======================\n";
+    //    DRAKE_UNREACHABLE();
   }
 }
 

@@ -85,8 +85,9 @@ DEFINE_bool(broadcast, false,
             "broadcast between controller thread and planner thread");
 DEFINE_bool(hardware, false, "");
 
-DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
+DEFINE_int32(iter, -1, "The iteration # of the model that you use");
 
+DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_bool(start_with_left_stance, true, "");
 
 DEFINE_string(init_traj_file_name, "",
@@ -159,7 +160,8 @@ int DoMain(int argc, char* argv[]) {
   // Reduced order model
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(gains.rom_option, 1 /*robot_option*/, plant_wo_springs, true);
-  ReadModelParameters(rom.get(), DIR_MODEL, gains.model_iter);
+  ReadModelParameters(rom.get(), DIR_MODEL,
+                      FLAGS_iter > 0 ? FLAGS_iter : gains.model_iter);
 
   // Mirrored reduced order model
   int robot_option = 1;

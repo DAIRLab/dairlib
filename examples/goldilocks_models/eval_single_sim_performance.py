@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from bindings.pydairlib.analysis_scripts import process_lcm_log
 import pathlib
+from pathlib import Path
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
@@ -85,6 +86,7 @@ def main():
 
   filename = sys.argv[1]
   controller_channel = sys.argv[2]
+  rom_iter_idx = int(sys.argv[3])
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
@@ -168,6 +170,35 @@ def main():
   print("total_cost = " + str(total_cost))
   # import pdb; pdb.set_trace()
 
+  # Store into files
+  directory = "../dairlib_data/goldilocks_models/sim_cost_eval"
+  Path(directory).mkdir(parents=True, exist_ok=True)
+
+  names = ['cost_x',
+           'cost_u',
+           'total_cost']
+  names = ', '.join(names)
+  values = [str(cost_x),
+            str(cost_u),
+            str(total_cost)]
+  values = ', '.join(values)
+
+  f = open(directory + "/cost_names.csv", "w")
+  f.write(names)
+  f.close()
+  f = open(directory + "/" + str(rom_iter_idx) + "_cost_values.csv", "w")
+  f.write(values)
+  f.close()
+
+  # Check that the pelvis didn't fall below a certain height
+  min_height = 0.4
+  for idx in range(x.shape[0]):
+    if x[idx, 6] < min_height:
+      f = open(directory + "/sim_status.txt", "a")
+      f.write("iteration #" + str(rom_iter_idx) + ": pelvis fell below " + str(
+        min_height) + " at time " + str(t_x[idx]))
+      f.close()
+      break
 
 if __name__ == "__main__":
   main()

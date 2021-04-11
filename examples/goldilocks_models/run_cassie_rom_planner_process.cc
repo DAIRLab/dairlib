@@ -84,7 +84,9 @@ DEFINE_bool(log_solver_info, true,
 DEFINE_double(time_limit, 0, "time limit for the solver.");
 
 // Flag for debugging
+DEFINE_bool(run_one_loop_to_get_init_file, false, "");
 DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
+DEFINE_bool(log_data, true, "Save the planner data into files");
 DEFINE_int32(solve_idx_for_read_from_file, -1,
              "Files index for input port values");
 
@@ -132,16 +134,16 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_fix_duration);
     DRAKE_DEMAND(FLAGS_equalize_timestep_size);
   }
-
   if (FLAGS_solve_idx_for_read_from_file >= 0) {
     DRAKE_DEMAND(FLAGS_debug_mode);
+  }
+  if (FLAGS_run_one_loop_to_get_init_file) {
+    DRAKE_DEMAND(FLAGS_log_data);
   }
 
   // Create data folder if it doesn't exist
   if (!CreateFolderIfNotExist(DIR_DATA)) return 0;
-  if (FLAGS_debug_mode) {
-    if (!CreateFolderIfNotExist(DIR_MODEL)) return 0;
-  }
+  if (!CreateFolderIfNotExist(DIR_MODEL)) return 0;
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_feedback(0.0);
@@ -246,7 +248,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create optimal rom trajectory generator
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
-      plant_control, stride_period, param, FLAGS_debug_mode);
+      plant_control, stride_period, param, FLAGS_debug_mode, FLAGS_log_data);
   builder.Connect(stance_foot_getter->get_output_port(0),
                   rom_planner->get_input_port_stance_foot());
   builder.Connect(init_phase_calculator->get_output_port(0),
@@ -274,7 +276,10 @@ int DoMain(int argc, char* argv[]) {
   systems::TwoLcmDrivenLoop<dairlib::lcmt_dairlib_signal,
                             dairlib::lcmt_robot_output>
       loop(FLAGS_broadcast ? &lcm_network : &lcm_local,
-           std::move(owned_diagram), lcm_parsers, input_channels, true);
+           std::move(owned_diagram), lcm_parsers, input_channels, true,
+           FLAGS_run_one_loop_to_get_init_file
+               ? 1
+               : std::numeric_limits<int>::infinity());
   if (!FLAGS_debug_mode) {
     loop.Simulate();
   } else {

@@ -56,7 +56,7 @@ namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_controls, double stride_period,
-    const PlannerSetting& param, bool debug_mode)
+    const PlannerSetting& param, bool debug_mode, bool log_data)
     : nq_(plant_controls.num_positions()),
       nv_(plant_controls.num_velocities()),
       nx_(plant_controls.num_positions() + plant_controls.num_velocities()),
@@ -69,7 +69,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       right_origin_(BodyPoint(Vector3d::Zero(),
                               plant_controls.GetFrameByName("toe_right"))),
       param_(param),
-      debug_mode_(debug_mode) {
+      debug_mode_(debug_mode),
+      log_data_and_check_solution_(log_data) {
   this->set_name("planner_traj");
 
   DRAKE_DEMAND(param_.knots_per_mode > 0);
@@ -871,8 +872,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
         "cat ../ipopt_planning_latest.out >> ../ipopt_planning_combined.out");
   }
 
-  bool log_data_and_check_solution = true;
-  if (log_data_and_check_solution) {
+  if (log_data_and_check_solution_) {
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
                       quat_xyz_shift, local_x0_FOM, local_xf_FOM, trajopt,

@@ -314,7 +314,8 @@ class TwoLcmDrivenLoop {
       drake::lcm::DrakeLcm* drake_lcm,
       std::unique_ptr<drake::systems::Diagram<double>> diagram,
       std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers,
-      const std::vector<std::string>& input_channels, bool is_forced_publish)
+      const std::vector<std::string>& input_channels, bool is_forced_publish,
+      int max_loop_number = std::numeric_limits<int>::infinity())
       : drake_lcm_(drake_lcm),
         lcm_parsers_(lcm_parsers),
         input_channels_(input_channels),
@@ -322,7 +323,8 @@ class TwoLcmDrivenLoop {
             drake_lcm_, input_channels[0])),
         subscriber1_(drake::lcm::Subscriber<InputMessageType2>(
             drake_lcm_, input_channels[1])),
-        is_forced_publish_(is_forced_publish) {
+        is_forced_publish_(is_forced_publish),
+        max_n_loop_(max_loop_number) {
     DRAKE_DEMAND(lcm_parsers.size() == 2);
     DRAKE_DEMAND(input_channels.size() == 2);
 
@@ -368,6 +370,7 @@ class TwoLcmDrivenLoop {
     ///    Clear input channel messages.
     ///  }
     drake::log()->info(diagram_name_ + " started");
+    int n_loop = 0;
     while (time < end_time) {
       // Write the InputMessageType message into the context
       lcm_parsers_[0]->get_input_port(0).FixValue(
@@ -404,6 +407,11 @@ class TwoLcmDrivenLoop {
       subscriber0_.clear();
       subscriber1_.clear();
 
+      n_loop++;
+      if (n_loop == max_n_loop_) {
+        break;
+      }
+
       // Wait for new InputMessageType messages and SwitchMessageType messages.
       LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
         return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
@@ -432,6 +440,8 @@ class TwoLcmDrivenLoop {
   drake::lcm::Subscriber<InputMessageType2> subscriber1_;
 
   bool is_forced_publish_;
+
+  int max_n_loop_;
 };
 
 }  // namespace systems

@@ -105,7 +105,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   CassiePlannerWithMixedRomFom(
       const drake::multibody::MultibodyPlant<double>& plant_controls,
-      double stride_period, const PlannerSetting& param, bool debug_mode);
+      double stride_period, const PlannerSetting& param, bool debug_mode,
+      bool log_data);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -251,6 +252,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable int latest_failed_solve_idx_ = -1;
 
   bool debug_mode_;
+  bool log_data_and_check_solution_;
   void PrintStatus(const std::string& msg) const {
     if (debug_mode_) std::cout << msg << std::endl;
   };

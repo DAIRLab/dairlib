@@ -29,13 +29,13 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
   planner_cmd = ['bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
                     '--fix_duration=true',
                     '--zero_touchdown_impact=true',
-                    '--use_ipopt=true',
                     '--log_solver_info=false',
                     '--iter=%d' % rom_iter_idx,
                     '--knots_per_mode=%d' % knots_per_mode,
                     '--n_step=%d' % n_step,
                     '--feas_tol=%.6f' % feas_tol,
                     '--init_file=%s' % planner_init_file,
+                    '--use_ipopt=%s' % str(get_init_file).lower(),
                     '--log_data=%s' % str(get_init_file).lower(),
                     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
                     ]
@@ -81,15 +81,15 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
 
 
 def eval_cost(rom_iter_idx):
-  planner_cmd = ['bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
+  eval_cost_cmd = ['bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
                     lcmlog_file_path(rom_iter_idx),
                     'CASSIE_INPUT',
                     str(rom_iter_idx),
                     ]
-  planner_process = subprocess.Popen(planner_cmd)
+  eval_cost_process = subprocess.Popen(eval_cost_cmd)
 
   # Wait for evaluation to end
-  while planner_process.poll() is None:  # while subprocess is alive
+  while eval_cost_process.poll() is None:  # while subprocess is alive
     time.sleep(1)
 
 def lcmlog_file_path(rom_iter_idx):
@@ -150,13 +150,13 @@ if __name__ == "__main__":
   Path(directory).mkdir(parents=True, exist_ok=True)
 
   model_iter_idx_start = 1 #1
-  model_iter_idx_end = 10
-  idx_spacing = 5
+  model_iter_idx_end = 100
+  idx_spacing = 4
 
   model_indices = list(range(model_iter_idx_start-1, model_iter_idx_end + 1, idx_spacing))
   model_indices[0] += 1
   # example list: [1, 5, 10, 15]
 
   # Toggle the functions here depending on whether to generate cost or plot cost
-  # run_sim_and_generate_cost(model_indices)
+  run_sim_and_generate_cost(model_indices)
   plot_cost(model_indices)

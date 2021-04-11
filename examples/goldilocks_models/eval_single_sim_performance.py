@@ -5,7 +5,7 @@ import lcm
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from bindings.pydairlib.analysis_scripts import process_lcm_log
+from pydairlib.analysis_scripts import process_lcm_log
 import pathlib
 from pathlib import Path
 from pydrake.multibody.parsing import Parser

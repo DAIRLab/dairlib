@@ -7,6 +7,12 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 
+def build_files(bazel_file_argument):
+  build_cmd = ['bazel', 'build', bazel_file_argument, ]
+  build_process = subprocess.Popen(build_cmd)
+  while build_process.poll() is None:  # while subprocess is alive
+    time.sleep(1)
+
 def run_sim_and_controller(rom_iter_idx, get_init_file):
   # simulation arguments
   sim_end_time = 8.0;
@@ -133,10 +139,14 @@ def plot_cost(model_indices):
   plt.show()
 
 if __name__ == "__main__":
+  # Build files just in case forgetting
+  build_files('examples/goldilocks_models/...')
+  build_files('examples/Cassie:multibody_sim')
+
   global directory
   directory = "../dairlib_data/goldilocks_models/sim_cost_eval"
 
-  # Create folder
+  # Create folder if not exist
   Path(directory).mkdir(parents=True, exist_ok=True)
 
   model_iter_idx_start = 1 #1

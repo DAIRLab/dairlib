@@ -23,6 +23,7 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
   init_traj_file = '' if get_init_file else '0_rom_trajectory'
 
   # planner arguments
+  time_limit = 0.0 if get_init_file else 4.0  # set to 0 for realtime limit
   knots_per_mode = 10
   feas_tol = 1e-2
   n_step = 2
@@ -41,6 +42,7 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
     '--use_ipopt=%s' % str(get_init_file).lower(),
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
+    '--time_limit=%.3f' % time_limit,
   ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
@@ -210,6 +212,9 @@ if __name__ == "__main__":
     range(model_iter_idx_start - 1, model_iter_idx_end + 1, idx_spacing))
   model_indices[0] += 1
   # example list: [1, 5, 10, 15]
+
+  # Remove some indices (remove by value)
+  # model_indices.remove(56)
 
   # Toggle the functions here depending on whether to generate cost or plot cost
   # run_sim_and_generate_cost(model_indices)

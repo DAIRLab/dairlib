@@ -109,7 +109,7 @@ def run_sim_and_generate_cost(model_indices):
     eval_cost(rom_iter_idx)
 
     # Delete the lcmlog
-    os.remove(lcmlog_file_path(rom_iter_idx))
+    #os.remove(lcmlog_file_path(rom_iter_idx))
 
 def plot_cost(model_indices):
   # Get names
@@ -119,8 +119,7 @@ def plot_cost(model_indices):
   names = data[0]
 
   # Get values
-  costs = np.zeros((0, len(names))) 
-
+  costs = np.zeros((0, len(names)))
   for rom_iter_idx in model_indices:
     # rom_iter_idx = 35
     with open(directory + "/" + str(rom_iter_idx) + "_cost_values.csv", newline='') as f:
@@ -136,6 +135,43 @@ def plot_cost(model_indices):
   plt.ylabel('cost')
   plt.xlabel('model iterations')
   plt.legend(names)
+
+def find_cost_in_string(file_string, string_to_search):
+  # We search from the end of the file
+  word_location = file_string.rfind(string_to_search)
+  number_idx_start = 0
+  number_idx_end = 0
+  idx = word_location
+  while True:
+    if file_string[idx] == '=':
+      number_idx_start = idx
+    elif file_string[idx] == '\n':
+      number_idx_end = idx
+      break
+    idx += 1
+  cost_value = float(file_string[number_idx_start+1: number_idx_end])
+  print(cost_value)
+  return cost_value
+
+def plot_nomial_cost(model_indices):
+  nom_traj_dir = "../dairlib_data/goldilocks_models/planning/robot_1/models"
+  filename = '_1_trajopt_settings_and_cost_breakdown.txt'
+
+  costs = np.zeros((0, 1))
+  for rom_iter_idx in model_indices:
+    with open (nom_traj_dir + '/' + str(rom_iter_idx) + filename, 'rt') as f:
+      contents = f.read()
+    cost_x = find_cost_in_string(contents, "cost_x =")
+    cost_u = find_cost_in_string(contents, "cost_u =")
+    total_cost = cost_x + cost_u
+    costs = np.vstack([costs, total_cost])
+
+  figname = "Nominal cost over model iterations"
+  plt.figure(figname, figsize=(6.4, 4.8))
+  plt.plot(model_indices, costs)
+  plt.ylabel('cost')
+  plt.xlabel('model iterations')
+  plt.legend(["total_cost"])
   plt.show()
 
 if __name__ == "__main__":
@@ -158,5 +194,7 @@ if __name__ == "__main__":
   # example list: [1, 5, 10, 15]
 
   # Toggle the functions here depending on whether to generate cost or plot cost
-  run_sim_and_generate_cost(model_indices)
-  plot_cost(model_indices)
+  # run_sim_and_generate_cost(model_indices)
+  # plot_cost(model_indices)
+  plot_nomial_cost(model_indices)
+  plt.show()

@@ -7,54 +7,60 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def build_files(bazel_file_argument):
   build_cmd = ['bazel', 'build', bazel_file_argument, ]
   build_process = subprocess.Popen(build_cmd)
   while build_process.poll() is None:  # while subprocess is alive
     time.sleep(1)
 
+
 def run_sim_and_controller(rom_iter_idx, get_init_file):
   # simulation arguments
-  sim_end_time = 8.0;
-  target_realtime_rate = 0.04;
-  pause_second = 2.0 if get_init_file else 0;
-  init_traj_file = '' if get_init_file else '0_rom_trajectory';
+  sim_end_time = 8.0
+  target_realtime_rate = 1  # 0.04
+  pause_second = 2.0 if get_init_file else 0
+  init_traj_file = '' if get_init_file else '0_rom_trajectory'
 
   # planner arguments
-  knots_per_mode = 10;
+  knots_per_mode = 10
   feas_tol = 1e-2
-  n_step = 2;
+  n_step = 2
   planner_init_file = '' if get_init_file else '0_z.csv'
 
-  planner_cmd = ['bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
-                    '--fix_duration=true',
-                    '--zero_touchdown_impact=true',
-                    '--log_solver_info=false',
-                    '--iter=%d' % rom_iter_idx,
-                    '--knots_per_mode=%d' % knots_per_mode,
-                    '--n_step=%d' % n_step,
-                    '--feas_tol=%.6f' % feas_tol,
-                    '--init_file=%s' % planner_init_file,
-                    '--use_ipopt=%s' % str(get_init_file).lower(),
-                    '--log_data=%s' % str(get_init_file).lower(),
-                    '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
-                    ]
-  controller_cmd = ['bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
-                    '--const_walking_speed=true',
-                    '--use_IK=false',
-                    '--iter=%d' % rom_iter_idx,
-                    '--init_traj_file_name=%s' % init_traj_file,
-                    ]
-  simulator_cmd = ['bazel-bin/examples/Cassie/multibody_sim',
-                   '--end_time=%.3f' % sim_end_time,
-                   '--pause_second=%.3f' % pause_second,
-                   '--init_height=%.3f' % 1.0,
-                   '--target_realtime_rate=%.3f' % target_realtime_rate,
-                   ]
-  lcm_logger_cmd = ['lcm-logger',
-                    '-f',
-                    lcmlog_file_path(rom_iter_idx),
-                    ]
+  planner_cmd = [
+    'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
+    '--fix_duration=true',
+    '--zero_touchdown_impact=true',
+    '--log_solver_info=false',
+    '--iter=%d' % rom_iter_idx,
+    '--knots_per_mode=%d' % knots_per_mode,
+    '--n_step=%d' % n_step,
+    '--feas_tol=%.6f' % feas_tol,
+    '--init_file=%s' % planner_init_file,
+    '--use_ipopt=%s' % str(get_init_file).lower(),
+    '--log_data=%s' % str(get_init_file).lower(),
+    '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
+  ]
+  controller_cmd = [
+    'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
+    '--const_walking_speed=true',
+    '--use_IK=false',
+    '--iter=%d' % rom_iter_idx,
+    '--init_traj_file_name=%s' % init_traj_file,
+  ]
+  simulator_cmd = [
+    'bazel-bin/examples/Cassie/multibody_sim',
+    '--end_time=%.3f' % sim_end_time,
+    '--pause_second=%.3f' % pause_second,
+    '--init_height=%.3f' % 1.0,
+    '--target_realtime_rate=%.3f' % target_realtime_rate,
+  ]
+  lcm_logger_cmd = [
+    'lcm-logger',
+    '-f',
+    lcmlog_file_path(rom_iter_idx),
+  ]
 
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)
@@ -81,19 +87,21 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
 
 
 def eval_cost(rom_iter_idx):
-  eval_cost_cmd = ['bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
-                    lcmlog_file_path(rom_iter_idx),
-                    'CASSIE_INPUT',
-                    str(rom_iter_idx),
-                    ]
+  eval_cost_cmd = [
+    'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
+    lcmlog_file_path(rom_iter_idx),
+    'CASSIE_INPUT',
+    str(rom_iter_idx),
+  ]
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
 
   # Wait for evaluation to end
   while eval_cost_process.poll() is None:  # while subprocess is alive
     time.sleep(1)
 
+
 def lcmlog_file_path(rom_iter_idx):
-  return directory + '/lcmlog-idx_%d' % (rom_iter_idx)
+  return dir + '/lcmlog-idx_%d' % (rom_iter_idx)
 
 
 def run_sim_and_generate_cost(model_indices):
@@ -109,20 +117,20 @@ def run_sim_and_generate_cost(model_indices):
     eval_cost(rom_iter_idx)
 
     # Delete the lcmlog
-    #os.remove(lcmlog_file_path(rom_iter_idx))
+    # os.remove(lcmlog_file_path(rom_iter_idx))
 
-def plot_cost(model_indices):
+
+def plot_cost(model_indices, plot_nominal=False):
   # Get names
-  with open(directory + "/cost_names.csv", newline='') as f:
+  with open(dir + "/cost_names.csv", newline='') as f:
     reader = csv.reader(f)
     data = list(reader)
   names = data[0]
 
   # Get values
   costs = np.zeros((0, len(names)))
-  for rom_iter_idx in model_indices:
-    # rom_iter_idx = 35
-    with open(directory + "/" + str(rom_iter_idx) + "_cost_values.csv", newline='') as f:
+  for iter_idx in model_indices:
+    with open(dir + "/" + str(iter_idx) + "_cost_values.csv", newline='') as f:
       reader = csv.reader(f)
       data = [float(x) for x in list(reader)[0]]
     costs = np.vstack([costs, np.array(data)])
@@ -132,9 +140,15 @@ def plot_cost(model_indices):
   figname = "Simulation cost over model iterations"
   plt.figure(figname, figsize=(6.4, 4.8))
   plt.plot(model_indices, costs)
+  if plot_nominal:
+    nominal_cost = plot_nomial_cost(model_indices)
+    plt.plot(model_indices, nominal_cost)
+    names = names + ["nomial_total_cost"]
   plt.ylabel('cost')
   plt.xlabel('model iterations')
   plt.legend(names)
+  plt.show()
+
 
 def find_cost_in_string(file_string, string_to_search):
   # We search from the end of the file
@@ -149,52 +163,54 @@ def find_cost_in_string(file_string, string_to_search):
       number_idx_end = idx
       break
     idx += 1
-  cost_value = float(file_string[number_idx_start+1: number_idx_end])
-  print(cost_value)
+  cost_value = float(file_string[number_idx_start + 1: number_idx_end])
   return cost_value
 
+
 def plot_nomial_cost(model_indices):
+  sample_idx = 1  # related to different tasks
   nom_traj_dir = "../dairlib_data/goldilocks_models/planning/robot_1/models"
-  filename = '_1_trajopt_settings_and_cost_breakdown.txt'
+  filename = '_' + str(sample_idx) + '_trajopt_settings_and_cost_breakdown.txt'
 
   costs = np.zeros((0, 1))
   for rom_iter_idx in model_indices:
-    with open (nom_traj_dir + '/' + str(rom_iter_idx) + filename, 'rt') as f:
+    with open(nom_traj_dir + '/' + str(rom_iter_idx) + filename, 'rt') as f:
       contents = f.read()
     cost_x = find_cost_in_string(contents, "cost_x =")
     cost_u = find_cost_in_string(contents, "cost_u =")
     total_cost = cost_x + cost_u
     costs = np.vstack([costs, total_cost])
 
-  figname = "Nominal cost over model iterations"
-  plt.figure(figname, figsize=(6.4, 4.8))
-  plt.plot(model_indices, costs)
-  plt.ylabel('cost')
-  plt.xlabel('model iterations')
-  plt.legend(["total_cost"])
-  plt.show()
+  # figname = "Nominal cost over model iterations"
+  # plt.figure(figname, figsize=(6.4, 4.8))
+  # plt.plot(model_indices, costs)
+  # plt.ylabel('cost')
+  # plt.xlabel('model iterations')
+  # plt.legend(["total_cost"])
+  # plt.show()
+  return costs
+
 
 if __name__ == "__main__":
   # Build files just in case forgetting
   build_files('examples/goldilocks_models/...')
   build_files('examples/Cassie:multibody_sim')
 
-  global directory
-  directory = "../dairlib_data/goldilocks_models/sim_cost_eval"
+  global dir
+  dir = "../dairlib_data/goldilocks_models/sim_cost_eval"
 
   # Create folder if not exist
-  Path(directory).mkdir(parents=True, exist_ok=True)
+  Path(dir).mkdir(parents=True, exist_ok=True)
 
-  model_iter_idx_start = 1 #1
-  model_iter_idx_end = 100
-  idx_spacing = 4
+  model_iter_idx_start = 1  # 1
+  model_iter_idx_end = 20
+  idx_spacing = 5
 
-  model_indices = list(range(model_iter_idx_start-1, model_iter_idx_end + 1, idx_spacing))
+  model_indices = list(
+    range(model_iter_idx_start - 1, model_iter_idx_end + 1, idx_spacing))
   model_indices[0] += 1
   # example list: [1, 5, 10, 15]
 
   # Toggle the functions here depending on whether to generate cost or plot cost
   # run_sim_and_generate_cost(model_indices)
-  # plot_cost(model_indices)
-  plot_nomial_cost(model_indices)
-  plt.show()
+  plot_cost(model_indices, True)

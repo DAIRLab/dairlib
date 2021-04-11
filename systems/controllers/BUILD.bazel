@@ -155,6 +155,8 @@ cc_library(
     deps = [
         "//common",
         "//lcmtypes:lcmt_robot",
+        "//multibody:multibody_solvers",
+        "//multibody:utils",
         "//solvers:constraint_factory",
         "@drake//:drake_shared_library",
     ],

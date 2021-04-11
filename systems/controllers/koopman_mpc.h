@@ -23,6 +23,7 @@
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
+#include "multibody/multibody_utils.h"
 #include "solvers/constraint_factory.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -60,16 +61,22 @@ typedef struct KoopmanMpcMode {
 class KoopmanMPC : public drake::systems::LeafSystem<double> {
  public:
   KoopmanMPC(const drake::multibody::MultibodyPlant<double>& plant,
-             const drake::systems::Context<double>* plant_context, double dt,
-             bool planar, bool used_with_finite_state_machine = true);
+             drake::systems::Context<double>* plant_context, double dt,
+             bool planar, bool used_with_finite_state_machine = true,
+             bool use_com = true);
 
   void AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, int N);
 
-  void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator,
-      koopMpcStance stance);
+  void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>,
+                                 Eigen::Vector3d> pt, koopMpcStance stance);
 
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
   void AddInputRegularization(const Eigen::MatrixXd& R);
+  void AddJointToTrackBaseAngle(const std::string& joint_pos_name,
+                                const std::string& joint_vel_name);
+  void AddBaseFrame(const string &body_name,
+      const Eigen::Vector3d& offset = Eigen::Vector3d::Zero(),
+      const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
   void BuildController();
 
@@ -97,8 +104,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   double CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies);
 
-  /// Calculate the total rotational inertia about point frame_about
-  /// expressed in frame frame_express
+  /// Calculate the total rotational inertia about CoM expressed in frame_express
   drake::multibody::RotationalInertia<double>
   CalcCentroialInertiaFromListOfBodies(std::vector<std::string> bodies,
       const drake::multibody::Frame<double>& frame_express);
@@ -133,7 +139,10 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  std::vector<const multibody::WorldPointEvaluator<double>*> contact_points_;
+  mutable drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
+    prev_sol_base_traj_;
+  std::vector<std::pair<const drake::multibody::BodyFrame<double>,Eigen::Vector3d>>
+  contact_points_;
   std::vector<KoopmanMpcMode> modes_;
   std::vector<Eigen::VectorXd> kin_nominal_;
   Eigen::VectorXd kin_lim_;
@@ -162,11 +171,20 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::QuadraticCost*> input_cost_;
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
 
+
   // drake boilerplate
   const drake::multibody::MultibodyPlant<double>& plant_;
-  const drake::systems::Context<double>* plant_context_;
+  const drake::multibody::BodyFrame<double>& world_frame_;
+  std::string base_;
+  Eigen::Isometry3d frame_pose_;
+  Eigen::Vector3d com_from_base_origin_;
+  int base_angle_pos_idx_;
+  int base_angle_vel_idx_;
+  mutable drake::systems::Context<double>* plant_context_;
 
   // constants
+  const bool use_com_;
+  const bool planar_;
   const int kNxPlanar = 6;
   const int kNx3d = 13;
   const int kNuPlanar = 6;

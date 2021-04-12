@@ -24,10 +24,27 @@ group "1.rom-space-controller" {
         host = "dair-cassie";
     }
     cmd "3.1.rom-planner (run local)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --use_ipopt=true --broadcast=true --log_data=false";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --use_ipopt=true --broadcast=true --log_data=true";
         host = "dair-cassie";
     }
 }
+
+
+group "2.setup" {
+    cmd "1.dispatcher-robot-in-real-robot" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true";
+        host = "dair-cassie";
+    }
+    cmd "2.pd-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
+        host = "dair-cassie";
+    }
+    cmd "3.standing-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
+        host = "dair-cassie";
+    }
+}
+
 
 group "0.operator" {
     cmd "1.state-visualizer-floating (from cassie dispatcher)" {
@@ -51,8 +68,16 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=13";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=1";
         host = "localhost";
+    }
+    cmd "3.0.switch-to-rom-mpc" {
+        exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch";
+        host = "dair-cassie";
+    }
+    cmd "4.0.controller-switch-to-standing" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=1.0";
+        host = "dair-cassie";
     }
 }
 
@@ -83,31 +108,21 @@ group "1.rom-space-controller-with-init-traj" {
 }
 
 
-script "run-original-walking" {
-    run_script "start-operator-simulation-floating-base";
-    start cmd "1.original-walking-controller";
-    start cmd "0.simulator";
+script "initialize_standing" {
+    stop group "1.rom-space-controller";
+    start cmd "1.dispatcher-robot-out (run local)";
+    start cmd "1.dispatcher-robot-in-real-robot";
+    start cmd "2.pd-controller-real-robot";
 }
 
-script "run-rom-walking" {
-    run_script "start-operator-simulation-floating-base";
-    start cmd "2.2.rom-planner (short time limit)";
-    start cmd "2.1.optimal-rom-walking-controller";
-    wait ms 200;
-    start cmd "0.simulator";
+script "set_up_from_pd_to_osc_standing" {
+    restart cmd "1.dispatcher-robot-out (run local)";
+    start cmd "3.osc-standing-real-robot";
 }
 
-script "run-rom-walking-test" {
-    restart cmd "2.1.optimal-rom-walking-controller";
-    wait ms 200;
-    restart cmd "2. lcm-logger";
-    start cmd "0.simulator";
-}
-
-script "start-operator-simulation-floating-base" {
-    stop cmd "1.state-visualizer-floating (from simulation)";
-    stop cmd "0.drake-director";
-    start cmd "0.drake-director";
-    wait ms 3000;
-    start cmd "1.state-visualizer-floating (from simulation)";
+script "switch from standing to walking" {
+    stop cmd "2.pd-controller-real-robot";
+    start cmd "3.0.switch-to-rom-mpc";
+    wait ms 1000;
+    stop cmd "3.osc-standing-real-robot";
 }

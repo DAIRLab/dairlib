@@ -208,8 +208,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Lcm receiver for fsm and latest lift off time (translate the lcm to
   // BasicVector)
-  int lcm_vector_size = 2;
-  auto fsm_and_liftoff_time_receiver =
+  int lcm_vector_size = 3;
+  auto controller_signal_receiver =
       builder.AddSystem<systems::DairlibSignalReceiver>(lcm_vector_size);
 
   // Create mpc traj publisher
@@ -221,7 +221,7 @@ int DoMain(int argc, char* argv[]) {
   // Create a block that gets the stance leg
   std::vector<int> ss_fsm_states = {LEFT_STANCE, RIGHT_STANCE};
   auto stance_foot_getter = builder.AddSystem<CurrentStanceFoot>(ss_fsm_states);
-  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
+  builder.Connect(controller_signal_receiver->get_output_port(0),
                   stance_foot_getter->get_input_port_fsm_and_lo_time());
 
   // Create a block that compute the phase of the first mode
@@ -231,7 +231,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<PhaseInFirstMode>(plant_feedback, stride_period);
   builder.Connect(state_receiver->get_output_port(0),
                   init_phase_calculator->get_input_port_state());
-  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
+  builder.Connect(controller_signal_receiver->get_output_port(0),
                   init_phase_calculator->get_input_port_fsm_and_lo_time());
 
   // Create a block that computes the initial state for the planner
@@ -243,7 +243,7 @@ int DoMain(int argc, char* argv[]) {
                   x_init_calculator->get_input_port_state());
   builder.Connect(init_phase_calculator->get_output_port(0),
                   x_init_calculator->get_input_port_init_phase());
-  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
+  builder.Connect(controller_signal_receiver->get_output_port(0),
                   x_init_calculator->get_input_port_fsm_and_lo_time());
 
   // Create optimal rom trajectory generator
@@ -257,7 +257,7 @@ int DoMain(int argc, char* argv[]) {
                   rom_planner->get_input_port_state());
   builder.Connect(x_init_calculator->get_output_port_adjustment(),
                   rom_planner->get_input_port_quat_xyz_shift());
-  //  builder.Connect(fsm_and_liftoff_time_receiver->get_output_port(0),
+  //  builder.Connect(controller_signal_receiver->get_output_port(0),
   //                  rom_planner->get_input_port_fsm_and_lo_time());
   builder.Connect(rom_planner->get_output_port(0),
                   traj_publisher->get_input_port());
@@ -270,7 +270,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Run lcm-driven simulation
   std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers = {
-      fsm_and_liftoff_time_receiver, state_receiver};
+      controller_signal_receiver, state_receiver};
   std::vector<std::string> input_channels = {FLAGS_channel_fsm_t,
                                              FLAGS_channel_x};
   systems::TwoLcmDrivenLoop<dairlib::lcmt_dairlib_signal,

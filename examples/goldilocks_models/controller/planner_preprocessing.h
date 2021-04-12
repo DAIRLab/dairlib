@@ -22,13 +22,13 @@ class CurrentStanceFoot : public drake::systems::LeafSystem<double> {
 
   const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
       const {
-    return this->get_input_port(fsm_and_lo_time_port_);
+    return this->get_input_port(controller_signal_port_);
   }
 
  private:
   void GetStance(const drake::systems::Context<double>& context,
                  drake::systems::BasicVector<double>* stance_foot) const;
-  int fsm_and_lo_time_port_;
+  int controller_signal_port_;
   std::vector<int> left_right_support_fsm_states_;
   mutable bool start_with_right_stance_ = false;
 };
@@ -48,7 +48,7 @@ class PhaseInFirstMode : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
       const {
-    return this->get_input_port(fsm_and_lo_time_port_);
+    return this->get_input_port(controller_signal_port_);
   }
 
  private:
@@ -57,7 +57,7 @@ class PhaseInFirstMode : public drake::systems::LeafSystem<double> {
 
   // Port indices
   int state_port_;
-  int fsm_and_lo_time_port_;
+  int controller_signal_port_;
 
   double stride_period_;
 };
@@ -83,7 +83,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
       const {
-    return this->get_input_port(fsm_and_lo_time_port_);
+    return this->get_input_port(controller_signal_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_adjusted_state()
       const {
@@ -107,7 +107,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   int stance_foot_port_;
   int state_port_;
   int phase_port_;
-  int fsm_and_lo_time_port_;
+  int controller_signal_port_;
   int adjusted_state_port_;
   int adjustment_port_;
 

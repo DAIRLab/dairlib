@@ -229,6 +229,7 @@ int DoMain(int argc, char* argv[]) {
   double double_support_duration = gains.double_support_duration;
   vector<int> fsm_states;
   vector<double> state_durations;
+  double stride_period = left_support_duration + double_support_duration;
   if (FLAGS_is_two_phase) {
     if (!FLAGS_start_with_left_stance) {
       fsm_states = {right_stance_state, left_stance_state};
@@ -251,7 +252,7 @@ int DoMain(int argc, char* argv[]) {
     }
   }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachineWithTrigger>(
-      plant_w_spr, fsm_states, state_durations, FLAGS_hardware);
+      plant_w_spr, fsm_states, state_durations, FLAGS_hardware, stride_period);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
   if (FLAGS_hardware) {
@@ -272,18 +273,20 @@ int DoMain(int argc, char* argv[]) {
                                                      : right_stance_state)
                      : -std::numeric_limits<int>::infinity(),
       FLAGS_hardware);
-  builder.Connect(fsm->get_output_port(0), event_time->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_fsm(), event_time->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
                   event_time->get_input_port_state());
 
   // Create a multiplexer which combines current finite state machine state
   // and the latest lift-off event time, and create publisher for this
   // combined vector
-  auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(2);
+  auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(3);
   builder.Connect(fsm->get_output_port(0), mux->get_input_port(0));
   builder.Connect(event_time->get_output_port_event_time_of_interest(),
                   mux->get_input_port(1));
-  std::vector<std::string> singal_names = {"fsm", "t_lo"};
+  builder.Connect(fsm->get_output_port_global_fsm_idx(),
+                  mux->get_input_port(2));
+  std::vector<std::string> singal_names = {"fsm", "t_lo", "fsm_idx"};
   auto fsm_and_liftoff_time_sender =
       builder.AddSystem<systems::DrakeSignalSender>(
           singal_names, left_support_duration + double_support_duration);

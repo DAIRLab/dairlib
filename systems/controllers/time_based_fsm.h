@@ -68,7 +68,7 @@ class TimeBasedFiniteStateMachineWithTrigger :
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::vector<int>& states,
       const std::vector<double>& state_durations,
-      bool with_trigger_input_port = false);
+      bool with_trigger_input_port, double one_stride_period);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -76,18 +76,33 @@ class TimeBasedFiniteStateMachineWithTrigger :
   const drake::systems::InputPort<double>& get_input_port_trigger() const {
     return this->get_input_port(trigger_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
+    return this->get_output_port(fsm_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_global_fsm_idx() const {
+    return this->get_output_port(global_fsm_idx_port_);
+  }
 
  private:
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
   void CalcFiniteState(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* fsm_state) const;
+  void CalcGlobalFsmIdx(const drake::systems::Context<double>& context,
+      drake::systems::BasicVector<double>* global_fsm_idx) const;
 
   int state_port_;
   int trigger_port_;
 
-  std::vector<int> states_;
+  int fsm_port_;
+  int global_fsm_idx_port_;
+
   mutable double t0_ = -1;
   bool with_trigger_input_port_;
+  double one_stride_period_;
 
+  std::vector<int> states_;
   std::vector<double> accu_state_durations_;
   double period_;
 

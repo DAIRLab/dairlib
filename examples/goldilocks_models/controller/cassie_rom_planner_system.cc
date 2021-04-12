@@ -85,8 +85,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                                              plant_controls.num_velocities(),
                                              plant_controls.num_actuators()))
                     .get_index();
-  fsm_and_lo_time_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(2)).get_index();
+  controller_signal_port_ =
+      this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
   quat_xyz_shift_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(7)).get_index();
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
@@ -433,10 +433,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   VectorXd quat_xyz_shift =
       this->EvalVectorInput(context, quat_xyz_shift_port_)->get_value();
 
-  // Get lift-off time
-  /*const BasicVector<double>* fsm_and_lo_time_port =
-      this->EvalVectorInput(context, fsm_and_lo_time_port_);
-  double lift_off_time = fsm_and_lo_time_port->get_value()(1);*/
+  // Get global_fsm_idx
+  const BasicVector<double>* controller_signal_port =
+      this->EvalVectorInput(context, controller_signal_port_);
+  int global_fsm_idx = int(controller_signal_port->get_value()(2) + 1e-8);
 
   if (debug_mode_) {
     cout.precision(dbl::max_digits10);
@@ -618,7 +618,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   PrintStatus("Initial guesses ===============");
 
   // Initial guess for all variables
-  int global_fsm_idx = int((current_time + 1e-8) / stride_period_);
   //  if (!param_.init_file.empty()) {
   if (counter_ == 0 && !param_.init_file.empty()) {
     PrintStatus("Set initial guess from the file " + param_.init_file);

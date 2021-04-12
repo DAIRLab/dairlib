@@ -1,5 +1,7 @@
 #include "systems/controllers/time_based_fsm.h"
 
+#include "dairlib/lcmt_target_standing_height.hpp"
+
 using std::cout;
 using std::endl;
 
@@ -80,7 +82,10 @@ TimeBasedFiniteStateMachineWithTrigger::TimeBasedFiniteStateMachineWithTrigger(
                                                         plant.num_actuators()))
           .get_index();
   trigger_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareAbstractInputPort(
+              "trigger_port",
+              drake::Value<dairlib::lcmt_target_standing_height>{})
+          .get_index();
   this->DeclareVectorOutputPort(
       BasicVector<double>(1),
       &TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState);
@@ -111,7 +116,8 @@ void TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState(
   auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
 
   if ((t0_ < 0) && with_trigger_input_port_) {
-    if (this->EvalVectorInput(context, trigger_port_)->get_value()(0) > 0.5) {
+    if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
+        context, trigger_port_)->target_height > 0.5) {
       // Triggerred
       t0_ = current_sim_time;
     }

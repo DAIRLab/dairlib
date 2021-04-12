@@ -257,8 +257,8 @@ int DoMain(int argc, char* argv[]) {
                   rom_planner->get_input_port_state());
   builder.Connect(x_init_calculator->get_output_port_adjustment(),
                   rom_planner->get_input_port_quat_xyz_shift());
-  //  builder.Connect(controller_signal_receiver->get_output_port(0),
-  //                  rom_planner->get_input_port_fsm_and_lo_time());
+  builder.Connect(controller_signal_receiver->get_output_port(0),
+                  rom_planner->get_input_port_fsm_and_lo_time());
   builder.Connect(rom_planner->get_output_port(0),
                   traj_publisher->get_input_port());
 

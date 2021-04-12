@@ -3,15 +3,16 @@
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+cc_library(
     name = "koopman_mpc",
-    srcs = [
-        "koopman_basis_utils.py",
-        "koopman_model.py",
-        "koopman_mpc.py",
-    ],
+    srcs = ["koopman_mpc.cc"],
+    hdrs = ["koopman_mpc.h"],
     deps = [
-        "//bindings/pydairlib",
-        "//lcmtypes:lcmtypes_robot_py",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:multibody_solvers",
+        "//multibody:utils",
+        "//solvers:constraint_factory",
+        "@drake//:drake_shared_library",
     ],
 )

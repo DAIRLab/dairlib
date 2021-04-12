@@ -5,9 +5,7 @@
 #include <vector>
 
 #include <Eigen/Dense>
-
 #include "dairlib/lcmt_saved_traj.hpp"
-
 #include "drake/systems/lcm/serializer.h"
 
 namespace dairlib {

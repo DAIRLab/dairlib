@@ -23,8 +23,10 @@ using Eigen::Quaterniond;
 using dairlib::multibody::WorldPointEvaluator;
 using dairlib::multibody::makeNameToPositionsMap;
 using dairlib::multibody::makeNameToVelocitiesMap;
+using dairlib::systems::OutputVector;
+using dairlib::systems::BasicVector;
 
-namespace dairlib::systems::controllers{
+namespace dairlib{
 
 KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
                        Context<double> *plant_context, double dt,
@@ -34,7 +36,6 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
                        plant_context_(plant_context),
                        world_frame_(plant_.world_frame()), dt_(dt),
                        planar_(planar), use_com_(use_com){
-
 
   nq_ = plant.num_positions();
   nv_ = plant.num_velocities();
@@ -109,7 +110,7 @@ void KoopmanMPC::AddJointToTrackBaseAngle(const std::string& joint_pos_name,
   base_angle_vel_idx_ = makeNameToVelocitiesMap(plant_).at(joint_vel_name);
 }
 
-void KoopmanMPC::AddBaseFrame(const string &body_name,
+void KoopmanMPC::AddBaseFrame(const std::string &body_name,
 const Eigen::Vector3d& offset, const Eigen::Isometry3d& frame_pose) {
   DRAKE_ASSERT(!planar_)
   base_ = body_name;
@@ -150,7 +151,7 @@ void KoopmanMPC::Build() {
   MakeStanceFootConstraints();
   MakeKinematicReachabilityConstraints();
   MakeStateKnotConstraints();
-  MakeInitialStateConstraint();
+  MakeInitialStateConstraints();
   prog_.SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration_);
 }
 
@@ -186,22 +187,17 @@ void KoopmanMPC::MakeDynamicsConstraints() {
   }
 }
 
-/// TODO(@Brian-Acosta): Update initial state constraints to allow for
-/// any xx to be x0
-void KoopmanMPC::MakeInitialStateConstraint() {
+void KoopmanMPC::MakeInitialStateConstraints() {
   for (auto & mode : modes_) {
-    for (int i = 0; i < mode.N ; i++) {
+    for (int i = 0; i < mode.N; i++) {
       mode.init_state_constraint_.push_back(
           prog_.AddLinearEqualityConstraint(
-              MatrixXd::Zero(1, nz_), VectorXd::Zero(1),
-              mode.zz.at(i))
+                  MatrixXd::Zero(1, nz_), VectorXd::Zero(1),
+                  mode.zz.at(i))
               .evaluator()
               .get());
     }
   }
-
-  modes_.front().init_state_constraint_.front()->UpdateCoefficients(
-      MatrixXd::Identity(nz_, nz_), VectorXd::Zero(nz_));
 }
 
 void KoopmanMPC::MakeKinematicReachabilityConstraints() {
@@ -231,7 +227,7 @@ void KoopmanMPC::MakeKinematicReachabilityConstraints() {
 void KoopmanMPC::MakeFrictionConeConstraints() {
   for (auto & mode : modes_) {
     for (int i = 0; i <= mode.N; i++) {
-      if (kLinearDim_ == 3) {
+      if (! planar_ ) {
         mode.friction_constraints.push_back(
             prog_.AddConstraint(
                 solvers::CreateLinearFrictionConstraint(mu_),
@@ -253,8 +249,16 @@ void KoopmanMPC::MakeFrictionConeConstraints() {
 }
 
 void KoopmanMPC::MakeStateKnotConstraints() {
+  // Dummy constraint to be used when cycling modes
+  state_knot_constraints_.push_back(
+      prog_.AddLinearEqualityConstraint(
+          MatrixXd::Zero(1, 2*nz_),
+          VectorXd::Zero(1),
+          {modes_.back().zz.back(), modes_.front().zz.front()})
+          .evaluator()
+          .get());
+
   MatrixXd Aeq = MatrixXd::Identity(nz_, 2 * nz_);
-  Aeq.block(0, nz_, nz_, nz_) = -MatrixXd::Identity(nz_, nz_);
   Aeq.block(0, nz_, nz_, nz_) = -MatrixXd::Identity(nz_, nz_);
   for (int i = 0; i < modes_.size() - 1; i++) {
     state_knot_constraints_.push_back(
@@ -263,14 +267,6 @@ void KoopmanMPC::MakeStateKnotConstraints() {
             .evaluator()
             .get());
   }
-
-  // Dummy constraint to be used when cycling modes
-  state_knot_constraints_.push_back(
-      prog_.AddLinearEqualityConstraint( MatrixXd::Zero(1, 2*nz_),
-          VectorXd::Zero(1),
-          {modes_.back().zz.back(), modes_.front().zz.front()})
-          .evaluator()
-          .get());
 }
 
 void KoopmanMPC::AddTrackingObjective(const Eigen::VectorXd &xdes,
@@ -429,7 +425,6 @@ void KoopmanMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
   }
 }
 
-/// TODO(@Brian-Acosta) Update Knot Constraints and Dynamics Constraints
 void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     const int fsm_state, const double t_since_last_switch) const {
 
@@ -439,8 +434,25 @@ void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     return;
   }
 
+  // Remove current initial state constraint
   modes_.at(x0_idx_[0]).init_state_constraint_.at(x0_idx_[1])->
     UpdateCoefficients(MatrixXd::Zero(1, nz_), VectorXd::Zero(1));
+
+  // Re-create current knot constraint if necessary.
+  // Otherwise re-create dynamics constraint
+  if (x0_idx_[1] == 0) {
+    MatrixXd Aeq = MatrixXd::Identity(nz_, 2 * nz_);
+    Aeq.block(0, nz_, nz_, nz_) = -MatrixXd::Identity(nz_, nz_);
+    state_knot_constraints_.at(x0_idx_[0])->UpdateCoefficients(Aeq, VectorXd::Zero(nz_));
+  } else {
+    MatrixXd dyn = MatrixXd::Zero(nz_, 2 * nz_ + nu_c_);
+    dyn.block(0, 0, nz_, nz_) = modes_.at(x0_idx_[0]).dynamics.A;
+    dyn.block(0, nz_, nz_, nu_c_) =modes_.at(x0_idx_[0]).dynamics.B;
+    dyn.block(0, nz_, nz_ + nu_c_, nz_) = -MatrixXd::Identity(nz_, nz_);
+    modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
+    UpdateCoefficients(dyn, -modes_.at(x0_idx_[0]).dynamics.b);
+  }
+
 
   x0_idx_[0] = fsm_state;
   x0_idx_[1] = std::round(t_since_last_switch / dt_);
@@ -453,9 +465,20 @@ void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     }
   }
 
+  // Add new initial state constraint
   modes_.at(x0_idx_[0]).init_state_constraint_.at(x0_idx_[1])->
       UpdateCoefficients(MatrixXd::Identity(nz_, nz_),
           modes_.at(x0_idx_[0]).dynamics.x_basis_func(x0));
+
+  // remove one constraint to break circular dependency
+  if (x0_idx_[1] == 0) {
+    state_knot_constraints_.at(x0_idx_[0])->UpdateCoefficients(
+        MatrixXd::Zero(1, 2 * nz_), VectorXd::Zero(1));
+  } else {
+    modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
+        UpdateCoefficients(MatrixXd::Zero(1, 2*nz_ + nu_c_), VectorXd::Zero(1));
+  }
+
 }
 
 double KoopmanMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies) {
@@ -466,6 +489,4 @@ double KoopmanMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> b
   return mass;
 }
 
-
-
-} // dairlib::systems::controllers
+} // dairlib

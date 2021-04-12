@@ -28,8 +28,9 @@
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
+#include "systems/framework/basic_vector.h"
 
-namespace dairlib::systems::controllers {
+namespace dairlib {
 
 enum koopMpcStance {
   kLeft=0,
@@ -81,7 +82,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   void SetMass(double mass) {mass_ = mass;}
 
-  void AddBaseFrame(const string &body_name,
+  void AddBaseFrame(const std::string &body_name,
       const Eigen::Vector3d& offset = Eigen::Vector3d::Zero(),
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
@@ -118,13 +119,13 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void MakeDynamicsConstraints();
   void MakeFrictionConeConstraints();
   void MakeStateKnotConstraints();
-  void MakeInitialStateConstraint();
+  void MakeInitialStateConstraints();
 
   drake::trajectories::PiecewisePolynomial<double> MakePPTrajFromSol(
       drake::solvers::MathematicalProgramResult result) const;
 
   lcmt_saved_traj MakeLcmTrajFromSol(
-      drake::solvers::MathematicalProgramResult result) const ;
+      drake::solvers::MathematicalProgramResult result) const;
 
   void UpdateInitialStateConstraint(const Eigen::VectorXd& x0,
       const int fsm_state, const double t_since_last_switch) const;
@@ -132,10 +133,10 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   Eigen::VectorXd CalcCentroidalStateFromPlant(Eigen::VectorXd x, double t) const;
 
+
   // parameters
   bool use_fsm_;
   double dt_;
-
 
   // port indices
   int state_port_;
@@ -213,4 +214,4 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   drake::multibody::RotationalInertia<double> rotational_inertia_;
 
 };
-} // dairlib::systems::controllers
+} // dairlib

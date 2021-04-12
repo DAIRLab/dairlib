@@ -24,7 +24,7 @@ group "1.rom-space-controller" {
         host = "dair-cassie";
     }
     cmd "3.1.rom-planner (run local)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true --log_data=false";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --use_ipopt=true --broadcast=true --log_data=false";
         host = "dair-cassie";
     }
 }

@@ -78,7 +78,9 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const Eigen::Vector3d& offset = Eigen::Vector3d::Zero(),
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
-  void BuildController();
+  void Build();
+
+  void CheckProblemDefinition();
 
   // Input ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -99,7 +101,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
  private:
 
   void CalcOptimalMotionPlan(const drake::systems::Context<double>& context,
-      dairlib::lcmt_saved_traj* traj_msg) const;
+      lcmt_saved_traj* traj_msg) const;
 
 
   double CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies);
@@ -116,13 +118,16 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void MakeStateKnotConstraints();
   void MakeInitialStateConstraint();
 
-  drake::trajectories::PiecewisePolynomial<double> MakeTrajFromSol(
-      drake::solvers::MathematicalProgramResult result);
+  drake::trajectories::PiecewisePolynomial<double> MakePPTrajFromSol(
+      drake::solvers::MathematicalProgramResult result) const;
 
-  void UpdateInitialStateConstraint(const Eigen::VectorXd& x0);
-  void UpdateTrackingObjective(const Eigen::VectorXd& xdes);
+  lcmt_saved_traj MakeLcmTrajFromSol(
+      drake::solvers::MathematicalProgramResult result) const ;
 
-  Eigen::VectorXd CalcCentroidalStateFromPlant(Eigen::VectorXd x, double t);
+  void UpdateInitialStateConstraint(const Eigen::VectorXd& x0) const;
+  void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
+
+  Eigen::VectorXd CalcCentroidalStateFromPlant(Eigen::VectorXd x, double t) const;
 
   // parameters
   bool use_fsm_;
@@ -134,6 +139,9 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int fsm_port_;
   int x_des_port_;
 
+  // discrete update indices
+  int x_des_idx_;
+
   // discrete update
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -141,8 +149,12 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   mutable drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
     prev_sol_base_traj_;
-  std::vector<std::pair<const drake::multibody::BodyFrame<double>,Eigen::Vector3d>>
-  contact_points_;
+
+  std::vector<std::pair<const drake::multibody::BodyFrame<double>,
+  Eigen::Vector3d>> contact_points_;
+
+  // Problem variables
+  Eigen::MatrixXd Q_;
   std::vector<KoopmanMpcMode> modes_;
   std::vector<Eigen::VectorXd> kin_nominal_;
   Eigen::VectorXd kin_lim_;
@@ -183,6 +195,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   mutable drake::systems::Context<double>* plant_context_;
 
   // constants
+  const double kMaxSolveDuration_ = 0.01;
   const bool use_com_;
   const bool planar_;
   const int kNxPlanar = 6;

@@ -7,6 +7,13 @@ using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::BodyFrame;
 using drake::systems::Context;
+using drake::systems::EventStatus;
+
+using drake::solvers::OsqpSolver;
+using drake::solvers::Solve;
+using drake::solvers::OsqpSolverDetails;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::MathematicalProgramResult;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -28,6 +35,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
                        world_frame_(plant_.world_frame()), dt_(dt),
                        planar_(planar), use_com_(use_com){
 
+
   nq_ = plant.num_positions();
   nv_ = plant.num_velocities();
   nu_p_ = plant.num_actuators();
@@ -38,6 +46,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   kAngularDim_ = planar ? 1 : 4;
 
   nxi_ = nx_ + nu_c_;
+  Q_ = MatrixXd::Zero(nxi_, nxi_);
 
   // Create Ports
   state_port_ = this->DeclareVectorInputPort(
@@ -53,9 +62,13 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
 
   this->DeclareAbstractOutputPort(&KoopmanMPC::CalcOptimalMotionPlan);
 
+  // Discrete update
+  DeclarePerStepDiscreteUpdateEvent(&KoopmanMPC::DiscreteVariableUpdate);
+  x_des_idx_ = this->DeclareDiscreteState(VectorXd::Zero(nxi_));
 }
 
-void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, int N) {
+void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
+    koopMpcStance stance, int N) {
   if (modes_.empty()) {
     nz_ = dynamics.x_basis_func(VectorXd::Zero(nxi_)).size();
   }
@@ -77,8 +90,7 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, 
 }
 
 void KoopmanMPC::AddContactPoint(std::pair<const drake::multibody::BodyFrame<
-    double>, Eigen::Vector3d> pt,
-                                 koopMpcStance stance) {
+    double>, Eigen::Vector3d> pt, koopMpcStance stance) {
   DRAKE_ASSERT(contact_points_.size() == stance)
   contact_points_.push_back(pt);
 }
@@ -108,11 +120,17 @@ void KoopmanMPC::SetReachabilityLimit(const Eigen::MatrixXd &kl,
   }
 }
 
-void KoopmanMPC::BuildController() {
+void KoopmanMPC::CheckProblemDefinition() {
   DRAKE_DEMAND(!modes_.empty());
   DRAKE_DEMAND(!tracking_cost_.empty());
   DRAKE_DEMAND(!input_cost_.empty());
   DRAKE_DEMAND(mu_ > 0 );
+  DRAKE_DEMAND(!contact_points_.empty());
+  DRAKE_DEMAND(!kin_nominal_.empty());
+}
+
+void KoopmanMPC::Build() {
+  CheckProblemDefinition();
 
   MakeDynamicsConstraints();
   MakeFrictionConeConstraints();
@@ -120,6 +138,7 @@ void KoopmanMPC::BuildController() {
   MakeKinematicReachabilityConstraints();
   MakeStateKnotConstraints();
   MakeInitialStateConstraint();
+  prog_.SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration_);
 }
 
 void KoopmanMPC::MakeStanceFootConstraints() {
@@ -235,6 +254,7 @@ void KoopmanMPC::MakeStateKnotConstraints() {
 
 void KoopmanMPC::AddTrackingObjective(const Eigen::VectorXd &xdes,
                                       const Eigen::MatrixXd &Q) {
+  Q_ = Q;
   for (auto & mode : modes_) {
     for (int i = 0; i < mode.N+1; i++ ) {
       if (i != 0) {
@@ -258,9 +278,8 @@ void KoopmanMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
   }
 }
 
-
 VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
-    double t) {
+    double t) const {
   // Get Center of Mass Position (Should this be the position of some point
   // Wrt the floating base instead?
 
@@ -311,13 +330,54 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
 
   lambda = mass_ * prev_sol_base_traj_.derivative(2).value(t);
 
-  VectorXd x_centroidal_inflated = VectorXd::Zero(nxi_);
+  VectorXd x_centroidal_inflated(nxi_);
+
   x_centroidal_inflated << com_pos, base_orientation, com_vel, base_omega,
                            left_pos, right_pos, lambda;
 
   return x_centroidal_inflated;
 }
 
+void KoopmanMPC::CalcOptimalMotionPlan(const drake::systems::Context<double> &context,
+                                       dairlib::lcmt_saved_traj *traj_msg) const {
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
+  VectorXd q = robot_output->GetPositions();
+  VectorXd v = robot_output->GetVelocities();
+  VectorXd x(nq_+nv_);
+  x << q, v;
+
+  double timestamp = robot_output->get_timestamp();
+  UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, dt_));
+
+  const MathematicalProgramResult result = Solve(prog_);
+  prev_sol_base_traj_ = MakePPTrajFromSol(result);
+  *traj_msg = MakeLcmTrajFromSol(result);
+
+}
+
+EventStatus KoopmanMPC::DiscreteVariableUpdate(
+    const drake::systems::Context<double> &context,
+    drake::systems::DiscreteValues<double> *discrete_state) const {
+
+  VectorXd xdes = this->EvalVectorInput(context, x_des_port_)->get_value();
+
+  if (xdes != discrete_state->get_mutable_vector(x_des_idx_).get_mutable_value()) {
+    UpdateTrackingObjective(xdes);
+    discrete_state->get_mutable_vector(x_des_idx_).get_mutable_value() << xdes;
+  }
+  return EventStatus::Succeeded();
+}
+
+void KoopmanMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
+  for (auto & cost : tracking_cost_) {
+    cost->UpdateCoefficients(Q_, -2*Q_*xdes, xdes.transpose() * xdes);
+  }
+}
+
+void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0) const {
+
+}
 
 } // dairlib::systems::controllers

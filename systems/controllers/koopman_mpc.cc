@@ -55,16 +55,22 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   x_des_port_ = this->DeclareVectorInputPort(
       BasicVector<double>(nx_)).get_index();
 
-  if ( use_fsm_ ) {
-    fsm_port_ = this->DeclareVectorInputPort(
-        BasicVector<double>(2)).get_index();
-  }
-
   this->DeclareAbstractOutputPort(&KoopmanMPC::CalcOptimalMotionPlan);
+
 
   // Discrete update
   DeclarePerStepDiscreteUpdateEvent(&KoopmanMPC::DiscreteVariableUpdate);
+
+  if ( use_fsm_ ) {
+    fsm_port_ = this->DeclareVectorInputPort(
+        BasicVector<double>(2)).get_index();
+
+    current_fsm_state_idx_ =
+        this->DeclareDiscreteState(VectorXd::Zero(1));
+    prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  }
   x_des_idx_ = this->DeclareDiscreteState(VectorXd::Zero(nxi_));
+
 }
 
 void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
@@ -87,6 +93,7 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
     mode.uu.push_back(prog_.NewContinuousVariables(nu_c_, "u_" + std::to_string(i+1)));
   }
   modes_.push_back(mode);
+  nmodes_++;
 }
 
 void KoopmanMPC::AddContactPoint(std::pair<const drake::multibody::BodyFrame<
@@ -108,6 +115,12 @@ const Eigen::Vector3d& offset, const Eigen::Isometry3d& frame_pose) {
   base_ = body_name;
   frame_pose_ = frame_pose;
   com_from_base_origin_ = offset;
+}
+
+double KoopmanMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
+  double mass = CalcCentroidalMassFromListOfBodies(bodies);
+  mass_ = mass;
+  return mass;
 }
 
 void KoopmanMPC::SetReachabilityLimit(const Eigen::MatrixXd &kl,
@@ -144,6 +157,7 @@ void KoopmanMPC::Build() {
 void KoopmanMPC::MakeStanceFootConstraints() {
   MatrixXd S = MatrixXd::Identity(kLinearDim_, kLinearDim_);
   for (auto & mode : modes_) {
+    // Loop over N inputs
     for (int i = 0; i < mode.N; i++) {
       mode.stance_foot_constraints.push_back(
           prog_.AddLinearEqualityConstraint(
@@ -175,13 +189,19 @@ void KoopmanMPC::MakeDynamicsConstraints() {
 /// TODO(@Brian-Acosta): Update initial state constraints to allow for
 /// any xx to be x0
 void KoopmanMPC::MakeInitialStateConstraint() {
-  initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
-      MatrixXd::Identity(nz_, nz_), VectorXd::Zero(nz_),
-      modes_.front().zz.front())
-       .evaluator()
-       .get();
+  for (auto & mode : modes_) {
+    for (int i = 0; i < mode.N ; i++) {
+      mode.init_state_constraint_.push_back(
+          prog_.AddLinearEqualityConstraint(
+              MatrixXd::Zero(1, nz_), VectorXd::Zero(1),
+              mode.zz.at(i))
+              .evaluator()
+              .get());
+    }
+  }
 
-
+  modes_.front().init_state_constraint_.front()->UpdateCoefficients(
+      MatrixXd::Identity(nz_, nz_), VectorXd::Zero(nz_));
 }
 
 void KoopmanMPC::MakeKinematicReachabilityConstraints() {
@@ -193,7 +213,8 @@ void KoopmanMPC::MakeKinematicReachabilityConstraints() {
       MatrixXd::Identity(kLinearDim_, kLinearDim_);
 
   for (auto & mode : modes_) {
-    for (int i = 0; i < mode.N; i++) {
+    // Loop over N+1 states
+    for (int i = 0; i <= mode.N; i++) {
       mode.reachability_constraints.push_back(
           prog_.AddLinearConstraint(S,
               -kin_lim_ + kin_nominal_.at(mode.stance),
@@ -256,7 +277,8 @@ void KoopmanMPC::AddTrackingObjective(const Eigen::VectorXd &xdes,
                                       const Eigen::MatrixXd &Q) {
   Q_ = Q;
   for (auto & mode : modes_) {
-    for (int i = 0; i < mode.N+1; i++ ) {
+    // loop over N+1 states
+    for (int i = 0; i <= mode.N; i++ ) {
       if (i != 0) {
         tracking_cost_.push_back(
             prog_.AddQuadraticErrorCost(
@@ -269,6 +291,7 @@ void KoopmanMPC::AddTrackingObjective(const Eigen::VectorXd &xdes,
 
 void KoopmanMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
   for(auto & mode : modes_) {
+    // loop over N inputs
     for (int i = 0; i < mode.N; i++) {
       input_cost_.push_back(
           prog_.AddQuadraticCost(R, VectorXd::Zero(nu_c_), mode.uu.at(i))
@@ -349,23 +372,53 @@ void KoopmanMPC::CalcOptimalMotionPlan(const drake::systems::Context<double> &co
   x << q, v;
 
   double timestamp = robot_output->get_timestamp();
-  UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, dt_));
+  if (use_fsm_) {
+    int fsm_state = (int) context.get_discrete_state(current_fsm_state_idx_).get_value()(0);
+    double last_event_time = context.get_discrete_state(prev_event_time_idx_).get_value()(0);
+    double time_since_last_event = timestamp = last_event_time;
+    UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, dt_),
+        fsm_state, time_since_last_event);
+  } else {
+    UpdateInitialStateConstraint(
+        CalcCentroidalStateFromPlant(x, dt_), 0, 0);
+  }
 
   const MathematicalProgramResult result = Solve(prog_);
   prev_sol_base_traj_ = MakePPTrajFromSol(result);
   *traj_msg = MakeLcmTrajFromSol(result);
-
 }
 
 EventStatus KoopmanMPC::DiscreteVariableUpdate(
     const drake::systems::Context<double> &context,
     drake::systems::DiscreteValues<double> *discrete_state) const {
 
+  const BasicVector<double>* fsm_output =
+      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+  VectorXd fsm_state = fsm_output->get_value();
+
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double timestamp = robot_output->get_timestamp();
+
   VectorXd xdes = this->EvalVectorInput(context, x_des_port_)->get_value();
 
   if (xdes != discrete_state->get_mutable_vector(x_des_idx_).get_mutable_value()) {
     UpdateTrackingObjective(xdes);
     discrete_state->get_mutable_vector(x_des_idx_).get_mutable_value() << xdes;
+  }
+
+  if (use_fsm_) {
+    auto current_fsm_state =
+        discrete_state->get_mutable_vector(current_fsm_state_idx_)
+            .get_mutable_value();
+
+    if (fsm_state(0) != current_fsm_state(0)) {
+
+      current_fsm_state(0) = fsm_state(0);
+
+      discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
+          << timestamp;
+    }
   }
   return EventStatus::Succeeded();
 }
@@ -376,8 +429,43 @@ void KoopmanMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
   }
 }
 
-void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0) const {
+/// TODO(@Brian-Acosta) Update Knot Constraints and Dynamics Constraints
+void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
+    const int fsm_state, const double t_since_last_switch) const {
 
+  if (!use_fsm_) {
+    modes_.front().init_state_constraint_.front()->UpdateCoefficients(
+        MatrixXd::Identity(nz_, nz_), modes_.front().dynamics.x_basis_func(x0));
+    return;
+  }
+
+  modes_.at(x0_idx_[0]).init_state_constraint_.at(x0_idx_[1])->
+    UpdateCoefficients(MatrixXd::Zero(1, nz_), VectorXd::Zero(1));
+
+  x0_idx_[0] = fsm_state;
+  x0_idx_[1] = std::round(t_since_last_switch / dt_);
+
+  if (x0_idx_[1] == modes_.at(x0_idx_[0]).N) {
+    x0_idx_[1] = 0;
+    x0_idx_[0] += 1;
+    if (x0_idx_[0] == nmodes_) {
+      x0_idx_[0] = 0;
+    }
+  }
+
+  modes_.at(x0_idx_[0]).init_state_constraint_.at(x0_idx_[1])->
+      UpdateCoefficients(MatrixXd::Identity(nz_, nz_),
+          modes_.at(x0_idx_[0]).dynamics.x_basis_func(x0));
 }
+
+double KoopmanMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies) {
+  double mass = 0;
+  for (auto & name : bodies) {
+    mass += plant_.GetBodyByName(name).get_mass(*plant_context_);
+  }
+  return mass;
+}
+
+
 
 } // dairlib::systems::controllers

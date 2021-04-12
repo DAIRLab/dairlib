@@ -55,6 +55,7 @@ typedef struct KoopmanMpcMode {
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints;
   std::vector<drake::solvers::LinearConstraint*> reachability_constraints;
+  std::vector<drake::solvers::LinearEqualityConstraint*> init_state_constraint_;
 } KoopmanMpcMode;
 
 
@@ -65,6 +66,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
              bool planar, bool used_with_finite_state_machine = true,
              bool use_com = true);
 
+
   void AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, int N);
 
   void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>,
@@ -74,6 +76,11 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void AddInputRegularization(const Eigen::MatrixXd& R);
   void AddJointToTrackBaseAngle(const std::string& joint_pos_name,
                                 const std::string& joint_vel_name);
+
+  double SetMassFromListOfBodies(std::vector<std::string> bodies);
+
+  void SetMass(double mass) {mass_ = mass;}
+
   void AddBaseFrame(const string &body_name,
       const Eigen::Vector3d& offset = Eigen::Vector3d::Zero(),
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
@@ -106,11 +113,6 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   double CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies);
 
-  /// Calculate the total rotational inertia about CoM expressed in frame_express
-  drake::multibody::RotationalInertia<double>
-  CalcCentroialInertiaFromListOfBodies(std::vector<std::string> bodies,
-      const drake::multibody::Frame<double>& frame_express);
-
   void MakeStanceFootConstraints();
   void MakeKinematicReachabilityConstraints();
   void MakeDynamicsConstraints();
@@ -124,7 +126,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   lcmt_saved_traj MakeLcmTrajFromSol(
       drake::solvers::MathematicalProgramResult result) const ;
 
-  void UpdateInitialStateConstraint(const Eigen::VectorXd& x0) const;
+  void UpdateInitialStateConstraint(const Eigen::VectorXd& x0,
+      const int fsm_state, const double t_since_last_switch) const;
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
 
   Eigen::VectorXd CalcCentroidalStateFromPlant(Eigen::VectorXd x, double t) const;
@@ -141,6 +144,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   // discrete update indices
   int x_des_idx_;
+  int current_fsm_state_idx_;
+  int prev_event_time_idx_;
 
   // discrete update
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -165,6 +170,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int nu_c_;  // number of centroidal model inputs
   int nxi_; // number of inflated states
   int nz_;  // number of koopman states
+  int nmodes_ = 0;
 
   int nq_;    // number of plant gerenalized positions
   int nv_;    // number of plant generalized velocities
@@ -181,7 +187,6 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::LinearEqualityConstraint*> state_knot_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   std::vector<drake::solvers::QuadraticCost*> input_cost_;
-  drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
 
 
   // drake boilerplate
@@ -204,6 +209,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   const int kNu3d = 9;
   double mu_ = 0;
   double mass_ = 0;
+  double planar_inertia_ = 0;
   drake::multibody::RotationalInertia<double> rotational_inertia_;
 
 };

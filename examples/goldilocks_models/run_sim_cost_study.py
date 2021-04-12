@@ -15,14 +15,17 @@ def build_files(bazel_file_argument):
     time.sleep(1)
 
 
+# Set `get_init_file` to True if you want to generate the initial traj for both
+# planner and controller
 def run_sim_and_controller(rom_iter_idx, get_init_file):
   # simulation arguments
   sim_end_time = 8.0
-  target_realtime_rate = 1  # 0.04
+  target_realtime_rate = 0.04  # 1  # 0.04
   pause_second = 2.0 if get_init_file else 0
   init_traj_file = '' if get_init_file else '0_rom_trajectory'
 
   # planner arguments
+  always_ipopt = True
   time_limit = 0.0 if get_init_file else 4.0  # set to 0 for realtime limit
   knots_per_mode = 10
   feas_tol = 1e-2
@@ -39,7 +42,7 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
     '--n_step=%d' % n_step,
     '--feas_tol=%.6f' % feas_tol,
     '--init_file=%s' % planner_init_file,
-    '--use_ipopt=%s' % str(get_init_file).lower(),
+    '--use_ipopt=%s' % "true" if always_ipopt else str(get_init_file).lower(),
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
     '--time_limit=%.3f' % time_limit,

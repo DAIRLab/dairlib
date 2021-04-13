@@ -58,6 +58,9 @@ DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, 0, "");
 
 // tasks
+// Note that it's more convenient to use duration than velocity, because if we
+// fix velocity, the duration become 0 when stride length is 0 which combined
+// with swing foot height constraint would make the problem infeasible.
 DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
 DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
 DEFINE_int32(N_sample_du, 1, "Sampling # for stride duration");

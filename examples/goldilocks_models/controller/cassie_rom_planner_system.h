@@ -119,7 +119,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
       const {
-    return this->get_input_port(fsm_and_lo_time_port_);
+    return this->get_input_port(controller_signal_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_quat_xyz_shift()
       const {
@@ -149,7 +149,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int stance_foot_port_;
   int phase_port_;
   int state_port_;
-  int fsm_and_lo_time_port_;
+  int controller_signal_port_;
   int quat_xyz_shift_port_;
 
   // Map position/velocity from model with spring to without spring

@@ -46,7 +46,7 @@ int do_main(int argc, char* argv[]) {
   // Create output message
   dairlib::lcmt_target_standing_height msg;
   msg.timestamp = 0;  // doesn't matter
-  msg.target_height = 1;  // greater 0.5
+  msg.target_height = 1;  // high signal (greater 0.5)
 
   for (int i = 0; i<FLAGS_n_publishes ; i++) {
     name_pub->get_input_port().FixValue(

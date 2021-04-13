@@ -42,8 +42,8 @@ CurrentStanceFoot::CurrentStanceFoot(
     const std::vector<int>& left_right_support_fsm_states)
     : left_right_support_fsm_states_(left_right_support_fsm_states) {
   // Input/Output Setup
-  fsm_and_lo_time_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(2)).get_index();
+  controller_signal_port_ =
+      this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
 
   this->DeclareVectorOutputPort(BasicVector<double>(1),
                                 &CurrentStanceFoot::GetStance);
@@ -53,9 +53,9 @@ void CurrentStanceFoot::GetStance(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* stance_foot) const {
   // Read in fsm state and lift-off time
-  const BasicVector<double>* fsm_and_lo_time_port =
-      this->EvalVectorInput(context, fsm_and_lo_time_port_);
-  int fsm_state = (int)fsm_and_lo_time_port->get_value()(0);
+  const BasicVector<double>* controller_signal_port =
+      this->EvalVectorInput(context, controller_signal_port_);
+  int fsm_state = (int)controller_signal_port->get_value()(0);
 
   // Find fsm_state in left_right_support_fsm_states_
   bool is_single_support_phase =
@@ -88,8 +88,8 @@ PhaseInFirstMode::PhaseInFirstMode(
                                              plant_feedback.num_velocities(),
                                              plant_feedback.num_actuators()))
                     .get_index();
-  fsm_and_lo_time_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(2)).get_index();
+  controller_signal_port_ =
+      this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
 
   this->DeclareVectorOutputPort(BasicVector<double>(1),
                                 &PhaseInFirstMode::CalcPhase);
@@ -99,15 +99,15 @@ void PhaseInFirstMode::CalcPhase(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* init_phase_output) const {
   // Read in fsm state and lift-off time
-  const auto fsm_and_lo_time_port =
+  const auto controller_signal_port =
       static_cast<const TimestampedVector<double>*>(
-          this->EvalVectorInput(context, fsm_and_lo_time_port_));
-  double lift_off_time = fsm_and_lo_time_port->get_value()(1);
+          this->EvalVectorInput(context, controller_signal_port_));
+  double lift_off_time = controller_signal_port->get_value()(1);
 
   // Get time
   // Note that we cannot use context time anymore because we have per-step
   // update in the downstream
-  auto current_time = fsm_and_lo_time_port->get_timestamp();
+  auto current_time = controller_signal_port->get_timestamp();
 
   double time_in_first_mode = current_time - lift_off_time;
 
@@ -121,7 +121,7 @@ void PhaseInFirstMode::CalcPhase(
     cout << "WARNING: phase = " << init_phase
          << " (>= 1). There might be a bug somewhere, "
             "since we are using a time-based fsm\n";
-    cout << "fsm_state = " << fsm_and_lo_time_port->get_value()(0) << endl;
+    cout << "fsm_state = " << controller_signal_port->get_value()(0) << endl;
     cout << "lift_off_time = " << lift_off_time << endl;
     cout << "current_time = " << current_time << endl;
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
@@ -132,7 +132,7 @@ void PhaseInFirstMode::CalcPhase(
     cout << "WARNING: phase = " << init_phase
          << " (< 0). There might be a bug somewhere, "
             "since we are using a time-based fsm\n";
-    cout << "fsm_state = " << fsm_and_lo_time_port->get_value()(0) << endl;
+    cout << "fsm_state = " << controller_signal_port->get_value()(0) << endl;
     cout << "lift_off_time = " << lift_off_time << endl;
     cout << "current_time = " << current_time << endl;
     cout << "time_in_first_mode = " << time_in_first_mode << endl;
@@ -269,8 +269,8 @@ InitialStateForPlanner::InitialStateForPlanner(
                     .get_index();
   phase_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
-  fsm_and_lo_time_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(2)).get_index();
+  controller_signal_port_ =
+      this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
 
   adjusted_state_port_ =
       this->DeclareVectorOutputPort(
@@ -376,7 +376,7 @@ EventStatus InitialStateForPlanner::AdjustState(
   cout << "\n================= Time = " +
               std::to_string(
                   static_cast<const TimestampedVector<double>*>(
-                      this->EvalVectorInput(context, fsm_and_lo_time_port_))
+                      this->EvalVectorInput(context, controller_signal_port_))
                       ->get_timestamp()) +
               " =======================\n\n";
   //  cout << "  IK || Time of arrival: " << context.get_time() << "
@@ -474,7 +474,7 @@ void InitialStateForPlanner::CopyAdjustedState(
   output->SetState(context.get_discrete_state(adjusted_state_idx_).get_value());
   output->set_timestamp(
       static_cast<const TimestampedVector<double>*>(
-          this->EvalVectorInput(context, fsm_and_lo_time_port_))
+          this->EvalVectorInput(context, controller_signal_port_))
           ->get_timestamp());
 }
 

@@ -1,8 +1,14 @@
 #include "systems/controllers/time_based_fsm.h"
 
+#include "dairlib/lcmt_target_standing_height.hpp"
+
 using std::cout;
 using std::endl;
 
+using drake::systems::Context;
+using drake::systems::DiscreteUpdateEvent;
+using drake::systems::DiscreteValues;
+using drake::systems::EventStatus;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using Eigen::VectorXd;
@@ -69,8 +75,9 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
 TimeBasedFiniteStateMachineWithTrigger::TimeBasedFiniteStateMachineWithTrigger(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<int>& states, const std::vector<double>& state_durations,
-    bool with_trigger_input_port)
-    : states_(states), with_trigger_input_port_(with_trigger_input_port) {
+    bool with_trigger_input_port, double one_stride_period)
+    : states_(states), with_trigger_input_port_(with_trigger_input_port),
+    one_stride_period_(one_stride_period) {
   DRAKE_DEMAND(states.size() == state_durations.size());
 
   // Input/Output Setup
@@ -79,11 +86,24 @@ TimeBasedFiniteStateMachineWithTrigger::TimeBasedFiniteStateMachineWithTrigger(
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
-  trigger_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
-  this->DeclareVectorOutputPort(
+  fsm_port_ = this->DeclareVectorOutputPort(
       BasicVector<double>(1),
-      &TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState);
+      &TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState).get_index();
+
+  global_fsm_idx_port_ = this->DeclareVectorOutputPort(
+      BasicVector<double>(1),
+      &TimeBasedFiniteStateMachineWithTrigger::CalcGlobalFsmIdx).get_index();
+
+  if (with_trigger_input_port) {
+    trigger_port_ =
+        this->DeclareAbstractInputPort(
+                "trigger_port",
+                drake::Value<dairlib::lcmt_target_standing_height>{})
+            .get_index();
+    // Perstep update
+    DeclarePerStepDiscreteUpdateEvent(
+        &TimeBasedFiniteStateMachineWithTrigger::DiscreteVariableUpdate);
+  }
 
   // Accumulate the durations to get timestamps
   double sum = 0;
@@ -103,22 +123,36 @@ TimeBasedFiniteStateMachineWithTrigger::TimeBasedFiniteStateMachineWithTrigger(
   }
 }
 
-void TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState(
-    const Context<double>& context, BasicVector<double>* fsm_state) const {
-  // Read in lcm message time
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
 
-  if ((t0_ < 0) && with_trigger_input_port_) {
-    if (this->EvalVectorInput(context, trigger_port_)->get_value()(0) > 0.5) {
-      // Triggerred
-      t0_ = current_sim_time;
+EventStatus TimeBasedFiniteStateMachineWithTrigger::DiscreteVariableUpdate(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+
+  // Read in lcm message time
+  double current_time =
+      dynamic_cast<const OutputVector<double>*>(this->EvalVectorInput(context,
+          state_port_))->get_timestamp();
+
+  if (with_trigger_input_port_) {
+    if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
+        context, trigger_port_)->target_height < 0.5) {
+      // Keep updating t0_ when the signal is still low.
+      t0_ = current_time;
     }
   }
 
-  double offset = (t0_ < 0) ? current_sim_time : t0_;
-  double remainder = fmod(current_sim_time - offset, period_);
+  return EventStatus::Succeeded();
+}
+
+
+void TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState(
+    const Context<double>& context, BasicVector<double>* fsm_state) const {
+  // Read in lcm message time
+  double current_time =
+      dynamic_cast<const OutputVector<double>*>(this->EvalVectorInput(context,
+          state_port_))->get_timestamp();
+
+  double remainder = fmod(current_time - t0_, period_);
 
   // Get current finite state
   VectorXd current_finite_state(1);
@@ -132,6 +166,18 @@ void TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState(
   // Assign fsm_state
   fsm_state->get_mutable_value() = current_finite_state;
 }
+
+
+void TimeBasedFiniteStateMachineWithTrigger::CalcGlobalFsmIdx(
+    const Context<double>& context, BasicVector<double>* global_fsm_idx) const {
+  double current_time =
+      dynamic_cast<const OutputVector<double>*>(this->EvalVectorInput(context,
+          state_port_))->get_timestamp();
+
+  global_fsm_idx->get_mutable_value() << int((current_time - t0_ + 1e-8) /
+      one_stride_period_);
+}
+
 
 }  // namespace systems
 }  // namespace dairlib

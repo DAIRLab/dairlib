@@ -20,7 +20,7 @@ group "1.rom-space-controller" {
         host = "dair-cassie";
     }
     cmd "2.2.optimal-rom-walking-controller (run local)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER --broadcast=false --hardware=true";
         host = "dair-cassie";
     }
     cmd "3.1.rom-planner (run local)" {
@@ -28,23 +28,6 @@ group "1.rom-space-controller" {
         host = "dair-cassie";
     }
 }
-
-
-group "2.setup" {
-    cmd "1.dispatcher-robot-in-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true";
-        host = "dair-cassie";
-    }
-    cmd "2.pd-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
-        host = "dair-cassie";
-    }
-    cmd "3.standing-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
-        host = "dair-cassie";
-    }
-}
-
 
 group "0.operator" {
     cmd "1.state-visualizer-floating (from cassie dispatcher)" {
@@ -104,6 +87,21 @@ group "1.rom-space-controller-with-init-traj" {
     cmd "2.2.rom-planner (w init)" {
         exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --n_step=3 --log_solver_info=true --time_limit=2 --init_file=0_z.csv";
         host = "localhost";
+    }
+}
+
+group "2.setup" {
+    cmd "1.dispatcher-robot-in-real-robot" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --control_channel_name_3=ROM_WALKING --port 25000 --address 10.10.10.3 --floating_base=true";
+        host = "dair-cassie";
+    }
+    cmd "2.pd-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
+        host = "dair-cassie";
+    }
+    cmd "3.standing-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
+        host = "dair-cassie";
     }
 }
 

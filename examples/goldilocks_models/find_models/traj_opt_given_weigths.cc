@@ -1457,8 +1457,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
                           int rom_option, int robot_option) {
   double stride_length = task.get("stride length");
   double ground_incline = task.get("ground incline");
-  double walking_vel = task.get("velocity");
-  double duration = stride_length / walking_vel;
+  double duration = task.get("duration");
+  double walking_vel = stride_length / duration;
 
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
@@ -1851,9 +1851,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                    int rom_option, int robot_option) {
   double stride_length = task.get("stride length");
   double ground_incline = task.get("ground incline");
-  double walking_vel = task.get("velocity");
   double turning_rate = task.get("turning rate");
-  double duration = stride_length / walking_vel;
+  double duration = task.get("duration");
+  double walking_vel = stride_length / duration;
 
   double all_cost_scale = setting.all_cost_scale;
 
@@ -3266,9 +3266,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                  N_rerun, rom_option, robot_option,
                  pre_and_post_impact_efforts);
 
-  if (sample_idx == 0) {
-    is_print_for_debugging = true;
-  }
+  is_print_for_debugging = true;
 
   if (is_print_for_debugging) {
     // Write to a file to keep standard output clean.

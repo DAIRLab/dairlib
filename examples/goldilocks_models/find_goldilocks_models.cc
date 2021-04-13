@@ -685,6 +685,14 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
 
       Pi = H_ext.householderQr().solve(B_aug).topRows(nw_i);
       qi = VectorXd::Zero(nw_i);
+
+      /*MatrixXd temp = H_ext.householderQr().solve(B_aug);
+      Pi = temp.topRows(nw_i);
+      qi = VectorXd::Zero(nw_i);
+      string string_to_print =
+          "error (max element) = " +
+          to_string((H_ext * temp - B_aug).cwiseAbs().maxCoeff()) + "\n";
+      cout << string_to_print;*/
     } else if (method_to_solve_system_of_equations == 5) {
       // Method 5: linear solve with ColPivHouseholderQR ///////////////////////
       MatrixXd B_aug =
@@ -705,6 +713,15 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
                .solve(B_aug)
                .topRows(nw_i);
       qi = VectorXd::Zero(nw_i);
+
+      /*MatrixXd temp =
+          H_ext.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(B_aug);
+      Pi = temp.topRows(nw_i);
+      qi = VectorXd::Zero(nw_i);
+      string string_to_print =
+          "error (max element) = " +
+          to_string((H_ext * temp - B_aug).cwiseAbs().maxCoeff()) + "\n";
+      cout << string_to_print;*/
     }
   } else {
     throw std::runtime_error("Should not reach here");
@@ -1470,7 +1487,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           4, {"stride length", "ground incline", "duration", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr},
-          {0.2, 0, 0.4, FLAGS_turning_rate_center}, {0.015, 0.05, 0.05, 0.125},
+          {0, 0, 0.4, FLAGS_turning_rate_center}, {0.03, 0.05, 0.05, 0.125},
           {(FLAGS_N_sample_sl > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_gi > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_du > 1) && FLAGS_is_stochastic,

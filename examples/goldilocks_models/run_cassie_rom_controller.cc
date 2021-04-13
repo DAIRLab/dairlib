@@ -100,7 +100,7 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
-DEFINE_string(channel_u, "CASSIE_INPUT",
+DEFINE_string(channel_u, "ROM_WALKING",
               "The name of the channel which publishes command");
 DEFINE_string(channel_fsm_t, "FSM_T",
               "LCM channel for sending fsm and time of latest liftoff event. ");

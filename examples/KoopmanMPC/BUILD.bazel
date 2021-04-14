@@ -9,10 +9,12 @@ cc_library(
     hdrs = ["koopman_mpc.h"],
     deps = [
         "//common",
+        "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:multibody_solvers",
         "//multibody:utils",
         "//solvers:constraint_factory",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

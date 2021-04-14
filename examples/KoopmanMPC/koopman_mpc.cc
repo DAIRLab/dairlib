@@ -8,6 +8,7 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::BodyFrame;
 
 using drake::systems::Context;
+using drake::systems::BasicVector;
 using drake::systems::EventStatus;
 using drake::trajectories::PiecewisePolynomial;
 
@@ -27,7 +28,6 @@ using dairlib::multibody::WorldPointEvaluator;
 using dairlib::multibody::makeNameToPositionsMap;
 using dairlib::multibody::makeNameToVelocitiesMap;
 using dairlib::systems::OutputVector;
-using dairlib::systems::BasicVector;;
 using dairlib::LcmTrajectory;
 
 namespace dairlib{
@@ -105,7 +105,7 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
 }
 
 void KoopmanMPC::AddContactPoint(std::pair<const drake::multibody::BodyFrame<
-    double>, Eigen::Vector3d> pt, koopMpcStance stance) {
+    double>&, Eigen::Vector3d> pt, koopMpcStance stance) {
   DRAKE_ASSERT(contact_points_.size() == stance)
   contact_points_.push_back(pt);
 }
@@ -629,6 +629,4 @@ MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,
 
   return swing_ft_traj;
 }
-
-
 } // dairlib

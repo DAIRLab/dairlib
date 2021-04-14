@@ -27,10 +27,7 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/constraint_factory.h"
-#include "systems/controllers/control_utils.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
-#include "systems/framework/basic_vector.h"
 
 namespace dairlib {
 
@@ -73,7 +70,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   void AddMode(const KoopmanDynamics& dynamics, koopMpcStance stance, int N);
 
-  void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>,
+  void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&,
                                  Eigen::Vector3d> pt, koopMpcStance stance);
 
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
@@ -165,7 +162,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   mutable drake::trajectories::PiecewisePolynomial<double> prev_sol_base_traj_;
 
-  std::vector<std::pair<const drake::multibody::BodyFrame<double>,
+  std::vector<std::pair<const drake::multibody::BodyFrame<double>&,
   Eigen::Vector3d>> contact_points_;
 
   // Problem variables

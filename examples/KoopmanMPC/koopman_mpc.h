@@ -78,6 +78,11 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void AddJointToTrackBaseAngle(const std::string& joint_pos_name,
                                 const std::string& joint_vel_name);
 
+  int num_state_inflated() { return nxi_; }
+  int saggital_idx() { return saggital_idx_;}
+  int vertical_idx() { return vertical_idx_;}
+
+  int get_verical_coord_idx() { return kLinearDim_ - 1; }
   double SetMassFromListOfBodies(std::vector<std::string> bodies);
 
   void SetMass(double mass) {mass_ = mass;}
@@ -101,11 +106,16 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
     return this->get_input_port(x_des_port_);
   }
 
-  void SetReachabilityLimit(const Eigen::MatrixXd& kl,
+  void SetReachabilityLimit(const Eigen::VectorXd& kl,
       const std::vector<Eigen::VectorXd>& kn);
 
   void SetMu(double mu) { mu_ = mu; }
   int num_modes() { return nmodes_; }
+
+  static void LoadDiscreteDynamicsFromFolder(std::string folder, double dt,
+      drake::EigenPtr<Eigen::MatrixXd> Al, drake::EigenPtr<Eigen::MatrixXd> Bl,
+      drake::EigenPtr<Eigen::MatrixXd> bl, drake::EigenPtr<Eigen::MatrixXd> Ar,
+      drake::EigenPtr<Eigen::MatrixXd> Br, drake::EigenPtr<Eigen::MatrixXd> br);
 
  private:
 

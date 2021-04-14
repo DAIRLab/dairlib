@@ -3,6 +3,9 @@
 //
 
 #include "koopman_mpc.h"
+#include "common/file_utils.h"
+
+
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::BodyFrame;
@@ -11,6 +14,8 @@ using drake::systems::Context;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
 using drake::trajectories::PiecewisePolynomial;
+
+using drake::EigenPtr;
 
 using drake::solvers::OsqpSolver;
 using drake::solvers::Solve;
@@ -39,7 +44,8 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
                        plant_(plant),
                        plant_context_(plant_context),
                        world_frame_(plant_.world_frame()), dt_(dt),
-                       planar_(planar), use_com_(use_com){
+                       planar_(planar), use_com_(use_com),
+                       use_fsm_(used_with_finite_state_machine){
 
   nq_ = plant.num_positions();
   nv_ = plant.num_velocities();
@@ -104,8 +110,8 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
   nmodes_++;
 }
 
-void KoopmanMPC::AddContactPoint(std::pair<const drake::multibody::BodyFrame<
-    double>&, Eigen::Vector3d> pt, koopMpcStance stance) {
+void KoopmanMPC::AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&,
+                                           Eigen::Vector3d> pt, koopMpcStance stance) {
   DRAKE_ASSERT(contact_points_.size() == stance)
   contact_points_.push_back(pt);
 }
@@ -113,8 +119,8 @@ void KoopmanMPC::AddContactPoint(std::pair<const drake::multibody::BodyFrame<
 void KoopmanMPC::AddJointToTrackBaseAngle(const std::string& joint_pos_name,
     const std::string& joint_vel_name) {
   DRAKE_ASSERT(planar_)
-  base_angle_pos_idx_ = makeNameToPositionsMap(plant_).at(joint_pos_name);
-  base_angle_vel_idx_ = makeNameToVelocitiesMap(plant_).at(joint_vel_name);
+  base_angle_pos_idx_ = makeNameToPositionsMap(plant_)[joint_pos_name];
+  base_angle_vel_idx_ = makeNameToVelocitiesMap(plant_)[joint_vel_name];
 }
 
 void KoopmanMPC::AddBaseFrame(const std::string &body_name,
@@ -131,7 +137,7 @@ double KoopmanMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
   return mass;
 }
 
-void KoopmanMPC::SetReachabilityLimit(const Eigen::MatrixXd &kl,
+void KoopmanMPC::SetReachabilityLimit(const Eigen::VectorXd& kl,
     const std::vector<Eigen::VectorXd> &kn) {
   DRAKE_DEMAND(kl.size() == kLinearDim_);
 
@@ -148,6 +154,7 @@ void KoopmanMPC::CheckProblemDefinition() {
   DRAKE_DEMAND(mu_ > 0 );
   DRAKE_DEMAND(!contact_points_.empty());
   DRAKE_DEMAND(!kin_nominal_.empty());
+  DRAKE_DEMAND(mass_ > 0);
 }
 
 void KoopmanMPC::Build() {
@@ -309,6 +316,9 @@ void KoopmanMPC::AddTrackingObjective(const Eigen::VectorXd &xdes,
 }
 
 void KoopmanMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
+  DRAKE_DEMAND(R.cols() == nu_c_);
+  DRAKE_DEMAND(R.rows() == nu_c_);
+
   for(auto & mode : modes_) {
     // loop over N inputs
     for (int i = 0; i < mode.N; i++) {
@@ -629,4 +639,26 @@ MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,
 
   return swing_ft_traj;
 }
+
+void KoopmanMPC::LoadDiscreteDynamicsFromFolder(std::string folder, double dt,
+    EigenPtr<MatrixXd> Al, EigenPtr<MatrixXd> Bl, EigenPtr<MatrixXd> bl,
+    EigenPtr<MatrixXd> Ar, EigenPtr<MatrixXd> Br, EigenPtr<MatrixXd> br) {
+
+  MatrixXd Alc = readCSV(folder + "/Al.csv");
+  MatrixXd Blc = readCSV(folder + "/Bl.csv");
+  MatrixXd blc = readCSV(folder + "/bl.csv");
+
+  MatrixXd Arc = readCSV(folder + "/Ar.csv");
+  MatrixXd Brc = readCSV(folder + "/Br.csv");
+  MatrixXd brc = readCSV(folder + "/br.csv");
+
+  *Al << (MatrixXd::Identity(Alc.rows(), Alc.cols()) + Alc * dt);
+  *Bl << dt * Blc;
+  *bl << dt * bl;
+
+  *Ar << (MatrixXd::Identity(Arc.rows(), Arc.cols()) + Arc * dt);
+  *Br << dt * Brc;
+  *br << dt * br;
+}
+
 } // dairlib

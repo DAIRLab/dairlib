@@ -18,3 +18,20 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "run_koopman_mpc_process",
+    srcs = ["run_koopman_mpc_process.cc"],
+    deps = [
+        ":koopman_mpc",
+        "//common",
+        "//examples/PlanarWalker:urdf",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

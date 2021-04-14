@@ -7,6 +7,7 @@
 #include "drake/systems/framework/leaf_system.h"
 
 static constexpr double kMaxControllerDelay = 0.1;
+static constexpr double kEStopGain = 5.0;
 
 namespace dairlib {
 
@@ -55,6 +56,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(controller_switch_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_cassie() const {
+    return this->get_input_port(cassie_input_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_command() const {
     return this->get_output_port(command_output_port_);
   }
@@ -88,6 +93,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   double input_limit_;
   mutable double blend_duration_ = 0.0;
   int status_vars_index_;
+  int soft_estop_flag_index_;
   int n_fails_index_;
   int status_index_;
   int switch_time_index_;
@@ -96,8 +102,11 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   int state_input_port_;
   int command_input_port_;
   int controller_switch_input_port_;
+  int cassie_input_port_;
   int command_output_port_;
   int status_output_port_;
+
+  Eigen::MatrixXd K_;
 };
 
 }  // namespace dairlib

@@ -1,7 +1,14 @@
 #pragma once
 
 #include <vector>
+
 #include <memory.h>
+
+#include "multibody/multipose_visualizer.h"
+#include "systems/trajectory_optimization/dircon_kinematic_data.h"
+#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "systems/trajectory_optimization/dircon_options.h"
 
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic.h"
@@ -10,12 +17,6 @@
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
-
-#include "multibody/multipose_visualizer.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/trajectory_optimization/dircon_options.h"
 
 namespace dairlib {
 namespace systems {
@@ -130,6 +131,9 @@ class HybridDircon
 
   int num_modes() const { return num_modes_; }
 
+  /// Get the number of knotpoints in a specified mode
+  int mode_length(int mode_index) const { return mode_lengths()[mode_index]; };
+
   std::vector<int> mode_lengths() const { return mode_lengths_; }
   std::vector<int> mode_start() const { return mode_start_; }
 
@@ -206,9 +210,15 @@ class HybridDircon
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
 
+  /// Substitute the velocity variables in the expression with
+  /// v_post_impact_vars_ for the corresponding mode
+  /// It is up to the user to make sure this is used only on the first knotpoint
+  drake::symbolic::Expression SubstitutePostImpactVelocityVariables(
+      const drake::symbolic::Expression& e, int mode) const;
+
   using drake::systems::trajectory_optimization::MultipleShooting::N;
   using drake::systems::trajectory_optimization::MultipleShooting::
-      SubstitutePlaceholderVariables;
+  SubstitutePlaceholderVariables;
 
   void ScaleTimeVariables(double scale);
   void ScaleQuaternionSlackVariables(double scale);
@@ -258,6 +268,10 @@ class HybridDircon
   std::vector<int> num_kinematic_constraints_wo_skipping_;
 
   std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
+
+  std::vector<std::pair<drake::VectorX<drake::symbolic::Variable>,
+                        drake::VectorX<drake::symbolic::Expression>>>
+      v_post_impact_vars_substitute_;
 
   // constraints
   std::vector<std::shared_ptr<DirconKinematicConstraint<T>>>

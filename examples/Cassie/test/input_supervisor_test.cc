@@ -25,6 +25,7 @@ class InputSupervisorTest : public ::testing::Test {
         plant_, 10.0, 0.01, min_consecutive_failures, 20.0);
     context_ = supervisor_->CreateDefaultContext();
     status_output_ = std::make_unique<dairlib::lcmt_input_supervisor_status>();
+    cassie_out_ = std::make_unique<dairlib::lcmt_cassie_out>();
     motor_output_ =
         std::make_unique<TimestampedVector<double>>(plant_.num_actuators());
     command_input_ =
@@ -46,6 +47,7 @@ class InputSupervisorTest : public ::testing::Test {
   const int min_consecutive_failures = 5;
   std::unique_ptr<InputSupervisor> supervisor_;
   std::unique_ptr<dairlib::lcmt_input_supervisor_status> status_output_;
+  std::unique_ptr<dairlib::lcmt_cassie_out> cassie_out_;
   std::unique_ptr<TimestampedVector<double>> motor_output_;
   std::unique_ptr<TimestampedVector<double>> command_input_;
   std::unique_ptr<OutputVector<double>> state_input_;
@@ -57,9 +59,12 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
   double output_bit;
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
   command_input_->get_mutable_value() = zero_input;
+  cassie_out_->pelvis.radio.channel[15] = 0;
 
   supervisor_->get_input_port_command().FixValue(context_.get(),
                                                  *command_input_);
+  supervisor_->get_input_port_cassie().FixValue(context_.get(),
+                                                 *cassie_out_);
   supervisor_->SetStatus(*context_, status_output_.get());
   output_bit = status_output_->status;
   EXPECT_EQ(output_bit, 0);
@@ -102,11 +107,14 @@ TEST_F(InputSupervisorTest, BlendEffortsTest) {
   double blend_duration = 1.0;
   std::unique_ptr<drake::Value<lcmt_controller_switch>> switch_msg =
       std::make_unique<drake::Value<lcmt_controller_switch>>();
+  cassie_out_->pelvis.radio.channel[15] = 0;
   switch_msg->get_mutable_value().blend_duration = blend_duration;
   switch_msg->get_mutable_value().utime = blend_start_time * 1e6;
   command_input_->get_mutable_value() = desired_input;
   command_input_->set_timestamp(timestamp);
   supervisor_->get_input_port_state().FixValue(context_.get(), *state_input_);
+  supervisor_->get_input_port_cassie().FixValue(context_.get(),
+                                                *cassie_out_);
   supervisor_->get_input_port_controller_switch().FixValue(
       context_.get(), (drake::AbstractValue&)*switch_msg);
   supervisor_->get_input_port_command().FixValue(context_.get(),

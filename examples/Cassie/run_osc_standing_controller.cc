@@ -56,6 +56,7 @@ DEFINE_double(cost_weight_multiplier, 0.001,
 DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
+DEFINE_bool(use_radio, false, "use the radio to set height or not");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -198,7 +199,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height);
+      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height, FLAGS_use_radio);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
           plant_w_springs, context_w_spr.get(), feet_contact_points,

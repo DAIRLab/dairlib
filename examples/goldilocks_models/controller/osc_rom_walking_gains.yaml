@@ -21,7 +21,7 @@ cols: 3
 ### ROM parameter
 rom_option: 4
 # The iteration number of the theta that you use. has to be >=1
-model_iter: 15 #150  #1 #30
+model_iter: 1 #150  #1 #30
 # The sample that we use to initialize planner
 sample_idx: 37 #21 works for iter150
 # Average stride length (for testing the planner)

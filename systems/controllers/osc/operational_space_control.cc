@@ -372,7 +372,7 @@ void OperationalSpaceControl::Build() {
   }
 
   // Max solve duration
-  prog_->SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration);
+  // prog_->SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(

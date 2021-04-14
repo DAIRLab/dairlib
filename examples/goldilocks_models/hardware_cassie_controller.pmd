@@ -54,12 +54,20 @@ group "0.operator" {
         exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=1";
         host = "localhost";
     }
-    cmd "3.0.switch-to-rom-mpc" {
+    cmd "0.drake-director (with pd panel)" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py  --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+    cmd "3.0.switch-to-rom-mpc1" {
         exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch";
         host = "dair-cassie";
     }
     cmd "4.0.controller-switch-to-standing" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=1.0";
+        host = "dair-cassie";
+    }
+    cmd "3.0.switch-to-rom-mpc2" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=ROM_WALKING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01";
         host = "dair-cassie";
     }
 }
@@ -92,15 +100,15 @@ group "1.rom-space-controller-with-init-traj" {
 
 group "2.setup" {
     cmd "1.dispatcher-robot-in-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --control_channel_name_3=ROM_WALKING --port 25000 --address 10.10.10.3 --floating_base=true";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --control_channel_name_3=ROM_WALKING --port 25000 --address 10.10.10.3 --floating_base=true --max_joint_velocity=15";
         host = "dair-cassie";
     }
     cmd "2.pd-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller --channel_u=PD_CONTROL";
         host = "dair-cassie";
     }
     cmd "3.standing-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_u=OSC_STANDING --channel_x=CASSIE_STATE_DISPATCHER";
         host = "dair-cassie";
     }
 }
@@ -108,6 +116,7 @@ group "2.setup" {
 
 script "initialize_standing" {
     stop group "1.rom-space-controller";
+    stop group "2.setup";
     start cmd "1.dispatcher-robot-out (run local)";
     start cmd "1.dispatcher-robot-in-real-robot";
     start cmd "2.pd-controller-real-robot";
@@ -115,12 +124,13 @@ script "initialize_standing" {
 
 script "set_up_from_pd_to_osc_standing" {
     restart cmd "1.dispatcher-robot-out (run local)";
-    start cmd "3.osc-standing-real-robot";
+    start cmd "3.standing-controller-real-robot";
 }
 
 script "switch from standing to walking" {
     stop cmd "2.pd-controller-real-robot";
-    start cmd "3.0.switch-to-rom-mpc";
+    start cmd "3.0.switch-to-rom-mpc1";
+    start cmd "3.0.switch-to-rom-mpc2";
     wait ms 1000;
-    stop cmd "3.osc-standing-real-robot";
+    stop cmd "3.standing-controller-real-robot";
 }

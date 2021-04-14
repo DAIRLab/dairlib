@@ -30,6 +30,7 @@ cc_binary(
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
+        "//systems/controllers:time_based_fsm",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

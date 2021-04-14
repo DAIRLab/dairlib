@@ -4,7 +4,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=false";
         host = "localhost";
     }
     cmd "3.1.rom-planner" {
@@ -24,14 +24,14 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "2.2.rom-walking-controller(with dispatcher)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
 }
 
 group "2.ik-controller" {
     cmd "1.1.optimal-rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=true";
         host = "localhost";
     }
     cmd "1.2.rom-planner" {
@@ -61,11 +61,11 @@ group "5.attic" {
 
 group "3.drake-simulator" {
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u="ROM_WALKING" --init_height=1.0 --pause_second=0 --target_realtime_rate=0.1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u=ROM_WALKING --init_height=1.0 --pause_second=0 --target_realtime_rate=0.1";
         host = "localhost";
     }
     cmd "0.simulator(realtime)" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u="ROM_WALKING" --init_height=1.0 --pause_second=4 --target_realtime_rate=1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u=ROM_WALKING --init_height=1.0 --pause_second=4 --target_realtime_rate=1";
         host = "localhost";
     }
 }
@@ -114,11 +114,11 @@ group "4.lcm-tools" {
 
 group "1.rom-space-controller-with-init-traj" {
     cmd "2.1.optimal-rom-walking-controller (w init)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --init_traj_file_name=0_rom_trajectory";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=false --init_traj_file_name=0_rom_trajectory";
         host = "localhost";
     }
     cmd "2.2.rom-planner (w init)" {
-        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --n_step=3 --log_solver_info=true --time_limit=2 --init_file=0_z.csv";
+        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=false --n_step=2 --log_solver_info=true --init_file=0_z.csv";
         host = "localhost";
     }
 }

@@ -6,8 +6,10 @@
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::BodyFrame;
+
 using drake::systems::Context;
 using drake::systems::EventStatus;
+using drake::trajectories::PiecewisePolynomial;
 
 using drake::solvers::OsqpSolver;
 using drake::solvers::Solve;
@@ -15,6 +17,7 @@ using drake::solvers::OsqpSolverDetails;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
 
+using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -24,7 +27,8 @@ using dairlib::multibody::WorldPointEvaluator;
 using dairlib::multibody::makeNameToPositionsMap;
 using dairlib::multibody::makeNameToVelocitiesMap;
 using dairlib::systems::OutputVector;
-using dairlib::systems::BasicVector;
+using dairlib::systems::BasicVector;;
+using dairlib::LcmTrajectory;
 
 namespace dairlib{
 
@@ -86,6 +90,9 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
   mode.dynamics = dynamics;
   mode.stance = stance;
   mode.N = N;
+
+  mode_knot_counts_.push_back(mode.N);
+  total_knots_ += N;
 
   for ( int i = 0; i < N+1; i++) {
     mode.zz.push_back(prog_.NewContinuousVariables(nz_, "z_" + std::to_string(i)));
@@ -152,6 +159,8 @@ void KoopmanMPC::Build() {
   MakeKinematicReachabilityConstraints();
   MakeStateKnotConstraints();
   MakeInitialStateConstraints();
+  MakeFlatGroundConstraints();
+
   prog_.SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration_);
 }
 
@@ -248,6 +257,20 @@ void KoopmanMPC::MakeFrictionConeConstraints() {
   }
 }
 
+void KoopmanMPC::MakeFlatGroundConstraints() {
+  for (auto & mode : modes_) {
+    for (int i = 0; i < mode.N; i++) {
+      mode.flat_ground_constraints.push_back(
+          prog_.AddLinearEqualityConstraint(
+          MatrixXd::Identity(1, 1),
+          VectorXd::Zero(1),
+          mode.zz.at(i).segment(nx_ + kLinearDim_ * (mode.stance + 1) - 1, 1))
+          .evaluator()
+          .get());
+    }
+  }
+}
+
 void KoopmanMPC::MakeStateKnotConstraints() {
   // Dummy constraint to be used when cycling modes
   state_knot_constraints_.push_back(
@@ -324,12 +347,14 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
   }
 
   com_vel = J_CoM_v * x.tail(nv_);
+
   plant_.CalcPointsPositions(*plant_context_, contact_points_.at(kLeft).first,
       contact_points_.at(kLeft).second, world_frame_, &left_pos);
   plant_.CalcPointsPositions(*plant_context_, contact_points_.at(kRight).first,
                              contact_points_.at(kRight).second, world_frame_, &right_pos);
   VectorXd base_orientation;
   VectorXd base_omega;
+
   if (planar_) {
     base_orientation = x.head(nq_).segment(base_angle_pos_idx_, kAngularDim_);
     base_omega = x.tail(nv_).segment(base_angle_vel_idx_, kAngularDim_);
@@ -348,9 +373,7 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
   }
 
   lambda = mass_ * prev_sol_base_traj_.derivative(2).value(t);
-
   VectorXd x_centroidal_inflated(nxi_);
-
   x_centroidal_inflated << com_pos, base_orientation, com_vel, base_omega,
                            left_pos, right_pos, lambda;
 
@@ -376,12 +399,11 @@ void KoopmanMPC::CalcOptimalMotionPlan(const drake::systems::Context<double> &co
         fsm_state, time_since_last_event);
   } else {
     UpdateInitialStateConstraint(
-        CalcCentroidalStateFromPlant(x, dt_), 0, 0);
+        CalcCentroidalStateFromPlant(x, timestamp), 0, 0);
   }
 
   const MathematicalProgramResult result = Solve(prog_);
-  prev_sol_base_traj_ = MakePPTrajFromSol(result);
-  *traj_msg = MakeLcmTrajFromSol(result);
+  *traj_msg = MakeLcmTrajFromSol(result, timestamp, x);
 }
 
 EventStatus KoopmanMPC::DiscreteVariableUpdate(
@@ -488,5 +510,125 @@ double KoopmanMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> b
   }
   return mass;
 }
+
+/// TODO(@Brian-Acosta) Update this function to not assume planar for angular
+/// traj and to not assume uniform N
+lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
+                                               double time,
+                                               const VectorXd& state) const {
+  LcmTrajectory::Trajectory CoMTraj;
+  LcmTrajectory::Trajectory AngularTraj;
+  LcmTrajectory::Trajectory SwingFootTraj;
+
+  CoMTraj.traj_name = "com_traj";
+  AngularTraj.traj_name = "orientation";
+  SwingFootTraj.traj_name = "swing_foot_traj";
+
+
+  MatrixXd x = MatrixXd::Zero(nx_ ,  nmodes_ * modes_.front().N);
+  MatrixXd foot_traj = MatrixXd::Zero(kLinearDim_,
+      modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1]);
+
+  VectorXd x_time_knots = VectorXd::Zero(nmodes_ * modes_.front().N);
+
+  int idx_x0 = x0_idx_[0] * modes_.front().N + x0_idx_[1];
+
+  for (int i = 0; i < nmodes_; i++) {
+    auto mode = modes_.at(i);
+    for (int j = 0; j < mode.N; j++) {
+      int idx = i * mode.N + j;
+      int col = total_knots_ % (idx + idx_x0);
+
+      x.block(0, col, nx_, 1) =
+          result.GetSolution(modes_.at(i).zz.at(j).head(nx_));
+      x_time_knots(col) = time + dt_ * col;
+    }
+  }
+
+  MatrixXd x_com_knots(2*kLinearDim_, x.cols());
+  x_com_knots << x.block(0, 0, kLinearDim_, x.cols()),
+                 x.block(kLinearDim_ + kAngularDim_, 0, kLinearDim_, x.cols());
+  CoMTraj.time_vector = x_time_knots;
+  CoMTraj.datapoints = x_com_knots;
+
+  MatrixXd orientation_knots(kAngularDim_ + (planar_ ? kAngularDim_ : 0), x.cols());
+  if (planar_) {
+    orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols()),
+                         x.block(kLinearDim_ * 2 + kAngularDim_, 0, kAngularDim_, x.cols());
+  } else {
+    orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols());
+  }
+
+  AngularTraj.time_vector = x_time_knots;
+  AngularTraj.datapoints = orientation_knots;
+
+  Vector2d swing_ft_traj_breaks = {time,
+                                   time + dt_ * (modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1])};
+  MatrixXd swing_ft_traj_knots = CalcSwingFootKnotPoints(state, result);
+
+  SwingFootTraj.time_vector = swing_ft_traj_breaks;
+  SwingFootTraj.datapoints = swing_ft_traj_knots;
+
+  prev_sol_base_traj_ = PiecewisePolynomial<double>::CubicHermite(x_time_knots,
+      x.block(kLinearDim_, 0, kAngularDim_, modes_.front().N),
+      x.block(kLinearDim_ + kAngularDim_, 0, kLinearDim_, modes_.front().N));
+
+  LcmTrajectory lcm_traj;
+
+  lcm_traj.AddTrajectory(CoMTraj.traj_name, CoMTraj);
+  lcm_traj.AddTrajectory(AngularTraj.traj_name, AngularTraj);
+  lcm_traj.AddTrajectory(SwingFootTraj.traj_name, SwingFootTraj);
+
+  return lcm_traj.GetLcmTraj();
+}
+
+MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,
+    const MathematicalProgramResult& result) const {
+  auto curr_mode = modes_.at(x0_idx_[0]);
+  auto next_mode = modes_.at(nmodes_ % (x0_idx_[0] + 1));
+
+  VectorXd swing_ft_curr_loc = VectorXd::Zero(kLinearDim_);
+  VectorXd swing_ft_next_loc = VectorXd::Zero(kLinearDim_);
+  VectorXd swing_ft_curr_vel = VectorXd::Zero(kLinearDim_);
+
+  Vector3d swing_ft_plant;
+  MatrixXd J_swing_vel = MatrixXd::Zero(3, nv_);
+
+  plant_.SetPositionsAndVelocities(plant_context_, x);
+  plant_.CalcPointsPositions(*plant_context_,
+                             contact_points_.at(1 - curr_mode.stance).first,
+                             contact_points_.at(1 - curr_mode.stance).second, world_frame_,
+                             &swing_ft_plant);
+
+  plant_.CalcJacobianTranslationalVelocity(*plant_context_,
+                                           JacobianWrtVariable::kV, contact_points_.at(1-curr_mode.stance).first,
+                                           VectorXd::Zero(3), world_frame_, world_frame_, &J_swing_vel);
+
+  Vector3d swing_vel_plant = J_swing_vel * x.tail(nv_);
+
+  if (planar_) {
+    swing_ft_curr_loc(0) = swing_ft_plant(saggital_idx_);
+    swing_ft_curr_loc(1) = swing_ft_plant(vertical_idx_);
+    swing_ft_curr_vel(0) = swing_vel_plant(saggital_idx_);
+    swing_ft_curr_vel(1) = swing_vel_plant(vertical_idx_);
+  } else {
+    swing_ft_curr_loc = swing_ft_plant;
+    swing_ft_curr_vel = swing_ft_plant;
+  }
+
+  swing_ft_next_loc = result.GetSolution(
+      next_mode.zz.at(0).segment(
+          nx_ + kLinearDim_ * next_mode.stance, kLinearDim_));
+
+  MatrixXd swing_ft_traj = MatrixXd::Zero(2*kLinearDim_, 2);
+
+  swing_ft_traj.block(0, 0, kLinearDim_, 1) = swing_ft_curr_loc;
+  swing_ft_traj.block(0,1, kLinearDim_, 1) = swing_ft_next_loc;
+  swing_ft_traj.block(kLinearDim_, 0, kLinearDim_, 1) = swing_ft_curr_vel;
+  swing_ft_traj.block(kLinearDim_, 1, kLinearDim_, 1) = VectorXd::Zero(kLinearDim_);
+
+  return swing_ft_traj;
+}
+
 
 } // dairlib

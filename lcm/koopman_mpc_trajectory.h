@@ -16,6 +16,8 @@
 #include "lcm/lcm_trajectory.h"
 
 
+
+
 namespace  dairlib {
 
 class KoopmanMPCTrajectory : public LcmTrajectory {
@@ -23,7 +25,7 @@ class KoopmanMPCTrajectory : public LcmTrajectory {
   KoopmanMPCTrajectory(const std::string& filepath ) {LoadFromFile(filepath);}
 
   KoopmanMPCTrajectory(const drake::multibody::MultibodyPlant<double>& plant,
-                       const KoopmanMPC& koopman_mpc,
+                       const std::vector<KoopmanMpcMode>& koopman_modes,
                        const drake::solvers::MathematicalProgramResult result,
                        const std::string& name, const std::string& description);
 
@@ -32,6 +34,10 @@ class KoopmanMPCTrajectory : public LcmTrajectory {
   drake::trajectories::PiecewisePolynomial<double> ReconstructFootTrajectory(koopMpcStance stance) const;
 
 
+
+ private:
+  std::vector<const Trajectory*> x_;
+  std::vector<const Trajectory*> swing_foot_;
 
 };
 

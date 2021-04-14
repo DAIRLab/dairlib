@@ -10,6 +10,7 @@
 #include <set>
 #include <drake/multibody/plant/multibody_plant.h>
 #include <dairlib/lcmt_saved_traj.hpp>
+#include <Eigen/src/Core/Matrix.h>
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -21,6 +22,7 @@
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 
+#include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
@@ -53,6 +55,7 @@ typedef struct KoopmanMpcMode {
   std::vector<drake::solvers::VectorXDecisionVariable> zz;
   std::vector<drake::solvers::VectorXDecisionVariable> uu;
   std::vector<drake::solvers::LinearEqualityConstraint*> stance_foot_constraints;
+  std::vector<drake::solvers::LinearEqualityConstraint*> flat_ground_constraints;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints;
   std::vector<drake::solvers::LinearConstraint*> reachability_constraints;
@@ -105,6 +108,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const std::vector<Eigen::VectorXd>& kn);
 
   void SetMu(double mu) { mu_ = mu; }
+  int num_modes() { return nmodes_; }
 
  private:
 
@@ -120,15 +124,21 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void MakeFrictionConeConstraints();
   void MakeStateKnotConstraints();
   void MakeInitialStateConstraints();
+  void MakeFlatGroundConstraints();
+
+  Eigen::MatrixXd CalcSwingFootKnotPoints(const Eigen::VectorXd& x,
+      const drake::solvers::MathematicalProgramResult& result) const;
 
   drake::trajectories::PiecewisePolynomial<double> MakePPTrajFromSol(
       drake::solvers::MathematicalProgramResult result) const;
 
-  lcmt_saved_traj MakeLcmTrajFromSol(
-      drake::solvers::MathematicalProgramResult result) const;
+  lcmt_saved_traj MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
+                                     double time,
+                                     const Eigen::VectorXd& state) const;
 
   void UpdateInitialStateConstraint(const Eigen::VectorXd& x0,
-      const int fsm_state, const double t_since_last_switch) const;
+      int fsm_state, double t_since_last_switch) const;
+
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
 
   Eigen::VectorXd CalcCentroidalStateFromPlant(Eigen::VectorXd x, double t) const;
@@ -153,8 +163,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  mutable drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
-    prev_sol_base_traj_;
+  mutable drake::trajectories::PiecewisePolynomial<double> prev_sol_base_traj_;
 
   std::vector<std::pair<const drake::multibody::BodyFrame<double>,
   Eigen::Vector3d>> contact_points_;
@@ -162,6 +171,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   // Problem variables
   Eigen::MatrixXd Q_;
   std::vector<KoopmanMpcMode> modes_;
+  std::vector<int> mode_knot_counts_;
+  int total_knots_ = 0;
   std::vector<Eigen::VectorXd> kin_nominal_;
   Eigen::VectorXd kin_lim_;
 
@@ -208,6 +219,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   const int kNx3d = 13;
   const int kNuPlanar = 6;
   const int kNu3d = 9;
+  const int saggital_idx_ = 0;
+  const int vertical_idx_ = 2;
   double mu_ = 0;
   double mass_ = 0;
   double planar_inertia_ = 0;

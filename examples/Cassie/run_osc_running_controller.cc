@@ -251,21 +251,6 @@ int DoMain(int argc, char* argv[]) {
     const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
         output_trajs.GetTrajectory("pelvis_rot_trajectory" +
                                    std::to_string(mode));
-    //    pelvis_trans_traj.ConcatenateInTime(
-    //        PiecewisePolynomial<double>::CubicHermite(
-    //            lcm_pelvis_trans_trajectory.time_vector,
-    //            lcm_pelvis_trans_trajectory.datapoints.topRows(3),
-    //            lcm_pelvis_trans_trajectory.datapoints.bottomRows(3)));
-    //    l_foot_trajectory.ConcatenateInTime(
-    //        PiecewisePolynomial<double>::CubicHermite(
-    //            lcm_left_foot_traj.time_vector,
-    //            lcm_left_foot_traj.datapoints.topRows(3),
-    //            lcm_left_foot_traj.datapoints.bottomRows(3)));
-    //    r_foot_trajectory.ConcatenateInTime(
-    //        PiecewisePolynomial<double>::CubicHermite(
-    //            lcm_right_foot_traj.time_vector,
-    //            lcm_right_foot_traj.datapoints.topRows(3),
-    //            lcm_right_foot_traj.datapoints.bottomRows(3)));
     pelvis_trans_traj.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_pelvis_trans_trajectory.time_vector,
@@ -294,6 +279,10 @@ int DoMain(int argc, char* argv[]) {
       plant, plant_context.get(), "hip_left", true, l_foot_trajectory);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "hip_right", false, r_foot_trajectory);
+  l_foot_traj_generator->SetFootstepGains(osc_gains.K_p_footstep,
+                                          osc_gains.K_d_footstep);
+  r_foot_traj_generator->SetFootstepGains(osc_gains.K_p_footstep,
+                                          osc_gains.K_d_footstep);
 
   TransTaskSpaceTrackingData pelvis_tracking_data(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,

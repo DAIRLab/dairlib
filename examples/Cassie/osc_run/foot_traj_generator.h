@@ -15,8 +15,8 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context, const std::string& hip_name,
       bool isLeftFoot,
-      const drake::trajectories::PiecewisePolynomial<double>& foot_traj, bool relative_feet = false,
-      double time_offset = 0.0);
+      const drake::trajectories::PiecewisePolynomial<double>& foot_traj,
+      bool relative_feet = false, double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -24,10 +24,21 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_target_vel_input_port() const {
+    return this->get_input_port(target_vel_port_);
+  }
+
+  void SetFootstepGains(const Eigen::MatrixXd& Kp, const Eigen::MatrixXd& Kd) {
+    Kp_ = Kp;
+    Kd_ = Kd;
+  };
 
  private:
-  drake::trajectories::PiecewisePolynomial<double> generateFlightTraj(
+  drake::trajectories::PiecewisePolynomial<double> GenerateFlightTraj(
       const Eigen::VectorXd& x, double t) const;
+  void AddRaibertCorrection(
+      const drake::systems::Context<double>& context,
+      drake::trajectories::PiecewisePolynomial<double>* traj) const;
 
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
@@ -39,9 +50,14 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
 
   drake::trajectories::PiecewisePolynomial<double> foot_traj_;
 
+  // Raibert Footstep Gains
+  Eigen::MatrixXd Kp_ = Eigen::MatrixXd::Zero(2, 2);
+  Eigen::MatrixXd Kd_ = Eigen::MatrixXd::Zero(2, 2);
+
   bool relative_feet_;
   int state_port_;
+  int target_vel_port_;
   int fsm_port_;
 };
 
-}  // namespace dairlib::examples::osc_jump
+}  // namespace dairlib::examples::osc_run

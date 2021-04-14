@@ -1,4 +1,5 @@
 #include "foot_traj_generator.h"
+
 #include "multibody/multibody_utils.h"
 
 using Eigen::Map;
@@ -53,37 +54,46 @@ FootTrajGenerator::FootTrajGenerator(
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
           .get_index();
+  target_vel_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(3)).get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   // Shift trajectory by time_offset
   foot_traj_.shiftRight(time_offset);
 }
 
-PiecewisePolynomial<double> FootTrajGenerator::generateFlightTraj(
+PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
     const VectorXd& x, double t) const {
-  if (relative_feet_) {
-    plant_.SetPositionsAndVelocities(context_, x);
-    // Hip offset
-    Vector3d zero_offset = Vector3d::Zero();
-    Vector3d hip_pos = Vector3d::Zero();
-    plant_.CalcPointsPositions(*context_, hip_frame_, zero_offset, world_,
-                               &hip_pos);
+  //  plant_.SetPositionsAndVelocities(context_, x);
+  int n_cycles = t;
+  double stride_length = foot_traj_.value(foot_traj_.end_time())(0) -
+                         foot_traj_.value(foot_traj_.start_time())(0);
+  Vector3d foot_offset = {n_cycles * stride_length, 0, 0};
 
-    const PiecewisePolynomial<double>& foot_traj_segment =
-        foot_traj_.slice(foot_traj_.get_segment_index(t), 1);
+  std::vector<double> breaks = foot_traj_.get_segment_times();
+  VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
+  MatrixXd foot_offset_points = foot_offset.replicate(1, breaks.size());
+  PiecewisePolynomial<double> foot_offset_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
+                                                 foot_offset_points);
+  return foot_traj_ + foot_offset_traj;
+}
 
-    std::vector<double> breaks = foot_traj_segment.get_segment_times();
-    VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-    MatrixXd hip_points(3, 2);
-    // Velocity estimates are generally bad
-    hip_points << hip_pos, hip_pos;
-    PiecewisePolynomial<double> hip_offset =
-        PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, hip_points);
+void FootTrajGenerator::AddRaibertCorrection(
+    const drake::systems::Context<double>& context,
+    drake::trajectories::PiecewisePolynomial<double>* traj) const {
 
-    return foot_traj_segment + hip_offset;
-  } else {
-    return foot_traj_;
-  }
+  const auto robot_output =
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
+  const auto desired_pelvis_vel =
+      this->EvalVectorInput(context, target_vel_port_);
+  VectorXd pelvis_vel = robot_output->GetVelocities().segment(3, 2);
+  VectorXd pelvis_vel_err = desired_pelvis_vel->get_value() - pelvis_vel;
+  VectorXd footstep_correction =
+      Kp_ * (desired_pelvis_vel->get_value() - pelvis_vel) +
+      Kd_ * (pelvis_vel_err);
+
+  return;
 }
 
 void FootTrajGenerator::CalcTraj(
@@ -102,7 +112,7 @@ void FootTrajGenerator::CalcTraj(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   //  if (fsm_state[0] == FLIGHT) {
-  *casted_traj = generateFlightTraj(robot_output->GetState(), timestamp);
+  *casted_traj = GenerateFlightTraj(robot_output->GetState(), timestamp);
   //  }
 }
 

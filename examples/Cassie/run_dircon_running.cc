@@ -452,8 +452,8 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   std::cout << "Actuator limit constraints: " << std::endl;
   for (int i = 0; i < trajopt.N(); i++) {
     auto ui = trajopt.input(i);
-    trajopt.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
-                                     VectorXd::Constant(n_u, +300), ui);
+    trajopt.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -200),
+                                     VectorXd::Constant(n_u, +200), ui);
   }
 
   std::cout << "Foot placement constraints: " << std::endl;
@@ -519,10 +519,10 @@ void setKinematicConstraints(Dircon<double>& trajopt,
 
   std::cout << "Miscellaneous constraints" << std::endl;
   // Miscellaneous constraints
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_left")) >= -0.05);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_left")) <= 0.05);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) >= -0.05);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) <= 0.05);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_left")) >= -0.01);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_left")) <= 0.01);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) >= -0.01);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_yaw_right")) <= 0.01);
   // Miscellaneous constraints
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) >= 0.0);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) <= 0.10);
@@ -535,7 +535,9 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   Q(2, 2) = 1.0;
   Q(3, 3) = 1.0;
   MatrixXd R = 1e-5 * MatrixXd::Identity(n_u, n_u);
-  trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+  R(8, 8) = 1;
+  R(9, 9) = 1;
+  trajopt.AddRunningCost((x.tail(n_v).transpose() * Q * x.tail(n_v)));
   trajopt.AddRunningCost(u.transpose() * R * u);
 
 //  MatrixXd S = MatrixXd::Zero(n_u, n_v);

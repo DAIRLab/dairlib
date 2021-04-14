@@ -74,6 +74,9 @@ DEFINE_string(save_filename, "default_filename",
               "vars to.");
 DEFINE_string(traj_name, "", "File to load saved LCM trajs from.");
 DEFINE_bool(use_springs, false, "Whether or not to use the spring model");
+DEFINE_bool(same_knotpoints, false,
+            "Set flag to true if seeding with a trajectory with the same "
+            "number of knotpoints");
 
 namespace dairlib {
 
@@ -88,8 +91,9 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
 vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
                                   const MultibodyPlant<double>& plant);
 MatrixXd loadSavedDecisionVars(const string& filepath);
-void SetInitialGuessFromTrajectory(
-    const shared_ptr<HybridDircon<double>>& trajopt, const string& filepath);
+void SetInitialGuessFromTrajectory(HybridDircon<double>& trajopt,
+                                   const string& filepath,
+                                   bool same_knot_points = false);
 
 void DoMain() {
   // Drake system initialization stuff
@@ -256,8 +260,9 @@ void DoMain() {
     std::cout << "Loading: " << FLAGS_load_filename << std::endl;
     //    MatrixXd decisionVars =
     //        loadSavedDecisionVars(FLAGS_data_directory + FLAGS_load_filename);
-    SetInitialGuessFromTrajectory(trajopt,
-                                  FLAGS_data_directory + FLAGS_load_filename);
+    SetInitialGuessFromTrajectory(*trajopt,
+                                  FLAGS_data_directory + FLAGS_load_filename,
+                                  FLAGS_same_knotpoints);
     //    trajopt->SetInitialGuessForAllVariables(decisionVars);
   } else {
     // Initialize all decision vars to random by default. Will be overriding
@@ -507,6 +512,21 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
       trajopt->AddConstraint(right_foot_y_constraint, x_i.head(n_q));
     }
   }
+
+  // Jumping distance constraint for platform clearance
+  auto left_foot_x_platform_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
+          0.25 * (FLAGS_distance - eps) * VectorXd::Ones(1),
+          0.25 * (FLAGS_distance + eps) * VectorXd::Ones(1));
+  auto right_foot_x_platform_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
+          0.25 * (FLAGS_distance - eps) * VectorXd::Ones(1),
+          0.25 * (FLAGS_distance + eps) * VectorXd::Ones(1));
+  trajopt->AddConstraint(left_foot_x_platform_constraint, x_top.head(n_q));
+  trajopt->AddConstraint(right_foot_x_platform_constraint, x_top.head(n_q));
+
   // Jumping distance constraint
   auto left_foot_x_constraint =
       std::make_shared<PointPositionConstraint<double>>(
@@ -824,23 +844,37 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
   }
 }
 
-void SetInitialGuessFromTrajectory(
-    const shared_ptr<HybridDircon<double>>& trajopt, const string& filepath) {
+void SetInitialGuessFromTrajectory(HybridDircon<double>& trajopt,
+                                   const string& filepath,
+                                   bool same_knot_points) {
   DirconTrajectory previous_traj = DirconTrajectory(filepath);
+  if (same_knot_points) {
+    trajopt.SetInitialGuessForAllVariables(
+        previous_traj.GetDecisionVariables());
+    return;
+  }
   auto state_traj = previous_traj.ReconstructStateTrajectory();
   auto input_traj = previous_traj.ReconstructInputTrajectory();
   auto lambda_traj = previous_traj.ReconstructLambdaTrajectory();
   auto lambda_c_traj = previous_traj.ReconstructLambdaCTrajectory();
   auto gamma_traj = previous_traj.ReconstructGammaCTrajectory();
 
-  trajopt->SetInitialTrajectory(input_traj, state_traj);
-  for (int mode = 0; mode < trajopt->num_modes() - 1; ++mode) {
-    if (trajopt->mode_lengths()[mode] > 1) {
+  trajopt.SetInitialTrajectory(input_traj, state_traj);
+  for (int mode = 0; mode < trajopt.num_modes() - 1; ++mode) {
+    if (trajopt.mode_length(mode) > 1) {
       std::cout << "mode: " << mode << std::endl;
-      trajopt->SetInitialForceTrajectory(mode, lambda_traj[mode],
-                                         lambda_c_traj[mode], gamma_traj[mode]);
+      trajopt.SetInitialForceTrajectory(mode, lambda_traj[mode],
+                                        lambda_c_traj[mode], gamma_traj[mode]);
     }
   }
+}
+
+MatrixXd loadSavedDecisionVars(const string& filepath) {
+  DirconTrajectory previous_traj = DirconTrajectory(filepath);
+  for (auto& name : previous_traj.GetTrajectoryNames()) {
+    std::cout << name << std::endl;
+  }
+  return previous_traj.GetDecisionVariables();
 }
 
 }  // namespace dairlib

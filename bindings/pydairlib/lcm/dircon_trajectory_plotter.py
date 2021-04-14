@@ -18,9 +18,11 @@ def main():
   input_traj = dircon_traj.ReconstructInputTrajectory()
   state_datatypes = dircon_traj.GetTrajectory("state_traj0").datatypes
   input_datatypes = dircon_traj.GetTrajectory("input_traj").datatypes
-
+  force_samples = dircon_traj.GetTrajectory("force_vars0").datapoints
+  force_t_samples = dircon_traj.GetStateBreaks(0)
   force_traj = dircon_traj.ReconstructLambdaTrajectory()
-  force_datatypes = dircon_traj.GetTrajectory("force_vars0").datatypes
+  # force_datatypes = dircon_traj.GetTrajectory("force_vars0").datatypes
+  force_datatypes = dircon_traj.GetTrajectory("force_vars1").datatypes
 
   collocation_force_points = dircon_traj.GetCollocationForceSamples(0)
 
@@ -39,11 +41,11 @@ def main():
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
   state_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
   input_samples = np.zeros((n_points, input_traj.value(0).shape[0]))
-  force_samples = np.zeros((n_points, force_traj[2].value(0).shape[0]))
+  # force_samples = np.zeros((n_points, force_traj[0].value(0).shape[0]))
   for i in range(n_points):
     state_samples[i] = state_traj.value(t[i])[:, 0]
     input_samples[i] = input_traj.value(t[i])[:, 0]
-    force_samples[i] = force_traj[2].value(t[i])[:, 0]
+    # force_samples[i] = force_traj[0].value(t[i])[:, 0]
 
   reflected_state_samples = state_samples @ M
   # Plotting reconstructed state trajectories
@@ -61,10 +63,11 @@ def main():
   plt.legend(input_datatypes[:])
 
   plt.figure("force trajectory")
-  plt.plot(t, force_samples)
+  # plt.plot(t, force_samples[:, :12])
+  plt.plot(force_t_samples, force_samples.T)
   plt.legend(force_datatypes)
 
-  # plt.show()
+  plt.show()
 
 def reflected_joints():
 

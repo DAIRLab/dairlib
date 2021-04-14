@@ -49,7 +49,8 @@ def main():
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
-                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+                                                   # "examples/Cassie/urdf/cassie_v2.urdf", False, False)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
                                                    "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
   plant_w_spr.Finalize()
@@ -162,7 +163,7 @@ def main():
     plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
-    # plt.plot(t_u[t_u_slice], 0.025*fsm[t_u_slice])
+  # plt.plot(t_u[t_u_slice], 0.025*fsm[t_u_slice])
 
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
@@ -277,17 +278,23 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     osc_traj0 = "pelvis_trans_traj"
     osc_traj1 = "left_ft_traj"
     osc_traj2 = "right_ft_traj"
-    osc_traj3 = "left_toe_angle_traj"
-    osc_traj4 = "right_toe_angle_traj"
+    osc_traj3 = "hip_pitch_left_traj"
+    osc_traj4 = "hip_pitch_right_traj"
+    osc_traj5 = "hip_roll_left_traj"
+    osc_traj6 = "hip_roll_right_traj"
+    osc_traj7 = "left_toe_angle_traj"
+    osc_traj8 = "right_toe_angle_traj"
+    osc_traj9 = "hip_yaw_left_traj"
+    osc_traj10 = "hip_yaw_right_traj"
 
 
   #
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
 
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
   # plot_osc(osc_debug, osc_traj0, 2, "vel")
 
@@ -299,7 +306,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj1, 0, "pos")
   plot_osc(osc_debug, osc_traj1, 1, "pos")
   plot_osc(osc_debug, osc_traj1, 2, "pos")
-
+  #
   plot_osc(osc_debug, osc_traj2, 0, "pos")
   plot_osc(osc_debug, osc_traj2, 1, "pos")
   plot_osc(osc_debug, osc_traj2, 2, "pos")
@@ -322,12 +329,14 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
-  # plot_osc(osc_debug, osc_traj3, 0, "pos")
-  # plot_osc(osc_debug, osc_traj5, 0, "vel")
-  # plot_osc(osc_debug, osc_traj5, 0, "accel")
-  # plot_osc(osc_debug, osc_traj5, 1, "accel")
-  # plot_osc(osc_debug, osc_traj5, 2, "accel")
-  # plot_osc(osc_debug, osc_traj7, 0, "vel")
+  plot_osc(osc_debug, osc_traj3, 0, "pos")
+  plot_osc(osc_debug, osc_traj4, 0, "pos")
+  plot_osc(osc_debug, osc_traj5, 0, "pos")
+  plot_osc(osc_debug, osc_traj6, 0, "pos")
+  plot_osc(osc_debug, osc_traj7, 0, "pos")
+  plot_osc(osc_debug, osc_traj8, 0, "pos")
+  plot_osc(osc_debug, osc_traj9, 0, "pos")
+  plot_osc(osc_debug, osc_traj10, 0, "pos")
 
 
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
@@ -391,16 +400,16 @@ def plot_id_debug(t_u, osc_debug, osc_output):
   # plot_osc(osc_debug, osc_traj9, 0, "pos")
 
   #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj1, 0, "vel")
-  plot_osc(osc_debug, osc_traj2, 0, "vel")
-  plot_osc(osc_debug, osc_traj3, 0, "vel")
-  plot_osc(osc_debug, osc_traj4, 0, "vel")
-  plot_osc(osc_debug, osc_traj5, 0, "vel")
-  plot_osc(osc_debug, osc_traj6, 0, "vel")
-  plot_osc(osc_debug, osc_traj7, 0, "vel")
-  plot_osc(osc_debug, osc_traj8, 0, "vel")
-  plot_osc(osc_debug, osc_traj9, 0, "vel")
+  plot_osc(osc_debug, osc_traj0, 0, "pos")
+  plot_osc(osc_debug, osc_traj1, 0, "pos")
+  plot_osc(osc_debug, osc_traj2, 0, "pos")
+  plot_osc(osc_debug, osc_traj3, 0, "pos")
+  plot_osc(osc_debug, osc_traj4, 0, "pos")
+  plot_osc(osc_debug, osc_traj5, 0, "pos")
+  plot_osc(osc_debug, osc_traj6, 0, "pos")
+  plot_osc(osc_debug, osc_traj7, 0, "pos")
+  plot_osc(osc_debug, osc_traj8, 0, "pos")
+  plot_osc(osc_debug, osc_traj9, 0, "pos")
   #
 
 

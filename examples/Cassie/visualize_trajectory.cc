@@ -56,6 +56,8 @@ int DoMain() {
 
   PiecewisePolynomial<double> optimal_traj =
       saved_traj.ReconstructStateTrajectory();
+  std::vector<double> time_vector = optimal_traj.get_segment_times();
+
   auto mirrored_traj =
       saved_traj.ReconstructMirrorStateTrajectory(optimal_traj.end_time());
   VectorXd x_offset = VectorXd::Zero(nx);
@@ -67,7 +69,6 @@ int DoMain() {
       PiecewisePolynomial<double>::ZeroOrderHold(
           mirrored_traj.get_segment_times(), x_offset_rep);
   optimal_traj.ConcatenateInTime(mirrored_traj + x_offset_traj);
-  std::vector<double> time_vector = optimal_traj.get_segment_times();
 
   x_offset(4) = optimal_traj.value(optimal_traj.end_time())(4) -
                 optimal_traj.value(optimal_traj.start_time())(4);

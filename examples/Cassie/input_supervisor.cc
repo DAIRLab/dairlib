@@ -65,7 +65,7 @@ InputSupervisor::InputSupervisor(
   switch_time_index_ = DeclareDiscreteState(1);
   prev_efforts_time_index_ = DeclareDiscreteState(1);
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
-  soft_estop_flag_index_ = DeclareDiscreteState(1);
+  soft_estop_trigger_index_ = DeclareDiscreteState(1);
 
   K_ = plant_.MakeActuationMatrix().transpose();
   K_ *= kEStopGain;
@@ -94,7 +94,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
                        context.get_discrete_state(prev_efforts_time_index_)[0] >
                    kMaxControllerDelay);
   is_error =
-      is_error || context.get_discrete_state(soft_estop_flag_index_)[0] == 1;
+      is_error || context.get_discrete_state(soft_estop_trigger_index_)[0] == 1;
   if ((command->get_timestamp() -
            context.get_discrete_state(prev_efforts_time_index_)[0] >
        kMaxControllerDelay)) {
@@ -102,9 +102,14 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
               << std::endl;
   }
 
+  bool is_nan = false;
+  for (int i = 0; i < command->get_data().size(); ++i) {
+    is_nan = is_nan || std::isnan(command->get_data()(i));
+  }
+
   // If the soft estop signal is triggered, applying only damping regardless of
   // any other controller signal
-  if (cassie_out->pelvis.radio.channel[15] == -1) {
+  if (cassie_out->pelvis.radio.channel[15] == -1 || is_nan) {
     Eigen::VectorXd u = -K_ * state->GetVelocities();
     output->SetDataVector(u);
     return;
@@ -112,11 +117,11 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
 
   // If there has not been an error, copy over the command.
   // If there has been an error, set the command to all zeros
+  output->set_timestamp(command->get_timestamp());
   if (!is_error) {
     // If input_limit_ has been set, limit inputs to
     // [-input_limit_, input_limit_]
     if (input_limit_ != std::numeric_limits<double>::max()) {
-      output->set_timestamp(command->get_timestamp());
       for (int i = 0; i < command->get_data().size(); i++) {
         double command_value = command->get_data()(i);
         if (command_value > input_limit_) {
@@ -128,10 +133,9 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
       }
     } else {
       // Can copy entire raw vector
-      output->get_mutable_value() = command->get_value();
+      output->SetDataVector(command->get_value());
     }
   } else {
-    output->set_timestamp(command->get_timestamp());
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
   }
 
@@ -197,16 +201,12 @@ void InputSupervisor::SetStatus(
 void InputSupervisor::UpdateErrorFlag(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  const OutputVector<double>* state =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   const auto* controller_switch =
       this->EvalInputValue<dairlib::lcmt_controller_switch>(
           context, controller_switch_input_port_);
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
-  const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
-      context, cassie_input_port_);
 
   if (command->get_timestamp() -
           discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] >
@@ -217,10 +217,32 @@ void InputSupervisor::UpdateErrorFlag(
         command->get_timestamp();
   }
 
-  if (cassie_out->pelvis.radio.channel[15] == -1) {
-    discrete_state->get_mutable_vector(soft_estop_flag_index_)[0] = 1;
+  CheckRadio(context, discrete_state);
+  CheckVelocities(context, discrete_state);
+
+  // When receiving a new controller switch message, record the time
+  if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
+      controller_switch->utime * 1e-6) {
+    std::cout << "Got new switch message" << std::endl;
+    discrete_state->get_mutable_vector(switch_time_index_)[0] =
+        controller_switch->utime * 1e-6;
+    blend_duration_ = controller_switch->blend_duration;
   }
 
+  // Update the previous commanded switch message unless currently blending
+  // efforts
+  if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
+      blend_duration_) {
+    discrete_state->get_mutable_vector(prev_efforts_index_)
+        .get_mutable_value() = command->get_value();
+  }
+}
+
+void InputSupervisor::CheckVelocities(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+  const OutputVector<double>* state =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
   if (discrete_state->get_vector(status_vars_index_)[n_fails_index_] <
@@ -252,22 +274,15 @@ void InputSupervisor::UpdateErrorFlag(
           double(false);
     }
   }
+}
 
-  // When receiving a new controller switch message, record the time
-  if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
-      controller_switch->utime * 1e-6) {
-    std::cout << "Got new switch message" << std::endl;
-    discrete_state->get_mutable_vector(switch_time_index_)[0] =
-        controller_switch->utime * 1e-6;
-    blend_duration_ = controller_switch->blend_duration;
-  }
-
-  // Update the previous commanded switch message unless currently blending
-  // efforts
-  if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
-      blend_duration_) {
-    discrete_state->get_mutable_vector(prev_efforts_index_)
-        .get_mutable_value() = command->get_value();
+void InputSupervisor::CheckRadio(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+  const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
+      context, cassie_input_port_);
+  if (cassie_out->pelvis.radio.channel[15] == -1) {
+    discrete_state->get_mutable_vector(soft_estop_trigger_index_)[0] = 1;
   }
 }
 

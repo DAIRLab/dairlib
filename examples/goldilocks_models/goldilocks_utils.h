@@ -170,6 +170,8 @@ template <typename MessageType>
 void NetworkPublisher(const std::string& channel_in,
                       const std::string& channel_out, int n_publishes) {
   // Parameters
+  //  double init_publish_period = 0.1;
+
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
@@ -190,7 +192,7 @@ void NetworkPublisher(const std::string& channel_in,
   drake::lcm::Subscriber<dairlib::lcmt_saved_traj> mpc_sub(&lcm_local,
                                                            "MPC_OUTPUT");
 
-  // Wait for the first message and initialize the context time..
+  // Wait for the first message
   drake::log()->info("Waiting for first lcm input message");
   LcmHandleSubscriptionsUntil(&lcm_local,
                               [&]() { return input_sub.count() > 0; });
@@ -211,7 +213,7 @@ void NetworkPublisher(const std::string& channel_in,
     diagram_ptr->Publish(diagram_context);
 
     // Once we have the first mpc message, enter this endless while loop
-    if (mpc_sub.count() > 0) {
+    if (true /*mpc_sub.count() > 0*/) {
       while (true) {
         // Wait for input message.
         input_sub.clear();

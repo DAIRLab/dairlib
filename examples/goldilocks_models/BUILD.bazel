@@ -196,3 +196,25 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "run_network_publisher_state",
+    srcs = ["run_network_publisher_state.cc"],
+    deps = [
+        ":goldilocks_utils",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_network_publisher_fsm",
+    srcs = ["run_network_publisher_fsm.cc"],
+    deps = [
+        ":goldilocks_utils",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

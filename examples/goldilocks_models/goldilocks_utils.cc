@@ -599,5 +599,6 @@ void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram) {
   // cout << std::system(cmd.c_str());
 }
 
+
 }  // namespace goldilocks_models
 }  // namespace dairlib

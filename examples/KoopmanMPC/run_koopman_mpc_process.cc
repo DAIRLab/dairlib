@@ -1,7 +1,9 @@
 //
 // Created by brian on 4/14/21.
 //
+#include<gflags/gflags.h>
 
+#include "drake/systems/primitives/demultiplexer.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
@@ -15,12 +17,15 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/dairlib_signal_lcm_systems.h"
 
 namespace dairlib {
 
+using systems::DairlibSignalReceiver;
 using systems::RobotOutputReceiver;
 using systems::TimeBasedFiniteStateMachine;
 using systems::LcmDrivenLoop;
+
 
 using std::cout;
 using std::string;
@@ -36,17 +41,23 @@ using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
+using drake::systems::Demultiplexer;
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
+DEFINE_string(channel_x, "PLANAR_STATE", "channel to publish/receive planar walker state");
+DEFINE_string(channel_plan, "KOOPMAN_MPC_OUT", "channel to publish plan trajectory");
+
 VectorXd poly_basis_1 (const VectorXd& x) {
   return x;
 }
 
 int DoMain(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   // Koopman parameters
   double dt = 0.025;
   double stance_time = 0.35;
@@ -139,16 +150,19 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Successfully built kmpc" << std::endl;
 
   // Setup fsm
-  std::vector<int> fsm_states = {koopMpcStance::kLeft, koopMpcStance::kRight};
-  std::vector<double> state_durations = {dt, dt};
-  auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(plant, fsm_states, state_durations);
+  auto fsm_subscriber = builder.AddSystem(
+      LcmSubscriberSystem::Make<lcmt_dairlib_signal>("FSM_BROADCAST", &lcm_local));
+  auto fsm_signal_rec = builder.AddSystem<DairlibSignalReceiver>(1);
+  auto dmux = builder.AddSystem<Demultiplexer<double>>(2);
 
-  builder.Connect(fsm->get_output_port(), kmpc->get_fsm_input_port());
+  builder.Connect(fsm_subscriber->get_output_port(), fsm_signal_rec->get_input_port());
+  builder.Connect(fsm_signal_rec->get_output_port(), dmux->get_input_port());
+  builder.Connect(dmux->get_output_port(0), kmpc->get_fsm_input_port());
 
   // setup lcm messaging
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
-  auto dispatcher_out_subscriber = builder.AddSystem(LcmSubscriberSystem::Make<lcmt_robot_output>("PLANAR_DISPATCHER_OUT", &lcm_local));
-  auto koopman_mpc_out_publisher = builder.AddSystem(LcmPublisherSystem::Make<lcmt_saved_traj>("KOOPMAN_MPC_OUT", &lcm_local));
+  auto dispatcher_out_subscriber = builder.AddSystem(LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, &lcm_local));
+  auto koopman_mpc_out_publisher = builder.AddSystem(LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
 
   builder.Connect(dispatcher_out_subscriber->get_output_port(),
       robot_out->get_input_port());

@@ -1,0 +1,17 @@
+package dairlib;
+
+// copied from lcmt_drake_signal
+// The difference is that drake uses timestamp, but we use utime here.
+struct lcmt_dairlib_signal {
+  // The number of elements in the signal.
+  int32_t dim;
+
+  // The value of each element in the signal.
+  double val[dim];
+
+  // The name of each element in the signal.
+  string coord[dim];
+
+  // The utime in microseconds.
+  int64_t utime;
+}

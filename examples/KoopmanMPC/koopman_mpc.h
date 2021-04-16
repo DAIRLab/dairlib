@@ -14,8 +14,6 @@
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
 
 #include "drake/solvers/mathematical_program.h"
@@ -82,7 +80,6 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int saggital_idx() { return saggital_idx_;}
   int vertical_idx() { return vertical_idx_;}
 
-  int get_verical_coord_idx() { return kLinearDim_ - 1; }
   double SetMassFromListOfBodies(std::vector<std::string> bodies);
 
   void SetMass(double mass) {mass_ = mass;}

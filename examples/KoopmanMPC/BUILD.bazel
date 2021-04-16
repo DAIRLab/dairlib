@@ -19,6 +19,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "mpc_trajectory_reciever",
+    srcs = ["mpc_trajectory_reciever.cc"],
+    hdrs = ["mpc_trajectory_reciever.h"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "run_planar_walker_sim",
     srcs = ["run_planar_walker_sim.cc"],
@@ -26,8 +37,22 @@ cc_binary(
         ":koopman_mpc",
         "//common",
         "//examples/PlanarWalker:urdf",
+        "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
         "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_visualizer",
+    srcs = ["run_visualizer.cc"],
+    deps = [
+        "//common",
+        "//examples/PlanarWalker:urdf",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -48,6 +73,22 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
         "//systems/controllers:time_based_fsm",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_walking",
+    srcs = ["run_osc_walking.cc"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

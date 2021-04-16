@@ -3,10 +3,11 @@
 //
 #include<gflags/gflags.h>
 
+#include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/primitives/demultiplexer.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/lcm/drake_lcm.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/lcmt_drake_signal.hpp"
 
@@ -42,6 +43,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::systems::Demultiplexer;
+using drake::systems::ConstantVectorSource;
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -141,13 +143,16 @@ int DoMain(int argc, char* argv[]) {
 
   kmpc->AddTrackingObjective(x_des, q.asDiagonal());
 
-  // add input cost
+    // add input cost
   kmpc->AddInputRegularization(0.00001 * VectorXd::Ones(6).asDiagonal());
 
   // set friction coeff
   kmpc->SetMu(0.4);
   kmpc->Build();
   std::cout << "Successfully built kmpc" << std::endl;
+
+  auto xdes_source = builder.AddSystem<ConstantVectorSource<double>>(x_des);
+  builder.Connect(xdes_source->get_output_port(), kmpc->get_x_des_input_port());
 
   // Setup fsm
   auto fsm_subscriber = builder.AddSystem(

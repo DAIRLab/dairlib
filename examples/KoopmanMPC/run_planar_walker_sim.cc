@@ -6,7 +6,6 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -57,9 +56,9 @@ DEFINE_double(target_realtime_rate, 1.0,
               "Simulator::set_target_realtime_rate() for details.");
 DEFINE_double(dt, 1e-4, "The step size for the time-stepping simulator.");
 DEFINE_double(publish_rate, 2000.0, "Publish rate of the robot's state in Hz.");
-DEFINE_string(channel_x, "RABBIT_STATE",
+DEFINE_string(channel_x, "PLANAR_STATE",
               "Channel to publish/receive state from simulation");
-DEFINE_string(channel_u, "RABBIT_INPUT",
+DEFINE_string(channel_u, "PLANAR_INPUT",
               "Channel to publish/receive inputs from controller");
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model.");
@@ -92,10 +91,6 @@ int do_main(int argc, char* argv[]) {
   // Contact model parameters
   plant.set_stiction_tolerance(FLAGS_stiction);
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
-
-  const DirconTrajectory& loaded_traj =
-      DirconTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  auto state_traj = loaded_traj.ReconstructStateTrajectory();
 
   // Create input receiver.
   auto input_sub =
@@ -147,7 +142,7 @@ int do_main(int argc, char* argv[]) {
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
-  Eigen::VectorXd x0 = state_traj.value(0);
+  Eigen::VectorXd x0 = VectorXd::Zero(plant.num_positions() + plant.num_velocities());
   VectorXd vel_offset = calcStateOffset(plant, plant_context, x0);
   x0.tail(nv) += vel_offset;
   plant.SetPositionsAndVelocities(&plant_context, x0);

@@ -3,7 +3,7 @@
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_dairlib_signal.hpp"
-#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/controller/network_publisher.h"
 
 namespace dairlib {
 

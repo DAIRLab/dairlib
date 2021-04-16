@@ -7,16 +7,15 @@
 
 namespace dairlib {
 
-DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
-              "The name of the channel which receives state");
-DEFINE_int32(n_publishes, 3,
-             "number of publishes after getting a message");
+DEFINE_string(channel_in, "CASSIE_STATE_DISPATCHER", "");
+DEFINE_string(channel_out, "NETWORK_CASSIE_STATE_DISPATCHER", "");
+DEFINE_int32(n_publishes, 3, "number of publishes after getting a message");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   goldilocks_models::NetworkPublisher<dairlib::lcmt_robot_output>(
-      FLAGS_channel, FLAGS_n_publishes);
+      FLAGS_channel_in, FLAGS_channel_out, FLAGS_n_publishes);
 
   return 0;
 }

@@ -526,19 +526,27 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   // Miscellaneous constraints
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) >= 0.0);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) <= 0.10);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) >=
-                                       -0.10);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) >= -0.10);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) <= 0.0);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_left")) >= 0.50);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_left")) <= 0.90);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_right")) >= 0.50);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_right")) <= 0.90);
 
   std::cout << "Adding costs: " << std::endl;
-  MatrixXd Q = 1e-1 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q = 1e-2 * MatrixXd::Identity(n_v, n_v);
+  Q(0, 0) = 1.0;
+  Q(1, 1) = 1.0;
   Q(2, 2) = 1.0;
   Q(3, 3) = 1.0;
+  Q(4, 4) = 1.0;
+  Q(5, 5) = 1.0;
+  Q = 10 * Q;
   MatrixXd R = 1e-5 * MatrixXd::Identity(n_u, n_u);
-  R(8, 8) = 1;
-  R(9, 9) = 1;
+//  R(8, 8) = 1;
+//  R(9, 9) = 1;
   trajopt.AddRunningCost((x.tail(n_v).transpose() * Q * x.tail(n_v)));
-  trajopt.AddRunningCost(u.transpose() * R * u);
+//  trajopt.AddRunningCost(u.transpose() * R * u);
 
 //  MatrixXd S = MatrixXd::Zero(n_u, n_v);
 //  S(0, 6) = 1;

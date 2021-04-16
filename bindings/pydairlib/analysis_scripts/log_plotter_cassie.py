@@ -49,8 +49,9 @@ def main():
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
-                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
-                                                   # "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+                                                   # "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
                                                    "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
   plant_w_spr.Finalize()
@@ -104,6 +105,8 @@ def main():
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log, t_lcmlog_u = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
+  import pdb; pdb.set_trace()
+
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
 
@@ -145,7 +148,7 @@ def main():
   # plot_status(full_log)
   # plot_ii_projection(t_x, x, plant_w_spr, context)
   # plot_ii_projection(t_x, x, plant_wo_spr, context_wo_spr)
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
 
   # plot_contact_est(full_log)
 
@@ -223,6 +226,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   tracking_cost_map = dict()
   qp_solve_time = np.zeros(t_u.shape[0])
   num_tracking_cost = 0
+  import pdb; pdb.set_trace()
+
   for i in range(t_u.shape[0] - 10):
     input_cost[i] = osc_output[i].input_cost
     acceleration_cost[i] = osc_output[i].acceleration_cost
@@ -243,10 +248,11 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plt.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
 
   plt.figure("costs")
-  plt.plot(t_u[t_u_slice], input_cost[t_u_slice])
-  plt.plot(t_u[t_u_slice], acceleration_cost[t_u_slice])
-  plt.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice])
+  plt.plot(t_u[t_u_slice], input_cost[t_u_slice], color=ps.grey)
+  plt.plot(t_u[t_u_slice], acceleration_cost[t_u_slice], color=ps.grey)
+  plt.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice], color=ps.red)
   plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
+  plt.ylim([0, 200])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
@@ -295,8 +301,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   #
   plot_osc(osc_debug, osc_traj0, 0, "vel")
-  # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plot_osc(osc_debug, osc_traj0, 1, "vel")
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
@@ -329,14 +335,14 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
-  plot_osc(osc_debug, osc_traj3, 0, "pos")
-  plot_osc(osc_debug, osc_traj4, 0, "pos")
-  plot_osc(osc_debug, osc_traj5, 0, "pos")
-  plot_osc(osc_debug, osc_traj6, 0, "pos")
-  plot_osc(osc_debug, osc_traj7, 0, "pos")
-  plot_osc(osc_debug, osc_traj8, 0, "pos")
-  plot_osc(osc_debug, osc_traj9, 0, "pos")
-  plot_osc(osc_debug, osc_traj10, 0, "pos")
+  # plot_osc(osc_debug, osc_traj3, 0, "pos")
+  # plot_osc(osc_debug, osc_traj4, 0, "pos")
+  # plot_osc(osc_debug, osc_traj5, 0, "pos")
+  # plot_osc(osc_debug, osc_traj6, 0, "pos")
+  # plot_osc(osc_debug, osc_traj7, 0, "pos")
+  # plot_osc(osc_debug, osc_traj8, 0, "pos")
+  # plot_osc(osc_debug, osc_traj9, 0, "pos")
+  # plot_osc(osc_debug, osc_traj10, 0, "pos")
 
 
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
@@ -566,7 +572,6 @@ def plot_ii_projection(t_x, x, plant, context):
   world = plant.world_frame()
 
   x_wo_spr_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
-
   x_wo_spr = np.vstack((pos_map_spr_to_wo_spr @ x[:, :nq].T, vel_map_spr_to_wo_spr @ x[:, -nv:].T)).T
   x_pre = x_wo_spr[t_idx]
   plant.SetPositionsAndVelocities(context, x_pre)
@@ -655,15 +660,16 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
 
-  u_indices = slice(6, 8)
+  u_indices = slice(0, 10)
   # plt.figure("Combined knee motor efforts: " + filename)
   plt.figure("Impact Event")
-  plt.plot(t_u[t_u_slice], np.sum(u[t_u_slice, u_indices], axis=1))
-  plt.legend(u_datatypes[u_indices])
+  # plt.plot(t_u[t_u_slice], np.sum(u[t_u_slice, u_indices], axis=1))
+  # plt.legend(u_datatypes[u_indices])
   # u_indices = slice(8, 10)
   # plt.figure("efforts 8-9: " + filename)
-  # plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
-  # plt.legend(u_datatypes[u_indices])
+  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  plt.ylim([-500, 500])
+  plt.legend(u_datatypes[u_indices])
 
 
   # plt.ylim(-50, 300)

@@ -58,6 +58,7 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   int state_port_;
   int target_vel_port_;
   int fsm_port_;
+  bool is_left_foot_;
 };
 
 }  // namespace dairlib::examples::osc_run

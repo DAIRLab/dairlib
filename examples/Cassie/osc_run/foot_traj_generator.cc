@@ -33,6 +33,7 @@ FootTrajGenerator::FootTrajGenerator(
       context_(context),
       world_(plant.world_frame()),
       hip_frame_(plant.GetFrameByName(hip_name)),
+      is_left_foot_(isLeftFoot),
       foot_traj_(foot_traj),
       relative_feet_(relative_feet) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
@@ -55,7 +56,7 @@ FootTrajGenerator::FootTrajGenerator(
                                                         plant_.num_actuators()))
           .get_index();
   target_vel_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(3)).get_index();
+      this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   // Shift trajectory by time_offset
@@ -86,14 +87,23 @@ void FootTrajGenerator::AddRaibertCorrection(
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto desired_pelvis_vel =
-      this->EvalVectorInput(context, target_vel_port_);
+      this->EvalVectorInput(context, target_vel_port_)->get_value();
+  Vector2d desired_pelvis_pos = {0.0, 0};
+  VectorXd pelvis_pos = robot_output->GetPositions().segment(4, 2);
   VectorXd pelvis_vel = robot_output->GetVelocities().segment(3, 2);
-  VectorXd pelvis_vel_err = desired_pelvis_vel->get_value() - pelvis_vel;
+  VectorXd pelvis_pos_err = desired_pelvis_pos - pelvis_pos;
+  VectorXd pelvis_vel_err = desired_pelvis_vel - pelvis_vel;
   VectorXd footstep_correction =
-      Kp_ * (desired_pelvis_vel->get_value() - pelvis_vel) +
+      Kp_ * (pelvis_pos_err) +
       Kd_ * (pelvis_vel_err);
-
-  return;
+//  std::cout << "footstep correction: " << footstep_correction << std::endl;
+  std::vector<double> breaks = traj->get_segment_times();
+  VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
+  MatrixXd foot_offset_points = footstep_correction.replicate(1, breaks.size());
+  PiecewisePolynomial<double> foot_offset_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
+                                                 foot_offset_points);
+  *traj = *traj + foot_offset_traj;
 }
 
 void FootTrajGenerator::CalcTraj(
@@ -113,6 +123,7 @@ void FootTrajGenerator::CalcTraj(
           traj);
   //  if (fsm_state[0] == FLIGHT) {
   *casted_traj = GenerateFlightTraj(robot_output->GetState(), timestamp);
+  this->AddRaibertCorrection(context, casted_traj);
   //  }
 }
 

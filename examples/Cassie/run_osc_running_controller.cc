@@ -5,6 +5,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
 #include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
@@ -70,6 +71,11 @@ DEFINE_string(traj_name, "running_0.00",
               "File to load saved trajectories from");
 DEFINE_string(gains_filename, "examples/Cassie/osc_run/osc_running_gains.yaml",
               "Filepath containing gains");
+DEFINE_bool(use_radio, true,
+            "Set to true if sending high level commands from radio controller");
+DEFINE_string(
+    channel_cassie_out, "CASSIE_OUTPUT_ECHO",
+    "The name of the channel to receive the cassie out structure from.");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -229,6 +235,25 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Creating tracking data. " << std::endl;
   OSCRunningGains osc_gains;
   drake::yaml::YamlReadArchive(root).Accept(&osc_gains);
+
+  auto cassie_out_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+          FLAGS_channel_cassie_out, &lcm));
+  cassie::osc::HighLevelCommand* high_level_command;
+  if (FLAGS_use_radio) {
+    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+        plant, plant_context.get(), osc_gains.vel_scale_rot,
+        osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
+    builder.Connect(cassie_out_receiver->get_output_port(),
+                    high_level_command->get_cassie_output_port());
+  } else {
+    //    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+    //        plant, plant_context.get(), gains.kp_yaw, gains.kd_yaw,
+    //        gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
+    //        gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
+    //        gains.vel_max_lateral, gains.target_pos_offset,
+    //        global_target_position, params_of_no_turning);
+  }
 
   string output_traj_path = FLAGS_folder_path + FLAGS_traj_name + "_processed";
   const LcmTrajectory& output_trajs =
@@ -457,6 +482,10 @@ int DoMain(int argc, char* argv[]) {
                   pelvis_trans_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port_clock(),
                   pelvis_trans_traj_generator->get_clock_input_port());
+  builder.Connect(high_level_command->get_xy_output_port(),
+                  l_foot_traj_generator->get_target_vel_input_port());
+  builder.Connect(high_level_command->get_xy_output_port(),
+                  r_foot_traj_generator->get_target_vel_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),

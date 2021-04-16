@@ -18,6 +18,10 @@ struct OSCRunningGains : OSCGains {
   double w_hip_roll;
   double hip_roll_kp;
   double hip_roll_kd;
+  double vel_scale_rot;
+  double vel_scale_trans_sagital;
+  double vel_scale_trans_lateral;
+
   // swing foot tracking
   std::vector<double> SwingFootW;
   std::vector<double> SwingFootKp;
@@ -80,6 +84,10 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(w_hip_roll));
     a->Visit(DRAKE_NVP(hip_roll_kp));
     a->Visit(DRAKE_NVP(hip_roll_kd));
+    // High level command gains (with radio)
+    a->Visit(DRAKE_NVP(vel_scale_rot));
+    a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
+    a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
 
     W_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
@@ -101,10 +109,10 @@ struct OSCRunningGains : OSCGains {
         this->PelvisKd.data(), 3, 3);
     K_p_footstep = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->FootstepKp.data(), 2, 2);
+        this->FootstepKp.data(), 3, 2);
     K_d_footstep = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->FootstepKd.data(), 2, 2);
+        this->FootstepKd.data(), 3, 2);
 
     W_swing_toe = this->w_swing_toe * MatrixXd::Identity(1, 1);
     K_p_swing_toe = this->swing_toe_kp * MatrixXd::Identity(1, 1);

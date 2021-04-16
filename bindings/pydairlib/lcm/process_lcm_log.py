@@ -129,9 +129,9 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    # if event.channel == "OSC_DEBUG_STANDING":
+    if event.channel == "OSC_DEBUG_STANDING":
     # if event.channel == "OSC_DEBUG_JUMPING":
-    if event.channel == "OSC_DEBUG_WALKING" or event.channel == "OSC_DEBUG_JUMPING" or event.channel == "OSC_DEBUG_RUNNING":
+    # if event.channel == "OSC_DEBUG_WALKING" or event.channel == "OSC_DEBUG_JUMPING" or event.channel == "OSC_DEBUG_RUNNING":
       msg = dairlib.lcmt_osc_output.decode(event.data)
       t_lcmlog_u.append(event.timestamp / 1e6)
       osc_output.append(msg)

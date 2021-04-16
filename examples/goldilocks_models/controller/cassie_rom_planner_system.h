@@ -1,12 +1,5 @@
 #pragma once
 
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/solvers/solver_interface.h"
-#include "drake/solvers/solver_options.h"
-#include "drake/systems/framework/leaf_system.h"
-
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
@@ -16,6 +9,13 @@
 #include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
+
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/solver_interface.h"
+#include "drake/solvers/solver_options.h"
+#include "drake/systems/framework/leaf_system.h"
 
 using std::cout;
 using std::endl;
@@ -105,7 +105,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   CassiePlannerWithMixedRomFom(
       const drake::multibody::MultibodyPlant<double>& plant_controls,
-      double stride_period, const PlannerSetting& param, bool debug_mode,
+      double stride_period, const PlannerSetting& param, bool singel_eval_mode,
       bool log_data);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
@@ -251,10 +251,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable int num_failed_solve_ = 0;
   mutable int latest_failed_solve_idx_ = -1;
 
-  bool debug_mode_;
+  bool singel_eval_mode_;
   bool log_data_and_check_solution_;
   void PrintStatus(const std::string& msg) const {
-    if (debug_mode_) std::cout << msg << std::endl;
+    if (singel_eval_mode_) std::cout << msg << std::endl;
   };
   void SaveTrajIntoLcmBinary(
       const RomTrajOptCassie& trajopt,

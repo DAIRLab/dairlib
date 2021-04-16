@@ -1,10 +1,12 @@
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 
-#include <math.h>     /* fmod */
+#include <math.h> /* fmod */
+
 #include <algorithm>  // std::max
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <string>
 
 #include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
@@ -15,8 +17,6 @@
 #include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
-
-#include <string>
 
 typedef std::numeric_limits<double> dbl;
 
@@ -56,7 +56,7 @@ namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_controls, double stride_period,
-    const PlannerSetting& param, bool debug_mode, bool log_data)
+    const PlannerSetting& param, bool singel_eval_mode, bool log_data)
     : nq_(plant_controls.num_positions()),
       nv_(plant_controls.num_velocities()),
       nx_(plant_controls.num_positions() + plant_controls.num_velocities()),
@@ -69,7 +69,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       right_origin_(BodyPoint(Vector3d::Zero(),
                               plant_controls.GetFrameByName("toe_right"))),
       param_(param),
-      debug_mode_(debug_mode),
+      singel_eval_mode_(singel_eval_mode),
       log_data_and_check_solution_(log_data) {
   this->set_name("planner_traj");
 
@@ -438,7 +438,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       this->EvalVectorInput(context, controller_signal_port_);
   int global_fsm_idx = int(controller_signal_port->get_value()(2) + 1e-8);
 
-  if (debug_mode_) {
+  if (singel_eval_mode_) {
     cout.precision(dbl::max_digits10);
     cout << "Used for the planner: \n";
     cout << "  x_init  = " << x_init.transpose() << endl;
@@ -448,9 +448,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // For data logging
-  string prefix = debug_mode_ ? "debug_" : to_string(counter_) + "_";
+  string prefix = singel_eval_mode_ ? "debug_" : to_string(counter_) + "_";
   string prefix_next =
-      debug_mode_ ? "debug_next_" : to_string(counter_ + 1) + "_";
+      singel_eval_mode_ ? "debug_next_" : to_string(counter_ + 1) + "_";
 
   ///
   /// Construct rom traj opt
@@ -530,11 +530,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Construct
   PrintStatus("\nConstructing optimization problem...");
   start = std::chrono::high_resolution_clock::now();
-  RomTrajOptCassie trajopt(
-      num_time_samples, Q_, R_, *rom_, plant_controls_, state_mirror_,
-      left_contacts_, right_contacts_, left_origin_, right_origin_,
-      joint_name_lb_ub_, x_init, max_swing_distance_, start_with_left_stance,
-      param_.zero_touchdown_impact, relax_index_, debug_mode_ /*print_status*/);
+  RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
+                           state_mirror_, left_contacts_, right_contacts_,
+                           left_origin_, right_origin_, joint_name_lb_ub_,
+                           x_init, max_swing_distance_, start_with_left_stance,
+                           param_.zero_touchdown_impact, relax_index_,
+                           singel_eval_mode_ /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
@@ -658,7 +659,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     const auto& all_vars = trajopt.decision_variables();
     int n_var = all_vars.size();
     VectorXd rand = 0.001 * VectorXd::Random(n_var);
-    if (debug_mode_ && param_.solve_idx_for_read_from_file > 0) {
+    if (singel_eval_mode_ && param_.solve_idx_for_read_from_file > 0) {
       // If we are in debug mode, then we want to use the same random numbers
       rand = readCSV(param_.dir_data +
                      to_string(param_.solve_idx_for_read_from_file) +
@@ -680,7 +681,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Testing
-  if (true /*debug_mode_*/) {
+  if (true /*singel_eval_mode_*/) {
     // Print out the scaling factor
     /*for (int i = 0; i < trajopt.decision_variables().size(); i++) {
       cout << trajopt.decision_variable(i) << ", ";

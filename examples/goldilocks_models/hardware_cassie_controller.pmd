@@ -4,7 +4,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "3.1.rom-planner" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER --broadcast=false &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";
     }
     cmd "1.dispatcher-robot-out" {
@@ -117,18 +117,36 @@ group "2.setup" {
 script "initialize_standing" {
     stop group "1.rom-space-controller";
     stop group "2.setup";
+    start cmd "1.dispatcher-robot-out";
+    start cmd "1.dispatcher-robot-in-real-robot";
+    start cmd "2.pd-controller-real-robot";
+}
+
+script "initialize_standing(local-planner)" {
+    stop group "1.rom-space-controller";
+    stop group "2.setup";
     start cmd "1.dispatcher-robot-out (run local)";
     start cmd "1.dispatcher-robot-in-real-robot";
     start cmd "2.pd-controller-real-robot";
 }
 
 script "set_up_from_pd_to_osc_standing" {
+    restart cmd "1.dispatcher-robot-out";
+    start cmd "3.standing-controller-real-robot";
+}
+
+script "set_up_from_pd_to_osc_standing(local-planner)" {
     restart cmd "1.dispatcher-robot-out (run local)";
     start cmd "3.standing-controller-real-robot";
 }
 
-script "switch from standing to walking" {
+script "switch to standing" {
+    start cmd "4.0.controller-switch-to-standing";
+    wait ms 1000;
     stop cmd "2.pd-controller-real-robot";
+}
+
+script "switch to walking" {
     start cmd "3.0.switch-to-rom-mpc1";
     start cmd "3.0.switch-to-rom-mpc2";
     wait ms 1000;

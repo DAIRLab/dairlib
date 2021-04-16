@@ -44,7 +44,7 @@ DEFINE_bool(broadcast_robot_state, false, "broadcast to planner thread");
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive on.");
 DEFINE_int64(port, 25001, "Port to receive on.");
-DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
+DEFINE_double(pub_rate, 0.1, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
             "Simulated or real robot (default=false, real robot)");
 DEFINE_bool(test_with_ground_truth_state, false,
@@ -280,14 +280,14 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_broadcast_robot_state) {
     // TODO: decide which one to use
     // Option 1 -- publish only with one channel, 500 Hz
-    auto state_pub =
+    /*auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
             "CASSIE_STATE_DISPATCHER", &lcm_network, {TriggerType::kPeriodic},
             0.002));
-    builder.Connect(*robot_output_sender, *state_pub);
+    builder.Connect(*robot_output_sender, *state_pub);*/
 
     // Option 2 -- two channels. One fast (200Hz) and one slower (100Hz).
-    /*auto state_pub =
+    auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
             "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
     builder.Connect(*robot_output_sender, *state_pub);
@@ -295,7 +295,7 @@ int do_main(int argc, char* argv[]) {
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
             "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
             {TriggerType::kPeriodic}, 0.01));
-    builder.Connect(*robot_output_sender, *net_state_pub);*/
+    builder.Connect(*robot_output_sender, *net_state_pub);
 
     // Option 3 -- find a way to only publish to network after receiving message
     // from the planner.

@@ -31,6 +31,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
         "//systems/controllers:time_based_fsm",
+        "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

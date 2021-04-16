@@ -14,11 +14,13 @@
 #include "common/file_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/time_based_fsm.h"
+#include "systems/framework/lcm_driven_loop.h"
 
 namespace dairlib {
 
 using systems::RobotOutputReceiver;
 using systems::TimeBasedFiniteStateMachine;
+using systems::LcmDrivenLoop;
 
 using std::cout;
 using std::string;
@@ -72,7 +74,7 @@ int DoMain(int argc, char* argv[]) {
 
   plant.SetPositionsAndVelocities(plant_context.get(), x0);
 
-  Vector3d default_com = plant.CalcCenterOfMassPosition(*plant_context.get());
+  Vector3d default_com = plant.CalcCenterOfMassPositionInWorld(*plant_context.get());
 
   auto kmpc = builder.AddSystem<KoopmanMPC>(plant, plant_context.get(), dt, true, true, true);
 
@@ -141,16 +143,33 @@ int DoMain(int argc, char* argv[]) {
   std::vector<double> state_durations = {dt, dt};
   auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(plant, fsm_states, state_durations);
 
-  builder.Connect(fsm->get_output_port(0), kmpc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(), kmpc->get_fsm_input_port());
 
   // setup lcm messaging
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
-  auto dispatcher_out_subscriber = builder.AddSystem(LcmSubscriberSystem::Make<lcmt_robot_output>("PLANAR_DIPATCHER_OUT", &lcm_local));
+  auto dispatcher_out_subscriber = builder.AddSystem(LcmSubscriberSystem::Make<lcmt_robot_output>("PLANAR_DISPATCHER_OUT", &lcm_local));
   auto koopman_mpc_out_publisher = builder.AddSystem(LcmPublisherSystem::Make<lcmt_saved_traj>("KOOPMAN_MPC_OUT", &lcm_local));
 
+  builder.Connect(dispatcher_out_subscriber->get_output_port(),
+      robot_out->get_input_port());
 
+  builder.Connect(robot_out->get_output_port(),
+      kmpc->get_state_input_port());
+
+  builder.Connect(kmpc->get_output_port(),
+      koopman_mpc_out_publisher->get_input_port());
+
+  auto owned_diagram = builder.Build();
+  owned_diagram->set_name("MPC");
+
+  *owned_diagram;
+  LcmDrivenLoop<lcmt_robot_output> loop(&lcm_local, std::move(owned_diagram),
+      dispatcher_out_subscriber, "PLANAR_DISPATCHER_OUT", false);
+
+  loop.Simulate();
   return 0;
 }
+
 }
 
 int main(int argc, char* argv[]) {

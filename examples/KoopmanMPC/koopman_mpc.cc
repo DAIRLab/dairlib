@@ -74,7 +74,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
 
   if ( use_fsm_ ) {
     fsm_port_ = this->DeclareVectorInputPort(
-        BasicVector<double>(2)).get_index();
+        BasicVector<double>(1)).get_index();
 
     current_fsm_state_idx_ =
         this->DeclareDiscreteState(VectorXd::Zero(1));
@@ -346,7 +346,7 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
   plant_.SetPositionsAndVelocities(plant_context_, x);
 
   if (use_com_) {
-    com_pos = plant_.CalcCenterOfMassPosition(*plant_context_);
+    com_pos = plant_.CalcCenterOfMassPositionInWorld(*plant_context_);
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(*plant_context_,
         JacobianWrtVariable::kV, world_frame_, world_frame_, &J_CoM_v);
   } else {

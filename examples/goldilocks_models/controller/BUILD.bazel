@@ -112,3 +112,12 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "network_publisher",
+    hdrs = ["network_publisher.h"],
+    deps = [
+        "//examples/goldilocks_models:goldilocks_utils",
+        "@drake//:drake_shared_library",
+    ],
+)

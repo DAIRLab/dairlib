@@ -290,6 +290,7 @@ int DoMain(int argc, char* argv[]) {
     double init_phase;
     double is_right_stance;
     double current_time;
+    double global_fsm_idx;
     VectorXd quat_xyz_shift(7);
     if (FLAGS_solve_idx_for_read_from_file >= 0) {
       init_phase = readCSV(param.dir_data +
@@ -311,11 +312,15 @@ int DoMain(int argc, char* argv[]) {
                                to_string(FLAGS_solve_idx_for_read_from_file) +
                                "_quat_xyz_shift.csv")
                            .col(0);
+      global_fsm_idx = readCSV(param.dir_data +
+                               to_string(FLAGS_solve_idx_for_read_from_file) +
+                               "_prev_global_fsm_idx.csv")(0, 0);
     } else {
       init_phase = FLAGS_init_phase;
       is_right_stance = !FLAGS_start_with_left_stance;
       current_time = 0;
       quat_xyz_shift << 1, 0, 0, 0, 0, 0, 0;
+      global_fsm_idx = 0;
     }
 
     ///
@@ -416,8 +421,9 @@ int DoMain(int argc, char* argv[]) {
     rom_planner->get_input_port_quat_xyz_shift().FixValue(&planner_context,
                                                           quat_xyz_shift);
     rom_planner->get_input_port_fsm_and_lo_time().FixValue(
-        &planner_context, drake::systems::BasicVector(
-                              {fsm_state, prev_lift_off_time, current_time}));
+        &planner_context,
+        drake::systems::BasicVector(
+            {fsm_state, prev_lift_off_time, global_fsm_idx, current_time}));
 
     ///
     /// Eval output port and store data
@@ -426,20 +432,6 @@ int DoMain(int argc, char* argv[]) {
     // Calc output
     auto output = rom_planner->AllocateOutput();
     rom_planner->CalcOutput(planner_context, output.get());
-
-    // Testing - checking the planner output
-    const auto* abstract_value = output->get_data(0);
-    const auto& traj_msg =
-        abstract_value->get_value<dairlib::lcmt_saved_traj>();
-    LcmTrajectory traj_data(traj_msg);
-    cout << "\nFirst-mode trajectory in the lcmt_saved_traj:\n";
-    string traj_name_0 = traj_data.GetTrajectoryNames()[0];
-    cout << "traj_name = " << traj_name_0 << endl;
-    cout << "time_vector = \n"
-         << traj_data.GetTrajectory(traj_name_0).time_vector.transpose()
-         << endl;
-    cout << "datapoints = \n"
-         << traj_data.GetTrajectory(traj_name_0).datapoints << endl;
   }
 
   return 0;

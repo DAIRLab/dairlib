@@ -52,6 +52,7 @@ using Eigen::MatrixXd;
 
 DEFINE_string(channel_x, "PLANAR_STATE", "channel to publish/receive planar walker state");
 DEFINE_string(channel_plan, "KOOPMAN_MPC_OUT", "channel to publish plan trajectory");
+DEFINE_double(stance_time, 0.35, "duration of each stance phase");
 
 VectorXd poly_basis_1 (const VectorXd& x) {
   return x;
@@ -62,7 +63,6 @@ int DoMain(int argc, char* argv[]) {
 
   // Koopman parameters
   double dt = 0.025;
-  double stance_time = 0.35;
 
   DrakeLcm lcm_local;
 
@@ -105,8 +105,8 @@ int DoMain(int argc, char* argv[]) {
   KoopmanDynamics left_stance_dynamics = {&poly_basis_1, Al, Bl, bl};
   KoopmanDynamics right_stance_dynamics = {&poly_basis_1, Ar, Br, br};
 
-  kmpc->AddMode(left_stance_dynamics, koopMpcStance::kLeft, std::round(stance_time / dt));
-  kmpc->AddMode(right_stance_dynamics, koopMpcStance::kRight, std::round(stance_time / dt));
+  kmpc->AddMode(left_stance_dynamics, koopMpcStance::kLeft, std::round(FLAGS_stance_time / dt));
+  kmpc->AddMode(right_stance_dynamics, koopMpcStance::kRight, std::round(FLAGS_stance_time / dt));
 
   // add contact points
   auto left_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
@@ -125,7 +125,7 @@ int DoMain(int argc, char* argv[]) {
   kmpc->SetReachabilityLimit(0.4*VectorXd::Ones(2), kin_nom);
 
   // add base pivot angle
-  kmpc->AddJointToTrackBaseAngle("hip_pin", "hip_pindot");
+  kmpc->AddJointToTrackBaseAngle("planar_roty", "planar_rotydot");
 
   // set mass
   std::vector<string> massive_bodies = {"torso_mass", "left_upper_leg_mass", "right_upper_leg_mass",
@@ -183,7 +183,7 @@ int DoMain(int argc, char* argv[]) {
 
   *owned_diagram;
   LcmDrivenLoop<lcmt_robot_output> loop(&lcm_local, std::move(owned_diagram),
-      dispatcher_out_subscriber, "PLANAR_DISPATCHER_OUT", false);
+      dispatcher_out_subscriber, FLAGS_channel_x, false);
 
   loop.Simulate();
   return 0;

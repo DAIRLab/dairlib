@@ -66,13 +66,12 @@ DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");
 DEFINE_double(error, 0.0,
               "Initial velocity error of the swing leg in global coordinates.");
 
-VectorXd calcStateOffset(MultibodyPlant<double>& plant,
-                         Context<double>& context, VectorXd& x0);
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DiagramBuilder<double> builder;
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
@@ -143,8 +142,7 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   Eigen::VectorXd x0 = VectorXd::Zero(plant.num_positions() + plant.num_velocities());
-  VectorXd vel_offset = calcStateOffset(plant, plant_context, x0);
-  x0.tail(nv) += vel_offset;
+
   plant.SetPositionsAndVelocities(&plant_context, x0);
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
@@ -158,34 +156,6 @@ int do_main(int argc, char* argv[]) {
   return 0;
 }
 
-VectorXd calcStateOffset(MultibodyPlant<double>& plant,
-                         Context<double>& context, VectorXd& x0) {
-  plant.SetPositionsAndVelocities(&context, x0);
-
-  // common frames
-  auto right_foot_frame = &plant.GetBodyByName("right_foot").body_frame();
-  auto world = &plant.world_frame();
-  // conversion to planar x-z
-  MatrixXd TXZ = MatrixXd(2, 3);
-  TXZ << 1, 0, 0, 0, 0, 1;
-
-  MatrixXd J_foot_3d = MatrixXd::Zero(3, plant.num_velocities());
-  plant.CalcJacobianTranslationalVelocity(
-      context, drake::multibody::JacobianWrtVariable::kV, *right_foot_frame,
-      Eigen::Vector3d::Zero(), *world, *world, &J_foot_3d);
-  Eigen::Vector2d foot_vel_offset = Eigen::Vector2d::Zero();
-  foot_vel_offset(1) = FLAGS_error;
-  MatrixXd J_rfoot_angles = MatrixXd(2, 2);
-  // Taking only the Jacobian wrt right leg angles
-  J_rfoot_angles << (TXZ * J_foot_3d).col(4), (TXZ * J_foot_3d).col(6);
-  VectorXd joint_rate_offsets =
-      J_rfoot_angles.colPivHouseholderQr().solve(foot_vel_offset);
-  // Remove floating base offsets
-  VectorXd v_offset = VectorXd::Zero(plant.num_velocities());
-  v_offset(4) = joint_rate_offsets(0);
-  v_offset(6) = joint_rate_offsets(1);
-  return v_offset;
-}
 
 }  // namespace dairlib
 int main(int argc, char* argv[]) { return dairlib::do_main(argc, argv); }

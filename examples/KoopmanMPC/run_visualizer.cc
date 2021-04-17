@@ -119,7 +119,7 @@ int do_main(int argc, char* argv[]) {
         scene_graph->get_source_pose_port(ball_plant->get_source_id().value()));
   }
 
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, *scene_graph);
+  drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph);
 
   auto diagram = builder.Build();
 

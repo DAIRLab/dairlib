@@ -1,0 +1,40 @@
+group "0.operator" {
+    cmd "drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=point_pair_contact --script=examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+
+    cmd "five-link-biped-visualizer" {
+        exec = "bazel-bin/examples/KoopmanMPC/run_visualizer";
+        host = "localhost";
+    }
+}
+
+
+group "1.simulated-robot" {
+
+    cmd "five_link_biped_sim" {
+        exec = "bazel-bin/examples/KoopmanMPC/run_planar_walker_sim";
+        host = "localhost";
+    }
+}
+
+group "2.controllers" {
+    cmd "koopman_mpc" {
+        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process";
+        host = "localhost";
+    }
+    cmd "osc_walking_controller" {
+        exec = "bazel-bin/examples/KoopmanMPC/run_osc_walking";
+        host = "localhost";
+    }
+}
+
+group "3.lcm-tools" {
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+

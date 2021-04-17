@@ -64,7 +64,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
       OutputVector<double>(nq_, nv_, nu_p_)).get_index();
 
   x_des_port_ = this->DeclareVectorInputPort(
-      BasicVector<double>(nx_)).get_index();
+      BasicVector<double>(nxi_)).get_index();
 
   this->DeclareAbstractOutputPort(&KoopmanMPC::CalcOptimalMotionPlan);
 

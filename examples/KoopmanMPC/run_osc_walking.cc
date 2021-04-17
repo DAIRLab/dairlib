@@ -5,12 +5,18 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "lcm/lcm_trajectory.h"
+
 #include "multibody/multibody_utils.h"
+
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
-#include "yaml-cpp/yaml.h"
+
+#include "examples/KoopmanMPC/osc_walking_gains.h"
+#include "examples/KoopmanMPC/mpc_trajectory_reciever.h"
+#include "examples/KoopmanMPC/koopman_mpc.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -38,23 +44,27 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
+
+using systems::controllers::ComTrackingData;
+using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
+using systems::TimeBasedFiniteStateMachine;
 
 namespace examples {
 
-DEFINE_string(channel_x, "RABBIT_STATE",
+DEFINE_string(channel_x, "PLANAR_STATE",
               "The name of the channel which receives state");
-DEFINE_string(channel_u, "RABBIT_INPUT",
+DEFINE_string(channel_u, "PLANAR_INPUT",
               "The name of the channel which publishes command");
-DEFINE_string(folder_path,
-              "examples/impact_invariant_control/saved_trajectories/",
-              "Folder path for where the trajectory names are stored");
-DEFINE_string(traj_name, "rabbit_walking",
-              "File to load saved trajectories from");
 DEFINE_string(
     gains_filename,
-    "examples/impact_invariant_control/joint_space_walking_gains.yaml",
+    "examples/KoopmanMPC/osc_walking_gains.yaml",
     "Filepath containing gains");
+
+DEFINE_double(stance_time, 0.35, "duration of each stance phase");
+
+DEFINE_bool(track_com, true,
+    "use com tracking data (otherwise uses trans space)");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -62,16 +72,25 @@ int DoMain(int argc, char* argv[]) {
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
-  // Built the Cassie MBPs
+  // Built the MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
+
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
+
   std::string full_name = FindResourceOrThrow(
-      "examples/impact_invariant_control/five_link_biped.urdf");
+      "examples/PlanarWalker/PlanarWalkerWithTorso.urdf");
   parser.AddModelFromFile(full_name);
+
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
   plant.Finalize();
+
+  auto left_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
+      plant.GetBodyByName("left_lower_leg").body_frame(), Vector3d(0, 0, -0.5));
+
+  auto right_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
+      plant.GetBodyByName("right_lower_leg").body_frame(), Vector3d(0, 0, -0.5));
 
   auto plant_context = plant.CreateDefaultContext();
 
@@ -86,104 +105,108 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  JointSpaceWalkingGains gains;
+  OSCWalkingGains gains;
   const YAML::Node& root =
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
-  /**** Get trajectory from optimization ****/
-  const DirconTrajectory& dircon_trajectory = DirconTrajectory(
-      FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
-
-  PiecewisePolynomial<double> state_traj =
-      dircon_trajectory.ReconstructStateTrajectory();
 
   /**** Initialize all the leaf systems ****/
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_local;
 
-  vector<int> fsm_states;
-  vector<double> state_durations;
-  fsm_states = {0, 1, 0};
-  state_durations = {dircon_trajectory.GetStateBreaks(1)(0),
-                     dircon_trajectory.GetStateBreaks(2)(0) - dircon_trajectory.GetStateBreaks(1)(0),
-                     state_traj.end_time() - dircon_trajectory.GetStateBreaks(2)(0)};
+  vector<int> fsm_states = {koopMpcStance::kLeft, koopMpcStance::kRight};
+  vector<double> state_durations = {FLAGS_stance_time, FLAGS_stance_time};
+
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, 0.0, gains.impact_threshold);
+
+  auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
+      plant, fsm_states, state_durations);
+
+  auto mpc_reciever = builder.AddSystem<MpcTrajectoryReceiver>(
+      TrajectoryType::kCubicHermite, TrajectoryType::kCubicHermite,
+      TrajectoryType::kCubicHermite, true);
+
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
+          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), true);
+
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG_WALKING", &lcm, TriggerTypeSet({TriggerType::kForced})));
+          "OSC_DEBUG_WALKING", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
   /**** OSC setup ****/
   // Cost
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(nv, nv);
   osc->SetAccelerationCostForAllJoints(Q_accel);
+
   // Soft constraint on contacts
-  double w_contact_relax = gains.w_soft_constraint;
+  double w_contact_relax = 8000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);
 
   Vector3d foot_contact_disp(0, 0, 0);
-  auto left_foot_evaluator = multibody::WorldPointEvaluator(
-      plant, foot_contact_disp, plant.GetBodyByName("left_foot").body_frame(),
-      Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
-  auto right_foot_evaluator = multibody::WorldPointEvaluator(
-      plant, foot_contact_disp, plant.GetBodyByName("right_foot").body_frame(),
-      Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
+
+  auto left_foot_evaluator = multibody::WorldPointEvaluator(plant,
+      foot_contact_disp, left_pt.first, Matrix3d::Identity(),
+      left_pt.second, {0, 2});
+
+  auto right_foot_evaluator = multibody::WorldPointEvaluator(plant,
+      foot_contact_disp, right_pt.first,  Matrix3d::Identity(),
+      right_pt.second, {0, 2});
 
   osc->AddStateAndContactPoint(0, &left_foot_evaluator);
   osc->AddStateAndContactPoint(1, &right_foot_evaluator);
 
-  // Create maps for joints
-  map<string, int> pos_map_wo_spr = multibody::makeNameToPositionsMap(plant);
 
-  std::vector<BasicTrajectoryPassthrough*> joint_trajs;
-  std::vector<std::shared_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;
+  /*** tracking data ***/
+  TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj",
+      gains.K_p_swing_foot, gains.K_d_swing_foot, gains.W_swing_foot, plant, plant);
+  swing_foot_traj.AddStateAndPointToTrack(fsm_states.front(), "left_lower_leg", left_pt.second);
+  swing_foot_traj.AddStateAndPointToTrack(fsm_states.back(), "right_lower_leg", right_pt.second);
 
-  std::vector<std::string> actuated_joint_names = {
-      "left_hip_pin", "right_hip_pin", "left_knee_pin", "right_knee_pin"};
+  osc->AddTrackingData(&swing_foot_traj);
 
-  for (int joint_idx = 0; joint_idx < actuated_joint_names.size();
-       ++joint_idx) {
-    string joint_name = actuated_joint_names[joint_idx];
-    MatrixXd W = gains.JointW[joint_idx] * MatrixXd::Identity(1, 1);
-    MatrixXd K_p = gains.JointKp[joint_idx] * MatrixXd::Identity(1, 1);
-    MatrixXd K_d = gains.JointKd[joint_idx] * MatrixXd::Identity(1, 1);
-    joint_tracking_data_vec.push_back(std::make_shared<JointSpaceTrackingData>(
-        joint_name + "_traj", K_p, K_d, W, plant, plant));
-    joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
-                                                        joint_name + "dot");
-    auto joint_traj = dircon_trajectory.ReconstructJointTrajectory(
-        pos_map_wo_spr[joint_name]);
-    auto joint_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(
-        joint_traj, joint_name + "_traj");
-    joint_trajs.push_back(joint_traj_generator);
-    osc->AddTrackingData(joint_tracking_data_vec[joint_idx].get());
+  ComTrackingData com_traj("com_traj", gains.K_p_com,
+      gains.K_d_com, gains.W_com, plant, plant);
 
-    builder.Connect(joint_trajs[joint_idx]->get_output_port(),
-                    osc->get_tracking_data_input_port(joint_name + "_traj"));
-  }
+  osc->AddTrackingData(&com_traj);
+
+  JointSpaceTrackingData angular_traj("base_angle", gains.K_p_orientation,
+      gains.K_d_orientation, gains.W_orientation, plant, plant);
+
+  angular_traj.AddJointToTrack("planar_roty", "planar_rotydot");
+
+  osc->AddTrackingData(&angular_traj);
 
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
 
+
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port_impact(),
-                  osc->get_near_impact_input_port());
+  builder.Connect(fsm->get_output_port(), osc->get_fsm_input_port());
+
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
+
+  builder.Connect(mpc_reciever->get_com_traj_output_port(),
+      osc->get_tracking_data_input_port("com_traj"));
+
+  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
+      osc->get_tracking_data_input_port("base_angle"));
+
+  builder.Connect(mpc_reciever->get_swing_ft_traj_output_port(),
+      osc->get_tracking_data_input_port("swing_ft_traj"));
+
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
@@ -202,7 +225,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
+      &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
   loop.Simulate();
 
   return 0;

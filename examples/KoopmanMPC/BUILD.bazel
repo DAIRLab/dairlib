@@ -34,7 +34,6 @@ cc_binary(
     name = "run_planar_walker_sim",
     srcs = ["run_planar_walker_sim.cc"],
     deps = [
-        ":koopman_mpc",
         "//common",
         "//examples/PlanarWalker:urdf",
         "//lcm:lcm_trajectory_saver",
@@ -44,6 +43,14 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+cc_library(
+    name = "osc_walking_gains",
+    hdrs = ["osc_walking_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -84,11 +91,17 @@ cc_binary(
     name = "run_osc_walking",
     srcs = ["run_osc_walking.cc"],
     deps = [
+        ":koopman_mpc",
+        ":mpc_trajectory_reciever",
+        ":osc_walking_gains",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
+        "//systems/controllers:time_based_fsm",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/controllers/osc:osc_tracking_data",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

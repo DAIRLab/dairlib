@@ -1,0 +1,40 @@
+rows: 3
+cols: 3
+
+mu: 0.8
+w_accel: .01
+w_soft_constraint: 20000
+
+CoMW:
+  [2000, 0, 0,
+   0, 0,    0,
+   0, 0,  200]
+OrientationW:
+  [200]
+SwingFootW:
+  [200, 0, 0,
+   0, 200, 0,
+   0, 0, 200]
+CoMKp:
+  [ 22,    0,    0,
+    0,  15,    0,
+    0,    0,  20]
+CoMKd:
+  [ 0.5,   0,   0,
+    0,  0.4,   0,
+    0,   0,   1]
+OrientationKp:
+  [22]
+OrientationKd:
+  [0.5]
+
+SwingFootKp:
+  [ 22,   0,   0,
+    0,   15,   0,
+    0,    0,  20]
+SwingFootKd:
+  [ 0.5,  0,  0,
+    0,  0.4,  0,
+    0,    0,  1]
+
+

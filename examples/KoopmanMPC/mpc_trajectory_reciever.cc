@@ -38,22 +38,100 @@ MpcTrajectoryReceiver::MpcTrajectoryReceiver(
         traj_inst, &MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm).get_index();
 }
 
-void MpcTrajectoryReceiver::MakeComTrajFromLcm(
-    const drake::systems::Context<double> &context,
-    drake::trajectories::Trajectory<double> *traj) const {
-
-}
-
 void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
     const drake::systems::Context<double> &context,
     drake::trajectories::Trajectory<double> *traj) const {
 
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+
+  const auto& input_msg = input->get_value<lcmt_saved_traj>();
+
+  LcmTrajectory lcm_traj(input_msg);
+  LcmTrajectory::Trajectory orientation = lcm_traj.GetTrajectory("orientation");
+
+  if (planar_) {
+    MatrixXd knots = orientation.datapoints.block(0, 0, 1, orientation.datapoints.cols());
+    MatrixXd knots_dot = orientation.datapoints.block(1, 0, 1, orientation.datapoints.cols());
+    auto* casted_traj =
+        (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+            traj);
+    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+        orientation.time_vector, knots, knots_dot);
+  } else {
+    auto* casted_traj =
+        (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+            traj);
+    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicShapePreserving(
+        orientation.time_vector, orientation.datapoints);
+  }
+  DRAKE_UNREACHABLE();
+}
+
+void MpcTrajectoryReceiver::MakeComTrajFromLcm(
+    const drake::systems::Context<double> &context,
+    drake::trajectories::Trajectory<double> *traj) const {
+
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+
+  const auto& input_msg = input->get_value<lcmt_saved_traj>();
+
+  LcmTrajectory lcm_traj(input_msg);
+  LcmTrajectory::Trajectory com_traj = lcm_traj.GetTrajectory("com_traj");
+
+  MatrixXd knots = planar_ ? Make3dFromPlanar(
+      com_traj.datapoints.block(0, 0, 2, com_traj.datapoints.cols())) :
+                   com_traj.datapoints.block(0, 0, 3, com_traj.datapoints.cols());
+
+  MatrixXd knots_dot = planar_ ? Make3dFromPlanar(
+      com_traj.datapoints.block(2, 0, 2, com_traj.datapoints.cols())) :
+                       com_traj.datapoints.block(3, 0, 3, com_traj.datapoints.cols());
+  auto* casted_traj =
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+          traj);
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+      com_traj.time_vector, knots, knots_dot);
 }
 
 void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
     const drake::systems::Context<double> &context,
     drake::trajectories::Trajectory<double> *traj) const {
 
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+
+  const auto& input_msg = input->get_value<lcmt_saved_traj>();
+
+  LcmTrajectory lcm_traj(input_msg);
+  LcmTrajectory::Trajectory swing_ft_traj = lcm_traj.GetTrajectory("swing_ft_traj");
+
+  MatrixXd knots = planar_ ? Make3dFromPlanar(
+      swing_ft_traj.datapoints.block(0, 0, 2, swing_ft_traj.datapoints.cols())) :
+                   swing_ft_traj.datapoints.block(0, 0, 3, swing_ft_traj.datapoints.cols());
+
+  MatrixXd knots_dot = planar_ ? Make3dFromPlanar(
+      swing_ft_traj.datapoints.block(2, 0, 2, swing_ft_traj.datapoints.cols())) :
+                       swing_ft_traj.datapoints.block(3, 0, 3, swing_ft_traj.datapoints.cols());
+  auto* casted_traj =
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+          traj);
+
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+      swing_ft_traj.time_vector, knots, knots_dot);
+}
+
+MatrixXd MpcTrajectoryReceiver::Make3dFromPlanar(MatrixXd planar_knots) const {
+  DRAKE_ASSERT(planar_knots.rows() == 2);
+
+  MatrixXd knots_3d = MatrixXd::Zero(3, planar_knots.cols());
+
+  knots_3d.block(0, 0, 1, planar_knots.cols()) =
+      planar_knots.block(0, 0, 1, planar_knots.cols());
+  knots_3d.block(2, 0, 1, planar_knots.cols()) =
+      planar_knots.block(1, 0, 1, planar_knots.cols());
+
+  return knots_3d;
 }
 
 }

@@ -38,6 +38,8 @@ class MpcTrajectoryReceiver : public drake::systems::LeafSystem<double> {
 
  private:
 
+  Eigen::MatrixXd Make3dFromPlanar(Eigen::MatrixXd planar_knots) const ;
+
   void MakeComTrajFromLcm(const drake::systems::Context<double>& context,
                           drake::trajectories::Trajectory<double>* traj) const;
 

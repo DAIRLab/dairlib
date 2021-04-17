@@ -7,7 +7,7 @@
 
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
@@ -213,8 +213,8 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::DairlibSignalReceiver>(lcm_vector_size);
 
   // Create mpc traj publisher
-  auto traj_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_saved_traj>(
+  auto traj_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           FLAGS_channel_y, FLAGS_broadcast ? &lcm_network : &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 

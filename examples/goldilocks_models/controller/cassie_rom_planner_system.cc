@@ -387,7 +387,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
-    const Context<double>& context, dairlib::lcmt_saved_traj* traj_msg) const {
+    const Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* traj_msg) const {
   ///
   /// Decide if we need to re-plan (not ideal code. See header file)
   ///

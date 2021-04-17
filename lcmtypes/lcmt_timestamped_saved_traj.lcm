@@ -1,0 +1,11 @@
+package dairlib;
+
+/*  lcmtype analog for LcmTrajectory to enable using a LcmSerializer to 
+    save/load trajectories
+*/
+
+struct lcmt_timestamped_saved_traj
+{
+  int64_t utime;
+  lcmt_saved_traj saved_traj;
+}

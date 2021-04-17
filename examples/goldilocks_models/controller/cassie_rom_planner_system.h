@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
@@ -128,7 +128,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
-                    dairlib::lcmt_saved_traj* traj_msg) const;
+                    dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
 
   void RotateBetweenGlobalAndLocalFrame(bool rotate_from_global_to_local,
                                         const Eigen::VectorXd& quat_xyz_shift,
@@ -285,7 +285,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // the LcmDrivenLoop class.
   double min_time_difference_for_replanning_ = 0.01;
   mutable double timestamp_of_previous_plan_ = -1;
-  mutable dairlib::lcmt_saved_traj previous_output_msg_;
+  mutable dairlib::lcmt_timestamped_saved_traj previous_output_msg_;
 };
 
 }  // namespace goldilocks_models

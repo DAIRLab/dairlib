@@ -46,10 +46,11 @@ RomPlannerTrajectory& RomPlannerTrajectory::operator=(
 RomPlannerTrajectory::RomPlannerTrajectory(
     const RomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
-    const Eigen::MatrixXd& x0_global,
-    const Eigen::MatrixXd& xf_global, const std::string& name,
-    const std::string& description, bool lightweight, double time_shift)
+    const Eigen::MatrixXd& x0_global, const Eigen::MatrixXd& xf_global,
+    const std::string& name, const std::string& description, bool lightweight,
+    double current_time)
     : LcmTrajectory() {
+  utime_ = int((current_time + 1e-8) * 1e6);
   num_modes_ = trajopt.num_modes();
 
   // Create state and input names
@@ -82,7 +83,7 @@ RomPlannerTrajectory::RomPlannerTrajectory(
 
   // Shift the timestamps by the current time
   for (auto& time_break_per_mode : time_breaks) {
-    time_break_per_mode.array() += time_shift;
+    time_break_per_mode.array() += current_time;
   }
 
   // State trajectory and force trajectory
@@ -184,8 +185,9 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   AddTrajectory(stance_foot_traj.traj_name, stance_foot_traj);
 }
 
-RomPlannerTrajectory::RomPlannerTrajectory(const lcmt_saved_traj& traj)
-    : LcmTrajectory(traj) {
+RomPlannerTrajectory::RomPlannerTrajectory(
+    const lcmt_timestamped_saved_traj& traj)
+    : LcmTrajectory(traj.saved_traj) {
   // This is for the lightweight version. Used fro communicating between
   // processes online
 
@@ -207,6 +209,14 @@ RomPlannerTrajectory::RomPlannerTrajectory(const lcmt_saved_traj& traj)
 
   // stance_foot
   stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
+}
+
+lcmt_timestamped_saved_traj RomPlannerTrajectory::GenerateLcmObject() const {
+  lcmt_timestamped_saved_traj traj;
+  traj.utime = utime_;
+  traj.saved_traj = LcmTrajectory::GenerateLcmObject();
+
+  return traj;
 }
 
 void RomPlannerTrajectory::LoadFromFile(const std::string& filepath,

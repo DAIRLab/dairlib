@@ -8,6 +8,7 @@
 #include <drake/common/trajectories/piecewise_polynomial.h>
 #include <drake/multibody/plant/multibody_plant.h>
 
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "lcm/lcm_trajectory.h"
 
@@ -25,9 +26,9 @@ class RomPlannerTrajectory : public LcmTrajectory {
                        const Eigen::MatrixXd& x0_global,
                        const Eigen::MatrixXd& xf_global,
                        const std::string& name, const std::string& description,
-                       bool lightweight = false, double time_shift = 0);
+                       bool lightweight = false, double current_time = 0);
 
-  explicit RomPlannerTrajectory(const lcmt_saved_traj& traj);
+  explicit RomPlannerTrajectory(const lcmt_timestamped_saved_traj& traj);
   explicit RomPlannerTrajectory(const std::string& filepath,
                                 bool lightweight = false) {
     LoadFromFile(filepath, lightweight);
@@ -39,6 +40,8 @@ class RomPlannerTrajectory : public LcmTrajectory {
       const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
       const;
+
+  lcmt_timestamped_saved_traj GenerateLcmObject() const;
 
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
@@ -91,5 +94,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
   const Trajectory* global_xf_FOM_;
   Eigen::VectorXd stance_foot_;
   //  const Eigen::MatrixXd* stance_foot_;
+
+  int utime_;
 };
 }  // namespace dairlib

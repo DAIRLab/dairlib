@@ -50,8 +50,9 @@ SavedTrajReceiver::SavedTrajReceiver(
       single_support_duration_(single_support_duration),
       double_support_duration_(double_support_duration) {
   saved_traj_lcm_port_ =
-      this->DeclareAbstractInputPort("saved_traj_lcm",
-                                     drake::Value<dairlib::lcmt_saved_traj>{})
+      this->DeclareAbstractInputPort(
+              "saved_traj_lcm",
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
   // Input ports for swing foot
   state_port_ = this->DeclareVectorInputPort(
@@ -94,12 +95,12 @@ void SavedTrajReceiver::CalcRomTraj(
   auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
 
   // Read lcm message
-  auto lcm_traj = this->EvalInputValue<dairlib::lcmt_saved_traj>(
+  auto lcm_traj = this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
       context, saved_traj_lcm_port_);
 
   // Check if traj is empty (if it's empty, it means we are haven't gotten the
   // traj from the planner yet)
-  if (lcm_traj->num_trajectories == 0) {
+  if (lcm_traj->saved_traj.num_trajectories == 0) {
     cout << "WARNING (CalcRomTraj): trajectory size is 0!\n";
     *traj_casted = PiecewisePolynomial<double>(VectorXd::Zero(ny_));
     return;
@@ -195,12 +196,12 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
 
   // Read the lcm message
-  auto lcm_traj = this->EvalInputValue<dairlib::lcmt_saved_traj>(
+  auto lcm_traj = this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
       context, saved_traj_lcm_port_);
 
   // Check if traj is empty (if it's empty, it means we are haven't gotten the
   // traj from the planner yet)
-  if (lcm_traj->num_trajectories == 0) {
+  if (lcm_traj->saved_traj.num_trajectories == 0) {
     cout << "WARNING (CalcSwingFootTraj): trajectory size is 0!\n";
     *traj_casted = PiecewisePolynomial<double>(Vector3d::Zero());
     return;

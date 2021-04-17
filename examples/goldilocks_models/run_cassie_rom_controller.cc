@@ -11,6 +11,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_vector.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/Cassie/cassie_utils.h"
@@ -349,8 +350,8 @@ int DoMain(int argc, char* argv[]) {
     ///
 
     // Create Lcm subscriber for MPC's output
-    auto planner_output_subscriber =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
+    auto planner_output_subscriber = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
             FLAGS_channel_y, &lcm_local));
 
     // Create a system that translate MPC lcm into trajectory
@@ -660,18 +661,18 @@ int DoMain(int argc, char* argv[]) {
         true);
 
     // Get init traj from ROM planner result
-    dairlib::lcmt_saved_traj traj_msg;
+    dairlib::lcmt_timestamped_saved_traj traj_msg;
     if (!FLAGS_init_traj_file_name.empty()) {
       RomPlannerTrajectory saved_traj(DIR_DATA + FLAGS_init_traj_file_name,
                                       true);
       traj_msg = saved_traj.GenerateLcmObject();
     } else {
-      traj_msg.metadata.name = "";
-      traj_msg.num_trajectories = 0;
+      traj_msg.saved_traj.metadata.name = "";
+      traj_msg.saved_traj.num_trajectories = 0;
     }
 
     // Get context and initialize the lcm message of LcmSubsriber for
-    // lcmt_saved_traj
+    // lcmt_timestamped_saved_traj
     auto& diagram_context = loop.get_diagram_mutable_context();
     auto& planner_subscriber_context =
         loop.get_diagram()->GetMutableSubsystemContext(
@@ -680,7 +681,8 @@ int DoMain(int argc, char* argv[]) {
     // state of the leaf system (we hard coded index 0 here)
     auto& mutable_state =
         planner_subscriber_context
-            .get_mutable_abstract_state<dairlib::lcmt_saved_traj>(0);
+            .get_mutable_abstract_state<dairlib::lcmt_timestamped_saved_traj>(
+                0);
     mutable_state = traj_msg;
 
     // Set constant walking speed
@@ -748,8 +750,8 @@ int DoMain(int argc, char* argv[]) {
         200 * VectorXd::Ones(10).asDiagonal();
 
     // Create Lcm subscriber for IK output
-    auto IK_output_subscriber =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
+    auto IK_output_subscriber = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
             FLAGS_channel_ik, &lcm_local));
     // Create a system that translate IK lcm into trajectory
     auto optimal_ik_traj_gen =
@@ -880,7 +882,7 @@ int DoMain(int argc, char* argv[]) {
     traj_msg.trajectory_names.push_back("");
 
     // Get context and initialize the lcm message of LcmSubsriber for
-    // lcmt_saved_traj
+    // lcmt_timestamped_saved_traj
     auto& diagram_context = loop.get_diagram_mutable_context();
     auto& ik_subscriber_context =
         loop.get_diagram()->GetMutableSubsystemContext(*IK_output_subscriber,

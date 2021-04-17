@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
@@ -38,7 +38,7 @@ void NetworkPublisher(const std::string& channel_in,
 
   // Create subscriber for lcm driven loop
   drake::lcm::Subscriber<MessageType> input_sub(&lcm_local, channel_in);
-  drake::lcm::Subscriber<dairlib::lcmt_saved_traj> mpc_sub(&lcm_local,
+  drake::lcm::Subscriber<dairlib::lcmt_timestamped_saved_traj> mpc_sub(&lcm_local,
                                                            "MPC_OUTPUT");
 
   // Wait for the first message

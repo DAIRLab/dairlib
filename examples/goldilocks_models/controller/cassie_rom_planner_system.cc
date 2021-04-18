@@ -417,6 +417,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd x_init = robot_output->GetState();
 
+  double msg_time_difference = robot_output->get_timestamp() - current_time;
+  if (msg_time_difference > 0.01) {
+    cout << "message time difference is big: " << msg_time_difference << " ms"
+         << endl;
+  }
+
   // Testing
   //  x_init.segment(nq_, 3) << 0, 0, 0;
 

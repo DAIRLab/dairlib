@@ -383,12 +383,14 @@ class TwoLcmDrivenLoop {
           subscriber1_.message());
 
       // Testing -- check the timestamp difference between the two messages
-      double time_diff =
+      // Commented out, because I'm checking the time difference in
+      // CassiePlannerWithMixedRomFom::SolveTrajOpt
+      /*double time_diff =
           subscriber0_.message().utime - subscriber1_.message().utime;
       if (std::abs(time_diff) > 10000) {
         std::cout << "WARNING: subscriber0's time is " << time_diff / 1000
                   << " ms ahead of subscriber1's\n";
-      }
+      }*/
 
       // Get message time from the active channel to advance
       time = subscriber0_.message().utime * 1e-6;

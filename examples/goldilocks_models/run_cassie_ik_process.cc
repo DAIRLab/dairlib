@@ -168,11 +168,7 @@ int DoMain(int argc, char* argv[]) {
       loop(&lcm_local, std::move(owned_diagram), lcm_parsers, input_channels,
            true);
   if (!FLAGS_debug_mode) {
-    // TODO: To use Simuate(), I will need to update IK's code to use
-    //  lcmt_timestamped_saved_traj instead of lcmt_saved_traj. Another quick
-    //  and hacky way to get this to run is to create another TwoLcmDrivenLoop
-    //  that doesn't call utime.
-    // loop.Simulate();
+    loop.Simulate();
   } else {
     // TODO: finish the manual part
 

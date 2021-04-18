@@ -472,10 +472,9 @@ void InitialStateForPlanner::CopyAdjustedState(
     const drake::systems::Context<double>& context,
     OutputVector<double>* output) const {
   output->SetState(context.get_discrete_state(adjusted_state_idx_).get_value());
-  output->set_timestamp(
-      static_cast<const TimestampedVector<double>*>(
-          this->EvalVectorInput(context, controller_signal_port_))
-          ->get_timestamp());
+  output->set_timestamp(static_cast<const OutputVector<double>*>(
+                            this->EvalVectorInput(context, state_port_))
+                            ->get_timestamp());
 }
 
 void InitialStateForPlanner::CopyAdjustment(

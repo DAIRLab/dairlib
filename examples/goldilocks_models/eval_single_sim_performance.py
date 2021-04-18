@@ -86,7 +86,6 @@ def main():
 
   filename = sys.argv[1]
   controller_channel = sys.argv[2]
-  rom_iter_idx = int(sys.argv[3])
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
@@ -174,6 +173,9 @@ def main():
   directory = "../dairlib_data/goldilocks_models/sim_cost_eval"
   Path(directory).mkdir(parents=True, exist_ok=True)
 
+  rom_iter_idx = int(sys.argv[3])
+  sample_idx = int(sys.argv[4])
+
   names = ['cost_x',
            'cost_u',
            'total_cost']
@@ -186,7 +188,8 @@ def main():
   f = open(directory + "/cost_names.csv", "w")
   f.write(names)
   f.close()
-  f = open(directory + "/" + str(rom_iter_idx) + "_cost_values.csv", "w")
+  f = open(directory + "/" + str(rom_iter_idx) + "_" + str(
+    sample_idx) + "_cost_values.csv", "w")
   f.write(values)
   f.close()
 
@@ -195,10 +198,12 @@ def main():
   for idx in range(x.shape[0]):
     if x[idx, 6] < min_height:
       f = open(directory + "/sim_status.txt", "a")
-      f.write("iteration #" + str(rom_iter_idx) + ": pelvis fell below " + str(
+      f.write("iteration #" + str(rom_iter_idx) + "sample #" + str(
+        sample_idx) + ": pelvis fell below " + str(
         min_height) + " at time " + str(t_x[idx]))
       f.close()
       break
+
 
 if __name__ == "__main__":
   main()

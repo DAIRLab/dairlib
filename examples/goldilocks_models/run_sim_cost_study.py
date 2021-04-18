@@ -17,7 +17,8 @@ def build_files(bazel_file_argument):
 
 # Set `get_init_file` to True if you want to generate the initial traj for both
 # planner and controller
-def run_sim_and_controller(rom_iter_idx, get_init_file):
+# sample_idx is used to initialize the guess for the planner
+def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
   # simulation arguments
   sim_end_time = 8.0
   target_realtime_rate = 0.04  # 1  # 0.04
@@ -38,6 +39,7 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
     '--zero_touchdown_impact=true',
     '--log_solver_info=false',
     '--iter=%d' % rom_iter_idx,
+    '--sample=%d' % sample_idx,
     '--knots_per_mode=%d' % knots_per_mode,
     '--n_step=%d' % n_step,
     '--feas_tol=%.6f' % feas_tol,
@@ -64,7 +66,7 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
   lcm_logger_cmd = [
     'lcm-logger',
     '-f',
-    lcmlog_file_path(rom_iter_idx),
+    lcmlog_file_path(rom_iter_idx, sample_idx),
   ]
 
   planner_process = subprocess.Popen(planner_cmd)
@@ -91,12 +93,14 @@ def run_sim_and_controller(rom_iter_idx, get_init_file):
     logger_process.kill()
 
 
-def eval_cost(rom_iter_idx):
+# sample_idx here is used to name the file
+def eval_cost(rom_iter_idx, sample_idx):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
-    lcmlog_file_path(rom_iter_idx),
+    lcmlog_file_path(rom_iter_idx, sample_idx),
     'CASSIE_INPUT',
     str(rom_iter_idx),
+    str(sample_idx),
   ]
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
 
@@ -105,27 +109,30 @@ def eval_cost(rom_iter_idx):
     time.sleep(1)
 
 
-def lcmlog_file_path(rom_iter_idx):
-  return dir + '/lcmlog-idx_%d' % (rom_iter_idx)
+def lcmlog_file_path(rom_iter_idx, sample_idx):
+  return dir + '/lcmlog-idx_%d_%d' % (rom_iter_idx, sample_idx)
 
 
-def run_sim_and_generate_cost(model_indices):
+def run_sim_and_generate_cost(model_indices, sample_indices):
   for rom_iter_idx in model_indices:
-    print("run simulation for rom_iter_idx = " + str(rom_iter_idx))
+    for sample_idx in sample_indices:
+      print("run sim for model %d and sample %d" % (rom_iter_idx, sample_idx))
 
-    # Get the initial traj
-    run_sim_and_controller(rom_iter_idx, True)
-    # Run the simulation 
-    run_sim_and_controller(rom_iter_idx, False)
+      # Get the initial traj
+      run_sim_and_controller(rom_iter_idx, sample_idx, True)
+      # Run the simulation
+      run_sim_and_controller(rom_iter_idx, sample_idx, False)
 
-    # Evaluate the cost
-    eval_cost(rom_iter_idx)
+      # Evaluate the cost
+      eval_cost(rom_iter_idx, sample_idx)
 
-    # Delete the lcmlog
-    # os.remove(lcmlog_file_path(rom_iter_idx))
+      # Delete the lcmlog
+      # os.remove(lcmlog_file_path(rom_iter_idx, sample_idx))
 
 
-def plot_cost(model_indices, plot_nominal=False):
+def plot_cost_vs_model_iter(model_indices, sample_idx, plot_nominal=False):
+  only_plot_total_cost = False
+
   # Get names
   with open(dir + "/cost_names.csv", newline='') as f:
     reader = csv.reader(f)
@@ -135,18 +142,22 @@ def plot_cost(model_indices, plot_nominal=False):
   # Get values
   costs = np.zeros((0, len(names)))
   for iter_idx in model_indices:
-    with open(dir + "/" + str(iter_idx) + "_cost_values.csv", newline='') as f:
+    with open(
+        dir + "/" + str(iter_idx) + "_" + str(sample_idx) + "_cost_values.csv",
+        newline='') as f:
       reader = csv.reader(f)
       data = [float(x) for x in list(reader)[0]]
     costs = np.vstack([costs, np.array(data)])
 
-  # import pdb; pdb.set_trace()
+  if only_plot_total_cost:
+    names = [names[-1]]
+    costs = costs[:, -1]
 
   figname = "Simulation cost over model iterations"
   plt.figure(figname, figsize=(6.4, 4.8))
   plt.plot(model_indices, costs)
   if plot_nominal:
-    nominal_cost = plot_nomial_cost(model_indices)
+    nominal_cost = plot_nomial_cost(model_indices, sample_idx)
     plt.plot(model_indices, nominal_cost)
     names = names + ["nomial_total_cost"]
   plt.ylabel('cost')
@@ -172,8 +183,7 @@ def find_cost_in_string(file_string, string_to_search):
   return cost_value
 
 
-def plot_nomial_cost(model_indices):
-  sample_idx = 1  # related to different tasks
+def plot_nomial_cost(model_indices, sample_idx):
   nom_traj_dir = "../dairlib_data/goldilocks_models/planning/robot_1/models"
   filename = '_' + str(sample_idx) + '_trajopt_settings_and_cost_breakdown.txt'
 
@@ -219,6 +229,14 @@ if __name__ == "__main__":
   # Remove some indices (remove by value)
   # model_indices.remove(56)
 
+  sample_indices = range(0, 75)
+  sample_indices = list(sample_indices)
+
   # Toggle the functions here depending on whether to generate cost or plot cost
-  # run_sim_and_generate_cost(model_indices)
-  plot_cost(model_indices, True)
+  # run_sim_and_generate_cost(model_indices, sample_indices)
+
+  sample_idx = 1  # related to different tasks
+  plot_cost_vs_model_iter(model_indices, sample_idx, True)
+  model_idx = 1
+  # plot_cost_vs_task(model_idx, sample_indices, True)
+  

@@ -98,6 +98,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   mutable double blend_duration_ = 0.0;
 
   int soft_estop_trigger_index_;
+  int is_nan_index_;
 
   int status_vars_index_;
   int n_fails_index_;

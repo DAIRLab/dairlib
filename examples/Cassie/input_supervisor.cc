@@ -66,6 +66,7 @@ InputSupervisor::InputSupervisor(
   prev_efforts_time_index_ = DeclareDiscreteState(1);
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
   soft_estop_trigger_index_ = DeclareDiscreteState(1);
+  is_nan_index_ = DeclareDiscreteState(1);
 
   K_ = plant_.MakeActuationMatrix().transpose();
   K_ *= kEStopGain;
@@ -94,7 +95,8 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
                        context.get_discrete_state(prev_efforts_time_index_)[0] >
                    kMaxControllerDelay);
   is_error =
-      is_error || context.get_discrete_state(soft_estop_trigger_index_)[0] == 1;
+      is_error || context.get_discrete_state(soft_estop_trigger_index_)[0];
+  is_error = is_error || context.get_discrete_state(is_nan_index_)[0];
   if ((command->get_timestamp() -
            context.get_discrete_state(prev_efforts_time_index_)[0] >
        kMaxControllerDelay)) {
@@ -102,10 +104,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
               << std::endl;
   }
 
-  bool is_nan = false;
-  for (int i = 0; i < command->get_data().size(); ++i) {
-    is_nan = is_nan || std::isnan(command->get_data()(i));
-  }
+  bool is_nan = command->get_data().array().isNaN().any();
 
   // If the soft estop signal is triggered, applying only damping regardless of
   // any other controller signal
@@ -219,6 +218,10 @@ void InputSupervisor::UpdateErrorFlag(
 
   CheckRadio(context, discrete_state);
   CheckVelocities(context, discrete_state);
+  // Only update if it's setting the error flag to true
+  discrete_state->get_mutable_vector(is_nan_index_)[0] =
+      discrete_state->get_mutable_vector(is_nan_index_)[0] ||
+      command->get_data().array().isNaN().any();
 
   // When receiving a new controller switch message, record the time
   if (discrete_state->get_mutable_vector(switch_time_index_)[0] <

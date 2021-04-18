@@ -137,14 +137,16 @@ def run_sim_and_generate_cost(model_indices, sample_indices):
   print("Finished simulating. Current time = " + str(datetime.now()))
 
 
-def plot_cost_vs_model_iter(model_indices, sample_idx, plot_nominal=False):
-  only_plot_total_cost = True
-
+def plot_cost_vs_model_iter(model_indices, sample_idx,
+    only_plot_total_cost=True, plot_nominal=False, savefig=False):
   # Get names
   with open(dir + "/cost_names.csv", newline='') as f:
     reader = csv.reader(f)
     data = list(reader)
   names = data[0]
+
+  for i in range(len(names)):
+    names[i] = names[i] + " (Drake sim)"
 
   # Get values
   costs = np.zeros((0, len(names)))
@@ -156,21 +158,32 @@ def plot_cost_vs_model_iter(model_indices, sample_idx, plot_nominal=False):
       data = [float(x) for x in list(reader)[0]]
     costs = np.vstack([costs, np.array(data)])
 
+  figname = "cost_vs_model_iterations"
   if only_plot_total_cost:
-    names = [names[-1]]
-    costs = costs[:, -1]
-
-  figname = "Simulation cost over model iterations"
+    figname = "total_" + figname
   plt.figure(figname, figsize=(6.4, 4.8))
-  plt.plot(model_indices, costs)
-  if plot_nominal:
-    nominal_cost = plot_nomial_cost(model_indices, sample_idx)
-    plt.plot(model_indices, nominal_cost)
-    names = names + ["nomial_total_cost"]
-  plt.ylabel('cost')
-  plt.xlabel('model iterations')
-  plt.legend(names)
-  plt.show()
+  if only_plot_total_cost:
+    plt.plot(model_indices, costs[:, -1], 'k-', linewidth=3)
+    if plot_nominal:
+      nominal_cost = plot_nomial_cost(model_indices, sample_idx)
+      plt.plot(model_indices, nominal_cost, 'k--', linewidth=3)
+    plt.ylabel('total cost')
+    plt.xlabel('model iterations')
+    plt.legend(['Drake simulation', 'trajectory opt.'])
+  else:
+    plt.plot(model_indices, costs)
+    if plot_nominal:
+      nominal_cost = plot_nomial_cost(model_indices, sample_idx)
+      plt.plot(model_indices, nominal_cost)
+      names = names + ["total cost (trajopt)"]
+    plt.ylabel('cost')
+    plt.xlabel('model iterations')
+    plt.legend(names)
+
+  if savefig:
+    plt.savefig(dir + "/" + figname + ".png")
+  else:
+    plt.show()
 
 
 def find_cost_in_string(file_string, string_to_search):
@@ -225,7 +238,7 @@ if __name__ == "__main__":
   Path(dir).mkdir(parents=True, exist_ok=True)
 
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 100
+  model_iter_idx_end = 20
   idx_spacing = 5
 
   model_indices = list(
@@ -244,6 +257,9 @@ if __name__ == "__main__":
   run_sim_and_generate_cost(model_indices, sample_indices)
 
   sample_idx = 37  # related to different tasks
-  plot_cost_vs_model_iter(model_indices, sample_idx, True)
+  plot_cost_vs_model_iter(model_indices, sample_idx, True, True, True)
+  plot_cost_vs_model_iter(model_indices, sample_idx, False, True, True)
+  plt.show()
+
   model_idx = 1
   # plot_cost_vs_task(model_idx, sample_indices, True)

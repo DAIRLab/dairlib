@@ -7,10 +7,18 @@ cols: 3
 #   stride_length: 0
 #   double + single support duration: 0.4
 #   const_walking_speed_x: 0
+# For (model, sample_index) = (1, 46), we need
+#   stride_length: 0.09
+#   double + single support duration: 0.4
+#   const_walking_speed_x: 0.225
 # For (model, sample_index) = (1, 58), we need
 #   stride_length: 0.21
 #   double + single support duration: 0.4
 #   const_walking_speed_x: 0.525
+# For (model, sample_index) = (1, 73), we need
+#   stride_length: 0.36
+#   double + single support duration: 0.4
+#   const_walking_speed_x: 0.9
 
 # To compare against the model optimization, we need to change a few params.
 # For (model, sample_index) = (1, 1), we need

@@ -26,7 +26,7 @@ def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
   init_traj_file = '' if get_init_file else '0_rom_trajectory'
 
   # planner arguments
-  always_ipopt = True
+  always_ipopt = False
   time_limit = 0.0 if get_init_file else 4.0  # set to 0 for realtime limit
   knots_per_mode = 10
   feas_tol = 1e-2

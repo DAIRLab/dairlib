@@ -43,6 +43,7 @@ struct PlannerSetting {
   int max_iter;
 
   bool use_ipopt;
+  bool use_ipopt_in_first_loop;
   bool log_solver_info;
   double time_limit;
 

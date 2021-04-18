@@ -79,6 +79,7 @@ DEFINE_double(feas_tol, 1e-2, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
 DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
+DEFINE_bool(use_ipopt_in_first_loop, true, "use ipopt in the first solve");
 DEFINE_bool(log_solver_info, true,
             "Log snopt output to a file or ipopt to terminal");
 DEFINE_double(time_limit, 0, "time limit for the solver.");
@@ -177,6 +178,7 @@ int DoMain(int argc, char* argv[]) {
   param.opt_tol = FLAGS_opt_tol;
   param.max_iter = FLAGS_max_iter;
   param.use_ipopt = FLAGS_use_ipopt;
+  param.use_ipopt_in_first_loop = FLAGS_use_ipopt_in_first_loop;
   param.log_solver_info = FLAGS_log_solver_info;
   param.time_limit = FLAGS_time_limit;
   param.w_Q = gains.w_Q;

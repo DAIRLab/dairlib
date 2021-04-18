@@ -253,9 +253,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
   // Pick solver
   drake::solvers::SolverId solver_id("");
-  //  if (param_.use_ipopt) {
-  //  } else {
-  //  }
   solver_id = drake::solvers::IpoptSolver().id();
   cout << "Solver: " << solver_id.name() << endl;
   solver_ipopt_ = drake::solvers::MakeSolver(solver_id);
@@ -264,7 +261,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_snopt_ = drake::solvers::MakeSolver(solver_id);
 
   // Set solver option
-  //  if (param_.use_ipopt) {
+  /// Ipopt
   // Ipopt settings adapted from CaSaDi and FROST
   auto id = drake::solvers::IpoptSolver::id();
   solver_option_ipopt_.SetOption(id, "tol", param_.feas_tol);
@@ -290,7 +287,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     solver_option_ipopt_.SetOption(id, "max_cpu_time",
                                    time_limit_for_first_loop_);
   }
-
   // Set to ignore overall tolerance/dual infeasibility, but terminate when
   // primal feasible and objective fails to increase over 5 iterations.
   solver_option_ipopt_.SetOption(id, "acceptable_compl_inf_tol",
@@ -300,7 +296,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_option_ipopt_.SetOption(id, "acceptable_obj_change_tol", 1e-3);
   solver_option_ipopt_.SetOption(id, "acceptable_tol", 1e2);
   solver_option_ipopt_.SetOption(id, "acceptable_iter", 5);
-  //  } else {
+  /// Snopt
   if (param_.log_solver_info) {
     solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                    "Print file", "../snopt_planning.out");
@@ -327,7 +323,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                  "Major feasibility tolerance",
                                  param_.feas_tol /* * 0.01*/);
-  //  }
+
+  if (param_.use_ipopt_in_first_loop) {
+    param_.use_ipopt = true;
+  }
 
   // Allocate memory
   if (param_.zero_touchdown_impact) {
@@ -730,13 +729,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "\nConstruction time:" << elapsed.count() << "\n";
 
   // Solve
-  cout << "\nSolving optimization problem...\n";
+  cout << "\nSolving optimization problem... ";
   start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result;
   if (param_.use_ipopt) {
+    cout << "(ipopt)\n";
     solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,
                          &result);
   } else {
+    cout << "(snopt)\n";
     solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
                          &result);
   }
@@ -892,9 +893,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     PrintCost(trajopt, result);
 
     // Check constraint violation
-    //    //    double tol = 1e-3;
-    double tol = param_.feas_tol;
-    solvers::CheckGenericConstraints(trajopt, result, tol);
+    if (!result.is_success()) {
+      //    double tol = 1e-3;
+      double tol = param_.feas_tol;
+      solvers::CheckGenericConstraints(trajopt, result, tol);
+    }
   }
 
   // Keep track of solve time and stuffs
@@ -903,8 +906,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Switch to snopt after one iteration (use ipopt to get a good solution for
   // the first loop)
   if (counter_ == 0) {
-    cout << "***\n*** WARNING: switch to snopt solver\n***\n";
-    param_.use_ipopt = false;
+    if (param_.use_ipopt_in_first_loop) {
+      cout << "***\n*** WARNING: switch to snopt solver\n***\n";
+      param_.use_ipopt = false;
+    }
   }
 
   finish = std::chrono::high_resolution_clock::now();

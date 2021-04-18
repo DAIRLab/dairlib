@@ -6,6 +6,7 @@ from pathlib import Path
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 
 def build_files(bazel_file_argument):
@@ -20,17 +21,20 @@ def build_files(bazel_file_argument):
 # sample_idx is used to initialize the guess for the planner
 def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
   # simulation arguments
+  target_realtime_rate = 1.0  # 0.04
   sim_end_time = 8.0
-  target_realtime_rate = 1  # 0.04
   pause_second = 2.0 if get_init_file else 0
   init_traj_file = '' if get_init_file else '0_rom_trajectory'
 
   # planner arguments
-  always_ipopt = False
-  time_limit = 0.0 if get_init_file else 4.0  # set to 0 for realtime limit
+  dynamic_time_limit = True
+  use_ipopt = False
   knots_per_mode = 10
   feas_tol = 1e-2
   n_step = 2
+  # time_limit is optional, set = 0 for realtime
+  time_limit = 0.0 if dynamic_time_limit else 1.0 / target_realtime_rate * 0.2
+  time_limit = 0.0 if get_init_file else time_limit
   planner_init_file = '' if get_init_file else '0_z.csv'
 
   planner_cmd = [
@@ -43,11 +47,11 @@ def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
     '--knots_per_mode=%d' % knots_per_mode,
     '--n_step=%d' % n_step,
     '--feas_tol=%.6f' % feas_tol,
+    '--time_limit=%.3f' % time_limit,
     '--init_file=%s' % planner_init_file,
-    '--use_ipopt=%s' % "true" if always_ipopt else str(get_init_file).lower(),
+    '--use_ipopt=%s' % "true" if use_ipopt else str(get_init_file).lower(),
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
-    '--time_limit=%.3f' % time_limit,
   ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
@@ -130,10 +134,11 @@ def run_sim_and_generate_cost(model_indices, sample_indices):
 
       # Delete the lcmlog
       # os.remove(lcmlog_file_path(rom_iter_idx, sample_idx))
+  print("Finished simulating. Current time = " + str(datetime.now()))
 
 
 def plot_cost_vs_model_iter(model_indices, sample_idx, plot_nominal=False):
-  only_plot_total_cost = False
+  only_plot_total_cost = True
 
   # Get names
   with open(dir + "/cost_names.csv", newline='') as f:

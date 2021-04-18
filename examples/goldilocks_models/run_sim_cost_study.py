@@ -51,6 +51,7 @@ def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
   ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
+    '--channel_u=ROM_WALKING',
     '--const_walking_speed=true',
     '--use_IK=false',
     '--iter=%d' % rom_iter_idx,
@@ -58,6 +59,7 @@ def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
   ]
   simulator_cmd = [
     'bazel-bin/examples/Cassie/multibody_sim',
+    '--channel_u=ROM_WALKING',
     '--end_time=%.3f' % sim_end_time,
     '--pause_second=%.3f' % pause_second,
     '--init_height=%.3f' % 1.0,
@@ -98,7 +100,7 @@ def eval_cost(rom_iter_idx, sample_idx):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
     lcmlog_file_path(rom_iter_idx, sample_idx),
-    'CASSIE_INPUT',
+    'ROM_WALKING',
     str(rom_iter_idx),
     str(sample_idx),
   ]
@@ -218,7 +220,7 @@ if __name__ == "__main__":
   Path(dir).mkdir(parents=True, exist_ok=True)
 
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 20
+  model_iter_idx_end = 1
   idx_spacing = 5
 
   model_indices = list(
@@ -233,10 +235,9 @@ if __name__ == "__main__":
   sample_indices = list(sample_indices)
 
   # Toggle the functions here depending on whether to generate cost or plot cost
-  # run_sim_and_generate_cost(model_indices, sample_indices)
+  run_sim_and_generate_cost(model_indices, sample_indices)
 
   sample_idx = 1  # related to different tasks
   plot_cost_vs_model_iter(model_indices, sample_idx, True)
   model_idx = 1
   # plot_cost_vs_task(model_idx, sample_indices, True)
-  

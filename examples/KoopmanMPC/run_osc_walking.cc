@@ -189,7 +189,6 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
   std::cout << "Built OSC" << std::endl;
 
-
   /*****Connect ports*****/
 
   // OSC connections

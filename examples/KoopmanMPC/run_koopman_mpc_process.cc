@@ -26,6 +26,7 @@ using systems::DairlibSignalReceiver;
 using systems::RobotOutputReceiver;
 using systems::TimeBasedFiniteStateMachine;
 using systems::LcmDrivenLoop;
+using systems::OutputVector;
 
 
 using std::cout;
@@ -53,6 +54,7 @@ using Eigen::MatrixXd;
 DEFINE_string(channel_x, "PLANAR_STATE", "channel to publish/receive planar walker state");
 DEFINE_string(channel_plan, "KOOPMAN_MPC_OUT", "channel to publish plan trajectory");
 DEFINE_double(stance_time, 0.35, "duration of each stance phase");
+DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
 
 VectorXd poly_basis_1 (const VectorXd& x) {
   return x;
@@ -82,7 +84,10 @@ int DoMain(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  VectorXd x0 = VectorXd::Zero(plant.num_positions() + plant.num_velocities());
+  Eigen::VectorXd x0 = VectorXd::Zero(plant.num_positions() + plant.num_velocities());
+  auto map = multibody::makeNameToPositionsMap(plant);
+  x0(map["planar_z"]) = 1.0;
+
   auto plant_context = plant.CreateDefaultContext();
 
   plant.SetPositionsAndVelocities(plant_context.get(), x0);
@@ -147,30 +152,26 @@ int DoMain(int argc, char* argv[]) {
   kmpc->AddInputRegularization(0.00001 * VectorXd::Ones(6).asDiagonal());
 
   // set friction coeff
-  kmpc->SetMu(0.4);
+  kmpc->SetMu(0.8);
   kmpc->Build();
   std::cout << "Successfully built kmpc" << std::endl;
 
   auto xdes_source = builder.AddSystem<ConstantVectorSource<double>>(x_des);
   builder.Connect(xdes_source->get_output_port(), kmpc->get_x_des_input_port());
 
-  // Setup fsm
-  auto fsm_subscriber = builder.AddSystem(
-      LcmSubscriberSystem::Make<lcmt_dairlib_signal>("FSM_BROADCAST", &lcm_local));
-  auto fsm_signal_rec = builder.AddSystem<DairlibSignalReceiver>(1);
-  auto dmux = builder.AddSystem<Demultiplexer<double>>(2);
+  std::vector<int> fsm_states = {koopMpcStance::kLeft, koopMpcStance::kRight};
+  std::vector<double> state_durations = {FLAGS_stance_time, FLAGS_stance_time};
 
-  builder.Connect(fsm_subscriber->get_output_port(), fsm_signal_rec->get_input_port());
-  builder.Connect(fsm_signal_rec->get_output_port(), dmux->get_input_port());
-  builder.Connect(dmux->get_output_port(0), kmpc->get_fsm_input_port());
+  auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
+      plant, fsm_states, state_durations);
 
   // setup lcm messaging
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
-  auto dispatcher_out_subscriber = builder.AddSystem(LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, &lcm_local));
   auto koopman_mpc_out_publisher = builder.AddSystem(LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
 
-  builder.Connect(dispatcher_out_subscriber->get_output_port(),
-      robot_out->get_input_port());
+  builder.Connect(fsm->get_output_port(), kmpc->get_fsm_input_port());
+
+  builder.Connect(robot_out->get_output_port(), fsm->get_input_port_state());
 
   builder.Connect(robot_out->get_output_port(),
       kmpc->get_state_input_port());
@@ -183,9 +184,14 @@ int DoMain(int argc, char* argv[]) {
 
   *owned_diagram;
   LcmDrivenLoop<lcmt_robot_output> loop(&lcm_local, std::move(owned_diagram),
-      dispatcher_out_subscriber, FLAGS_channel_x, false);
+      robot_out, FLAGS_channel_x, true);
 
-  loop.Simulate();
+  if (!FLAGS_debug_mode) {
+    loop.Simulate();
+  }  else {
+
+  }
+
   return 0;
 }
 

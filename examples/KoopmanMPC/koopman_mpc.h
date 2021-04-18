@@ -114,6 +114,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       drake::EigenPtr<Eigen::MatrixXd> bl, drake::EigenPtr<Eigen::MatrixXd> Ar,
       drake::EigenPtr<Eigen::MatrixXd> Br, drake::EigenPtr<Eigen::MatrixXd> br);
 
+  Eigen::Vector2d MakePlanarVectorFrom3d(Eigen::Vector3d vec) const;
+
  private:
 
   void CalcOptimalMotionPlan(const drake::systems::Context<double>& context,
@@ -146,7 +148,6 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
 
   Eigen::VectorXd CalcCentroidalStateFromPlant(Eigen::VectorXd x, double t) const;
-
 
   // parameters
   bool use_fsm_;
@@ -216,7 +217,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   mutable drake::systems::Context<double>* plant_context_;
 
   // constants
-  const double kMaxSolveDuration_ = 0.01;
+  const double kMaxSolveDuration_ = 1.00;
   const bool use_com_;
   const bool planar_;
   const int kNxPlanar = 6;
@@ -225,6 +226,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   const int kNu3d = 9;
   const int saggital_idx_ = 0;
   const int vertical_idx_ = 2;
+  const Eigen::Vector3d gravity_ = {0.0, 0.0, -9.81};
   double mu_ = 0;
   double mass_ = 0;
   double planar_inertia_ = 0;

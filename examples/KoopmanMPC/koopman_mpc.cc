@@ -68,9 +68,9 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
 
   this->DeclareAbstractOutputPort(&KoopmanMPC::CalcOptimalMotionPlan);
 
-
   // Discrete update
   DeclarePerStepDiscreteUpdateEvent(&KoopmanMPC::DiscreteVariableUpdate);
+
 
   if ( use_fsm_ ) {
     fsm_port_ = this->DeclareVectorInputPort(
@@ -134,6 +134,24 @@ const Eigen::Vector3d& offset, const Eigen::Isometry3d& frame_pose) {
 double KoopmanMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
   double mass = CalcCentroidalMassFromListOfBodies(bodies);
   mass_ = mass;
+
+  MatrixXd knots = MatrixXd::Zero(kLinearDim_, 2);
+  MatrixXd knots_dot = MatrixXd::Zero(kLinearDim_, 2);
+  Vector2d time = {0.0, 100.0};
+
+  for (int i = 0; i < 2; i++) {
+    if (planar_) {
+      knots.block(0, i, kLinearDim_, 1) =
+          MakePlanarVectorFrom3d(-mass_* gravity_);
+    } else {
+      knots.block(0, i, kLinearDim_, 1) = -mass_ * gravity_;
+    }
+  }
+
+  prev_sol_base_traj_ =
+      PiecewisePolynomial<double>::CubicHermite(
+          time, knots, knots_dot);
+
   return mass;
 }
 
@@ -166,9 +184,12 @@ void KoopmanMPC::Build() {
   MakeKinematicReachabilityConstraints();
   MakeStateKnotConstraints();
   MakeInitialStateConstraints();
-  MakeFlatGroundConstraints();
+  //MakeFlatGroundConstraints();
+  std::cout << "Built Koopman Mpc QP: \nModes: " << std::to_string(nmodes_) <<
+               "\nTotal Knots: " << std::to_string(total_knots_) << std::endl;
 
-  prog_.SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration_);
+  prog_.SetSolverOption(OsqpSolver().id(),
+      "time_limit", kMaxSolveDuration_);
 }
 
 void KoopmanMPC::MakeStanceFootConstraints() {
@@ -182,6 +203,9 @@ void KoopmanMPC::MakeStanceFootConstraints() {
               mode.uu.at(i).segment(mode.stance * kLinearDim_, kLinearDim_ ))
               .evaluator()
               .get());
+
+      mode.stance_foot_constraints.at(i)->set_description(
+          "stance_ft"  + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }
 }
@@ -199,6 +223,9 @@ void KoopmanMPC::MakeDynamicsConstraints() {
              {mode.zz.at(i), mode.uu.at(i), mode.zz.at(i+1)})
               .evaluator()
               .get());
+
+      mode.dynamics_constraints.at(i)->set_description(
+          "dyn" + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }
 }
@@ -212,6 +239,8 @@ void KoopmanMPC::MakeInitialStateConstraints() {
                   mode.zz.at(i))
               .evaluator()
               .get());
+      mode.init_state_constraint_.at(i)->set_description(
+          "x0" + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }
 }
@@ -236,6 +265,9 @@ void KoopmanMPC::MakeKinematicReachabilityConstraints() {
                    kLinearDim_)})
                .evaluator()
                .get());
+
+      mode.reachability_constraints.at(i)->set_description(
+          "Reachability" + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }
 }
@@ -260,6 +292,8 @@ void KoopmanMPC::MakeFrictionConeConstraints() {
                 .evaluator()
                 .get());
       }
+      mode.friction_constraints.at(i)->set_description(
+          "Friction" + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }
 }
@@ -271,9 +305,12 @@ void KoopmanMPC::MakeFlatGroundConstraints() {
           prog_.AddLinearEqualityConstraint(
           MatrixXd::Identity(1, 1),
           VectorXd::Zero(1),
-          mode.zz.at(i).segment(nx_ + kLinearDim_ * (mode.stance + 1) - 1, 1))
+          mode.zz.at(i).segment(nx_ + kLinearDim_ * (mode.stance + 1)-1, 1))
           .evaluator()
           .get());
+
+      mode.flat_ground_constraints.at(i)->set_description(
+          "FlatGrounConst" + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }
 }
@@ -296,6 +333,8 @@ void KoopmanMPC::MakeStateKnotConstraints() {
             {modes_.at(i).zz.back(), modes_.at(i+1).zz.front()})
             .evaluator()
             .get());
+    state_knot_constraints_.at(i)->set_description(
+        "KnotConstraint" + std::to_string(i));
   }
 }
 
@@ -332,8 +371,6 @@ void KoopmanMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
 
 VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
     double t) const {
-  // Get Center of Mass Position (Should this be the position of some point
-  // Wrt the floating base instead?
 
   Vector3d com_pos;
   Vector3d com_vel;
@@ -341,7 +378,7 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
 
   Vector3d left_pos;
   Vector3d right_pos;
-  Vector3d lambda;
+  VectorXd lambda;
 
   plant_.SetPositionsAndVelocities(plant_context_, x);
 
@@ -382,11 +419,26 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
         0, 0, 3, J_spatial.cols()) * x.tail(nv_);
   }
 
-  lambda = mass_ * prev_sol_base_traj_.derivative(2).value(t);
-  VectorXd x_centroidal_inflated(nxi_);
-  x_centroidal_inflated << com_pos, base_orientation, com_vel, base_omega,
-                           left_pos, right_pos, lambda;
+  if (planar_) {
+    lambda = mass_ *
+        (prev_sol_base_traj_.derivative(2).value(t) -
+        MakePlanarVectorFrom3d(gravity_));
+  } else {
+    lambda = mass_ * (prev_sol_base_traj_.derivative(2).value(t) -
+        gravity_);
+  }
 
+
+  VectorXd x_centroidal_inflated(nxi_);
+
+  if (planar_) {
+    x_centroidal_inflated << MakePlanarVectorFrom3d(com_pos), base_orientation,
+    MakePlanarVectorFrom3d(com_vel), base_omega, MakePlanarVectorFrom3d(left_pos),
+    MakePlanarVectorFrom3d(right_pos), lambda;
+  } else {
+    x_centroidal_inflated << com_pos, base_orientation, com_vel, base_omega,
+        left_pos, right_pos, lambda;
+  }
   return x_centroidal_inflated;
 }
 
@@ -404,7 +456,9 @@ void KoopmanMPC::CalcOptimalMotionPlan(const drake::systems::Context<double> &co
   if (use_fsm_) {
     int fsm_state = (int) context.get_discrete_state(current_fsm_state_idx_).get_value()(0);
     double last_event_time = context.get_discrete_state(prev_event_time_idx_).get_value()(0);
-    double time_since_last_event = timestamp = last_event_time;
+
+    double time_since_last_event = timestamp - last_event_time;
+
     UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, dt_),
         fsm_state, time_since_last_event);
   } else {
@@ -413,7 +467,16 @@ void KoopmanMPC::CalcOptimalMotionPlan(const drake::systems::Context<double> &co
   }
 
   const MathematicalProgramResult result = Solve(prog_);
+
+  if (result.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
+    std::cout << "Infeasible problem! See infeasible constraints below:\n";
+    for (auto name : result.GetInfeasibleConstraintNames(prog_)) {
+      std::cout << name << std::endl;
+    }
+  }
+
   *traj_msg = MakeLcmTrajFromSol(result, timestamp, x);
+
 }
 
 EventStatus KoopmanMPC::DiscreteVariableUpdate(
@@ -479,19 +542,22 @@ void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
   } else {
     MatrixXd dyn = MatrixXd::Zero(nz_, 2 * nz_ + nu_c_);
     dyn.block(0, 0, nz_, nz_) = modes_.at(x0_idx_[0]).dynamics.A;
-    dyn.block(0, nz_, nz_, nu_c_) =modes_.at(x0_idx_[0]).dynamics.B;
-    dyn.block(0, nz_, nz_ + nu_c_, nz_) = -MatrixXd::Identity(nz_, nz_);
+    dyn.block(0, nz_, nz_, nu_c_) = modes_.at(x0_idx_[0]).dynamics.B;
+    dyn.block(0, nz_, nz_ + nu_c_, nz_) = - MatrixXd::Identity(nz_, nz_);
     modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
     UpdateCoefficients(dyn, -modes_.at(x0_idx_[0]).dynamics.b);
   }
 
 
+  /// TODO (@Brian-Acosta) - Add check to be able to start controller after sim
   x0_idx_[0] = fsm_state;
-  x0_idx_[1] = std::round(t_since_last_switch / dt_);
+  x0_idx_[1] = std::floor(t_since_last_switch / dt_);
+
 
   if (x0_idx_[1] == modes_.at(x0_idx_[0]).N) {
     x0_idx_[1] = 0;
     x0_idx_[0] += 1;
+    std::cout << "Shouldn't be here!" << std::endl;
     if (x0_idx_[0] == nmodes_) {
       x0_idx_[0] = 0;
     }
@@ -526,6 +592,8 @@ double KoopmanMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> b
 lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
                                                double time,
                                                const VectorXd& state) const {
+  DRAKE_ASSERT(result.is_success());
+
   LcmTrajectory::Trajectory CoMTraj;
   LcmTrajectory::Trajectory AngularTraj;
   LcmTrajectory::Trajectory SwingFootTraj;
@@ -535,9 +603,19 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
   SwingFootTraj.traj_name = "swing_foot_traj";
 
 
+  for (int i = 0; i < 2*kLinearDim_; i++) {
+    CoMTraj.datatypes.push_back("double");
+    SwingFootTraj.datatypes.push_back("double");
+  }
+
+  for (int i = 0; i < 2*kAngularDim_; i++) {
+    AngularTraj.datatypes.push_back("double");
+  }
+
   MatrixXd x = MatrixXd::Zero(nx_ ,  nmodes_ * modes_.front().N);
   MatrixXd foot_traj = MatrixXd::Zero(kLinearDim_,
       modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1]);
+
 
   VectorXd x_time_knots = VectorXd::Zero(nmodes_ * modes_.front().N);
 
@@ -545,9 +623,12 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
 
   for (int i = 0; i < nmodes_; i++) {
     auto mode = modes_.at(i);
+
     for (int j = 0; j < mode.N; j++) {
       int idx = i * mode.N + j;
-      int col = total_knots_ % (idx + idx_x0);
+
+      int col = (idx  + idx_x0 < total_knots_) ?
+          idx + idx_x0 : idx + idx_x0 - total_knots_;
 
       x.block(0, col, nx_, 1) =
           result.GetSolution(modes_.at(i).zz.at(j).head(nx_));
@@ -566,6 +647,7 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
     orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols()),
                          x.block(kLinearDim_ * 2 + kAngularDim_, 0, kAngularDim_, x.cols());
   } else {
+    /// TODO (@Brian-Acosta) add quaternion derivative
     orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols());
   }
 
@@ -578,10 +660,6 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
 
   SwingFootTraj.time_vector = swing_ft_traj_breaks;
   SwingFootTraj.datapoints = swing_ft_traj_knots;
-
-  prev_sol_base_traj_ = PiecewisePolynomial<double>::CubicHermite(x_time_knots,
-      x.block(kLinearDim_, 0, kAngularDim_, modes_.front().N),
-      x.block(kLinearDim_ + kAngularDim_, 0, kLinearDim_, modes_.front().N));
 
   LcmTrajectory lcm_traj;
 
@@ -659,6 +737,10 @@ void KoopmanMPC::LoadDiscreteDynamicsFromFolder(std::string folder, double dt,
   *Ar << (MatrixXd::Identity(Arc.rows(), Arc.cols()) + Arc * dt);
   *Br << dt * Brc;
   *br << dt * br;
+}
+
+Vector2d KoopmanMPC::MakePlanarVectorFrom3d(Vector3d vec) const {
+  return Vector2d(vec(saggital_idx_), vec(vertical_idx_));
 }
 
 } // dairlib

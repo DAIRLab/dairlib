@@ -143,6 +143,15 @@ int do_main(int argc, char* argv[]) {
 
   Eigen::VectorXd x0 = VectorXd::Zero(plant.num_positions() + plant.num_velocities());
 
+  auto map = multibody::makeNameToPositionsMap(plant);
+  x0(map["planar_z"]) = 1.0;
+
+  /*** list all of the positions for debugging
+  for (auto pos = map.begin(); pos != map.end();
+  ++pos) {
+    std::cout << pos->first << std::endl;
+  } ***/
+
   plant.SetPositionsAndVelocities(&plant_context, x0);
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

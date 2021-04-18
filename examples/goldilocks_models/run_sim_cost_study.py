@@ -21,7 +21,7 @@ def build_files(bazel_file_argument):
 def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
   # simulation arguments
   sim_end_time = 8.0
-  target_realtime_rate = 0.04  # 1  # 0.04
+  target_realtime_rate = 1  # 0.04
   pause_second = 2.0 if get_init_file else 0
   init_traj_file = '' if get_init_file else '0_rom_trajectory'
 
@@ -220,7 +220,7 @@ if __name__ == "__main__":
   Path(dir).mkdir(parents=True, exist_ok=True)
 
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 1
+  model_iter_idx_end = 100
   idx_spacing = 5
 
   model_indices = list(
@@ -231,13 +231,14 @@ if __name__ == "__main__":
   # Remove some indices (remove by value)
   # model_indices.remove(56)
 
-  sample_indices = range(0, 75)
-  sample_indices = list(sample_indices)
+  # sample_indices = range(0, 75)
+  # sample_indices = list(sample_indices)
+  sample_indices = [37]
 
   # Toggle the functions here depending on whether to generate cost or plot cost
   run_sim_and_generate_cost(model_indices, sample_indices)
 
-  sample_idx = 1  # related to different tasks
+  sample_idx = 37  # related to different tasks
   plot_cost_vs_model_iter(model_indices, sample_idx, True)
   model_idx = 1
   # plot_cost_vs_task(model_idx, sample_indices, True)

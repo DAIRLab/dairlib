@@ -1,9 +1,11 @@
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
+#include <drake/systems/lcm/lcm_subscriber_system.h>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 
 #include "multibody/multibody_utils.h"
@@ -20,6 +22,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
 namespace dairlib {
@@ -56,6 +59,8 @@ DEFINE_string(channel_x, "PLANAR_STATE",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "PLANAR_INPUT",
               "The name of the channel which publishes command");
+DEFINE_string(mpc_channel, "KOOPMAN_MPC_OUT", "channel to recieve koopman mpc message");
+
 DEFINE_string(
     gains_filename,
     "examples/KoopmanMPC/osc_walking_gains.yaml",
@@ -121,6 +126,9 @@ int DoMain(int argc, char* argv[]) {
 
   auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations);
+
+  auto mpc_subscriber = builder.AddSystem(
+      LcmSubscriberSystem::Make<lcmt_saved_traj>(FLAGS_mpc_channel, &lcm_local));
 
   auto mpc_reciever = builder.AddSystem<MpcTrajectoryReceiver>(
       TrajectoryType::kCubicHermite, TrajectoryType::kCubicHermite,
@@ -196,6 +204,9 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
+
+  builder.Connect(mpc_subscriber->get_output_port(),
+      mpc_reciever->get_input_port());
 
   builder.Connect(mpc_reciever->get_com_traj_output_port(),
       osc->get_tracking_data_input_port("com_traj"));

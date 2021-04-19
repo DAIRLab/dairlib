@@ -94,6 +94,8 @@ int DoMain(int argc, char* argv[]) {
 
   Vector3d default_com = plant.CalcCenterOfMassPositionInWorld(*plant_context.get());
 
+  std::cout << "Com_Position: \n" << default_com << std::endl;
+
   auto kmpc = builder.AddSystem<KoopmanMPC>(plant, plant_context.get(), dt, true, true, true);
 
   string folder_base = FindResourceOrThrow("examples/KoopmanMPC/koopman_models/planar_poly_1/");
@@ -124,8 +126,8 @@ int DoMain(int argc, char* argv[]) {
   kmpc->AddContactPoint(right_pt, koopMpcStance::kRight);
 
   // Set kinematic reachability constraint
-  std::vector<VectorXd> kin_nom = {Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx())),
-                                   Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx()))};
+  std::vector<VectorXd> kin_nom = {0.9*Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx())),
+                                   0.9*Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx()))};
 
   kmpc->SetReachabilityLimit(0.4*VectorXd::Ones(2), kin_nom);
 
@@ -149,7 +151,7 @@ int DoMain(int argc, char* argv[]) {
   kmpc->AddTrackingObjective(x_des, q.asDiagonal());
 
     // add input cost
-  kmpc->AddInputRegularization(0.00001 * VectorXd::Ones(6).asDiagonal());
+  kmpc->AddInputRegularization(0.0001 * VectorXd::Ones(6).asDiagonal());
 
   // set friction coeff
   kmpc->SetMu(0.8);

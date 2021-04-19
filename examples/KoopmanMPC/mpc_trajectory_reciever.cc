@@ -34,7 +34,7 @@ MpcTrajectoryReceiver::MpcTrajectoryReceiver(
     angular_traj_port_ = this->DeclareAbstractOutputPort("angular_traj",
         traj_inst, &MpcTrajectoryReceiver::MakeAngularTrajFromLcm).get_index();
 
-    swing_ft_traj_port_ = this->DeclareAbstractOutputPort("swing_ft_traj",
+    swing_ft_traj_port_ = this->DeclareAbstractOutputPort("swing_foot_traj",
         traj_inst, &MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm).get_index();
 }
 
@@ -56,8 +56,8 @@ void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
     auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
             traj);
-    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
-        orientation.time_vector, knots, knots_dot);
+    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+        orientation.time_vector, knots);
   } else {
     auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
@@ -65,7 +65,6 @@ void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
     *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicShapePreserving(
         orientation.time_vector, orientation.datapoints);
   }
-  DRAKE_UNREACHABLE();
 }
 
 void MpcTrajectoryReceiver::MakeComTrajFromLcm(
@@ -90,8 +89,8 @@ void MpcTrajectoryReceiver::MakeComTrajFromLcm(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
-      com_traj.time_vector, knots, knots_dot);
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+      com_traj.time_vector, knots);
 }
 
 void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
@@ -104,7 +103,7 @@ void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
   const auto& input_msg = input->get_value<lcmt_saved_traj>();
 
   LcmTrajectory lcm_traj(input_msg);
-  LcmTrajectory::Trajectory swing_ft_traj = lcm_traj.GetTrajectory("swing_ft_traj");
+  LcmTrajectory::Trajectory swing_ft_traj = lcm_traj.GetTrajectory("swing_foot_traj");
 
   MatrixXd knots = planar_ ? Make3dFromPlanar(
       swing_ft_traj.datapoints.block(0, 0, 2, swing_ft_traj.datapoints.cols())) :

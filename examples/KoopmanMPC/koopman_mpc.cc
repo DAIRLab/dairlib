@@ -181,10 +181,11 @@ void KoopmanMPC::Build() {
   MakeDynamicsConstraints();
   MakeFrictionConeConstraints();
   MakeStanceFootConstraints();
-  MakeKinematicReachabilityConstraints();
+  //MakeKinematicReachabilityConstraints();
   MakeStateKnotConstraints();
   MakeInitialStateConstraints();
-  //MakeFlatGroundConstraints();
+  MakeFlatGroundConstraints();
+
   std::cout << "Built Koopman Mpc QP: \nModes: " << std::to_string(nmodes_) <<
                "\nTotal Knots: " << std::to_string(total_knots_) << std::endl;
 
@@ -453,6 +454,7 @@ void KoopmanMPC::CalcOptimalMotionPlan(const drake::systems::Context<double> &co
   x << q, v;
 
   double timestamp = robot_output->get_timestamp();
+
   if (use_fsm_) {
     int fsm_state = (int) context.get_discrete_state(current_fsm_state_idx_).get_value()(0);
     double last_event_time = context.get_discrete_state(prev_event_time_idx_).get_value()(0);
@@ -468,12 +470,13 @@ void KoopmanMPC::CalcOptimalMotionPlan(const drake::systems::Context<double> &co
 
   const MathematicalProgramResult result = Solve(prog_);
 
+  /* Debugging - not that helpful
   if (result.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
     std::cout << "Infeasible problem! See infeasible constraints below:\n";
     for (auto name : result.GetInfeasibleConstraintNames(prog_)) {
       std::cout << name << std::endl;
     }
-  }
+  } */
 
   *traj_msg = MakeLcmTrajFromSol(result, timestamp, x);
 

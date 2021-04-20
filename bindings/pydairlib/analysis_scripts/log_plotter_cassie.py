@@ -106,10 +106,10 @@ def main():
   ### All plotting scripts here
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
-  plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
-    t_x, t_slice, "left foot")
+  # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
+  #   t_x, t_slice, "left foot")
 
   plt.show()
 

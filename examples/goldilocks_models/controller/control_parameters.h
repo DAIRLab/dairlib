@@ -3,12 +3,6 @@
 namespace dairlib {
 namespace goldilocks_models {
 
-// Directory for model files
-const std::string DIR_MODEL =
-    "../dairlib_data/goldilocks_models/planning/robot_1/models/";
-// Directory for data files
-const std::string DIR_DATA =
-    "../dairlib_data/goldilocks_models/planning/robot_1/data/";
 // Filepath containing gains
 const std::string GAINS_FILENAME =
     "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml";

@@ -24,8 +24,9 @@ struct OSCRomWalkingGains {
   double left_support_duration;
   double right_support_duration;
   double double_support_duration;
-  double const_walking_speed_x;
   double max_foot_speed;
+  std::string dir_model;
+  std::string dir_data;
   double mu;
   double w_accel;
   double w_soft_constraint;
@@ -143,8 +144,9 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(left_support_duration));
     a->Visit(DRAKE_NVP(right_support_duration));
     a->Visit(DRAKE_NVP(double_support_duration));
-    a->Visit(DRAKE_NVP(const_walking_speed_x));
     a->Visit(DRAKE_NVP(max_foot_speed));
+    a->Visit(DRAKE_NVP(dir_model));
+    a->Visit(DRAKE_NVP(dir_data));
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));

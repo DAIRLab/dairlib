@@ -158,7 +158,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       x_standing_fixed_spring << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
           0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
           1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0,
-          param.gains.const_walking_speed_x, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          param.walking_speed_x, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
           0, 0;
       x_guess_left_in_front_pre_ = x_standing_fixed_spring;
       x_guess_right_in_front_pre_ = x_standing_fixed_spring;
@@ -239,8 +239,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   }
 
   // Cost weight
-  Q_ = param_.w_Q * MatrixXd::Identity(n_y, n_y);
-  R_ = param_.w_R * MatrixXd::Identity(n_tau_, n_tau_);
+  Q_ = param_.gains.w_Q * MatrixXd::Identity(n_y, n_y);
+  R_ = param_.gains.w_R * MatrixXd::Identity(n_tau_, n_tau_);
 
   // Time limit
   fixed_time_limit_ = param_.time_limit > 0;
@@ -573,7 +573,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Constraint and cost for the last foot step location
   trajopt.AddConstraintAndCostForLastFootStep(
-      param_.gains.w_predict_lipm_v, param_.gains.const_walking_speed_x, 0,
+      param_.gains.w_predict_lipm_v, param_.walking_speed_x, 0,
       stride_period_);
 
   // Final goal position constraint
@@ -606,7 +606,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   bool add_rom_regularization = true;
   if (add_rom_regularization) {
     trajopt.AddRomRegularizationCost(h_guess_, y_guess_, dy_guess_, tau_guess_,
-                                     first_mode_knot_idx, param_.w_rom_reg);
+                                     first_mode_knot_idx,
+                                     param_.gains.w_rom_reg);
   }
 
   // Default initial guess to avoid singularity (which messes with gradient)
@@ -717,6 +718,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     if (global_fsm_idx == prev_global_fsm_idx_) {
       time_limit -= min_solve_time_preserved_for_next_loop_;
     }
+    time_limit /= param_.realtime_rate_for_time_limit;
     cout << "Set the time limit to " << time_limit << endl;
     solver_option_ipopt_.SetOption(drake::solvers::IpoptSolver::id(),
                                    "max_cpu_time", time_limit);

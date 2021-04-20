@@ -19,14 +19,15 @@ def build_files(bazel_file_argument):
 # Set `get_init_file` to True if you want to generate the initial traj for both
 # planner and controller
 # sample_idx is used to initialize the guess for the planner
-def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
+def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
+    get_init_file):
   # simulation arguments
   target_realtime_rate = 1.0  # 0.04
-  sim_end_time = 8.0
   pause_second = 2.0 if get_init_file else 0
   init_traj_file = '' if get_init_file else '0_rom_trajectory'
 
   # planner arguments
+  realtime_rate_for_time_limit = target_realtime_rate
   dynamic_time_limit = True
   use_ipopt = False
   knots_per_mode = 10
@@ -48,6 +49,7 @@ def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
     '--n_step=%d' % n_step,
     '--feas_tol=%.6f' % feas_tol,
     '--time_limit=%.3f' % time_limit,
+    '--realtime_rate_for_time_limit=%.3f' % realtime_rate_for_time_limit,
     '--init_file=%s' % planner_init_file,
     '--use_ipopt=%s' % "true" if use_ipopt else str(get_init_file).lower(),
     '--log_data=%s' % str(get_init_file).lower(),
@@ -99,14 +101,16 @@ def run_sim_and_controller(rom_iter_idx, sample_idx, get_init_file):
     logger_process.kill()
 
 
+# sim_end_time is used to check if the simulation ended early
 # sample_idx here is used to name the file
-def eval_cost(rom_iter_idx, sample_idx):
+def eval_cost(sim_end_time, rom_iter_idx, sample_idx):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
     lcmlog_file_path(rom_iter_idx, sample_idx),
     'ROM_WALKING',
     str(rom_iter_idx),
     str(sample_idx),
+    str(sim_end_time),
   ]
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
 
@@ -120,17 +124,19 @@ def lcmlog_file_path(rom_iter_idx, sample_idx):
 
 
 def run_sim_and_generate_cost(model_indices, sample_indices):
+  sim_end_time = 8.0
+
   for rom_iter_idx in model_indices:
     for sample_idx in sample_indices:
       print("run sim for model %d and sample %d" % (rom_iter_idx, sample_idx))
 
       # Get the initial traj
-      run_sim_and_controller(rom_iter_idx, sample_idx, True)
+      run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, True)
       # Run the simulation
-      run_sim_and_controller(rom_iter_idx, sample_idx, False)
+      run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, False)
 
       # Evaluate the cost
-      eval_cost(rom_iter_idx, sample_idx)
+      eval_cost(sim_end_time, rom_iter_idx, sample_idx)
 
       # Delete the lcmlog
       # os.remove(lcmlog_file_path(rom_iter_idx, sample_idx))

@@ -33,9 +33,19 @@ def main():
   stride_length = parsed_yaml_file.get('stride_length')
   left_support_duration = parsed_yaml_file.get('left_support_duration')
   double_support_duration = parsed_yaml_file.get('double_support_duration')
-  const_walking_speed_x = parsed_yaml_file.get('const_walking_speed_x')
 
   stride_period = left_support_duration + double_support_duration
+  const_walking_speed_x = stride_length / stride_period
+
+  # File setting
+  directory = "../dairlib_data/goldilocks_models/sim_cost_eval"
+  Path(directory).mkdir(parents=True, exist_ok=True)
+
+  # Script input arguments
+  rom_iter_idx = int(sys.argv[3])
+  sample_idx = int(sys.argv[4])
+  desried_sim_end_time = float(sys.argv[5])
+  print(desried_sim_end_time)
 
   global t_start
   global t_end
@@ -117,8 +127,8 @@ def main():
   # t_end = 6
   step_idx_start = int(t_end / stride_period) - n_step
   step_idx_end = int(t_end / stride_period)
-  step_idx_start = 14
-  step_idx_end = step_idx_start + n_step
+  # step_idx_start = 14
+  # step_idx_end = step_idx_start + n_step
   t_start = stride_period * step_idx_start
   t_end = stride_period * step_idx_end
   ### Convert times to indices
@@ -131,6 +141,28 @@ def main():
 
   ### All analysis scripts here
 
+  # Check if the simulation ended early
+  if desried_sim_end_time > 0:
+    if abs(t_x[-1] - desried_sim_end_time) > 0.1:
+      f = open(directory + "/sim_status.txt", "a")
+      f.write("iteration #" + str(rom_iter_idx) + "sample #" + str(
+        sample_idx) + ": sim end time (" + str(
+        t_x[-1]) + " s) is too different from the desired sim time (" + str(
+        desried_sim_end_time) + " s)")
+      f.close()
+      return
+
+  # Check that the pelvis didn't fall below a certain height
+  min_height = 0.4
+  for idx in range(x.shape[0]):
+    if x[idx, 6] < min_height:
+      f = open(directory + "/sim_status.txt", "a")
+      f.write("iteration #" + str(rom_iter_idx) + "sample #" + str(
+        sample_idx) + ": pelvis fell below " + str(
+        min_height) + " at time " + str(t_x[idx]))
+      f.close()
+      return
+
   x_extracted = x[t_slice, :]
   u_extracted = u[t_u_slice, :]
   n_x_data = x_extracted.shape[0]
@@ -140,10 +172,10 @@ def main():
   dt_u = (t_end - t_start) / n_u_data
 
   # Get rid of spring joints
-  # x_extracted[:, nq + vel_map["knee_joint_leftdot"]] = 0
-  # x_extracted[:, nq + vel_map["ankle_spring_joint_leftdot"]] = 0
-  # x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
-  # x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
+  x_extracted[:, nq + vel_map["knee_joint_leftdot"]] = 0
+  x_extracted[:, nq + vel_map["ankle_spring_joint_leftdot"]] = 0
+  x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
+  x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
 
   cost_x = 0.0
   for i in range(n_x_data):
@@ -170,12 +202,6 @@ def main():
   # import pdb; pdb.set_trace()
 
   # Store into files
-  directory = "../dairlib_data/goldilocks_models/sim_cost_eval"
-  Path(directory).mkdir(parents=True, exist_ok=True)
-
-  rom_iter_idx = int(sys.argv[3])
-  sample_idx = int(sys.argv[4])
-
   names = ['cost_x',
            'cost_u',
            'total_cost']
@@ -192,17 +218,6 @@ def main():
     sample_idx) + "_cost_values.csv", "w")
   f.write(values)
   f.close()
-
-  # Check that the pelvis didn't fall below a certain height
-  min_height = 0.4
-  for idx in range(x.shape[0]):
-    if x[idx, 6] < min_height:
-      f = open(directory + "/sim_status.txt", "a")
-      f.write("iteration #" + str(rom_iter_idx) + "sample #" + str(
-        sample_idx) + ": pelvis fell below " + str(
-        min_height) + " at time " + str(t_x[idx]))
-      f.close()
-      break
 
 
 if __name__ == "__main__":

@@ -130,9 +130,6 @@ int DoMain(int argc, char* argv[]) {
   OSCRomWalkingGains gains;
   const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
-  if (gains.const_walking_speed_x > 0) {
-    DRAKE_DEMAND(FLAGS_const_walking_speed);
-  }
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -161,7 +158,7 @@ int DoMain(int argc, char* argv[]) {
   // Reduced order model
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(gains.rom_option, 1 /*robot_option*/, plant_wo_springs, true);
-  ReadModelParameters(rom.get(), DIR_MODEL,
+  ReadModelParameters(rom.get(), gains.dir_model,
                       FLAGS_iter > 0 ? FLAGS_iter : gains.model_iter);
 
   // Mirrored reduced order model
@@ -663,8 +660,8 @@ int DoMain(int argc, char* argv[]) {
     // Get init traj from ROM planner result
     dairlib::lcmt_timestamped_saved_traj traj_msg;
     if (!FLAGS_init_traj_file_name.empty()) {
-      RomPlannerTrajectory saved_traj(DIR_DATA + FLAGS_init_traj_file_name,
-                                      true);
+      RomPlannerTrajectory saved_traj(
+          gains.dir_data + FLAGS_init_traj_file_name, true);
       traj_msg = saved_traj.GenerateLcmObject();
     } else {
       traj_msg.saved_traj.metadata.name = "";
@@ -687,13 +684,14 @@ int DoMain(int argc, char* argv[]) {
 
     // Set constant walking speed
     if (FLAGS_const_walking_speed) {
+      double const_walking_speed_x = 1.1 * gains.stride_length / stride_period;
+
       auto& walking_speed_control_context =
           loop.get_diagram()->GetMutableSubsystemContext(*walking_speed_control,
                                                          &diagram_context);
       walking_speed_control->get_input_port_des_hor_vel().FixValue(
           &walking_speed_control_context,
-          drake::systems::BasicVector<double>(
-              {gains.const_walking_speed_x, 0}));
+          drake::systems::BasicVector<double>({const_walking_speed_x, 0}));
     }
 
     loop.Simulate();

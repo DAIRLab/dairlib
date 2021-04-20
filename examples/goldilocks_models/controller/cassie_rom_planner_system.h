@@ -46,11 +46,11 @@ struct PlannerSetting {
   bool use_ipopt_in_first_loop;
   bool log_solver_info;
   double time_limit;
+  double realtime_rate_for_time_limit;
 
-  // Cost weight
-  double w_Q;
-  double w_R;
-  double w_rom_reg;
+  // gains includes cost weights
+  OSCRomWalkingGains gains;
+  double walking_speed_x;
 
   // Files parameters
   std::string dir_model;  // location of the model files
@@ -59,8 +59,6 @@ struct PlannerSetting {
 
   // Testing
   int solve_idx_for_read_from_file;
-
-  OSCRomWalkingGains gains;
 
   void PrintAll() const {
     cout << "rom_option" << rom_option << endl;
@@ -79,9 +77,9 @@ struct PlannerSetting {
     cout << "use_ipopt" << use_ipopt << endl;
     cout << "log_solver_info" << log_solver_info << endl;
     cout << "time_limit" << time_limit << endl;
-    cout << "w_Q" << w_Q << endl;
-    cout << "w_R" << w_R << endl;
-    cout << "w_rom_reg" << w_rom_reg << endl;
+    cout << "w_Q" << gains.w_Q << endl;
+    cout << "w_R" << gains.w_R << endl;
+    cout << "w_rom_reg" << gains.w_rom_reg << endl;
     cout << "w_reg_quat_" << gains.w_reg_quat << endl;
     cout << "w_reg_xy_" << gains.w_reg_xy << endl;
     cout << "w_reg_z_" << gains.w_reg_z << endl;

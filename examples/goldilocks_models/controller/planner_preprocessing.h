@@ -29,7 +29,7 @@ class CurrentStanceFoot : public drake::systems::LeafSystem<double> {
   void GetStance(const drake::systems::Context<double>& context,
                  drake::systems::BasicVector<double>* stance_foot) const;
   int controller_signal_port_;
-  std::vector<int> left_right_support_fsm_states_;
+  const std::vector<int>& left_right_support_fsm_states_;
   mutable bool start_with_right_stance_ = false;
 };
 

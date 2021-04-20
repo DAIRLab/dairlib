@@ -63,10 +63,6 @@ DEFINE_int32(sample, -1, "The sample # of the initial condition that you use");
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
 
-DEFINE_double(w_Q, 1, "");
-DEFINE_double(w_R, 1, "");
-DEFINE_double(w_rom_reg, 1, "cost weight for the ROM state regularization");
-
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_bool(fix_duration, true,
             "Fix the total time. (could lead to faster solve but possibly "
@@ -83,6 +79,7 @@ DEFINE_bool(use_ipopt_in_first_loop, true, "use ipopt in the first solve");
 DEFINE_bool(log_solver_info, true,
             "Log snopt output to a file or ipopt to terminal");
 DEFINE_double(time_limit, 0, "time limit for the solver.");
+DEFINE_double(realtime_rate_for_time_limit, 1, "");
 
 // Flag for debugging
 DEFINE_bool(run_one_loop_to_get_init_file, false, "");
@@ -118,11 +115,6 @@ DEFINE_double(yaw_disturbance, 0,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // Read-in the parameters
-  OSCRomWalkingGains gains;
-  const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
-  drake::yaml::YamlReadArchive(root).Accept(&gains);
-
   // Note that 0 <= phase < 1, but we allows the phase to be 1 here for testing
   // purposes
   DRAKE_DEMAND(0 <= FLAGS_init_phase && FLAGS_init_phase <= 1);
@@ -142,22 +134,10 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_log_data);
   }
 
-  // Create data folder if it doesn't exist
-  if (!CreateFolderIfNotExist(DIR_DATA)) return 0;
-  if (!CreateFolderIfNotExist(DIR_MODEL)) return 0;
-
-  // Build Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_feedback(0.0);
-  addCassieMultibody(&plant_feedback, nullptr, true /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
-                     true /*spring model*/, false /*loop closure*/);
-  plant_feedback.Finalize();
-  // Build fix-spring Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_control(0.0);
-  addCassieMultibody(&plant_control, nullptr, true,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     false);
-  plant_control.Finalize();
+  // Read-in the parameters
+  OSCRomWalkingGains gains;
+  const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   // Parameters for the traj opt
   PlannerSetting param;
@@ -181,19 +161,38 @@ int DoMain(int argc, char* argv[]) {
   param.use_ipopt_in_first_loop = FLAGS_use_ipopt_in_first_loop;
   param.log_solver_info = FLAGS_log_solver_info;
   param.time_limit = FLAGS_time_limit;
-  param.w_Q = gains.w_Q;
-  param.w_R = gains.w_R;
-  param.dir_model = DIR_MODEL;
-  param.dir_data = DIR_DATA;
+  param.realtime_rate_for_time_limit = FLAGS_realtime_rate_for_time_limit;
+  param.dir_model = gains.dir_model;
+  param.dir_data = gains.dir_data;
   param.init_file = FLAGS_init_file;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
+  double stride_period =
+      gains.left_support_duration + gains.double_support_duration;
+  param.walking_speed_x = gains.stride_length / stride_period;
 
   // Store data
   writeCSV(param.dir_data + string("n_step.csv"),
            param.n_step * VectorXd::Ones(1));
   writeCSV(param.dir_data + string("nodes_per_step.csv"),
            param.knots_per_mode * VectorXd::Ones(1));
+
+  // Create data folder if it doesn't exist
+  if (!CreateFolderIfNotExist(gains.dir_model)) return 0;
+  if (!CreateFolderIfNotExist(gains.dir_data)) return 0;
+
+  // Build Cassie MBP
+  drake::multibody::MultibodyPlant<double> plant_feedback(0.0);
+  addCassieMultibody(&plant_feedback, nullptr, true /*floating base*/,
+                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     true /*spring model*/, false /*loop closure*/);
+  plant_feedback.Finalize();
+  // Build fix-spring Cassie MBP
+  drake::multibody::MultibodyPlant<double> plant_control(0.0);
+  addCassieMultibody(&plant_control, nullptr, true,
+                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     false);
+  plant_control.Finalize();
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -227,8 +226,6 @@ int DoMain(int argc, char* argv[]) {
                   stance_foot_getter->get_input_port_fsm_and_lo_time());
 
   // Create a block that compute the phase of the first mode
-  double stride_period =
-      gains.left_support_duration + gains.double_support_duration;
   auto init_phase_calculator =
       builder.AddSystem<PhaseInFirstMode>(plant_feedback, stride_period);
   builder.Connect(state_receiver->get_output_port(0),

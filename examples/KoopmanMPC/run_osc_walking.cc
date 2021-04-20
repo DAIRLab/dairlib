@@ -238,6 +238,7 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
   loop.Simulate();
 
+
   return 0;
 }
 }  // namespace examples

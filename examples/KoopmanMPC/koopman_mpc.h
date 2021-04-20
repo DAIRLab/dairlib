@@ -110,16 +110,27 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int num_modes() { return nmodes_; }
 
   static void LoadDiscreteDynamicsFromFolder(std::string folder, double dt,
-      drake::EigenPtr<Eigen::MatrixXd> Al, drake::EigenPtr<Eigen::MatrixXd> Bl,
-      drake::EigenPtr<Eigen::MatrixXd> bl, drake::EigenPtr<Eigen::MatrixXd> Ar,
-      drake::EigenPtr<Eigen::MatrixXd> Br, drake::EigenPtr<Eigen::MatrixXd> br);
+      const drake::EigenPtr<Eigen::MatrixXd>&  Al, const drake::EigenPtr<Eigen::MatrixXd>& Bl,
+      const drake::EigenPtr<Eigen::MatrixXd>&  bl, const drake::EigenPtr<Eigen::MatrixXd>& Ar,
+      const drake::EigenPtr<Eigen::MatrixXd>&  Br, const drake::EigenPtr<Eigen::MatrixXd>& br);
 
   Eigen::Vector2d MakePlanarVectorFrom3d(Eigen::Vector3d vec) const;
 
+  std::vector<KoopmanMpcMode> get_modes() {return modes_;}
+
+  drake::solvers::MathematicalProgramResult solve_problem_as_is() {
+    return drake::solvers::Solve(prog_);
+  }
+
+  void print_initial_state_constraints();
+  void print_state_knot_constraints();
+  void print_dynamics_constraints();
+
+
  private:
 
-  void CalcOptimalMotionPlan(const drake::systems::Context<double>& context,
-      lcmt_saved_traj* traj_msg) const;
+  void GetMostRecentMotionPlan(const drake::systems::Context<double>& context,
+                               lcmt_saved_traj* traj_msg) const;
 
 
   double CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies);
@@ -168,6 +179,10 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::systems::EventStatus PeriodicUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
   mutable drake::trajectories::PiecewisePolynomial<double> prev_sol_base_traj_;
 
   std::vector<std::pair<const drake::multibody::BodyFrame<double>&,
@@ -199,7 +214,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   // Solver
   mutable drake::solvers::MathematicalProgram prog_;
   mutable int x0_idx_[2] = {0, 0};
-
+  mutable lcmt_saved_traj most_recent_sol_;
   // constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> state_knot_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;

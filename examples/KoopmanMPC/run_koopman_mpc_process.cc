@@ -55,6 +55,7 @@ DEFINE_string(channel_x, "PLANAR_STATE", "channel to publish/receive planar walk
 DEFINE_string(channel_plan, "KOOPMAN_MPC_OUT", "channel to publish plan trajectory");
 DEFINE_double(stance_time, 0.35, "duration of each stance phase");
 DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
+DEFINE_double(debug_time, 0.00, "time to simulate system at");
 
 VectorXd poly_basis_1 (const VectorXd& x) {
   return x;
@@ -109,6 +110,8 @@ int DoMain(int argc, char* argv[]) {
 
   KoopmanMPC::LoadDiscreteDynamicsFromFolder(folder_base, dt, &Al, &Bl, &bl, &Ar, &Br, &br);
 
+  std::cout << Al<< std::endl;
+
   KoopmanDynamics left_stance_dynamics = {&poly_basis_1, Al, Bl, bl};
   KoopmanDynamics right_stance_dynamics = {&poly_basis_1, Ar, Br, br};
 
@@ -141,12 +144,14 @@ int DoMain(int argc, char* argv[]) {
 
   // add tracking objective
   VectorXd x_des = VectorXd::Zero(kmpc->num_state_inflated());
-  x_des(1) = 0.85 * default_com(kmpc->vertical_idx());
-  x_des(3) = 0.25;
+  x_des(1) = 0.95* default_com(kmpc->vertical_idx());
+  x_des(3) = 0.35;
   x_des.tail(1) = 9.81 * mass * VectorXd::Ones(1);
 
+  std::cout << "x desired:\n" << x_des <<std::endl;
+
   VectorXd q(kmpc->num_state_inflated());
-  q << 0, 2, 2, 10, 1, 1, 0, 0, 0, 0, 0.0001, 0.0001;
+  q << 0, 1, 2, 10, 1, 1, 0, 0, 0, 0, 0.0001, 0.0001;
 
   kmpc->AddTrackingObjective(x_des, q.asDiagonal());
 
@@ -191,7 +196,28 @@ int DoMain(int argc, char* argv[]) {
   if (!FLAGS_debug_mode) {
     loop.Simulate();
   }  else {
+    OutputVector<double> robot_out(x0.head(plant.num_positions()),
+                                   x0.tail(plant.num_velocities()),
+                                   VectorXd::Zero(plant.num_actuators()));
 
+    robot_out.set_timestamp(FLAGS_debug_time);
+    auto diagram_ptr = loop.get_diagram();
+    auto& diagram_context = loop.get_diagram_mutable_context();
+
+    diagram_context.SetTime(FLAGS_debug_time);
+
+    auto& kmpc_context = diagram_ptr->GetMutableSubsystemContext(*kmpc, &diagram_context);
+
+    kmpc->get_x_des_input_port().FixValue(&kmpc_context, x_des);
+    kmpc->get_fsm_input_port().FixValue(&kmpc_context, VectorXd::Zero(1));
+    kmpc->get_state_input_port().FixValue(&kmpc_context, robot_out);
+
+    auto out = kmpc->AllocateOutput();
+    kmpc->CalcOutput(kmpc_context, out.get());
+
+    kmpc->print_initial_state_constraints();
+    kmpc->print_dynamics_constraints();
+    kmpc->print_state_knot_constraints();
   }
 
   return 0;

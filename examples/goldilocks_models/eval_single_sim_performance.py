@@ -143,8 +143,9 @@ def main():
   ### All analysis scripts here
 
   # Check if the simulation ended early
+  sim_time_tolerance = 0.1
   if desried_sim_end_time > 0:
-    if abs(t_x[-1] - desried_sim_end_time) > 0.1:
+    if abs(t_x[-1] - desried_sim_end_time) > sim_time_tolerance:
       msg = "iteration #" + str(rom_iter_idx) + "sample #" + str(
         sample_idx) + ": sim end time (" + str(
         t_x[-1]) + " s) is too different from the desired sim time (" + str(
@@ -167,6 +168,28 @@ def main():
       f.write(msg)
       f.close()
       return
+
+  # Check if it's close to steady state
+  stride_length_variation_tol = 0.01
+  t_x_indices = []
+  for idx in range(step_idx_start, step_idx_end + 1):
+    time = stride_period * idx
+    t_x_indices.append(np.argwhere(np.abs(t_x - time) < 1e-3)[0][0])
+  pelvis_x_at_td = np.zeros(len(t_x_indices))
+  for i in range(len(t_x_indices)):
+    pelvis_x_at_td[i] = x[t_x_indices[i], 4]
+  stride_lengths = np.diff(pelvis_x_at_td)
+  min_stide_length = min(stride_lengths)
+  max_stide_length = max(stride_lengths)
+  if abs(max_stide_length - min_stide_length) > stride_length_variation_tol:
+    msg = "iteration #" + str(rom_iter_idx) + "sample #" + str(sample_idx) + \
+          ": not close to steady state. min and max stride length are " + \
+          str(min_stide_length) + ", " + str(max_stide_length) + "\n"
+    print(msg)
+    f = open(directory + "sim_status.txt", "a")
+    f.write(msg)
+    f.close()
+    return
 
   t_x_extracted = t_x[t_slice]
   t_u_extracted = t_u[t_u_slice]

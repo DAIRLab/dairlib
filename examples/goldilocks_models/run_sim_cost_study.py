@@ -302,7 +302,7 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   # Parameters for visualization
   max_cost_to_ignore = 2
   mean_sl = 0.2
-  delta_sl = 0.005
+  delta_sl = 0.1 #0.1 #0.005
   min_sl = mean_sl - delta_sl
   max_sl = mean_sl + delta_sl
 

@@ -1997,8 +1997,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // store initial parameter values
     prefix = to_string(iter) + "_";
     if (!is_get_nominal || !FLAGS_is_debug) {
-      writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
-      writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());
+      //writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
+      //writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());
     }
 
     // setup for each iteration
@@ -2091,10 +2091,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Prefix for the file name
           prefix = to_string(iter) + "_" + to_string(sample_idx) + "_";
 
+
+          current_sample_is_a_rerun = true;
+          task.set(task_gen_grid.NewNominalTask(sample_idx));
+          Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
+              task.get().data(), task.get().size());
+          writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
+
+
           // Generate a new task or use the same task if this is a rerun
           // (You need step_size_shrinked_last_loop because you might start the
           // program with shrinking step size)
-          if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
+          /*if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
             task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
           } else {
             if (is_grid_task && is_get_nominal) {
@@ -2108,7 +2116,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             previous_task[sample_idx] = task_vectorxd;
             // Store task in files
             writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
-          }
+          }*/
 
           // (Feature -- get initial guess from adjacent successful samples)
           // If the current sample already finished N_rerun (and was queued back
@@ -2405,6 +2413,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
            << to_string(int(elapsed_read_file.count())) << " seconds\n";
       cout << endl;*/
 
+      /*
       // Construct an index list for the successful sample
       std::vector<int> successful_idx_list;
       for (uint i = 0; i < N_sample; i++) {
@@ -2530,18 +2539,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
           temp_start_of_idx_list = temp_end_of_idx_list;
         }
-      }
+      }*/
       /*// Read the matrices after extractions
       readNonredundentMatrixFile(&nw_vec, &nl_vec,
                                  &A_active_vec, &B_active_vec,
                                  n_succ_sample, dir);*/
       // Print out elapsed time
-      auto finish_time_extract = std::chrono::high_resolution_clock::now();
+      /*auto finish_time_extract = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_extract =
           finish_time_extract - start_time_extract;
       cout << "Time spent on extracting active (and independent rows) of A: "
            << to_string(int(elapsed_extract.count())) << " seconds\n";
-      cout << endl;
+      cout << endl;*/
 
       // Reference for solving a sparse linear system
       // https://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
@@ -2571,7 +2580,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << "Finished checking\n\n";*/
 
       // Get w in terms of theta (Get P_i and q_i where w = P_i * theta + q_i)
-      auto start_time_calc_w = std::chrono::high_resolution_clock::now();
+      /*auto start_time_calc_w = std::chrono::high_resolution_clock::now();
       {
         // cout << "Getting P matrix and q vecotr\n";
         vector<std::thread*> threads(std::min(CORES, n_succ_sample));
@@ -2598,22 +2607,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
           temp_start_of_idx_list = temp_end_of_idx_list;
         }
-      }
+      }*/
       /*// Read P_i and q_i
       readPiQiFile(&P_vec, &q_vec, n_succ_sample, dir);*/
       // Print out elapsed time
-      auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
+      /*auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_calc_w =
           finish_time_calc_w - start_time_calc_w;
       cout << "Time spent on getting w in terms of theta: "
            << to_string(int(elapsed_calc_w.count())) << " seconds\n";
       cout << endl;
 
-      prefix = to_string(iter) + "_";
+      prefix = to_string(iter) + "_";*/
 
       // Get gradient of the cost wrt theta and the norm of the gradient
       // Assumption: H_vec[sample] are symmetric
-      VectorXd gradient_cost(rom->n_theta());
+      /*VectorXd gradient_cost(rom->n_theta());
       double norm_grad_cost;
       CalcCostGradientAndNorm(successful_idx_list, QPs.P_vec, QPs.q_vec,
                               QPs.b_vec, dir, prefix, &gradient_cost,
@@ -2644,7 +2653,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Gradient descent
       prev_theta = rom->theta();
-      rom->SetTheta(rom->theta() + current_iter_step_size * step_direction);
+      rom->SetTheta(rom->theta() + current_iter_step_size * step_direction);*/
+
+      VectorXd theta_y =
+          readCSV(dir + to_string(iter+1) + string("_theta_y.csv")).col(0);
+      VectorXd theta_yddot =
+          readCSV(dir + to_string(iter+1) + string("_theta_yddot.csv"))
+              .col(0);
+      rom->SetThetaY(theta_y);
+      rom->SetThetaYddot(theta_yddot);
 
       // For message printed to the terminal
       n_shrink_step = 0;
@@ -2660,11 +2677,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "Current time: " << std::ctime(&current_time) << "\n\n";
 
   // store parameter values
-  prefix = to_string(iter) + "_";
+  /*prefix = to_string(iter) + "_";
   if (!FLAGS_is_debug) {
     writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
     writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());
-  }
+  }*/
 
   return 0;
 }  // int findGoldilocksModels

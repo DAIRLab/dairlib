@@ -684,7 +684,7 @@ int DoMain(int argc, char* argv[]) {
 
     // Set constant walking speed
     if (FLAGS_const_walking_speed) {
-      double const_walking_speed_x = 1.1 * gains.stride_length / stride_period;
+      double const_walking_speed_x = gains.stride_length / stride_period;
 
       auto& walking_speed_control_context =
           loop.get_diagram()->GetMutableSubsystemContext(*walking_speed_control,

@@ -303,7 +303,7 @@ def plot_cost_vs_model_iter(model_indices, sample_idx,
 
 
 def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    savefig=False):
+    save=False):
   # Parameters for visualization
   max_cost_to_ignore = 2
   mean_sl = 0.2
@@ -364,7 +364,16 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   ax.set_xlabel('model iterations')
   ax.set_ylabel('stride length (m)')
   ax.set_zlabel('total cost')
+  ax.view_init(0, 0)  #look from x axis. cost vs stride_length
   # plt.title("")
+  if save:
+    plt.savefig(eval_dir + "/cost_vs_stride_length_3d.png")
+  ax.view_init(0, -90)  #look from -y axis. cost vs model iteration
+  if save:
+    plt.savefig(eval_dir + "/cost_vs_model_iter_3d.png")
+  ax.view_init(90, -90)  #look from +z axis. model iteration vs model iteration
+  if save:
+    plt.savefig(eval_dir + "/model_iter_vs_stride_length_distribution_3d.png")
 
 
 if __name__ == "__main__":
@@ -423,5 +432,5 @@ if __name__ == "__main__":
 
   # 3D plot
   task_element_idx = 0
-  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx)
+  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx, True)
   plt.show()

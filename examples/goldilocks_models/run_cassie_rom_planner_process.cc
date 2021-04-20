@@ -62,6 +62,7 @@ DEFINE_int32(sample, -1, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
+DEFINE_double(stride_length_scaling, 1.0, "");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_bool(fix_duration, true,
@@ -115,6 +116,11 @@ DEFINE_double(yaw_disturbance, 0,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  // Read-in the parameters
+  OSCRomWalkingGains gains;
+  const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
+
   // Note that 0 <= phase < 1, but we allows the phase to be 1 here for testing
   // purposes
   DRAKE_DEMAND(0 <= FLAGS_init_phase && FLAGS_init_phase <= 1);
@@ -133,11 +139,7 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_run_one_loop_to_get_init_file) {
     DRAKE_DEMAND(FLAGS_log_data);
   }
-
-  // Read-in the parameters
-  OSCRomWalkingGains gains;
-  const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
-  drake::yaml::YamlReadArchive(root).Accept(&gains);
+  gains.stride_length *= FLAGS_stride_length_scaling;
 
   // Parameters for the traj opt
   PlannerSetting param;

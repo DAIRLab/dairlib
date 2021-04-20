@@ -88,6 +88,7 @@ DEFINE_bool(hardware, false, "");
 
 DEFINE_int32(iter, -1, "The iteration # of the model that you use");
 
+DEFINE_double(stride_length_scaling, 1.0, "");
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_bool(start_with_left_stance, true, "");
 
@@ -130,6 +131,8 @@ int DoMain(int argc, char* argv[]) {
   OSCRomWalkingGains gains;
   const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
+
+  gains.stride_length *= FLAGS_stride_length_scaling;
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);

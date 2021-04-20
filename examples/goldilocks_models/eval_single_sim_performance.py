@@ -219,6 +219,16 @@ def main():
   f.write(values)
   f.close()
 
+  f = open(directory + "/" + str(rom_iter_idx) + "_" + str(
+    sample_idx) + "_ave_stride_length.csv", "w")
+  f.write(str((x_extracted[-1, 4] - x_extracted[0, 4]) / n_step))
+  f.close()
+
+  f = open(directory + "/" + str(rom_iter_idx) + "_" + str(
+    sample_idx) + "_success.csv", "w")
+  f.write("1")
+  f.close()
+
 
 if __name__ == "__main__":
   main()

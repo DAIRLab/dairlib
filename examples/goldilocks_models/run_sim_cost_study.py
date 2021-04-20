@@ -2,11 +2,13 @@ import subprocess
 import time
 import os
 from pathlib import Path
+from datetime import datetime
 
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
-from datetime import datetime
+from mpl_toolkits import mplot3d
+import yaml
 
 
 def build_files(bazel_file_argument):
@@ -14,6 +16,10 @@ def build_files(bazel_file_argument):
   build_process = subprocess.Popen(build_cmd)
   while build_process.poll() is None:  # while subprocess is alive
     time.sleep(1)
+
+
+def lcmlog_file_path(rom_iter_idx, sample_idx):
+  return eval_dir + '/lcmlog-idx_%d_%d' % (rom_iter_idx, sample_idx)
 
 
 # Set `get_init_file` to True if you want to generate the initial traj for both
@@ -119,34 +125,81 @@ def eval_cost(sim_end_time, rom_iter_idx, sample_idx):
     time.sleep(1)
 
 
-def lcmlog_file_path(rom_iter_idx, sample_idx):
-  return dir + '/lcmlog-idx_%d_%d' % (rom_iter_idx, sample_idx)
-
-
+# TODO: I don't like the method of scaling the stride length and repeat the sim to get achieve the desired task
+#  What I'm doing currently is running all samples for one time, and then get a 3D plot (model iter - task - cost)
+#  Then we can pick a task to slice the 3D plot!
 def run_sim_and_generate_cost(model_indices, sample_indices):
   sim_end_time = 8.0
 
-  for rom_iter_idx in model_indices:
-    for sample_idx in sample_indices:
-      print("run sim for model %d and sample %d" % (rom_iter_idx, sample_idx))
+  for rom_iter in model_indices:
+    for sample in sample_indices:
+      print("run sim for model %d and sample %d" % (rom_iter, sample))
 
-      # Get the initial traj
-      run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, True)
-      # Run the simulation
-      run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, False)
+      n_fail = 0
+      while True:
+        if n_fail > 3:
+          break
+        # Get the initial traj
+        run_sim_and_controller(sim_end_time, rom_iter, sample, True)
+        # Run the simulation
+        run_sim_and_controller(sim_end_time, rom_iter, sample, False)
 
-      # Evaluate the cost
-      eval_cost(sim_end_time, rom_iter_idx, sample_idx)
+        # Evaluate the cost
+        eval_cost(sim_end_time, rom_iter, sample)
 
-      # Delete the lcmlog
-      # os.remove(lcmlog_file_path(rom_iter_idx, sample_idx))
+        # Delete the lcmlog
+        # os.remove(lcmlog_file_path(rom_iter_idx, sample_idx))
+
+        if not os.path.exists(eval_dir + '/%d_%d_success' % (rom_iter, sample)):
+          n_fail += 1
+          continue
+
   print("Finished simulating. Current time = " + str(datetime.now()))
+
+
+def find_cost_in_string(file_string, string_to_search):
+  # We search from the end of the file
+  word_location = file_string.rfind(string_to_search)
+  number_idx_start = 0
+  number_idx_end = 0
+  idx = word_location
+  while True:
+    if file_string[idx] == '=':
+      number_idx_start = idx
+    elif file_string[idx] == '\n':
+      number_idx_end = idx
+      break
+    idx += 1
+  cost_value = float(file_string[number_idx_start + 1: number_idx_end])
+  return cost_value
+
+
+def plot_nomial_cost(model_indices, sample_idx):
+  filename = '_' + str(sample_idx) + '_trajopt_settings_and_cost_breakdown.txt'
+
+  costs = np.zeros((0, 1))
+  for rom_iter_idx in model_indices:
+    with open(model_dir + '/' + str(rom_iter_idx) + filename, 'rt') as f:
+      contents = f.read()
+    cost_x = find_cost_in_string(contents, "cost_x =")
+    cost_u = find_cost_in_string(contents, "cost_u =")
+    total_cost = cost_x + cost_u
+    costs = np.vstack([costs, total_cost])
+
+  # figname = "Nominal cost over model iterations"
+  # plt.figure(figname, figsize=(6.4, 4.8))
+  # plt.plot(model_indices, costs)
+  # plt.ylabel('cost')
+  # plt.xlabel('model iterations')
+  # plt.legend(["total_cost"])
+  # plt.show()
+  return costs
 
 
 def plot_cost_vs_model_iter(model_indices, sample_idx,
     only_plot_total_cost=True, plot_nominal=False, savefig=False):
   # Get names
-  with open(dir + "/cost_names.csv", newline='') as f:
+  with open(eval_dir + "/cost_names.csv", newline='') as f:
     reader = csv.reader(f)
     data = list(reader)
   names = data[0]
@@ -158,7 +211,8 @@ def plot_cost_vs_model_iter(model_indices, sample_idx,
   costs = np.zeros((0, len(names)))
   for iter_idx in model_indices:
     with open(
-        dir + "/" + str(iter_idx) + "_" + str(sample_idx) + "_cost_values.csv",
+        eval_dir + "/" + str(iter_idx) + "_" + str(
+          sample_idx) + "_cost_values.csv",
         newline='') as f:
       reader = csv.reader(f)
       data = [float(x) for x in list(reader)[0]]
@@ -187,49 +241,46 @@ def plot_cost_vs_model_iter(model_indices, sample_idx,
     plt.legend(names)
 
   if savefig:
-    plt.savefig(dir + "/" + figname + ".png")
+    plt.savefig(eval_dir + "/" + figname + ".png")
   else:
     plt.show()
 
 
-def find_cost_in_string(file_string, string_to_search):
-  # We search from the end of the file
-  word_location = file_string.rfind(string_to_search)
-  number_idx_start = 0
-  number_idx_end = 0
-  idx = word_location
-  while True:
-    if file_string[idx] == '=':
-      number_idx_start = idx
-    elif file_string[idx] == '\n':
-      number_idx_end = idx
-      break
-    idx += 1
-  cost_value = float(file_string[number_idx_start + 1: number_idx_end])
-  return cost_value
+def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+    savefig=False):
+  max_cost_to_ignore = 2
+  model_task_cost = np.zeros((0, 3))
 
+  for rom_iter in model_indices:
+    for sample in sample_indices:
+      path = eval_dir + '/%d_%d_cost_values.csv' % (rom_iter, sample)
+      if os.path.exists(path):
+        current_model_task_cost = np.zeros((1, 3))
+        # Read cost
+        with open(path, newline='') as f:
+          reader = csv.reader(f)
+          data = [float(x) for x in list(reader)[0]]
+        current_model_task_cost[0, 2] = data[-1]  # Only get the total cost
+        if data[-1] > max_cost_to_ignore:
+          continue
+        # Read task
+        path = model_dir + '/%d_%d_task.csv' % (rom_iter, sample)
+        with open(path, newline='') as f:
+          reader = csv.reader(f)
+          data = [float(x) for x in list(reader)[0]]
+        current_model_task_cost[0, 1] = data[task_element_idx]
+        current_model_task_cost[0, 0] = rom_iter
+        model_task_cost = np.vstack([model_task_cost, current_model_task_cost])
 
-def plot_nomial_cost(model_indices, sample_idx):
-  nom_traj_dir = "../dairlib_data/goldilocks_models/planning/robot_1/models"
-  filename = '_' + str(sample_idx) + '_trajopt_settings_and_cost_breakdown.txt'
+  # Plot 3D plot here
+  # Creating figure
+  fig = plt.figure(figsize=(10, 7))
+  ax = plt.axes(projection="3d")
 
-  costs = np.zeros((0, 1))
-  for rom_iter_idx in model_indices:
-    with open(nom_traj_dir + '/' + str(rom_iter_idx) + filename, 'rt') as f:
-      contents = f.read()
-    cost_x = find_cost_in_string(contents, "cost_x =")
-    cost_u = find_cost_in_string(contents, "cost_u =")
-    total_cost = cost_x + cost_u
-    costs = np.vstack([costs, total_cost])
-
-  # figname = "Nominal cost over model iterations"
-  # plt.figure(figname, figsize=(6.4, 4.8))
-  # plt.plot(model_indices, costs)
-  # plt.ylabel('cost')
-  # plt.xlabel('model iterations')
-  # plt.legend(["total_cost"])
-  # plt.show()
-  return costs
+  # Creating plot
+  ax.scatter3D(model_task_cost[:, 0], model_task_cost[:, 1],
+    model_task_cost[:, 2], color="green")
+  plt.title("simple 3D scatter plot")
 
 
 if __name__ == "__main__":
@@ -237,14 +288,19 @@ if __name__ == "__main__":
   build_files('examples/goldilocks_models/...')
   build_files('examples/Cassie:multibody_sim')
 
-  global dir
-  dir = "../dairlib_data/goldilocks_models/sim_cost_eval"
+  # Read the controller parameters
+  a_yaml_file = open(
+    "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml")
+  parsed_yaml_file = yaml.load(a_yaml_file)
+  model_dir = parsed_yaml_file.get('dir_model')
+
+  eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval"
 
   # Create folder if not exist
-  Path(dir).mkdir(parents=True, exist_ok=True)
+  Path(eval_dir).mkdir(parents=True, exist_ok=True)
 
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 20
+  model_iter_idx_end = 100
   idx_spacing = 5
 
   model_indices = list(
@@ -255,17 +311,24 @@ if __name__ == "__main__":
   # Remove some indices (remove by value)
   # model_indices.remove(56)
 
-  # sample_indices = range(0, 75)
+  # sample_indices = range(0, 39)
+  sample_indices = range(1, 39, 3)
   # sample_indices = list(sample_indices)
-  sample_indices = [37]
+  # sample_indices = [37]
 
-  # Toggle the functions here depending on whether to generate cost or plot cost
-  run_sim_and_generate_cost(model_indices, sample_indices)
+  ### Toggle the functions here depending on whether to generate or plot cost
+  # run_sim_and_generate_cost(model_indices, sample_indices)
 
+  # 2D plot
   sample_idx = 37  # related to different tasks
-  plot_cost_vs_model_iter(model_indices, sample_idx, True, True, True)
-  plot_cost_vs_model_iter(model_indices, sample_idx, False, True, True)
-  plt.show()
+  # plot_cost_vs_model_iter(model_indices, sample_idx, True, True, True)
+  # plot_cost_vs_model_iter(model_indices, sample_idx, False, True, True)
 
+  # 2D plot
   model_idx = 1
   # plot_cost_vs_task(model_idx, sample_indices, True)
+
+  # 3D plot
+  task_element_idx = 0
+  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx)
+  plt.show()

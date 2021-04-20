@@ -15,7 +15,7 @@ def build_files(bazel_file_argument):
   build_cmd = ['bazel', 'build', bazel_file_argument, ]
   build_process = subprocess.Popen(build_cmd)
   while build_process.poll() is None:  # while subprocess is alive
-    time.sleep(1)
+    time.sleep(0.1)
 
 
 def lcmlog_file_path(rom_iter_idx, sample_idx):
@@ -93,14 +93,14 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
   if get_init_file:
     # Wait for planner to end
     while planner_process.poll() is None:  # while subprocess is alive
-      time.sleep(1)
+      time.sleep(0.1)
     # Kill the rest of process
     controller_process.kill()
     simulator_process.kill()
   else:
     # Wait for simluation to end
     while simulator_process.poll() is None:  # while subprocess is alive
-      time.sleep(1)
+      time.sleep(0.1)
     # Kill the rest of process
     planner_process.kill()
     controller_process.kill()
@@ -109,7 +109,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
 
 # sim_end_time is used to check if the simulation ended early
 # sample_idx here is used to name the file
-def eval_cost(sim_end_time, rom_iter_idx, sample_idx):
+def eval_cost(sim_end_time, rom_iter_idx, sample_idx, multithread = False):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
     lcmlog_file_path(rom_iter_idx, sample_idx),
@@ -118,27 +118,35 @@ def eval_cost(sim_end_time, rom_iter_idx, sample_idx):
     str(sample_idx),
     str(sim_end_time),
   ]
+  print(' '.join(eval_cost_cmd))
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
 
-  # Wait for evaluation to end
-  while eval_cost_process.poll() is None:  # while subprocess is alive
-    time.sleep(1)
+  # import pdb; pdb.set_trace()
+  if multithread:
+    return eval_cost_process
+  else:
+    # Wait for evaluation to end
+    while eval_cost_process.poll() is None:  # while subprocess is alive
+      time.sleep(0.1)
 
 
 # TODO: I don't like the method of scaling the stride length and repeat the sim to get achieve the desired task
 #  What I'm doing currently is running all samples for one time, and then get a 3D plot (model iter - task - cost)
 #  Then we can pick a task to slice the 3D plot!
-def run_sim_and_generate_cost(model_indices, sample_indices):
-  sim_end_time = 8.0
-
+def run_sim_and_eval_cost(model_indices, sample_indices):
+  n_total_sim = len(model_indices) * len(sample_indices)
+  i = 0
   for rom_iter in model_indices:
     for sample in sample_indices:
+      print("\n===========\n")
+      # print("progress " + str(int(float(i) / n_total_sim * 100)) + "%")
+      print("progress %.1f%%" % (float(i) / n_total_sim * 100))
       print("run sim for model %d and sample %d" % (rom_iter, sample))
 
+      path = eval_dir + '/%d_%d_success.csv' % (rom_iter, sample)
       n_fail = 0
-      while True:
-        if n_fail > 3:
-          break
+      # while True:
+      while not os.path.exists(path):
         # Get the initial traj
         run_sim_and_controller(sim_end_time, rom_iter, sample, True)
         # Run the simulation
@@ -150,11 +158,54 @@ def run_sim_and_generate_cost(model_indices, sample_indices):
         # Delete the lcmlog
         # os.remove(lcmlog_file_path(rom_iter_idx, sample_idx))
 
-        if not os.path.exists(eval_dir + '/%d_%d_success' % (rom_iter, sample)):
+        if not os.path.exists(path):
           n_fail += 1
-          continue
+        if n_fail > 2:
+          break
+      i += 1
 
-  print("Finished simulating. Current time = " + str(datetime.now()))
+  print("Finished evaluating. Current time = " + str(datetime.now()))
+
+
+# This function assumes that simulation has been run and there exist lcm logs
+def eval_cost_in_multithread(model_indices, sample_indices):
+  working_threads = []
+  n_max_thread = 12
+
+  n_total_sim = len(model_indices) * len(sample_indices)
+  i = 0
+  for rom_iter in model_indices:
+    for sample in sample_indices:
+      print("\n===========\n")
+      # print("progress " + str(int(float(i) / n_total_sim * 100)) + "%")
+      print("progress %.1f%%" % (float(i) / n_total_sim * 100))
+      print("run sim for model %d and sample %d" % (rom_iter, sample))
+
+      # Evaluate the cost
+      path = eval_dir + '/%d_%d_success.csv' % (rom_iter, sample)
+      if not os.path.exists(path):
+        working_threads.append(eval_cost(sim_end_time, rom_iter, sample, True))
+      i += 1
+
+      # Wait for threads to finish once is more than n_max_thread
+      while len(working_threads) >= n_max_thread:
+        for j in range(len(working_threads)):
+          if working_threads[j].poll() is None:  # subprocess is alive
+            time.sleep(0.1)
+          else:
+            del working_threads[j]
+            break
+
+  print("Wait for all threads to join")
+  while len(working_threads) > 0:
+    for j in range(len(working_threads)):
+      if working_threads[j].poll() is None:  # subprocess is alive
+        time.sleep(0.1)
+      else:
+        del working_threads[j]
+        break
+  print("Finished evaluating. Current time = " + str(datetime.now()))
+
 
 
 def find_cost_in_string(file_string, string_to_search):
@@ -248,39 +299,64 @@ def plot_cost_vs_model_iter(model_indices, sample_idx,
 
 def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
     savefig=False):
+  # Parameters for visualization
   max_cost_to_ignore = 2
-  model_task_cost = np.zeros((0, 3))
+  min_sl = 0.18
+  max_sl = 0.2
 
+  model_task_cost = np.zeros((0, 3))
   for rom_iter in model_indices:
     for sample in sample_indices:
-      path = eval_dir + '/%d_%d_cost_values.csv' % (rom_iter, sample)
-      if os.path.exists(path):
+      path0 = eval_dir + '/%d_%d_success.csv' % (rom_iter, sample)
+      path1 = eval_dir + '/%d_%d_cost_values.csv' % (rom_iter, sample)
+      path2 = eval_dir + '/%d_%d_ave_stride_length.csv' % (rom_iter, sample)
+      # if os.path.exists(path1) and os.path.exists(path2):
+      if os.path.exists(path0) and os.path.exists(path1) and os.path.exists(
+          path2):
         current_model_task_cost = np.zeros((1, 3))
-        # Read cost
-        with open(path, newline='') as f:
+        ### Read cost
+        with open(path1, newline='') as f:
           reader = csv.reader(f)
           data = [float(x) for x in list(reader)[0]]
         current_model_task_cost[0, 2] = data[-1]  # Only get the total cost
         if data[-1] > max_cost_to_ignore:
           continue
-        # Read task
-        path = model_dir + '/%d_%d_task.csv' % (rom_iter, sample)
-        with open(path, newline='') as f:
+        ### Read desired task
+        # path = model_dir + '/%d_%d_task.csv' % (rom_iter, sample)
+        # with open(path, newline='') as f:
+        #   reader = csv.reader(f)
+        #   data = [float(x) for x in list(reader)[0]]
+        # current_model_task_cost[0, 1] = data[task_element_idx]
+        ### Read actual task
+        with open(path2, newline='') as f:
           reader = csv.reader(f)
           data = [float(x) for x in list(reader)[0]]
-        current_model_task_cost[0, 1] = data[task_element_idx]
+        current_model_task_cost[0, 1] = data[0]
+        if (data[0] > max_sl) or (data[0] < min_sl):
+          continue
+        ### Read model iteration
         current_model_task_cost[0, 0] = rom_iter
+        ### Assign values
         model_task_cost = np.vstack([model_task_cost, current_model_task_cost])
+      else:
+        if os.path.exists(path0):
+          os.remove(path0)
+        if os.path.exists(path1):
+          os.remove(path1)
+        if os.path.exists(path2):
+          os.remove(path2)
+
+  print(model_task_cost.shape)
 
   # Plot 3D plot here
-  # Creating figure
   fig = plt.figure(figsize=(10, 7))
   ax = plt.axes(projection="3d")
-
-  # Creating plot
   ax.scatter3D(model_task_cost[:, 0], model_task_cost[:, 1],
     model_task_cost[:, 2], color="green")
-  plt.title("simple 3D scatter plot")
+  ax.set_xlabel('model iterations')
+  ax.set_ylabel('stride length (m)')
+  ax.set_zlabel('total cost')
+  # plt.title("")
 
 
 if __name__ == "__main__":
@@ -295,6 +371,9 @@ if __name__ == "__main__":
   model_dir = parsed_yaml_file.get('dir_model')
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval"
+
+  # global parameters
+  sim_end_time = 8.0
 
   # Create folder if not exist
   Path(eval_dir).mkdir(parents=True, exist_ok=True)
@@ -317,15 +396,19 @@ if __name__ == "__main__":
   # sample_indices = [37]
 
   ### Toggle the functions here depending on whether to generate or plot cost
-  # run_sim_and_generate_cost(model_indices, sample_indices)
+  # run_sim_and_eval_cost(model_indices, sample_indices)
+  # run_sim_and_eval_cost([70], [34])
+
+  # Only evaluate cost
+  eval_cost_in_multithread(model_indices, sample_indices)
 
   # 2D plot
-  sample_idx = 37  # related to different tasks
+  # sample_idx = 37  # related to different tasks
   # plot_cost_vs_model_iter(model_indices, sample_idx, True, True, True)
   # plot_cost_vs_model_iter(model_indices, sample_idx, False, True, True)
 
   # 2D plot
-  model_idx = 1
+  # model_idx = 1
   # plot_cost_vs_task(model_idx, sample_indices, True)
 
   # 3D plot

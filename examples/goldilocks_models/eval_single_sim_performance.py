@@ -15,6 +15,7 @@ from pydrake.systems.framework import DiagramBuilder
 import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
+import pydrake.common as mut
 
 
 def main():
@@ -38,14 +39,13 @@ def main():
   const_walking_speed_x = stride_length / stride_period
 
   # File setting
-  directory = "../dairlib_data/goldilocks_models/sim_cost_eval"
+  directory = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   Path(directory).mkdir(parents=True, exist_ok=True)
 
   # Script input arguments
   rom_iter_idx = int(sys.argv[3])
   sample_idx = int(sys.argv[4])
   desried_sim_end_time = float(sys.argv[5])
-  print(desried_sim_end_time)
 
   global t_start
   global t_end
@@ -60,6 +60,7 @@ def main():
   global act_map
 
   # Build plant
+  mut.set_log_level("err")  # ignore warnings about joint limits
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
@@ -135,8 +136,8 @@ def main():
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
   t_slice = slice(t_start_idx, t_end_idx)
-  start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
-  end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
+  start_time_idx = np.argwhere(np.abs(t_u - t_start) < 3e-3)[0][0]
+  end_time_idx = np.argwhere(np.abs(t_u - t_end) < 3e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All analysis scripts here
@@ -144,11 +145,13 @@ def main():
   # Check if the simulation ended early
   if desried_sim_end_time > 0:
     if abs(t_x[-1] - desried_sim_end_time) > 0.1:
-      f = open(directory + "/sim_status.txt", "a")
-      f.write("iteration #" + str(rom_iter_idx) + "sample #" + str(
+      msg = "iteration #" + str(rom_iter_idx) + "sample #" + str(
         sample_idx) + ": sim end time (" + str(
         t_x[-1]) + " s) is too different from the desired sim time (" + str(
-        desried_sim_end_time) + " s)")
+        desried_sim_end_time) + " s)\n"
+      print(msg)
+      f = open(directory + "sim_status.txt", "a")
+      f.write(msg)
       f.close()
       return
 
@@ -156,10 +159,12 @@ def main():
   min_height = 0.4
   for idx in range(x.shape[0]):
     if x[idx, 6] < min_height:
-      f = open(directory + "/sim_status.txt", "a")
-      f.write("iteration #" + str(rom_iter_idx) + "sample #" + str(
+      msg = "iteration #" + str(rom_iter_idx) + "sample #" + str(
         sample_idx) + ": pelvis fell below " + str(
-        min_height) + " at time " + str(t_x[idx]))
+        min_height) + " at time " + str(t_x[idx]) + "\n"
+      print(msg)
+      f = open(directory + "sim_status.txt", "a")
+      f.write(msg)
       f.close()
       return
 
@@ -168,6 +173,7 @@ def main():
   n_x_data = x_extracted.shape[0]
   n_u_data = u_extracted.shape[0]
 
+  # TODO: should use the real dt not the average dt
   dt_x = (t_end - t_start) / n_x_data
   dt_u = (t_end - t_start) / n_u_data
 
@@ -211,21 +217,27 @@ def main():
             str(total_cost)]
   values = ', '.join(values)
 
-  f = open(directory + "/cost_names.csv", "w")
+  path = directory + "cost_names.csv"
+  # print("writing to " + path)
+  f = open(path, "w")
   f.write(names)
   f.close()
-  f = open(directory + "/" + str(rom_iter_idx) + "_" + str(
-    sample_idx) + "_cost_values.csv", "w")
+
+  path = directory + "%d_%d_cost_values.csv" % (rom_iter_idx, sample_idx)
+  # print("writing to " + path)
+  f = open(path, "w")
   f.write(values)
   f.close()
 
-  f = open(directory + "/" + str(rom_iter_idx) + "_" + str(
-    sample_idx) + "_ave_stride_length.csv", "w")
+  path = directory + "%d_%d_ave_stride_length.csv" % (rom_iter_idx, sample_idx)
+  # print("writing to " + path)
+  f = open(path, "w")
   f.write(str((x_extracted[-1, 4] - x_extracted[0, 4]) / n_step))
   f.close()
 
-  f = open(directory + "/" + str(rom_iter_idx) + "_" + str(
-    sample_idx) + "_success.csv", "w")
+  path = directory + "%d_%d_success.csv" % (rom_iter_idx, sample_idx)
+  # print("writing to " + path)
+  f = open(path, "w")
   f.write("1")
   f.close()
 

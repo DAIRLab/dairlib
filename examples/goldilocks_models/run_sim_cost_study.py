@@ -301,8 +301,10 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
     savefig=False):
   # Parameters for visualization
   max_cost_to_ignore = 2
-  min_sl = 0.18
-  max_sl = 0.2
+  mean_sl = 0.2
+  delta_sl = 0.005
+  min_sl = mean_sl - delta_sl
+  max_sl = mean_sl + delta_sl
 
   model_task_cost = np.zeros((0, 3))
   for rom_iter in model_indices:
@@ -337,6 +339,7 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
         ### Read model iteration
         current_model_task_cost[0, 0] = rom_iter
         ### Assign values
+        print('Add (iter,sample) = (%d,%d)' % (rom_iter, sample))
         model_task_cost = np.vstack([model_task_cost, current_model_task_cost])
       else:
         if os.path.exists(path0):
@@ -400,7 +403,7 @@ if __name__ == "__main__":
   # run_sim_and_eval_cost([70], [34])
 
   # Only evaluate cost
-  eval_cost_in_multithread(model_indices, sample_indices)
+  # eval_cost_in_multithread(model_indices, sample_indices)
 
   # 2D plot
   # sample_idx = 37  # related to different tasks

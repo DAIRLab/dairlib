@@ -168,14 +168,17 @@ def main():
       f.close()
       return
 
+  t_x_extracted = t_x[t_slice]
+  t_u_extracted = t_u[t_u_slice]
   x_extracted = x[t_slice, :]
   u_extracted = u[t_u_slice, :]
   n_x_data = x_extracted.shape[0]
   n_u_data = u_extracted.shape[0]
 
-  # TODO: should use the real dt not the average dt
-  dt_x = (t_end - t_start) / n_x_data
-  dt_u = (t_end - t_start) / n_u_data
+  # ave_dt_x = (t_end - t_start) / n_x_data
+  # ave_dt_u = (t_end - t_start) / n_u_data
+  dt_x = np.diff(t_x_extracted)
+  dt_u = np.diff(t_u_extracted)
 
   # Get rid of spring joints
   x_extracted[:, nq + vel_map["knee_joint_leftdot"]] = 0
@@ -184,16 +187,16 @@ def main():
   x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
 
   cost_x = 0.0
-  for i in range(n_x_data):
+  for i in range(n_x_data - 1):
     v_i = x_extracted[i, nq:]
-    cost_x += v_i.T @ v_i
-  cost_x *= (w_Q * dt_x / n_step)
+    cost_x += (v_i.T @ v_i) * dt_x[i]
+  cost_x *= (w_Q / n_step)
 
   cost_u = 0.0
-  for i in range(n_u_data):
+  for i in range(n_u_data - 1):
     u_i = u_extracted[i, :]
-    cost_u += u_i.T @ u_i
-  cost_u *= (w_R * dt_u / n_step)
+    cost_u += (u_i.T @ u_i) * dt_u[i]
+  cost_u *= (w_R / n_step)
 
   total_cost = cost_x + cost_u
   print("step_idx_start = " + str(step_idx_start))

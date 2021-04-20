@@ -27,6 +27,10 @@ def lcmlog_file_path(rom_iter_idx, sample_idx):
 # sample_idx is used to initialize the guess for the planner
 def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
     get_init_file):
+  # Hacky heuristic parameter
+  stride_length_scaling = 1.0
+  stride_length_scaling = 1 + rom_iter_idx / 100.0 * 0.15
+
   # simulation arguments
   target_realtime_rate = 1.0  # 0.04
   pause_second = 2.0 if get_init_file else 0
@@ -54,6 +58,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
     '--knots_per_mode=%d' % knots_per_mode,
     '--n_step=%d' % n_step,
     '--feas_tol=%.6f' % feas_tol,
+    '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--time_limit=%.3f' % time_limit,
     '--realtime_rate_for_time_limit=%.3f' % realtime_rate_for_time_limit,
     '--init_file=%s' % planner_init_file,
@@ -65,7 +70,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
     '--channel_u=ROM_WALKING',
     '--const_walking_speed=true',
-    '--use_IK=false',
+    '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--iter=%d' % rom_iter_idx,
     '--init_traj_file_name=%s' % init_traj_file,
   ]
@@ -109,7 +114,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
 
 # sim_end_time is used to check if the simulation ended early
 # sample_idx here is used to name the file
-def eval_cost(sim_end_time, rom_iter_idx, sample_idx, multithread = False):
+def eval_cost(sim_end_time, rom_iter_idx, sample_idx, multithread=False):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
     lcmlog_file_path(rom_iter_idx, sample_idx),
@@ -121,7 +126,6 @@ def eval_cost(sim_end_time, rom_iter_idx, sample_idx, multithread = False):
   print(' '.join(eval_cost_cmd))
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
 
-  # import pdb; pdb.set_trace()
   if multithread:
     return eval_cost_process
   else:
@@ -133,7 +137,8 @@ def eval_cost(sim_end_time, rom_iter_idx, sample_idx, multithread = False):
 # TODO: I don't like the method of scaling the stride length and repeat the sim to get achieve the desired task
 #  What I'm doing currently is running all samples for one time, and then get a 3D plot (model iter - task - cost)
 #  Then we can pick a task to slice the 3D plot!
-def run_sim_and_eval_cost(model_indices, sample_indices):
+def run_sim_and_eval_cost(model_indices, sample_indices, do_eval_cost=False):
+  max_n_fail = 0
   n_total_sim = len(model_indices) * len(sample_indices)
   i = 0
   for rom_iter in model_indices:
@@ -153,14 +158,15 @@ def run_sim_and_eval_cost(model_indices, sample_indices):
         run_sim_and_controller(sim_end_time, rom_iter, sample, False)
 
         # Evaluate the cost
-        eval_cost(sim_end_time, rom_iter, sample)
+        if do_eval_cost:
+          eval_cost(sim_end_time, rom_iter, sample)
 
         # Delete the lcmlog
         # os.remove(lcmlog_file_path(rom_iter_idx, sample_idx))
 
         if not os.path.exists(path):
           n_fail += 1
-        if n_fail > 2:
+        if n_fail > max_n_fail:
           break
       i += 1
 
@@ -205,7 +211,6 @@ def eval_cost_in_multithread(model_indices, sample_indices):
         del working_threads[j]
         break
   print("Finished evaluating. Current time = " + str(datetime.now()))
-
 
 
 def find_cost_in_string(file_string, string_to_search):
@@ -302,7 +307,7 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   # Parameters for visualization
   max_cost_to_ignore = 2
   mean_sl = 0.2
-  delta_sl = 0.1 #0.1 #0.005
+  delta_sl = 0.1  # 0.1 #0.005
   min_sl = mean_sl - delta_sl
   max_sl = mean_sl + delta_sl
 
@@ -374,6 +379,7 @@ if __name__ == "__main__":
   model_dir = parsed_yaml_file.get('dir_model')
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval"
+  # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval2"
 
   # global parameters
   sim_end_time = 8.0
@@ -394,6 +400,7 @@ if __name__ == "__main__":
   # model_indices.remove(56)
 
   # sample_indices = range(0, 39)
+  # sample_indices = range(1, 5, 3)
   sample_indices = range(1, 39, 3)
   # sample_indices = list(sample_indices)
   # sample_indices = [37]

@@ -170,7 +170,7 @@ def main():
       return
 
   # Check if it's close to steady state
-  stride_length_variation_tol = 0.01
+  stride_length_variation_tol = 0.02
   t_x_indices = []
   for idx in range(step_idx_start, step_idx_end + 1):
     time = stride_period * idx

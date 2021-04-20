@@ -29,7 +29,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
     get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
-  stride_length_scaling = 1 + rom_iter_idx / 100.0 * 0.15
+  stride_length_scaling = 1 + min(rom_iter_idx / 20.0, 1) * 0.15
 
   # simulation arguments
   target_realtime_rate = 1.0  # 0.04

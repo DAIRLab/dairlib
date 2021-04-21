@@ -40,7 +40,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, fix_task,
     get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
-  stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
+  # stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
 
   # Get task to evaluate
   target_stride_length = get_nominal_task_given_sample_idx(sample_idx,
@@ -251,7 +251,7 @@ def find_cost_in_string(file_string, string_to_search):
   return cost_value
 
 
-def plot_nomial_cost(model_indices, sample_idx):
+def plot_nominal_cost(model_indices, sample_idx):
   filename = '_' + str(sample_idx) + '_trajopt_settings_and_cost_breakdown.txt'
 
   costs = np.zeros((0, 1))
@@ -295,7 +295,7 @@ def plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx,
   if only_plot_total_cost:
     plt.plot(model_indices, costs[:, -1], 'k-', linewidth=3)
     if plot_nominal:
-      nominal_cost = plot_nomial_cost(model_indices, sample_idx)
+      nominal_cost = plot_nominal_cost(model_indices, sample_idx)
       plt.plot(model_indices, nominal_cost, 'k--', linewidth=3)
     plt.ylabel('total cost')
     plt.xlabel('model iterations')
@@ -303,7 +303,7 @@ def plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx,
   else:
     plt.plot(model_indices, costs)
     if plot_nominal:
-      nominal_cost = plot_nomial_cost(model_indices, sample_idx)
+      nominal_cost = plot_nominal_cost(model_indices, sample_idx)
       plt.plot(model_indices, nominal_cost)
       names = names + ["total cost (trajopt)"]
     plt.ylabel('cost')
@@ -317,15 +317,18 @@ def plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx,
 
 
 def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    save=False):
+    plot_3d = True, plot_nominal=False, save=False):
   # Parameters for visualization
-  max_cost_to_ignore = 2
+  max_cost_to_ignore = 3  # 2
   mean_sl = 0.2
   delta_sl = 0.1  # 0.1 #0.005
   min_sl = mean_sl - delta_sl
   max_sl = mean_sl + delta_sl
+  # min_sl = -100
+  # max_sl = 100
 
-  model_task_cost = np.zeros((0, 3))
+  # mtc that stores model index, task value and cost
+  mtc = np.zeros((0, 3))
   for rom_iter in model_indices:
     for sample in sample_indices:
       path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, sample)
@@ -334,25 +337,25 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
       # if os.path.exists(path1) and os.path.exists(path2):
       if os.path.exists(path0) and os.path.exists(path1) and os.path.exists(
           path2):
-        current_model_task_cost = np.zeros((1, 3))
+        current_mtc = np.zeros((1, 3))
         ### Read cost
         cost = np.loadtxt(path1, delimiter=',')
-        current_model_task_cost[0, 2] = cost[-1]
+        current_mtc[0, 2] = cost[-1]
         if cost[-1] > max_cost_to_ignore:
           continue
         ### Read desired task
         # task = np.loadtxt(model_dir + "%d_%d_task.csv" % (rom_iter, sample))
-        # current_model_task_cost[0, 1] = task[task_element_idx]
+        # current_mtc[0, 1] = task[task_element_idx]
         ### Read actual task
         task = np.loadtxt(path2, delimiter=',').item()  # 0-dim scalar
-        current_model_task_cost[0, 1] = task
+        current_mtc[0, 1] = task
         if (task > max_sl) or (task < min_sl):
           continue
         ### Read model iteration
-        current_model_task_cost[0, 0] = rom_iter
+        current_mtc[0, 0] = rom_iter
         ### Assign values
         # print('Add (iter,sample) = (%d,%d)' % (rom_iter, sample))
-        model_task_cost = np.vstack([model_task_cost, current_model_task_cost])
+        mtc = np.vstack([mtc, current_mtc])
       else:
         # It's not suppose to get here. (most likely the experiement didn't start with an empty folder)
         if os.path.exists(path0):
@@ -361,51 +364,99 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
           os.remove(path1)
         if os.path.exists(path2):
           os.remove(path2)
+  print(mtc.shape)
 
-  print(model_task_cost.shape)
+  nominal_mtc = np.zeros((0, 3))
+  if plot_nominal:
+    for rom_iter in model_indices:
+      for sample in sample_indices:
+        sub_mtc = np.zeros((1, 3))
+        ### Read cost
+        cost = np.loadtxt(model_dir + "%d_%d_c.csv" % (rom_iter, sample))
+        sub_mtc[0, 2] = cost.item()
+        if cost.item() > max_cost_to_ignore:
+          continue
+        ### Read nominal task
+        task = np.loadtxt(model_dir + "%d_%d_task.csv" % (rom_iter, sample))[
+          task_element_idx]
+        sub_mtc[0, 1] = task
+        if (task > max_sl) or (task < min_sl):
+          continue
+        ### Read model iteration
+        sub_mtc[0, 0] = rom_iter
+        ### Assign values
+        nominal_mtc = np.vstack(
+          [nominal_mtc, sub_mtc])
+  print(nominal_mtc.shape)
 
   # Plot
-  use_3d_plot = True
-  fig = plt.figure(figsize=(10, 7))
-  if use_3d_plot:
+  app = "_w_nom" if plot_nominal else ""
+  if plot_3d:
+    fig = plt.figure(figsize=(10, 7))
+
     ###
     ax = plt.axes(projection="3d")
-    ax.scatter3D(model_task_cost[:, 0], model_task_cost[:, 1],
-      model_task_cost[:, 2], color="green")
+    ax.scatter3D(mtc[:, 0], mtc[:, 1],
+      mtc[:, 2], color="green")
+    if plot_nominal:
+      ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
     ax.set_xlabel('model iterations')
     ax.set_ylabel('stride length (m)')
     ax.set_zlabel('total cost')
     # plt.title("")
     ax.view_init(90, -90)  # look from +z axis. model iter vs task
     if save:
-      plt.savefig(eval_dir + "model_iter_vs_stride_length_scatterplot.png")
+      plt.savefig("%smodel_ter_vs_task_scatterplot%s.png" % (eval_dir, app))
     ax.view_init(0, 0)  # look from x axis. cost vs task
     if save:
-      plt.savefig(eval_dir + "cost_vs_stride_length_scatterplot.png")
+      plt.savefig("%scost_vs_task_scatterplot%s.png" % (eval_dir, app))
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
     if save:
-      plt.savefig(eval_dir + "cost_vs_model_iter_scatterplot.png")
+      plt.savefig("%scost_vs_model_iter_scatterplot%s.png" % (eval_dir, app))
 
     ###
     ax = plt.axes(projection="3d")
-    tcf = ax.tricontour(model_task_cost[:, 0], model_task_cost[:, 1],
-      model_task_cost[:, 2], zdir='y', cmap=cm.coolwarm)
+    if plot_nominal:
+      # tcf = ax.tricontour(nominal_mtc[:, 0], nominal_mtc[:, 1],
+      #   nominal_mtc[:, 2], zdir='y', cmap=cm.coolwarm)
+      ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1],
+        nominal_mtc[:, 2], "b")
+      # tcf = ax.plot_trisurf(nominal_mtc[:, 0], nominal_mtc[:, 1],
+      #   nominal_mtc[:, 2], cmap=cm.coolwarm)
+      pass
+    tcf = ax.tricontour(mtc[:, 0], mtc[:, 1],
+      mtc[:, 2], zdir='y', cmap=cm.coolwarm)
     fig.colorbar(tcf)
+    ax.set_xlabel('model iterations')
+    ax.set_ylabel('stride length (m)')
+    ax.set_zlabel('total cost')
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
     if save:
-      plt.savefig(eval_dir + "cost_vs_model_iter_contour.png")
+      plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
 
   else:
+    # The line along which we evaluate the cost (using interpolation)
+    task = 0.21
     x = np.linspace(0, 100, 101)
-    y = 0.2 * np.ones(101)
+    y = task * np.ones(101)
 
-    triang = mtri.Triangulation(model_task_cost[:, 0], model_task_cost[:, 1])
-    interpolator = mtri.LinearTriInterpolator(triang, model_task_cost[:, 2])
+    plt.figure(figsize=(6.4, 4.8))
+    triang = mtri.Triangulation(mtc[:, 0], mtc[:, 1])
+    interpolator = mtri.LinearTriInterpolator(triang, mtc[:, 2])
     z = interpolator(x, y)
-    plt.plot(x, z)
+    plt.plot(x, z, label="Drake simulation")
+    if plot_nominal:
+      triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
+      interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
+      z = interpolator(x, y)
+      plt.plot(x, z, label="trajectory optimization")
 
     plt.xlabel('model iterations')
     plt.ylabel('total cost')
+    plt.legend()
+    plt.title('stride length ' + str(task))
+    if save:
+      plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
 
 
 if __name__ == "__main__":
@@ -442,17 +493,21 @@ if __name__ == "__main__":
   # sample_indices = range(0, 39)
   # sample_indices = range(1, 5, 3)
   sample_indices = range(1, 39, 3)
-  sample_indices = range(1, 75, 3)
+  # sample_indices = range(1, 75, 3)
   # sample_indices = list(sample_indices)
   # sample_indices = [37]
   # TODO: automatically find all indices that has flat ground
 
-  ### Toggle the functions here depending on whether to generate or plot cost
+  ### Toggle the functions here to run simulation or evaluate cost
   # run_sim_and_eval_cost(model_indices, sample_indices)
   # run_sim_and_eval_cost([70], [34])
 
   # Only evaluate cost
   # eval_cost_in_multithread(model_indices, sample_indices)
+
+  ### Plotting
+  print("Nominal cost is from: " + model_dir)
+  print("Simulation cost is from: " + eval_dir)
 
   # 2D plot
   # sample_idx = 37  # related to different tasks
@@ -463,9 +518,21 @@ if __name__ == "__main__":
   # model_idx = 1
   # plot_cost_vs_task(model_idx, sample_indices, True)
 
-  # 3D plot
+  # Save plots
   task_element_idx = 0
-  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx, False)
   plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    True)
+    True, True, True)
+  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+    True, False, True)
+  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+    False, True, True)
+  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+    False, False, True)
+
+  # 3D plot
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   True, True, False)
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   True, False, False)
   plt.show()
+

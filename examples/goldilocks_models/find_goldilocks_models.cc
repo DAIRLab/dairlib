@@ -1478,13 +1478,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (is_grid_task) {
     if (FLAGS_robot_option == 0) {
       task_gen_grid = GridTasksGenerator(
-          3, {"stride length", "ground incline", "duration"},
+          3, {"stride_length", "ground_incline", "duration"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du},
           {0.25, 0, 0.4}, {0.015, 0.05, 0.05},
           std::vector<bool>(3, FLAGS_is_stochastic));
     } else if (FLAGS_robot_option == 1) {
       task_gen_grid = GridTasksGenerator(
-          4, {"stride length", "ground incline", "duration", "turning rate"},
+          4, {"stride_length", "ground_incline", "duration", "turning_rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr},
           {0, 0, 0.4, FLAGS_turning_rate_center}, {0.03, 0.05, 0.05, 0.125},
@@ -1500,13 +1500,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
   } else {
     if (FLAGS_robot_option == 0) {
       task_gen_uniform = UniformTasksGenerator(
-          3, {"stride length", "ground incline", "duration"},
+          3, {"stride_length", "ground_incline", "duration"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_du_min},
           {FLAGS_sl_max, FLAGS_gi_max, FLAGS_du_max});
     } else if (FLAGS_robot_option == 1) {
       task_gen_uniform = UniformTasksGenerator(
-          4, {"stride length", "ground incline", "duration", "turning rate"},
+          4, {"stride_length", "ground_incline", "duration", "turning_rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_du_min, FLAGS_tr_min},

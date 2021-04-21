@@ -62,6 +62,7 @@ DEFINE_int32(sample, -1, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_double(final_position, 2, "The final position for the robot");
+DEFINE_double(stride_length, -10000, "");
 DEFINE_double(stride_length_scaling, 1.0, "");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
@@ -138,6 +139,9 @@ int DoMain(int argc, char* argv[]) {
   }
   if (FLAGS_run_one_loop_to_get_init_file) {
     DRAKE_DEMAND(FLAGS_log_data);
+  }
+  if (FLAGS_stride_length > -100) {
+    gains.stride_length = FLAGS_stride_length;
   }
   gains.stride_length *= FLAGS_stride_length_scaling;
 

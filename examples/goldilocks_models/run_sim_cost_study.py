@@ -351,7 +351,7 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
         ### Read model iteration
         current_model_task_cost[0, 0] = rom_iter
         ### Assign values
-        print('Add (iter,sample) = (%d,%d)' % (rom_iter, sample))
+        # print('Add (iter,sample) = (%d,%d)' % (rom_iter, sample))
         model_task_cost = np.vstack([model_task_cost, current_model_task_cost])
       else:
         # It's not suppose to get here. (most likely the experiement didn't start with an empty folder)
@@ -441,7 +441,7 @@ if __name__ == "__main__":
 
   # sample_indices = range(0, 39)
   # sample_indices = range(1, 5, 3)
-  sample_indices = range(1, 39, 3)
+  sample_indices = range(1, 75, 3)
   # sample_indices = list(sample_indices)
   # sample_indices = [37]
   # TODO: automatically find all indices that has flat ground

@@ -368,10 +368,15 @@ int DoMain(int argc, char* argv[]) {
                                          gains.K_d_com, gains.W_com,
                                          plant_w_spr, plant_w_spr);
   pelvis_traj.AddPointToTrack("pelvis");
+//  TransTaskSpaceTrackingData pelvis_xy_traj("lipm_xy_traj", gains.K_p_pelvis_ds,
+//                                         gains.K_d_pelvis_ds, gains.W_pelvis_ds,
+//                                         plant_w_spr, plant_w_spr);
+//  pelvis_xy_traj.AddStateAndPointToTrack(double_support_state, "pelvis");
   ComTrackingData center_of_mass_traj("lipm_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);
   if (use_pelvis_for_lipm_tracking) {
     osc->AddTrackingData(&pelvis_traj);
+//    osc->AddTrackingData(&pelvis_xy_traj);
   } else {
     osc->AddTrackingData(&center_of_mass_traj);
   }
@@ -449,8 +454,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
-  //  builder.Connect(fsm->get_output_port_clock(),
-  //  osc->get_clock_input_port());
+//  builder.Connect(fsm->get_output_port_clock(), osc->get_clock_input_port());
   builder.Connect(fsm->get_output_port_impact(),
                   osc->get_near_impact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
@@ -461,6 +465,9 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(
         pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
         osc->get_tracking_data_input_port("lipm_traj"));
+//    builder.Connect(
+//        pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
+//        osc->get_tracking_data_input_port("lipm_xy_traj"));
   } else {
     builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
                     osc->get_tracking_data_input_port("lipm_traj"));

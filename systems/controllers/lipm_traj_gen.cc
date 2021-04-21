@@ -178,6 +178,8 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
   double dCoM_wrt_foot_x = dCoM(0);
   double dCoM_wrt_foot_y = dCoM(1);
+//  double dCoM_wrt_foot_x = 0;
+//  double dCoM_wrt_foot_y = 0;
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
@@ -345,7 +347,7 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj = ConstructLipmTraj(
-      CoM_at_touchdown, dCoM_at_touchdown, stance_foot_pos_at_touchdown,
+      CoM_at_touchdown, VectorXd::Zero(2), stance_foot_pos_at_touchdown,
       prev_touchdown_time, end_time_of_this_fsm_state);
 }
 

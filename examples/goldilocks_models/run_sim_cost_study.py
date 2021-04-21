@@ -317,7 +317,7 @@ def plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx,
 
 
 def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    plot_3d = True, plot_nominal=False, save=False):
+    plot_3d=True, plot_nominal=False, save=False):
   # Parameters for visualization
   max_cost_to_ignore = 3  # 2
   mean_sl = 0.2
@@ -385,8 +385,7 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
         ### Read model iteration
         sub_mtc[0, 0] = rom_iter
         ### Assign values
-        nominal_mtc = np.vstack(
-          [nominal_mtc, sub_mtc])
+        nominal_mtc = np.vstack([nominal_mtc, sub_mtc])
   print(nominal_mtc.shape)
 
   # Plot
@@ -396,36 +395,33 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
 
     ###
     ax = plt.axes(projection="3d")
-    ax.scatter3D(mtc[:, 0], mtc[:, 1],
-      mtc[:, 2], color="green")
+    ax.scatter3D(mtc[:, 0], mtc[:, 1], mtc[:, 2], color="green")
     if plot_nominal:
       ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
     ax.set_xlabel('model iterations')
     ax.set_ylabel('stride length (m)')
     ax.set_zlabel('total cost')
     # plt.title("")
-    ax.view_init(90, -90)  # look from +z axis. model iter vs task
     if save:
+      ax.view_init(90, -90)  # look from +z axis. model iter vs task
       plt.savefig("%smodel_ter_vs_task_scatterplot%s.png" % (eval_dir, app))
-    ax.view_init(0, 0)  # look from x axis. cost vs task
-    if save:
+      ax.view_init(0, 0)  # look from x axis. cost vs task
       plt.savefig("%scost_vs_task_scatterplot%s.png" % (eval_dir, app))
-    ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-    if save:
+      ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
       plt.savefig("%scost_vs_model_iter_scatterplot%s.png" % (eval_dir, app))
+    ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
 
     ###
     ax = plt.axes(projection="3d")
     if plot_nominal:
       # tcf = ax.tricontour(nominal_mtc[:, 0], nominal_mtc[:, 1],
       #   nominal_mtc[:, 2], zdir='y', cmap=cm.coolwarm)
-      ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1],
-        nominal_mtc[:, 2], "b")
+      ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
       # tcf = ax.plot_trisurf(nominal_mtc[:, 0], nominal_mtc[:, 1],
       #   nominal_mtc[:, 2], cmap=cm.coolwarm)
       pass
-    tcf = ax.tricontour(mtc[:, 0], mtc[:, 1],
-      mtc[:, 2], zdir='y', cmap=cm.coolwarm)
+    tcf = ax.tricontour(mtc[:, 0], mtc[:, 1], mtc[:, 2], zdir='y',
+      cmap=cm.coolwarm)
     fig.colorbar(tcf)
     ax.set_xlabel('model iterations')
     ax.set_ylabel('stride length (m)')
@@ -535,4 +531,3 @@ if __name__ == "__main__":
   # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   #   True, False, False)
   plt.show()
-

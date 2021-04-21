@@ -40,7 +40,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, fix_task,
     get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
-  stride_length_scaling = 1 + min(rom_iter_idx / 20.0, 1) * 0.15
+  stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
 
   # Get task to evaluate
   target_stride_length = get_nominal_task_given_sample_idx(sample_idx,
@@ -157,7 +157,7 @@ def eval_cost(sim_end_time, rom_iter_idx, sample_idx, multithread=False):
 #  What I'm doing currently is running all samples for one time, and then get a 3D plot (model iter - task - cost)
 #  Then we can pick a task to slice the 3D plot!
 def run_sim_and_eval_cost(model_indices, sample_indices, do_eval_cost=False):
-  fix_task = True
+  fix_task = False
   max_n_fail = 0
 
   n_total_sim = len(model_indices) * len(sample_indices)
@@ -441,6 +441,7 @@ if __name__ == "__main__":
 
   # sample_indices = range(0, 39)
   # sample_indices = range(1, 5, 3)
+  sample_indices = range(1, 39, 3)
   sample_indices = range(1, 75, 3)
   # sample_indices = list(sample_indices)
   # sample_indices = [37]

@@ -21,7 +21,7 @@ def build_files(bazel_file_argument):
 
 
 def lcmlog_file_path(rom_iter_idx, sample_idx):
-  return eval_dir + '/lcmlog-idx_%d_%d' % (rom_iter_idx, sample_idx)
+  return eval_dir + 'lcmlog-idx_%d_%d' % (rom_iter_idx, sample_idx)
 
 
 # Set `get_init_file` to True if you want to generate the initial traj for both
@@ -150,7 +150,7 @@ def run_sim_and_eval_cost(model_indices, sample_indices, do_eval_cost=False):
       print("progress %.1f%%" % (float(i) / n_total_sim * 100))
       print("run sim for model %d and sample %d" % (rom_iter, sample))
 
-      path = eval_dir + '/%d_%d_success.csv' % (rom_iter, sample)
+      path = eval_dir + '%d_%d_success.csv' % (rom_iter, sample)
       n_fail = 0
       # while True:
       while not os.path.exists(path):
@@ -190,7 +190,7 @@ def eval_cost_in_multithread(model_indices, sample_indices):
       print("run sim for model %d and sample %d" % (rom_iter, sample))
 
       # Evaluate the cost
-      path = eval_dir + '/%d_%d_success.csv' % (rom_iter, sample)
+      path = eval_dir + '%d_%d_success.csv' % (rom_iter, sample)
       if not os.path.exists(path):
         working_threads.append(eval_cost(sim_end_time, rom_iter, sample, True))
       i += 1
@@ -257,7 +257,7 @@ def plot_nomial_cost(model_indices, sample_idx):
 def plot_cost_vs_model_iter(model_indices, sample_idx,
     only_plot_total_cost=True, plot_nominal=False, savefig=False):
   # Get names
-  with open(eval_dir + "/cost_names.csv", newline='') as f:
+  with open(eval_dir + "cost_names.csv", newline='') as f:
     reader = csv.reader(f)
     data = list(reader)
   names = data[0]
@@ -269,7 +269,7 @@ def plot_cost_vs_model_iter(model_indices, sample_idx,
   costs = np.zeros((0, len(names)))
   for iter_idx in model_indices:
     with open(
-        eval_dir + "/" + str(iter_idx) + "_" + str(
+        eval_dir + str(iter_idx) + "_" + str(
           sample_idx) + "_cost_values.csv",
         newline='') as f:
       reader = csv.reader(f)
@@ -299,7 +299,7 @@ def plot_cost_vs_model_iter(model_indices, sample_idx,
     plt.legend(names)
 
   if savefig:
-    plt.savefig(eval_dir + "/" + figname + ".png")
+    plt.savefig(eval_dir + figname + ".png")
   else:
     plt.show()
 
@@ -316,9 +316,9 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   model_task_cost = np.zeros((0, 3))
   for rom_iter in model_indices:
     for sample in sample_indices:
-      path0 = eval_dir + '/%d_%d_success.csv' % (rom_iter, sample)
-      path1 = eval_dir + '/%d_%d_cost_values.csv' % (rom_iter, sample)
-      path2 = eval_dir + '/%d_%d_ave_stride_length.csv' % (rom_iter, sample)
+      path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, sample)
+      path1 = eval_dir + '%d_%d_cost_values.csv' % (rom_iter, sample)
+      path2 = eval_dir + '%d_%d_ave_stride_length.csv' % (rom_iter, sample)
       # if os.path.exists(path1) and os.path.exists(path2):
       if os.path.exists(path0) and os.path.exists(path1) and os.path.exists(
           path2):
@@ -363,29 +363,32 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   fig = plt.figure(figsize=(10, 7))
   if use_3d_plot:
     ###
-    # ax = plt.axes(projection="3d")
-    # ax.scatter3D(model_task_cost[:, 0], model_task_cost[:, 1],
-    #   model_task_cost[:, 2], color="green")
+    ax = plt.axes(projection="3d")
+    ax.scatter3D(model_task_cost[:, 0], model_task_cost[:, 1],
+      model_task_cost[:, 2], color="green")
+    ax.set_xlabel('model iterations')
+    ax.set_ylabel('stride length (m)')
+    ax.set_zlabel('total cost')
+    # plt.title("")
+    ax.view_init(90, -90)  # look from +z axis. model iter vs task
+    if save:
+      plt.savefig(eval_dir + "model_iter_vs_stride_length_scatterplot.png")
+    ax.view_init(0, 0)  # look from x axis. cost vs task
+    if save:
+      plt.savefig(eval_dir + "cost_vs_stride_length_scatterplot.png")
+    ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
+    if save:
+      plt.savefig(eval_dir + "cost_vs_model_iter_scatterplot.png")
+
     ###
     ax = plt.axes(projection="3d")
     tcf = ax.tricontour(model_task_cost[:, 0], model_task_cost[:, 1],
       model_task_cost[:, 2], zdir='y', cmap=cm.coolwarm)
     fig.colorbar(tcf)
-
-    ax.set_xlabel('model iterations')
-    ax.set_ylabel('stride length (m)')
-    ax.set_zlabel('total cost')
-    # plt.title("")
-    ax.view_init(90,
-      -90)  # look from +z axis. model iteration vs model iteration
-    if save:
-      plt.savefig(eval_dir + "/model_iter_vs_stride_length_distribution_3d.png")
-    ax.view_init(0, 0)  # look from x axis. cost vs stride_length
-    if save:
-      plt.savefig(eval_dir + "/cost_vs_stride_length_3d.png")
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
     if save:
-      plt.savefig(eval_dir + "/cost_vs_model_iter_3d.png")
+      plt.savefig(eval_dir + "cost_vs_model_iter_contour.png")
+
   else:
     x = np.linspace(0, 100, 101)
     y = 0.2 * np.ones(101)
@@ -410,8 +413,7 @@ if __name__ == "__main__":
   parsed_yaml_file = yaml.load(a_yaml_file)
   model_dir = parsed_yaml_file.get('dir_model')
 
-  eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval"
-  # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval2"
+  eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
 
   # global parameters
   sim_end_time = 8.0
@@ -455,7 +457,7 @@ if __name__ == "__main__":
 
   # 3D plot
   task_element_idx = 0
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx, False)
   plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    False)
-  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx, True)
+    True)
   plt.show()

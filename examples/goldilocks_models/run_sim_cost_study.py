@@ -324,8 +324,10 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   delta_sl = 0.1  # 0.1 #0.005
   min_sl = mean_sl - delta_sl
   max_sl = mean_sl + delta_sl
-  # min_sl = -100
-  # max_sl = 100
+  min_sl = -100
+  max_sl = 100
+  # min_sl = -0.33
+  # max_sl = -0.31
 
   # mtc that stores model index, task value and cost
   mtc = np.zeros((0, 3))
@@ -334,9 +336,7 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
       path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, sample)
       path1 = eval_dir + '%d_%d_cost_values.csv' % (rom_iter, sample)
       path2 = eval_dir + '%d_%d_ave_stride_length.csv' % (rom_iter, sample)
-      # if os.path.exists(path1) and os.path.exists(path2):
-      if os.path.exists(path0) and os.path.exists(path1) and os.path.exists(
-          path2):
+      if os.path.exists(path0):
         current_mtc = np.zeros((1, 3))
         ### Read cost
         cost = np.loadtxt(path1, delimiter=',')
@@ -357,13 +357,8 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
         # print('Add (iter,sample) = (%d,%d)' % (rom_iter, sample))
         mtc = np.vstack([mtc, current_mtc])
       else:
-        # It's not suppose to get here. (most likely the experiement didn't start with an empty folder)
-        if os.path.exists(path0):
-          os.remove(path0)
-        if os.path.exists(path1):
-          os.remove(path1)
-        if os.path.exists(path2):
-          os.remove(path2)
+        print("(model iter, sample) = (%d, %d) wasn't successful" % \
+              (rom_iter, sample))
   print(mtc.shape)
 
   nominal_mtc = np.zeros((0, 3))
@@ -467,6 +462,7 @@ if __name__ == "__main__":
   model_dir = parsed_yaml_file.get('dir_model')
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/"
 
   # global parameters
   sim_end_time = 8.0
@@ -526,6 +522,8 @@ if __name__ == "__main__":
     False, False, True)
 
   # 3D plot
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   True, False, False)
   # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   #   True, True, False)
   # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,

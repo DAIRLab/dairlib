@@ -77,6 +77,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
                      drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
+  osc_debug_channels = ['OSC_DEBUG_WALKING', 'OSC_DEBUG_RUNNING', 'OSC_DEBUG_STANDING', 'OSC_DEBUG_JUMPING']
 
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:
@@ -92,7 +93,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
         unknown_types.add(event.channel)
     if event.channel in full_log:
       full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
-    if event.channel == "CASSIE_STATE_SIMULATION" or event.channel == "CASSIE_STATE_DISPATCHER":
+    # if event.channel == "CASSIE_STATE_SIMULATION" or event.channel == "CASSIE_STATE_DISPATCHER":
+    if event.channel == "CASSIE_STATE_SIMULATION":
     # if event.channel == "CASSIE_STATE_DISPATCHER":
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]
@@ -129,9 +131,9 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    if event.channel == "OSC_DEBUG_STANDING":
+    # if event.channel == "OSC_DEBUG_STANDING":
     # if event.channel == "OSC_DEBUG_JUMPING":
-    # if event.channel == "OSC_DEBUG_WALKING" or event.channel == "OSC_DEBUG_JUMPING" or event.channel == "OSC_DEBUG_RUNNING":
+    if event.channel in osc_debug_channels:
       msg = dairlib.lcmt_osc_output.decode(event.data)
       t_lcmlog_u.append(event.timestamp / 1e6)
       osc_output.append(msg)

@@ -49,8 +49,9 @@ def main():
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
-                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
-                                                   # "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+                                                   # "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+
 
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
                                                    "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
@@ -105,10 +106,8 @@ def main():
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log, t_lcmlog_u = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
-  import pdb; pdb.set_trace()
-
-  if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
-    compare_ekf(full_log, pos_map, vel_map)
+  # if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
+  #   compare_ekf(full_log, pos_map, vel_map)
 
   n_msgs = len(cassie_out)
   knee_pos = np.zeros(n_msgs)
@@ -226,7 +225,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   tracking_cost_map = dict()
   qp_solve_time = np.zeros(t_u.shape[0])
   num_tracking_cost = 0
-  import pdb; pdb.set_trace()
 
   for i in range(t_u.shape[0] - 10):
     input_cost[i] = osc_output[i].input_cost
@@ -293,42 +291,41 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     osc_traj9 = "hip_yaw_left_traj"
     osc_traj10 = "hip_yaw_right_traj"
 
-
   #
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
   # plot_osc(osc_debug, osc_traj0, 2, "pos")
 
   #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
 
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "accel")
-  # plot_osc(osc_debug, osc_traj0, 1, "accel")
-  # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # plot_osc(osc_debug, osc_traj0, 0, "acc")
+  # plot_osc(osc_debug, osc_traj0, 1, "acc")
+  # plot_osc(osc_debug, osc_traj0, 2, "acc")
 
-  plot_osc(osc_debug, osc_traj1, 0, "pos")
-  plot_osc(osc_debug, osc_traj1, 1, "pos")
-  plot_osc(osc_debug, osc_traj1, 2, "pos")
-  #
-  plot_osc(osc_debug, osc_traj2, 0, "pos")
-  plot_osc(osc_debug, osc_traj2, 1, "pos")
-  plot_osc(osc_debug, osc_traj2, 2, "pos")
+  # plot_osc(osc_debug, osc_traj1, 0, "pos")
+  # plot_osc(osc_debug, osc_traj1, 1, "pos")
+  # plot_osc(osc_debug, osc_traj1, 2, "pos")
+  # #
+  # plot_osc(osc_debug, osc_traj2, 0, "pos")
+  # plot_osc(osc_debug, osc_traj2, 1, "pos")
+  # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "accel")
-  # plot_osc(osc_debug, osc_traj1, 1, "accel")
-  # plot_osc(osc_debug, osc_traj1, 2, "accel")
+  # plot_osc(osc_debug, osc_traj1, 0, "acc")
+  # plot_osc(osc_debug, osc_traj1, 1, "acc")
+  # plot_osc(osc_debug, osc_traj1, 2, "acc")
 
-  # plot_osc(osc_debug, osc_traj2, 0, "accel")
-  # plot_osc(osc_debug, osc_traj2, 1, "accel")
-  # plot_osc(osc_debug, osc_traj2, 2, "accel")
+  # plot_osc(osc_debug, osc_traj2, 0, "acc")
+  # plot_osc(osc_debug, osc_traj2, 1, "acc")
+  # plot_osc(osc_debug, osc_traj2, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
@@ -337,8 +334,12 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
-  # plot_osc(osc_debug, osc_traj5, 0, "pos")
-  # plot_osc(osc_debug, osc_traj6, 0, "pos")
+  plot_osc(osc_debug, osc_traj5, 0, "pos")
+  plot_osc(osc_debug, osc_traj6, 0, "pos")
+  plot_osc(osc_debug, osc_traj5, 0, "vel")
+  plot_osc(osc_debug, osc_traj6, 0, "vel")
+  plot_osc(osc_debug, osc_traj5, 0, "acc")
+  plot_osc(osc_debug, osc_traj6, 0, "acc")
   # plot_osc(osc_debug, osc_traj7, 0, "pos")
   # plot_osc(osc_debug, osc_traj8, 0, "pos")
   # plot_osc(osc_debug, osc_traj9, 0, "pos")
@@ -446,7 +447,7 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim], color=ps.grey)
     ps.add_legend(["ydot_des", "ydot", "error_ydot", "projected_error_ydot"])
     # plt.legend(["error_ydot", "corrected_error"])
-  elif (derivative == "accel"):
+  elif (derivative == "acc"):
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_des[t_u_slice, dim])
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command[t_u_slice, dim])
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command_sol[t_u_slice, dim])

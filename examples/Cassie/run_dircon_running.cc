@@ -84,7 +84,11 @@ MatrixXd loadSavedDecisionVars(const string& filepath);
 void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
                                    const string& filepath,
                                    bool same_knot_points = false);
-
+template <typename T>
+void AddWorkCost(drake::multibody::MultibodyPlant<T>& plant,
+                 dairlib::systems::trajectory_optimization::Dircon<T>& trajopt,
+                 double cost_work_gain, double work_constraint_scale,
+                 double regenEfficiency);
 vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
                                             const map<string, int>& vel_map,
                                             const map<string, int>& act_map);
@@ -243,6 +247,8 @@ void DoMain() {
 
   std::cout << "Adding kinematic constraints: " << std::endl;
   setKinematicConstraints(trajopt, plant);
+  std::cout << "Adding pos work cost: " << std::endl;
+  AddWorkCost(plant, trajopt, 1e-3, 1.0, 0);
   std::cout << "Setting initial conditions: " << std::endl;
 
   if (!FLAGS_load_filename.empty()) {
@@ -357,8 +363,8 @@ void setKinematicConstraints(Dircon<double>& trajopt,
                               xf(pos_map.at("base_x")));
   trajopt.AddBoundingBoxConstraint(start_height, start_height,
                                    x0(pos_map.at("base_z")));
-//  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) <= 0.05);
-//  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) >= -0.05);
+  //  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) <= 0.05);
+  //  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) >= -0.05);
   // initial fb orientation constraint
   VectorXd quat_identity(4);
   quat_identity << 1, 0, 0, 0;
@@ -526,44 +532,52 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   // Miscellaneous constraints
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) >= 0.0);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_left")) <= 0.10);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) >= -0.10);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) >=
+                                       -0.10);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_roll_right")) <= 0.0);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_left")) >= 0.50);
   trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_left")) <= 0.90);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_right")) >= 0.50);
-  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_right")) <= 0.90);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_right")) >=
+                                       0.50);
+  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("hip_pitch_right")) <=
+                                       0.90);
 
   std::cout << "Adding costs: " << std::endl;
   MatrixXd Q = 1e-2 * MatrixXd::Identity(n_v, n_v);
-  Q(0, 0) = 1.0;
-  Q(1, 1) = 1.0;
-  Q(2, 2) = 1.0;
-  Q(3, 3) = 1.0;
-  Q(4, 4) = 1.0;
-  Q(5, 5) = 1.0;
+  //  Q(0, 0) = 1.0;
+  //  Q(1, 1) = 1.0;
+  //  Q(2, 2) = 1.0;
+  //  Q(3, 3) = 1.0;
+  //  Q(4, 4) = 1.0;
+  //  Q(5, 5) = 1.0;
   Q = 10 * Q;
-  MatrixXd R = 1e-5 * MatrixXd::Identity(n_u, n_u);
-//  R(8, 8) = 1;
-//  R(9, 9) = 1;
+  MatrixXd R = 1e-3 * MatrixXd::Identity(n_u, n_u);
+  R(8, 8) = 1;
+  R(9, 9) = 1;
   trajopt.AddRunningCost((x.tail(n_v).transpose() * Q * x.tail(n_v)));
-//  trajopt.AddRunningCost(u.transpose() * R * u);
+  trajopt.AddRunningCost(u.transpose() * R * u);
 
-//  MatrixXd S = MatrixXd::Zero(n_u, n_v);
-//  S(0, 6) = 1;
-//  S(1, 7) = 1;
-//  S(2, 8) = 1;
-//  S(3, 9) = 1;
-//  S(4, 10) = 1;
-//  S(5, 11) = 1;
-//  S(6, 12) = 1;
-//  S(7, 13) = 1;
-//  S(8, 16) = 1;
-//  S(9, 17) = 1;
-//  const drake::symbolic::Expression e_max_{max(static_cast<const AutoDiffScalar<VectorXd>>(
-//              u.transpose() * S * x.tail(n_v) + u.transpose() * R * u), VectorXd::Zero(1))};
-//  drake::symbolic::max(u.transpose() * S * x.tail(n_v), 0);
-//  trajopt.AddRunningCost(drake::symbolic::max(u.transpose() * S * x.tail(n_v), 0));
-//  trajopt.AddRunningCost(u.transpose() * S * x.tail(n_v) + u.transpose() * R * u);
+  trajopt.AddRunningCost(drake::symbolic::max(x(0), 0));
+
+  //  MatrixXd S = MatrixXd::Zero(n_u, n_v);
+  //  S(0, 6) = 1;
+  //  S(1, 7) = 1;
+  //  S(2, 8) = 1;
+  //  S(3, 9) = 1;
+  //  S(4, 10) = 1;
+  //  S(5, 11) = 1;
+  //  S(6, 12) = 1;
+  //  S(7, 13) = 1;
+  //  S(8, 16) = 1;
+  //  S(9, 17) = 1;
+  //  const drake::symbolic::Expression e_max_{max(static_cast<const
+  //  AutoDiffScalar<VectorXd>>(
+  //              u.transpose() * S * x.tail(n_v) + u.transpose() * R * u),
+  //              VectorXd::Zero(1))};
+  //  drake::symbolic::max(u.transpose() * S * x.tail(n_v), 0);
+  //  trajopt.AddRunningCost(drake::symbolic::max(u.transpose() * S *
+  //  x.tail(n_v), 0)); trajopt.AddRunningCost(u.transpose() * S * x.tail(n_v)
+  //  + u.transpose() * R * u);
 }
 
 void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
@@ -597,6 +611,96 @@ MatrixXd loadSavedDecisionVars(const string& filepath) {
     std::cout << name << std::endl;
   }
   return previous_traj.GetDecisionVariables();
+}
+
+template <typename T>
+void AddWorkCost(drake::multibody::MultibodyPlant<T>& plant,
+                 dairlib::systems::trajectory_optimization::Dircon<T>& trajopt,
+                 double cost_work_gain, double work_constraint_scale,
+                 double regenEfficiency) {
+  auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
+  auto actuator_map = multibody::makeNameToActuatorsMap(plant);
+  int n_q = plant.num_positions();
+
+  // Vector of new decision variables
+  std::vector<drake::symbolic::Variable> power_pluses;
+  std::vector<drake::symbolic::Variable> power_minuses;
+
+  double Q = 0.25 * 1e-3;
+  // Loop through each joint
+  for (const auto& actuated_joint : actuator_map) {
+    // Loop through each mode
+    for (int mode_index = 0; mode_index < trajopt.num_modes(); mode_index++) {
+      for (int knot_index = 0; knot_index < trajopt.mode_length(mode_index);
+           knot_index++) {
+        // Create ith set of power variables
+        string joint_name = actuated_joint.first;
+        //        std::cout << joint_name << std::endl;
+        power_pluses.push_back(trajopt.NewContinuousVariables(
+            1, joint_name + "_mode_" + std::to_string(mode_index) + "_index_" +
+                   std::to_string(knot_index) + "_power_plus")[0]);
+        power_minuses.push_back(trajopt.NewContinuousVariables(
+            1, joint_name + "_mode_" + std::to_string(mode_index) + "_index_" +
+                   std::to_string(knot_index) + "_power_minus")[0]);
+
+        // ith power variables
+        drake::symbolic::Variable power_plus_i =
+            power_pluses[power_pluses.size() - 1];
+        drake::symbolic::Variable power_minus_i =
+            power_minuses[power_minuses.size() - 1];
+
+        // Get current actuation and state
+        auto u_i =
+            trajopt.input(trajopt.get_mode_start(mode_index) + knot_index);
+        auto x_i = trajopt.state_vars(mode_index, knot_index);
+        drake::symbolic::Variable actuation = u_i(actuated_joint.second);
+        drake::symbolic::Variable velocity = x_i(
+            n_q + velocities_map.at(joint_name.erase(joint_name.find("_motor"),
+                                                     std::string::npos) +
+                                    "dot"));
+
+        // Constrain newly power variables
+        if (cost_work_gain > 0) {
+          trajopt.AddConstraint(
+              (actuation * velocity + Q * actuation * actuation) *
+                  work_constraint_scale ==
+              (power_plus_i - power_minus_i) * work_constraint_scale);
+          trajopt.AddLinearConstraint(power_plus_i * work_constraint_scale >=
+                                      0);
+          trajopt.AddLinearConstraint(power_minus_i * work_constraint_scale >=
+                                      0);
+        }
+        trajopt.SetInitialGuess(power_plus_i, 0);
+        trajopt.SetInitialGuess(power_minus_i, 0);
+
+        // For 0th iteration, dont bother adding cost
+        if (knot_index > 0) {
+          auto u_im = trajopt.input(trajopt.get_mode_start(mode_index) +
+                                    knot_index - 1);
+          drake::symbolic::Variable actuation_m = u_im(actuated_joint.second);
+
+          // ith-1 power variables
+          drake::symbolic::Variable power_plus_im =
+              power_pluses[power_pluses.size() - 2];
+          drake::symbolic::Variable power_minus_im =
+              power_minuses[power_minuses.size() - 2];
+
+          // Get ith - 1 time step
+          drake::symbolic::Expression him = trajopt.timestep(
+              trajopt.get_mode_start(mode_index) + knot_index - 1)[0];
+
+          // abs of power at ith and ith+1
+          drake::symbolic::Expression gi =
+              power_plus_i - regenEfficiency * power_minus_i;
+          drake::symbolic::Expression gim =
+              power_plus_im - regenEfficiency * power_minus_i;
+
+          // add cost
+          trajopt.AddCost(cost_work_gain * him / 2.0 * (gi + gim));
+        }
+      }  // knot point loop
+    }    // Mode loop
+  }      // Joint loop
 }
 
 }  // namespace dairlib

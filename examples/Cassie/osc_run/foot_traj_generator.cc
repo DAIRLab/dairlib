@@ -65,7 +65,6 @@ FootTrajGenerator::FootTrajGenerator(
 
 PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
     const VectorXd& x, double t) const {
-  //  plant_.SetPositionsAndVelocities(context_, x);
   int n_cycles = t;
   double stride_length = foot_traj_.value(foot_traj_.end_time())(0) -
                          foot_traj_.value(foot_traj_.start_time())(0);
@@ -96,7 +95,6 @@ void FootTrajGenerator::AddRaibertCorrection(
   VectorXd footstep_correction =
       Kp_ * (pelvis_pos_err) +
       Kd_ * (pelvis_vel_err);
-//  std::cout << "footstep correction: " << footstep_correction << std::endl;
   std::vector<double> breaks = traj->get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd foot_offset_points = footstep_correction.replicate(1, breaks.size());

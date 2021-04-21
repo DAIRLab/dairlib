@@ -12,6 +12,7 @@
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
 #include "examples/Cassie/osc_run/joint_space_running_gains.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
+#include "examples/Cassie/osc_run/pelvis_rot_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
 #include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 #include "lcm/dircon_saved_trajectory.h"
@@ -50,6 +51,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
+using examples::osc::PelvisRollTrajGenerator;
 using examples::osc::PelvisTransTrajGenerator;
 using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_run::FootTrajGenerator;
@@ -361,10 +363,6 @@ int DoMain(int argc, char* argv[]) {
       left_stance_state, "hip_pitch_left", "hip_pitch_leftdot");
   hip_pitch_right_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "hip_pitch_right", "hip_pitch_rightdot");
-  //  hip_pitch_left_tracking_data.AddStateAndJointToTrack(
-  //      air_phase, "hip_pitch_left", "hip_pitch_leftdot");
-  //  hip_pitch_right_tracking_data.AddStateAndJointToTrack(
-  //      air_phase, "hip_pitch_right", "hip_pitch_rightdot");
   osc->AddTrackingData(&hip_pitch_left_tracking_data);
   osc->AddTrackingData(&hip_pitch_right_tracking_data);
 
@@ -383,12 +381,22 @@ int DoMain(int argc, char* argv[]) {
   hip_roll_right_traj_mir.shiftRight(hip_roll_right_traj.end_time());
   hip_roll_left_traj.ConcatenateInTime(hip_roll_left_traj_mir);
   hip_roll_right_traj.ConcatenateInTime(hip_roll_right_traj_mir);
+  //  auto hip_roll_left_traj_generator =
+  //      builder.AddSystem<BasicTrajectoryPassthrough>(hip_roll_left_traj,
+  //                                                    "hip_roll_left_traj");
+  //  auto hip_roll_right_traj_generator =
+  //      builder.AddSystem<BasicTrajectoryPassthrough>(hip_roll_right_traj,
+  //                                                    "hip_roll_right_traj");
+  PiecewisePolynomial<double> pelvis_roll_traj =
+      PiecewisePolynomial<double>(VectorXd::Zero(1));
   auto hip_roll_left_traj_generator =
-      builder.AddSystem<BasicTrajectoryPassthrough>(hip_roll_left_traj,
-                                                    "hip_roll_left_traj");
+      builder.AddSystem<PelvisRollTrajGenerator>(
+          plant, plant_context.get(), hip_roll_left_traj, pelvis_roll_traj, 1,
+          "hip_roll_left_traj");
   auto hip_roll_right_traj_generator =
-      builder.AddSystem<BasicTrajectoryPassthrough>(hip_roll_right_traj,
-                                                    "hip_roll_right_traj");
+      builder.AddSystem<PelvisRollTrajGenerator>(
+          plant, plant_context.get(), hip_roll_right_traj, pelvis_roll_traj, 1,
+          "hip_roll_right_traj");
   JointSpaceTrackingData hip_roll_left_tracking_data(
       "hip_roll_left_traj", osc_gains.W_hip_roll, osc_gains.K_p_hip_roll,
       osc_gains.K_d_hip_roll, plant, plant);
@@ -509,6 +517,18 @@ int DoMain(int argc, char* argv[]) {
   // OSC connections
   builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_trans_traj"));
+  builder.Connect(state_receiver->get_output_port(0),
+                  hip_roll_left_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  hip_roll_right_traj_generator->get_state_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  hip_roll_left_traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  hip_roll_right_traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_clock(),
+                  hip_roll_left_traj_generator->get_clock_input_port());
+  builder.Connect(fsm->get_output_port_clock(),
+                  hip_roll_right_traj_generator->get_clock_input_port());
   builder.Connect(l_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),

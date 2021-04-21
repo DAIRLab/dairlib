@@ -67,7 +67,7 @@ def main():
   plt.plot(force_t_samples, force_samples.T)
   plt.legend(force_datatypes)
 
-  plt.show()
+  # plt.show()
 
 def reflected_joints():
 

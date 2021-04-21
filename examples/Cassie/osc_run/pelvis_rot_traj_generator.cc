@@ -1,4 +1,4 @@
-#include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
+#include "examples/Cassie/osc_run/pelvis_rot_traj_generator.h"
 
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -9,6 +9,7 @@
 using std::string;
 using std::vector;
 
+using Eigen::Map;
 using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -27,20 +28,19 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::osc {
 
-PelvisTransTrajGenerator::PelvisTransTrajGenerator(
+PelvisRollTrajGenerator::PelvisRollTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
-    drake::trajectories::PiecewisePolynomial<double>& traj,
-    const std::unordered_map<
-        int, std::vector<std::pair<const Eigen::Vector3d,
-                                   const drake::multibody::Frame<double>&>>>&
-        feet_contact_points)
+    drake::trajectories::PiecewisePolynomial<double>& hip_roll_traj,
+    drake::trajectories::PiecewisePolynomial<double>& pelvis_roll_traj,
+    int axis, const std::string& system_name)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
-      traj_(traj),
-      feet_contact_points_(feet_contact_points) {
-  this->set_name("pelvis_trans_traj");
+      hip_roll_traj_(hip_roll_traj),
+      pelvis_roll_traj_(pelvis_roll_traj),
+      axis_(axis) {
+  this->set_name(system_name);
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
@@ -53,25 +53,53 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
-  this->DeclareAbstractOutputPort("pelvis_trans_traj", traj_inst,
-                                  &PelvisTransTrajGenerator::CalcTraj);
+  this->DeclareAbstractOutputPort("pelvis_rot_traj" + std::to_string(axis),
+                                  traj_inst,
+                                  &PelvisRollTrajGenerator::CalcTraj);
 
   DeclarePerStepDiscreteUpdateEvent(
-      &PelvisTransTrajGenerator::DiscreteVariableUpdate);
+      &PelvisRollTrajGenerator::DiscreteVariableUpdate);
 }
 
-EventStatus PelvisTransTrajGenerator::DiscreteVariableUpdate(
+EventStatus PelvisRollTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   return EventStatus::Succeeded();
 }
 
-PiecewisePolynomial<double> PelvisTransTrajGenerator::GeneratePelvisTraj(
-    const VectorXd& x, double t, int fsm_state) const {
-  return traj_;
+PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
+    const systems::OutputVector<double>* robot_output, double t,
+    int fsm_state) const {
+  VectorXd q = robot_output->GetPositions();
+  VectorXd v = robot_output->GetVelocities();
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
+
+//  int hip_roll_idx_ = 1;
+//  int hip_rolldot_idx_ = 3;
+  VectorXd correction = VectorXd::Zero(1);
+
+  drake::math::RotationMatrix pelvis_rot =
+      plant_.EvalBodyPoseInWorld(*context_, plant_.GetBodyByName("pelvis"))
+          .rotation();
+  drake::math::RollPitchYawd pelvis_rpy = drake::math::RollPitchYaw(pelvis_rot);
+  double pelvis_roll = pelvis_rpy.roll_angle();
+
+//  correction << 0.5 * (-pelvis_roll) +
+//                    0.1 * (v(hip_rolldot_idx_) -
+//                           pelvis_roll_traj_.EvalDerivative(t, 1)(0));
+  correction << -pelvis_roll;
+//  if (fsm_state == 0) correction *= -1;
+  std::vector<double> breaks = hip_roll_traj_.get_segment_times();
+  VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
+  MatrixXd foot_offset_points = correction.replicate(1, breaks.size());
+  PiecewisePolynomial<double> offset_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
+                                                 foot_offset_points);
+//  std::cout << "pelvis roll correction: " << correction << std::endl;
+  return hip_roll_traj_ + offset_traj;
 }
 
-void PelvisTransTrajGenerator::CalcTraj(
+void PelvisRollTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
@@ -86,10 +114,8 @@ void PelvisTransTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-//  const drake::VectorX<double>& x = robot_output->GetState();
   if (fsm_state == 0 || fsm_state == 1) {
-    *casted_traj =
-        GeneratePelvisTraj(robot_output->GetState(), clock, fsm_state);
+    *casted_traj = GeneratePelvisTraj(robot_output, clock, fsm_state);
   }
 }
 

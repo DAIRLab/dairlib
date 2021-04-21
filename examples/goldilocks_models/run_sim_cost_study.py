@@ -4,11 +4,12 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+import yaml
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
-import yaml
+from matplotlib import cm
 
 
 def build_files(bazel_file_argument):
@@ -359,21 +360,38 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   # Plot 3D plot here
   fig = plt.figure(figsize=(10, 7))
   ax = plt.axes(projection="3d")
-  ax.scatter3D(model_task_cost[:, 0], model_task_cost[:, 1],
-    model_task_cost[:, 2], color="green")
-  ax.set_xlabel('model iterations')
-  ax.set_ylabel('stride length (m)')
-  ax.set_zlabel('total cost')
-  ax.view_init(0, 0)  #look from x axis. cost vs stride_length
+  ###
+  # ax.scatter3D(model_task_cost[:, 0], model_task_cost[:, 1],
+  #   model_task_cost[:, 2], color="green")
+  ###
+  ax.plot_trisurf(model_task_cost[:, 0], model_task_cost[:, 1],
+    model_task_cost[:, 2], cmap='viridis', edgecolor='none')
+  ###
+  # tcf = ax.tricontourf(model_task_cost[:, 0], model_task_cost[:, 1],
+  #   model_task_cost[:, 2], zdir='y', offset=0.2, cmap=cm.coolwarm)
+  # fig.colorbar(tcf)
+  ###
+  # plt.tricontour(model_task_cost[:, 0], model_task_cost[:, 1],
+  #   model_task_cost[:, 2], 15, linewidths=0.5, colors='k')
+  # ax.set_xlabel('model iterations')
+  # ax.set_ylabel('stride length (m)')
+  # ax.set_zlabel('total cost')
+  ### tricontour
+  # plt.tricontour(model_task_cost[:, 0], model_task_cost[:, 2],
+  #   model_task_cost[:, 1], 15, linewidths=0.5, colors='k')
+  # ax.set_xlabel('model iterations')
+  # ax.set_zlabel('stride length (m)')
+  # ax.set_ylabel('total cost')
   # plt.title("")
-  if save:
-    plt.savefig(eval_dir + "/cost_vs_stride_length_3d.png")
-  ax.view_init(0, -90)  #look from -y axis. cost vs model iteration
-  if save:
-    plt.savefig(eval_dir + "/cost_vs_model_iter_3d.png")
-  ax.view_init(90, -90)  #look from +z axis. model iteration vs model iteration
+  ax.view_init(90, -90)  # look from +z axis. model iteration vs model iteration
   if save:
     plt.savefig(eval_dir + "/model_iter_vs_stride_length_distribution_3d.png")
+  ax.view_init(0, 0)  # look from x axis. cost vs stride_length
+  if save:
+    plt.savefig(eval_dir + "/cost_vs_stride_length_3d.png")
+  ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
+  if save:
+    plt.savefig(eval_dir + "/cost_vs_model_iter_3d.png")
 
 
 if __name__ == "__main__":
@@ -432,5 +450,7 @@ if __name__ == "__main__":
 
   # 3D plot
   task_element_idx = 0
-  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx, True)
+  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+    False)
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx, True)
   plt.show()

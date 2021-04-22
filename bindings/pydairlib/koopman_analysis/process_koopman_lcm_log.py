@@ -110,9 +110,10 @@ def process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
             t_x.append(msg.utime / 1e6)
 
         if event.channel == mpc_channel:
-            import pdb; pdb.set_trace()
             mpc_output.append(
-                lcm_trajectory.LcmTrajectory(dairlib.lcmt_saved_traj.decode(event.data)))
+                lcm_trajectory.LcmTrajectory(
+                    lcm_trajectory.lcmt_saved_traj(
+                        dairlib.lcmt_saved_traj.decode(event.data))))
         if event.channel == osc_channel:
             msg = dairlib.lcmt_robot_input.decode(event.data)
             u.append(msg.efforts)

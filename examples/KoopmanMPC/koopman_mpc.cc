@@ -700,7 +700,7 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
   lcm_traj.AddTrajectory(AngularTraj.traj_name, AngularTraj);
   lcm_traj.AddTrajectory(SwingFootTraj.traj_name, SwingFootTraj);
 
-  return lcm_traj.GetLcmTraj();
+  return lcm_traj.GenerateLcmObject();
 }
 
 MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,

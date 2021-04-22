@@ -108,14 +108,12 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       impulse_vars_.push_back(NewContinuousVariables(
           constraints_[i]->countConstraintsWithoutSkipping(),
           "impulse[" + std::to_string(i) + "]"));
-    }
-    //  Post-impact variables. Note: impulse variables declared below.
-    if (i > 0) {
+      //  Post-impact variables. Note: impulse variables declared below.
       v_post_impact_vars_substitute_.push_back(
           {state().tail(plant_.num_velocities()),
            Eigen::Map<MatrixXDecisionVariable>(
                ((drake::solvers::VectorXDecisionVariable)
-                   v_post_impact_vars_by_mode(i))
+                   v_post_impact_vars_by_mode(i - 1))
                    .data(),
                plant_.num_velocities(), 1)
                .cast<Expression>()});
@@ -342,6 +340,9 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // polynomial of degree 3 which Drake can handle, although the
   // documentation says it only supports up to second order.
   for (int mode = 0; mode < num_modes(); ++mode) {
+    if(mode_length(mode) < 2){
+      continue;
+    }
     int mode_start = mode_start_[mode];
     int mode_end = mode_start_[mode] + mode_length(mode);
     // Substitute the velocity vars with the correct post-impact velocity vars

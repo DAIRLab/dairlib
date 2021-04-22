@@ -259,8 +259,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
 
-  double end_time =
-      prev_event_time(0) + unordered_state_durations_[mode_index];
+  double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
   // Ensure "current_time < end_time" to avoid error in
   // creating trajectory.
   start_time = drake::math::saturate(
@@ -301,7 +300,8 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+  *exp_pp_traj =
+      ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(
     const Context<double>& context,

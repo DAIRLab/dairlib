@@ -333,9 +333,9 @@ void SwingFootTrajGenerator::CalcTrajs(
     // creating trajectory.
     // Ensure "current_time < end_time" to avoid error in
     // creating trajectory.
-    start_time_of_this_interval = drake::math::saturate(
-        start_time_of_this_interval, -std::numeric_limits<double>::infinity(),
-        end_time_of_this_interval - 0.001);
+//    start_time_of_this_interval = drake::math::saturate(
+//        start_time_of_this_interval, -std::numeric_limits<double>::infinity(),
+//        end_time_of_this_interval - 0.001);
 
     // Get Capture Point
     double stance_foot_height;

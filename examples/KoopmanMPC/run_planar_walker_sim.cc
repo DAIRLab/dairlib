@@ -66,6 +66,7 @@ DEFINE_double(error, 0.0,
               "Initial velocity error of the swing leg in global coordinates.");
 
 DEFINE_string(x0_traj_name, "state_traj1", "lcm trajectory to use for initial state");
+DEFINE_double(mu, 0.8, "Friction coefficient");
 
 double calcPositionOffset(MultibodyPlant<double>& plant, Context<double>* context, const Eigen::VectorXd& x0);
 
@@ -80,7 +81,7 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(FLAGS_dt);
   LoadPlanarWalkerFromFile(plant, &scene_graph);
-  multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);  // Add ground
+  multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu, FLAGS_mu);  // Add ground
   plant.Finalize();
 
   int nv = plant.num_velocities();
@@ -147,6 +148,8 @@ int do_main(int argc, char* argv[]) {
   auto map = makeNameToPositionsMap(plant);
 
   x0(map["planar_z"]) = x0(map["planar_z"]) + calcPositionOffset(plant, &plant_context, x0);
+
+  x0.tail(plant.num_velocities()) = Eigen::VectorXd::Zero(plant.num_velocities());
 
   /*** list all of the positions for debugging
   for (auto pos = map.begin(); pos != map.end();

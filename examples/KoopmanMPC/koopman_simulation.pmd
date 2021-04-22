@@ -3,18 +3,15 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=point_pair_contact --script=examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
-
     cmd "five-link-biped-visualizer" {
         exec = "bazel-bin/examples/KoopmanMPC/run_visualizer";
         host = "localhost";
     }
 }
 
-
 group "1.simulated-robot" {
-
     cmd "five_link_biped_sim" {
-        exec = "bazel-bin/examples/KoopmanMPC/run_planar_walker_sim";
+        exec = "bazel-bin/examples/KoopmanMPC/run_planar_walker_sim --dt=1e-5 --target_realtime_rate=0.1";
         host = "localhost";
     }
 }
@@ -38,3 +35,9 @@ group "3.lcm-tools" {
 }
 
 
+script "walking" {
+    stop cmd "five_link_biped_sim" wait "stopped";
+    restart cmd "koopman_mpc" wait "running";
+    restart cmd "osc_walking_controller";
+    start cmd "five_link_biped_sim";
+}

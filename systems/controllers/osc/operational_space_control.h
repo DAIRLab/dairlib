@@ -26,7 +26,7 @@
 #include "systems/framework/output_vector.h"
 
 // Maximum time limit for each QP solve
-static constexpr double kMaxSolveDuration = 0.001;
+static constexpr double kMaxSolveDuration = 1.0;
 
 namespace dairlib::systems::controllers {
 

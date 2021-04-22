@@ -157,8 +157,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
   // Soft constraint on contacts
-  double w_contact_relax = 20000;
-  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);
@@ -185,16 +184,17 @@ int DoMain(int argc, char* argv[]) {
 
   osc->AddTrackingData(&swing_foot_traj);
 
-  if (FLAGS_track_com) {
-    ComTrackingData com_traj("com_traj", gains.K_p_com,
-                             gains.K_d_com, gains.W_com, plant, plant);
+  ComTrackingData com_traj("com_traj", gains.K_p_com,
+                           gains.K_d_com, gains.W_com, plant, plant);
 
+  TransTaskSpaceTrackingData torso_traj("com_traj", gains.K_p_com,
+                                      gains.K_d_com, gains.W_com, plant, plant);
+  torso_traj.AddPointToTrack("torso_mass");
+
+  if (FLAGS_track_com) {
     osc->AddTrackingData(&com_traj);
   } else {
-    TransTaskSpaceTrackingData com_traj("com_traj", gains.K_p_com,
-                                        gains.K_d_com, gains.W_com, plant, plant);
-    com_traj.AddPointToTrack("torso_mass");
-    osc->AddTrackingData(&com_traj);
+    osc->AddTrackingData(&torso_traj);
   }
 
   JointSpaceTrackingData angular_traj("base_angle", gains.K_p_orientation,

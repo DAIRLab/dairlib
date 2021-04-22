@@ -43,6 +43,32 @@ py_library(
     ],
 )
 
+py_library(
+    name = "process_koopman_lcm_log_py",
+    srcs = ["koopman_analysis/process_koopman_lcm_log.py"],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "log_plotter_koopman",
+    srcs = ["koopman_analysis/log_plotter_koopman.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        ":process_koopman_lcm_log_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 py_binary(
     name = "log_plotter_cassie",
     srcs = ["analysis_scripts/log_plotter_cassie.py"],

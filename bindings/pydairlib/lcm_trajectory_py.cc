@@ -28,6 +28,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
 
   py::class_<LcmTrajectory>(m, "LcmTrajectory")
       .def(py::init<>())
+      .def(py::init<const lcmt_saved_traj>())
       .def("LoadFromFile", &LcmTrajectory::LoadFromFile,
            py::arg("trajectory_name"))
       .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)

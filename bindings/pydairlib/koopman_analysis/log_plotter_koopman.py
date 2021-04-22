@@ -33,7 +33,7 @@ def main():
     try:
         logfile_name = sys.argv[1]
     except:
-        logfile_name = logfile_name = input("PLEASE ENTER LOG FILE NAME: ")
+        logfile_name = input("PLEASE ENTER LOG FILE NAME: ")
         pass
 
     log = lcm.EventLog(logfile_name, "r")

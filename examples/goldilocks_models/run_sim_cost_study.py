@@ -434,20 +434,24 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
     y = task * np.ones(101)
 
     plt.figure(figsize=(6.4, 4.8))
+    plt.rcParams.update({'font.size': 14})
     triang = mtri.Triangulation(mtc[:, 0], mtc[:, 1])
     interpolator = mtri.LinearTriInterpolator(triang, mtc[:, 2])
     z = interpolator(x, y)
-    plt.plot(x, z, label="Drake simulation")
+    plt.plot(x, z, 'k-', linewidth=3, label="Drake simulation")
     if plot_nominal:
       triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
       interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
       z = interpolator(x, y)
-      plt.plot(x, z, label="trajectory optimization")
+      plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
+      # plt.plot(model_indices, nominal_mtc[:, 2], 'k--', linewidth=3, label="trajectory optimization")
 
     plt.xlabel('model iterations')
     plt.ylabel('total cost')
     plt.legend()
     plt.title('stride length ' + str(task))
+    plt.gcf().subplots_adjust(bottom=0.15)
+    plt.gcf().subplots_adjust(left=0.15)
     if save:
       plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
 
@@ -525,9 +529,11 @@ if __name__ == "__main__":
 
   # 3D plot
   # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-  #   True, False, False)
-  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   #   True, True, False)
   # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
   #   True, False, False)
-  plt.show()
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   False, True, False)
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   False, False, False)
+  # plt.show()

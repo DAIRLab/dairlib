@@ -367,8 +367,10 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
       for sample in sample_indices:
         sub_mtc = np.zeros((1, 3))
         ### Read cost
-        cost = np.loadtxt(model_dir + "%d_%d_c.csv" % (rom_iter, sample))
-        sub_mtc[0, 2] = cost.item()
+        if sample != 1:  #TODO: remove this after we have cost breakdown
+          continue
+        cost = plot_nominal_cost([rom_iter], sample)[0][0]
+        sub_mtc[0, 2] = cost
         if cost.item() > max_cost_to_ignore:
           continue
         ### Read nominal task

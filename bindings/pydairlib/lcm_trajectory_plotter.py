@@ -3,12 +3,13 @@ import pydairlib.lcm_trajectory
 
 def main():
     loadedTrajs = pydairlib.lcm_trajectory.LcmTrajectory()
-    loadedTrajs.loadFromFile(
-        "/home/yangwill/Documents/research/dairlib/examples/jumping"
-        "/saved_trajs/jumping_1_14")
-    print(loadedTrajs.getTrajectoryNames())
-    traj_name = loadedTrajs.getTrajectoryNames()[0]
-    traj = loadedTrajs.getTrajectory(traj_name)
+    loadedTrajs.LoadFromFile(
+        "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/jumping_0.2h_0.3d")
+    lcm_traj = loadedTrajs.GenerateLcmObject()
+    new_traj = pydairlib.lcm_trajectory.LcmTrajectory(lcm_traj)
+    print(loadedTrajs.GetTrajectoryNames())
+    traj_name = loadedTrajs.GetTrajectoryNames()[0]
+    traj = loadedTrajs.GetTrajectory(traj_name)
     print(traj.datatypes)
     plt.plot(traj.time_vector, traj.datapoints.T)
     plt.show()

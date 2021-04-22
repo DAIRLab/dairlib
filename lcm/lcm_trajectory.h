@@ -74,6 +74,7 @@ class LcmTrajectory {
   const std::vector<std::string>& GetTrajectoryNames() const {
     return trajectory_names_;
   }
+  lcmt_saved_traj GenerateLcmObject() const;
 
  protected:
   /// Constructs a lcmt_metadata object with a specified name and description
@@ -82,7 +83,6 @@ class LcmTrajectory {
   void ConstructMetadataObject(std::string name, std::string description);
 
  private:
-  lcmt_saved_traj GenerateLcmObject() const;
 
   lcmt_metadata metadata_;
   std::unordered_map<std::string, Trajectory> trajectories_;

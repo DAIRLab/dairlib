@@ -8,6 +8,7 @@ def main():
     lcm_traj = loadedTrajs.GenerateLcmObject()
     new_traj = pydairlib.lcm_trajectory.LcmTrajectory(lcm_traj)
     lcmt_traj = pydairlib.lcm_trajectory.lcmt_saved_traj()
+    lcmt_traj.traj_name = 'traj_name'
     print(loadedTrajs.GetTrajectoryNames())
     traj_name = loadedTrajs.GetTrajectoryNames()[0]
     traj = loadedTrajs.GetTrajectory(traj_name)

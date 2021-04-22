@@ -7,6 +7,7 @@ def main():
         "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/jumping_0.2h_0.3d")
     lcm_traj = loadedTrajs.GenerateLcmObject()
     new_traj = pydairlib.lcm_trajectory.LcmTrajectory(lcm_traj)
+    lcmt_traj = pydairlib.lcm_trajectory.lcmt_saved_traj()
     print(loadedTrajs.GetTrajectoryNames())
     traj_name = loadedTrajs.GetTrajectoryNames()[0]
     traj = loadedTrajs.GetTrajectory(traj_name)

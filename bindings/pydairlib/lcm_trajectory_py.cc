@@ -27,6 +27,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def_readwrite("datatypes", &LcmTrajectory::Trajectory::datatypes);
 
   py::class_<lcmt_saved_traj>(m, "lcmt_saved_traj")
+      .def(py::init<>())
       .def_readwrite("traj_name", &lcmt_saved_traj::metadata)
       .def_readwrite("time_vector", &lcmt_saved_traj::num_trajectories)
       .def_readwrite("datapoints", &lcmt_saved_traj::trajectories)

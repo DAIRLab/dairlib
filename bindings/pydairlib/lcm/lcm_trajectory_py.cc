@@ -27,9 +27,17 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def_readwrite("datapoints", &LcmTrajectory::Trajectory::datapoints)
       .def_readwrite("datatypes", &LcmTrajectory::Trajectory::datatypes);
 
+  py::class_<lcmt_saved_traj>(m, "lcmt_saved_traj")
+      .def(py::init<>())
+      .def_readwrite("metadata", &lcmt_saved_traj::metadata)
+      .def_readwrite("num_trajectories", &lcmt_saved_traj::num_trajectories)
+      .def_readwrite("trajectories", &lcmt_saved_traj::trajectories)
+      .def_readwrite("trajectory_names", &lcmt_saved_traj::trajectory_names);
+
   py::class_<LcmTrajectory>(m, "LcmTrajectory")
       .def(py::init<>())
       .def(py::init<const std::string&>())
+      .def(py::init<const lcmt_saved_traj&>())
       .def("LoadFromFile", &LcmTrajectory::LoadFromFile,
            py::arg("trajectory_name"))
       .def("WriteToFile", &LcmTrajectory::WriteToFile,
@@ -37,6 +45,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)
       .def("GetMetadata", &LcmTrajectory::GetMetadata)
       .def("AddTrajectory", &DirconTrajectory::AddTrajectory)
+      .def("GenerateLcmObject", &LcmTrajectory::GenerateLcmObject)
       .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
            py::arg("trajectory_name"));
   py::class_<DirconTrajectory>(m, "DirconTrajectory")

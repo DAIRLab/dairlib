@@ -12,6 +12,7 @@
 #include "drake/lcmt_drake_signal.hpp"
 
 #include "koopman_mpc.h"
+#include "model_utils.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "common/find_resource.h"
 #include "common/file_utils.h"
@@ -23,6 +24,7 @@
 namespace dairlib {
 
 using systems::DairlibSignalReceiver;
+using systems::DrakeSignalSender;
 using systems::RobotOutputReceiver;
 using systems::TimeBasedFiniteStateMachine;
 using systems::LcmDrivenLoop;
@@ -53,9 +55,14 @@ using Eigen::MatrixXd;
 
 DEFINE_string(channel_x, "PLANAR_STATE", "channel to publish/receive planar walker state");
 DEFINE_string(channel_plan, "KOOPMAN_MPC_OUT", "channel to publish plan trajectory");
+DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
 DEFINE_double(stance_time, 0.35, "duration of each stance phase");
 DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
+DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location");
 DEFINE_double(debug_time, 0.00, "time to simulate system at");
+DEFINE_double(swing_ft_height, 0.05, "Swing foot height");
+DEFINE_double(v_des, 0.4, "desired walking speed");
+DEFINE_double(dt, 0.01, "time step for koopman mpc");
 
 VectorXd poly_basis_1 (const VectorXd& x) {
   return x;
@@ -65,7 +72,7 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Koopman parameters
-  double dt = 0.025;
+  double dt = FLAGS_dt;
 
   DrakeLcm lcm_local;
 
@@ -75,14 +82,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Add MBP
   MultibodyPlant<double> plant(0.0);
-  Parser parser(&plant);
-
-  string plant_file_name = FindResourceOrThrow("examples/PlanarWalker/PlanarWalkerWithTorso.urdf");
-  parser.AddModelFromFile(plant_file_name);
-
-  plant.WeldFrames(
-      plant.world_frame(), plant.GetFrameByName("base"), drake::math::RigidTransform<double>());
-
+  LoadPlanarWalkerFromFile(plant);
   plant.Finalize();
 
   Eigen::VectorXd x0 = VectorXd::Zero(plant.num_positions() + plant.num_velocities());
@@ -93,12 +93,19 @@ int DoMain(int argc, char* argv[]) {
 
   plant.SetPositionsAndVelocities(plant_context.get(), x0);
 
-  Vector3d default_com = plant.CalcCenterOfMassPositionInWorld(*plant_context.get());
+
+  Vector3d default_com = (FLAGS_use_com) ?
+      plant.CalcCenterOfMassPositionInWorld(*plant_context.get()) :
+      plant.GetBodyByName("torso_mass").EvalPoseInWorld(*plant_context.get()).translation();
 
   std::cout << "Com_Position: \n" << default_com << std::endl;
 
-  auto kmpc = builder.AddSystem<KoopmanMPC>(plant, plant_context.get(), dt, true, true, true);
+  auto kmpc = builder.AddSystem<KoopmanMPC>(plant, plant_context.get(), dt,
+      FLAGS_swing_ft_height, true, true,  FLAGS_use_com);
 
+  if (!FLAGS_use_com) {
+    kmpc->AddBaseFrame("torso_mass", Vector3d::Zero());
+  }
   string folder_base = FindResourceOrThrow("examples/KoopmanMPC/koopman_models/planar_poly_1/");
 
   MatrixXd Al = MatrixXd::Zero(12, 12);
@@ -109,8 +116,6 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd br = MatrixXd::Zero(12,1);
 
   KoopmanMPC::LoadDiscreteDynamicsFromFolder(folder_base, dt, &Al, &Bl, &bl, &Ar, &Br, &br);
-
-  std::cout << Al<< std::endl;
 
   KoopmanDynamics left_stance_dynamics = {&poly_basis_1, Al, Bl, bl};
   KoopmanDynamics right_stance_dynamics = {&poly_basis_1, Ar, Br, br};
@@ -129,8 +134,9 @@ int DoMain(int argc, char* argv[]) {
   kmpc->AddContactPoint(right_pt, koopMpcStance::kRight);
 
   // Set kinematic reachability constraint
-  std::vector<VectorXd> kin_nom = {0.9*Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx())),
-                                   0.9*Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx()))};
+  std::vector<VectorXd> kin_nom = {
+      0.9*Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx())),
+      0.9*Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx()))};
 
   kmpc->SetReachabilityLimit(0.4*VectorXd::Ones(2), kin_nom);
 
@@ -145,13 +151,13 @@ int DoMain(int argc, char* argv[]) {
   // add tracking objective
   VectorXd x_des = VectorXd::Zero(kmpc->num_state_inflated());
   x_des(1) = 0.95* default_com(kmpc->vertical_idx());
-  x_des(3) = 0.35;
+  x_des(3) = FLAGS_v_des;
   x_des.tail(1) = 9.81 * mass * VectorXd::Ones(1);
 
   std::cout << "x desired:\n" << x_des <<std::endl;
 
   VectorXd q(kmpc->num_state_inflated());
-  q << 0, 1, 2, 10, 1, 1, 0, 0, 0, 0, 0.0001, 0.0001;
+  q << 0, 100, 2, 10, 5, 2.5, 0, 0, 0, 0, 0.000001, 0.000001;
 
   kmpc->AddTrackingObjective(x_des, q.asDiagonal());
 
@@ -159,7 +165,7 @@ int DoMain(int argc, char* argv[]) {
   kmpc->AddInputRegularization(0.0001 * VectorXd::Ones(6).asDiagonal());
 
   // set friction coeff
-  kmpc->SetMu(0.8);
+  kmpc->SetMu(0.4);
   kmpc->Build();
   std::cout << "Successfully built kmpc" << std::endl;
 
@@ -172,14 +178,23 @@ int DoMain(int argc, char* argv[]) {
   auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations);
 
+  std::vector<std::string> signals = {"fsm"};
+  auto fsm_send = builder.AddSystem<DrakeSignalSender>(signals, FLAGS_stance_time * 2);
+  auto fsm_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_dairlib_signal>(FLAGS_channel_fsm, &lcm_local));
+
+
   // setup lcm messaging
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
-  auto koopman_mpc_out_publisher = builder.AddSystem(LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
+  auto koopman_mpc_out_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
 
+  // fsm connections
   builder.Connect(fsm->get_output_port(), kmpc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(), fsm_send->get_input_port());
+  builder.Connect(fsm_send->get_output_port(), fsm_pub->get_input_port());
 
   builder.Connect(robot_out->get_output_port(), fsm->get_input_port_state());
-
   builder.Connect(robot_out->get_output_port(),
       kmpc->get_state_input_port());
 

@@ -40,12 +40,16 @@ namespace dairlib{
 
 KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
                        Context<double> *plant_context, double dt,
+                       double swing_ft_height,
                        bool planar, bool used_with_finite_state_machine,
                        bool use_com) :
                        plant_(plant),
                        plant_context_(plant_context),
-                       world_frame_(plant_.world_frame()), dt_(dt),
-                       planar_(planar), use_com_(use_com),
+                       world_frame_(plant_.world_frame()),
+                       dt_(dt),
+                       swing_ft_ht_(swing_ft_height),
+                       planar_(planar),
+                       use_com_(use_com),
                        use_fsm_(used_with_finite_state_machine){
 
   nq_ = plant.num_positions();
@@ -79,7 +83,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
 
     current_fsm_state_idx_ =
         this->DeclareDiscreteState(VectorXd::Zero(1));
-    prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+    prev_event_time_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
   }
   x_des_idx_ = this->DeclareDiscreteState(VectorXd::Zero(nxi_));
 
@@ -126,7 +130,7 @@ void KoopmanMPC::AddJointToTrackBaseAngle(const std::string& joint_pos_name,
 
 void KoopmanMPC::AddBaseFrame(const std::string &body_name,
 const Eigen::Vector3d& offset, const Eigen::Isometry3d& frame_pose) {
-  DRAKE_ASSERT(!planar_)
+  DRAKE_ASSERT(!(planar_ && use_com_))
   base_ = body_name;
   frame_pose_ = frame_pose;
   com_from_base_origin_ = offset;
@@ -498,11 +502,12 @@ EventStatus KoopmanMPC::PeriodicUpdate(
 
   double timestamp = robot_output->get_timestamp();
 
+  double time_since_last_event = timestamp;
+
   if (use_fsm_) {
     int fsm_state = (int) (discrete_state->get_vector(current_fsm_state_idx_).get_value()(0) + 1e-6);
     double last_event_time = discrete_state->get_vector(prev_event_time_idx_).get_value()(0);
-
-    double time_since_last_event = timestamp - last_event_time;
+    time_since_last_event = (last_event_time <= 0) ? 0 : timestamp - last_event_time;
 
     UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, dt_),
                                  fsm_state, time_since_last_event);
@@ -511,8 +516,15 @@ EventStatus KoopmanMPC::PeriodicUpdate(
         CalcCentroidalStateFromPlant(x, timestamp), 0, 0);
   }
 
+
   const MathematicalProgramResult result = Solve(prog_);
 
+  if (!result.is_success()) {
+    std::cout << "Infeasible\n";
+    print_current_init_state_constraint();
+  }
+
+  DRAKE_DEMAND(result.is_success());
   /* Debugging - (not that helpful)
   if (result.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
     std::cout << "Infeasible problem! See infeasible constraints below:\n";
@@ -521,7 +533,13 @@ EventStatus KoopmanMPC::PeriodicUpdate(
     }
   } */
 
-  most_recent_sol_ = MakeLcmTrajFromSol(result, timestamp, x);
+  most_recent_sol_ = MakeLcmTrajFromSol(
+      result, timestamp, time_since_last_event,  x);
+
+  //print_current_init_state_constraint();
+  //print_initial_state_constraints();
+  //print_state_knot_constraints();
+  //print_dynamics_constraints();
 
   return EventStatus::Succeeded();
 }
@@ -588,8 +606,6 @@ void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
         UpdateCoefficients(MatrixXd::Zero(1, 2*nz_ + nu_c_), VectorXd::Zero(1));
   }
-
-  std::cout << x0_idx_[0] << " : " << x0_idx_[1] << std::endl;
 }
 
 double KoopmanMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies) {
@@ -603,7 +619,7 @@ double KoopmanMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> b
 /// TODO(@Brian-Acosta) Update this function to not assume planar for angular
 /// traj and to not assume uniform N
 lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
-                                               double time,
+                                               double time, double time_since_last_touchdown,
                                                const VectorXd& state) const {
   DRAKE_ASSERT(result.is_success());
 
@@ -643,8 +659,6 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
       int col = idx - idx_x0;
       col = (col < 0) ? (col + total_knots_) : col;
 
-      std::cout << col << std::endl;
-
       x.block(0, col, nx_, 1) =
           result.GetSolution(mode.zz.at(j).head(nx_));
       x_time_knots(col) = time + dt_ * col;
@@ -669,9 +683,13 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
   AngularTraj.time_vector = x_time_knots;
   AngularTraj.datapoints = orientation_knots;
 
-  Vector2d swing_ft_traj_breaks = {time,
-                                   time + dt_ * (modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1])};
-  MatrixXd swing_ft_traj_knots = CalcSwingFootKnotPoints(state, result);
+  double next_touchdown_time = time +
+      dt_ * (modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1]);
+  Vector3d swing_ft_traj_breaks = {time, (time + next_touchdown_time) /2.0,
+                                   next_touchdown_time};
+
+  MatrixXd swing_ft_traj_knots = CalcSwingFootKnotPoints(
+      state, result, time_since_last_touchdown);
 
   SwingFootTraj.time_vector = swing_ft_traj_breaks;
   SwingFootTraj.datapoints = swing_ft_traj_knots;
@@ -686,13 +704,18 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
 }
 
 MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,
-    const MathematicalProgramResult& result) const {
-  auto curr_mode = modes_.at(x0_idx_[0]);
-  auto next_mode = modes_.at(nmodes_ % (x0_idx_[0] + 1));
+    const MathematicalProgramResult& result, double time_since_last_touchdown) const {
+  auto& curr_mode = modes_.at(x0_idx_[0]);
+  int next_mode_idx = (x0_idx_[0] == nmodes_ - 1) ? 0 : x0_idx_[0] + 1;
+  auto& next_mode = modes_.at(next_mode_idx);
 
-  VectorXd swing_ft_curr_loc = VectorXd::Zero(kLinearDim_);
-  VectorXd swing_ft_next_loc = VectorXd::Zero(kLinearDim_);
-  VectorXd swing_ft_curr_vel = VectorXd::Zero(kLinearDim_);
+  VectorXd curr_pos = VectorXd::Zero(kLinearDim_);
+  VectorXd end_pos = VectorXd::Zero(kLinearDim_);
+  VectorXd mid_pos = VectorXd::Zero(kLinearDim_);
+
+  VectorXd curr_vel = VectorXd::Zero(kLinearDim_);
+  VectorXd mid_vel = VectorXd::Zero(kLinearDim_);
+
 
   Vector3d swing_ft_plant;
   MatrixXd J_swing_vel = MatrixXd::Zero(3, nv_);
@@ -710,26 +733,32 @@ MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,
   Vector3d swing_vel_plant = J_swing_vel * x.tail(nv_);
 
   if (planar_) {
-    swing_ft_curr_loc(0) = swing_ft_plant(saggital_idx_);
-    swing_ft_curr_loc(1) = swing_ft_plant(vertical_idx_);
-    swing_ft_curr_vel(0) = swing_vel_plant(saggital_idx_);
-    swing_ft_curr_vel(1) = swing_vel_plant(vertical_idx_);
+    curr_pos(0) = swing_ft_plant(saggital_idx_);
+    curr_pos(1) = swing_ft_plant(vertical_idx_);
+    curr_vel(0) = swing_vel_plant(saggital_idx_);
+    curr_vel(1) = swing_vel_plant(vertical_idx_);
   } else {
-    swing_ft_curr_loc = swing_ft_plant;
-    swing_ft_curr_vel = swing_ft_plant;
+    curr_pos = swing_ft_plant;
+    curr_vel = swing_vel_plant;
   }
 
-  swing_ft_next_loc = result.GetSolution(
+  end_pos = result.GetSolution(
       next_mode.zz.at(0).segment(
           nx_ + kLinearDim_ * next_mode.stance, kLinearDim_));
 
-  MatrixXd swing_ft_traj = MatrixXd::Zero(2*kLinearDim_, 2);
+  mid_pos(0) = (curr_pos(0)  + end_pos(0)) / 2.0;
+  mid_pos(kLinearDim_ - 1) = swing_ft_ht_ - pow((time_since_last_touchdown - (dt_* (double) curr_mode.N)/2.0), 2);
 
-  swing_ft_traj.block(0, 0, kLinearDim_, 1) = swing_ft_curr_loc;
-  swing_ft_traj.block(0,1, kLinearDim_, 1) = swing_ft_next_loc;
-  swing_ft_traj.block(kLinearDim_, 0, kLinearDim_, 1) = swing_ft_curr_vel;
-  swing_ft_traj.block(kLinearDim_, 1, kLinearDim_, 1) = VectorXd::Zero(kLinearDim_);
+  MatrixXd swing_ft_traj = MatrixXd::Zero(3*kLinearDim_, 3);
 
+  swing_ft_traj.block(0, 0, kLinearDim_, 1) = curr_pos;
+  swing_ft_traj.block(0, 1, kLinearDim_, 1) = mid_pos;
+  swing_ft_traj.block(0,2, kLinearDim_, 1) = end_pos;
+  swing_ft_traj.block(kLinearDim_, 0, kLinearDim_, 1) = curr_vel;
+  swing_ft_traj.block(kLinearDim_, 1, kLinearDim_, 1) = mid_vel;
+  swing_ft_traj.block(kLinearDim_, 2, kLinearDim_, 1) = VectorXd::Zero(kLinearDim_);
+
+  //std::cout << swing_ft_traj << std::endl;
   return swing_ft_traj;
 }
 
@@ -758,7 +787,7 @@ Vector2d KoopmanMPC::MakePlanarVectorFrom3d(Vector3d vec) const {
   return Vector2d(vec(saggital_idx_), vec(vertical_idx_));
 }
 
-void KoopmanMPC::print_initial_state_constraints() {
+void KoopmanMPC::print_initial_state_constraints() const {
   for (auto& mode : modes_) {
     for (auto& x0_const : mode.init_state_constraint_){
       std::cout << x0_const->get_description() <<":\n A:\n" <<  x0_const->A()
@@ -768,7 +797,7 @@ void KoopmanMPC::print_initial_state_constraints() {
   }
 }
 
-void KoopmanMPC::print_dynamics_constraints() {
+void KoopmanMPC::print_dynamics_constraints() const{
   for (auto& mode : modes_) {
     for (auto& dyn : mode.dynamics_constraints){
       std::cout << dyn->get_description() <<":\n A:\n" <<  dyn->A()
@@ -778,11 +807,22 @@ void KoopmanMPC::print_dynamics_constraints() {
   }
 }
 
-void KoopmanMPC::print_state_knot_constraints() {
+void KoopmanMPC::print_state_knot_constraints()const {
   for (auto& knot : state_knot_constraints_) {
     std::cout << knot->get_description() <<":\n A:\n" <<  knot->A()
               << "\nub:\n" << knot->upper_bound() <<
               "\nlb\n" << knot->lower_bound() << std::endl;
   }
+}
+
+void KoopmanMPC::print_current_init_state_constraint() const {
+  std::cout << "x0 index:" <<
+            std::to_string(x0_idx_[0]) << " : " <<
+            std::to_string(x0_idx_[1]) << std::endl;
+
+  auto constraint = modes_.at(x0_idx_[0]).init_state_constraint_.at(x0_idx_[1]);
+  std::cout << "A:\n" << constraint->A() <<
+               "\nlb:\n" << constraint->lower_bound() <<
+               "\nub:\n"<< constraint->upper_bound() << std::endl;
 }
 } // dairlib

@@ -34,6 +34,7 @@ cc_binary(
     name = "run_planar_walker_sim",
     srcs = ["run_planar_walker_sim.cc"],
     deps = [
+        ":model_utils",
         "//common",
         "//examples/PlanarWalker:urdf",
         "//lcm:lcm_trajectory_saver",
@@ -58,6 +59,7 @@ cc_binary(
     name = "run_visualizer",
     srcs = ["run_visualizer.cc"],
     deps = [
+        ":model_utils",
         "//common",
         "//examples/PlanarWalker:urdf",
         "//systems:robot_lcm_systems",
@@ -72,6 +74,7 @@ cc_binary(
     srcs = ["run_koopman_mpc_process.cc"],
     deps = [
         ":koopman_mpc",
+        ":model_utils",
         "//common",
         "//examples/PlanarWalker:urdf",
         "//multibody:utils",
@@ -92,12 +95,14 @@ cc_binary(
     srcs = ["run_osc_walking.cc"],
     deps = [
         ":koopman_mpc",
+        ":model_utils",
         ":mpc_trajectory_reciever",
         ":osc_walking_gains",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
         "//multibody/kinematic",
+        "//systems:dairlib_signal_lcm_systems",
         "//systems:robot_lcm_systems",
         "//systems/controllers:time_based_fsm",
         "//systems/controllers/osc:operational_space_control",
@@ -106,5 +111,15 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+cc_library(
+    name = "model_utils",
+    hdrs = ["model_utils.h"],
+    deps = [
+        "//examples/PlanarWalker:urdf",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
     ],
 )

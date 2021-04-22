@@ -20,7 +20,7 @@ class DairlibSignalReceiver : public drake::systems::LeafSystem<double> {
 
  private:
   void UnpackLcmIntoVector(const drake::systems::Context<double>& context,
-                           systems::TimestampedVector<double>* output) const;
+                           drake::systems::BasicVector<double>* output) const;
 
   int signal_size_;
 };

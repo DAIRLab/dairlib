@@ -11,6 +11,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "model_utils.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
@@ -25,7 +26,8 @@
 
 namespace dairlib {
 
-using dairlib::systems::SubvectorPassThrough;
+using multibody::makeNameToPositionsMap;
+using systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::Body;
 using drake::multibody::ContactResultsToLcmSystem;
@@ -42,9 +44,6 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 // Simulation parameters.
-DEFINE_string(trajectory_name, "",
-              "Filename for the trajectory that contains"
-              " the initial state.");
 DEFINE_string(folder_path, "",
               "Folder path for the folder that contains the "
               "saved trajectory");
@@ -54,8 +53,8 @@ DEFINE_double(sim_time, std::numeric_limits<double>::infinity(),
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_double(dt, 1e-4, "The step size for the time-stepping simulator.");
-DEFINE_double(publish_rate, 2000.0, "Publish rate of the robot's state in Hz.");
+DEFINE_double(dt, 0, "The step size for the time-stepping simulator.");
+DEFINE_double(publish_rate, 1000, "Publish rate of the robot's state in Hz.");
 DEFINE_string(channel_x, "PLANAR_STATE",
               "Channel to publish/receive state from simulation");
 DEFINE_string(channel_u, "PLANAR_INPUT",
@@ -65,6 +64,10 @@ DEFINE_double(penetration_allowance, 1e-5,
 DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");
 DEFINE_double(error, 0.0,
               "Initial velocity error of the swing leg in global coordinates.");
+
+DEFINE_string(x0_traj_name, "state_traj1", "lcm trajectory to use for initial state");
+
+double calcPositionOffset(MultibodyPlant<double>& plant, Context<double>* context, const Eigen::VectorXd& x0);
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -76,12 +79,7 @@ int do_main(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(FLAGS_dt);
-  Parser parser(&plant, &scene_graph);
-  std::string full_name = FindResourceOrThrow(
-      "examples/PlanarWalker/PlanarWalkerWithTorso.urdf");
-  parser.AddModelFromFile(full_name);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                   drake::math::RigidTransform<double>());
+  LoadPlanarWalkerFromFile(plant, &scene_graph);
   multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);  // Add ground
   plant.Finalize();
 
@@ -141,10 +139,14 @@ int do_main(int argc, char* argv[]) {
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
-  Eigen::VectorXd x0 = VectorXd::Zero(plant.num_positions() + plant.num_velocities());
+  LcmTrajectory saved_traj = LcmTrajectory(
+      FindResourceOrThrow("rabbit_walking"));
 
-  auto map = multibody::makeNameToPositionsMap(plant);
-  x0(map["planar_z"]) = 1.0;
+  Eigen::VectorXd x0 =
+      saved_traj.GetTrajectory(FLAGS_x0_traj_name).datapoints.col(0);
+  auto map = makeNameToPositionsMap(plant);
+
+  x0(map["planar_z"]) = x0(map["planar_z"]) + calcPositionOffset(plant, &plant_context, x0);
 
   /*** list all of the positions for debugging
   for (auto pos = map.begin(); pos != map.end();
@@ -165,6 +167,15 @@ int do_main(int argc, char* argv[]) {
   return 0;
 }
 
+double calcPositionOffset(MultibodyPlant<double>& plant,
+    Context<double>* context, const Eigen::VectorXd& x0) {
+
+  plant.SetPositionsAndVelocities(context, x0);
+  Eigen::Vector3d foot_pos;
+  plant.CalcPointsPositions(*context, plant.GetBodyByName("left_lower_leg").body_frame(),
+          Eigen::Vector3d(0,0,-0.5), plant.world_frame(), &foot_pos);
+  return -foot_pos(2);
+}
 
 }  // namespace dairlib
 int main(int argc, char* argv[]) { return dairlib::do_main(argc, argv); }

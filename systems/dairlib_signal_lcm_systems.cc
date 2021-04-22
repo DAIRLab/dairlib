@@ -21,12 +21,12 @@ DairlibSignalReceiver::DairlibSignalReceiver(int signal_size)
     : signal_size_(signal_size) {
   this->DeclareAbstractInputPort("lcmt_dairlib_signal",
                                  drake::Value<dairlib::lcmt_dairlib_signal>{});
-  this->DeclareVectorOutputPort(TimestampedVector<double>(signal_size),
+  this->DeclareVectorOutputPort(BasicVector<double>(signal_size),
                                 &DairlibSignalReceiver::UnpackLcmIntoVector);
 }
 
 void DairlibSignalReceiver::UnpackLcmIntoVector(
-    const Context<double>& context, TimestampedVector<double>* output) const {
+    const Context<double>& context, BasicVector<double>* output) const {
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& input_msg = input->get_value<dairlib::lcmt_dairlib_signal>();
@@ -34,7 +34,6 @@ void DairlibSignalReceiver::UnpackLcmIntoVector(
     // We assume that the order of the vector is [data, timestamp]
     output->get_mutable_value()(i) = input_msg.val[i];
   }
-  output->set_timestamp(input_msg.utime * 1e-6);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -64,9 +63,9 @@ void DrakeSignalSender::PackVectorIntoLcm(
   msg->utime = (context.get_time() + 1e-12) * 1e6;
 
   // Testing -- Calc phase
-  double lift_off_time = input_vector->get_value()(1);
-  double time_in_first_mode = (msg->utime * 1e-6) - lift_off_time;
-  double init_phase = time_in_first_mode / stride_period_;
+//  double lift_off_time = input_vector->get_value()(1);
+//  double time_in_first_mode = (msg->utime * 1e-6) - lift_off_time;
+//  double init_phase = time_in_first_mode / stride_period_;
 
   /*cout << "init_phase = " << init_phase<<"\n";
   cout << "fsm state = " << input_vector->get_value()(0) << endl;
@@ -75,6 +74,7 @@ void DrakeSignalSender::PackVectorIntoLcm(
   cout << "time_in_first_mode = " << time_in_first_mode << endl;
   cout << "input_vector->get_value() = " << input_vector->get_value() << endl;*/
 
+  /*
   if (init_phase > 1) {
     cout.precision(dbl::max_digits10);
 
@@ -111,8 +111,7 @@ void DrakeSignalSender::PackVectorIntoLcm(
     cout << "======================\n";
     cout << "======================\n";
     //    DRAKE_UNREACHABLE();
-  }
+  }*/
 }
-
 }  // namespace systems
 }  // namespace dairlib

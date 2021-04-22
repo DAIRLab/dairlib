@@ -6,9 +6,12 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "lcm/lcm_trajectory.h"
 
 #include "multibody/multibody_utils.h"
+
+#include "model_utils.h"
 
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -24,6 +27,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "systems/dairlib_signal_lcm_systems.h"
 
 namespace dairlib {
 
@@ -52,6 +56,7 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::TimeBasedFiniteStateMachine;
+using systems::DairlibSignalReceiver;
 
 namespace examples {
 
@@ -59,17 +64,20 @@ DEFINE_string(channel_x, "PLANAR_STATE",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "PLANAR_INPUT",
               "The name of the channel which publishes command");
+DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
+
 DEFINE_string(mpc_channel, "KOOPMAN_MPC_OUT", "channel to recieve koopman mpc message");
+
 
 DEFINE_string(
     gains_filename,
     "examples/KoopmanMPC/osc_walking_gains.yaml",
     "Filepath containing gains");
 
-DEFINE_double(stance_time, 0.35, "duration of each stance phase");
-
-DEFINE_bool(track_com, true,
+DEFINE_bool(track_com, false,
     "use com tracking data (otherwise uses trans space)");
+
+void print_gains(const OSCWalkingGains& gains);
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -81,14 +89,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant(0.0);
 
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
-  Parser parser(&plant, &scene_graph);
-
-  std::string full_name = FindResourceOrThrow(
-      "examples/PlanarWalker/PlanarWalkerWithTorso.urdf");
-  parser.AddModelFromFile(full_name);
-
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                   drake::math::RigidTransform<double>());
+  LoadPlanarWalkerFromFile(plant, &scene_graph);
   plant.Finalize();
 
   auto left_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
@@ -119,13 +120,10 @@ int DoMain(int argc, char* argv[]) {
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm_local;
 
-  vector<int> fsm_states = {koopMpcStance::kLeft, koopMpcStance::kRight};
-  vector<double> state_durations = {FLAGS_stance_time, FLAGS_stance_time};
-
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
-  auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations);
+  /* auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
+      plant, fsm_states, state_durations); */
 
   auto mpc_subscriber = builder.AddSystem(
       LcmSubscriberSystem::Make<lcmt_saved_traj>(FLAGS_mpc_channel, &lcm_local));
@@ -147,13 +145,19 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_WALKING", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
+  auto fsm_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_dairlib_signal>(
+          FLAGS_channel_fsm, &lcm_local));
+
+  auto fsm_receiver = builder.AddSystem<DairlibSignalReceiver>(1);
+
   /**** OSC setup ****/
   // Cost
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(nv, nv);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
   // Soft constraint on contacts
-  double w_contact_relax = 8000;
+  double w_contact_relax = 20000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
 
   // Contact information for OSC
@@ -169,22 +173,29 @@ int DoMain(int argc, char* argv[]) {
       foot_contact_disp, right_pt.first,  Matrix3d::Identity(),
       right_pt.second, {0, 2});
 
-  osc->AddStateAndContactPoint(0, &left_foot_evaluator);
-  osc->AddStateAndContactPoint(1, &right_foot_evaluator);
+  osc->AddStateAndContactPoint(koopMpcStance::kLeft, &left_foot_evaluator);
+  osc->AddStateAndContactPoint(koopMpcStance::kRight, &right_foot_evaluator);
 
 
   /*** tracking data ***/
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj",
       gains.K_p_swing_foot, gains.K_d_swing_foot, gains.W_swing_foot, plant, plant);
-  swing_foot_traj.AddStateAndPointToTrack(fsm_states.front(), "left_lower_leg", left_pt.second);
-  swing_foot_traj.AddStateAndPointToTrack(fsm_states.back(), "right_lower_leg", right_pt.second);
+  swing_foot_traj.AddStateAndPointToTrack(koopMpcStance::kRight, "left_lower_leg", left_pt.second);
+  swing_foot_traj.AddStateAndPointToTrack(koopMpcStance::kLeft, "right_lower_leg", right_pt.second);
 
   osc->AddTrackingData(&swing_foot_traj);
 
-  ComTrackingData com_traj("com_traj", gains.K_p_com,
-      gains.K_d_com, gains.W_com, plant, plant);
+  if (FLAGS_track_com) {
+    ComTrackingData com_traj("com_traj", gains.K_p_com,
+                             gains.K_d_com, gains.W_com, plant, plant);
 
-  osc->AddTrackingData(&com_traj);
+    osc->AddTrackingData(&com_traj);
+  } else {
+    TransTaskSpaceTrackingData com_traj("com_traj", gains.K_p_com,
+                                        gains.K_d_com, gains.W_com, plant, plant);
+    com_traj.AddPointToTrack("torso_mass");
+    osc->AddTrackingData(&com_traj);
+  }
 
   JointSpaceTrackingData angular_traj("base_angle", gains.K_p_orientation,
       gains.K_d_orientation, gains.W_orientation, plant, plant);
@@ -200,7 +211,9 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_output_port(), osc->get_fsm_input_port());
+  builder.Connect(fsm_sub->get_output_port(), fsm_receiver->get_input_port());
+
+  builder.Connect(fsm_receiver->get_output_port(), osc->get_fsm_input_port());
 
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
@@ -217,10 +230,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(mpc_reciever->get_swing_ft_traj_output_port(),
       osc->get_tracking_data_input_port("swing_ft_traj"));
 
-  // FSM connections
-  builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_input_port_state());
-
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
@@ -236,11 +245,24 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
+
+  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+    return mpc_subscriber->GetInternalMessageCount() > 1; });
+
+  auto& loop_context = loop.get_diagram_mutable_context();
+  mpc_subscriber->Publish(loop.get_diagram()->
+  GetMutableSubsystemContext(*mpc_subscriber, &loop_context));
+
   loop.Simulate();
 
 
   return 0;
 }
+
+void print_gains(const OSCWalkingGains& gains) {
+  std::cout <<"======== OSC WALKING GAINS ==========\n";
+}
+
 }  // namespace examples
 }  // namespace dairlib
 

@@ -62,7 +62,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
  public:
   KoopmanMPC(const drake::multibody::MultibodyPlant<double>& plant,
              drake::systems::Context<double>* plant_context, double dt,
-             bool planar, bool used_with_finite_state_machine = true,
+             double swing_ft_height, bool planar,
+             bool used_with_finite_state_machine = true,
              bool use_com = true);
 
 
@@ -122,9 +123,10 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
     return drake::solvers::Solve(prog_);
   }
 
-  void print_initial_state_constraints();
-  void print_state_knot_constraints();
-  void print_dynamics_constraints();
+  void print_initial_state_constraints() const;
+  void print_state_knot_constraints() const;
+  void print_dynamics_constraints() const;
+  void print_current_init_state_constraint() const;
 
 
  private:
@@ -144,13 +146,14 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   void MakeFlatGroundConstraints();
 
   Eigen::MatrixXd CalcSwingFootKnotPoints(const Eigen::VectorXd& x,
-      const drake::solvers::MathematicalProgramResult& result) const;
+      const drake::solvers::MathematicalProgramResult& result,
+      double time_since_last_touchdown) const;
 
   drake::trajectories::PiecewisePolynomial<double> MakePPTrajFromSol(
       drake::solvers::MathematicalProgramResult result) const;
 
   lcmt_saved_traj MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
-                                     double time,
+                                     double time, double time_since_last_touchdown,
                                      const Eigen::VectorXd& state) const;
 
   void UpdateInitialStateConstraint(const Eigen::VectorXd& x0,
@@ -233,6 +236,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   // constants
   const double kMaxSolveDuration_ = 1.00;
+  const double swing_ft_ht_;
   const bool use_com_;
   const bool planar_;
   const int kNxPlanar = 6;

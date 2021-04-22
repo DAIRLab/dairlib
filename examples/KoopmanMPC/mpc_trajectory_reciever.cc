@@ -56,8 +56,8 @@ void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
     auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
             traj);
-    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-        orientation.time_vector, knots);
+    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+        orientation.time_vector, knots, knots_dot);
   } else {
     auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
@@ -89,8 +89,8 @@ void MpcTrajectoryReceiver::MakeComTrajFromLcm(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-      com_traj.time_vector, knots);
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+      com_traj.time_vector, knots, knots_dot);
 }
 
 void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
@@ -105,19 +105,21 @@ void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
   LcmTrajectory lcm_traj(input_msg);
   LcmTrajectory::Trajectory swing_ft_traj = lcm_traj.GetTrajectory("swing_foot_traj");
 
+  int cols = swing_ft_traj.datapoints.cols();
   MatrixXd knots = planar_ ? Make3dFromPlanar(
-      swing_ft_traj.datapoints.block(0, 0, 2, swing_ft_traj.datapoints.cols())) :
-                   swing_ft_traj.datapoints.block(0, 0, 3, swing_ft_traj.datapoints.cols());
+      swing_ft_traj.datapoints.block(0, 0, 2, cols)) :
+                   swing_ft_traj.datapoints.block(0, 0, 3, cols);
 
   MatrixXd knots_dot = planar_ ? Make3dFromPlanar(
-      swing_ft_traj.datapoints.block(2, 0, 2, swing_ft_traj.datapoints.cols())) :
-                       swing_ft_traj.datapoints.block(3, 0, 3, swing_ft_traj.datapoints.cols());
+      swing_ft_traj.datapoints.block(2, 0, 2, cols)) :
+                       swing_ft_traj.datapoints.block(3, 0, 3, cols);
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
 
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
-      swing_ft_traj.time_vector, knots, knots_dot);
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+      swing_ft_traj.time_vector, knots, knots_dot.col(0),
+      knots_dot.col(cols-1));
 }
 
 MatrixXd MpcTrajectoryReceiver::Make3dFromPlanar(MatrixXd planar_knots) const {

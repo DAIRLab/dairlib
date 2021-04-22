@@ -46,6 +46,7 @@ def main():
   rom_iter_idx = int(sys.argv[3])
   sample_idx = int(sys.argv[4])
   desried_sim_end_time = float(sys.argv[5])
+  spring_model = bool(sys.argv[6])
 
   global t_start
   global t_end
@@ -62,38 +63,33 @@ def main():
   # Build plant
   mut.set_log_level("err")  # ignore warnings about joint limits
   builder = DiagramBuilder()
-  plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  plant_wo_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant_w_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
-  Parser(plant_wo_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
-  plant_w_spr.mutable_gravity_field().set_gravity_vector(
+  plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
+  urdf_path = "examples/Cassie/urdf/cassie_v2.urdf" if spring_model else "examples/Cassie/urdf/cassie_fixed_springs.urdf"
+  Parser(plant).AddModelFromFile(FindResourceOrThrow(urdf_path))
+  plant.mutable_gravity_field().set_gravity_vector(
     -9.81 * np.array([0, 0, 1]))
-  plant_w_spr.Finalize()
+  plant.Finalize()
 
   # relevant MBP parameters
-  nq = plant_w_spr.num_positions()
-  nv = plant_w_spr.num_velocities()
-  nx = plant_w_spr.num_positions() + plant_w_spr.num_velocities()
-  nu = plant_w_spr.num_actuators()
+  nq = plant.num_positions()
+  nv = plant.num_velocities()
+  nx = plant.num_positions() + plant.num_velocities()
+  nu = plant.num_actuators()
 
-  l_toe_frame = plant_w_spr.GetBodyByName("toe_left").body_frame()
-  r_toe_frame = plant_w_spr.GetBodyByName("toe_right").body_frame()
-  world = plant_w_spr.world_frame()
-  context = plant_w_spr.CreateDefaultContext()
+  l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
+  r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
+  world = plant.world_frame()
+  context = plant.CreateDefaultContext()
 
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
 
-  pos_map = pydairlib.multibody.makeNameToPositionsMap(plant_w_spr)
-  vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant_w_spr)
-  act_map = pydairlib.multibody.makeNameToActuatorsMap(plant_w_spr)
+  pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
+  vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)
+  act_map = pydairlib.multibody.makeNameToActuatorsMap(plant)
 
-  x_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant_w_spr)
-  u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant_w_spr)
+  x_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
+  u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant)
 
   filename = sys.argv[1]
   controller_channel = sys.argv[2]
@@ -204,10 +200,11 @@ def main():
   dt_u = np.diff(t_u_extracted)
 
   # Get rid of spring joints
-  x_extracted[:, nq + vel_map["knee_joint_leftdot"]] = 0
-  x_extracted[:, nq + vel_map["ankle_spring_joint_leftdot"]] = 0
-  x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
-  x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
+  if spring_model:
+    x_extracted[:, nq + vel_map["knee_joint_leftdot"]] = 0
+    x_extracted[:, nq + vel_map["ankle_spring_joint_leftdot"]] = 0
+    x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
+    x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
 
   cost_x = 0.0
   for i in range(n_x_data - 1):

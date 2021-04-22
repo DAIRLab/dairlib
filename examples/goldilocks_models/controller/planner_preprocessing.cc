@@ -238,7 +238,7 @@ void CalcFeetVel(const drake::multibody::MultibodyPlant<double>& plant,
 InitialStateForPlanner::InitialStateForPlanner(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
     const drake::multibody::MultibodyPlant<double>& plant_control,
-    double final_position_x, int n_step)
+    double final_position_x, int n_step, bool feedback_is_spring_model)
     : nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
       final_position_x_(final_position_x),
@@ -258,7 +258,8 @@ InitialStateForPlanner::InitialStateForPlanner(
       toe_origin_left_(BodyPoint(Vector3d::Zero(),
                                  plant_control_.GetFrameByName("toe_left"))),
       toe_origin_right_(BodyPoint(Vector3d::Zero(),
-                                  plant_control_.GetFrameByName("toe_right"))) {
+                                  plant_control_.GetFrameByName("toe_right"))),
+      feedback_is_spring_model_(feedback_is_spring_model) {
   // Input/Output Setup
   stance_foot_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
@@ -303,10 +304,15 @@ InitialStateForPlanner::InitialStateForPlanner(
   pos_map_wo_spr_ = multibody::makeNameToPositionsMap(plant_control);
   vel_map_wo_spr_ = multibody::makeNameToVelocitiesMap(plant_control);
 
-  spring_pos_idx_list_w_spr_ = {pos_map_w_spr_.at("knee_joint_left"),
-                                pos_map_w_spr_.at("knee_joint_right"),
-                                pos_map_w_spr_.at("ankle_spring_joint_left"),
-                                pos_map_w_spr_.at("ankle_spring_joint_right")};
+  if (feedback_is_spring_model) {
+    spring_pos_idx_list_w_spr_ = {
+        pos_map_w_spr_.at("knee_joint_left"),
+        pos_map_w_spr_.at("knee_joint_right"),
+        pos_map_w_spr_.at("ankle_spring_joint_left"),
+        pos_map_w_spr_.at("ankle_spring_joint_right")};
+  } else {
+    spring_pos_idx_list_w_spr_ = {};
+  }
   knee_ankle_pos_idx_list_ = {pos_map_wo_spr_.at("knee_left"),
                               pos_map_wo_spr_.at("knee_right"),
                               pos_map_wo_spr_.at("ankle_joint_left"),
@@ -401,9 +407,11 @@ EventStatus InitialStateForPlanner::AdjustState(
   ///
   /// Testing
   ///
-  CheckAdjustemnt(x_w_spr, x_original, x_adjusted2, left_foot_pos_w_spr,
-                  right_foot_pos_w_spr, left_foot_vel_w_spr,
-                  right_foot_vel_w_spr);
+  if (feedback_is_spring_model_) {
+    CheckAdjustemnt(x_w_spr, x_original, x_adjusted2, left_foot_pos_w_spr,
+                    right_foot_pos_w_spr, left_foot_vel_w_spr,
+                    right_foot_vel_w_spr);
+  }
 
   ///
   /// Shift and rotate Cassie's floating base configuration
@@ -504,14 +512,16 @@ void InitialStateForPlanner::AdjustKneeAndAnklePos(
   // satisfied anymore.
 
   /// Assign
-  x_init->segment<1>(knee_ankle_pos_idx_list_[0]) +=
-      x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
-  x_init->segment<1>(knee_ankle_pos_idx_list_[1]) +=
-      x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
-  //  x_init->segment<1>(knee_ankle_pos_idx_list_[2]) -=
-  //  x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[2]);
-  //  x_init->segment<1>(knee_ankle_pos_idx_list_[3]) -=
-  //  x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[3]);
+  if (feedback_is_spring_model_) {
+    x_init->segment<1>(knee_ankle_pos_idx_list_[0]) +=
+        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
+    x_init->segment<1>(knee_ankle_pos_idx_list_[1]) +=
+        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
+    //  x_init->segment<1>(knee_ankle_pos_idx_list_[2]) -=
+    //  x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[2]);
+    //  x_init->segment<1>(knee_ankle_pos_idx_list_[3]) -=
+    //  x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[3]);
+  }
 }
 
 void InitialStateForPlanner::AdjustKneeAndAnkleVel(

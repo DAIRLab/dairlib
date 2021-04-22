@@ -122,6 +122,9 @@ DEFINE_bool(is_two_phase, false,
 
 DEFINE_bool(use_IK, false, "use the IK approach or not");
 
+// Simulated robot
+DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+
 // For testing
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
@@ -139,10 +142,12 @@ int DoMain(int argc, char* argv[]) {
   gains.stride_length *= FLAGS_stride_length_scaling;
 
   // Build Cassie MBP
+  std::string urdf = FLAGS_spring_model
+                         ? "examples/Cassie/urdf/cassie_v2.urdf"
+                         : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
-                     true /*spring model*/, false /*loop closure*/);
+  addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/, urdf,
+                     FLAGS_spring_model, false /*loop closure*/);
   plant_w_spr.Finalize();
   // Build fix-spring Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);

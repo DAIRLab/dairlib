@@ -83,6 +83,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, fix_task,
     '--use_ipopt=%s' % "true" if use_ipopt else str(get_init_file).lower(),
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
+    '--spring_model=%s' % str(spring_model).lower(),
   ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
@@ -92,6 +93,7 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, fix_task,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--iter=%d' % rom_iter_idx,
     '--init_traj_file_name=%s' % init_traj_file,
+    '--spring_model=%s' % str(spring_model).lower(),
   ]
   simulator_cmd = [
     'bazel-bin/examples/Cassie/multibody_sim',
@@ -100,12 +102,14 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, fix_task,
     '--pause_second=%.3f' % pause_second,
     '--init_height=%.3f' % 1.0,
     '--target_realtime_rate=%.3f' % target_realtime_rate,
+    '--spring_model=%s' % str(spring_model).lower(),
   ]
   lcm_logger_cmd = [
     'lcm-logger',
     '-f',
     lcmlog_file_path(rom_iter_idx, sample_idx),
   ]
+  import pdb; pdb.set_trace()
 
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)
@@ -141,6 +145,7 @@ def eval_cost(sim_end_time, rom_iter_idx, sample_idx, multithread=False):
     str(rom_iter_idx),
     str(sample_idx),
     str(sim_end_time),
+    str(spring_model),
   ]
   print(' '.join(eval_cost_cmd))
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
@@ -356,9 +361,6 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
         ### Assign values
         # print('Add (iter,sample) = (%d,%d)' % (rom_iter, sample))
         mtc = np.vstack([mtc, current_mtc])
-      else:
-        print("(model iter, sample) = (%d, %d) wasn't successful" % \
-              (rom_iter, sample))
   print(mtc.shape)
 
   nominal_mtc = np.zeros((0, 3))
@@ -367,7 +369,7 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
       for sample in sample_indices:
         sub_mtc = np.zeros((1, 3))
         ### Read cost
-        if sample != 1:  #TODO: remove this after we have cost breakdown
+        if sample != 1:  # TODO: remove this after we have cost breakdown
           continue
         cost = plot_nominal_cost([rom_iter], sample)[0][0]
         sub_mtc[0, 2] = cost
@@ -472,12 +474,13 @@ if __name__ == "__main__":
 
   # global parameters
   sim_end_time = 8.0
+  spring_model = False
 
   # Create folder if not exist
   Path(eval_dir).mkdir(parents=True, exist_ok=True)
 
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 100
+  model_iter_idx_end = 5
   idx_spacing = 5
 
   model_indices = list(
@@ -489,19 +492,20 @@ if __name__ == "__main__":
   # model_indices.remove(56)
 
   # sample_indices = range(0, 39)
-  # sample_indices = range(1, 5, 3)
-  sample_indices = range(1, 39, 3)
+  sample_indices = range(1, 5, 3)
+  # sample_indices = range(1, 39, 3)
   # sample_indices = range(1, 75, 3)
   # sample_indices = list(sample_indices)
   # sample_indices = [37]
-  # TODO: automatically find all indices that has flat ground
+  # [outdated] TODO: automatically find all indices that has flat ground
+  # TODO: use a list of target task values instead of sample index list. Then for each value, find the sample index that has the task closest to the list element
 
   ### Toggle the functions here to run simulation or evaluate cost
-  # run_sim_and_eval_cost(model_indices, sample_indices)
+  run_sim_and_eval_cost(model_indices, sample_indices)
   # run_sim_and_eval_cost([70], [34])
 
   # Only evaluate cost
-  # eval_cost_in_multithread(model_indices, sample_indices)
+  eval_cost_in_multithread(model_indices, sample_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

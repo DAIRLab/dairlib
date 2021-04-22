@@ -101,6 +101,9 @@ DEFINE_string(
 DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which publishes command");
 
+// Simulated robot
+DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+
 // (for non debug mode)
 DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
 DEFINE_double(init_phase, 0,
@@ -188,10 +191,12 @@ int DoMain(int argc, char* argv[]) {
   if (!CreateFolderIfNotExist(gains.dir_data)) return 0;
 
   // Build Cassie MBP
+  std::string urdf = FLAGS_spring_model
+                         ? "examples/Cassie/urdf/cassie_v2.urdf"
+                         : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   drake::multibody::MultibodyPlant<double> plant_feedback(0.0);
-  addCassieMultibody(&plant_feedback, nullptr, true /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
-                     true /*spring model*/, false /*loop closure*/);
+  addCassieMultibody(&plant_feedback, nullptr, true /*floating base*/, urdf,
+                     FLAGS_spring_model, false /*loop closure*/);
   plant_feedback.Finalize();
   // Build fix-spring Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_control(0.0);
@@ -241,7 +246,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create a block that computes the initial state for the planner
   auto x_init_calculator = builder.AddSystem<InitialStateForPlanner>(
-      plant_feedback, plant_control, param.final_position_x, param.n_step);
+      plant_feedback, plant_control, param.final_position_x, param.n_step,
+      FLAGS_spring_model);
   builder.Connect(stance_foot_getter->get_output_port(0),
                   x_init_calculator->get_input_port_stance_foot());
   builder.Connect(state_receiver->get_output_port(0),

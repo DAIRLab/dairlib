@@ -70,7 +70,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   InitialStateForPlanner(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
       const drake::multibody::MultibodyPlant<double>& plant_control,
-      double final_position_x, int n_step);
+      double final_position_x, int n_step, bool feedback_is_spring_model);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -144,6 +144,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   // Testing
   const drake::multibody::MultibodyPlant<double>& plant_feedback_;
   const drake::multibody::MultibodyPlant<double>& plant_control_;
+  bool feedback_is_spring_model_;
 
   // IK
   drake::solvers::EqualityConstrainedQPSolver qp_solver_;

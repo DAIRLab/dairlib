@@ -46,7 +46,7 @@ def main():
   rom_iter_idx = int(sys.argv[3])
   sample_idx = int(sys.argv[4])
   desried_sim_end_time = float(sys.argv[5])
-  spring_model = bool(sys.argv[6])
+  spring_model = (sys.argv[6].lower() == "true")
 
   global t_start
   global t_end

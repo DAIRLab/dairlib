@@ -109,7 +109,6 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, fix_task,
     '-f',
     lcmlog_file_path(rom_iter_idx, sample_idx),
   ]
-  import pdb; pdb.set_trace()
 
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)
@@ -369,8 +368,8 @@ def plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
       for sample in sample_indices:
         sub_mtc = np.zeros((1, 3))
         ### Read cost
-        if sample != 1:  # TODO: remove this after we have cost breakdown
-          continue
+        # if sample != 1:  # TODO: remove this after we have cost breakdown
+        #   continue
         cost = plot_nominal_cost([rom_iter], sample)[0][0]
         sub_mtc[0, 2] = cost
         if cost.item() > max_cost_to_ignore:

@@ -18,6 +18,6 @@ struct MpcGains {
     a->Visit(DRAKE_NVP(InputW));
 
     q = Eigen::Map<Eigen::VectorXd>(this->StateW.data(), 12);
-    r = Eigen::Map<Eigen::VectorXd>(this->StateW.data(), 6);
+    r = Eigen::Map<Eigen::VectorXd>(this->InputW.data(), 6);
   }
 };

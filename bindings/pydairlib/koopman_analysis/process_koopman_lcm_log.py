@@ -5,8 +5,6 @@ from pydairlib import lcm_trajectory
 
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 
-
-
 class lcmt_osc_tracking_data_t:
     def __init__(self):
         self.t = []
@@ -48,6 +46,19 @@ class lcmt_osc_tracking_data_t:
         self.yddot_des = np.array(self.yddot_des)
         self.yddot_command = np.array(self.yddot_command)
         self.yddot_command_sol = np.array(self.yddot_command_sol)
+
+class mpc_trajectory_block:
+    def __init__(self, block):
+        self.trajectory_name = block.trajectory_name
+        self.time_vec = np.array(block.time_vec)
+        self.datapoints = np.array(block.datapoints)
+        self.datatypes = block.datatypes
+
+class mpc_trajectory:
+    def __init__(self, msg):
+        self.trajectories = dict()
+        for block in msg.trajectories:
+            self.trajectories[block.trajectory_name] = mpc_trajectory_block(block)
 
 
 def process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
@@ -110,10 +121,10 @@ def process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
             t_x.append(msg.utime / 1e6)
 
         if event.channel == mpc_channel:
-            mpc_output.append(
-                lcm_trajectory.LcmTrajectory(
-                    lcm_trajectory.lcmt_saved_traj(
-                        dairlib.lcmt_saved_traj.decode(event.data))))
+            msg = dairlib.lcmt_saved_traj.decode(event.data)
+            if msg.num_trajectories > 0:
+                mpc_output.append(mpc_trajectory(msg))
+
         if event.channel == osc_channel:
             msg = dairlib.lcmt_robot_input.decode(event.data)
             u.append(msg.efforts)
@@ -143,9 +154,9 @@ def process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
                         msg.point_pair_contact_info[i].contact_force)
                     num_left_contacts += 1
                 elif "right" in msg.point_pair_contact_info[i].body1_name:
-                    contact_info_locs[2 + num_right_contacts].append(
+                    contact_info_locs[1 + num_right_contacts].append(
                         msg.point_pair_contact_info[i].contact_point)
-                    contact_forces[2 + num_right_contacts].append(
+                    contact_forces[1 + num_right_contacts].append(
                         msg.point_pair_contact_info[i].contact_force)
                     num_right_contacts += 1
                     # print("ERROR")
@@ -173,16 +184,6 @@ def process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
     kd = np.array(kd)
     contact_forces = np.array(contact_forces)
     contact_info_locs = np.array(contact_info_locs)
-
-    for i in range(contact_info_locs.shape[1]):
-        # Swap front and rear contacts if necessary
-        # Order will be front contact in index 1
-        if contact_info_locs[0, i, 0] > contact_info_locs[1, i, 0]:
-            contact_forces[[0, 1], i, :] = contact_forces[[1, 0], i, :]
-            contact_info_locs[[0, 1], i, :] = contact_info_locs[[1, 0], i, :]
-        if contact_info_locs[2, i, 0] > contact_info_locs[3, i, 0]:
-            contact_forces[[2, 3], i, :] = contact_forces[[3, 2], i, :]
-            contact_info_locs[[2, 3], i, :] = contact_info_locs[[3, 2], i, :]
 
     for key in osc_debug:
         osc_debug[key].convertToNP()

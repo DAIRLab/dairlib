@@ -3,6 +3,7 @@
 //
 #include<gflags/gflags.h>
 
+#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/primitives/demultiplexer.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -11,8 +12,9 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/lcmt_drake_signal.hpp"
 
-#include "koopman_mpc.h"
+#include "koopman_mpc_gains.h"
 #include "model_utils.h"
+#include "koopman_mpc.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "common/find_resource.h"
 #include "common/file_utils.h"
@@ -53,6 +55,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
+DEFINE_string(gains_filename, "examples/KoopmanMPC/koopman_mpc_gains.yaml", "koopman mpc gains file");
 DEFINE_string(channel_x, "PLANAR_STATE", "channel to publish/receive planar walker state");
 DEFINE_string(channel_plan, "KOOPMAN_MPC_OUT", "channel to publish plan trajectory");
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
@@ -156,13 +159,15 @@ int DoMain(int argc, char* argv[]) {
 
   std::cout << "x desired:\n" << x_des <<std::endl;
 
-  VectorXd q(kmpc->num_state_inflated());
-  q << 0, 100, 2, 10, 5, 2.5, 0, 0, 0, 0, 0.000001, 0.000001;
+  MpcGains gains;
+  const YAML::Node& root =
+      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
 
-  kmpc->AddTrackingObjective(x_des, q.asDiagonal());
+  kmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
 
     // add input cost
-  kmpc->AddInputRegularization(0.0001 * VectorXd::Ones(6).asDiagonal());
+  kmpc->AddInputRegularization(gains.r.asDiagonal());
 
   // set friction coeff
   kmpc->SetMu(0.4);

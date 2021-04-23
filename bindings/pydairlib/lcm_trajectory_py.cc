@@ -15,6 +15,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
   m.doc() = "Binding functions for saving/loading trajectories";
 
   py::class_<lcmt_metadata>(m, "lcmt_metadata")
+      .def(py::init<>())
       .def_readwrite("datetime", &lcmt_metadata::datetime)
       .def_readwrite("name", &lcmt_metadata::name)
       .def_readwrite("description", &lcmt_metadata::description)
@@ -28,10 +29,10 @@ PYBIND11_MODULE(lcm_trajectory, m) {
 
   py::class_<lcmt_saved_traj>(m, "lcmt_saved_traj")
       .def(py::init<>())
-      .def_readwrite("traj_name", &lcmt_saved_traj::metadata)
-      .def_readwrite("time_vector", &lcmt_saved_traj::num_trajectories)
-      .def_readwrite("datapoints", &lcmt_saved_traj::trajectories)
-      .def_readwrite("datatypes", &lcmt_saved_traj::trajectory_names);
+      .def_readwrite("metadata", &lcmt_saved_traj::metadata)
+      .def_readwrite("num_trajectories", &lcmt_saved_traj::num_trajectories)
+      .def_readwrite("trajectories", &lcmt_saved_traj::trajectories)
+      .def_readwrite("trajectory_names", &lcmt_saved_traj::trajectory_names);
 
   py::class_<LcmTrajectory>(m, "LcmTrajectory")
       .def(py::init<>())

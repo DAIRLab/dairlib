@@ -38,6 +38,7 @@ group "3.lcm-tools" {
 script "walking" {
     stop cmd "five_link_biped_sim" wait "stopped";
     restart cmd "koopman_mpc" wait "running";
-    restart cmd "osc_walking_controller";
+    restart cmd "osc_walking_controller" wait "running";
+    wait ms 500;
     start cmd "five_link_biped_sim";
 }

@@ -55,6 +55,14 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "koopman_mpc_gains",
+    hdrs = ["koopman_mpc_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "run_visualizer",
     srcs = ["run_visualizer.cc"],
@@ -74,6 +82,7 @@ cc_binary(
     srcs = ["run_koopman_mpc_process.cc"],
     deps = [
         ":koopman_mpc",
+        ":koopman_mpc_gains",
         ":model_utils",
         "//common",
         "//examples/PlanarWalker:urdf",

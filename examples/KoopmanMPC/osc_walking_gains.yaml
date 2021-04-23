@@ -29,9 +29,9 @@ OrientationKd:
   [1]
 
 SwingFootKp:
-  [ 50, 0,   0,
+  [ 1000, 0,   0,
     0,   0,   0,
-    0,   0,  50]
+    0,   0,  1000]
 SwingFootKd:
   [ 3,  0,  0,
     0,  0,  0,

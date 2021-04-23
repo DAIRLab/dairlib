@@ -47,6 +47,47 @@ def main():
     robot_out, osc_output, full_log = process_mpc_log(log, pos_map, vel_map,
         act_map, robot_out_channel, mpc_channel, osc_channel, osc_debug_channel)
 
+    t_u_slice = slice(0, len(t_u) -1)
+
+    ders = ["pos", "vel", "accel"]
+    for i in range(3):
+        plot_osc(osc_debug, t_u_slice, "swing_ft_traj", 2, ders[i])
+
+    plot_mpc_com_sol(mpc_output[0], 0)
+    plot_mpc_swing_sol(mpc_output[150], 1)
+
+    plt.show()
+
+
+def plot_mpc_com_sol(mpc_sol, dim):
+    fig_com = plt.figure("Koopman mpc com_traj")
+    com_traj = mpc_sol.trajectories["com_traj"]
+    plt.plot(com_traj.time_vec, com_traj.datapoints[dim, :])
+
+def plot_mpc_swing_sol(mpc_sol, dim):
+    fig_swing_ft = plt.figure("Koopman mpc swing ft traj")
+    swing_ft_traj = mpc_sol.trajectories["swing_foot_traj"]
+    plt.plot(swing_ft_traj.time_vec, swing_ft_traj.datapoints[dim, :])
+
+
+def plot_osc(osc_debug,t_u_slice, osc_traj, dim, derivative):
+    fig = plt.figure(osc_traj + " " + str(derivative) + " tracking " + str(dim))
+    if (derivative == "pos"):
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].y_des[t_u_slice, dim])
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].y[t_u_slice, dim])
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_y[t_u_slice, dim])
+        plt.legend(["y_des", "y", "error_y"])
+        # plt.legend(["y_des", "y"])
+    elif (derivative == "vel"):
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim])
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot[t_u_slice, dim])
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim])
+        plt.legend(["ydot_des", "ydot", "error_ydot"])
+    elif (derivative == "accel"):
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_des[t_u_slice, dim])
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command[t_u_slice, dim])
+        plt.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command_sol[t_u_slice, dim])
+        plt.legend(["yddot_des", "yddot_command", "yddot_command_sol"])
 
 if __name__ == "__main__":
     main()

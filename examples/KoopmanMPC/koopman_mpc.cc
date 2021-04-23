@@ -507,7 +507,7 @@ EventStatus KoopmanMPC::PeriodicUpdate(
   if (use_fsm_) {
     int fsm_state = (int) (discrete_state->get_vector(current_fsm_state_idx_).get_value()(0) + 1e-6);
     double last_event_time = discrete_state->get_vector(prev_event_time_idx_).get_value()(0);
-    time_since_last_event = (last_event_time <= 0) ? 0 : timestamp - last_event_time;
+    time_since_last_event = (last_event_time <= 0) ? timestamp : timestamp - last_event_time;
 
     UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, dt_),
                                  fsm_state, time_since_last_event);
@@ -559,6 +559,7 @@ void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     return;
   }
 
+
   // Remove current initial state constraint
   modes_.at(x0_idx_[0]).init_state_constraint_.at(x0_idx_[1])->
     UpdateCoefficients(MatrixXd::Zero(1, nz_), VectorXd::Zero(1));
@@ -582,7 +583,6 @@ void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
   /// TODO (@Brian-Acosta) - Add check to be able to start controller after sim
   x0_idx_[0] = fsm_state;
   x0_idx_[1] = std::floor(t_since_last_switch / dt_);
-
 
   if (x0_idx_[1] == modes_.at(x0_idx_[0]).N) {
     std::cout << "Shouldn't be here!" << std::endl;
@@ -685,6 +685,7 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
 
   double next_touchdown_time = time +
       dt_ * (modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1]);
+  std:: cout << "time: " << time << " next td time: " << next_touchdown_time << std::endl;
   Vector3d swing_ft_traj_breaks = {time, (time + next_touchdown_time) /2.0,
                                    next_touchdown_time};
 

@@ -52,7 +52,7 @@
     </visual>
     <inertial>
       <origin xyz="0 0 -0.25"/>
-      <mass value="1"/>
+      <mass value="0.25"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
@@ -89,7 +89,7 @@
     </visual>
     <inertial>
       <origin xyz="0 0 -0.25"/>
-      <mass value="1"/>
+      <mass value="0.25"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
@@ -120,7 +120,7 @@
     </visual>
     <inertial>
       <origin xyz="0 0 -0.25"/>
-      <mass value="1"/>
+      <mass value="0.25"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
@@ -157,7 +157,7 @@
     </visual>
     <inertial>
       <origin xyz="0 0 -0.25"/>
-      <mass value="1"/>
+      <mass value="0.25"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
@@ -189,25 +189,27 @@
     <parent link="torso"/>
     <child link="left_upper_leg"/>
     <axis xyz="0 1 0"/>
+    <limit effort="500"/>
   </joint>
   <joint name="right_hip_pin" type="continuous">
     <parent link="torso"/>
     <child link="right_upper_leg"/>
     <axis xyz="0 1 0"/>
+    <limit effort="500"/>
   </joint>
   <joint name="left_knee_pin" type="continuous">
     <parent link="left_upper_leg"/>
     <child link="left_lower_leg"/>
     <axis xyz="0 1 0"/>
     <origin xyz="0 0 -0.5"/>
-    <limit effort="100" lower="0"/>
+    <limit effort="400" lower="0"/>
   </joint>
   <joint name="right_knee_pin" type="revolute">
     <parent link="right_upper_leg"/>
     <child link="right_lower_leg"/>
     <axis xyz="0 1 0"/>
     <origin xyz="0 0 -0.5"/>
-    <limit effort="100" lower="0"/>
+    <limit effort="400" lower="0"/>
   </joint>
   <transmission name="left_hip_trans" type="SimpleTransmission">
     <actuator name="left_hip_torque"/>

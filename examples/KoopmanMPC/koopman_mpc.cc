@@ -178,18 +178,17 @@ void KoopmanMPC::CheckProblemDefinition() {
   DRAKE_DEMAND(!contact_points_.empty());
   DRAKE_DEMAND(!kin_nominal_.empty());
   DRAKE_DEMAND(mass_ > 0);
+  /*DRAKE_DEMAND(!modes_.front().stance_foot_soft_constraints.empty());
+  DRAKE_DEMAND(!modes_.front().flat_ground_soft_constraints.empty());*/
 }
 
 void KoopmanMPC::Build() {
   CheckProblemDefinition();
-
   MakeDynamicsConstraints();
   MakeFrictionConeConstraints();
-  MakeStanceFootConstraints();
   MakeKinematicReachabilityConstraints();
   MakeStateKnotConstraints();
   MakeInitialStateConstraints();
-  MakeFlatGroundConstraints();
 
   std::cout << "Built Koopman Mpc QP: \nModes: " << std::to_string(nmodes_) <<
                "\nTotal Knots: " << std::to_string(total_knots_) << std::endl;
@@ -198,19 +197,22 @@ void KoopmanMPC::Build() {
       "time_limit", kMaxSolveDuration_);
 }
 
-void KoopmanMPC::MakeStanceFootConstraints() {
+void KoopmanMPC::MakeStanceFootConstraints(const MatrixXd& W) {
+  DRAKE_DEMAND(W.cols() == kLinearDim_);
+  DRAKE_DEMAND(W.rows() == kLinearDim_);
+
   MatrixXd S = MatrixXd::Identity(kLinearDim_, kLinearDim_);
   for (auto & mode : modes_) {
     // Loop over N inputs
     for (int i = 0; i < mode.N; i++) {
-      mode.stance_foot_constraints.push_back(
-          prog_.AddLinearEqualityConstraint(
-              S, VectorXd::Zero(kLinearDim_),
+      mode.stance_foot_soft_constraints.push_back(
+          prog_.AddQuadraticCost(
+              W, VectorXd::Zero(kLinearDim_),
               mode.uu.at(i).segment(mode.stance * kLinearDim_, kLinearDim_ ))
               .evaluator()
               .get());
 
-      mode.stance_foot_constraints.at(i)->set_description(
+      mode.stance_foot_soft_constraints.at(i)->set_description(
           "stance_ft"  + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }
@@ -255,10 +257,12 @@ void KoopmanMPC::MakeKinematicReachabilityConstraints() {
   MatrixXd S = MatrixXd::Zero(kLinearDim_, kLinearDim_ * 2);
 
   S.block(0, 0, kLinearDim_, kLinearDim_) =
-      -MatrixXd::Identity(kLinearDim_, kLinearDim_);
-  S.block(0, kLinearDim_, kLinearDim_, kLinearDim_) =
       MatrixXd::Identity(kLinearDim_, kLinearDim_);
+  S.block(0, kLinearDim_, kLinearDim_, kLinearDim_) =
+      -MatrixXd::Identity(kLinearDim_, kLinearDim_);
 
+  std::cout << "Kinematic Upper Limit:\n" << kin_lim_ + kin_nominal_.at(0) << std::endl;
+  std::cout << "Kinematic Lower Limit:\n" << kin_nominal_.at(0) - kin_lim_ << std::endl;
   for (auto & mode : modes_) {
     // Loop over N+1 states
     for (int i = 0; i <= mode.N; i++) {
@@ -304,19 +308,20 @@ void KoopmanMPC::MakeFrictionConeConstraints() {
   }
 }
 
-void KoopmanMPC::MakeFlatGroundConstraints() {
+void KoopmanMPC::MakeFlatGroundConstraints(const MatrixXd& W) {
+  DRAKE_DEMAND(W.cols() == 1);
+  DRAKE_DEMAND(W.rows() == 1);
+
   for (auto & mode : modes_) {
     for (int i = 0; i < mode.N; i++) {
-      mode.flat_ground_constraints.push_back(
-          prog_.AddLinearEqualityConstraint(
-          MatrixXd::Identity(1, 1),
-          VectorXd::Zero(1),
+      mode.flat_ground_soft_constraints.push_back(
+          prog_.AddQuadraticCost(
+          W, VectorXd::Zero(1),
           mode.zz.at(i).segment(nx_ + kLinearDim_ * (mode.stance + 1)-1, 1))
           .evaluator()
           .get());
-
-      mode.flat_ground_constraints.at(i)->set_description(
-          "FlatGrounConst" + std::to_string(mode.stance) + "." + std::to_string(i));
+      mode.flat_ground_soft_constraints.at(i)->set_description(
+          "FlatGroundConst" + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }
 }

@@ -2,15 +2,15 @@ rows: 3
 cols: 3
 
 mu: 0.8
-w_accel: .001
+w_accel: 0.00001
 w_soft_constraint: 0
 
 CoMW:
-  [100, 0, 0,
+  [10, 0, 0,
    0, 0,    0,
-   0, 0,  10]
+   0, 0,  100]
 OrientationW:
-  [100]
+  [10]
 SwingFootW:
   [100, 0, 0,
    0, 0, 0,
@@ -29,12 +29,12 @@ OrientationKd:
   [1]
 
 SwingFootKp:
-  [ 1000, 0,   0,
+  [ 100, 0,   0,
     0,   0,   0,
-    0,   0,  1000]
+    0,   0,  100]
 SwingFootKd:
-  [ 3,  0,  0,
+  [ 10,  0,  0,
     0,  0,  0,
-    0,  0,  3]
+    0,  0,  10]
 
 

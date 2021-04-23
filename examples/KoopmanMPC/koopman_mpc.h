@@ -49,8 +49,8 @@ typedef struct KoopmanMpcMode {
   int N;
   std::vector<drake::solvers::VectorXDecisionVariable> zz;
   std::vector<drake::solvers::VectorXDecisionVariable> uu;
-  std::vector<drake::solvers::LinearEqualityConstraint*> stance_foot_constraints;
-  std::vector<drake::solvers::LinearEqualityConstraint*> flat_ground_constraints;
+  std::vector<drake::solvers::QuadraticCost*> stance_foot_soft_constraints;
+  std::vector<drake::solvers::QuadraticCost*> flat_ground_soft_constraints;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints;
   std::vector<drake::solvers::LinearConstraint*> reachability_constraints;
@@ -74,6 +74,10 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
   void AddInputRegularization(const Eigen::MatrixXd& R);
+
+  void SetFlatGroundSoftConstraint(const Eigen::MatrixXd& W) {MakeFlatGroundConstraints(W);}
+  void SetStanceFootSoftConstraint(const Eigen::MatrixXd& W) {MakeStanceFootConstraints(W);}
+
   void AddJointToTrackBaseAngle(const std::string& joint_pos_name,
                                 const std::string& joint_vel_name);
 
@@ -137,13 +141,13 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   double CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies);
 
-  void MakeStanceFootConstraints();
+  void MakeStanceFootConstraints(const Eigen::MatrixXd& W);
   void MakeKinematicReachabilityConstraints();
   void MakeDynamicsConstraints();
   void MakeFrictionConeConstraints();
   void MakeStateKnotConstraints();
   void MakeInitialStateConstraints();
-  void MakeFlatGroundConstraints();
+  void MakeFlatGroundConstraints(const Eigen::MatrixXd& W);
 
   Eigen::MatrixXd CalcSwingFootKnotPoints(const Eigen::VectorXd& x,
       const drake::solvers::MathematicalProgramResult& result,

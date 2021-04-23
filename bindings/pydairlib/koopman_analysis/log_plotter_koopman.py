@@ -51,7 +51,11 @@ def main():
 
     ders = ["pos", "vel", "accel"]
     for i in range(3):
+        plot_osc(osc_debug, t_u_slice, "swing_ft_traj", 0, ders[i])
         plot_osc(osc_debug, t_u_slice, "swing_ft_traj", 2, ders[i])
+        plot_osc(osc_debug, t_u_slice, "com_traj", 0, ders[i])
+        plot_osc(osc_debug, t_u_slice, "com_traj", 2, ders[i])
+        plot_osc(osc_debug, t_u_slice, "base_angle", 0, ders[i])
 
     plot_mpc_com_sol(mpc_output[0], 0)
     plot_mpc_swing_sol(mpc_output[150], 1)

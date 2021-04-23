@@ -77,6 +77,8 @@ DEFINE_string(
 DEFINE_bool(track_com, false,
     "use com tracking data (otherwise uses trans space)");
 
+DEFINE_bool(print_osc_tracking_info, false, "prinosc_debug to the terminal");
+
 void print_gains(const OSCWalkingGains& gains);
 
 int DoMain(int argc, char* argv[]) {
@@ -139,7 +141,7 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
 
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant, plant_context.get(), plant_context.get(), true, FLAGS_print_osc_tracking_info);
 
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(

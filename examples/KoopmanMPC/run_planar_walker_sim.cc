@@ -147,6 +147,9 @@ int do_main(int argc, char* argv[]) {
       saved_traj.GetTrajectory(FLAGS_x0_traj_name).datapoints.col(0);
   auto map = makeNameToPositionsMap(plant);
 
+  double tmp = x0(map["left_hip_pin"]);
+  x0(map["left_hip_pin"]) = x0(map["right_hip_pin"]);
+  x0(map["right_hip_pin"]) = tmp;
   x0(map["planar_z"]) = x0(map["planar_z"]) + calcPositionOffset(plant, &plant_context, x0);
 
   x0.tail(plant.num_velocities()) = Eigen::VectorXd::Zero(plant.num_velocities());

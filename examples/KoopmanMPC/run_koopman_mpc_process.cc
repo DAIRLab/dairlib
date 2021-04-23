@@ -72,6 +72,13 @@ VectorXd poly_basis_1 (const VectorXd& x) {
 }
 
 int DoMain(int argc, char* argv[]) {
+
+  MpcGains gains;
+  const YAML::Node& root =
+      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+  drake::yaml::YamlReadArchive(root).Accept(&gains);
+
+
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Koopman parameters
@@ -138,10 +145,10 @@ int DoMain(int argc, char* argv[]) {
 
   // Set kinematic reachability constraint
   std::vector<VectorXd> kin_nom = {
-      0.9*Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx())),
-      0.9*Vector2d(-default_com(kmpc->saggital_idx()), -default_com(kmpc->vertical_idx()))};
+      Vector2d(default_com(kmpc->saggital_idx()), default_com(kmpc->vertical_idx())),
+      Vector2d(default_com(kmpc->saggital_idx()), default_com(kmpc->vertical_idx()))};
 
-  kmpc->SetReachabilityLimit(0.4*VectorXd::Ones(2), kin_nom);
+  kmpc->SetReachabilityLimit(gains.ReachabilityLim*VectorXd::Ones(2), kin_nom);
 
   // add base pivot angle
   kmpc->AddJointToTrackBaseAngle("planar_roty", "planar_rotydot");
@@ -153,24 +160,22 @@ int DoMain(int argc, char* argv[]) {
 
   // add tracking objective
   VectorXd x_des = VectorXd::Zero(kmpc->num_state_inflated());
-  x_des(1) = 0.95* default_com(kmpc->vertical_idx());
+  x_des(1) = 0.9* default_com(kmpc->vertical_idx());
   x_des(3) = FLAGS_v_des;
   x_des.tail(1) = 9.81 * mass * VectorXd::Ones(1);
 
   std::cout << "x desired:\n" << x_des <<std::endl;
 
-  MpcGains gains;
-  const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
-  drake::yaml::YamlReadArchive(root).Accept(&gains);
-
   kmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
+
+  //kmpc->SetFlatGroundSoftConstraint(gains.W_flat_ground);
+  kmpc->SetStanceFootSoftConstraint(gains.W_stance_foot);
 
     // add input cost
   kmpc->AddInputRegularization(gains.r.asDiagonal());
 
   // set friction coeff
-  kmpc->SetMu(0.4);
+  kmpc->SetMu(gains.mu);
   kmpc->Build();
   std::cout << "Successfully built kmpc" << std::endl;
 

@@ -36,7 +36,7 @@ def get_nominal_task_given_sample_idx(sample_idx, task_name):
 # Set `get_init_file` to True if you want to generate the initial traj for both
 # planner and controller
 # sample_idx is used to initialize the guess for the planner
-def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx, fix_task,
+def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
     get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
@@ -161,7 +161,6 @@ def eval_cost(sim_end_time, rom_iter_idx, sample_idx, multithread=False):
 #  What I'm doing currently is running all samples for one time, and then get a 3D plot (model iter - task - cost)
 #  Then we can pick a task to slice the 3D plot!
 def run_sim_and_eval_cost(model_indices, sample_indices, do_eval_cost=False):
-  fix_task = False
   max_n_fail = 0
 
   n_total_sim = len(model_indices) * len(sample_indices)
@@ -178,9 +177,9 @@ def run_sim_and_eval_cost(model_indices, sample_indices, do_eval_cost=False):
       # while True:
       while not os.path.exists(path):
         # Get the initial traj
-        run_sim_and_controller(sim_end_time, rom_iter, sample, fix_task, True)
+        run_sim_and_controller(sim_end_time, rom_iter, sample, True)
         # Run the simulation
-        run_sim_and_controller(sim_end_time, rom_iter, sample, fix_task, False)
+        run_sim_and_controller(sim_end_time, rom_iter, sample, False)
 
         # Evaluate the cost
         if do_eval_cost:
@@ -472,8 +471,9 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/"
 
   # global parameters
-  sim_end_time = 8.0
-  spring_model = False
+  sim_end_time = 12.0
+  spring_model = True
+  fix_task = True
 
   # Create folder if not exist
   Path(eval_dir).mkdir(parents=True, exist_ok=True)
@@ -500,11 +500,11 @@ if __name__ == "__main__":
   # TODO: use a list of target task values instead of sample index list. Then for each value, find the sample index that has the task closest to the list element
 
   ### Toggle the functions here to run simulation or evaluate cost
-  run_sim_and_eval_cost(model_indices, sample_indices)
-  # run_sim_and_eval_cost([70], [34])
+  # run_sim_and_eval_cost(model_indices, sample_indices)
+  # run_sim_and_eval_cost([100], [37])
 
   # Only evaluate cost
-  eval_cost_in_multithread(model_indices, sample_indices)
+  # eval_cost_in_multithread(model_indices, sample_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)
@@ -520,15 +520,15 @@ if __name__ == "__main__":
   # plot_cost_vs_task(model_idx, sample_indices, True)
 
   # Save plots
-  task_element_idx = 0
-  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    True, True, True)
-  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    True, False, True)
-  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    False, True, True)
-  plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
-    False, False, True)
+  # task_element_idx = 0
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   True, True, True)
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   True, False, True)
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   False, True, True)
+  # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,
+  #   False, False, True)
 
   # 3D plot
   # plot_cost_vs_model_and_task(model_indices, sample_indices, task_element_idx,

@@ -94,7 +94,7 @@ def main():
   t_end = t_u[-10]
   # Override here #
   # t_start = 205
-  # t_end = 208
+  # t_end = 10
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -104,12 +104,14 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All plotting scripts here
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
   # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot")
+
+  plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
   plt.show()
 
@@ -362,6 +364,17 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   # plt.figure("Delay characterization")
   # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
   # plt.legend(u_datatypes[u_indices])
+
+def plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes):
+  pos_indices = slice(5,7)
+  vel_indices = slice(26, 26 + 3)
+
+  plt.figure()
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
+  plt.xlabel("time (s)")
+  plt.ylabel("position (m) or velocity (m/s)")
+  plt.legend(["pelvis_y", "pelvis_z", "pelvis_xdot", "pelvis_ydot", "pelvis_zdot"])
 
 
 if __name__ == "__main__":

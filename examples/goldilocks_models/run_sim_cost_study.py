@@ -40,7 +40,8 @@ def run_sim_and_controller(sim_end_time, rom_iter_idx, sample_idx,
     get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
-  # stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
+  if fix_task:
+    stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
 
   # Get task to evaluate
   target_stride_length = get_nominal_task_given_sample_idx(sample_idx,
@@ -501,7 +502,7 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # run_sim_and_eval_cost(model_indices, sample_indices)
-  # run_sim_and_eval_cost([100], [37])
+  run_sim_and_eval_cost([100], [37])
 
   # Only evaluate cost
   # eval_cost_in_multithread(model_indices, sample_indices)

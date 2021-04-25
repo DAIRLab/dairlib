@@ -77,7 +77,7 @@ DEFINE_string(
 DEFINE_bool(track_com, false,
     "use com tracking data (otherwise uses trans space)");
 
-DEFINE_bool(print_osc_tracking_info, false, "prinosc_debug to the terminal");
+DEFINE_bool(print_osc_debug, false, "prinosc_debug to the terminal");
 
 void print_gains(const OSCWalkingGains& gains);
 
@@ -141,7 +141,7 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
 
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true, FLAGS_print_osc_tracking_info);
+      plant, plant, plant_context.get(), plant_context.get(), true, FLAGS_print_osc_debug);
 
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
@@ -181,8 +181,9 @@ int DoMain(int argc, char* argv[]) {
   /*** tracking data ***/
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj",
       gains.K_p_swing_foot, gains.K_d_swing_foot, gains.W_swing_foot, plant, plant);
-  swing_foot_traj.AddStateAndPointToTrack(koopMpcStance::kRight, "left_lower_leg", left_pt.second);
+  
   swing_foot_traj.AddStateAndPointToTrack(koopMpcStance::kLeft, "right_lower_leg", right_pt.second);
+  swing_foot_traj.AddStateAndPointToTrack(koopMpcStance::kRight, "left_lower_leg", left_pt.second);
 
   osc->AddTrackingData(&swing_foot_traj);
 

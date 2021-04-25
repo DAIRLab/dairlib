@@ -49,6 +49,8 @@ typedef struct KoopmanMpcMode {
   int N;
   std::vector<drake::solvers::VectorXDecisionVariable> zz;
   std::vector<drake::solvers::VectorXDecisionVariable> uu;
+  std::vector<drake::solvers::VectorXDecisionVariable> kin_slack;
+  std::vector<drake::solvers::QuadraticCost*> kin_reach_slack_cost;
   std::vector<drake::solvers::QuadraticCost*> stance_foot_soft_constraints;
   std::vector<drake::solvers::QuadraticCost*> flat_ground_soft_constraints;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints;
@@ -109,7 +111,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   }
 
   void SetReachabilityLimit(const Eigen::VectorXd& kl,
-      const std::vector<Eigen::VectorXd>& kn);
+      const std::vector<Eigen::VectorXd>& kn, const Eigen::MatrixXd& KinReachW);
 
   void SetMu(double mu) { mu_ = mu; }
   int num_modes() { return nmodes_; }
@@ -202,6 +204,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int total_knots_ = 0;
   std::vector<Eigen::VectorXd> kin_nominal_;
   Eigen::VectorXd kin_lim_;
+  Eigen::MatrixXd W_kin_reach_;
 
 
   // variable counts

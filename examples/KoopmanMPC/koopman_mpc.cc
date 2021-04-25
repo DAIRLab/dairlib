@@ -107,6 +107,8 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
 
   for ( int i = 0; i < N+1; i++) {
     mode.zz.push_back(prog_.NewContinuousVariables(nz_, "z_" + std::to_string(i)));
+    mode.kin_slack.push_back(
+        prog_.NewContinuousVariables(kLinearDim_, "kin_slack" + std::to_string(i)));
   }
   for (int i = 0; i < N; i++) {
     mode.uu.push_back(prog_.NewContinuousVariables(nu_c_, "u_" + std::to_string(i+1)));
@@ -161,10 +163,13 @@ double KoopmanMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
 }
 
 void KoopmanMPC::SetReachabilityLimit(const Eigen::VectorXd& kl,
-    const std::vector<Eigen::VectorXd> &kn) {
+    const std::vector<Eigen::VectorXd> &kn, const MatrixXd& KinReachW) {
   DRAKE_DEMAND(kl.size() == kLinearDim_);
+  DRAKE_DEMAND(KinReachW.rows() == kLinearDim_);
+  DRAKE_DEMAND(KinReachW.cols() == kLinearDim_);
 
   kin_lim_ = kl;
+  W_kin_reach_ = KinReachW;
   for (auto pos : kn) {
     kin_nominal_.push_back(pos);
   }
@@ -254,12 +259,15 @@ void KoopmanMPC::MakeInitialStateConstraints() {
 }
 
 void KoopmanMPC::MakeKinematicReachabilityConstraints() {
-  MatrixXd S = MatrixXd::Zero(kLinearDim_, kLinearDim_ * 2);
+  MatrixXd S = MatrixXd::Zero(kLinearDim_, kLinearDim_ * 3);
 
   S.block(0, 0, kLinearDim_, kLinearDim_) =
       MatrixXd::Identity(kLinearDim_, kLinearDim_);
   S.block(0, kLinearDim_, kLinearDim_, kLinearDim_) =
       -MatrixXd::Identity(kLinearDim_, kLinearDim_);
+  S.block(0, 2*kLinearDim_, kLinearDim_, kLinearDim_) =
+      MatrixXd::Identity(kLinearDim_, kLinearDim_);
+
 
   std::cout << "Kinematic Upper Limit:\n" << kin_lim_ + kin_nominal_.at(0) << std::endl;
   std::cout << "Kinematic Lower Limit:\n" << kin_nominal_.at(0) - kin_lim_ << std::endl;
@@ -272,12 +280,17 @@ void KoopmanMPC::MakeKinematicReachabilityConstraints() {
               kin_lim_ + kin_nominal_.at(mode.stance),
               {mode.zz.at(i).head(kLinearDim_),
                mode.zz.at(i).segment(nx_ + kLinearDim_ * mode.stance,
-                   kLinearDim_)})
+                   kLinearDim_), mode.kin_slack.at(i)})
                .evaluator()
                .get());
 
       mode.reachability_constraints.at(i)->set_description(
           "Reachability" + std::to_string(mode.stance) + "." + std::to_string(i));
+
+      mode.kin_reach_slack_cost.push_back(
+          prog_.AddQuadraticCost(W_kin_reach_, VectorXd::Zero(kLinearDim_), mode.kin_slack.at(i))
+          .evaluator()
+          .get());
     }
   }
 }

@@ -12,12 +12,13 @@ struct MpcGains {
   std::vector<double> InputW;
   std::vector<double> FlatGroundW;
   std::vector<double> StanceFootW;
-
+  std::vector<double> KinReachW;
 
   VectorXd q;
   VectorXd r;
   MatrixXd W_flat_ground;
   MatrixXd W_stance_foot;
+  MatrixXd W_kin_reach;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -27,6 +28,7 @@ struct MpcGains {
     a->Visit(DRAKE_NVP(InputW));
     a->Visit(DRAKE_NVP(FlatGroundW));
     a->Visit(DRAKE_NVP(StanceFootW));
+    a->Visit(DRAKE_NVP(KinReachW));
 
 
     q = Eigen::Map<Eigen::VectorXd>(this->StateW.data(), 12);
@@ -37,5 +39,8 @@ struct MpcGains {
     W_stance_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->StanceFootW.data(), 2, 2);
+    W_kin_reach = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->KinReachW.data(), 2, 2);
   }
 };

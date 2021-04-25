@@ -6,8 +6,8 @@
   <link name="base_xz"/>
   <link name="torso_mass">
     <inertial>
-      <mass value="29"/>
-      <inertia ixx="4" ixy="0" ixz="0" iyy="4" iyz="0" izz="4"/>
+      <mass value="26"/>
+      <inertia ixx="3.5" ixy="0" ixz="0" iyy="3.5" iyz="0" izz="3.5"/>
     </inertial>
     <visual>
       <geometry>
@@ -52,7 +52,7 @@
     </visual>
     <inertial>
       <origin xyz="0 0 -0.25"/>
-      <mass value="0.25"/>
+      <mass value="2"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
@@ -89,7 +89,7 @@
     </visual>
     <inertial>
       <origin xyz="0 0 -0.25"/>
-      <mass value="0.25"/>
+      <mass value="1"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
@@ -120,7 +120,7 @@
     </visual>
     <inertial>
       <origin xyz="0 0 -0.25"/>
-      <mass value="0.25"/>
+      <mass value="2"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
@@ -157,7 +157,7 @@
     </visual>
     <inertial>
       <origin xyz="0 0 -0.25"/>
-      <mass value="0.25"/>
+      <mass value="1"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
@@ -179,7 +179,7 @@
   <joint name="torso_mass_weld" type="fixed">
     <parent link="torso"/>
     <child link="torso_mass"/>
-    <origin xyz="0 0 0"/>
+    <origin xyz="0 0 0.15"/>
   </joint>
   <joint name="right_lower_leg_mass_weld" type="fixed">
     <parent link="right_lower_leg"/>

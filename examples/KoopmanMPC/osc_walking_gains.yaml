@@ -2,13 +2,13 @@ rows: 3
 cols: 3
 
 mu: 0.8
-w_accel: 0.00001
-w_soft_constraint: 0
+w_accel: .001
+w_soft_constraint: 10000
 
 CoMW:
-  [10, 0, 0,
-   0, 0,    0,
-   0, 0,  100]
+  [10, 0,   0,
+   0,  0,   0,
+   0,  0, 10]
 OrientationW:
   [10]
 SwingFootW:

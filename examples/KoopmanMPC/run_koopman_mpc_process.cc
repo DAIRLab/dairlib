@@ -148,7 +148,8 @@ int DoMain(int argc, char* argv[]) {
       Vector2d(default_com(kmpc->saggital_idx()), default_com(kmpc->vertical_idx())),
       Vector2d(default_com(kmpc->saggital_idx()), default_com(kmpc->vertical_idx()))};
 
-  kmpc->SetReachabilityLimit(gains.ReachabilityLim*VectorXd::Ones(2), kin_nom);
+  kmpc->SetReachabilityLimit(
+      gains.ReachabilityLim*VectorXd::Ones(2), kin_nom);
 
   // add base pivot angle
   kmpc->AddJointToTrackBaseAngle("planar_roty", "planar_rotydot");
@@ -168,7 +169,7 @@ int DoMain(int argc, char* argv[]) {
 
   kmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
 
-  //kmpc->SetFlatGroundSoftConstraint(gains.W_flat_ground);
+  kmpc->SetFlatGroundSoftConstraint(gains.W_flat_ground);
   kmpc->SetStanceFootSoftConstraint(gains.W_stance_foot);
 
     // add input cost

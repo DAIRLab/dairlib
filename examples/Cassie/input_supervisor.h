@@ -83,22 +83,32 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   void SetStatus(const drake::systems::Context<double>& context,
                  dairlib::lcmt_input_supervisor_status* output) const;
 
+  void CheckVelocities(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CheckRadio(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
+
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
   const int num_actuators_;
   const int num_positions_;
   const int num_velocities_;
+  // supervisor settings
   const int min_consecutive_failures_;
   double max_joint_velocity_;
   double input_limit_;
   mutable double blend_duration_ = 0.0;
+
+  int soft_estop_trigger_index_;
+  int is_nan_index_;
+
   int status_vars_index_;
-  int soft_estop_flag_index_;
   int n_fails_index_;
   int status_index_;
+  // for blending controller efforts
   int switch_time_index_;
   int prev_efforts_index_;
   int prev_efforts_time_index_;
+
+  // leafsystem ports
   int state_input_port_;
   int command_input_port_;
   int controller_switch_input_port_;

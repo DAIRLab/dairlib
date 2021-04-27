@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include <drake/geometry/drake_visualizer.h>
 #include <gflags/gflags.h>
 
 #include "common/file_utils.h"
@@ -1153,7 +1154,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
   // **************************************
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (true) {

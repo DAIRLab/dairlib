@@ -1,29 +1,29 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
+
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_osc_qp_output.hpp"
-
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/framework/leaf_system.h"
-
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/osqp_solver.h"
-#include "drake/solvers/solve.h"
-
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
+
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/solve.h"
+#include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/framework/leaf_system.h"
 
 // Maximum time limit for each QP solve
 static constexpr double kMaxSolveDuration = 0.001;
@@ -116,9 +116,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_near_impact_input_port() const {
+    return this->get_input_port(near_impact_port_);
+  }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
       const std::string& name) const {
-    return this->get_input_port(traj_name_to_port_index_map_.at(name));
+    try {
+      return this->get_input_port(traj_name_to_port_index_map_.at(name));
+    } catch (std::exception& e) {
+      std::cerr << "Cannot find tracking data named: " << name << std::endl;
+    }
+    return this->get_input_port(0);
   }
 
   // Cost methods
@@ -168,7 +176,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           const Eigen::VectorXd& x_wo_spr,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
-                          double time_since_last_state_switch) const;
+                          double time_since_last_state_switch, double alpha,
+                          int next_fsm_state) const;
+
+  void UpdateImpactInvariantProjection(
+      const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context, double t, int fsm_state,
+      int next_fsm_state, const Eigen::MatrixXd& M,
+      const Eigen::MatrixXd& J_h) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -187,6 +202,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int osc_output_port_;
   int state_port_;
   int fsm_port_;
+  int near_impact_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -259,6 +275,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   mutable double solve_time_;
+
+  mutable Eigen::VectorXd ii_lambda_sol_;
+  mutable Eigen::MatrixXd M_Jt_;
+  std::map<int, int> active_contact_dim_ = {};
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user

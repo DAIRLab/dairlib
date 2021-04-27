@@ -167,12 +167,12 @@ int DoMain(int argc, char* argv[]) {
   Vector3d foot_contact_disp(0, 0, 0);
 
   auto left_foot_evaluator = multibody::WorldPointEvaluator(plant,
-      foot_contact_disp, left_pt.first, Matrix3d::Identity(),
-      left_pt.second, {0, 2});
+      left_pt.second, left_pt.first, Matrix3d::Identity(),
+      foot_contact_disp,{0, 2});
 
   auto right_foot_evaluator = multibody::WorldPointEvaluator(plant,
-      foot_contact_disp, right_pt.first,  Matrix3d::Identity(),
-      right_pt.second, {0, 2});
+      right_pt.second, right_pt.first,  Matrix3d::Identity(),
+      foot_contact_disp, {0, 2});
 
   osc->AddStateAndContactPoint(koopMpcStance::kLeft, &left_foot_evaluator);
   osc->AddStateAndContactPoint(koopMpcStance::kRight, &right_foot_evaluator);

@@ -6,7 +6,7 @@
   <link name="base_xz"/>
   <link name="torso_mass">
     <inertial>
-      <mass value="26"/>
+      <mass value="30"/>
       <inertia ixx="3.5" ixy="0" ixz="0" iyy="3.5" iyz="0" izz="3.5"/>
     </inertial>
     <visual>
@@ -179,7 +179,7 @@
   <joint name="torso_mass_weld" type="fixed">
     <parent link="torso"/>
     <child link="torso_mass"/>
-    <origin xyz="0 0 0.15"/>
+    <origin xyz="0 0 0.3"/>
   </joint>
   <joint name="right_lower_leg_mass_weld" type="fixed">
     <parent link="right_lower_leg"/>

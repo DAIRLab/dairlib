@@ -155,13 +155,12 @@ int DoMain(int argc, char* argv[]) {
   kmpc->AddJointToTrackBaseAngle("planar_roty", "planar_rotydot");
 
   // set mass
-  std::vector<string> massive_bodies = {"torso_mass", "left_upper_leg_mass", "right_upper_leg_mass",
-                                        "left_lower_leg_mass", "right_lower_leg_mass"};
+  std::vector<string> massive_bodies = {"torso_mass"};
   double mass = kmpc->SetMassFromListOfBodies(massive_bodies);
 
   // add tracking objective
   VectorXd x_des = VectorXd::Zero(kmpc->num_state_inflated());
-  x_des(1) = 0.9* default_com(kmpc->vertical_idx());
+  x_des(1) = 1.05;
   x_des(3) = FLAGS_v_des;
   x_des.tail(1) = 9.81 * mass * VectorXd::Ones(1);
 
@@ -170,7 +169,6 @@ int DoMain(int argc, char* argv[]) {
   kmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
 
   kmpc->SetFlatGroundSoftConstraint(gains.W_flat_ground);
-  kmpc->SetStanceFootSoftConstraint(gains.W_stance_foot);
 
     // add input cost
   kmpc->AddInputRegularization(gains.r.asDiagonal());

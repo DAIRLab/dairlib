@@ -189,6 +189,7 @@ void KoopmanMPC::CheckProblemDefinition() {
 
 void KoopmanMPC::Build() {
   CheckProblemDefinition();
+  MakeStanceFootConstraints();
   MakeDynamicsConstraints();
   MakeFrictionConeConstraints();
   MakeKinematicReachabilityConstraints();
@@ -202,22 +203,18 @@ void KoopmanMPC::Build() {
       "time_limit", kMaxSolveDuration_);
 }
 
-void KoopmanMPC::MakeStanceFootConstraints(const MatrixXd& W) {
-  DRAKE_DEMAND(W.cols() == kLinearDim_);
-  DRAKE_DEMAND(W.rows() == kLinearDim_);
-
+void KoopmanMPC::MakeStanceFootConstraints() {
   MatrixXd S = MatrixXd::Identity(kLinearDim_, kLinearDim_);
   for (auto & mode : modes_) {
     // Loop over N inputs
     for (int i = 0; i < mode.N; i++) {
-      mode.stance_foot_soft_constraints.push_back(
-          prog_.AddQuadraticCost(
-              W, VectorXd::Zero(kLinearDim_),
-              mode.uu.at(i).segment(mode.stance * kLinearDim_, kLinearDim_ ))
+      mode.stance_foot_constraints.push_back(
+          prog_.AddLinearEqualityConstraint(
+                  S, VectorXd::Zero(kLinearDim_),
+                  mode.uu.at(i).segment(mode.stance * kLinearDim_, kLinearDim_ ))
               .evaluator()
               .get());
-
-      mode.stance_foot_soft_constraints.at(i)->set_description(
+      mode.stance_foot_constraints.at(i)->set_description(
           "stance_ft"  + std::to_string(mode.stance) + "." + std::to_string(i));
     }
   }

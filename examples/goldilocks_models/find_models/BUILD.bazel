@@ -9,6 +9,7 @@ cc_binary(
         "//common:file_utils",
         "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:task",
+        "//lcm:dircon_trajectory_saver",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

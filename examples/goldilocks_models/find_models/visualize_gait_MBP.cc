@@ -6,6 +6,7 @@
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/task.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -126,22 +127,38 @@ void visualizeGait(int argc, char* argv[]) {
                 string("_task.csv"))(ground_incline_idx, 0);
 
     // Read in trajectory
+    dairlib::DirconTrajectory dircon_traj(directory + to_string(iter) +
+                                          string("_") + to_string(sample) +
+                                          string("_dircon_trajectory"));
+
     VectorXd time_mat;
     MatrixXd state_mat;
     MatrixXd statedot_mat;
     if (!FLAGS_construct_cubic) {
-      time_mat = readCSV(directory + to_string(iter) + string("_") +
-                         to_string(sample) + string("_time_at_knots.csv"));
-      state_mat = readCSV(directory + to_string(iter) + string("_") +
-                          to_string(sample) + string("_x_samples.csv"));
+      time_mat = dircon_traj.GetBreaks();
+      state_mat = dircon_traj.GetStateSamples(0);
+      for (int i = 1; i < dircon_traj.GetNumModes(); i++) {
+        int n_new_cols = dircon_traj.GetStateBreaks(i).size() - 1;
+        state_mat.conservativeResize(state_mat.rows(),
+                                     state_mat.cols() + n_new_cols);
+        state_mat.rightCols(n_new_cols) =
+            dircon_traj.GetStateSamples(i).rightCols(n_new_cols);
+      }
     } else {
-      time_mat = readCSV(directory + to_string(iter) + string("_") +
-                         to_string(sample) + string("_t_cubic_spline.csv"));
-      state_mat = readCSV(directory + to_string(iter) + string("_") +
-                          to_string(sample) + string("_x_cubic_spline.csv"));
-      statedot_mat =
-          readCSV(directory + to_string(iter) + string("_") +
-                  to_string(sample) + string("_xdot_cubic_spline.csv"));
+      time_mat = dircon_traj.GetBreaks();
+      state_mat = dircon_traj.GetStateSamples(0);
+      statedot_mat = dircon_traj.GetStateDerivativeSamples(0);
+      for (int i = 1; i < dircon_traj.GetNumModes(); i++) {
+        int n_new_cols = dircon_traj.GetStateBreaks(i).size() - 1;
+        state_mat.conservativeResize(state_mat.rows(),
+                                     state_mat.cols() + n_new_cols);
+        statedot_mat.conservativeResize(statedot_mat.rows(),
+                                        statedot_mat.cols() + n_new_cols);
+        state_mat.rightCols(n_new_cols) =
+            dircon_traj.GetStateSamples(i).rightCols(n_new_cols);
+        statedot_mat.rightCols(n_new_cols) =
+            dircon_traj.GetStateDerivativeSamples(i).rightCols(n_new_cols);
+      }
     }
 
     int n_state = state_mat.rows();

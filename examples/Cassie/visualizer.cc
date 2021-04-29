@@ -1,6 +1,7 @@
 #include <gflags/gflags.h>
 
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -117,7 +118,7 @@ int do_main(int argc, char* argv[]) {
         scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
   }
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
 
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 

@@ -33,8 +33,8 @@ cc_binary(
     data = ["test/acrobot_floating.urdf"],
     deps = [
         "//common",
-        "//systems/primitives",
         "//multibody:visualization_utils",
+        "//systems/primitives",
         "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",

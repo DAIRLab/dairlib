@@ -32,7 +32,6 @@ cc_library(
         "multibody_utils.h",
     ],
     deps = [
-        ":visualization_utils",
         "@drake//multibody/plant",
     ],
 )
@@ -46,6 +45,7 @@ cc_library(
         "visualization_utils.h",
     ],
     deps = [
+        "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

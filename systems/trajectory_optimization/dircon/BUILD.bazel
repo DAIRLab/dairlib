@@ -34,6 +34,7 @@ cc_binary(
     deps = [
         "//common",
         "//systems/primitives",
+        "//multibody:visualization_utils",
         "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
         "@gflags",

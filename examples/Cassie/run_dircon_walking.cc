@@ -20,6 +20,7 @@
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
@@ -1153,7 +1154,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
   // **************************************
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (true) {

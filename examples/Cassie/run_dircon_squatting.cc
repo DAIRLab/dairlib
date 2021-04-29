@@ -22,6 +22,7 @@
 #include "systems/trajectory_optimization/dircon/dircon.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
@@ -622,7 +623,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
   // **************************************
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (FLAGS_playback) {

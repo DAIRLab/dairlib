@@ -57,21 +57,26 @@ def main():
         plot_osc(osc_debug, t_u_slice, "com_traj", 2, ders[i])
         plot_osc(osc_debug, t_u_slice, "base_angle", 0, ders[i])
 
-    plot_mpc_com_sol(mpc_output[-1], 0)
-    plot_mpc_swing_sol(mpc_output[-1], 1)
+    plot_mpc_com_sol(mpc_output[50], 0)
+    plot_mpc_com_sol(mpc_output[0], 1)
+    plot_mpc_swing_sol(mpc_output[0], 0)
 
     plt.show()
 
 
 def plot_mpc_com_sol(mpc_sol, dim):
-    fig_com = plt.figure("Koopman mpc com_traj")
+    fig_com = plt.figure("Koopman mpc com_traj " + str(dim))
     com_traj = mpc_sol.trajectories["com_traj"]
     plt.plot(com_traj.time_vec, com_traj.datapoints[dim, :])
+    t, r = mpc_sol.traj_as_cubic_hermite("com_traj", 100)
+    plt.plot(t,r[:,dim])
 
 def plot_mpc_swing_sol(mpc_sol, dim):
-    fig_swing_ft = plt.figure("Koopman mpc swing ft traj")
+    fig_swing_ft = plt.figure("Koopman mpc swing ft traj " + str(dim))
     swing_ft_traj = mpc_sol.trajectories["swing_foot_traj"]
     plt.plot(swing_ft_traj.time_vec, swing_ft_traj.datapoints[dim, :])
+    t, r = mpc_sol.traj_as_cubic_with_continuous_second_derivatives("swing_foot_traj",100)
+    plt.plot(t, r[:,dim])
 
 
 def plot_osc(osc_debug,t_u_slice, osc_traj, dim, derivative):

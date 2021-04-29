@@ -77,7 +77,7 @@ DEFINE_string(
 DEFINE_bool(track_com, false,
     "use com tracking data (otherwise uses trans space)");
 
-DEFINE_bool(print_osc_debug, false, "prinosc_debug to the terminal");
+DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
 
 void print_gains(const OSCWalkingGains& gains);
 

@@ -2,6 +2,7 @@ import dairlib
 import drake
 import numpy as np
 from pydairlib import lcm_trajectory
+from pydrake.trajectories import PiecewisePolynomial
 
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 
@@ -60,6 +61,39 @@ class mpc_trajectory:
         for block in msg.trajectories:
             self.trajectories[block.trajectory_name] = mpc_trajectory_block(block)
 
+    def traj_as_cubic_with_continuous_second_derivatives(self, trajectory_name, npoints):
+        traj_block = self.trajectories[trajectory_name]
+        dim = int(traj_block.datapoints.shape[0] / 2)
+        #import pdb; pdb.set_trace()
+
+        pp_traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(
+            traj_block.time_vec, traj_block.datapoints[0:dim,:],
+            traj_block.datapoints[dim:2*dim,0], traj_block.datapoints[dim:2*dim,-1])
+
+        t = np.linspace(pp_traj.start_time(), pp_traj.end_time(), npoints)
+        samples = np.zeros((npoints, pp_traj.value(pp_traj.start_time()).shape[0]))
+
+        for i in range(npoints):
+            samples[i] = pp_traj.value(t[i])[:,0]
+
+        return t, samples
+
+    def traj_as_cubic_hermite(self, trajectory_name, npoints):
+        traj_block = self.trajectories[trajectory_name]
+        dim = int(traj_block.datapoints.shape[0] / 2)
+        #import pdb; pdb.set_trace()
+
+        pp_traj = PiecewisePolynomial.CubicHermite(
+            traj_block.time_vec, traj_block.datapoints[0:dim,:],
+            traj_block.datapoints[dim:2*dim,:])
+
+        t = np.linspace(pp_traj.start_time(), pp_traj.end_time(), npoints)
+        samples = np.zeros((npoints, pp_traj.value(pp_traj.start_time()).shape[0]))
+
+        for i in range(npoints):
+            samples[i] = pp_traj.value(t[i])[:,0]
+
+        return t, samples
 
 def process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
                 mpc_channel, osc_channel, osc_debug_channel):

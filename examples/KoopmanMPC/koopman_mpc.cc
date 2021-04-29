@@ -199,8 +199,10 @@ void KoopmanMPC::Build() {
   std::cout << "Built Koopman Mpc QP: \nModes: " << std::to_string(nmodes_) <<
                "\nTotal Knots: " << std::to_string(total_knots_) << std::endl;
 
-  prog_.SetSolverOption(OsqpSolver().id(),
-      "time_limit", kMaxSolveDuration_);
+//  prog_.SetSolverOption(OsqpSolver().id(),
+//      "time_limit", kMaxSolveDuration_);
+  prog_.SetSolverOption(OsqpSolver().id(), "eps_abs", 1e-6);
+  prog_.SetSolverOption(OsqpSolver().id(), "eps_rel", 1e-6);
 }
 
 void KoopmanMPC::MakeStanceFootConstraints() {
@@ -524,13 +526,12 @@ EventStatus KoopmanMPC::PeriodicUpdate(
     double last_event_time = discrete_state->get_vector(prev_event_time_idx_).get_value()(0);
     time_since_last_event = (last_event_time <= 0) ? timestamp : timestamp - last_event_time;
 
-    UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, dt_),
+    UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, timestamp),
                                  fsm_state, time_since_last_event);
   } else {
     UpdateInitialStateConstraint(
         CalcCentroidalStateFromPlant(x, timestamp), 0, 0);
   }
-
 
   const MathematicalProgramResult result = Solve(prog_);
 
@@ -700,7 +701,7 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
 
   double next_touchdown_time = time +
       dt_ * (modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1]);
-  std:: cout << "time: " << time << " next td time: " << next_touchdown_time << std::endl;
+
   Vector3d swing_ft_traj_breaks = {time, (time + next_touchdown_time) /2.0,
                                    next_touchdown_time};
 

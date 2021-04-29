@@ -65,6 +65,7 @@ DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location"
 DEFINE_double(debug_time, 0.00, "time to simulate system at");
 DEFINE_double(swing_ft_height, 0.05, "Swing foot height");
 DEFINE_double(v_des, 0.4, "desired walking speed");
+DEFINE_double(h_des, 1.1, "Desired CoM height");
 DEFINE_double(dt, 0.01, "time step for koopman mpc");
 
 VectorXd poly_basis_1 (const VectorXd& x) {
@@ -108,6 +109,8 @@ int DoMain(int argc, char* argv[]) {
       plant.CalcCenterOfMassPositionInWorld(*plant_context.get()) :
       plant.GetBodyByName("torso_mass").EvalPoseInWorld(*plant_context.get()).translation();
 
+
+
   std::cout << "Com_Position: \n" << default_com << std::endl;
 
   auto kmpc = builder.AddSystem<KoopmanMPC>(plant, plant_context.get(), dt,
@@ -144,12 +147,14 @@ int DoMain(int argc, char* argv[]) {
   kmpc->AddContactPoint(right_pt, koopMpcStance::kRight);
 
   // Set kinematic reachability constraint
+  default_com(kmpc->vertical_idx()) = FLAGS_h_des;
   std::vector<VectorXd> kin_nom = {
       Vector2d(default_com(kmpc->saggital_idx()), default_com(kmpc->vertical_idx())),
       Vector2d(default_com(kmpc->saggital_idx()), default_com(kmpc->vertical_idx()))};
 
+  Vector2d kin_weights(1,2);
   kmpc->SetReachabilityLimit(
-      gains.ReachabilityLim*VectorXd::Ones(2), kin_nom, gains.W_kin_reach);
+      gains.ReachabilityLim*kin_weights, kin_nom, gains.W_kin_reach);
 
   // add base pivot angle
   kmpc->AddJointToTrackBaseAngle("planar_roty", "planar_rotydot");
@@ -160,7 +165,7 @@ int DoMain(int argc, char* argv[]) {
 
   // add tracking objective
   VectorXd x_des = VectorXd::Zero(kmpc->num_state_inflated());
-  x_des(1) = 1.05;
+  x_des(1) = FLAGS_h_des;
   x_des(3) = FLAGS_v_des;
   x_des.tail(1) = 9.81 * mass * VectorXd::Ones(1);
 

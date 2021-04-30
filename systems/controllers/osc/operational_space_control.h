@@ -18,6 +18,7 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
+#include "solvers/fast_osqp_solver.h"
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -292,6 +293,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // We only apply the control when t_s <= t <= t_e
   std::vector<double> t_s_vec_;
   std::vector<double> t_e_vec_;
+
+  std::unique_ptr<solvers::FastOsqpSolver> solver_;
 };
 
 }  // namespace dairlib::systems::controllers

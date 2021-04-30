@@ -171,6 +171,9 @@ int DoMain(int argc, char* argv[]) {
 
   std::cout << "x desired:\n" << x_des <<std::endl;
 
+  MatrixXd qq = gains.q.asDiagonal();
+  std::cout << "Gains: \n" << qq;
+
   kmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
 
   kmpc->SetFlatGroundSoftConstraint(gains.W_flat_ground);

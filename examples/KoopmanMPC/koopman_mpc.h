@@ -110,6 +110,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
     return this->get_input_port(x_des_port_);
   }
 
+
   void SetReachabilityLimit(const Eigen::VectorXd& kl,
       const std::vector<Eigen::VectorXd>& kn, const Eigen::MatrixXd& KinReachW);
 
@@ -177,6 +178,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int state_port_;
   int fsm_port_;
   int x_des_port_;
+  int traj_out_port_;
 
   // discrete update indices
   int x_des_idx_;

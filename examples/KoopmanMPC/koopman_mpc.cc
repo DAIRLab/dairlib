@@ -71,7 +71,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   x_des_port_ = this->DeclareVectorInputPort(
       BasicVector<double>(nxi_)).get_index();
 
-  this->DeclareAbstractOutputPort(&KoopmanMPC::GetMostRecentMotionPlan);
+  traj_out_port_ = this->DeclareAbstractOutputPort(&KoopmanMPC::GetMostRecentMotionPlan).get_index();
 
   // Discrete update
   DeclarePerStepDiscreteUpdateEvent(&KoopmanMPC::DiscreteVariableUpdate);
@@ -557,8 +557,9 @@ EventStatus KoopmanMPC::PeriodicUpdate(
 }
 
 void KoopmanMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
+  std::cout << "Updating tracking objective!" << std::endl;
   for (auto & cost : tracking_cost_) {
-    cost->UpdateCoefficients(Q_, -2*Q_*xdes, xdes.transpose() * xdes);
+    cost->UpdateCoefficients(2*Q_, -2*Q_*xdes, xdes.transpose() * xdes);
   }
 }
 
@@ -638,44 +639,50 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
   LcmTrajectory::Trajectory CoMTraj;
   LcmTrajectory::Trajectory AngularTraj;
   LcmTrajectory::Trajectory SwingFootTraj;
+  LcmTrajectory::Trajectory LambdaTraj;
 
   CoMTraj.traj_name = "com_traj";
   AngularTraj.traj_name = "orientation";
   SwingFootTraj.traj_name = "swing_foot_traj";
+  LambdaTraj.traj_name = "lambda_traj";
 
 
+  /** need to set datatypes for LcmTrajectory to save properly **/
   for (int i = 0; i < 2*kLinearDim_; i++) {
-    CoMTraj.datatypes.push_back("double");
-    SwingFootTraj.datatypes.push_back("double");
+    CoMTraj.datatypes.emplace_back("double");
+    SwingFootTraj.datatypes.emplace_back("double");
+    LambdaTraj.datatypes.emplace_back("double");
   }
-
   for (int i = 0; i < 2*kAngularDim_; i++) {
-    AngularTraj.datatypes.push_back("double");
+    AngularTraj.datatypes.emplace_back("double");
   }
 
-  MatrixXd x = MatrixXd::Zero(nx_ ,  nmodes_ * modes_.front().N);
-  MatrixXd foot_traj = MatrixXd::Zero(kLinearDim_,
-      modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1]);
-
-
-  VectorXd x_time_knots = VectorXd::Zero(nmodes_ * modes_.front().N);
+  /** preallocate Eigen matrices for trajectory blocks **/
+  MatrixXd x = MatrixXd::Zero(nx_ ,  total_knots_);
+  MatrixXd lambda = MatrixXd::Zero(2*kLinearDim_, total_knots_);
+  VectorXd x_time_knots = VectorXd::Zero(total_knots_);
 
   int idx_x0 = x0_idx_[0] * modes_.front().N + x0_idx_[1];
-
   for (int i = 0; i < nmodes_; i++) {
-    auto mode = modes_.at(i);
+    auto& mode = modes_.at(i);
 
     for (int j = 0; j < mode.N; j++) {
       int idx = i * mode.N + j;
-
       int col = idx - idx_x0;
       col = (col < 0) ? (col + total_knots_) : col;
 
       x.block(0, col, nx_, 1) =
           result.GetSolution(mode.zz.at(j).head(nx_));
+      lambda.block(0, col, kLinearDim_, 1) =
+          result.GetSolution(mode.zz.at(j).tail(kLinearDim_));
+      lambda.block(kLinearDim_, col, kLinearDim_, 1) =
+          result.GetSolution(mode.uu.at(j).tail(kLinearDim_));
       x_time_knots(col) = time + dt_ * col;
     }
   }
+
+  LambdaTraj.time_vector = x_time_knots;
+  LambdaTraj.datapoints = lambda;
 
   MatrixXd x_com_knots(2*kLinearDim_, x.cols());
   x_com_knots << x.block(0, 0, kLinearDim_, x.cols()),
@@ -696,73 +703,61 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
   AngularTraj.datapoints = orientation_knots;
 
   double next_touchdown_time = time +
-      dt_ * (modes_.at(x0_idx_[0]).N + 1 - x0_idx_[1]);
+      dt_ * (modes_.front().N + 1 - x0_idx_[1]);
 
-  Vector3d swing_ft_traj_breaks = {time, (time + next_touchdown_time) /2.0,
-                                   next_touchdown_time};
-
-  MatrixXd swing_ft_traj_knots = CalcSwingFootKnotPoints(
-      state, result, time_since_last_touchdown);
-
+  Vector3d swing_ft_traj_breaks(time, 0.5*(time + next_touchdown_time), next_touchdown_time);
   SwingFootTraj.time_vector = swing_ft_traj_breaks;
-  SwingFootTraj.datapoints = swing_ft_traj_knots;
+  SwingFootTraj.datapoints = CalcSwingFootKnotPoints(state, result, time_since_last_touchdown);;
 
   LcmTrajectory lcm_traj;
-
   lcm_traj.AddTrajectory(CoMTraj.traj_name, CoMTraj);
   lcm_traj.AddTrajectory(AngularTraj.traj_name, AngularTraj);
   lcm_traj.AddTrajectory(SwingFootTraj.traj_name, SwingFootTraj);
+  lcm_traj.AddTrajectory(LambdaTraj.traj_name, LambdaTraj);
 
   return lcm_traj.GenerateLcmObject();
 }
 
 MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,
     const MathematicalProgramResult& result, double time_since_last_touchdown) const {
-  auto& curr_mode = modes_.at(x0_idx_[0]);
+
   int next_mode_idx = (x0_idx_[0] == nmodes_ - 1) ? 0 : x0_idx_[0] + 1;
+  auto& curr_mode = modes_.at(x0_idx_[0]);
   auto& next_mode = modes_.at(next_mode_idx);
 
-  VectorXd curr_pos = VectorXd::Zero(kLinearDim_);
-  VectorXd end_pos = VectorXd::Zero(kLinearDim_);
-  VectorXd mid_pos = VectorXd::Zero(kLinearDim_);
+  VectorXd curr_pos = VectorXd::Zero(kLinearDim_), mid_pos = VectorXd::Zero(kLinearDim_),
+           end_pos = VectorXd::Zero(kLinearDim_), curr_vel = VectorXd::Zero(kLinearDim_),
+           mid_vel = VectorXd::Zero(kLinearDim_);
 
-  VectorXd curr_vel = VectorXd::Zero(kLinearDim_);
-  VectorXd mid_vel = VectorXd::Zero(kLinearDim_);
+  Vector3d swing_ft_plant = Vector3d::Zero(), swing_vel_plant = Vector3d::Zero();
 
-
-  Vector3d swing_ft_plant;
   MatrixXd J_swing_vel = MatrixXd::Zero(3, nv_);
+  MatrixXd swing_ft_traj = MatrixXd::Zero(2*kLinearDim_, 3);
 
+  /** Calculate current swing foot position and velocity **/
+  auto& swing_pt = contact_points_.at(1 - curr_mode.stance);
   plant_.SetPositionsAndVelocities(plant_context_, x);
-  plant_.CalcPointsPositions(*plant_context_,
-                             contact_points_.at(1 - curr_mode.stance).first,
-                             contact_points_.at(1 - curr_mode.stance).second, world_frame_,
-                             &swing_ft_plant);
-
+  plant_.CalcPointsPositions(*plant_context_, swing_pt.first,
+      swing_pt.second, world_frame_, &swing_ft_plant);
   plant_.CalcJacobianTranslationalVelocity(*plant_context_,
-                                           JacobianWrtVariable::kV, contact_points_.at(1-curr_mode.stance).first,
-                                           VectorXd::Zero(3), world_frame_, world_frame_, &J_swing_vel);
+      JacobianWrtVariable::kV, swing_pt.first,Vector3d::Zero(),
+      world_frame_, world_frame_, &J_swing_vel);
 
-  Vector3d swing_vel_plant = J_swing_vel * x.tail(nv_);
+  swing_vel_plant = J_swing_vel * x.tail(nv_);
 
   if (planar_) {
-    curr_pos(0) = swing_ft_plant(saggital_idx_);
-    curr_pos(1) = swing_ft_plant(vertical_idx_);
-    curr_vel(0) = swing_vel_plant(saggital_idx_);
-    curr_vel(1) = swing_vel_plant(vertical_idx_);
+    curr_pos = MakePlanarVectorFrom3d(swing_ft_plant);
+    curr_vel = MakePlanarVectorFrom3d(swing_vel_plant);
   } else {
     curr_pos = swing_ft_plant;
     curr_vel = swing_vel_plant;
   }
 
-  end_pos = result.GetSolution(
-      next_mode.zz.at(0).segment(
-          nx_ + kLinearDim_ * next_mode.stance, kLinearDim_));
+  end_pos = result.GetSolution(next_mode.zz.at(0)
+      .segment(nx_ + kLinearDim_ * next_mode.stance, kLinearDim_));
 
   mid_pos(0) = (curr_pos(0)  + end_pos(0)) / 2.0;
   mid_pos(kLinearDim_ - 1) = swing_ft_ht_ - pow((time_since_last_touchdown - (dt_* (double) curr_mode.N)/2.0), 2);
-
-  MatrixXd swing_ft_traj = MatrixXd::Zero(3*kLinearDim_, 3);
 
   swing_ft_traj.block(0, 0, kLinearDim_, 1) = curr_pos;
   swing_ft_traj.block(0, 1, kLinearDim_, 1) = mid_pos;
@@ -771,7 +766,6 @@ MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,
   swing_ft_traj.block(kLinearDim_, 1, kLinearDim_, 1) = mid_vel;
   swing_ft_traj.block(kLinearDim_, 2, kLinearDim_, 1) = VectorXd::Zero(kLinearDim_);
 
-  //std::cout << swing_ft_traj << std::endl;
   return swing_ft_traj;
 }
 

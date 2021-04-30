@@ -125,9 +125,12 @@ cc_binary(
 
 cc_library(
     name = "model_utils",
+    srcs = ["model_utils.cc"],
     hdrs = ["model_utils.h"],
     deps = [
+        "//common",
         "//examples/PlanarWalker:urdf",
+        "//multibody:multibody_solvers",
         "//multibody:utils",
         "@drake//:drake_shared_library",
     ],

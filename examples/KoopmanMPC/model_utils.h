@@ -2,7 +2,6 @@
 // Created by brian on 4/21/21.
 //
 #pragma once
-
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/geometry/geometry_visualization.h"
@@ -11,36 +10,15 @@
 #include "common/find_resource.h"
 
 namespace dairlib {
-using drake::multibody::MultibodyPlant;
-using drake::multibody::Parser;
-using drake::geometry::SceneGraph;
-using drake::systems::Context;
 
-void LoadPlanarWalkerFromFile(MultibodyPlant<double>& plant) {
-  Parser parser(&plant);
+void PlanarWalkerFixedPointSolver(const drake::multibody::MultibodyPlant<double>& plant,
+                                  const double height, const double foot_spread, const double mu,
+                                  Eigen::VectorXd* q_result, Eigen::VectorXd* u_result);
 
-  std::string plant_file_name = FindResourceOrThrow("examples/PlanarWalker/PlanarWalkerWithTorso.urdf");
-  parser.AddModelFromFile(plant_file_name);
+void LoadPlanarWalkerFromFile(drake::multibody::MultibodyPlant<double>& plant);
 
-  plant.WeldFrames(
-      plant.world_frame(), plant.GetFrameByName("base"), drake::math::RigidTransform<double>());
-}
+void LoadPlanarWalkerFromFile(drake::multibody::MultibodyPlant<double>& plant,
+                              drake::geometry::SceneGraph<double>* scene_graph );
 
-void LoadPlanarWalkerFromFile(MultibodyPlant<double>& plant,
-    SceneGraph<double>* scene_graph ) {
-
-  Parser parser (&plant, scene_graph);
-  std::string full_name = FindResourceOrThrow(
-      "examples/PlanarWalker/PlanarWalkerWithTorso.urdf");
-  parser.AddModelFromFile(full_name);
-
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
-                   drake::math::RigidTransform<double>());
-
-}
-
-void SetDefaultStance(MultibodyPlant<double>& plant, Context<double>* context) {
-
-}
-} // </dairlib>
+} // </namespace dairlib>
 

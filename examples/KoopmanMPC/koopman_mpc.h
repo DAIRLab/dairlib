@@ -192,7 +192,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  mutable drake::trajectories::PiecewisePolynomial<double> prev_sol_base_traj_;
+  mutable Eigen::VectorXd prev_vel_;
 
   std::vector<std::pair<const drake::multibody::BodyFrame<double>&,
   Eigen::Vector3d>> contact_points_;
@@ -252,7 +252,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   const int kNu3d = 9;
   const int saggital_idx_ = 0;
   const int vertical_idx_ = 2;
-  const Eigen::Vector3d gravity_ = {0.0, 0.0, -9.81};
+  const Eigen::Vector3d gravity_ = {0.0, 0.0, -9.8};
   double mu_ = 0;
   double mass_ = 0;
   double planar_inertia_ = 0;

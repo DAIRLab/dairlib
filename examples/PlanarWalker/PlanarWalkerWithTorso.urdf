@@ -174,7 +174,7 @@
   <joint name="planar_roty" type="continuous">
     <parent link="base_xz"/>
     <child link="torso"/>
-    <axis xyz="0 1 0"/>
+    <axis xyz="0 -1 0"/>
   </joint>
   <joint name="torso_mass_weld" type="fixed">
     <parent link="torso"/>

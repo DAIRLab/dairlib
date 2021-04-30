@@ -11,14 +11,14 @@ group "0.operator" {
 
 group "1.simulated-robot" {
     cmd "five_link_biped_sim" {
-        exec = "bazel-bin/examples/KoopmanMPC/run_planar_walker_sim --dt=1e-5 --target_realtime_rate=0.1";
+        exec = "bazel-bin/examples/KoopmanMPC/run_planar_walker_sim --dt=1e-5 --target_realtime_rate=0.5 --z=0.75";
         host = "localhost";
     }
 }
 
 group "2.controllers" {
     cmd "koopman_mpc" {
-        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process";
+        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process --h_des=1.1  --v_des=0.25 --dt=0.05 --stance_time=0.25 --swing_ft_height=0.025";
         host = "localhost";
     }
     cmd "osc_walking_controller" {

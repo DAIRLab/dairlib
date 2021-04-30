@@ -62,11 +62,11 @@ DEFINE_string(channel_u, "PLANAR_INPUT",
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model.");
 DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");
-DEFINE_double(error, 0.0,
-              "Initial velocity error of the swing leg in global coordinates.");
 
 DEFINE_string(x0_traj_name, "state_traj1", "lcm trajectory to use for initial state");
 DEFINE_double(mu, 0.8, "Friction coefficient");
+
+DEFINE_double(z, 0.75, "initial height of hip joint");
 
 double calcPositionOffset(MultibodyPlant<double>& plant, Context<double>* context, const Eigen::VectorXd& x0);
 
@@ -140,6 +140,7 @@ int do_main(int argc, char* argv[]) {
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
+  /*
   LcmTrajectory saved_traj = LcmTrajectory(
       FindResourceOrThrow("rabbit_walking"));
 
@@ -153,6 +154,21 @@ int do_main(int argc, char* argv[]) {
   x0(map["planar_z"]) = x0(map["planar_z"]) + calcPositionOffset(plant, &plant_context, x0);
 
   x0.tail(plant.num_velocities()) = Eigen::VectorXd::Zero(plant.num_velocities());
+   */
+
+  /// Create a plant for fixed point solver
+  MultibodyPlant<double> solver_plant(0.0);
+  LoadPlanarWalkerFromFile(solver_plant);
+  solver_plant.Finalize();
+
+  VectorXd q = VectorXd::Zero(plant.num_positions());
+  VectorXd u = VectorXd::Zero(plant.num_actuators());
+  PlanarWalkerFixedPointSolver(solver_plant, FLAGS_z, 0.15, 0.5, &q, &u);
+
+  // set plant position with fixed point solution
+  VectorXd x = VectorXd::Zero(plant.num_positions() + plant.num_velocities());
+  x.head(plant.num_positions()) = q;
+  plant.SetPositionsAndVelocities(&plant_context, x);
 
   /*** list all of the positions for debugging
   for (auto pos = map.begin(); pos != map.end();
@@ -160,7 +176,6 @@ int do_main(int argc, char* argv[]) {
     std::cout << pos->first << std::endl;
   } ***/
 
-  plant.SetPositionsAndVelocities(&plant_context, x0);
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

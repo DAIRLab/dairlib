@@ -87,6 +87,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   }
   x_des_idx_ = this->DeclareDiscreteState(VectorXd::Zero(nxi_));
 
+  prev_vel_ = Vector3d::Zero();
 }
 
 void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
@@ -155,10 +156,6 @@ double KoopmanMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
     }
   }
 
-  prev_sol_base_traj_ =
-      PiecewisePolynomial<double>::CubicHermite(
-          time, knots, knots_dot);
-
   return mass;
 }
 
@@ -201,8 +198,8 @@ void KoopmanMPC::Build() {
 
 //  prog_.SetSolverOption(OsqpSolver().id(),
 //      "time_limit", kMaxSolveDuration_);
-  prog_.SetSolverOption(OsqpSolver().id(), "eps_abs", 1e-6);
-  prog_.SetSolverOption(OsqpSolver().id(), "eps_rel", 1e-6);
+  prog_.SetSolverOption(OsqpSolver().id(), "eps_abs", 1e-3);
+  prog_.SetSolverOption(OsqpSolver().id(), "eps_rel", 1e-3);
 }
 
 void KoopmanMPC::MakeStanceFootConstraints() {
@@ -417,6 +414,14 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
   }
 
   com_vel = J_CoM_v * x.tail(nv_);
+  lambda = mass_ * ((com_vel - prev_vel_) / dt_ - gravity_);
+
+  if (lambda.tail(1)(0) <= 0) {
+    lambda = Vector3d::Zero();
+  }
+
+
+  prev_vel_ = com_vel;
 
   plant_.CalcPointsPositions(*plant_context_, contact_points_.at(kLeft).first,
       contact_points_.at(kLeft).second, world_frame_, &left_pos);
@@ -442,22 +447,13 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
         0, 0, 3, J_spatial.cols()) * x.tail(nv_);
   }
 
-  if (planar_) {
-    lambda = mass_ *
-        (prev_sol_base_traj_.derivative(2).value(t) -
-        MakePlanarVectorFrom3d(gravity_));
-  } else {
-    lambda = mass_ * (prev_sol_base_traj_.derivative(2).value(t) -
-        gravity_);
-  }
-
 
   VectorXd x_centroidal_inflated(nxi_);
 
   if (planar_) {
     x_centroidal_inflated << MakePlanarVectorFrom3d(com_pos), base_orientation,
     MakePlanarVectorFrom3d(com_vel), base_omega, MakePlanarVectorFrom3d(left_pos),
-    MakePlanarVectorFrom3d(right_pos), lambda;
+    MakePlanarVectorFrom3d(right_pos), MakePlanarVectorFrom3d(lambda);
   } else {
     x_centroidal_inflated << com_pos, base_orientation, com_vel, base_omega,
         left_pos, right_pos, lambda;

@@ -7,8 +7,8 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/tree/linear_spring_damper.h"
 #include "drake/multibody/tree/revolute_spring.h"
-#include "drake/systems/sensors/accelerometer_sensor.h"
-#include "drake/systems/sensors/gyroscope_sensor.h"
+#include "drake/systems/sensors/accelerometer.h"
+#include "drake/systems/sensors/gyroscope.h"
 
 namespace dairlib {
 

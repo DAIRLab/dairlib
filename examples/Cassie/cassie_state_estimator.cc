@@ -155,7 +155,7 @@ CassieStateEstimator::CassieStateEstimator(
     noise_params.setContactNoise(0.05);
     // 2. estimated EKF state (imu frame)
     inekf::InEKF value(initial_state, noise_params);
-    ekf_idx_ = DeclareAbstractState(AbstractValue::Make<inekf::InEKF>(value));
+    ekf_idx_ = DeclareAbstractState(*AbstractValue::Make<inekf::InEKF>(value));
 
     // 3. state for previous imu value
     // Measured accelrometer should point toward positive z when the robot rests

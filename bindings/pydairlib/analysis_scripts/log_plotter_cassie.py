@@ -14,6 +14,7 @@ from pydrake.trajectories import PiecewisePolynomial
 from pydairlib.lcm import lcm_trajectory
 from pydairlib.lcm import process_lcm_log
 import pydairlib.multibody
+from impact_invariant_scripts import plot_ii_projection
 from pydairlib.cassie.cassie_utils import *
 
 from pydairlib.common import FindResourceOrThrow
@@ -21,11 +22,11 @@ from pydairlib.common import plot_styler
 
 
 def main():
+  global filename
   global t_start
   global t_end
   global t_slice
   global t_u_slice
-  global filename
   global nq
   global nv
   global nx
@@ -49,8 +50,8 @@ def main():
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
-                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
-                                                   # "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+                                                   # "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
 
 
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
@@ -96,18 +97,9 @@ def main():
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
 
-  matplotlib.rcParams["savefig.directory"] = path
-  matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
-  font = {'size'   : 18}
-  matplotlib.rc('font', **font)
-  matplotlib.rcParams['lines.linewidth'] = 4
-
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log, t_lcmlog_u = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
-
-  # if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
-  #   compare_ekf(full_log, pos_map, vel_map)
 
   n_msgs = len(cassie_out)
   knee_pos = np.zeros(n_msgs)
@@ -134,21 +126,12 @@ def main():
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
 
-  # t_lcmlog_u -= t_lcmlog_u[0] - t_u[0]
-  # plt.plot(t_u[:-1], np.diff(t_u))
-  # plt.plot(t_x[:-1], np.diff(t_x))
-  # plt.plot(t_u[:-1], np.diff(t_lcmlog_u))
-  # plt.figure()
-  # plt.plot(t_u, t_lcmlog_u - t_u)
-  # plt.show()
 
   ### All plotting scripts here
-
   # plot_status(full_log)
-  # plot_ii_projection(t_x, x, plant_w_spr, context)
-  # plot_ii_projection(t_x, x, plant_wo_spr, context_wo_spr)
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-
+  # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
+  plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
   if False:
@@ -165,56 +148,30 @@ def main():
     plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
-  # plt.plot(t_u[t_u_slice], 0.025*fsm[t_u_slice])
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
   plt.show()
 
 def plot_contact_est(log):
   t_contact = []
   contact = []
-  t_filtered_contact = []
-  contact_filtered = []
-  t_gm_contact = []
-  gm_contact_l = []
-  gm_contact_r = []
-  t_fsm_contact = []
   hardware_impact = 30.0 + nominal_impact_time + 0.09
 
-  fsm_contact = np.zeros((len(log["CASSIE_GM_CONTACT_DISPATCHER"]), 2))
-  # for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
-  #   msg = log["CASSIE_CONTACT_DISPATCHER"][i]
-  #   t_contact.append(msg.utime / 1e6)
-  #   contact.append(list(msg.contact))
-  # for i in range(len(log["CASSIE_FILTERED_CONTACT_DISPATCHER"])):
-  #   msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
-  #   t_filtered_contact.append(msg.utime / 1e6)
-  #   contact_filtered.append(list(msg.contact))
+  contact = np.zeros((len(log["CASSIE_GM_CONTACT_DISPATCHER"]), 2))
   for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
     msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_fsm_contact.append(msg.timestamp / 1e6)
+    t_contact.append(msg.timestamp / 1e6)
     for j in range(msg.num_point_pair_contacts):
-      fsm_contact[i][j] = msg.point_pair_contact_info[j].contact_force[2]
+      contact[i][j] = msg.point_pair_contact_info[j].contact_force[2]
 
   t_contact = np.array(t_contact)
   contact = np.array(contact)
-  t_filtered_contact = np.array(t_filtered_contact)
-  contact_filtered = np.array(contact_filtered)
-  t_gm_contact = np.array(t_gm_contact)
-  gm_contact_l = np.array(gm_contact_l)
-  gm_contact_r = np.array(gm_contact_r)
   plt.figure("Contact estimation")
-  # plt.plot(t_contact[t_slice], contact[t_slice], '-')
-  # plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
-  # plt.plot(t_gm_contact[t_slice], gm_contact_l[t_slice, 2], 'b--')
-  # plt.plot(t_gm_contact[t_slice], gm_contact_r[t_slice, 2], 'r--')
-  ps.plot(t_fsm_contact[t_slice] - hardware_impact, fsm_contact[t_slice, 0], xlabel='Time Since Nominal Impact (s)', ylabel='Estimated Normal Contact Force (N)')
-  ps.plot(t_fsm_contact[t_slice] - hardware_impact, fsm_contact[t_slice, 1])
+  ps.plot(t_contact[t_slice] - hardware_impact, contact[t_slice, 0], xlabel='Time Since Nominal Impact (s)', ylabel='Estimated Normal Contact Force (N)')
+  ps.plot(t_contact[t_slice] - hardware_impact, contact[t_slice, 1])
   ps.add_legend(["Left Foot", "Right Foot"])
-  # import pdb; pdb.set_trace()
-  ps.save_fig('hardware_contact_est_' + filename + '.png')
-
+  # ps.save_fig('hardware_contact_est_' + filename + '.png')
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
@@ -242,14 +199,15 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     print(name)
     print(tracking_cost_map[name])
 
-  # plt.figure("qp solve time")
-  # plt.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
+  plt.figure("qp_solve_time:" + filename)
+  # ps.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
+  plt.hist(qp_solve_time[t_u_slice], range=[0, 0.003])
 
   plt.figure("costs")
-  plt.plot(t_u[t_u_slice], input_cost[t_u_slice], color=ps.grey)
-  plt.plot(t_u[t_u_slice], acceleration_cost[t_u_slice], color=ps.grey)
-  plt.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice], color=ps.red)
-  plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
+  ps.plot(t_u[t_u_slice], input_cost[t_u_slice], color=ps.grey)
+  ps.plot(t_u[t_u_slice], acceleration_cost[t_u_slice], color=ps.blue)
+  ps.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice], color=ps.red)
+  ps.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
   plt.ylim([0, 200])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
@@ -313,7 +271,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
-  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
@@ -328,25 +286,25 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
-  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
-  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
-  plot_osc(osc_debug, osc_traj5, 0, "pos")
-  plot_osc(osc_debug, osc_traj6, 0, "pos")
-  plot_osc(osc_debug, osc_traj5, 0, "vel")
-  plot_osc(osc_debug, osc_traj6, 0, "vel")
-  plot_osc(osc_debug, osc_traj5, 0, "acc")
-  plot_osc(osc_debug, osc_traj6, 0, "acc")
+  # plot_osc(osc_debug, osc_traj5, 0, "pos")
+  # plot_osc(osc_debug, osc_traj6, 0, "pos")
+  # plot_osc(osc_debug, osc_traj5, 0, "vel")
+  # plot_osc(osc_debug, osc_traj6, 0, "vel")
+  # plot_osc(osc_debug, osc_traj5, 0, "acc")
+  # plot_osc(osc_debug, osc_traj6, 0, "acc")
   # plot_osc(osc_debug, osc_traj7, 0, "pos")
   # plot_osc(osc_debug, osc_traj8, 0, "pos")
   # plot_osc(osc_debug, osc_traj9, 0, "pos")
   # plot_osc(osc_debug, osc_traj10, 0, "pos")
 
 
-  # plt.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
+  # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
 def plot_id_debug(t_u, osc_debug, osc_output):
   input_cost = np.zeros(t_u.shape[0])
@@ -373,10 +331,10 @@ def plot_id_debug(t_u, osc_debug, osc_output):
     print(tracking_cost_map[name])
 
   plt.figure("costs")
-  plt.plot(t_u[t_u_slice], input_cost[t_u_slice])
-  plt.plot(t_u[t_u_slice], acceleration_cost[t_u_slice])
-  plt.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice])
-  plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
+  ps.plot(t_u[t_u_slice], input_cost[t_u_slice])
+  ps.plot(t_u[t_u_slice], acceleration_cost[t_u_slice])
+  ps.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice])
+  ps.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
@@ -466,16 +424,14 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       world,
       world) @ x[i, -nv:]
   # fig = plt.figure('foot pos: ' + filename)
-  # plt.figure("Impact Event")
 
   # state_indices = slice(4, 5)
   state_indices = slice(2, 3)
   # state_indices = slice(5, 6)
-  # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
   state_names = [name + contact_type for name in state_names]
-  plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
+  ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
            label=state_names[state_indices])
   plt.legend()
 
@@ -522,160 +478,40 @@ def compare_ekf(log, pos_map, vel_map):
   pos_indices = slice(4, 7)
   vel_indices = slice(4, 5)
   plt.figure("EKF positions: " + filename)
-  plt.plot(t_x, q[:, pos_indices], '-')
-  plt.plot(t_x_est, q_est[:, pos_indices])
+  ps.plot(t_x, q[:, pos_indices], '-')
+  ps.plot(t_x_est, q_est[:, pos_indices])
   plt.figure("EKF velocities: " + filename)
-  plt.plot(t_x, v[:, vel_indices], '-')
-  plt.plot(t_x_est, v_est[:, vel_indices])
+  ps.plot(t_x, v[:, vel_indices], '-')
+  ps.plot(t_x_est, v_est[:, vel_indices])
   plt.figure("IMU: " + filename)
-  plt.plot(t_x, imu, 'k-')
-
-
-def calc_loop_closure_jacobian(plant, context, x_pre):
-  front_contact_disp = np.array((-0.0457, 0.112, 0))
-  rear_contact_disp = np.array((0.088, 0, 0))
-  heel_disp = np.array((.11877, -.01, 0.0))
-  left_thigh_disp = np.array((0.0, 0.0, 0.045))
-  right_thigh_disp = np.array((0.0, 0.0, -0.045))
-  world = plant.world_frame()
-
-  l_thigh_frame = plant.GetBodyByName("thigh_left").body_frame()
-  r_thigh_frame = plant.GetBodyByName("thigh_right").body_frame()
-  l_heel_frame = plant.GetBodyByName("heel_spring_left").body_frame()
-  r_heel_frame = plant.GetBodyByName("heel_spring_right").body_frame()
-
-  left_heel = plant.CalcPointsPositions(context, l_heel_frame, heel_disp, world)
-  left_thigh = plant.CalcPointsPositions(context, l_thigh_frame, left_thigh_disp, world)
-  right_heel = plant.CalcPointsPositions(context, r_heel_frame, heel_disp, world)
-  right_thigh = plant.CalcPointsPositions(context, r_thigh_frame, right_thigh_disp, world)
-  left_rel_pos = left_heel - left_thigh
-  right_rel_pos = right_heel - right_thigh
-
-  J_l_heel = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, l_heel_frame, heel_disp, world, world)
-  J_l_thigh = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, l_thigh_frame, left_thigh_disp, world, world)
-  J_r_heel = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_heel_frame, heel_disp, world, world)
-  J_r_thigh = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_thigh_frame, right_thigh_disp, world, world)
-  J_l_loop = (left_rel_pos.transpose() @ (J_l_heel - J_l_thigh)) / np.linalg.norm(left_rel_pos)
-  J_r_loop = (right_rel_pos.transpose() @ (J_r_heel - J_r_thigh)) / np.linalg.norm(right_rel_pos)
-
-  return J_l_loop, J_r_loop
-
-def plot_ii_projection(t_x, x, plant, context):
-
-  t_pre = 30.557
-  t_idx = np.argwhere(np.abs(t_x - t_pre) < 1e-3)[0][0]
-  x_pre = x[t_idx]
-
-  l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
-  r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
-  front_contact_disp = np.array((-0.0457, 0.112, 0))
-  rear_contact_disp = np.array((0.088, 0, 0))
-  world = plant.world_frame()
-
-  x_wo_spr_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
-  x_wo_spr = np.vstack((pos_map_spr_to_wo_spr @ x[:, :nq].T, vel_map_spr_to_wo_spr @ x[:, -nv:].T)).T
-  x_pre = x_wo_spr[t_idx]
-  plant.SetPositionsAndVelocities(context, x_pre)
-  M = plant.CalcMassMatrixViaInverseDynamics(context)
-  M_inv = np.linalg.inv(M)
-  J_l_f = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
-  J_l_r = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
-  J_r_f = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
-  J_r_r = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
-  J_l_loop, J_r_loop = calc_loop_closure_jacobian(plant, context, x_pre)
-  J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r, J_l_loop, J_r_loop))
-  # J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r))
-
-  M_Jt = M_inv @ J.T
-  # proj_ii = np.eye(18) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
-  P = linalg.null_space(M_Jt.T).T
-  # import pdb; pdb.set_trace()
-
-  proj_vel = P.T @ P @ x_wo_spr[t_slice, -18:].T
-
-  # proj_vel = P @ x[t_slice, -nv:].T
-  # colors = ['B0', '']
-  plt.figure("joint velocities")
-  for i in range(6):
-    # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12:], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)')
-    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
-    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
-
-  joint_vel_datatypes = [r'$Hip\ Roll_L$',
-                         r'$Hip\ Roll_R$',
-                         r'$Hip\ Yaw_L$',
-                         r'$Hip\ Yaw_R$',
-                         r'$Hip\ Pitch_L$',
-                         r'$Hip\ Pitch_R$',
-                         r'$Knee_L$',
-                         r'$Knee_R$',
-                         r'$Ankle_L$',
-                         r'$Ankle_R$',
-                         r'$Toe_L$',
-                         r'$Toe_R$',
-                         ]
-  # ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
-
-  # ps.add_legend(joint_vel_datatypes)
-
-  plt.ylim([-8, 8])
-  plt.xlim([-10, 30])
-  plt.xticks(np.arange(-10, 30+0.1, 10))
-  plt.yticks(np.arange(-8, 8.1, 2))
-  ps.save_fig('joint_velocities_hardware_for_video.png')
-
-  plt.figure("projected velocities")
-  # joint_indices = [3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17]
-  for i in range(6):
-    ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
-    ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
-  # ps.add_legend(['%.0f' % i for i in range(18)])
-  plt.ylim([-3, 1])
-  plt.xlim([-10, 30])
-  plt.xticks(np.arange(-10, 30+0.1, 10))
-  plt.yticks(np.arange(-3, 1.1, 2))
-  legend_elements_lines = []
-  for i in range(len(joint_vel_datatypes)):
-    legend_elements_lines.append(matplotlib.lines.Line2D([0], [0], color=ps.cmap(i), lw=3, label=joint_vel_datatypes[i]))
-  ps.save_fig('projected_joint_velocities_hardware_for_video.png')
-
-  plt.figure('blank')
-  ax = plt.gca()
-  ax.legend(handles = legend_elements_lines, loc='upper center',
-            fancybox=True, shadow=True, ncol=3)
-  # ps.save_fig('projected_velocities_legend.png')
+  ps.plot(t_x, imu, 'k-')
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
-  # pos_indices = slice(0 + 7, 23)
+  # non-floating base states
+  pos_indices = slice(0 + 7, 23)
   vel_indices = slice(23 + 6, 45)
-  pos_indices = slice(0, 7)
+  # floating base states
+  # pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
-  u_indices = slice(0, 6)
+
+  # all motor torques
+  u_indices = slice(0, 10)
   # overwrite
 
   plt.figure("positions: " + filename)
-  plt.plot(t_x[t_slice], x[t_slice, pos_indices])
+  ps.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
 
   plt.figure("velocities: " + filename)
-  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
+  ps.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
 
-  u_indices = slice(0, 10)
-  # plt.figure("Combined knee motor efforts: " + filename)
-  plt.figure("Impact Event")
-  # plt.plot(t_u[t_u_slice], np.sum(u[t_u_slice, u_indices], axis=1))
-  # plt.legend(u_datatypes[u_indices])
-  # u_indices = slice(8, 10)
-  # plt.figure("efforts 8-9: " + filename)
-  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
-  plt.ylim([-500, 500])
+  plt.figure("efforts: " + filename)
+  ps.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  plt.ylim([-300, 300])
   plt.legend(u_datatypes[u_indices])
 
-
-  # plt.ylim(-50, 300)
-
-  # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices], '--')
+  # ps.plot(t_x[t_slice], u_meas[t_slice, u_indices], '--')
   # plt.legend(u_datatypes[u_indices])
   # plt.figure("efforts meas: " + filename)
   # plt.figure("Delay characterization")
@@ -699,11 +535,11 @@ def plot_status(full_log):
   t_status = np.array(t_status)
   status = np.array(status)
   plt.figure("Input Supervisor Status")
-  plt.plot(t_status, status)
-  plt.plot(t_status, shutdown)
-  plt.plot(t_status, vel_limit)
-  plt.plot(t_status, act_limit)
-  plt.plot(t_status, act_delay)
+  ps.plot(t_status, status)
+  ps.plot(t_status, shutdown)
+  ps.plot(t_status, vel_limit)
+  ps.plot(t_status, act_limit)
+  ps.plot(t_status, act_delay)
   plt.legend(['status',
               'shutdown',
               'vel_limit',

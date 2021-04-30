@@ -4,19 +4,19 @@ import lcm
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import process_lcm_log
 import pathlib
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.solvers import mathematicalprogram as mp
-import pydairlib.lcm_trajectory
+# import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.common import FindResourceOrThrow
 from numpy.linalg import inv
+from pydairlib.lcm import process_lcm_log
 
 def main():
   global l_knee_spring_idx, r_knee_spring_idx, l_heel_spring_idx, r_heel_spring_idx
@@ -88,7 +88,7 @@ def main():
   r_loop_closure = RightLoopClosureEvaluator(plant)
 
   filename = sys.argv[1]
-  controller_name = sys.argv[2]
+  controller_channel = sys.argv[2]
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
@@ -97,7 +97,7 @@ def main():
 
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_name)
+  osc_output, full_log, t_lcmlog_u = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   # Will need to manually select the data range
   t_start = t_x[10]
@@ -105,16 +105,17 @@ def main():
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
   t_slice = slice(t_start_idx, t_end_idx)
-  start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
-  end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
-  t_u_slice = slice(start_time_idx, end_time_idx)
-  sample_times = [215.4, 229.4, 252.8, 265.3, 282.1, 289.0]
+  # start_time_idx = np.argwhere(np.abs(t_u - t_start) < 2e-3)[0][0]
+  # end_time_idx = np.argwhere(np.abs(t_u - t_end) < 2e-3)[0][0]
+  # t_u_slice = slice(start_time_idx, end_time_idx)
+  # sample_times = [215.4, 229.4, 252.8, 265.3, 282.1, 289.0]
+  sample_times = np.arange(52.5, 56, 0.1)
 
   joint_idx = vel_map["knee_joint_leftdot"]
   act_idx = act_map["knee_left_motor"]
   xdot = np.zeros(x.shape)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
-  plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx)
+  # plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx)
   solve_for_k(x, t_x, u, t_u)
   plt.show()
   # solve_with_lambda(x, t_x, u, t_u)
@@ -269,8 +270,8 @@ def solve_for_k(x, t_x, u, t_u):
   for i in range(n_samples):
     for j in range(n_samples_per_iter):
       delta_t = 1e-2 * j
-      x_ind = np.argwhere(np.abs(t_x - (sample_times[i] + delta_t)) < 1e-3)[0][0]
-      u_ind = np.argwhere(np.abs(t_u - (sample_times[i] + delta_t)) < 1e-3)[0][0]
+      x_ind = np.argwhere(np.abs(t_x - (sample_times[i] + delta_t)) < 1e-2)[0][0]
+      u_ind = np.argwhere(np.abs(t_u - (sample_times[i] + delta_t)) < 1e-2)[0][0]
       plant.SetPositionsAndVelocities(context, x[x_ind, :])
 
       M = plant.CalcMassMatrixViaInverseDynamics(context)

@@ -78,6 +78,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
                      drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
   osc_debug_channels = ['OSC_DEBUG_WALKING', 'OSC_DEBUG_RUNNING', 'OSC_DEBUG_STANDING', 'OSC_DEBUG_JUMPING']
+  state_feedback_channels = ['CASSIE_STATE_SIMULATION', 'CASSIE_STATE_DISPATCHER']
 
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:
@@ -93,9 +94,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
         unknown_types.add(event.channel)
     if event.channel in full_log:
       full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
-    # if event.channel == "CASSIE_STATE_SIMULATION" or event.channel == "CASSIE_STATE_DISPATCHER":
-    if event.channel == "CASSIE_STATE_SIMULATION":
-    # if event.channel == "CASSIE_STATE_DISPATCHER":
+    if event.channel in state_feedback_channels:
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]
       v_temp = [[] for i in range(len(msg.velocity))]
@@ -110,7 +109,6 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
       v.append(v_temp)
       u_meas.append(u_temp)
       t_x.append(msg.utime / 1e6)
-    # if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
     if event.channel == "CASSIE_INPUT" or event.channel == controller_channel:
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
@@ -131,8 +129,6 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    # if event.channel == "OSC_DEBUG_STANDING":
-    # if event.channel == "OSC_DEBUG_JUMPING":
     if event.channel in osc_debug_channels:
       msg = dairlib.lcmt_osc_output.decode(event.data)
       t_lcmlog_u.append(event.timestamp / 1e6)
@@ -167,7 +163,6 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
           contact_forces[2 + num_right_contacts].append(
             msg.point_pair_contact_info[i].contact_force)
           num_right_contacts += 1
-          # print("ERROR")
       while num_left_contacts != 2:
         contact_forces[num_left_contacts].append((0.0, 0.0, 0.0))
         contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))

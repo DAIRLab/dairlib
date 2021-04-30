@@ -62,7 +62,6 @@ def main():
   duration = '0.000'
   # duration = 'stiff'
 
-
   # construct_hardware_torque_plot()
   # plot_vel_discontinuity_example(right_foot_traj)
   # construct_knee_efforts_plot()

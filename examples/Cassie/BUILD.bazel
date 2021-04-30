@@ -501,6 +501,7 @@ cc_binary(
         ":cassie_utils",
         "//common",
         "//lcm:dircon_trajectory_saver",
+        "//solvers:cost_function_utils",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",

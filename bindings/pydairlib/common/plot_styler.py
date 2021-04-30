@@ -29,7 +29,7 @@ class PlotStyler():
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 18}
     matplotlib.rc('font', **font)
-    matplotlib.rcParams['lines.linewidth'] = 2
+    matplotlib.rcParams['lines.linewidth'] = 4
     plt.set_cmap('tab20')
     self.directory = directory
 
@@ -59,7 +59,6 @@ class PlotStyler():
     vertices = np.block([[x_low, x_high[::-1]],
                          [y_low, y_high[::-1]]]).T
     codes = Path.LINETO * np.ones(len(vertices), dtype=Path.code_type)
-    # codes[0] = codes[len(xdata)] = Path.MOVETO
     codes[0] = Path.MOVETO
     path = Path(vertices, codes)
     patch = PathPatch(path, facecolor=color, edgecolor='none', alpha=0.3)

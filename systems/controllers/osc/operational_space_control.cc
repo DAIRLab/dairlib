@@ -414,8 +414,12 @@ void OperationalSpaceControl::Build() {
                                  .get());
   }
 
+  solver_ = std::make_unique<solvers::FastOsqpSolver>();
+  drake::solvers::SolverOptions solver_options;
+  solver_options.SetOption(solver_->id(), "verbose", 1);
+  solver_->InitializeSolver(*prog_, solver_options);
   // Max solve duration
-  prog_->SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration);
+//  prog_->SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -717,7 +721,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Solve the QP
-  const MathematicalProgramResult result = Solve(*prog_);
+
+//  const MathematicalProgramResult result = Solve(*prog_);
+  const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 

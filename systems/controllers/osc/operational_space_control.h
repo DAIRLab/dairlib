@@ -295,6 +295,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<double> t_e_vec_;
 
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  drake::solvers::SolverOptions solver_options_;
 };
 
 }  // namespace dairlib::systems::controllers

@@ -400,10 +400,11 @@ void OperationalSpaceControl::Build() {
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(solver_->id(), "verbose", 1);
+  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
+  solver_options.SetOption(OsqpSolver::id(), "time_limit", kMaxSolveDuration);
+  std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
   // Max solve duration
-//  prog_->SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(

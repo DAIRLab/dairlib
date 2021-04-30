@@ -152,7 +152,7 @@ int DoMain(int argc, char* argv[]) {
       Vector2d(default_com(kmpc->saggital_idx()), default_com(kmpc->vertical_idx())),
       Vector2d(default_com(kmpc->saggital_idx()), default_com(kmpc->vertical_idx()))};
 
-  Vector2d kin_weights(1,2);
+  Vector2d kin_weights(1,1);
   kmpc->SetReachabilityLimit(
       gains.ReachabilityLim*kin_weights, kin_nom, gains.W_kin_reach);
 

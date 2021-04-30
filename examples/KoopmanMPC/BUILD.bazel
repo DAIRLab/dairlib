@@ -123,6 +123,29 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "run_osc_walking_lipm",
+    srcs = ["run_osc_walking_lipm.cc"],
+    deps = [
+        ":model_utils",
+        ":osc_walking_gains",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:lipm_traj_gen",
+        "//systems/controllers:swing_ft_traj_gen",
+        "//systems/controllers:time_based_fsm",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/controllers/osc:osc_tracking_data",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
 cc_library(
     name = "model_utils",
     srcs = ["model_utils.cc"],

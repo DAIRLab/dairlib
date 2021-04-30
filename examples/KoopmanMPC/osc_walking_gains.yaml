@@ -6,9 +6,9 @@ w_accel: .0001
 w_soft_constraint: 8000
 
 CoMW:
-  [100, 0,   0,
+  [10, 0,   0,
    0,  0,   0,
-   0,  0, 100]
+   0,  0, 10]
 OrientationW:
   [10]
 SwingFootW:
@@ -16,13 +16,13 @@ SwingFootW:
    0, 0, 0,
    0, 0, 10]
 CoMKp:
-  [ 100, 0,    0,
+  [ 10, 0,    0,
     0,   0,    0,
-    0,   0,    100]
+    0,   0,    10]
 CoMKd:
-  [ 10,  0,   0,
-    0,    0,   0,
-    0,    0,   10]
+  [ 1,  0,   0,
+    0,  0,   0,
+    0,  0,   1]
 OrientationKp:
   [10]
 OrientationKd:

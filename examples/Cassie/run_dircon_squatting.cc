@@ -16,6 +16,7 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/visualization_utils.h"
 #include "solvers/nonlinear_constraint.h"
 #include "solvers/optimization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -582,23 +583,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   // *******Add COM visualization**********
   bool plot_com = true;
   bool com_on_ground = true;
-  auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
+  auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
   if (plot_com) {
-    double radius = .02;
-    UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);
-    SpatialInertia<double> M_Bcm(1, Eigen::Vector3d::Zero(), G_Bcm);
-
-    const drake::multibody::RigidBody<double>& ball =
-        ball_plant->AddRigidBody("Ball", M_Bcm);
-
-    ball_plant->RegisterAsSourceForSceneGraph(&scene_graph);
-    // Add visual for the COM.
-    const Eigen::Vector4d orange(1.0, 0.55, 0.0, 1.0);
-    const RigidTransformd X_BS = RigidTransformd::Identity();
-    ball_plant->RegisterVisualGeometry(ball, X_BS, Sphere(radius), "visual",
-                                       orange);
-    ball_plant->Finalize();
-
     // connect
     auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
         plant.num_positions() + plant.num_velocities(), 0,

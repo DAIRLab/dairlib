@@ -185,6 +185,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//multibody:utils",
+        "//multibody:visualization_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",

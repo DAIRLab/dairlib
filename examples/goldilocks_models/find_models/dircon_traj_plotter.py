@@ -127,6 +127,10 @@ def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
   state_traj = dircon_traj.ReconstructStateTrajectory()
   state_datatypes = dircon_traj.GetTrajectory("state_traj0").datatypes
 
+  # Get the vel in the second mode
+  state_2nd_mode = dircon_traj.GetTrajectory("state_traj1").datapoints[
+                   x_idx_start:x_idx_end, 0:1]
+
   # Sampling the spline for visualization
   n_points = 10000
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
@@ -139,6 +143,8 @@ def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
   figname = "state trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
   plt.figure(figname, figsize=figsize)
   plt.plot(t, state_samples)
+  plt.gca().set_color_cycle(None)
+  plt.plot(t[-1], state_2nd_mode.T, 'o', markersize=4)
   plt.plot(t_knot, x_knot.T, 'ko', markersize=2)
   plt.xlabel('time (s)')
   plt.legend(state_datatypes[x_idx_start:x_idx_end])

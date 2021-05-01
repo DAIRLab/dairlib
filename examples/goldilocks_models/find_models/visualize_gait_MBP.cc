@@ -337,9 +337,9 @@ void visualizeGait(int argc, char* argv[]) {
 
     // visualizer
     int n_loops = 1;
-    auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
+    auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
     multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
-                                           pp_xtraj, ball_plant.get());
+                                           pp_xtraj, *ball_plant);
     auto diagram = builder.Build();
     // while (true)
     for (int i = 0; i < n_loops; i++) {

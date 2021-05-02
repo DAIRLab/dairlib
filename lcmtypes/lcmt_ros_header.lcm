@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_ros_header
+{
+  int32_t seq; // Should be unsigned, but not supported by LCM
+  int32_t timestamp_sec;
+  int32_t timestamp_nsec;
+  string frame_id;
+}

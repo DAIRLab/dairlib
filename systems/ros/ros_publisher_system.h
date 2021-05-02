@@ -6,6 +6,7 @@
 #include <unordered_set>
 
 #include "drake/common/drake_copyable.h"
+#include "drake/lcm/drake_lcm_interface.h"
 #include "drake/systems/framework/leaf_system.h"
 
 #include "ros/ros.h"

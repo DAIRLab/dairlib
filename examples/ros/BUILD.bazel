@@ -1,0 +1,20 @@
+cc_binary(
+    name = "ros2lcm_odometry_pipeline",
+    srcs = ["ros2lcm_odometry_pipeline.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@ros",
+        "//systems/ros:ros_pubsub_systems",
+        "//systems/ros:ros2lcm_odometry_system",
+    ],
+    tags = ["ros"],
+)
+
+cc_binary(
+    name = "odometry_publisher",
+    srcs = ["odometry_publisher.cc"],
+    deps = [
+        "@ros",
+    ],
+    tags = ["ros"],
+)

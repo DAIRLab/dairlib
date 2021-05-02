@@ -6,5 +6,14 @@ __pycache__/
 *.ipynb_checkpoints
 *.DS_Store*
 attic/multibody/solver_log/
+*.vscode*
+/bundle_ws
+*.pickle*
+*.log
+*.bag
+*.pyc
+*.swp
+logs/*
+/examples/kuka_iiwa_arm/simulation_settings.json
 .clwb/
 .csv

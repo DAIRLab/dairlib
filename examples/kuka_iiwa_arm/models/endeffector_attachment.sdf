@@ -1,0 +1,45 @@
+<?xml version='1.0'?>
+<sdf version='1.6'>
+  <model name='iiwa_ee'>
+    <link name='ee_body'>
+      <pose frame=''>0 0 0.09 0 -0 0</pose>
+      <inertial>
+        <mass>0.28424</mass>
+        <inertia>
+          <ixx>0.00028393</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy> 0.00028393</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.00004607</izz>
+        </inertia>
+        <pose frame=''>0 0 0.09 0 -0 0</pose>
+      </inertial>
+      <self_collide>0</self_collide>
+      <visual name='ee_visual'>
+        <pose frame=''>0 0 0.1 0 -0 0</pose>
+        <geometry>
+            <cylinder>
+                <radius>0.0256</radius>
+                <length>0.1016</length>
+            </cylinder>
+        </geometry>
+        <cast_shadows>1</cast_shadows>
+        <transparency>0</transparency>
+      </visual>
+      <collision name='ee_collision'>
+        <laser_retro>0</laser_retro>
+        <max_contacts>10</max_contacts>
+        <pose frame=''>0 0 0.1016 0 -0 0</pose>
+        <geometry>
+            <cylinder>
+                <radius>0.0256</radius>
+                <length>0.03</length>
+            </cylinder>
+        </geometry>
+      </collision>
+    </link>
+    <static>0</static>
+    <allow_auto_disable>1</allow_auto_disable>
+  </model>
+</sdf>

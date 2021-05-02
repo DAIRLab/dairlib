@@ -1,11 +1,3 @@
-// Kp and 'Rotational' Kp
-#define K_P 1
-#define K_OMEGA 0.7
-
-// Kd and 'Rotational' Kd
-#define K_D 1
-#define K_R 0.3
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_status_receiver.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_command_sender.h"
@@ -22,72 +14,132 @@
 #include "drake/lcmt_iiwa_status.hpp"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/multibody/parsing/parser.h"
+#include "drake/systems/primitives/multiplexer.h"
+#include "drake/systems/primitives/demultiplexer.h"
+
 
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
+#include <lcm/lcm-cpp.hpp>
 
+#include "json.hpp"
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+using json = nlohmann::json;
 namespace dairlib {
+
+// CsvVector class: Takes CSV file as a parameter,
+// loads data into a 2D vector of doubles, provides
+// method to get the 2D vector.
+class CsvVector {
+  private:
+    std::vector<std::vector<double>> data;
+  public:
+    CsvVector(std::string fileName) {
+      //Opens stream to fileName.
+      std::ifstream stream;
+      stream.open(fileName);
+
+      //Checks to make sure it has been opened.
+      if (stream.is_open()) {
+        std::cout << "CSV file " + fileName + " opened successfully" << std::endl;
+      }
+
+      //Finds number of columns in CSV file to resize data vector.
+      std::string firstLine;
+      std::getline(stream, firstLine);
+      std::stringstream lineStream(firstLine);
+      std::string dat;
+      int length = 0;
+      while (std::getline(lineStream, dat, ',')) {
+        data.resize(data.size() + 1);
+        data[length].push_back(std::stod(dat));
+        length++;
+      }
+
+      //Loads CSV file contents into data vector.
+      while(std::getline(stream, firstLine)) {
+        int col = 0;
+        std::stringstream moreLines(firstLine);
+        while (std::getline(moreLines, dat, ',')) {
+          data[col].push_back(std::stod(dat));
+          col++;
+        }
+      }
+      stream.close();
+    }
+    //Returns the data array.
+    std::vector<std::vector<double>> getArray() {
+      return data;
+    }
+
+    int knotSize() {
+        return data[0].size();
+    }
+};
+
+class InitialPosHandler {
+    public:
+        InitialPosHandler(){
+            messageReceived = false;
+        }
+
+        ~InitialPosHandler() {}
+
+        void handleMessage(const lcm::ReceiveBuffer* rbuf,
+                           const std::string& chan,
+                           const drake::lcmt_iiwa_status* msg) {
+            initialPositions << (double)msg->joint_position_measured[0],
+                                (double)msg->joint_position_measured[1],
+                                (double)msg->joint_position_measured[2],
+                                (double)msg->joint_position_measured[3],
+                                (double)msg->joint_position_measured[4],
+                                (double)msg->joint_position_measured[5],
+                                (double)msg->joint_position_measured[6];
+            messageReceived = true;
+        }
+
+        bool messageReceived;
+        Eigen::VectorXd initialPositions = Eigen::VectorXd(7);
+};
 
 // This function creates a controller for a Kuka LBR Iiwa arm by connecting an
 // EndEffectorPositionController to an EndEffectorVelocityController to control
 // the individual joint torques as to move the endeffector
 // to a desired position.
+
 int do_main(int argc, char* argv[]) {
-  // Creating end effector trajectory
-  // TODO make this modular
-  const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0,
-                                   75.0, 85.0, 95.0, 105.0, 115};
+  //Loads in joint gains json file
+  std::ifstream joint_gains_file(
+      "examples/kuka_iiwa_arm/config/simulation_settings.json");
+  if (joint_gains_file.is_open()) {
+    std::cout << "Json file opened successfully." << std::endl;
+  }
+  //Initializes joint_gains json object
+  json joint_gains = json::parse(joint_gains_file);
 
-  std::vector<Eigen::MatrixXd> points(times.size());
+  //Kp and 'Rotational' Kp
+  const double K_P = joint_gains["kuka_gains"]["K_P"];
+  const double K_R = joint_gains["kuka_gains"]["K_R"];
 
-  Eigen::Vector3d AS, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9;
+  // Kd and 'Rotational' Kd
+  const double K_D = joint_gains["kuka_gains"]["K_D"];
+  const double K_OMEGA = joint_gains["kuka_gains"]["K_OMEGA"];
 
-  AS << -0.23, -0.2, 0.25;
-  A0 << -0.23, -0.2, 0.25;
+  //Safety Limits
+  const double MAX_LINEAR_VEL = joint_gains["limits"]["max_linear_velocity"];
+  const double MAX_ANGULAR_VEL = joint_gains["limits"]["max_angular_veloctiy"];
+  const double JOINT_TORQUE_LIMIT = joint_gains["limits"]["joint_torque_limit"];
 
-  A1 << -0.23, -0.6, 0.25;
-  A2 << 0.23, -0.6, 0.25;
-
-  A3 << 0.23, -0.2, 0.25;
-
-  A4 << 0.23, -0.2, 0.25;
-
-  A5 << 0.23, -0.6, 0.25;
-
-  A6 << -0.23, -0.6, 0.25;
-
-  A7 << -0.23, -0.2, 0.25;
-
-  A8 << -0.23, -0.2, 0.25;
-  A9 << -0.23, -0.2, 0.25;
-
-  points[0] = AS;
-  points[1] = A0;
-  points[2] = A1;
-  points[3] = A2;
-  points[4] = A3;
-  points[5] = A4;
-  points[6] = A5;
-  points[7] = A6;
-  points[8] = A7;
-  points[9] = A8;
-  points[10] = A9;
-
-  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<
-      double>::FirstOrderHold(times, points);
-
-  // Creating end effector orientation trajectory
-  const std::vector<double> orient_times {0, 115};
-  std::vector<Eigen::MatrixXd> orient_points(orient_times.size());
-  Eigen::Vector4d start_o, end_o;
-  start_o << 0, 0, 1, 0;
-  end_o << 0, 0, 1, 0;
-
-  orient_points[0] = start_o;
-  orient_points[1] = end_o;
-
-  auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<
-      double>::FirstOrderHold(orient_times, orient_points);
+  std::cout << "Using following parameters:" << std::endl;
+  std::cout << "K_P: " << K_P << " | K_R: " << K_R << " | K_D: " << K_D;
+  std::cout << " | K_OMEGA: " << K_OMEGA << std::endl;
+  std::cout << "Linear Velocity Limit: " << MAX_LINEAR_VEL << std::endl;
+  std::cout << "Angular Velocity Limit: " << MAX_ANGULAR_VEL << std::endl;
+  std::cout << "Joint Torque Limit: " << JOINT_TORQUE_LIMIT << std::endl;
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
   std::string kModelPath = "../drake/manipulation/models/iiwa_description"
@@ -127,17 +179,87 @@ int do_main(int argc, char* argv[]) {
   // Adding position controller block
   auto position_controller = builder.AddSystem<
       systems::EndEffectorPositionController>(
-          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA);
+          *owned_plant, link_7, eeContactFrame, K_P, K_R, MAX_LINEAR_VEL,
+          MAX_ANGULAR_VEL);
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<
       systems::EndEffectorVelocityController>(
-          *owned_plant, link_7, eeContactFrame, K_D, K_R);
+          *owned_plant, link_7, eeContactFrame, K_D, K_OMEGA, JOINT_TORQUE_LIMIT);
 
+  //Processes Trajectories CSV file.
+  CsvVector waypoints("examples/kuka_iiwa_arm/config/Trajectories.csv");
+
+  // Listens for LCM message then performs invKin to get traj initial position.
+  lcm::LCM lcm_;
+  if (!lcm_.good()) return 1;
+
+  Eigen::Vector3d x_initial;
+  InitialPosHandler handler;
+  lcm_.subscribe("IIWA_STATUS", &InitialPosHandler::handleMessage, &handler);
+  while (lcm_.handle() == 0 && !handler.messageReceived);
+
+  const std::unique_ptr<Context<double>> plant_context =
+      owned_plant->CreateDefaultContext();
+  owned_plant->SetPositions(plant_context.get(), handler.initialPositions);
+  owned_plant->CalcPointsPositions(*plant_context,
+                                   owned_plant->GetFrameByName(link_7),
+                                   eeContactFrame, owned_plant->world_frame(),
+                                   &x_initial);
+
+  Eigen::Vector3d checkpointTwo;
+  checkpointTwo << waypoints.getArray()[1][0], waypoints.getArray()[2][0],
+                   waypoints.getArray()[3][0];
+
+  // 1/second m/s movement speed
+  const int seconds = 20;
+  int firstMovementTime = (x_initial - checkpointTwo).norm() * seconds;
+
+  //Initializes trajectories to trajectoryVectors array.
+  std::vector<Eigen::MatrixXd> trajectoryVectors;
+  if (firstMovementTime > 0.0){
+      trajectoryVectors.push_back(x_initial);
+  }
+  for (unsigned int x = 0; x < waypoints.getArray()[0].size(); x++) {
+    Eigen::Vector3d temp;
+    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x],
+            waypoints.getArray()[3][x];
+    trajectoryVectors.push_back(temp);
+  }
+
+  std::vector<double> timeKnots = waypoints.getArray()[0];
+  // Add the movement time to every timestep
+  if (firstMovementTime > 0.0) {
+      for (double& d : timeKnots) d += abs(firstMovementTime);
+      std::cout << firstMovementTime << std::endl;
+      timeKnots.insert(timeKnots.begin(), 0.0);
+  }
+  auto ee_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          timeKnots, trajectoryVectors);
+  auto ee_velocity = ee_trajectory.derivative(1);
+
+  // Processes EndEffectorOrientations CSV file.
+  CsvVector orientations("examples/kuka_iiwa_arm/config/EndEffectorOrientations.csv");
+
+  //Initializes orientations to orient_points array.
+  std::vector<Eigen::MatrixXd> orient_points;
+  for (int y = 0; y < orientations.knotSize(); y++) {
+    Eigen::Vector4d aPoint;
+    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y],
+              orientations.getArray()[3][y], orientations.getArray()[4][y];
+    orient_points.push_back(aPoint);
+  }
+
+  auto orientation_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          orientations.getArray()[0], orient_points);
 
   // Adding linear position Trajectory Source
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(
       ee_trajectory);
+  auto input_velocity = builder.AddSystem<drake::systems::TrajectorySource>(
+      ee_velocity);
   // Adding orientation Trajectory Source
   auto input_orientation = builder.AddSystem<drake::systems::TrajectorySource>(
       orientation_trajectory);
@@ -157,8 +279,21 @@ int do_main(int argc, char* argv[]) {
   ConstPositionCommand.resize(7);
   ConstPositionCommand << 0, 0, 0, 0, 0, 0, 0;
 
-  auto positionCommand = builder.AddSystem<
-      drake::systems::ConstantVectorSource>(ConstPositionCommand);
+  auto positionCommand =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(
+          ConstPositionCommand);
+
+  std::vector<int> demuxDorsalPos = {4, 3};
+  auto dorsalPosCmd =
+      builder.AddSystem<drake::systems::Demultiplexer>(
+          demuxDorsalPos);
+
+  std::vector<int> demuxDistalPos = {3, 3};
+  auto distalPosCmd =
+      builder.AddSystem<drake::systems::Demultiplexer>(demuxDistalPos);
+
+  std::vector<int> muxPosCmd = {4, 3};
+  auto combPosCmd = builder.AddSystem<drake::systems::Multiplexer>(muxPosCmd);
 
   builder.Connect(status_subscriber->get_output_port(),
                   status_receiver->get_input_port());
@@ -172,6 +307,8 @@ int do_main(int argc, char* argv[]) {
   //Connecting x_desired input from trajectory to position controller
   builder.Connect(input_trajectory->get_output_port(),
                   position_controller->get_endpoint_pos_input_port());
+  builder.Connect(input_velocity->get_output_port(),
+                  position_controller->get_endpoint_vel_input_port());
   //Connecting desired orientation to position controller
   builder.Connect(input_orientation->get_output_port(),
                   position_controller->get_endpoint_orient_input_port());
@@ -182,7 +319,17 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(velocity_controller->get_endpoint_torque_output_port(),
                   command_sender->get_torque_input_port());
 
-  builder.Connect(positionCommand->get_output_port(),
+  builder.Connect(status_receiver->get_position_measured_output_port(),
+                  dorsalPosCmd->get_input_port(0));
+  builder.Connect(position_controller->get_endpoint_cmd_output_port(),
+                  distalPosCmd->get_input_port(0));
+
+  builder.Connect(dorsalPosCmd->get_output_port(0),
+                  combPosCmd->get_input_port(0));
+  builder.Connect(distalPosCmd->get_output_port(0),
+                  combPosCmd->get_input_port(1));
+
+  builder.Connect(combPosCmd->get_output_port(0),
                   command_sender->get_position_input_port());
   builder.Connect(command_sender->get_output_port(),
                   command_publisher->get_input_port());

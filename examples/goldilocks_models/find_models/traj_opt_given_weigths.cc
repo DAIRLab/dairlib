@@ -1455,8 +1455,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
                           bool extend_model, int sample_idx, int n_rerun,
                           double cost_threshold_for_update, int N_rerun,
                           int rom_option, int robot_option) {
-  double stride_length = task.get("stride length");
-  double ground_incline = task.get("ground incline");
+  double stride_length = task.get("stride_length");
+  double ground_incline = task.get("ground_incline");
   double duration = task.get("duration");
   double walking_vel = stride_length / duration;
 
@@ -1849,9 +1849,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                    int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
                    int rom_option, int robot_option) {
-  double stride_length = task.get("stride length");
-  double ground_incline = task.get("ground incline");
-  double turning_rate = task.get("turning rate");
+  double stride_length = task.get("stride_length");
+  double ground_incline = task.get("ground_incline");
+  double turning_rate = task.get("turning_rate");
   double duration = task.get("duration");
   double walking_vel = stride_length / duration;
 
@@ -1970,7 +1970,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //  reminder: if it solves very slowly, you might want to scale constraint
   //  because you added reflected inertia
 
-  // Testing -- remove ankle joint pos/vel periodicity constraint becasue it's
+  // Testing -- remove ankle joint pos/vel periodicity constraint because it's
   // redundant (because we have fourbar constraint at pos/vel level)
   bool remove_ankle_joint_from_periodicity = true;
   if (remove_ankle_joint_from_periodicity) {
@@ -1990,7 +1990,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     eps_pos_period = 0;
   }
 
-  // We don't need 6 Dof vel perioficity constraints becasue we have the stance
+  // We don't need 6 Dof vel periodicity constraints because we have the stance
   // foot contact constraint at velocity level
   bool one_dof_periodic_floating_base_vel = true;
 

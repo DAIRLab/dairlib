@@ -199,7 +199,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
                      bool rerun_current_iteration, bool has_been_all_success,
                      bool step_size_shrinked_last_loop, int n_rerun,
-                     int sample_idx_to_help, bool is_debug, const string& dir,
+                     int sample_idx_to_help, const string& dir,
                      const TasksGenerator* task_gen, const Task& task,
                      const ReducedOrderModel& rom, bool non_grid_task,
                      bool use_database, int robot_option) {
@@ -233,13 +233,6 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
     }
-  }
-
-  // Testing
-  if (is_debug) {
-    // Hacks for improving solution quality
-
-    *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   }
 }
 
@@ -1888,7 +1881,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd step_direction;
   VectorXd prev_step_direction = VectorXd::Zero(
       rom->n_theta());  // must initialize this because of momentum term
-  if (iter_start > 1) {
+  if (iter_start > 1 && !FLAGS_is_debug) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
     step_direction =
@@ -1899,7 +1892,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             .col(0);
   }
   double current_iter_step_size = h_step;
-  if ((iter_start > 1) && FLAGS_read_previous_step_size) {
+  if ((iter_start > 1) && FLAGS_read_previous_step_size && !FLAGS_is_debug) {
     cout << "Reading previous step size... (will get memory issue if the file "
             "doesn't exist)\n";
     current_iter_step_size = readCSV(dir + to_string(iter_start - 1) +
@@ -1907,7 +1900,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   VectorXd prev_theta = rom->theta();
-  if (iter_start > 1) {
+  if (iter_start > 1 && !FLAGS_is_debug) {
     MatrixXd prev_theta_y_mat =
         readCSV(dir + to_string(iter_start - 1) + string("_theta_y.csv"));
     MatrixXd prev_theta_yddot_mat =
@@ -2094,20 +2087,25 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Generate a new task or use the same task if this is a rerun
           // (You need step_size_shrinked_last_loop because you might start the
           // program with shrinking step size)
-          if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
-            task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
-          } else {
-            if (is_grid_task && is_get_nominal) {
-              task.set(task_gen_grid.NewNominalTask(sample_idx));
+          if (!FLAGS_is_debug) {
+            if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
+              task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
             } else {
-              task.set(task_gen->NewTask(sample_idx));
+              if (is_grid_task && is_get_nominal) {
+                task.set(task_gen_grid.NewNominalTask(sample_idx));
+              } else {
+                task.set(task_gen->NewTask(sample_idx));
+              }
+              // Map std::vector to VectorXd and create a copy of VectorXd
+              Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
+                  task.get().data(), task.get().size());
+              previous_task[sample_idx] = task_vectorxd;
+              // Store task in files
+              writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
             }
-            // Map std::vector to VectorXd and create a copy of VectorXd
-            Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
-                task.get().data(), task.get().size());
-            previous_task[sample_idx] = task_vectorxd;
-            // Store task in files
-            writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
+          } else {
+            task.set(CopyVectorXdToStdVector(
+                readCSV(dir + prefix + string("task.csv")).col(0)));
           }
 
           // (Feature -- get initial guess from adjacent successful samples)
@@ -2115,7 +2113,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // to here), then it means that there exists a adjacent sample that
           // can help the current sample.
           int sample_idx_to_help = -1;
-          if (get_good_sol_from_adjacent_sample) {
+          if (get_good_sol_from_adjacent_sample && !FLAGS_is_debug) {
             if ((n_rerun[sample_idx] > N_rerun) &&
                 (sample_monitor.Read(sample_idx) != 0.5)) {
               sample_monitor.Print();
@@ -2127,12 +2125,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Get file name of initial seed
           string init_file_pass_in;
-          getInitFileName(
-              &init_file_pass_in, init_file, iter, sample_idx, is_get_nominal,
-              current_sample_is_a_rerun, has_been_all_success,
-              step_size_shrinked_last_loop, n_rerun[sample_idx],
-              sample_idx_to_help, FLAGS_is_debug, dir, task_gen, task, *rom,
-              !is_grid_task, FLAGS_use_database, FLAGS_robot_option);
+          if (!FLAGS_is_debug) {
+            getInitFileName(&init_file_pass_in, init_file, iter, sample_idx,
+                            is_get_nominal, current_sample_is_a_rerun,
+                            has_been_all_success, step_size_shrinked_last_loop,
+                            n_rerun[sample_idx], sample_idx_to_help, dir,
+                            task_gen, task, *rom, !is_grid_task,
+                            FLAGS_use_database, FLAGS_robot_option);
+          } else {
+            init_file_pass_in = to_string(iter) + "_" + to_string(sample_idx) +
+                                string("_w.csv");
+          }
 
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better

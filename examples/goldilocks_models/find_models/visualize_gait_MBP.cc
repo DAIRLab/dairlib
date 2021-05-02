@@ -108,7 +108,7 @@ void visualizeGait(int argc, char* argv[]) {
   // Read in task name
   vector<string> task_name = ParseCsvToStringVec(directory + "task_names.csv");
   Task task(task_name);
-  int ground_incline_idx = task.name_to_index_map().at("ground incline");
+  int ground_incline_idx = task.name_to_index_map().at("ground_incline");
 
   // Construct a list of (iteration #, sample #) pairs to visualize for
   std::vector<std::pair<int, int>> iter_sample_pair_list;

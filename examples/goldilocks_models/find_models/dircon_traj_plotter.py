@@ -36,8 +36,8 @@ def main():
   global savefig, figsize, save_path
   savefig = False
   figsize = (6.4, 4.8)
-  if len(sys.argv) == 2:
-    if sys.argv[1] == "save":
+  for i in range(len(sys.argv)):
+    if sys.argv[i] == "save":
       savefig = True
       figsize = (16, 9)
   import getpass

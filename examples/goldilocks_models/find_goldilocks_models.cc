@@ -92,7 +92,7 @@ DEFINE_int32(max_inner_iter, 150,
     "Max iteration # for traj opt. Sometimes, snopt takes very small steps "
     "(TODO: find out why), so maybe it's better to stop at some iterations and "
     "resolve again.");
-DEFINE_bool(fix_node_number, false, "Fix the number of nodes in traj opt");
+DEFINE_bool(fix_node_number, true, "Fix the number of nodes in traj opt");
 DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
 // Two things you need to be careful about node density (keep an eye on these
 // in the future):
@@ -1736,8 +1736,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << n_node_vec[sample_idx] << ", ";
     }
     cout << endl;
-    cout << "WARNING: we will only add adjacent samples to the list if it has "
-            "the same number of nodes\n";
+    cout << "WARNING: we will *only* add adjacent samples to the list if it has"
+            " the same number of nodes\n";
+  } else {
+    cout << n_node_vec[0] << "\n";
   }
   cout << "eps_regularization = " << FLAGS_eps_regularization << endl;
   cout << "is_add_tau_in_cost = " << FLAGS_is_add_tau_in_cost << endl;

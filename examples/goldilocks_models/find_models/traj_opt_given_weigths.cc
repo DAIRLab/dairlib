@@ -1979,12 +1979,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing -- add epsilon to periodicity contraint in case we are over
   // cosntraining the problem
-  bool relax_vel_periodicity_constraint = true;
+  bool relax_vel_periodicity_constraint = false;
   double eps_vel_period = 0.1;
   if (!relax_vel_periodicity_constraint) {
     eps_vel_period = 0;
   }
-  bool relax_pos_periodicity_constraint = true;
+  bool relax_pos_periodicity_constraint = false;
   double eps_pos_period = 0.01;
   if (!relax_pos_periodicity_constraint) {
     eps_pos_period = 0;

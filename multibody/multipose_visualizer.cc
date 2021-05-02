@@ -1,5 +1,6 @@
 #include "multibody/multipose_visualizer.h"
 
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -87,7 +88,7 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
     }
   }
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, *scene_graph, lcm);
+  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, *scene_graph, lcm);
   diagram_ = builder.Build();
   diagram_context_ = diagram_->CreateDefaultContext();
   drake::geometry::DispatchLoadMessage(*scene_graph, lcm);

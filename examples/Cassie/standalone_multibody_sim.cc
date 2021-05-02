@@ -2,6 +2,7 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -78,7 +79,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
 

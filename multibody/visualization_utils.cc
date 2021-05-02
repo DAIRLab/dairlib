@@ -1,8 +1,10 @@
 #include "multibody/visualization_utils.h"
 
+#include "common/find_resource.h"
 #include "multibody/com_pose_system.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/systems/primitives/trajectory_source.h"
 
 namespace dairlib {
@@ -10,6 +12,7 @@ namespace multibody {
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::multibody::RigidBody;
 using drake::multibody::SpatialInertia;
 using drake::multibody::UnitInertia;
@@ -20,17 +23,10 @@ using systems::SubvectorPassThrough;
 std::unique_ptr<MultibodyPlant<double>> ConstructBallPlant(
     drake::geometry::SceneGraph<double>* scene_graph) {
   auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
-  double radius = .02;
-  UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);
-  SpatialInertia<double> M_Bcm(1, Eigen::Vector3d::Zero(), G_Bcm);
-  const RigidBody<double>& ball = ball_plant->AddRigidBody("Ball", M_Bcm);
-  ball_plant->RegisterAsSourceForSceneGraph(scene_graph);
-  const Eigen::Vector4d orange(1.0, 0.55, 0.0, 1.0);
-  const RigidTransformd X_BS = RigidTransformd::Identity();
-  ball_plant->RegisterVisualGeometry(ball, X_BS, Sphere(radius), "visual",
-                                     orange);
+  std::string full_name = FindResourceOrThrow("multibody/ball.urdf");
+  Parser parser(ball_plant.get(), scene_graph);
+  parser.AddModelFromFile(full_name);
   ball_plant->Finalize();
-
   return ball_plant;
 }
 

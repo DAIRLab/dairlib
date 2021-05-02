@@ -103,7 +103,7 @@ def main():
   """
   Print the value of the solutions
   """
-  PrintAllDecisionVar(dircon_traj)
+  # PrintAllDecisionVar(dircon_traj)
 
   # print(dircon_traj.GetStateSamples(1))
   # import pdb; pdb.set_trace()

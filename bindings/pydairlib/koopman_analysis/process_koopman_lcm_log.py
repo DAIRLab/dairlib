@@ -194,11 +194,11 @@ def process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
                         msg.point_pair_contact_info[i].contact_force)
                     num_right_contacts += 1
                     # print("ERROR")
-            while num_left_contacts != 1:
+            while num_left_contacts < 1:
                 contact_forces[num_left_contacts].append((0.0, 0.0, 0.0))
                 contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))
                 num_left_contacts += 1
-            while num_right_contacts != 1:
+            while num_right_contacts < 1:
                 contact_forces[1 + num_right_contacts].append((0.0, 0.0, 0.0))
                 contact_info_locs[1 + num_right_contacts].append((0.0, 0.0, 0.0))
                 num_right_contacts += 1

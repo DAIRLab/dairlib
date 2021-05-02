@@ -33,6 +33,7 @@ using Eigen::Quaterniond;
 using dairlib::multibody::WorldPointEvaluator;
 using dairlib::multibody::makeNameToPositionsMap;
 using dairlib::multibody::makeNameToVelocitiesMap;
+using dairlib::multibody::SetPositionsAndVelocitiesIfNew;
 using dairlib::systems::OutputVector;
 using dairlib::LcmTrajectory;
 
@@ -88,6 +89,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   x_des_idx_ = this->DeclareDiscreteState(VectorXd::Zero(nxi_));
 
   prev_vel_ = Vector3d::Zero();
+  prev_force_sol_ = VectorXd::Zero(kLinearDim_);
 }
 
 void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
@@ -143,17 +145,10 @@ double KoopmanMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
   double mass = CalcCentroidalMassFromListOfBodies(bodies);
   mass_ = mass;
 
-  MatrixXd knots = MatrixXd::Zero(kLinearDim_, 2);
-  MatrixXd knots_dot = MatrixXd::Zero(kLinearDim_, 2);
-  Vector2d time = {0.0, 100.0};
-
-  for (int i = 0; i < 2; i++) {
-    if (planar_) {
-      knots.block(0, i, kLinearDim_, 1) =
-          MakePlanarVectorFrom3d(-mass_* gravity_);
-    } else {
-      knots.block(0, i, kLinearDim_, 1) = -mass_ * gravity_;
-    }
+  if (planar_) {
+    prev_force_sol_ = MakePlanarVectorFrom3d(-mass * gravity_);
+  } else {
+    prev_force_sol_ = -mass * gravity_;
   }
 
   return mass;
@@ -389,7 +384,7 @@ void KoopmanMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
   }
 }
 
-VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
+VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
     double t) const {
 
   Vector3d com_pos;
@@ -400,7 +395,7 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
   Vector3d right_pos;
   VectorXd lambda;
 
-  plant_.SetPositionsAndVelocities(plant_context_, x);
+  SetPositionsAndVelocitiesIfNew<double>(plant_, x, plant_context_);
 
   if (use_com_) {
     com_pos = plant_.CalcCenterOfMassPositionInWorld(*plant_context_);
@@ -453,10 +448,10 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(VectorXd x,
   if (planar_) {
     x_centroidal_inflated << MakePlanarVectorFrom3d(com_pos), base_orientation,
     MakePlanarVectorFrom3d(com_vel), base_omega, MakePlanarVectorFrom3d(left_pos),
-    MakePlanarVectorFrom3d(right_pos), MakePlanarVectorFrom3d(lambda);
+    MakePlanarVectorFrom3d(right_pos), prev_force_sol_; // MakePlanarVectorFrom3d(lambda);
   } else {
     x_centroidal_inflated << com_pos, base_orientation, com_vel, base_omega,
-        left_pos, right_pos, lambda;
+        left_pos, right_pos, prev_force_sol_; //lambda;
   }
   return x_centroidal_inflated;
 }
@@ -683,6 +678,7 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
 
   LambdaTraj.time_vector = x_time_knots;
   LambdaTraj.datapoints = lambda;
+  prev_force_sol_ = LambdaTraj.datapoints.col(1).head(kLinearDim_);
 
   MatrixXd x_com_knots(2*kLinearDim_, x.cols());
   x_com_knots << x.block(0, 0, kLinearDim_, x.cols()),
@@ -736,7 +732,7 @@ MatrixXd KoopmanMPC::CalcSwingFootKnotPoints(const VectorXd& x,
 
   /** Calculate current swing foot position and velocity **/
   auto& swing_pt = contact_points_.at(1 - curr_mode.stance);
-  plant_.SetPositionsAndVelocities(plant_context_, x);
+  SetPositionsAndVelocitiesIfNew<double>(plant_, x, plant_context_);
   plant_.CalcPointsPositions(*plant_context_, swing_pt.first,
       swing_pt.second, world_frame_, &swing_ft_plant);
   plant_.CalcJacobianTranslationalVelocity(*plant_context_,
@@ -781,13 +777,13 @@ void KoopmanMPC::LoadDiscreteDynamicsFromFolder(std::string folder, double dt,
   MatrixXd Brc = readCSV(folder + "/Br.csv");
   MatrixXd brc = readCSV(folder + "/br.csv");
 
-  *Al = MatrixXd::Identity(Alc.rows(), Alc.cols()) + dt * Alc;
-  *Bl = dt * Blc;
-  *bl = dt * blc;
+  *Al = Alc;
+  *Bl = Blc;
+  *bl = blc;
 
-  *Ar = MatrixXd::Identity(Arc.rows(), Arc.cols()) +  dt * Arc;
-  *Br = dt * Brc;
-  *br = dt * brc;
+  *Ar = Arc;
+  *Br = Brc;
+  *br = brc;
 }
 
 Vector2d KoopmanMPC::MakePlanarVectorFrom3d(Vector3d vec) const {

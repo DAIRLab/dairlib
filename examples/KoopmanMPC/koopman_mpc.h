@@ -168,7 +168,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
 
-  Eigen::VectorXd CalcCentroidalStateFromPlant(Eigen::VectorXd x, double t) const;
+  Eigen::VectorXd CalcCentroidalStateFromPlant(const Eigen::VectorXd& x, double t) const;
 
   // parameters
   bool use_fsm_;
@@ -195,6 +195,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   mutable Eigen::VectorXd prev_vel_;
+  mutable Eigen::VectorXd prev_force_sol_;
 
   std::vector<std::pair<const drake::multibody::BodyFrame<double>&,
   Eigen::Vector3d>> contact_points_;

@@ -126,6 +126,7 @@ cc_binary(
 cc_binary(
     name = "run_osc_walking_lipm",
     srcs = ["run_osc_walking_lipm.cc"],
+    tags = ["manual"],
     deps = [
         ":model_utils",
         ":osc_walking_gains",

@@ -179,7 +179,7 @@
   <joint name="torso_mass_weld" type="fixed">
     <parent link="torso"/>
     <child link="torso_mass"/>
-    <origin xyz="0 0 0"/>
+    <origin xyz="0 0 0.15"/>
   </joint>
   <joint name="right_lower_leg_mass_weld" type="fixed">
     <parent link="right_lower_leg"/>

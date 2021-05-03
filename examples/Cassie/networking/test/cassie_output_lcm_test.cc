@@ -88,7 +88,7 @@ TEST_F(CassieOutputLcmTest, SendReceiveTest) {
       *receiver, diagram_context.get());
 
   sender_context.FixInputPort(sender->get_input_port(0).get_index(),
-      std::make_unique<drake::Value<cassie_out_t>>(input_struct));
+      drake::Value<cassie_out_t>(input_struct));
 
   auto output = receiver->AllocateOutput();
   receiver->CalcOutput(receiver_context, output.get());

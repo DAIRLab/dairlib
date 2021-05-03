@@ -67,11 +67,11 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
 
   // Declare our two states (message_value, message_count).
   static_assert(kStateIndexMessage == 0, "");
-  this->DeclareAbstractState(AllocateSerializerOutputValue());
+  this->DeclareAbstractState(*AllocateSerializerOutputValue());
   static_assert(kStateIndexMessageCount == 1, "");
-  this->DeclareAbstractState(AbstractValue::Make<int>(0));
+  this->DeclareAbstractState(*AbstractValue::Make<int>(0));
   static_assert(kStateIndexMessageUTime == 2, "");
-  this->DeclareAbstractState(AbstractValue::Make<int>(0));
+  this->DeclareAbstractState(*AbstractValue::Make<int>(0));
 
 
   keep_polling_ = true;

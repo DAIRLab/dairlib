@@ -22,7 +22,6 @@
 #include "systems/trajectory_optimization/dircon/dircon.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -49,6 +48,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::VectorX;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -295,8 +295,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   // start/end velocity constraints
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    x0.tail(n_v));
-//  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-//                                   xf_m1.tail(n_v));
+  //  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+  //                                   xf_m1.tail(n_v));
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    xf.tail(n_v));
 
@@ -358,10 +358,10 @@ void DoMain(double duration, int max_iter, string data_directory,
     for (const auto& sym_joint_name : sym_joint_names) {
       trajopt.AddLinearConstraint(
           x0(positions_map[sym_joint_name + l_r_pair.first]) ==
-              x0(positions_map[sym_joint_name + l_r_pair.second]));
+          x0(positions_map[sym_joint_name + l_r_pair.second]));
       trajopt.AddLinearConstraint(
           xf(positions_map[sym_joint_name + l_r_pair.first]) ==
-              xf(positions_map[sym_joint_name + l_r_pair.second]));
+          xf(positions_map[sym_joint_name + l_r_pair.second]));
     }
   }
 
@@ -661,7 +661,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
   // **************************************
 
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (FLAGS_playback) {

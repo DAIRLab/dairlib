@@ -34,19 +34,19 @@ k_ff_lateral: 0
 k_fb_lateral: 0.2
 
 # Finite state machine
-ss_time: 0.35
+ss_time: 0.30
 ds_time: 0.05
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.3
-footstep_offset: 0.00
-center_line_offset: 0.08
+footstep_offset: 0.04
+center_line_offset: 0.03
 mid_foot_height: 0.03
 final_foot_height: 0.002
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
-lipm_height: 0.9
+lipm_height: 0.85
 
 # OSC gains
 mu: 0.8

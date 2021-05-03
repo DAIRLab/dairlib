@@ -37,6 +37,7 @@ using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+using drake::geometry::DrakeVisualizer;
 
 using dairlib::multibody::KinematicEvaluator;
 using dairlib::multibody::KinematicEvaluatorSet;
@@ -315,7 +316,7 @@ void DoMain() {
   multibody::connectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
                                          optimal_traj);
 
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   //  while (true) {

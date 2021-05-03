@@ -83,7 +83,7 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     if (fsm_state(0) == LEFT_STANCE) {
       time_shift << timestamp;
       plant_.SetPositions(context_, robot_output->GetPositions());
-      x_offset << plant_.CalcCenterOfMassPosition(*context_)[0];
+      x_offset << plant_.CalcCenterOfMassPositionInWorld(*context_)[0];
       std::cout << "cycle" << std::endl;
     }
   }

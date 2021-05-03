@@ -12,7 +12,6 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/parsing/parser.h"
@@ -24,11 +23,12 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
 
-
 using dairlib::systems::SubvectorPassThrough;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
+
 using drake::multibody::Parser;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
@@ -83,7 +83,6 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_floating_base) {
     multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
   }
-
 
   if (FLAGS_terrain_height != 0) {
     Parser parser(&plant, &scene_graph);
@@ -178,7 +177,7 @@ int do_main(int argc, char* argv[]) {
                   sensor_pub->get_input_port());
 
   if (FLAGS_terrain_height != 0.0) {
-    drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+    DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   }
 
   auto diagram = builder.Build();
@@ -207,10 +206,9 @@ int do_main(int argc, char* argv[]) {
       dircon_trajectory.ReconstructStateTrajectory();
 
   Eigen::VectorXd x_init = state_traj.value(FLAGS_start_time);
-  if(FLAGS_spring_model)
+  if (FLAGS_spring_model)
     x_init = map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
   plant.SetPositionsAndVelocities(&plant_context, x_init);
-
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

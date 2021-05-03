@@ -32,6 +32,10 @@ DEFINE_int32(visualize_mode, 0,
              "2 - Multipose visualizer");
 DEFINE_bool(use_transparency, false,
             "Transparency setting for the Multipose visualizer");
+DEFINE_bool(
+    mirror_traj, false,
+    "Whether or not to extend the trajectory by mirroring the trajectory. Only "
+    "use for periodic trajectories that are symmetric.");
 
 namespace dairlib {
 
@@ -58,28 +62,30 @@ int DoMain() {
       saved_traj.ReconstructStateTrajectory();
   std::vector<double> time_vector = optimal_traj.get_segment_times();
 
-  auto mirrored_traj =
-      saved_traj.ReconstructMirrorStateTrajectory(optimal_traj.end_time());
-  VectorXd x_offset = VectorXd::Zero(nx);
-  x_offset(4) = optimal_traj.value(optimal_traj.end_time())(4) -
-                optimal_traj.value(optimal_traj.start_time())(4);
-  std::vector<MatrixXd> x_offset_rep(mirrored_traj.get_segment_times().size(),
-                                     x_offset);
-  PiecewisePolynomial<double> x_offset_traj =
-      PiecewisePolynomial<double>::ZeroOrderHold(
-          mirrored_traj.get_segment_times(), x_offset_rep);
-  optimal_traj.ConcatenateInTime(mirrored_traj + x_offset_traj);
+  if (FLAGS_mirror_traj) {
+    auto mirrored_traj =
+        saved_traj.ReconstructMirrorStateTrajectory(optimal_traj.end_time());
+    VectorXd x_offset = VectorXd::Zero(nx);
+    x_offset(4) = optimal_traj.value(optimal_traj.end_time())(4) -
+                  optimal_traj.value(optimal_traj.start_time())(4);
+    std::vector<MatrixXd> x_offset_rep(mirrored_traj.get_segment_times().size(),
+                                       x_offset);
+    PiecewisePolynomial<double> x_offset_traj =
+        PiecewisePolynomial<double>::ZeroOrderHold(
+            mirrored_traj.get_segment_times(), x_offset_rep);
+    optimal_traj.ConcatenateInTime(mirrored_traj + x_offset_traj);
 
-  x_offset(4) = optimal_traj.value(optimal_traj.end_time())(4) -
-                optimal_traj.value(optimal_traj.start_time())(4);
-  x_offset_rep =
-      std::vector<MatrixXd>(optimal_traj.get_segment_times().size(), x_offset);
+    x_offset(4) = optimal_traj.value(optimal_traj.end_time())(4) -
+                  optimal_traj.value(optimal_traj.start_time())(4);
+    x_offset_rep = std::vector<MatrixXd>(
+        optimal_traj.get_segment_times().size(), x_offset);
 
-  PiecewisePolynomial<double> copy = optimal_traj;
-  copy.shiftRight(optimal_traj.end_time());
-  x_offset_traj = PiecewisePolynomial<double>::ZeroOrderHold(
-      copy.get_segment_times(), x_offset_rep);
-  optimal_traj.ConcatenateInTime(copy + x_offset_traj);
+    PiecewisePolynomial<double> copy = optimal_traj;
+    copy.shiftRight(optimal_traj.end_time());
+    x_offset_traj = PiecewisePolynomial<double>::ZeroOrderHold(
+        copy.get_segment_times(), x_offset_rep);
+    optimal_traj.ConcatenateInTime(copy + x_offset_traj);
+  }
 
   if (FLAGS_visualize_mode == 0 || FLAGS_visualize_mode == 1) {
     multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,

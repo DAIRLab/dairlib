@@ -211,9 +211,6 @@ void SetFastOsqpSolverSetting(
   if (it != options.end()) {
     *osqp_setting_field = it->second;
   }
-  else{
-    std::cout << "could not find option: " << option_name << std::endl;
-  }
 }
 
 template <typename T1, typename T2>
@@ -235,19 +232,38 @@ void SetFastOsqpSolverSettings(const SolverOptions& solver_options,
       solver_options.GetOptionsDouble(OsqpSolver::id());
   const std::unordered_map<std::string, int>& options_int =
       solver_options.GetOptionsInt(OsqpSolver::id());
-  // TODO(hongkai.dai): Fill in all the fields defined in OSQPSettings.
   SetFastOsqpSolverSetting(options_double, "rho", &(settings->rho));
   SetFastOsqpSolverSetting(options_double, "sigma", &(settings->sigma));
-  SetFastOsqpSolverSetting(options_double, "time_limit", &(settings->time_limit));
-  SetFastOsqpSolverSetting(options_int, "scaling", &(settings->scaling));
   SetFastOsqpSolverSetting(options_int, "max_iter", &(settings->max_iter));
-  SetFastOsqpSolverSetting(options_int, "polish_refine_iter",
-                           &(settings->polish_refine_iter));
-  SetFastOsqpSolverSettingWithDefaultValue(options_int, "verbose",
-                                           &(settings->verbose), 0);
+  SetFastOsqpSolverSetting(options_double, "eps_abs", &(settings->eps_abs));
+  SetFastOsqpSolverSetting(options_double, "eps_rel", &(settings->eps_rel));
+  SetFastOsqpSolverSetting(options_double, "eps_prim_inf",
+                       &(settings->eps_prim_inf));
+  SetFastOsqpSolverSetting(options_double, "eps_dual_inf",
+                       &(settings->eps_dual_inf));
+  SetFastOsqpSolverSetting(options_double, "alpha", &(settings->alpha));
+  SetFastOsqpSolverSetting(options_double, "delta", &(settings->delta));
   // Default polish to true, to get an accurate solution.
   SetFastOsqpSolverSettingWithDefaultValue(options_int, "polish",
-                                           &(settings->polish), 1);
+                                       &(settings->polish), 1);
+  SetFastOsqpSolverSetting(options_int, "polish_refine_iter",
+                       &(settings->polish_refine_iter));
+  SetFastOsqpSolverSettingWithDefaultValue(options_int, "verbose",
+                                       &(settings->verbose), 0);
+  SetFastOsqpSolverSetting(options_int, "scaled_termination",
+                       &(settings->scaled_termination));
+  SetFastOsqpSolverSetting(options_int, "check_termination",
+                       &(settings->check_termination));
+  SetFastOsqpSolverSetting(options_int, "warm_start", &(settings->warm_start));
+  SetFastOsqpSolverSetting(options_int, "scaling", &(settings->scaling));
+  SetFastOsqpSolverSetting(options_int, "adaptive_rho", &(settings->adaptive_rho));
+  SetFastOsqpSolverSetting(options_double, "adaptive_rho_interval",
+                       &(settings->adaptive_rho_interval));
+  SetFastOsqpSolverSetting(options_double, "adaptive_rho_tolerance",
+                       &(settings->adaptive_rho_tolerance));
+  SetFastOsqpSolverSetting(options_double, "adaptive_rho_fraction",
+                       &(settings->adaptive_rho_fraction));
+  SetFastOsqpSolverSetting(options_double, "time_limit", &(settings->time_limit));
 }
 
 template <typename C>

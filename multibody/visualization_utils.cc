@@ -5,9 +5,10 @@
 
 namespace dairlib {
 namespace multibody {
+using drake::geometry::DrakeVisualizer;
 using drake::multibody::MultibodyPlant;
-using drake::trajectories::Trajectory;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
+using drake::trajectories::Trajectory;
 using systems::SubvectorPassThrough;
 
 void connectTrajectoryVisualizer(const MultibodyPlant<double>* plant,
@@ -28,7 +29,7 @@ void connectTrajectoryVisualizer(const MultibodyPlant<double>* plant,
   builder->Connect(to_pose->get_output_port(),
       scene_graph->get_source_pose_port(plant->get_source_id().value()));
 
-  drake::geometry::ConnectDrakeVisualizer(builder, *scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(builder, *scene_graph);
 }
 
 }  // namespace multibody

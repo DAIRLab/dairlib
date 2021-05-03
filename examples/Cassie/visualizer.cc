@@ -1,19 +1,18 @@
-#include <drake/geometry/drake_visualizer.h>
 #include <gflags/gflags.h>
 
-#include "dairlib/lcmt_robot_output.hpp"
-#include "examples/Cassie/cassie_utils.h"
-#include "multibody/com_pose_system.h"
-#include "multibody/multibody_utils.h"
-#include "systems/primitives/subvector_pass_through.h"
-#include "systems/robot_lcm_systems.h"
-
-#include "drake/geometry/geometry_visualization.h"
-#include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/systems/analysis/simulator.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
+#include "systems/primitives/subvector_pass_through.h"
+
+#include "dairlib/lcmt_robot_output.hpp"
+#include "systems/robot_lcm_systems.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "multibody/multibody_utils.h"
+#include "multibody/com_pose_system.h"
 
 namespace dairlib {
 
@@ -27,15 +26,16 @@ DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
-using std::endl;
-using std::cout;
+using dairlib::systems::RobotOutputReceiver;
+using dairlib::systems::SubvectorPassThrough;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
-using dairlib::systems::SubvectorPassThrough;
 using drake::systems::Simulator;
-using dairlib::systems::RobotOutputReceiver;
-using drake::systems::rendering::MultibodyPositionToGeometryPose;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::rendering::MultibodyPositionToGeometryPose;
+using std::cout;
+using std::endl;
 
 using drake::multibody::RigidBody;
 using drake::multibody::SpatialInertia;
@@ -56,7 +56,7 @@ int do_main(int argc, char* argv[]) {
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   if (FLAGS_floating_base) {
-//    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8);
+    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8);
   }
 
   plant.Finalize();
@@ -118,7 +118,7 @@ int do_main(int argc, char* argv[]) {
         scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
   }
 
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
 
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 

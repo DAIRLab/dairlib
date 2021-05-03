@@ -23,7 +23,7 @@ def join_paths(*args):
     """Join paths without duplicating separators.
     This is roughly equivalent to Python's `os.path.join`.
     Args:
-        \*args (:obj:`list` of :obj:`str`): Path components to be joined.
+        *args (:obj:`list` of :obj:`str`): Path components to be joined.
     Returns:
         :obj:`str`: The concatenation of the input path components.
     """

@@ -151,7 +151,7 @@ void ComTrackingData::AddStateToTrack(int state) { AddState(state); }
 
 void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
                                       const Context<double>& context_w_spr) {
-  y_ = plant_w_spr_.CalcCenterOfMassPosition(context_w_spr);
+  y_ = plant_w_spr_.CalcCenterOfMassPositionInWorld(context_w_spr);
   error_y_ = y_des_ - y_;
 }
 

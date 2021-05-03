@@ -109,7 +109,7 @@ def main():
   # end_time_idx = np.argwhere(np.abs(t_u - t_end) < 2e-3)[0][0]
   # t_u_slice = slice(start_time_idx, end_time_idx)
   # sample_times = [215.4, 229.4, 252.8, 265.3, 282.1, 289.0]
-  sample_times = np.arange(52.5, 56, 0.1)
+  sample_times = np.arange(t_start, t_start + 3.0, 0.1)
 
   joint_idx = vel_map["knee_joint_leftdot"]
   act_idx = act_map["knee_left_motor"]

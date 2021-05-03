@@ -428,7 +428,7 @@ int DoMain(int argc, char* argv[]) {
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state);
+      contact_points_in_each_state, "pelvis");
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
@@ -444,7 +444,7 @@ int DoMain(int argc, char* argv[]) {
   auto pelvis_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state, false);
+      contact_points_in_each_state, "pelvis", false);
   builder.Connect(fsm->get_output_port(0),
                   pelvis_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),

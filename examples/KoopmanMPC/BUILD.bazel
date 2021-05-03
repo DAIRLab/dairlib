@@ -63,6 +63,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "lipm_walking_speed_control",
+    srcs = ["lipm_walking_speed_control.cc"],
+    hdrs = ["lipm_walking_speed_control.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "run_visualizer",
     srcs = ["run_visualizer.cc"],
@@ -126,8 +137,8 @@ cc_binary(
 cc_binary(
     name = "run_osc_walking_lipm",
     srcs = ["run_osc_walking_lipm.cc"],
-    tags = ["manual"],
     deps = [
+        ":lipm_walking_speed_control",
         ":model_utils",
         ":osc_walking_gains",
         "//common",
@@ -135,6 +146,7 @@ cc_binary(
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:swing_ft_traj_gen",
         "//systems/controllers:time_based_fsm",

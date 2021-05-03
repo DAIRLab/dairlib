@@ -10,6 +10,7 @@
 #include "multibody/multibody_utils.h"
 
 #include "model_utils.h"
+#include "lipm_walking_speed_control.h"
 
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -23,10 +24,10 @@
 #include "examples/KoopmanMPC/osc_walking_gains.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/systems/primitives/constant_vector_source.h"
+#include "drake/systems/primitives/constant_value_source.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "systems/dairlib_signal_lcm_systems.h"
 
 enum stance {
   kLeft = 0,
@@ -43,8 +44,10 @@ using std::vector;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
+using Eigen::Vector2d;
 using Eigen::VectorXd;
 
+using drake::Value;
 using drake::geometry::SceneGraph;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
@@ -55,6 +58,8 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
+using drake::systems::ConstantVectorSource;
+using drake::systems::ConstantValueSource;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
@@ -62,16 +67,23 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::LIPMTrajGenerator;
 using systems::SwingFootTrajGenerator;
 using systems::TimeBasedFiniteStateMachine;
+using systems::FiniteStateMachineEventTime;
+
+using koopman_examples::LipmWalkingSpeedControl;
 
 namespace examples {
 
 DEFINE_string(channel_x, "PLANAR_STATE","The name of the channel which receives state");
 DEFINE_string(channel_u, "PLANAR_INPUT","The name of the channel which publishes command");
-DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
-DEFINE_string(mpc_channel, "KOOPMAN_MPC_OUT", "channel to recieve koopman mpc message");
 DEFINE_string(gains_filename,"examples/KoopmanMPC/osc_walking_gains.yaml","Filepath containing gains");
-DEFINE_double(z_com, 0.9, "Desired CoM height");
+DEFINE_double(z_com, 1.05, "Desired CoM height");
 DEFINE_double(stance_time, 0.35, "stance time");
+DEFINE_double(mid_ft_height, 0.025, "mid swing foot height");
+DEFINE_double(final_ft_height, -0.01, "end of swing foot height");
+DEFINE_double(kin_reach, 0.3, "allowable footstep distance");
+DEFINE_double(v_des, 0.25, "desired com velocity");
+DEFINE_double(k_ff, 0, "Feed forward raibert gain");
+DEFINE_double(k_fb, 0.2, "Feedback raibert gain");
 DEFINE_bool(track_com, false,"use com tracking data (otherwise uses trans space)");
 DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
 
@@ -90,10 +102,10 @@ int DoMain(int argc, char* argv[]) {
   LoadPlanarWalkerFromFile(plant, &scene_graph);
   plant.Finalize();
 
-  auto left_pt = std::pair<Vector3d, const drake::multibody::BodyFrame<double>&>(
+  auto left_pt = std::pair<const Vector3d, const drake::multibody::BodyFrame<double>&>(
       Vector3d(0, 0, -0.5),plant.GetBodyByName("left_lower_leg").body_frame());
 
-  auto right_pt = std::pair<Vector3d, const drake::multibody::BodyFrame<double> &>(
+  auto right_pt = std::pair<const Vector3d, const drake::multibody::BodyFrame<double> &>(
        Vector3d(0, 0, -0.5), plant.GetBodyByName("right_lower_leg").body_frame());
 
   auto plant_context = plant.CreateDefaultContext();
@@ -115,17 +127,27 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
 
+  std::vector<int> fsm_states = {stance::kLeft, stance::kRight};
+  std::vector<double> state_durations = {FLAGS_stance_time, FLAGS_stance_time};
+
+  std::vector<std::vector<std::pair<const Vector3d, const Frame<double>&>>> fsm_pts;
+  fsm_pts.push_back({left_pt});
+  fsm_pts.push_back({right_pt});
+
+  std::vector<std::pair<const Vector3d, const Frame<double>&>> left_right_pts =
+      {left_pt, right_pt};
+
+
+
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm_local;
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
-  std::vector<int> fsm_states = {stance::kLeft, stance::kRight};
-  std::vector<double> state_durations = {FLAGS_stance_time, FLAGS_stance_time};
   auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations);
 
-
+  auto touchdown_event_time = builder.AddSystem<FiniteStateMachineEventTime>();
 
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -140,13 +162,29 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_WALKING", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
-  std::vector<std::vector<std::pair<Vector3d, Frame<double>&>>> fsm_pts;
-  
-
-
-  auto lipm_traj_gen = builder.AddSystem<LIPMTrajGenerator>(
+  auto base_traj_gen = builder.AddSystem<LIPMTrajGenerator>(
       plant, plant_context.get(), FLAGS_z_com, fsm_states, state_durations,
-      fsm_pts, FLAGS_track_com, true);
+      fsm_pts, "torso_mass", FLAGS_track_com);
+
+  auto walking_speed_control = builder.AddSystem<LipmWalkingSpeedControl>(
+      plant, plant_context.get(), FLAGS_k_ff, FLAGS_k_fb, "torso_mass", state_durations.at(0));
+
+  auto swing_ft_traj_gen = builder.AddSystem<SwingFootTrajGenerator>(
+      plant, plant_context.get(), fsm_states, state_durations, left_right_pts,
+      "torso_mass", FLAGS_mid_ft_height, FLAGS_final_ft_height,
+      0, FLAGS_kin_reach, 0, 0, true, false, true, 1);
+
+  PiecewisePolynomial<double> orientation =
+      PiecewisePolynomial<double>::ZeroOrderHold(
+          Vector2d(0, std::numeric_limits<double>::infinity()),
+          Eigen::RowVector2d::Zero());
+
+  auto orientation_traj = builder.AddSystem(
+      std::make_unique<ConstantValueSource<double>>(
+          Value<drake::trajectories::Trajectory<double>>(orientation)));
+
+  auto des_vel = builder.AddSystem<ConstantVectorSource<double>>(
+      VectorXd::Ones(1));
 
   /**** OSC setup ****/
   // Cost
@@ -175,9 +213,12 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj",
       gains.K_p_swing_foot, gains.K_d_swing_foot, gains.W_swing_foot, plant, plant);
 
+  swing_foot_traj.AddStateAndPointToTrack(kLeft, "right_lower_leg", right_pt.first);
+  swing_foot_traj.AddStateAndPointToTrack(kRight, "left_lower_leg", left_pt.first);
 
   osc->AddTrackingData(&swing_foot_traj);
 
+  gains.W_com(0,0) = 0;
   ComTrackingData com_traj("com_traj", gains.K_p_com,
                            gains.K_d_com, gains.W_com, plant, plant);
 
@@ -199,27 +240,56 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&angular_traj);
 
   // Build OSC problem
+  osc->AddStateAndContactPoint(kLeft, &left_foot_evaluator);
+  osc->AddStateAndContactPoint(kRight, &right_foot_evaluator);
   osc->Build();
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/
 
-  // OSC connections
-  builder.Connect(fsm_sub->get_output_port(), fsm_receiver->get_input_port());
-
-  builder.Connect(fsm_receiver->get_output_port(), osc->get_fsm_input_port());
-
-  builder.Connect(state_receiver->get_output_port(0),
+  // connect robot out receiver state out port
+  builder.Connect(state_receiver->get_output_port(),
+                  fsm->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
+                  base_traj_gen->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
+                  swing_ft_traj_gen->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
                   osc->get_robot_output_input_port());
+  builder.Connect(state_receiver->get_output_port(),
+                  walking_speed_control->get_input_port_state());
+
+  // fsm output port connections
+  builder.Connect(fsm->get_output_port(), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(), touchdown_event_time->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port(), base_traj_gen->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port(), swing_ft_traj_gen->get_input_port_fsm());
+
+  // fsm switch time output port connections
+  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+                  base_traj_gen->get_input_port_fsm_switch_time());
+  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+                  swing_ft_traj_gen->get_input_port_fsm_switch_time());
+  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+                  walking_speed_control->get_input_port_fsm_switch_time());
+
+  // connect lipm traj gens
+  builder.Connect(base_traj_gen->get_output_port_lipm_from_current(),
+                  swing_ft_traj_gen->get_input_port_com());
+  builder.Connect(base_traj_gen->get_output_port_lipm_from_current(),
+                  walking_speed_control->get_input_port_com());
+  builder.Connect(walking_speed_control->get_output_port(),
+                  swing_ft_traj_gen->get_input_port_sc());
+  builder.Connect(des_vel->get_output_port(),
+      walking_speed_control->get_input_port_des_vel());
 
 
-  builder.Connect(mpc_reciever->get_com_traj_output_port(),
+  // connect tracking datas
+  builder.Connect(base_traj_gen->get_output_port_lipm_from_touchdown(),
                   osc->get_tracking_data_input_port("com_traj"));
-
-  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
-                  osc->get_tracking_data_input_port("base_angle"));
-
-  builder.Connect(mpc_reciever->get_swing_ft_traj_output_port(),
+  builder.Connect(orientation_traj->get_output_port(),
+                    osc->get_tracking_data_input_port("base_angle"));
+  builder.Connect(swing_ft_traj_gen->get_output_port(),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
 
   // Publisher connections
@@ -237,13 +307,6 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
-
-  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return mpc_subscriber->GetInternalMessageCount() > 1; });
-
-  auto& loop_context = loop.get_diagram_mutable_context();
-  mpc_subscriber->Publish(loop.get_diagram()->
-      GetMutableSubsystemContext(*mpc_subscriber, &loop_context));
 
   loop.Simulate();
 

@@ -35,6 +35,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
         contact_points_in_each_state,
+    std::string pelvis_body_name,
     bool use_CoM, bool constant_target_height)
     : plant_(plant),
       context_(context),
@@ -43,6 +44,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
       world_(plant_.world_frame()),
+      pelvis_body_name_(pelvis_body_name),
       constant_target_height_(constant_target_height),
       use_com_(use_CoM) {
   if (use_CoM) {
@@ -147,11 +149,11 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
           *context_, JacobianWrtVariable::kV, world_, world_, &J);
     } else {
       plant_.CalcPointsPositions(*context_,
-                                 plant_.GetBodyByName("pelvis").body_frame(),
+                                 plant_.GetBodyByName(pelvis_body_name_).body_frame(),
                                  VectorXd::Zero(3), world_, &CoM);
       plant_.CalcJacobianTranslationalVelocity(
           *context_, JacobianWrtVariable::kV,
-          plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3),
+          plant_.GetBodyByName(pelvis_body_name_).body_frame(), VectorXd::Zero(3),
           world_, world_, &J);
     }
     Vector3d dCoM = J * v;
@@ -288,11 +290,11 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
         *context_, JacobianWrtVariable::kV, world_, world_, &J);
   } else {
     plant_.CalcPointsPositions(*context_,
-                               plant_.GetBodyByName("pelvis").body_frame(),
+                               plant_.GetBodyByName(pelvis_body_name_).body_frame(),
                                VectorXd::Zero(3), world_, &CoM);
     plant_.CalcJacobianTranslationalVelocity(
         *context_, JacobianWrtVariable::kV,
-        plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3), world_,
+        plant_.GetBodyByName(pelvis_body_name_).body_frame(), VectorXd::Zero(3), world_,
         world_, &J);
   }
   Vector3d dCoM = J * v;

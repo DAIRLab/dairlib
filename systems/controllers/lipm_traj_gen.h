@@ -40,6 +40,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
           contact_points_in_each_state,
+      std::string pelvis_body_name,
       bool use_CoM = true, bool constant_target_height = true);
 
   // Input port getters
@@ -93,6 +94,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   int prev_touchdown_com_vel_idx_;
   int prev_fsm_idx_;
 
+  std::string pelvis_body_name_;
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
 

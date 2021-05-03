@@ -25,6 +25,10 @@ group "2.controllers" {
         exec = "bazel-bin/examples/KoopmanMPC/run_osc_walking";
         host = "localhost";
     }
+    cmd "lipm_walking_controller" {
+            exec = "bazel-bin/examples/KoopmanMPC/run_osc_walking_lipm";
+            host = "localhost";
+        }
 }
 
 group "3.lcm-tools" {

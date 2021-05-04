@@ -14,7 +14,6 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"

@@ -11,7 +11,6 @@
 #include "solvers/optimization_utils.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/mathematical_program.h"

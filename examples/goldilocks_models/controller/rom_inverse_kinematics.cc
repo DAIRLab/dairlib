@@ -5,7 +5,6 @@
 #include "multibody/visualization_utils.h"
 #include "solvers/nonlinear_constraint.h"
 
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/multibody/parsing/parser.h"

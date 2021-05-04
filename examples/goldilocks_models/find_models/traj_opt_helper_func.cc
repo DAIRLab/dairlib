@@ -5,7 +5,6 @@
 #include "common/find_resource.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/math/rotation_matrix.h"
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/multibody/parsing/parser.h"

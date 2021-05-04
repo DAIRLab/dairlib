@@ -158,7 +158,7 @@ void CalcCOM(const drake::multibody::MultibodyPlant<double>& plant,
 
   // Get CoM position
   VectorXd CoM(3);
-  CoM = plant.CalcCenterOfMassPosition(plant_context);
+  CoM = plant.CalcCenterOfMassPositionInWorld(plant_context);
 
   // Stance foot position
   VectorXd stance_foot_pos(3);

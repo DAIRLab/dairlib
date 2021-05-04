@@ -266,7 +266,7 @@ def CalcPointPosAndVel(x, frame, point):
 
 def CalcCenterOfMass(x):
   plant_FOM.SetPositionsAndVelocities(context, x)
-  com = plant_FOM.CalcCenterOfMassPosition(context)
+  com = plant_FOM.CalcCenterOfMassPositionInWorld(context)
   J = plant_FOM.CalcJacobianCenterOfMassTranslationalVelocity(context,
     JacobianWrtVariable.kV, world, world)
   comdot = J @ x[nq_FOM:]

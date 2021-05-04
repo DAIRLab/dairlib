@@ -115,7 +115,7 @@ void LocalLIPMTrajGenerator::CalcTraj(
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get center of mass position and velocity
-  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
   MatrixXd J(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
       *context_, JacobianWrtVariable::kV, world_, world_, &J);

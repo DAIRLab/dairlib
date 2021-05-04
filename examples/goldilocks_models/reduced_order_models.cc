@@ -481,7 +481,7 @@ VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
     plant_.CalcPointsPositions(context, pelvis_.second, pelvis_.first,
                                plant_.world_frame(), &CoM);
   } else {
-    CoM = plant_.CalcCenterOfMassPosition(context);
+    CoM = plant_.CalcCenterOfMassPositionInWorld(context);
   }
 
   // Stance foot position
@@ -680,7 +680,7 @@ LipmWithSwingFoot::LipmWithSwingFoot(const LipmWithSwingFoot& old_obj)
 VectorX<double> LipmWithSwingFoot::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM position
-  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+  VectorX<double> CoM = plant_.CalcCenterOfMassPositionInWorld(context);
   // Stance foot position
   VectorX<double> left_foot_pos(3);
   plant_.CalcPointsPositions(context, stance_contact_point_.second,
@@ -867,7 +867,7 @@ FixHeightAccel::FixHeightAccel(const FixHeightAccel& old_obj)
 VectorX<double> FixHeightAccel::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM position
-  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+  VectorX<double> CoM = plant_.CalcCenterOfMassPositionInWorld(context);
   // Testing using pelvis
   //  VectorX<double> CoM(3);
   //  plant_.CalcPointsPositions(context, pelvis_.second,
@@ -1021,7 +1021,7 @@ FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
 VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
   // Get CoM position
-  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+  VectorX<double> CoM = plant_.CalcCenterOfMassPositionInWorld(context);
   // Stance foot position
   VectorX<double> left_foot_pos(3);
   plant_.CalcPointsPositions(context, stance_contact_point_.second,
@@ -1211,7 +1211,7 @@ VectorX<double> Gip::EvalMappingFeat(const VectorX<double>& q,
     plant_.CalcPointsPositions(context, pelvis_.second, pelvis_.first,
                                plant_.world_frame(), &CoM);
   } else {
-    CoM = plant_.CalcCenterOfMassPosition(context);
+    CoM = plant_.CalcCenterOfMassPositionInWorld(context);
   }
 
   // Stance foot position
@@ -1525,7 +1525,7 @@ VectorX<double> testing::Com::EvalMappingFeat(
     const VectorX<double>& q,
     const drake::systems::Context<double>& context) const {
   // Get CoM position
-  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(context);
+  VectorX<double> CoM = plant_.CalcCenterOfMassPositionInWorld(context);
 
   VectorX<double> feature(n_feature_y());
   feature << CoM, mapping_basis().Eval(q);

@@ -143,7 +143,7 @@ bool CreateFolderIfNotExist(const std::string& dir,
                             bool ask_for_permission = true);
 
 std::vector<std::string> ParseCsvToStringVec(const std::string& file_name,
-                                             bool is_row_vector = true);
+                                             bool is_column_vector = true);
 void SaveStringVecToCsv(const std::vector<std::string>& strings,
                         const std::string& file_name);
 

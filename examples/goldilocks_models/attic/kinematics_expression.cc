@@ -663,7 +663,7 @@ VectorX<U> KinematicsExpression<T>::getFeature(const VectorX<U> & q) const {
 
     // Get CoM position
     plant_->SetPositions(context_.get(), q);
-    VectorX<U> CoM = plant_->CalcCenterOfMassPosition(*context_);
+    VectorX<U> CoM = plant_->CalcCenterOfMassPositionInWorld(*context_);
     // Stance foot position (left foot)
     VectorX<U> left_foot_pos(3);
     const auto & left_toe = plant_->GetBodyByName("toe_left");
@@ -784,7 +784,7 @@ VectorX<U> KinematicsExpression<T>::getFeature(const VectorX<U> & q) const {
 
     // Get CoM position
     plant_->SetPositions(context_.get(), q);
-    VectorX<U> CoM = plant_->CalcCenterOfMassPosition(*context_);
+    VectorX<U> CoM = plant_->CalcCenterOfMassPositionInWorld(*context_);
     // Stance foot position (left foot)
     VectorX<U> left_foot_pos(3);
     const auto & left_toe = plant_->GetBodyByName("toe_left");

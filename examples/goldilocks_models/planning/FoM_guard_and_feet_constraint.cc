@@ -230,7 +230,7 @@ void OneStepAheadVelConstraint::EvaluateConstraint(
   // COM position and velocity
   Vector2d CoM;
   Vector2d CoM_dot;
-  CoM = plant_.CalcCenterOfMassPosition(*context_).head<2>();
+  CoM = plant_.CalcCenterOfMassPositionInWorld(*context_).head<2>();
   MatrixX<double> J_com(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
       *context_, drake::multibody::JacobianWrtVariable::kV, world_, world_,

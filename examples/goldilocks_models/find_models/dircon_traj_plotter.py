@@ -253,7 +253,7 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
   for i in range(t_knot.shape[0]):
     xi = x_knot[:, i]
     plant.SetPositionsAndVelocities(context, xi)
-    com_at_knot[:, i] = plant.CalcCenterOfMassPosition(context)
+    com_at_knot[:, i] = plant.CalcCenterOfMassPositionInWorld(context)
     J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context,
       JacobianWrtVariable.kV, world, world)
     comdot_at_knot[:, i] = J @ x_knot[nq:, i]
@@ -293,7 +293,7 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
       x_col = x_cs(t[0])
       xdot_col = x_cs(t[0], 1)
       plant.SetPositionsAndVelocities(context, x_col)
-      com_at_coll[:, i * n_visualize + j] = plant.CalcCenterOfMassPosition(
+      com_at_coll[:, i * n_visualize + j] = plant.CalcCenterOfMassPositionInWorld(
         context)
       J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context,
         JacobianWrtVariable.kV, world, world)

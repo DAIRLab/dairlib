@@ -546,7 +546,7 @@ bool CreateFolderIfNotExist(const string& dir, bool ask_for_permission) {
 }
 
 vector<std::string> ParseCsvToStringVec(const std::string& file_name,
-                                        bool is_row_vector) {
+                                        bool is_column_vector) {
   // Read file into a std::string
   std::ifstream ifs(file_name);
   std::string content((std::istreambuf_iterator<char>(ifs)),
@@ -556,7 +556,7 @@ vector<std::string> ParseCsvToStringVec(const std::string& file_name,
   vector<std::string> ret;
   std::stringstream ss(content);
   std::string item;
-  char delimiter = (is_row_vector) ? '\n' : ',';
+  char delimiter = (is_column_vector) ? '\n' : ',';
   while (std::getline(ss, item, delimiter)) {
     // cout << item << endl;
     ret.push_back(item);

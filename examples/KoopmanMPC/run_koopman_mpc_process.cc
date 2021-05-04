@@ -175,6 +175,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Gains: \n" << qq;
 
   kmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
+  kmpc->SetTerminalCost(gains.qf.asDiagonal());
 
   kmpc->SetFlatGroundSoftConstraint(gains.W_flat_ground);
 

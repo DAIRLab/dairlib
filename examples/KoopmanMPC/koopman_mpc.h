@@ -51,8 +51,9 @@ typedef struct KoopmanMpcMode {
   std::vector<drake::solvers::VectorXDecisionVariable> uu;
   std::vector<drake::solvers::VectorXDecisionVariable> kin_slack;
   std::vector<drake::solvers::QuadraticCost*> kin_reach_slack_cost;
-
   std::vector<drake::solvers::QuadraticCost*> flat_ground_soft_constraints;
+  std::vector<drake::solvers::QuadraticCost*> tracking_cost;
+  std::vector<drake::solvers::QuadraticCost*> terminal_cost;
   std::vector<drake::solvers::LinearEqualityConstraint*> stance_foot_constraints;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints;
@@ -76,6 +77,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
                                  Eigen::Vector3d> pt, koopMpcStance stance);
 
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
+  void SetTerminalCost(const Eigen::MatrixXd& Qf);
   void AddInputRegularization(const Eigen::MatrixXd& R);
 
   void SetFlatGroundSoftConstraint(const Eigen::MatrixXd& W) {MakeFlatGroundConstraints(W);}
@@ -170,6 +172,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   Eigen::VectorXd CalcCentroidalStateFromPlant(const Eigen::VectorXd& x, double t) const;
 
+  std::pair<int,int> GetTerminalStepIdx() const;
+
   // parameters
   bool use_fsm_;
   double dt_;
@@ -181,7 +185,6 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int traj_out_port_;
 
   // discrete update indices
-  int x_des_idx_;
   int current_fsm_state_idx_;
   int prev_event_time_idx_;
 
@@ -202,6 +205,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
 
   // Problem variables
   Eigen::MatrixXd Q_;
+  Eigen::MatrixXd Qf_;
   std::vector<KoopmanMpcMode> modes_;
   std::vector<int> mode_knot_counts_;
   int total_knots_ = 0;
@@ -230,7 +234,6 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   mutable lcmt_saved_traj most_recent_sol_;
   // constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> state_knot_constraints_;
-  std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   std::vector<drake::solvers::QuadraticCost*> input_cost_;
 
 
@@ -243,6 +246,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int base_angle_pos_idx_;
   int base_angle_vel_idx_;
   mutable drake::systems::Context<double>* plant_context_;
+  mutable Eigen::VectorXd x_des_;
 
   // constants
   const double kMaxSolveDuration_ = 1.00;

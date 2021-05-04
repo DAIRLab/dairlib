@@ -9,12 +9,14 @@ struct MpcGains {
   double mu;
   double ReachabilityLim;
   std::vector<double> StateW;
+  std::vector<double> FinalStateW;
   std::vector<double> InputW;
   std::vector<double> FlatGroundW;
   std::vector<double> StanceFootW;
   std::vector<double> KinReachW;
 
   VectorXd q;
+  VectorXd qf;
   VectorXd r;
   MatrixXd W_flat_ground;
   MatrixXd W_stance_foot;
@@ -25,6 +27,7 @@ struct MpcGains {
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(ReachabilityLim));
     a->Visit(DRAKE_NVP(StateW));
+    a->Visit(DRAKE_NVP(FinalStateW));
     a->Visit(DRAKE_NVP(InputW));
     a->Visit(DRAKE_NVP(FlatGroundW));
     a->Visit(DRAKE_NVP(StanceFootW));
@@ -32,6 +35,7 @@ struct MpcGains {
 
 
     q = Eigen::Map<Eigen::VectorXd>(this->StateW.data(), 12);
+    qf = Eigen::Map<Eigen::VectorXd>(this->FinalStateW.data(), 12);
     r = Eigen::Map<Eigen::VectorXd>(this->InputW.data(), 6);
     W_flat_ground = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

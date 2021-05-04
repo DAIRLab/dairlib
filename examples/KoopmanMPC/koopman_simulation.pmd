@@ -11,14 +11,14 @@ group "0.operator" {
 
 group "1.simulated-robot" {
     cmd "five_link_biped_sim" {
-        exec = "bazel-bin/examples/KoopmanMPC/run_planar_walker_sim --dt=1e-4 --target_realtime_rate=0.5 --z=0.9";
+        exec = "bazel-bin/examples/KoopmanMPC/run_planar_walker_sim --dt=1e-4 --target_realtime_rate=1 --z=0.85";
         host = "localhost";
     }
 }
 
 group "2.controllers" {
     cmd "koopman_mpc" {
-        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process --h_des=1.05  --v_des=0.25 --dt=0.025 --stance_time=0.25 --swing_ft_height=0.025";
+        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process --h_des=1.09  --v_des=0.1 --dt=0.05 --stance_time=0.25 --swing_ft_height=0.01";
         host = "localhost";
     }
     cmd "osc_walking_controller" {
@@ -26,9 +26,9 @@ group "2.controllers" {
         host = "localhost";
     }
     cmd "lipm_walking_controller" {
-            exec = "bazel-bin/examples/KoopmanMPC/run_osc_walking_lipm";
-            host = "localhost";
-        }
+        exec = "bazel-bin/examples/KoopmanMPC/run_osc_walking_lipm --k_fb=0.35 --v_des=0 --kin_reach=0.4 --z_com=1.0";
+        host = "localhost";
+    }
 }
 
 group "3.lcm-tools" {
@@ -38,6 +38,15 @@ group "3.lcm-tools" {
     }
 }
 
+
+script "lipm" {
+    stop cmd "five_link_biped_sim" wait "stopped";
+    stop cmd "koopman_mpc" wait "stopped";
+    stop cmd "osc_walking_controller" wait "stopped";
+    restart cmd "lipm_walking_controller" wait "running";
+    wait ms 500;
+    start cmd "five_link_biped_sim";
+}
 
 script "walking" {
     stop cmd "five_link_biped_sim" wait "stopped";

@@ -86,10 +86,9 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
         this->DeclareDiscreteState(VectorXd::Zero(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
   }
-  x_des_idx_ = this->DeclareDiscreteState(VectorXd::Zero(nxi_));
-
   prev_vel_ = Vector3d::Zero();
   prev_force_sol_ = VectorXd::Zero(kLinearDim_);
+  x_des_ = VectorXd ::Zero(nxi_);
 }
 
 void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
@@ -169,14 +168,11 @@ void KoopmanMPC::SetReachabilityLimit(const Eigen::VectorXd& kl,
 
 void KoopmanMPC::CheckProblemDefinition() {
   DRAKE_DEMAND(!modes_.empty());
-  DRAKE_DEMAND(!tracking_cost_.empty());
   DRAKE_DEMAND(!input_cost_.empty());
   DRAKE_DEMAND(mu_ > 0 );
   DRAKE_DEMAND(!contact_points_.empty());
   DRAKE_DEMAND(!kin_nominal_.empty());
   DRAKE_DEMAND(mass_ > 0);
-  /*DRAKE_DEMAND(!modes_.front().stance_foot_soft_constraints.empty());
-  DRAKE_DEMAND(!modes_.front().flat_ground_soft_constraints.empty());*/
 }
 
 void KoopmanMPC::Build() {
@@ -353,18 +349,37 @@ void KoopmanMPC::MakeStateKnotConstraints() {
   }
 }
 
-void KoopmanMPC::AddTrackingObjective(const Eigen::VectorXd &xdes,
-                                      const Eigen::MatrixXd &Q) {
+void KoopmanMPC::AddTrackingObjective(const VectorXd &xdes, const MatrixXd &Q) {
+  DRAKE_DEMAND(Q.rows() == Q.cols());
+  DRAKE_DEMAND(Q.rows() == nxi_);
+  DRAKE_DEMAND(xdes.rows() == nxi_);
+
   Q_ = Q;
+  x_des_ = xdes;
   for (auto & mode : modes_) {
     // loop over N+1 states
     for (int i = 0; i <= mode.N; i++ ) {
       if (i != 0) {
-        tracking_cost_.push_back(
+        mode.tracking_cost.push_back(
             prog_.AddQuadraticErrorCost(
                 Q, xdes, mode.zz.at(i).head(nxi_))
             .evaluator().get());
       }
+    }
+  }
+}
+
+void KoopmanMPC::SetTerminalCost(const MatrixXd& Qf) {
+  DRAKE_DEMAND(Qf.rows() == Qf.cols());
+  DRAKE_DEMAND(Qf.rows() == nxi_);
+
+  Qf_ = Qf;
+  for (auto & mode : modes_) {
+    for (int i = 0; i <= mode.N; i++) {
+      mode.terminal_cost.push_back(
+          prog_.AddQuadraticCost(MatrixXd::Zero(nxi_, nxi_),
+              VectorXd::Zero(nxi_),mode.zz.at(i).head(nxi_))
+              .evaluator().get());
     }
   }
 }
@@ -475,9 +490,8 @@ EventStatus KoopmanMPC::DiscreteVariableUpdate(
 
   VectorXd xdes = this->EvalVectorInput(context, x_des_port_)->get_value();
 
-  if (xdes != discrete_state->get_mutable_vector(x_des_idx_).get_mutable_value()) {
+  if (xdes != x_des_) {
     UpdateTrackingObjective(xdes);
-    discrete_state->get_mutable_vector(x_des_idx_).set_value(xdes);
   }
 
   if (use_fsm_) {
@@ -553,8 +567,11 @@ EventStatus KoopmanMPC::PeriodicUpdate(
 
 void KoopmanMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
   std::cout << "Updating tracking objective!" << std::endl;
-  for (auto & cost : tracking_cost_) {
-    cost->UpdateCoefficients(2*Q_, -2*Q_*xdes, xdes.transpose() * xdes);
+  x_des_ = xdes;
+  for (auto & mode : modes_) {
+    for (auto & cost : mode.tracking_cost) {
+      cost->UpdateCoefficients(2 * Q_, -2 * Q_ * xdes, xdes.transpose() * xdes);
+    }
   }
 }
 
@@ -567,10 +584,14 @@ void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     return;
   }
 
+  auto terminal_state_idx = GetTerminalStepIdx();
+  modes_.at(terminal_state_idx.first).terminal_cost.at(terminal_state_idx.second)->
+  UpdateCoefficients(MatrixXd::Zero(Qf_.rows(), Qf_.cols()), VectorXd::Zero(Qf_.rows(), 0));
 
   // Remove current initial state constraint
   modes_.at(x0_idx_[0]).init_state_constraint_.at(x0_idx_[1])->
     UpdateCoefficients(MatrixXd::Zero(1, nz_), VectorXd::Zero(1));
+
 
   // Re-create current knot constraint if necessary.
   // Otherwise re-create dynamics constraint
@@ -614,6 +635,10 @@ void KoopmanMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
         UpdateCoefficients(MatrixXd::Zero(1, 2*nz_ + nu_c_), VectorXd::Zero(1));
   }
+
+  terminal_state_idx = GetTerminalStepIdx();
+  modes_.at(terminal_state_idx.first).terminal_cost.at(terminal_state_idx.second)->
+      UpdateCoefficients(2 * Qf_, -2 * Qf_ * x_des_, x_des_.transpose() * x_des_);
 }
 
 double KoopmanMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies) {
@@ -827,5 +852,15 @@ void KoopmanMPC::print_current_init_state_constraint() const {
   std::cout << "A:\n" << constraint->A() <<
                "\nlb:\n" << constraint->lower_bound() <<
                "\nub:\n"<< constraint->upper_bound() << std::endl;
+}
+
+std::pair<int,int> KoopmanMPC::GetTerminalStepIdx() const {
+  if (x0_idx_[1] != 0) {
+    return std::pair<int,int>(x0_idx_[0], x0_idx_[1] - 1);
+  }
+  if (x0_idx_[0] == 0) {
+    return std::pair<int,int>(nmodes_ - 1, modes_.back().N);
+  }
+  return std::pair<int,int>(x0_idx_[0]-1, modes_.at(x0_idx_[0]-1).N);
 }
 } // dairlib

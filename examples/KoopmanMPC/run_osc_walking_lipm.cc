@@ -77,7 +77,7 @@ DEFINE_string(channel_x, "PLANAR_STATE","The name of the channel which receives 
 DEFINE_string(channel_u, "PLANAR_INPUT","The name of the channel which publishes command");
 DEFINE_string(gains_filename,"examples/KoopmanMPC/osc_walking_gains.yaml","Filepath containing gains");
 DEFINE_double(z_com, 1.05, "Desired CoM height");
-DEFINE_double(stance_time, 0.35, "stance time");
+DEFINE_double(stance_time, 0.25, "stance time");
 DEFINE_double(mid_ft_height, 0.025, "mid swing foot height");
 DEFINE_double(final_ft_height, -0.01, "end of swing foot height");
 DEFINE_double(kin_reach, 0.3, "allowable footstep distance");

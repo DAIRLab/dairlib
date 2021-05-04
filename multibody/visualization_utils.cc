@@ -9,6 +9,7 @@
 
 namespace dairlib {
 namespace multibody {
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
@@ -80,7 +81,7 @@ void connectTrajectoryVisualizer(
         scene_graph->get_source_pose_port(ball_plant.get_source_id().value()));
   }
 
-  drake::geometry::DrakeVisualizer::AddToBuilder(builder, *scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(builder, *scene_graph);
 }
 
 }  // namespace multibody

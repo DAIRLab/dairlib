@@ -21,7 +21,6 @@
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 
 #include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/multibody/parsing/parser.h"
@@ -49,6 +48,7 @@ using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
 using dairlib::systems::trajectory_optimization::PointPositionConstraint;
 using drake::VectorX;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -1139,7 +1139,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
   // **************************************
 
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (true) {

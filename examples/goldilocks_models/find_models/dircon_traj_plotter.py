@@ -11,6 +11,7 @@ from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
 import pydairlib.multibody
+import pydrake.common as mut
 
 from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import *
@@ -23,12 +24,11 @@ def main():
   # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
   # filename = abs_path + "/dircon_trajectory"
   # filename = "../dircon_trajectory"
-  if len(sys.argv) == 2 and sys.argv[1] != "save":
+  if len(sys.argv) >= 2 and sys.argv[1] != "save":
     filename = sys.argv[1]
   else:
     filename = FindResourceOrThrow(
       '../dairlib_data/goldilocks_models/find_models/robot_1/1_0_dircon_trajectory')
-  print("plotting " + filename)
 
   dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
 
@@ -44,8 +44,12 @@ def main():
   username = getpass.getuser()
   save_path = "/home/" + username + "/"
 
+  print("filename = " + filename)
+  print("savefig = " + str(savefig))
+
   # Build MBP
   global plant, context, world, nq, nv, nx, nu
+  mut.set_log_level("err")  # ignore warnings about joint limits
   builder = DiagramBuilder()
   plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
   Parser(plant).AddModelFromFile(
@@ -143,7 +147,7 @@ def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
   figname = "state trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
   plt.figure(figname, figsize=figsize)
   plt.plot(t, state_samples)
-  plt.gca().set_color_cycle(None)
+  plt.gca().set_prop_cycle(None)
   plt.plot(t[-1], state_2nd_mode.T, 'o', markersize=4)
   plt.plot(t_knot, x_knot.T, 'ko', markersize=2)
   plt.xlabel('time (s)')

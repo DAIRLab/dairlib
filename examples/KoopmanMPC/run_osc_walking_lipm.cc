@@ -184,7 +184,7 @@ int DoMain(int argc, char* argv[]) {
           Value<drake::trajectories::Trajectory<double>>(orientation)));
 
   auto des_vel = builder.AddSystem<ConstantVectorSource<double>>(
-      VectorXd::Ones(1));
+      FLAGS_v_des * VectorXd::Ones(1));
 
   /**** OSC setup ****/
   // Cost

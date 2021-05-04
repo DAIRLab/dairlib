@@ -23,7 +23,6 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -50,6 +49,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::VectorX;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -608,7 +608,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
   // **************************************
 
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (FLAGS_playback) {

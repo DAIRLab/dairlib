@@ -8,7 +8,6 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -30,6 +29,7 @@ DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -105,7 +105,7 @@ int do_main(int argc, char* argv[]) {
         scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
   }
 
-  drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
 
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 

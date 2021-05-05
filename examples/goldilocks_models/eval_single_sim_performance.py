@@ -44,7 +44,7 @@ def main():
 
   # Script input arguments
   rom_iter_idx = int(sys.argv[3])
-  sample_idx = int(sys.argv[4])
+  task_idx = int(sys.argv[4])
   desried_sim_end_time = float(sys.argv[5])
   spring_model = (sys.argv[6].lower() == "true")
 
@@ -142,8 +142,8 @@ def main():
   sim_time_tolerance = 0.1
   if desried_sim_end_time > 0:
     if abs(t_x[-1] - desried_sim_end_time) > sim_time_tolerance:
-      msg = "iteration #" + str(rom_iter_idx) + "sample #" + str(
-        sample_idx) + ": sim end time (" + str(
+      msg = "iteration #" + str(rom_iter_idx) + "task #" + str(
+        task_idx) + ": sim end time (" + str(
         t_x[-1]) + " s) is too different from the desired sim time (" + str(
         desried_sim_end_time) + " s)\n"
       print(msg)
@@ -156,8 +156,8 @@ def main():
   min_height = 0.4
   for idx in range(x.shape[0]):
     if x[idx, 6] < min_height:
-      msg = "iteration #" + str(rom_iter_idx) + "sample #" + str(
-        sample_idx) + ": pelvis fell below " + str(
+      msg = "iteration #" + str(rom_iter_idx) + "task #" + str(
+        task_idx) + ": pelvis fell below " + str(
         min_height) + " at time " + str(t_x[idx]) + "\n"
       print(msg)
       f = open(directory + "sim_status.txt", "a")
@@ -178,7 +178,7 @@ def main():
   min_stide_length = min(stride_lengths)
   max_stide_length = max(stride_lengths)
   if abs(max_stide_length - min_stide_length) > stride_length_variation_tol:
-    msg = "iteration #" + str(rom_iter_idx) + "sample #" + str(sample_idx) + \
+    msg = "iteration #" + str(rom_iter_idx) + "task #" + str(task_idx) + \
           ": not close to steady state. min and max stride length are " + \
           str(min_stide_length) + ", " + str(max_stide_length) + "\n"
     print(msg)
@@ -246,19 +246,19 @@ def main():
   f.write(names)
   f.close()
 
-  path = directory + "%d_%d_cost_values.csv" % (rom_iter_idx, sample_idx)
+  path = directory + "%d_%d_cost_values.csv" % (rom_iter_idx, task_idx)
   # print("writing to " + path)
   f = open(path, "w")
   f.write(values)
   f.close()
 
-  path = directory + "%d_%d_ave_stride_length.csv" % (rom_iter_idx, sample_idx)
+  path = directory + "%d_%d_ave_stride_length.csv" % (rom_iter_idx, task_idx)
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str((x_extracted[-1, 4] - x_extracted[0, 4]) / n_step))
   f.close()
 
-  path = directory + "%d_%d_success.csv" % (rom_iter_idx, sample_idx)
+  path = directory + "%d_%d_success.csv" % (rom_iter_idx, task_idx)
   # print("writing to " + path)
   f = open(path, "w")
   f.write("1")

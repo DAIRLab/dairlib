@@ -26,18 +26,19 @@ cols: 3
 
 ### Directories for model files and data files
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models/"
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210328_3dlipm_all_files/"
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210328_3dlipm_all_files/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210416_3dlipm_grid_all_files/"
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210505_3dlipm_selected_files/"
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
 rom_option: 4
 #The iteration number of the theta that you use.has to be >= 1
-model_iter: 75 #150  #1 #30
+model_iter: 1 #150  #1 #30
 #The sample that we use to initialize planner
-sample_idx: 1 #21 works for iter150
+sample_idx: 0 #21 works for iter150
 #Average stride length(used in both planner and controller)
-stride_length: 0.21  #It seems to solve faster when using 0.1m instead of 0.2m
+stride_length: 0  #It seems to solve faster when using 0.1m instead of 0.2m
 
 
 ### For planner only

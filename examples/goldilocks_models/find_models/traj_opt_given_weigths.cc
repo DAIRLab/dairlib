@@ -1500,7 +1500,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   double stride_length = task.get("stride_length");
   double ground_incline = task.get("ground_incline");
   double duration = task.get("duration");
-  double walking_vel = stride_length / duration;
+  // double walking_vel = stride_length / duration;
 
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
@@ -1895,7 +1895,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double ground_incline = task.get("ground_incline");
   double turning_rate = task.get("turning_rate");
   double duration = task.get("duration");
-  double walking_vel = stride_length / duration;
+  // double walking_vel = stride_length / duration;
 
   double all_cost_scale = setting.all_cost_scale;
 
@@ -1908,7 +1908,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // 1: single double single
   // 2: heel to toe
   DRAKE_DEMAND(walking_mode == 0);
-  // If you want to use walking_mode 1 or 2, then you should either
+  // TODO: If you want to use walking_mode 1 or 2, then you should either
   // 1. finish multi-phase ROM, or
   // 2. write the code here so it takes care of multi-mode. (e.g. only have rom
   //    in the first phase, etc)
@@ -1919,6 +1919,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //  convergence speed
   double w_Q = setting.Q_double * all_cost_scale;
   double w_R = setting.R_double * all_cost_scale;
+  double w_reg = setting.eps_reg;
   // Cost on force (the final weight is w_lambda^2)
   double w_lambda = 1.0e-4 * sqrt(all_cost_scale);
   // Cost on difference over time
@@ -1934,9 +1935,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
   double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
   // Testing -- cost on swing hip roll vel
-  double w_Q_swing_hip_roll = w_Q * 1;
+  double w_Q_v_swing_hip_roll = w_Q * 1;
   // Additional cost on swing toe
-  double w_Q_swing_toe = w_Q * 10;  // avoid swing toe shaking
+  double w_Q_v_swing_toe = w_Q * 10;  // avoid swing toe shaking
   double w_R_swing_toe = w_R * 1;   // avoid swing toe shaking
   // Testing -- cost on position difference (cost on v is not enough, because
   // the solver might exploit the integration scheme. If we only penalize
@@ -2045,8 +2046,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
   W_Q(4, 4) = w_Q_vy;
   W_Q(5, 5) = w_Q_vz;
-  W_Q(7, 7) = w_Q_swing_hip_roll;
-  W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
+  W_Q(7, 7) = w_Q_v_swing_hip_roll;
+  W_Q(n_v - 1, n_v - 1) = w_Q_v_swing_toe;
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
   W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
 
@@ -3216,7 +3217,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
-  addRegularization(is_get_nominal, setting.eps_reg, &trajopt);
+  addRegularization(is_get_nominal, w_reg, &trajopt);
 
   // initial guess if the file exists
   if (!setting.init_file.empty()) {
@@ -3343,7 +3344,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     myfile << "\nw_Q = " << w_Q << endl;
     myfile << "w_Q_vy = " << w_Q_vy << endl;
     myfile << "w_Q_vz = " << w_Q_vz << endl;
-    myfile << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
+    myfile << "w_Q_v_swing_toe = " << w_Q_v_swing_toe << endl;
     myfile << "w_R = " << w_R << endl;
     myfile << "w_R_swing_toe = " << w_R_swing_toe << endl;
     myfile << "w_lambda = " << w_lambda << endl;
@@ -3357,6 +3358,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     myfile << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
     myfile << "w_q_quat = " << w_q_quat << endl;
     myfile << "w_joint_accel = " << w_joint_accel << endl;
+    myfile << "w_reg = " << w_reg << endl;
 
     // Print each term of the cost to a file
     double sub_total_cost = 0;

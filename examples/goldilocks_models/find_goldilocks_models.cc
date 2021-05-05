@@ -2106,8 +2106,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
               writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
             }
           } else {
-            task.set(CopyVectorXdToStdVector(
-                readCSV(dir + prefix + string("task.csv")).col(0)));
+            task.set(task_gen_grid.NewNominalTask(sample_idx));
+            /*task.set(CopyVectorXdToStdVector(
+                readCSV(dir + prefix + string("task.csv")).col(0)));*/
+
+            task.Print();
+            writeCSV(dir + prefix + string("task.csv"),
+                     Eigen::Map<const VectorXd>(task.get().data(),
+                                                task.get().size()));
           }
 
           // (Feature -- get initial guess from adjacent successful samples)

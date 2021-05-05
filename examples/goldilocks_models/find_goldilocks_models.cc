@@ -189,9 +189,9 @@ void setCostWeight(double* Q, double* R, double* all_cost_scale,
     *R = 0.1;
     //*all_cost_scale = 1;  // not implemented yet
   } else if (robot_option == 1) {
-    *Q = 5 * 0.1;
-    *R = 0.1 * 0.01;
-    *all_cost_scale = 0.2 /* * 0.12*/;
+    *Q = 0.1;
+    *R = 0.0002;
+    *all_cost_scale = 1 /* * 0.6*/;
   }
 }
 

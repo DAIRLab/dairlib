@@ -101,7 +101,7 @@ DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
 // 2. If the # of nodes per distance is too low, it's harder for SNOPT to
 // converge well. E.g. (Cassie) the ratio of distance per nodes = 0.2/16 is fine
 // for SNOPT, but 0.3 / 16 is too high.
-DEFINE_double(eps_regularization, 1e-8,
+DEFINE_double(eps_regularization, 1e-9,
               "Weight of regularization term");  // 1e-4
 DEFINE_bool(use_database, false,
     "use solutions from database to create initial guesses for traj opt");

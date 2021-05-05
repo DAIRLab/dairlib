@@ -1905,7 +1905,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   double w_v_diff_swing_leg = w_v_diff * 1;
   // Testing
-  double w_joint_accel = 0.0001;  // The final weight is w_joint_accel * W_Q
+  double w_joint_accel = 0.00001;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
   bool swing_foot_ground_clearance = true;

@@ -34,6 +34,7 @@ class InnerLoopSetting {
   double all_cost_scale;
   bool is_add_tau_in_cost;
   bool is_zero_touchdown_impact;
+  double mu;
 
   int max_iter;
   double major_optimality_tol;

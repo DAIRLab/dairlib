@@ -1752,6 +1752,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.all_cost_scale = all_cost_scale;
   inner_loop_setting.is_add_tau_in_cost = FLAGS_is_add_tau_in_cost;
   inner_loop_setting.is_zero_touchdown_impact = FLAGS_is_zero_touchdown_impact;
+  inner_loop_setting.mu = 0.1;
   inner_loop_setting.max_iter = max_inner_iter;
   inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
   inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;

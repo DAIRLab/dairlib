@@ -1534,7 +1534,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   auto rightFootConstraint = DirconPositionData<double>(
       plant, right_lower_leg, pt, isXZ, ground_normal);
 
-  double mu = 1;
+  double mu = setting.mu;
   leftFootConstraint.addFixedNormalFrictionConstraints(mu);
   rightFootConstraint.addFixedNormalFrictionConstraints(mu);
 
@@ -1938,7 +1938,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_Q_v_swing_hip_roll = w_Q * 1;
   // Additional cost on swing toe
   double w_Q_v_swing_toe = w_Q * 10;  // avoid swing toe shaking
-  double w_R_swing_toe = w_R * 1;   // avoid swing toe shaking
+  double w_R_swing_toe = w_R * 1;     // avoid swing toe shaking
   // Testing -- cost on position difference (cost on v is not enough, because
   // the solver might exploit the integration scheme. If we only penalize
   // velocity at knots, then the solver will converge to small velocity at knots
@@ -2131,7 +2131,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       plant, toe_right, pt_front_contact, isXZ, ground_normal);
   auto right_toe_rear_constraint = DirconPositionData<double>(
       plant, toe_right, pt_rear_contact, isXZ, ground_normal);
-  double mu = 1;
+  double mu = setting.mu;
   left_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
   left_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
   right_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
@@ -3506,6 +3506,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     myfile << "much_bigger_weight_at_last_knot = "
            << much_bigger_weight_at_last_knot
            << " (note that it's not calculated in the solution costs above)\n";
+
+    myfile << "mu = " << mu << endl;
 
     myfile << endl;
 

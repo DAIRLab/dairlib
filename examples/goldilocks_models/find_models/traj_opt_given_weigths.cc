@@ -93,6 +93,7 @@ class SwingFootXYPosAtMidStanceConstraint : public NonlinearConstraint<double> {
             2, 3 * plant->num_positions(), VectorXd::Zero(2), VectorXd::Zero(2),
             "swing_foot_xy_pos_at_mid_stance_constraint"),
         plant_(plant),
+        context_(plant->CreateDefaultContext()),
         body_(plant->GetBodyByName(body_name)),
         point_wrt_body_(point_wrt_body) {}
   ~SwingFootXYPosAtMidStanceConstraint() override = default;
@@ -104,22 +105,19 @@ class SwingFootXYPosAtMidStanceConstraint : public NonlinearConstraint<double> {
         x.segment(plant_->num_positions(), plant_->num_positions());
     VectorXd q_f = x.tail(plant_->num_positions());
 
-    std::unique_ptr<drake::systems::Context<double>> context =
-        plant_->CreateDefaultContext();
-
     drake::VectorX<double> pt_0(3);
     drake::VectorX<double> pt_mid(3);
     drake::VectorX<double> pt_f(3);
-    plant_->SetPositions(context.get(), q_0);
-    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
+    plant_->SetPositions(context_.get(), q_0);
+    this->plant_->CalcPointsPositions(*context_, body_.body_frame(),
                                       point_wrt_body_, plant_->world_frame(),
                                       &pt_0);
-    plant_->SetPositions(context.get(), q_mid);
-    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
+    plant_->SetPositions(context_.get(), q_mid);
+    this->plant_->CalcPointsPositions(*context_, body_.body_frame(),
                                       point_wrt_body_, plant_->world_frame(),
                                       &pt_mid);
-    plant_->SetPositions(context.get(), q_f);
-    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
+    plant_->SetPositions(context_.get(), q_f);
+    this->plant_->CalcPointsPositions(*context_, body_.body_frame(),
                                       point_wrt_body_, plant_->world_frame(),
                                       &pt_f);
 
@@ -128,6 +126,7 @@ class SwingFootXYPosAtMidStanceConstraint : public NonlinearConstraint<double> {
 
  private:
   const MultibodyPlant<double>* plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::Body<double>& body_;
   const Vector3d point_wrt_body_;
 };
@@ -139,6 +138,7 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
             1, 2 * (plant->num_positions() + plant->num_velocities()),
             VectorXd::Zero(1), VectorXd::Zero(1), "com_height_vel_constraint"),
         plant_(plant),
+        context_(plant->CreateDefaultContext()),
         n_q_(plant->num_positions()),
         n_v_(plant->num_velocities()) {
     DRAKE_DEMAND(plant->num_bodies() > 1);
@@ -157,14 +157,12 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
         body_indexes_.push_back(body_index);
     }
     // Get total mass
-    std::unique_ptr<drake::systems::Context<double>> context =
-        plant->CreateDefaultContext();
     for (BodyIndex body_index : body_indexes_) {
       if (body_index == 0) continue;
       const drake::multibody::Body<double>& body = plant_->get_body(body_index);
 
       // Calculate composite_mass_.
-      const double& body_mass = body.get_mass(*context);
+      const double& body_mass = body.get_mass(*context_);
       // composite_mass_ = ∑ mᵢ
       composite_mass_ += body_mass;
     }
@@ -181,10 +179,8 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
     VectorXd q2 = x.segment(n_q_ + n_v_, n_q_);
     VectorXd v2 = x.segment(2 * n_q_ + n_v_, n_v_);
 
-    std::unique_ptr<drake::systems::Context<double>> context =
-        plant_->CreateDefaultContext();
-    plant_->SetPositions(context.get(), q1);
-    plant_->SetVelocities(context.get(), v1);
+    plant_->SetPositions(context_.get(), q1);
+    plant_->SetVelocities(context_.get(), v1);
 
     const drake::multibody::Frame<double>& world = plant_->world_frame();
 
@@ -194,14 +190,14 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
       if (body_index == 0) continue;
 
       const drake::multibody::Body<double>& body = plant_->get_body(body_index);
-      const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context);
+      const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context_);
 
       // Calculate M * J in world frame.
-      const double& body_mass = body.get_mass(*context);
+      const double& body_mass = body.get_mass(*context_);
       // Jcom = ∑ mᵢ * Ji
       MatrixXd Jcom_i(3, n_v_);
       plant_->CalcJacobianTranslationalVelocity(
-          *context, drake::multibody::JacobianWrtVariable::kV,
+          *context_, drake::multibody::JacobianWrtVariable::kV,
           body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
       Jcom1 += body_mass * Jcom_i;
       // cout << "body_mass = " << body_mass << endl;
@@ -210,21 +206,21 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
     Jcom1 /= composite_mass_;
 
     // Get com jacobian for x2
-    plant_->SetPositions(context.get(), q2);
-    plant_->SetVelocities(context.get(), v2);
+    plant_->SetPositions(context_.get(), q2);
+    plant_->SetVelocities(context_.get(), v2);
     MatrixXd Jcom2 = MatrixXd::Zero(3, n_v_);
     for (BodyIndex body_index : body_indexes_) {
       if (body_index == 0) continue;
 
       const drake::multibody::Body<double>& body = plant_->get_body(body_index);
-      const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context);
+      const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context_);
 
       // Calculate M * J in world frame.
-      const double& body_mass = body.get_mass(*context);
+      const double& body_mass = body.get_mass(*context_);
       // Jcom = ∑ mᵢ * Ji
       MatrixXd Jcom_i(3, n_v_);
       plant_->CalcJacobianTranslationalVelocity(
-          *context, drake::multibody::JacobianWrtVariable::kV,
+          *context_, drake::multibody::JacobianWrtVariable::kV,
           body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
       Jcom2 += body_mass * Jcom_i;
       // cout << "body_mass = " << body_mass << endl;
@@ -237,6 +233,7 @@ class ComHeightVelConstraint : public NonlinearConstraint<double> {
 
  private:
   const MultibodyPlant<double>* plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
   int n_q_;
   int n_v_;
 
@@ -278,6 +275,51 @@ class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {
   std::unique_ptr<drake::systems::Context<double>> context_;
   int n_q_;
   int n_v_;
+};
+
+class SupportPolygonCetnerConstraint : public NonlinearConstraint<double> {
+ public:
+  SupportPolygonCetnerConstraint(const MultibodyPlant<double>& plant,
+                                 const std::vector<string>& body_name,
+                                 const std::vector<Vector3d>& point_wrt_body)
+      : NonlinearConstraint<double>(1, plant.num_positions(), VectorXd::Zero(1),
+                                    VectorXd::Zero(1),
+                                    "com_support_polygon_constraint"),
+        plant_(plant),
+        context_(plant.CreateDefaultContext()),
+        point_wrt_body_(point_wrt_body) {
+    DRAKE_DEMAND(body_name.size() == point_wrt_body.size());
+    for (int i = 0; i < body_name.size(); i++) {
+      body_.push_back(&plant.GetBodyByName(body_name[i]));
+    }
+  }
+  ~SupportPolygonCetnerConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    VectorXd q_0 = x.head(plant_.num_positions());
+
+    plant_.SetPositions(context_.get(), q_0);
+
+    drake::VectorX<double> ave_ft_pt = drake::VectorX<double>::Zero(3);
+    for (int i = 0; i < body_.size(); i++) {
+      drake::VectorX<double> ft_pt(3);
+      this->plant_.CalcPointsPositions(*context_, body_.at(i)->body_frame(),
+                                       point_wrt_body_.at(i),
+                                       plant_.world_frame(), &ft_pt);
+      ave_ft_pt += ft_pt;
+    }
+    ave_ft_pt /= body_.size();
+
+    *y = ave_ft_pt.head(1) -
+         plant_.CalcCenterOfMassPositionInWorld(*context_).head(1);
+  };
+
+ private:
+  const MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  std::vector<const drake::multibody::Body<double>*> body_;
+  const std::vector<Vector3d> point_wrt_body_;
 };
 
 class CollocationVelocityCost : public solvers::NonlinearCost<double> {
@@ -1922,6 +1964,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   bool zero_com_height_vel_difference = false;
   bool zero_pelvis_height_vel = false;
+  bool com_at_center_of_support_polygon = false;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -2740,6 +2783,16 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       trajopt.AddBoundingBoxConstraint(0, 0, xi(n_q + vel_map.at("base_vz")));
     }
   }
+  if (com_at_center_of_support_polygon) {
+    cout << "Adding constraint that COM stays at the center of support "
+            "polygon\n";
+    vector<string> body_names = {"toe_left", "toe_right"};
+    vector<Vector3d> point_wrt_body = {Vector3d::Zero(), Vector3d::Zero()};
+    auto com_center_polygon_constraint =
+        std::make_shared<SupportPolygonCetnerConstraint>(plant, body_names,
+                                                         point_wrt_body);
+    trajopt.AddConstraint(com_center_polygon_constraint, x0.head(n_q));
+  }
 
   // toe position constraint in y direction (avoid leg crossing)
   VectorXd one = VectorXd::Ones(1);
@@ -3385,6 +3438,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     myfile << "zero_com_height_vel_difference = "
            << zero_com_height_vel_difference << endl;
     myfile << "zero_pelvis_height_vel = " << zero_pelvis_height_vel << endl;
+    myfile << "com_at_center_of_support_polygon = "
+           << com_at_center_of_support_polygon << endl;
     myfile << "constrain_stance_leg_fourbar_force = "
            << constrain_stance_leg_fourbar_force << endl;
     myfile << "four_bar_in_right_support = " << four_bar_in_right_support

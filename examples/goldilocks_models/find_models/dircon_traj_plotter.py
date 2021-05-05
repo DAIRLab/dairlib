@@ -105,6 +105,11 @@ def main():
   # PlotDynamicError(dircon_traj, nq + 6, nx)
 
   """
+  Print impulse
+  """
+  PrintDecisionVar(dircon_traj, "impulse")
+
+  """
   Print the value of the solutions
   """
   # PrintAllDecisionVar(dircon_traj)
@@ -120,6 +125,14 @@ def PrintAllDecisionVar(dircon_traj):
   for i in range(len(dircon_traj.GetTrajectory("decision_vars").datatypes)):
     print(dircon_traj.GetTrajectory("decision_vars").datatypes[i] + " = " + str(
       dircon_traj.GetTrajectory("decision_vars").datapoints[i, 0]))
+
+
+def PrintDecisionVar(dircon_traj, name):
+  for i in range(len(dircon_traj.GetTrajectory("decision_vars").datatypes)):
+    var_name = dircon_traj.GetTrajectory("decision_vars").datatypes[i]
+    if (var_name[:len(name)] == name):
+      print(var_name + " = " + str(
+        dircon_traj.GetTrajectory("decision_vars").datapoints[i, 0]))
 
 
 def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
@@ -297,8 +310,8 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
       x_col = x_cs(t[0])
       xdot_col = x_cs(t[0], 1)
       plant.SetPositionsAndVelocities(context, x_col)
-      com_at_coll[:, i * n_visualize + j] = plant.CalcCenterOfMassPositionInWorld(
-        context)
+      com_at_coll[:, i * n_visualize + j] = \
+        plant.CalcCenterOfMassPositionInWorld(context)
       J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context,
         JacobianWrtVariable.kV, world, world)
       comdot_at_coll[:, i * n_visualize + j] = J @ x_col[nq:]

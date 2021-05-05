@@ -517,7 +517,7 @@ if __name__ == "__main__":
   task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str,
     delimiter=',')
 
-  # Create model iter list
+  ### Create model iter list
   model_iter_idx_start = 1  # 1
   model_iter_idx_end = 50
   idx_spacing = 50
@@ -533,7 +533,7 @@ if __name__ == "__main__":
   print("model_indices = ")
   print(np.array(model_indices))
 
-  # Create task list
+  ### Create task list
   stride_length = np.linspace(-0.2, 0.2, 13)
   ground_incline = 0.0
   duration = 0.4
@@ -562,11 +562,9 @@ if __name__ == "__main__":
   ### Toggle the functions here to run simulation or evaluate cost
   varying_element_idx = 0
   # run_sim_and_eval_cost(model_indices, task_list, varying_element_idx, sample_indices)
-  run_sim_and_eval_cost([1, 50], task_list, varying_element_idx, sample_indices)
 
   # Only evaluate cost
   # eval_cost_in_multithread(model_indices, task_list)
-  eval_cost_in_multithread([1, 50], task_list)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

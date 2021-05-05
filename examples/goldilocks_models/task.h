@@ -35,6 +35,12 @@ class Task {
     }
   }
 
+  void Print() const {
+    for (int i = 0; i < names_.size(); i++) {
+      cout << names_.at(i) << ": " << task_.at(i) << endl;
+    }
+  }
+
   // Getters and setters for task values
   double get(const string& name) const {
     return task_.at(name_to_index_map_.at(name));

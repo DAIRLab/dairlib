@@ -62,7 +62,7 @@ void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
     auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
             traj);
-    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicShapePreserving(
+    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
         orientation.time_vector, orientation.datapoints);
   }
 }

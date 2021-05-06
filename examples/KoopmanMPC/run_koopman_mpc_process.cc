@@ -119,7 +119,7 @@ int DoMain(int argc, char* argv[]) {
   if (!FLAGS_use_com) {
     kmpc->AddBaseFrame("torso_mass", Vector3d::Zero());
   }
-  string folder_base = FindResourceOrThrow("examples/KoopmanMPC/koopman_models/planar_poly_1/");
+  string folder_base = FindResourceOrThrow("examples/KoopmanMPC/koopman_models/planar_lin/");
 
   MatrixXd Al = MatrixXd::Zero(12, 12);
   MatrixXd Bl = MatrixXd::Zero(12, 6);

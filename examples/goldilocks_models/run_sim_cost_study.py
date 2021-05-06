@@ -34,7 +34,7 @@ def get_nominal_task_given_sample_idx(sample_idx, name):
 # Set `get_init_file` to True if you want to generate the initial traj for both
 # planner and controller
 # `sample_idx` is used for planner's initial guess and cost regularization term
-def run_sim_and_controller(sim_end_time, task_value, task_idx, rom_iter_idx,
+def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
     sample_idx, get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
@@ -99,7 +99,7 @@ def run_sim_and_controller(sim_end_time, task_value, task_idx, rom_iter_idx,
   lcm_logger_cmd = [
     'lcm-logger',
     '-f',
-    lcmlog_file_path(rom_iter_idx, task_idx),
+    lcmlog_file_path(rom_iter_idx, log_idx),
   ]
 
   planner_process = subprocess.Popen(planner_cmd)
@@ -128,13 +128,13 @@ def run_sim_and_controller(sim_end_time, task_value, task_idx, rom_iter_idx,
 
 # sim_end_time is used to check if the simulation ended early
 # sample_idx here is used to name the file
-def eval_cost(sim_end_time, rom_iter_idx, task_idx, multithread=False):
+def eval_cost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
-    lcmlog_file_path(rom_iter_idx, task_idx),
+    lcmlog_file_path(rom_iter_idx, log_idx),
     'ROM_WALKING',
     str(rom_iter_idx),
-    str(task_idx),
+    str(log_idx),
     str(sim_end_time),
     str(spring_model),
   ]
@@ -186,40 +186,41 @@ def GetSampleIndexGivenTask(rom_iter, task, exact_task_match):
   return sample_idx
 
 
-def run_sim_and_eval_cost(model_indices, task_list, sample_indices,
+def run_sim_and_eval_cost(model_indices, log_indices, task_list, sample_indices,
     do_eval_cost=False):
   max_n_fail = 0
 
   n_total_sim = len(model_indices) * len(task_list)
   counter = 0
-  for model_idx in range(len(model_indices)):
-    for task_idx in range(len(task_list)):
-      rom_iter = model_indices[model_idx]
-      task = task_list[task_idx]
-      sample_idx = sample_indices[model_idx][task_idx]
+  for i in range(len(model_indices)):
+    for j in range(len(task_list)):
+      rom_iter = model_indices[i]
+      task = task_list[j]
+      sample_idx = sample_indices[i][j]
+      log_idx = log_indices[j]
 
       print("\n===========\n")
       print("progress %.1f%%" % (float(counter) / n_total_sim * 100))
       print("run sim for model %d and task %.3f" % \
             (rom_iter, task[varying_task_element_idx]))
 
-      path = eval_dir + '%d_%d_success.csv' % (rom_iter, task_idx)
+      path = eval_dir + '%d_%d_success.csv' % (rom_iter, log_idx)
       n_fail = 0
       # while True:
       while not os.path.exists(path):
         # Get the initial traj
         run_sim_and_controller(sim_end_time, task[varying_task_element_idx],
-          task_idx, rom_iter, sample_idx, True)
+          log_idx, rom_iter, sample_idx, True)
         # Run the simulation
         run_sim_and_controller(sim_end_time, task[varying_task_element_idx],
-          task_idx, rom_iter, sample_idx, False)
+          log_idx, rom_iter, sample_idx, False)
 
         # Evaluate the cost
         if do_eval_cost:
-          eval_cost(sim_end_time, rom_iter, task_idx)
+          eval_cost(sim_end_time, rom_iter, log_idx)
 
         # Delete the lcmlog
-        # os.remove(lcmlog_file_path(rom_iter_idx, task_idx))
+        # os.remove(lcmlog_file_path(rom_iter_idx, log_idx))
 
         if not os.path.exists(path):
           n_fail += 1
@@ -231,17 +232,17 @@ def run_sim_and_eval_cost(model_indices, task_list, sample_indices,
 
 
 # This function assumes that simulation has been run and there exist lcm logs
-def eval_cost_in_multithread(model_indices, task_size):
+def eval_cost_in_multithread(model_indices, log_indices):
   working_threads = []
   n_max_thread = 12
 
-  n_total_sim = len(model_indices) * task_size
+  n_total_sim = len(model_indices) * len(log_indices)
   counter = 0
   for rom_iter in model_indices:
-    for idx in range(task_size):
+    for idx in log_indices:
       print("\n===========\n")
       print("progress %.1f%%" % (float(counter) / n_total_sim * 100))
-      print("run sim for model %d and task %d" % (rom_iter, idx))
+      print("run sim for model %d and log %d" % (rom_iter, idx))
 
       # Evaluate the cost
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
@@ -308,8 +309,8 @@ def plot_nominal_cost(model_indices, sample_idx):
   return costs
 
 
-def plot_cost_vs_model_and_task(model_indices, task_size, sample_indices=[],
-    plot_3d=True, save=False):
+def plot_cost_vs_model_and_task(model_indices, log_indices,
+    sample_indices=np.zeros((0, 0)), plot_3d=True, save=False):
   # Parameters for visualization
   max_cost_to_ignore = 3  # 2
   mean_sl = 0.2
@@ -326,7 +327,7 @@ def plot_cost_vs_model_and_task(model_indices, task_size, sample_indices=[],
   # mtc that stores model index, task value and cost
   mtc = np.zeros((0, 3))
   for rom_iter in model_indices:
-    for idx in range(task_size):
+    for idx in log_indices:
       path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
       path1 = eval_dir + '%d_%d_cost_values.csv' % (rom_iter, idx)
       path2 = eval_dir + '%d_%d_ave_stride_length.csv' % (rom_iter, idx)
@@ -352,7 +353,7 @@ def plot_cost_vs_model_and_task(model_indices, task_size, sample_indices=[],
   nominal_mtc = np.zeros((0, 3))
   if plot_nominal:
     for rom_iter in model_indices:
-      for i in range(task_size):
+      for i in range(sample_indices.shape[1]):
         sub_mtc = np.zeros((1, 3))
         ### Read cost
         cost = plot_nominal_cost([rom_iter], sample_indices[rom_iter][i])[0][0]
@@ -490,7 +491,7 @@ if __name__ == "__main__":
 
   ### Create model iter list
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 100
+  model_iter_idx_end = 5
   idx_spacing = 5
 
   model_indices = list(
@@ -505,14 +506,15 @@ if __name__ == "__main__":
   print(np.array(model_indices))
 
   ### Create task list
-  stride_length = np.linspace(0, 0.3, 60)
+  n_task = 2
+  stride_length = np.linspace(0, 0.3, n_task)
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
 
-  # stride_length = np.array([0])
+  stride_length = np.linspace(-0.2, -0.1, n_task)
 
-  task_list = np.zeros((len(stride_length), 4))
+  task_list = np.zeros((n_task, 4))
   task_list[:, 0] = stride_length
   task_list[:, 1] = ground_incline
   task_list[:, 2] = duration
@@ -540,30 +542,46 @@ if __name__ == "__main__":
   print("sample_indices = ")
   print(sample_indices)
 
+  ### Construct log indices
+  # Note that currently if you want to plot nominal cost, log_idx_offset should be 0
+  log_idx_offset = 0
+  log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
+
   ### Toggle the functions here to run simulation or evaluate cost
-  run_sim_and_eval_cost(model_indices, task_list, sample_indices)
+  run_sim_and_eval_cost(model_indices, log_indices, task_list, sample_indices)
 
   # Only evaluate cost
-  eval_cost_in_multithread(model_indices, len(task_list))
+  eval_cost_in_multithread(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
 
+  plot_nominal = False
+  if plot_nominal:
+    if not exact_task_match:
+      raise ValueError("ERROR: exact_task_match should be True")
+    if log_idx_offset != 0:
+      raise ValueError("ERROR: log_idx_offset should be 0")
+
+  # Manual overwrite log_indices for plotting
+  # Note that `plot_nominal` should be off since it'll use sample_indices
+  # log_indices = list(range(6))
+
   # Save plots
-  plot_cost_vs_model_and_task(model_indices, len(task_list), [], True, True)
-  plot_cost_vs_model_and_task(model_indices, len(task_list), [], False, True)
-  if exact_task_match:
-    plot_cost_vs_model_and_task(model_indices, len(task_list), sample_indices,
+  plot_cost_vs_model_and_task(model_indices, log_indices, [], True, True)
+  plot_cost_vs_model_and_task(model_indices, log_indices, [], False, True)
+  if plot_nominal:
+    plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices,
       True, True)
-    plot_cost_vs_model_and_task(model_indices, len(task_list), sample_indices,
+    plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices,
       False, True)
 
   # 3D plot
-  # plot_cost_vs_model_and_task(model_indices, len(task_list), [], True, False)
-  # plot_cost_vs_model_and_task(model_indices, len(task_list), [], False, False)
-  # if exact_task_match:
-  #   plot_cost_vs_model_and_task(model_indices, len(task_list), sample_indices, True, False)
-  #   plot_cost_vs_model_and_task(model_indices, len(task_list), sample_indices, False, False)
+  # plot_cost_vs_model_and_task(model_indices, log_indices, [], True, False)
+  # plot_cost_vs_model_and_task(model_indices, log_indices, [], False, False)
+  # if plot_nominal:
+  #   plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices, True, False)
+  #   plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices, False, False)
 
-  # plt.show()
+  plt.show()

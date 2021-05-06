@@ -186,8 +186,8 @@ def GetSampleIndexGivenTask(rom_iter, task, exact_task_match):
   return sample_idx
 
 
-def run_sim_and_eval_cost(model_indices, task_list, varying_task_element_idx,
-    sample_indices, do_eval_cost=False):
+def run_sim_and_eval_cost(model_indices, task_list, sample_indices,
+    do_eval_cost=False):
   max_n_fail = 0
 
   n_total_sim = len(model_indices) * len(task_list)
@@ -231,14 +231,14 @@ def run_sim_and_eval_cost(model_indices, task_list, varying_task_element_idx,
 
 
 # This function assumes that simulation has been run and there exist lcm logs
-def eval_cost_in_multithread(model_indices, task_list):
+def eval_cost_in_multithread(model_indices, task_size):
   working_threads = []
   n_max_thread = 12
 
-  n_total_sim = len(model_indices) * len(task_list)
+  n_total_sim = len(model_indices) * task_size
   counter = 0
   for rom_iter in model_indices:
-    for idx in range(len(task_list)):
+    for idx in range(task_size):
       print("\n===========\n")
       print("progress %.1f%%" % (float(counter) / n_total_sim * 100))
       print("run sim for model %d and task %d" % (rom_iter, idx))
@@ -308,8 +308,8 @@ def plot_nominal_cost(model_indices, sample_idx):
   return costs
 
 
-def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
-    sample_indices=[], plot_3d=True, save=False):
+def plot_cost_vs_model_and_task(model_indices, task_size, sample_indices=[],
+    plot_3d=True, save=False):
   # Parameters for visualization
   max_cost_to_ignore = 3  # 2
   mean_sl = 0.2
@@ -326,7 +326,7 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
   # mtc that stores model index, task value and cost
   mtc = np.zeros((0, 3))
   for rom_iter in model_indices:
-    for idx in range(len(task_list)):
+    for idx in range(task_size):
       path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
       path1 = eval_dir + '%d_%d_cost_values.csv' % (rom_iter, idx)
       path2 = eval_dir + '%d_%d_ave_stride_length.csv' % (rom_iter, idx)
@@ -337,9 +337,6 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
         current_mtc[0, 2] = cost[-1]
         if cost[-1] > max_cost_to_ignore:
           continue
-        ### Read desired task
-        # task = np.loadtxt(model_dir + "%d_%d_task.csv" % (rom_iter, idx))
-        # current_mtc[0, 1] = task[task_element_idx]
         ### Read actual task
         task = np.loadtxt(path2, delimiter=',').item()  # 0-dim scalar
         current_mtc[0, 1] = task
@@ -355,7 +352,7 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
   nominal_mtc = np.zeros((0, 3))
   if plot_nominal:
     for rom_iter in model_indices:
-      for i in range(len(task_list)):
+      for i in range(task_size):
         sub_mtc = np.zeros((1, 3))
         ### Read cost
         cost = plot_nominal_cost([rom_iter], sample_indices[rom_iter][i])[0][0]
@@ -363,8 +360,8 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
         if cost.item() > max_cost_to_ignore:
           continue
         ### Read nominal task
-        task = np.loadtxt(model_dir + "%d_%d_task.csv" % (rom_iter, i))[
-          task_element_idx]
+        task = np.loadtxt(model_dir + "%d_%d_task.csv" % ( \
+          rom_iter, sample_indices[rom_iter][i]))[varying_task_element_idx]
         sub_mtc[0, 1] = task
         if (task > max_sl) or (task < min_sl):
           continue
@@ -536,7 +533,7 @@ if __name__ == "__main__":
   ### Construct sample indices from the task list
   # `sample_idx` is used in two places:
   #  1. in simulation: for planner's initial guess and cost regularization term
-  #  2. in cost evaluation: for gettting noimnal cost (from trajopt)
+  #  2. in cost evaluation: for getting nominal cost (from trajopt)
   exact_task_match = False
   sample_indices = ConstructSampleIndicesGivenModelAndTask(model_indices,
     task_list, exact_task_match)
@@ -544,32 +541,29 @@ if __name__ == "__main__":
   print(sample_indices)
 
   ### Toggle the functions here to run simulation or evaluate cost
-  run_sim_and_eval_cost(model_indices, task_list, varying_task_element_idx,
-    sample_indices)
+  run_sim_and_eval_cost(model_indices, task_list, sample_indices)
 
   # Only evaluate cost
-  eval_cost_in_multithread(model_indices, task_list)
+  eval_cost_in_multithread(model_indices, len(task_list))
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
 
   # Save plots
-  plot_cost_vs_model_and_task(model_indices, task_list,
-    varying_task_element_idx, [], True, True)
-  plot_cost_vs_model_and_task(model_indices, task_list,
-    varying_task_element_idx, [], False, True)
+  plot_cost_vs_model_and_task(model_indices, len(task_list), [], True, True)
+  plot_cost_vs_model_and_task(model_indices, len(task_list), [], False, True)
   if exact_task_match:
-    plot_cost_vs_model_and_task(model_indices, task_list,
-      varying_task_element_idx, sample_indices, True, True)
-    plot_cost_vs_model_and_task(model_indices, task_list,
-      varying_task_element_idx, sample_indices, False, True)
+    plot_cost_vs_model_and_task(model_indices, len(task_list), sample_indices,
+      True, True)
+    plot_cost_vs_model_and_task(model_indices, len(task_list), sample_indices,
+      False, True)
 
   # 3D plot
-  # plot_cost_vs_model_and_task(model_indices, task_list, varying_task_element_idx, [], True, False)
-  # plot_cost_vs_model_and_task(model_indices, task_list, varying_task_element_idx, [], False, False)
+  # plot_cost_vs_model_and_task(model_indices, len(task_list), [], True, False)
+  # plot_cost_vs_model_and_task(model_indices, len(task_list), [], False, False)
   # if exact_task_match:
-  #   plot_cost_vs_model_and_task(model_indices, task_list, varying_task_element_idx, sample_indices, True, False)
-  #   plot_cost_vs_model_and_task(model_indices, task_list, varying_task_element_idx, sample_indices, False, False)
+  #   plot_cost_vs_model_and_task(model_indices, len(task_list), sample_indices, True, False)
+  #   plot_cost_vs_model_and_task(model_indices, len(task_list), sample_indices, False, False)
 
   # plt.show()

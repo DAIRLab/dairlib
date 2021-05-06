@@ -355,8 +355,7 @@ def plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx,
 
 
 def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
-    sample_indices=[],
-    plot_3d=True, save=False):
+    sample_indices=[], plot_3d=True, save=False):
   # Parameters for visualization
   max_cost_to_ignore = 3  # 2
   mean_sl = 0.2
@@ -424,9 +423,8 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
   # Plot
   app = "_w_nom" if plot_nominal else ""
   if plot_3d:
+    ### scatter plot
     fig = plt.figure(figsize=(10, 7))
-
-    ###
     ax = plt.axes(projection="3d")
     ax.scatter3D(mtc[:, 0], mtc[:, 1], mtc[:, 2], color="green")
     if plot_nominal:
@@ -444,7 +442,8 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
       plt.savefig("%scost_vs_model_iter_scatterplot%s.png" % (eval_dir, app))
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
 
-    ###
+    ### level set plot
+    fig = plt.figure(figsize=(10, 7))
     ax = plt.axes(projection="3d")
     if plot_nominal:
       # tcf = ax.tricontour(nominal_mtc[:, 0], nominal_mtc[:, 1],
@@ -465,7 +464,7 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
 
   else:
     # The line along which we evaluate the cost (using interpolation)
-    task = 0.21
+    task = 0
     x = np.linspace(0, 100, 101)
     y = task * np.ones(101)
 
@@ -519,8 +518,8 @@ if __name__ == "__main__":
 
   ### Create model iter list
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 50
-  idx_spacing = 50
+  model_iter_idx_end = 100
+  idx_spacing = 5
 
   model_indices = list(
     range(model_iter_idx_start - 1, model_iter_idx_end + 1, idx_spacing))
@@ -534,7 +533,7 @@ if __name__ == "__main__":
   print(np.array(model_indices))
 
   ### Create task list
-  stride_length = np.linspace(-0.2, 0.2, 13)
+  stride_length = np.linspace(0, 0.3, 60)
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
@@ -583,12 +582,12 @@ if __name__ == "__main__":
   # plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx, False, True, True)
 
   # Save plots
-  # task_element_idx = 0
-  # plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], True, True)
-  # plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], False, True)
-  # if exact_task_match:
-  #   plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, True, True)
-  #   plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, False, True)
+  task_element_idx = 0
+  plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], True, True)
+  plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], False, True)
+  if exact_task_match:
+    plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, True, True)
+    plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, False, True)
 
   # 3D plot
   # plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], True, False)
@@ -596,4 +595,5 @@ if __name__ == "__main__":
   # if exact_task_match:
   #   plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, True, False)
   #   plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, False, False)
+
   # plt.show()

@@ -149,9 +149,12 @@ def eval_cost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
       time.sleep(0.1)
 
 
-# For visualization
+# sample_indices for visualization
 def CollectAllSampleIndicesFromTrajopt(task, task_tolerance):
+  # We pick iter 1 since we assume we are using grid tasks (index will be the same across different model iteration)
+  # TODO: change this if not using grid task anymore
   rom_iter = 1
+
   j = 0
   sample_indices = []
   while True:
@@ -174,6 +177,7 @@ def CollectAllSampleIndicesFromTrajopt(task, task_tolerance):
   return sample_indices
 
 
+# sample_indices for simulation
 def ConstructSampleIndicesGivenModelAndTask(model_indices, task_list):
   sample_indices = np.zeros((len(model_indices), len(task_list)),
     dtype=np.dtype(int))
@@ -517,7 +521,7 @@ if __name__ == "__main__":
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/"
-  eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
+  # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
 
   # global parameters
   sim_end_time = 12.0
@@ -526,7 +530,7 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 100
+  model_iter_idx_end = 5
   idx_spacing = 5
 
   # Task list
@@ -534,17 +538,18 @@ if __name__ == "__main__":
   stride_length = np.linspace(0, 0.3, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task, endpoint=False)
+  stride_length = np.linspace(0.4, 0.5, n_task)
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
 
   # log indices
-  log_idx_offset = 0
+  log_idx_offset = 0 #0
 
   ### Parameters for plotting
-  log_indices_for_plot = list(range(60))
+  log_indices_for_plot = [] #list(range(6))
   save_fig = True
-  plot_nominal = False
+  plot_nominal = True
   task_tolerance = 0.01  # if tasks are not on the grid points exactly
 
   ### Set up environment

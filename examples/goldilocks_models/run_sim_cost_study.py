@@ -417,6 +417,8 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
       plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
 
   else:
+    ### 2D plot
+
     # The line along which we evaluate the cost (using interpolation)
     task = 0
     x = np.linspace(0, 100, 101)
@@ -443,6 +445,25 @@ def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
     plt.gcf().subplots_adjust(left=0.15)
     if save:
       plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
+
+
+def GetVaryingTaskElementIdx(task_list):
+  task_list_copy_for_test = np.copy(task_list)
+  # Default to the first element in case all task element are fixed
+  task_element_idx = 0
+
+  found_varying_task = False
+  for i in range(len(task_names)):
+    task_list_copy_for_test[:, i] -= task_list_copy_for_test[0, i]
+    if np.linalg.norm(task_list_copy_for_test[:, i]) == 0:
+      continue
+    else:
+      if found_varying_task:
+        raise ValueError("ERROR: task element #%d is not fixed" % i)
+      else:
+        task_element_idx = i
+        found_varying_task = True
+  return task_element_idx
 
 
 if __name__ == "__main__":
@@ -494,13 +515,6 @@ if __name__ == "__main__":
 
   # stride_length = np.array([0])
 
-  # Make sure the order is correct
-  if not ((task_names[0] == "stride_length") &
-          (task_names[1] == "ground_incline") &
-          (task_names[2] == "duration") &
-          (task_names[3] == "turning_rate")):
-    raise ValueError("ERROR: unexpected task name or task order")
-
   task_list = np.zeros((len(stride_length), 4))
   task_list[:, 0] = stride_length
   task_list[:, 1] = ground_incline
@@ -508,6 +522,16 @@ if __name__ == "__main__":
   task_list[:, 3] = turning_rate
   print("task_list = ")
   print(task_list)
+
+  # index of task vector where we sweep through
+  varying_task_element_idx = GetVaryingTaskElementIdx(task_list)
+
+  # Make sure the order is correct
+  if not ((task_names[0] == "stride_length") &
+          (task_names[1] == "ground_incline") &
+          (task_names[2] == "duration") &
+          (task_names[3] == "turning_rate")):
+    raise ValueError("ERROR: unexpected task name or task order")
 
   ### Construct sample indices from the task list
   # `sample_idx` is used in two places:
@@ -520,8 +544,8 @@ if __name__ == "__main__":
   print(sample_indices)
 
   ### Toggle the functions here to run simulation or evaluate cost
-  varying_element_idx = 0
-  run_sim_and_eval_cost(model_indices, task_list, varying_element_idx, sample_indices)
+  run_sim_and_eval_cost(model_indices, task_list, varying_task_element_idx,
+    sample_indices)
 
   # Only evaluate cost
   eval_cost_in_multithread(model_indices, task_list)
@@ -531,18 +555,21 @@ if __name__ == "__main__":
   print("Simulation cost is from: " + eval_dir)
 
   # Save plots
-  task_element_idx = 0
-  plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], True, True)
-  plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], False, True)
+  plot_cost_vs_model_and_task(model_indices, task_list,
+    varying_task_element_idx, [], True, True)
+  plot_cost_vs_model_and_task(model_indices, task_list,
+    varying_task_element_idx, [], False, True)
   if exact_task_match:
-    plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, True, True)
-    plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, False, True)
+    plot_cost_vs_model_and_task(model_indices, task_list,
+      varying_task_element_idx, sample_indices, True, True)
+    plot_cost_vs_model_and_task(model_indices, task_list,
+      varying_task_element_idx, sample_indices, False, True)
 
   # 3D plot
-  # plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], True, False)
-  # plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, [], False, False)
+  # plot_cost_vs_model_and_task(model_indices, task_list, varying_task_element_idx, [], True, False)
+  # plot_cost_vs_model_and_task(model_indices, task_list, varying_task_element_idx, [], False, False)
   # if exact_task_match:
-  #   plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, True, False)
-  #   plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx, sample_indices, False, False)
+  #   plot_cost_vs_model_and_task(model_indices, task_list, varying_task_element_idx, sample_indices, True, False)
+  #   plot_cost_vs_model_and_task(model_indices, task_list, varying_task_element_idx, sample_indices, False, False)
 
   # plt.show()

@@ -1928,10 +1928,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_u_diff = 0.0000002 * all_cost_scale;
   // Cost on position
   //  for w_q_hip_roll, maybe 1 if mu = 0.1, and 10 if mu = 1?
-  double w_q_hip_roll = 10 * all_cost_scale;
-  double w_q_hip_yaw = 1 * all_cost_scale;
-  double w_q_quat = 0;  // 10 * all_cost_scale;
+  double reduce_reg_weight = 1;
+  double w_q_hip_roll = 10 * all_cost_scale * reduce_reg_weight;
+  double w_q_hip_yaw = 1 * all_cost_scale * reduce_reg_weight;
+  double w_q_quat = 1 * all_cost_scale * reduce_reg_weight;
   // TODO: if you want to use w_q_quat, you need to modify it for turning
+  if (w_q_quat) {
+    DRAKE_DEMAND(turning_rate == 0);
+  }
   // Additional cost on pelvis
   double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
   double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z
@@ -2885,8 +2889,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // testing -- zero impact
   if (setting.is_zero_touchdown_impact) {
-    trajopt.AddLinearConstraint(trajopt.impulse_vars(0)(2) == 0);
-    trajopt.AddLinearConstraint(trajopt.impulse_vars(0)(5) == 0);
+    trajopt.AddBoundingBoxConstraint(0, 0, trajopt.impulse_vars(0)(2));
+    trajopt.AddBoundingBoxConstraint(0, 0, trajopt.impulse_vars(0)(5));
   }
 
   // testing -- swing foot pos at mid stance is the average of the start and the

@@ -539,7 +539,14 @@ if __name__ == "__main__":
   duration = 0.4
   turning_rate = 0.0
 
-  stride_length = np.array([0])
+  # stride_length = np.array([0])
+
+  # Make sure the order is correct
+  if not ((task_names[0] == "stride_length") &
+          (task_names[1] == "ground_incline") &
+          (task_names[2] == "duration") &
+          (task_names[3] == "turning_rate")):
+    raise ValueError("ERROR: unexpected task name or task order")
 
   task_list = np.zeros((len(stride_length), 4))
   task_list[:, 0] = stride_length
@@ -561,10 +568,10 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   varying_element_idx = 0
-  # run_sim_and_eval_cost(model_indices, task_list, varying_element_idx, sample_indices)
+  run_sim_and_eval_cost(model_indices, task_list, varying_element_idx, sample_indices)
 
   # Only evaluate cost
-  # eval_cost_in_multithread(model_indices, task_list)
+  eval_cost_in_multithread(model_indices, task_list)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

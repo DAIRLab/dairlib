@@ -149,27 +149,51 @@ def eval_cost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
       time.sleep(0.1)
 
 
-def ConstructSampleIndicesGivenModelAndTask(model_indices, task_list,
-    exact_task_match):
+# For visualization
+def CollectAllSampleIndicesFromTrajopt(task, task_tolerance):
+  rom_iter = 1
+  j = 0
+  sample_indices = []
+  while True:
+    path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
+    # print("try " + path)
+    if os.path.exists(path):
+      trajopt_task = np.loadtxt(path)
+      task_diff = trajopt_task - task
+      task_diff[varying_task_element_idx] = 0
+      print(np.linalg.norm(task_diff))
+      if np.linalg.norm(task_diff) < task_tolerance:
+        sample_indices.append(j)
+      j += 1
+    else:
+      break
+
+  if len(sample_indices) == 0:
+    raise ValueError("ERROR: no such task in trajopt")
+
+  return sample_indices
+
+
+def ConstructSampleIndicesGivenModelAndTask(model_indices, task_list):
   sample_indices = np.zeros((len(model_indices), len(task_list)),
     dtype=np.dtype(int))
   for i in range(len(model_indices)):
     for j in range(len(task_list)):
       sample_indices[i, j] = GetSampleIndexGivenTask(model_indices[i],
-        task_list[j], exact_task_match)
+        task_list[j])
   return sample_indices
 
 
 # Get trajopt sample idx with the most similar task
-def GetSampleIndexGivenTask(rom_iter, task, exact_task_match):
+def GetSampleIndexGivenTask(rom_iter, task):
   j = 0
   dist_list = []
   while True:
     path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
     # print("try " + path)
     if os.path.exists(path):
-      to_task = np.loadtxt(path)
-      dist_list.append(np.linalg.norm(to_task - task))
+      trajopt_task = np.loadtxt(path)
+      dist_list.append(np.linalg.norm(trajopt_task - task))
       j += 1
     else:
       break
@@ -179,20 +203,35 @@ def GetSampleIndexGivenTask(rom_iter, task, exact_task_match):
     raise ValueError("ERROR: This path doesn't exist: " + path)
   sample_idx = np.argmin(np.array(dist_list))
 
-  if exact_task_match:
-    if np.min(np.array(dist_list)) != 0:
-      raise ValueError("ERROR: no such task in trajopt")
-
   return sample_idx
 
 
-def run_sim_and_eval_cost(model_indices, log_indices, task_list, sample_indices,
+def SaveLogCorrespondence():
+  msg = "log #%d to #%d: %s ranges from %.3f to %.3f" % (
+    log_indices[0], log_indices[-1], task_names[varying_task_element_idx],
+    task_list[0, varying_task_element_idx],
+    task_list[-1, varying_task_element_idx])
+  print(msg)
+  f = open(eval_dir + "task_log_correspondence.txt", "a")
+  f.write(msg)
+  f.close()
+
+
+def run_sim_and_eval_cost(model_indices, log_indices, task_list,
     do_eval_cost=False):
   # parameters
   max_n_fail = 0
 
   SaveLogCorrespondence()
 
+  ### Construct sample indices from the task list for simulation
+  # `sample_idx` is for planner's initial guess and cost regularization term
+  sample_indices = ConstructSampleIndicesGivenModelAndTask(model_indices,
+    task_list)
+  print("sample_indices = ")
+  print(sample_indices)
+
+  ### Start simulation
   n_total_sim = len(model_indices) * len(task_list)
   counter = 0
   for i in range(len(model_indices)):
@@ -312,8 +351,8 @@ def plot_nominal_cost(model_indices, sample_idx):
   return costs
 
 
-def plot_cost_vs_model_and_task(model_indices, log_indices,
-    sample_indices=np.zeros((0, 0)), plot_3d=True, save=False):
+def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
+    plot_3d=True):
   # Parameters for visualization
   max_cost_to_ignore = 3  # 2
   mean_sl = 0.2
@@ -324,8 +363,6 @@ def plot_cost_vs_model_and_task(model_indices, log_indices,
   max_sl = 100
   # min_sl = -0.33
   # max_sl = -0.31
-
-  plot_nominal = len(sample_indices) > 0
 
   # mtc that stores model index, task value and cost
   mtc = np.zeros((0, 3))
@@ -356,16 +393,16 @@ def plot_cost_vs_model_and_task(model_indices, log_indices,
   nominal_mtc = np.zeros((0, 3))
   if plot_nominal:
     for rom_iter in model_indices:
-      for i in range(sample_indices.shape[1]):
+      for i in range(len(sample_indices)):
         sub_mtc = np.zeros((1, 3))
         ### Read cost
-        cost = plot_nominal_cost([rom_iter], sample_indices[rom_iter][i])[0][0]
+        cost = plot_nominal_cost([rom_iter], sample_indices[i])[0][0]
         sub_mtc[0, 2] = cost
         if cost.item() > max_cost_to_ignore:
           continue
         ### Read nominal task
         task = np.loadtxt(model_dir + "%d_%d_task.csv" % ( \
-          rom_iter, sample_indices[rom_iter][i]))[varying_task_element_idx]
+          rom_iter, sample_indices[i]))[varying_task_element_idx]
         sub_mtc[0, 1] = task
         if (task > max_sl) or (task < min_sl):
           continue
@@ -388,7 +425,7 @@ def plot_cost_vs_model_and_task(model_indices, log_indices,
     ax.set_ylabel('stride length (m)')
     ax.set_zlabel('total cost')
     # plt.title("")
-    if save:
+    if save_fig:
       ax.view_init(90, -90)  # look from +z axis. model iter vs task
       plt.savefig("%smodel_ter_vs_task_scatterplot%s.png" % (eval_dir, app))
       ax.view_init(0, 0)  # look from x axis. cost vs task
@@ -414,16 +451,16 @@ def plot_cost_vs_model_and_task(model_indices, log_indices,
     ax.set_ylabel('stride length (m)')
     ax.set_zlabel('total cost')
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-    if save:
+    if save_fig:
       plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
 
   else:
     ### 2D plot
 
     # The line along which we evaluate the cost (using interpolation)
-    task = 0
+    task_value = 0
     x = np.linspace(0, 100, 101)
-    y = task * np.ones(101)
+    y = task_value * np.ones(101)
 
     plt.figure(figsize=(6.4, 4.8))
     plt.rcParams.update({'font.size': 14})
@@ -441,10 +478,10 @@ def plot_cost_vs_model_and_task(model_indices, log_indices,
     plt.xlabel('model iterations')
     plt.ylabel('total cost')
     plt.legend()
-    plt.title('stride length ' + str(task))
+    plt.title('stride length ' + str(task_value))
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
-    if save:
+    if save_fig:
       plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
 
 
@@ -467,17 +504,6 @@ def GetVaryingTaskElementIdx(task_list):
   return task_element_idx
 
 
-def SaveLogCorrespondence():
-  msg = "log #%d to #%d: %s ranges from %.3f to %.3f" % (
-    log_indices[0], log_indices[-1], task_names[varying_task_element_idx],
-    task_list[0, varying_task_element_idx],
-    task_list[-1, varying_task_element_idx])
-  print(msg)
-  f = open(eval_dir + "task_log_correspondence.txt", "a")
-  f.write(msg)
-  f.close()
-
-
 if __name__ == "__main__":
   # Build files just in case forgetting
   build_files('examples/goldilocks_models/...')
@@ -491,43 +517,51 @@ if __name__ == "__main__":
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/"
+  eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
 
   # global parameters
   sim_end_time = 12.0
   spring_model = True
 
-  # Create folder if not exist
-  Path(eval_dir).mkdir(parents=True, exist_ok=True)
-
-  # Get task name
-  task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str,
-    delimiter=',')
-
-  ### Create model iter list
+  ### parameters for model, task, and log indices
+  # Model iteration list
   model_iter_idx_start = 1  # 1
   model_iter_idx_end = 100
   idx_spacing = 5
 
-  model_indices = list(
-    range(model_iter_idx_start - 1, model_iter_idx_end + 1, idx_spacing))
-  model_indices[0] += 1
-  # example list: [1, 5, 10, 15]
-
-  # Remove some indices (remove by value)
-  # model_indices.remove(56)
-
-  print("model_indices = ")
-  print(np.array(model_indices))
-
-  ### Create task list
+  # Task list
   n_task = 60
   stride_length = np.linspace(0, 0.3, n_task)
+  # stride_length = np.linspace(-0.2, -0.1, n_task)
+  # stride_length = np.linspace(-0.2, -0.1, n_task, endpoint=False)
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
 
-  # stride_length = np.linspace(-0.2, -0.1, n_task)
-  # stride_length = np.linspace(-0.2, -0.1, n_task, endpoint=False)
+  # log indices
+  log_idx_offset = 0
+
+  ### Parameters for plotting
+  log_indices_for_plot = list(range(60))
+  save_fig = True
+  plot_nominal = False
+  task_tolerance = 0.01  # if tasks are not on the grid points exactly
+
+  ### Set up environment
+  # Create folder if not exist
+  Path(eval_dir).mkdir(parents=True, exist_ok=True)
+
+  ### Create model iter list
+  model_indices = list(
+    range(model_iter_idx_start - 1, model_iter_idx_end + 1, idx_spacing))
+  model_indices[0] += 1
+  # example list: [1, 5, 10, 15]
+  print("model_indices = ")
+  print(np.array(model_indices))
+
+  ### Create task list
+  task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str,
+    delimiter=',')
 
   task_list = np.zeros((n_task, 4))
   task_list[:, 0] = stride_length
@@ -547,58 +581,32 @@ if __name__ == "__main__":
           (task_names[3] == "turning_rate")):
     raise ValueError("ERROR: unexpected task name or task order")
 
-  ### Construct sample indices from the task list
-  # `sample_idx` is used in two places:
-  #  1. in simulation: for planner's initial guess and cost regularization term
-  #  2. in cost evaluation: for getting nominal cost (from trajopt)
-  exact_task_match = False
-  sample_indices = ConstructSampleIndicesGivenModelAndTask(model_indices,
-    task_list, exact_task_match)
-  print("sample_indices = ")
-  print(sample_indices)
-
   ### Construct log indices
-  # Note that currently if you want to plot nominal cost, log_idx_offset should be 0
-  log_idx_offset = 0
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
   print("log_indices = ")
   print(log_indices)
 
   ### Toggle the functions here to run simulation or evaluate cost
-  run_sim_and_eval_cost(model_indices, log_indices, task_list, sample_indices)
+  # Simulation
+  # run_sim_and_eval_cost(model_indices, log_indices, task_list)
 
-  # Only evaluate cost
-  eval_cost_in_multithread(model_indices, log_indices)
+  # Cost evaluate only
+  # eval_cost_in_multithread(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
 
-  plot_nominal = False
-  if plot_nominal:
-    if not exact_task_match:
-      raise ValueError("ERROR: exact_task_match should be True")
-    if log_idx_offset != 0:
-      raise ValueError("ERROR: log_idx_offset should be 0")
-
   # Manual overwrite log_indices for plotting
-  # Note that `plot_nominal` should be off since it'll use sample_indices
-  # log_indices = list(range(6))
+  if len(log_indices_for_plot) != 0:
+    log_indices = log_indices_for_plot
 
-  # Save plots
-  plot_cost_vs_model_and_task(model_indices, log_indices, [], True, True)
-  plot_cost_vs_model_and_task(model_indices, log_indices, [], False, True)
-  if plot_nominal:
-    plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices,
-      True, True)
-    plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices,
-      False, True)
+  # Get all samples from trajopt for nominal cost
+  sample_indices = CollectAllSampleIndicesFromTrajopt(task_list[0],
+    task_tolerance) if plot_nominal else []
 
-  # 3D plot
-  # plot_cost_vs_model_and_task(model_indices, log_indices, [], True, False)
-  # plot_cost_vs_model_and_task(model_indices, log_indices, [], False, False)
-  # if plot_nominal:
-  #   plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices, True, False)
-  #   plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices, False, False)
+  # Plot
+  plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices, True)
+  plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices, False)
 
   plt.show()

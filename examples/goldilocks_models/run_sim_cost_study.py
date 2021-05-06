@@ -188,7 +188,10 @@ def GetSampleIndexGivenTask(rom_iter, task, exact_task_match):
 
 def run_sim_and_eval_cost(model_indices, log_indices, task_list, sample_indices,
     do_eval_cost=False):
+  # parameters
   max_n_fail = 0
+
+  SaveLogCorrespondence()
 
   n_total_sim = len(model_indices) * len(task_list)
   counter = 0
@@ -464,6 +467,17 @@ def GetVaryingTaskElementIdx(task_list):
   return task_element_idx
 
 
+def SaveLogCorrespondence():
+  msg = "log #%d to #%d: %s ranges from %.3f to %.3f" % (
+    log_indices[0], log_indices[-1], task_names[varying_task_element_idx],
+    task_list[0, varying_task_element_idx],
+    task_list[-1, varying_task_element_idx])
+  print(msg)
+  f = open(eval_dir + "task_log_correspondence.txt", "a")
+  f.write(msg)
+  f.close()
+
+
 if __name__ == "__main__":
   # Build files just in case forgetting
   build_files('examples/goldilocks_models/...')
@@ -491,7 +505,7 @@ if __name__ == "__main__":
 
   ### Create model iter list
   model_iter_idx_start = 1  # 1
-  model_iter_idx_end = 5
+  model_iter_idx_end = 100
   idx_spacing = 5
 
   model_indices = list(
@@ -506,13 +520,13 @@ if __name__ == "__main__":
   print(np.array(model_indices))
 
   ### Create task list
-  n_task = 2
+  n_task = 60
   stride_length = np.linspace(0, 0.3, n_task)
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
 
-  stride_length = np.linspace(-0.2, -0.1, n_task)
+  # stride_length = np.linspace(-0.2, -0.1, n_task)
 
   task_list = np.zeros((n_task, 4))
   task_list[:, 0] = stride_length
@@ -546,6 +560,8 @@ if __name__ == "__main__":
   # Note that currently if you want to plot nominal cost, log_idx_offset should be 0
   log_idx_offset = 0
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
+  print("log_indices = ")
+  print(log_indices)
 
   ### Toggle the functions here to run simulation or evaluate cost
   run_sim_and_eval_cost(model_indices, log_indices, task_list, sample_indices)

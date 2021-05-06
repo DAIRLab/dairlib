@@ -186,9 +186,6 @@ def GetSampleIndexGivenTask(rom_iter, task, exact_task_match):
   return sample_idx
 
 
-# TODO: I don't like the method of scaling the stride length and repeat the sim to get achieve the desired task
-#  What I'm doing currently is running all samples for one time, and then get a 3D plot (model iter - task - cost)
-#  Then we can pick a task to slice the 3D plot!
 def run_sim_and_eval_cost(model_indices, task_list, varying_task_element_idx,
     sample_indices, do_eval_cost=False):
   max_n_fail = 0
@@ -309,49 +306,6 @@ def plot_nominal_cost(model_indices, sample_idx):
   # plt.legend(["total_cost"])
   # plt.show()
   return costs
-
-
-def plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx,
-    only_plot_total_cost=True, plot_nominal=False, savefig=False):
-  # Get names
-  names = np.loadtxt(eval_dir + "cost_names.csv", dtype=str,
-    delimiter=',').tolist()
-
-  for i in range(len(names)):
-    names[i] = names[i] + " (Drake sim)"
-
-  # Get values
-  costs = np.zeros((0, len(names)))
-  for iter_idx in model_indices:
-    path = eval_dir + "%d_%d_cost_values.csv" % (iter_idx, sample_idx)
-    costs = np.vstack([costs, np.loadtxt(path, delimiter=',')])
-
-  figname = "cost_vs_model_iterations"
-  if only_plot_total_cost:
-    figname = "total_" + figname
-  plt.figure(figname, figsize=(6.4, 4.8))
-  if only_plot_total_cost:
-    plt.plot(model_indices, costs[:, -1], 'k-', linewidth=3)
-    if plot_nominal:
-      nominal_cost = plot_nominal_cost(model_indices, sample_idx)
-      plt.plot(model_indices, nominal_cost, 'k--', linewidth=3)
-    plt.ylabel('total cost')
-    plt.xlabel('model iterations')
-    plt.legend(['Drake simulation', 'trajectory opt.'])
-  else:
-    plt.plot(model_indices, costs)
-    if plot_nominal:
-      nominal_cost = plot_nominal_cost(model_indices, sample_idx)
-      plt.plot(model_indices, nominal_cost)
-      names = names + ["total cost (trajopt)"]
-    plt.ylabel('cost')
-    plt.xlabel('model iterations')
-    plt.legend(names)
-
-  if savefig:
-    plt.savefig(eval_dir + figname + ".png")
-  else:
-    plt.show()
 
 
 def plot_cost_vs_model_and_task(model_indices, task_list, task_element_idx,
@@ -575,11 +529,6 @@ if __name__ == "__main__":
   ### Plotting
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
-
-  # 2D plot
-  # sample_idx = 37  # related to different tasks
-  # plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx, True, True, True)
-  # plot_cost_vs_model_iter_given_a_sample_idx(model_indices, sample_idx, False, True, True)
 
   # Save plots
   task_element_idx = 0

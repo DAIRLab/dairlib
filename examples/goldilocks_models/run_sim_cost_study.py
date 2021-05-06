@@ -527,6 +527,7 @@ if __name__ == "__main__":
   turning_rate = 0.0
 
   # stride_length = np.linspace(-0.2, -0.1, n_task)
+  # stride_length = np.linspace(-0.2, -0.1, n_task, endpoint=False)
 
   task_list = np.zeros((n_task, 4))
   task_list[:, 0] = stride_length

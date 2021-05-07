@@ -543,23 +543,23 @@ if __name__ == "__main__":
   n_task = 60
   stride_length = np.linspace(0, 0.3, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
-  # stride_length = np.linspace(-0.2, -0.1, n_task, endpoint=False)
-  stride_length = np.linspace(0.4, 0.5, n_task)
+  stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
+  # stride_length = np.linspace(0.4, 0.5, n_task)
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
 
   # log indices
-  log_idx_offset = 0  # 0
+  log_idx_offset = 60  # 0
 
   ### Parameters for plotting
-  log_indices_for_plot = list(range(60))
+  log_indices_for_plot = list(range(120))
   save_fig = True
   plot_nominal = True
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
 
   # 2D plot
-  task_slice_value = 0.18
+  task_slice_value = 0.2
 
   ### Set up environment
   # Create folder if not exist

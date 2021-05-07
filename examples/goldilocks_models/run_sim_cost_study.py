@@ -527,7 +527,7 @@ if __name__ == "__main__":
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/"
-  eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
+  # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
 
   # global parameters
   sim_end_time = 12.0

@@ -192,7 +192,7 @@ def main():
   pelvis_height_variation_tol = 0.05
   pelvis_z_at_td = np.zeros(len(t_x_touchdown_indices))
   for i in range(len(t_x_touchdown_indices)):
-    pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 4]
+    pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 6]
   min_pelvis_height = min(pelvis_z_at_td)
   max_pelvis_height = max(pelvis_z_at_td)
   if abs(max_pelvis_height - min_pelvis_height) > pelvis_height_variation_tol:

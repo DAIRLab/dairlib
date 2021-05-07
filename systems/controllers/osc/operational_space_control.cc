@@ -323,47 +323,34 @@ void OperationalSpaceControl::Build() {
     VectorXd mu_neg1(2);
     VectorXd mu_1(2);
     VectorXd one(1);
-    mu_neg1 << mu_, -1;
-    mu_1 << mu_, 1;
-    one << 1;
+    //    mu_neg1 << mu_, -1;
+    //    mu_1 << mu_, 1;
+    //    one << 1;
+    MatrixXd A = MatrixXd(5, kSpaceDim);
+    A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
+    //    a_pos << mu_, 1, mu_, 1;
+    //    a_neg << mu_, 1, mu_, 1;
+    //    drake::solvers::VariableRefList friction_vars;
+
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
+      //      friction_vars = {lambda_c_.segment(kSpaceDim * j + 2, 1)};
+      //                       lambda_c_(kSpaceDim * j + 0),
+      //                       lambda_c_(kSpaceDim * j + 2)};
+      //      friction_constraints_.push_back(
+      //          prog_->AddLinearConstraint(
+      //                  A, Eigen::VectorXd::Constant(5,
+      //                  -std::numeric_limits<double>::infinity()),
+      //                  VectorXd::Zero(5), lambda_c_.segment(kSpaceDim * j,
+      //                  3))
+      //              .evaluator()
+      //              .get());
       friction_constraints_.push_back(
           prog_
-              ->AddLinearConstraint(mu_neg1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                     lambda_c_.segment(kSpaceDim * j + 0, 1)})
-              .evaluator()
-              .get());
-      friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                     lambda_c_.segment(kSpaceDim * j + 0, 1)})
-              .evaluator()
-              .get());
-      friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_neg1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                     lambda_c_.segment(kSpaceDim * j + 1, 1)})
-              .evaluator()
-              .get());
-      friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                     lambda_c_.segment(kSpaceDim * j + 1, 1)})
-              .evaluator()
-              .get());
-      friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(one.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    lambda_c_.segment(kSpaceDim * j + 2, 1))
+              ->AddLinearConstraint(
+                  A, VectorXd::Zero(5),
+                  Eigen::VectorXd::Constant(
+                      5, std::numeric_limits<double>::infinity()),
+                  lambda_c_.segment(kSpaceDim * j, 3))
               .evaluator()
               .get());
     }
@@ -399,20 +386,23 @@ void OperationalSpaceControl::Build() {
   }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
+  solution_ = std::make_unique<drake::solvers::MathematicalProgramResult>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
   solver_options.SetOption(OsqpSolver::id(), "time_limit", kMaxSolveDuration);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
+  solver_options.SetOption(OsqpSolver::id(), "check_termination", 25);
+  solver_options.SetOption(OsqpSolver::id(), "scaling", 10);
   std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
   // Max solve duration
-}
+}  // namespace dairlib::systems::controllers
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
@@ -566,27 +556,34 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (!all_contacts_.empty()) {
-    VectorXd inf_vectorxd(1);
-    inf_vectorxd << numeric_limits<double>::infinity();
+    //    VectorXd inf_vectorxd(1);
+    //    inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
         // when the contact is active
-        friction_constraints_.at(5 * i)->UpdateLowerBound(VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(
-            VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(
-            VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(
-            VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 4)->UpdateLowerBound(
-            VectorXd::Zero(1));
+        friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
+        //        friction_constraints_.at(5 *
+        //        i)->UpdateLowerBound(VectorXd::Zero(1));
+        //        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(
+        //            VectorXd::Zero(1));
+        //        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(
+        //            VectorXd::Zero(1));
+        //        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(
+        //            VectorXd::Zero(1));
+        //        friction_constraints_.at(5 * i + 4)->UpdateLowerBound(
+        //            VectorXd::Zero(1));
       } else {
         // when the contact is not active
-        friction_constraints_.at(5 * i)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 4)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(i)->UpdateLowerBound(
+            VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
+        //        friction_constraints_.at(5 * i +
+        //        1)->UpdateLowerBound(-inf_vectorxd);
+        //        friction_constraints_.at(5 * i +
+        //        2)->UpdateLowerBound(-inf_vectorxd);
+        //        friction_constraints_.at(5 * i +
+        //        3)->UpdateLowerBound(-inf_vectorxd);
+        //        friction_constraints_.at(5 * i +
+        //        4)->UpdateLowerBound(-inf_vectorxd);
       }
     }
   }
@@ -639,17 +636,17 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
 
-//  const MathematicalProgramResult result = Solve(*prog_);
-  const MathematicalProgramResult result = solver_->Solve(*prog_);
+  //  const MathematicalProgramResult result = Solve(*prog_);
+  solver_->Solve(*prog_, std::nullopt, std::nullopt, solution_.get());
 
-  solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+  solve_time_ = solution_->get_solver_details<OsqpSolver>().run_time;
 
   // Extract solutions
-  *dv_sol_ = result.GetSolution(dv_);
-  *u_sol_ = result.GetSolution(u_);
-  *lambda_c_sol_ = result.GetSolution(lambda_c_);
-  *lambda_h_sol_ = result.GetSolution(lambda_h_);
-  *epsilon_sol_ = result.GetSolution(epsilon_);
+  *dv_sol_ = solution_->GetSolution(dv_);
+  *u_sol_ = solution_->GetSolution(u_);
+  *lambda_c_sol_ = solution_->GetSolution(lambda_c_);
+  *lambda_h_sol_ = solution_->GetSolution(lambda_h_);
+  *epsilon_sol_ = solution_->GetSolution(epsilon_);
 
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive()) tracking_data->SaveYddotCommandSol(*dv_sol_);
@@ -657,7 +654,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Print QP result
   if (print_tracking_info_) {
-    cout << "\n" << to_string(result.get_solution_result()) << endl;
+    cout << "\n" << to_string(solution_->get_solution_result()) << endl;
     cout << "fsm_state = " << fsm_state << endl;
     cout << "**********************\n";
     cout << "u_sol = " << u_sol_->transpose() << endl;

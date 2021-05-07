@@ -27,7 +27,7 @@
 #include "systems/framework/output_vector.h"
 
 // Maximum time limit for each QP solve
-static constexpr double kMaxSolveDuration = 0.001;
+static constexpr double kMaxSolveDuration = 0.002;
 
 namespace dairlib::systems::controllers {
 
@@ -296,6 +296,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_;
+  std::unique_ptr<drake::solvers::MathematicalProgramResult> solution_;
 };
 
 }  // namespace dairlib::systems::controllers

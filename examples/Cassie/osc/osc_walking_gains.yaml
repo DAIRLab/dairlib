@@ -1,6 +1,10 @@
 rows: 3
 cols: 3
 
+# Invariant Impacts
+impact_threshold: 0.000
+use_traj_opt_feet_traj: true
+
 # High level command gains (with radio)
 vel_scale_rot: -1
 vel_scale_trans_sagital: 0.25
@@ -10,22 +14,22 @@ vel_scale_trans_lateral: -0.15
 global_target_position_x: 0
 global_target_position_y: 0
 yaw_deadband_blur: 5
-yaw_deadband_radius: 1
-kp_yaw: 1
-kd_yaw: 0.2
+yaw_deadband_radius: 1.5
+kp_yaw: 0
+kd_yaw: 0.0
 vel_max_yaw: 0.5
 
-kp_pos_sagital: 1.0
-kd_pos_sagital: 0.2
+kp_pos_sagital: 0.3
+kd_pos_sagital: 0.3
 vel_max_sagital: 0.25
-kp_pos_lateral: 0.5
-kd_pos_lateral: 0.1
+kp_pos_lateral: 0.3
+kd_pos_lateral: 0.25
 vel_max_lateral: 0.15
-target_pos_offset: -0.16
+target_pos_offset: -0.0
 
 # Speed control gains
-k_ff_sagittal: 0
-k_fb_sagittal: 0.14
+k_ff_sagittal: 0.0
+k_fb_sagittal: 0.3
 k_ff_lateral: 0
 k_fb_lateral: 0.2
 
@@ -34,28 +38,28 @@ ss_time: 0.30
 ds_time: 0.05
 
 # Swing foot trajectory
-max_CoM_to_footstep_dist: 0.4
+max_CoM_to_footstep_dist: 0.3
 footstep_offset: 0.04
-center_line_offset: 0.05
+center_line_offset: 0.03
 mid_foot_height: 0.03
-final_foot_height: 0.000
+final_foot_height: 0.002
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
-lipm_height: 0.9
+lipm_height: 0.85
 
 # OSC gains
 mu: 0.8
 
-w_accel: 0.000001
+w_accel: 0.00001
 w_soft_constraint: 8000
 
-w_swing_toe: 100
+w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
 w_hip_yaw: 50
-hip_yaw_kp: 40
+hip_yaw_kp: 60
 hip_yaw_kd: 0.5
 
 CoMW:
@@ -70,24 +74,36 @@ CoMKd:
   [   0,    0,     0,
       0,    0,     0,
       0,    0,     5]
+#PelvisDSW:
+#  [  50,    0,     0,
+#      0,   50,     0,
+#      0,    0,     0]
+#PelvisDSKp:
+#  [  50,    0,     0,
+#      0,  100,     0,
+#      0,    0,     0]
+#PelvisDSKd:
+#  [   5,    0,     0,
+#      0,    5,     0,
+#      0,    0,     0]
 
 PelvisBalanceW:
-  [ 200,    0,     0,
-    0,    400,     0,
+  [ 2,     0,     0,
+    0,     4,     0,
     0,      0,     0]
 PelvisBalanceKp:
-  [20,      0,    0,
+  [50,      0,    0,
     0,    100,    0,
     0,      0,    0]
 PelvisBalanceKd:
-  [   1,     0,    0,
+  [  10,     0,    0,
       0,    10,    0,
       0,     0,    0]
 
 PelvisHeadingW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    10]
+      0,    0,     1]
 PelvisHeadingKp:
   [   0,     0,    0,
       0,     0,    0,
@@ -99,14 +115,14 @@ PelvisHeadingKd:
 period_of_no_heading_control: 0.0
 
 SwingFootW:
-  [ 400,    0,     0,
-    0,    400,     0,
-    0,      0,   400]
+  [ 4,    0,     0,
+    0,    4,     0,
+    0,      0,   4]
 SwingFootKp:
-  [ 200,    0,     0,
-    0,  200,     0,
-    0,    0,   100]
+  [ 50,   0,     0,
+    0,   100,     0,
+    0,     0,   100]
 SwingFootKd:
-  [   1,    0,     0,
+  [   5,    0,     0,
       0,    1,     0,
       0,    0,     1]

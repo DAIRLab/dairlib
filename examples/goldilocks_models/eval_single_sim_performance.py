@@ -166,21 +166,40 @@ def main():
       return
 
   # Check if it's close to steady state
-  stride_length_variation_tol = 0.02
-  t_x_indices = []
+  t_x_touchdown_indices = []
   for idx in range(step_idx_start, step_idx_end + 1):
     time = stride_period * idx
-    t_x_indices.append(np.argwhere(np.abs(t_x - time) < 1e-3)[0][0])
-  pelvis_x_at_td = np.zeros(len(t_x_indices))
-  for i in range(len(t_x_indices)):
-    pelvis_x_at_td[i] = x[t_x_indices[i], 4]
+    t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < 1e-3)[0][0])
+  # 1. stride length
+  stride_length_variation_tol = 0.02
+  pelvis_x_at_td = np.zeros(len(t_x_touchdown_indices))
+  for i in range(len(t_x_touchdown_indices)):
+    pelvis_x_at_td[i] = x[t_x_touchdown_indices[i], 4]
   stride_lengths = np.diff(pelvis_x_at_td)
-  min_stide_length = min(stride_lengths)
-  max_stide_length = max(stride_lengths)
-  if abs(max_stide_length - min_stide_length) > stride_length_variation_tol:
+  min_stride_length = min(stride_lengths)
+  max_stride_length = max(stride_lengths)
+  if abs(max_stride_length - min_stride_length) > stride_length_variation_tol:
     msg = "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx) + \
           ": not close to steady state. min and max stride length are " + \
-          str(min_stide_length) + ", " + str(max_stide_length) + "\n"
+          str(min_stride_length) + ", " + str(max_stride_length) + \
+          "tolerance is " + str(stride_length_variation_tol) + "\n"
+    print(msg)
+    f = open(directory + "sim_status.txt", "a")
+    f.write(msg)
+    f.close()
+    return
+  # 2. pelvis height
+  pelvis_height_variation_tol = 0.05
+  pelvis_z_at_td = np.zeros(len(t_x_touchdown_indices))
+  for i in range(len(t_x_touchdown_indices)):
+    pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 4]
+  min_pelvis_height = min(pelvis_z_at_td)
+  max_pelvis_height = max(pelvis_z_at_td)
+  if abs(max_pelvis_height - min_pelvis_height) > pelvis_height_variation_tol:
+    msg = "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx) + \
+          ": not close to steady state. min and max pelvis height are " + \
+          str(min_pelvis_height) + ", " + str(max_pelvis_height) + \
+          "tolerance is " + str(pelvis_height_variation_tol) + "\n"
     print(msg)
     f = open(directory + "sim_status.txt", "a")
     f.write(msg)

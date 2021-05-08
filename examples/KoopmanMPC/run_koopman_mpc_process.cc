@@ -114,7 +114,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Com_Position: \n" << default_com << std::endl;
 
   auto kmpc = builder.AddSystem<KoopmanMPC>(plant, plant_context.get(), dt,
-      FLAGS_swing_ft_height, true, true,  FLAGS_use_com);
+      FLAGS_swing_ft_height, true, false, true,  FLAGS_use_com);
 
   if (!FLAGS_use_com) {
     kmpc->AddBaseFrame("torso_mass", Vector3d::Zero());

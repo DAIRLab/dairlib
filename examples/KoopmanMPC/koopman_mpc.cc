@@ -41,8 +41,8 @@ namespace dairlib{
 
 KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
                        Context<double> *plant_context, double dt,
-                       double swing_ft_height,
-                       bool planar, bool used_with_finite_state_machine,
+                       double swing_ft_height, bool planar, bool traj,
+                       bool used_with_finite_state_machine,
                        bool use_com) :
                        plant_(plant),
                        plant_context_(plant_context),
@@ -50,6 +50,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
                        dt_(dt),
                        swing_ft_ht_(swing_ft_height),
                        planar_(planar),
+                       traj_tracking_(traj),
                        use_com_(use_com),
                        use_fsm_(used_with_finite_state_machine){
 
@@ -69,8 +70,10 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   state_port_ = this->DeclareVectorInputPort(
       OutputVector<double>(nq_, nv_, nu_p_)).get_index();
 
-  x_des_port_ = this->DeclareVectorInputPort(
-      BasicVector<double>(nxi_)).get_index();
+  if (!traj_tracking_) {
+    x_des_port_ = this->DeclareVectorInputPort(
+        BasicVector<double>(nxi_)).get_index();
+  }
 
   traj_out_port_ = this->DeclareAbstractOutputPort(&KoopmanMPC::GetMostRecentMotionPlan).get_index();
 
@@ -187,10 +190,9 @@ void KoopmanMPC::Build() {
   std::cout << "Built Koopman Mpc QP: \nModes: " << std::to_string(nmodes_) <<
                "\nTotal Knots: " << std::to_string(total_knots_) << std::endl;
 
-//  prog_.SetSolverOption(OsqpSolver().id(),
-//      "time_limit", kMaxSolveDuration_);
-  prog_.SetSolverOption(OsqpSolver().id(), "eps_abs", 1e-3);
-  prog_.SetSolverOption(OsqpSolver().id(), "eps_rel", 1e-3);
+
+  prog_.SetSolverOption(OsqpSolver().id(), "eps_abs", 1e-5);
+  prog_.SetSolverOption(OsqpSolver().id(), "eps_rel", 1e-5);
 }
 
 void KoopmanMPC::MakeStanceFootConstraints() {
@@ -358,7 +360,7 @@ void KoopmanMPC::AddTrackingObjective(const VectorXd &xdes, const MatrixXd &Q) {
   x_des_ = xdes;
   for (auto & mode : modes_) {
     // loop over N+1 states
-    for (int i = 0; i <= mode.N; i++ ) {
+    for (int i = 0; i < mode.N; i++ ) {
       if (i != 0) {
         mode.tracking_cost.push_back(
             prog_.AddQuadraticErrorCost(
@@ -366,6 +368,24 @@ void KoopmanMPC::AddTrackingObjective(const VectorXd &xdes, const MatrixXd &Q) {
             .evaluator().get());
       }
     }
+  }
+}
+
+void KoopmanMPC::AddTrajectoryTrackingObjective(const MatrixXd& traj, const MatrixXd& Q){
+  DRAKE_DEMAND(Q.rows() == Q.cols());
+  DRAKE_DEMAND(Q.rows() == nxi_);
+  DRAKE_DEMAND(traj.rows() == nxi_);
+  DRAKE_DEMAND(traj.cols() == total_knots_);
+
+  int j = 0;
+  for (auto & mode : modes_) {
+    for (int i = 0; i <= mode.N; i++) {
+      mode.tracking_cost.push_back(
+          prog_.AddQuadraticErrorCost(
+              Q, traj.col(mode.N * j + i), mode.zz.at(i).head(nxi_))
+              .evaluator().get());
+    }
+    j++;
   }
 }
 
@@ -538,14 +558,14 @@ EventStatus KoopmanMPC::PeriodicUpdate(
         CalcCentroidalStateFromPlant(x, timestamp), 0, 0);
   }
 
-  const MathematicalProgramResult result = Solve(prog_);
+  solver_.Solve(prog_, {}, {}, &result_);
 
-  if (!result.is_success()) {
+  if (!result_.is_success()) {
     std::cout << "Infeasible\n";
     print_current_init_state_constraint();
   }
 
-  DRAKE_DEMAND(result.is_success());
+  DRAKE_DEMAND(result_.is_success());
   /* Debugging - (not that helpful)
   if (result.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
     std::cout << "Infeasible problem! See infeasible constraints below:\n";
@@ -555,7 +575,7 @@ EventStatus KoopmanMPC::PeriodicUpdate(
   } */
 
   most_recent_sol_ = MakeLcmTrajFromSol(
-      result, timestamp, time_since_last_event,  x);
+      result_, timestamp, time_since_last_event,  x);
 
   //print_current_init_state_constraint();
   //print_initial_state_constraints();
@@ -572,6 +592,17 @@ void KoopmanMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
     for (auto & cost : mode.tracking_cost) {
       cost->UpdateCoefficients(2 * Q_, -2 * Q_ * xdes, xdes.transpose() * xdes);
     }
+  }
+}
+
+void KoopmanMPC::UpdateTrajectoryTrackingObjective(const VectorXd& traj) const {
+  DRAKE_ASSERT(traj.rows() == total_knots_ * modes_.front().N);
+  int j = 0;
+  for (auto & mode : modes_) {
+    for (int i = 0; i <= mode.N; i++) {
+      mode.tracking_cost.at(i)->UpdateCoefficients(2*Q_, -2 * Q_ * traj.segment(j*mode.N + i, nxi_));
+    }
+    j++;
   }
 }
 

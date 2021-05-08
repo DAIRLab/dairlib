@@ -19,8 +19,9 @@
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 
-DEFINE_double(strideLength, 0.1, "The stride length.");
-DEFINE_double(duration, 1, "The stride duration");
+DEFINE_double(strideLength, 0.5, "The stride length.");
+DEFINE_double(duration, 0.25, "The stride duration");
+DEFINE_double(target_realtime_rate, 0.5, "Simulator target realtime rate");
 DEFINE_string(file_name, "examples/PlanarWalker/trajectories/walking_traj.lcmtraj", "default filename");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 
@@ -182,6 +183,8 @@ void runDircon(
       x(positions_map["right_knee_pin"]) >= 0);
 
   // stride length constraints
+  trajopt.AddLinearConstraint(x0(positions_map["planar_z"]) == 0.95);
+  trajopt.AddLinearConstraint(xf(positions_map["planar_z"]) == 0.95);
   trajopt.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
   trajopt.AddLinearConstraint(xf(positions_map["planar_x"]) == stride_length);
 
@@ -193,6 +196,8 @@ void runDircon(
   const double R = 10;  // Cost on input effort
   auto u = trajopt.input();
   trajopt.AddRunningCost(u.transpose()*R*u);
+  trajopt.AddQuadraticCost(100 * x0(positions_map["planar_roty"]) * x0(positions_map["planar_roty"]));
+
 
   std::vector<unsigned int> visualizer_poses;
   visualizer_poses.push_back(3);
@@ -223,7 +228,7 @@ void runDircon(
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(0.5);
+    simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }

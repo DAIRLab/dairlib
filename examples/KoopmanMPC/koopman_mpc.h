@@ -66,7 +66,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
  public:
   KoopmanMPC(const drake::multibody::MultibodyPlant<double>& plant,
              drake::systems::Context<double>* plant_context, double dt,
-             double swing_ft_height, bool planar,
+             double swing_ft_height, bool planar, bool traj,
              bool used_with_finite_state_machine = true,
              bool use_com = true);
 
@@ -77,6 +77,7 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
                                  Eigen::Vector3d> pt, koopMpcStance stance);
 
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
+  void AddTrajectoryTrackingObjective(const Eigen::MatrixXd& traj, const Eigen::MatrixXd& Q);
   void SetTerminalCost(const Eigen::MatrixXd& Qf);
   void AddInputRegularization(const Eigen::MatrixXd& R);
 
@@ -158,9 +159,6 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       const drake::solvers::MathematicalProgramResult& result,
       double time_since_last_touchdown) const;
 
-  drake::trajectories::PiecewisePolynomial<double> MakePPTrajFromSol(
-      drake::solvers::MathematicalProgramResult result) const;
-
   lcmt_saved_traj MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
                                      double time, double time_since_last_touchdown,
                                      const Eigen::VectorXd& state) const;
@@ -169,6 +167,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
       int fsm_state, double t_since_last_switch) const;
 
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
+  void UpdateTrajectoryTrackingObjective(const Eigen::VectorXd& traj) const;
+
 
   Eigen::VectorXd CalcCentroidalStateFromPlant(const Eigen::VectorXd& x, double t) const;
 
@@ -229,6 +229,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int kAngularDim_;
 
   // Solver
+  drake::solvers::OsqpSolver solver_;
+  mutable drake::solvers::MathematicalProgramResult result_;
   mutable drake::solvers::MathematicalProgram prog_;
   mutable int x0_idx_[2] = {0, 0};
   mutable lcmt_saved_traj most_recent_sol_;
@@ -247,12 +249,14 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
   int base_angle_vel_idx_;
   mutable drake::systems::Context<double>* plant_context_;
   mutable Eigen::VectorXd x_des_;
+  mutable Eigen::MatrixXd x_des_mat_;
 
   // constants
   const double kMaxSolveDuration_ = 1.00;
   const double swing_ft_ht_;
   const bool use_com_;
   const bool planar_;
+  const bool traj_tracking_;
   const int kNxPlanar = 6;
   const int kNx3d = 13;
   const int kNuPlanar = 6;

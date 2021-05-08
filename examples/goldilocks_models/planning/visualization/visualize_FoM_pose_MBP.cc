@@ -1,6 +1,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <thread>
 #include <gflags/gflags.h>
 
 #include "common/file_utils.h"
@@ -38,28 +39,35 @@ using std::string;
 using std::to_string;
 using std::vector;
 
+using dairlib::multibody::MultiposeVisualizer;
+
 namespace dairlib {
 namespace goldilocks_models {
 namespace planning {
 
-DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
+DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 
-// File source
-DEFINE_int32(solve_idx, -1, "");
-DEFINE_bool(snopt_suffix, false, "");
 DEFINE_bool(global, false, "");
+DEFINE_bool(snopt_suffix, false, "");
+
+// Flags for solve indices
+DEFINE_int32(solve_idx, -1, "");
+DEFINE_int32(solve_idx_end, -1,
+             "If this is set, we will visualize the poses"
+             " from `solve_idx` to `solve_idx_end`");
+DEFINE_double(solve_idx_iterate_time, 0.2, "in seconds");
 
 // There are two modes of this visualizer.
 // The first mode visualizes all poses at once, and the second mode visualizes
 // them in sequence
 DEFINE_bool(view_multipose_at_once, false, "Visualize the poses at once");
 
-// Flags for the first mode
+// Option 1 -- multiple pose at once
 DEFINE_bool(only_start_and_end_poses, false,
             "Visualize only the start and the end poses");
 DEFINE_double(alpha, 0.15, "Transparency of the robots");
 
-// Flags for the second mode
+// Option 2 -- one pose (mode) at a time
 DEFINE_int32(start_mode, 0, "Starting at mode #");
 DEFINE_bool(start_is_head, true, "Starting with x0 or xf");
 DEFINE_int32(end_mode, -1, "Ending at mode #");
@@ -78,44 +86,83 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
                      ? FLAGS_end_mode
                      : readCSV(directory + string("n_step.csv"))(0, 0) - 1;
 
-  // Read in pose
-  MatrixXd x0_each_mode;
-  MatrixXd xf_each_mode;
-  string suffix = FLAGS_snopt_suffix ? "_snopt" : "";
-  string global = FLAGS_global ? "_global_" : "_local_";
-  if (FLAGS_solve_idx >= 0) {
-    cout << "Drawing solve_idx " << FLAGS_solve_idx << endl;
-    x0_each_mode =
-        readCSV(directory + string(to_string(FLAGS_solve_idx) + global +
-                                   "x0_FOM" + suffix + ".csv"));
-    xf_each_mode =
-        readCSV(directory + string(to_string(FLAGS_solve_idx) + global +
-                                   "xf_FOM" + suffix + ".csv"));
-  } else {
-    cout << "Drawing debug_ files\n";
-    x0_each_mode = readCSV(
-        directory + string("debug" + global + "x0_FOM" + suffix + ".csv"));
-    xf_each_mode = readCSV(
-        directory + string("debug" + global + "xf_FOM" + suffix + ".csv"));
+  if (FLAGS_solve_idx_end >= 0) {
+    DRAKE_DEMAND(FLAGS_solve_idx != -1);
+    DRAKE_DEMAND(FLAGS_view_multipose_at_once);
   }
 
+  // Setup solve indices
+  int solve_idx_start = FLAGS_solve_idx;
+  int solve_idx_end =
+      (FLAGS_solve_idx_end >= 0) ? FLAGS_solve_idx_end : FLAGS_solve_idx;
+
+  if (solve_idx_start < 0) {
+    cout << "Drawing solve_idx " << solve_idx_start << " to " << solve_idx_end
+         << endl;
+  } else {
+    cout << "Drawing debug_ files\n";
+  }
+
+  // Read in poses
+  string suffix = FLAGS_snopt_suffix ? "_snopt" : "";
+  string global = FLAGS_global ? "_global_" : "_local_";
+  std::vector<MatrixXd> x0_each_mode_list;
+  std::vector<MatrixXd> xf_each_mode_list;
+  for (int i = solve_idx_start; i <= solve_idx_end; i++) {
+    string x0_path =
+        (i >= 0)
+            ? directory + to_string(i) + global + "x0_FOM" + suffix + ".csv"
+            : directory + "debug" + global + "x0_FOM" + suffix + ".csv";
+    string xf_path =
+        (i >= 0)
+            ? directory + to_string(i) + global + "xf_FOM" + suffix + ".csv"
+            : directory + "debug" + global + "xf_FOM" + suffix + ".csv";
+    x0_each_mode_list.push_back(readCSV(x0_path));
+    xf_each_mode_list.push_back(readCSV(xf_path));
+  }  // for loop solve_idx
+  DRAKE_DEMAND(x0_each_mode_list.size() == xf_each_mode_list.size());
+
   if (FLAGS_view_multipose_at_once) {
-    MatrixXd poses;
-    if (FLAGS_only_start_and_end_poses) {
-      poses.resize(x0_each_mode.rows(), 2);
-      poses << x0_each_mode.leftCols<1>(), xf_each_mode.rightCols<1>();
-    } else {
-      poses.resize(x0_each_mode.rows(), x0_each_mode.cols() + 1);
-      poses << x0_each_mode, xf_each_mode.rightCols<1>();
+    // Select poses for visualization
+    MatrixXd x0_each_mode = x0_each_mode_list.at(0);
+    MatrixXd xf_each_mode = xf_each_mode_list.at(0);
+    std::vector<MatrixXd> poses(
+        x0_each_mode_list.size(),
+        FLAGS_only_start_and_end_poses
+            ? MatrixXd::Zero(x0_each_mode.rows(), 2)
+            : MatrixXd::Zero(x0_each_mode.rows(), x0_each_mode.cols() + 1));
+    for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
+      if (FLAGS_only_start_and_end_poses) {
+        poses[i] << x0_each_mode_list.at(i).leftCols<1>(),
+            xf_each_mode_list.at(i).rightCols<1>();
+      } else {
+        poses[i] << x0_each_mode_list.at(i),
+            xf_each_mode_list.at(i).rightCols<1>();
+      }
     }
-    VectorXd alpha_vec = FLAGS_alpha * VectorXd::Ones(poses.cols());
+    // Create MultiposeVisualizer
+    VectorXd alpha_vec = FLAGS_alpha * VectorXd::Ones(poses.at(0).cols());
     alpha_vec.head(1) << 1;
     alpha_vec.tail(1) << 1;
-    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+    MultiposeVisualizer visualizer = MultiposeVisualizer(
         FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
-        poses.cols(), alpha_vec);
-    visualizer.DrawPoses(poses);
+        poses.at(0).cols(), alpha_vec);
+
+    // Draw
+    for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
+      visualizer.DrawPoses(poses.at(i));
+      if (i == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+      // pause for `solve_idx_iterate_time` seconds
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(int(FLAGS_solve_idx_iterate_time * 1000)));
+    }
   } else {
+    DRAKE_DEMAND(x0_each_mode_list.size() == 1);
+    DRAKE_DEMAND(xf_each_mode_list.size() == 1);
+    MatrixXd x0_each_mode = x0_each_mode_list.at(0);
+    MatrixXd xf_each_mode = xf_each_mode_list.at(0);
+
     bool is_head = FLAGS_start_is_head;
     bool last_visited_mode = -1;
     for (int mode = FLAGS_start_mode; mode <= end_mode; mode++) {
@@ -158,13 +205,11 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
       simulator.AdvanceTo(pp_xtraj.end_time());
 
       if ((is_head == FLAGS_end_is_head) && (mode == end_mode)) continue;
-      if (is_head == true) mode--;
+      if (is_head) mode--;
 
       is_head = !is_head;
-    }
-  }
-
-  return;
+    }  // for loop mode
+  }    // if-else view_multipose_at_once
 }
 }  // namespace planning
 }  // namespace goldilocks_models

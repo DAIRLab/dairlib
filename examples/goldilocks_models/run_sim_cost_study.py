@@ -209,7 +209,7 @@ def GetSampleIndexGivenTask(rom_iter, task):
 
 
 def SaveLogCorrespondence():
-  msg = "log #%d to #%d: %s ranges from %.3f to %.3f" % (
+  msg = "log #%d to #%d: %s ranges from %.3f to %.3f\n" % (
     log_indices[0], log_indices[-1], task_names[varying_task_element_idx],
     task_list[0, varying_task_element_idx],
     task_list[-1, varying_task_element_idx])
@@ -488,7 +488,7 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
       plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
 
   ### Testing -- find the log idx with high cost
-  cost_threshold = 2
+  cost_threshold = 3
   for mem in mtcl:
     if mem[2] > cost_threshold:
       print("(iter, log) = (%.0f, %.0f) has high cost %.3f" %
@@ -528,6 +528,7 @@ if __name__ == "__main__":
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
+  #eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
 
   # global parameters
   sim_end_time = 12.0
@@ -553,7 +554,7 @@ if __name__ == "__main__":
   log_idx_offset = 60  # 0
 
   ### Parameters for plotting
-  log_indices_for_plot = list(range(120))
+  log_indices_for_plot = list(range(log_idx_offset + n_task))
   save_fig = True
   plot_nominal = True
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
@@ -614,6 +615,7 @@ if __name__ == "__main__":
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:
     log_indices = log_indices_for_plot
+  print("log_indices for plotting = " +str(log_indices))
 
   # Get all samples from trajopt for nominal cost
   sample_indices = CollectAllSampleIndicesFromTrajopt(task_list[0],

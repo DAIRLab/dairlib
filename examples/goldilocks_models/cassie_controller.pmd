@@ -4,7 +4,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=false";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=false --get_swing_foot_from_planner=false";
         host = "localhost";
     }
     cmd "3.1.rom-planner" {
@@ -91,8 +91,12 @@ group "0.operator" {
         exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false  --snopt_suffix=true --solve_idx=126";
         host = "localhost";
     }
-    cmd "2.0. cassie planner pose (multi-pose); global frame" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=14";
+    cmd "2.0. cassie planner pose (multi-pose); global frame (1 solve)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=1";
+        host = "localhost";
+    }
+    cmd "2.0. cassie planner pose (multi-pose); global frame (multiple solves)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx_iterate_time=0.2 --global=true --solve_idx=1 --solve_idx_end=216";
         host = "localhost";
     }
 }

@@ -122,6 +122,7 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   }  // for loop solve_idx
   DRAKE_DEMAND(x0_each_mode_list.size() == xf_each_mode_list.size());
 
+  // Option 1 -- multiple pose at once
   if (FLAGS_view_multipose_at_once) {
     // Select poses for visualization
     MatrixXd x0_each_mode = x0_each_mode_list.at(0);
@@ -157,7 +158,9 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
       std::this_thread::sleep_for(
           std::chrono::milliseconds(int(FLAGS_solve_idx_iterate_time * 1000)));
     }
-  } else {
+  }
+  // Option 2 -- one pose (mode) at a time
+  else {
     DRAKE_DEMAND(x0_each_mode_list.size() == 1);
     DRAKE_DEMAND(xf_each_mode_list.size() == 1);
     MatrixXd x0_each_mode = x0_each_mode_list.at(0);

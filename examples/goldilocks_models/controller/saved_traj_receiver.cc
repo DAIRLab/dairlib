@@ -257,7 +257,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
           plant_control_.world_frame(), &foot_pos);
       Y.at(2) = foot_pos;
       Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
-      Y.at(1)(1) += 0.1;
+      Y.at(1)(2) += 0.1;
       // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
       // make the traj smooth at the mid point
       pp.ConcatenateInTime(

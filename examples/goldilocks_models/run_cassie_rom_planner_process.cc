@@ -77,16 +77,19 @@ DEFINE_double(feas_tol, 1e-2, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
 DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
-DEFINE_bool(use_ipopt_in_first_loop, true, "use ipopt in the first solve");
-DEFINE_bool(log_solver_info, true,
-            "Log snopt output to a file or ipopt to terminal");
+DEFINE_bool(switch_to_snopt_after_first_loop, true,
+            "use snopt after the first loop");
 DEFINE_double(time_limit, 0, "time limit for the solver.");
 DEFINE_double(realtime_rate_for_time_limit, 1, "");
+
+// Logging
+DEFINE_bool(log_solver_info, true,
+            "Log snopt output to a file or ipopt to terminal");
+DEFINE_bool(log_data, true, "Save the planner data into files");
 
 // Flag for debugging
 DEFINE_bool(run_one_loop_to_get_init_file, false, "");
 DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
-DEFINE_bool(log_data, true, "Save the planner data into files");
 DEFINE_int32(solve_idx_for_read_from_file, -1,
              "Files index for input port values");
 
@@ -167,7 +170,8 @@ int DoMain(int argc, char* argv[]) {
   param.opt_tol = FLAGS_opt_tol;
   param.max_iter = FLAGS_max_iter;
   param.use_ipopt = FLAGS_use_ipopt;
-  param.use_ipopt_in_first_loop = FLAGS_use_ipopt_in_first_loop;
+  param.switch_to_snopt_after_first_loop =
+      FLAGS_switch_to_snopt_after_first_loop;
   param.log_solver_info = FLAGS_log_solver_info;
   param.time_limit = FLAGS_time_limit;
   param.realtime_rate_for_time_limit = FLAGS_realtime_rate_for_time_limit;

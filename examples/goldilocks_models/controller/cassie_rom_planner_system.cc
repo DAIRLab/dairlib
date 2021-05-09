@@ -157,9 +157,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       VectorXd x_standing_fixed_spring(37);
       x_standing_fixed_spring << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
           0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
-          1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0,
-          param.walking_speed_x, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0;
+          1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, param.walking_speed_x,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
       x_guess_left_in_front_pre_ = x_standing_fixed_spring;
       x_guess_right_in_front_pre_ = x_standing_fixed_spring;
       x_guess_left_in_front_post_ = x_standing_fixed_spring;
@@ -323,10 +322,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                  "Major feasibility tolerance",
                                  param_.feas_tol /* * 0.01*/);
-
-  if (param_.use_ipopt_in_first_loop) {
-    param_.use_ipopt = true;
-  }
 
   // Allocate memory
   if (param_.zero_touchdown_impact) {
@@ -573,8 +568,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Constraint and cost for the last foot step location
   trajopt.AddConstraintAndCostForLastFootStep(
-      param_.gains.w_predict_lipm_v, param_.walking_speed_x, 0,
-      stride_period_);
+      param_.gains.w_predict_lipm_v, param_.walking_speed_x, 0, stride_period_);
 
   // Final goal position constraint
   /*PrintStatus("Adding constraint -- FoM final position");
@@ -908,7 +902,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Switch to snopt after one iteration (use ipopt to get a good solution for
   // the first loop)
   if (counter_ == 0) {
-    if (param_.use_ipopt_in_first_loop) {
+    if (param_.switch_to_snopt_after_first_loop) {
       cout << "***\n*** WARNING: switch to snopt solver\n***\n";
       param_.use_ipopt = false;
     }

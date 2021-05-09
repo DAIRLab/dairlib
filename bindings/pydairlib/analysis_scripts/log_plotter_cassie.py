@@ -180,8 +180,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
-  osc_traj0 = "swing_ft_traj"
-  # osc_traj0 = "optimal_rom_traj"
+  # osc_traj0 = "swing_ft_traj"
+  osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
   osc_traj2 = "pelvis_balance_traj"

@@ -55,7 +55,7 @@ DEFINE_int32(solve_idx, -1, "");
 DEFINE_int32(solve_idx_end, -1,
              "If this is set, we will visualize the poses"
              " from `solve_idx` to `solve_idx_end`");
-DEFINE_double(solve_idx_iterate_time, 0.2, "in seconds");
+DEFINE_double(solve_idx_iterate_time, 0.1, "in seconds");
 
 // There are two modes of this visualizer.
 // The first mode visualizes all poses at once, and the second mode visualizes
@@ -65,7 +65,7 @@ DEFINE_bool(view_multipose_at_once, false, "Visualize the poses at once");
 // Option 1 -- multiple pose at once
 DEFINE_bool(only_start_and_end_poses, false,
             "Visualize only the start and the end poses");
-DEFINE_double(alpha, 0.15, "Transparency of the robots");
+DEFINE_double(alpha, 0.1, "Transparency of the robots");
 
 // Option 2 -- one pose (mode) at a time
 DEFINE_int32(start_mode, 0, "Starting at mode #");
@@ -144,7 +144,7 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
     // Create MultiposeVisualizer
     VectorXd alpha_vec = FLAGS_alpha * VectorXd::Ones(poses.at(0).cols());
     alpha_vec.head(1) << 1;
-    alpha_vec.tail(1) << 1;
+    alpha_vec.tail(1) << 0.2;
     MultiposeVisualizer visualizer = MultiposeVisualizer(
         FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
         poses.at(0).cols(), alpha_vec);

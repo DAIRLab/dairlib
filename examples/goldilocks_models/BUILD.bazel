@@ -1,5 +1,29 @@
 package(default_visibility = ["//visibility:public"])
 
+cc_library(
+    name = "rom_control_real_robot",
+    deps = [
+        ":rom_control",
+        ":run_network_publisher_fsm",
+        ":run_network_publisher_state",
+        ":run_rom_controller_switch",
+        "//examples/Cassie:dispatcher_robot_in",
+        "//examples/Cassie:dispatcher_robot_out",
+    ],
+)
+
+cc_library(
+    name = "rom_control",
+    deps = [
+        ":run_cassie_ik_process",
+        ":run_cassie_rom_controller",
+        ":run_cassie_rom_planner_process",
+        "//examples/Cassie:multibody_sim",
+        "//examples/Cassie:visualizer",
+        "//lcmtypes:lcmt_robot",
+    ],
+)
+
 cc_binary(
     name = "find_goldilocks_models",
     srcs = ["find_goldilocks_models.cc"],

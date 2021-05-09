@@ -47,7 +47,7 @@ class PhaseInFirstMode : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
-      const {
+  const {
     return this->get_input_port(controller_signal_port_);
   }
 
@@ -60,6 +60,37 @@ class PhaseInFirstMode : public drake::systems::LeafSystem<double> {
   int controller_signal_port_;
 
   double stride_period_;
+};
+
+///
+/// PlannerFinalPosition
+///
+
+class PlannerFinalPosition : public drake::systems::LeafSystem<double> {
+ public:
+  PlannerFinalPosition(
+      const drake::multibody::MultibodyPlant<double>& plant_feedback,
+      const Eigen::VectorXd& global_target_pos,
+      double max_stride_length, int n_step);
+
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(state_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_init_phase() const {
+    return this->get_input_port(phase_port_);
+  }
+
+ private:
+  void CalcFinalPos(const drake::systems::Context<double>& context,
+                 drake::systems::BasicVector<double>* init_phase_output) const;
+
+  // Port indices
+  int state_port_;
+  int phase_port_;
+
+  const Eigen::VectorXd global_target_pos_;
+  double max_stride_length_;
+  int n_step_;
 };
 
 ///

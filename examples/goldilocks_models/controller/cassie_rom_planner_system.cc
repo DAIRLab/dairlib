@@ -89,6 +89,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
   quat_xyz_shift_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(7)).get_index();
+  planner_final_pos_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
 
   // Create index maps
@@ -439,6 +441,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       this->EvalVectorInput(context, controller_signal_port_);
   int global_fsm_idx = int(controller_signal_port->get_value()(2) + 1e-8);
 
+  // Get final position of
+  VectorXd final_position =
+      this->EvalVectorInput(context, planner_final_pos_port_)->get_value();
+  cout << "in planner system: " << final_position.transpose() << endl;
+
   if (singel_eval_mode_) {
     cout.precision(dbl::max_digits10);
     cout << "Used for the planner: \n";
@@ -479,21 +486,22 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "n_knots_first_mode = " << n_knots_first_mode << endl;
   cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
 
-  // Goal position
-  VectorXd final_position(2);
-  final_position << param_.final_position_x, 0;
-  /*final_position << x_lift_off(positions_map_.at("base_x")) +
-                        param_.final_position_x,
-      0;*/
-
   // Get the desired xy positions for the FOM states
   vector<VectorXd> des_xy_pos =
       vector<VectorXd>(param_.n_step + 1, VectorXd::Zero(2));
   int n_segment_total =
       std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
       num_time_samples.size();
-  VectorXd adjusted_final_pos = final_position * n_segment_total /
-                                (param_.n_step * (param_.knots_per_mode - 1));
+  // 1. if final_position is a constant
+  //  VectorXd final_position(2);
+  //  final_position << param_.final_position_x, 0;
+  //  final_position << x_lift_off(positions_map_.at("base_x")) +
+  //                        param_.final_position_x,
+  //      0;
+  //  VectorXd adjusted_final_pos = final_position * n_segment_total /
+  //      (param_.n_step * (param_.knots_per_mode - 1));
+  // 2 final_position is transformed from global coordinates
+  const VectorXd& adjusted_final_pos = final_position;
   for (int i = 1; i < des_xy_pos.size(); i++) {
     des_xy_pos[i] = des_xy_pos[i - 1] + adjusted_final_pos *
                                             (num_time_samples.at(i - 1) - 1) /
@@ -930,7 +938,7 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
   Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
   double sign = rotate_from_global_to_local ? 1 : -1;
   for (int j = 0; j < param_.n_step + 1; j++) {
-    // x0
+    // x0 (size is n_step + 1)
     Quaterniond rotated_x0_quat =
         relative_quat *
         Quaterniond(original_x0_FOM.col(j)(0), original_x0_FOM.col(j)(1),
@@ -944,7 +952,7 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
         << relative_rot_mat * original_x0_FOM.col(j).segment<3>(nq_);
     rotated_x0_FOM->col(j).segment<3>(nq_ + 3)
         << relative_rot_mat * original_x0_FOM.col(j).segment<3>(nq_ + 3);
-    // xf
+    // xf (size is n_step)
     if (j != param_.n_step) {
       Quaterniond rotated_xf_quat =
           relative_quat *

@@ -248,6 +248,17 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(controller_signal_receiver->get_output_port(0),
                   init_phase_calculator->get_input_port_fsm_and_lo_time());
 
+  // Create a block that compute target position for the planner
+  Eigen::Vector2d global_target_pos(gains.global_target_position_x,
+                                    gains.global_target_position_y);
+  double max_stride_length = 0.5;
+  auto planner_final_pos = builder.AddSystem<PlannerFinalPosition>(
+      plant_feedback, global_target_pos, max_stride_length, param.n_step);
+  builder.Connect(state_receiver->get_output_port(0),
+                  planner_final_pos->get_input_port_state());
+  builder.Connect(init_phase_calculator->get_output_port(0),
+                  planner_final_pos->get_input_port_init_phase());
+
   // Create a block that computes the initial state for the planner
   auto x_init_calculator = builder.AddSystem<InitialStateForPlanner>(
       plant_feedback, plant_control, param.final_position_x, param.n_step,
@@ -272,6 +283,8 @@ int DoMain(int argc, char* argv[]) {
                   rom_planner->get_input_port_state());
   builder.Connect(x_init_calculator->get_output_port_adjustment(),
                   rom_planner->get_input_port_quat_xyz_shift());
+  builder.Connect(planner_final_pos->get_output_port(0),
+                  rom_planner->get_input_port_planner_final_pos());
   builder.Connect(controller_signal_receiver->get_output_port(0),
                   rom_planner->get_input_port_fsm_and_lo_time());
   builder.Connect(rom_planner->get_output_port(0),

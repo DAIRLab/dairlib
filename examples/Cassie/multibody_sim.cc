@@ -182,6 +182,8 @@ int do_main(int argc, char* argv[]) {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
   }
+  double theta = -30.0/180.0 * M_PI;
+  q_init.head<4>() << cos(theta/2), 0, 0, sin(theta/2);
   plant.SetPositions(&plant_context, q_init);
   VectorXd v_init = VectorXd::Zero(plant.num_velocities());
   // TODO(yminchen): we should get a better initial state. Adding velocity to

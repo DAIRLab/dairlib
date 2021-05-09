@@ -142,6 +142,71 @@ void PhaseInFirstMode::CalcPhase(
 }
 
 ///
+/// PlannerFinalPosition
+///
+
+PlannerFinalPosition::PlannerFinalPosition(
+    const drake::multibody::MultibodyPlant<double>& plant_feedback,
+    const Eigen::VectorXd& global_target_pos, double max_stride_length,
+    int n_step)
+    : global_target_pos_(global_target_pos),
+      max_stride_length_(max_stride_length),
+      n_step_(n_step) {
+  // Input/Output Setup
+  state_port_ = this->DeclareVectorInputPort(
+                        OutputVector<double>(plant_feedback.num_positions(),
+                                             plant_feedback.num_velocities(),
+                                             plant_feedback.num_actuators()))
+                    .get_index();
+  phase_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+
+  this->DeclareVectorOutputPort(BasicVector<double>(2),
+                                &PlannerFinalPosition::CalcFinalPos);
+}
+
+void PlannerFinalPosition::CalcFinalPos(
+    const drake::systems::Context<double>& context,
+    drake::systems::BasicVector<double>* init_phase_output) const {
+  double init_phase =
+      this->EvalVectorInput(context, phase_port_)->get_value()(0);
+  // Read in current robot state
+  const VectorXd& current_pelvis_pos_xy =
+      static_cast<const OutputVector<double>*>(
+          this->EvalVectorInput(context, state_port_))
+          ->GetPositions()
+          .segment<2>(4);
+
+  VectorXd pos_diff = global_target_pos_ - current_pelvis_pos_xy;
+  double pos_diff_norm = pos_diff.norm();
+  double max_pos_diff_norm = max_stride_length_ * (n_step_ - init_phase);
+  if (pos_diff_norm > max_pos_diff_norm) {
+    pos_diff *= max_pos_diff_norm / pos_diff_norm;
+  }
+
+  // Rotate the position from global to local
+  const VectorXd& quat = static_cast<const OutputVector<double>*>(
+                             this->EvalVectorInput(context, state_port_))
+                             ->GetPositions()
+                             .head<4>();
+  Vector3d pelvis_x =
+      Quaterniond(quat(0), quat(1), quat(2), quat(3)).toRotationMatrix().col(0);
+  double yaw = atan2(pelvis_x(1), pelvis_x(0));
+  Eigen::Rotation2D<double> rot(-yaw);
+
+  // Assign init_phase
+  init_phase_output->get_mutable_value() << rot.toRotationMatrix() * pos_diff;
+
+  /*cout << "current_pelvis_pos_xy = " << current_pelvis_pos_xy << endl;
+  cout << "pelvis_x = " << pelvis_x.transpose() << endl;
+  cout << "yaw = " << yaw << endl;
+  cout << "pos_diff = " << pos_diff.transpose() << endl;
+  cout << "rot = \n" << rot.toRotationMatrix() << endl;
+  cout << "rot * pos_diff = " << (rot.toRotationMatrix() * pos_diff).transpose()
+       << endl;*/
+}
+
+///
 /// InitialStateForPlanner
 ///
 
@@ -341,7 +406,8 @@ EventStatus InitialStateForPlanner::AdjustState(
     DiscreteValues<double>* discrete_state) const {
   // Read in current robot state
   const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+      static_cast<const OutputVector<double>*>(
+          this->EvalVectorInput(context, state_port_));
   VectorXd x_original(map_position_from_spring_to_no_spring_.rows() +
                       map_velocity_from_spring_to_no_spring_.rows());
   x_original << map_position_from_spring_to_no_spring_ *

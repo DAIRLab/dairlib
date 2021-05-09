@@ -30,7 +30,7 @@ struct PlannerSetting {
 
   int n_step;
   int knots_per_mode;
-  double final_position_x;
+  double final_position_x;  // this is local
 
   bool zero_touchdown_impact;
   bool use_double_contact_points;
@@ -124,6 +124,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       const {
     return this->get_input_port(quat_xyz_shift_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_planner_final_pos()
+      const {
+    return this->get_input_port(planner_final_pos_port_);
+  }
 
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
@@ -150,6 +154,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int state_port_;
   int controller_signal_port_;
   int quat_xyz_shift_port_;
+  int planner_final_pos_port_;
 
   // Map position/velocity from model with spring to without spring
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;

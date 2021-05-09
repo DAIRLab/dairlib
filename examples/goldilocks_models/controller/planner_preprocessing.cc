@@ -505,22 +505,21 @@ EventStatus InitialStateForPlanner::AdjustState(
   // endl;
 
   // Shift pelvis in x, y direction
-  x_adjusted3(pos_map_wo_spr_.at("base_x")) =
-      init_phase * final_position_x_ / n_step_;
+  // WARNING: if you are going to shift it to non-zero position, you need to check if RotateBetweenGlobalAndLocalFrame() still works.
+  x_adjusted3(pos_map_wo_spr_.at("base_x")) = 0;
   x_adjusted3(pos_map_wo_spr_.at("base_y")) = 0;
-  // cout << "x(\"base_x\") = " << x_adjusted3(pos_map_wo_spr_.at("base_x")) <<
-  // endl; cout << "x(\"base_y\") = " <<
-  // x_adjusted3(pos_map_wo_spr_.at("base_y")) << endl;
+  // x_adjusted3(pos_map_wo_spr_.at("base_x")) =
+  //     init_phase * final_position_x_ / n_step_;
 
   // Shift pelvis in z direction
   if (prev_is_left_stance_ != is_left_stance) {
     prev_is_left_stance_ = is_left_stance;
-    // Get stance foot height
+    // Get stance foot height in the beginning of the fsm
     plant_control_.SetPositions(context_control_.get(), x_adjusted3.head(nq_));
     stance_foot_height_ = GetStanceFootHeight(
         is_left_stance ? toe_mid_left_ : toe_mid_right_, *context_control_);
   }
-  x_adjusted3(pos_map_wo_spr_.at("base_y")) -= stance_foot_height_;
+  x_adjusted3(pos_map_wo_spr_.at("base_z")) -= stance_foot_height_;
 
   // Also need to rotate floating base velocities (wrt global frame)
   x_adjusted3.segment<3>(nq_) =

@@ -928,6 +928,7 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
     bool rotate_from_global_to_local, const VectorXd& quat_xyz_shift,
     const MatrixXd& original_x0_FOM, const MatrixXd& original_xf_FOM,
     MatrixXd* rotated_x0_FOM, MatrixXd* rotated_xf_FOM) const {
+  // TODO: still need to check if this works when both pelvis's position and rotation are not close to 0.
   Quaterniond relative_quat =
       rotate_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
@@ -946,7 +947,7 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
     rotated_x0_FOM->col(j).segment<4>(0) << rotated_x0_quat.w(),
         rotated_x0_quat.vec();
     rotated_x0_FOM->col(j).segment<3>(4)
-        << original_x0_FOM.col(j).segment<3>(4) +
+        << relative_rot_mat * original_x0_FOM.col(j).segment<3>(4) +
                sign * quat_xyz_shift.segment<3>(4);
     rotated_x0_FOM->col(j).segment<3>(nq_)
         << relative_rot_mat * original_x0_FOM.col(j).segment<3>(nq_);
@@ -961,7 +962,7 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
       rotated_xf_FOM->col(j).segment<4>(0) << rotated_xf_quat.w(),
           rotated_xf_quat.vec();
       rotated_xf_FOM->col(j).segment<3>(4)
-          << original_xf_FOM.col(j).segment<3>(4) +
+          << relative_rot_mat * original_xf_FOM.col(j).segment<3>(4) +
                  sign * quat_xyz_shift.segment<3>(4);
       rotated_xf_FOM->col(j).segment<3>(nq_)
           << relative_rot_mat * original_xf_FOM.col(j).segment<3>(nq_);

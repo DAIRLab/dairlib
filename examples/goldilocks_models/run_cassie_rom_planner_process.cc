@@ -76,11 +76,14 @@ DEFINE_double(opt_tol, 1e-2, "");
 DEFINE_double(feas_tol, 1e-2, "");
 DEFINE_int32(max_iter, 10000, "Maximum iteration for the solver");
 
+// Time limit
+DEFINE_double(time_limit, 0, "time limit for the solver.");
+DEFINE_double(realtime_rate_for_time_limit, 1, "");
+
+// Solver options
 DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
 DEFINE_bool(switch_to_snopt_after_first_loop, true,
             "use snopt after the first loop");
-DEFINE_double(time_limit, 0, "time limit for the solver.");
-DEFINE_double(realtime_rate_for_time_limit, 1, "");
 
 // Logging
 DEFINE_bool(log_solver_info, true,

@@ -888,8 +888,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (log_data_and_check_solution_) {
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
-                      quat_xyz_shift, local_x0_FOM, local_xf_FOM, trajopt,
-                      result, param_.dir_data, prefix, prefix_next);
+                      quat_xyz_shift, final_position, local_x0_FOM,
+                      local_xf_FOM, trajopt, result, param_.dir_data, prefix,
+                      prefix_next);
     // Save trajectory to lcm
     SaveTrajIntoLcmBinary(trajopt, result, global_x0_FOM_, global_xf_FOM_,
                           param_.dir_data, prefix);
@@ -979,8 +980,9 @@ void CassiePlannerWithMixedRomFom::SaveTrajIntoLcmBinary(
     const MatrixXd& global_x0_FOM, const MatrixXd& global_xf_FOM,
     const string& dir_data, const string& prefix) const {
   string file_name = prefix + "rom_trajectory";
-  RomPlannerTrajectory saved_traj(trajopt, result, global_x0_FOM, global_xf_FOM,
-                                  file_name, "");
+  RomPlannerTrajectory saved_traj(
+      trajopt, result, global_x0_FOM, global_xf_FOM, file_name,
+      drake::solvers::to_string(result.get_solution_result()));
   saved_traj.WriteToFile(dir_data + file_name);
   std::cout << "Wrote to file: " << dir_data + file_name << std::endl;
 }

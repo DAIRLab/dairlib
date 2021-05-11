@@ -268,8 +268,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SaveDataIntoFiles(
       double current_time, const Eigen::VectorXd& x_init, double init_phase,
       bool is_right_stance, const Eigen::VectorXd& quat_xyz_shift,
-      const VectorXd& final_position, const Eigen::MatrixXd& local_x0_FOM,
-      const Eigen::MatrixXd& local_xf_FOM, const RomTrajOptCassie& trajopt,
+      const Eigen::VectorXd& final_position,
+      const Eigen::MatrixXd& local_x0_FOM, const Eigen::MatrixXd& local_xf_FOM,
+      const RomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& dir_data, const std::string& prefix,
       const std::string& prefix_next) const;
@@ -286,7 +287,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // subscriber after I clear the listening channel. (it's gone and then come
   // back) Note that another workaround is to clear the lcm message twice in
   // the LcmDrivenLoop class.
-  double min_time_difference_for_replanning_ = 0.01;
+  // double min_time_difference_for_replanning_ = 0.01;
   mutable double timestamp_of_previous_plan_ = -1;
   mutable dairlib::lcmt_timestamped_saved_traj previous_output_msg_;
 };

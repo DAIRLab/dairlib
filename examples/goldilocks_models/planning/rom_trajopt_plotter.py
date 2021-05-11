@@ -75,6 +75,8 @@ def main():
   nx_FOM = plant_FOM.num_positions() + plant_FOM.num_velocities()
   nu_FOM = plant_FOM.num_actuators()
 
+  # import pdb; pdb.set_trace()
+
   """
   States, inputs trajectories
   """

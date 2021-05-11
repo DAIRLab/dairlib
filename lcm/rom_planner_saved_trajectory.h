@@ -46,6 +46,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
   void LoadFromFile(const std::string& filepath, bool lightweight);
+  using LcmTrajectory::LoadFromFile; // get rid of the compiler warning
 
   int GetNumModes() const { return num_modes_; }
 

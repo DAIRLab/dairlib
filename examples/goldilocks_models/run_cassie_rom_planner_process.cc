@@ -322,6 +322,7 @@ int DoMain(int argc, char* argv[]) {
     double current_time;
     double global_fsm_idx;
     VectorXd quat_xyz_shift(7);
+    VectorXd final_position(2);
     if (FLAGS_solve_idx_for_read_from_file >= 0) {
       init_phase = readCSV(param.dir_data +
                            to_string(FLAGS_solve_idx_for_read_from_file) +
@@ -342,6 +343,10 @@ int DoMain(int argc, char* argv[]) {
                                to_string(FLAGS_solve_idx_for_read_from_file) +
                                "_quat_xyz_shift.csv")
                            .col(0);
+      final_position = readCSV(param.dir_data +
+                               to_string(FLAGS_solve_idx_for_read_from_file) +
+                               "final_position.csv")
+                           .col(0);
       global_fsm_idx = readCSV(param.dir_data +
                                to_string(FLAGS_solve_idx_for_read_from_file) +
                                "_prev_global_fsm_idx.csv")(0, 0);
@@ -350,6 +355,7 @@ int DoMain(int argc, char* argv[]) {
       is_right_stance = !FLAGS_start_with_left_stance;
       current_time = 0;
       quat_xyz_shift << 1, 0, 0, 0, 0, 0, 0;
+      final_position << 0, 0;
       global_fsm_idx = 0;
     }
 
@@ -450,6 +456,8 @@ int DoMain(int argc, char* argv[]) {
                                                  robot_output);
     rom_planner->get_input_port_quat_xyz_shift().FixValue(&planner_context,
                                                           quat_xyz_shift);
+    rom_planner->get_input_port_planner_final_pos().FixValue(&planner_context,
+                                                             final_position);
     rom_planner->get_input_port_fsm_and_lo_time().FixValue(
         &planner_context,
         drake::systems::BasicVector(

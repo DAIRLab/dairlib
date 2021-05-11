@@ -346,7 +346,7 @@ int DoMain(int argc, char* argv[]) {
                            .col(0);
       final_position = readCSV(param.dir_data +
                                to_string(FLAGS_solve_idx_for_read_from_file) +
-                               "final_position.csv")
+                               "_final_position.csv")
                            .col(0);
       global_fsm_idx = readCSV(param.dir_data +
                                to_string(FLAGS_solve_idx_for_read_from_file) +

@@ -486,12 +486,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "n_knots_first_mode = " << n_knots_first_mode << endl;
   cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
 
-  // Get the desired xy positions for the FOM states
-  vector<VectorXd> des_xy_pos =
-      vector<VectorXd>(param_.n_step + 1, VectorXd::Zero(2));
-  int n_segment_total =
-      std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
-      num_time_samples.size();
+  // Get adjusted_final_pos
   // 1. if final_position is a constant
   //  VectorXd final_position(2);
   //  final_position << param_.final_position_x, 0;
@@ -502,11 +497,18 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //      (param_.n_step * (param_.knots_per_mode - 1));
   // 2 final_position is transformed from global coordinates
   const VectorXd& adjusted_final_pos = final_position;
-  for (int i = 1; i < des_xy_pos.size(); i++) {
-    des_xy_pos[i] = des_xy_pos[i - 1] + adjusted_final_pos *
-                                            (num_time_samples.at(i - 1) - 1) /
-                                            n_segment_total;
+
+  // Get the desired xy positions for the FOM states
+  vector<VectorXd> des_xy_pos =
+      vector<VectorXd>(param_.n_step + 1, VectorXd::Zero(2));
+  double total_phase_length = param_.n_step - init_phase;
+  des_xy_pos[1] = des_xy_pos[0] +
+                  adjusted_final_pos * (1 - init_phase) / total_phase_length;
+  for (int i = 2; i < des_xy_pos.size(); i++) {
+    des_xy_pos[i] = des_xy_pos[i - 1] + adjusted_final_pos / total_phase_length;
   }
+  // DRAKE_DEMAND((des_xy_pos[param_.n_step] - adjusted_final_pos).norm() <
+  // 1e-14);
 
   // Maximum step length
   double first_mode_duration = stride_period_ * (1 - init_phase);
@@ -525,7 +527,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // imposed on the two contact points.
   // Ideally we should impose the travel distance constraint through the two
   // contact points, so that we don't need this artificial slack
-  double slack_to_avoid_overconstraint = 0.01;
+  double slack_to_avoid_overconstraint = 0.01;  // 0.01;
   max_swing_distance_[0] =
       std::max(slack_to_avoid_overconstraint,
                max_foot_speed_first_mode * remaining_time_til_touchdown);

@@ -97,10 +97,10 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
       (FLAGS_solve_idx_end >= 0) ? FLAGS_solve_idx_end : FLAGS_solve_idx;
 
   if (solve_idx_start < 0) {
+    cout << "Drawing debug_ files\n";
+  } else {
     cout << "Drawing solve_idx " << solve_idx_start << " to " << solve_idx_end
          << endl;
-  } else {
-    cout << "Drawing debug_ files\n";
   }
 
   // Read in poses
@@ -151,7 +151,7 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
 
     // Draw
     for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
-      cout << "solve_idx = " << i + solve_idx_start<< endl;
+      cout << "solve_idx = " << i + solve_idx_start << endl;
       visualizer.DrawPoses(poses.at(i));
       if (i == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 

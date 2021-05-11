@@ -151,7 +151,7 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
 
     // Draw
     for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
-      cout << "solve_idx = " << i << endl;
+      cout << "solve_idx = " << i + solve_idx_start<< endl;
       visualizer.DrawPoses(poses.at(i));
       if (i == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 

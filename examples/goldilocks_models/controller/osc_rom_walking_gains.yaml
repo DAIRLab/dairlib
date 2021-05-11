@@ -55,6 +55,7 @@ w_reg_xy: 0.1
 w_reg_z: 50  # 10
 w_reg_joints: 0.01
 w_reg_hip_yaw: 1  # should use 1? 5?
+w_reg_vel: 0.1
 w_predict_lipm_v: 0.01
 
 ### For both planner and controller

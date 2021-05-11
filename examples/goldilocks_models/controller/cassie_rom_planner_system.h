@@ -50,7 +50,6 @@ struct PlannerSetting {
 
   // gains includes cost weights
   OSCRomWalkingGains gains;
-  double walking_speed_x;
 
   // Files parameters
   std::string dir_model;  // location of the model files
@@ -269,8 +268,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SaveDataIntoFiles(
       double current_time, const Eigen::VectorXd& x_init, double init_phase,
       bool is_right_stance, const Eigen::VectorXd& quat_xyz_shift,
-      const Eigen::MatrixXd& local_x0_FOM, const Eigen::MatrixXd& local_xf_FOM,
-      const RomTrajOptCassie& trajopt,
+      const VectorXd& final_position, const Eigen::MatrixXd& local_x0_FOM,
+      const Eigen::MatrixXd& local_xf_FOM, const RomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& dir_data, const std::string& prefix,
       const std::string& prefix_next) const;

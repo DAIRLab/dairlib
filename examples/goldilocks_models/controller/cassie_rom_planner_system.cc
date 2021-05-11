@@ -159,8 +159,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       VectorXd x_standing_fixed_spring(37);
       x_standing_fixed_spring << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
           0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
-          1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, param.walking_speed_x,
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+          1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0;
       x_guess_left_in_front_pre_ = x_standing_fixed_spring;
       x_guess_right_in_front_pre_ = x_standing_fixed_spring;
       x_guess_left_in_front_post_ = x_standing_fixed_spring;
@@ -575,8 +575,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Constraint and cost for the last foot step location
-  trajopt.AddConstraintAndCostForLastFootStep(
-      param_.gains.w_predict_lipm_v, param_.walking_speed_x, 0, stride_period_);
+  VectorXd des_xy_vel = des_xy_pos.at(1) / first_mode_duration;
+  trajopt.AddConstraintAndCostForLastFootStep(param_.gains.w_predict_lipm_v,
+                                              des_xy_vel, stride_period_);
 
   // Final goal position constraint
   /*PrintStatus("Adding constraint -- FoM final position");
@@ -588,11 +589,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   bool add_x_pose_in_cost = true;
   if (add_x_pose_in_cost) {
     trajopt.AddRegularizationCost(
-        des_xy_pos, x_guess_left_in_front_pre_, x_guess_right_in_front_pre_,
-        x_guess_left_in_front_post_, x_guess_right_in_front_post_,
-        param_.gains.w_reg_quat, param_.gains.w_reg_xy, param_.gains.w_reg_z,
-        param_.gains.w_reg_joints, param_.gains.w_reg_hip_yaw,
-        false /*straight_leg_cost*/);
+        des_xy_pos, des_xy_vel, x_guess_left_in_front_pre_,
+        x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
+        x_guess_right_in_front_post_, param_.gains.w_reg_quat,
+        param_.gains.w_reg_xy, param_.gains.w_reg_z, param_.gains.w_reg_joints,
+        param_.gains.w_reg_hip_yaw, param_.gains.w_reg_vel);
   } else {
     // Since there are multiple q that could be mapped to the same r, I
     // penalize on q so it get close to a certain configuration
@@ -928,7 +929,8 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
     bool rotate_from_global_to_local, const VectorXd& quat_xyz_shift,
     const MatrixXd& original_x0_FOM, const MatrixXd& original_xf_FOM,
     MatrixXd* rotated_x0_FOM, MatrixXd* rotated_xf_FOM) const {
-  // TODO: still need to check if this works when both pelvis's position and rotation are not close to 0.
+  // TODO: still need to check if this works when both pelvis's position and
+  //  rotation are not close to 0.
   Quaterniond relative_quat =
       rotate_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
@@ -986,10 +988,10 @@ void CassiePlannerWithMixedRomFom::SaveTrajIntoLcmBinary(
 void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
     double current_time, const VectorXd& x_init, double init_phase,
     bool is_right_stance, const VectorXd& quat_xyz_shift,
-    const MatrixXd& local_x0_FOM, const MatrixXd& local_xf_FOM,
-    const RomTrajOptCassie& trajopt, const MathematicalProgramResult& result,
-    const string& dir_data, const string& prefix,
-    const string& prefix_next) const {
+    const VectorXd& final_position, const MatrixXd& local_x0_FOM,
+    const MatrixXd& local_xf_FOM, const RomTrajOptCassie& trajopt,
+    const MathematicalProgramResult& result, const string& dir_data,
+    const string& prefix, const string& prefix_next) const {
   /// Save the solution vector
   VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
   writeCSV(dir_data + string(prefix + "z.csv"), z_sol);
@@ -1021,6 +1023,8 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
            is_right_stance * VectorXd::Ones(1), true);
   writeCSV(param_.dir_data + prefix + string("quat_xyz_shift.csv"),
            quat_xyz_shift * VectorXd::Ones(1), true);
+  writeCSV(param_.dir_data + prefix + string("final_position.csv"),
+           final_position, true);
   writeCSV(param_.dir_data + prefix + string("init_file.csv"),
            trajopt.initial_guess(), true);
   writeCSV(param_.dir_data + prefix + string("current_time.csv"),

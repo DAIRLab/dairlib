@@ -20,6 +20,7 @@ struct OSCRomWalkingGains {
   double w_reg_z;
   double w_reg_joints;
   double w_reg_hip_yaw;
+  double w_reg_vel;
   double w_predict_lipm_v;
   double left_support_duration;
   double right_support_duration;
@@ -140,6 +141,7 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(w_reg_z));
     a->Visit(DRAKE_NVP(w_reg_joints));
     a->Visit(DRAKE_NVP(w_reg_hip_yaw));
+    a->Visit(DRAKE_NVP(w_reg_vel));
     a->Visit(DRAKE_NVP(w_predict_lipm_v));
     a->Visit(DRAKE_NVP(left_support_duration));
     a->Visit(DRAKE_NVP(right_support_duration));

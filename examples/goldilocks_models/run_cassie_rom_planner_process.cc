@@ -183,9 +183,6 @@ int DoMain(int argc, char* argv[]) {
   param.init_file = FLAGS_init_file;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
-  double stride_period =
-      gains.left_support_duration + gains.double_support_duration;
-  param.walking_speed_x = gains.stride_length / stride_period;
 
   // Store data
   writeCSV(param.dir_data + string("n_step.csv"),
@@ -244,6 +241,8 @@ int DoMain(int argc, char* argv[]) {
                   stance_foot_getter->get_input_port_fsm_and_lo_time());
 
   // Create a block that compute the phase of the first mode
+  double stride_period =
+      gains.left_support_duration + gains.double_support_duration;
   auto init_phase_calculator =
       builder.AddSystem<PhaseInFirstMode>(plant_feedback, stride_period);
   builder.Connect(state_receiver->get_output_port(0),

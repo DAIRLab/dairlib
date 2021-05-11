@@ -52,8 +52,7 @@ class RomTrajOpt
   ~RomTrajOpt() override {}
 
   void AddConstraintAndCostForLastFootStep(double w_predict_lipm_v,
-                                           double desired_local_vel_x,
-                                           double desired_local_vel_y,
+                                           const Eigen::VectorXd& des_xy_vel,
                                            double stride_period);
 
   void AddTimeStepConstraint(std::vector<double> minimum_timestep,
@@ -204,13 +203,14 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const std::set<int>& relax_index, bool print_status = true);
 
   void AddRegularizationCost(const std::vector<Eigen::VectorXd>& des_xy_pos,
+                             const Eigen::VectorXd& des_xy_vel,
                              const Eigen::VectorXd& x_guess_left_in_front_pre,
                              const Eigen::VectorXd& x_guess_right_in_front_pre,
                              const Eigen::VectorXd& x_guess_left_in_front_post,
                              const Eigen::VectorXd& x_guess_right_in_front_post,
                              double w_reg_quat, double w_reg_xy, double w_reg_z,
                              double w_reg_joints, double w_reg_hip_yaw,
-                             bool straight_leg_cost);
+                             double w_reg_vel);
 
   void SetHeuristicInitialGuess(
       const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
@@ -229,6 +229,8 @@ class RomTrajOptCassie : public RomTrajOpt {
                                 const Eigen::MatrixXd& dr_guess,
                                 const Eigen::MatrixXd& tau_guess,
                                 int fisrt_mode_phase_index, double w_reg);
+
+  drake::VectorX<double> quat_identity_;
 };
 
 class RomTrajOptFiveLinkRobot : public RomTrajOpt {

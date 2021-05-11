@@ -17,8 +17,8 @@ group "1.simulated-robot" {
 }
 
 group "2.controllers" {
-    cmd "koopman_mpc" {
-        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process --h_des=1.09  --v_des=0.1 --dt=0.05 --stance_time=0.25 --swing_ft_height=0.01";
+    cmd "koopman_mpc_affine" {
+        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process --h_des=1.075  --v_des=0.5 --dt=0.05 --stance_time=0.25 --swing_ft_height=0.01";
         host = "localhost";
     }
     cmd "osc_walking_controller" {
@@ -27,6 +27,14 @@ group "2.controllers" {
     }
     cmd "lipm_walking_controller" {
         exec = "bazel-bin/examples/KoopmanMPC/run_osc_walking_lipm --k_fb=0.35 --v_des=0 --kin_reach=0.4 --z_com=1.0";
+        host = "localhost";
+    }
+    cmd "koopman_mpc_linearization" {
+        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process --h_des=1.075  --v_des=0.5 --dt=0.05 --stance_time=0.25 --swing_ft_height=0.01 --model_folder=examples/KoopmanMPC/koopman_models/planar_lin/ --gains_filename=examples/KoopmanMPC/koopman_mpc_gains_linearization.yaml";
+        host = "localhost";
+    }
+    cmd "koopman_mpc_xprod" {
+        exec = "bazel-bin/examples/KoopmanMPC/run_koopman_mpc_process --h_des=1.075  --v_des=0.5 --dt=0.05 --stance_time=0.25 --swing_ft_height=0.01 --model_folder=examples/KoopmanMPC/koopman_models/planar_xprod/ --xprod=true";
         host = "localhost";
     }
 }
@@ -48,9 +56,31 @@ script "lipm" {
     start cmd "five_link_biped_sim";
 }
 
-script "walking" {
+script "walking_affine" {
     stop cmd "five_link_biped_sim" wait "stopped";
-    restart cmd "koopman_mpc" wait "running";
+    stop cmd "koopman_mpc_linearization" wait "stopped";
+    stop cmd "koopman_mpc_xprod" wait "stopped";
+    restart cmd "koopman_mpc_affine" wait "running";
+    restart cmd "osc_walking_controller" wait "running";
+    wait ms 500;
+    start cmd "five_link_biped_sim";
+}
+
+script "walking_linear" {
+    stop cmd "five_link_biped_sim" wait "stopped";
+    stop cmd "koopman_mpc_affine" wait "stopped";
+    stop cmd "koopman_mpc_xprod" wait "stopped";
+    restart cmd "koopman_mpc_linearization" wait "running";
+    restart cmd "osc_walking_controller" wait "running";
+    wait ms 500;
+    start cmd "five_link_biped_sim";
+}
+
+script "walking_xprod" {
+    stop cmd "five_link_biped_sim" wait "stopped";
+    stop cmd "koopman_mpc_affine" wait "stopped";
+    stop cmd "koopman_mpc_linearization" wait "stopped";
+    restart cmd "koopman_mpc_xprod" wait "running";
     restart cmd "osc_walking_controller" wait "running";
     wait ms 500;
     start cmd "five_link_biped_sim";

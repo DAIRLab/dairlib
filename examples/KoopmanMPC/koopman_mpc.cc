@@ -725,7 +725,7 @@ lcmt_saved_traj KoopmanMPC::MakeLcmTrajFromSol(const drake::solvers::Mathematica
       x.block(0, col, nx_, 1) =
           result.GetSolution(mode.zz.at(j).head(nx_));
       lambda.block(0, col, kLinearDim_, 1) =
-          result.GetSolution(mode.zz.at(j).tail(kLinearDim_));
+          result.GetSolution(mode.zz.at(j).head(nxi_).tail(kLinearDim_));
       lambda.block(kLinearDim_, col, kLinearDim_, 1) =
           result.GetSolution(mode.uu.at(j).tail(kLinearDim_));
       x_time_knots(col) = time + dt_ * col;

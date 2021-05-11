@@ -269,17 +269,19 @@ RomTrajOpt::RomTrajOpt(
       PrintStatus(
           "Adding constraint -- RoM-FoM mapping (start of mode; relaxed)");
       int n_eps = relax_index.size();
-      auto eps_rom = NewContinuousVariables(n_eps, "eps_rom");
-      init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
-          MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps), eps_rom));
+      eps_rom_var_ = NewContinuousVariables(n_eps, "eps_rom");
+      init_rom_relax_cost_bindings_.push_back(
+          AddQuadraticCost(MatrixXd::Identity(n_eps, n_eps),
+                           VectorXd::Zero(n_eps), eps_rom_var_));
       /* // "linear cost + lower bound" version
       if (relax_index.size() == 1 && *(relax_index.begin()) == 5) {
-        init_rom_relax_cost_bindings_.push_back(AddLinearCost(eps_rom(0)));
+        init_rom_relax_cost_bindings_.push_back(AddLinearCost(eps_rom_var_(0)));
         AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
-                                 eps_rom);
+                                 eps_rom_var_);
       } else {
         init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
-            MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps), eps_rom));
+            MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps),
+            eps_rom_var_));
       }*/
       auto kin_constraint_start =
           std::make_shared<planning::KinematicsConstraint>(
@@ -288,7 +290,7 @@ RomTrajOpt::RomTrajOpt(
       kin_constraint_start->SetConstraintScaling(
           rom_fom_mapping_constraint_scaling_);
       VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
-      AddConstraint(kin_constraint_start, {z_0, x0, eps_rom});
+      AddConstraint(kin_constraint_start, {z_0, x0, eps_rom_var_});
     } else {
       PrintStatus("Adding constraint -- RoM-FoM mapping (start of mode)");
       auto kin_constraint_start =
@@ -557,8 +559,7 @@ RomTrajOpt::RomTrajOpt(
 void RomTrajOpt::AddConstraintAndCostForLastFootStep(
     double w_predict_lipm_v, const Eigen::VectorXd& des_xy_vel,
     double stride_period) {
-  VectorXDecisionVariable predicted_com_vel =
-      NewContinuousVariables(2, "predicted_com_vel");
+  predicted_com_vel_var_ = NewContinuousVariables(2, "predicted_com_vel");
   // stance foot for after the planner's horizon
   const auto& stance_ft_origin =
       (((num_modes_ % 2 == 0) && start_with_left_stance_) ||
@@ -572,13 +573,13 @@ void RomTrajOpt::AddConstraintAndCostForLastFootStep(
       std::make_shared<planning::OneStepAheadVelConstraint>(
           plant_, stance_ft_origin, stride_period);
   AddConstraint(fom_sw_ft_pos_var_constraint,
-                {x0_vars_by_mode(num_modes_), predicted_com_vel});
+                {x0_vars_by_mode(num_modes_), predicted_com_vel_var_});
 
   // Cost for tracking velocity
   PrintStatus("Adding cost -- predicted com vel one step after horizon");
   predict_lipm_v_bindings_.push_back(
       AddQuadraticErrorCost(w_predict_lipm_v * MatrixXd::Identity(2, 2),
-                            des_xy_vel, predicted_com_vel));
+                            des_xy_vel, predicted_com_vel_var_));
 }
 
 void addConstraintScaling(std::unordered_map<int, double>* map,

@@ -845,6 +845,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                                    local_xf_FOM, &global_x0_FOM_,
                                    &global_xf_FOM_);
 
+  // TODO: maybe I should not assign the new desired traj to controller thread
+  //  when the solver didn't find optimal solution (unless it's going to run out
+  //  of traj to use)? We should just use the old previous_output_msg_
+
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
   lightweight_saved_traj_ =
@@ -869,6 +873,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   for (int i = 0; i < param_.n_step; i++) {
     local_Lambda_FOM_.col(i) = result.GetSolution(trajopt.impulse_vars(i));
   }
+
+  eps_rom_ = result.GetSolution(trajopt.eps_rom_var_);
+  local_predicted_com_vel_ = result.GetSolution(trajopt.predicted_com_vel_var_);
 
   prev_global_fsm_idx_ = global_fsm_idx;
   prev_first_mode_knot_idx_ = first_mode_knot_idx;
@@ -1223,6 +1230,7 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     // Rotate the previous global x floating base state according to the current
     // global-to-local-shift
     // TODO: also need to do the same thing to local_Lambda_FOM_
+    // TODO: also need to do the same thing to predicted_com_vel_
     MatrixXd local_x0_FOM = global_x0_FOM_;
     MatrixXd local_xf_FOM = global_xf_FOM_;
     RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
@@ -1280,6 +1288,15 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
       trajopt->SetInitialGuess(trajopt->impulse_vars(local_fsm_idx),
                                local_Lambda_FOM_.col(prev_local_fsm_idx));
     }
+
+    // The robot fell when initializing eps_rom_ and local_predicted_com_vel_.
+    // This makes sense, because eps_rom_ should be close to 0, and smaller
+    // local_predicted_com_vel_ is more stable (walking slower).
+    // 9. slack variable for initial fom-rom mapping
+    //    trajopt->SetInitialGuess(trajopt->eps_rom_var_, eps_rom_);
+    // 10. predicted com vel at the end of the immediate future mode
+    //    trajopt->SetInitialGuess(trajopt->predicted_com_vel_var_,
+    //                             local_predicted_com_vel_);
   }
 }
 

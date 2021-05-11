@@ -216,6 +216,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable Eigen::MatrixXd global_x0_FOM_;
   mutable Eigen::MatrixXd global_xf_FOM_;
   mutable Eigen::VectorXd touchdown_foot_pos_;
+  mutable Eigen::VectorXd eps_rom_;
+  mutable Eigen::VectorXd local_predicted_com_vel_;
+  mutable Eigen::VectorXd global_predicted_com_vel_;
 
   // Init state relaxation (relax the mapping function)
   std::set<int> relax_index_ = {5};  //{3, 4, 5};

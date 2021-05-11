@@ -152,6 +152,16 @@ class RomTrajOpt
   std::vector<Binding<Cost>> lambda_cost_bindings_;
   std::vector<Binding<Cost>> predict_lipm_v_bindings_;
 
+  // Decision variables
+  const drake::solvers::VectorXDecisionVariable z_post_impact_vars_;
+  const drake::solvers::VectorXDecisionVariable x0_var_;
+  const drake::solvers::VectorXDecisionVariable xf_vars_;
+  const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
+  const drake::solvers::VectorXDecisionVariable impulse_vars_;
+  drake::solvers::VectorXDecisionVariable touchdown_foot_pos_vars_;
+  drake::solvers::VectorXDecisionVariable eps_rom_var_;
+  drake::solvers::VectorXDecisionVariable predicted_com_vel_var_;
+
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
@@ -161,12 +171,6 @@ class RomTrajOpt
   const int num_modes_;
   const std::vector<int> mode_lengths_;
   std::vector<int> mode_start_;
-  const drake::solvers::VectorXDecisionVariable z_post_impact_vars_;
-  const drake::solvers::VectorXDecisionVariable x0_var_;
-  const drake::solvers::VectorXDecisionVariable xf_vars_;
-  const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
-  const drake::solvers::VectorXDecisionVariable impulse_vars_;
-  drake::solvers::VectorXDecisionVariable touchdown_foot_pos_vars_;
   const int n_y_;
   const int n_z_;
   const int n_q_;

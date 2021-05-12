@@ -510,7 +510,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // DRAKE_DEMAND((des_xy_pos[param_.n_step] - adjusted_final_pos).norm() <
   // 1e-14);
 
-  // Maximum step length
+  // Maximum swing foot travel distance
   double first_mode_duration = stride_period_ * (1 - init_phase);
   double remaining_time_til_touchdown = first_mode_duration;
   // Update date the step length of the first mode
@@ -545,7 +545,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                            state_mirror_, left_contacts_, right_contacts_,
                            left_origin_, right_origin_, joint_name_lb_ub_,
                            x_init, max_swing_distance_, start_with_left_stance,
-                           param_.zero_touchdown_impact, relax_index_,
+                           param_.zero_touchdown_impact, relax_index_, param_,
                            singel_eval_mode_ /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
@@ -822,8 +822,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Testing -- store the initial guess to the result (to visualize init guess)
   if (singel_eval_mode_) {
-    /*cout << "***\n*** WARNING: set the solution to be initial guess\n***\n";
-    result.set_x_val(trajopt.initial_guess());*/
+    cout << "***\n*** WARNING: set the solution to be initial guess\n***\n";
+    result.set_x_val(trajopt.initial_guess());
   }
 
   // TODO(yminchen): Note that you will to rotate the coordinates back if the

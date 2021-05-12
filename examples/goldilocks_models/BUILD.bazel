@@ -70,6 +70,7 @@ cc_library(
         ":reduced_order_models",
         "//common:file_utils",
         "//examples/Cassie:cassie_utils",
+        "//examples/goldilocks_models/controller:osc_rom_walking_gains",
         "@drake//:drake_shared_library",
     ],
 )

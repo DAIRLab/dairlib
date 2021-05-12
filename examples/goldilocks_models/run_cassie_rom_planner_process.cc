@@ -253,9 +253,8 @@ int DoMain(int argc, char* argv[]) {
   // Create a block that compute target position for the planner
   Eigen::Vector2d global_target_pos(gains.global_target_position_x,
                                     gains.global_target_position_y);
-  double max_desired_stride_length = 0.4;
   auto planner_final_pos = builder.AddSystem<PlannerFinalPosition>(
-      plant_feedback, global_target_pos, max_desired_stride_length,
+      plant_feedback, global_target_pos, gains.max_desired_step_length,
       param.n_step);
   builder.Connect(state_receiver->get_output_port(0),
                   planner_final_pos->get_input_port_state());

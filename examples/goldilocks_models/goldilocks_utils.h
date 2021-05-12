@@ -8,6 +8,7 @@
 #include "common/file_utils.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
@@ -156,6 +157,45 @@ BodyPoint FiveLinkRobotRightContact(
 
 // Draw a diagram and save to a file
 void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram);
+
+// Parameters for planner
+struct PlannerSetting {
+  int rom_option;
+  int iter;
+  int sample;  // solution to use for initial guess and cost regularization
+
+  int n_step;
+  int knots_per_mode;
+  double final_position_x;  // this is local
+
+  bool zero_touchdown_impact;
+  bool use_double_contact_points;
+
+  bool equalize_timestep_size;
+  bool fix_duration;
+
+  double feas_tol;
+  double opt_tol;
+  int max_iter;
+
+  bool use_ipopt;
+  bool switch_to_snopt_after_first_loop;
+  bool log_solver_info;
+  double time_limit;
+  double realtime_rate_for_time_limit;
+
+  // gains includes cost weights
+  OSCRomWalkingGains gains;
+
+  // Files parameters
+  std::string dir_model;  // location of the model files
+  std::string dir_data;   // location to store the opt result
+  std::string init_file;
+
+  // Testing
+  int solve_idx_for_read_from_file;
+  void PrintAll() const;
+};
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

@@ -48,7 +48,8 @@ class RomTrajOpt
              Eigen::VectorXd x_init,
              const std::vector<double>& max_swing_distance,
              bool start_with_left_stance, bool zero_touchdown_impact,
-             const std::set<int>& relax_index, bool print_status = true);
+             const std::set<int>& relax_index, const PlannerSetting& param,
+             bool print_status = true);
   ~RomTrajOpt() override {}
 
   void AddConstraintAndCostForLastFootStep(double w_predict_lipm_v,
@@ -204,7 +205,8 @@ class RomTrajOptCassie : public RomTrajOpt {
                    Eigen::VectorXd x_init,
                    const std::vector<double>& max_swing_distance,
                    bool start_with_left_stance, bool zero_touchdown_impact,
-                   const std::set<int>& relax_index, bool print_status = true);
+                   const std::set<int>& relax_index,
+                   const PlannerSetting& param, bool print_status = true);
 
   void AddRegularizationCost(const std::vector<Eigen::VectorXd>& des_xy_pos,
                              const Eigen::VectorXd& des_xy_vel,

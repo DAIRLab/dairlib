@@ -136,7 +136,7 @@ class FomStepLengthConstraint : public solvers::NonlinearConstraint<double> {
 };
 
 // The constraint that gives the COM velocity at the end of mode AFTER the
-// planner's horizon, based on LIPM dynamics (an approxiation).
+// planner's horizon, based on LIPM dynamics (an approximation).
 // Constraints are
 class OneStepAheadVelConstraint : public solvers::NonlinearConstraint<double> {
  public:
@@ -165,7 +165,7 @@ class OneStepAheadVelConstraint : public solvers::NonlinearConstraint<double> {
   int n_x_;
 };
 
-/// V2 for swing foot constraint
+/// V2 for swing foot constraint ///////////////////////////////////////////////
 /// V2 takes swing foot position as decision variable
 
 // Swing foot position distance constraint for collision avoidance

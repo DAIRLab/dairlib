@@ -730,7 +730,7 @@ int DoMain(int argc, char* argv[]) {
       ordered_vel_names.push_back(name + "dot");
     }
 
-    int n_y = ordered_pos_names.size();
+    // int n_y = ordered_pos_names.size();
 
     VectorXd Kp_stance(5);
     Kp_stance << gains.kp_hip_roll_stance, gains.kp_hip_yaw_stance,

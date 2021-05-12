@@ -43,7 +43,11 @@ stride_length: 0  #It seems to solve faster when using 0.1m instead of 0.2m
 
 
 ### For planner only
-max_foot_speed: 2
+max_foot_speed: 2  # used to restrict swing foot travel distance
+# max_step_length restricts the distance between stance and swing foot.
+# It cannot be too big. Otherwise, the ROM is not a good approximation to FOM
+max_step_length: 0.6  # 0.7
+max_desired_step_length: 0.4
 #n_step : 2 #TODO : add this later for convenience
 
 #Planner cost weight

@@ -58,7 +58,8 @@ RomTrajOpt::RomTrajOpt(
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
     VectorXd x_init, const std::vector<double>& max_swing_distance,
     bool start_with_left_stance, bool zero_touchdown_impact,
-    const std::set<int>& relax_index, bool print_status)
+    const std::set<int>& relax_index, const PlannerSetting& param,
+    bool print_status)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -97,6 +98,7 @@ RomTrajOpt::RomTrajOpt(
 
   /// Some paramters
   double impulse_limit = 50;
+  double mu = 1;
   const double back_limit = -0.5;
   const double front_limit = 0.5;
   const double right_limit = 0.03;
@@ -127,7 +129,6 @@ RomTrajOpt::RomTrajOpt(
   //     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
   //     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
   //     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
-  double mu = 1;
   MatrixXd A = MatrixXd::Zero(4, 3);
   A.block(0, 2, 4, 1) = mu * VectorXd::Ones(4, 1);
   A(0, 0) = -1;
@@ -537,11 +538,10 @@ RomTrajOpt::RomTrajOpt(
 
       // Stride length constraint
       PrintStatus("Adding constraint -- FOM step length distance");
-      double max_step_length = 0.7;
       auto fom_step_length_constraint =
           std::make_shared<planning::FomStepLengthConstraint>(
               plant_, stance_origin, swing_origin, stance_foot_init_pos,
-              max_step_length, i == 0,
+              param.gains.max_step_length, i == 0,
               "fom_step_length_constraint" + to_string(i));
       if (i == 0) {
         AddConstraint(fom_step_length_constraint, xf.head(n_q_));
@@ -911,12 +911,13 @@ RomTrajOptCassie::RomTrajOptCassie(
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
     Eigen::VectorXd x_init, const std::vector<double>& max_swing_distance,
     bool start_with_left_stance, bool zero_touchdown_impact,
-    const std::set<int>& relax_index, bool print_status)
+    const std::set<int>& relax_index, const PlannerSetting& param,
+    bool print_status)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, left_origin, right_origin,
                  fom_joint_name_lb_ub, x_init, max_swing_distance,
                  start_with_left_stance, zero_touchdown_impact, relax_index,
-                 print_status) {
+                 param, print_status) {
   quat_identity_ = VectorX<double>(4);
   quat_identity_ << 1, 0, 0, 0;
 }
@@ -951,8 +952,8 @@ void RomTrajOptCassie::AddRegularizationCost(
 
     const VectorXd& x_guess_pre =
         left_stance ? x_guess_right_in_front_pre : x_guess_left_in_front_pre;
-    const VectorXd& x_guess_post =
-        left_stance ? x_guess_right_in_front_post : x_guess_left_in_front_post;
+    /*const VectorXd& x_guess_post =
+        left_stance ? x_guess_right_in_front_post :x_guess_left_in_front_post;*/
 
     // 1. Position
     fom_reg_quat_cost_bindings_.push_back(
@@ -1101,9 +1102,11 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, left_contacts.at(0),
                  right_contacts.at(0), fom_joint_name_lb_ub, x_init, {},
-                 start_with_left_stance, zero_touchdown_impact, {}) {
+                 start_with_left_stance, zero_touchdown_impact, {},
+                 PlannerSetting()) {
   DRAKE_UNREACHABLE();  // I added a few things to RomTrajOpt which are not
                         // generalized to the five-link robot.
+                        // E.g. PlannerSetting and others.
 }
 
 void RomTrajOptFiveLinkRobot::AddRegularizationCost(
@@ -1123,7 +1126,7 @@ void RomTrajOptFiveLinkRobot::AddRegularizationCost(
     // Id_7(1,1) = 10;
     MatrixXd Id_1 = 100 * MatrixXd::Identity(1, 1);
 
-    double torso_lean_forward_angle = 0.1;
+    // double torso_lean_forward_angle = 0.1;
     VectorXd modified_x_guess_left_in_front = x_guess_left_in_front;
     // modified_x_guess_left_in_front(2) = torso_lean_forward_angle;
     VectorXd modified_x_guess_right_in_front = x_guess_right_in_front;

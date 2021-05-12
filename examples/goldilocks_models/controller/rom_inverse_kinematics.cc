@@ -120,7 +120,7 @@ void RomInverseKinematics::CalcIK(
   counter_ += 1;
 
   // Get timestamp from context time (time from main thread's lcm)
-  double current_time = context.get_time();
+  // double current_time = context.get_time();
 
   ///
   /// Read input port

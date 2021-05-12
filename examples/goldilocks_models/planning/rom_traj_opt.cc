@@ -445,6 +445,7 @@ RomTrajOpt::RomTrajOpt(
     const auto& stance_origin = left_stance ? left_origin : right_origin;
     if (use_foot_variable) {
       // TODO: need to add stride length constraint for use_foot_variable = true
+      // TODO: need to modify FomSwingFootDistanceConstraint. It has to be 2D
       auto touchdown_foot_var = touchdown_foot_pos_vars(i);
 
       // Foot variable equation constraint
@@ -521,8 +522,10 @@ RomTrajOpt::RomTrajOpt(
               ub_swing, "fom_swing_ft_pos_" + to_string(i));
       AddConstraint(fom_sw_ft_pos_constraint, xf.head(n_q_));
 
-      // Foot travel distance constraint (full-order model swing foot
-      // constraint)
+      // Foot travel distance constraint (swing foot pos from start of mode to
+      // end of mode)
+      // Be mindful about first mode. It can overconstrain the problem if not
+      // handled well.
       PrintStatus("Adding constraint -- FOM swing foot travel distance");
       auto fom_sw_ft_dist_constraint =
           std::make_shared<planning::FomSwingFootDistanceConstraint>(
@@ -536,7 +539,7 @@ RomTrajOpt::RomTrajOpt(
                       {x0.head(n_q_), xf.head(n_q_)});
       }
 
-      // Stride length constraint
+      // Stride length constraint (from stance foot to swing foot)
       PrintStatus("Adding constraint -- FOM step length distance");
       auto fom_step_length_constraint =
           std::make_shared<planning::FomStepLengthConstraint>(

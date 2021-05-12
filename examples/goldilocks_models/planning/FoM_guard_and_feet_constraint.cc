@@ -153,7 +153,7 @@ void FomSwingFootDistanceConstraint::EvaluateConstraint(
   }
 
   *y = VectorX<double>(1);
-  y->head<1>() << (pt_f - pt_0).norm();
+  y->head<1>() << (pt_f - pt_0).head<2>().norm();
 }
 
 /// Step length constraint

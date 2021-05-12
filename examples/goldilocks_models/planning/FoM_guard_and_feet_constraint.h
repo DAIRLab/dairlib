@@ -70,7 +70,10 @@ class FomSwingFootPosConstraint : public solvers::NonlinearConstraint<double> {
 };
 
 // Swing foot travel distance constraint
-// Constraints are
+// Constraints are ...
+// The constraint should be imposed on 2D translation instead of 3D, because the
+// real robot might not step on the ground in time (which makes the constraint
+// infeasible).
 class FomSwingFootDistanceConstraint
     : public solvers::NonlinearConstraint<double> {
  public:

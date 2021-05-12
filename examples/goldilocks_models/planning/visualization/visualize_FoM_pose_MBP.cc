@@ -195,7 +195,7 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
         // cout << "next timestamp = " << timestamp[i] << endl;
       }
 
-      // We wait until the playback time is in front of the next frame
+      // We wait until the playback time is ahead of the frame to be drawn
       while (timestamp[i] > t_playback) {
         t_playback = scale * (clk::now() - start).count();
         // cout << "t_playback = " << t_playback << endl;

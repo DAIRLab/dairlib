@@ -126,6 +126,7 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
     xf_each_mode_list.push_back(readCSV(xf_path));
   }  // for loop solve_idx
   DRAKE_DEMAND(x0_each_mode_list.size() == xf_each_mode_list.size());
+  int idx_length = x0_each_mode_list.size();
 
   // Option 1 -- multiple pose at once
   if (FLAGS_view_multipose_at_once) {
@@ -133,11 +134,11 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
     MatrixXd x0_each_mode = x0_each_mode_list.at(0);
     MatrixXd xf_each_mode = xf_each_mode_list.at(0);
     std::vector<MatrixXd> poses(
-        x0_each_mode_list.size(),
+        idx_length,
         FLAGS_only_start_and_end_poses
             ? MatrixXd::Zero(x0_each_mode.rows(), 2)
             : MatrixXd::Zero(x0_each_mode.rows(), x0_each_mode.cols() + 1));
-    for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
+    for (int i = 0; i < idx_length; i++) {
       if (FLAGS_only_start_and_end_poses) {
         poses[i] << x0_each_mode_list.at(i).leftCols<1>(),
             xf_each_mode_list.at(i).rightCols<1>();
@@ -148,8 +149,8 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
     }
 
     // Read in timestamps for playback speed.
-    vector<double> timestamp(x0_each_mode_list.size(), 0);
-    for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
+    vector<double> timestamp(idx_length, 0);
+    for (int i = 0; i < idx_length; i++) {
       string path =
           directory + to_string(i + solve_idx_start) + "_current_time.csv";
       timestamp[i] = readCSV(path)(0, 0);
@@ -177,18 +178,20 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
     // Draw
     auto start = std::chrono::high_resolution_clock::now();
     double scale = FLAGS_realtime_rate / 1e9;
-    for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
+    for (int i = 0; i < idx_length; i++) {
       double t_playback = scale * (clk::now() - start).count();
       // Check if playback time is behind too many frames (solves)
       int next_idx = i + 1;
-      while (timestamp[next_idx] < t_playback) {
-        next_idx++;
+      if (next_idx < idx_length) {
+        while (timestamp[next_idx] < t_playback) {
+          next_idx++;
+        }
+        if (next_idx > i + 1) {
+          i = next_idx - 1;
+          // cout << "fast-forward to index " << i<< "\n";
+        }
+        // cout << "next timestamp = " << timestamp[i] << endl;
       }
-      if (next_idx > i + 1) {
-        i = next_idx - 1;
-        // cout << "fast-forward to index " << i<< "\n";
-      }
-      // cout << "next timestamp = " << timestamp[i] << endl;
 
       // We wait until the playback time is in front of the next frame
       while (timestamp[i] > t_playback) {
@@ -202,8 +205,7 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   }
   // Option 2 -- one pose (mode) at a time
   else {
-    DRAKE_DEMAND(x0_each_mode_list.size() == 1);
-    DRAKE_DEMAND(xf_each_mode_list.size() == 1);
+    DRAKE_DEMAND(idx_length == 1);
     MatrixXd x0_each_mode = x0_each_mode_list.at(0);
     MatrixXd xf_each_mode = xf_each_mode_list.at(0);
 

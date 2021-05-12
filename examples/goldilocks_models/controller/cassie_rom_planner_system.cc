@@ -822,8 +822,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Testing -- store the initial guess to the result (to visualize init guess)
   if (singel_eval_mode_) {
-    cout << "***\n*** WARNING: set the solution to be initial guess\n***\n";
-    result.set_x_val(trajopt.initial_guess());
+    /*cout << "***\n*** WARNING: set the solution to be initial guess\n***\n";
+    result.set_x_val(trajopt.initial_guess());*/
   }
 
   // TODO(yminchen): Note that you will to rotate the coordinates back if the

@@ -20,9 +20,9 @@ CoMKp:
     0,   0,    0,
     0,   0,    1000]
 CoMKd:
-  [ 100,  0,   0,
+  [ 50,  0,   0,
     0,  0,   0,
-    0,  0,   100]
+    0,  0,   50]
 OrientationKp:
   [100]
 OrientationKd:

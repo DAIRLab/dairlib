@@ -191,8 +191,8 @@ void KoopmanMPC::Build() {
                "\nTotal Knots: " << std::to_string(total_knots_) << std::endl;
 
 
-  prog_.SetSolverOption(OsqpSolver().id(), "eps_abs", 1e-5);
-  prog_.SetSolverOption(OsqpSolver().id(), "eps_rel", 1e-5);
+  prog_.SetSolverOption(OsqpSolver().id(), "eps_abs", 1e-7);
+  prog_.SetSolverOption(OsqpSolver().id(), "eps_rel", 1e-7);
 }
 
 void KoopmanMPC::MakeStanceFootConstraints() {
@@ -460,6 +460,10 @@ VectorXd KoopmanMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
   VectorXd base_orientation;
   VectorXd base_omega;
 
+  /*** Adjustment for slope ***/
+//  com_pos(vertical_idx()) += (modes_.at(x0_idx_[0]).stance == kLeft) ?
+//      left_pos(vertical_idx()) : right_pos(vertical_idx());
+
   if (planar_) {
     base_orientation = x.head(nq_).segment(base_angle_pos_idx_, kAngularDim_);
     base_omega = x.tail(nv_).segment(base_angle_vel_idx_, kAngularDim_);
@@ -590,7 +594,7 @@ void KoopmanMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
   x_des_ = xdes;
   for (auto & mode : modes_) {
     for (auto & cost : mode.tracking_cost) {
-      cost->UpdateCoefficients(2 * Q_, -2 * Q_ * xdes, xdes.transpose() * xdes);
+      cost->UpdateCoefficients(2.0 * Q_, - 2.0 * Q_ * xdes);
     }
   }
 }

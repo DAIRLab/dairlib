@@ -42,11 +42,10 @@ using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 
 // Simulation parameters.
-DEFINE_string(folder_path, "",
-              "Folder path for the folder that contains the "
-              "saved trajectory");
+
 DEFINE_double(start_time, 0.0, "Time to start the simulator at.");
 DEFINE_double(sim_time, std::numeric_limits<double>::infinity(),
               "The length of time to run the simulation");
@@ -55,18 +54,18 @@ DEFINE_double(target_realtime_rate, 1.0,
               "Simulator::set_target_realtime_rate() for details.");
 DEFINE_double(dt, 0, "The step size for the time-stepping simulator.");
 DEFINE_double(publish_rate, 1000, "Publish rate of the robot's state in Hz.");
-DEFINE_string(channel_x, "PLANAR_STATE",
-              "Channel to publish/receive state from simulation");
-DEFINE_string(channel_u, "PLANAR_INPUT",
-              "Channel to publish/receive inputs from controller");
-DEFINE_double(penetration_allowance, 1e-5,
-              "Penetration allowance for the contact model.");
+DEFINE_double(penetration_allowance, 1e-5,"Penetration allowance for the contact model.");
 DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");
-
-DEFINE_string(x0_traj_name, "state_traj1", "lcm trajectory to use for initial state");
 DEFINE_double(mu, 0.8, "Friction coefficient");
-
+DEFINE_double(slope, 0.0, "ground slope");
 DEFINE_double(z, 0.75, "initial height of hip joint");
+DEFINE_string(folder_path, "",
+              "Folder path for the folder that contains the "
+              "saved trajectory");
+DEFINE_string(channel_x, "PLANAR_STATE","Channel to publish/receive state from simulation");
+DEFINE_string(channel_u, "PLANAR_INPUT","Channel to publish/receive inputs from controller");
+DEFINE_string(x0_traj_name, "state_traj1", "lcm trajectory to use for initial state");
+
 
 double calcPositionOffset(MultibodyPlant<double>& plant, Context<double>* context, const Eigen::VectorXd& x0);
 
@@ -81,7 +80,11 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(FLAGS_dt);
   LoadPlanarWalkerFromFile(plant, &scene_graph);
-  multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu, FLAGS_mu);  // Add ground
+  Vector3d normal = Vector3d::Zero();
+  normal(0) = -FLAGS_slope;
+  normal(2) = 1.0;
+  normal.normalize();
+  multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu, FLAGS_mu, normal);  // Add ground
   plant.Finalize();
 
   int nv = plant.num_velocities();
@@ -139,22 +142,6 @@ int do_main(int argc, char* argv[]) {
   diagram->SetDefaultContext(diagram_context.get());
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
-
-  /*
-  LcmTrajectory saved_traj = LcmTrajectory(
-      FindResourceOrThrow("rabbit_walking"));
-
-  Eigen::VectorXd x0 =
-      saved_traj.GetTrajectory(FLAGS_x0_traj_name).datapoints.col(0);
-  auto map = makeNameToPositionsMap(plant);
-
-  double tmp = x0(map["left_hip_pin"]);
-  x0(map["left_hip_pin"]) = x0(map["right_hip_pin"]);
-  x0(map["right_hip_pin"]) = tmp;
-  x0(map["planar_z"]) = x0(map["planar_z"]) + calcPositionOffset(plant, &plant_context, x0);
-
-  x0.tail(plant.num_velocities()) = Eigen::VectorXd::Zero(plant.num_velocities());
-   */
 
   /// Create a plant for fixed point solver
   MultibodyPlant<double> solver_plant(0.0);

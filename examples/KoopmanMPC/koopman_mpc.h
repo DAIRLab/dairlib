@@ -87,8 +87,8 @@ class KoopmanMPC : public drake::systems::LeafSystem<double> {
                                 const std::string& joint_vel_name);
 
   int num_state_inflated() { return nxi_; }
-  int saggital_idx() { return saggital_idx_;}
-  int vertical_idx() { return vertical_idx_;}
+  int saggital_idx() const { return saggital_idx_;}
+  int vertical_idx() const { return vertical_idx_;}
 
   double SetMassFromListOfBodies(std::vector<std::string> bodies);
 

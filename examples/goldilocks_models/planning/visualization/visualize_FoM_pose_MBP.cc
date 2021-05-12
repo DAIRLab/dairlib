@@ -152,7 +152,9 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
     vector<double> timestamp(idx_length, 0);
     for (int i = 0; i < idx_length; i++) {
       string path =
-          directory + to_string(i + solve_idx_start) + "_current_time.csv";
+          (solve_idx_start >= 0)
+              ? directory + to_string(i + solve_idx_start) + "_current_time.csv"
+              : directory + "debug" + "_current_time.csv";
       timestamp[i] = readCSV(path)(0, 0);
     }
     double first_timestamp = timestamp[0];

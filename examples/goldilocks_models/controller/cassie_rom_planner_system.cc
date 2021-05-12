@@ -821,7 +821,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // PrintAllCostsAndConstraints(trajopt);
 
   // Testing -- store the initial guess to the result (to visualize init guess)
-  // result.set_x_val(trajopt.initial_guess());
+  if (singel_eval_mode_) {
+    cout << "***\n*** WARNING: set the solution to be initial guess\n***\n";
+    result.set_x_val(trajopt.initial_guess());
+  }
 
   // TODO(yminchen): Note that you will to rotate the coordinates back if the
   //  ROM is dependent on robot's x, y and yaw.
@@ -846,6 +849,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, local_x0_FOM,
                                    local_xf_FOM, &global_x0_FOM_,
                                    &global_xf_FOM_);
+
+  // Unit Testing RotateBetweenGlobalAndLocalFrame
+  /*MatrixXd local_x0_FOM2 = global_x0_FOM_;
+  MatrixXd local_xf_FOM2 = global_xf_FOM_;
+  RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
+                                   global_xf_FOM_, &local_x0_FOM2,
+                                   &local_xf_FOM2);
+  DRAKE_DEMAND((local_x0_FOM2 - local_x0_FOM).norm() < 1e-14);
+  DRAKE_DEMAND((local_xf_FOM2 - local_xf_FOM).norm() < 1e-14);*/
 
   // TODO: maybe I should not assign the new desired traj to controller thread
   //  when the solver didn't find optimal solution (unless it's going to run out
@@ -958,9 +970,15 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
                     original_x0_FOM.col(j)(2), original_x0_FOM.col(j)(3));
     rotated_x0_FOM->col(j).segment<4>(0) << rotated_x0_quat.w(),
         rotated_x0_quat.vec();
-    rotated_x0_FOM->col(j).segment<3>(4)
-        << relative_rot_mat * original_x0_FOM.col(j).segment<3>(4) +
-               sign * quat_xyz_shift.segment<3>(4);
+    if (rotate_from_global_to_local) {
+      rotated_x0_FOM->col(j).segment<3>(4)
+          << relative_rot_mat * (original_x0_FOM.col(j).segment<3>(4) +
+                                 sign * quat_xyz_shift.segment<3>(4));
+    } else {
+      rotated_x0_FOM->col(j).segment<3>(4)
+          << relative_rot_mat * original_x0_FOM.col(j).segment<3>(4) +
+                 sign * quat_xyz_shift.segment<3>(4);
+    }
     rotated_x0_FOM->col(j).segment<3>(nq_)
         << relative_rot_mat * original_x0_FOM.col(j).segment<3>(nq_);
     rotated_x0_FOM->col(j).segment<3>(nq_ + 3)
@@ -973,9 +991,15 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
                       original_xf_FOM.col(j)(2), original_xf_FOM.col(j)(3));
       rotated_xf_FOM->col(j).segment<4>(0) << rotated_xf_quat.w(),
           rotated_xf_quat.vec();
-      rotated_xf_FOM->col(j).segment<3>(4)
-          << relative_rot_mat * original_xf_FOM.col(j).segment<3>(4) +
-                 sign * quat_xyz_shift.segment<3>(4);
+      if (rotate_from_global_to_local) {
+        rotated_xf_FOM->col(j).segment<3>(4)
+            << relative_rot_mat * (original_xf_FOM.col(j).segment<3>(4) +
+                                   sign * quat_xyz_shift.segment<3>(4));
+      } else {
+        rotated_xf_FOM->col(j).segment<3>(4)
+            << relative_rot_mat * original_xf_FOM.col(j).segment<3>(4) +
+                   sign * quat_xyz_shift.segment<3>(4);
+      }
       rotated_xf_FOM->col(j).segment<3>(nq_)
           << relative_rot_mat * original_xf_FOM.col(j).segment<3>(nq_);
       rotated_xf_FOM->col(j).segment<3>(nq_ + 3)

@@ -505,7 +505,8 @@ EventStatus InitialStateForPlanner::AdjustState(
   // endl;
 
   // Shift pelvis in x, y direction
-  // TODO: WARNING: if you are going to shift it to non-zero position, you need to check if RotateBetweenGlobalAndLocalFrame() still works.
+  // TODO: WARNING: if you are going to shift it to non-zero position, you need
+  // to check if RotateBetweenGlobalAndLocalFrame() still works.
   x_adjusted3(pos_map_wo_spr_.at("base_x")) = 0;
   x_adjusted3(pos_map_wo_spr_.at("base_y")) = 0;
   // x_adjusted3(pos_map_wo_spr_.at("base_x")) =
@@ -533,6 +534,11 @@ EventStatus InitialStateForPlanner::AdjustState(
   discrete_state->get_mutable_vector(adjusted_state_idx_).get_mutable_value()
       << x_adjusted3;
   // The shift from global to local
+  // Note: I believe the rotation transformation is from global to local, and
+  //  the translation transformation is also from global to local.
+  //  It's not a big deal if any of these directions is wrong, because it's just
+  //  a change of sign. That is, to update the code, I only need to flip the
+  //  sign for the translation at the places where it's used.
   discrete_state->get_mutable_vector(quat_xyz_shift_idx_).get_mutable_value()
       << relative_qaut.w(),
       relative_qaut.vec(),

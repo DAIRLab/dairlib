@@ -38,6 +38,7 @@ using std::shared_ptr;
 using std::string;
 using std::to_string;
 using std::vector;
+using clk = std::chrono::high_resolution_clock;
 
 using dairlib::multibody::MultiposeVisualizer;
 
@@ -55,7 +56,11 @@ DEFINE_int32(solve_idx, -1, "");
 DEFINE_int32(solve_idx_end, -1,
              "If this is set, we will visualize the poses"
              " from `solve_idx` to `solve_idx_end`");
-DEFINE_double(solve_idx_iterate_time, 0.1, "in seconds");
+
+// Animation playback
+DEFINE_double(realtime_rate, 0.1, "realtime rate for playback");
+DEFINE_double(pause_duration_right_after_first_frame, 2,
+              "Give visualizer some time to respond");
 
 // There are two modes of this visualizer.
 // The first mode visualizes all poses at once, and the second mode visualizes
@@ -141,6 +146,26 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
             xf_each_mode_list.at(i).rightCols<1>();
       }
     }
+
+    // Read in timestamps for playback speed.
+    vector<double> timestamp(x0_each_mode_list.size(), 0);
+    for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
+      string path =
+          directory + to_string(i + solve_idx_start) + "_current_time.csv";
+      timestamp[i] = readCSV(path)(0, 0);
+    }
+    double first_timestamp = timestamp[0];
+    for (auto& mem : timestamp) {
+      mem -= first_timestamp;
+    }
+    if (FLAGS_pause_duration_right_after_first_frame > 0) {
+      FLAGS_pause_duration_right_after_first_frame *= FLAGS_realtime_rate;
+      for (auto& mem : timestamp) {
+        mem += FLAGS_pause_duration_right_after_first_frame;
+      }
+      timestamp[0] -= FLAGS_pause_duration_right_after_first_frame;
+    }
+
     // Create MultiposeVisualizer
     VectorXd alpha_vec = FLAGS_alpha * VectorXd::Ones(poses.at(0).cols());
     alpha_vec.head(1) << 1;
@@ -150,14 +175,29 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
         poses.at(0).cols(), alpha_vec);
 
     // Draw
+    auto start = std::chrono::high_resolution_clock::now();
+    double scale = FLAGS_realtime_rate / 1e9;
     for (int i = 0; i <= solve_idx_end - solve_idx_start; i++) {
-      cout << "solve_idx = " << i + solve_idx_start << endl;
-      visualizer.DrawPoses(poses.at(i));
-      if (i == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      double t_playback = scale * (clk::now() - start).count();
+      // Check if playback time is behind too many frames (solves)
+      int next_idx = i + 1;
+      while (timestamp[next_idx] < t_playback) {
+        next_idx++;
+      }
+      if (next_idx > i + 1) {
+        i = next_idx - 1;
+        // cout << "fast-forward to index " << i<< "\n";
+      }
+      // cout << "next timestamp = " << timestamp[i] << endl;
 
-      // pause for `solve_idx_iterate_time` seconds
-      std::this_thread::sleep_for(
-          std::chrono::milliseconds(int(FLAGS_solve_idx_iterate_time * 1000)));
+      // We wait until the playback time is in front of the next frame
+      while (timestamp[i] > t_playback) {
+        t_playback = scale * (clk::now() - start).count();
+        // cout << "t_playback = " << t_playback << endl;
+      }
+
+      visualizer.DrawPoses(poses.at(i));
+      cout << "solve_idx = " << i + solve_idx_start << endl;
     }
   }
   // Option 2 -- one pose (mode) at a time

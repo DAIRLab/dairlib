@@ -80,11 +80,11 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=201";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=0";
         host = "localhost";
     }
     cmd "2.2. cassie planner pose (multi-pose); files with debug_ prefix" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=-1";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=-1  --global=true";
         host = "localhost";
     }
     cmd "2.1. cassie planner pose (multi-pose); files with snopt suffix" {
@@ -92,11 +92,11 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame (1 solve)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=1";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=635";
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame (multiple solves)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx_iterate_time=0.034 --global=true --solve_idx=1 --solve_idx_end=1755";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --realtime_rate=0.1 --solve_idx=0 --solve_idx_end=1383 ";
         host = "localhost";
     }
 }

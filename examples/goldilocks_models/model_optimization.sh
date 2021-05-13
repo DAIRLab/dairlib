@@ -19,6 +19,10 @@ if [ "$1" = "rm" ]; then
 	mkdir -p ../dairlib_data/goldilocks_models/find_models/robot_$robot/nominal_no_constraint_traj/
 fi
 
+# Build the program
+bazel build examples/goldilocks_models:find_goldilocks_models
+
+# Optimize the model
 echo ===== evaluate nomial traj \(without snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=false \
 --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --fix_node_number=true 2>&1 | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log

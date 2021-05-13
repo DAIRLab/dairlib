@@ -210,10 +210,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
         front_contact_point, plant_controls.GetFrameByName("toe_right"));
     auto right_toe_rear = BodyPoint(rear_contact_point,
                                     plant_controls.GetFrameByName("toe_right"));
-    left_contacts_.push_back(left_toe_front);
     left_contacts_.push_back(left_toe_rear);
-    right_contacts_.push_back(right_toe_front);
+    left_contacts_.push_back(left_toe_front);
     right_contacts_.push_back(right_toe_rear);
+    right_contacts_.push_back(right_toe_front);
   } else {
     Vector3d mid_contact_point = (front_contact_point + rear_contact_point) / 2;
     auto left_toe_mid =
@@ -509,6 +509,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
   // DRAKE_DEMAND((des_xy_pos[param_.n_step] - adjusted_final_pos).norm() <
   // 1e-14);
+  cout << "des_xy_pos = \n";
+  for (int i = 0; i < des_xy_pos.size(); i++) {
+    cout << des_xy_pos[i].transpose() << endl;
+  }
 
   // Maximum swing foot travel distance
   double first_mode_duration = stride_period_ * (1 - init_phase);
@@ -580,6 +584,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   VectorXd des_xy_vel = des_xy_pos.at(1) / first_mode_duration;
   trajopt.AddConstraintAndCostForLastFootStep(param_.gains.w_predict_lipm_v,
                                               des_xy_vel, stride_period_);
+  cout << "des_xy_vel = " << des_xy_vel.transpose() << endl;
 
   // Final goal position constraint
   /*PrintStatus("Adding constraint -- FoM final position");

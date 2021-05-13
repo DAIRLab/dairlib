@@ -44,15 +44,20 @@ class FomGuardConstraint : public solvers::NonlinearConstraint<double> {
 
 // Swing foot position distance constraint for collision avoidance
 // Constraints are
+//    swing foot x and y lies within a rectangle wrt pelvis
+//    swing foot y lies in a halfplane wrt stance foot
 class FomSwingFootPosConstraint : public solvers::NonlinearConstraint<double> {
  public:
   FomSwingFootPosConstraint(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::multibody::Frame<double>& pelvis_frame,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+      stance_foot_contacts,
       const std::pair<const Eigen::Vector3d,
                       const drake::multibody::Frame<double>&>&
           swing_foot_origin,
-      const Eigen::Vector2d& lb, const Eigen::Vector2d& ub,
+      const Eigen::Vector3d& lb, const Eigen::Vector3d& ub,
       const std::string& description = "fom_swing_ft_pos_constraint");
 
  private:
@@ -63,10 +68,14 @@ class FomSwingFootPosConstraint : public solvers::NonlinearConstraint<double> {
   const drake::multibody::BodyFrame<double>& world_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::Frame<double>& pelvis_frame_;
+  const std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
+      stance_foot_contacts_;
   const std::pair<const Eigen::Vector3d,
                   const drake::multibody::Frame<double>&>& swing_foot_origin_;
 
   int n_q_;
+  double toe_length_;
 };
 
 // Swing foot travel distance constraint

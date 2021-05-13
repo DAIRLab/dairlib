@@ -85,36 +85,67 @@ void FomGuardConstraint::EvaluateConstraint(
 FomSwingFootPosConstraint::FomSwingFootPosConstraint(
     const drake::multibody::MultibodyPlant<double>& plant,
     const Frame<double>& pelvis_frame,
+    const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
+        stance_foot_contacts,
     const std::pair<const Vector3d, const Frame<double>&>& swing_foot_origin,
-    const Eigen::Vector2d& lb, const Eigen::Vector2d& ub,
+    const Eigen::Vector3d& lb, const Eigen::Vector3d& ub,
     const std::string& description)
-    : NonlinearConstraint<double>(2, plant.num_positions(), lb, ub,
+    : NonlinearConstraint<double>(3, plant.num_positions(), lb, ub,
                                   description),
       plant_(plant),
       world_(plant.world_frame()),
       context_(plant.CreateDefaultContext()),
       pelvis_frame_(pelvis_frame),
+      stance_foot_contacts_(stance_foot_contacts),
       swing_foot_origin_(swing_foot_origin),
-      n_q_(plant.num_positions()) {}
+      n_q_(plant.num_positions()) {
+  toe_length_ =
+      (stance_foot_contacts.at(0).first - stance_foot_contacts.at(1).first)
+          .norm();
+
+  // Rear contact should be the first element. We check the value here
+  DRAKE_DEMAND(stance_foot_contacts.at(0).first(0) == 0.088);
+}
 
 void FomSwingFootPosConstraint::EvaluateConstraint(
     const Eigen::Ref<const VectorX<double>>& q, VectorX<double>* y) const {
   plant_.SetPositions(context_.get(), q);
 
   // Swing foot position
-  drake::VectorX<double> pt(3);
+  drake::VectorX<double> swing_pt(3);
   this->plant_.CalcPointsPositions(*context_, swing_foot_origin_.second,
-                                   swing_foot_origin_.first, world_, &pt);
+                                   swing_foot_origin_.first, world_, &swing_pt);
   // Pelvis pose
   auto pelvis_pose = pelvis_frame_.CalcPoseInWorld(*context_);
   const Vector3d& pelvis_pos = pelvis_pose.translation();
   const auto& pelvis_rot_mat = pelvis_pose.rotation();
+  // Stance foot position
+  drake::VectorX<double> stance_pt1(3);
+  this->plant_.CalcPointsPositions(
+      *context_, stance_foot_contacts_.at(0).second,
+      stance_foot_contacts_.at(0).first, world_, &stance_pt1);
+  drake::VectorX<double> stance_pt2(3);
+  this->plant_.CalcPointsPositions(
+      *context_, stance_foot_contacts_.at(1).second,
+      stance_foot_contacts_.at(1).first, world_, &stance_pt2);
 
+  // Get foot pos wrt pelvis
   Vector3d foot_pos_in_local_frame =
-      pelvis_rot_mat.transpose() * (pt - pelvis_pos);
+      pelvis_rot_mat.transpose() * (swing_pt - pelvis_pos);
 
-  *y = VectorX<double>(2);
-  *y = foot_pos_in_local_frame.head<2>();
+  // Get foot distance wrt toe
+  Vector3d vec_a = stance_pt2 - stance_pt1;
+  Vector3d vec_b = swing_pt - stance_pt1;
+  vec_b(2) = 0;
+  Vector3d a_cross_b = vec_a.cross(vec_b);
+  double signed_distance = a_cross_b.norm() / toe_length_;
+  if (a_cross_b(2) < 0) {
+    signed_distance *= -1;
+  }
+
+  // Assign
+  *y = VectorX<double>(3);
+  *y << foot_pos_in_local_frame.head<2>(), signed_distance;
 }
 
 /// Swing foot distance constraint

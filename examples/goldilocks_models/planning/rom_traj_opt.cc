@@ -99,10 +99,13 @@ RomTrajOpt::RomTrajOpt(
   /// Some paramters
   double impulse_limit = 50;
   double mu = 1;
-  const double back_limit = -0.5;
-  const double front_limit = 0.5;
-  const double right_limit = 0.03;
-  const double left_limit = 0.4;
+  const double back_limit_wrt_pelvis = -0.5;
+  const double front_limit_wrt_pelvis = 0.5;
+  const double right_limit_wrt_pelvis = 0.03;
+  const double left_limit_wrt_pelvis = 0.4;
+  const double right_limit_wrt_stance_ft = 0.03;
+  const double left_limit_wrt_stance_ft =
+      std::numeric_limits<double>::infinity();
 
   /// Setups
   PrintStatus("Getting things needed for costs and constraints");
@@ -457,10 +460,12 @@ RomTrajOpt::RomTrajOpt(
                     {xf.head(n_q_), touchdown_foot_var});
 
       // Foot collision avoidance (full-order model swing foot constraint)
-      Eigen::Vector2d lb_swing(back_limit,
-                               left_stance ? -left_limit : right_limit);
-      Eigen::Vector2d ub_swing(front_limit,
-                               left_stance ? -right_limit : left_limit);
+      Eigen::Vector2d lb_swing(
+          back_limit_wrt_pelvis,
+          left_stance ? -left_limit_wrt_pelvis : right_limit_wrt_pelvis);
+      Eigen::Vector2d ub_swing(
+          front_limit_wrt_pelvis,
+          left_stance ? -right_limit_wrt_pelvis : left_limit_wrt_pelvis);
       PrintStatus(
           "Adding constraint -- FOM swing collision avoidance (end of mode)");
       auto fom_sw_ft_pos_constraint =
@@ -510,16 +515,21 @@ RomTrajOpt::RomTrajOpt(
       }
     } else {
       // Foot collision avoidance (full-order model swing foot constraint)
-      Eigen::Vector2d lb_swing(back_limit,
-                               left_stance ? -left_limit : right_limit);
-      Eigen::Vector2d ub_swing(front_limit,
-                               left_stance ? -right_limit : left_limit);
+      Eigen::Vector3d lb_swing(
+          back_limit_wrt_pelvis,
+          left_stance ? -left_limit_wrt_pelvis : right_limit_wrt_pelvis,
+          left_stance ? -left_limit_wrt_stance_ft : right_limit_wrt_stance_ft);
+      Eigen::Vector3d ub_swing(
+          front_limit_wrt_pelvis,
+          left_stance ? -right_limit_wrt_pelvis : left_limit_wrt_pelvis,
+          left_stance ? -right_limit_wrt_stance_ft : left_limit_wrt_stance_ft);
       PrintStatus(
           "Adding constraint -- FOM swing collision avoidance (end of mode)");
       auto fom_sw_ft_pos_constraint =
           std::make_shared<planning::FomSwingFootPosConstraint>(
-              plant_, plant.GetFrameByName("pelvis"), swing_origin, lb_swing,
-              ub_swing, "fom_swing_ft_pos_" + to_string(i));
+              plant_, plant.GetFrameByName("pelvis"), stance_contacts,
+              swing_origin, lb_swing, ub_swing,
+              "fom_swing_ft_pos_" + to_string(i));
       AddConstraint(fom_sw_ft_pos_constraint, xf.head(n_q_));
 
       // Foot travel distance constraint (swing foot pos from start of mode to

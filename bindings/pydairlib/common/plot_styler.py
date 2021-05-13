@@ -21,6 +21,7 @@ class PlotStyler():
     return
 
   def set_default_styling(self, directory=None):
+    self.directory = directory
     matplotlib.rcParams["savefig.directory"] = directory
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
     # matplotlib.rcParams['figure.figsize'] = 20, 12

@@ -36,7 +36,6 @@ def calc_loop_closure_jacobian(plant, context, x_pre):
   return J_l_loop, J_r_loop
 
 def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr):
-
   t_pre = 30.557
   t_idx = np.argwhere(np.abs(t_x - t_pre) < 1e-3)[0][0]
   x_pre = x[t_idx]
@@ -91,7 +90,9 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
                          r'$Toe_L$',
                          r'$Toe_R$',
                          ]
-  # ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
+
+  ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
+
 
   # ps.add_legend(joint_vel_datatypes)
 
@@ -107,6 +108,7 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
     ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
     ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
   # ps.add_legend(['%.0f' % i for i in range(18)])
+
   plt.ylim([-3, 1])
   plt.xlim([-10, 30])
   plt.xticks(np.arange(-10, 30+0.1, 10))
@@ -114,6 +116,13 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   legend_elements_lines = []
   for i in range(len(joint_vel_datatypes)):
     legend_elements_lines.append(matplotlib.lines.Line2D([0], [0], color=ps.cmap(i), lw=3, label=joint_vel_datatypes[i]))
+
+
+  # Storing arrays for further analysis
+  # log_file_num = '17'
+  # np.save(ps.directory + 't_' + log_file_num, 1e3*(t_x[t_slice] - 30.645))
+  # np.save(ps.directory + 'v_' + log_file_num, x_wo_spr[t_slice, -12:])
+  # np.save(ps.directory + 'vproj_' + log_file_num, proj_vel.T[:, -12:])
   # ps.save_fig('projected_joint_velocities_hardware_for_video.png')
 
   # plt.figure('blank')

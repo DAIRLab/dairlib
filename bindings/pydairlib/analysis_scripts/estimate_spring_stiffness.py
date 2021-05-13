@@ -109,19 +109,23 @@ def main():
   # end_time_idx = np.argwhere(np.abs(t_u - t_end) < 2e-3)[0][0]
   # t_u_slice = slice(start_time_idx, end_time_idx)
   # sample_times = [215.4, 229.4, 252.8, 265.3, 282.1, 289.0]
-  sample_times = np.arange(t_start, t_start + 3.0, 0.1)
-
+  sample_times = []
+  for t_idx in range(t_start_idx, t_end_idx, 10):
+    vel = x[t_idx, -nv:]
+    if(vel.T @ vel < 1.0):
+      sample_times.append(t_x[t_idx])
+  sample_times = np.array(sample_times)
   joint_idx = vel_map["knee_joint_leftdot"]
   act_idx = act_map["knee_left_motor"]
   xdot = np.zeros(x.shape)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
   # plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx)
   solve_for_k(x, t_x, u, t_u)
-  plt.show()
+  # plt.show()
   # solve_with_lambda(x, t_x, u, t_u)
 
 def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
-  n_samples = len(3*sample_times)
+  n_samples = len(sample_times)
 
   x_samples = []
   u_samples = []
@@ -140,9 +144,11 @@ def plot_force_residual(t_x, x, xdot, u_meas, joint_idx, act_idx):
   K_force = np.zeros((n_samples, nv))
   # Jv = np.zeros((n_samples, 2))
 
-  for i in range(len(3*sample_times)):
-    t = t_x[50] + 1e-2 * i
-    t = -0.05 + (0.05 * np.mod(i,3)) + sample_times[i//3]
+  # for i in range(len(3*sample_times)):
+  for i, t in enumerate(sample_times):
+    # t = t_x[50] + 1e-2 * i
+    # t = -0.05 + (0.05 * np.mod(i,3)) + sample_times[i//3]
+    # t = i
     ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
     x_samples.append(x[ind, :])
     xdot_samples.append(xdot[ind, :])
@@ -267,58 +273,56 @@ def solve_for_k(x, t_x, u, t_u):
   A = np.zeros((n_samples * n_samples_per_iter * nv, nvars))
   b = np.zeros(n_samples * n_samples_per_iter * nv)
 
-  for i in range(n_samples):
-    for j in range(n_samples_per_iter):
-      delta_t = 1e-2 * j
-      x_ind = np.argwhere(np.abs(t_x - (sample_times[i] + delta_t)) < 1e-2)[0][0]
-      u_ind = np.argwhere(np.abs(t_u - (sample_times[i] + delta_t)) < 1e-2)[0][0]
-      plant.SetPositionsAndVelocities(context, x[x_ind, :])
+  for i, t in enumerate(sample_times):
+    x_ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
+    u_ind = np.argwhere(np.abs(t_u - t) < 1e-2)[0][0]
+    plant.SetPositionsAndVelocities(context, x[x_ind, :])
 
-      M = plant.CalcMassMatrixViaInverseDynamics(context)
-      M_inv = np.linalg.inv(M)
-      B = plant.MakeActuationMatrix()
-      g = plant.CalcGravityGeneralizedForces(context)
-      J_lh = plant.CalcJacobianTranslationalVelocity(
-        context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
-      J_lt = plant.CalcJacobianTranslationalVelocity(
-        context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
-      J_rh = plant.CalcJacobianTranslationalVelocity(
-        context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
-      J_rt = plant.CalcJacobianTranslationalVelocity(
-        context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
+    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    M_inv = np.linalg.inv(M)
+    B = plant.MakeActuationMatrix()
+    g = plant.CalcGravityGeneralizedForces(context)
+    J_lh = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, l_toe_frame, rear_contact_disp, world, world)
+    J_lt = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, l_toe_frame, front_contact_disp, world, world)
+    J_rh = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
+    J_rt = plant.CalcJacobianTranslationalVelocity(
+      context, JacobianWrtVariable.kV, r_toe_frame, front_contact_disp, world, world)
 
-      J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
-      J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
-      # J = np.vstack((J_lh, J_lt, J_rh, J_rt, J_l_loop_closure, J_r_loop_closure))
-      J = np.vstack((J_lh, J_lt[1:], J_rh, J_rt[1:], J_l_loop_closure, J_r_loop_closure))
+    J_l_loop_closure = l_loop_closure.EvalFullJacobian(context)
+    J_r_loop_closure = r_loop_closure.EvalFullJacobian(context)
+    # J = np.vstack((J_lh, J_lt, J_rh, J_rt, J_l_loop_closure, J_r_loop_closure))
+    J = np.vstack((J_lh, J_lt[1:], J_rh, J_rt[1:], J_l_loop_closure, J_r_loop_closure))
 
-      row_start = i * (nv * n_samples_per_iter) + nv * j
-      row_end = i * (nv * n_samples_per_iter) + nv * (j + 1)
+    row_start = i * (nv * n_samples_per_iter)
+    row_end = i * (nv * n_samples_per_iter) + nv * 1
 
-      # lambda_implicit = inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq] + D@qdot) - JdotV)
-      lambda_i_wo_k = - inv(J @ M_inv @ J.T) @ (J @ M_inv @ (B @ u[u_ind] + g))
-      lambda_i_w_k = - inv(J @ M_inv @ J.T) @ (J @ M_inv)
+    # lambda_implicit = inv(J @ M_inv @ J.T) @ (- J @ M_inv @ (-Cv + g + B @ u_meas[ind] + K@x[ind, :nq] + D@qdot) - JdotV)
+    lambda_i_wo_k = - inv(J @ M_inv @ J.T) @ (J @ M_inv @ (B @ u[u_ind] + g))
+    lambda_i_w_k = - inv(J @ M_inv @ J.T) @ (J @ M_inv)
 
-      A[row_start + l_knee_spring_dot_idx, 0] = -x[x_ind, l_knee_spring_idx]
-      A[row_start + r_knee_spring_dot_idx, 1] = -x[x_ind, r_knee_spring_idx]
-      A[row_start + l_heel_spring_dot_idx, 2] = -x[x_ind, l_heel_spring_idx]
-      A[row_start + r_heel_spring_dot_idx, 3] = -x[x_ind, r_heel_spring_idx]
-      A[row_start + l_knee_spring_dot_idx, 4] = 1
-      A[row_start + r_knee_spring_dot_idx, 5] = 1
-      A[row_start + l_heel_spring_dot_idx, 6] = 1
-      A[row_start + r_heel_spring_dot_idx, 7] = 1
+    A[row_start + l_knee_spring_dot_idx, 0] = -x[x_ind, l_knee_spring_idx]
+    A[row_start + r_knee_spring_dot_idx, 1] = -x[x_ind, r_knee_spring_idx]
+    A[row_start + l_heel_spring_dot_idx, 2] = -x[x_ind, l_heel_spring_idx]
+    A[row_start + r_heel_spring_dot_idx, 3] = -x[x_ind, r_heel_spring_idx]
+    A[row_start + l_knee_spring_dot_idx, 4] = 1
+    A[row_start + r_knee_spring_dot_idx, 5] = 1
+    A[row_start + l_heel_spring_dot_idx, 6] = 1
+    A[row_start + r_heel_spring_dot_idx, 7] = 1
 
-      A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_spring_dot_idx] * x[x_ind, l_knee_spring_idx]
-      A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_spring_dot_idx] * x[x_ind, r_knee_spring_idx]
-      A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_spring_dot_idx] * x[x_ind, l_heel_spring_idx]
-      A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_spring_dot_idx] * x[x_ind, r_heel_spring_idx]
-      # A[row_start:row_end, 1] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, r_knee_spring_idx] * x[
-      #   x_ind, r_knee_spring_idx]
-      # A[row_start:row_end, 2] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_heel_spring_idx] * x[
-      #   x_ind, l_heel_spring_idx]
-      # A[row_start:row_end, 3] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_knee_spring_idx] * x[
-      #   x_ind, r_heel_spring_idx]
-      b[row_start:row_end] = - B @ u[u_ind] - g - J.T @ lambda_i_wo_k
+    A[row_start:row_end, 0] += (J.T @ lambda_i_w_k)[:, l_knee_spring_dot_idx] * x[x_ind, l_knee_spring_idx]
+    A[row_start:row_end, 1] += (J.T @ lambda_i_w_k)[:, r_knee_spring_dot_idx] * x[x_ind, r_knee_spring_idx]
+    A[row_start:row_end, 2] += (J.T @ lambda_i_w_k)[:, l_heel_spring_dot_idx] * x[x_ind, l_heel_spring_idx]
+    A[row_start:row_end, 3] += (J.T @ lambda_i_w_k)[:, r_heel_spring_dot_idx] * x[x_ind, r_heel_spring_idx]
+    # A[row_start:row_end, 1] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, r_knee_spring_idx] * x[
+    #   x_ind, r_knee_spring_idx]
+    # A[row_start:row_end, 2] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_heel_spring_idx] * x[
+    #   x_ind, l_heel_spring_idx]
+    # A[row_start:row_end, 3] += M_inv @ J.T @ np.linalg.inv((J @ M_inv @ J.T)) @ J @ M_inv[:, l_knee_spring_idx] * x[
+    #   x_ind, r_heel_spring_idx]
+    b[row_start:row_end] = - B @ u[u_ind] - g - J.T @ lambda_i_wo_k
 
   x = prog.NewContinuousVariables(nvars, "sigma")
 
@@ -351,11 +355,9 @@ def solve_with_lambda(x, t_x, u, t_u):
   A = np.zeros((n_samples * n_samples_per_iter * nv, nvars))
   b = np.zeros(n_samples * n_samples_per_iter * nv)
 
-  for i in range(n_samples):
-    for j in range(n_samples_per_iter):
-      delta_t = 1e-2 * j
-      x_ind = np.argwhere(np.abs(t_x - sample_times[i] + delta_t) < 1e-3)[0][0]
-      u_ind = np.argwhere(np.abs(t_u - sample_times[i] + delta_t) < 1e-3)[0][0]
+  for i, t in enumerate(sample_times):
+      x_ind = np.argwhere(np.abs(t_x - t) < 1e-3)[0][0]
+      u_ind = np.argwhere(np.abs(t_u - t) < 1e-2)[0][0]
       plant.SetPositionsAndVelocities(context, x[x_ind, :])
 
       M = plant.CalcMassMatrixViaInverseDynamics(context)
@@ -376,8 +378,8 @@ def solve_with_lambda(x, t_x, u, t_u):
       J = np.vstack((J_lh, J_lt, J_rh, J_rt, J_l_loop_closure, J_r_loop_closure))
 
       # import pdb; pdb.set_trace()
-      row_start = i * (nv * n_samples_per_iter) + nv * j
-      row_end = i * (nv * n_samples_per_iter) + nv * (j + 1)
+      row_start = i * (nv * n_samples_per_iter) + 0
+      row_end = i * (nv * n_samples_per_iter) + nv
 
       A[row_start + l_knee_idx - 1, 0] = x[x_ind, l_knee_spring_idx]
       A[row_start + r_knee_idx - 1, 1] = x[x_ind, r_knee_spring_idx]
@@ -393,7 +395,6 @@ def solve_with_lambda(x, t_x, u, t_u):
 
   x_vars = prog.NewContinuousVariables(nvars, "sigma")
 
-  import pdb; pdb.set_trace()
   prog.AddL2NormCost(A, b, x_vars)
   Q = 100 * np.eye(n_offset_vars)
   prog.AddQuadraticCost(Q, np.zeros(n_offset_vars), x_vars[-n_offset_vars:])
@@ -410,7 +411,6 @@ def solve_with_lambda(x, t_x, u, t_u):
   print("K: ", k_sol)
   print("lambdas: ", lambdas)
   print("offsets: ", offsets)
-  import pdb; pdb.set_trace()
 
   K = np.zeros((nv, nq))
   K[l_knee_idx - 1, l_knee_spring_idx] = k_sol[0]
@@ -455,7 +455,6 @@ def solve_with_lambda(x, t_x, u, t_u):
     joint_pos[i, 3] = x[x_ind, r_heel_spring_idx]
   # plt.plot(err, joint_pos)
 
-  import pdb; pdb.set_trace()
   plt.plot(joint_pos, err)
   plt.figure()
   plt.plot(sample_times, err)

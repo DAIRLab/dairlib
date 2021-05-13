@@ -29,3 +29,14 @@ cc_binary(
         "@drake//math:gradient",
     ],
 )
+
+cc_binary(
+    name = "two_link_leg_sim",
+    srcs = ["two_link_leg_sim.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//common:find_resource",
+        "//multibody:utils",
+        "@gflags",
+    ],
+)

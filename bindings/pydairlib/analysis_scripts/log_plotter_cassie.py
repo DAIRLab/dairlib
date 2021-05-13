@@ -42,7 +42,8 @@ def main():
 
   load_maps()
 
-  figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
+  # figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
+  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
   ps = plot_styler.PlotStyler()
   ps.set_default_styling(directory=figure_directory)
 
@@ -131,8 +132,8 @@ def main():
   # plot_status(full_log)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  # plot_contact_est(full_log)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  plot_contact_est(full_log)
 
   if False:
     # front_contact_disp = np.zeros(3)

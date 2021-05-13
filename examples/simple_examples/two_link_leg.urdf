@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<robot name="planar_hopper">
+    <link name="base"/>
+    <link name="lower_bushing">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="0.01"/>
+            <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+        </inertial>
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <sphere radius=".01"/>
+            </geometry>
+            <material name="green">
+                <color rgba="0 1 0 1"/>
+            </material>
+        </visual>
+    </link>
+    <link name="upper_bushing">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <sphere radius=".01"/>
+            </geometry>
+            <material name="green">
+                <color rgba="0 1 0 1"/>
+            </material>
+        </visual>
+    </link>
+    <link name="lower_bar">
+        <inertial>
+            <origin xyz="0 0 -0.5" rpy="0 0 0"/>
+            <mass value="10"/>
+            <inertia ixx="3.3" ixy="0" ixz="0" iyy="3.3" iyz="0" izz="3.3"/>
+        </inertial>
+        <visual>
+            <origin xyz="0 0 -0.5" rpy="0 0 0"/>
+            <geometry>
+                <cylinder length="1.0" radius=".01"/>
+            </geometry>
+            <material name="blue">
+                <color rgba="0 0 1 1"/>
+            </material>
+        </visual>
+        <visual>
+            <origin xyz="0 0 -1.0" rpy="0 0 0"/>
+            <geometry>
+                <sphere radius=".01"/>
+            </geometry>
+            <material name="green">
+                <color rgba="0 1 0 1"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 -1.0"/>
+            <geometry>
+                <sphere radius="0"/>
+            </geometry>
+        </collision>
+    </link>
+    <link name="upper_bar">
+        <inertial>
+            <origin xyz="0 0 -0.5" rpy="0 0 0"/>
+            <mass value="10"/>
+            <inertia ixx="3.3" ixy="0" ixz="0" iyy="3.3" iyz="0" izz="3.3"/>
+        </inertial>
+        <visual>
+            <origin xyz="0 0 -0.5" rpy="0 0 0"/>
+            <geometry>
+                <cylinder length="1.0" radius=".01"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1 0 0 1"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 -1.0"/>
+            <geometry>
+                <sphere radius="0"/>
+            </geometry>
+        </collision>
+    </link>
+    <joint name="upper_rail" type="prismatic">
+        <parent link="base"/>
+        <child link="upper_bushing"/>
+        <axis xyz="0 0 1"/>
+        <limit lower="0.5" upper="2.5" velocity="2"/>
+    </joint>
+    <joint name="lower_rail" type="prismatic">
+        <parent link="base"/>
+        <child link="lower_bushing"/>
+        <axis xyz="0 0 1"/>
+        <limit lower="0" upper="1" velocity="1"/>
+    </joint>
+    <joint name="upper_joint" type="continuous">
+        <parent link="upper_bushing"/>
+        <child link="upper_bar"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="-1.57" upper="0" velocity="5"/>
+    </joint>
+    <!--    <joint name="lower_joint" type="continuous">-->
+    <!--        <parent link="lower_bushing"/>-->
+    <!--        <child link="lower_bar"/>-->
+    <!--        <origin xyz="0 0 -1"/>-->
+    <!--        <axis xyz="0 1 0"/>-->
+    <!--    </joint>-->
+    <joint name="elbow_joint" type="continuous">
+        <parent link="upper_bar"/>
+        <child link="lower_bar"/>
+        <origin xyz="0 0 -1"/>
+        <axis xyz="0 1 0"/>
+        <limit effort = "25" lower="-3.14" upper="3.14" velocity="5"/>
+        <dynamics damping="0.0"/>
+    </joint>
+    <transmission type="SimpleTransmission" name="u">
+        <actuator name="motor_one"/>
+        <joint name="elbow_joint"/>
+        <mechanicalReduction>1</mechanicalReduction>
+    </transmission>
+    <frame name="top" link="upper_bar" xyz="0 0 1" rpy="0 0 0"/>
+    <frame name="bottom" link="lower_bar" xyz="0 0 -1" rpy="0 0 0"/>
+</robot>

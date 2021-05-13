@@ -659,7 +659,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "global_fsm_idx = " + to_string(global_fsm_idx) << endl;
     if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
-      WarmStartGuess(quat_xyz_shift, des_xy_pos, global_fsm_idx,
+      WarmStartGuess(quat_xyz_shift, des_xy_pos, des_xy_vel, global_fsm_idx,
                      first_mode_knot_idx, &trajopt);
     } else {
       // Set heuristic initial guess for all variables
@@ -667,7 +667,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       trajopt.SetHeuristicInitialGuess(
           h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
           x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
-          x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx, 0);
+          x_guess_right_in_front_post_, des_xy_pos, des_xy_vel,
+          first_mode_knot_idx, 0);
     }
     trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
 
@@ -1238,8 +1239,8 @@ void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(
 
 void CassiePlannerWithMixedRomFom::WarmStartGuess(
     const VectorXd& quat_xyz_shift, const vector<VectorXd>& des_xy_pos,
-    int global_fsm_idx, int first_mode_knot_idx,
-    RomTrajOptCassie* trajopt) const {
+    const Eigen::VectorXd& des_xy_vel, int global_fsm_idx,
+    int first_mode_knot_idx, RomTrajOptCassie* trajopt) const {
   int starting_mode_idx_for_heuristic =
       (param_.n_step - 1) - (global_fsm_idx - prev_global_fsm_idx_) + 1;
 
@@ -1249,13 +1250,14 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     trajopt->SetHeuristicInitialGuess(
         h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
         x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
-        x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx, 0);
+        x_guess_right_in_front_post_, des_xy_pos, des_xy_vel,
+        first_mode_knot_idx, 0);
   } else {
     trajopt->SetHeuristicInitialGuess(
         h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
         x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
-        x_guess_right_in_front_post_, des_xy_pos, first_mode_knot_idx,
-        starting_mode_idx_for_heuristic);
+        x_guess_right_in_front_post_, des_xy_pos, des_xy_vel,
+        first_mode_knot_idx, starting_mode_idx_for_heuristic);
 
     /// Reuse the solution
     // Rotate the previous global x floating base state according to the current

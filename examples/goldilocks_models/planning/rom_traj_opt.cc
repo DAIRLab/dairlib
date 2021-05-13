@@ -1012,7 +1012,8 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
     const Eigen::VectorXd& x_guess_right_in_front_pre,
     const Eigen::VectorXd& x_guess_left_in_front_post,
     const Eigen::VectorXd& x_guess_right_in_front_post,
-    const std::vector<Eigen::VectorXd>& des_xy_pos, int fisrt_mode_phase_index,
+    const std::vector<Eigen::VectorXd>& des_xy_pos,
+    const Eigen::VectorXd& des_xy_vel, int fisrt_mode_phase_index,
     int starting_mode_index) {
   // PrintStatus("Adding initial guess ...");
 
@@ -1056,6 +1057,9 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
     SetInitialGuess(x_postimpact.tail(n_x_ - 6),
                     left_stance ? x_guess_right_in_front_post.tail(n_x_ - 6)
                                 : x_guess_left_in_front_post.tail(n_x_ - 6));
+    // TODO: not sure if setting the initial guess here is good in experiment?
+    //    SetInitialGuess(x_preimpact.segment<2>(n_q_ + 3), des_xy_vel);
+    //    SetInitialGuess(x_postimpact.segment<2>(n_q_ + 3), des_xy_vel);
 
     left_stance = !left_stance;
   }

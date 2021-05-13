@@ -133,7 +133,7 @@ void FomSwingFootPosConstraint::EvaluateConstraint(
   Vector3d foot_pos_in_local_frame =
       pelvis_rot_mat.transpose() * (swing_pt - pelvis_pos);
 
-  // Get foot distance wrt toe
+  // Get foot distance wrt toe (on xy plane)
   Vector3d vec_a = stance_pt2 - stance_pt1;
   Vector3d vec_b = swing_pt - stance_pt1;
   vec_b(2) = 0;
@@ -274,8 +274,8 @@ void OneStepAheadVelConstraint::EvaluateConstraint(
 
   // Velocity at the end of mode after horizon
   Vector2d v;
-  v = sqrt_omega_ * (CoM.head(2) - pt.head(2)) * (pos_exp_ + neg_exp_) / 2 +
-      CoM_dot.head(2) * (pos_exp_ - neg_exp_) / 2;
+  v = sqrt_omega_ * (CoM.head<2>() - pt.head<2>()) * (pos_exp_ + neg_exp_) / 2 +
+      CoM_dot.head<2>() * (pos_exp_ - neg_exp_) / 2;
 
   *y = v - x_and_ft_vel.segment<2>(n_x_);
 }

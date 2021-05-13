@@ -226,7 +226,8 @@ class RomTrajOptCassie : public RomTrajOpt {
       const Eigen::VectorXd& x_guess_left_in_front_post,
       const Eigen::VectorXd& x_guess_right_in_front_post,
       const std::vector<Eigen::VectorXd>& des_xy_pos,
-      int fisrt_mode_phase_index, int starting_mode_index);
+      const Eigen::VectorXd& des_xy_vel, int fisrt_mode_phase_index,
+      int starting_mode_index);
 
   // Testing -- AddRomRegularizationCost is SetAllInitialGuess except we replace
   // setting guess with setting cost

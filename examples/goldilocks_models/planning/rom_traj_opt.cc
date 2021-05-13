@@ -101,9 +101,9 @@ RomTrajOpt::RomTrajOpt(
   double mu = 1;
   const double back_limit_wrt_pelvis = -0.5;
   const double front_limit_wrt_pelvis = 0.5;
-  const double right_limit_wrt_pelvis = 0.03;
+  const double right_limit_wrt_pelvis = 0.06;
   const double left_limit_wrt_pelvis = 0.4;
-  const double right_limit_wrt_stance_ft = 0.03;
+  const double right_limit_wrt_stance_ft = 0.06;
   const double left_limit_wrt_stance_ft =
       std::numeric_limits<double>::infinity();
 

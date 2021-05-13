@@ -130,8 +130,17 @@ void FomSwingFootPosConstraint::EvaluateConstraint(
       stance_foot_contacts_.at(1).first, world_, &stance_pt2);
 
   // Get foot pos wrt pelvis
+  // Option1: use pelvis frame
   Vector3d foot_pos_in_local_frame =
       pelvis_rot_mat.transpose() * (swing_pt - pelvis_pos);
+  // Option2: use pelvis's x axis to construct a 2D frame.
+  /*Vector2d normalized_pelvis_x =
+      pelvis_rot_mat.matrix().topLeftCorner<2, 1>().normalized();
+  Vector2d normalized_pelvis_y(-normalized_pelvis_x(1), normalized_pelvis_x(0));
+  MatrixXd rot_mat(2, 2);
+  rot_mat << normalized_pelvis_x, normalized_pelvis_y;
+  Vector2d foot_pos_in_local_frame =
+      rot_mat.transpose() * (swing_pt - pelvis_pos);*/
 
   // Get foot distance wrt toe (on xy plane)
   Vector3d vec_a = stance_pt2 - stance_pt1;

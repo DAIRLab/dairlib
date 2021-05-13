@@ -127,6 +127,7 @@ RomTrajOpt::RomTrajOpt(
   this->plant_.CalcPointsPositions(*context, stance_origin0.second,
                                    stance_origin0.first, plant_.world_frame(),
                                    &stance_foot_init_pos);
+  double init_ft_distance = (swing_foot_init_pos - stance_foot_init_pos).norm();
   // Friction cone constraint
   //     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
   //     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
@@ -551,10 +552,13 @@ RomTrajOpt::RomTrajOpt(
 
       // Stride length constraint (from stance foot to swing foot)
       PrintStatus("Adding constraint -- FOM step length distance");
+      double step_distance =
+          (i == 0) ? std::max(init_ft_distance, param.gains.max_step_length)
+                   : param.gains.max_step_length;
       auto fom_step_length_constraint =
           std::make_shared<planning::FomStepLengthConstraint>(
               plant_, stance_origin, swing_origin, stance_foot_init_pos,
-              param.gains.max_step_length, i == 0,
+              step_distance, i == 0,
               "fom_step_length_constraint" + to_string(i));
       if (i == 0) {
         AddConstraint(fom_step_length_constraint, xf.head(n_q_));

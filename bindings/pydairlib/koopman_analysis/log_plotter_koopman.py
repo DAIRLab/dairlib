@@ -36,6 +36,17 @@ def main():
     vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)
     act_map = pydairlib.multibody.makeNameToActuatorsMap(plant)
 
+    context = plant.CreateDefaultContext()
+    world_frame = plant.world_frame()
+    torso_frame = plant.GetBodyByName("torso_mass").body_frame()
+    left_leg_frame = plant.GetBodyByName("left_lower_leg").body_frame()
+    right_leg_frame = plant.GetBodyByName("right_lower_leg").body_frame()
+    foot_offest = np.array([0, 0, -0.5])
+
+    plant_params = {'world_frame': world_frame, 'torso_frame': torso_frame,
+                    'left_leg_frame' : left_leg_frame, 'right_leg_frame' : right_leg_frame,
+                    'foot_offset' : foot_offest, 'pos_map' : pos_map, 'vel_map' : vel_map}
+
     try:
         logfile_name = sys.argv[1]
     except:
@@ -53,22 +64,62 @@ def main():
     robot_out, osc_output, full_log = process_mpc_log(log, pos_map, vel_map,
         act_map, robot_out_channel, mpc_channel, osc_channel, osc_debug_channel)
 
-    import pdb; pdb.set_trace()
-    t_u_slice = slice(0, len(t_u) -1)
+    outfolder = "examples/KoopmanMPC/saved_runs/srbd_trajectories/z_experiments/" + str(sys.argv[2]) + "cm"
 
-    ders = ["pos", "vel", "accel"]
-    for i in range(3):
-        plot_osc(osc_debug, t_u_slice, "swing_ft_traj", 0, ders[i])
-        plot_osc(osc_debug, t_u_slice, "swing_ft_traj", 2, ders[i])
-        plot_osc(osc_debug, t_u_slice, "com_traj", 0, ders[i])
-        plot_osc(osc_debug, t_u_slice, "com_traj", 2, ders[i])
-        plot_osc(osc_debug, t_u_slice, "base_angle", 0, ders[i])
+    save_x_srbd(outfolder, plant, context, plant_params, t_x, x)
+    # t_u_slice = slice(0, len(t_u) -1)
+    #
+    # ders = ["pos", "vel", "accel"]
+    # for i in range(3):
+    #     plot_osc(osc_debug, t_u_slice, "swing_ft_traj", 0, ders[i])
+    #     plot_osc(osc_debug, t_u_slice, "swing_ft_traj", 2, ders[i])
+    #     plot_osc(osc_debug, t_u_slice, "com_traj", 0, ders[i])
+    #     plot_osc(osc_debug, t_u_slice, "com_traj", 2, ders[i])
+    #     plot_osc(osc_debug, t_u_slice, "base_angle", 0, ders[i])
+    #
+    # plot_mpc_com_sol(mpc_output[0], 0)
+    # plot_mpc_com_sol(mpc_output[0], 1)
+    # plot_mpc_swing_sol(mpc_output[0], 0)
+    #
+    # plt.show()
 
-    plot_mpc_com_sol(mpc_output[0], 0)
-    plot_mpc_com_sol(mpc_output[0], 1)
-    plot_mpc_swing_sol(mpc_output[0], 0)
+def calc_srbd_state_from_plant(x, plant, context, plant_params):
+    nq = plant.num_positions()
+    nv = plant.num_velocities()
+    nxi = 12
 
-    plt.show()
+    x_srbd = np.zeros((nxi,))
+
+    plant.SetPositionsAndVelocities(context, x)
+    xyz_com = plant.CalcPointsPositions(context, plant_params['torso_frame'],
+                            np.zeros((3,1)), plant_params['world_frame'])
+
+    xyz_left = plant.CalcPointsPositions(context, plant_params['left_leg_frame'],
+                              plant_params['foot_offset'], plant_params['world_frame'])
+
+    xyz_right = plant.CalcPointsPositions(context, plant_params['right_leg_frame'],
+                              plant_params['foot_offset'], plant_params['world_frame'])
+
+    jac_com = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, plant_params['torso_frame'],
+                                            np.zeros((3,)), plant_params['world_frame'],
+                                            plant_params['world_frame'])
+    vel_com = jac_com @ x[nv:nv+nq]
+
+    x_srbd[0:2] = np.ravel(xyz_com[[0,2]])
+    x_srbd[2] = np.ravel(x[plant_params['pos_map']['planar_roty']])
+    x_srbd[3:5] = np.ravel(vel_com[[0,2]])
+    x_srbd[5] = np.ravel(x[plant_params['vel_map']['planar_rotydot']])
+    x_srbd[6:8] = np.ravel(xyz_left[[0,2]])
+    x_srbd[8:10] = np.ravel(xyz_right[[0,2]])
+    return x_srbd
+
+def save_x_srbd(filename, plant, context, params, t_x, x):
+    x_srbd = np.zeros((12,t_x.shape[0]))
+    for i in range(t_x.shape[0]):
+        x_srbd[:,i] = calc_srbd_state_from_plant(np.ravel(x[i,:]), plant, context, params)
+
+    np.savetxt(filename + ".csv", x_srbd, delimiter=",")
+    np.savetxt(filename + "_time.csv", t_x, delimiter=",")
 
 def plot_mpc_com_sol(mpc_sol, dim):
     fig_com = plt.figure("Koopman mpc com_traj " + str(dim))

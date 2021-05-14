@@ -30,18 +30,19 @@ using dairlib::multibody::MultiposeVisualizer;
 
 namespace dairlib {
 
-DEFINE_double(alpha, 0.1, "Transparency of the robots");
+DEFINE_double(alpha, 0.25, "Transparency of the robots");
 DEFINE_string(poses_file_name, "examples/KoopmanMPC/saved_runs/walking_visualization.csv", "filename for saved trajectory");
+DEFINE_int32(max_poses, 12, "maximum number of poses to draw");
 
 void visualizeFullOrderModelPose(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   MatrixXd poses = readCSV(FLAGS_poses_file_name);
-
+  if (poses.cols() > FLAGS_max_poses) {
+    poses = poses.block(0, 0, poses.rows(), FLAGS_max_poses);
+  }
   // Create MultiposeVisualizer
   VectorXd alpha_vec = FLAGS_alpha * VectorXd::Ones(poses.cols());
-  alpha_vec.head(1) << 1;
-  alpha_vec.tail(1) << 0.2;
   MultiposeVisualizer visualizer = MultiposeVisualizer(
       FindResourceOrThrow("examples/PlanarWalker/PlanarWalkerWithTorso.urdf"),
       poses.cols(), alpha_vec, "base");

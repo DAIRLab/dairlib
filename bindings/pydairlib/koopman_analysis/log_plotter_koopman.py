@@ -14,6 +14,12 @@ import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 
+def save_poses_to_csv(plant, x, t_x, dt,  filename):
+    t_vis = np.argwhere(np.isclose(np.fmod(t_x, dt), np.zeros((t_x.shape[0],)), atol=.001))
+    t_vis = np.ravel(t_vis)
+    x_out = x[t_vis,0:plant.num_positions()]
+    np.savetxt(filename, x_out.T, delimiter=",")
+
 def main():
 
     builder = DiagramBuilder()
@@ -47,6 +53,7 @@ def main():
     robot_out, osc_output, full_log = process_mpc_log(log, pos_map, vel_map,
         act_map, robot_out_channel, mpc_channel, osc_channel, osc_debug_channel)
 
+    import pdb; pdb.set_trace()
     t_u_slice = slice(0, len(t_u) -1)
 
     ders = ["pos", "vel", "accel"]
@@ -62,7 +69,6 @@ def main():
     plot_mpc_swing_sol(mpc_output[0], 0)
 
     plt.show()
-
 
 def plot_mpc_com_sol(mpc_sol, dim):
     fig_com = plt.figure("Koopman mpc com_traj " + str(dim))

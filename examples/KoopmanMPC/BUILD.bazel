@@ -171,3 +171,18 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "visualize_positions_lcm_log",
+    srcs = ["visualize_positions_lcm_log.cc"],
+    data = glob(["examples/PlanarWalker/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//common",
+        "//common:file_utils",
+        "//multibody:multipose_visualizer",
+        "//multibody:visualization_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

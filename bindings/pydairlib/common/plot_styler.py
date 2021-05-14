@@ -35,9 +35,9 @@ class PlotStyler():
     self.directory = directory
 
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None, linestyle=None,
-           grid=True, xlabel=None, ylabel=None, title=None, legend=None):
+           grid=True, xlabel=None, ylabel=None, title=None, legend=None, data_label=None):
 
-    plt.plot(xdata, ydata, color=color, linestyle=linestyle)
+    plt.plot(xdata, ydata, color=color, linestyle=linestyle, label=data_label)
     if xlim:
       plt.xlim(xlim)
     if ylim:

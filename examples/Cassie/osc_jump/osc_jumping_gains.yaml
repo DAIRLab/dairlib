@@ -10,7 +10,7 @@ w_swing_toe: 0.1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 100
+w_hip_yaw: 1
 hip_yaw_kp: 40
 hip_yaw_kd: 1
 

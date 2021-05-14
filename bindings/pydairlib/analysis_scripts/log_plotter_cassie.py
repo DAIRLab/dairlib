@@ -133,9 +133,9 @@ def main():
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  plot_contact_est(full_log)
+  # plot_contact_est(full_log)
 
-  if False:
+  if True:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -168,7 +168,7 @@ def plot_contact_est(log):
 
   t_contact = np.array(t_contact)
   contact = np.array(contact)
-  plt.figure("Contact estimation")
+  plt.figure("Contact estimation: " + filename)
   ps.plot(t_contact[t_slice] - hardware_impact, contact[t_slice, 0], xlabel='Time Since Nominal Impact (s)', ylabel='Estimated Normal Contact Force (N)')
   ps.plot(t_contact[t_slice] - hardware_impact, contact[t_slice, 1])
   ps.add_legend(["Left Foot", "Right Foot"])
@@ -433,7 +433,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
   state_names = [foot_type + name for name in state_names]
   state_names = [name + contact_type for name in state_names]
   ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
-           label=state_names[state_indices])
+           data_label=state_names[state_indices])
   plt.legend()
 
 
@@ -492,7 +492,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   pos_indices = slice(0 + 7, 23)
   vel_indices = slice(23 + 6, 45)
   # floating base states
-  # pos_indices = slice(0, 7)
+  pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
 
   # all motor torques

@@ -63,7 +63,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
       bool test_with_ground_truth_state = false,
-      bool print_info_to_terminal = false, int hardware_test_mode = -1);
+      bool print_info_to_terminal = false, int hardware_test_mode = -1, double contact_force_threshold = 60);
 
   const drake::systems::OutputPort<double>& get_robot_output_port() const {
     return this->get_output_port(estimated_state_output_port_);
@@ -217,6 +217,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const double heel_spring_threshold_ctrl_ = -0.01;
   const double heel_spring_threshold_ekf_ = -0.01;
   const double w_soft_constraint_ = 100;  // Soft constraint cost
+  const double contact_force_threshold_;  // Soft constraint cost
 
   // flag for testing and tuning
   std::unique_ptr<drake::systems::Context<double>> context_gt_;

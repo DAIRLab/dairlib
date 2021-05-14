@@ -7,7 +7,7 @@ use_traj_opt_feet_traj: true
 
 # High level command gains (with radio)
 vel_scale_rot: -1
-vel_scale_trans_sagital: 0.25
+vel_scale_trans_sagital: 0.30
 vel_scale_trans_lateral: -0.15
 
 # High level command gains (without radio)
@@ -34,12 +34,12 @@ k_ff_lateral: 0
 k_fb_lateral: 0.2
 
 # Finite state machine
-ss_time: 0.30
+ss_time: 0.35
 ds_time: 0.05
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.3
-footstep_offset: 0.04
+footstep_offset: 0.03
 center_line_offset: 0.03
 mid_foot_height: 0.03
 final_foot_height: 0.002
@@ -51,21 +51,21 @@ lipm_height: 0.85
 # OSC gains
 mu: 0.8
 
-w_accel: 0.00001
-w_soft_constraint: 8000
+w_accel: 0.000
+w_soft_constraint: 80
 
-w_swing_toe: 100
+w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 50
+w_hip_yaw: 0.5
 hip_yaw_kp: 60
 hip_yaw_kd: 0.5
 
 CoMW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,  1000]
+      0,    0,    10]
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
@@ -88,8 +88,8 @@ CoMKd:
 #      0,    0,     0]
 
 PelvisBalanceW:
-  [ 200,    0,     0,
-    0,    400,     0,
+  [ 2,      0,     0,
+    0,      4,     0,
     0,      0,     0]
 PelvisBalanceKp:
   [50,      0,    0,
@@ -103,11 +103,11 @@ PelvisBalanceKd:
 PelvisHeadingW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    10]
+      0,    0,    0.1]
 PelvisHeadingKp:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,   10]
+      0,     0,   0.1]
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
@@ -115,9 +115,9 @@ PelvisHeadingKd:
 period_of_no_heading_control: 0.0
 
 SwingFootW:
-  [ 400,    0,     0,
-    0,    400,     0,
-    0,      0,   400]
+  [ 4,    0,     0,
+    0,    4,     0,
+    0,      0,   4]
 SwingFootKp:
   [ 50,   0,     0,
     0,   100,     0,

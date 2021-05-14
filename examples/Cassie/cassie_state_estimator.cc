@@ -46,7 +46,7 @@ CassieStateEstimator::CassieStateEstimator(
     const KinematicEvaluatorSet<double>* left_contact_evaluator,
     const KinematicEvaluatorSet<double>* right_contact_evaluator,
     bool test_with_ground_truth_state, bool print_info_to_terminal,
-    int hardware_test_mode)
+    int hardware_test_mode, double contact_force_threshold)
     : plant_(plant),
       fourbar_evaluator_(fourbar_evaluator),
       left_contact_evaluator_(left_contact_evaluator),
@@ -64,7 +64,8 @@ CassieStateEstimator::CassieStateEstimator(
       context_gt_(plant_.CreateDefaultContext()),
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
-      hardware_test_mode_(hardware_test_mode) {
+      hardware_test_mode_(hardware_test_mode),
+      contact_force_threshold_(contact_force_threshold) {
   DRAKE_DEMAND(&fourbar_evaluator->plant() == &plant);
   DRAKE_DEMAND(&left_contact_evaluator->plant() == &plant);
   DRAKE_DEMAND(&right_contact_evaluator->plant() == &plant);
@@ -1008,12 +1009,15 @@ void CassieStateEstimator::EstimateContactForces(
   VectorXd C(n_v_);
   plant_.CalcBiasTerm(*context_, &C);
   MatrixXd B = plant_.MakeActuationMatrix();
-  double gamma = 0.015;
+  drake::multibody::MultibodyForces<double> f_app(plant_);
+  plant_.CalcForceElementsContribution(*context_, &f_app);
+  double beta = 0.001;
+  double gamma = 0.005;
 
   VectorXd v = output.GetVelocities();
   VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
-  VectorXd tau_d = gamma * M * v_prev -
-                   (1 - gamma) * (M * v + B * output.GetEfforts() + C - g);
+  VectorXd tau_d = gamma * beta * M * v_prev -
+                   (1 - gamma) * (beta * M * v + B * output.GetEfforts() + C - g + f_app.generalized_forces());
 
   // Simplifying to 2 feet contacts, might need to change it to two contacts per
   // foot and sum them up
@@ -1028,8 +1032,8 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  left_contact = lambda[2] > 50;
-  right_contact = lambda[5] > 50;
+  left_contact = lambda[2] > contact_force_threshold_;
+  right_contact = lambda[5] > contact_force_threshold_;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

@@ -56,6 +56,8 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
+DEFINE_double(contact_force_threshold, 60,
+              "Contact force threshold. Set to 140 for walking");
 
 // Testing mode
 DEFINE_int64(test_mode, -1,
@@ -191,7 +193,7 @@ int do_main(int argc, char* argv[]) {
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
       &right_contact_evaluator, FLAGS_test_with_ground_truth_state,
-      FLAGS_print_ekf_info, FLAGS_test_mode);
+      FLAGS_print_ekf_info, FLAGS_test_mode, FLAGS_contact_force_threshold);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -240,9 +242,9 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_contact_output_port(),
                   contact_pub->get_input_port());
-  //TODO(yangwill): Consider filtering contact estimation
-  auto gm_contact_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+  // TODO(yangwill): Consider filtering contact estimation
+  auto gm_contact_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_gm_contact_output_port(),
                   gm_contact_pub->get_input_port());
@@ -266,7 +268,8 @@ int do_main(int argc, char* argv[]) {
 
   auto imu_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
       state_estimator->get_robot_output_port().size(),
-      robot_output_sender->get_input_port_state().size() + robot_output_sender->get_input_port_effort().size(),
+      robot_output_sender->get_input_port_state().size() +
+          robot_output_sender->get_input_port_effort().size(),
       robot_output_sender->get_input_port_imu().size());
 
   builder.Connect(state_estimator->get_robot_output_port(),
@@ -341,6 +344,7 @@ int do_main(int argc, char* argv[]) {
         std::cout << "Difference is too large, resetting dispatcher time."
                   << std::endl;
         simulator.get_mutable_context().SetTime(time);
+        simulator.Initialize();
       }
 
       state_estimator->set_next_message_time(time);

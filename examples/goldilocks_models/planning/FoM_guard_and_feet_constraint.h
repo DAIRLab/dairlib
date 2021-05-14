@@ -53,7 +53,7 @@ class FomSwingFootPosConstraint : public solvers::NonlinearConstraint<double> {
       const drake::multibody::Frame<double>& pelvis_frame,
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
-      stance_foot_contacts,
+          stance_foot_contacts,
       const std::pair<const Eigen::Vector3d,
                       const drake::multibody::Frame<double>&>&
           swing_foot_origin,
@@ -150,6 +150,11 @@ class FomStepLengthConstraint : public solvers::NonlinearConstraint<double> {
 // The constraint that gives the COM velocity at the end of mode AFTER the
 // planner's horizon, based on LIPM dynamics (an approximation).
 // Constraints are
+//      predicted_comdot = f(com, comdot)
+//   where f is the LIPM solution, com and comdot are the current position and
+//   velocity.
+//   predicted_comdot is a 2D decision variable, and com/comdot is a function of
+//   robot's state.
 class OneStepAheadVelConstraint : public solvers::NonlinearConstraint<double> {
  public:
   OneStepAheadVelConstraint(

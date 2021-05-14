@@ -182,6 +182,34 @@ class OneStepAheadVelConstraint : public solvers::NonlinearConstraint<double> {
   int n_x_;
 };
 
+// The constraint that gives the COM state and stance foot position of the last
+// mode (post impact).
+// Constraints are
+//      [com, comdot, stance_ft_pos] = f(x_post_impact)
+//   where f is the mapping function for COM, COM vel and stance foot.
+class LastStepLipmMappingConstraint
+    : public solvers::NonlinearConstraint<double> {
+ public:
+  LastStepLipmMappingConstraint(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::pair<const Eigen::Vector3d,
+                      const drake::multibody::Frame<double>&>&
+          stance_foot_origin,
+      const std::string& description = "last_step_lipm_mapping_constraint");
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const std::pair<const Eigen::Vector3d,
+                  const drake::multibody::Frame<double>&>& stance_foot_origin_;
+  int n_q_;
+  int n_v_;
+};
+
 /// V2 for swing foot constraint ///////////////////////////////////////////////
 /// V2 takes swing foot position as decision variable
 

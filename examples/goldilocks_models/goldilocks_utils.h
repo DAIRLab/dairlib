@@ -193,6 +193,9 @@ struct PlannerSetting {
   std::string init_file;
 
   // Testing
+  int n_step_lipm;
+
+  // Debugging
   int solve_idx_for_read_from_file;
   void PrintAll() const;
 };

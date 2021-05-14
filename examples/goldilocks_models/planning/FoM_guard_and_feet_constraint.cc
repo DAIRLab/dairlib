@@ -259,9 +259,9 @@ OneStepAheadVelConstraint::OneStepAheadVelConstraint(
 }
 
 void OneStepAheadVelConstraint::EvaluateConstraint(
-    const Eigen::Ref<const VectorX<double>>& x_and_ft_vel,
+    const Eigen::Ref<const VectorX<double>>& x_and_com_vel,
     VectorX<double>* y) const {
-  plant_.SetPositions(context_.get(), x_and_ft_vel.head(n_q_));
+  plant_.SetPositions(context_.get(), x_and_com_vel.head(n_q_));
 
   // Stance foot position (I use toe origin as approximation)
   drake::VectorX<double> pt(3);
@@ -275,18 +275,60 @@ void OneStepAheadVelConstraint::EvaluateConstraint(
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
       *context_, drake::multibody::JacobianWrtVariable::kV, world_, world_,
       &J_com);
-  CoM_dot = J_com.topRows<2>() * x_and_ft_vel.segment(n_q_, n_v_);
+  CoM_dot = J_com.topRows<2>() * x_and_com_vel.segment(n_q_, n_v_);
 
   // Testing -- Use pelvis as a proxy to COM
-  //  CoM = x_and_ft_vel.segment<2>(4);
-  //  CoM_dot = x_and_ft_vel.segment<2>(n_q_ + 3);
+  //  CoM = x_and_com_vel.segment<2>(4);
+  //  CoM_dot = x_and_com_vel.segment<2>(n_q_ + 3);
 
   // Velocity at the end of mode after horizon
   Vector2d v;
   v = sqrt_omega_ * (CoM.head<2>() - pt.head<2>()) * (pos_exp_ + neg_exp_) / 2 +
       CoM_dot.head<2>() * (pos_exp_ - neg_exp_) / 2;
 
-  *y = v - x_and_ft_vel.segment<2>(n_x_);
+  *y = v - x_and_com_vel.segment<2>(n_x_);
+}
+
+/// Constraint for lipm mapping
+LastStepLipmMappingConstraint::LastStepLipmMappingConstraint(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::pair<const Vector3d, const Frame<double>&>& stance_foot_origin,
+    const std::string& description)
+    : NonlinearConstraint<double>(
+          6, plant.num_positions() + plant.num_velocities() + 2,
+          VectorXd::Zero(6), VectorXd::Zero(6), description),
+      plant_(plant),
+      world_(plant.world_frame()),
+      context_(plant.CreateDefaultContext()),
+      stance_foot_origin_(stance_foot_origin),
+      n_q_(plant.num_positions()),
+      n_v_(plant.num_velocities()) {}
+
+void LastStepLipmMappingConstraint::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<double>>& x_com_comdot_ft,
+    VectorX<double>* y) const {
+  plant_.SetPositions(context_.get(), x_com_comdot_ft.head(n_q_));
+
+  // COM position and velocity
+  Vector2d CoM;
+  Vector2d CoM_dot;
+  CoM = plant_.CalcCenterOfMassPositionInWorld(*context_).head<2>();
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, drake::multibody::JacobianWrtVariable::kV, world_, world_,
+      &J_com);
+  CoM_dot = J_com.topRows<2>() * x_com_comdot_ft.segment(n_q_, n_v_);
+
+  // Stance foot position (I use toe origin as approximation)
+  drake::VectorX<double> pt(3);
+  this->plant_.CalcPointsPositions(*context_, stance_foot_origin_.second,
+                                   stance_foot_origin_.first, world_, &pt);
+
+  // Assign
+  drake::VectorX<double> com_comdot_ft(6);
+  com_comdot_ft << CoM, CoM_dot, pt.head<2>();
+
+  *y = x_com_comdot_ft.tail<6>() - com_comdot_ft;
 }
 
 /// V2 for swing foot constraint

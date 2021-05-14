@@ -161,6 +161,7 @@ int DoMain(int argc, char* argv[]) {
   param.iter = (FLAGS_iter >= 0) ? FLAGS_iter : gains.model_iter;
   param.sample = (FLAGS_sample >= 0) ? FLAGS_sample : gains.sample_idx;
   param.n_step = FLAGS_n_step;
+  param.n_step_lipm = 10 - FLAGS_n_step;
   param.knots_per_mode = FLAGS_knots_per_mode;
   // TODO: temporarily commented out FLAGS_final_position for testing
   //  param.final_position_x = FLAGS_final_position;
@@ -255,7 +256,7 @@ int DoMain(int argc, char* argv[]) {
                                     gains.global_target_position_y);
   auto planner_final_pos = builder.AddSystem<PlannerFinalPosition>(
       plant_feedback, global_target_pos, gains.max_desired_step_length,
-      param.n_step);
+      param.n_step + param.n_step_lipm);
   builder.Connect(state_receiver->get_output_port(0),
                   planner_final_pos->get_input_port_state());
   builder.Connect(init_phase_calculator->get_output_port(0),

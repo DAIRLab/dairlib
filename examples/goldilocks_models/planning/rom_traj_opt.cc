@@ -1,5 +1,6 @@
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 
+#include <math.h>
 #include <iostream>
 #include <string>
 #include <utility>
@@ -99,10 +100,10 @@ RomTrajOpt::RomTrajOpt(
   /// Some paramters
   double impulse_limit = 50;
   double mu = 1;
-  const double back_limit_wrt_pelvis = -0.5;
-  const double front_limit_wrt_pelvis = 0.5;
-  const double right_limit_wrt_pelvis = 0.06;
-  const double left_limit_wrt_pelvis = 0.4;
+  const double back_limit_wrt_pelvis = param.gains.back_limit_wrt_pelvis;
+  const double front_limit_wrt_pelvis = param.gains.front_limit_wrt_pelvis;
+  const double right_limit_wrt_pelvis = param.gains.right_limit_wrt_pelvis;
+  const double left_limit_wrt_pelvis = param.gains.left_limit_wrt_pelvis;
   const double right_limit_wrt_stance_ft = 0.06;
   const double left_limit_wrt_stance_ft =
       std::numeric_limits<double>::infinity();
@@ -599,6 +600,98 @@ void RomTrajOpt::AddConstraintAndCostForLastFootStep(
                             des_xy_vel, predicted_com_vel_var_));
 }
 
+void RomTrajOpt::AddCascadedLipmMPC(
+    double w_predict_lipm_p, double w_predict_lipm_v,
+    const std::vector<Eigen::VectorXd>& des_xy_pos,
+    const Eigen::VectorXd& des_xy_vel, int n_step_lipm, double stride_period,
+    double max_step_length, double min_step_width) {
+  DRAKE_DEMAND(n_step_lipm > 0);
+  double height = 0.85;  // approximation
+
+  // stance foot for after the planner's horizon
+  bool left_stance = ((num_modes_ % 2 == 0) && start_with_left_stance_) ||
+                     ((num_modes_ % 2 == 1) && !start_with_left_stance_);
+  const auto& stance_ft_origin = left_stance ? left_origin_ : right_origin_;
+
+  // Declare lipm state and input (foot location)
+  x_lipm_vars_ = NewContinuousVariables(4 * (n_step_lipm + 1), "x_lipm_vars");
+  u_lipm_vars_ = NewContinuousVariables(2 * n_step_lipm, "u_lipm_vars");
+
+  // Last step lipm mapping function
+  PrintStatus("Adding constraint -- lipm mapping for the last pose");
+  auto lipm_mapping_constraint =
+      std::make_shared<planning::LastStepLipmMappingConstraint>(
+          plant_, stance_ft_origin);
+  AddConstraint(lipm_mapping_constraint,
+                {x0_vars_by_mode(num_modes_), x_lipm_vars_.head<4>(),
+                 u_lipm_vars_.head<2>()});
+
+  // Add LIPM dynamics constraint
+  double omega = std::sqrt(9.81 / height);
+  double cosh_wT = std::cosh(omega * stride_period);
+  double sinh_wT = std::sinh(omega * stride_period);
+  Eigen::Matrix<double, 2, 2> A;
+  A << cosh_wT, sinh_wT / omega, omega * sinh_wT, cosh_wT;
+  Eigen::Matrix<double, 2, 1> B;
+  B << 1 - cosh_wT, -omega * sinh_wT;
+  Eigen::MatrixXd I2 = Eigen::MatrixXd::Identity(2, 2);
+  Eigen::Matrix<double, 2, 5> A_lin;
+  A_lin << A, B, -I2;
+  for (int i = 0; i < n_step_lipm; i++) {
+    VectorXDecisionVariable x_i = x_lipm_vars_by_idx(i);
+    VectorXDecisionVariable u_i = u_lipm_vars_by_idx(i);
+    VectorXDecisionVariable x_i_post = x_lipm_vars_by_idx(i + 1);
+    // x axis
+    AddLinearEqualityConstraint(
+        A_lin, VectorXd::Zero(2),
+        {x_i.segment<1>(0), x_i.segment<1>(2), u_i.segment<1>(0),
+         x_i_post.segment<1>(0), x_i_post.segment<1>(2)});
+    // y axis
+    AddLinearEqualityConstraint(
+        A_lin, VectorXd::Zero(2),
+        {x_i.segment<1>(1), x_i.segment<1>(3), u_i.segment<1>(1),
+         x_i_post.segment<1>(1), x_i_post.segment<1>(3)});
+  }
+
+  // Add step size kinematics constraint
+  Eigen::Matrix<double, 2, 4> A_lin_kin;
+  A_lin_kin << I2, -I2;
+  Eigen::Matrix<double, 2, 1> b_lin_kin;
+  b_lin_kin << max_step_length, max_step_length;
+  Eigen::Matrix<double, 2, 1> b_lin_kin2;
+  b_lin_kin2 << -max_step_length, min_step_width;
+  for (int i = 1; i <= n_step_lipm; i++) {
+    VectorXDecisionVariable u_i = u_lipm_vars_by_idx(i - 1);
+    VectorXDecisionVariable x_i = x_lipm_vars_by_idx(i);
+    VectorXDecisionVariable u_i_post = u_lipm_vars_by_idx(i);
+    // end of mode
+    AddLinearConstraint(A_lin_kin, -b_lin_kin, b_lin_kin, {x_i, u_i});
+    // start of mode
+    if (i != n_step_lipm) {
+      if (left_stance) {
+        AddLinearConstraint(A_lin_kin, b_lin_kin2, b_lin_kin, {x_i, u_i_post});
+      } else {
+        AddLinearConstraint(A_lin_kin, b_lin_kin, -b_lin_kin2, {x_i, u_i_post});
+      }
+    }
+    left_stance = !left_stance;
+  }
+
+  // Add cost
+  PrintStatus("Adding cost -- lipm com pos/vel tracking");
+  cout << "add lipm tracking\n des_xy_pos = \n";
+  for (int i = 0; i < n_step_lipm; i++) {
+    cout << des_xy_pos.at(num_modes_ + i + 1).transpose() << endl;
+    predict_lipm_p_bindings_.push_back(AddQuadraticErrorCost(
+        w_predict_lipm_p * I2, des_xy_pos.at(num_modes_ + i + 1),
+        x_lipm_vars_by_idx(i + 1).head<2>()));
+    predict_lipm_v_bindings_.push_back(
+        AddQuadraticErrorCost(w_predict_lipm_v * I2, des_xy_vel,
+                              x_lipm_vars_by_idx(i + 1).tail<2>()));
+  }
+  cout << endl;
+}
+
 void addConstraintScaling(std::unordered_map<int, double>* map,
                           vector<int> idx_vec, vector<double> s_vec) {
   DRAKE_DEMAND(idx_vec.size() == s_vec.size());
@@ -729,6 +822,15 @@ VectorXDecisionVariable RomTrajOpt::x0_vars_by_mode(int mode) const {
 const Eigen::VectorBlock<const VectorXDecisionVariable>
 RomTrajOpt::xf_vars_by_mode(int mode) const {
   return xf_vars_.segment(mode * n_x_, n_x_);
+}
+
+const Eigen::VectorBlock<const VectorXDecisionVariable>
+RomTrajOpt::x_lipm_vars_by_idx(int idx) const {
+  return x_lipm_vars_.segment(idx * 4, 4);
+}
+const Eigen::VectorBlock<const VectorXDecisionVariable>
+RomTrajOpt::u_lipm_vars_by_idx(int idx) const {
+  return u_lipm_vars_.segment(idx * 2, 2);
 }
 
 VectorX<Expression> RomTrajOpt::SubstitutePlaceholderVariables(

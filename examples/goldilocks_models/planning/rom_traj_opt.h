@@ -56,6 +56,12 @@ class RomTrajOpt
                                            const Eigen::VectorXd& des_xy_vel,
                                            double stride_period);
 
+  void AddCascadedLipmMPC(double w_predict_lipm_p, double w_predict_lipm_v,
+                          const std::vector<Eigen::VectorXd>& des_xy_pos,
+                          const Eigen::VectorXd& des_xy_vel, int n_step_lipm,
+                          double stride_period, double max_step_length,
+                          double min_step_width);
+
   void AddTimeStepConstraint(std::vector<double> minimum_timestep,
                              std::vector<double> maximum_timestep,
                              bool fix_duration, bool equalize_timestep_size,
@@ -107,6 +113,11 @@ class RomTrajOpt
   drake::solvers::VectorXDecisionVariable touchdown_foot_pos_vars(
       int mode) const;
 
+  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
+  x_lipm_vars_by_idx(int idx) const;
+  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
+  u_lipm_vars_by_idx(int idx) const;
+
   drake::VectorX<drake::symbolic::Expression> SubstitutePlaceholderVariables(
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
@@ -151,6 +162,7 @@ class RomTrajOpt
   std::vector<Binding<Cost>> v0_relax_cost_bindings_;
   std::vector<Binding<Cost>> init_rom_relax_cost_bindings_;
   std::vector<Binding<Cost>> lambda_cost_bindings_;
+  std::vector<Binding<Cost>> predict_lipm_p_bindings_;
   std::vector<Binding<Cost>> predict_lipm_v_bindings_;
 
   // Decision variables
@@ -162,6 +174,8 @@ class RomTrajOpt
   drake::solvers::VectorXDecisionVariable touchdown_foot_pos_vars_;
   drake::solvers::VectorXDecisionVariable eps_rom_var_;
   drake::solvers::VectorXDecisionVariable predicted_com_vel_var_;
+  drake::solvers::VectorXDecisionVariable x_lipm_vars_;
+  drake::solvers::VectorXDecisionVariable u_lipm_vars_;
 
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.

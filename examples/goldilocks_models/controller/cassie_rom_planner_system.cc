@@ -486,6 +486,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << "n_knots_first_mode = " << n_knots_first_mode << endl;
   cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
 
+  // First mode duration
+  double first_mode_duration = stride_period_ * (1 - init_phase);
+
   // Get adjusted_final_pos
   // 1. if final_position is a constant
   //  VectorXd final_position(2);
@@ -499,8 +502,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   const VectorXd& adjusted_final_pos = final_position;
 
   // Get the desired xy positions for the FOM states
-  vector<VectorXd> des_xy_pos =
-      vector<VectorXd>(param_.n_step + 1, VectorXd::Zero(2));
+  vector<VectorXd> des_xy_pos = vector<VectorXd>(
+      param_.n_step + param_.n_step_lipm + 1, VectorXd::Zero(2));
   double total_phase_length = param_.n_step - init_phase;
   des_xy_pos[1] = des_xy_pos[0] +
                   adjusted_final_pos * (1 - init_phase) / total_phase_length;
@@ -513,9 +516,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   for (int i = 0; i < des_xy_pos.size(); i++) {
     cout << des_xy_pos[i].transpose() << endl;
   }
+  VectorXd des_xy_vel = des_xy_pos.at(1) / first_mode_duration;
+  cout << "des_xy_vel = " << des_xy_vel.transpose() << endl;
 
   // Maximum swing foot travel distance
-  double first_mode_duration = stride_period_ * (1 - init_phase);
   double remaining_time_til_touchdown = first_mode_duration;
   // Update date the step length of the first mode
   // Take into account the double stance duration
@@ -581,10 +585,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Constraint and cost for the last foot step location
-  VectorXd des_xy_vel = des_xy_pos.at(1) / first_mode_duration;
-  trajopt.AddConstraintAndCostForLastFootStep(param_.gains.w_predict_lipm_v,
-                                              des_xy_vel, stride_period_);
-  cout << "des_xy_vel = " << des_xy_vel.transpose() << endl;
+  //  trajopt.AddConstraintAndCostForLastFootStep(param_.gains.w_predict_lipm_v,
+  //                                              des_xy_vel, stride_period_);
+  trajopt.AddCascadedLipmMPC(
+      param_.gains.w_predict_lipm_p, param_.gains.w_predict_lipm_v, des_xy_pos,
+      des_xy_vel, param_.n_step_lipm, stride_period_,
+      param_.gains.max_step_length / 2, param_.gains.right_limit_wrt_pelvis);
 
   // Final goal position constraint
   /*PrintStatus("Adding constraint -- FoM final position");
@@ -895,11 +901,16 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   eps_rom_ = result.GetSolution(trajopt.eps_rom_var_);
-  local_predicted_com_vel_ = result.GetSolution(trajopt.predicted_com_vel_var_);
+  //  local_predicted_com_vel_ =
+  //  result.GetSolution(trajopt.predicted_com_vel_var_);
+  local_x_lipm_ = result.GetSolution(trajopt.x_lipm_vars_);
+  local_u_lipm_ = result.GetSolution(trajopt.u_lipm_vars_);
 
   prev_global_fsm_idx_ = global_fsm_idx;
   prev_first_mode_knot_idx_ = first_mode_knot_idx;
   prev_mode_start_ = trajopt.mode_start();
+
+  // Transform some solutions into global frame
 
   ///
   /// For debugging
@@ -1153,6 +1164,11 @@ void CassiePlannerWithMixedRomFom::PrintCost(
   if (init_rom_relax_cost > 0) {
     cout << "init_rom_relax_cost = " << init_rom_relax_cost << endl;
   }
+  double predict_lipm_p_cost =
+      solvers::EvalCostGivenSolution(result, trajopt.predict_lipm_p_bindings_);
+  if (predict_lipm_p_cost > 0) {
+    cout << "predict_lipm_p_cost = " << predict_lipm_p_cost << endl;
+  }
   double predict_lipm_v_cost =
       solvers::EvalCostGivenSolution(result, trajopt.predict_lipm_v_bindings_);
   if (predict_lipm_v_cost > 0) {
@@ -1260,8 +1276,8 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
         first_mode_knot_idx, starting_mode_idx_for_heuristic);
 
     /// Reuse the solution
-    // Rotate the previous global x floating base state according to the current
-    // global-to-local-shift
+    // Rotate the previous global x floating base state according to the
+    // current global-to-local-shift
     // TODO: also need to do the same thing to local_Lambda_FOM_
     // TODO: also need to do the same thing to predicted_com_vel_
     MatrixXd local_x0_FOM = global_x0_FOM_;

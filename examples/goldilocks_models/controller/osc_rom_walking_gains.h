@@ -21,6 +21,7 @@ struct OSCRomWalkingGains {
   double w_reg_joints;
   double w_reg_hip_yaw;
   double w_reg_vel;
+  double w_predict_lipm_p;
   double w_predict_lipm_v;
   double left_support_duration;
   double right_support_duration;
@@ -28,6 +29,10 @@ struct OSCRomWalkingGains {
   double max_foot_speed;
   double max_step_length;
   double max_desired_step_length;
+  double back_limit_wrt_pelvis;
+  double front_limit_wrt_pelvis;
+  double right_limit_wrt_pelvis;
+  double left_limit_wrt_pelvis;
   std::string dir_model;
   std::string dir_data;
   double mu;
@@ -144,6 +149,7 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(w_reg_joints));
     a->Visit(DRAKE_NVP(w_reg_hip_yaw));
     a->Visit(DRAKE_NVP(w_reg_vel));
+    a->Visit(DRAKE_NVP(w_predict_lipm_p));
     a->Visit(DRAKE_NVP(w_predict_lipm_v));
     a->Visit(DRAKE_NVP(left_support_duration));
     a->Visit(DRAKE_NVP(right_support_duration));
@@ -151,6 +157,10 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(max_foot_speed));
     a->Visit(DRAKE_NVP(max_step_length));
     a->Visit(DRAKE_NVP(max_desired_step_length));
+    a->Visit(DRAKE_NVP(back_limit_wrt_pelvis));
+    a->Visit(DRAKE_NVP(front_limit_wrt_pelvis));
+    a->Visit(DRAKE_NVP(right_limit_wrt_pelvis));
+    a->Visit(DRAKE_NVP(left_limit_wrt_pelvis));
     a->Visit(DRAKE_NVP(dir_model));
     a->Visit(DRAKE_NVP(dir_data));
     a->Visit(DRAKE_NVP(mu));

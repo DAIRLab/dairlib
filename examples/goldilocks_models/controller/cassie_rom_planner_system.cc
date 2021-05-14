@@ -911,6 +911,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   prev_mode_start_ = trajopt.mode_start();
 
   // Transform some solutions into global frame
+  // TODO: Use RotatePosBetweenGlobalAndLocalFrame()
 
   ///
   /// For debugging
@@ -968,8 +969,6 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
     bool rotate_from_global_to_local, const VectorXd& quat_xyz_shift,
     const MatrixXd& original_x0_FOM, const MatrixXd& original_xf_FOM,
     MatrixXd* rotated_x0_FOM, MatrixXd* rotated_xf_FOM) const {
-  // TODO: still need to check if this works when both pelvis's position and
-  //  rotation are not close to 0.
   Quaterniond relative_quat =
       rotate_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
@@ -1021,6 +1020,32 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
           << relative_rot_mat * original_xf_FOM.col(j).segment<3>(nq_);
       rotated_xf_FOM->col(j).segment<3>(nq_ + 3)
           << relative_rot_mat * original_xf_FOM.col(j).segment<3>(nq_ + 3);
+    }
+  }
+}
+
+void CassiePlannerWithMixedRomFom::RotatePosBetweenGlobalAndLocalFrame(
+    bool rotate_from_global_to_local, const Eigen::VectorXd& quat_xyz_shift,
+    const Eigen::MatrixXd& original_pos,
+    Eigen::MatrixXd* rotated_pos) const {
+  Quaterniond relative_quat =
+      rotate_from_global_to_local
+          ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
+                        quat_xyz_shift(3))
+          : Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
+                        quat_xyz_shift(3))
+                .conjugate();
+  Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
+  double sign = rotate_from_global_to_local ? 1 : -1;
+  for (int j = 0; j < original_pos.cols(); j++) {
+    if (rotate_from_global_to_local) {
+      rotated_pos->col(j).segment<3>(4)
+          << relative_rot_mat * (original_pos.col(j).segment<3>(4) +
+                                 sign * quat_xyz_shift.segment<3>(4));
+    } else {
+      rotated_pos->col(j).segment<3>(4)
+          << relative_rot_mat * original_pos.col(j).segment<3>(4) +
+                 sign * quat_xyz_shift.segment<3>(4);
     }
   }
 }

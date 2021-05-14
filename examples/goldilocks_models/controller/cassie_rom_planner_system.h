@@ -69,6 +69,11 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
                                         const Eigen::MatrixXd& original_xf_FOM,
                                         Eigen::MatrixXd* rotated_x0_FOM,
                                         Eigen::MatrixXd* rotated_xf_FOM) const;
+  void RotatePosBetweenGlobalAndLocalFrame(
+      bool rotate_from_global_to_local, const Eigen::VectorXd& quat_xyz_shift,
+      const Eigen::MatrixXd& original_pos,
+      Eigen::MatrixXd* rotated_pos) const;
+
   void BookKeeping(
       bool start_with_left_stance, const std::chrono::duration<double>& elapsed,
       const drake::solvers::MathematicalProgramResult& result) const;

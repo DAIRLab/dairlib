@@ -61,6 +61,7 @@ DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
 DEFINE_int32(sample, -1, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
+DEFINE_int32(n_step_lipm, 7, "Number of foot steps of lipm cascased");
 DEFINE_double(final_position, 2, "The final position for the robot");
 DEFINE_double(stride_length, -10000, "");
 DEFINE_double(stride_length_scaling, 1.0, "");
@@ -161,7 +162,7 @@ int DoMain(int argc, char* argv[]) {
   param.iter = (FLAGS_iter >= 0) ? FLAGS_iter : gains.model_iter;
   param.sample = (FLAGS_sample >= 0) ? FLAGS_sample : gains.sample_idx;
   param.n_step = FLAGS_n_step;
-  param.n_step_lipm = 10 - FLAGS_n_step;
+  param.n_step_lipm = FLAGS_n_step_lipm;
   param.knots_per_mode = FLAGS_knots_per_mode;
   // TODO: temporarily commented out FLAGS_final_position for testing
   //  param.final_position_x = FLAGS_final_position;

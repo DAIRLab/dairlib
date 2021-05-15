@@ -692,7 +692,6 @@ void RomTrajOpt::AddCascadedLipmMPC(
         AddQuadraticErrorCost(w_predict_lipm_v * I2, des_xy_vel,
                               x_lipm_vars_by_idx(i + 1).tail<2>()));
   }
-  cout << endl;
 }
 
 void addConstraintScaling(std::unordered_map<int, double>* map,
@@ -1180,18 +1179,21 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
   // TODO: Currently we initialize all vars, but we only need for those that's
   //  not warm-started by the previous solution
   // TODO: the foot placement guess should consider the kinematics constraint
-  for (int i = 0; i < param.n_step_lipm; i++) {
-    SetInitialGuess(x_lipm_vars_by_idx(i).head<2>(),
-                    des_xy_pos.at(i + param.n_step));
-    SetInitialGuess(x_lipm_vars_by_idx(i).tail<2>(), des_xy_vel);
-    SetInitialGuess(u_lipm_vars_by_idx(i),
-                    (des_xy_pos.at(i + param.n_step) +
-                     des_xy_pos.at(i + param.n_step + 1)) /
-                        2);
+  if (param.n_step_lipm > 1) {
+    for (int i = 0; i < param.n_step_lipm; i++) {
+      SetInitialGuess(x_lipm_vars_by_idx(i).head<2>(),
+                      des_xy_pos.at(i + param.n_step));
+      SetInitialGuess(x_lipm_vars_by_idx(i).tail<2>(), des_xy_vel);
+      SetInitialGuess(u_lipm_vars_by_idx(i),
+                      (des_xy_pos.at(i + param.n_step) +
+                       des_xy_pos.at(i + param.n_step + 1)) /
+                          2);
+    }
+    SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).head<2>(),
+                    des_xy_pos.at(param.n_step_lipm + param.n_step));
+    SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).tail<2>(),
+                    des_xy_vel);
   }
-  SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).head<2>(),
-                  des_xy_pos.at(param.n_step_lipm + param.n_step));
-  SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).tail<2>(), des_xy_vel);
 }
 
 void RomTrajOptCassie::AddRomRegularizationCost(

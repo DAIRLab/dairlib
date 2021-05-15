@@ -75,7 +75,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   this->set_name("planner_traj");
 
   DRAKE_DEMAND(param_.knots_per_mode > 0);
-  DRAKE_DEMAND(param_.n_step_lipm > 0);  // current code needs this
 
   // Input/Output Setup
   stance_foot_port_ =
@@ -585,13 +584,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
          xf.segment<1>(positions_map_.at("ankle_joint_right"))});
   }
 
-  // Constraint and cost for the last foot step location
-  //  trajopt.AddConstraintAndCostForLastFootStep(param_.gains.w_predict_lipm_v,
-  //                                              des_xy_vel, stride_period_);
-  trajopt.AddCascadedLipmMPC(
-      param_.gains.w_predict_lipm_p, param_.gains.w_predict_lipm_v, des_xy_pos,
-      des_xy_vel, param_.n_step_lipm, stride_period_,
-      param_.gains.max_step_length / 2, param_.gains.right_limit_wrt_pelvis);
+  // Future steps
+  if (param_.n_step_lipm > 1) {
+    trajopt.AddCascadedLipmMPC(
+        param_.gains.w_predict_lipm_p, param_.gains.w_predict_lipm_v,
+        des_xy_pos, des_xy_vel, param_.n_step_lipm, stride_period_,
+        param_.gains.max_step_length / 2, param_.gains.right_limit_wrt_pelvis);
+  } else {
+    // Constraint and cost for the last foot step location
+    trajopt.AddConstraintAndCostForLastFootStep(param_.gains.w_predict_lipm_v,
+                                                des_xy_vel, stride_period_);
+  }
 
   // Final goal position constraint
   /*PrintStatus("Adding constraint -- FoM final position");
@@ -902,25 +905,30 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   eps_rom_ = result.GetSolution(trajopt.eps_rom_var_);
-  //  local_predicted_com_vel_ =
-  //  result.GetSolution(trajopt.predicted_com_vel_var_);
-  local_x_lipm_ =
-      Eigen::Map<MatrixXd>(result.GetSolution(trajopt.x_lipm_vars_).data(), 4,
-                           param_.n_step_lipm + 1);
-  local_u_lipm_ = Eigen::Map<MatrixXd>(
-      result.GetSolution(trajopt.u_lipm_vars_).data(), 2, param_.n_step_lipm);
+  if (param_.n_step_lipm > 1) {
+    local_x_lipm_ =
+        Eigen::Map<MatrixXd>(result.GetSolution(trajopt.x_lipm_vars_).data(), 4,
+                             param_.n_step_lipm + 1);
+    local_u_lipm_ = Eigen::Map<MatrixXd>(
+        result.GetSolution(trajopt.u_lipm_vars_).data(), 2, param_.n_step_lipm);
+  } else {
+    local_predicted_com_vel_ =
+        result.GetSolution(trajopt.predicted_com_vel_var_);
+  }
 
   prev_global_fsm_idx_ = global_fsm_idx;
   prev_first_mode_knot_idx_ = first_mode_knot_idx;
   prev_mode_start_ = trajopt.mode_start();
 
   // Transform some solutions into global frame
-  global_x_lipm_ = local_x_lipm_;
-  global_u_lipm_ = local_u_lipm_;
-  RotatePosBetweenGlobalAndLocalFrame(false, false, quat_xyz_shift,
-                                      local_x_lipm_, &global_x_lipm_);
-  RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                      local_u_lipm_, &global_u_lipm_);
+  if (param_.n_step_lipm > 1) {
+    global_x_lipm_ = local_x_lipm_;
+    global_u_lipm_ = local_u_lipm_;
+    RotatePosBetweenGlobalAndLocalFrame(false, false, quat_xyz_shift,
+                                        local_x_lipm_, &global_x_lipm_);
+    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
+                                        local_u_lipm_, &global_u_lipm_);
+  }
 
   ///
   /// For debugging
@@ -1328,12 +1336,6 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
                                      global_xf_FOM_, &local_x0_FOM,
                                      &local_xf_FOM);
-    MatrixXd local_x_lipm = global_x_lipm_;
-    MatrixXd local_u_lipm = global_u_lipm_;
-    RotatePosBetweenGlobalAndLocalFrame(true, false, quat_xyz_shift,
-                                        global_x_lipm_, &local_x_lipm);
-    RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
-                                        global_u_lipm_, &local_u_lipm);
 
     int knot_idx = first_mode_knot_idx;
     for (int i = global_fsm_idx; i < prev_global_fsm_idx_ + param_.n_step;
@@ -1399,29 +1401,39 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     // TODO: we can use LIPM state to warmstart the robot's poses (will nee IK)
 
     // For cascaded LIPM MPC
-    // The global_fsm_idx actually start from
-    //    `global_fsm_idx + n_step`
-    // to
-    //    `global_fsm_idx + n_step + n_step_lipm`.
-    // We removed n_step in the code below because we only need indices wrt
-    // previous ones (n_step would be canceled out)
-    for (int i = global_fsm_idx; i < prev_global_fsm_idx_ + param_.n_step_lipm;
-         i++) {
-      // Global fsm and knot index pair are (i, knot_idx)
-      // Local fsm index
-      int local_fsm_idx = i - global_fsm_idx;
-      int prev_local_fsm_idx = i - prev_global_fsm_idx_;
+    if (param_.n_step_lipm > 1) {
+      MatrixXd local_x_lipm = global_x_lipm_;
+      MatrixXd local_u_lipm = global_u_lipm_;
+      RotatePosBetweenGlobalAndLocalFrame(true, false, quat_xyz_shift,
+                                          global_x_lipm_, &local_x_lipm);
+      RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
+                                          global_u_lipm_, &local_u_lipm);
 
-      // 11. LIPM x
-      trajopt->SetInitialGuess(trajopt->x_lipm_vars_by_idx(local_fsm_idx),
-                               local_x_lipm.col(prev_local_fsm_idx));
-      if (prev_local_fsm_idx == param_.n_step_lipm - 1) {
-        trajopt->SetInitialGuess(trajopt->x_lipm_vars_by_idx(local_fsm_idx + 1),
-                                 local_x_lipm.col(prev_local_fsm_idx + 1));
+      // The global_fsm_idx actually start from
+      //    `global_fsm_idx + n_step`
+      // to
+      //    `global_fsm_idx + n_step + n_step_lipm`.
+      // We removed n_step in the code below because we only need indices wrt
+      // previous ones (n_step would be canceled out)
+      for (int i = global_fsm_idx;
+           i < prev_global_fsm_idx_ + param_.n_step_lipm; i++) {
+        // Global fsm and knot index pair are (i, knot_idx)
+        // Local fsm index
+        int local_fsm_idx = i - global_fsm_idx;
+        int prev_local_fsm_idx = i - prev_global_fsm_idx_;
+
+        // 11. LIPM x
+        trajopt->SetInitialGuess(trajopt->x_lipm_vars_by_idx(local_fsm_idx),
+                                 local_x_lipm.col(prev_local_fsm_idx));
+        if (prev_local_fsm_idx == param_.n_step_lipm - 1) {
+          trajopt->SetInitialGuess(
+              trajopt->x_lipm_vars_by_idx(local_fsm_idx + 1),
+              local_x_lipm.col(prev_local_fsm_idx + 1));
+        }
+        // 12. LIPM u
+        trajopt->SetInitialGuess(trajopt->u_lipm_vars_by_idx(local_fsm_idx),
+                                 local_u_lipm.col(prev_local_fsm_idx));
       }
-      // 12. LIPM u
-      trajopt->SetInitialGuess(trajopt->u_lipm_vars_by_idx(local_fsm_idx),
-                               local_u_lipm.col(prev_local_fsm_idx));
     }
   }
 }

@@ -166,7 +166,6 @@ struct PlannerSetting {
 
   int n_step;
   int knots_per_mode;
-  double final_position_x;  // this is local
 
   bool zero_touchdown_impact;
   bool use_double_contact_points;

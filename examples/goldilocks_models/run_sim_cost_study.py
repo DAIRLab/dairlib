@@ -41,7 +41,6 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
   # stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
 
   # simulation arguments
-  target_realtime_rate = 1.0  # 0.04
   pause_second = 2.0 if get_init_file else 0
   init_traj_file = '' if get_init_file else '0_rom_trajectory'
 
@@ -86,6 +85,7 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
     '--iter=%d' % rom_iter_idx,
     '--init_traj_file_name=%s' % init_traj_file,
     '--spring_model=%s' % str(spring_model).lower(),
+    '--get_swing_foot_from_planner=%s' % str(foot_step_from_planner).lower(),
   ]
   simulator_cmd = [
     'bazel-bin/examples/Cassie/multibody_sim',
@@ -531,27 +531,31 @@ if __name__ == "__main__":
   #eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
 
   # global parameters
-  sim_end_time = 12.0
+  sim_end_time = 8.0
   spring_model = True
+  # Parameters that are modified often
+  target_realtime_rate = 0.2  # 0.04
+  foot_step_from_planner = True
 
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 100
-  idx_spacing = 5
+  model_iter_idx_end = 10
+  idx_spacing = 1
 
   # Task list
-  n_task = 60
-  stride_length = np.linspace(0, 0.3, n_task)
+  n_task = 30
+  stride_length = np.linspace(-0.4, 0.4, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
-  stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
+  # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
   # stride_length = np.linspace(0.4, 0.5, n_task)
+  # stride_length = np.linspace(0, 0, n_task)
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
 
   # log indices
-  log_idx_offset = 60  # 0
+  log_idx_offset = 0  # 0
 
   ### Parameters for plotting
   log_indices_for_plot = list(range(log_idx_offset + n_task))
@@ -603,10 +607,10 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  # run_sim_and_eval_cost(model_indices, log_indices, task_list)
+  run_sim_and_eval_cost(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  # eval_cost_in_multithread(model_indices, log_indices)
+  eval_cost_in_multithread(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

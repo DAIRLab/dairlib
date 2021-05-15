@@ -606,7 +606,6 @@ void PlannerSetting::PrintAll() const {
   cout << "sample" << sample << endl;
   cout << "n_step" << n_step << endl;
   cout << "knots_per_mode" << knots_per_mode << endl;
-  cout << "final_position_x" << final_position_x << endl;
   cout << "zero_touchdown_impact" << zero_touchdown_impact << endl;
   cout << "use_double_contact_points" << use_double_contact_points << endl;
   cout << "equalize_timestep_size" << equalize_timestep_size << endl;

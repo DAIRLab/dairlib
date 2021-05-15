@@ -302,11 +302,10 @@ void CalcFeetVel(const drake::multibody::MultibodyPlant<double>& plant,
 
 InitialStateForPlanner::InitialStateForPlanner(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
-    const drake::multibody::MultibodyPlant<double>& plant_control,
-    double final_position_x, int n_step, bool feedback_is_spring_model)
+    const drake::multibody::MultibodyPlant<double>& plant_control, int n_step,
+    bool feedback_is_spring_model)
     : nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
-      final_position_x_(final_position_x),
       n_step_(n_step),
       plant_feedback_(plant_feedback),
       plant_control_(plant_control),
@@ -509,8 +508,6 @@ EventStatus InitialStateForPlanner::AdjustState(
   // to check if RotateBetweenGlobalAndLocalFrame() still works.
   x_adjusted3(pos_map_wo_spr_.at("base_x")) = 0;
   x_adjusted3(pos_map_wo_spr_.at("base_y")) = 0;
-  // x_adjusted3(pos_map_wo_spr_.at("base_x")) =
-  //     init_phase * final_position_x_ / n_step_;
 
   // Shift pelvis in z direction
   if (prev_is_left_stance_ != is_left_stance) {

@@ -47,7 +47,7 @@ class PhaseInFirstMode : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
-  const {
+      const {
     return this->get_input_port(controller_signal_port_);
   }
 
@@ -70,8 +70,8 @@ class PlannerFinalPosition : public drake::systems::LeafSystem<double> {
  public:
   PlannerFinalPosition(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
-      const Eigen::VectorXd& global_target_pos,
-      double max_stride_length, int n_step);
+      const Eigen::VectorXd& global_target_pos, double max_stride_length,
+      int n_step);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -81,8 +81,9 @@ class PlannerFinalPosition : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  void CalcFinalPos(const drake::systems::Context<double>& context,
-                 drake::systems::BasicVector<double>* init_phase_output) const;
+  void CalcFinalPos(
+      const drake::systems::Context<double>& context,
+      drake::systems::BasicVector<double>* init_phase_output) const;
 
   // Port indices
   int state_port_;
@@ -100,8 +101,8 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
  public:
   InitialStateForPlanner(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
-      const drake::multibody::MultibodyPlant<double>& plant_control,
-      double final_position_x, int n_step, bool feedback_is_spring_model);
+      const drake::multibody::MultibodyPlant<double>& plant_control, int n_step,
+      bool feedback_is_spring_model);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -157,7 +158,6 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   int nv_;
 
   // Parameters for traj opt
-  double final_position_x_;
   int n_step_;
 
   // Stance foot height

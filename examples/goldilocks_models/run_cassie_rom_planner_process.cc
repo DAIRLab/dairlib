@@ -62,8 +62,10 @@ DEFINE_int32(sample, -1, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_int32(n_step_lipm, 0, "Number of foot steps of lipm cascased");
+// TODO: We can probably remove final_position
 DEFINE_double(final_position, 2, "The final position for the robot");
-DEFINE_double(stride_length, -10000, "");
+DEFINE_double(stride_length, -10000,
+              "stride_length_used_to_control_speed_for_sim_study");
 DEFINE_double(stride_length_scaling, 1.0, "");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
@@ -151,9 +153,9 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_log_data);
   }
   if (FLAGS_stride_length > -100) {
-    gains.stride_length = FLAGS_stride_length;
+    gains.max_desired_step_length = FLAGS_stride_length;
   }
-  gains.stride_length *= FLAGS_stride_length_scaling;
+  gains.max_desired_step_length *= FLAGS_stride_length_scaling;
 
   // Parameters for the traj opt
   PlannerSetting param;
@@ -164,9 +166,6 @@ int DoMain(int argc, char* argv[]) {
   param.n_step = FLAGS_n_step;
   param.n_step_lipm = FLAGS_n_step_lipm;
   param.knots_per_mode = FLAGS_knots_per_mode;
-  // TODO: temporarily commented out FLAGS_final_position for testing
-  //  param.final_position_x = FLAGS_final_position;
-  param.final_position_x = gains.stride_length * FLAGS_n_step;
   param.zero_touchdown_impact = FLAGS_zero_touchdown_impact;
   param.use_double_contact_points = FLAGS_use_double_contact_points;
   param.equalize_timestep_size = FLAGS_equalize_timestep_size;
@@ -265,8 +264,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create a block that computes the initial state for the planner
   auto x_init_calculator = builder.AddSystem<InitialStateForPlanner>(
-      plant_feedback, plant_control, param.final_position_x, param.n_step,
-      FLAGS_spring_model);
+      plant_feedback, plant_control, param.n_step, FLAGS_spring_model);
   builder.Connect(stance_foot_getter->get_output_port(0),
                   x_init_calculator->get_input_port_stance_foot());
   builder.Connect(state_receiver->get_output_port(0),

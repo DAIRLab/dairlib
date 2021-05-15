@@ -586,10 +586,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Future steps
   if (param_.n_step_lipm > 1) {
-    trajopt.AddCascadedLipmMPC(
-        param_.gains.w_predict_lipm_p, param_.gains.w_predict_lipm_v,
-        des_xy_pos, des_xy_vel, param_.n_step_lipm, stride_period_,
-        param_.gains.max_step_length / 2, param_.gains.right_limit_wrt_pelvis);
+    trajopt.AddCascadedLipmMPC(param_.gains.w_predict_lipm_p,
+                               param_.gains.w_predict_lipm_v, des_xy_pos,
+                               des_xy_vel, param_.n_step_lipm, stride_period_,
+                               param_.gains.max_lipm_step_length / 2,
+                               param_.gains.right_limit_wrt_pelvis);
   } else {
     // Constraint and cost for the last foot step location
     trajopt.AddConstraintAndCostForLastFootStep(param_.gains.w_predict_lipm_v,

@@ -551,7 +551,8 @@ RomTrajOpt::RomTrajOpt(
                       {x0.head(n_q_), xf.head(n_q_)});
       }
 
-      // Stride length constraint (from stance foot to swing foot)
+      // Stride length constraint (from stance foot to swing foot, not from
+      // pelvis to swing foot!)
       PrintStatus("Adding constraint -- FOM step length distance");
       double step_distance =
           (i == 0) ? std::max(init_ft_distance, param.gains.max_step_length)
@@ -654,18 +655,28 @@ void RomTrajOpt::AddCascadedLipmMPC(
   }
 
   // Add step size kinematics constraint
-  // TODO: there are 3 invalid bounds in kinematics constraint here
   Eigen::Matrix<double, 2, 4> A_lin_kin;
   A_lin_kin << I2, -I2;
   Eigen::Matrix<double, 2, 1> b_lin_kin;
   b_lin_kin << max_step_length, max_step_length;
   Eigen::Matrix<double, 2, 1> b_lin_kin2;
   b_lin_kin2 << -max_step_length, min_step_width;
+  Eigen::Matrix<double, 2, 1> b_lin_kin3;
+  b_lin_kin3 << -max_step_length, 0;
   for (int i = 1; i <= n_step_lipm; i++) {
     VectorXDecisionVariable x_i = x_lipm_vars_by_idx(i);
     // end of mode
     VectorXDecisionVariable u_i = u_lipm_vars_by_idx(i - 1);
     AddLinearConstraint(A_lin_kin, -b_lin_kin, b_lin_kin, {x_i.head<2>(), u_i});
+    // TODO: we also need the constraint for the stance foot at the end of
+    // stance phase, in order to give a better prediction.
+    //    if (left_stance) {
+    //      AddLinearConstraint(A_lin_kin, b_lin_kin3, b_lin_kin,
+    //                          {x_i.head<2>(), u_i});
+    //    } else {
+    //      AddLinearConstraint(A_lin_kin, -b_lin_kin, -b_lin_kin3,
+    //                          {x_i.head<2>(), u_i});
+    //    }
     // start of mode
     if (i != n_step_lipm) {
       VectorXDecisionVariable u_i_post = u_lipm_vars_by_idx(i);

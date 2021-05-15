@@ -29,6 +29,7 @@ struct OSCRomWalkingGains {
   double max_foot_speed;
   double max_step_length;
   double max_desired_step_length;
+  double max_lipm_step_length;
   double back_limit_wrt_pelvis;
   double front_limit_wrt_pelvis;
   double right_limit_wrt_pelvis;
@@ -157,6 +158,7 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(max_foot_speed));
     a->Visit(DRAKE_NVP(max_step_length));
     a->Visit(DRAKE_NVP(max_desired_step_length));
+    a->Visit(DRAKE_NVP(max_lipm_step_length));
     a->Visit(DRAKE_NVP(back_limit_wrt_pelvis));
     a->Visit(DRAKE_NVP(front_limit_wrt_pelvis));
     a->Visit(DRAKE_NVP(right_limit_wrt_pelvis));

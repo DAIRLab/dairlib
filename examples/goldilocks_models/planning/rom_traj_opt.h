@@ -233,8 +233,9 @@ class RomTrajOptCassie : public RomTrajOpt {
                              double w_reg_vel);
 
   void SetHeuristicInitialGuess(
-      const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
-      const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
+      const PlannerSetting& param, const Eigen::VectorXd& h_guess,
+      const Eigen::MatrixXd& r_guess, const Eigen::MatrixXd& dr_guess,
+      const Eigen::MatrixXd& tau_guess,
       const Eigen::VectorXd& x_guess_left_in_front_pre,
       const Eigen::VectorXd& x_guess_right_in_front_pre,
       const Eigen::VectorXd& x_guess_left_in_front_post,

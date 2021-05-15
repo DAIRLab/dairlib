@@ -295,7 +295,7 @@ LastStepLipmMappingConstraint::LastStepLipmMappingConstraint(
     const std::pair<const Vector3d, const Frame<double>&>& stance_foot_origin,
     const std::string& description)
     : NonlinearConstraint<double>(
-          6, plant.num_positions() + plant.num_velocities() + 2,
+          6, plant.num_positions() + plant.num_velocities() + 6,
           VectorXd::Zero(6), VectorXd::Zero(6), description),
       plant_(plant),
       world_(plant.world_frame()),

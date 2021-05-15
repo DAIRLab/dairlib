@@ -70,9 +70,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
                                         Eigen::MatrixXd* rotated_x0_FOM,
                                         Eigen::MatrixXd* rotated_xf_FOM) const;
   void RotatePosBetweenGlobalAndLocalFrame(
-      bool rotate_from_global_to_local, const Eigen::VectorXd& quat_xyz_shift,
-      const Eigen::MatrixXd& original_pos,
-      Eigen::MatrixXd* rotated_pos) const;
+      bool rotate_from_global_to_local, bool position_only,
+      const Eigen::VectorXd& quat_xyz_shift, const Eigen::MatrixXd& original_x,
+      Eigen::MatrixXd* rotated_x) const;
 
   void BookKeeping(
       bool start_with_left_stance, const std::chrono::duration<double>& elapsed,
@@ -80,7 +80,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void WarmStartGuess(
       const Eigen::VectorXd& quat_xyz_shift,
       const std::vector<Eigen::VectorXd>& des_xy_pos,
-      const Eigen::VectorXd& des_xy_vel, int global_fsm_idx,
+      const Eigen::VectorXd& des_xy_vel, const int global_fsm_idx,
       int first_mode_knot_idx,
       dairlib::goldilocks_models::RomTrajOptCassie* trajopt) const;
 
@@ -156,10 +156,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd eps_rom_;
   mutable Eigen::VectorXd local_predicted_com_vel_;
   mutable Eigen::VectorXd global_predicted_com_vel_;
-  mutable Eigen::VectorXd local_x_lipm_;
-  mutable Eigen::VectorXd global_x_lipm_;
-  mutable Eigen::VectorXd local_u_lipm_;
-  mutable Eigen::VectorXd global_u_lipm_;
+  mutable Eigen::MatrixXd local_x_lipm_;
+  mutable Eigen::MatrixXd global_x_lipm_;
+  mutable Eigen::MatrixXd local_u_lipm_;
+  mutable Eigen::MatrixXd global_u_lipm_;
 
   // Init state relaxation (relax the mapping function)
   std::set<int> relax_index_ = {5};  //{3, 4, 5};

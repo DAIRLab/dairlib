@@ -654,6 +654,7 @@ void RomTrajOpt::AddCascadedLipmMPC(
   }
 
   // Add step size kinematics constraint
+  // TODO: there are 3 invalid bounds in kinematics constraint here
   Eigen::Matrix<double, 2, 4> A_lin_kin;
   A_lin_kin << I2, -I2;
   Eigen::Matrix<double, 2, 1> b_lin_kin;
@@ -661,17 +662,19 @@ void RomTrajOpt::AddCascadedLipmMPC(
   Eigen::Matrix<double, 2, 1> b_lin_kin2;
   b_lin_kin2 << -max_step_length, min_step_width;
   for (int i = 1; i <= n_step_lipm; i++) {
-    VectorXDecisionVariable u_i = u_lipm_vars_by_idx(i - 1);
     VectorXDecisionVariable x_i = x_lipm_vars_by_idx(i);
-    VectorXDecisionVariable u_i_post = u_lipm_vars_by_idx(i);
     // end of mode
-    AddLinearConstraint(A_lin_kin, -b_lin_kin, b_lin_kin, {x_i, u_i});
+    VectorXDecisionVariable u_i = u_lipm_vars_by_idx(i - 1);
+    AddLinearConstraint(A_lin_kin, -b_lin_kin, b_lin_kin, {x_i.head<2>(), u_i});
     // start of mode
     if (i != n_step_lipm) {
+      VectorXDecisionVariable u_i_post = u_lipm_vars_by_idx(i);
       if (left_stance) {
-        AddLinearConstraint(A_lin_kin, b_lin_kin2, b_lin_kin, {x_i, u_i_post});
+        AddLinearConstraint(A_lin_kin, b_lin_kin2, b_lin_kin,
+                            {x_i.head<2>(), u_i_post});
       } else {
-        AddLinearConstraint(A_lin_kin, b_lin_kin, -b_lin_kin2, {x_i, u_i_post});
+        AddLinearConstraint(A_lin_kin, -b_lin_kin, -b_lin_kin2,
+                            {x_i.head<2>(), u_i_post});
       }
     }
     left_stance = !left_stance;
@@ -679,9 +682,9 @@ void RomTrajOpt::AddCascadedLipmMPC(
 
   // Add cost
   PrintStatus("Adding cost -- lipm com pos/vel tracking");
-  cout << "add lipm tracking\n des_xy_pos = \n";
+  //  cout << "add lipm tracking\n des_xy_pos = \n";
   for (int i = 0; i < n_step_lipm; i++) {
-    cout << des_xy_pos.at(num_modes_ + i + 1).transpose() << endl;
+    //    cout << des_xy_pos.at(num_modes_ + i + 1).transpose() << endl;
     predict_lipm_p_bindings_.push_back(AddQuadraticErrorCost(
         w_predict_lipm_p * I2, des_xy_pos.at(num_modes_ + i + 1),
         x_lipm_vars_by_idx(i + 1).head<2>()));
@@ -1112,8 +1115,9 @@ void RomTrajOptCassie::AddRegularizationCost(
 }
 
 void RomTrajOptCassie::SetHeuristicInitialGuess(
-    const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
-    const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
+    const PlannerSetting& param, const Eigen::VectorXd& h_guess,
+    const Eigen::MatrixXd& r_guess, const Eigen::MatrixXd& dr_guess,
+    const Eigen::MatrixXd& tau_guess,
     const Eigen::VectorXd& x_guess_left_in_front_pre,
     const Eigen::VectorXd& x_guess_right_in_front_pre,
     const Eigen::VectorXd& x_guess_left_in_front_post,
@@ -1126,7 +1130,9 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
   MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
   y_guess << r_guess, dr_guess;
 
-  bool left_stance = start_with_left_stance_;
+  bool left_stance =
+      ((starting_mode_index % 2 == 0) && start_with_left_stance_) ||
+      ((starting_mode_index % 2 == 1) && !start_with_left_stance_);
   for (int i = starting_mode_index; i < num_modes_; i++) {
     // Time steps
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
@@ -1169,6 +1175,23 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
 
     left_stance = !left_stance;
   }
+
+  // LIPM state
+  // TODO: Currently we initialize all vars, but we only need for those that's
+  //  not warm-started by the previous solution
+  // TODO: the foot placement guess should consider the kinematics constraint
+  for (int i = 0; i < param.n_step_lipm; i++) {
+    SetInitialGuess(x_lipm_vars_by_idx(i).head<2>(),
+                    des_xy_pos.at(i + param.n_step));
+    SetInitialGuess(x_lipm_vars_by_idx(i).tail<2>(), des_xy_vel);
+    SetInitialGuess(u_lipm_vars_by_idx(i),
+                    (des_xy_pos.at(i + param.n_step) +
+                     des_xy_pos.at(i + param.n_step + 1)) /
+                        2);
+  }
+  SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).head<2>(),
+                  des_xy_pos.at(param.n_step_lipm + param.n_step));
+  SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).tail<2>(), des_xy_vel);
 }
 
 void RomTrajOptCassie::AddRomRegularizationCost(

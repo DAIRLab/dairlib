@@ -244,3 +244,12 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "scratch_paper",
+    srcs = ["scratch_paper.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

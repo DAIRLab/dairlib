@@ -26,6 +26,7 @@ using std::string;
 using std::to_string;
 using std::vector;
 
+using Eigen::Matrix2d;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;
@@ -74,6 +75,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   this->set_name("planner_traj");
 
   DRAKE_DEMAND(param_.knots_per_mode > 0);
+  DRAKE_DEMAND(param_.n_step_lipm > 0);  // current code needs this
 
   // Input/Output Setup
   stance_foot_port_ =
@@ -504,14 +506,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Get the desired xy positions for the FOM states
   vector<VectorXd> des_xy_pos = vector<VectorXd>(
       param_.n_step + param_.n_step_lipm + 1, VectorXd::Zero(2));
-  double total_phase_length = param_.n_step - init_phase;
+  double total_phase_length = param_.n_step + param_.n_step_lipm - init_phase;
   des_xy_pos[1] = des_xy_pos[0] +
                   adjusted_final_pos * (1 - init_phase) / total_phase_length;
   for (int i = 2; i < des_xy_pos.size(); i++) {
     des_xy_pos[i] = des_xy_pos[i - 1] + adjusted_final_pos / total_phase_length;
   }
-  // DRAKE_DEMAND((des_xy_pos[param_.n_step] - adjusted_final_pos).norm() <
-  // 1e-14);
+  DRAKE_DEMAND((des_xy_pos.back() - adjusted_final_pos).norm() < 1e-14);
   cout << "des_xy_pos = \n";
   for (int i = 0; i < des_xy_pos.size(); i++) {
     cout << des_xy_pos[i].transpose() << endl;
@@ -671,10 +672,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(
-          h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
-          x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
-          x_guess_right_in_front_post_, des_xy_pos, des_xy_vel,
-          first_mode_knot_idx, 0);
+          param_, h_guess_, y_guess_, dy_guess_, tau_guess_,
+          x_guess_left_in_front_pre_, x_guess_right_in_front_pre_,
+          x_guess_left_in_front_post_, x_guess_right_in_front_post_, des_xy_pos,
+          des_xy_vel, first_mode_knot_idx, 0);
     }
     trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
 
@@ -903,15 +904,23 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   eps_rom_ = result.GetSolution(trajopt.eps_rom_var_);
   //  local_predicted_com_vel_ =
   //  result.GetSolution(trajopt.predicted_com_vel_var_);
-  local_x_lipm_ = result.GetSolution(trajopt.x_lipm_vars_);
-  local_u_lipm_ = result.GetSolution(trajopt.u_lipm_vars_);
+  local_x_lipm_ =
+      Eigen::Map<MatrixXd>(result.GetSolution(trajopt.x_lipm_vars_).data(), 4,
+                           param_.n_step_lipm + 1);
+  local_u_lipm_ = Eigen::Map<MatrixXd>(
+      result.GetSolution(trajopt.u_lipm_vars_).data(), 2, param_.n_step_lipm);
 
   prev_global_fsm_idx_ = global_fsm_idx;
   prev_first_mode_knot_idx_ = first_mode_knot_idx;
   prev_mode_start_ = trajopt.mode_start();
 
   // Transform some solutions into global frame
-  // TODO: Use RotatePosBetweenGlobalAndLocalFrame()
+  global_x_lipm_ = local_x_lipm_;
+  global_u_lipm_ = local_u_lipm_;
+  RotatePosBetweenGlobalAndLocalFrame(false, false, quat_xyz_shift,
+                                      local_x_lipm_, &global_x_lipm_);
+  RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
+                                      local_u_lipm_, &global_u_lipm_);
 
   ///
   /// For debugging
@@ -1025,9 +1034,11 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
 }
 
 void CassiePlannerWithMixedRomFom::RotatePosBetweenGlobalAndLocalFrame(
-    bool rotate_from_global_to_local, const Eigen::VectorXd& quat_xyz_shift,
-    const Eigen::MatrixXd& original_pos,
-    Eigen::MatrixXd* rotated_pos) const {
+    bool rotate_from_global_to_local, bool position_only,
+    const Eigen::VectorXd& quat_xyz_shift, const Eigen::MatrixXd& original_x,
+    Eigen::MatrixXd* rotated_x) const {
+  DRAKE_DEMAND(quat_xyz_shift(1) < 1e-14);  // rotate in z axis
+  DRAKE_DEMAND(quat_xyz_shift(2) < 1e-14);  // rotate in z axis
   Quaterniond relative_quat =
       rotate_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
@@ -1035,17 +1046,24 @@ void CassiePlannerWithMixedRomFom::RotatePosBetweenGlobalAndLocalFrame(
           : Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
                         quat_xyz_shift(3))
                 .conjugate();
-  Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
+  Matrix2d relative_rot_mat =
+      relative_quat.toRotationMatrix().topLeftCorner<2, 2>();
   double sign = rotate_from_global_to_local ? 1 : -1;
-  for (int j = 0; j < original_pos.cols(); j++) {
+  for (int j = 0; j < original_x.cols(); j++) {
+    // position
     if (rotate_from_global_to_local) {
-      rotated_pos->col(j).segment<3>(4)
-          << relative_rot_mat * (original_pos.col(j).segment<3>(4) +
-                                 sign * quat_xyz_shift.segment<3>(4));
+      rotated_x->col(j).head<2>()
+          << relative_rot_mat * (original_x.col(j).head<2>() +
+                                 sign * quat_xyz_shift.segment<2>(4));
     } else {
-      rotated_pos->col(j).segment<3>(4)
-          << relative_rot_mat * original_pos.col(j).segment<3>(4) +
-                 sign * quat_xyz_shift.segment<3>(4);
+      rotated_x->col(j).head<2>()
+          << relative_rot_mat * original_x.col(j).head<2>() +
+                 sign * quat_xyz_shift.segment<2>(4);
+    }
+    // velocity
+    if (!position_only) {
+      rotated_x->col(j).tail<2>()
+          << relative_rot_mat * original_x.col(j).tail<2>();
     }
   }
 }
@@ -1280,7 +1298,7 @@ void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(
 
 void CassiePlannerWithMixedRomFom::WarmStartGuess(
     const VectorXd& quat_xyz_shift, const vector<VectorXd>& des_xy_pos,
-    const Eigen::VectorXd& des_xy_vel, int global_fsm_idx,
+    const Eigen::VectorXd& des_xy_vel, const int global_fsm_idx,
     int first_mode_knot_idx, RomTrajOptCassie* trajopt) const {
   int starting_mode_idx_for_heuristic =
       (param_.n_step - 1) - (global_fsm_idx - prev_global_fsm_idx_) + 1;
@@ -1289,16 +1307,16 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     PrintStatus("Set heuristic initial guess for all variables");
     // Set heuristic initial guess for all variables
     trajopt->SetHeuristicInitialGuess(
-        h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
-        x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
-        x_guess_right_in_front_post_, des_xy_pos, des_xy_vel,
-        first_mode_knot_idx, 0);
+        param_, h_guess_, y_guess_, dy_guess_, tau_guess_,
+        x_guess_left_in_front_pre_, x_guess_right_in_front_pre_,
+        x_guess_left_in_front_post_, x_guess_right_in_front_post_, des_xy_pos,
+        des_xy_vel, first_mode_knot_idx, 0);
   } else {
     trajopt->SetHeuristicInitialGuess(
-        h_guess_, y_guess_, dy_guess_, tau_guess_, x_guess_left_in_front_pre_,
-        x_guess_right_in_front_pre_, x_guess_left_in_front_post_,
-        x_guess_right_in_front_post_, des_xy_pos, des_xy_vel,
-        first_mode_knot_idx, starting_mode_idx_for_heuristic);
+        param_, h_guess_, y_guess_, dy_guess_, tau_guess_,
+        x_guess_left_in_front_pre_, x_guess_right_in_front_pre_,
+        x_guess_left_in_front_post_, x_guess_right_in_front_post_, des_xy_pos,
+        des_xy_vel, first_mode_knot_idx, starting_mode_idx_for_heuristic);
 
     /// Reuse the solution
     // Rotate the previous global x floating base state according to the
@@ -1310,6 +1328,12 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
                                      global_xf_FOM_, &local_x0_FOM,
                                      &local_xf_FOM);
+    MatrixXd local_x_lipm = global_x_lipm_;
+    MatrixXd local_u_lipm = global_u_lipm_;
+    RotatePosBetweenGlobalAndLocalFrame(true, false, quat_xyz_shift,
+                                        global_x_lipm_, &local_x_lipm);
+    RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
+                                        global_u_lipm_, &local_u_lipm);
 
     int knot_idx = first_mode_knot_idx;
     for (int i = global_fsm_idx; i < prev_global_fsm_idx_ + param_.n_step;
@@ -1371,6 +1395,34 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     // 10. predicted com vel at the end of the immediate future mode
     //    trajopt->SetInitialGuess(trajopt->predicted_com_vel_var_,
     //                             local_predicted_com_vel_);
+
+    // TODO: we can use LIPM state to warmstart the robot's poses (will nee IK)
+
+    // For cascaded LIPM MPC
+    // The global_fsm_idx actually start from
+    //    `global_fsm_idx + n_step`
+    // to
+    //    `global_fsm_idx + n_step + n_step_lipm`.
+    // We removed n_step in the code below because we only need indices wrt
+    // previous ones (n_step would be canceled out)
+    for (int i = global_fsm_idx; i < prev_global_fsm_idx_ + param_.n_step_lipm;
+         i++) {
+      // Global fsm and knot index pair are (i, knot_idx)
+      // Local fsm index
+      int local_fsm_idx = i - global_fsm_idx;
+      int prev_local_fsm_idx = i - prev_global_fsm_idx_;
+
+      // 11. LIPM x
+      trajopt->SetInitialGuess(trajopt->x_lipm_vars_by_idx(local_fsm_idx),
+                               local_x_lipm.col(prev_local_fsm_idx));
+      if (prev_local_fsm_idx == param_.n_step_lipm - 1) {
+        trajopt->SetInitialGuess(trajopt->x_lipm_vars_by_idx(local_fsm_idx + 1),
+                                 local_x_lipm.col(prev_local_fsm_idx + 1));
+      }
+      // 12. LIPM u
+      trajopt->SetInitialGuess(trajopt->u_lipm_vars_by_idx(local_fsm_idx),
+                               local_u_lipm.col(prev_local_fsm_idx));
+    }
   }
 }
 

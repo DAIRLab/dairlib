@@ -61,7 +61,7 @@ DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
 DEFINE_int32(sample, -1, "The sample # of the initial condition that you use");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
-DEFINE_int32(n_step_lipm, 7, "Number of foot steps of lipm cascased");
+DEFINE_int32(n_step_lipm, 0, "Number of foot steps of lipm cascased");
 DEFINE_double(final_position, 2, "The final position for the robot");
 DEFINE_double(stride_length, -10000, "");
 DEFINE_double(stride_length_scaling, 1.0, "");

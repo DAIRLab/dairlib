@@ -1117,6 +1117,8 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
            lightweight_saved_traj_.get_x0());
   writeCSV(dir_data + prefix + "global_xf_FOM.csv",
            lightweight_saved_traj_.get_xf());
+  writeCSV(dir_data + prefix + "global_x_lipm.csv", global_x_lipm_);
+  writeCSV(dir_data + prefix + "global_u_lipm.csv", global_u_lipm_);
 
   /// Save files for reproducing the same result
   // cout << "x_init = " << x_init << endl;
@@ -1134,6 +1136,8 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
   writeCSV(param_.dir_data + prefix + string("current_time.csv"),
            current_time * VectorXd::Ones(1), true);
   // for warm-start
+  // TODO: I don't think I need this anymore, because I save the entire initial
+  //  guess
   writeCSV(param_.dir_data + prefix_next + string("prev_h_solutions.csv"),
            h_solutions_, true);
   writeCSV(param_.dir_data + prefix_next + string("prev_input_at_knots.csv"),

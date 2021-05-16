@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import matplotlib.tri as mtri
+import codecs
 
 
 def build_files(bazel_file_argument):
@@ -18,6 +19,24 @@ def build_files(bazel_file_argument):
   build_process = subprocess.Popen(build_cmd)
   while build_process.poll() is None:  # while subprocess is alive
     time.sleep(0.1)
+
+
+def LogSimCostStudySetting():
+  f = open(eval_dir + "sim_cost_study_log.txt", "a")
+  f.write("\n\n*************************************************************\n")
+  f.write("Current time : %s\n" % str(datetime.now()))
+  f.write("model_dir = %s\n" % model_dir)
+  f.write("spring_model = %s\n" % spring_model)
+  f.write("target_realtime_rate = %s\n" % target_realtime_rate)
+  f.write("foot_step_from_planner = %s\n" % foot_step_from_planner)
+
+  commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+  git_diff = subprocess.check_output(['git', 'diff'])
+  f.write("git commit hash: " + commit_tag.decode('ascii').strip() + "\n")
+  f.write("\ngit diff:\n\n")
+  f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
+
+  f.close()
 
 
 def lcmlog_file_path(rom_iter_idx, task_idx):
@@ -224,6 +243,7 @@ def run_sim_and_eval_cost(model_indices, log_indices, task_list,
   # parameters
   max_n_fail = 0
 
+  LogSimCostStudySetting()
   SaveLogCorrespondence()
 
   ### Construct sample indices from the task list for simulation

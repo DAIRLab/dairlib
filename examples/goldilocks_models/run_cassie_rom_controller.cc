@@ -88,7 +88,7 @@ DEFINE_bool(hardware, false, "");
 
 DEFINE_int32(iter, -1, "The iteration # of the model that you use");
 
-DEFINE_double(stride_length, -std::numeric_limits<int>::infinity(), "");
+DEFINE_double(stride_length, -10000, "");
 DEFINE_double(stride_length_scaling, 1.0, "");
 DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_bool(start_with_left_stance, true, "");
@@ -139,9 +139,9 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   if (FLAGS_stride_length > -100) {
-    gains.stride_length = FLAGS_stride_length;
+    gains.max_desired_step_length = FLAGS_stride_length;
   }
-  gains.stride_length *= FLAGS_stride_length_scaling;
+  gains.max_desired_step_length *= FLAGS_stride_length_scaling;
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
@@ -702,8 +702,9 @@ int DoMain(int argc, char* argv[]) {
     mutable_state = traj_msg;
 
     // Set constant walking speed
-    if (FLAGS_const_walking_speed) {
-      double const_walking_speed_x = gains.stride_length / stride_period;
+    if (FLAGS_const_walking_speed && !FLAGS_get_swing_foot_from_planner) {
+      double const_walking_speed_x =
+          gains.max_desired_step_length / stride_period;
 
       auto& walking_speed_control_context =
           loop.get_diagram()->GetMutableSubsystemContext(*walking_speed_control,
@@ -711,6 +712,7 @@ int DoMain(int argc, char* argv[]) {
       walking_speed_control->get_input_port_des_hor_vel().FixValue(
           &walking_speed_control_context,
           drake::systems::BasicVector<double>({const_walking_speed_x, 0}));
+      cout << "Set constant walking speed " << const_walking_speed_x << endl;
     }
 
     loop.Simulate();

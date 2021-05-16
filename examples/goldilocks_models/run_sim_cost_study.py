@@ -528,7 +528,7 @@ if __name__ == "__main__":
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
-  #eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
 
   # global parameters
   sim_end_time = 8.0
@@ -544,12 +544,14 @@ if __name__ == "__main__":
   idx_spacing = 1
 
   # Task list
-  n_task = 30
-  stride_length = np.linspace(-0.4, 0.4, n_task)
+  n_task = 15
+  stride_length = np.linspace(-0.6, 0.6, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
   # stride_length = np.linspace(0.4, 0.5, n_task)
   # stride_length = np.linspace(0, 0, n_task)
+  stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
+                             -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
@@ -619,7 +621,7 @@ if __name__ == "__main__":
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:
     log_indices = log_indices_for_plot
-  print("log_indices for plotting = " +str(log_indices))
+  print("log_indices for plotting = " + str(log_indices))
 
   # Get all samples from trajopt for nominal cost
   sample_indices = CollectAllSampleIndicesFromTrajopt(task_list[0],

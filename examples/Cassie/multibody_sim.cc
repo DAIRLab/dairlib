@@ -41,6 +41,7 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
+using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -95,6 +96,27 @@ void CassieInitStateSolver(
     const VectorXd& q_desired, const VectorXd& u_desired,
     const VectorXd& lambda_desired, VectorXd* q_result, VectorXd* v_result,
     VectorXd* u_result, VectorXd* lambda_result);
+
+class SimTerminator : public drake::systems::LeafSystem<double> {
+ public:
+  SimTerminator(const drake::multibody::MultibodyPlant<double>& plant,
+                double update_period) {
+    this->set_name("termination");
+
+    // Input/Output Setup
+    this->DeclareVectorInputPort(
+        BasicVector<double>(plant.num_positions() + plant.num_velocities()));
+    DeclarePeriodicDiscreteUpdateEvent(update_period, 0, &SimTerminator::Check);
+  };
+
+ private:
+  void Check(const drake::systems::Context<double>& context,
+             drake::systems::DiscreteValues<double>* discrete_state) const {
+    const BasicVector<double>* robot_state = this->EvalVectorInput(context, 0);
+
+    DRAKE_DEMAND(robot_state->get_value()(6) > 0.3);
+  };
+};
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -153,6 +175,11 @@ int do_main(int argc, char* argv[]) {
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
+
+  // Termination checker
+  auto terminator =
+      builder.AddSystem<SimTerminator>(plant, 1.0 / FLAGS_publish_rate);
+  builder.Connect(plant.get_state_output_port(), terminator->get_input_port(0));
 
   // connect leaf systems
   builder.Connect(*input_sub, *input_receiver);

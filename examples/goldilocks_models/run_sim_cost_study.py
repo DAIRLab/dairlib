@@ -409,8 +409,14 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
         ### log index
         current_mtcl[0, 3] = idx
         ### Assign values
+        # if (cost[-1] > 2.25) & (task < 0.3):
+        #   continue
         # print('Add (iter,idx) = (%d,%d)' % (rom_iter, idx))
         mtcl = np.vstack([mtcl, current_mtcl])
+        ### For debugging
+        # if (cost[-1] > 2.25) & (task < 0.3):
+        #   print("(iter, log) = (%.0f, %.0f) has cost %.3f (outlier)" %
+        #         (current_mtcl[0, 0], current_mtcl[0, 3], current_mtcl[0, 2]))
   print("mtcl.shape = " + str(mtcl.shape))
 
   # nominal_mtc stores model index, task value, and cost from trajopt
@@ -501,7 +507,38 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
     plt.xlabel('model iterations')
     plt.ylabel('total cost')
     plt.legend()
-    plt.title('stride length ' + str(task_slice_value))
+    # plt.title('stride length ' + str(task_slice_value) + " m")
+    plt.title('speed %.2f m/s' % (task_slice_value/0.4))
+    plt.gcf().subplots_adjust(bottom=0.15)
+    plt.gcf().subplots_adjust(left=0.15)
+    if save_fig:
+      plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
+
+
+    ### 2D plot
+    color_names = ["darkblue", "maroon"]
+    plt.figure(figsize=(6.4, 4.8))
+    plt.rcParams.update({'font.size': 14})
+    for i in range(len(model_slices)):
+      model_iter = model_slices[i]
+      # The line along which we evaluate the cost (using interpolation)
+      x = model_iter * np.ones(101)
+      y = np.linspace(-0.8, 0.8, 101)
+
+      triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
+      interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
+      z = interpolator(x, y)
+      plt.plot(y, z, '-', color=color_names[i], linewidth=3, label="iter " + str(model_iter))
+      # if plot_nominal:
+      #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
+      #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
+      #   z = interpolator(x, y)
+      #   plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
+      #   # plt.plot(model_indices, nominal_mtc[:, 2], 'k--', linewidth=3, label="trajectory optimization")
+
+    plt.xlabel('stride length (m)')
+    plt.ylabel('total cost')
+    plt.legend()
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
@@ -560,8 +597,8 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 10
-  idx_spacing = 1
+  model_iter_idx_end = 100
+  idx_spacing = 5
 
   # Task list
   n_task = 15
@@ -570,8 +607,8 @@ if __name__ == "__main__":
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
   # stride_length = np.linspace(0.4, 0.5, n_task)
   # stride_length = np.linspace(0, 0, n_task)
-  stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
-                             -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
+  # stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
+  #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
@@ -581,12 +618,16 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   log_indices_for_plot = list(range(log_idx_offset + n_task))
+  # log_indices_for_plot = list(range(240))
   save_fig = True
   plot_nominal = True
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
 
-  # 2D plot
+  # 2D plot (cost vs model)
   task_slice_value = 0.2
+
+  # 2D plot (cost vs task)
+  model_slices = [1, 40]
 
   ### Set up environment
   # Create folder if not exist

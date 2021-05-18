@@ -77,7 +77,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
                      drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
-  osc_debug_channels = ['OSC_DEBUG_WALKING', 'OSC_DEBUG_RUNNING', 'OSC_DEBUG_STANDING', 'OSC_DEBUG_JUMPING']
+  # osc_debug_channels = ['OSC_DEBUG_WALKING', 'OSC_DEBUG_RUNNING', 'OSC_DEBUG_STANDING', 'OSC_DEBUG_JUMPING']
+  osc_debug_channels = ['OSC_DEBUG_WALKING', 'OSC_DEBUG_RUNNING', 'OSC_DEBUG_JUMPING']
   state_feedback_channels = ['CASSIE_STATE_SIMULATION', 'CASSIE_STATE_DISPATCHER']
 
   for event in log:

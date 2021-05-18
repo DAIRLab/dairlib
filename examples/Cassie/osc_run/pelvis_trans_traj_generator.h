@@ -34,6 +34,9 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::trajectories::PiecewisePolynomial<double> GeneratePelvisTraj(
       const Eigen::VectorXd& x, double t, int fsm_state) const;
 
+  drake::trajectories::PiecewisePolynomial<double> GenerateSlipTraj(
+      const Eigen::VectorXd& x, double t, int fsm_state) const;
+
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -44,6 +47,8 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::Body<double>& pelvis_;
+  const drake::multibody::BodyFrame<double>& pelvis_frame_;
 
   //  drake::systems::DiscreteStateIndex prev_fsm_idx_;
 
@@ -59,6 +64,11 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
   drake::systems::InputPortIndex clock_port_;
+
+  // SLIP parameters
+  double rest_length = 0.9;
+  double k_leg_ = 50.0;
+  double b_leg_ = 5.0;
 };
 
 }  // namespace dairlib::examples::osc

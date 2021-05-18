@@ -1017,7 +1017,8 @@ void CassieStateEstimator::EstimateContactForces(
   VectorXd v = output.GetVelocities();
   VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
   VectorXd tau_d = gamma * beta * M * v_prev -
-                   (1 - gamma) * (beta * M * v + B * output.GetEfforts() + C - g + f_app.generalized_forces());
+                   (1 - gamma) * (beta * M * v + B * output.GetEfforts() + C -
+                                  g + f_app.generalized_forces());
 
   // Simplifying to 2 feet contacts, might need to change it to two contacts per
   // foot and sum them up
@@ -1032,8 +1033,14 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  left_contact = lambda[2] > contact_force_threshold_;
-  right_contact = lambda[5] > contact_force_threshold_;
+  if (lambda[2] > 2 * contact_force_threshold_ ||
+      lambda[5] > 2 * contact_force_threshold_) {
+    left_contact = lambda[2] > 2 * contact_force_threshold_;
+    right_contact = lambda[5] > 2 * contact_force_threshold_;
+  } else {
+    left_contact = lambda[2] > contact_force_threshold_;
+    right_contact = lambda[5] > contact_force_threshold_;
+  }
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

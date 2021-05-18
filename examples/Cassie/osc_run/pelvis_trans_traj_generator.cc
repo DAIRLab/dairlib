@@ -23,6 +23,8 @@ using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
 using drake::trajectories::PiecewisePolynomial;
+// using drake::common::Polynomial;
+using drake::multibody::JacobianWrtVariable;
 using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::osc {
@@ -38,6 +40,8 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
+      pelvis_(plant_.GetBodyByName("pelvis")),
+      pelvis_frame_(pelvis_.body_frame()),
       traj_(traj),
       feet_contact_points_(feet_contact_points) {
   this->set_name("pelvis_trans_traj");
@@ -71,6 +75,44 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GeneratePelvisTraj(
   return traj_;
 }
 
+PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSlipTraj(
+    const VectorXd& x, double t, int fsm_state) const {
+  // fsm_state should be unused
+  if (fsm_state == 2) {
+    // flight phase trajectory should be unused
+    return PiecewisePolynomial<double>();
+  }
+
+  Vector3d f_g = {0, 0, -9.81};
+  Vector3d foot_pos = Vector3d::Zero();
+  Vector3d pelvis_pos = Vector3d::Zero();
+  Vector3d pelvis_vel = Vector3d::Zero();
+  plant_.CalcPointsPositions(*context_,
+                             feet_contact_points_.at(fsm_state)[0].second,
+                             Vector3d::Zero(), world_, &foot_pos);
+  plant_.CalcPointsPositions(*context_, pelvis_frame_, Vector3d::Zero(), world_,
+                             &pelvis_pos);
+  pelvis_vel =
+      plant_.EvalBodySpatialVelocityInWorld(*context_, pelvis_).translational();
+  Vector3d leg_length = pelvis_pos - foot_pos;
+
+  double compression = leg_length.norm() - rest_length;
+  Vector3d f_leg =
+      k_leg_ * compression * leg_length.normalized() + b_leg_ * pelvis_vel;
+  VectorXd rddot = f_g + f_leg;
+
+  double dt = 1e-3;
+  Eigen::Vector2d breaks;
+  breaks << t, t + dt;
+  MatrixXd samples(3, 2);
+  MatrixXd samples_dot(3, 2);
+  samples << pelvis_pos, pelvis_pos + 0.5 * rddot * dt * dt;
+  samples_dot << pelvis_vel, pelvis_vel + rddot * dt;
+
+  return PiecewisePolynomial<double>::CubicHermite(breaks, samples,
+                                                   samples_dot);
+}
+
 void PelvisTransTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
@@ -86,7 +128,7 @@ void PelvisTransTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-//  const drake::VectorX<double>& x = robot_output->GetState();
+  //  const drake::VectorX<double>& x = robot_output->GetState();
   if (fsm_state == 0 || fsm_state == 1) {
     *casted_traj =
         GeneratePelvisTraj(robot_output->GetState(), clock, fsm_state);

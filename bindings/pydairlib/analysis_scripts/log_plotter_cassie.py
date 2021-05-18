@@ -132,10 +132,10 @@ def main():
   # plot_status(full_log)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  # plot_contact_est(full_log)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  plot_contact_est(full_log)
 
-  if True:
+  if False:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -150,7 +150,7 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
   plt.show()
 
@@ -201,15 +201,15 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     print(tracking_cost_map[name])
 
   plt.figure("qp_solve_time:" + filename)
-  # ps.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
-  plt.hist(qp_solve_time[t_u_slice], range=[0, 0.003])
+  ps.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
+  # plt.hist(qp_solve_time[t_u_slice], range=[0, 0.003])
 
   plt.figure("costs")
   ps.plot(t_u[t_u_slice], input_cost[t_u_slice], color=ps.grey)
   ps.plot(t_u[t_u_slice], acceleration_cost[t_u_slice], color=ps.blue)
   ps.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice], color=ps.red)
   ps.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
-  plt.ylim([0, 200])
+  # plt.ylim([0, 200])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
@@ -253,7 +253,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   #
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
-  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  plot_osc(osc_debug, osc_traj0, 2, "pos")
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "vel")
@@ -263,7 +263,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   #
   # plot_osc(osc_debug, osc_traj0, 0, "acc")
   # plot_osc(osc_debug, osc_traj0, 1, "acc")
-  # plot_osc(osc_debug, osc_traj0, 2, "acc")
+  plot_osc(osc_debug, osc_traj0, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plot_osc(osc_debug, osc_traj1, 1, "pos")
@@ -280,7 +280,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj1, 0, "acc")
   # plot_osc(osc_debug, osc_traj1, 1, "acc")
-  # plot_osc(osc_debug, osc_traj1, 2, "acc")
+  plot_osc(osc_debug, osc_traj1, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj2, 0, "acc")
   # plot_osc(osc_debug, osc_traj2, 1, "acc")
@@ -509,10 +509,10 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
 
   plt.figure("efforts: " + filename)
   ps.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  # ps.plot(t_x[t_slice], u_meas[t_slice, u_indices])
   plt.ylim([-300, 300])
   plt.legend(u_datatypes[u_indices])
 
-  # ps.plot(t_x[t_slice], u_meas[t_slice, u_indices], '--')
   # plt.legend(u_datatypes[u_indices])
   # plt.figure("efforts meas: " + filename)
   # plt.figure("Delay characterization")

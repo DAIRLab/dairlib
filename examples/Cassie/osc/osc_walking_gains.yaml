@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.000
+impact_threshold: 0.005
 use_traj_opt_feet_traj: true
 
 # High level command gains (with radio)
@@ -34,7 +34,7 @@ k_ff_lateral: 0
 k_fb_lateral: 0.2
 
 # Finite state machine
-ss_time: 0.35
+ss_time: 0.30
 ds_time: 0.05
 
 # Swing foot trajectory
@@ -103,7 +103,7 @@ PelvisBalanceKd:
 PelvisHeadingW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    0.1]
+      0,    0,    0.01]
 PelvisHeadingKp:
   [   0,     0,    0,
       0,     0,    0,

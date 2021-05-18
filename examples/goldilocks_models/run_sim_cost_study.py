@@ -485,7 +485,7 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
       plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
 
   else:
-    ### 2D plot
+    ### 2D plot (cost vs iteration)
 
     # The line along which we evaluate the cost (using interpolation)
     x = np.linspace(0, 100, 101)
@@ -508,14 +508,13 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
     plt.ylabel('total cost')
     plt.legend()
     # plt.title('stride length ' + str(task_slice_value) + " m")
-    plt.title('speed %.2f m/s' % (task_slice_value/0.4))
+    plt.title('speed %.2f m/s' % (task_slice_value / 0.4))
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
       plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
 
-
-    ### 2D plot
+    ### 2D plot (cost vs tasks)
     color_names = ["darkblue", "maroon"]
     plt.figure(figsize=(6.4, 4.8))
     plt.rcParams.update({'font.size': 14})
@@ -528,7 +527,8 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
       triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
       interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
       z = interpolator(x, y)
-      plt.plot(y, z, '-', color=color_names[i], linewidth=3, label="iter " + str(model_iter))
+      plt.plot(y, z, '-', color=color_names[i], linewidth=3,
+        label="iter " + str(model_iter))
       # if plot_nominal:
       #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
       #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
@@ -542,7 +542,29 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
-      plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
+      plt.savefig("%scost_vs_task.png" % eval_dir)
+
+    ### 2D plot (cost vs tasks)
+    data_list = [mtcl, nominal_mtc]
+    title_list = ["(Drake sim)", "(traj opt)"]
+    app_list = ["", "_nom"]
+    for i in range(2):
+      plt.rcParams.update({'font.size': 14})
+      fig, ax = plt.subplots()
+
+      data = data_list[i]
+      levels = list(
+        np.linspace(min(data[:, 2]), max(data[:, 2]), 10).round(decimals=2))
+      surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels)
+      fig.colorbar(surf, shrink=0.8, aspect=10)
+
+      plt.xlabel('model iterations')
+      plt.ylabel('stride length (m)')
+      plt.title('Cost landscape ' + title_list[i])
+      plt.gcf().subplots_adjust(bottom=0.15)
+      plt.gcf().subplots_adjust(left=0.15)
+      if save_fig:
+        plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
 
   ### Testing -- find the log idx with high cost
   cost_threshold = 3
@@ -670,10 +692,10 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  run_sim_and_eval_cost(model_indices, log_indices, task_list)
+  # run_sim_and_eval_cost(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  eval_cost_in_multithread(model_indices, log_indices)
+  # eval_cost_in_multithread(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

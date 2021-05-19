@@ -69,18 +69,18 @@ OperationalSpaceControl::OperationalSpaceControl(
   int n_u_w_spr = plant_w_spr.num_actuators();
 
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
+  state_port_ = this->DeclareVectorInputPort("robot_state",
                         OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
                     .get_index();
-  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
-                                &OperationalSpaceControl::CalcOptimalInput);
+//  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
+//                                &OperationalSpaceControl::CalcOptimalInput);
   if (used_with_finite_state_machine) {
     fsm_port_ =
-        this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+        this->DeclareVectorInputPort("fsm_state",BasicVector<double>(1)).get_index();
     clock_port_ =
-        this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+        this->DeclareVectorInputPort("clock",BasicVector<double>(1)).get_index();
     near_impact_port_ =
-        this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
+        this->DeclareVectorInputPort("near_impact",BasicVector<double>(2)).get_index();
 
     // Discrete update to record the last state event time
     DeclarePerStepDiscreteUpdateEvent(
@@ -90,10 +90,10 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
 
   osc_output_port_ =
-      this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
+      this->DeclareVectorOutputPort("controller_command", TimestampedVector<double>(n_u_w_spr),
                                     &OperationalSpaceControl::CalcOptimalInput)
           .get_index();
-  osc_debug_port_ = this->DeclareAbstractOutputPort(
+  osc_debug_port_ = this->DeclareAbstractOutputPort("osc_debug",
                             &OperationalSpaceControl::AssignOscLcmOutput)
                         .get_index();
 
@@ -333,52 +333,21 @@ void OperationalSpaceControl::Build() {
               .get();
     }
   }
-  // 4. Friction constraint (approximated friction cone)
   if (!all_contacts_.empty()) {
     VectorXd mu_neg1(2);
     VectorXd mu_1(2);
     VectorXd one(1);
-    mu_neg1 << mu_, -1;
-    mu_1 << mu_, 1;
-    one << 1;
+    MatrixXd A = MatrixXd(5, kSpaceDim);
+    A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
+
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
       friction_constraints_.push_back(
           prog_
-              ->AddLinearConstraint(mu_neg1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                     lambda_c_.segment(kSpaceDim * j + 0, 1)})
-              .evaluator()
-              .get());
-      friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                     lambda_c_.segment(kSpaceDim * j + 0, 1)})
-              .evaluator()
-              .get());
-      friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_neg1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                     lambda_c_.segment(kSpaceDim * j + 1, 1)})
-              .evaluator()
-              .get());
-      friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(kSpaceDim * j + 2, 1),
-                                     lambda_c_.segment(kSpaceDim * j + 1, 1)})
-              .evaluator()
-              .get());
-      friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(one.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    lambda_c_.segment(kSpaceDim * j + 2, 1))
+              ->AddLinearConstraint(
+                  A, VectorXd::Zero(5),
+                  Eigen::VectorXd::Constant(
+                      5, std::numeric_limits<double>::infinity()),
+                  lambda_c_.segment(kSpaceDim * j, 3))
               .evaluator()
               .get());
     }
@@ -582,27 +551,14 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (!all_contacts_.empty()) {
-    VectorXd inf_vectorxd(1);
-    inf_vectorxd << numeric_limits<double>::infinity();
+//    VectorXd inf_vectorxd(1);
+//    inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
-        // when the contact is active
-        friction_constraints_.at(5 * i)->UpdateLowerBound(VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(
-            VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(
-            VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(
-            VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 4)->UpdateLowerBound(
-            VectorXd::Zero(1));
+        friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
       } else {
-        // when the contact is not active
-        friction_constraints_.at(5 * i)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 4)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(i)->UpdateLowerBound(
+            VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
       }
     }
   }

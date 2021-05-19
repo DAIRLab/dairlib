@@ -53,7 +53,7 @@ PelvisRollTrajGenerator::PelvisRollTrajGenerator(
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
-  this->DeclareAbstractOutputPort("pelvis_rot_traj" + std::to_string(axis),
+  this->DeclareAbstractOutputPort("pelvis_rot_traj_" + std::to_string(axis),
                                   traj_inst,
                                   &PelvisRollTrajGenerator::CalcTraj);
 

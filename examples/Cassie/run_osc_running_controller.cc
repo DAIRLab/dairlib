@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
@@ -348,11 +350,11 @@ int DoMain(int argc, char* argv[]) {
   hip_pitch_left_traj.ConcatenateInTime(hip_pitch_left_traj_mir);
   hip_pitch_right_traj.ConcatenateInTime(hip_pitch_right_traj_mir);
   auto hip_pitch_left_traj_generator =
-      builder.AddSystem<BasicTrajectoryPassthrough>(hip_pitch_left_traj,
-                                                    "hip_pitch_left_traj");
+      builder.AddSystem<BasicTrajectoryPassthrough>(
+          hip_pitch_left_traj, "hip_pitch_left_traj_generator");
   auto hip_pitch_right_traj_generator =
-      builder.AddSystem<BasicTrajectoryPassthrough>(hip_pitch_right_traj,
-                                                    "hip_pitch_right_traj");
+      builder.AddSystem<BasicTrajectoryPassthrough>(
+          hip_pitch_right_traj, "hip_pitch_right_traj_generator");
   JointSpaceTrackingData hip_pitch_left_tracking_data(
       "hip_pitch_left_traj", osc_gains.W_hip_pitch, osc_gains.K_p_hip_pitch,
       osc_gains.K_d_hip_pitch, plant, plant);
@@ -392,11 +394,11 @@ int DoMain(int argc, char* argv[]) {
   auto hip_roll_left_traj_generator =
       builder.AddSystem<PelvisRollTrajGenerator>(
           plant, plant_context.get(), hip_roll_left_traj, pelvis_roll_traj, 1,
-          "hip_roll_left_traj");
+          "hip_roll_left_traj_generator");
   auto hip_roll_right_traj_generator =
       builder.AddSystem<PelvisRollTrajGenerator>(
           plant, plant_context.get(), hip_roll_right_traj, pelvis_roll_traj, 1,
-          "hip_roll_right_traj");
+          "hip_roll_right_traj_generator");
   JointSpaceTrackingData hip_roll_left_tracking_data(
       "hip_roll_left_traj", osc_gains.W_hip_roll, osc_gains.K_p_hip_roll,
       osc_gains.K_d_hip_roll, plant, plant);

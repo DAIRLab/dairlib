@@ -23,11 +23,11 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
       near_impact_threshold_(near_impact_threshold),
       blend_func_(blend_func) {
   near_impact_port_ =
-      this->DeclareVectorOutputPort(
+      this->DeclareVectorOutputPort("near_impact",
               BasicVector<double>(2),
               &ImpactTimeBasedFiniteStateMachine::CalcNearImpact)
           .get_index();
-  clock_port_ = this->DeclareVectorOutputPort(
+  clock_port_ = this->DeclareVectorOutputPort("clock",
                         BasicVector<double>(1),
                         &ImpactTimeBasedFiniteStateMachine::CalcClock)
                     .get_index();

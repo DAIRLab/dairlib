@@ -24,7 +24,7 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
-  fsm_port_ = this->DeclareVectorOutputPort(BasicVector<double>(1),
+  fsm_port_ = this->DeclareVectorOutputPort("fsm_state", BasicVector<double>(1),
                                             &TimeBasedFiniteStateMachine::CalcFiniteState).get_index();
 
   // Accumulate the durations to get timestamps

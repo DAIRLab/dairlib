@@ -44,7 +44,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
       pelvis_frame_(pelvis_.body_frame()),
       traj_(traj),
       feet_contact_points_(feet_contact_points) {
-  this->set_name("pelvis_trans_traj");
+  this->set_name("pelvis_trans_traj_generator");
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),

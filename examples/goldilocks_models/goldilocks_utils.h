@@ -155,10 +155,6 @@ BodyPoint FiveLinkRobotLeftContact(
 BodyPoint FiveLinkRobotRightContact(
     const drake::multibody::MultibodyPlant<double>& plant);
 
-// Draw a diagram and save to a file
-void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram,
-                         std::string path = "");
-
 // Parameters for planner
 struct PlannerSetting {
   int rom_option;

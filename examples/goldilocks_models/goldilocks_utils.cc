@@ -584,22 +584,6 @@ BodyPoint FiveLinkRobotRightContact(const MultibodyPlant<double>& plant) {
                    plant.GetFrameByName("right_lower_leg_mass"));
 }
 
-void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram,
-                         std::string path) {
-  if (path.empty()) path = "../" + diagram.get_name() + "_diagram_graph";
-
-  // Save Graphviz string to a file
-  std::ofstream out(path);
-  out << diagram.GetGraphvizString();
-  out.close();
-
-  // Use dot command to draw the diagram and save to a file
-  std::regex r(" ");
-  path = std::regex_replace(path, r, "\\ ");
-  std::string cmd = "dot -Tps " + path + " -o " + path + ".ps";
-  cout << "Running command " + cmd << ": " << std::system(cmd.c_str()) << endl;
-}
-
 void PlannerSetting::PrintAll() const {
   cout << "rom_option" << rom_option << endl;
   cout << "iter" << iter << endl;

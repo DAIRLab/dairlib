@@ -39,6 +39,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 #include "dairlib/lcmt_dairlib_signal.hpp"
 #include "lcm/rom_planner_saved_trajectory.h"
@@ -669,7 +670,7 @@ int DoMain(int argc, char* argv[]) {
     auto owned_diagram = builder.Build();
     owned_diagram->set_name("rom_walking_controller");
 
-    CreateDiagramFigure(*owned_diagram);
+    DrawAndSaveDiagramGraph(*owned_diagram);
 
     // Run lcm-driven simulation
     systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
@@ -866,7 +867,7 @@ int DoMain(int argc, char* argv[]) {
     auto owned_diagram = builder.Build();
     owned_diagram->set_name("rom_ik_walking_controller");
 
-    CreateDiagramFigure(*owned_diagram);
+    DrawAndSaveDiagramGraph(*owned_diagram);
 
     // Run lcm-driven simulation
     systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

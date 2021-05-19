@@ -19,6 +19,7 @@
 #include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 #include "dairlib/lcmt_dairlib_signal.hpp"
 #include "examples/goldilocks_models/controller/planner_preprocessing.h"
@@ -296,7 +297,7 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("MPC");
 
-  CreateDiagramFigure(*owned_diagram);
+  DrawAndSaveDiagramGraph(*owned_diagram);
 
   // Run lcm-driven simulation
   std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers = {

@@ -2,8 +2,9 @@
 
 #include <sys/stat.h>  // Check the existence of a file/folder
 #include <cstdlib>  // System call to create folder (and also parent directory)
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <regex>
 
 #include "drake/multibody/parsing/parser.h"
 
@@ -583,22 +584,21 @@ BodyPoint FiveLinkRobotRightContact(const MultibodyPlant<double>& plant) {
                    plant.GetFrameByName("right_lower_leg_mass"));
 }
 
-void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram) {
-  // Current it cannot handle names with white spaces
-  for (char const& c : diagram.get_name()) {
-    DRAKE_DEMAND(c != ' ');
-  }
+void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram,
+                         std::string path) {
+  if (path.empty()) path = "../" + diagram.get_name() + "_diagram_graph";
 
-  std::string name = "../" + diagram.get_name() + "_diagram_graph";
-  std::ofstream out(name);
+  // Save Graphviz string to a file
+  std::ofstream out(path);
   out << diagram.GetGraphvizString();
   out.close();
-  std::string cmd = "dot -Tps " + name + " -o " + name + ".ps";
-  cout << "Running command " + cmd << ": " << std::system(cmd.c_str()) << endl;
-  // cmd = "xdg-open " + name + ".ps";
-  // cout << std::system(cmd.c_str());
-}
 
+  // Use dot command to draw the diagram and save to a file
+  std::regex r(" ");
+  path = std::regex_replace(path, r, "\\ ");
+  std::string cmd = "dot -Tps " + path + " -o " + path + ".ps";
+  cout << "Running command " + cmd << ": " << std::system(cmd.c_str()) << endl;
+}
 
 void PlannerSetting::PrintAll() const {
   cout << "rom_option" << rom_option << endl;

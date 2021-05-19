@@ -7,8 +7,8 @@
 
 #include "common/file_utils.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
@@ -156,7 +156,8 @@ BodyPoint FiveLinkRobotRightContact(
     const drake::multibody::MultibodyPlant<double>& plant);
 
 // Draw a diagram and save to a file
-void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram);
+void CreateDiagramFigure(const drake::systems::Diagram<double>& diagram,
+                         std::string path = "");
 
 // Parameters for planner
 struct PlannerSetting {

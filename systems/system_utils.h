@@ -5,9 +5,9 @@
 
 namespace dairlib {
 
-/// DrawAndSaveDiagramGraph generates a graph for Drake's diagram. Two files
-/// will be saved. One contains Graphviz string, and the other (.ps file)
-/// contains the diagram graph.
+/// DrawAndSaveDiagramGraph generates a graph for Drake's diagram, and saves it
+/// into a .ps file (an image file) which can be opened by Ubuntu's default
+/// image viewer.
 /// Note that this function requires `dot` program to be installed. To change
 /// the visualization setting, visit: http://www.graphviz.org/
 /// @param diagram A Drake Diagram

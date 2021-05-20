@@ -80,7 +80,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void WarmStartGuess(
       const Eigen::VectorXd& quat_xyz_shift,
       const std::vector<Eigen::VectorXd>& des_xy_pos,
-      const Eigen::VectorXd& des_xy_vel, const int global_fsm_idx,
+      const std::vector<Eigen::VectorXd>& des_xy_vel, const int global_fsm_idx,
       int first_mode_knot_idx,
       dairlib::goldilocks_models::RomTrajOptCassie* trajopt) const;
 

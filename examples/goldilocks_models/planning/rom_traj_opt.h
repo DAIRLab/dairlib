@@ -52,15 +52,15 @@ class RomTrajOpt
              bool print_status = true);
   ~RomTrajOpt() override {}
 
-  void AddConstraintAndCostForLastFootStep(double w_predict_lipm_v,
-                                           const Eigen::VectorXd& des_xy_vel,
-                                           double stride_period);
+  void AddConstraintAndCostForLastFootStep(
+      double w_predict_lipm_v, const std::vector<Eigen::VectorXd>& des_xy_vel,
+      double stride_period);
 
   void AddCascadedLipmMPC(double w_predict_lipm_p, double w_predict_lipm_v,
                           const std::vector<Eigen::VectorXd>& des_xy_pos,
-                          const Eigen::VectorXd& des_xy_vel, int n_step_lipm,
-                          double stride_period, double max_step_length,
-                          double min_step_width);
+                          const std::vector<Eigen::VectorXd>& des_xy_vel,
+                          int n_step_lipm, double stride_period,
+                          double max_step_length, double min_step_width);
 
   void AddTimeStepConstraint(std::vector<double> minimum_timestep,
                              std::vector<double> maximum_timestep,
@@ -223,7 +223,7 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const PlannerSetting& param, bool print_status = true);
 
   void AddRegularizationCost(const std::vector<Eigen::VectorXd>& des_xy_pos,
-                             const Eigen::VectorXd& des_xy_vel,
+                             const std::vector<Eigen::VectorXd>& des_xy_vel,
                              const Eigen::VectorXd& x_guess_left_in_front_pre,
                              const Eigen::VectorXd& x_guess_right_in_front_pre,
                              const Eigen::VectorXd& x_guess_left_in_front_post,
@@ -241,8 +241,8 @@ class RomTrajOptCassie : public RomTrajOpt {
       const Eigen::VectorXd& x_guess_left_in_front_post,
       const Eigen::VectorXd& x_guess_right_in_front_post,
       const std::vector<Eigen::VectorXd>& des_xy_pos,
-      const Eigen::VectorXd& des_xy_vel, int fisrt_mode_phase_index,
-      int starting_mode_index);
+      const std::vector<Eigen::VectorXd>& des_xy_vel,
+      int fisrt_mode_phase_index, int starting_mode_index);
 
   // Testing -- AddRomRegularizationCost is SetAllInitialGuess except we replace
   // setting guess with setting cost

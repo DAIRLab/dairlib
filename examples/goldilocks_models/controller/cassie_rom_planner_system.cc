@@ -516,8 +516,22 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   for (int i = 0; i < des_xy_pos.size(); i++) {
     cout << des_xy_pos[i].transpose() << endl;
   }
-  VectorXd des_xy_vel = des_xy_pos.at(1) / first_mode_duration;
-  cout << "des_xy_vel = " << des_xy_vel.transpose() << endl;
+  vector<VectorXd> des_xy_vel =
+      vector<VectorXd>(param_.n_step + param_.n_step_lipm,
+                       des_xy_pos.at(1) / first_mode_duration);
+  bool dummy_bool = start_with_left_stance;
+  for (int i = 0; i < param_.n_step + param_.n_step_lipm; i++) {
+    if (dummy_bool) {
+      des_xy_vel[i](1) -= 0.3;
+    } else {
+      des_xy_vel[i](1) += 0.3;
+    }
+    dummy_bool = !dummy_bool;
+  }
+  cout << "des_xy_vel = \n";
+  for (int i = 0; i < des_xy_vel.size(); i++) {
+    cout << des_xy_vel[i].transpose() << endl;
+  }
 
   // Maximum swing foot travel distance
   double remaining_time_til_touchdown = first_mode_duration;
@@ -1311,7 +1325,7 @@ void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(
 
 void CassiePlannerWithMixedRomFom::WarmStartGuess(
     const VectorXd& quat_xyz_shift, const vector<VectorXd>& des_xy_pos,
-    const Eigen::VectorXd& des_xy_vel, const int global_fsm_idx,
+    const vector<VectorXd>& des_xy_vel, const int global_fsm_idx,
     int first_mode_knot_idx, RomTrajOptCassie* trajopt) const {
   int starting_mode_idx_for_heuristic =
       (param_.n_step - 1) - (global_fsm_idx - prev_global_fsm_idx_) + 1;

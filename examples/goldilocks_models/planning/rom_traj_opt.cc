@@ -576,7 +576,7 @@ RomTrajOpt::RomTrajOpt(
 }
 
 void RomTrajOpt::AddConstraintAndCostForLastFootStep(
-    double w_predict_lipm_v, const Eigen::VectorXd& des_xy_vel,
+    double w_predict_lipm_v, const std::vector<Eigen::VectorXd>& des_xy_vel,
     double stride_period) {
   predicted_com_vel_var_ = NewContinuousVariables(2, "predicted_com_vel");
   // stance foot for after the planner's horizon
@@ -596,16 +596,17 @@ void RomTrajOpt::AddConstraintAndCostForLastFootStep(
 
   // Cost for tracking velocity
   PrintStatus("Adding cost -- predicted com vel one step after horizon");
-  predict_lipm_v_bindings_.push_back(
-      AddQuadraticErrorCost(w_predict_lipm_v * MatrixXd::Identity(2, 2),
-                            des_xy_vel, predicted_com_vel_var_));
+  DRAKE_DEMAND(num_modes_ > 1);
+  predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
+      w_predict_lipm_v * MatrixXd::Identity(2, 2),
+      des_xy_vel.at(num_modes_ - 2), predicted_com_vel_var_));
 }
 
 void RomTrajOpt::AddCascadedLipmMPC(
     double w_predict_lipm_p, double w_predict_lipm_v,
     const std::vector<Eigen::VectorXd>& des_xy_pos,
-    const Eigen::VectorXd& des_xy_vel, int n_step_lipm, double stride_period,
-    double max_step_length, double min_step_width) {
+    const std::vector<Eigen::VectorXd>& des_xy_vel, int n_step_lipm,
+    double stride_period, double max_step_length, double min_step_width) {
   DRAKE_DEMAND(n_step_lipm > 0);
   double height = 0.85;  // approximation
 
@@ -699,9 +700,9 @@ void RomTrajOpt::AddCascadedLipmMPC(
     predict_lipm_p_bindings_.push_back(AddQuadraticErrorCost(
         w_predict_lipm_p * I2, des_xy_pos.at(num_modes_ + i + 1),
         x_lipm_vars_by_idx(i + 1).head<2>()));
-    predict_lipm_v_bindings_.push_back(
-        AddQuadraticErrorCost(w_predict_lipm_v * I2, des_xy_vel,
-                              x_lipm_vars_by_idx(i + 1).tail<2>()));
+    predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
+        w_predict_lipm_v * I2, des_xy_vel.at(num_modes_ + i),
+        x_lipm_vars_by_idx(i + 1).tail<2>()));
   }
 }
 
@@ -1056,7 +1057,7 @@ RomTrajOptCassie::RomTrajOptCassie(
 
 void RomTrajOptCassie::AddRegularizationCost(
     const std::vector<Eigen::VectorXd>& des_xy_pos,
-    const Eigen::VectorXd& des_xy_vel,
+    const std::vector<Eigen::VectorXd>& des_xy_vel,
     const Eigen::VectorXd& x_guess_left_in_front_pre,
     const Eigen::VectorXd& x_guess_right_in_front_pre,
     const Eigen::VectorXd& x_guess_left_in_front_post,
@@ -1104,13 +1105,13 @@ void RomTrajOptCassie::AddRegularizationCost(
         Id_vel, x_guess_pre.segment(n_q_, n_v_),
         x_preimpact.segment(n_q_, n_v_)));*/
     fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_xy_vel, des_xy_vel, x_preimpact.segment<2>(n_q_ + 3)));
+        Id_xy_vel, des_xy_vel.at(i), x_preimpact.segment<2>(n_q_ + 3)));
     // Postimpact
     /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_vel, x_guess_post.segment(n_q_, n_v_),
         x_postimpact.segment(n_q_, n_v_)));*/
     fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_xy_vel, des_xy_vel, x_postimpact.segment<2>(n_q_ + 3)));
+        Id_xy_vel, des_xy_vel.at(i), x_postimpact.segment<2>(n_q_ + 3)));
 
     left_stance = !left_stance;
   }
@@ -1133,7 +1134,7 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
     const Eigen::VectorXd& x_guess_left_in_front_post,
     const Eigen::VectorXd& x_guess_right_in_front_post,
     const std::vector<Eigen::VectorXd>& des_xy_pos,
-    const Eigen::VectorXd& des_xy_vel, int fisrt_mode_phase_index,
+    const std::vector<Eigen::VectorXd>& des_xy_vel, int fisrt_mode_phase_index,
     int starting_mode_index) {
   // PrintStatus("Adding initial guess ...");
 
@@ -1190,11 +1191,13 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
   // TODO: Currently we initialize all vars, but we only need for those that's
   //  not warm-started by the previous solution
   // TODO: the foot placement guess should consider the kinematics constraint
+  DRAKE_DEMAND(param.n_step > 0);  // because of des_xy_vel's size
   if (param.n_step_lipm > 1) {
     for (int i = 0; i < param.n_step_lipm; i++) {
       SetInitialGuess(x_lipm_vars_by_idx(i).head<2>(),
                       des_xy_pos.at(i + param.n_step));
-      SetInitialGuess(x_lipm_vars_by_idx(i).tail<2>(), des_xy_vel);
+      SetInitialGuess(x_lipm_vars_by_idx(i).tail<2>(),
+                      des_xy_vel.at(i + param.n_step - 1));
       SetInitialGuess(u_lipm_vars_by_idx(i),
                       (des_xy_pos.at(i + param.n_step) +
                        des_xy_pos.at(i + param.n_step + 1)) /
@@ -1203,7 +1206,7 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
     SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).head<2>(),
                     des_xy_pos.at(param.n_step_lipm + param.n_step));
     SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).tail<2>(),
-                    des_xy_vel);
+                    des_xy_vel.at(param.n_step_lipm + param.n_step - 1));
   }
 }
 

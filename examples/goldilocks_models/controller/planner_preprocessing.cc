@@ -748,15 +748,15 @@ void InitialStateForPlanner::CheckAdjustemnt(
   // Testing -- check the model difference (springs vs no springs).
   // cout << "=== COM and stance foot ===\n";
   //  cout << "\ncassie without springs:\n";
-  plant_control_.SetPositions(context_control_.get(), x_original.head(nq_));
-  CalcCOM(plant_control_, *context_control_, x_original);
+  //  plant_control_.SetPositions(context_control_.get(), x_original.head(nq_));
+  //  CalcCOM(plant_control_, *context_control_, x_original);
   //  cout << "\ncassie with springs:\n";
-  plant_feedback_.SetPositions(context_feedback_.get(),
-                               x_w_spr.head(plant_feedback_.num_positions()));
-  CalcCOM(plant_feedback_, *context_feedback_, x_w_spr);
+  //  plant_feedback_.SetPositions(context_feedback_.get(),
+  //                               x_w_spr.head(plant_feedback_.num_positions()));
+  //  CalcCOM(plant_feedback_, *context_feedback_, x_w_spr);
   //  cout << "\ncassie without springs (after adjustment):\n";
-  plant_control_.SetPositions(context_control_.get(), x_adjusted.head(nq_));
-  CalcCOM(plant_control_, *context_control_, x_adjusted);
+  //  plant_control_.SetPositions(context_control_.get(), x_adjusted.head(nq_));
+  //  CalcCOM(plant_control_, *context_control_, x_adjusted);
   //  cout << "=== states ===\n\n";
   //  cout << "FOM state (without springs) = \n" << x_original << endl;
   //  cout << "FOM state (without springs, adjusted) = \n" << x_adjusted <<

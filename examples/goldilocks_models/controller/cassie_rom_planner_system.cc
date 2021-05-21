@@ -462,31 +462,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       singel_eval_mode_ ? "debug_next_" : to_string(counter_ + 1) + "_";
 
   ///
-  /// Construct rom traj opt
+  /// Get desired xy position and velocioty
   ///
-
-  // Prespecify the number of knot points
-  std::vector<int> num_time_samples;
-  std::vector<double> min_dt;
-  std::vector<double> max_dt;
-  for (int i = 0; i < param_.n_step; i++) {
-    num_time_samples.push_back(param_.knots_per_mode);
-    min_dt.push_back(.01);
-    max_dt.push_back(.3);
-  }
-  // We use int() to round down the index because we need to have at least one
-  // timestep in the first mode, i.e. 2 knot points.
-  int first_mode_knot_idx = int((param_.knots_per_mode - 1) * init_phase);
-  int n_knots_first_mode = param_.knots_per_mode - first_mode_knot_idx;
-  num_time_samples[0] = n_knots_first_mode;
-  if (n_knots_first_mode == 2) {
-    min_dt[0] = 1e-3;
-  }
-  cout << "start_with_left_stance  = " << start_with_left_stance << endl;
-  cout << "init_phase = " << init_phase << endl;
-  cout << "n_knots_first_mode = " << n_knots_first_mode << endl;
-  cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
-
   // First mode duration
   double first_mode_duration = stride_period_ * (1 - init_phase);
 
@@ -511,11 +488,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   for (int i = 2; i < des_xy_pos.size(); i++) {
     des_xy_pos[i] = des_xy_pos[i - 1] + adjusted_final_pos / total_phase_length;
   }
-  DRAKE_DEMAND((des_xy_pos.back() - adjusted_final_pos).norm() < 1e-14);
-  cout << "des_xy_pos = \n";
-  for (int i = 0; i < des_xy_pos.size(); i++) {
-    cout << des_xy_pos[i].transpose() << endl;
-  }
+
   vector<VectorXd> des_xy_vel =
       vector<VectorXd>(param_.n_step + param_.n_step_lipm,
                        des_xy_pos.at(1) / first_mode_duration);
@@ -528,10 +501,48 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     }
     dummy_bool = !dummy_bool;
   }
+
+  DRAKE_DEMAND((des_xy_pos.back() - adjusted_final_pos).norm() < 1e-14);
+  cout << "des_xy_pos = \n";
+  for (int i = 0; i < des_xy_pos.size(); i++) {
+    cout << des_xy_pos[i].transpose() << endl;
+  }
   cout << "des_xy_vel = \n";
   for (int i = 0; i < des_xy_vel.size(); i++) {
     cout << des_xy_vel[i].transpose() << endl;
   }
+
+  ///
+  /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
+  ///
+
+
+
+  ///
+  /// Construct rom traj opt
+  ///
+
+  // Prespecify the number of knot points
+  std::vector<int> num_time_samples;
+  std::vector<double> min_dt;
+  std::vector<double> max_dt;
+  for (int i = 0; i < param_.n_step; i++) {
+    num_time_samples.push_back(param_.knots_per_mode);
+    min_dt.push_back(.01);
+    max_dt.push_back(.3);
+  }
+  // We use int() to round down the index because we need to have at least one
+  // timestep in the first mode, i.e. 2 knot points.
+  int first_mode_knot_idx = int((param_.knots_per_mode - 1) * init_phase);
+  int n_knots_first_mode = param_.knots_per_mode - first_mode_knot_idx;
+  num_time_samples[0] = n_knots_first_mode;
+  if (n_knots_first_mode == 2) {
+    min_dt[0] = 1e-3;
+  }
+  cout << "start_with_left_stance  = " << start_with_left_stance << endl;
+  cout << "init_phase = " << init_phase << endl;
+  cout << "n_knots_first_mode = " << n_knots_first_mode << endl;
+  cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
 
   // Maximum swing foot travel distance
   double remaining_time_til_touchdown = first_mode_duration;

@@ -3,11 +3,11 @@ group "1.rom-space-controller" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=false --n_step=2 --log_solver_info=true --debug_mode=true --solve_idx_for_read_from_file=325 --init_file=325_init_file.csv";
         host = "localhost";
     }
-    cmd "3.1.rom-planner" {
+    cmd "3.1.rom-planner (wireless)" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";
     }
-    cmd "1.dispatcher-robot-out" {
+    cmd "1.dispatcher-robot-out (wireless)" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=false";
         host = "dair-cassie";
     }
@@ -23,7 +23,7 @@ group "1.rom-space-controller" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --use_ipopt=true --broadcast=false --log_data=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "dair-cassie";
     }
-    cmd "2.2.optimal-rom-walking-controller" {
+    cmd "2.2.optimal-rom-walking-controller (wireless)" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=false --hardware=true";
         host = "dair-cassie";
     }
@@ -95,14 +95,18 @@ group "4.lcm-tools" {
     }
 }
 
-group "1.rom-space-controller-with-init-traj" {
-    cmd "2.1.optimal-rom-walking-controller (w init)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --init_traj_file_name=0_rom_trajectory";
+group "1.rom-space-controller (wired ethernet)" {
+    cmd "3.1.rom-planner (wired)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";
     }
-    cmd "2.2.rom-planner (w init)" {
-        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --n_step=3 --log_solver_info=true --time_limit=2 --init_file=0_z.csv &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
-        host = "localhost";
+    cmd "1.dispatcher-robot-out (wired)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=true";
+        host = "dair-cassie";
+    }
+    cmd "2.2.optimal-rom-walking-controller (wired)" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true";
+        host = "dair-cassie";
     }
 }
 
@@ -122,10 +126,21 @@ group "2.setup" {
 }
 
 
-script "initialize_standing" {
+script "initialize_standing (wired)" {
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller (wired ethernet)";
+    stop group "2.setup";
+    wait ms 500;
+    start cmd "1.dispatcher-robot-out (wired)";
+    start cmd "1.dispatcher-robot-in-real-robot";
+    start cmd "2.pd-controller-real-robot";
+}
+
+script "initialize_standing (wireless)" {
     stop group "1.rom-space-controller";
     stop group "2.setup";
-    start cmd "1.dispatcher-robot-out";
+    wait ms 500;
+    start cmd "1.dispatcher-robot-out (wireless)";
     start cmd "1.dispatcher-robot-in-real-robot";
     start cmd "2.pd-controller-real-robot";
 }
@@ -133,13 +148,19 @@ script "initialize_standing" {
 script "initialize_standing(local-planner)" {
     stop group "1.rom-space-controller";
     stop group "2.setup";
+    wait ms 500;
     start cmd "1.dispatcher-robot-out (run local)";
     start cmd "1.dispatcher-robot-in-real-robot";
     start cmd "2.pd-controller-real-robot";
 }
 
-script "set_up_from_pd_to_osc_standing" {
-    restart cmd "1.dispatcher-robot-out";
+script "set_up_from_pd_to_osc_standing (wired)" {
+    restart cmd "1.dispatcher-robot-out (wired)";
+    start cmd "3.standing-controller-real-robot";
+}
+
+script "set_up_from_pd_to_osc_standing (wireless)" {
+    restart cmd "1.dispatcher-robot-out (wireless)";
     start cmd "3.standing-controller-real-robot";
 }
 

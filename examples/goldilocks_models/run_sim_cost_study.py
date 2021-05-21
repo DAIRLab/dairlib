@@ -611,7 +611,7 @@ if __name__ == "__main__":
 
   # global parameters
   sim_end_time = 8.0
-  spring_model = True
+  spring_model = False
   # Parameters that are modified often
   target_realtime_rate = 0.2  # 0.04
   foot_step_from_planner = True
@@ -623,7 +623,7 @@ if __name__ == "__main__":
   idx_spacing = 5
 
   # Task list
-  n_task = 15
+  n_task = 60
   stride_length = np.linspace(-0.6, 0.6, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)

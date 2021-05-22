@@ -30,6 +30,8 @@ namespace goldilocks_models {
 
 // Testing flag
 bool use_pelvis = false;
+// torso for five-link robot, and pelvis for Cassie
+std::string pelvis_body_name = "pelvis";  // "torso";
 
 using multibody::isQuaternion;
 using multibody::JwrtqdotToJwrtv;
@@ -435,7 +437,7 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
       stance_contact_point_(stance_contact_point),
       world_dim_(world_dim),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
+          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))) {
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)
@@ -470,7 +472,7 @@ Lipm::Lipm(const Lipm& old_obj)
       is_quaternion_(isQuaternion(old_obj.plant())),
       world_dim_(old_obj.world_dim()),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {}
+          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))) {}
 
 VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
                                       const Context<double>& context) const {
@@ -835,7 +837,7 @@ FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
+          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))) {
   // Initialize model parameters (dependant on the feature vectors)
   VectorX<double> theta_y =
       VectorX<double>::Zero(varying_elements().size() * n_feature_y());
@@ -862,7 +864,7 @@ FixHeightAccel::FixHeightAccel(const FixHeightAccel& old_obj)
       is_quaternion_(isQuaternion(old_obj.plant())),
       stance_contact_point_(old_obj.stance_foot()),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {}
+          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))) {}
 
 VectorX<double> FixHeightAccel::EvalMappingFeat(
     const VectorX<double>& q, const Context<double>& context) const {
@@ -1156,7 +1158,7 @@ Gip::Gip(const MultibodyPlant<double>& plant,
       stance_contact_point_(stance_contact_point),
       world_dim_(world_dim),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {
+          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))) {
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)
@@ -1200,7 +1202,7 @@ Gip::Gip(const Gip& old_obj)
       world_dim_(old_obj.world_dim()),
       total_mass_(old_obj.total_mass()),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName("pelvis"))) {}
+          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))) {}
 
 VectorX<double> Gip::EvalMappingFeat(const VectorX<double>& q,
                                      const Context<double>& context) const {

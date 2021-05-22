@@ -63,6 +63,12 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
 
+  void CreateDesiredComPosAndVel(
+      int n_total_step, bool start_with_left_stance, double init_phase,
+      double first_mode_duration, const Eigen::VectorXd& final_position,
+      std::vector<Eigen::VectorXd>* des_xy_pos,
+      std::vector<Eigen::VectorXd>* des_xy_vel) const;
+
   void RotateBetweenGlobalAndLocalFrame(bool rotate_from_global_to_local,
                                         const Eigen::VectorXd& quat_xyz_shift,
                                         const Eigen::MatrixXd& original_x0_FOM,

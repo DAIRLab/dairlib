@@ -477,47 +477,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  VectorXd adjusted_final_pos = final_position * n_segment_total /
   //      (param_.n_step * (param_.knots_per_mode - 1));
   // 2 final_position is transformed from global coordinates
-  VectorXd adjusted_final_pos = final_position;
-
-  double pos_diff_norm = adjusted_final_pos.norm();
-  double max_pos_diff_norm = param_.gains.max_desired_step_length *
-                             (param_.n_step + param_.n_step_lipm - init_phase);
-  if (pos_diff_norm > max_pos_diff_norm) {
-    adjusted_final_pos *= max_pos_diff_norm / pos_diff_norm;
-  }
-
-  // Get the desired xy positions for the FOM states
-  vector<VectorXd> des_xy_pos = vector<VectorXd>(
-      param_.n_step + param_.n_step_lipm + 1, VectorXd::Zero(2));
-  double total_phase_length = param_.n_step + param_.n_step_lipm - init_phase;
-  des_xy_pos[1] = des_xy_pos[0] +
-                  adjusted_final_pos * (1 - init_phase) / total_phase_length;
-  for (int i = 2; i < des_xy_pos.size(); i++) {
-    des_xy_pos[i] = des_xy_pos[i - 1] + adjusted_final_pos / total_phase_length;
-  }
-
-  vector<VectorXd> des_xy_vel =
-      vector<VectorXd>(param_.n_step + param_.n_step_lipm,
-                       des_xy_pos.at(1) / first_mode_duration);
-  bool dummy_bool = start_with_left_stance;
-  for (int i = 0; i < param_.n_step + param_.n_step_lipm; i++) {
-    if (dummy_bool) {
-      des_xy_vel[i](1) -= 0.3;
-    } else {
-      des_xy_vel[i](1) += 0.3;
-    }
-    dummy_bool = !dummy_bool;
-  }
-
-  DRAKE_DEMAND((des_xy_pos.back() - adjusted_final_pos).norm() < 1e-14);
-  cout << "des_xy_pos = \n";
-  for (int i = 0; i < des_xy_pos.size(); i++) {
-    cout << des_xy_pos[i].transpose() << endl;
-  }
-  cout << "des_xy_vel = \n";
-  for (int i = 0; i < des_xy_vel.size(); i++) {
-    cout << des_xy_vel[i].transpose() << endl;
-  }
+  vector<VectorXd> des_xy_pos;
+  vector<VectorXd> des_xy_vel;
+  CreateDesiredComPosAndVel(
+      param_.n_step + param_.n_step_lipm, start_with_left_stance, init_phase,
+      first_mode_duration, final_position, &des_xy_pos, &des_xy_vel);
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
@@ -968,7 +932,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   if (param_.log_solver_info && param_.use_ipopt) {
     // Ipopt doesn't seem to have the append feature, so we do it manually
-    std::system(
+    (void)std::system(
         "cat ../ipopt_planning_latest.out >> ../ipopt_planning_combined.out");
   }
 
@@ -1011,6 +975,56 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   ///
   counter_++;
+}
+
+void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
+    int n_total_step, bool start_with_left_stance, double init_phase,
+    double first_mode_duration, const VectorXd& final_position,
+    vector<VectorXd>* des_xy_pos, vector<VectorXd>* des_xy_vel) const {
+  VectorXd adjusted_final_pos = final_position;
+  double total_phase_length = n_total_step - init_phase;
+
+  double pos_diff_norm = adjusted_final_pos.norm();
+  double max_pos_diff_norm =
+      param_.gains.max_desired_step_length * (n_total_step - init_phase);
+  if (pos_diff_norm > max_pos_diff_norm) {
+    adjusted_final_pos *= max_pos_diff_norm / pos_diff_norm;
+  }
+
+  // Get the desired xy positions for the FOM states
+  *des_xy_pos = vector<VectorXd>(n_total_step + 1, VectorXd::Zero(2));
+  des_xy_pos->at(1) = des_xy_pos->at(0) + adjusted_final_pos *
+                                              (1 - init_phase) /
+                                              total_phase_length;
+  for (int i = 2; i < des_xy_pos->size(); i++) {
+    des_xy_pos->at(i) =
+        des_xy_pos->at(i - 1) + adjusted_final_pos / total_phase_length;
+  }
+
+  // Get the desired xy velocities for the FOM states
+  *des_xy_vel =
+      vector<VectorXd>(n_total_step, des_xy_pos->at(1) / first_mode_duration);
+  // Heurisctically shift the desired velocity in y direction
+  bool dummy_bool = start_with_left_stance;
+  for (int i = 0; i < n_total_step; i++) {
+    if (dummy_bool) {
+      des_xy_vel->at(i)(1) -= 0.2;
+    } else {
+      des_xy_vel->at(i)(1) += 0.2;
+    }
+    dummy_bool = !dummy_bool;
+  }
+
+  // Check and print
+  DRAKE_DEMAND((des_xy_pos->back() - adjusted_final_pos).norm() < 1e-14);
+  cout << "des_xy_pos = \n";
+  for (int i = 0; i < des_xy_pos->size(); i++) {
+    cout << des_xy_pos->at(i).transpose() << endl;
+  }
+  cout << "des_xy_vel = \n";
+  for (int i = 0; i < des_xy_vel->size(); i++) {
+    cout << des_xy_vel->at(i).transpose() << endl;
+  }
 }
 
 void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(

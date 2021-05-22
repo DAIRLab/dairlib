@@ -70,8 +70,7 @@ class PlannerFinalPosition : public drake::systems::LeafSystem<double> {
  public:
   PlannerFinalPosition(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
-      const Eigen::VectorXd& global_target_pos, double max_stride_length,
-      int n_step);
+      const Eigen::VectorXd& global_target_pos);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -90,8 +89,6 @@ class PlannerFinalPosition : public drake::systems::LeafSystem<double> {
   int phase_port_;
 
   const Eigen::VectorXd global_target_pos_;
-  double max_stride_length_;
-  int n_step_;
 };
 
 ///

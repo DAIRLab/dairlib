@@ -256,8 +256,7 @@ int DoMain(int argc, char* argv[]) {
   Eigen::Vector2d global_target_pos(gains.global_target_position_x,
                                     gains.global_target_position_y);
   auto planner_final_pos = builder.AddSystem<PlannerFinalPosition>(
-      plant_feedback, global_target_pos, gains.max_desired_step_length,
-      param.n_step + param.n_step_lipm);
+      plant_feedback, global_target_pos);
   builder.Connect(state_receiver->get_output_port(0),
                   planner_final_pos->get_input_port_state());
   builder.Connect(init_phase_calculator->get_output_port(0),

@@ -477,7 +477,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  VectorXd adjusted_final_pos = final_position * n_segment_total /
   //      (param_.n_step * (param_.knots_per_mode - 1));
   // 2 final_position is transformed from global coordinates
-  const VectorXd& adjusted_final_pos = final_position;
+  VectorXd adjusted_final_pos = final_position;
+
+  double pos_diff_norm = adjusted_final_pos.norm();
+  double max_pos_diff_norm = param_.gains.max_desired_step_length *
+                             (param_.n_step + param_.n_step_lipm - init_phase);
+  if (pos_diff_norm > max_pos_diff_norm) {
+    adjusted_final_pos *= max_pos_diff_norm / pos_diff_norm;
+  }
 
   // Get the desired xy positions for the FOM states
   vector<VectorXd> des_xy_pos = vector<VectorXd>(
@@ -515,8 +522,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
   ///
-
-
 
   ///
   /// Construct rom traj opt

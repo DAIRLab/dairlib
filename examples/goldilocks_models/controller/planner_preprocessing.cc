@@ -147,11 +147,8 @@ void PhaseInFirstMode::CalcPhase(
 
 PlannerFinalPosition::PlannerFinalPosition(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
-    const Eigen::VectorXd& global_target_pos, double max_stride_length,
-    int n_step)
-    : global_target_pos_(global_target_pos),
-      max_stride_length_(max_stride_length),
-      n_step_(n_step) {
+    const Eigen::VectorXd& global_target_pos)
+    : global_target_pos_(global_target_pos){
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
                         OutputVector<double>(plant_feedback.num_positions(),
@@ -178,11 +175,6 @@ void PlannerFinalPosition::CalcFinalPos(
           .segment<2>(4);
 
   VectorXd pos_diff = global_target_pos_ - current_pelvis_pos_xy;
-  double pos_diff_norm = pos_diff.norm();
-  double max_pos_diff_norm = max_stride_length_ * (n_step_ - init_phase);
-  if (pos_diff_norm > max_pos_diff_norm) {
-    pos_diff *= max_pos_diff_norm / pos_diff_norm;
-  }
 
   // Rotate the position from global to local
   const VectorXd& quat = static_cast<const OutputVector<double>*>(

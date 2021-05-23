@@ -50,6 +50,8 @@ DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 
 DEFINE_bool(global, false, "");
 DEFINE_bool(snopt_suffix, false, "");
+DEFINE_bool(regularization_pose, false, "if false, plot the solution; "
+                                        "if true, plot regularization poses");
 
 // Flags for solve indices
 DEFINE_int32(solve_idx, -1, "");
@@ -109,14 +111,14 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   }
 
   // Read in poses
+  string name = FLAGS_regularization_pose ? "regularization_x_FOM" : "x0_FOM";
   string suffix = FLAGS_snopt_suffix ? "_snopt" : "";
   string global = FLAGS_global ? "_global_" : "_local_";
   std::vector<MatrixXd> x0_each_mode_list;
   for (int i = solve_idx_start; i <= solve_idx_end; i++) {
     string x0_path =
-        (i >= 0)
-            ? directory + to_string(i) + global + "x0_FOM" + suffix + ".csv"
-            : directory + "debug" + global + "x0_FOM" + suffix + ".csv";
+        (i >= 0) ? directory + to_string(i) + global + name + suffix + ".csv"
+                 : directory + "debug" + global + name + suffix + ".csv";
     x0_each_mode_list.push_back(readCSV(x0_path));
   }  // for loop solve_idx
   int idx_length = x0_each_mode_list.size();

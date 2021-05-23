@@ -11,12 +11,14 @@
 #include "common/eigen_utils.h"
 #include "examples/goldilocks_models/planning/lipm_mpc.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
+#include "multibody/kinematic/kinematic_constraints.h"
+#include "multibody/multibody_solvers.h"
 #include "solvers/optimization_utils.h"
 #include "systems/controllers/osc/osc_utils.h"
 
+#include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/ipopt_solver.h"
-#include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
 typedef std::numeric_limits<double> dbl;
@@ -33,6 +35,7 @@ using Eigen::MatrixXd;
 using Eigen::Quaterniond;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 
 using drake::systems::BasicVector;
@@ -105,8 +108,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
 
   // Create index maps
-  positions_map_ = multibody::makeNameToPositionsMap(plant_control);
-  velocities_map_ = multibody::makeNameToVelocitiesMap(plant_control);
+  pos_map_ = multibody::makeNameToPositionsMap(plant_control);
+  vel_map_ = multibody::makeNameToVelocitiesMap(plant_control);
 
   // Reduced order model
   rom_ = CreateRom(param_.rom_option, ROBOT, plant_control, false);
@@ -118,7 +121,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                               MirrorVelIndexMap(plant_control, ROBOT),
                               MirrorVelSignChangeSet(plant_control, ROBOT));
 
-  // Provide initial guess
+  /// Provide initial guess
   bool with_init_guess = true;
   int n_y = rom_->n_y();
   n_tau_ = rom_->n_tau();
@@ -167,15 +170,15 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
           -0.0368807, 1.45305, 1.45306, -0.0253012, -1.61133, -0.0253716,
           -1.61137, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0;*/
-      VectorXd x_standing_fixed_spring(37);
-      x_standing_fixed_spring << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
+      x_standing_fixed_spring_ = VectorXd(37);
+      x_standing_fixed_spring_ << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
           0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
           1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
           0, 0, 0, 0, 0, 0, 0;
-      x_guess_left_in_front_pre_ = x_standing_fixed_spring;
-      x_guess_right_in_front_pre_ = x_standing_fixed_spring;
-      x_guess_left_in_front_post_ = x_standing_fixed_spring;
-      x_guess_right_in_front_post_ = x_standing_fixed_spring;
+      x_guess_left_in_front_pre_ = x_standing_fixed_spring_;
+      x_guess_right_in_front_pre_ = x_standing_fixed_spring_;
+      x_guess_left_in_front_post_ = x_standing_fixed_spring_;
+      x_guess_right_in_front_post_ = x_standing_fixed_spring_;
     } else {
       VectorXd x_guess_right_in_front_pre =
           readCSV(model_dir_n_pref + string("x_samples0.csv")).rightCols(1);
@@ -205,11 +208,68 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     // cout << "x_guess_right_in_front = " << x_guess_right_in_front << endl;
   }
 
-  // Get foot contacts
-  auto left_toe = LeftToeFront(plant_control);
-  auto left_heel = LeftToeRear(plant_control);
-  // auto right_toe = RightToeFront(plant_control);
-  // auto right_heel = RightToeRear(plant_control);
+  /// Inverse kinematics
+  auto left_toe = LeftToeFront(plant_control_);
+  auto left_heel = LeftToeRear(plant_control_);
+  auto right_toe = RightToeFront(plant_control_);
+  auto right_heel = RightToeRear(plant_control_);
+
+  // left foot origin xy evaluators
+  std::vector<int> active_dir_xy = {0, 1};
+  left_foot_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, Vector3d::Zero(), left_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), active_dir_xy);
+  left_foot_evaluators_ =
+      std::make_unique<KinematicEvaluatorSet<double>>(plant_control_);
+  left_foot_evaluators_->add_evaluator(left_foot_evaluator_.get());
+  // right foot origin xy evaluators
+  right_foot_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, Vector3d::Zero(), right_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), active_dir_xy);
+  right_foot_evaluators_ =
+      std::make_unique<KinematicEvaluatorSet<double>>(plant_control_);
+  right_foot_evaluators_->add_evaluator(right_foot_evaluator_.get());
+
+  // contact z evaluators
+  left_toe_z_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, left_toe.first, left_toe.second, Vector3d(0, 0, 1),
+      Vector3d::Zero(), false);
+  left_heel_z_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, left_heel.first, left_heel.second, Vector3d(0, 0, 1),
+      Vector3d::Zero(), false);
+  right_toe_z_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, right_toe.first, right_toe.second, Vector3d(0, 0, 1),
+      Vector3d::Zero(), false);
+  right_heel_z_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, right_heel.first, right_heel.second, Vector3d(0, 0, 1),
+      Vector3d::Zero(), false);
+  contact_z_evaluators_ =
+      std::make_unique<KinematicEvaluatorSet<double>>(plant_control_);
+  contact_z_evaluators_->add_evaluator(left_toe_z_evaluator_.get());
+  contact_z_evaluators_->add_evaluator(left_heel_z_evaluator_.get());
+  contact_z_evaluators_->add_evaluator(right_toe_z_evaluator_.get());
+  contact_z_evaluators_->add_evaluator(right_heel_z_evaluator_.get());
+
+  // contact evaluators
+  std::vector<int> active_dir_yz = {0, 1, 2};  //{1, 2}
+  left_toe_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, left_toe.first, left_toe.second);
+  left_heel_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), active_dir_yz);
+  right_toe_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, right_toe.first, right_toe.second);
+  right_heel_evaluator_ = std::make_unique<WorldPointEvaluator<double>>(
+      plant_control_, right_heel.first, right_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), active_dir_yz);
+  contact_evaluators_ =
+      std::make_unique<KinematicEvaluatorSet<double>>(plant_control_);
+  contact_evaluators_->add_evaluator(left_toe_evaluator_.get());
+  contact_evaluators_->add_evaluator(left_heel_evaluator_.get());
+  contact_evaluators_->add_evaluator(right_toe_evaluator_.get());
+  contact_evaluators_->add_evaluator(right_heel_evaluator_.get());
+
+  /// Get foot contacts
   Vector3d front_contact_point = left_toe.first;
   Vector3d rear_contact_point = left_heel.first;
   if (param_.use_double_contact_points) {
@@ -245,18 +305,19 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     }
   }
 
-  // Cost weight
-  Q_ = param_.gains.w_Q * MatrixXd::Identity(n_y, n_y);
-  R_ = param_.gains.w_R * MatrixXd::Identity(n_tau_, n_tau_);
+  /// MPC variables setup
+  // Swing foot distance
+  max_swing_distance_ = vector<double>(
+      param_.n_step, param_.gains.max_foot_speed * stride_period_);
 
   // Time limit
   fixed_time_limit_ = param_.time_limit > 0;
   min_solve_time_preserved_for_next_loop_ =
       ((param_.n_step - 1) * stride_period) / 2;
 
-  // Swing foot distance
-  max_swing_distance_ = vector<double>(
-      param_.n_step, param_.gains.max_foot_speed * stride_period_);
+  // Cost weight
+  Q_ = param_.gains.w_Q * MatrixXd::Identity(n_y, n_y);
+  R_ = param_.gains.w_R * MatrixXd::Identity(n_tau_, n_tau_);
 
   // Pick solver
   drake::solvers::SolverId solver_id("");
@@ -476,7 +537,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // 1. if final_position is a constant
   //  VectorXd final_position(2);
   //  final_position << param_.final_position_x, 0;
-  //  final_position << x_lift_off(positions_map_.at("base_x")) +
+  //  final_position << x_lift_off(pos_map_.at("base_x")) +
   //                        param_.final_position_x,
   //      0;
   //  VectorXd adjusted_final_pos = final_position * n_segment_total /
@@ -507,9 +568,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                                       local_preprocess_u_lipm,
                                       &global_preprocess_u_lipm_);
   // Run IK to get desired full state
-  /*vector<MatrixXd> desired_state;
-  GetDesiredFullStateFromLipmMPCSol(local_preprocess_x_lipm,
-                                    local_preprocess_u_lipm, &desired_state);*/
+  MatrixXd local_regularization_state(nx_, param_.n_step);
+  GetDesiredFullStateFromLipmMPCSol(
+      start_with_left_stance, local_preprocess_x_lipm, local_preprocess_u_lipm,
+      &local_regularization_state);
 
   ///
   /// Construct rom traj opt
@@ -594,12 +656,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     auto xf = trajopt.xf_vars_by_mode(i);
     trajopt.AddLinearEqualityConstraint(
         Aeq, angle,
-        {xf.segment<1>(positions_map_.at("knee_left")),
-         xf.segment<1>(positions_map_.at("ankle_joint_left"))});
+        {xf.segment<1>(pos_map_.at("knee_left")),
+         xf.segment<1>(pos_map_.at("ankle_joint_left"))});
     trajopt.AddLinearEqualityConstraint(
         Aeq, angle,
-        {xf.segment<1>(positions_map_.at("knee_right")),
-         xf.segment<1>(positions_map_.at("ankle_joint_right"))});
+        {xf.segment<1>(pos_map_.at("knee_right")),
+         xf.segment<1>(pos_map_.at("ankle_joint_right"))});
   }
 
   // Future steps
@@ -821,7 +883,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     MatrixXd global_x0_FOM = x0_each_mode;
     MatrixXd global_xf_FOM = xf_each_mode;
     RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, x0_each_mode,
-                                     xf_each_mode, &global_x0_FOM,
+                                     &global_x0_FOM);
+    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, xf_each_mode,
                                      &global_xf_FOM);
     writeCSV(param_.dir_data + prefix + "local_x0_FOM_snopt.csv", x0_each_mode);
     writeCSV(param_.dir_data + prefix + "local_xf_FOM_snopt.csv", xf_each_mode);
@@ -882,14 +945,16 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   global_x0_FOM_ = local_x0_FOM;
   global_xf_FOM_ = local_xf_FOM;
   RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, local_x0_FOM,
-                                   local_xf_FOM, &global_x0_FOM_,
+                                   &global_x0_FOM_);
+  RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, local_xf_FOM,
                                    &global_xf_FOM_);
 
   // Unit Testing RotateBetweenGlobalAndLocalFrame
   /*MatrixXd local_x0_FOM2 = global_x0_FOM_;
   MatrixXd local_xf_FOM2 = global_xf_FOM_;
   RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
-                                   global_xf_FOM_, &local_x0_FOM2,
+                                   &local_x0_FOM2);
+  RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_xf_FOM_,
                                    &local_xf_FOM2);
   DRAKE_DEMAND((local_x0_FOM2 - local_x0_FOM).norm() < 1e-14);
   DRAKE_DEMAND((local_xf_FOM2 - local_xf_FOM).norm() < 1e-14);*/
@@ -961,11 +1026,19 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   if (log_data_and_check_solution_) {
+    // Rotate from local to global
+    MatrixXd local_regularization_state2(nx_, param_.n_step + 1);
+    local_regularization_state2 << x_init, local_regularization_state;
+    MatrixXd global_regularization_state = local_regularization_state2;
+    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift,
+                                     local_regularization_state2,
+                                     &global_regularization_state);
+
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
-                      quat_xyz_shift, final_position, local_x0_FOM,
-                      local_xf_FOM, trajopt, result, param_.dir_data, prefix,
-                      prefix_next);
+                      quat_xyz_shift, final_position,
+                      global_regularization_state, local_x0_FOM, local_xf_FOM,
+                      trajopt, result, param_.dir_data, prefix, prefix_next);
     // Save trajectory to lcm
     SaveTrajIntoLcmBinary(trajopt, result, global_x0_FOM_, global_xf_FOM_,
                           param_.dir_data, prefix);
@@ -1008,8 +1081,12 @@ void CassiePlannerWithMixedRomFom::RunLipmMPC(
     MatrixXd* local_preprocess_u_lipm) const {
   cout << "=== start of LIPM MPC ===\n";
   auto start_build = std::chrono::high_resolution_clock::now();
+
+  // Parameters
+  double height = 0.85;
+
   // Long horizon
-  int n_step = std::max(10, param_.n_step);
+  int n_step = std::max(10, param_.n_step + 1);  // +1 because IK needs swing ft
 
   // Get des_xy_pos, des_xy_vel
   vector<VectorXd> des_xy_pos;
@@ -1038,7 +1115,6 @@ void CassiePlannerWithMixedRomFom::RunLipmMPC(
       plant_control_.world_frame(), &stance_foot_pos);
 
   // Construct LIPM MPC (QP)
-  double height = 0.85;
   LipmMpc mpc_qp(des_xy_pos, des_xy_vel, param_.gains.w_predict_lipm_p,
                  param_.gains.w_predict_lipm_v, com_pos, com_vel,
                  stance_foot_pos.head<2>(), n_step, first_mode_duration,
@@ -1053,6 +1129,12 @@ void CassiePlannerWithMixedRomFom::RunLipmMPC(
   const auto result = qp_solver_.Solve(mpc_qp, mpc_qp.initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
 
+  // Get solution
+  *local_preprocess_x_lipm = mpc_qp.GetStateSamples(result);
+  *local_preprocess_u_lipm = mpc_qp.GetInputSamples(result);
+
+  // Printing
+  // Normally the whole thing takes 1ms without a initial guess
   std::chrono::duration<double> elapsed_build = start_solve - start_build;
   std::chrono::duration<double> elapsed_solve = finish - start_solve;
   SolutionResult solution_result = result.get_solution_result();
@@ -1063,17 +1145,167 @@ void CassiePlannerWithMixedRomFom::RunLipmMPC(
   cout << "Cost:" << result.get_optimal_cost() << "\n";
   cout << "==== end of LIPM MPC ====\n";
   DRAKE_DEMAND(result.is_success());
-
-  // Get solution
-  *local_preprocess_x_lipm = mpc_qp.GetStateSamples(result);
-  *local_preprocess_u_lipm = mpc_qp.GetInputSamples(result);
 }
 
 void CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
-    const Eigen::MatrixXd& local_preprocess_x_lipm,
+    bool start_with_left_stance, const Eigen::MatrixXd& local_preprocess_x_lipm,
     const Eigen::MatrixXd& local_preprocess_u_lipm,
-    vector<MatrixXd>* desired_state) const {
-  // Run IK to get full state
+    MatrixXd* regularization_state) const {
+  cout << "=== start of IK ===\n";
+
+  // Parameter
+  Vector4d desired_quat(1, 0, 0, 0);
+  double desired_height = 0.95;
+
+  bool left_stance = start_with_left_stance;
+  for (int i = 0; i < regularization_state->cols(); i++) {
+    auto start_build = std::chrono::high_resolution_clock::now();
+
+    auto prog = multibody::MultibodyProgram(plant_control_);
+    auto q = prog.AddPositionVariables();
+    auto v = prog.NewContinuousVariables(nv_, "v");
+
+    // Bounding box for quaternion
+    prog.AddBoundingBoxConstraint(0, 1, q(0));              // qw
+    prog.AddBoundingBoxConstraint(-1, 1, q.segment<3>(1));  // qx, qy, qz
+    // Bounding box for vel
+    prog.AddBoundingBoxConstraint(-10, 10, v);
+
+    // Quaternion unit norm constraint (it solves faster with this constraint)
+    auto quat_norm_constraint =
+        std::make_shared<drake::solvers::QuadraticConstraint>(
+            2 * MatrixXd::Identity(4, 4), VectorXd::Zero(4), 1, 1);
+    prog.AddConstraint(quat_norm_constraint, q.head(4));
+
+    // Joint limit constraint
+    prog.AddJointLimitConstraints(q);
+
+    // Four bar linkage constraint (without spring)
+    // TODO: we can use a faster API here
+    prog.AddLinearConstraint(q(pos_map_.at("knee_left")) +
+                                 q(pos_map_.at("ankle_joint_left")) ==
+                             M_PI * 13 / 180.0);
+    prog.AddLinearConstraint(q(pos_map_.at("knee_right")) +
+                                 q(pos_map_.at("ankle_joint_right")) ==
+                             M_PI * 13 / 180.0);
+
+    // Feet position
+    VectorXd left_ft_pos = left_stance ? local_preprocess_u_lipm.col(i)
+                                       : local_preprocess_u_lipm.col(i + 1);
+    VectorXd right_ft_pos = left_stance ? local_preprocess_u_lipm.col(i + 1)
+                                        : local_preprocess_u_lipm.col(i);
+    auto left_ft_pos_constraint =
+        std::make_shared<multibody::KinematicPositionConstraint<double>>(
+            plant_control_, *left_foot_evaluators_, left_ft_pos, left_ft_pos,
+            std::set<int>(), prog.get_context());
+    auto left_ft_pos_binding = prog.AddConstraint(left_ft_pos_constraint, q);
+    auto right_ft_pos_constraint =
+        std::make_shared<multibody::KinematicPositionConstraint<double>>(
+            plant_control_, *right_foot_evaluators_, right_ft_pos, right_ft_pos,
+            std::set<int>(), prog.get_context());
+    auto right_ft_pos_binding = prog.AddConstraint(right_ft_pos_constraint, q);
+
+    // Zero foot height
+    auto foot_height_binding =
+        prog.AddKinematicConstraint(*contact_z_evaluators_, q);
+
+    // Zero velocity on feet
+    // Interestingly the speed is much slower when getting rid of redundancy
+    auto foot_vel_constraint =
+        std::make_shared<multibody::KinematicVelocityConstraint<double>>(
+            plant_control_, *contact_evaluators_, prog.get_context());
+    auto velocity_binding = prog.AddConstraint(foot_vel_constraint, {q, v});
+
+    // Fix floating base
+    //    prog.AddBoundingBoxConstraint(1, 1, q(pos_map_.at("base_qw")));
+    //    prog.AddBoundingBoxConstraint(0, 0, q(pos_map_.at("base_qx")));
+    //    prog.AddBoundingBoxConstraint(0, 0, q(pos_map_.at("base_qy")));
+    //    prog.AddBoundingBoxConstraint(0, 0, q(pos_map_.at("base_qz")));
+
+    prog.AddBoundingBoxConstraint(local_preprocess_x_lipm.col(i + 1)(0),
+                                  local_preprocess_x_lipm.col(i + 1)(0),
+                                  q(pos_map_.at("base_x")));
+    prog.AddBoundingBoxConstraint(local_preprocess_x_lipm.col(i + 1)(1),
+                                  local_preprocess_x_lipm.col(i + 1)(1),
+                                  q(pos_map_.at("base_y")));
+    //    prog.AddBoundingBoxConstraint(desired_height, desired_height,
+    //    q(pos_map_.at("base_z")));
+
+    //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wx")));
+    //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wy")));
+    //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wz")));
+
+    prog.AddBoundingBoxConstraint(local_preprocess_x_lipm.col(i + 1)(2),
+                                  local_preprocess_x_lipm.col(i + 1)(2),
+                                  v(vel_map_.at("base_vx")));
+    prog.AddBoundingBoxConstraint(local_preprocess_x_lipm.col(i + 1)(3),
+                                  local_preprocess_x_lipm.col(i + 1)(3),
+                                  v(vel_map_.at("base_vy")));
+    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_vz")));
+
+    // Add costs
+    auto height_cost_binding = prog.AddQuadraticErrorCost(
+        10 * MatrixXd::Identity(1, 1), desired_height * VectorXd::Ones(1),
+        q.segment<1>(pos_map_.at("base_z")));
+    // Regularization term
+    auto quat_cost_binding = prog.AddQuadraticErrorCost(
+        0.01 * MatrixXd::Identity(4, 4), desired_quat, q.tail<4>());
+    auto q_cost_binding = prog.AddQuadraticErrorCost(
+        0.0001 * MatrixXd::Identity(nq_ - 7, nq_ - 7),
+        x_standing_fixed_spring_.tail(nq_ - 7), q.tail(nq_ - 7));
+    auto v_cost_binding = prog.AddQuadraticErrorCost(
+        0.01 * MatrixXd::Identity(nv_, nv_), VectorXd::Zero(nv_), v);
+
+    // Initial guesses
+    prog.SetInitialGuessForAllVariables(
+        0.01 * Eigen::VectorXd::Random(prog.num_vars()));
+    prog.SetInitialGuess(q, x_standing_fixed_spring_.head(nq_));
+    //    prog.SetInitialGuess(v, v_desired);
+
+    // Snopt settings
+    prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                         "../snopt_test.out");
+    prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+    prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                         "Major optimality tolerance", 1e-2);
+    prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                         "Major feasibility tolerance", 1e-2);
+
+    auto start_solve = std::chrono::high_resolution_clock::now();
+    const auto result = snopt_solver_.Solve(prog, prog.initial_guess());
+    auto finish = std::chrono::high_resolution_clock::now();
+
+    // Assign
+    regularization_state->col(i) << result.GetSolution(q),
+        result.GetSolution(v);
+    left_stance = !left_stance;
+
+    // Print
+    std::cout << "q = " << regularization_state->col(i).head(nq_) << std::endl;
+    std::cout << "v = " << regularization_state->col(i).tail(nv_) << std::endl;
+    std::cout << "height_cost_binding = "
+              << solvers::EvalCostGivenSolution(result, height_cost_binding)
+              << std::endl;
+    std::cout << "quat_cost_binding = "
+              << solvers::EvalCostGivenSolution(result, quat_cost_binding)
+              << std::endl;
+    std::cout << "q_cost_binding = "
+              << solvers::EvalCostGivenSolution(result, q_cost_binding)
+              << std::endl;
+    std::cout << "v_cost_binding = "
+              << solvers::EvalCostGivenSolution(result, v_cost_binding)
+              << std::endl;
+
+    std::chrono::duration<double> elapsed_build = start_solve - start_build;
+    std::chrono::duration<double> elapsed_solve = finish - start_solve;
+    SolutionResult solution_result = result.get_solution_result();
+    cout << "Solver:" << result.get_solver_id().name() << " | ";
+    cout << "Build time:" << elapsed_build.count() << " | ";
+    cout << "Solve time:" << elapsed_solve.count() << " | ";
+    cout << solution_result << " | ";
+    cout << "Cost:" << result.get_optimal_cost() << "\n";
+  }
+  cout << "==== end of IK ====\n";
 }
 
 void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
@@ -1116,20 +1348,19 @@ void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
 
   // Check and print
   DRAKE_DEMAND((des_xy_pos->back() - adjusted_final_pos).norm() < 1e-14);
-  cout << "des_xy_pos = \n";
+  /*cout << "des_xy_pos = \n";
   for (int i = 0; i < des_xy_pos->size(); i++) {
     cout << des_xy_pos->at(i).transpose() << endl;
   }
   cout << "des_xy_vel = \n";
   for (int i = 0; i < des_xy_vel->size(); i++) {
     cout << des_xy_vel->at(i).transpose() << endl;
-  }
+  }*/
 }
 
 void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
     bool rotate_from_global_to_local, const VectorXd& quat_xyz_shift,
-    const MatrixXd& original_x0_FOM, const MatrixXd& original_xf_FOM,
-    MatrixXd* rotated_x0_FOM, MatrixXd* rotated_xf_FOM) const {
+    const MatrixXd& original_x_FOM, MatrixXd* rotated_x_FOM) const {
   Quaterniond relative_quat =
       rotate_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
@@ -1139,49 +1370,26 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
                 .conjugate();
   Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
   double sign = rotate_from_global_to_local ? 1 : -1;
-  for (int j = 0; j < param_.n_step + 1; j++) {
-    // x0 (size is n_step + 1)
-    Quaterniond rotated_x0_quat =
+  for (int j = 0; j < original_x_FOM.cols(); j++) {
+    Quaterniond rotated_x_quat =
         relative_quat *
-        Quaterniond(original_x0_FOM.col(j)(0), original_x0_FOM.col(j)(1),
-                    original_x0_FOM.col(j)(2), original_x0_FOM.col(j)(3));
-    rotated_x0_FOM->col(j).segment<4>(0) << rotated_x0_quat.w(),
-        rotated_x0_quat.vec();
+        Quaterniond(original_x_FOM.col(j)(0), original_x_FOM.col(j)(1),
+                    original_x_FOM.col(j)(2), original_x_FOM.col(j)(3));
+    rotated_x_FOM->col(j).segment<4>(0) << rotated_x_quat.w(),
+        rotated_x_quat.vec();
     if (rotate_from_global_to_local) {
-      rotated_x0_FOM->col(j).segment<3>(4)
-          << relative_rot_mat * (original_x0_FOM.col(j).segment<3>(4) +
+      rotated_x_FOM->col(j).segment<3>(4)
+          << relative_rot_mat * (original_x_FOM.col(j).segment<3>(4) +
                                  sign * quat_xyz_shift.segment<3>(4));
     } else {
-      rotated_x0_FOM->col(j).segment<3>(4)
-          << relative_rot_mat * original_x0_FOM.col(j).segment<3>(4) +
+      rotated_x_FOM->col(j).segment<3>(4)
+          << relative_rot_mat * original_x_FOM.col(j).segment<3>(4) +
                  sign * quat_xyz_shift.segment<3>(4);
     }
-    rotated_x0_FOM->col(j).segment<3>(nq_)
-        << relative_rot_mat * original_x0_FOM.col(j).segment<3>(nq_);
-    rotated_x0_FOM->col(j).segment<3>(nq_ + 3)
-        << relative_rot_mat * original_x0_FOM.col(j).segment<3>(nq_ + 3);
-    // xf (size is n_step)
-    if (j != param_.n_step) {
-      Quaterniond rotated_xf_quat =
-          relative_quat *
-          Quaterniond(original_xf_FOM.col(j)(0), original_xf_FOM.col(j)(1),
-                      original_xf_FOM.col(j)(2), original_xf_FOM.col(j)(3));
-      rotated_xf_FOM->col(j).segment<4>(0) << rotated_xf_quat.w(),
-          rotated_xf_quat.vec();
-      if (rotate_from_global_to_local) {
-        rotated_xf_FOM->col(j).segment<3>(4)
-            << relative_rot_mat * (original_xf_FOM.col(j).segment<3>(4) +
-                                   sign * quat_xyz_shift.segment<3>(4));
-      } else {
-        rotated_xf_FOM->col(j).segment<3>(4)
-            << relative_rot_mat * original_xf_FOM.col(j).segment<3>(4) +
-                   sign * quat_xyz_shift.segment<3>(4);
-      }
-      rotated_xf_FOM->col(j).segment<3>(nq_)
-          << relative_rot_mat * original_xf_FOM.col(j).segment<3>(nq_);
-      rotated_xf_FOM->col(j).segment<3>(nq_ + 3)
-          << relative_rot_mat * original_xf_FOM.col(j).segment<3>(nq_ + 3);
-    }
+    rotated_x_FOM->col(j).segment<3>(nq_)
+        << relative_rot_mat * original_x_FOM.col(j).segment<3>(nq_);
+    rotated_x_FOM->col(j).segment<3>(nq_ + 3)
+        << relative_rot_mat * original_x_FOM.col(j).segment<3>(nq_ + 3);
   }
 }
 
@@ -1235,10 +1443,11 @@ void CassiePlannerWithMixedRomFom::SaveTrajIntoLcmBinary(
 void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
     double current_time, const VectorXd& x_init, double init_phase,
     bool is_right_stance, const VectorXd& quat_xyz_shift,
-    const VectorXd& final_position, const MatrixXd& local_x0_FOM,
-    const MatrixXd& local_xf_FOM, const RomTrajOptCassie& trajopt,
-    const MathematicalProgramResult& result, const string& dir_data,
-    const string& prefix, const string& prefix_next) const {
+    const VectorXd& final_position, const MatrixXd& global_regularization_x_FOM,
+    const MatrixXd& local_x0_FOM, const MatrixXd& local_xf_FOM,
+    const RomTrajOptCassie& trajopt, const MathematicalProgramResult& result,
+    const string& dir_data, const string& prefix,
+    const string& prefix_next) const {
   /// Save the solution vector
   VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
   writeCSV(dir_data + string(prefix + "z.csv"), z_sol);
@@ -1266,6 +1475,8 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
            global_preprocess_x_lipm_);
   writeCSV(dir_data + prefix + "global_preprocess_u_lipm.csv",
            global_preprocess_u_lipm_);
+  writeCSV(dir_data + prefix + "global_regularization_x_FOM.csv",
+           global_regularization_x_FOM);
 
   /// Save files for reproducing the same result
   // cout << "x_init = " << x_init << endl;
@@ -1486,7 +1697,8 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     MatrixXd local_x0_FOM = global_x0_FOM_;
     MatrixXd local_xf_FOM = global_xf_FOM_;
     RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
-                                     global_xf_FOM_, &local_x0_FOM,
+                                     &local_x0_FOM);
+    RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_xf_FOM_,
                                      &local_xf_FOM);
 
     int knot_idx = first_mode_knot_idx;

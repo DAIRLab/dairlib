@@ -77,6 +77,8 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
       const drake::solvers::VectorXDecisionVariable& u,
       const drake::solvers::VectorXDecisionVariable& lambda);
 
+  drake::systems::Context<T>* get_context() {return context_.get();};
+
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
   std::unique_ptr<drake::systems::Context<T>> context_;

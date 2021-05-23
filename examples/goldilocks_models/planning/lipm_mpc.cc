@@ -67,8 +67,8 @@ LipmMpc::LipmMpc(const std::vector<Eigen::VectorXd>& des_xy_pos,
   Eigen::Matrix<double, 2, 2> A;
   Eigen::Matrix<double, 2, 1> B;
   ConstructDynamicMatrices(height, stride_period, &A, &B);
-  cout << "A = \n" << A << endl;
-  cout << "B = \n" << B << endl;
+  //  cout << "A = \n" << A << endl;
+  //  cout << "B = \n" << B << endl;
 
   Eigen::MatrixXd I2 = Eigen::MatrixXd::Identity(2, 2);
   Eigen::Matrix<double, 2, 5> A_lin;
@@ -95,7 +95,6 @@ LipmMpc::LipmMpc(const std::vector<Eigen::VectorXd>& des_xy_pos,
   }
 
   // Add step size kinematics constraint
-  cout << "kinematics constraint\n";
   Eigen::Matrix<double, 1, 2> A_lin_kin;
   A_lin_kin << 1, -1;
   Eigen::Matrix<double, 1, 1> ub_x;
@@ -106,11 +105,11 @@ LipmMpc::LipmMpc(const std::vector<Eigen::VectorXd>& des_xy_pos,
   ub_y << max_step_length;
   Eigen::Matrix<double, 1, 1> lb_y;
   lb_y << min_step_width;
-  cout << "A_lin_kin = " << A_lin_kin << endl;
-  cout << "ub_x = " << ub_x << endl;
-  cout << "lb_x = " << lb_x << endl;
-  cout << "ub_y = " << ub_y << endl;
-  cout << "lb_y = " << lb_y << endl;
+  //  cout << "A_lin_kin = " << A_lin_kin << endl;
+  //  cout << "ub_x = " << ub_x << endl;
+  //  cout << "lb_x = " << lb_x << endl;
+  //  cout << "ub_y = " << ub_y << endl;
+  //  cout << "lb_y = " << lb_y << endl;
   for (int i = 1; i <= n_step; i++) {
     VectorXDecisionVariable x_i = x_lipm_vars_by_idx(i);
     // 1. end of mode

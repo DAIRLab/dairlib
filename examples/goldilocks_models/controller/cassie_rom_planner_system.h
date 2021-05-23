@@ -7,6 +7,8 @@
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "lcm/rom_planner_saved_trajectory.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 
@@ -14,15 +16,18 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solver_interface.h"
 #include "drake/solvers/solver_options.h"
 #include "drake/systems/framework/leaf_system.h"
 
-using std::cout;
-using std::endl;
-
 namespace dairlib {
 namespace goldilocks_models {
+
+using multibody::KinematicEvaluatorSet;
+using multibody::WorldPointEvaluator;
+using std::cout;
+using std::endl;
 
 /// Assumption:
 /// - we assume that there is no x, y and yaw dependency in the ROM (the mapping
@@ -64,18 +69,6 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
 
-  void RunLipmMPC(bool start_with_left_stance, double init_phase,
-                  double first_mode_duration,
-                  const Eigen::VectorXd& final_position,
-                  const Eigen::VectorXd& x_init,
-                  Eigen::MatrixXd* local_preprocess_x_lipm,
-                  Eigen::MatrixXd* local_preprocess_u_lipm) const;
-  void GetDesiredFullStateFromLipmMPCSol(
-      const Eigen::MatrixXd& local_preprocess_x_lipm,
-      const Eigen::MatrixXd& local_preprocess_u_lipm,
-      std::vector<Eigen::MatrixXd>* desired_state) const;
-  drake::solvers::OsqpSolver qp_solver_;
-
   void CreateDesiredComPosAndVel(
       int n_total_step, bool start_with_left_stance, double init_phase,
       double first_mode_duration, const Eigen::VectorXd& final_position,
@@ -84,10 +77,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   void RotateBetweenGlobalAndLocalFrame(bool rotate_from_global_to_local,
                                         const Eigen::VectorXd& quat_xyz_shift,
-                                        const Eigen::MatrixXd& original_x0_FOM,
-                                        const Eigen::MatrixXd& original_xf_FOM,
-                                        Eigen::MatrixXd* rotated_x0_FOM,
-                                        Eigen::MatrixXd* rotated_xf_FOM) const;
+                                        const Eigen::MatrixXd& original_x_FOM,
+                                        Eigen::MatrixXd* rotated_x_FOM) const;
   void RotatePosBetweenGlobalAndLocalFrame(
       bool rotate_from_global_to_local, bool position_only,
       const Eigen::VectorXd& quat_xyz_shift, const Eigen::MatrixXd& original_x,
@@ -115,8 +106,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
-  std::map<std::string, int> positions_map_;
-  std::map<std::string, int> velocities_map_;
+  std::map<std::string, int> pos_map_;
+  std::map<std::string, int> vel_map_;
 
   int nq_;
   int nv_;
@@ -208,6 +199,37 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // not able to find the optimal solution from time to time
   bool warm_start_with_previous_solution_ = true;
 
+  // LIPM MPC and IK
+  void RunLipmMPC(bool start_with_left_stance, double init_phase,
+                  double first_mode_duration,
+                  const Eigen::VectorXd& final_position,
+                  const Eigen::VectorXd& x_init,
+                  Eigen::MatrixXd* local_preprocess_x_lipm,
+                  Eigen::MatrixXd* local_preprocess_u_lipm) const;
+  drake::solvers::OsqpSolver qp_solver_;
+  void GetDesiredFullStateFromLipmMPCSol(
+      bool start_with_left_stance,
+      const Eigen::MatrixXd& local_preprocess_x_lipm,
+      const Eigen::MatrixXd& local_preprocess_u_lipm,
+      Eigen::MatrixXd* desired_state) const;
+  drake::solvers::SnoptSolver snopt_solver_;
+  std::unique_ptr<WorldPointEvaluator<double>> left_foot_evaluator_;
+  std::unique_ptr<WorldPointEvaluator<double>> right_foot_evaluator_;
+  std::unique_ptr<KinematicEvaluatorSet<double>> left_foot_evaluators_;
+  std::unique_ptr<KinematicEvaluatorSet<double>> right_foot_evaluators_;
+  std::unique_ptr<WorldPointEvaluator<double>> left_toe_z_evaluator_;
+  std::unique_ptr<WorldPointEvaluator<double>> left_heel_z_evaluator_;
+  std::unique_ptr<WorldPointEvaluator<double>> right_toe_z_evaluator_;
+  std::unique_ptr<WorldPointEvaluator<double>> right_heel_z_evaluator_;
+  std::unique_ptr<KinematicEvaluatorSet<double>> contact_z_evaluators_;
+  std::unique_ptr<WorldPointEvaluator<double>> left_toe_evaluator_;
+  std::unique_ptr<WorldPointEvaluator<double>> left_heel_evaluator_;
+  std::unique_ptr<WorldPointEvaluator<double>> right_toe_evaluator_;
+  std::unique_ptr<WorldPointEvaluator<double>> right_heel_evaluator_;
+  std::unique_ptr<KinematicEvaluatorSet<double>> contact_evaluators_;
+
+  Eigen::VectorXd x_standing_fixed_spring_;
+
   // For debugging and data logging
   mutable int counter_ = 0;
 
@@ -237,6 +259,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       double current_time, const Eigen::VectorXd& x_init, double init_phase,
       bool is_right_stance, const Eigen::VectorXd& quat_xyz_shift,
       const Eigen::VectorXd& final_position,
+      const Eigen::MatrixXd& global_regularization_x_FOM,
       const Eigen::MatrixXd& local_x0_FOM, const Eigen::MatrixXd& local_xf_FOM,
       const RomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,

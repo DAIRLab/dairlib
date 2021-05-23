@@ -13,6 +13,7 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solver_interface.h"
 #include "drake/solvers/solver_options.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -33,7 +34,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   static const int ROBOT = 1;  // robot index for Cassie
 
   CassiePlannerWithMixedRomFom(
-      const drake::multibody::MultibodyPlant<double>& plant_controls,
+      const drake::multibody::MultibodyPlant<double>& plant_control,
       double stride_period, const PlannerSetting& param, bool singel_eval_mode,
       bool log_data);
 
@@ -62,6 +63,18 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
+
+  void RunLipmMPC(bool start_with_left_stance, double init_phase,
+                  double first_mode_duration,
+                  const Eigen::VectorXd& final_position,
+                  const Eigen::VectorXd& x_init,
+                  Eigen::MatrixXd* local_preprocess_x_lipm,
+                  Eigen::MatrixXd* local_preprocess_u_lipm) const;
+  void GetDesiredFullStateFromLipmMPCSol(
+      const Eigen::MatrixXd& local_preprocess_x_lipm,
+      const Eigen::MatrixXd& local_preprocess_u_lipm,
+      std::vector<Eigen::MatrixXd>* desired_state) const;
+  drake::solvers::OsqpSolver qp_solver_;
 
   void CreateDesiredComPosAndVel(
       int n_total_step, bool start_with_left_stance, double init_phase,
@@ -110,7 +123,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int nx_;
   int n_tau_;
 
-  const drake::multibody::MultibodyPlant<double>& plant_controls_;
+  const drake::multibody::MultibodyPlant<double>& plant_control_;
+  std::unique_ptr<drake::systems::Context<double>> context_plant_control_;
   double stride_period_;
   double single_support_duration_;
   double double_support_duration_;
@@ -121,6 +135,8 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   std::vector<BodyPoint> right_contacts_;
   BodyPoint left_origin_;
   BodyPoint right_origin_;
+  BodyPoint left_mid_;
+  BodyPoint right_mid_;
   std::vector<std::tuple<std::string, double, double>> joint_name_lb_ub_;
   mutable drake::solvers::SolverOptions solver_option_ipopt_;
   mutable drake::solvers::SolverOptions solver_option_snopt_;
@@ -163,9 +179,11 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd local_predicted_com_vel_;
   mutable Eigen::VectorXd global_predicted_com_vel_;
   mutable Eigen::MatrixXd local_x_lipm_;
-  mutable Eigen::MatrixXd global_x_lipm_;
   mutable Eigen::MatrixXd local_u_lipm_;
+  mutable Eigen::MatrixXd global_x_lipm_;
   mutable Eigen::MatrixXd global_u_lipm_;
+  mutable Eigen::MatrixXd global_preprocess_x_lipm_;
+  mutable Eigen::MatrixXd global_preprocess_u_lipm_;
 
   // Init state relaxation (relax the mapping function)
   std::set<int> relax_index_ = {5};  //{3, 4, 5};

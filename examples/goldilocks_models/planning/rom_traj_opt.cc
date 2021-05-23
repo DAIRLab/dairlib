@@ -656,38 +656,36 @@ void RomTrajOpt::AddCascadedLipmMPC(
   }
 
   // Add step size kinematics constraint
-  Eigen::Matrix<double, 2, 4> A_lin_kin;
-  A_lin_kin << I2, -I2;
-  Eigen::Matrix<double, 2, 1> b_lin_kin;
-  b_lin_kin << max_step_length, max_step_length;
-  Eigen::Matrix<double, 2, 1> b_lin_kin2;
-  b_lin_kin2 << -max_step_length, min_step_width;
-  Eigen::Matrix<double, 2, 1> b_lin_kin3;
-  b_lin_kin3 << -max_step_length, 0;
+  // TODO: I copied and pasted this block of code from lipm_mpc.cc. Need to
+  //  check if it's correct
+  Eigen::Matrix<double, 1, 2> A_lin_kin;
+  A_lin_kin << 1, -1;
+  Eigen::Matrix<double, 1, 1> ub_x;
+  ub_x << max_step_length;
+  Eigen::Matrix<double, 1, 1> lb_x;
+  lb_x << -max_step_length;
+  Eigen::Matrix<double, 1, 1> ub_y;
+  ub_y << max_step_length;
+  Eigen::Matrix<double, 1, 1> lb_y;
+  lb_y << min_step_width;
   for (int i = 1; i <= n_step_lipm; i++) {
     VectorXDecisionVariable x_i = x_lipm_vars_by_idx(i);
-    // end of mode
+    // 1. end of mode
     VectorXDecisionVariable u_i = u_lipm_vars_by_idx(i - 1);
-    AddLinearConstraint(A_lin_kin, -b_lin_kin, b_lin_kin, {x_i.head<2>(), u_i});
-    // TODO: we also need the constraint for the stance foot at the end of
-    // stance phase, in order to give a better prediction.
-    //    if (left_stance) {
-    //      AddLinearConstraint(A_lin_kin, b_lin_kin3, b_lin_kin,
-    //                          {x_i.head<2>(), u_i});
-    //    } else {
-    //      AddLinearConstraint(A_lin_kin, -b_lin_kin, -b_lin_kin3,
-    //                          {x_i.head<2>(), u_i});
-    //    }
-    // start of mode
+    AddLinearConstraint(A_lin_kin, lb_x, ub_x,
+                        {x_i.segment<1>(0), u_i.head<1>()});
+    AddLinearConstraint(A_lin_kin, left_stance ? -ub_y : lb_y,
+                        left_stance ? -lb_y : ub_y,
+                        {x_i.segment<1>(1), u_i.tail<1>()});
+
+    // 2. start of next mode
     if (i != n_step_lipm) {
       VectorXDecisionVariable u_i_post = u_lipm_vars_by_idx(i);
-      if (left_stance) {
-        AddLinearConstraint(A_lin_kin, b_lin_kin2, b_lin_kin,
-                            {x_i.head<2>(), u_i_post});
-      } else {
-        AddLinearConstraint(A_lin_kin, -b_lin_kin, -b_lin_kin2,
-                            {x_i.head<2>(), u_i_post});
-      }
+      AddLinearConstraint(A_lin_kin, lb_x, ub_x,
+                          {x_i.segment<1>(0), u_i_post.head<1>()});
+      AddLinearConstraint(A_lin_kin, left_stance ? lb_y : -ub_y,
+                          left_stance ? ub_y : -lb_y,
+                          {x_i.segment<1>(1), u_i_post.tail<1>()});
     }
     left_stance = !left_stance;
   }

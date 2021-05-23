@@ -9,6 +9,7 @@
 #include <string>
 
 #include "common/eigen_utils.h"
+#include "examples/goldilocks_models/planning/lipm_mpc.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "solvers/optimization_utils.h"
 #include "systems/controllers/osc/osc_utils.h"
@@ -56,19 +57,28 @@ namespace dairlib {
 namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
-    const MultibodyPlant<double>& plant_controls, double stride_period,
+    const MultibodyPlant<double>& plant_control, double stride_period,
     const PlannerSetting& param, bool singel_eval_mode, bool log_data)
-    : nq_(plant_controls.num_positions()),
-      nv_(plant_controls.num_velocities()),
-      nx_(plant_controls.num_positions() + plant_controls.num_velocities()),
-      plant_controls_(plant_controls),
+    : nq_(plant_control.num_positions()),
+      nv_(plant_control.num_velocities()),
+      nx_(plant_control.num_positions() + plant_control.num_velocities()),
+      plant_control_(plant_control),
+      context_plant_control_(plant_control.CreateDefaultContext()),
       stride_period_(stride_period),
       single_support_duration_(param.gains.left_support_duration),
       double_support_duration_(param.gains.double_support_duration),
       left_origin_(BodyPoint(Vector3d::Zero(),
-                             plant_controls.GetFrameByName("toe_left"))),
+                             plant_control.GetFrameByName("toe_left"))),
       right_origin_(BodyPoint(Vector3d::Zero(),
-                              plant_controls.GetFrameByName("toe_right"))),
+                              plant_control.GetFrameByName("toe_right"))),
+      left_mid_(BodyPoint((LeftToeFront(plant_control).first +
+                           LeftToeRear(plant_control).first) /
+                              2,
+                          plant_control.GetFrameByName("toe_left"))),
+      right_mid_(BodyPoint((LeftToeFront(plant_control).first +
+                            LeftToeRear(plant_control).first) /
+                               2,
+                           plant_control.GetFrameByName("toe_right"))),
       param_(param),
       singel_eval_mode_(singel_eval_mode),
       log_data_and_check_solution_(log_data) {
@@ -82,9 +92,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   phase_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_controls.num_positions(),
-                                             plant_controls.num_velocities(),
-                                             plant_controls.num_actuators()))
+                        OutputVector<double>(plant_control.num_positions(),
+                                             plant_control.num_velocities(),
+                                             plant_control.num_actuators()))
                     .get_index();
   controller_signal_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
@@ -95,18 +105,18 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
 
   // Create index maps
-  positions_map_ = multibody::makeNameToPositionsMap(plant_controls);
-  velocities_map_ = multibody::makeNameToVelocitiesMap(plant_controls);
+  positions_map_ = multibody::makeNameToPositionsMap(plant_control);
+  velocities_map_ = multibody::makeNameToVelocitiesMap(plant_control);
 
   // Reduced order model
-  rom_ = CreateRom(param_.rom_option, ROBOT, plant_controls, false);
+  rom_ = CreateRom(param_.rom_option, ROBOT, plant_control, false);
   ReadModelParameters(rom_.get(), param_.dir_model, param_.iter);
 
   // Create mirror maps
-  state_mirror_ = StateMirror(MirrorPosIndexMap(plant_controls, ROBOT),
-                              MirrorPosSignChangeSet(plant_controls, ROBOT),
-                              MirrorVelIndexMap(plant_controls, ROBOT),
-                              MirrorVelSignChangeSet(plant_controls, ROBOT));
+  state_mirror_ = StateMirror(MirrorPosIndexMap(plant_control, ROBOT),
+                              MirrorPosSignChangeSet(plant_control, ROBOT),
+                              MirrorVelIndexMap(plant_control, ROBOT),
+                              MirrorVelSignChangeSet(plant_control, ROBOT));
 
   // Provide initial guess
   bool with_init_guess = true;
@@ -196,33 +206,28 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   }
 
   // Get foot contacts
-  auto left_toe = LeftToeFront(plant_controls);
-  auto left_heel = LeftToeRear(plant_controls);
-  // auto right_toe = RightToeFront(plant_controls);
-  // auto right_heel = RightToeRear(plant_controls);
+  auto left_toe = LeftToeFront(plant_control);
+  auto left_heel = LeftToeRear(plant_control);
+  // auto right_toe = RightToeFront(plant_control);
+  // auto right_heel = RightToeRear(plant_control);
   Vector3d front_contact_point = left_toe.first;
   Vector3d rear_contact_point = left_heel.first;
   if (param_.use_double_contact_points) {
     auto left_toe_front = BodyPoint(front_contact_point,
-                                    plant_controls.GetFrameByName("toe_left"));
-    auto left_toe_rear = BodyPoint(rear_contact_point,
-                                   plant_controls.GetFrameByName("toe_left"));
-    auto right_toe_front = BodyPoint(
-        front_contact_point, plant_controls.GetFrameByName("toe_right"));
+                                    plant_control.GetFrameByName("toe_left"));
+    auto left_toe_rear =
+        BodyPoint(rear_contact_point, plant_control.GetFrameByName("toe_left"));
+    auto right_toe_front = BodyPoint(front_contact_point,
+                                     plant_control.GetFrameByName("toe_right"));
     auto right_toe_rear = BodyPoint(rear_contact_point,
-                                    plant_controls.GetFrameByName("toe_right"));
+                                    plant_control.GetFrameByName("toe_right"));
     left_contacts_.push_back(left_toe_rear);
     left_contacts_.push_back(left_toe_front);
     right_contacts_.push_back(right_toe_rear);
     right_contacts_.push_back(right_toe_front);
   } else {
-    Vector3d mid_contact_point = (front_contact_point + rear_contact_point) / 2;
-    auto left_toe_mid =
-        BodyPoint(mid_contact_point, plant_controls.GetFrameByName("toe_left"));
-    auto right_toe_mid = BodyPoint(mid_contact_point,
-                                   plant_controls.GetFrameByName("toe_right"));
-    left_contacts_.push_back(left_toe_mid);
-    right_contacts_.push_back(right_toe_mid);
+    left_contacts_.push_back(left_mid_);
+    right_contacts_.push_back(right_mid_);
   }
 
   // Get joint limits of the robot
@@ -233,9 +238,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     for (const auto& name : joint_names) {
       joint_name_lb_ub_.emplace_back(
           name + left_right,
-          plant_controls.GetJointByName(name + left_right)
+          plant_control.GetJointByName(name + left_right)
               .position_lower_limits()(0),
-          plant_controls.GetJointByName(name + left_right)
+          plant_control.GetJointByName(name + left_right)
               .position_upper_limits()(0));
     }
   }
@@ -486,6 +491,25 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
   ///
+  // Run LIPM MPC
+  MatrixXd local_preprocess_x_lipm;
+  MatrixXd local_preprocess_u_lipm;
+  RunLipmMPC(start_with_left_stance, init_phase, first_mode_duration,
+             final_position, x_init, &local_preprocess_x_lipm,
+             &local_preprocess_u_lipm);
+  // Saving data for debugging
+  global_preprocess_x_lipm_ = local_preprocess_x_lipm;
+  global_preprocess_u_lipm_ = local_preprocess_u_lipm;
+  RotatePosBetweenGlobalAndLocalFrame(false, false, quat_xyz_shift,
+                                      local_preprocess_x_lipm,
+                                      &global_preprocess_x_lipm_);
+  RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
+                                      local_preprocess_u_lipm,
+                                      &global_preprocess_u_lipm_);
+  // Run IK to get desired full state
+  /*vector<MatrixXd> desired_state;
+  GetDesiredFullStateFromLipmMPCSol(local_preprocess_x_lipm,
+                                    local_preprocess_u_lipm, &desired_state);*/
 
   ///
   /// Construct rom traj opt
@@ -543,7 +567,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Construct
   PrintStatus("\nConstructing optimization problem...");
   start = std::chrono::high_resolution_clock::now();
-  RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_controls_,
+  RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_control_,
                            state_mirror_, left_contacts_, right_contacts_,
                            left_origin_, right_origin_, joint_name_lb_ub_,
                            x_init, max_swing_distance_, start_with_left_stance,
@@ -977,6 +1001,81 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   counter_++;
 }
 
+void CassiePlannerWithMixedRomFom::RunLipmMPC(
+    bool start_with_left_stance, double init_phase, double first_mode_duration,
+    const VectorXd& final_position, const VectorXd& x_init,
+    MatrixXd* local_preprocess_x_lipm,
+    MatrixXd* local_preprocess_u_lipm) const {
+  cout << "=== start of LIPM MPC ===\n";
+  auto start_build = std::chrono::high_resolution_clock::now();
+  // Long horizon
+  int n_step = std::max(10, param_.n_step);
+
+  // Get des_xy_pos, des_xy_vel
+  vector<VectorXd> des_xy_pos;
+  vector<VectorXd> des_xy_vel;
+  CreateDesiredComPosAndVel(n_step, start_with_left_stance, init_phase,
+                            first_mode_duration, final_position, &des_xy_pos,
+                            &des_xy_vel);
+
+  // Get initial COM position, velocity and stance foot position
+  plant_control_.SetPositions(context_plant_control_.get(), x_init.head(nq_));
+  // CoM position
+  Vector2d com_pos =
+      plant_control_.CalcCenterOfMassPositionInWorld(*context_plant_control_)
+          .head<2>();
+  // CoM velocity
+  Eigen::MatrixXd J_com(3, plant_control_.num_velocities());
+  plant_control_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_plant_control_, JacobianWrtVariable::kV,
+      plant_control_.world_frame(), plant_control_.world_frame(), &J_com);
+  Vector2d com_vel = J_com.topRows<2>() * x_init.tail(nv_);
+  // Stance foot position
+  auto stance_toe_mid = start_with_left_stance ? left_mid_ : right_mid_;
+  VectorXd stance_foot_pos(3);
+  plant_control_.CalcPointsPositions(
+      *context_plant_control_, stance_toe_mid.second, stance_toe_mid.first,
+      plant_control_.world_frame(), &stance_foot_pos);
+
+  // Construct LIPM MPC (QP)
+  double height = 0.85;
+  LipmMpc mpc_qp(des_xy_pos, des_xy_vel, param_.gains.w_predict_lipm_p,
+                 param_.gains.w_predict_lipm_v, com_pos, com_vel,
+                 stance_foot_pos.head<2>(), n_step, first_mode_duration,
+                 stride_period_, height, param_.gains.max_lipm_step_length / 2,
+                 param_.gains.right_limit_wrt_pelvis, start_with_left_stance);
+
+  // Set initial guess (warm start after the first loop)
+  // TODO: use global_preprocess_x_lipm_ and global_preprocess_u_lipm_
+
+  // Solve
+  auto start_solve = std::chrono::high_resolution_clock::now();
+  const auto result = qp_solver_.Solve(mpc_qp, mpc_qp.initial_guess());
+  auto finish = std::chrono::high_resolution_clock::now();
+
+  std::chrono::duration<double> elapsed_build = start_solve - start_build;
+  std::chrono::duration<double> elapsed_solve = finish - start_solve;
+  SolutionResult solution_result = result.get_solution_result();
+  cout << "Solver:" << result.get_solver_id().name() << " | ";
+  cout << "Build time:" << elapsed_build.count() << " | ";
+  cout << "Solve time:" << elapsed_solve.count() << " | ";
+  cout << solution_result << " | ";
+  cout << "Cost:" << result.get_optimal_cost() << "\n";
+  cout << "==== end of LIPM MPC ====\n";
+  DRAKE_DEMAND(result.is_success());
+
+  // Get solution
+  *local_preprocess_x_lipm = mpc_qp.GetStateSamples(result);
+  *local_preprocess_u_lipm = mpc_qp.GetInputSamples(result);
+}
+
+void CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
+    const Eigen::MatrixXd& local_preprocess_x_lipm,
+    const Eigen::MatrixXd& local_preprocess_u_lipm,
+    vector<MatrixXd>* desired_state) const {
+  // Run IK to get full state
+}
+
 void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
     int n_total_step, bool start_with_left_stance, double init_phase,
     double first_mode_duration, const VectorXd& final_position,
@@ -1004,7 +1103,7 @@ void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
   // Get the desired xy velocities for the FOM states
   *des_xy_vel =
       vector<VectorXd>(n_total_step, des_xy_pos->at(1) / first_mode_duration);
-  // Heurisctically shift the desired velocity in y direction
+  // Heuristically shift the desired velocity in y direction
   bool dummy_bool = start_with_left_stance;
   for (int i = 0; i < n_total_step; i++) {
     if (dummy_bool) {
@@ -1163,6 +1262,10 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
            lightweight_saved_traj_.get_xf());
   writeCSV(dir_data + prefix + "global_x_lipm.csv", global_x_lipm_);
   writeCSV(dir_data + prefix + "global_u_lipm.csv", global_u_lipm_);
+  writeCSV(dir_data + prefix + "global_preprocess_x_lipm.csv",
+           global_preprocess_x_lipm_);
+  writeCSV(dir_data + prefix + "global_preprocess_u_lipm.csv",
+           global_preprocess_u_lipm_);
 
   /// Save files for reproducing the same result
   // cout << "x_init = " << x_init << endl;

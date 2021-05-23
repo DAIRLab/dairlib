@@ -28,6 +28,15 @@ cc_library(
 )
 
 cc_library(
+    name = "lipm_mpc",
+    srcs = ["lipm_mpc.cc"],
+    hdrs = ["lipm_mpc.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "dynamics_constraint",
     srcs = [
         "dynamics_constraint.cc",

@@ -112,39 +112,30 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   string suffix = FLAGS_snopt_suffix ? "_snopt" : "";
   string global = FLAGS_global ? "_global_" : "_local_";
   std::vector<MatrixXd> x0_each_mode_list;
-  std::vector<MatrixXd> xf_each_mode_list;
   for (int i = solve_idx_start; i <= solve_idx_end; i++) {
     string x0_path =
         (i >= 0)
             ? directory + to_string(i) + global + "x0_FOM" + suffix + ".csv"
             : directory + "debug" + global + "x0_FOM" + suffix + ".csv";
-    string xf_path =
-        (i >= 0)
-            ? directory + to_string(i) + global + "xf_FOM" + suffix + ".csv"
-            : directory + "debug" + global + "xf_FOM" + suffix + ".csv";
     x0_each_mode_list.push_back(readCSV(x0_path));
-    xf_each_mode_list.push_back(readCSV(xf_path));
   }  // for loop solve_idx
-  DRAKE_DEMAND(x0_each_mode_list.size() == xf_each_mode_list.size());
   int idx_length = x0_each_mode_list.size();
 
   // Option 1 -- multiple pose at once
   if (FLAGS_view_multipose_at_once) {
     // Select poses for visualization
     MatrixXd x0_each_mode = x0_each_mode_list.at(0);
-    MatrixXd xf_each_mode = xf_each_mode_list.at(0);
     std::vector<MatrixXd> poses(
         idx_length,
         FLAGS_only_start_and_end_poses
             ? MatrixXd::Zero(x0_each_mode.rows(), 2)
-            : MatrixXd::Zero(x0_each_mode.rows(), x0_each_mode.cols() + 1));
+            : MatrixXd::Zero(x0_each_mode.rows(), x0_each_mode.cols()));
     for (int i = 0; i < idx_length; i++) {
       if (FLAGS_only_start_and_end_poses) {
         poses[i] << x0_each_mode_list.at(i).leftCols<1>(),
-            xf_each_mode_list.at(i).rightCols<1>();
+            x0_each_mode_list.at(i).rightCols<1>();
       } else {
-        poses[i] << x0_each_mode_list.at(i),
-            xf_each_mode_list.at(i).rightCols<1>();
+        poses[i] << x0_each_mode_list.at(i);
       }
     }
 
@@ -209,7 +200,6 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   else {
     DRAKE_DEMAND(idx_length == 1);
     MatrixXd x0_each_mode = x0_each_mode_list.at(0);
-    MatrixXd xf_each_mode = xf_each_mode_list.at(0);
 
     bool is_head = FLAGS_start_is_head;
     bool last_visited_mode = -1;
@@ -220,16 +210,15 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
       }
 
       // Create a testing piecewise polynomial
+      // We don't use velocity part
       std::vector<double> T_breakpoint{0, FLAGS_step_time};
       std::vector<MatrixXd> Y;
       if (is_head) {
         Y.push_back(x0_each_mode.col(mode));
         Y.push_back(x0_each_mode.col(mode));
-        cout << "x0 = \n" << x0_each_mode.col(mode).transpose() << endl;
       } else {
-        Y.push_back(xf_each_mode.col(mode));
-        Y.push_back(xf_each_mode.col(mode));
-        cout << "xf = \n" << xf_each_mode.col(mode).transpose() << endl;
+        Y.push_back(x0_each_mode.col(mode + 1));
+        Y.push_back(x0_each_mode.col(mode + 1));
       }
       PiecewisePolynomial<double> pp_xtraj =
           PiecewisePolynomial<double>::FirstOrderHold(T_breakpoint, Y);

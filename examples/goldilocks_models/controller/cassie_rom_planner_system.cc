@@ -1257,6 +1257,7 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   // TODO: desired_quat should point towards goal position. Same for ROM MPC.
   Vector4d desired_quat(1, 0, 0, 0);
   double desired_height = 0.95;
+  double time_limit = 0.02;  // in seconds
 
   bool left_stance = start_with_left_stance;
   for (int i = 0; i < regularization_state->cols(); i++) {
@@ -1385,6 +1386,8 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
                          "Major optimality tolerance", 1e-2);
     prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
                          "Major feasibility tolerance", 1e-2);
+    prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Time limit",
+                         time_limit);
 
     auto start_solve = std::chrono::high_resolution_clock::now();
     const auto result = snopt_solver_.Solve(prog, prog.initial_guess());

@@ -71,7 +71,7 @@ w_predict_lipm_p: .1
 w_predict_lipm_v: 0.01
 
 # lipm mpc
-w_p_lipm_mpc: .1
+w_p_lipm_mpc: .01
 w_v_lipm_mpc: 0.01
 
 ### For both planner and controller

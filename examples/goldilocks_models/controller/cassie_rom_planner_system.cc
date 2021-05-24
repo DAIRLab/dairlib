@@ -1162,6 +1162,13 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   }
   /*cout << "first_mode_duration_lipm = " << first_mode_duration_lipm << endl;
   cout << "stride_period_lipm = " << stride_period_lipm << endl;*/
+  // TODO: With the above heuristic, it seems to underestimate the prediction.
+  //  However, after removing it, the stride druation is larger which cause
+  //  bigger stride length, and we need to relax the stride length constraint to
+  //  make the problem feasible.
+  //  The big stride length caused instability.
+  //  We need to add soft constraint for the stride length (in the cost), so we
+  //  can at least get a solution.
 
   // +1 because IK needs swing ft
   int n_step = std::max(minimum_n_step, param_.n_step + 1);
@@ -1257,7 +1264,7 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   // TODO: desired_quat should point towards goal position. Same for ROM MPC.
   Vector4d desired_quat(1, 0, 0, 0);
   double desired_height = 0.95;
-  double time_limit = 0.2; //0.02;  // in seconds
+  double time_limit = 0.2;  // 0.02;  // in seconds
 
   bool left_stance = start_with_left_stance;
   for (int i = 0; i < regularization_state->cols(); i++) {

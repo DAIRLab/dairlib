@@ -53,6 +53,7 @@ if __name__ == "__main__":
 
   for j in range(len(idx_list)):
     idx = idx_list[j]
+    print("drawing " + idx)
 
     # Read LIPM state and input (foot position)
     global_x_lipm = np.loadtxt(data_dir + "%s_%sx_lipm.csv" % (idx, pref),

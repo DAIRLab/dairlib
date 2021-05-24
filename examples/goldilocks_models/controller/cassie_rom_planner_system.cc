@@ -1257,7 +1257,7 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   // TODO: desired_quat should point towards goal position. Same for ROM MPC.
   Vector4d desired_quat(1, 0, 0, 0);
   double desired_height = 0.95;
-  double time_limit = 0.02;  // in seconds
+  double time_limit = 0.2; //0.02;  // in seconds
 
   bool left_stance = start_with_left_stance;
   for (int i = 0; i < regularization_state->cols(); i++) {
@@ -1432,7 +1432,7 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
       // DRAKE_DEMAND(result.is_success());
       cout << "\n!!!\n !!! WARNING: IK failed!\n !!!\n\n";
     }
-    success = success & result.is_success();
+    success = success && result.is_success();
   }
   cout << "==== end of IK ====\n";
 
@@ -1444,7 +1444,7 @@ void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
     const VectorXd& final_position, vector<VectorXd>* des_xy_pos,
     vector<VectorXd>* des_xy_vel) const {
   // Parameters
-  double y_vel_offset = 0.2;
+  double y_vel_offset = 0.0;
 
   VectorXd adjusted_final_pos = final_position;
   double total_phase_length = n_total_step - init_phase;

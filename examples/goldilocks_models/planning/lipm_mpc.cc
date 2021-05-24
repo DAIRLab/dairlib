@@ -45,7 +45,8 @@ LipmMpc::LipmMpc(const std::vector<Eigen::VectorXd>& des_xy_pos,
                  const Eigen::VectorXd& init_vel,
                  const Eigen::VectorXd& init_input, int n_step,
                  double first_mode_duration, double stride_period,
-                 double height, double max_step_length, double min_step_width,
+                 double height, double max_length_foot_to_body,
+                 double max_length_foot_to_body_front, double min_step_width,
                  bool start_with_left_stance)
     : x_lipm_vars_(NewContinuousVariables(4 * (n_step + 1), "x_lipm_vars")),
       u_lipm_vars_(NewContinuousVariables(2 * n_step, "u_lipm_vars")),
@@ -98,11 +99,11 @@ LipmMpc::LipmMpc(const std::vector<Eigen::VectorXd>& des_xy_pos,
   Eigen::Matrix<double, 1, 2> A_lin_kin;
   A_lin_kin << 1, -1;
   Eigen::Matrix<double, 1, 1> ub_x;
-  ub_x << max_step_length;
+  ub_x << max_length_foot_to_body_front;  // note that the constraint is wrt foot
   Eigen::Matrix<double, 1, 1> lb_x;
-  lb_x << -max_step_length;
+  lb_x << -max_length_foot_to_body;
   Eigen::Matrix<double, 1, 1> ub_y;
-  ub_y << max_step_length;
+  ub_y << max_length_foot_to_body;
   Eigen::Matrix<double, 1, 1> lb_y;
   lb_y << min_step_width;
   //  cout << "A_lin_kin = " << A_lin_kin << endl;

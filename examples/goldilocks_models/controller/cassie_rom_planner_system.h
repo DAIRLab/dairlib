@@ -71,7 +71,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   void CreateDesiredComPosAndVel(
       int n_total_step, bool start_with_left_stance, double init_phase,
-      double first_mode_duration, const Eigen::VectorXd& final_position,
+      const Eigen::VectorXd& final_position,
       std::vector<Eigen::VectorXd>* des_xy_pos,
       std::vector<Eigen::VectorXd>* des_xy_vel) const;
 
@@ -85,14 +85,22 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       Eigen::MatrixXd* rotated_x) const;
 
   void BookKeeping(
-      bool start_with_left_stance, const std::chrono::duration<double>& elapsed,
+      bool start_with_left_stance,
+      const std::chrono::duration<double>& elapsed_lipm_mpc_and_ik,
+      const std::chrono::duration<double>& elapsed_solve,
       const drake::solvers::MathematicalProgramResult& result) const;
   void WarmStartGuess(
       const Eigen::VectorXd& quat_xyz_shift,
-      const std::vector<Eigen::VectorXd>& des_xy_pos,
-      const std::vector<Eigen::VectorXd>& des_xy_vel, const int global_fsm_idx,
+      const std::vector<Eigen::VectorXd>& reg_x_FOM, const int global_fsm_idx,
       int first_mode_knot_idx,
       dairlib::goldilocks_models::RomTrajOptCassie* trajopt) const;
+
+  // Flags
+  bool use_standing_pose_as_init_FOM_guess_ = true;
+  // Although warm start helps most of the time, it could also make the solver
+  // not able to find the optimal solution from time to time
+  bool warm_start_with_previous_solution_ = true;
+  bool use_lipm_mpc_and_ik_ = true;
 
   // Port indices
   int stance_foot_port_;
@@ -193,21 +201,19 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // Swing foot distance
   mutable std::vector<double> max_swing_distance_;
 
-  // Flags
-  bool use_standing_pose_as_init_FOM_guess_ = true;
-  // Although warm start helps most of the time, it could also make the solver
-  // not able to find the optimal solution from time to time
-  bool warm_start_with_previous_solution_ = true;
+  const Eigen::MatrixXd Aeq_fourbar_ = MatrixXd::Ones(1, 2);
+  const Eigen::VectorXd angle_fourbar_ =
+      13.0 / 180.0 * M_PI * Eigen::VectorXd::Ones(1);
 
   // LIPM MPC and IK
-  void RunLipmMPC(bool start_with_left_stance, double init_phase,
+  bool RunLipmMPC(bool start_with_left_stance, double init_phase,
                   double first_mode_duration,
                   const Eigen::VectorXd& final_position,
                   const Eigen::VectorXd& x_init,
                   Eigen::MatrixXd* local_preprocess_x_lipm,
                   Eigen::MatrixXd* local_preprocess_u_lipm) const;
   drake::solvers::OsqpSolver qp_solver_;
-  void GetDesiredFullStateFromLipmMPCSol(
+  bool GetDesiredFullStateFromLipmMPCSol(
       bool start_with_left_stance,
       const Eigen::MatrixXd& local_preprocess_x_lipm,
       const Eigen::MatrixXd& local_preprocess_u_lipm,
@@ -232,6 +238,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   // For debugging and data logging
   mutable int counter_ = 0;
+
+  mutable double total_mpc_and_ik_solve_time_ = 0;
+  mutable double max_mpc_and_ik_solve_time_ = 0;
 
   mutable double total_solve_time_ = 0;
   mutable double max_solve_time_ = 0;

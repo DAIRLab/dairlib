@@ -576,7 +576,7 @@ RomTrajOpt::RomTrajOpt(
 }
 
 void RomTrajOpt::AddConstraintAndCostForLastFootStep(
-    double w_predict_lipm_v, const std::vector<Eigen::VectorXd>& des_xy_vel,
+    double w_predict_lipm_v, const Eigen::VectorXd& des_predicted_xy_vel,
     double stride_period) {
   predicted_com_vel_var_ = NewContinuousVariables(2, "predicted_com_vel");
   // stance foot for after the planner's horizon
@@ -596,10 +596,9 @@ void RomTrajOpt::AddConstraintAndCostForLastFootStep(
 
   // Cost for tracking velocity
   PrintStatus("Adding cost -- predicted com vel one step after horizon");
-  DRAKE_DEMAND(num_modes_ > 1);
-  predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
-      w_predict_lipm_v * MatrixXd::Identity(2, 2),
-      des_xy_vel.at(num_modes_ - 2), predicted_com_vel_var_));
+  predict_lipm_v_bindings_.push_back(
+      AddQuadraticErrorCost(w_predict_lipm_v * MatrixXd::Identity(2, 2),
+                            des_predicted_xy_vel, predicted_com_vel_var_));
 }
 
 void RomTrajOpt::AddCascadedLipmMPC(
@@ -1053,15 +1052,10 @@ RomTrajOptCassie::RomTrajOptCassie(
   quat_identity_ << 1, 0, 0, 0;
 }
 
-void RomTrajOptCassie::AddRegularizationCost(
-    const std::vector<Eigen::VectorXd>& des_xy_pos,
-    const std::vector<Eigen::VectorXd>& des_xy_vel,
-    const Eigen::VectorXd& x_guess_left_in_front_pre,
-    const Eigen::VectorXd& x_guess_right_in_front_pre,
-    const Eigen::VectorXd& x_guess_left_in_front_post,
-    const Eigen::VectorXd& x_guess_right_in_front_post, double w_reg_quat,
+void RomTrajOptCassie::AddFomRegularizationCost(
+    const std::vector<Eigen::VectorXd>& reg_x_FOM, double w_reg_quat,
     double w_reg_xy, double w_reg_z, double w_reg_joints, double w_reg_hip_yaw,
-    double w_reg_vel) {
+    double w_reg_xy_vel, double w_reg_vel) {
   PrintStatus("Adding regularization cost ...");
 
   // Adding cost on FOM state increases convergence rate
@@ -1073,138 +1067,48 @@ void RomTrajOptCassie::AddRegularizationCost(
   MatrixXd Id_joints = w_reg_joints * MatrixXd::Identity(n_q_ - 7, n_q_ - 7);
   Id_joints(2, 2) = w_reg_hip_yaw;  // left hip yaw
   Id_joints(3, 3) = w_reg_hip_yaw;  // right hip yaw
-  //  MatrixXd Id_vel = 0.0 * MatrixXd::Identity(n_v_, n_v_);
-  MatrixXd Id_xy_vel = w_reg_vel * MatrixXd::Identity(2, 2);
+  MatrixXd Id_xy_vel = w_reg_xy_vel * MatrixXd::Identity(2, 2);
+  MatrixXd Id_omega = w_reg_vel * MatrixXd::Identity(3, 3);
+  MatrixXd Id_z_joint_vel = w_reg_vel * MatrixXd::Identity(n_v_ - 5, n_v_ - 5);
 
-  bool left_stance = start_with_left_stance_;
   for (int i = 0; i < num_modes_; i++) {
     auto x_preimpact = xf_vars_by_mode(i);
     auto x_postimpact = x0_vars_by_mode(i + 1);
 
-    const VectorXd& x_guess_pre =
-        left_stance ? x_guess_right_in_front_pre : x_guess_left_in_front_pre;
-    /*const VectorXd& x_guess_post =
-        left_stance ? x_guess_right_in_front_post :x_guess_left_in_front_post;*/
+    const VectorXd& x_guess_pre = reg_x_FOM.at(2 * i);
+    const VectorXd& x_guess_post = reg_x_FOM.at(2 * i + 1);
 
     // 1. Position
-    fom_reg_quat_cost_bindings_.push_back(
-        AddQuadraticErrorCost(Id_quat, quat_identity_, x_preimpact.head<4>()));
+    fom_reg_quat_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_quat, x_guess_pre.head<4>(), x_preimpact.head<4>()));
     fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_z, x_guess_pre.segment<1>(6), x_preimpact.segment<1>(6)));
     fom_reg_joint_cost_bindings_.push_back(
         AddQuadraticErrorCost(Id_joints, x_guess_pre.segment(7, n_q_ - 7),
                               x_preimpact.segment(7, n_q_ - 7)));
-    fom_reg_xy_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_xy, des_xy_pos.at(i + 1), x_preimpact.segment<2>(4)));
+    fom_reg_xy_pos_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_xy, x_guess_pre.segment<2>(4), x_preimpact.segment<2>(4)));
 
     // 2. Velocity
     // Preimpact
-    /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_vel, x_guess_pre.segment(n_q_, n_v_),
-        x_preimpact.segment(n_q_, n_v_)));*/
     fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_xy_vel, des_xy_vel.at(i), x_preimpact.segment<2>(n_q_ + 3)));
+        Id_omega, x_guess_pre.segment<3>(n_q_), x_preimpact.segment<3>(n_q_)));
+    fom_reg_xy_vel_cost_bindings_.push_back(
+        AddQuadraticErrorCost(Id_xy_vel, x_guess_pre.segment<2>(n_q_ + 3),
+                              x_preimpact.segment<2>(n_q_ + 3)));
+    fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_z_joint_vel, x_guess_pre.segment(n_q_ + 5, n_v_ - 5),
+        x_preimpact.segment(n_q_ + 5, n_v_ - 5)));
     // Postimpact
-    /*fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_vel, x_guess_post.segment(n_q_, n_v_),
-        x_postimpact.segment(n_q_, n_v_)));*/
+    fom_reg_vel_cost_bindings_.push_back(
+        AddQuadraticErrorCost(Id_omega, x_guess_post.segment<3>(n_q_),
+                              x_postimpact.segment<3>(n_q_)));
+    fom_reg_xy_vel_cost_bindings_.push_back(
+        AddQuadraticErrorCost(Id_xy_vel, x_guess_post.segment<2>(n_q_ + 3),
+                              x_postimpact.segment<2>(n_q_ + 3)));
     fom_reg_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_xy_vel, des_xy_vel.at(i), x_postimpact.segment<2>(n_q_ + 3)));
-
-    left_stance = !left_stance;
-  }
-
-  // Note: Cassie can exploit the "one-contact per foot" constraint to lean
-  // forward at the end pose, so we add a hard constraint on quaternion here
-  /*PrintStatus("Adding constraint -- quaternion of the final pose...");
-  VectorX<double> quat_identity(4);
-  quat_identity << 1, 0, 0, 0;
-  AddBoundingBoxConstraint(quat_identity, quat_identity,
-                           xf_vars_by_mode(num_modes_ - 1).head(4));*/
-}
-
-void RomTrajOptCassie::SetHeuristicInitialGuess(
-    const PlannerSetting& param, const Eigen::VectorXd& h_guess,
-    const Eigen::MatrixXd& r_guess, const Eigen::MatrixXd& dr_guess,
-    const Eigen::MatrixXd& tau_guess,
-    const Eigen::VectorXd& x_guess_left_in_front_pre,
-    const Eigen::VectorXd& x_guess_right_in_front_pre,
-    const Eigen::VectorXd& x_guess_left_in_front_post,
-    const Eigen::VectorXd& x_guess_right_in_front_post,
-    const std::vector<Eigen::VectorXd>& des_xy_pos,
-    const std::vector<Eigen::VectorXd>& des_xy_vel, int fisrt_mode_phase_index,
-    int starting_mode_index) {
-  // PrintStatus("Adding initial guess ...");
-
-  MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
-  y_guess << r_guess, dr_guess;
-
-  bool left_stance =
-      ((starting_mode_index % 2 == 0) && start_with_left_stance_) ||
-      ((starting_mode_index % 2 == 1) && !start_with_left_stance_);
-  for (int i = starting_mode_index; i < num_modes_; i++) {
-    // Time steps
-    for (int j = 0; j < mode_lengths_[i] - 1; j++) {
-      SetInitialGuess(timestep(mode_start_[i] + j), h_guess.segment<1>(1));
-    }
-    // Rom states and inputs
-    for (int j = 0; j < mode_lengths_[i]; j++) {
-      // The intial state might start in the middle of the stride
-      if (i == 0) {
-        SetInitialGuess(state_vars_by_mode(i, j),
-                        y_guess.col(fisrt_mode_phase_index + j));
-        int time_index = mode_start_[i] + j;
-        SetInitialGuess(
-            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
-            tau_guess.col(fisrt_mode_phase_index + j));
-      } else {
-        SetInitialGuess(state_vars_by_mode(i, j), y_guess.col(j));
-        int time_index = mode_start_[i] + j;
-        SetInitialGuess(
-            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
-            tau_guess.col(j));
-      }
-    }
-
-    auto x_preimpact = xf_vars_by_mode(i);
-    auto x_postimpact = x0_vars_by_mode(i + 1);
-    // FOM floating base position
-    SetInitialGuess(x_preimpact.segment<2>(4), des_xy_pos.at(i + 1));
-    SetInitialGuess(x_preimpact.head<4>(), quat_identity_);
-    // FOM states
-    SetInitialGuess(x_preimpact.tail(n_x_ - 6),
-                    left_stance ? x_guess_right_in_front_pre.tail(n_x_ - 6)
-                                : x_guess_left_in_front_pre.tail(n_x_ - 6));
-    SetInitialGuess(x_postimpact.tail(n_x_ - 6),
-                    left_stance ? x_guess_right_in_front_post.tail(n_x_ - 6)
-                                : x_guess_left_in_front_post.tail(n_x_ - 6));
-    // TODO: not sure if setting the initial guess here is good in experiment?
-    //    SetInitialGuess(x_preimpact.segment<2>(n_q_ + 3), des_xy_vel);
-    //    SetInitialGuess(x_postimpact.segment<2>(n_q_ + 3), des_xy_vel);
-
-    left_stance = !left_stance;
-  }
-
-  // LIPM state
-  // TODO: Currently we initialize all vars, but we only need for those that's
-  //  not warm-started by the previous solution
-  // TODO: the foot placement guess should consider the kinematics constraint
-  DRAKE_DEMAND(param.n_step > 0);  // because of des_xy_vel's size
-  if (param.n_step_lipm > 1) {
-    for (int i = 0; i < param.n_step_lipm; i++) {
-      SetInitialGuess(x_lipm_vars_by_idx(i).head<2>(),
-                      des_xy_pos.at(i + param.n_step));
-      SetInitialGuess(x_lipm_vars_by_idx(i).tail<2>(),
-                      des_xy_vel.at(i + param.n_step - 1));
-      SetInitialGuess(u_lipm_vars_by_idx(i),
-                      (des_xy_pos.at(i + param.n_step) +
-                       des_xy_pos.at(i + param.n_step + 1)) /
-                          2);
-    }
-    SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).head<2>(),
-                    des_xy_pos.at(param.n_step_lipm + param.n_step));
-    SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).tail<2>(),
-                    des_xy_vel.at(param.n_step_lipm + param.n_step - 1));
+        Id_z_joint_vel, x_guess_post.segment(n_q_ + 5, n_v_ - 5),
+        x_postimpact.segment(n_q_ + 5, n_v_ - 5)));
   }
 }
 
@@ -1248,6 +1152,77 @@ void RomTrajOptCassie::AddRomRegularizationCost(
       }
     }
   }*/
+}
+
+void RomTrajOptCassie::SetHeuristicInitialGuess(
+    const PlannerSetting& param, const Eigen::VectorXd& h_guess,
+    const Eigen::MatrixXd& r_guess, const Eigen::MatrixXd& dr_guess,
+    const Eigen::MatrixXd& tau_guess,
+    const std::vector<Eigen::VectorXd>& reg_x_FOM, int fisrt_mode_phase_index,
+    int starting_mode_index) {
+  // PrintStatus("Adding initial guess ...");
+
+  MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
+  y_guess << r_guess, dr_guess;
+
+  for (int i = starting_mode_index; i < num_modes_; i++) {
+    // Time steps
+    for (int j = 0; j < mode_lengths_[i] - 1; j++) {
+      SetInitialGuess(timestep(mode_start_[i] + j), h_guess.segment<1>(1));
+    }
+    // Rom states and inputs
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      // The intial state might start in the middle of the stride
+      if (i == 0) {
+        SetInitialGuess(state_vars_by_mode(i, j),
+                        y_guess.col(fisrt_mode_phase_index + j));
+        int time_index = mode_start_[i] + j;
+        SetInitialGuess(
+            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
+            tau_guess.col(fisrt_mode_phase_index + j));
+      } else {
+        SetInitialGuess(state_vars_by_mode(i, j), y_guess.col(j));
+        int time_index = mode_start_[i] + j;
+        SetInitialGuess(
+            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
+            tau_guess.col(j));
+      }
+    }
+
+    // Full state
+    auto x_preimpact = xf_vars_by_mode(i);
+    auto x_postimpact = x0_vars_by_mode(i + 1);
+    const VectorXd& x_guess_pre = reg_x_FOM.at(2 * i);
+    const VectorXd& x_guess_post = reg_x_FOM.at(2 * i + 1);
+    SetInitialGuess(x_preimpact, x_guess_pre);
+    SetInitialGuess(x_postimpact, x_guess_post);
+  }
+}
+
+void RomTrajOptCassie::SetHeuristicInitialGuessForCascadedLipm(
+    const PlannerSetting& param, const std::vector<Eigen::VectorXd>& des_xy_pos,
+    const std::vector<Eigen::VectorXd>& des_xy_vel) {
+  // LIPM state
+  // TODO: Currently we initialize all vars, but we only need for those that's
+  //  not warm-started by the previous solution
+  // TODO: the foot placement guess should consider the kinematics constraint
+  DRAKE_DEMAND(param.n_step > 0);  // because of des_xy_vel's size
+  if (param.n_step_lipm > 1) {
+    for (int i = 0; i < param.n_step_lipm; i++) {
+      SetInitialGuess(x_lipm_vars_by_idx(i).head<2>(),
+                      des_xy_pos.at(i + param.n_step));
+      SetInitialGuess(x_lipm_vars_by_idx(i).tail<2>(),
+                      des_xy_vel.at(i + param.n_step - 1));
+      SetInitialGuess(u_lipm_vars_by_idx(i),
+                      (des_xy_pos.at(i + param.n_step) +
+                       des_xy_pos.at(i + param.n_step + 1)) /
+                          2);
+    }
+    SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).head<2>(),
+                    des_xy_pos.at(param.n_step_lipm + param.n_step));
+    SetInitialGuess(x_lipm_vars_by_idx(param.n_step_lipm).tail<2>(),
+                    des_xy_vel.at(param.n_step_lipm + param.n_step - 1));
+  }
 }
 
 RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(

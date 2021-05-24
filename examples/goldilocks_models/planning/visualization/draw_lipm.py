@@ -3,6 +3,7 @@ import time
 import os
 from pathlib import Path
 from datetime import datetime
+import sys
 
 import yaml
 import csv
@@ -13,13 +14,15 @@ from matplotlib import cm
 import matplotlib.tri as mtri
 
 if __name__ == "__main__":
-
   # parameters
   solve_idx = 0
   draw_lipm_mpc = True  # independent MPC or cascaded MPC
 
   # file name
   pref = "global_preprocess_" if draw_lipm_mpc else "global_"
+  if len(sys.argv) == 2:
+    solve_idx = int(sys.argv[1])
+  solve_idx = str(solve_idx) if solve_idx >= 0 else "debug"
 
   # Read the controller parameters
   a_yaml_file = open(
@@ -29,9 +32,9 @@ if __name__ == "__main__":
   data_dir = parsed_yaml_file.get('dir_data')
 
   # Read LIPM state and input (foot position)
-  global_x_lipm = np.loadtxt(data_dir + "%d_%sx_lipm.csv" % (solve_idx, pref),
+  global_x_lipm = np.loadtxt(data_dir + "%s_%sx_lipm.csv" % (solve_idx, pref),
     delimiter=',')
-  global_u_lipm = np.loadtxt(data_dir + "%d_%su_lipm.csv" % (solve_idx, pref),
+  global_u_lipm = np.loadtxt(data_dir + "%s_%su_lipm.csv" % (solve_idx, pref),
     delimiter=',')
 
   #

@@ -53,7 +53,7 @@ class RomTrajOpt
   ~RomTrajOpt() override {}
 
   void AddConstraintAndCostForLastFootStep(
-      double w_predict_lipm_v, const std::vector<Eigen::VectorXd>& des_xy_vel,
+      double w_predict_lipm_v, const Eigen::VectorXd& des_predicted_xy_vel,
       double stride_period);
 
   void AddCascadedLipmMPC(double w_predict_lipm_p, double w_predict_lipm_v,
@@ -154,10 +154,11 @@ class RomTrajOpt
   std::vector<Binding<Cost>> rom_input_cost_bindings_;
   std::vector<Binding<Cost>> rom_regularization_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_quat_cost_bindings_;
-  std::vector<Binding<Cost>> fom_reg_xy_cost_bindings_;
+  std::vector<Binding<Cost>> fom_reg_xy_pos_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_z_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_joint_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_vel_cost_bindings_;
+  std::vector<Binding<Cost>> fom_reg_xy_vel_cost_bindings_;
   std::vector<Binding<Cost>> x0_relax_cost_bindings_;
   std::vector<Binding<Cost>> v0_relax_cost_bindings_;
   std::vector<Binding<Cost>> init_rom_relax_cost_bindings_;
@@ -222,28 +223,11 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const std::set<int>& relax_index,
                    const PlannerSetting& param, bool print_status = true);
 
-  void AddRegularizationCost(const std::vector<Eigen::VectorXd>& des_xy_pos,
-                             const std::vector<Eigen::VectorXd>& des_xy_vel,
-                             const Eigen::VectorXd& x_guess_left_in_front_pre,
-                             const Eigen::VectorXd& x_guess_right_in_front_pre,
-                             const Eigen::VectorXd& x_guess_left_in_front_post,
-                             const Eigen::VectorXd& x_guess_right_in_front_post,
-                             double w_reg_quat, double w_reg_xy, double w_reg_z,
-                             double w_reg_joints, double w_reg_hip_yaw,
-                             double w_reg_vel);
-
-  void SetHeuristicInitialGuess(
-      const PlannerSetting& param, const Eigen::VectorXd& h_guess,
-      const Eigen::MatrixXd& r_guess, const Eigen::MatrixXd& dr_guess,
-      const Eigen::MatrixXd& tau_guess,
-      const Eigen::VectorXd& x_guess_left_in_front_pre,
-      const Eigen::VectorXd& x_guess_right_in_front_pre,
-      const Eigen::VectorXd& x_guess_left_in_front_post,
-      const Eigen::VectorXd& x_guess_right_in_front_post,
-      const std::vector<Eigen::VectorXd>& des_xy_pos,
-      const std::vector<Eigen::VectorXd>& des_xy_vel,
-      int fisrt_mode_phase_index, int starting_mode_index);
-
+  void AddFomRegularizationCost(const std::vector<Eigen::VectorXd>& reg_x_FOM,
+                                double w_reg_quat, double w_reg_xy,
+                                double w_reg_z, double w_reg_joints,
+                                double w_reg_hip_yaw, double w_reg_xy_vel,
+                                double w_reg_vel);
   // Testing -- AddRomRegularizationCost is SetAllInitialGuess except we replace
   // setting guess with setting cost
   void AddRomRegularizationCost(const Eigen::VectorXd& h_guess,
@@ -251,6 +235,19 @@ class RomTrajOptCassie : public RomTrajOpt {
                                 const Eigen::MatrixXd& dr_guess,
                                 const Eigen::MatrixXd& tau_guess,
                                 int fisrt_mode_phase_index, double w_reg);
+
+  void SetHeuristicInitialGuess(const PlannerSetting& param,
+                                const Eigen::VectorXd& h_guess,
+                                const Eigen::MatrixXd& r_guess,
+                                const Eigen::MatrixXd& dr_guess,
+                                const Eigen::MatrixXd& tau_guess,
+                                const std::vector<Eigen::VectorXd>& reg_x_FOM,
+                                int fisrt_mode_phase_index,
+                                int starting_mode_index);
+  void SetHeuristicInitialGuessForCascadedLipm(
+      const PlannerSetting& param,
+      const std::vector<Eigen::VectorXd>& des_xy_pos,
+      const std::vector<Eigen::VectorXd>& des_xy_vel);
 
   drake::VectorX<double> quat_identity_;
 };

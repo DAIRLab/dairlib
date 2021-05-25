@@ -45,7 +45,7 @@ LipmMpc::LipmMpc(const std::vector<Eigen::VectorXd>& des_xy_pos,
                  const Eigen::VectorXd& init_vel,
                  const Eigen::VectorXd& init_input, int n_step,
                  double first_mode_duration, double stride_period,
-                 double height, double max_length_foot_to_body,
+                 std::vector<double> height_vec, double max_length_foot_to_body,
                  double max_length_foot_to_body_front, double min_step_width,
                  bool start_with_left_stance)
     : x_lipm_vars_(NewContinuousVariables(4 * (n_step + 1), "x_lipm_vars")),
@@ -62,44 +62,39 @@ LipmMpc::LipmMpc(const std::vector<Eigen::VectorXd>& des_xy_pos,
   AddBoundingBoxConstraint(init_input, init_input, u_lipm_vars_.head<2>());
 
   // Add LIPM dynamics constraint
-  Eigen::Matrix<double, 2, 2> A_0;
-  Eigen::Matrix<double, 2, 1> B_0;
-  ConstructDynamicMatrices(height, first_mode_duration, &A_0, &B_0);
+  vector<Eigen::Matrix<double, 2, 5>> A_lin_vec(n_step);
   Eigen::Matrix<double, 2, 2> A;
   Eigen::Matrix<double, 2, 1> B;
-  ConstructDynamicMatrices(height, stride_period, &A, &B);
-  //  cout << "A = \n" << A << endl;
-  //  cout << "B = \n" << B << endl;
-
   Eigen::MatrixXd I2 = Eigen::MatrixXd::Identity(2, 2);
-  Eigen::Matrix<double, 2, 5> A_lin;
-  A_lin << A_0, B_0, -I2;
+  for (int i = 0; i < n_step; i++) {
+    ConstructDynamicMatrices(height_vec.at(i),
+                             (i == 0) ? first_mode_duration : stride_period, &A,
+                             &B);
+    A_lin_vec.at(i) << A, B, -I2;
+  }
+
   for (int i = 0; i < n_step; i++) {
     VectorXDecisionVariable x_i = x_lipm_vars_by_idx(i);
     VectorXDecisionVariable u_i = u_lipm_vars_by_idx(i);
     VectorXDecisionVariable x_i_post = x_lipm_vars_by_idx(i + 1);
     // x axis
     AddLinearEqualityConstraint(
-        A_lin, VectorXd::Zero(2),
+        A_lin_vec.at(i), VectorXd::Zero(2),
         {x_i.segment<1>(0), x_i.segment<1>(2), u_i.segment<1>(0),
          x_i_post.segment<1>(0), x_i_post.segment<1>(2)});
     // y axis
     AddLinearEqualityConstraint(
-        A_lin, VectorXd::Zero(2),
+        A_lin_vec.at(i), VectorXd::Zero(2),
         {x_i.segment<1>(1), x_i.segment<1>(3), u_i.segment<1>(1),
          x_i_post.segment<1>(1), x_i_post.segment<1>(3)});
-
-    // Update dynamic matrices
-    if (i == 0) {
-      A_lin << A, B, -I2;
-    }
   }
 
   // Add step size kinematics constraint
   Eigen::Matrix<double, 1, 2> A_lin_kin;
   A_lin_kin << 1, -1;
   Eigen::Matrix<double, 1, 1> ub_x;
-  ub_x << max_length_foot_to_body_front;  // note that the constraint is wrt foot
+  ub_x
+      << max_length_foot_to_body_front;  // note that the constraint is wrt foot
   Eigen::Matrix<double, 1, 1> lb_x;
   lb_x << -max_length_foot_to_body;
   Eigen::Matrix<double, 1, 1> ub_y;

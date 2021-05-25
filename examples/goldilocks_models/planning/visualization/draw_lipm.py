@@ -87,6 +87,10 @@ if __name__ == "__main__":
     plt.axes().axes.set_ylim([y_lb, y_ub])
 
     if j == len(idx_list) - 1:
+      print("global_x_lipm = ")
+      print(global_x_lipm)
+      print("global_u_lipm = ")
+      print(global_u_lipm)
       plt.show()
     else:
       plt.draw()

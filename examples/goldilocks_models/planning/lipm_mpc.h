@@ -25,9 +25,10 @@ class LipmMpc : public drake::solvers::MathematicalProgram {
           double w_predict_lipm_p, double w_predict_lipm_v,
           const Eigen::VectorXd& init_pos, const Eigen::VectorXd& init_vel,
           const Eigen::VectorXd& init_input, int n_step,
-          double first_mode_duration, double stride_period, double height,
-          double max_length_foot_to_body, double max_length_foot_to_body_front,
-          double min_step_width, bool start_with_left_stance);
+          double first_mode_duration, double stride_period,
+          std::vector<double> height_vec, double max_length_foot_to_body,
+          double max_length_foot_to_body_front, double min_step_width,
+          bool start_with_left_stance);
   ~LipmMpc() override {}
 
   /// Returns a vector of matrices containing the state values at

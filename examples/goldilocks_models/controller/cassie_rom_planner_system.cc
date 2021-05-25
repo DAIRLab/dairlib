@@ -1144,7 +1144,7 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   auto start_build = std::chrono::high_resolution_clock::now();
 
   // Parameters
-  double height = 0.85;
+  double target_height = 0.85;
   // Long horizon
   int minimum_n_step = 10;
   double max_length_foot_to_body = 0.3;  // speed = 2 * foot_to_body / time
@@ -1184,9 +1184,8 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   // Get initial COM position, velocity and stance foot position
   plant_control_.SetPositions(context_plant_control_.get(), x_init.head(nq_));
   // CoM position
-  Vector2d com_pos =
-      plant_control_.CalcCenterOfMassPositionInWorld(*context_plant_control_)
-          .head<2>();
+  Vector3d com_pos =
+      plant_control_.CalcCenterOfMassPositionInWorld(*context_plant_control_);
   // CoM velocity
   Eigen::MatrixXd J_com(3, plant_control_.num_velocities());
   plant_control_.CalcJacobianCenterOfMassTranslationalVelocity(
@@ -1200,14 +1199,24 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
       *context_plant_control_, stance_toe_mid.second, stance_toe_mid.first,
       plant_control_.world_frame(), &stance_foot_pos);
 
+  // Height vector
+  vector<double> height_vec(n_step);
+  height_vec.at(0) = com_pos(2);
+  double delta = (target_height - com_pos(2)) / (n_step - 1);
+  for (int i = 1; i < n_step; i++) {
+    height_vec.at(i) = height_vec.at(i - 1) + delta;
+  }
+  // DRAKE_DEMAND(abs(height_vec.at(n_step - 1) - target_height) < 1e-14);
+
   // Construct LIPM MPC (QP)
   // TODO: need to add constraint for the swing foot travel distance in the
   //  first mode
   cout << "Reminder here.\n";
   LipmMpc mpc_qp(
       des_xy_pos, des_xy_vel, param_.gains.w_p_lipm_mpc,
-      param_.gains.w_v_lipm_mpc, com_pos, com_vel, stance_foot_pos.head<2>(),
-      n_step, first_mode_duration_lipm, stride_period_lipm, height,
+      param_.gains.w_v_lipm_mpc, com_pos.head<2>(), com_vel,
+      stance_foot_pos.head<2>(), n_step, first_mode_duration_lipm,
+      stride_period_lipm, height_vec,
       std::min(max_length_foot_to_body, param_.gains.max_lipm_step_length / 2),
       max_length_foot_to_body_front, param_.gains.right_limit_wrt_pelvis,
       start_with_left_stance);
@@ -1265,7 +1274,7 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   // Parameter
   // TODO: desired_quat should point towards goal position. Same for ROM MPC.
   Vector4d desired_quat(1, 0, 0, 0);
-  double desired_height = 0.95;
+  double desired_height = 1;
   double time_limit = 0.2;  // 0.02;  // in seconds
   bool include_velocity = false;
 

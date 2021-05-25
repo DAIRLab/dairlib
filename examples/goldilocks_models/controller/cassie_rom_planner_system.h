@@ -253,10 +253,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable int num_failed_solve_ = 0;
   mutable int latest_failed_solve_idx_ = -1;
 
-  bool singel_eval_mode_;
+  bool single_eval_mode_;
   bool log_data_and_check_solution_;
   void PrintStatus(const std::string& msg) const {
-    if (singel_eval_mode_) std::cout << msg << std::endl;
+    if (single_eval_mode_) std::cout << msg << std::endl;
   };
   void SaveTrajIntoLcmBinary(
       const RomTrajOptCassie& trajopt,
@@ -265,15 +265,15 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       const Eigen::MatrixXd& global_xf_FOM, const std::string& dir_data,
       const std::string& prefix) const;
   void SaveDataIntoFiles(
-      double current_time, const Eigen::VectorXd& x_init, double init_phase,
-      bool is_right_stance, const Eigen::VectorXd& quat_xyz_shift,
+      double current_time, int global_fsm_idx, const Eigen::VectorXd& x_init,
+      double init_phase, bool is_right_stance,
+      const Eigen::VectorXd& quat_xyz_shift,
       const Eigen::VectorXd& final_position,
       const Eigen::MatrixXd& global_regularization_x_FOM,
       const Eigen::MatrixXd& local_x0_FOM, const Eigen::MatrixXd& local_xf_FOM,
       const RomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
-      const std::string& dir_data, const std::string& prefix,
-      const std::string& prefix_next) const;
+      const std::string& dir_data, const std::string& prefix) const;
   void PrintCost(const RomTrajOptCassie& trajopt,
                  const drake::solvers::MathematicalProgramResult& result) const;
   void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;

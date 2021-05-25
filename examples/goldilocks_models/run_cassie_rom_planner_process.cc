@@ -149,6 +149,8 @@ int DoMain(int argc, char* argv[]) {
   }
   if (FLAGS_solve_idx_for_read_from_file >= 0) {
     DRAKE_DEMAND(FLAGS_debug_mode);
+    // We manually assign the init file to be: "%d_init_file.csv" % solve_idx
+    DRAKE_DEMAND(FLAGS_init_file.empty());
   }
   if (FLAGS_run_one_loop_to_get_init_file) {
     DRAKE_DEMAND(FLAGS_log_data);
@@ -185,6 +187,10 @@ int DoMain(int argc, char* argv[]) {
   param.init_file = FLAGS_init_file;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
+  if (FLAGS_solve_idx_for_read_from_file >= 0) {
+    param.init_file =
+        to_string(FLAGS_solve_idx_for_read_from_file) + "_init_file.csv";
+  }
 
   // Store data
   writeCSV(param.dir_data + string("n_step.csv"),
@@ -349,7 +355,7 @@ int DoMain(int argc, char* argv[]) {
                            .col(0);
       global_fsm_idx = readCSV(param.dir_data +
                                to_string(FLAGS_solve_idx_for_read_from_file) +
-                               "_prev_global_fsm_idx.csv")(0, 0);
+                               "_global_fsm_idx.csv")(0, 0);
     } else {
       init_phase = FLAGS_init_phase;
       is_right_stance = !FLAGS_start_with_left_stance;

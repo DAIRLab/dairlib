@@ -85,7 +85,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                                2,
                            plant_control.GetFrameByName("toe_right"))),
       param_(param),
-      singel_eval_mode_(singel_eval_mode),
+      single_eval_mode_(singel_eval_mode),
       log_data_and_check_solution_(log_data) {
   this->set_name("planner_traj");
 
@@ -408,47 +408,12 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Initialization
   prev_mode_start_ = std::vector<int>(param_.n_step, -1);
 
-  // Initialization for warm starting in debug mode
-  if (param_.init_file.empty()) {
-    if (warm_start_with_previous_solution_ &&
-        // Load the saved traj (not light weight) for the first iteration
-        param_.solve_idx_for_read_from_file > 0) {
-      lightweight_saved_traj_ = RomPlannerTrajectory(
-          param_.dir_data + to_string(param_.solve_idx_for_read_from_file - 1) +
-          "_rom_trajectory");
-      h_solutions_ = readCSV(param_.dir_data +
-                             to_string(param_.solve_idx_for_read_from_file) +
-                             "_prev_h_solutions.csv");
-      input_at_knots_ =
-          (n_tau_ == 0)
-              ? MatrixXd::Zero(0, h_solutions_.size() + 1)
-              : readCSV(param_.dir_data +
-                        to_string(param_.solve_idx_for_read_from_file) +
-                        "_prev_input_at_knots.csv");
-      // TODO: you also need local_x0_FOM_ and local_xf_FOM_. This is not
-      //  necessary if you use init_file to initialize the guess
-      local_Lambda_FOM_ =
-          param_.zero_touchdown_impact
-              ? Eigen::MatrixXd::Zero(0, (param_.n_step))
-              : readCSV(param_.dir_data +
-                        to_string(param_.solve_idx_for_read_from_file) +
-                        "_prev_FOM_Lambda.csv");
-
-      prev_global_fsm_idx_ = readCSV(
-          param_.dir_data + to_string(param_.solve_idx_for_read_from_file) +
-          "_prev_global_fsm_idx.csv")(0, 0);
-      prev_first_mode_knot_idx_ = readCSV(
-          param_.dir_data + to_string(param_.solve_idx_for_read_from_file) +
-          "_prev_first_mode_knot_idx.csv")(0, 0);
-      VectorXd in_eigen =
-          readCSV(param_.dir_data +
-                  to_string(param_.solve_idx_for_read_from_file) +
-                  "_prev_mode_start.csv")
-              .col(0);
-      for (int i = 0; i < prev_mode_start_.size(); i++) {
-        prev_mode_start_[i] = int(in_eigen(i));
-      }
-    }
+  // For warm start
+  if (warm_start_with_previous_solution_ && single_eval_mode_) {
+    // Only allow warm-start with init file, in order to keep the code clean.
+    // If we don't use init_file for initial guess, there will be a segfault
+    // from `prev_global_fsm_idx_` in WarmStartGuess()
+    DRAKE_DEMAND(!param_.init_file.empty());
   }
 }
 
@@ -517,7 +482,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   /*cout << "in planner system: final_position = " << final_position.transpose()
        << endl;*/
 
-  if (singel_eval_mode_) {
+  if (single_eval_mode_) {
     cout.precision(dbl::max_digits10);
     cout << "Used for the planner: \n";
     cout << "  x_init  = " << x_init.transpose() << endl;
@@ -527,12 +492,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // For data logging
-  string prefix = singel_eval_mode_ ? "debug_" : to_string(counter_) + "_";
-  string prefix_next =
-      singel_eval_mode_ ? "debug_next_" : to_string(counter_ + 1) + "_";
+  string prefix = single_eval_mode_ ? "debug_" : to_string(counter_) + "_";
 
   ///
-  /// Get desired xy position and velocioty
+  /// Get desired xy position and velocity
   ///
   auto break1 = std::chrono::high_resolution_clock::now();
 
@@ -672,7 +635,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                            left_origin_, right_origin_, joint_name_lb_ub_,
                            x_init, max_swing_distance_, start_with_left_stance,
                            param_.zero_touchdown_impact, relax_index_, param_,
-                           singel_eval_mode_ /*print_status*/);
+                           single_eval_mode_ /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
@@ -779,7 +742,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   PrintStatus("Initial guesses ===============");
 
   // Initial guess for all variables
-  //  if (!param_.init_file.empty()) {
   if (counter_ == 0 && !param_.init_file.empty()) {
     PrintStatus("Set initial guess from the file " + param_.init_file);
     VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
@@ -820,12 +782,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     const auto& all_vars = trajopt.decision_variables();
     int n_var = all_vars.size();
     VectorXd rand = 0.001 * VectorXd::Random(n_var);
-    if (singel_eval_mode_ && param_.solve_idx_for_read_from_file > 0) {
-      // If we are in debug mode, then we want to use the same random numbers
-      rand = readCSV(param_.dir_data +
-                     to_string(param_.solve_idx_for_read_from_file) +
-                     "_init_file.csv");
-    }
     for (int i = 0; i < n_var; i++) {
       double init_guess = trajopt.GetInitialGuess(all_vars(i));
       if (init_guess == 0 || isnan(init_guess)) {
@@ -842,7 +798,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Testing
-  if (true /*singel_eval_mode_*/) {
+  if (true /*single_eval_mode_*/) {
     // Print out the scaling factor
     /*for (int i = 0; i < trajopt.decision_variables().size(); i++) {
       cout << trajopt.decision_variable(i) << ", ";
@@ -863,7 +819,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Set time limit in the solver dynamically if no time_limit specified
-  if (!fixed_time_limit_ && counter_ > 0) {
+  if (!fixed_time_limit_ && counter_ > 0 && !single_eval_mode_) {
     // allowed time =
     //   last traj's end time - current time - time for lcm packing/traveling
     double time_limit =
@@ -976,7 +932,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // PrintAllCostsAndConstraints(trajopt);
 
   // Testing -- store the initial guess to the result (to visualize init guess)
-  if (singel_eval_mode_) {
+  if (single_eval_mode_) {
     /*cout << "***\n*** WARNING: set the solution to be initial guess\n***\n";
     result.set_x_val(trajopt.initial_guess());*/
   }
@@ -1095,10 +1051,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     }
 
     // Extract and save solution into files (for debugging)
-    SaveDataIntoFiles(current_time, x_init, init_phase, is_right_stance,
-                      quat_xyz_shift, final_position,
+    SaveDataIntoFiles(current_time, global_fsm_idx, x_init, init_phase,
+                      is_right_stance, quat_xyz_shift, final_position,
                       global_regularization_state, local_x0_FOM, local_xf_FOM,
-                      trajopt, result, param_.dir_data, prefix, prefix_next);
+                      trajopt, result, param_.dir_data, prefix);
     // Save trajectory to lcm
     SaveTrajIntoLcmBinary(trajopt, result, global_x0_FOM_, global_xf_FOM_,
                           param_.dir_data, prefix);
@@ -1616,80 +1572,58 @@ void CassiePlannerWithMixedRomFom::SaveTrajIntoLcmBinary(
 }
 
 void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
-    double current_time, const VectorXd& x_init, double init_phase,
-    bool is_right_stance, const VectorXd& quat_xyz_shift,
+    double current_time, int global_fsm_idx, const VectorXd& x_init,
+    double init_phase, bool is_right_stance, const VectorXd& quat_xyz_shift,
     const VectorXd& final_position, const MatrixXd& global_regularization_x_FOM,
     const MatrixXd& local_x0_FOM, const MatrixXd& local_xf_FOM,
     const RomTrajOptCassie& trajopt, const MathematicalProgramResult& result,
-    const string& dir_data, const string& prefix,
-    const string& prefix_next) const {
+    const string& dir_data, const string& prefix) const {
+  string dir_pref = dir_data + prefix;
+
   /// Save the solution vector
-  VectorXd z_sol = result.GetSolution(trajopt.decision_variables());
-  writeCSV(dir_data + string(prefix + "z.csv"), z_sol);
+  writeCSV(dir_pref + "z.csv",
+           result.GetSolution(trajopt.decision_variables()));
   // cout << trajopt.decision_variables() << endl;
 
   /// Save traj to csv
   for (int i = 0; i < param_.n_step; i++) {
-    writeCSV(dir_data + prefix + "time_at_knots" + to_string(i) + ".csv",
+    writeCSV(dir_pref + "time_at_knots" + to_string(i) + ".csv",
              lightweight_saved_traj_.GetStateBreaks(i));
-    writeCSV(dir_data + prefix + "state_at_knots" + to_string(i) + ".csv",
+    writeCSV(dir_pref + "state_at_knots" + to_string(i) + ".csv",
              lightweight_saved_traj_.GetStateSamples(i));
   }
-  MatrixXd input_at_knots = trajopt.GetInputSamples(result);
-  writeCSV(dir_data + prefix + "input_at_knots.csv", input_at_knots);
+  writeCSV(dir_pref + "input_at_knots.csv", trajopt.GetInputSamples(result));
 
-  writeCSV(dir_data + prefix + "local_x0_FOM.csv", local_x0_FOM);
-  writeCSV(dir_data + prefix + "local_xf_FOM.csv", local_xf_FOM);
-  writeCSV(dir_data + prefix + "global_x0_FOM.csv",
-           lightweight_saved_traj_.get_x0());
-  writeCSV(dir_data + prefix + "global_xf_FOM.csv",
-           lightweight_saved_traj_.get_xf());
-  writeCSV(dir_data + prefix + "global_x_lipm.csv", global_x_lipm_);
-  writeCSV(dir_data + prefix + "global_u_lipm.csv", global_u_lipm_);
+  writeCSV(dir_pref + "local_x0_FOM.csv", local_x0_FOM);
+  writeCSV(dir_pref + "local_xf_FOM.csv", local_xf_FOM);
+  writeCSV(dir_pref + "global_x0_FOM.csv", lightweight_saved_traj_.get_x0());
+  writeCSV(dir_pref + "global_xf_FOM.csv", lightweight_saved_traj_.get_xf());
+  writeCSV(dir_pref + "global_x_lipm.csv", global_x_lipm_);
+  writeCSV(dir_pref + "global_u_lipm.csv", global_u_lipm_);
   if (use_lipm_mpc_and_ik_) {
-    writeCSV(dir_data + prefix + "global_preprocess_x_lipm.csv",
+    writeCSV(dir_pref + "global_preprocess_x_lipm.csv",
              global_preprocess_x_lipm_);
-    writeCSV(dir_data + prefix + "global_preprocess_u_lipm.csv",
+    writeCSV(dir_pref + "global_preprocess_u_lipm.csv",
              global_preprocess_u_lipm_);
-    writeCSV(dir_data + prefix + "global_regularization_x_FOM.csv",
+    writeCSV(dir_pref + "global_regularization_x_FOM.csv",
              global_regularization_x_FOM);
   }
 
   /// Save files for reproducing the same result
   // cout << "x_init = " << x_init << endl;
-  writeCSV(param_.dir_data + prefix + string("x_init.csv"), x_init, true);
-  writeCSV(param_.dir_data + prefix + string("init_phase.csv"),
-           init_phase * VectorXd::Ones(1), true);
-  writeCSV(param_.dir_data + prefix + string("is_right_stance.csv"),
+  writeCSV(dir_pref + string("x_init.csv"), x_init, true);
+  writeCSV(dir_pref + string("init_phase.csv"), init_phase * VectorXd::Ones(1),
+           true);
+  writeCSV(dir_pref + string("is_right_stance.csv"),
            is_right_stance * VectorXd::Ones(1), true);
-  writeCSV(param_.dir_data + prefix + string("quat_xyz_shift.csv"),
+  writeCSV(dir_pref + string("quat_xyz_shift.csv"),
            quat_xyz_shift * VectorXd::Ones(1), true);
-  writeCSV(param_.dir_data + prefix + string("final_position.csv"),
-           final_position, true);
-  writeCSV(param_.dir_data + prefix + string("init_file.csv"),
-           trajopt.initial_guess(), true);
-  writeCSV(param_.dir_data + prefix + string("current_time.csv"),
+  writeCSV(dir_pref + string("final_position.csv"), final_position, true);
+  writeCSV(dir_pref + string("init_file.csv"), trajopt.initial_guess(), true);
+  writeCSV(dir_pref + string("current_time.csv"),
            current_time * VectorXd::Ones(1), true);
-  // for warm-start
-  // TODO: I don't think I need this anymore, because I save the entire initial
-  //  guess
-  writeCSV(param_.dir_data + prefix_next + string("prev_h_solutions.csv"),
-           h_solutions_, true);
-  writeCSV(param_.dir_data + prefix_next + string("prev_input_at_knots.csv"),
-           input_at_knots_, true);
-  writeCSV(param_.dir_data + prefix_next + string("prev_FOM_Lambda.csv"),
-           local_Lambda_FOM_, true);
-  writeCSV(param_.dir_data + prefix_next + string("prev_global_fsm_idx.csv"),
-           prev_global_fsm_idx_ * VectorXd::Ones(1), true);
-  writeCSV(
-      param_.dir_data + prefix_next + string("prev_first_mode_knot_idx.csv"),
-      prev_first_mode_knot_idx_ * VectorXd::Ones(1), true);
-  VectorXd in_eigen(param_.n_step);
-  for (int i = 0; i < param_.n_step; i++) {
-    in_eigen(i) = prev_mode_start_[i];
-  }
-  writeCSV(param_.dir_data + prefix_next + string("prev_mode_start.csv"),
-           in_eigen, true);
+  writeCSV(dir_pref + string("global_fsm_idx.csv"),
+           global_fsm_idx * VectorXd::Ones(1), true);
 }
 
 void CassiePlannerWithMixedRomFom::PrintCost(

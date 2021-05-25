@@ -1261,6 +1261,17 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   bool success = true;
 
   // Parameter
+  double w_q_reg = 0.0001;
+  double w_v_reg = 0.0001;
+  double w_pelvis_z = 1;
+  double w_hip_yaw = 1;
+
+  // Testing
+  /*w_q_reg *= 10;
+  w_v_reg *= 10;
+  w_pelvis_z *= 10;
+  w_hip_yaw *= 10;*/
+
   // TODO: desired_quat should point towards goal position. Same for ROM MPC.
   Vector4d desired_quat(1, 0, 0, 0);
   double desired_height = 0.95;
@@ -1343,10 +1354,10 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
     // Add costs
     // Regularization term
     auto q_cost_binding = prog.AddQuadraticErrorCost(
-        0.0001 * MatrixXd::Identity(nq_ - 7, nq_ - 7),
+        w_q_reg * MatrixXd::Identity(nq_ - 7, nq_ - 7),
         x_standing_fixed_spring_.tail(nq_ - 7), q.tail(nq_ - 7));
     auto v_cost_binding = prog.AddQuadraticErrorCost(
-        0.0001 * MatrixXd::Identity(nv_, nv_), VectorXd::Zero(nv_), v);
+        w_v_reg * MatrixXd::Identity(nv_, nv_), VectorXd::Zero(nv_), v);
 
     // Quaternion
     prog.AddBoundingBoxConstraint(desired_quat, desired_quat, q.head<4>());
@@ -1365,16 +1376,18 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
     //    prog.AddBoundingBoxConstraint(desired_height, desired_height,
     //    q(pos_map_.at("base_z")));
     auto height_cost_binding = prog.AddQuadraticErrorCost(
-        1 * MatrixXd::Identity(1, 1), desired_height * VectorXd::Ones(1),
-        q.segment<1>(6));
+        w_pelvis_z * MatrixXd::Identity(1, 1),
+        desired_height * VectorXd::Ones(1), q.segment<1>(6));
 
     // Hip yaw
     //    prog.AddBoundingBoxConstraint(Vector2d::Zero(), Vector2d::Zero(),
     //                                  q.segment<2>(9));
-    auto left_hip_cost_binding = prog.AddQuadraticErrorCost(
-        1 * MatrixXd::Identity(1, 1), VectorXd::Zero(1), q.segment<1>(9));
-    auto right_hip_cost_binding = prog.AddQuadraticErrorCost(
-        1 * MatrixXd::Identity(1, 1), VectorXd::Zero(1), q.segment<1>(10));
+    auto left_hip_cost_binding =
+        prog.AddQuadraticErrorCost(w_hip_yaw * MatrixXd::Identity(1, 1),
+                                   VectorXd::Zero(1), q.segment<1>(9));
+    auto right_hip_cost_binding =
+        prog.AddQuadraticErrorCost(w_hip_yaw * MatrixXd::Identity(1, 1),
+                                   VectorXd::Zero(1), q.segment<1>(10));
 
     // Initial guesses
     cout << "REMINDER!! We should warm start IK with previous solution if mode "

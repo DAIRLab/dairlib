@@ -1113,57 +1113,52 @@ void RomTrajOptCassie::AddFomRegularizationCost(
 }
 
 void RomTrajOptCassie::AddRomRegularizationCost(
-    const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& r_guess,
-    const Eigen::MatrixXd& dr_guess, const Eigen::MatrixXd& tau_guess,
+    const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& y_guess,
+    const Eigen::MatrixXd& dy_guess, const Eigen::MatrixXd& tau_guess,
     int fisrt_mode_phase_index, double w_reg) {
   PrintStatus("Adding cost -- regularization for ROM state ...");
 
-  MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
-  y_guess << r_guess, dr_guess;
+  MatrixXd z_guess(y_guess.rows() + dy_guess.rows(), y_guess.cols());
+  z_guess << y_guess, dy_guess;
 
   MatrixXd I_h = w_reg * MatrixXd::Identity(1, 1);
   MatrixXd I_z = w_reg * MatrixXd::Identity(n_z_, n_z_);
   MatrixXd I_tau = w_reg * MatrixXd::Identity(rom_.n_tau(), rom_.n_tau());
 
-  /*for (int i = 0; i < num_modes_; i++) {
+  for (int i = 0; i < num_modes_; i++) {
     // Time steps
-    for (int j = 0; j < mode_lengths_[i] - 1; j++) {
-      rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
-          I_h, h_guess.segment(1, 1), timestep(mode_start_[i] + j)));
-    }
+    // for (int j = 0; j < mode_lengths_[i] - 1; j++) {
+    //  rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+    //      I_h, h_guess.segment(1, 1), timestep(mode_start_[i] + j)));
+    //}
+
     // Rom states and inputs
     for (int j = 0; j < mode_lengths_[i]; j++) {
-      // The intial state might start in the middle of the stride
-      if (i == 0) {
-        rom_regularization_cost_bindings_.push_back(
-            AddQuadraticErrorCost(I_z, y_guess.col(fisrt_mode_phase_index + j),
-                                  state_vars_by_mode(i, j)));
+      // The initial state might start in the middle of the stride
+      int j_guess = (i == 0) ? fisrt_mode_phase_index + j : j;
+
+      rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
+          I_z, z_guess.col(j_guess), state_vars_by_mode(i, j)));
+      if (rom_.n_tau() > 0) {
         int time_index = mode_start_[i] + j;
         rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
-            I_tau, tau_guess.col(fisrt_mode_phase_index + j),
-            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau())));
-      } else {
-        rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
-            I_z, y_guess.col(j), state_vars_by_mode(i, j)));
-        int time_index = mode_start_[i] + j;
-        rom_regularization_cost_bindings_.push_back(AddQuadraticErrorCost(
-            I_tau, tau_guess.col(j),
+            I_tau, tau_guess.col(j_guess),
             u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau())));
       }
     }
-  }*/
+  }
 }
 
 void RomTrajOptCassie::SetHeuristicInitialGuess(
     const PlannerSetting& param, const Eigen::VectorXd& h_guess,
-    const Eigen::MatrixXd& r_guess, const Eigen::MatrixXd& dr_guess,
+    const Eigen::MatrixXd& y_guess, const Eigen::MatrixXd& dy_guess,
     const Eigen::MatrixXd& tau_guess,
     const std::vector<Eigen::VectorXd>& reg_x_FOM, int fisrt_mode_phase_index,
     int starting_mode_index) {
   // PrintStatus("Adding initial guess ...");
 
-  MatrixXd y_guess(r_guess.rows() + dr_guess.rows(), r_guess.cols());
-  y_guess << r_guess, dr_guess;
+  MatrixXd z_guess(y_guess.rows() + dy_guess.rows(), y_guess.cols());
+  z_guess << y_guess, dy_guess;
 
   for (int i = starting_mode_index; i < num_modes_; i++) {
     // Time steps
@@ -1172,21 +1167,13 @@ void RomTrajOptCassie::SetHeuristicInitialGuess(
     }
     // Rom states and inputs
     for (int j = 0; j < mode_lengths_[i]; j++) {
-      // The intial state might start in the middle of the stride
-      if (i == 0) {
-        SetInitialGuess(state_vars_by_mode(i, j),
-                        y_guess.col(fisrt_mode_phase_index + j));
-        int time_index = mode_start_[i] + j;
-        SetInitialGuess(
-            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
-            tau_guess.col(fisrt_mode_phase_index + j));
-      } else {
-        SetInitialGuess(state_vars_by_mode(i, j), y_guess.col(j));
-        int time_index = mode_start_[i] + j;
-        SetInitialGuess(
-            u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
-            tau_guess.col(j));
-      }
+      // The initial state might start in the middle of the stride
+      int j_guess = (i == 0) ? fisrt_mode_phase_index + j : j;
+
+      SetInitialGuess(state_vars_by_mode(i, j), z_guess.col(j_guess));
+      int time_index = mode_start_[i] + j;
+      SetInitialGuess(u_vars().segment(time_index * rom_.n_tau(), rom_.n_tau()),
+                      tau_guess.col(j_guess));
     }
 
     // Full state

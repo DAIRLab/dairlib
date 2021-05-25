@@ -201,8 +201,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
     // cout << "initial guess duration ~ " << duration << endl;
     // cout << "h_guess = " << h_guess << endl;
-    // cout << "r_guess = " << r_guess << endl;
-    // cout << "dr_guess = " << dr_guess << endl;
+    // cout << "y_guess = " << y_guess << endl;
+    // cout << "dy_guess = " << dy_guess << endl;
     // cout << "tau_guess = " << tau_guess << endl;
     // cout << "x_guess_left_in_front = " << x_guess_left_in_front << endl;
     // cout << "x_guess_right_in_front = " << x_guess_right_in_front << endl;

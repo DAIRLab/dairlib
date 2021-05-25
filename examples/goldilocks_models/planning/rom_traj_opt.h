@@ -231,15 +231,15 @@ class RomTrajOptCassie : public RomTrajOpt {
   // Testing -- AddRomRegularizationCost is SetAllInitialGuess except we replace
   // setting guess with setting cost
   void AddRomRegularizationCost(const Eigen::VectorXd& h_guess,
-                                const Eigen::MatrixXd& r_guess,
-                                const Eigen::MatrixXd& dr_guess,
+                                const Eigen::MatrixXd& y_guess,
+                                const Eigen::MatrixXd& dy_guess,
                                 const Eigen::MatrixXd& tau_guess,
                                 int fisrt_mode_phase_index, double w_reg);
 
   void SetHeuristicInitialGuess(const PlannerSetting& param,
                                 const Eigen::VectorXd& h_guess,
-                                const Eigen::MatrixXd& r_guess,
-                                const Eigen::MatrixXd& dr_guess,
+                                const Eigen::MatrixXd& y_guess,
+                                const Eigen::MatrixXd& dy_guess,
                                 const Eigen::MatrixXd& tau_guess,
                                 const std::vector<Eigen::VectorXd>& reg_x_FOM,
                                 int fisrt_mode_phase_index,

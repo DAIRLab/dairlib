@@ -24,6 +24,7 @@ struct OSCRomWalkingGains {
   double w_reg_vel;
   double w_predict_lipm_p;
   double w_predict_lipm_v;
+  double max_speed_lipm_mpc;
   double w_p_lipm_mpc;
   double w_v_lipm_mpc;
   double left_support_duration;
@@ -156,6 +157,7 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(w_reg_vel));
     a->Visit(DRAKE_NVP(w_predict_lipm_p));
     a->Visit(DRAKE_NVP(w_predict_lipm_v));
+    a->Visit(DRAKE_NVP(max_speed_lipm_mpc));
     a->Visit(DRAKE_NVP(w_p_lipm_mpc));
     a->Visit(DRAKE_NVP(w_v_lipm_mpc));
     a->Visit(DRAKE_NVP(left_support_duration));

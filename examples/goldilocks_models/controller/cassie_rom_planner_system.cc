@@ -47,8 +47,10 @@ using drake::systems::EventStatus;
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
+using drake::solvers::Binding;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
+using drake::solvers::QuadraticCost;
 using drake::solvers::SolutionResult;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
@@ -1261,21 +1263,17 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   bool success = true;
 
   // Parameter
-  double w_q_reg = 0.0001;
-  double w_v_reg = 0.0001;
-  double w_pelvis_z = 1;
-  double w_hip_yaw = 1;
-
-  // Testing
-  /*w_q_reg *= 10;
-  w_v_reg *= 10;
-  w_pelvis_z *= 10;
-  w_hip_yaw *= 10;*/
-
   // TODO: desired_quat should point towards goal position. Same for ROM MPC.
   Vector4d desired_quat(1, 0, 0, 0);
   double desired_height = 0.95;
   double time_limit = 0.2;  // 0.02;  // in seconds
+  bool include_velocity = false;
+
+  double scale = 1;
+  double w_q_reg = 0.0001 * scale;
+  double w_v_reg = 0.0001 * scale;
+  double w_pelvis_z = 1 * scale;
+  double w_hip_yaw = 1 * scale;
 
   bool left_stance = start_with_left_stance;
   for (int i = 0; i < regularization_state->cols(); i++) {
@@ -1283,13 +1281,14 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
 
     auto prog = multibody::MultibodyProgram(plant_control_);
     auto q = prog.AddPositionVariables();
-    auto v = prog.NewContinuousVariables(nv_, "v");
+    drake::solvers::VectorXDecisionVariable v;
+    if (include_velocity) {
+      v = prog.NewContinuousVariables(nv_, "v");
+    }
 
     // Bounding box for quaternion
     prog.AddBoundingBoxConstraint(0, 1, q(0));              // qw
     prog.AddBoundingBoxConstraint(-1, 1, q.segment<3>(1));  // qx, qy, qz
-    // Bounding box for vel
-    prog.AddBoundingBoxConstraint(-10, 10, v);
 
     // Quaternion unit norm constraint (it solves faster with this constraint)
     //    auto quat_norm_constraint =
@@ -1310,7 +1309,7 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
         {q.segment<1>(pos_map_.at("knee_right")),
          q.segment<1>(pos_map_.at("ankle_joint_right"))});
 
-    // Feet position
+    // Feet xy position
     VectorXd left_ft_pos = left_stance ? local_preprocess_u_lipm.col(i)
                                        : local_preprocess_u_lipm.col(i + 1);
     VectorXd right_ft_pos = left_stance ? local_preprocess_u_lipm.col(i + 1)
@@ -1330,34 +1329,39 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
     auto foot_height_binding =
         prog.AddKinematicConstraint(*contact_z_evaluators_, q);
 
-    // Zero velocity on feet
-    // Interestingly the speed is much slower when getting rid of redundancy
-    auto foot_vel_constraint =
-        std::make_shared<multibody::KinematicVelocityConstraint<double>>(
-            plant_control_, *contact_evaluators_, prog.get_context());
-    auto velocity_binding = prog.AddConstraint(foot_vel_constraint, {q, v});
+    if (include_velocity) {
+      // Zero velocity on feet
+      // Interestingly the speed is much slower when getting rid of redundancy
+      auto foot_vel_constraint =
+          std::make_shared<multibody::KinematicVelocityConstraint<double>>(
+              plant_control_, *contact_evaluators_, prog.get_context());
+      auto velocity_binding = prog.AddConstraint(foot_vel_constraint, {q, v});
 
-    // Fix floating base
+      // Bounding box for vel
+      prog.AddBoundingBoxConstraint(-10, 10, v);
 
-    //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wx")));
-    //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wy")));
-    //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wz")));
+      //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wx")));
+      //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wy")));
+      //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wz")));
 
-    prog.AddBoundingBoxConstraint(local_preprocess_x_lipm.col(i + 1)(2),
-                                  local_preprocess_x_lipm.col(i + 1)(2),
-                                  v(vel_map_.at("base_vx")));
-    prog.AddBoundingBoxConstraint(local_preprocess_x_lipm.col(i + 1)(3),
-                                  local_preprocess_x_lipm.col(i + 1)(3),
-                                  v(vel_map_.at("base_vy")));
-    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_vz")));
+      prog.AddBoundingBoxConstraint(
+          local_preprocess_x_lipm.col(i + 1).segment<2>(2),
+          local_preprocess_x_lipm.col(i + 1).segment<2>(2),
+          v.segment<2>(vel_map_.at("base_vx")));
+      prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_vz")));
+    }
 
     // Add costs
     // Regularization term
     auto q_cost_binding = prog.AddQuadraticErrorCost(
         w_q_reg * MatrixXd::Identity(nq_ - 7, nq_ - 7),
         x_standing_fixed_spring_.tail(nq_ - 7), q.tail(nq_ - 7));
-    auto v_cost_binding = prog.AddQuadraticErrorCost(
-        w_v_reg * MatrixXd::Identity(nv_, nv_), VectorXd::Zero(nv_), v);
+    std::unique_ptr<Binding<QuadraticCost>> v_cost_binding;
+    if (include_velocity) {
+      v_cost_binding =
+          std::make_unique<Binding<QuadraticCost>>(prog.AddQuadraticErrorCost(
+              w_v_reg * MatrixXd::Identity(nv_, nv_), VectorXd::Zero(nv_), v));
+    }
 
     // Quaternion
     prog.AddBoundingBoxConstraint(desired_quat, desired_quat, q.head<4>());
@@ -1414,8 +1418,14 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
     auto finish = std::chrono::high_resolution_clock::now();
 
     // Assign
-    regularization_state->col(i) << result.GetSolution(q),
-        result.GetSolution(v);
+    if (include_velocity) {
+      regularization_state->col(i) << result.GetSolution(q),
+          result.GetSolution(v);
+    } else {
+      regularization_state->col(i) << result.GetSolution(q), 0, 0, 0,
+          local_preprocess_x_lipm.col(i + 1).segment<2>(2),
+          VectorXd::Zero(nv_ - 5);
+    }
     left_stance = !left_stance;
 
     // Print
@@ -1444,8 +1454,10 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
          << solvers::EvalCostGivenSolution(result, quat_cost_binding) << endl;*/
     cout << "q_cost_binding = "
          << solvers::EvalCostGivenSolution(result, q_cost_binding) << endl;
-    cout << "v_cost_binding = "
-         << solvers::EvalCostGivenSolution(result, v_cost_binding) << endl;
+    if (include_velocity) {
+      cout << "v_cost_binding = "
+           << solvers::EvalCostGivenSolution(result, *v_cost_binding) << endl;
+    }
 
     // Exiting
     if (!result.is_success()) {

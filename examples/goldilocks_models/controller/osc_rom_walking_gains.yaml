@@ -80,11 +80,12 @@ w_p_lipm_mpc: 0.01
 w_v_lipm_mpc: 0.1
 
 ### For both planner and controller
-left_support_duration: 0.35 #0.3   # 0.23 # 0.35 # 0.4
-right_support_duration: 0.35 #0.3  # 0.23 # 0.35 # 0.4
+# Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
+left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
+right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
 double_support_duration: 0.05 #0.02
 
-global_target_position_x: 20
+global_target_position_x: 0
 global_target_position_y: 0
 
 ### For controller only

@@ -415,6 +415,11 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     // from `prev_global_fsm_idx_` in WarmStartGuess()
     DRAKE_DEMAND(!param_.init_file.empty());
   }
+
+  // Some checks
+  // We hard-coded the joint index in RomTrajOptCassie::AddFomRegularizationCost
+  DRAKE_DEMAND(pos_map_.at("ankle_joint_left") == 7 + 8);
+  DRAKE_DEMAND(pos_map_.at("ankle_joint_right") == 7 + 9);
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
@@ -1050,11 +1055,14 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   // Heuristic
   double first_mode_duration_lipm = first_mode_duration;
   double stride_period_lipm = stride_period_;
-  if (true) {
+  bool remove_double_support_druation_in_first_mode = false;
+  if (remove_double_support_druation_in_first_mode) {
     // Use remaining time until touchdown
     first_mode_duration_lipm =
         std::max(0.0, first_mode_duration_lipm - double_support_duration_);
-
+  }
+  bool remove_double_support_druation_after_first_mode = false;
+  if (remove_double_support_druation_after_first_mode) {
     // Ignore double support duration
     stride_period_lipm = single_support_duration_;
   }
@@ -1062,11 +1070,11 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   cout << "stride_period_lipm = " << stride_period_lipm << endl;*/
   // TODO: With the above heuristic, it seems to underestimate the prediction.
   //  However, after removing it, the stride druation is larger which cause
-  //  bigger stride length, and we need to relax the stride length constraint to
-  //  make the problem feasible.
-  //  The big stride length caused instability.
+  //  bigger stride length, and we need to relax the stride length constraint in
+  //  LIPM MPC to make the problem feasible.
   //  We need to add soft constraint for the stride length (in the cost), so we
   //  can at least get a solution.
+  //  Additionally, the big stride length caused instability.
 
   // +1 because IK needs swing ft
   int n_step = std::max(minimum_n_step, param_.n_step + 1);

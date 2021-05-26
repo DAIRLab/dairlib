@@ -1052,16 +1052,19 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   // The body cannot be too forward. Otherwise it hits the toe joint limit.
   double max_length_foot_to_body_front = 0.3;  // 0.3
 
-  // Heuristic
   double first_mode_duration_lipm = first_mode_duration;
   double stride_period_lipm = stride_period_;
-  bool remove_double_support_druation_in_first_mode = false;
+  // Heuristic
+  // Removing double support phase produces better foot step when the target
+  // position is far. However, in this case, ROM MPC's first foot step
+  // prediction would be different from LIPM MPC's.
+  bool remove_double_support_druation_in_first_mode = true;
   if (remove_double_support_druation_in_first_mode) {
     // Use remaining time until touchdown
     first_mode_duration_lipm =
         std::max(0.0, first_mode_duration_lipm - double_support_duration_);
   }
-  bool remove_double_support_druation_after_first_mode = false;
+  bool remove_double_support_druation_after_first_mode = true;
   if (remove_double_support_druation_after_first_mode) {
     // Ignore double support duration
     stride_period_lipm = single_support_duration_;

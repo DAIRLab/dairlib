@@ -102,6 +102,19 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   bool warm_start_with_previous_solution_ = true;
   bool use_lipm_mpc_and_ik_ = true;
 
+  // Since sometimes the planner replan every 1ms in the beginning of the
+  // simulation (e.g. at 0, 1, 2 ms), we use
+  // min_time_difference_for_replanning_ to avoid replanning when the current
+  // time is too close to the previous time. This method is just a workaround.
+  // The best solution should be avoiding using old message in the lcm
+  // subscriber. However, somehow there is still old message in the lcm
+  // subscriber after I clear the listening channel. (it's gone and then come
+  // back) Note that another workaround is to clear the lcm message twice in
+  // the LcmDrivenLoop class.
+  // double min_time_difference_for_replanning_ = 0.01;
+  mutable double timestamp_of_previous_plan_ = -1;
+  mutable dairlib::lcmt_timestamped_saved_traj previous_output_msg_;
+
   // Port indices
   int stance_foot_port_;
   int phase_port_;
@@ -109,10 +122,6 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int controller_signal_port_;
   int quat_xyz_shift_port_;
   int planner_final_pos_port_;
-
-  // Map position/velocity from model with spring to without spring
-  Eigen::MatrixXd map_position_from_spring_to_no_spring_;
-  Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
   std::map<std::string, int> pos_map_;
   std::map<std::string, int> vel_map_;
@@ -277,19 +286,11 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void PrintCost(const RomTrajOptCassie& trajopt,
                  const drake::solvers::MathematicalProgramResult& result) const;
   void PrintAllCostsAndConstraints(const RomTrajOptCassie& trajopt) const;
-
-  // Since sometimes the planner replan every 1ms in the beginning of the
-  // simulation (e.g. at 0, 1, 2 ms), we use
-  // min_time_difference_for_replanning_ to avoid replanning when the current
-  // time is too close to the previous time. This method is just a workaround.
-  // The best solution should be avoiding using old message in the lcm
-  // subscriber. However, somehow there is still old message in the lcm
-  // subscriber after I clear the listening channel. (it's gone and then come
-  // back) Note that another workaround is to clear the lcm message twice in
-  // the LcmDrivenLoop class.
-  // double min_time_difference_for_replanning_ = 0.01;
-  mutable double timestamp_of_previous_plan_ = -1;
-  mutable dairlib::lcmt_timestamped_saved_traj previous_output_msg_;
+  void ResolveWithAnotherSolver(
+      const RomTrajOptCassie& trajopt,
+      const drake::solvers::MathematicalProgramResult& result,
+      const std::string& prefix, double current_time,
+      const Eigen::VectorXd& quat_xyz_shift) const;
 };
 
 }  // namespace goldilocks_models

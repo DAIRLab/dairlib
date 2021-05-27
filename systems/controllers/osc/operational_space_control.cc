@@ -72,8 +72,6 @@ OperationalSpaceControl::OperationalSpaceControl(
   state_port_ = this->DeclareVectorInputPort("robot_state",
                         OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
                     .get_index();
-//  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
-//                                &OperationalSpaceControl::CalcOptimalInput);
   if (used_with_finite_state_machine) {
     fsm_port_ =
         this->DeclareVectorInputPort("fsm_state",BasicVector<double>(1)).get_index();

@@ -1,10 +1,6 @@
 rows: 3
 cols: 3
 
-# Invariant Impacts
-impact_threshold: 0.000
-use_traj_opt_feet_traj: true
-
 # High level command gains (with radio)
 vel_scale_rot: -1
 vel_scale_trans_sagital: 0.25
@@ -51,7 +47,7 @@ lipm_height: 0.85
 # OSC gains
 mu: 0.8
 
-w_accel: 0.00001
+w_accel: 0.000
 w_soft_constraint: 8000
 
 w_swing_toe: 1
@@ -65,7 +61,7 @@ hip_yaw_kd: 0.5
 CoMW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,  1000]
+      0,    0,    10]
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,

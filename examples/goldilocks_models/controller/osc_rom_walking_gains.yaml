@@ -28,8 +28,8 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210328_3dlipm_all_files/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210416_3dlipm_grid_all_files/"
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210505_3dlipm_all_files/"
-dir_model: "/media/yuming/DATA/Research backup/Not uploaded to google drive/model_optimization/20210505_3dlipm_decrease_regularization_weight/robot_1/"
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210505_3dlipm_all_files/"
+#dir_model: "/media/yuming/DATA/Research backup/Not uploaded to google drive/model_optimization/20210505_3dlipm_decrease_regularization_weight/robot_1/"
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
@@ -172,29 +172,29 @@ RomKd:
 
 PelvisBalanceW:
   [ 200,    0,     0,
-    0,    200,     0,
+    0,    400,     0,
     0,      0,     0]
 PelvisBalanceKp:
-  [200,      0,    0,
-    0,    200,    0,
-    0,      0,    0]
+  [20,      0,    0,
+   0,    100,    0,
+   0,      0,    0]
 PelvisBalanceKd:
-  [  80,     0,    0,
-      0,    80,    0,
+  [   1,     0,    0,
+      0,    10,    0,
       0,     0,    0]
 
 PelvisHeadingW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    200]
+      0,    0,    10]
 PelvisHeadingKp:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,   50]
+      0,     0,   10]
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    40]
+      0,     0,    2]
 period_of_no_heading_control: 0.1
 
 SwingFootW:
@@ -204,7 +204,7 @@ SwingFootW:
 SwingFootKp:
   [ 200,    0,     0,
     0,  200,     0,
-    0,    0,   200]
+    0,    0,   100]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

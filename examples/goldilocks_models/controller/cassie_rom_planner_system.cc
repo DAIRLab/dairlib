@@ -542,7 +542,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     // Run IK to get desired full state
     if (lipm_ik_success) {
       lipm_ik_success = GetDesiredFullStateFromLipmMPCSol(
-          start_with_left_stance, local_preprocess_x_lipm,
+          x_init, start_with_left_stance, local_preprocess_x_lipm,
           local_preprocess_u_lipm, &local_regularization_state);
     }
   }
@@ -1221,7 +1221,8 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
 }
 
 bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
-    bool start_with_left_stance, const Eigen::MatrixXd& local_preprocess_x_lipm,
+    const Eigen::VectorXd& x_init, bool start_with_left_stance,
+    const Eigen::MatrixXd& local_preprocess_x_lipm,
     const Eigen::MatrixXd& local_preprocess_u_lipm,
     MatrixXd* regularization_state) const {
   cout << "=== start of IK ===\n";
@@ -1230,7 +1231,8 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   // Parameter
   // TODO: desired_quat should point towards goal position. Same for ROM MPC.
   Vector4d desired_quat(1, 0, 0, 0);
-  double desired_height = 1;
+  //  double desired_height = 1;
+  double desired_height = x_init(6);  // for testing
   double time_limit = 0.2;  // 0.02;  // in seconds
   bool include_velocity = false;
 

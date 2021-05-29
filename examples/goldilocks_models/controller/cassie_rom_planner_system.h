@@ -223,7 +223,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
                   Eigen::MatrixXd* local_preprocess_u_lipm) const;
   drake::solvers::OsqpSolver qp_solver_;
   bool GetDesiredFullStateFromLipmMPCSol(
-      bool start_with_left_stance,
+      const Eigen::VectorXd& x_init, bool start_with_left_stance,
       const Eigen::MatrixXd& local_preprocess_x_lipm,
       const Eigen::MatrixXd& local_preprocess_u_lipm,
       Eigen::MatrixXd* desired_state) const;

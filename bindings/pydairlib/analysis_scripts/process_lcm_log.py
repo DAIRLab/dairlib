@@ -77,6 +77,16 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
                      drake.lcmt_contact_results_for_viz]
 
+  cassie_state_channel_name = ""
+  for event in log:
+    if event.channel == "CASSIE_STATE_DISPATCHER":
+      cassie_state_channel_name = "CASSIE_STATE_DISPATCHER"
+      break
+    elif event.channel == "CASSIE_STATE_SIMULATION":
+      cassie_state_channel_name = "CASSIE_STATE_SIMULATION"
+      break
+  print("cassie_state_channel_name = " + cassie_state_channel_name)
+
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:
       for lcmtype in known_lcm_types:
@@ -91,7 +101,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
         unknown_types.add(event.channel)
     if event.channel in full_log:
       full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
-    if event.channel == "CASSIE_STATE_SIMULATION":
+    if event.channel == cassie_state_channel_name:
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]
       v_temp = [[] for i in range(len(msg.velocity))]

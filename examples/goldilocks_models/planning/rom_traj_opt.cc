@@ -1096,7 +1096,28 @@ void RomTrajOptCassie::AddFomRegularizationCost(
         AddQuadraticErrorCost(Id_joints, x_guess_pre.segment(7, n_q_ - 7),
                               x_preimpact.segment(7, n_q_ - 7)));
 
+    // Testing -- make final goal position as a constraint
+    //    if (i == num_modes_ - 1) {
+    //      AddBoundingBoxConstraint(x_guess_pre.segment<2>(4),
+    //                               x_guess_pre.segment<2>(4),
+    //                               x_preimpact.segment<2>(4));
+    //    }
+
     // Testing
+    if (i == 0) {
+      /*AddBoundingBoxConstraint(x_guess_pre(4) - 0.01, x_guess_pre(4) + 0.01,
+                               x_preimpact.segment<1>(4));  // pelvis x
+      AddBoundingBoxConstraint(x_guess_pre(5) - 0.01, x_guess_pre(5) + 0.01,
+                               x_preimpact.segment<1>(5));  // pelvis y
+      AddBoundingBoxConstraint(x_guess_pre(6) - 0.01, x_guess_pre(6) + 0.01,
+                               x_preimpact.segment<1>(6));  // height
+      AddBoundingBoxConstraint(x_guess_pre(12), x_guess_pre(12),
+                               x_preimpact.segment<1>(12)); // right hip pitch
+      AddBoundingBoxConstraint(x_guess_pre(14), x_guess_pre(14),
+                               x_preimpact.segment<1>(14)); // right knee*/
+    }
+
+    // Testing -- forcing the poses look close to regularizing poses (in y axis)
     // TODO: will need to remove the first step swing foot when imposing the
     //  bounding box constraint for the hip joint
     //    AddBoundingBoxConstraint(x_guess_pre(7), x_guess_pre(7),

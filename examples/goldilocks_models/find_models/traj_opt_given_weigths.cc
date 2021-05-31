@@ -131,114 +131,42 @@ class SwingFootXYPosAtMidStanceConstraint : public NonlinearConstraint<double> {
   const Vector3d point_wrt_body_;
 };
 
-class ComHeightVelConstraint : public NonlinearConstraint<double> {
+class ComZeroHeightAccelConstraint : public NonlinearConstraint<double> {
  public:
-  ComHeightVelConstraint(const MultibodyPlant<double>* plant)
+  ComZeroHeightAccelConstraint(const MultibodyPlant<double>* plant)
       : NonlinearConstraint<double>(
             1, 2 * (plant->num_positions() + plant->num_velocities()),
-            VectorXd::Zero(1), VectorXd::Zero(1), "com_height_vel_constraint"),
+            VectorXd::Zero(1), VectorXd::Zero(1),
+            "com_zero_height_accel_constraint"),
         plant_(plant),
+        world_(plant->world_frame()),
         context_(plant->CreateDefaultContext()),
         n_q_(plant->num_positions()),
-        n_v_(plant->num_velocities()) {
-    DRAKE_DEMAND(plant->num_bodies() > 1);
-    DRAKE_DEMAND(plant->num_model_instances() > 1);
-
-    // Get all body indices
-    std::vector<ModelInstanceIndex> model_instances;
-    for (ModelInstanceIndex model_instance_index(1);
-         model_instance_index < plant->num_model_instances();
-         ++model_instance_index)
-      model_instances.push_back(model_instance_index);
-    for (auto model_instance : model_instances) {
-      const std::vector<BodyIndex> body_index_in_instance =
-          plant->GetBodyIndices(model_instance);
-      for (BodyIndex body_index : body_index_in_instance)
-        body_indexes_.push_back(body_index);
-    }
-    // Get total mass
-    for (BodyIndex body_index : body_indexes_) {
-      if (body_index == 0) continue;
-      const drake::multibody::Body<double>& body = plant_->get_body(body_index);
-
-      // Calculate composite_mass_.
-      const double& body_mass = body.get_mass(*context_);
-      // composite_mass_ = ∑ mᵢ
-      composite_mass_ += body_mass;
-    }
-    if (!(composite_mass_ > 0)) {
-      throw std::runtime_error("The total mass must larger than zero.");
-    }
-  }
-  ~ComHeightVelConstraint() override = default;
+        n_v_(plant->num_velocities()) {}
+  ~ComZeroHeightAccelConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override {
-    VectorXd q1 = x.head(n_q_);
-    VectorXd v1 = x.segment(n_q_, n_v_);
-    VectorXd q2 = x.segment(n_q_ + n_v_, n_q_);
-    VectorXd v2 = x.segment(2 * n_q_ + n_v_, n_v_);
+    plant_->SetPositions(context_.get(), x.head(n_q_));
+    MatrixX<double> Jcom1(3, n_v_);
+    plant_->CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &Jcom1);
 
-    plant_->SetPositions(context_.get(), q1);
-    plant_->SetVelocities(context_.get(), v1);
+    plant_->SetPositions(context_.get(), x.segment(n_q_ + n_v_, n_q_));
+    MatrixX<double> Jcom2(3, n_v_);
+    plant_->CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &Jcom2);
 
-    const drake::multibody::Frame<double>& world = plant_->world_frame();
-
-    // Get com jacobian for x1
-    MatrixXd Jcom1 = MatrixXd::Zero(3, n_v_);
-    for (BodyIndex body_index : body_indexes_) {
-      if (body_index == 0) continue;
-
-      const drake::multibody::Body<double>& body = plant_->get_body(body_index);
-      const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context_);
-
-      // Calculate M * J in world frame.
-      const double& body_mass = body.get_mass(*context_);
-      // Jcom = ∑ mᵢ * Ji
-      MatrixXd Jcom_i(3, n_v_);
-      plant_->CalcJacobianTranslationalVelocity(
-          *context_, drake::multibody::JacobianWrtVariable::kV,
-          body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
-      Jcom1 += body_mass * Jcom_i;
-      // cout << "body_mass = " << body_mass << endl;
-      // cout << "Jcom_i = " << Jcom_i << endl;
-    }
-    Jcom1 /= composite_mass_;
-
-    // Get com jacobian for x2
-    plant_->SetPositions(context_.get(), q2);
-    plant_->SetVelocities(context_.get(), v2);
-    MatrixXd Jcom2 = MatrixXd::Zero(3, n_v_);
-    for (BodyIndex body_index : body_indexes_) {
-      if (body_index == 0) continue;
-
-      const drake::multibody::Body<double>& body = plant_->get_body(body_index);
-      const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context_);
-
-      // Calculate M * J in world frame.
-      const double& body_mass = body.get_mass(*context_);
-      // Jcom = ∑ mᵢ * Ji
-      MatrixXd Jcom_i(3, n_v_);
-      plant_->CalcJacobianTranslationalVelocity(
-          *context_, drake::multibody::JacobianWrtVariable::kV,
-          body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
-      Jcom2 += body_mass * Jcom_i;
-      // cout << "body_mass = " << body_mass << endl;
-      // cout << "Jcom_i = " << Jcom_i << endl;
-    }
-    Jcom2 /= composite_mass_;
-
-    *y = Jcom1.row(2) * v1 - Jcom2.row(2) * v2;
+    *y = Jcom1.row(2) * x.segment(n_q_, n_v_) -
+         Jcom2.row(2) * x.segment(2 * n_q_ + n_v_, n_v_);
   };
 
  private:
   const MultibodyPlant<double>* plant_;
+  const drake::multibody::BodyFrame<double>& world_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   int n_q_;
   int n_v_;
-
-  std::vector<BodyIndex> body_indexes_;
-  double composite_mass_ = 0;
 };
 
 class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {
@@ -260,7 +188,6 @@ class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {
     VectorXd q = x.head(n_q_);
     VectorXd v = x.tail(n_v_);
     plant_.SetPositions(context_.get(), q);
-    plant_.SetVelocities(context_.get(), v);
 
     MatrixX<double> J_com(3, n_v_);
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(
@@ -480,8 +407,6 @@ class JointAccelConstraint : public solvers::NonlinearConstraint<double> {
   int n_x_;
   int n_u_;
   int n_lambda_;
-
-  MatrixXd W_Q_;
 };
 
 void addRegularization(bool is_get_nominal, double eps_reg,
@@ -2749,7 +2674,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   if (setting.com_accel_constraint && zero_com_height_vel) {
     cout << "Adding zero COM height acceleration constraint\n";
-    auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
+    auto com_vel_constraint =
+        std::make_shared<ComZeroHeightAccelConstraint>(&plant);
     std::unordered_map<int, double> com_vel_constraint_scale;
     com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
     com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);

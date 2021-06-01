@@ -68,6 +68,7 @@ class GoldilocksModelTrajOpt
   std::vector<Binding<Cost>> cost_x_bindings_;
   std::vector<Binding<Cost>> cost_u_bindings_;
   std::vector<Binding<Cost>> cost_collocation_lambda_bindings_;
+  std::vector<Binding<Cost>> cost_lambda_x_diff_bindings_;
   std::vector<Binding<Cost>> cost_lambda_diff_bindings_;
   std::vector<Binding<Cost>> cost_pos_diff_bindings_;
   std::vector<Binding<Cost>> cost_vel_diff_bindings_;

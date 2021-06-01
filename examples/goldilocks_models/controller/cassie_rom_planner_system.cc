@@ -421,6 +421,11 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     // from `prev_global_fsm_idx_` in WarmStartGuess()
     DRAKE_DEMAND(!param_.init_file.empty());
   }
+
+  // Some checks
+  // We hard-coded the joint index in RomTrajOptCassie::AddFomRegularizationCost
+  DRAKE_DEMAND(pos_map_.at("ankle_joint_left") == 7 + 8);
+  DRAKE_DEMAND(pos_map_.at("ankle_joint_right") == 7 + 9);
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
@@ -725,8 +730,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Add rom state in cost
   bool add_rom_regularization = true;
   if (add_rom_regularization) {
-    //    DRAKE_DEMAND(false);  // TODO: should at least have some reg cost
-    cout << "REMINDER!! should at least have a little bit of reg cost on ROM\n";
     trajopt.AddRomRegularizationCost(h_guess_, y_guess_, dy_guess_, tau_guess_,
                                      first_mode_knot_idx,
                                      param_.gains.w_rom_reg);
@@ -872,67 +875,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   cout << result.get_solution_result() << " | ";
   cout << "Cost:" << result.get_optimal_cost() << "\n";
 
-  // Testing -- solve with another solver
-  if (false) {
-    start = std::chrono::high_resolution_clock::now();
-    drake::solvers::MathematicalProgramResult result2;
-    if (param_.use_ipopt) {
-      solver_snopt_->Solve(trajopt, trajopt.initial_guess(),
-                           solver_option_snopt_, &result2);
-    } else {
-      solver_ipopt_->Solve(trajopt, trajopt.initial_guess(),
-                           solver_option_ipopt_, &result2);
-    }
-    finish = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = finish - start;
-    cout << "    Time of arrival: " << current_time << " | ";
-    cout << "Solve time:" << elapsed.count() << " | ";
-    cout << result2.get_solution_result() << " | ";
-    cout << "Cost:" << result2.get_optimal_cost() << "\n";
-
-    /// For visualization of the second solver
-    MatrixXd x0_each_mode(nx_, trajopt.num_modes() + 1);
-    MatrixXd xf_each_mode(nx_, trajopt.num_modes());
-    for (uint i = 0; i < trajopt.num_modes(); i++) {
-      x0_each_mode.col(i) = result2.GetSolution(trajopt.x0_vars_by_mode(i));
-      xf_each_mode.col(i) = result2.GetSolution(trajopt.xf_vars_by_mode(i));
-    }
-    x0_each_mode.col(trajopt.num_modes()) =
-        result.GetSolution(trajopt.x0_vars_by_mode(trajopt.num_modes()));
-    MatrixXd global_x0_FOM = x0_each_mode;
-    MatrixXd global_xf_FOM = xf_each_mode;
-    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, x0_each_mode,
-                                     &global_x0_FOM);
-    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, xf_each_mode,
-                                     &global_xf_FOM);
-    writeCSV(param_.dir_data + prefix + "local_x0_FOM_snopt.csv", x0_each_mode);
-    writeCSV(param_.dir_data + prefix + "local_xf_FOM_snopt.csv", xf_each_mode);
-    writeCSV(param_.dir_data + prefix + "global_x0_FOM_snopt.csv",
-             global_x0_FOM);
-    writeCSV(param_.dir_data + prefix + "global_xf_FOM_snopt.csv",
-             global_xf_FOM);
-  }
-
-  // Testing -- solve with another solver and feed it with solution as init
-  // guess
-  if (false) {
-    cout << "Use previous solution as a initial condition...\n";
-    start = std::chrono::high_resolution_clock::now();
-    drake::solvers::MathematicalProgramResult result2;
-    if (param_.use_ipopt) {
-      solver_snopt_->Solve(trajopt, result.GetSolution(), solver_option_snopt_,
-                           &result2);
-    } else {
-      solver_ipopt_->Solve(trajopt, result.GetSolution(), solver_option_ipopt_,
-                           &result2);
-    }
-    finish = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = finish - start;
-    cout << "    Time of arrival: " << current_time << " | ";
-    cout << "Solve time:" << elapsed.count() << " | ";
-    cout << result2.get_solution_result() << " | ";
-    cout << "Cost:" << result2.get_optimal_cost() << "\n";
-  }
+  // Testing -- use different solver to test the solution quality.
+  //  ResolveWithAnotherSolver(trajopt, result, prefix, current_time,
+  //                           quat_xyz_shift);
 
   // Testing -- print all param, costs and constriants for debugging
   // PrintAllCostsAndConstraints(trajopt);
@@ -1113,14 +1058,20 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   // The body cannot be too forward. Otherwise it hits the toe joint limit.
   double max_length_foot_to_body_front = 0.3;  // 0.3
 
-  // Heuristic
   double first_mode_duration_lipm = first_mode_duration;
   double stride_period_lipm = stride_period_;
-  if (true) {
+  // Heuristic
+  // Removing double support phase produces better foot step when the target
+  // position is far. However, in this case, ROM MPC's first foot step
+  // prediction would be different from LIPM MPC's.
+  bool remove_double_support_druation_in_first_mode = true;
+  if (remove_double_support_druation_in_first_mode) {
     // Use remaining time until touchdown
     first_mode_duration_lipm =
         std::max(0.0, first_mode_duration_lipm - double_support_duration_);
-
+  }
+  bool remove_double_support_druation_after_first_mode = true;
+  if (remove_double_support_druation_after_first_mode) {
     // Ignore double support duration
     stride_period_lipm = single_support_duration_;
   }
@@ -1128,11 +1079,11 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   cout << "stride_period_lipm = " << stride_period_lipm << endl;*/
   // TODO: With the above heuristic, it seems to underestimate the prediction.
   //  However, after removing it, the stride druation is larger which cause
-  //  bigger stride length, and we need to relax the stride length constraint to
-  //  make the problem feasible.
-  //  The big stride length caused instability.
+  //  bigger stride length, and we need to relax the stride length constraint in
+  //  LIPM MPC to make the problem feasible.
   //  We need to add soft constraint for the stride length (in the cost), so we
   //  can at least get a solution.
+  //  Additionally, the big stride length caused instability.
 
   // +1 because IK needs swing ft
   int n_step = std::max(minimum_n_step, param_.n_step + 1);
@@ -1932,6 +1883,73 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
                                  local_u_lipm.col(prev_local_fsm_idx));
       }
     }
+  }
+}
+
+void CassiePlannerWithMixedRomFom::ResolveWithAnotherSolver(
+    const RomTrajOptCassie& trajopt, const MathematicalProgramResult& result,
+    const string& prefix, double current_time,
+    const VectorXd& quat_xyz_shift) const {
+  // Testing -- solve with another solver
+  if (false) {
+    auto start = std::chrono::high_resolution_clock::now();
+    drake::solvers::MathematicalProgramResult result2;
+    if (param_.use_ipopt) {
+      solver_snopt_->Solve(trajopt, trajopt.initial_guess(),
+                           solver_option_snopt_, &result2);
+    } else {
+      solver_ipopt_->Solve(trajopt, trajopt.initial_guess(),
+                           solver_option_ipopt_, &result2);
+    }
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    cout << "    Time of arrival: " << current_time << " | ";
+    cout << "Solve time:" << elapsed.count() << " | ";
+    cout << result2.get_solution_result() << " | ";
+    cout << "Cost:" << result2.get_optimal_cost() << "\n";
+
+    /// For visualization of the second solver
+    MatrixXd x0_each_mode(nx_, trajopt.num_modes() + 1);
+    MatrixXd xf_each_mode(nx_, trajopt.num_modes());
+    for (uint i = 0; i < trajopt.num_modes(); i++) {
+      x0_each_mode.col(i) = result2.GetSolution(trajopt.x0_vars_by_mode(i));
+      xf_each_mode.col(i) = result2.GetSolution(trajopt.xf_vars_by_mode(i));
+    }
+    x0_each_mode.col(trajopt.num_modes()) =
+        result.GetSolution(trajopt.x0_vars_by_mode(trajopt.num_modes()));
+    MatrixXd global_x0_FOM = x0_each_mode;
+    MatrixXd global_xf_FOM = xf_each_mode;
+    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, x0_each_mode,
+                                     &global_x0_FOM);
+    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, xf_each_mode,
+                                     &global_xf_FOM);
+    writeCSV(param_.dir_data + prefix + "local_x0_FOM_snopt.csv", x0_each_mode);
+    writeCSV(param_.dir_data + prefix + "local_xf_FOM_snopt.csv", xf_each_mode);
+    writeCSV(param_.dir_data + prefix + "global_x0_FOM_snopt.csv",
+             global_x0_FOM);
+    writeCSV(param_.dir_data + prefix + "global_xf_FOM_snopt.csv",
+             global_xf_FOM);
+  }
+
+  // Testing -- solve with another solver and feed it with solution as init
+  // guess
+  if (false) {
+    cout << "Use previous solution as a initial condition...\n";
+    auto start = std::chrono::high_resolution_clock::now();
+    drake::solvers::MathematicalProgramResult result2;
+    if (param_.use_ipopt) {
+      solver_snopt_->Solve(trajopt, result.GetSolution(), solver_option_snopt_,
+                           &result2);
+    } else {
+      solver_ipopt_->Solve(trajopt, result.GetSolution(), solver_option_ipopt_,
+                           &result2);
+    }
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    cout << "    Time of arrival: " << current_time << " | ";
+    cout << "Solve time:" << elapsed.count() << " | ";
+    cout << result2.get_solution_result() << " | ";
+    cout << "Cost:" << result2.get_optimal_cost() << "\n";
   }
 }
 

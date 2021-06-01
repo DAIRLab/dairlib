@@ -553,6 +553,7 @@ RomTrajOpt::RomTrajOpt(
 
       // Stride length constraint (from stance foot to swing foot, not from
       // pelvis to swing foot!)
+      // TODO: you can add a lower bound here to avoid foot collision
       PrintStatus("Adding constraint -- FOM step length distance");
       double step_distance =
           (i == 0) ? std::max(init_ft_distance, param.gains.max_step_length)
@@ -1065,8 +1066,14 @@ void RomTrajOptCassie::AddFomRegularizationCost(
   MatrixXd Id_xy = w_reg_xy * MatrixXd::Identity(2, 2);
   MatrixXd Id_z = w_reg_z * MatrixXd::Identity(1, 1);
   MatrixXd Id_joints = w_reg_joints * MatrixXd::Identity(n_q_ - 7, n_q_ - 7);
+  //  Id_joints(0, 0) *= 10;            // left hip roll
+  //  Id_joints(1, 1) *= 10;            // right hip roll
   Id_joints(2, 2) = w_reg_hip_yaw;  // left hip yaw
   Id_joints(3, 3) = w_reg_hip_yaw;  // right hip yaw
+  //  Id_joints(6, 6) *= 0.1;           // left knee
+  //  Id_joints(7, 7) *= 0.1;           // right knee
+  //  Id_joints(8, 8) *= 0.1;           // left ankle
+  //  Id_joints(9, 9) *= 0.1;           // right ankle
   MatrixXd Id_xy_vel = w_reg_xy_vel * MatrixXd::Identity(2, 2);
   MatrixXd Id_omega = w_reg_vel * MatrixXd::Identity(3, 3);
   MatrixXd Id_z_joint_vel = w_reg_vel * MatrixXd::Identity(n_v_ - 5, n_v_ - 5);
@@ -1081,13 +1088,42 @@ void RomTrajOptCassie::AddFomRegularizationCost(
     // 1. Position
     fom_reg_quat_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_quat, x_guess_pre.head<4>(), x_preimpact.head<4>()));
+    fom_reg_xy_pos_cost_bindings_.push_back(AddQuadraticErrorCost(
+        Id_xy, x_guess_pre.segment<2>(4), x_preimpact.segment<2>(4)));
     fom_reg_z_cost_bindings_.push_back(AddQuadraticErrorCost(
         Id_z, x_guess_pre.segment<1>(6), x_preimpact.segment<1>(6)));
     fom_reg_joint_cost_bindings_.push_back(
         AddQuadraticErrorCost(Id_joints, x_guess_pre.segment(7, n_q_ - 7),
                               x_preimpact.segment(7, n_q_ - 7)));
-    fom_reg_xy_pos_cost_bindings_.push_back(AddQuadraticErrorCost(
-        Id_xy, x_guess_pre.segment<2>(4), x_preimpact.segment<2>(4)));
+
+    // Testing -- make final goal position as a constraint
+    //    if (i == num_modes_ - 1) {
+    //      AddBoundingBoxConstraint(x_guess_pre.segment<2>(4),
+    //                               x_guess_pre.segment<2>(4),
+    //                               x_preimpact.segment<2>(4));
+    //    }
+
+    // Testing
+    if (i == 0) {
+      /*AddBoundingBoxConstraint(x_guess_pre(4) - 0.01, x_guess_pre(4) + 0.01,
+                               x_preimpact.segment<1>(4));  // pelvis x
+      AddBoundingBoxConstraint(x_guess_pre(5) - 0.01, x_guess_pre(5) + 0.01,
+                               x_preimpact.segment<1>(5));  // pelvis y
+      AddBoundingBoxConstraint(x_guess_pre(6) - 0.01, x_guess_pre(6) + 0.01,
+                               x_preimpact.segment<1>(6));  // height
+      AddBoundingBoxConstraint(x_guess_pre(12), x_guess_pre(12),
+                               x_preimpact.segment<1>(12)); // right hip pitch
+      AddBoundingBoxConstraint(x_guess_pre(14), x_guess_pre(14),
+                               x_preimpact.segment<1>(14)); // right knee*/
+    }
+
+    // Testing -- forcing the poses look close to regularizing poses (in y axis)
+    // TODO: will need to remove the first step swing foot when imposing the
+    //  bounding box constraint for the hip joint
+    //    AddBoundingBoxConstraint(x_guess_pre(7), x_guess_pre(7),
+    //                             x_preimpact.segment<1>(7));
+    //    AddBoundingBoxConstraint(x_guess_pre(8), x_guess_pre(8),
+    //                             x_preimpact.segment<1>(8));
 
     // 2. Velocity
     // Preimpact

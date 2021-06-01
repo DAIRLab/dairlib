@@ -61,11 +61,12 @@ right_limit_wrt_pelvis: 0.06
 left_limit_wrt_pelvis: 0.4
 
 #Planner cost weight
+# Without LIPM MPC and IK
 w_Q: 0.01
 w_R: 2e-6
-w_rom_reg: 0  #1e-6
+w_rom_reg: 0  #1e-6  # reminder: should have at least a little bit of reg cost
 w_reg_quat: 1
-w_reg_xy: 10  #0.1 for not using IK; maybe 10 for using IK?
+w_reg_xy: 0.1  #0.1 for not using IK; maybe 10 for using IK?
 w_reg_z: 50  # 10
 w_reg_joints: 0.1
 w_reg_hip_yaw: 1  # should use 1? 5?
@@ -73,6 +74,34 @@ w_reg_xy_vel: 0.1
 w_reg_vel: 1e-6
 w_predict_lipm_p: .1
 w_predict_lipm_v: 0.01
+
+# With LIPM MPC and IK
+#w_Q: 0.01
+#w_R: 2e-6
+#w_rom_reg: 0  #1e-6  # reminder: should have at least a little bit of reg cost
+#w_reg_quat: 1
+#w_reg_xy: 10  #0.1 for not using IK; maybe 10 for using IK?
+#w_reg_z: 50  # 10
+#w_reg_joints: 0.1
+#w_reg_hip_yaw: 1  # should use 1? 5?
+#w_reg_xy_vel: 0.1
+#w_reg_vel: 1e-6
+#w_predict_lipm_p: .1
+#w_predict_lipm_v: 0.01
+
+# Testing -- With LIPM MPC and IK (high joint cost)
+#w_Q: 0.01
+#w_R: 2e-6
+#w_rom_reg: 0  #1e-6  # reminder: should have at least a little bit of reg cost
+#w_reg_quat: 10
+#w_reg_xy: 1e-2  #0.1 for not using IK; maybe 10 for using IK?
+#w_reg_z: 1e-2  # 10
+#w_reg_joints: 0.1
+#w_reg_hip_yaw: 1  # should use 1? 5?
+#w_reg_xy_vel: 10  # 0.1
+#w_reg_vel: 1e-6
+#w_predict_lipm_p: .1
+#w_predict_lipm_v: 0.01
 
 # lipm mpc
 max_speed_lipm_mpc: 1.0  # too big would cause instability to FOM planner  # TODO: not yet implemented
@@ -85,7 +114,7 @@ left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
 right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
 double_support_duration: 0.05 #0.02
 
-global_target_position_x: 0
+global_target_position_x: 20
 global_target_position_y: 0
 
 ### For controller only

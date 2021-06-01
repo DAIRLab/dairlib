@@ -89,7 +89,6 @@ echo ===== evaluate \(with snopt scaling\) =====
 # echo ===== Use ipopt =====
 # ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --fix_node_number=true --iter_start=1 --max_outer_iter=1 --ipopt=true --start_current_iter_as_rerun=true 2>&1 | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log
 ######################################
-
 # echo ===== evaluate nomial traj with com accel constraint \(ipopt\) =====
 # ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --fix_node_number=true --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true --com_accel_constraint=true --ipopt=true 2>&1 | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log
 

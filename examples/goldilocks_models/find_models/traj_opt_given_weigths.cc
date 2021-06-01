@@ -131,114 +131,42 @@ class SwingFootXYPosAtMidStanceConstraint : public NonlinearConstraint<double> {
   const Vector3d point_wrt_body_;
 };
 
-class ComHeightVelConstraint : public NonlinearConstraint<double> {
+class ComZeroHeightAccelConstraint : public NonlinearConstraint<double> {
  public:
-  ComHeightVelConstraint(const MultibodyPlant<double>* plant)
+  ComZeroHeightAccelConstraint(const MultibodyPlant<double>* plant)
       : NonlinearConstraint<double>(
             1, 2 * (plant->num_positions() + plant->num_velocities()),
-            VectorXd::Zero(1), VectorXd::Zero(1), "com_height_vel_constraint"),
+            VectorXd::Zero(1), VectorXd::Zero(1),
+            "com_zero_height_accel_constraint"),
         plant_(plant),
+        world_(plant->world_frame()),
         context_(plant->CreateDefaultContext()),
         n_q_(plant->num_positions()),
-        n_v_(plant->num_velocities()) {
-    DRAKE_DEMAND(plant->num_bodies() > 1);
-    DRAKE_DEMAND(plant->num_model_instances() > 1);
-
-    // Get all body indices
-    std::vector<ModelInstanceIndex> model_instances;
-    for (ModelInstanceIndex model_instance_index(1);
-         model_instance_index < plant->num_model_instances();
-         ++model_instance_index)
-      model_instances.push_back(model_instance_index);
-    for (auto model_instance : model_instances) {
-      const std::vector<BodyIndex> body_index_in_instance =
-          plant->GetBodyIndices(model_instance);
-      for (BodyIndex body_index : body_index_in_instance)
-        body_indexes_.push_back(body_index);
-    }
-    // Get total mass
-    for (BodyIndex body_index : body_indexes_) {
-      if (body_index == 0) continue;
-      const drake::multibody::Body<double>& body = plant_->get_body(body_index);
-
-      // Calculate composite_mass_.
-      const double& body_mass = body.get_mass(*context_);
-      // composite_mass_ = ∑ mᵢ
-      composite_mass_ += body_mass;
-    }
-    if (!(composite_mass_ > 0)) {
-      throw std::runtime_error("The total mass must larger than zero.");
-    }
-  }
-  ~ComHeightVelConstraint() override = default;
+        n_v_(plant->num_velocities()) {}
+  ~ComZeroHeightAccelConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override {
-    VectorXd q1 = x.head(n_q_);
-    VectorXd v1 = x.segment(n_q_, n_v_);
-    VectorXd q2 = x.segment(n_q_ + n_v_, n_q_);
-    VectorXd v2 = x.segment(2 * n_q_ + n_v_, n_v_);
+    plant_->SetPositions(context_.get(), x.head(n_q_));
+    MatrixX<double> Jcom1(3, n_v_);
+    plant_->CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &Jcom1);
 
-    plant_->SetPositions(context_.get(), q1);
-    plant_->SetVelocities(context_.get(), v1);
+    plant_->SetPositions(context_.get(), x.segment(n_q_ + n_v_, n_q_));
+    MatrixX<double> Jcom2(3, n_v_);
+    plant_->CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &Jcom2);
 
-    const drake::multibody::Frame<double>& world = plant_->world_frame();
-
-    // Get com jacobian for x1
-    MatrixXd Jcom1 = MatrixXd::Zero(3, n_v_);
-    for (BodyIndex body_index : body_indexes_) {
-      if (body_index == 0) continue;
-
-      const drake::multibody::Body<double>& body = plant_->get_body(body_index);
-      const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context_);
-
-      // Calculate M * J in world frame.
-      const double& body_mass = body.get_mass(*context_);
-      // Jcom = ∑ mᵢ * Ji
-      MatrixXd Jcom_i(3, n_v_);
-      plant_->CalcJacobianTranslationalVelocity(
-          *context_, drake::multibody::JacobianWrtVariable::kV,
-          body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
-      Jcom1 += body_mass * Jcom_i;
-      // cout << "body_mass = " << body_mass << endl;
-      // cout << "Jcom_i = " << Jcom_i << endl;
-    }
-    Jcom1 /= composite_mass_;
-
-    // Get com jacobian for x2
-    plant_->SetPositions(context_.get(), q2);
-    plant_->SetVelocities(context_.get(), v2);
-    MatrixXd Jcom2 = MatrixXd::Zero(3, n_v_);
-    for (BodyIndex body_index : body_indexes_) {
-      if (body_index == 0) continue;
-
-      const drake::multibody::Body<double>& body = plant_->get_body(body_index);
-      const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context_);
-
-      // Calculate M * J in world frame.
-      const double& body_mass = body.get_mass(*context_);
-      // Jcom = ∑ mᵢ * Ji
-      MatrixXd Jcom_i(3, n_v_);
-      plant_->CalcJacobianTranslationalVelocity(
-          *context_, drake::multibody::JacobianWrtVariable::kV,
-          body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
-      Jcom2 += body_mass * Jcom_i;
-      // cout << "body_mass = " << body_mass << endl;
-      // cout << "Jcom_i = " << Jcom_i << endl;
-    }
-    Jcom2 /= composite_mass_;
-
-    *y = Jcom1.row(2) * v1 - Jcom2.row(2) * v2;
+    *y = Jcom1.row(2) * x.segment(n_q_, n_v_) -
+         Jcom2.row(2) * x.segment(2 * n_q_ + n_v_, n_v_);
   };
 
  private:
   const MultibodyPlant<double>* plant_;
+  const drake::multibody::BodyFrame<double>& world_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   int n_q_;
   int n_v_;
-
-  std::vector<BodyIndex> body_indexes_;
-  double composite_mass_ = 0;
 };
 
 class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {
@@ -260,7 +188,6 @@ class ComZeroHeightVelConstraint : public NonlinearConstraint<double> {
     VectorXd q = x.head(n_q_);
     VectorXd v = x.tail(n_v_);
     plant_.SetPositions(context_.get(), q);
-    plant_.SetVelocities(context_.get(), v);
 
     MatrixX<double> J_com(3, n_v_);
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(
@@ -480,8 +407,105 @@ class JointAccelConstraint : public solvers::NonlinearConstraint<double> {
   int n_x_;
   int n_u_;
   int n_lambda_;
+};
 
-  MatrixXd W_Q_;
+class SwingFootCubicSplineConstraint
+    : public solvers::NonlinearConstraint<double> {
+ public:
+  SwingFootCubicSplineConstraint(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::multibody::Frame<double>& body_frame,
+      Vector3d point_wrt_body, double t_f, double t_eval,
+      double mid_foot_height, bool include_vel,
+      const std::string& description = "swing_foot_cubic_spline")
+      : solvers::NonlinearConstraint<double>(
+            include_vel ? 6 : 3,
+            3 * plant.num_positions() + plant.num_velocities(),
+            VectorXd::Zero(include_vel ? 6 : 3),
+            VectorXd::Zero(include_vel ? 6 : 3), description),
+        plant_(plant),
+        world_(plant_.world_frame()),
+        context_(plant_.CreateDefaultContext()),
+        body_frame_(body_frame),
+        point_wrt_body_(point_wrt_body),
+        T_waypoint_({0, t_f / 2, t_f}),
+        t_eval_(t_eval),
+        mid_foot_height_(mid_foot_height),
+        include_vel_(include_vel),
+        n_q_(plant.num_positions()),
+        n_v_(plant.num_velocities()),
+        n_x_(plant.num_positions() + plant.num_velocities()){};
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    if (include_vel_) {
+      y->resize(6);
+    } else {
+      y->resize(3);
+    }
+
+    // Extract our input variables:
+    const auto q0 = x.segment(0, n_q_);
+    const auto qf = x.segment(n_q_, n_q_);
+    const auto q_eval = x.segment(2 * n_q_, n_q_);
+
+    drake::VectorX<double> pt_0(3);
+    drake::VectorX<double> pt_f(3);
+    plant_.SetPositions(context_.get(), q0);
+    this->plant_.CalcPointsPositions(*context_, body_frame_, point_wrt_body_,
+                                     plant_.world_frame(), &pt_0);
+    plant_.SetPositions(context_.get(), qf);
+    this->plant_.CalcPointsPositions(*context_, body_frame_, point_wrt_body_,
+                                     plant_.world_frame(), &pt_f);
+
+    // Construct cubic spline
+    // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
+    // the traj smooth at the mid point
+    std::vector<MatrixXd> Y(3, MatrixXd::Zero(3, 1));
+    Y[0] = pt_0;
+    Y[1] = (pt_0 + pt_f) / 2;
+    Y[2] = pt_f;
+    // mid foot height
+    Y[1](2, 0) += mid_foot_height_;
+    PiecewisePolynomial<double> swing_foot_spline =
+        PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+            T_waypoint_, Y, Vector3d::Zero(), Vector3d::Zero());
+
+    // Evaluation point
+    drake::VectorX<double> pt_eval(3);
+    plant_.SetPositions(context_.get(), q_eval);
+    this->plant_.CalcPointsPositions(*context_, body_frame_, point_wrt_body_,
+                                     plant_.world_frame(), &pt_eval);
+
+    // Assignment
+    y->head<3>() = swing_foot_spline.value(t_eval_) - pt_eval;
+
+    if (include_vel_) {
+      const auto v_eval = x.segment(3 * n_q_, n_v_);
+      drake::MatrixX<double> J_eval(3, n_v_);
+      plant_.CalcJacobianTranslationalVelocity(
+          *context_, drake::multibody::JacobianWrtVariable::kV, body_frame_,
+          point_wrt_body_, world_, world_, &J_eval);
+      drake::VectorX<double> pt_dot_eval = J_eval * v_eval;
+
+      y->tail<3>() = swing_foot_spline.EvalDerivative(t_eval_, 1) - pt_dot_eval;
+    }
+  };
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const drake::multibody::Frame<double>& body_frame_;
+  const Vector3d point_wrt_body_;
+  std::vector<double> T_waypoint_;
+  double t_eval_;
+  double mid_foot_height_;
+  bool include_vel_;
+
+  int n_q_;
+  int n_v_;
+  int n_x_;
 };
 
 void addRegularization(bool is_get_nominal, double eps_reg,
@@ -631,9 +655,9 @@ void extractResult(VectorXd& w_sol, const GoldilocksModelTrajOpt& trajopt,
 
   *(QPs.is_success_vec[sample_idx]) = is_success(0);
 
-  // bool constraint_satisfied = solvers::CheckGenericConstraints(trajopt,
-  // result, 1e-5); cout << "constraint_satisfied = " << constraint_satisfied <<
-  // endl;
+  /*bool constraint_satisfied = solvers::CheckGenericConstraints(
+      trajopt, result, setting.major_feasibility_tol);
+  cout << "constraint_satisfied = " << constraint_satisfied << endl;*/
 
   // Get the solution of all the decision variable
   w_sol = result.GetSolution(trajopt.decision_variables());
@@ -1923,13 +1947,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Cost on force (the final weight is w_lambda^2)
   double w_lambda = 1.0e-4 * sqrt(0.2) * sqrt(all_cost_scale);
   // Cost on difference over time
-  double w_lambda_diff = 0.00000002 * all_cost_scale;
-  double w_v_diff = 0.001 * all_cost_scale;
-  double w_u_diff = 0.0000002 * all_cost_scale;
+  double w_lambda_diff = 2e-8 * all_cost_scale;
+  double w_q_diff = 0;  // 0.1 * all_cost_scale;
+  double w_v_diff = 0;  // 1e-3 * all_cost_scale;
+  double w_u_diff = 2e-7 * all_cost_scale;
   // Cost on position
   //  for w_q_hip_roll, maybe 1 if mu = 0.1, and 10 if mu = 1?
   double reduce_reg_weight = 1;
-  double w_q_hip_roll = 10 * all_cost_scale * reduce_reg_weight;
+  double w_q_hip_roll = 1 * all_cost_scale * reduce_reg_weight;
   double w_q_hip_yaw = 1 * all_cost_scale * reduce_reg_weight;
   double w_q_quat = 1 * all_cost_scale * reduce_reg_weight;
   // TODO: if you want to use w_q_quat, you need to modify it for turning
@@ -1948,7 +1973,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // the solver might exploit the integration scheme. If we only penalize
   // velocity at knots, then the solver will converge to small velocity at knots
   // but big acceleration at knots!)
-  double w_q_diff = 0.1 * all_cost_scale;
   double w_q_diff_swing_toe = w_q_diff * 1;
   // Testing
   double w_v_diff_swing_leg = w_v_diff * 1;
@@ -1956,17 +1980,25 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_joint_accel = 0.00001;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
-  bool swing_foot_ground_clearance = true;
-  bool swing_foot_mid_xy = false;
-  if (turning_rate != 0) swing_foot_mid_xy = false;
-  bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
   bool periodic_joint_pos = true;
   bool periodic_floating_base_vel = true;
   bool periodic_joint_vel = true;
   bool periodic_effort = false;
+
+  bool swing_foot_ground_clearance = true;
+  if (setting.swing_foot_cublic_spline_constraint)
+    swing_foot_ground_clearance = false;
+  bool swing_foot_mid_xy = false;
+  if (turning_rate != 0) swing_foot_mid_xy = false;
+  bool swing_leg_collision_avoidance = true;
+
   bool ground_normal_force_margin = false;
   bool zero_com_height_vel = false;
+  if (!setting.com_accel_constraint) {
+    zero_com_height_vel = false;
+  }
+
   // Testing
   bool zero_com_height_vel_difference = false;
   bool zero_pelvis_height_vel = false;
@@ -1984,14 +2016,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing
   bool only_one_mode = false;
+  bool one_mode_full_states_constraint_at_boundary = false;
+  bool one_mode_full_positions_constraint_at_boundary = true;
+  bool one_mode_base_x_constraint_at_boundary = false;
   if (only_one_mode) {
     periodic_joint_pos = false;
     periodic_joint_vel = false;
     periodic_effort = false;
+  } else {
+    one_mode_full_states_constraint_at_boundary = false;
+    one_mode_full_positions_constraint_at_boundary = false;
+    one_mode_base_x_constraint_at_boundary = false;
   }
-  bool one_mode_full_states_constraint_at_boundary = false;
-  bool one_mode_full_positions_constraint_at_boundary = true;
-  bool one_mode_base_x_constraint_at_boundary = false;
 
   // Testing
   bool add_cost_on_collocation_vel = false;
@@ -2456,85 +2492,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     //                                      xf.head(7));
   }
 
-  // Testing -- add start/end position constraint (TODO: delete this)
-  VectorXd x0_val(plant.num_positions() + plant.num_velocities());
-  VectorXd xf_val(plant.num_positions() + plant.num_velocities());
-  // From:
-  // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
-  //  x0_val << 1, 0, 0, 0, 0, 0.00135545, 1.09939, -0.0768261, 0.0651368,
-  //      0.0339166, -0.0339448, 0.431728, 0.1889, -0.646, -0.785052, 0.866859,
-  //      1.00734, -1.52347, -1.28247, 1.68172E-08, -2.93932E-08, 1.30851E-11,
-  //      0.618169, 0.135654, -0.0738718, -0.10875, -0.110773, -0.000283673,
-  //      0.0345027, 0.0339327, -0.597203, -1.3188, -0.151959, 1.33654,
-  //      0.153149, -0.0479795, 0.564141;
-  //  xf_val << 1, 0, 0, 0, 0.3, -0.00135545, 1.09939, -0.0651368, 0.0768261,
-  //      0.0339448, -0.0339166, 0.1889, 0.431728, -0.785052, -0.646, 1.00734,
-  //      0.866859, -1.28247, -1.52347, 0.542888, -0.274931, 0.00598288,
-  //      0.601503, -0.146041, -0.140087, -0.387284, 0.0312489, 0.012249,
-  //      0.130986, -0.824682, 0.305998, -0.225036, 0.293566, 0.226799,
-  //      -0.297514, 0.543059, -0.727215;
-  // From:
-  // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
-  // traj/Cost setting 2/1 rederived start and end state from nomial traj/
-  //  x0_val << 1, 0, 0, 0, 0, 0.00403739, 1.09669, -0.0109186, -0.00428689,
-  //      0.0286625, -0.0286639, 0.455519, 0.229628, -0.646, -0.82116, 0.866859,
-  //      1.04372, -1.54955, -1.3258, 1.95188E-07, -8.5509E-08, -8.03449E-11,
-  //      0.660358, 0.322854, -0.0609757, -0.277685, -0.274869, -8.67676E-05,
-  //      0.0667662, 0.0559658, -0.659971, -1.44404, -0.10276, 1.46346, 0.10347,
-  //      -0.0674264, 0.631613;
-  //  xf_val << 1, 0, 0, 0, 0.3, -0.00403739, 1.09669, 0.00428689, 0.0109186,
-  //      0.0286639, -0.0286625, 0.229628, 0.455519, -0.82116, -0.646, 1.04372,
-  //      0.866859, -1.3258, -1.54955, 0.51891, -0.174452, 0.100391, 0.661351,
-  //      -0.338064, -0.12571, -0.183991, 0.218535, -0.101178, -0.0317852,
-  //      -0.8024, -0.278951, -0.148364, 0.375203, 0.149389, -0.380249,
-  //      0.617827, -0.712411;
-  // From:
-  // /home/yuming/Desktop/20200926 try to impose lipm constraint/33 play with
-  // periodicity cosntraint/5 relax vel periodicity constraint/robot_1
-  //  x0_val << 1, 0, 0, 0, 0, -0.00562789, 1.11289, 0.000132934, -0.00535692,
-  //      0.0568366, -0.0568358, 0.379726, 0.0957978, -0.646, -0.696699,
-  //      0.866859, 0.918171, -1.47408, -1.19106, 0.179286, 0.180633, -0.233861,
-  //      0.620297, 0.366947, 0.000266116, -0.49626, -0.344546, 0.233888,
-  //      0.237652, -0.205129, -0.605529, -0.538989, 0.482027, 0.546237,
-  //      -0.487284, 0.396197, 0.755361;
-  //  xf_val << 1, 0, 0, 0, 0.3, 0.00562789, 1.11289, 0.00535692, -0.000132934,
-  //      0.0568358, -0.0568366, 0.0957978, 0.379726, -0.696699, -0.646,
-  //      0.918171, 0.866859, -1.19106, -1.47408, 0.131213, 0.0349848, 0.289911,
-  //      0.631216, -0.315915, -0.000545674, 0.193521, 0.00283896, -0.289819,
-  //      -0.246365, -0.822828, -0.0944468, 0.546554, 0.314669, -0.552515,
-  //      -0.318901, 0.84682, -0.888837;
-  // From 20200926 try to impose lipm constraint/35 play with periodicity
-  // cosntraint (new cost weight)/0 base case
-  //  x0_val << 1, 0, 0, 0, 0, 0.00201455, 1.11186, 0.00667135, 0.000154667,
-  //      -0.00160869, -0.00282592, 0.385475, 0.111884, -0.646, -0.700251,
-  //      0.866859, 0.921762, -1.47982, -1.20683, 0.221816, 0.166368, -0.073378,
-  //      0.632197, 0.351811, 0.00308428, -0.542369, -0.466149, 0.074483,
-  //      0.087794, -0.232225, -0.661135, -0.494315, 0.489445, 0.500962,
-  //      -0.494709, 0.390937, 0.789718;
-  //  xf_val << 1, 0, 0, 0, 0.3, -0.00201455, 1.11363, 0.00984533, -0.000591072,
-  //      -0.00160865, 0.00906268, 0.101884, 0.375475, -0.69639, -0.646,
-  //      0.91786, 0.866859, -1.19683, -1.46982, 0.117548, 0.00933199, 0.15473,
-  //      0.619705, -0.367853, 0.00262366, 0.218544, 0.338137, -0.154625,
-  //      -0.199548, -0.863092, -0.142833, 0.557317, 0.275048, -0.563403,
-  //      -0.278747, 0.880573, -0.57644;
-  //  auto xf_end_of_first_mode = trajopt.final_state();
-  //  cout << "\n!specify the start and end configurations!\n\n";
-  //  trajopt.AddBoundingBoxConstraint(x0_val.head(n_q), x0_val.head(n_q),
-  //                                    x0.head(n_q));
-  //  trajopt.AddBoundingBoxConstraint(xf_val.head(n_q), xf_val.head(n_q),
-  //                                    xf_end_of_first_mode.head(n_q));
-  //  trajopt.AddBoundingBoxConstraint(x0_val.head(6), x0_val.head(6),
-  //  x0.head(6)); trajopt.AddBoundingBoxConstraint(xf_val.head(6),
-  //  xf_val.head(6),
-  //                                    xf_end_of_first_mode.head(6));
-  //  trajopt.AddBoundingBoxConstraint(x0_val.segment(7, n_q - 7),
-  //                                    x0_val.segment(7, n_q - 7),
-  //                                    x0.segment(7, n_q - 7));
-  //  trajopt.AddBoundingBoxConstraint(xf_val.segment(7, n_q - 7),
-  //                                    xf_val.segment(7, n_q - 7),
-  //                                    xf_end_of_first_mode.segment(7, n_q -
-  //                                    7));
-
   // Fix time duration
   trajopt.AddDurationBounds(duration, duration);
 
@@ -2747,9 +2704,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
-  if (setting.com_accel_constraint && zero_com_height_vel) {
+  if (zero_com_height_vel) {
     cout << "Adding zero COM height acceleration constraint\n";
-    auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
+    auto com_vel_constraint =
+        std::make_shared<ComZeroHeightAccelConstraint>(&plant);
     std::unordered_map<int, double> com_vel_constraint_scale;
     com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
     com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);
@@ -2758,8 +2716,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       auto x1 = trajopt.state(index + 1);
       trajopt.AddConstraint(com_vel_constraint, {x0, x1});
     }
-  } else {
-    zero_com_height_vel = false;
   }
 
   // Testing
@@ -2789,6 +2745,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       trajopt.AddBoundingBoxConstraint(0, 0, xi(n_q + vel_map.at("base_vz")));
     }
   }
+
+  // Testing -- com at center of support polygon
   if (com_at_center_of_support_polygon) {
     cout << "Adding constraint that COM stays at the center of support "
             "polygon\n";
@@ -2800,22 +2758,46 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt.AddConstraint(com_center_polygon_constraint, x0.head(n_q));
   }
 
+  // Testing -- swing foot cubic spline constraint
+  if (setting.swing_foot_cublic_spline_constraint) {
+    // Cubic spline constraint
+    double mid_foot_height = 0.05;
+    bool include_vel = false;  // we don't need to impose constraint on vel
+                               // because the way points are timestamped.
+    int constraint_sample_spacing = 2;
+    for (int i = 1; i < setting.n_node - 1; i += constraint_sample_spacing) {
+      auto xi = trajopt.state(i);
+      double t_eval = duration / (setting.n_node - 1) * i;
+      auto cubic_spline_constraint =
+          std::make_shared<SwingFootCubicSplineConstraint>(
+              plant, plant.GetBodyByName("toe_right").body_frame(),
+              Vector3d::Zero(), duration, t_eval, mid_foot_height, include_vel);
+      trajopt.AddConstraint(cubic_spline_constraint,
+                            {x0.head(n_q), xf.head(n_q), xi});
+    }
+
+    // zero impact
+    trajopt.AddBoundingBoxConstraint(0, 0, trajopt.impulse_vars(0)(2));
+    trajopt.AddBoundingBoxConstraint(0, 0, trajopt.impulse_vars(0)(5));
+  }
+
   // toe position constraint in y direction (avoid leg crossing)
   VectorXd one = VectorXd::Ones(1);
   std::unordered_map<int, double> odbp_constraint_scale;  // scaling
   odbp_constraint_scale.insert(std::pair<int, double>(0, s));
   if (swing_leg_collision_avoidance && (turning_rate == 0)) {
+    double margin = 0.03;
     auto left_foot_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_left", Vector3d::Zero(),
-            MatrixXd::Identity(3, 3).row(1), 0.05 * one,
+            MatrixXd::Identity(3, 3).row(1), margin * one,
             std::numeric_limits<double>::infinity() * one,
             "left_foot_constraint_y");
     auto right_foot_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", Vector3d::Zero(),
             MatrixXd::Identity(3, 3).row(1),
-            -std::numeric_limits<double>::infinity() * one, -0.05 * one,
+            -std::numeric_limits<double>::infinity() * one, -margin * one,
             "right_foot_constraint_y");
     // scaling
     left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
@@ -3084,6 +3066,26 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt.cost_u_bindings_.push_back(
         trajopt.AddCost(((u1.transpose() * W_R * u1) *
                          multiplier_big_last_knot * fixed_dt / 2)(0)));
+  }
+
+  // add cost on the different of force in x direction on the same toe (fill up
+  // the null space)
+  if (w_lambda) {
+    /*for (int i = 0; i < N; i++) {
+      auto lambda = trajopt.force(0, i);
+      trajopt.cost_lambda_x_diff_bindings_.push_back(
+          trajopt.AddCost(w_lambda * w_lambda * (lambda(0) - lambda(3)) *
+                          (lambda(0) - lambda(3))));
+    }*/
+    for (int i = 0; i < N - 1; i++) {
+      // Btw, I got rid of the force in null space by increasing the weight by
+      // 10000 times. (it's not enough when I increased it by 100 times,
+      // probably because ipopt was stuck in local minimum)
+      auto lambda = trajopt.collocation_force(0, i);
+      trajopt.cost_lambda_x_diff_bindings_.push_back(
+          trajopt.AddCost(w_lambda * w_lambda * (lambda(0) - lambda(3)) *
+                          (lambda(0) - lambda(3))));
+    }
   }
 
   // add cost on force difference wrt time
@@ -3375,6 +3377,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         solvers::EvalCostGivenSolution(result, trajopt.cost_u_bindings_);
     myfile << "cost_u = " << cost_u << endl;
     sub_total_cost += cost_u;
+    double cost_lambda_x_diff = solvers::EvalCostGivenSolution(
+        result, trajopt.cost_lambda_x_diff_bindings_);
+    myfile << "cost_lambda_x_diff = " << cost_lambda_x_diff << endl;
+    sub_total_cost += cost_lambda_x_diff;
     double cost_lambda_diff = solvers::EvalCostGivenSolution(
         result, trajopt.cost_lambda_diff_bindings_);
     myfile << "cost_lambda_diff = " << cost_lambda_diff << endl;

@@ -2762,8 +2762,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (setting.swing_foot_cublic_spline_constraint) {
     // Cubic spline constraint
     double mid_foot_height = 0.05;
-    bool include_vel = false;
-    int constraint_sample_spacing = 3;
+    bool include_vel = false;  // we don't need to impose constraint on vel
+                               // because the way points are timestamped.
+    int constraint_sample_spacing = 2;
     for (int i = 1; i < setting.n_node - 1; i += constraint_sample_spacing) {
       auto xi = trajopt.state(i);
       double t_eval = duration / (setting.n_node - 1) * i;

@@ -144,3 +144,10 @@ local_repository(
     name = _local_inekf_repo_name,
     path = DAIRLIB_LOCAL_INEKF_PATH,
 )
+
+# To use cnpy to load in .npy into c++
+new_local_repository(
+    name = "cnpy_repo",
+    build_file = "/home/yangwill/workspace/cnpy/BUILD.bazel",
+    path = "../cnpy",
+)

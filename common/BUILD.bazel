@@ -3,9 +3,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "common",
     deps = [
-        ":find_resource",
         ":eigen_utils",
         ":file_utils",
+        ":find_resource",
         "@drake//:drake_shared_library",
     ],
 )
@@ -29,10 +29,10 @@ cc_library(
         "eigen_utils.h",
     ],
     deps = [
+        "@cnpy_repo//:cnpy",
         "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_library(
     name = "file_utils",
@@ -46,5 +46,3 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
-
-

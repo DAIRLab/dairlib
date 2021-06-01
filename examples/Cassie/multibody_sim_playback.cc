@@ -216,6 +216,21 @@ int do_main(int argc, char* argv[]) {
 
   if (FLAGS_spring_model) {
     x_init = map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
+  }
+  Eigen::MatrixXd t_init_npy;
+  Eigen::MatrixXd x_init_npy;
+  cnpy2eigen(FLAGS_folder_path_npy + "t_x_" + FLAGS_npy_num + ".npy",
+             t_init_npy);
+  cnpy2eigen(FLAGS_folder_path_npy + "x_" + FLAGS_npy_num + ".npy", x_init_npy);
+//  std::cout << x_init_npy.rows() << "," << x_init_npy.cols() << std::endl;
+//  std::cout << t_init_npy.rows() << "," << t_init_npy.cols() << std::endl;
+//  std::cout << "samples_cols: " << x_init_npy.cols() << "breaks_size" << t_init_npy.size() << std::endl;
+  Eigen::VectorXd t_vec_npy(Eigen::Map<Eigen::VectorXd>(t_init_npy.data(), t_init_npy.size()));
+  auto x_init_traj = PiecewisePolynomial<double>::FirstOrderHold(
+      t_vec_npy, x_init_npy);
+//  std::cout << x_init_traj.value(FLAGS_start_time);
+  x_init = x_init_traj.value(FLAGS_start_time);
+
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 
   diagram_context->SetTime(FLAGS_start_time);

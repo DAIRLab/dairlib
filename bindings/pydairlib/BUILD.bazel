@@ -28,7 +28,7 @@ py_library(
 PY_LIBRARIES = [
     ":module_py",
     "//bindings/pydairlib/common",
-    "//bindings/pydairlib/lcm:lcm_utils",
+    "//bindings/pydairlib/lcm",
     "//bindings/pydairlib/multibody",
 ]
 

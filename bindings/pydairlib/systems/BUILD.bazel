@@ -26,6 +26,21 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "primitives_py",
+    cc_deps = [
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "primitives",
+    cc_srcs = ["primitives_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -43,11 +58,12 @@ py_library(
 
 PY_LIBRARIES = [
     ":robot_lcm_systems_py",
+    ":primitives_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "robot_lcm_systems",
+    name = "systems",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

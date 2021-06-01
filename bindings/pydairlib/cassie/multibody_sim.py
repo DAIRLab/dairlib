@@ -1,19 +1,24 @@
 import numpy as np
 import pydrake
-from pydairlib.cassie.cassie_utils import *
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.systems.primitives import DiscreteTimeDelay
-import pydairlib.multibody
+from pydairlib import multibody
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.common import plot_styler
 from pydairlib.systems.robot_lcm_systems import RobotInputReceiver
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
+from pydairlib.systems.primitives import SubvectorPassThrough
+from pydairlib.cassie.cassie_utils import *
+from pydairlib.lcm import *
+# from pydairlib.systems.lcm import *
 import dairlib
+import drake
 
 
 def main():
+
   builder = DiagramBuilder()
   time_step = 8e-5
   penetration_allowance = 1e-5
@@ -22,27 +27,34 @@ def main():
   end_time = initial_time + 1.0
   rt_rate = 1.0
   plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step)
-  pydairlib.cassie.cassie_utils.addCassieMultibody(plant, scene_graph, True,
-                                                   "examples/Cassie/urdf/cassie_v2.urdf", True, True)
+  addCassieMultibody(plant, scene_graph, True, "examples/Cassie/urdf/cassie_v2.urdf", True, True)
   plant.set_penetration_allowance(penetration_allowance)
   plant.Finalize()
 
   lcm = pydrake.lcm.DrakeLcm()
   input_sub = pydrake.systems.lcm.LcmSubscriberSystem.Make(channel='CASSIE_INPUT', lcm_type=dairlib.lcmt_robot_input,
-                                                           lcm=lcm)
-  input_receiver = RobotInputReceiver(plant)
-  # passthrough = builder.AddSystem(pydrake.systems.lcm.LcmSubscriberSystem(plant))
-  discrete_time_delay = builder.AddSystem(DiscreteTimeDelay(1 / publish_rate, 0, plant.num_actuators()))
-  state_pub = pydrake.systems.lcm.LcmPublisherSystem.Make(channel='CASSIE_STATE_SIMULATION', lcm_type=dairlib.lcmt_robot_output,
-                                                           lcm=lcm)
-  state_sender = RobotOutputSender(plant, True)
+                                                           lcm=lcm, use_cpp_serializer=False)
   import pdb; pdb.set_trace()
-  # state_sender = builder.AddSystem(RobotOutputSender(plant, true))
+  builder.AddSystem(input_sub)
+  input_receiver = RobotInputReceiver(plant)
+  builder.AddSystem(input_receiver)
+  passthrough = builder.AddSystem(SubvectorPassThrough(input_receiver.get_output_port(0).size(), 0,
+                                                       plant.get_actuation_input_port().size()))
+  discrete_time_delay = builder.AddSystem(DiscreteTimeDelay(1 / publish_rate, 0, plant.num_actuators()))
+  state_pub = pydrake.systems.lcm.LcmPublisherSystem.Make(channel='CASSIE_STATE_SIMULATION',
+                                                          lcm_type=dairlib.lcmt_robot_output,
+                                                          lcm=lcm)
+  state_sender = RobotOutputSender(plant, True)
+  builder.AddSystem(state_sender)
 
-  sensor_aggregator = builder.AddImuAndAggregator(plant, passthrough.get_output_port())
-  sensor_pub = builder.AddSystem(LcmPublisherSystem("CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate))
+  # import pdb; pdb.set_trace()
+  # sensor_aggregator = builder.AddSystem(AddImuAndAggregator(builder, plant, passthrough.get_output_port()))
+  sensor_pub = pydrake.systems.lcm.LcmPublisherSystem.Make(channel='CASSIE_STATE_SIMULATION',
+                                                           lcm_type=dairlib.lcmt_robot_output,
+                                                           lcm=lcm)
 
-  builder.Connect(input_sub, input_receiver)
+  builder.Connect(input_sub.get_output_port(), input_receiver.get_input_port())
+  # builder.Connect(input_sub, input_receiver)
   builder.Connect(input_receiver, passthrough)
   builder.Connect(passthrough.get_output_port(),
                   discrete_time_delay.get_input_port())

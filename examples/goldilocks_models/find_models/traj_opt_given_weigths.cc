@@ -3076,8 +3076,10 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
           trajopt.AddCost(w_lambda * w_lambda * (lambda(0) - lambda(3)) *
                           (lambda(0) - lambda(3))));
     }*/
-
     for (int i = 0; i < N - 1; i++) {
+      // Btw, I got rid of the force in null space by increasing the weight by
+      // 10000 times. (it's not enough when I increased it by 100 times,
+      // probably because ipopt was stuck in local minimum)
       auto lambda = trajopt.collocation_force(0, i);
       trajopt.cost_lambda_x_diff_bindings_.push_back(
           trajopt.AddCost(w_lambda * w_lambda * (lambda(0) - lambda(3)) *

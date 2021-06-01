@@ -409,6 +409,105 @@ class JointAccelConstraint : public solvers::NonlinearConstraint<double> {
   int n_lambda_;
 };
 
+class SwingFootCubicSplineConstraint
+    : public solvers::NonlinearConstraint<double> {
+ public:
+  SwingFootCubicSplineConstraint(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::multibody::Frame<double>& body_frame,
+      Vector3d point_wrt_body, double t_f, double t_eval,
+      double mid_foot_height, bool include_vel,
+      const std::string& description = "swing_foot_cubic_spline")
+      : solvers::NonlinearConstraint<double>(
+            include_vel ? 6 : 3,
+            3 * plant.num_positions() + plant.num_velocities(),
+            VectorXd::Zero(include_vel ? 6 : 3),
+            VectorXd::Zero(include_vel ? 6 : 3), description),
+        plant_(plant),
+        world_(plant_.world_frame()),
+        context_(plant_.CreateDefaultContext()),
+        body_frame_(body_frame),
+        point_wrt_body_(point_wrt_body),
+        T_waypoint_({0, t_f / 2, t_f}),
+        t_eval_(t_eval),
+        mid_foot_height_(mid_foot_height),
+        include_vel_(include_vel),
+        n_q_(plant.num_positions()),
+        n_v_(plant.num_velocities()),
+        n_x_(plant.num_positions() + plant.num_velocities()){};
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    if (include_vel_) {
+      y->resize(6);
+    } else {
+      y->resize(3);
+    }
+
+    // Extract our input variables:
+    const auto q0 = x.segment(0, n_q_);
+    const auto qf = x.segment(n_q_, n_q_);
+    const auto q_eval = x.segment(2 * n_q_, n_q_);
+
+    drake::VectorX<double> pt_0(3);
+    drake::VectorX<double> pt_f(3);
+    plant_.SetPositions(context_.get(), q0);
+    this->plant_.CalcPointsPositions(*context_, body_frame_, point_wrt_body_,
+                                     plant_.world_frame(), &pt_0);
+    plant_.SetPositions(context_.get(), qf);
+    this->plant_.CalcPointsPositions(*context_, body_frame_, point_wrt_body_,
+                                     plant_.world_frame(), &pt_f);
+
+    // Construct cubic spline
+    // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
+    // the traj smooth at the mid point
+    std::vector<MatrixXd> Y(3, MatrixXd::Zero(3, 1));
+    Y[0] = pt_0;
+    Y[1] = (pt_0 + pt_f) / 2;
+    Y[2] = pt_f;
+    // mid foot height
+    Y[1](2, 0) += mid_foot_height_;
+    PiecewisePolynomial<double> swing_foot_spline =
+        PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+            T_waypoint_, Y, Vector3d::Zero(), Vector3d::Zero());
+
+    // Evaluation point
+    drake::VectorX<double> pt_eval(3);
+    plant_.SetPositions(context_.get(), q_eval);
+    this->plant_.CalcPointsPositions(*context_, body_frame_, point_wrt_body_,
+                                     plant_.world_frame(), &pt_eval);
+
+    // Assignment
+    y->head<3>() = swing_foot_spline.value(t_eval_) - pt_eval;
+
+    if (include_vel_) {
+      const auto v_eval = x.segment(3 * n_q_, n_v_);
+      drake::MatrixX<double> J_eval(3, n_v_);
+      plant_.CalcJacobianTranslationalVelocity(
+          *context_, drake::multibody::JacobianWrtVariable::kV, body_frame_,
+          point_wrt_body_, world_, world_, &J_eval);
+      drake::VectorX<double> pt_dot_eval = J_eval * v_eval;
+
+      y->tail<3>() = swing_foot_spline.EvalDerivative(t_eval_, 1) - pt_dot_eval;
+    }
+  };
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const drake::multibody::Frame<double>& body_frame_;
+  const Vector3d point_wrt_body_;
+  std::vector<double> T_waypoint_;
+  double t_eval_;
+  double mid_foot_height_;
+  bool include_vel_;
+
+  int n_q_;
+  int n_v_;
+  int n_x_;
+};
+
 void addRegularization(bool is_get_nominal, double eps_reg,
                        GoldilocksModelTrajOpt* trajopt) {
   // Add regularization term here so that hessian is pd (for outer loop), so
@@ -556,9 +655,9 @@ void extractResult(VectorXd& w_sol, const GoldilocksModelTrajOpt& trajopt,
 
   *(QPs.is_success_vec[sample_idx]) = is_success(0);
 
-  // bool constraint_satisfied = solvers::CheckGenericConstraints(trajopt,
-  // result, 1e-5); cout << "constraint_satisfied = " << constraint_satisfied <<
-  // endl;
+  /*bool constraint_satisfied = solvers::CheckGenericConstraints(
+      trajopt, result, setting.major_feasibility_tol);
+  cout << "constraint_satisfied = " << constraint_satisfied << endl;*/
 
   // Get the solution of all the decision variable
   w_sol = result.GetSolution(trajopt.decision_variables());
@@ -1881,17 +1980,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_joint_accel = 0.00001;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
-  bool swing_foot_ground_clearance = true;
-  bool swing_foot_mid_xy = false;
-  if (turning_rate != 0) swing_foot_mid_xy = false;
-  bool swing_leg_collision_avoidance = false;
   bool periodic_quaternion = false;
   bool periodic_joint_pos = true;
   bool periodic_floating_base_vel = true;
   bool periodic_joint_vel = true;
   bool periodic_effort = false;
+
+  bool swing_foot_ground_clearance = true;
+  bool swing_foot_mid_xy = false;
+  if (turning_rate != 0) swing_foot_mid_xy = false;
+  bool swing_leg_collision_avoidance = true;
+
   bool ground_normal_force_margin = false;
   bool zero_com_height_vel = false;
+  if (!setting.com_accel_constraint) {
+    zero_com_height_vel = false;
+  }
+
   // Testing
   bool zero_com_height_vel_difference = false;
   bool zero_pelvis_height_vel = false;
@@ -2672,7 +2777,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
-  if (setting.com_accel_constraint && zero_com_height_vel) {
+  if (zero_com_height_vel) {
     cout << "Adding zero COM height acceleration constraint\n";
     auto com_vel_constraint =
         std::make_shared<ComZeroHeightAccelConstraint>(&plant);
@@ -2684,8 +2789,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       auto x1 = trajopt.state(index + 1);
       trajopt.AddConstraint(com_vel_constraint, {x0, x1});
     }
-  } else {
-    zero_com_height_vel = false;
   }
 
   // Testing
@@ -2715,6 +2818,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       trajopt.AddBoundingBoxConstraint(0, 0, xi(n_q + vel_map.at("base_vz")));
     }
   }
+
+  // Testing -- com at center of support polygon
   if (com_at_center_of_support_polygon) {
     cout << "Adding constraint that COM stays at the center of support "
             "polygon\n";
@@ -2726,22 +2831,44 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt.AddConstraint(com_center_polygon_constraint, x0.head(n_q));
   }
 
+  // Testing -- swing foot cubic spline constraint
+  if (setting.swing_foot_cublic_spline_constraint) {
+    // Cubic spline constraint
+    double mid_foot_height = 0.05;
+    bool include_vel = false;
+    for (int i = 1; i < setting.n_node - 1; i++) {
+      auto xi = trajopt.state(i);
+      double t_eval = duration / (setting.n_node - 1) * i;
+      auto cubic_spline_constraint =
+          std::make_shared<SwingFootCubicSplineConstraint>(
+              plant, plant.GetBodyByName("toe_right").body_frame(),
+              Vector3d::Zero(), duration, t_eval, mid_foot_height, include_vel);
+      trajopt.AddConstraint(cubic_spline_constraint,
+                            {x0.head(n_q), xf.head(n_q), xi});
+    }
+
+    // zero impact
+    trajopt.AddBoundingBoxConstraint(0, 0, trajopt.impulse_vars(0)(2));
+    trajopt.AddBoundingBoxConstraint(0, 0, trajopt.impulse_vars(0)(5));
+  }
+
   // toe position constraint in y direction (avoid leg crossing)
   VectorXd one = VectorXd::Ones(1);
   std::unordered_map<int, double> odbp_constraint_scale;  // scaling
   odbp_constraint_scale.insert(std::pair<int, double>(0, s));
   if (swing_leg_collision_avoidance && (turning_rate == 0)) {
+    double margin = 0.03;
     auto left_foot_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_left", Vector3d::Zero(),
-            MatrixXd::Identity(3, 3).row(1), 0.05 * one,
+            MatrixXd::Identity(3, 3).row(1), margin * one,
             std::numeric_limits<double>::infinity() * one,
             "left_foot_constraint_y");
     auto right_foot_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", Vector3d::Zero(),
             MatrixXd::Identity(3, 3).row(1),
-            -std::numeric_limits<double>::infinity() * one, -0.05 * one,
+            -std::numeric_limits<double>::infinity() * one, -margin * one,
             "right_foot_constraint_y");
     // scaling
     left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);

@@ -180,6 +180,7 @@ DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 // Testing
 DEFINE_bool(com_accel_constraint, false, "");
 DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
+DEFINE_bool(swing_foot_cublic_spline, false, "");
 DEFINE_double(turning_rate_center, 0.0, "The step size for outer loop");
 
 void setCostWeight(double* Q, double* R, double* all_cost_scale,
@@ -1763,11 +1764,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.com_accel_constraint = FLAGS_com_accel_constraint;
   inner_loop_setting.cubic_spline_in_rom_constraint =
       FLAGS_cubic_spline_in_rom_constraint;  // for testing
+  inner_loop_setting.swing_foot_cublic_spline_constraint =
+      FLAGS_swing_foot_cublic_spline;  // for testing
   cout << "directory = " << dir << endl;
   cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint
        << endl;
   cout << "cubic_spline_in_rom_constraint = "
        << inner_loop_setting.cubic_spline_in_rom_constraint << endl;
+  cout << "swing_foot_cublic_spline_constraint = "
+       << inner_loop_setting.swing_foot_cublic_spline_constraint << endl;
   if (inner_loop_setting.snopt_log) {
     cout << "WARNING: you are printing snopt log for Cassie (could slow down "
             "the optimization)!\n";

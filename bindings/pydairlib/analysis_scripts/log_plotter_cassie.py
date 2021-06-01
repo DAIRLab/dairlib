@@ -119,31 +119,32 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  t_start = 30.0
-  t_end = 32.0
+  # t_start = 30.0
+  # t_end = 33.0
   # t_start = 30.47
   # t_end = 31.0
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
 
-  # log_file_num = '27'
-  # x = x[t_slice]
-  # u = u[t_u_slice]
-  # t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
-  # t_u = np.reshape(t_u[t_u_slice], (t_u[t_u_slice].shape[0], 1))
+  log_file_num = '28'
+  x = x[t_slice]
+  u = u[t_u_slice]
+  t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
+  t_u = np.reshape(t_u[t_u_slice], (t_u[t_u_slice].shape[0], 1))
   # import pdb; pdb.set_trace()
-  # np.save(ps.directory + 'x_' + log_file_num, x)
-  # np.save(ps.directory + 't_x_' + log_file_num, t_x)
-  # np.save(ps.directory + 't_u_' + log_file_num, t_u)
-  # np.save(ps.directory + 'u_' + log_file_num, u)
+  np.save(ps.directory + 'x_' + log_file_num, x)
+  np.save(ps.directory + 't_x_' + log_file_num, t_x)
+  np.save(ps.directory + 't_u_' + log_file_num, t_u)
+  np.save(ps.directory + 'u_' + log_file_num, u)
 
   ### All plotting scripts here
   # plot_status(full_log)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
+  # import pdb; pdb.set_trace()
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  # plot_contact_est(full_log)
+  plot_contact_est(full_log)
 
   if False:
     # front_contact_disp = np.zeros(3)

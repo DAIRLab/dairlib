@@ -259,6 +259,7 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+        "//systems/controllers:trajectory_playback",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

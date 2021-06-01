@@ -1,9 +1,7 @@
 #include <memory>
 
-#include <cnpy.h>
 #include <gflags/gflags.h>
 
-#include "common/eigen_utils.h"
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -68,11 +66,6 @@ DEFINE_double(start_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
 DEFINE_string(traj_name, "", "Name of the saved trajectory");
-DEFINE_string(npy_num, "", "Name of the saved initial state");
-DEFINE_string(
-    folder_path_npy,
-    "/home/yangwill/Documents/research/projects/impact_uncertainty/data/",
-    "Name of the saved initial state");
 DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
@@ -213,8 +206,7 @@ int do_main(int argc, char* argv[]) {
       dircon_trajectory.ReconstructStateTrajectory();
 
   Eigen::VectorXd x_init = state_traj.value(FLAGS_start_time);
-
-  if (FLAGS_spring_model) {
+  if (FLAGS_spring_model)
     x_init = map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 

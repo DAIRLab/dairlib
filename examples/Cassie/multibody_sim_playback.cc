@@ -10,6 +10,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/trajectory_playback.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -143,6 +144,18 @@ int do_main(int argc, char* argv[]) {
   auto state_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, true);
 
+  Eigen::MatrixXd t_u_init_npy;
+  Eigen::MatrixXd u_init_npy;
+  cnpy2eigen(FLAGS_folder_path_npy + "t_u_" + FLAGS_npy_num + ".npy",
+             t_u_init_npy);
+  cnpy2eigen(FLAGS_folder_path_npy + "u_" + FLAGS_npy_num + ".npy", u_init_npy);
+  Eigen::VectorXd t_u_vec_npy(
+      Eigen::Map<Eigen::VectorXd>(t_u_init_npy.data(), t_u_init_npy.size()));
+  auto u_init_traj =
+      PiecewisePolynomial<double>::FirstOrderHold(t_u_vec_npy, u_init_npy);
+  auto controller_playback = builder.AddSystem<systems::TrajectoryPlayback>(
+      u_init_traj, plant.num_actuators());
+
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
       *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
@@ -164,7 +177,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*input_receiver, *passthrough);
   builder.Connect(passthrough->get_output_port(),
                   discrete_time_delay->get_input_port());
-  builder.Connect(discrete_time_delay->get_output_port(),
+  builder.Connect(controller_playback->get_output_port(),
                   plant.get_actuation_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
@@ -182,6 +195,7 @@ int do_main(int argc, char* argv[]) {
                   contact_results_publisher.get_input_port());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
+
 
   if (FLAGS_terrain_height != 0.0) {
     DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
@@ -219,16 +233,16 @@ int do_main(int argc, char* argv[]) {
   }
   Eigen::MatrixXd t_init_npy;
   Eigen::MatrixXd x_init_npy;
+
   cnpy2eigen(FLAGS_folder_path_npy + "t_x_" + FLAGS_npy_num + ".npy",
              t_init_npy);
   cnpy2eigen(FLAGS_folder_path_npy + "x_" + FLAGS_npy_num + ".npy", x_init_npy);
-//  std::cout << x_init_npy.rows() << "," << x_init_npy.cols() << std::endl;
-//  std::cout << t_init_npy.rows() << "," << t_init_npy.cols() << std::endl;
-//  std::cout << "samples_cols: " << x_init_npy.cols() << "breaks_size" << t_init_npy.size() << std::endl;
-  Eigen::VectorXd t_vec_npy(Eigen::Map<Eigen::VectorXd>(t_init_npy.data(), t_init_npy.size()));
-  auto x_init_traj = PiecewisePolynomial<double>::FirstOrderHold(
-      t_vec_npy, x_init_npy);
-//  std::cout << x_init_traj.value(FLAGS_start_time);
+
+  Eigen::VectorXd t_vec_npy(
+      Eigen::Map<Eigen::VectorXd>(t_init_npy.data(), t_init_npy.size()));
+
+  auto x_init_traj =
+      PiecewisePolynomial<double>::FirstOrderHold(t_vec_npy, x_init_npy);
   x_init = x_init_traj.value(FLAGS_start_time);
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);

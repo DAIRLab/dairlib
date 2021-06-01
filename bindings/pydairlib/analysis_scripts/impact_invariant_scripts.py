@@ -36,7 +36,8 @@ def calc_loop_closure_jacobian(plant, context, x_pre):
   return J_l_loop, J_r_loop
 
 def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr):
-  t_pre = 30.557
+  # t_pre = 30.557
+  t_pre = 30.645
   t_idx = np.argwhere(np.abs(t_x - t_pre) < 1e-3)[0][0]
   x_pre = x[t_idx]
 
@@ -74,8 +75,11 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   plt.figure("joint velocities")
   for i in range(6):
     # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12:], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)')
-    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
-    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+    # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
+    # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+
+    ps.plot(t_x[t_slice], x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
+    ps.plot(t_x[t_slice], x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
 
   joint_vel_datatypes = [r'$Hip\ Roll_L$',
                          r'$Hip\ Roll_R$',
@@ -97,8 +101,8 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   # ps.add_legend(joint_vel_datatypes)
 
   plt.ylim([-8, 8])
-  plt.xlim([-10, 30])
-  plt.xticks(np.arange(-10, 30+0.1, 10))
+  # plt.xlim([-50, 30])
+  # plt.xticks(np.arange(-50, 30+0.1, 10))
   plt.yticks(np.arange(-8, 8.1, 2))
   # ps.save_fig('joint_velocities_hardware_for_video.png')
 
@@ -110,8 +114,8 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   # ps.add_legend(['%.0f' % i for i in range(18)])
 
   plt.ylim([-3, 1])
-  plt.xlim([-10, 30])
-  plt.xticks(np.arange(-10, 30+0.1, 10))
+  # plt.xlim([-50, 30])
+  # plt.xticks(np.arange(-50, 30+0.1, 10))
   plt.yticks(np.arange(-3, 1.1, 2))
   legend_elements_lines = []
   for i in range(len(joint_vel_datatypes)):

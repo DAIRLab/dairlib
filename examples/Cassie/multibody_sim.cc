@@ -245,6 +245,8 @@ int do_main(int argc, char* argv[]) {
   q_init.head<4>() << cos(theta / 2), 0, 0, sin(theta / 2);
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, v_init);
+  std::cout << "q_init = \n" << q_init << std::endl;
+  std::cout << "v_init = \n" << v_init << std::endl;
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

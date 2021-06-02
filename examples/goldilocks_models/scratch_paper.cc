@@ -15,6 +15,8 @@
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
+#include "common/file_utils.h"
+
 using Eigen::MatrixXd;
 using Eigen::MatrixXi;
 using Eigen::Vector3d;
@@ -40,13 +42,12 @@ using drake::solvers::MathematicalProgramResult;
 namespace dairlib::goldilocks_models {
 
 int run(int argc, char* argv[]) {
-  VectorXd vec(6);
-  vec << 0, 1, 2, 3, 4, 5;
-  MatrixXd mat = Eigen::Map<MatrixXd>(vec.data(), 3, 2).topRows<2>();
-
-  cout << mat << endl;
-
-  cout << mat * Eigen::VectorXd::Ones(2) << endl;
+  /// Reshape
+  //  VectorXd vec(6);
+  //  vec << 0, 1, 2, 3, 4, 5;
+  //  MatrixXd mat = Eigen::Map<MatrixXd>(vec.data(), 3, 2).topRows<2>();
+  //  cout << mat << endl;
+  //  cout << mat * Eigen::VectorXd::Ones(2) << endl;
 
   return 0;
 }  // int run

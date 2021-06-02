@@ -251,6 +251,7 @@ cc_binary(
     name = "scratch_paper",
     srcs = ["scratch_paper.cc"],
     deps = [
+        "//common:file_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

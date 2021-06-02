@@ -129,7 +129,7 @@ DEFINE_double(
 //  The accuracy decreases in the direction from method 4 to method 6, while the
 //  solving speed increases (method4 is about 10x faster than method6).
 //  Method 1 and 2 require the matrix (A in Ax=b) being positive definite.
-DEFINE_int32(method_to_solve_system_of_equations, 4,
+DEFINE_int32(method_to_solve_system_of_equations, 5,
              "Method 0: use optimization program to solve it "
              "Method 1: inverse the matrix by schur complement "
              "Method 2: inverse the matrix by inverse() "
@@ -640,82 +640,116 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
          << endl;
   } else if ((method_to_solve_system_of_equations >= 2) &&
              (method_to_solve_system_of_equations <= 6)) {
-    // H_ext = [H A'; A 0]
-    int nl_i = (*(QPs.nl_vec[sample]));
-    int nw_i = (*(QPs.nw_vec[sample]));
-    MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
-    H_ext.block(0, 0, nw_i, nw_i) = (*(QPs.H_vec[sample]));
-    H_ext.block(0, nw_i, nw_i, nl_i) = QPs.A_active_vec[sample]->transpose();
-    H_ext.block(nw_i, 0, nl_i, nw_i) = (*(QPs.A_active_vec[sample]));
-    H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
+    bool successful = false;
+    while (!successful) {
+      // H_ext = [H A'; A 0]
+      int nl_i = (*(QPs.nl_vec[sample]));
+      int nw_i = (*(QPs.nw_vec[sample]));
+      MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
+      H_ext.block(0, 0, nw_i, nw_i) = (*(QPs.H_vec[sample]));
+      H_ext.block(0, nw_i, nw_i, nl_i) = QPs.A_active_vec[sample]->transpose();
+      H_ext.block(nw_i, 0, nl_i, nw_i) = (*(QPs.A_active_vec[sample]));
+      H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
 
-    if (method_to_solve_system_of_equations == 2) {
-      // Method 2: use inverse() directly //////////////////////////////////////
-      // (This one requires the Hessian H to be pd.)
-      // This method has been working pretty well, but it requires H to be pd.
-      // And in order to get pd H, we need to extract independent row of matrix
-      // A, which takes too much time in the current method.
-      MatrixXd inv_H_ext = H_ext.inverse();
+      if (method_to_solve_system_of_equations == 2) {
+        // Method 2: use inverse() directly ////////////////////////////////////
+        // (This one requires the Hessian H to be pd.)
+        // This method has been working pretty well, but it requires H to be pd.
+        // And in order to get pd H, we need to extract independent row of
+        // matrix A, which takes too much time in the current method.
+        MatrixXd inv_H_ext = H_ext.inverse();
 
-      MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
-      MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
+        MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
+        MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
 
-      Pi = -inv_H_ext12 * (*(QPs.B_active_vec[sample]));
-      qi = -inv_H_ext11 * (*(QPs.b_vec[sample]));
-    } else if (method_to_solve_system_of_equations == 3) {
-      // Method 3: use Moore–Penrose pseudo inverse ////////////////////////////
-      MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext, 1e-8);
+        Pi = -inv_H_ext12 * (*(QPs.B_active_vec[sample]));
+        qi = -inv_H_ext11 * (*(QPs.b_vec[sample]));
 
-      MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
-      MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
+        successful = true;  // Don't use other methods after this
+      } else if (method_to_solve_system_of_equations == 3) {
+        // Method 3: use Moore–Penrose pseudo inverse //////////////////////////
+        MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext, 1e-8);
 
-      Pi = -inv_H_ext12 * (*(QPs.B_active_vec[sample]));
-      qi = -inv_H_ext11 * (*(QPs.b_vec[sample]));
-    } else if (method_to_solve_system_of_equations == 4) {
-      // Method 4: linear solve with householderQr /////////////////////////////
-      MatrixXd B_aug =
-          MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
-      B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
+        MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
+        MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
 
-      Pi = H_ext.householderQr().solve(B_aug).topRows(nw_i);
-      qi = VectorXd::Zero(nw_i);
+        Pi = -inv_H_ext12 * (*(QPs.B_active_vec[sample]));
+        qi = -inv_H_ext11 * (*(QPs.b_vec[sample]));
 
-      /*MatrixXd temp = H_ext.householderQr().solve(B_aug);
-      Pi = temp.topRows(nw_i);
-      qi = VectorXd::Zero(nw_i);
-      string string_to_print =
-          "error (max element) = " +
-          to_string((H_ext * temp - B_aug).cwiseAbs().maxCoeff()) + "\n";
-      cout << string_to_print;*/
-    } else if (method_to_solve_system_of_equations == 5) {
-      // Method 5: linear solve with ColPivHouseholderQR ///////////////////////
-      MatrixXd B_aug =
-          MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
-      B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
+        successful = true;  // Don't use other methods after this
+      } else if (method_to_solve_system_of_equations == 4) {
+        // Method 4: linear solve with householderQr ///////////////////////////
+        MatrixXd B_aug =
+            MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
+        B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
 
-      Pi = Eigen::ColPivHouseholderQR<MatrixXd>(H_ext).solve(B_aug).topRows(
-          nw_i);
-      qi = VectorXd::Zero(nw_i);
-    } else if (method_to_solve_system_of_equations == 6) {
-      // Method 6: linear solve with bdcSvd ////////////////////////////////////
-      // https://eigen.tuxfamily.org/dox/group__TutorialLinearAlgebra.html
-      MatrixXd B_aug =
-          MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
-      B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
+        MatrixXd sol = H_ext.householderQr().solve(B_aug);
+        Pi = sol.topRows(nw_i);
+        qi = VectorXd::Zero(nw_i);
 
-      Pi = H_ext.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
-               .solve(B_aug)
-               .topRows(nw_i);
-      qi = VectorXd::Zero(nw_i);
+        double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
+        if (max_error > 1e-4 || std::isnan(max_error) ||
+            std::isinf(max_error)) {
+          cout << "  sample " << sample << "'s max_error = " << max_error
+               << "; switch to method 5\n";
+          method_to_solve_system_of_equations = 5;
+        } else {
+          successful = true;
+        }
 
-      /*MatrixXd temp =
-          H_ext.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(B_aug);
-      Pi = temp.topRows(nw_i);
-      qi = VectorXd::Zero(nw_i);
-      string string_to_print =
-          "error (max element) = " +
-          to_string((H_ext * temp - B_aug).cwiseAbs().maxCoeff()) + "\n";
-      cout << string_to_print;*/
+        /*// Testing
+        writeCSV(dir + to_string(sample) + "_H_ext_nan", H_ext, true);
+        writeCSV(dir + to_string(sample) + "_B_aug_nan", B_aug, true);
+        writeCSV(dir + to_string(sample) + "_Pi_nan", Pi, true);
+        writeCSV(dir + to_string(sample) + "_nw_i_nan",
+                 nw_i * VectorXd::Ones(1), true);*/
+
+      } else if (method_to_solve_system_of_equations == 5) {
+        // Method 5: linear solve with ColPivHouseholderQR /////////////////////
+        MatrixXd B_aug =
+            MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
+        B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
+
+        MatrixXd sol = Eigen::ColPivHouseholderQR<MatrixXd>(H_ext).solve(B_aug);
+        Pi = sol.topRows(nw_i);
+        qi = VectorXd::Zero(nw_i);
+
+        double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
+        if (max_error > 1e-4 || std::isnan(max_error) ||
+            std::isinf(max_error)) {
+          cout << "  sample " << sample << "'s max_error = " << max_error
+               << "; switch to method 6\n";
+          method_to_solve_system_of_equations = 6;
+        } else {
+          successful = true;
+        }
+
+      } else if (method_to_solve_system_of_equations == 6) {
+        // Method 6: linear solve with bdcSvd //////////////////////////////////
+        // https://eigen.tuxfamily.org/dox/group__TutorialLinearAlgebra.html
+        MatrixXd B_aug =
+            MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
+        B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
+
+        /*Pi = H_ext.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
+                 .solve(B_aug)
+                 .topRows(nw_i);
+        qi = VectorXd::Zero(nw_i);*/
+
+        MatrixXd sol = H_ext.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
+                           .solve(B_aug);
+        Pi = sol.topRows(nw_i);
+        qi = VectorXd::Zero(nw_i);
+
+        double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
+        if (max_error > 1e-4 || std::isnan(max_error) ||
+            std::isinf(max_error)) {
+          cout << "  sample " << sample << "'s max_error = " << max_error
+               << "; move on.\n";
+        }
+
+        break;
+      }
     }
   } else {
     throw std::runtime_error("Should not reach here");
@@ -728,18 +762,14 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
 
   // Testing
   MatrixXd abs_Pi = Pi.cwiseAbs();
-  VectorXd left_one = VectorXd::Ones(abs_Pi.rows());
-  VectorXd right_one = VectorXd::Ones(abs_Pi.cols());
+  //  VectorXd left_one = VectorXd::Ones(abs_Pi.rows());
+  //  VectorXd right_one = VectorXd::Ones(abs_Pi.cols());
   // cout << "sum-abs-Pi: " <<
   //      left_one.transpose()*abs_Pi*right_one << endl;
   // cout << "sum-abs-Pi divide by m*n: " <<
   //      left_one.transpose()*abs_Pi*right_one / (abs_Pi.rows()*abs_Pi.cols())
   //      << endl;
-  double max_Pi_element = abs_Pi(0, 0);
-  for (int i = 0; i < abs_Pi.rows(); i++)
-    for (int j = 0; j < abs_Pi.cols(); j++) {
-      if (abs_Pi(i, j) > max_Pi_element) max_Pi_element = abs_Pi(i, j);
-    }
+  double max_Pi_element = Pi.cwiseAbs().maxCoeff();
   /*string to_be_print =
       "sample #" + to_string(sample) + ":  " +
       "max element of abs-Pi = " + to_string(max_Pi_element) +

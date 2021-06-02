@@ -640,6 +640,7 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
          << endl;
   } else if ((method_to_solve_system_of_equations >= 2) &&
              (method_to_solve_system_of_equations <= 6)) {
+    double residual_tol = 1e-4;
     bool successful = false;
     while (!successful) {
       // H_ext = [H A'; A 0]
@@ -688,7 +689,7 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
         qi = VectorXd::Zero(nw_i);
 
         double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
-        if (max_error > 1e-4 || std::isnan(max_error) ||
+        if (max_error > residual_tol || std::isnan(max_error) ||
             std::isinf(max_error)) {
           cout << "  sample " << sample << "'s max_error = " << max_error
                << "; switch to method 5\n";
@@ -715,7 +716,7 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
         qi = VectorXd::Zero(nw_i);
 
         double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
-        if (max_error > 1e-4 || std::isnan(max_error) ||
+        if (max_error > residual_tol || std::isnan(max_error) ||
             std::isinf(max_error)) {
           cout << "  sample " << sample << "'s max_error = " << max_error
                << "; switch to method 6\n";
@@ -742,7 +743,7 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
         qi = VectorXd::Zero(nw_i);
 
         double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
-        if (max_error > 1e-4 || std::isnan(max_error) ||
+        if (max_error > residual_tol || std::isnan(max_error) ||
             std::isinf(max_error)) {
           cout << "  sample " << sample << "'s max_error = " << max_error
                << "; move on.\n";
@@ -1796,12 +1797,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
       FLAGS_cubic_spline_in_rom_constraint;  // for testing
   inner_loop_setting.swing_foot_cublic_spline_constraint =
       FLAGS_swing_foot_cublic_spline;  // for testing
+  cout << "mu = " << inner_loop_setting.mu << endl;
   cout << "directory = " << dir << endl;
   cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint
        << endl;
   cout << "cubic_spline_in_rom_constraint = "
        << inner_loop_setting.cubic_spline_in_rom_constraint << endl;
-  cout << "swing_foot_cublic_spline_constraint = "
+  cout << "swing_foot_cublic_spline_constraint (zero impact) = "
        << inner_loop_setting.swing_foot_cublic_spline_constraint << endl;
   if (inner_loop_setting.snopt_log) {
     cout << "WARNING: you are printing snopt log for Cassie (could slow down "
@@ -2312,8 +2314,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // 1. any sample failed after a all-success iteration
           // 2. fail rate higher than threshold before seeing all-success
           // iteration
-          if ((has_been_all_success && !no_sample_failed_so_far) ||
-              (!has_been_all_success && (!success_rate_is_high_enough))) {
+          /*if ((has_been_all_success && !no_sample_failed_so_far) ||
+              (!has_been_all_success && (!success_rate_is_high_enough))) {*/
+          if ((has_been_all_success && !no_sample_failed_so_far &&
+               (n_shrink_step < 3)) ||
+              !success_rate_is_high_enough) {
             // Wait for the assigned threads to join, and then break;
             cout << "(has_been_all_success, no_sample_failed_so_far, "
                     "success_rate_is_high_enough) = ("

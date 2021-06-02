@@ -741,6 +741,7 @@ EventStatus CassieStateEstimator::Update(
   // when running the PD controller with external support
   if (left_contact && right_contact && hardware_test_mode_ == 2) {
     hardware_test_mode_ = -1;
+    cout << "Switch to test_mode -1 \n";
   }
 
   // Test mode needed for hardware experiment

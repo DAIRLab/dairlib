@@ -8,11 +8,11 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "1.dispatcher-robot-out (wireless)" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=false";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=2 --broadcast_robot_state=false";
         host = "dair-cassie";
     }
     cmd "1.dispatcher-robot-out (run local)" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0 --broadcast_robot_state=false";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=2 --broadcast_robot_state=false";
         host = "dair-cassie";
     }
     cmd "2.2.optimal-rom-walking-controller (run local)" {

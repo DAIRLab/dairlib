@@ -12,6 +12,7 @@ struct OSCRomWalkingGains {
   int model_iter;
   int sample_idx;
   double stride_length;
+  bool use_lipm_mpc_and_ik;
   double w_Q;
   double w_R;
   double w_rom_reg;
@@ -145,6 +146,7 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(model_iter));
     a->Visit(DRAKE_NVP(sample_idx));
     a->Visit(DRAKE_NVP(stride_length));
+    a->Visit(DRAKE_NVP(use_lipm_mpc_and_ik));
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_rom_reg));

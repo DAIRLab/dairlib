@@ -389,6 +389,8 @@ int DoMain(int argc, char* argv[]) {
       // So that the desired yaw angle always points at x direction)
       global_target_position(0) = std::numeric_limits<double>::infinity();
     }
+    cout << "global_target_position = " << global_target_position.transpose()
+         << endl;
     Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
                                          gains.yaw_deadband_radius);
     auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(

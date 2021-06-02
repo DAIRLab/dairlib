@@ -100,7 +100,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // Although warm start helps most of the time, it could also make the solver
   // not able to find the optimal solution from time to time
   bool warm_start_with_previous_solution_ = true;
-  bool use_lipm_mpc_and_ik_ = true;
+  bool use_lipm_mpc_and_ik_ = false;
 
   // Since sometimes the planner replan every 1ms in the beginning of the
   // simulation (e.g. at 0, 1, 2 ms), we use

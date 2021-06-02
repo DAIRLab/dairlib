@@ -176,7 +176,6 @@ def CollectAllTrajoptSampleIndices(task, task_tolerance):
   rom_iter = 0
 
   n_sample_trajopt = int(np.loadtxt(model_dir + "n_sample.csv"))
-  print("n_sample_trajopt = " + str(n_sample_trajopt))
   sample_indices = []
   for j in range(n_sample_trajopt):
     path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
@@ -596,10 +595,6 @@ def GetVaryingTaskElementIdx(task_list):
 
 
 if __name__ == "__main__":
-  # Build files just in case forgetting
-  build_files('examples/goldilocks_models/...')
-  build_files('examples/Cassie:multibody_sim')
-
   # Read the controller parameters
   a_yaml_file = open(
     "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml")
@@ -702,9 +697,13 @@ if __name__ == "__main__":
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
   print("log_indices = \n" + str(log_indices))
 
+  ### Build files just in case forgetting
+  build_files('examples/goldilocks_models/...')
+  build_files('examples/Cassie:multibody_sim')
+
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  # run_sim_and_eval_cost(model_indices, log_indices, task_list)
+  run_sim_and_eval_cost(model_indices, log_indices, task_list)
 
   # Cost evaluate only
   eval_cost_in_multithread(model_indices, log_indices)

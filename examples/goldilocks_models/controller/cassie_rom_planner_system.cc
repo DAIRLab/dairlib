@@ -173,10 +173,16 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
           -1.61137, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0;*/
       x_standing_fixed_spring_ = VectorXd(37);
-      x_standing_fixed_spring_ << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
+      /*x_standing_fixed_spring_ << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
           0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
           1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0;
+          0, 0, 0, 0, 0, 0, 0;*/
+      // A different height
+      x_standing_fixed_spring_ << 1, 0, 0, 0, 0, 0, 0.9, 0.0216645, -0.0216645,
+          0, 0, 0.665022, 0.665022, -1.53461, -1.53461, 1.75905, 1.75905,
+          -1.76295, -1.76295, 0, 0, 0, 0, 0, 0, 0.000343939, 7.9638e-05,
+          -0.00224901, -0.00052079, -0.000889046, 0.00115963, -7.96077e-05,
+          0.000149216, 6.91934e-05, -9.6974e-05, 0.000948192, -0.00122315;
       x_guess_left_in_front_pre_ = x_standing_fixed_spring_;
       x_guess_right_in_front_pre_ = x_standing_fixed_spring_;
       x_guess_left_in_front_post_ = x_standing_fixed_spring_;
@@ -1184,7 +1190,7 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   Vector4d desired_quat(1, 0, 0, 0);
   //  double desired_height = 1;
   double desired_height = x_init(6);  // for testing
-  double time_limit = 0.2;  // 0.02;  // in seconds
+  double time_limit = 0.2;            // 0.02;  // in seconds
   bool include_velocity = false;
 
   double scale = 1;

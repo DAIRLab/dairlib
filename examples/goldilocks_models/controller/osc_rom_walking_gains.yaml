@@ -156,7 +156,7 @@ ds_time: 0.
 max_CoM_to_footstep_dist: 0.4
 footstep_offset: 0.04
 center_line_offset: 0.05
-mid_foot_height: 0.03
+mid_foot_height: 0.05  #0.03
 final_foot_height: 0.000
 final_foot_velocity_z: 0.0
 

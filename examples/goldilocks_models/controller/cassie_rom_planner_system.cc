@@ -315,6 +315,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   }
 
   /// MPC variables setup
+  use_lipm_mpc_and_ik_ = param_.gains.use_lipm_mpc_and_ik;
+
   // Swing foot distance
   max_swing_distance_ = vector<double>(
       param_.n_step, param_.gains.max_foot_speed * stride_period_);

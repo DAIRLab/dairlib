@@ -12,6 +12,7 @@ from mpl_toolkits import mplot3d
 from matplotlib import cm
 import matplotlib.tri as mtri
 import codecs
+import math
 
 
 def build_files(bazel_file_argument):
@@ -43,11 +44,11 @@ def lcmlog_file_path(rom_iter_idx, task_idx):
   return eval_dir + 'lcmlog-idx_%d_%d' % (rom_iter_idx, task_idx)
 
 
-def get_nominal_task_given_sample_idx(sample_idx, name):
-  # Get task element index by name
-  task_element_idx = np.where(task_names == name)[0][0]
-  task = np.loadtxt(model_dir + "%d_%d_task.csv" % (0, sample_idx))
-  return task[task_element_idx]
+# def get_nominal_task_given_sample_idx(sample_idx, name):
+#   # Get task element index by name
+#   task_element_idx = np.where(task_names == name)[0][0]
+#   task = np.loadtxt(model_dir + "%d_%d_task.csv" % (0, sample_idx))
+#   return task[task_element_idx]
 
 
 # Set `get_init_file` to True if you want to generate the initial traj for both
@@ -169,14 +170,14 @@ def eval_cost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
 
 
 # sample_indices for visualization
-def CollectAllSampleIndicesFromTrajopt(task, task_tolerance):
-  # We pick iter 1 since we assume we are using grid tasks (index will be the same across different model iteration)
+def CollectAllTrajoptSampleIndices(task, task_tolerance):
+  # We pick iter 0 since we assume we are using grid tasks (index will be the same across different model iteration)
   # TODO: change this if not using grid task anymore
-  rom_iter = 1
+  rom_iter = 0
 
-  j = 0
+  n_sample_trajopt = int(np.loadtxt(model_dir + "n_sample.csv"))
   sample_indices = []
-  while True:
+  for j in range(n_sample_trajopt):
     path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
     if os.path.exists(path):
       trajopt_task = np.loadtxt(path)
@@ -184,9 +185,6 @@ def CollectAllSampleIndicesFromTrajopt(task, task_tolerance):
       task_diff[varying_task_element_idx] = 0
       if np.linalg.norm(task_diff) < task_tolerance:
         sample_indices.append(j)
-      j += 1
-    else:
-      break
 
   if len(sample_indices) == 0:
     raise ValueError("ERROR: no such task in trajopt")
@@ -195,29 +193,27 @@ def CollectAllSampleIndicesFromTrajopt(task, task_tolerance):
 
 
 # sample_indices for simulation
-def ConstructSampleIndicesGivenModelAndTask(model_indices, task_list):
+def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list):
   sample_indices = np.zeros((len(model_indices), len(task_list)),
     dtype=np.dtype(int))
   for i in range(len(model_indices)):
     for j in range(len(task_list)):
-      sample_indices[i, j] = GetSampleIndexGivenTask(model_indices[i],
+      sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i],
         task_list[j])
   return sample_indices
 
 
 # Get trajopt sample idx with the most similar task
-def GetSampleIndexGivenTask(rom_iter, task):
-  j = 0
+def GetTrajoptSampleIndexGivenTask(rom_iter, task):
+  n_sample_trajopt = int(np.loadtxt(model_dir + "n_sample.csv"))
+  print("n_sample_trajopt = " + str(n_sample_trajopt))
   dist_list = []
-  while True:
+  for j in range(n_sample_trajopt):
     path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
     # print("try " + path)
     if os.path.exists(path):
       trajopt_task = np.loadtxt(path)
       dist_list.append(np.linalg.norm(trajopt_task - task))
-      j += 1
-    else:
-      break
   # print("dist_list = ")
   # print(dist_list)
   if len(dist_list) == 0:
@@ -248,7 +244,7 @@ def run_sim_and_eval_cost(model_indices, log_indices, task_list,
 
   ### Construct sample indices from the task list for simulation
   # `sample_idx` is for planner's initial guess and cost regularization term
-  sample_indices = ConstructSampleIndicesGivenModelAndTask(model_indices,
+  sample_indices = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices,
     task_list)
   print("sample_indices = \n" + str(sample_indices))
 
@@ -431,9 +427,12 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
         if cost.item() > max_cost_to_ignore:
           continue
         ### Read nominal task
-        task = np.loadtxt(model_dir + "%d_%d_task.csv" % ( \
-          rom_iter, sample_indices[i]))[varying_task_element_idx]
-        sub_mtc[0, 1] = task
+        path = model_dir + "%d_%d_task.csv" % (rom_iter, sample_indices[i])
+        if os.path.exists(path):
+          task = np.loadtxt(path)[varying_task_element_idx]
+          sub_mtc[0, 1] = task
+        else:
+          continue
         if (task > max_sl) or (task < min_sl):
           continue
         ### Read model iteration
@@ -553,8 +552,10 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
       fig, ax = plt.subplots()
 
       data = data_list[i]
-      levels = list(
-        np.linspace(min(data[:, 2]), max(data[:, 2]), 10).round(decimals=2))
+      # Use set in levels to get rid of duplicates
+      levels = list(set(
+        np.linspace(min(data[:, 2]), max(data[:, 2]), 10).round(decimals=2)))
+      levels.sort()
       surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels)
       fig.colorbar(surf, shrink=0.8, aspect=10)
 
@@ -594,10 +595,6 @@ def GetVaryingTaskElementIdx(task_list):
 
 
 if __name__ == "__main__":
-  # Build files just in case forgetting
-  build_files('examples/goldilocks_models/...')
-  build_files('examples/Cassie:multibody_sim')
-
   # Read the controller parameters
   a_yaml_file = open(
     "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml")
@@ -609,12 +606,12 @@ if __name__ == "__main__":
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
   # eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
 
-  # global parameters
+  ### global parameters
   sim_end_time = 8.0
   spring_model = False
   # Parameters that are modified often
-  target_realtime_rate = 0.2  # 0.04
-  foot_step_from_planner = True
+  target_realtime_rate = 1  # 0.04
+  foot_step_from_planner = False
 
   ### parameters for model, task, and log indices
   # Model iteration list
@@ -625,6 +622,7 @@ if __name__ == "__main__":
   # Task list
   n_task = 60
   stride_length = np.linspace(-0.6, 0.6, n_task)
+  # stride_length = np.linspace(0, 0.1, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
   # stride_length = np.linspace(0.4, 0.5, n_task)
@@ -678,6 +676,8 @@ if __name__ == "__main__":
 
   # index of task vector where we sweep through
   varying_task_element_idx = GetVaryingTaskElementIdx(task_list)
+  if varying_task_element_idx != 0:
+    raise ValueError("Currently, the code assume only stride length is varying")
 
   # Make sure the order is correct
   if not ((task_names[0] == "stride_length") &
@@ -686,16 +686,27 @@ if __name__ == "__main__":
           (task_names[3] == "turning_rate")):
     raise ValueError("ERROR: unexpected task name or task order")
 
+  # Some other checks
+  # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.
+  if not math.isclose(parsed_yaml_file.get('left_support_duration') + parsed_yaml_file.get('double_support_duration') , duration):
+    # raise ValueError("Reminder: you are setting a different duration in sim than in trajopt")
+    print("Reminder: you are setting a different duration in sim than in trajopt")
+    input("type anything to continue")
+
   ### Construct log indices
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
   print("log_indices = \n" + str(log_indices))
 
+  ### Build files just in case forgetting
+  build_files('examples/goldilocks_models/...')
+  build_files('examples/Cassie:multibody_sim')
+
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  # run_sim_and_eval_cost(model_indices, log_indices, task_list)
+  run_sim_and_eval_cost(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  # eval_cost_in_multithread(model_indices, log_indices)
+  eval_cost_in_multithread(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)
@@ -707,7 +718,7 @@ if __name__ == "__main__":
   print("log_indices for plotting = " + str(log_indices))
 
   # Get all samples from trajopt for nominal cost
-  sample_indices = CollectAllSampleIndicesFromTrajopt(task_list[0],
+  sample_indices = CollectAllTrajoptSampleIndices(task_list[0],
     task_tolerance) if plot_nominal else []
   print("sample_indices (trajopt) for nominal cost = \n" + str(sample_indices))
 

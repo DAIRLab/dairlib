@@ -61,7 +61,9 @@ front_limit_wrt_pelvis: 0.5
 right_limit_wrt_pelvis: 0.06
 left_limit_wrt_pelvis: 0.4
 
-#Planner cost weight
+### Planner cost weight
+use_lipm_mpc_and_ik: false
+
 # Without LIPM MPC and IK
 w_Q: 0.01
 w_R: 2e-6

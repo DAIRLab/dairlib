@@ -206,7 +206,6 @@ def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list):
 # Get trajopt sample idx with the most similar task
 def GetTrajoptSampleIndexGivenTask(rom_iter, task):
   n_sample_trajopt = int(np.loadtxt(model_dir + "n_sample.csv"))
-  print("n_sample_trajopt = " + str(n_sample_trajopt))
   dist_list = []
   for j in range(n_sample_trajopt):
     path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
@@ -554,7 +553,7 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
       data = data_list[i]
       # Use set in levels to get rid of duplicates
       levels = list(set(
-        np.linspace(min(data[:, 2]), max(data[:, 2]), 10).round(decimals=2)))
+        np.linspace(min(data[:, 2]), max(data[:, 2]), 20).round(decimals=2)))
       levels.sort()
       surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels)
       fig.colorbar(surf, shrink=0.8, aspect=10)
@@ -600,6 +599,7 @@ if __name__ == "__main__":
     "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml")
   parsed_yaml_file = yaml.load(a_yaml_file)
   model_dir = parsed_yaml_file.get('dir_model')
+  data_dir = parsed_yaml_file.get('dir_data')
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/"
@@ -652,6 +652,7 @@ if __name__ == "__main__":
   ### Set up environment
   # Create folder if not exist
   Path(eval_dir).mkdir(parents=True, exist_ok=True)
+  Path(data_dir).mkdir(parents=True, exist_ok=True)  # for MPC's init file
 
   ### Create model iter list
   if model_iter_idx_start == 1:

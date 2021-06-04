@@ -127,26 +127,27 @@ def main():
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
 
-  log_file_num = '28'
-  x = x[t_slice]
-  u = u[t_u_slice]
-  t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
-  t_u = np.reshape(t_u[t_u_slice], (t_u[t_u_slice].shape[0], 1))
-  # import pdb; pdb.set_trace()
-  np.save(ps.directory + 'x_' + log_file_num, x)
-  np.save(ps.directory + 't_x_' + log_file_num, t_x)
-  np.save(ps.directory + 't_u_' + log_file_num, t_u)
-  np.save(ps.directory + 'u_' + log_file_num, u)
+  # log_file_num = '28'
+  # x = x[t_slice]
+  # u = u[t_u_slice]
+  # t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
+  # t_u = np.reshape(t_u[t_u_slice], (t_u[t_u_slice].shape[0], 1))
+  # # import pdb; pdb.set_trace()
+  # np.save(ps.directory + 'x_' + log_file_num, x)
+  # np.save(ps.directory + 't_x_' + log_file_num, t_x)
+  # np.save(ps.directory + 't_u_' + log_file_num, t_u)
+  # np.save(ps.directory + 'u_' + log_file_num, u)
 
   ### All plotting scripts here
+  print(np.mean(np.diff(t_u)))
   # plot_status(full_log)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # import pdb; pdb.set_trace()
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  plot_contact_est(full_log)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  # plot_contact_est(full_log)
 
-  if False:
+  if True:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -161,7 +162,7 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
   plt.show()
 
@@ -264,17 +265,17 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   #
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
 
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "vel")
-  # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plot_osc(osc_debug, osc_traj0, 0, "vel")
+  plot_osc(osc_debug, osc_traj0, 1, "vel")
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "acc")
   # plot_osc(osc_debug, osc_traj0, 1, "acc")
-  plot_osc(osc_debug, osc_traj0, 2, "acc")
+  # plot_osc(osc_debug, osc_traj0, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plot_osc(osc_debug, osc_traj1, 1, "pos")
@@ -285,13 +286,13 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
-  # plot_osc(osc_debug, osc_traj2, 0, "vel")
-  # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
+  plot_osc(osc_debug, osc_traj2, 0, "vel")
+  plot_osc(osc_debug, osc_traj2, 1, "vel")
+  plot_osc(osc_debug, osc_traj2, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "acc")
   # plot_osc(osc_debug, osc_traj1, 1, "acc")
-  plot_osc(osc_debug, osc_traj1, 2, "acc")
+  # plot_osc(osc_debug, osc_traj1, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj2, 0, "acc")
   # plot_osc(osc_debug, osc_traj2, 1, "acc")
@@ -435,7 +436,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       context, JacobianWrtVariable.kV, toe_frame, contact_point,
       world,
       world) @ x[i, -nv:]
-  # fig = plt.figure('foot pos: ' + filename)
+  fig = plt.figure('foot pos: ' + filename)
 
   # state_indices = slice(4, 5)
   state_indices = slice(2, 3)

@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.005
+impact_threshold: 0.010
 use_traj_opt_feet_traj: true
 
 # High level command gains (with radio)
@@ -29,29 +29,29 @@ target_pos_offset: -0.0
 
 # Speed control gains
 k_ff_sagittal: 0
-k_fb_sagittal: 0.14
+k_fb_sagittal: 0.2
 k_ff_lateral: 0
-k_fb_lateral: 0.2
+k_fb_lateral: 0.15
 
 # Finite state machine
-ss_time: 0.30
+ss_time: 0.35
 ds_time: 0.05
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.3
-footstep_offset: 0.03
+footstep_offset: 0.04
 center_line_offset: 0.03
-mid_foot_height: 0.03
-final_foot_height: 0.002
-final_foot_velocity_z: 0.0
+mid_foot_height: 0.02
+final_foot_height: 0.000
+final_foot_velocity_z: -0.1
 
 # LIPM trajectory
-lipm_height: 0.85
+lipm_height: 0.95
 
 # OSC gains
 mu: 0.8
 
-w_accel: 0.000
+w_accel: 0.00000000001
 w_soft_constraint: 80
 
 w_swing_toe: 1
@@ -69,11 +69,11 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    50]
+      0,    0,    10]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,     5]
+      0,    0,     2]
 #PelvisDSW:
 #  [  50,    0,     0,
 #      0,   50,     0,
@@ -88,16 +88,16 @@ CoMKd:
 #      0,    0,     0]
 
 PelvisBalanceW:
-  [ 2,      0,     0,
-    0,      4,     0,
+  [ 1,      0,     0,
+    0,      1,     0,
     0,      0,     0]
 PelvisBalanceKp:
   [50,      0,    0,
     0,    100,    0,
     0,      0,    0]
 PelvisBalanceKd:
-  [  10,     0,    0,
-      0,    10,    0,
+  [  20,     0,    0,
+      0,    20,    0,
       0,     0,    0]
 
 PelvisHeadingW:
@@ -117,7 +117,7 @@ period_of_no_heading_control: 0.0
 SwingFootW:
   [ 4,    0,     0,
     0,    4,     0,
-    0,      0,   4]
+    0,      0,   1]
 SwingFootKp:
   [ 50,   0,     0,
     0,   100,     0,

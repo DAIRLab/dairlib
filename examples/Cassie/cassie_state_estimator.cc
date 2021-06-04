@@ -1011,8 +1011,8 @@ void CassieStateEstimator::EstimateContactForces(
   MatrixXd B = plant_.MakeActuationMatrix();
   drake::multibody::MultibodyForces<double> f_app(plant_);
   plant_.CalcForceElementsContribution(*context_, &f_app);
-  double beta = 0.001;
-  double gamma = 0.005;
+  double beta = 0.1;
+  double gamma = 0.1;
 
   VectorXd v = output.GetVelocities();
   VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);

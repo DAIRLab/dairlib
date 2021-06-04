@@ -205,8 +205,10 @@ int do_main(int argc, char* argv[]) {
   // connect cassie_out publisher
   builder.Connect(*output_sender, *output_pub);
 
+
   // Connect appropriate input receiver for simulation
   systems::CassieOutputReceiver* input_receiver = nullptr;
+  LcmPublisherSystem* output_local_pub = nullptr;
   if (FLAGS_simulation) {
     input_receiver = builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
@@ -227,6 +229,12 @@ int do_main(int argc, char* argv[]) {
       builder.Connect(state_receiver->get_output_port(0),
                       state_estimator->get_input_port(1));
     }
+  }
+  else{
+    output_local_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+            "CASSIE_OUTPUT", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(*output_sender, *output_local_pub);
   }
 
   // Create and connect RobotOutput publisher.

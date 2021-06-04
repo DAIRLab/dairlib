@@ -30,13 +30,12 @@ def main():
 
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  plant_wo_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
   Parser(plant_w_spr).AddModelFromFile(
     FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf"))
-  Parser(plant_wo_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
+  # Parser(plant_w_spr).AddModelFromFile(
+  #   FindResourceOrThrow(
+  #     "examples/Cassie/urdf/cassie_fixed_springs.urdf"))
   plant_w_spr.mutable_gravity_field().set_gravity_vector(
     -9.81 * np.array([0, 0, 1]))
   plant_w_spr.Finalize()

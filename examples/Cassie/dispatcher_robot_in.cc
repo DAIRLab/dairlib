@@ -56,6 +56,8 @@ DEFINE_string(control_channel_name_3, "OSC_WALKING",
               "The name of the lcm channel that sends Cassie's state");
 DEFINE_string(control_channel_name_4, "OSC_JUMPING",
               "The name of the lcm channel that sends Cassie's state");
+DEFINE_bool(simulation, false,
+              "Set to true if testing the dispatcher in simulation.");
 
 // Cassie model parameter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -128,10 +130,17 @@ int do_main(int argc, char* argv[]) {
   // Create and connect input publisher.
   auto input_pub = builder.AddSystem(systems::CassieUDPPublisher::Make(
       FLAGS_address, FLAGS_port, {TriggerType::kForced}));
-  auto input_pub_local =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", &lcm_local, {TriggerType::kForced}));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+
+  if(FLAGS_simulation){
+    auto input_pub_local =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+            "CASSIE_INPUT", &lcm_local, {TriggerType::kForced}));
+    auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+    builder.Connect(input_supervisor->get_output_port_command(),
+                    command_sender->get_input_port(0));
+    builder.Connect(*command_sender, *input_pub_local);
+  }
+
   builder.Connect(*input_translator, *input_pub);
 
   // Create and connect LCM command echo to network
@@ -143,9 +152,6 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(input_supervisor->get_output_port_command(),
                   net_command_sender->get_input_port(0));
-  builder.Connect(input_supervisor->get_output_port_command(),
-                  command_sender->get_input_port(0));
-  builder.Connect(*command_sender, *input_pub_local);
 
   builder.Connect(*net_command_sender, *net_command_pub);
 

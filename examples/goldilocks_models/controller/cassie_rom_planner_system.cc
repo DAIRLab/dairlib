@@ -1408,8 +1408,8 @@ void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
   double total_phase_length = n_total_step - init_phase;
 
   double pos_diff_norm = adjusted_final_pos.norm();
-  double max_pos_diff_norm =
-      param_.gains.max_desired_step_length * (n_total_step - init_phase);
+  double max_pos_diff_norm = std::abs(param_.gains.max_desired_step_length *
+                                      (n_total_step - init_phase));
   if (pos_diff_norm > max_pos_diff_norm) {
     adjusted_final_pos *= max_pos_diff_norm / pos_diff_norm;
   }

@@ -122,6 +122,10 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
     lcmlog_file_path(rom_iter_idx, log_idx),
   ]
 
+  # print(' '.join(planner_cmd))
+  # print(' '.join(controller_cmd))
+  # print(' '.join(simulator_cmd))
+
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)
   if not get_init_file:

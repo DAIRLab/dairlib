@@ -68,14 +68,11 @@ DEFINE_double(platform_x, 0.0, "x location of the  landing terrain");
 DEFINE_double(start_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
-DEFINE_string(traj_name, "", "Name of the saved trajectory");
 DEFINE_string(npy_num, "", "Name of the saved initial state");
 DEFINE_string(
     folder_path_npy,
     "/home/yangwill/Documents/research/projects/impact_uncertainty/data/",
     "Name of the saved initial state");
-DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
-              "Folder path for where the trajectory names are stored");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 int do_main(int argc, char* argv[]) {
@@ -181,7 +178,7 @@ int do_main(int argc, char* argv[]) {
                   plant.get_actuation_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
-  builder.Connect(discrete_time_delay->get_output_port(),
+  builder.Connect(controller_playback->get_output_port(),
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
@@ -220,17 +217,6 @@ int do_main(int argc, char* argv[]) {
   Eigen::MatrixXd map_no_spring_to_spring =
       multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
 
-  const DirconTrajectory& dircon_trajectory =
-      DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
-
-  PiecewisePolynomial<double> state_traj =
-      dircon_trajectory.ReconstructStateTrajectory();
-
-  Eigen::VectorXd x_init = state_traj.value(FLAGS_start_time);
-
-  if (FLAGS_spring_model) {
-    x_init = map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
-  }
   Eigen::MatrixXd t_init_npy;
   Eigen::MatrixXd x_init_npy;
 
@@ -243,7 +229,7 @@ int do_main(int argc, char* argv[]) {
 
   auto x_init_traj =
       PiecewisePolynomial<double>::FirstOrderHold(t_vec_npy, x_init_npy);
-  x_init = x_init_traj.value(FLAGS_start_time);
+  Eigen::VectorXd x_init = x_init_traj.value(FLAGS_start_time);
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 

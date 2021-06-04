@@ -119,8 +119,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 30.0
-  # t_end = 33.0
+  # t_start = 30.595
+  # t_end = 30.87
   # t_start = 30.47
   # t_end = 31.0
   ### Convert times to indices
@@ -139,13 +139,13 @@ def main():
   # np.save(ps.directory + 'u_' + log_file_num, u)
 
   ### All plotting scripts here
-  print(np.mean(np.diff(t_u)))
+  # print(np.mean(np.diff(t_u)))
   # plot_status(full_log)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # import pdb; pdb.set_trace()
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  # plot_contact_est(full_log)
+  plot_contact_est(full_log)
 
   if True:
     # front_contact_disp = np.zeros(3)
@@ -162,7 +162,7 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
   plt.show()
 
@@ -286,9 +286,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
-  plot_osc(osc_debug, osc_traj2, 0, "vel")
-  plot_osc(osc_debug, osc_traj2, 1, "vel")
-  plot_osc(osc_debug, osc_traj2, 2, "vel")
+  # plot_osc(osc_debug, osc_traj2, 0, "vel")
+  # plot_osc(osc_debug, osc_traj2, 1, "vel")
+  # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "acc")
   # plot_osc(osc_debug, osc_traj1, 1, "acc")
@@ -515,14 +515,14 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   ps.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
 
-  plt.figure("velocities: " + filename)
-  ps.plot(t_x[t_slice], x[t_slice, vel_indices])
-  plt.legend(x_datatypes[vel_indices])
-
+  # plt.figure("velocities: " + filename)
+  # ps.plot(t_x[t_slice], x[t_slice, vel_indices])
+  # plt.legend(x_datatypes[vel_indices])
+  #
   plt.figure("efforts: " + filename)
   ps.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
-  # ps.plot(t_x[t_slice], u_meas[t_slice, u_indices])
-  plt.ylim([-300, 300])
+  # # ps.plot(t_x[t_slice], u_meas[t_slice, u_indices])
+  # plt.ylim([-300, 300])
   plt.legend(u_datatypes[u_indices])
 
   # plt.legend(u_datatypes[u_indices])

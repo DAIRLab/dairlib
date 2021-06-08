@@ -1003,6 +1003,7 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
     VectorXd& lambda, int& left_contact, int& right_contact) const {
+
   // TODO(yangwill) add a discrete time filter to the force estimate
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
@@ -1012,12 +1013,17 @@ void CassieStateEstimator::EstimateContactForces(
   VectorXd C(n_v_);
   plant_.CalcBiasTerm(*context_, &C);
   MatrixXd B = plant_.MakeActuationMatrix();
-  double gamma = 0.015;
+  drake::multibody::MultibodyForces<double> f_app(plant_);
+  plant_.CalcForceElementsContribution(*context_, &f_app);
+  double beta = 0.001;
+  double gamma = 0.005;
 
   VectorXd v = output.GetVelocities();
   VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
-  VectorXd tau_d = gamma * M * v_prev -
-                   (1 - gamma) * (M * v + B * output.GetEfforts() + C - g);
+  VectorXd tau_d = gamma * beta * M * v_prev -
+                   (1 - gamma) * (beta * M * v + B * output.GetEfforts() + C -
+                                  g + f_app.generalized_forces());
+
 
   // Simplifying to 2 feet contacts, might need to change it to two contacts per
   // foot and sum them up

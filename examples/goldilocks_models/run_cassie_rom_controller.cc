@@ -22,7 +22,7 @@
 #include "examples/Cassie/simulator_drift.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "examples/goldilocks_models/controller/local_lipm_traj_gen.h"
-#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
+#include "examples/goldilocks_models/rom_walking_gains.h"
 #include "examples/goldilocks_models/controller/planned_traj_guard.h"
 #include "examples/goldilocks_models/controller/saved_traj_receiver.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"

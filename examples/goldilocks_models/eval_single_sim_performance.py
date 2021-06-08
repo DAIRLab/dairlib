@@ -28,7 +28,7 @@ def main():
 
   # Read the controller parameters
   a_yaml_file = open(
-    "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml")
+    "examples/goldilocks_models/rom_walking_gains.yaml")
   parsed_yaml_file = yaml.load(a_yaml_file)
 
   stride_length = parsed_yaml_file.get('stride_length')

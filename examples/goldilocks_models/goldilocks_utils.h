@@ -7,7 +7,7 @@
 
 #include "common/file_utils.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
+#include "examples/goldilocks_models/rom_walking_gains.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"

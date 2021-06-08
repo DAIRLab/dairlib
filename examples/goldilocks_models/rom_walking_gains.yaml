@@ -1,0 +1,348 @@
+rows: 3
+cols: 3
+
+#TODO : 20210414 model is not yet rerun with grid task
+# 20210414 model with task covering talking in place:
+#For(model, sample_index) = (1, 37), we need
+#stride_length : 0
+#double + single support duration : 0.4
+#For(model, sample_index) = (1, 46), we need
+#stride_length : 0.09
+#double + single support duration : 0.4
+#For(model, sample_index) = (1, 58), we need
+#stride_length : 0.21
+#double + single support duration : 0.4
+#For(model, sample_index) = (1, 73), we need
+#stride_length : 0.36
+#double + single support duration : 0.4
+
+#To compare against the model optimization, we need to change a few params.
+#For(model, sample_index) = (1, 1), we need
+#stride_length : 0.21
+#double + single support duration : 0.418216
+
+#To walk in place, you can simply change the parameters to
+#stride_length : 0
+
+### Directories for model files and data files
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models/"
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210328_3dlipm_all_files/"
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210416_3dlipm_grid_all_files/"
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210505_3dlipm_all_files/"
+#dir_model: "/media/yuming/DATA/Research backup/Not uploaded to google drive/model_optimization/20210505_3dlipm_decrease_regularization_weight/robot_1/"
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210602_3dlipm/"
+dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
+
+### ROM parameter
+rom_option: 4
+#The iteration number of the theta that you use.has to be >= 1
+model_iter: 1 #150  #1 #30
+#The sample that we use to initialize planner
+sample_idx: 19 #21 works for iter150
+#Average stride length(used in both planner and controller)
+stride_length: 0  #It seems to solve faster when using 0.1m instead of 0.2m
+
+
+### For planner only
+# max_foot_speed should be more than two times bigger than the desired walking speed.
+# (maybe leave at least 0.5m/s margin for it to catch up with the body when falling forward)
+max_foot_speed: 3  # used to restrict swing foot travel distance
+# max_step_length restricts the distance between stance and swing foot (not from pelvis to swing foot!).
+# It cannot be too big. Otherwise, the ROM is not a good approximation to FOM
+max_step_length: 0.6  # 0.7
+# (step length is measured from stance foot to swing foot)
+# desired body speed = desired_step_length / one stride duration
+max_desired_step_length: 0.4  # 0.4
+max_lipm_step_length: 0.8
+#n_step : 2 #TODO : add this later for convenience
+
+back_limit_wrt_pelvis: -0.5
+front_limit_wrt_pelvis: 0.5
+right_limit_wrt_pelvis: 0.06
+left_limit_wrt_pelvis: 0.4
+
+### Planner cost weight
+use_lipm_mpc_and_ik: false
+
+# Without LIPM MPC and IK
+w_Q: 0.01
+w_R: 2e-6
+w_rom_reg: 0  #1e-6  # reminder: should have at least a little bit of reg cost
+w_reg_quat: 1
+w_reg_xy: 0.1  #0.1 for not using IK; maybe 10 for using IK?
+w_reg_z: 50  # 10
+w_reg_joints: 0.1
+w_reg_hip_yaw: 1  # should use 1? 5?
+w_reg_xy_vel: 0.1
+w_reg_vel: 1e-6
+w_predict_lipm_p: .1
+w_predict_lipm_v: 0.01
+
+# With LIPM MPC and IK
+#w_Q: 0.01
+#w_R: 2e-6
+#w_rom_reg: 0  #1e-6  # reminder: should have at least a little bit of reg cost
+#w_reg_quat: 1
+#w_reg_xy: 10  #0.1 for not using IK; maybe 10 for using IK?
+#w_reg_z: 50  # 10
+#w_reg_joints: 0.1
+#w_reg_hip_yaw: 1  # should use 1? 5?
+#w_reg_xy_vel: 0.1
+#w_reg_vel: 1e-6
+#w_predict_lipm_p: .1
+#w_predict_lipm_v: 0.01
+
+# Testing -- With LIPM MPC and IK (high joint cost)
+#w_Q: 0.01
+#w_R: 2e-6
+#w_rom_reg: 0  #1e-6  # reminder: should have at least a little bit of reg cost
+#w_reg_quat: 10
+#w_reg_xy: 1e-2  #0.1 for not using IK; maybe 10 for using IK?
+#w_reg_z: 1e-2  # 10
+#w_reg_joints: 0.1
+#w_reg_hip_yaw: 1  # should use 1? 5?
+#w_reg_xy_vel: 10  # 0.1
+#w_reg_vel: 1e-6
+#w_predict_lipm_p: .1
+#w_predict_lipm_v: 0.01
+
+# lipm mpc
+max_speed_lipm_mpc: 1.0  # too big would cause instability to FOM planner  # TODO: not yet implemented
+w_p_lipm_mpc: 0.01
+w_v_lipm_mpc: 0.1
+
+### For both planner and controller
+# Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
+left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
+right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
+double_support_duration: 0.05 #0.02
+
+global_target_position_x: 0
+global_target_position_y: 0
+
+### For controller only
+#High level command gains(with radio)
+vel_scale_rot: -1
+vel_scale_trans_sagital: 0.25
+vel_scale_trans_lateral: -0.15
+
+#High level command gains(without radio)
+yaw_deadband_blur: 5
+yaw_deadband_radius: 1
+
+kp_yaw: 1
+kd_yaw: 0.2
+vel_max_yaw: 0.5
+
+kp_pos_sagital: 1.0
+kd_pos_sagital: 0.2
+vel_max_sagital: 0.25
+kp_pos_lateral: 0.5
+kd_pos_lateral: 0.1
+vel_max_lateral: 0.15
+target_pos_offset: -0.16
+
+#Speed control gains
+k_ff_sagittal: 0
+k_fb_sagittal: 0.14
+k_ff_lateral: 0
+k_fb_lateral: 0.2
+
+#Finite state machine
+ss_time: 0.
+ds_time: 0.
+
+#Swing foot trajectory
+max_CoM_to_footstep_dist: 0.4
+footstep_offset: 0.04
+center_line_offset: 0.05
+mid_foot_height: 0.05  #0.03
+final_foot_height: 0.000
+final_foot_velocity_z: 0.0
+
+#LIPM trajectory
+lipm_height: 0.89
+
+### OSC gains (Simulation)
+mu: 0.4
+
+w_accel: 2
+w_soft_constraint: 2000
+
+w_swing_toe: 200
+swing_toe_kp: 1500
+swing_toe_kd: 10
+
+w_hip_yaw: 50
+hip_yaw_kp: 40
+hip_yaw_kd: 0.5
+
+#RomW:
+#[0, 0, 0,
+# 0, 0, 0,
+# 0, 0, 2000]
+#RomKp:
+#[0, 0, 0,
+# 0, 0, 0,
+# 0, 0, 50]
+#RomKd:
+#[0, 0, 0,
+# 0, 0, 0,
+# 0, 0, 5]
+RomW:
+  [   2,    0,     0,
+      0,    2,     0,
+      0,    0,  2000]
+RomKp:
+  [  50,    0,     0,
+     0,   50,     0,
+     0,    0,    50]
+RomKd:
+  [   5,    0,     0,
+      0,    5,     0,
+      0,    0,     5]
+
+PelvisBalanceW:
+  [ 200,    0,     0,
+    0,    200,     0,
+    0,      0,     0]
+PelvisBalanceKp:
+  [200,      0,    0,
+   0,    200,    0,
+   0,      0,    0]
+PelvisBalanceKd:
+  [  80,     0,    0,
+     0,    80,    0,
+     0,     0,    0]
+
+PelvisHeadingW:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,    200]
+PelvisHeadingKp:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,   50]
+PelvisHeadingKd:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,    40]
+period_of_no_heading_control: 0.1
+
+SwingFootW:
+  [ 400,    0,     0,
+    0,    400,     0,
+    0,      0,   400]
+SwingFootKp:
+  [ 200,    0,     0,
+    0,  200,     0,
+    0,    0,   200]
+SwingFootKd:
+  [   1,    0,     0,
+      0,    1,     0,
+      0,    0,     1]
+
+### OSC gains (Hardware gains; ~master branch)
+#
+#mu: 0.8
+#
+#w_accel: 0.000001
+#w_soft_constraint: 8000
+#
+#w_swing_toe: 100
+#swing_toe_kp: 1500
+#swing_toe_kd: 10
+#
+#w_hip_yaw: 50
+#hip_yaw_kp: 40
+#hip_yaw_kd: 0.5
+#
+##RomW:
+##[0, 0, 0,
+## 0, 0, 0,
+## 0, 0, 1000]
+##RomKp:
+##[0, 0, 0,
+## 0, 0, 0,
+## 0, 0, 50]
+##RomKd:
+##[0, 0, 0,
+## 0, 0, 0,
+## 0, 0, 5]
+#RomW:
+#  [   2,    0,     0,
+#      0,    2,     0,
+#      0,    0,  1000]
+#RomKp:
+#  [  50,    0,     0,
+#     0,   50,     0,
+#     0,    0,    50]
+#RomKd:
+#  [   5,    0,     0,
+#      0,    5,     0,
+#      0,    0,     5]
+#
+#PelvisBalanceW:
+#  [ 200,    0,     0,
+#    0,    400,     0,
+#    0,      0,     0]
+#PelvisBalanceKp:
+#  [20,      0,    0,
+#   0,    100,    0,
+#   0,      0,    0]
+#PelvisBalanceKd:
+#  [   1,     0,    0,
+#      0,    10,    0,
+#      0,     0,    0]
+#
+#PelvisHeadingW:
+#  [   0,    0,     0,
+#      0,    0,     0,
+#      0,    0,    10]
+#PelvisHeadingKp:
+#  [   0,     0,    0,
+#      0,     0,    0,
+#      0,     0,   10]
+#PelvisHeadingKd:
+#  [   0,     0,    0,
+#      0,     0,    0,
+#      0,     0,    2]
+#period_of_no_heading_control: 0.0
+#
+#SwingFootW:
+#  [ 400,    0,     0,
+#    0,    400,     0,
+#    0,      0,   400]
+#SwingFootKp:
+#  [ 200,    0,     0,
+#    0,  200,     0,
+#    0,    0,   100]
+#SwingFootKd:
+#  [   1,    0,     0,
+#      0,    1,     0,
+#      0,    0,     1]
+
+### For IK controller
+kp_hip_roll_stance: 200  #400
+kp_hip_yaw_stance: 100  #200
+kp_hip_pitch_stance: 200  #500
+kp_knee_stance: 200  #500
+kp_toe_stance: 5  #10
+
+kd_hip_roll_stance: 5  #10
+kd_hip_yaw_stance: 2  #4
+kd_hip_pitch_stance: 7  #15
+kd_knee_stance: 7  #15
+kd_toe_stance: 1  #2
+
+kp_hip_roll_swing: 50  #100
+kp_hip_yaw_swing: 100  #200
+kp_hip_pitch_swing: 50  #100
+kp_knee_swing: 100  #200
+kp_toe_swing: 5  #10
+
+kd_hip_roll_swing: 10  #20
+kd_hip_yaw_swing: 2  #4
+kd_hip_pitch_swing: 10  #20
+kd_knee_swing: 7  #15
+kd_toe_swing: 1  #2

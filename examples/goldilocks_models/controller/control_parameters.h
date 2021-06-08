@@ -5,7 +5,7 @@ namespace goldilocks_models {
 
 // Filepath containing gains
 const std::string GAINS_FILENAME =
-    "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml";
+    "examples/goldilocks_models/rom_walking_gains.yaml";
 
 const int LEFT_STANCE = 0;
 const int RIGHT_STANCE = 1;

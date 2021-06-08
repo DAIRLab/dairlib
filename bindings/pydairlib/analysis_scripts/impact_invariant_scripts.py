@@ -35,9 +35,10 @@ def calc_loop_closure_jacobian(plant, context, x_pre):
 
   return J_l_loop, J_r_loop
 
-def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr):
+def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, linestyle):
   # t_pre = 30.557
-  t_pre = 30.645
+  # t_pre = 30.645
+  t_pre = 30.595
   t_idx = np.argwhere(np.abs(t_x - t_pre) < 1e-3)[0][0]
   x_pre = x[t_idx]
 
@@ -53,6 +54,7 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   x_wo_spr_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
   x_wo_spr = np.vstack((pos_map_spr_to_wo_spr @ x[:, :nq].T, vel_map_spr_to_wo_spr @ x[:, -nv:].T)).T
   x_pre = x_wo_spr[t_idx]
+  print(x_pre)
   plant.SetPositionsAndVelocities(context, x_pre)
   M = plant.CalcMassMatrixViaInverseDynamics(context)
   M_inv = np.linalg.inv(M)
@@ -73,10 +75,13 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   # proj_vel = P @ x[t_slice, -nv:].T
   # colors = ['B0', '']
   plt.figure("joint velocities")
-  for i in range(6):
+  for i in range(2,3):
     # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12:], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)')
-    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
-    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+    # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
+    # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+    ps.plot(t_x[t_slice], x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i), linestyle = linestyle)
+    ps.plot(t_x[t_slice], x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i), linestyle = linestyle)
+
 
     # ps.plot(t_x[t_slice], x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
     # ps.plot(t_x[t_slice], x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
@@ -101,20 +106,23 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   # ps.add_legend(joint_vel_datatypes)
 
   plt.ylim([-8, 8])
-  plt.xlim([-50, 30])
+  # plt.xlim([-50, 100])
   # plt.xticks(np.arange(-50, 30+0.1, 10))
   plt.yticks(np.arange(-8, 8.1, 2))
   # ps.save_fig('joint_velocities_hardware_for_video.png')
 
   plt.figure("projected velocities")
   # joint_indices = [3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17]
-  for i in range(6):
-    ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
-    ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+  for i in range(2, 3):
+    # ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
+    # ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+    ps.plot(t_x[t_slice], proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
+    ps.plot(t_x[t_slice], proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+  ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
   # ps.add_legend(['%.0f' % i for i in range(18)])
 
   plt.ylim([-3, 1])
-  plt.xlim([-50, 30])
+  # plt.xlim([-50, 100])
   # plt.xticks(np.arange(-50, 30+0.1, 10))
   plt.yticks(np.arange(-3, 1.1, 2))
   legend_elements_lines = []

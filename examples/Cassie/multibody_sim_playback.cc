@@ -123,24 +123,6 @@ int do_main(int argc, char* argv[]) {
       multibody::makeNameToVelocitiesMap(plant);
   std::map<std::string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
-  // Create lcm systems.
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-  auto input_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", lcm));
-  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
-  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-      input_receiver->get_output_port(0).size(), 0,
-      plant.get_actuation_input_port().size());
-  auto discrete_time_delay =
-      builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-          1.0 / FLAGS_publish_rate, 0, plant.num_actuators());
-  auto state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
-  auto state_sender =
-      builder.AddSystem<systems::RobotOutputSender>(plant, true);
-
   Eigen::MatrixXd t_u_init_npy;
   Eigen::MatrixXd u_init_npy;
   cnpy2eigen(FLAGS_folder_path_npy + "t_u_" + FLAGS_npy_num + ".npy",
@@ -152,6 +134,26 @@ int do_main(int argc, char* argv[]) {
       PiecewisePolynomial<double>::FirstOrderHold(t_u_vec_npy, u_init_npy);
   auto controller_playback = builder.AddSystem<systems::TrajectoryPlayback>(
       u_init_traj, plant.num_actuators());
+
+  // Create lcm systems.
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  auto command_sender =
+      builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto input_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          "CASSIE_INPUT", lcm, 1.0 / FLAGS_publish_rate));
+//  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
+  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
+      controller_playback->get_output_port(0).size(), 0,
+      plant.get_actuation_input_port().size());
+//  auto discrete_time_delay =
+//      builder.AddSystem<drake::systems::DiscreteTimeDelay>(
+//          1.0 / FLAGS_publish_rate, 0, plant.num_actuators());
+  auto state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
+  auto state_sender =
+      builder.AddSystem<systems::RobotOutputSender>(plant, true);
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
@@ -170,15 +172,17 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
 
   // connect leaf systems
-  builder.Connect(*input_sub, *input_receiver);
-  builder.Connect(*input_receiver, *passthrough);
-  builder.Connect(passthrough->get_output_port(),
-                  discrete_time_delay->get_input_port());
+//  builder.Connect(*input_sub, *input_receiver);
+//  builder.Connect(*input_receiver, *passthrough);
+  builder.Connect(*controller_playback, *command_sender);
+  builder.Connect(*command_sender, *input_pub);
   builder.Connect(controller_playback->get_output_port(),
+                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
                   plant.get_actuation_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
-  builder.Connect(controller_playback->get_output_port(),
+  builder.Connect(passthrough->get_output_port(),
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(

@@ -12,7 +12,7 @@ TrajectoryPlayback::TrajectoryPlayback(const PiecewisePolynomial<double>& traj,
     : traj_(traj) {
   this->set_name("trajectory_playback");
   this->DeclareVectorOutputPort(
-      BasicVector<double>(num_inputs),
+      TimestampedVector<double>(num_inputs),
       &TrajectoryPlayback::CalcEffort);
 
   // Shift trajectory by time_offset
@@ -21,9 +21,10 @@ TrajectoryPlayback::TrajectoryPlayback(const PiecewisePolynomial<double>& traj,
 
 void TrajectoryPlayback::CalcEffort(
     const drake::systems::Context<double>& context,
-    BasicVector<double>* control) const {
+    TimestampedVector<double>* control) const {
   // Read in current state
-  control->SetFromVector(traj_.value(context.get_time()));
+  control->set_timestamp(context.get_time());
+  control->SetDataVector(traj_.value(context.get_time()));
 }
 
 }  // namespace dairlib::systems

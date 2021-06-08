@@ -119,8 +119,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 30.595
-  # t_end = 30.87
+  t_start = 30.595
+  t_end = 30.87
   # t_start = 30.47
   # t_end = 31.0
   ### Convert times to indices
@@ -129,25 +129,49 @@ def main():
 
   # log_file_num = '28'
   # x = x[t_slice]
-  # u = u[t_u_slice]
+  # u_meas = u_meas[t_slice]
   # t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
-  # t_u = np.reshape(t_u[t_u_slice], (t_u[t_u_slice].shape[0], 1))
+  # # t_u = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
+  # t_u = t_x
   # # import pdb; pdb.set_trace()
   # np.save(ps.directory + 'x_' + log_file_num, x)
   # np.save(ps.directory + 't_x_' + log_file_num, t_x)
   # np.save(ps.directory + 't_u_' + log_file_num, t_u)
-  # np.save(ps.directory + 'u_' + log_file_num, u)
+  # np.save(ps.directory + 'u_' + log_file_num, u_meas)
 
   ### All plotting scripts here
   # print(np.mean(np.diff(t_u)))
   # plot_status(full_log)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # import pdb; pdb.set_trace()
-  # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  plot_contact_est(full_log)
+  plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
 
-  if True:
+  # filename = sys.argv[2]
+  # controller_channel = sys.argv[4]
+  # log = lcm.EventLog(filename, "r")
+  # path = pathlib.Path(filename).parent
+  # filename = filename.split("/")[-1]
+  # x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
+  # osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+  # osc_output, full_log, t_lcmlog_u = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
+  #
+  # # Nominal touchdown time
+  # # Default time window values, can override
+  # # Override here #
+  # t_start = 30.595
+  # t_end = 30.87
+  # # t_start = 30.47
+  # # t_end = 31.0
+  # ### Convert times to indices
+  # t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
+  # t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
+  #
+  # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '--')
+
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  # plot_contact_est(full_log)
+
+  if False:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -504,7 +528,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   pos_indices = slice(0 + 7, 23)
   vel_indices = slice(23 + 6, 45)
   # floating base states
-  pos_indices = slice(0, 7)
+  # pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
 
   # all motor torques
@@ -515,15 +539,15 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   ps.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
 
-  # plt.figure("velocities: " + filename)
-  # ps.plot(t_x[t_slice], x[t_slice, vel_indices])
-  # plt.legend(x_datatypes[vel_indices])
+  plt.figure("velocities: " + filename)
+  ps.plot(t_x[t_slice], x[t_slice, vel_indices])
+  plt.legend(x_datatypes[vel_indices])
   #
   plt.figure("efforts: " + filename)
   ps.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
-  # # ps.plot(t_x[t_slice], u_meas[t_slice, u_indices])
+  ps.plot(t_x[t_slice], u_meas[t_slice, u_indices], linestyle='--')
   # plt.ylim([-300, 300])
-  plt.legend(u_datatypes[u_indices])
+  plt.legend(u_datatypes[u_indices] + u_datatypes[u_indices])
 
   # plt.legend(u_datatypes[u_indices])
   # plt.figure("efforts meas: " + filename)

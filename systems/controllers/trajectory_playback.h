@@ -19,7 +19,7 @@ class TrajectoryPlayback : public drake::systems::LeafSystem<double> {
 
  private:
   void CalcEffort(const drake::systems::Context<double>& context,
-                  BasicVector<double>* control) const;
+                  TimestampedVector<double>* control) const;
 
   drake::trajectories::PiecewisePolynomial<double> traj_;
 };

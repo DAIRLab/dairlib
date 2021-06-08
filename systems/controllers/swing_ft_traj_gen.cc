@@ -285,20 +285,6 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::CreateSplineForSwingFoot(
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));
 
-  /*
-  std::ofstream myfile;
-  myfile.open ("../test_swing_ft.txt");
-  myfile << "t_start = " << start_time_of_this_interval << "\n";
-  myfile << "Y = \n";
-  myfile << Y[0];
-  myfile << Y[1];
-  myfile << Y[2];
-  myfile << "Y_dot = \n";
-  myfile << Y_dot[0];
-  myfile << Y_dot[2];
-  myfile.close();
-   */
-
   return swing_foot_spline;
 }
 

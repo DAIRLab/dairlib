@@ -71,7 +71,7 @@ cc_library(
         ":reduced_order_models",
         "//common:file_utils",
         "//examples/Cassie:cassie_utils",
-        "//examples/goldilocks_models/controller:osc_rom_walking_gains",
+        "//examples/goldilocks_models:rom_walking_gains",
         "@drake//:drake_shared_library",
     ],
 )
@@ -116,7 +116,7 @@ cc_binary(
         "//examples/Cassie/osc",
         "//examples/goldilocks_models/controller:control_parameters",
         "//examples/goldilocks_models/controller:local_lipm_traj_gen",
-        "//examples/goldilocks_models/controller:osc_rom_walking_gains",
+        "//examples/goldilocks_models:rom_walking_gains",
         "//examples/goldilocks_models/controller:planned_traj_guard",
         "//examples/goldilocks_models/controller:saved_traj_receiver",
         "//lcm:rom_planner_trajectory_saver",
@@ -143,7 +143,7 @@ cc_binary(
         "//examples/Cassie/osc",
         "//examples/goldilocks_models/controller:cassie_rom_planner_system",
         "//examples/goldilocks_models/controller:control_parameters",
-        "//examples/goldilocks_models/controller:osc_rom_walking_gains",
+        "//examples/goldilocks_models:rom_walking_gains",
         "//examples/goldilocks_models/controller:planner_preprocessing",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
@@ -168,7 +168,7 @@ cc_binary(
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
         "//examples/goldilocks_models/controller:control_parameters",
-        "//examples/goldilocks_models/controller:osc_rom_walking_gains",
+        "//examples/goldilocks_models:rom_walking_gains",
         "//examples/goldilocks_models/controller:rom_inverse_kinematics",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
@@ -245,6 +245,16 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+
+cc_library(
+    name = "rom_walking_gains",
+    hdrs = ["rom_walking_gains.h"],
+    deps = [
+        #"//examples/goldilocks_models/controller:osc_rom_walking_gains",
+        "@drake//:drake_shared_library",
     ],
 )
 

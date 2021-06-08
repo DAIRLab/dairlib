@@ -11,7 +11,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
-#include "examples/goldilocks_models/controller/osc_rom_walking_gains.h"
+#include "examples/goldilocks_models/rom_walking_gains.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"

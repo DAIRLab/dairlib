@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
   # Read the controller parameters
   a_yaml_file = open(
-    "examples/goldilocks_models/controller/osc_rom_walking_gains.yaml")
+    "examples/goldilocks_models/rom_walking_gains.yaml")
   parsed_yaml_file = yaml.load(a_yaml_file)
   model_dir = parsed_yaml_file.get('dir_model')
   data_dir = parsed_yaml_file.get('dir_data')

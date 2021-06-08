@@ -10,7 +10,7 @@ cc_library(
         "//common:eigen_utils",
         "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:reduced_order_models",
-        "//examples/goldilocks_models/controller:osc_rom_walking_gains",
+        "//examples/goldilocks_models:rom_walking_gains",
         "//examples/goldilocks_models/planning:lipm_mpc",
         "//examples/goldilocks_models/planning:rom_traj_opt",
         "//lcm:rom_planner_trajectory_saver",

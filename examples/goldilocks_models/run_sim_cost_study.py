@@ -488,10 +488,10 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
 
   else:
     ### 2D plot (cost vs iteration)
-
     # The line along which we evaluate the cost (using interpolation)
-    x = np.linspace(0, 100, 101)
-    y = task_slice_value * np.ones(101)
+    n_model_iter = model_indices[-1] - model_indices[0]
+    x = np.linspace(0, n_model_iter, n_model_iter + 1)
+    y = task_slice_value * np.ones(n_model_iter + 1)
 
     plt.figure(figsize=(6.4, 4.8))
     plt.rcParams.update({'font.size': 14})
@@ -506,31 +506,33 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
       plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
       # plt.plot(model_indices, nominal_mtc[:, 2], 'k--', linewidth=3, label="trajectory optimization")
 
+    # plt.xlim([0, 135])
+    # plt.ylim([0.53, 1])
     plt.xlabel('model iterations')
     plt.ylabel('total cost')
-    plt.legend()
-    # plt.title('stride length ' + str(task_slice_value) + " m")
-    plt.title('speed %.2f m/s' % (task_slice_value / 0.4))
+    # plt.legend()
+    plt.legend(loc='upper right')
+    plt.title('stride length ' + str(task_slice_value) + " m")
+    # plt.title('speed %.2f m/s' % (task_slice_value / 0.4))
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
       plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
 
     ### 2D plot (cost vs tasks)
-    color_names = ["darkblue", "maroon"]
     plt.figure(figsize=(6.4, 4.8))
     plt.rcParams.update({'font.size': 14})
     for i in range(len(model_slices)):
       model_iter = model_slices[i]
       # The line along which we evaluate the cost (using interpolation)
-      x = model_iter * np.ones(101)
-      y = np.linspace(-0.8, 0.8, 101)
+      x = model_iter * np.ones(500)
+      y = np.linspace(-0.8, 0.8, 500)
 
       triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
       interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
       z = interpolator(x, y)
-      plt.plot(y, z, '-', color=color_names[i], linewidth=3,
-        label="iter " + str(model_iter))
+      plt.plot(y, z, '-', color=color_names[i],
+        linewidth=3, label="iter " + str(model_iter))
       # if plot_nominal:
       #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
       #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
@@ -546,22 +548,28 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
     if save_fig:
       plt.savefig("%scost_vs_task.png" % eval_dir)
 
-    ### 2D plot (cost vs tasks)
+    ### 2D plot (iter vs tasks)
     data_list = [mtcl, nominal_mtc]
     title_list = ["(Drake sim)", "(traj opt)"]
     app_list = ["", "_nom"]
-    for i in range(2):
+    for i in range(2 if plot_nominal else 1):
       plt.rcParams.update({'font.size': 14})
       fig, ax = plt.subplots()
 
       data = data_list[i]
-      # Use set in levels to get rid of duplicates
+      n_levels = 50
       levels = list(set(
-        np.linspace(min(data[:, 2]), max(data[:, 2]), 20).round(decimals=2)))
+        np.linspace(min(data[:, 2]), max(data[:, 2]), n_levels).round(
+          decimals=2)))  # set() is used to get rid of duplicates
       levels.sort()
+      levels[0] -= 0.01
+      levels[-1] += 0.01
+      # levels = list(set(np.linspace(0.4, 3, n_levels)))
+      # levels.sort()
       surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels)
-      fig.colorbar(surf, shrink=0.8, aspect=10)
+      fig.colorbar(surf, shrink=0.9, aspect=15)
 
+      # plt.xlim([0, 135])
       plt.xlabel('model iterations')
       plt.ylabel('stride length (m)')
       plt.title('Cost landscape ' + title_list[i])
@@ -620,7 +628,7 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 100
+  model_iter_idx_end = 150
   idx_spacing = 5
 
   # Task list
@@ -648,10 +656,12 @@ if __name__ == "__main__":
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
 
   # 2D plot (cost vs model)
-  task_slice_value = 0.2
+  task_slice_value = 0.4
 
   # 2D plot (cost vs task)
   model_slices = [1, 40]
+  color_names = ["darkblue", "maroon"]
+  # color_names = ["k", "maroon"]
 
   ### Set up environment
   # Create folder if not exist
@@ -693,10 +703,12 @@ if __name__ == "__main__":
 
   # Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.
-  if not math.isclose(parsed_yaml_file.get('left_support_duration') + parsed_yaml_file.get('double_support_duration') , duration):
+  if not math.isclose(
+      parsed_yaml_file.get('left_support_duration') + parsed_yaml_file.get(
+        'double_support_duration'), duration):
     # raise ValueError("Reminder: you are setting a different duration in sim than in trajopt")
-    print("Reminder: you are setting a different duration in sim than in trajopt")
-    input("type anything to continue")
+    print("Warning: duration in sim is different from in trajopt")
+    input("type anything to confirm and continue")
 
   ### Construct log indices
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
@@ -708,10 +720,10 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  run_sim_and_eval_cost(model_indices, log_indices, task_list)
+  # run_sim_and_eval_cost(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  eval_cost_in_multithread(model_indices, log_indices)
+  # eval_cost_in_multithread(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

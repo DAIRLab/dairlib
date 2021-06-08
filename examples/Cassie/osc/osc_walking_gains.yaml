@@ -10,9 +10,9 @@ vel_scale_trans_lateral: -0.15
 global_target_position_x: 0
 global_target_position_y: 0
 yaw_deadband_blur: 5
-yaw_deadband_radius: 1.5
-kp_yaw: 0
-kd_yaw: 0.0
+yaw_deadband_radius: 0.5
+kp_yaw: 0.2
+kd_yaw: 0.1
 vel_max_yaw: 0.5
 
 kp_pos_sagital: 0.3
@@ -30,8 +30,8 @@ k_ff_lateral: 0
 k_fb_lateral: 0.15
 
 # Finite state machine
-ss_time: 0.35
-ds_time: 0.00
+ss_time: 0.30
+ds_time: 0.05
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.3
@@ -42,7 +42,7 @@ final_foot_height: 0.000
 final_foot_velocity_z: -0.1
 
 # LIPM trajectory
-lipm_height: 0.9
+lipm_height: 0.85
 
 # OSC gains
 mu: 0.8

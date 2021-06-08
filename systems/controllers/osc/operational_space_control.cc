@@ -142,6 +142,30 @@ OperationalSpaceControl::OperationalSpaceControl(
   u_min_ = u_min;
   u_max_ = u_max;
 
+  VectorXd q_min(n_v_ - 6);
+  VectorXd q_max(n_v_ - 6);
+  n_joints_ = 0;
+  for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
+    const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
+    if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
+      q_min(vel_map_wo_spr.at(joint.name() + "dot") - 6) =
+          plant_wo_spr.get_joint(i).position_lower_limits()[0];
+      q_max(vel_map_wo_spr.at(joint.name() + "dot") - 6) =
+          plant_wo_spr.get_joint(i).position_upper_limits()[0];
+      n_joints_ += 1;
+    }
+  }
+  q_min_ = q_min;
+  q_max_ = q_max;
+
+  //  // Get joint limits
+  //  for (JointIndex q_i(6); q_i < n_joints_; ++q_i){
+  //    std::cout << q_i << std::endl;
+  //    std::cout << plant_wo_spr.get_joint(q_i).name() << std::endl;
+  //    q_min(q_i) = plant_wo_spr.get_joint(q_i).position_lower_limits()[0];
+  //    q_max(q_i) = plant_wo_spr.get_joint(q_i).position_upper_limits()[0];
+  //  }
+
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
 }
@@ -374,11 +398,20 @@ void OperationalSpaceControl::Build() {
   }
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    tracking_cost_.push_back(prog_->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
+    tracking_cost_.push_back(prog_
+                                 ->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
                                                     VectorXd::Zero(n_v_), dv_)
                                  .evaluator()
                                  .get());
   }
+
+  // 5. Joint Limit cost
+  w_joint_limit_ = VectorXd::Zero(n_joints_);
+  K_joint_pos = MatrixXd::Identity(n_joints_, n_joints_);
+  joint_limit_cost_.push_back(
+      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_joints_))
+          .evaluator()
+          .get());
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
@@ -603,6 +636,18 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
+  // Add joint limit constraints
+  VectorXd w_joint_limit =
+      K_joint_pos *
+          (x_wo_spr.head(plant_wo_spr_.num_positions()).tail(n_joints_) -
+           q_max_)
+              .cwiseMax(0) +
+      K_joint_pos *
+          (x_wo_spr.head(plant_wo_spr_.num_positions()).tail(n_joints_) -
+           q_min_)
+              .cwiseMin(0);
+  joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
+
   // Solve the QP
 
   //  const MathematicalProgramResult result = Solve(*prog_);
@@ -610,7 +655,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
-  if(!result.is_success()){
+  if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;
     return *u_sol_;
   }

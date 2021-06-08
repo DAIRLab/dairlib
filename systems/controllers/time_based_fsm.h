@@ -98,8 +98,8 @@ class TimeBasedFiniteStateMachineWithTrigger :
   int fsm_port_;
   int global_fsm_idx_port_;
 
+  mutable bool trigged_ = false;
   mutable double t0_ = -1;
-  bool with_trigger_input_port_;
   double one_stride_period_;
 
   std::vector<int> states_;

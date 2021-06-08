@@ -76,8 +76,7 @@ TimeBasedFiniteStateMachineWithTrigger::TimeBasedFiniteStateMachineWithTrigger(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<int>& states, const std::vector<double>& state_durations,
     bool with_trigger_input_port, double one_stride_period)
-    : states_(states), with_trigger_input_port_(with_trigger_input_port),
-    one_stride_period_(one_stride_period) {
+    : states_(states), one_stride_period_(one_stride_period) {
   DRAKE_DEMAND(states.size() == state_durations.size());
 
   // Input/Output Setup
@@ -119,10 +118,10 @@ TimeBasedFiniteStateMachineWithTrigger::TimeBasedFiniteStateMachineWithTrigger(
 
   // If not using the trigger port, then set t0 = 0.
   if (!with_trigger_input_port) {
+    trigged_ = true;
     t0_ = 0;
   }
 }
-
 
 EventStatus TimeBasedFiniteStateMachineWithTrigger::DiscreteVariableUpdate(
     const Context<double>& context,
@@ -133,11 +132,13 @@ EventStatus TimeBasedFiniteStateMachineWithTrigger::DiscreteVariableUpdate(
       dynamic_cast<const OutputVector<double>*>(this->EvalVectorInput(context,
           state_port_))->get_timestamp();
 
-  if (with_trigger_input_port_) {
+  if (!trigged_) {
     if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
         context, trigger_port_)->target_height < 0.5) {
       // Keep updating t0_ when the signal is still low.
       t0_ = current_time;
+    } else {
+      trigged_ = true;
     }
   }
 
@@ -152,14 +153,18 @@ void TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState(
       dynamic_cast<const OutputVector<double>*>(this->EvalVectorInput(context,
           state_port_))->get_timestamp();
 
-  double remainder = fmod(current_time - t0_, period_);
-
   // Get current finite state
   VectorXd current_finite_state(1);
-  for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
-    if (remainder < accu_state_durations_[i]) {
-      current_finite_state << states_[i];
-      break;
+  if (!trigged_) {
+    current_finite_state << -1;
+  } else {
+    double remainder = fmod(current_time - t0_, period_);
+
+    for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
+      if (remainder < accu_state_durations_[i]) {
+        current_finite_state << states_[i];
+        break;
+      }
     }
   }
 

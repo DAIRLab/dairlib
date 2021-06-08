@@ -282,9 +282,7 @@ int DoMain(int argc, char* argv[]) {
                                             right_stance_state};
   auto event_time = builder.AddSystem<systems::FiniteStateMachineEventTime>(
       plant_w_spr, single_support_states,
-      FLAGS_hardware ? (FLAGS_start_with_left_stance ? left_stance_state
-                                                     : right_stance_state)
-                     : -std::numeric_limits<int>::infinity(),
+      FLAGS_hardware ? -1 : -std::numeric_limits<int>::infinity(),
       FLAGS_hardware);
   builder.Connect(fsm->get_output_port_fsm(), event_time->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),

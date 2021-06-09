@@ -706,6 +706,10 @@ int DoMain(int argc, char* argv[]) {
     if (FLAGS_const_walking_speed && !FLAGS_get_swing_foot_from_planner) {
       double const_walking_speed_x =
           gains.max_desired_step_length / stride_period;
+      if (gains.global_target_position_x == 0) {
+        cout << "Set walking speed to 0 because global_target_position_x = 0\n";
+        const_walking_speed_x = 0;
+      }
 
       auto& walking_speed_control_context =
           loop.get_diagram()->GetMutableSubsystemContext(*walking_speed_control,

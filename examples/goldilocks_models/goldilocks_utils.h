@@ -182,7 +182,7 @@ struct PlannerSetting {
   double realtime_rate_for_time_limit;
 
   // gains includes cost weights
-  OSCRomWalkingGains gains;
+  RomWalkingGains gains;
 
   // Files parameters
   std::string dir_model;  // location of the model files

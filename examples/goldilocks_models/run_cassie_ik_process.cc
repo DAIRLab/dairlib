@@ -91,7 +91,7 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Read-in the parameters
-  OSCRomWalkingGains gains;
+  RomWalkingGains gains;
   const YAML::Node& root = YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 

@@ -1,0 +1,82 @@
+rows: 3
+cols: 3
+
+### OSC gains (Hardware gains; ~master branch)
+
+mu: 0.8
+
+w_accel: 0.000001
+w_soft_constraint: 8000
+
+w_swing_toe: 100
+swing_toe_kp: 1500
+swing_toe_kd: 10
+
+w_hip_yaw: 50
+hip_yaw_kp: 40
+hip_yaw_kd: 0.5
+
+#RomW:
+#[0, 0, 0,
+# 0, 0, 0,
+# 0, 0, 1000]
+#RomKp:
+#[0, 0, 0,
+# 0, 0, 0,
+# 0, 0, 50]
+#RomKd:
+#[0, 0, 0,
+# 0, 0, 0,
+# 0, 0, 5]
+RomW:
+ [   2,    0,     0,
+     0,    2,     0,
+     0,    0,  1000]
+RomKp:
+ [  50,    0,     0,
+    0,   50,     0,
+    0,    0,    50]
+RomKd:
+ [   5,    0,     0,
+     0,    5,     0,
+     0,    0,     5]
+
+PelvisBalanceW:
+ [ 200,    0,     0,
+   0,    400,     0,
+   0,      0,     0]
+PelvisBalanceKp:
+ [20,      0,    0,
+  0,    100,    0,
+  0,      0,    0]
+PelvisBalanceKd:
+ [   1,     0,    0,
+     0,    10,    0,
+     0,     0,    0]
+
+PelvisHeadingW:
+ [   0,    0,     0,
+     0,    0,     0,
+     0,    0,    10]
+PelvisHeadingKp:
+ [   0,     0,    0,
+     0,     0,    0,
+     0,     0,   10]
+PelvisHeadingKd:
+ [   0,     0,    0,
+     0,     0,    0,
+     0,     0,    2]
+period_of_no_heading_control: 0.0
+
+SwingFootW:
+ [ 400,    0,     0,
+   0,    400,     0,
+   0,      0,   400]
+SwingFootKp:
+ [ 200,    0,     0,
+   0,  200,     0,
+   0,    0,   100]
+SwingFootKd:
+ [   1,    0,     0,
+     0,    1,     0,
+     0,    0,     1]

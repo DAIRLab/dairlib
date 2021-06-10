@@ -27,8 +27,8 @@ def build_files(bazel_file_argument):
     time.sleep(0.1)
 
 
-def run_command(cmd_list):
-  process = subprocess.Popen(cmd_list)
+def run_command(cmd_list, shell=True):
+  process = subprocess.Popen(cmd_list, shell=True)
   while process.poll() is None:  # while subprocess is alive
     time.sleep(0.1)
 

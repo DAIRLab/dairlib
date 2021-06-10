@@ -199,8 +199,8 @@ int DoMain(int argc, char* argv[]) {
            param.knots_per_mode * VectorXd::Ones(1));
 
   // Create data folder if it doesn't exist
-  if (!CreateFolderIfNotExist(gains.dir_model)) return 0;
-  if (!CreateFolderIfNotExist(gains.dir_data)) return 0;
+  // if (!CreateFolderIfNotExist(gains.dir_model)) return 0;
+  if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model

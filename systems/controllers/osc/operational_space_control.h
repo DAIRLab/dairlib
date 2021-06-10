@@ -237,6 +237,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // floating base model flag
   bool is_quaternion_;
 
+  // Solver
+  drake::solvers::OsqpSolver qp_solver_;
+
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
   // Decision variables

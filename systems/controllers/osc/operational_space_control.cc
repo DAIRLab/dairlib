@@ -372,7 +372,16 @@ void OperationalSpaceControl::Build() {
   }
 
   // Max solve duration
-  // prog_->SetSolverOption(OsqpSolver().id(), "time_limit", kMaxSolveDuration);
+  // TODO: need to update osc gains after using the following setting!
+  // prog_->SetSolverOption(OsqpSolver::id(), "time_limit", kMaxSolveDuration);
+  /*prog_->SetSolverOption(OsqpSolver::id(), "verbose", 0);
+  prog_->SetSolverOption(OsqpSolver::id(), "eps_abs", 1e-7);
+  prog_->SetSolverOption(OsqpSolver::id(), "eps_rel", 1e-7);
+  prog_->SetSolverOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
+  prog_->SetSolverOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
+  prog_->SetSolverOption(OsqpSolver::id(), "polish", 1);
+  prog_->SetSolverOption(OsqpSolver::id(), "scaled_termination", 1);
+  prog_->SetSolverOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);*/
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -599,7 +608,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Solve the QP
-  const MathematicalProgramResult result = Solve(*prog_);
+  const MathematicalProgramResult result = qp_solver_.Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 

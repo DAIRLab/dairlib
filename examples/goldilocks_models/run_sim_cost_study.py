@@ -28,8 +28,8 @@ def build_files(bazel_file_argument):
 
 
 # cmd should be a list if shell=False. Otherwise, a string.
-def run_command(cmd, shell=False):
-  process = subprocess.Popen(cmd, shell=True)
+def run_command(cmd, use_shell=False):
+  process = subprocess.Popen(cmd, shell=use_shell)
   while process.poll() is None:  # while subprocess is alive
     time.sleep(0.1)
 

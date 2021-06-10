@@ -87,6 +87,7 @@ using multibody::JwrtqdotToJwrtv;
 DEFINE_bool(broadcast, false,
             "broadcast between controller thread and planner thread");
 DEFINE_bool(hardware, false, "");
+DEFINE_bool(use_hardware_osc_gains, false, "");
 
 DEFINE_int32(iter, -1, "The iteration # of the model that you use");
 
@@ -141,10 +142,11 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::YamlReadArchive(root).Accept(&gains);
   OSCRomWalkingGains osc_gains;
   std::string osc_gains_filename =
-      FLAGS_hardware ? "examples/goldilocks_models/controller/"
-                       "osc_rom_walking_gains_hardware.yaml"
-                     : "examples/goldilocks_models/controller/"
-                       "osc_rom_walking_gains_simulation.yaml";
+      (FLAGS_hardware || FLAGS_use_hardware_osc_gains)
+          ? "examples/goldilocks_models/controller/"
+            "osc_rom_walking_gains_hardware.yaml"
+          : "examples/goldilocks_models/controller/"
+            "osc_rom_walking_gains_simulation.yaml";
   const YAML::Node& root2 =
       YAML::LoadFile(FindResourceOrThrow(osc_gains_filename));
   drake::yaml::YamlReadArchive(root2).Accept(&osc_gains);

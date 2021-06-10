@@ -1,3 +1,8 @@
+# When seeing "_tkinter.TclError: no display name and no $DISPLAY environment variable",
+# uncomment the following two lines code
+#import matplotlib
+#matplotlib.use('Agg')
+
 import subprocess
 import time
 import os

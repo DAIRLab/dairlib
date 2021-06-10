@@ -27,8 +27,9 @@ def build_files(bazel_file_argument):
     time.sleep(0.1)
 
 
-def run_command(cmd_list, shell=True):
-  process = subprocess.Popen(cmd_list, shell=True)
+# cmd should be a list if shell=False. Otherwise, a string.
+def run_command(cmd, shell=False):
+  process = subprocess.Popen(cmd, shell=True)
   while process.poll() is None:  # while subprocess is alive
     time.sleep(0.1)
 
@@ -398,9 +399,9 @@ def delete_most_logs(model_indices, log_indices):
                  lcmlog_file_path(model_idx, mid_success_log_idx2, "temp/")])
 
   # Delete the rest of the file
-  run_command(['rm', eval_dir + 'lcmlog-idx_*'])
+  run_command('rm ' + eval_dir + 'lcmlog-idx_*', True)
   # Copy back the successful files
-  run_command(['cp', eval_dir + 'temp/lcmlog-idx_*', eval_dir])
+  run_command('cp ' + eval_dir + 'temp/lcmlog-idx_* ' + eval_dir, True)
   # Delete temp folder
   run_command(['rm', '-rf', eval_dir + 'temp/'])
 

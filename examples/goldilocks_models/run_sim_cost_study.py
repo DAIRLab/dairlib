@@ -22,6 +22,12 @@ def build_files(bazel_file_argument):
     time.sleep(0.1)
 
 
+def run_command(cmd_list):
+  process = subprocess.Popen(cmd_list)
+  while process.poll() is None:  # while subprocess is alive
+    time.sleep(0.1)
+
+
 def LogSimCostStudySetting():
   f = open(eval_dir + "sim_cost_study_log.txt", "a")
   f.write("\n\n*************************************************************\n")
@@ -40,8 +46,8 @@ def LogSimCostStudySetting():
   f.close()
 
 
-def lcmlog_file_path(rom_iter_idx, task_idx):
-  return eval_dir + 'lcmlog-idx_%d_%d' % (rom_iter_idx, task_idx)
+def lcmlog_file_path(rom_iter_idx, task_idx, extra_layer=""):
+  return eval_dir + extra_layer + 'lcmlog-idx_%d_%d' % (rom_iter_idx, task_idx)
 
 
 # def get_nominal_task_given_sample_idx(sample_idx, name):
@@ -330,6 +336,68 @@ def eval_cost_in_multithread(model_indices, log_indices):
         del working_threads[j]
         break
   print("Finished evaluating. Current time = " + str(datetime.now()))
+
+
+def delete_most_logs(model_indices, log_indices):
+  if log_indices[0] != 0:
+    raise ValueError("log index should start from 0")
+  input("WARNING: deleting lcmlog files! (type anything to continue)")
+
+  model_len = len(model_indices)
+  sampled_model_indices = list(set(
+    [model_indices[0], model_indices[int(model_len / 2)], model_indices[-1]]))
+  print("sampled_model_indices = ", sampled_model_indices)
+
+  # Create a temp folder
+  Path(eval_dir + "temp").mkdir(parents=True, exist_ok=True)
+
+  for model_idx in sampled_model_indices:
+    # Get log indices to save
+    # parameter
+    mid_idx1_target = len(log_indices) / 2
+    mid_idx2_target = 50
+
+    min_success_log_idx = max(log_indices)
+    max_success_log_idx = 0
+    mid_success_log_idx1 = 0
+    mid_success_log_idx2 = 0
+    for log_idx in log_indices:
+      path = eval_dir + '%d_%d_success.csv' % (model_idx, log_idx)
+      if os.path.exists(path):
+        if min_success_log_idx > log_idx:
+          min_success_log_idx = log_idx
+        if max_success_log_idx < log_idx:
+          max_success_log_idx = log_idx
+        if ((mid_success_log_idx1 < log_idx) and (
+            log_idx < mid_idx1_target)) or mid_success_log_idx1 == 0:
+          mid_success_log_idx1 = log_idx
+        if ((mid_success_log_idx2 < log_idx) and (
+            log_idx < mid_idx2_target)) or mid_success_log_idx2 == 0:
+          mid_success_log_idx2 = log_idx
+
+    if min_success_log_idx > max_success_log_idx:
+      raise ValueError("No successful simulation for model idx %d" % model_idx)
+
+    print("model idx %d: min, mid1, mid2, max log idx = %d, %d, %d, %d)" % (
+      model_idx, min_success_log_idx, mid_success_log_idx1,
+      mid_success_log_idx2, max_success_log_idx))
+
+    # Save log indices
+    run_command(['cp', lcmlog_file_path(model_idx, min_success_log_idx),
+                 lcmlog_file_path(model_idx, min_success_log_idx, "temp/")])
+    run_command(['cp', lcmlog_file_path(model_idx, max_success_log_idx),
+                 lcmlog_file_path(model_idx, max_success_log_idx, "temp/")])
+    run_command(['cp', lcmlog_file_path(model_idx, mid_success_log_idx1),
+                 lcmlog_file_path(model_idx, mid_success_log_idx1, "temp/")])
+    run_command(['cp', lcmlog_file_path(model_idx, mid_success_log_idx2),
+                 lcmlog_file_path(model_idx, mid_success_log_idx2, "temp/")])
+
+  # Delete the rest of the file
+  run_command(['rm', eval_dir + 'lcmlog-idx_*'])
+  # Copy back the successful files
+  run_command(['cp', eval_dir + 'temp/lcmlog-idx_*', eval_dir])
+  # Delete temp folder
+  run_command(['rm', '-rf', eval_dir + 'temp/'])
 
 
 def find_cost_in_string(file_string, string_to_search):
@@ -724,6 +792,9 @@ if __name__ == "__main__":
 
   # Cost evaluate only
   # eval_cost_in_multithread(model_indices, log_indices)
+
+  # Delete all logs but a few successful ones (for analysis later)
+  #delete_most_logs(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

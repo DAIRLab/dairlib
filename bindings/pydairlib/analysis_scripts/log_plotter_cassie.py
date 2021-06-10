@@ -119,8 +119,7 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  t_start = 30.595
-  t_end = 30.87
+  # t_start = 30.595
   # t_start = 30.47
   # t_end = 31.0
   ### Convert times to indices
@@ -144,30 +143,7 @@ def main():
   # plot_status(full_log)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # import pdb; pdb.set_trace()
-  plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
-
-  # filename = sys.argv[2]
-  # controller_channel = sys.argv[4]
-  # log = lcm.EventLog(filename, "r")
-  # path = pathlib.Path(filename).parent
-  # filename = filename.split("/")[-1]
-  # x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
-  # osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  # osc_output, full_log, t_lcmlog_u = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
-  #
-  # # Nominal touchdown time
-  # # Default time window values, can override
-  # # Override here #
-  # t_start = 30.595
-  # t_end = 30.87
-  # # t_start = 30.47
-  # # t_end = 31.0
-  # ### Convert times to indices
-  # t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
-  # t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
-  #
-  # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '--')
-
+  # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 

@@ -92,8 +92,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 205
-  # t_end = 12
+  # t_start = 11
+  # t_end = 13
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -103,7 +103,7 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All plotting scripts here
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
 
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
@@ -111,6 +111,8 @@ def main():
   #   t_x, t_slice, "left foot")
 
   plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
+
+  PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
 
   plt.show()
 
@@ -179,8 +181,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
-  osc_traj0 = "swing_ft_traj"
-  # osc_traj0 = "optimal_rom_traj"
+  # osc_traj0 = "swing_ft_traj"
+  osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
   osc_traj2 = "pelvis_balance_traj"
@@ -338,15 +340,17 @@ def compare_ekf(log, pos_map, vel_map):
   plt.plot(t_x, imu, 'k-')
 
 
-def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
+def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   # pos_indices = slice(0 + 7, 23, 2)
   # vel_indices = slice(23 + 6, 45, 2)
   pos_indices = slice(0,7)
-  vel_indices = slice(23, 23 + 6)
+  vel_indices = slice(nq, nq + 6)
   u_indices = slice(6, 8)
   # overwrite
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
+  vel_indices = slice(nq + 6, nq + nv - 2)
+  u_indices = slice(0, 10)
 
   plt.figure("positions: " + filename)
   # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
@@ -356,6 +360,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
   plt.figure("velocities: " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
+  plt.plot(t_u[t_u_slice], fsm[t_u_slice])
   plt.figure("efforts: " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
   plt.legend(u_datatypes[u_indices])
@@ -366,7 +371,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes):
 
 def plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes):
   pos_indices = slice(5,7)
-  vel_indices = slice(26, 26 + 3)
+  vel_indices = slice(nq + 3, nq + 3 + 3)
 
   plt.figure()
   plt.plot(t_x[t_slice], x[t_slice, pos_indices])
@@ -374,6 +379,36 @@ def plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes):
   plt.xlabel("time (s)")
   plt.ylabel("position (m) or velocity (m/s)")
   plt.legend(["pelvis_y", "pelvis_z", "pelvis_xdot", "pelvis_ydot", "pelvis_zdot"])
+
+
+def PlotCenterOfMass(x, t_x, plant, world, context):
+  # Compute COM and Comdot
+  com = np.zeros((3, t_x.shape[0]))
+  comdot = np.zeros((3, t_x.shape[0]))
+  for i in range(t_x.shape[0]):
+    xi = x[i, :]
+    plant.SetPositionsAndVelocities(context, xi)
+    com[:, i] = plant.CalcCenterOfMassPositionInWorld(context)
+    J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context,
+      JacobianWrtVariable.kV, world, world)
+    comdot[:, i] = J @ x[i, nq:]
+
+  # Plot com along the cubic splines
+  figname = "com traj"
+  plt.figure(figname, figsize=(6.4, 4.8))
+  plt.plot(t_x, com.T)
+  plt.xlabel('time (s)')
+  plt.legend(['x', 'y', 'z'])
+  figname = "comdot traj"
+  plt.figure(figname, figsize=(6.4, 4.8))
+  plt.plot(t_x, comdot.T)
+  plt.xlabel('time (s)')
+  plt.legend(['x', 'y', 'z'])
+  # figname = "comddot traj along the traj"
+  # plt.figure(figname, figsize=(6.4, 4.8))
+  # plt.plot(t_x, comddot.T, 'ko', markersize=4)
+  # plt.xlabel('time (s)')
+  # plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
 
 
 if __name__ == "__main__":

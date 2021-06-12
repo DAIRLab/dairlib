@@ -124,11 +124,13 @@ DEFINE_double(
     "WARNING: beta_momentum is not used in newton's method");
 
 // Solving for the cost gradient
-//  I didn't benchmark if method 4 to 6 get very slow when model parameter size
+// - I didn't benchmark if method 4 to 6 get very slow when model parameter size
 //  is big (i.e. B matrix has many columns).
-//  The accuracy decreases in the direction from method 4 to method 6, while the
-//  solving speed increases (method4 is about 10x faster than method6).
-//  Method 1 and 2 require the matrix (A in Ax=b) being positive definite.
+// - The solving speed increases from method 4 to method 6 (method4 is about 10x
+//  faster than method6). As for the accuracy, method 5 and 6 are better and
+//  more robust than method 4. (method 5 appears to be more accurate as of
+//  2021/06/12)
+// - Method 1 and 2 require the matrix (A in Ax=b) being positive definite.
 DEFINE_int32(method_to_solve_system_of_equations, 5,
              "Method 0: use optimization program to solve it "
              "Method 1: inverse the matrix by schur complement "
@@ -719,11 +721,9 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
         if (max_error > residual_tol || std::isnan(max_error) ||
             std::isinf(max_error)) {
           cout << "  sample " << sample << "'s max_error = " << max_error
-               << "; switch to method 6\n";
-          method_to_solve_system_of_equations = 6;
-        } else {
-          successful = true;
+               << "; move on.\n";
         }
+        break;
 
       } else if (method_to_solve_system_of_equations == 6) {
         // Method 6: linear solve with bdcSvd //////////////////////////////////
@@ -748,7 +748,6 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
           cout << "  sample " << sample << "'s max_error = " << max_error
                << "; move on.\n";
         }
-
         break;
       }
     }

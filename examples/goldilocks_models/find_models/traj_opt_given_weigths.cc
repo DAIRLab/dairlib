@@ -1945,9 +1945,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_R = setting.R_double * all_cost_scale;
   double w_reg = setting.eps_reg * all_cost_scale;
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-4 * sqrt(0.2) * sqrt(all_cost_scale);
+  double w_lambda = 1.0e-4 * sqrt(0.02) * sqrt(all_cost_scale);
   // Cost on difference over time
-  double w_lambda_diff = 2e-8 * all_cost_scale;
+  double w_lambda_diff = 2e-9 * all_cost_scale;
   double w_q_diff = 0;  // 0.1 * all_cost_scale;
   double w_v_diff = 0;  // 1e-3 * all_cost_scale;
   double w_u_diff = 2e-7 * all_cost_scale;
@@ -1977,7 +1977,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   double w_v_diff_swing_leg = w_v_diff * 1;
   // Testing
-  double w_joint_accel = 0.00001;  // The final weight is w_joint_accel * W_Q
+  double w_joint_accel = 0.0002;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
   bool periodic_quaternion = false;

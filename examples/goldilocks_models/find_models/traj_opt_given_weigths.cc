@@ -1954,9 +1954,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Cost on position
   //  for w_q_hip_roll, maybe 1 if mu = 0.1, and 10 if mu = 1?
   double reduce_reg_weight = 1;
-  double w_q_hip_roll = 1 * all_cost_scale * reduce_reg_weight;
-  double w_q_hip_yaw = 1 * all_cost_scale * reduce_reg_weight;
-  double w_q_quat = 1 * all_cost_scale * reduce_reg_weight;
+  double w_q_hip_roll = .1 * all_cost_scale * reduce_reg_weight;
+  double w_q_hip_yaw = .1 * all_cost_scale * reduce_reg_weight;
+  double w_q_quat = .1 * all_cost_scale * reduce_reg_weight;
   // TODO: if you want to use w_q_quat, you need to modify it for turning
   if (w_q_quat) {
     DRAKE_DEMAND(turning_rate == 0);
@@ -1977,7 +1977,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   double w_v_diff_swing_leg = w_v_diff * 1;
   // Testing
-  double w_joint_accel = 0.0002;  // The final weight is w_joint_accel * W_Q
+  double w_joint_accel = 0.002;  // The final weight is w_joint_accel * W_Q
 
   // Flags for constraints
   bool periodic_quaternion = false;

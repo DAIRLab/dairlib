@@ -71,6 +71,5 @@ def main():
   np.save(ps.directory + 't_x_' + log_file_num, t_x)
   np.save(ps.directory + 'u_' + log_file_num, u_meas)
 
-
 if __name__ == '__main__':
   main()

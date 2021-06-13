@@ -23,10 +23,12 @@ load("//:environ.bzl", "environ_repository")
 
 environ_repository(
     name = "environ",
-    vars = ["DAIRLIB_LOCAL_DRAKE_PATH"],
+    vars = ["DAIRLIB_LOCAL_DRAKE_PATH",
+            "CNPY_LOCAL_PATH"],
 )
 
 load("@environ//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
+load("@environ//:environ.bzl", "CNPY_LOCAL_PATH")
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
@@ -148,6 +150,6 @@ local_repository(
 # To use cnpy to load in .npy into c++
 new_local_repository(
     name = "cnpy_repo",
-    build_file = "/home/yangwill/workspace/cnpy/BUILD.bazel",
+    build_file = CNPY_LOCAL_PATH,
     path = "../cnpy",
 )

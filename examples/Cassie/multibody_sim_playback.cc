@@ -122,7 +122,7 @@ int do_main(int argc, char* argv[]) {
 
   Eigen::MatrixXd t_u_init_npy;
   Eigen::MatrixXd u_init_npy;
-  cnpy2eigen(FLAGS_folder_path_npy + "t_u_" + FLAGS_npy_num + ".npy",
+  cnpy2eigen(FLAGS_folder_path_npy + "t_x_" + FLAGS_npy_num + ".npy",
              t_u_init_npy);
   cnpy2eigen(FLAGS_folder_path_npy + "u_" + FLAGS_npy_num + ".npy", u_init_npy);
   Eigen::VectorXd t_u_vec_npy(

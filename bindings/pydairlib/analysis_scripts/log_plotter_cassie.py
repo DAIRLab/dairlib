@@ -1,7 +1,6 @@
 import sys
 
 import lcm
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as linalg
@@ -119,34 +118,16 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 30.595
-  # t_end = 30.87
-  t_start = 37
-  t_end = 39
+  t_start = 30.595
+  t_end = 30.87
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
 
-  # log_file_num = '28'
-  # x = x[t_slice]
-  # u_meas = u_meas[t_slice]
-  # t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
-  # # t_u = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
-  # t_u = t_x
-  # # import pdb; pdb.set_trace()
-  # np.save(ps.directory + 'x_' + log_file_num, x)
-  # np.save(ps.directory + 't_x_' + log_file_num, t_x)
-  # np.save(ps.directory + 't_u_' + log_file_num, t_u)
-  # np.save(ps.directory + 'u_' + log_file_num, u_meas)
-
-  ### All plotting scripts here
-  # print(np.mean(np.diff(t_u)))
+  # All plotting scripts here
   # plot_status(full_log)
-  # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
-  # import pdb; pdb.set_trace()
-  compare_ekf(full_log, pos_map, vel_map)
-
-  # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
+  # plot_ekf(full_log, pos_map, vel_map)
+  plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
@@ -224,7 +205,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   ps.plot(t_u[t_u_slice], acceleration_cost[t_u_slice], color=ps.blue)
   ps.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice], color=ps.red)
   ps.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
-  # plt.ylim([0, 200])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
@@ -452,7 +432,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
   plt.legend()
 
 
-def compare_ekf(log, pos_map, vel_map):
+def plot_ekf(log, pos_map, vel_map):
   t_x = []
   t_x_est = []
   q = []
@@ -483,8 +463,8 @@ def compare_ekf(log, pos_map, vel_map):
     q_est.append(q_temp)
     v_est.append(v_temp)
     imu.append(msg.imu_accel)
-
     t_x_est.append(msg.utime / 1e6)
+
   t_x = np.array(t_x)
   t_x_est = np.array(t_x_est)
   q = np.array(q)
@@ -496,10 +476,8 @@ def compare_ekf(log, pos_map, vel_map):
   pos_indices = slice(4, 7)
   vel_indices = slice(3, 6)
   plt.figure("EKF positions: " + filename)
-  # ps.plot(t_x, q[:, pos_indices], '-')
   ps.plot(t_x_est[t_slice], q_est[t_slice, pos_indices])
   plt.figure("EKF velocities: " + filename)
-  # ps.plot(t_x, v[:, vel_indices], '-')
   ps.plot(t_x_est[t_slice], v_est[t_slice, vel_indices])
   plt.figure("IMU: " + filename)
   ps.plot(t_x_est[t_slice], imu[t_slice,:])
@@ -511,9 +489,9 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # floating base states
   # pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
-
   # all motor torques
   u_indices = slice(0, 10)
+
   # overwrite
 
   plt.figure("positions: " + filename)
@@ -527,14 +505,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   plt.figure("efforts: " + filename)
   ps.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
   ps.plot(t_x[t_slice], u_meas[t_slice, u_indices], linestyle='--')
-  # plt.ylim([-300, 300])
   plt.legend(u_datatypes[u_indices] + u_datatypes[u_indices])
-
-  # plt.legend(u_datatypes[u_indices])
-  # plt.figure("efforts meas: " + filename)
-  # plt.figure("Delay characterization")
-  # plt.legend(u_datatypes[u_indices])
-
 
 def plot_status(full_log):
   t_status = []

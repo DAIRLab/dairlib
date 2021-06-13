@@ -18,7 +18,6 @@ def calc_loop_closure_jacobian(plant, context, x_pre):
   r_thigh_frame = plant.GetBodyByName("thigh_right").body_frame()
   l_heel_frame = plant.GetBodyByName("heel_spring_left").body_frame()
   r_heel_frame = plant.GetBodyByName("heel_spring_right").body_frame()
-  # plant.SetPositionsAndVelocities(context, x_pre)
   left_heel = plant.CalcPointsPositions(context, l_heel_frame, heel_disp, world)
   left_thigh = plant.CalcPointsPositions(context, l_thigh_frame, left_thigh_disp, world)
   right_heel = plant.CalcPointsPositions(context, r_heel_frame, heel_disp, world)
@@ -54,7 +53,6 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   x_wo_spr_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
   x_wo_spr = np.vstack((pos_map_spr_to_wo_spr @ x[:, :nq].T, vel_map_spr_to_wo_spr @ x[:, -nv:].T)).T
   x_pre = x_wo_spr[t_idx]
-  print(x_pre)
   plant.SetPositionsAndVelocities(context, x_pre)
   M = plant.CalcMassMatrixViaInverseDynamics(context)
   M_inv = np.linalg.inv(M)
@@ -64,18 +62,13 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   J_r_r = plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, r_toe_frame, rear_contact_disp, world, world)
   J_l_loop, J_r_loop = calc_loop_closure_jacobian(plant, context, x_pre)
   J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r, J_l_loop, J_r_loop))
-  # J = np.vstack((J_l_f, J_l_r, J_r_f, J_r_r))
 
   M_Jt = M_inv @ J.T
-  # proj_ii = np.eye(18) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
   P = linalg.null_space(M_Jt.T).T
-  # import pdb; pdb.set_trace()
   proj_vel = P.T @ P @ x_wo_spr[t_slice, -18:].T
 
-  # proj_vel = P @ x[t_slice, -nv:].T
-  # colors = ['B0', '']
   plt.figure("joint velocities")
-  for i in range(2,3):
+  for i in range(0,6):
     # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12:], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)')
     # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
     # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
@@ -102,9 +95,6 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
 
   ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
 
-
-  # ps.add_legend(joint_vel_datatypes)
-
   plt.ylim([-8, 8])
   # plt.xlim([-50, 100])
   # plt.xticks(np.arange(-50, 30+0.1, 10))
@@ -112,8 +102,7 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   # ps.save_fig('joint_velocities_hardware_for_video.png')
 
   plt.figure("projected velocities")
-  # joint_indices = [3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17]
-  for i in range(2, 3):
+  for i in range(0, 6):
     # ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
     # ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
     ps.plot(t_x[t_slice], proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))

@@ -60,9 +60,6 @@ DEFINE_double(penetration_allowance, 1e-5,
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(publish_rate, 2000, "Publish rate for simulator");
-DEFINE_double(init_height, .7,
-              "Initial starting height of the pelvis above "
-              "ground");
 DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
 DEFINE_double(platform_x, 0.0, "x location of the  landing terrain");
 DEFINE_double(start_time, 0.0,
@@ -142,13 +139,9 @@ int do_main(int argc, char* argv[]) {
   auto input_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           "CASSIE_INPUT", lcm, 1.0 / FLAGS_publish_rate));
-//  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       controller_playback->get_output_port(0).size(), 0,
       plant.get_actuation_input_port().size());
-//  auto discrete_time_delay =
-//      builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-//          1.0 / FLAGS_publish_rate, 0, plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
@@ -172,8 +165,6 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
 
   // connect leaf systems
-//  builder.Connect(*input_sub, *input_receiver);
-//  builder.Connect(*input_receiver, *passthrough);
   builder.Connect(*controller_playback, *command_sender);
   builder.Connect(*command_sender, *input_pub);
   builder.Connect(controller_playback->get_output_port(),

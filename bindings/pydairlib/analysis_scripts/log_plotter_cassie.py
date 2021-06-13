@@ -120,8 +120,9 @@ def main():
   t_end = t_u[-10]
   # Override here #
   # t_start = 30.595
-  # t_start = 30.47
-  # t_end = 31.0
+  # t_end = 30.87
+  t_start = 37
+  t_end = 39
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
@@ -143,8 +144,10 @@ def main():
   # plot_status(full_log)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr)
   # import pdb; pdb.set_trace()
+  compare_ekf(full_log, pos_map, vel_map)
+
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
   if False:
@@ -457,18 +460,18 @@ def compare_ekf(log, pos_map, vel_map):
   imu = []
   q_est = []
   v_est = []
-  for i in range(len(log["CASSIE_STATE_SIMULATION"])):
-    msg = log["CASSIE_STATE_SIMULATION"][i]
-    q_temp = [[] for i in range(len(msg.position))]
-    v_temp = [[] for i in range(len(msg.velocity))]
-    for i in range(len(q_temp)):
-      q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
-    for i in range(len(v_temp)):
-      v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
-    q.append(q_temp)
-    v.append(v_temp)
-    imu.append(msg.imu_accel)
-    t_x.append(msg.utime / 1e6)
+  # for i in range(len(log["CASSIE_STATE_SIMULATION"])):
+  #   msg = log["CASSIE_STATE_SIMULATION"][i]
+  #   q_temp = [[] for i in range(len(msg.position))]
+  #   v_temp = [[] for i in range(len(msg.velocity))]
+  #   for i in range(len(q_temp)):
+  #     q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
+  #   for i in range(len(v_temp)):
+  #     v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
+  #   q.append(q_temp)
+  #   v.append(v_temp)
+  #   imu.append(msg.imu_accel)
+  #   t_x.append(msg.utime / 1e6)
   for i in range(len(log["CASSIE_STATE_DISPATCHER"])):
     msg = log["CASSIE_STATE_DISPATCHER"][i]
     q_temp = [[] for i in range(len(msg.position))]
@@ -479,6 +482,8 @@ def compare_ekf(log, pos_map, vel_map):
       v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
     q_est.append(q_temp)
     v_est.append(v_temp)
+    imu.append(msg.imu_accel)
+
     t_x_est.append(msg.utime / 1e6)
   t_x = np.array(t_x)
   t_x_est = np.array(t_x_est)
@@ -489,15 +494,15 @@ def compare_ekf(log, pos_map, vel_map):
   v_est = np.array(v_est)
 
   pos_indices = slice(4, 7)
-  vel_indices = slice(4, 5)
+  vel_indices = slice(3, 6)
   plt.figure("EKF positions: " + filename)
-  ps.plot(t_x, q[:, pos_indices], '-')
-  ps.plot(t_x_est, q_est[:, pos_indices])
+  # ps.plot(t_x, q[:, pos_indices], '-')
+  ps.plot(t_x_est[t_slice], q_est[t_slice, pos_indices])
   plt.figure("EKF velocities: " + filename)
-  ps.plot(t_x, v[:, vel_indices], '-')
-  ps.plot(t_x_est, v_est[:, vel_indices])
+  # ps.plot(t_x, v[:, vel_indices], '-')
+  ps.plot(t_x_est[t_slice], v_est[t_slice, vel_indices])
   plt.figure("IMU: " + filename)
-  ps.plot(t_x, imu, 'k-')
+  ps.plot(t_x_est[t_slice], imu[t_slice,:])
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # non-floating base states

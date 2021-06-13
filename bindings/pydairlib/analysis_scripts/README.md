@@ -14,7 +14,7 @@ Additional dependencies
                  srcs = ["cnpy.cpp"],
                  hdrs = ["cnpy.h"],
                  visibility = ["//visibility:public"],
-               }
+               )
         - set the environment variable `CNPY_LOCAL_PATH`  
                
 

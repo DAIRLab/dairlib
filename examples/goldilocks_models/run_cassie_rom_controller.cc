@@ -395,10 +395,6 @@ int DoMain(int argc, char* argv[]) {
     // Create human high-level control
     Eigen::Vector2d global_target_position(gains.global_target_position_x,
                                            gains.global_target_position_y);
-    if (true) {
-      // So that the desired yaw angle always points at x direction)
-      global_target_position(0) = std::numeric_limits<double>::infinity();
-    }
     cout << "global_target_position = " << global_target_position.transpose()
          << endl;
     Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,

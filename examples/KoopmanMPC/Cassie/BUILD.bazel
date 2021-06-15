@@ -1,0 +1,24 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "planar_walker",
+    deps = [
+        "//examples/KoopmanMPC/Cassie:cassie_model_utils",
+    ],
+)
+
+cc_library(
+    name = "cassie_model_utils",
+    srcs = ["planar_walker_model_utils.cc"],
+    hdrs = ["planar_walker_model_utils.h"],
+    deps = [
+        "//common",
+        "//examples/PlanarWalker:urdf",
+        "//multibody:multibody_solvers",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+    ],
+)

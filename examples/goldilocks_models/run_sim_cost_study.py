@@ -111,7 +111,6 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
     '--channel_u=ROM_WALKING',
-    '--const_walking_speed=true',
     '--stride_length=%.3f' % task_value,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--iter=%d' % rom_iter_idx,

@@ -1,21 +1,6 @@
 rows: 3
 cols: 3
 
-#TODO : 20210414 model is not yet rerun with grid task
-# 20210414 model with task covering talking in place:
-#For(model, sample_index) = (1, 37), we need
-#stride_length : 0
-#double + single support duration : 0.4
-#For(model, sample_index) = (1, 46), we need
-#stride_length : 0.09
-#double + single support duration : 0.4
-#For(model, sample_index) = (1, 58), we need
-#stride_length : 0.21
-#double + single support duration : 0.4
-#For(model, sample_index) = (1, 73), we need
-#stride_length : 0.36
-#double + single support duration : 0.4
-
 #To compare against the model optimization, we need to change a few params.
 #For(model, sample_index) = (1, 1), we need
 #stride_length : 0.21
@@ -39,8 +24,19 @@ rom_option: 4
 model_iter: 1 #150  #1 #30
 #The sample that we use to initialize planner
 sample_idx: 19 #21 works for iter150
-#Average stride length(used in both planner and controller)
-stride_length: 0  #It seems to solve faster when using 0.1m instead of 0.2m
+
+
+### For both planner and controller
+# Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
+left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
+right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
+double_support_duration: 0.05 #0.02
+
+set_constant_walking_speed: true
+global_target_position_x: 0
+global_target_position_y: 0
+constant_step_length_x: 0
+constant_step_length_y: 0
 
 
 ### For planner only
@@ -111,14 +107,6 @@ max_speed_lipm_mpc: 1.0  # too big would cause instability to FOM planner  # TOD
 w_p_lipm_mpc: 0.01
 w_v_lipm_mpc: 0.1
 
-### For both planner and controller
-# Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
-left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
-right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
-double_support_duration: 0.05 #0.02
-
-global_target_position_x: 0
-global_target_position_y: 0
 
 ### For controller only
 #High level command gains(with radio)

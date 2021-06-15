@@ -148,7 +148,26 @@ void PhaseInFirstMode::CalcPhase(
 PlannerFinalPosition::PlannerFinalPosition(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
     const Eigen::VectorXd& global_target_pos)
-    : global_target_pos_(global_target_pos){
+    : global_target_pos_(global_target_pos), use_const_step_length_(false) {
+  // Input/Output Setup
+  state_port_ = this->DeclareVectorInputPort(
+                        OutputVector<double>(plant_feedback.num_positions(),
+                                             plant_feedback.num_velocities(),
+                                             plant_feedback.num_actuators()))
+                    .get_index();
+  phase_port_ =
+      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+
+  this->DeclareVectorOutputPort(BasicVector<double>(2),
+                                &PlannerFinalPosition::CalcFinalPos);
+}
+
+PlannerFinalPosition::PlannerFinalPosition(
+    const drake::multibody::MultibodyPlant<double>& plant_feedback,
+    const Eigen::VectorXd& const_step_length, int n_step)
+    : const_step_length_(const_step_length),
+      n_step_(n_step),
+      use_const_step_length_(true) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
                         OutputVector<double>(plant_feedback.num_positions(),
@@ -164,7 +183,7 @@ PlannerFinalPosition::PlannerFinalPosition(
 
 void PlannerFinalPosition::CalcFinalPos(
     const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* init_phase_output) const {
+    drake::systems::BasicVector<double>* local_final_pos_output) const {
   double init_phase =
       this->EvalVectorInput(context, phase_port_)->get_value()(0);
   // Read in current robot state
@@ -174,7 +193,12 @@ void PlannerFinalPosition::CalcFinalPos(
           ->GetPositions()
           .segment<2>(4);
 
-  VectorXd pos_diff = global_target_pos_ - current_pelvis_pos_xy;
+  Eigen::Vector2d pos_diff;
+  if (use_const_step_length_) {
+    pos_diff = const_step_length_ * (n_step_ - init_phase);
+  } else {
+    pos_diff = global_target_pos_ - current_pelvis_pos_xy;
+  }
 
   // Rotate the position from global to local
   const VectorXd& quat = static_cast<const OutputVector<double>*>(
@@ -186,8 +210,9 @@ void PlannerFinalPosition::CalcFinalPos(
   double yaw = atan2(pelvis_x(1), pelvis_x(0));
   Eigen::Rotation2D<double> rot(-yaw);
 
-  // Assign init_phase
-  init_phase_output->get_mutable_value() << rot.toRotationMatrix() * pos_diff;
+  // Assign local_final_pos
+  local_final_pos_output->get_mutable_value()
+      << rot.toRotationMatrix() * pos_diff;
 
   /*cout << "current_pelvis_pos_xy = " << current_pelvis_pos_xy << endl;
   cout << "pelvis_x = " << pelvis_x.transpose() << endl;

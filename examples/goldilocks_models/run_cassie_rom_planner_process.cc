@@ -65,8 +65,7 @@ DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_int32(n_step_lipm, 0, "Number of foot steps of lipm cascased");
 // TODO: We can probably remove final_position
 DEFINE_double(final_position, 2, "The final position for the robot");
-DEFINE_double(stride_length, -10000,
-              "stride_length_used_to_control_speed_for_sim_study");
+DEFINE_double(stride_length, -10000, "set constant walking stride length");
 DEFINE_double(stride_length_scaling, 1.0, "");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
@@ -156,9 +155,10 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_log_data);
   }
   if (FLAGS_stride_length > -100) {
-    gains.max_desired_step_length = FLAGS_stride_length;
+    gains.set_constant_walking_speed = true;
+    gains.constant_step_length_x = FLAGS_stride_length;
   }
-  gains.max_desired_step_length *= FLAGS_stride_length_scaling;
+  gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
   // Parameters for the traj opt
   PlannerSetting param;
@@ -261,8 +261,15 @@ int DoMain(int argc, char* argv[]) {
   // Create a block that compute target position for the planner
   Eigen::Vector2d global_target_pos(gains.global_target_position_x,
                                     gains.global_target_position_y);
-  auto planner_final_pos = builder.AddSystem<PlannerFinalPosition>(
-      plant_feedback, global_target_pos);
+  auto planner_final_pos =
+      gains.set_constant_walking_speed
+          ? builder.AddSystem<PlannerFinalPosition>(
+                plant_feedback,
+                Eigen::Vector2d(gains.constant_step_length_x,
+                                gains.constant_step_length_y),
+                param.n_step)
+          : builder.AddSystem<PlannerFinalPosition>(plant_feedback,
+                                                    global_target_pos);
   builder.Connect(state_receiver->get_output_port(0),
                   planner_final_pos->get_input_port_state());
   builder.Connect(init_phase_calculator->get_output_port(0),

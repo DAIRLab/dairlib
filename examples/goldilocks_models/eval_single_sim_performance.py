@@ -31,12 +31,12 @@ def main():
     "examples/goldilocks_models/rom_walking_gains.yaml")
   parsed_yaml_file = yaml.load(a_yaml_file)
 
-  stride_length = parsed_yaml_file.get('stride_length')
+  stride_length_x = parsed_yaml_file.get('constant_step_length_x')
   left_support_duration = parsed_yaml_file.get('left_support_duration')
   double_support_duration = parsed_yaml_file.get('double_support_duration')
 
   stride_period = left_support_duration + double_support_duration
-  const_walking_speed_x = stride_length / stride_period
+  const_walking_speed_x = stride_length_x / stride_period
 
   # File setting
   directory = "../dairlib_data/goldilocks_models/sim_cost_eval/"

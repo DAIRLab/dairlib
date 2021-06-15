@@ -4,7 +4,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=false --get_swing_foot_from_planner=false";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=false";
         host = "localhost";
     }
     cmd "3.1.rom-planner" {
@@ -24,14 +24,14 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "2.2.rom-walking-controller(with dispatcher)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
 }
 
 group "2.ik-controller" {
     cmd "1.1.optimal-rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --const_walking_speed=true --use_IK=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=true";
         host = "localhost";
     }
     cmd "1.2.rom-planner" {
@@ -126,7 +126,7 @@ group "4.lcm-tools" {
 
 group "1.rom-space-controller-with-init-traj" {
     cmd "2.1.optimal-rom-walking-controller (w init)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --init_traj_file_name=0_rom_trajectory --const_walking_speed=true --get_swing_foot_from_planner=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --init_traj_file_name=0_rom_trajectory --get_swing_foot_from_planner=true";
         host = "localhost";
     }
     cmd "2.2.rom-planner (w init)" {

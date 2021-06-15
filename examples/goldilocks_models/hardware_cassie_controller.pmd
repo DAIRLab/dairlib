@@ -16,7 +16,7 @@ group "1.rom-space-controller" {
         host = "dair-cassie";
     }
     cmd "2.2.optimal-rom-walking-controller (run local)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true";
         host = "dair-cassie";
     }
     cmd "3.1.rom-planner (run local)" {
@@ -24,7 +24,7 @@ group "1.rom-space-controller" {
         host = "dair-cassie";
     }
     cmd "2.2.optimal-rom-walking-controller (wireless)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=false --hardware=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=false --hardware=true";
         host = "dair-cassie";
     }
     cmd "4.fsm-network-publisher" {
@@ -105,7 +105,7 @@ group "1.rom-space-controller (wired ethernet)" {
         host = "dair-cassie";
     }
     cmd "2.2.optimal-rom-walking-controller (wired)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --const_walking_speed=true --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true";
         host = "dair-cassie";
     }
 }

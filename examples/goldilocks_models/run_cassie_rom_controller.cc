@@ -91,9 +91,8 @@ DEFINE_bool(use_hardware_osc_gains, false, "");
 
 DEFINE_int32(iter, -1, "The iteration # of the model that you use");
 
-DEFINE_double(stride_length, -10000, "");
+DEFINE_double(stride_length, -10000, "set constant walking stride length");
 DEFINE_double(stride_length_scaling, 1.0, "");
-DEFINE_bool(const_walking_speed, false, "Set constant walking speed");
 DEFINE_bool(start_with_left_stance, true, "");
 
 DEFINE_string(init_traj_file_name, "",
@@ -152,9 +151,10 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::YamlReadArchive(root2).Accept(&osc_gains);
 
   if (FLAGS_stride_length > -100) {
-    gains.max_desired_step_length = FLAGS_stride_length;
+    gains.set_constant_walking_speed = true;
+    gains.constant_step_length_x = FLAGS_stride_length;
   }
-  gains.max_desired_step_length *= FLAGS_stride_length_scaling;
+  gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
@@ -395,7 +395,7 @@ int DoMain(int argc, char* argv[]) {
     // Create human high-level control
     Eigen::Vector2d global_target_position(gains.global_target_position_x,
                                            gains.global_target_position_y);
-    if (FLAGS_const_walking_speed) {
+    if (true) {
       // So that the desired yaw angle always points at x direction)
       global_target_position(0) = std::numeric_limits<double>::infinity();
     }
@@ -461,7 +461,7 @@ int DoMain(int argc, char* argv[]) {
             plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
             gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
             left_support_duration);
-    if (!FLAGS_const_walking_speed) {
+    if (!gains.set_constant_walking_speed) {
       builder.Connect(high_level_command->get_xy_output_port(),
                       walking_speed_control->get_input_port_des_hor_vel());
     }
@@ -716,13 +716,9 @@ int DoMain(int argc, char* argv[]) {
     mutable_state = traj_msg;
 
     // Set constant walking speed
-    if (FLAGS_const_walking_speed && !FLAGS_get_swing_foot_from_planner) {
+    if (gains.set_constant_walking_speed && !FLAGS_get_swing_foot_from_planner) {
       double const_walking_speed_x =
-          gains.max_desired_step_length / stride_period;
-      if (gains.global_target_position_x == 0) {
-        cout << "Set walking speed to 0 because global_target_position_x = 0\n";
-        const_walking_speed_x = 0;
-      }
+          gains.constant_step_length_x / stride_period;
 
       auto& walking_speed_control_context =
           loop.get_diagram()->GetMutableSubsystemContext(*walking_speed_control,

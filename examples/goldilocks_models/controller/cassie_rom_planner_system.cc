@@ -178,11 +178,12 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
           1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
           0, 0, 0, 0, 0, 0, 0;
       // A different height
-      /*x_standing_fixed_spring_ << 1, 0, 0, 0, 0, 0, 0.9, 0.0216645, -0.0216645,
-          0, 0, 0.665022, 0.665022, -1.53461, -1.53461, 1.75905, 1.75905,
-          -1.76295, -1.76295, 0, 0, 0, 0, 0, 0, 0.000343939, 7.9638e-05,
-          -0.00224901, -0.00052079, -0.000889046, 0.00115963, -7.96077e-05,
-          0.000149216, 6.91934e-05, -9.6974e-05, 0.000948192, -0.00122315;*/
+      /*x_standing_fixed_spring_ << 1, 0, 0, 0, 0, 0, 0.9, 0.0216645,
+         -0.0216645, 0, 0, 0.665022, 0.665022, -1.53461, -1.53461,
+         1.75905, 1.75905, -1.76295, -1.76295, 0, 0, 0, 0, 0, 0,
+         0.000343939, 7.9638e-05, -0.00224901, -0.00052079, -0.000889046,
+         0.00115963, -7.96077e-05, 0.000149216, 6.91934e-05, -9.6974e-05,
+         0.000948192, -0.00122315;*/
       x_guess_left_in_front_pre_ = x_standing_fixed_spring_;
       x_guess_right_in_front_pre_ = x_standing_fixed_spring_;
       x_guess_left_in_front_post_ = x_standing_fixed_spring_;
@@ -1404,12 +1405,12 @@ void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
   // Parameters
   double y_vel_offset = 0.0;
 
-  VectorXd adjusted_final_pos = final_position;
   double total_phase_length = n_total_step - init_phase;
 
+  Vector2d adjusted_final_pos = final_position;
   double pos_diff_norm = adjusted_final_pos.norm();
-  double max_pos_diff_norm = std::abs(param_.gains.max_desired_step_length *
-                                      (n_total_step - init_phase));
+  double max_pos_diff_norm =
+      std::abs(param_.gains.max_desired_step_length * total_phase_length);
   if (pos_diff_norm > max_pos_diff_norm) {
     adjusted_final_pos *= max_pos_diff_norm / pos_diff_norm;
   }

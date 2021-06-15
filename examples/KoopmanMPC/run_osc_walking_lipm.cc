@@ -9,8 +9,8 @@
 
 #include "multibody/multibody_utils.h"
 
-#include "model_utils.h"
-#include "lipm_walking_speed_control.h"
+#include "examples/KoopmanMPC/PlanarWalker/planar_walker_model_utils.h"
+#include "examples/KoopmanMPC/PlanarWalker/planar_lipm_walking_speed_control.h"
 
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -21,7 +21,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
-#include "examples/KoopmanMPC/osc_walking_gains.h"
+#include "examples/KoopmanMPC/PlanarWalker/planar_osc_walking_gains.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/primitives/constant_vector_source.h"
@@ -69,13 +69,13 @@ using systems::SwingFootTrajGenerator;
 using systems::TimeBasedFiniteStateMachine;
 using systems::FiniteStateMachineEventTime;
 
-using koopman_examples::LipmWalkingSpeedControl;
+using koopman_examples::PlanarLipmWalkingSpeedControl;
 
 namespace examples {
 
 DEFINE_string(channel_x, "PLANAR_STATE","The name of the channel which receives state");
 DEFINE_string(channel_u, "PLANAR_INPUT","The name of the channel which publishes command");
-DEFINE_string(gains_filename,"examples/KoopmanMPC/osc_walking_gains.yaml","Filepath containing gains");
+DEFINE_string(gains_filename,"examples/KoopmanMPC/planar_osc_walking_gains.yaml","Filepath containing gains");
 DEFINE_double(z_com, 1.05, "Desired CoM height");
 DEFINE_double(stance_time, 0.25, "stance time");
 DEFINE_double(mid_ft_height, 0.025, "mid swing foot height");
@@ -166,7 +166,7 @@ int DoMain(int argc, char* argv[]) {
       plant, plant_context.get(), FLAGS_z_com, fsm_states, state_durations,
       fsm_pts, "torso_mass", FLAGS_track_com);
 
-  auto walking_speed_control = builder.AddSystem<LipmWalkingSpeedControl>(
+  auto walking_speed_control = builder.AddSystem<PlanarLipmWalkingSpeedControl>(
       plant, plant_context.get(), FLAGS_k_ff, FLAGS_k_fb, "torso_mass", state_durations.at(0));
 
   auto swing_ft_traj_gen = builder.AddSystem<SwingFootTrajGenerator>(

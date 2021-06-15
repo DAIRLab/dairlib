@@ -1,4 +1,4 @@
-#include "model_utils.h"
+#include "planar_walker_model_utils.h"
 #include "multibody/multibody_solvers.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/kinematic/world_point_evaluator.h"

@@ -11,7 +11,7 @@
 
 #include "multibody/multibody_utils.h"
 
-#include "model_utils.h"
+#include "examples/KoopmanMPC/PlanarWalker/planar_walker_model_utils.h"
 
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -19,7 +19,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
-#include "examples/KoopmanMPC/osc_walking_gains.h"
+#include "examples/KoopmanMPC/PlanarWalker/planar_osc_walking_gains.h"
 #include "examples/KoopmanMPC/mpc_trajectory_reciever.h"
 #include "examples/KoopmanMPC/koopman_mpc.h"
 
@@ -71,7 +71,7 @@ DEFINE_string(mpc_channel, "KOOPMAN_MPC_OUT", "channel to recieve koopman mpc me
 
 DEFINE_string(
     gains_filename,
-    "examples/KoopmanMPC/osc_walking_gains.yaml",
+    "examples/KoopmanMPC/planar_osc_walking_gains.yaml",
     "Filepath containing gains");
 
 DEFINE_bool(track_com, false,

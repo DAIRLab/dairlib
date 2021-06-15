@@ -12,8 +12,8 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/lcmt_drake_signal.hpp"
 
-#include "koopman_mpc_gains.h"
-#include "model_utils.h"
+#include "examples/KoopmanMPC/PlanarWalker/planar_koopman_mpc_gains.h"
+#include "examples/KoopmanMPC/PlanarWalker/planar_walker_model_utils.h"
 #include "koopman_mpc.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "common/find_resource.h"
@@ -55,7 +55,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
-DEFINE_string(gains_filename, "examples/KoopmanMPC/koopman_mpc_gains.yaml", "koopman mpc gains file");
+DEFINE_string(gains_filename, "examples/KoopmanMPC/PlanarWalker/planar_koopman_mpc_gains.yaml", "koopman mpc gains file");
 DEFINE_string(model_folder, "examples/KoopmanMPC/koopman_models/planar_poly_1/", "folder with koopman model");
 DEFINE_string(channel_x, "PLANAR_STATE", "channel to publish/receive planar walker state");
 DEFINE_string(channel_plan, "KOOPMAN_MPC_OUT", "channel to publish plan trajectory");

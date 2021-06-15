@@ -1,4 +1,4 @@
-#include "lipm_walking_speed_control.h"
+#include "planar_lipm_walking_speed_control.h"
 #include <cmath>
 #include "multibody/multibody_utils.h"
 
@@ -23,7 +23,7 @@ using Eigen::VectorXd;
 namespace dairlib {
 namespace koopman_examples {
 
-LipmWalkingSpeedControl::LipmWalkingSpeedControl(
+PlanarLipmWalkingSpeedControl::PlanarLipmWalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
     Context<double>* context, double k_ff, double k_fb, std::string base_name,
     double swing_phase_duration) :
@@ -53,10 +53,10 @@ LipmWalkingSpeedControl::LipmWalkingSpeedControl(
             .get_index();
   }
   this->DeclareVectorOutputPort(BasicVector<double>(2),
-                                &LipmWalkingSpeedControl::CalcFootPlacement);
+                                &PlanarLipmWalkingSpeedControl::CalcFootPlacement);
 }
 
-void LipmWalkingSpeedControl::CalcFootPlacement(const Context<double> &context,
+void PlanarLipmWalkingSpeedControl::CalcFootPlacement(const Context<double> &context,
     drake::systems::BasicVector<double> *output) const {
 
   VectorXd des_vel = this->EvalVectorInput(context, v_des_port_)->get_value();

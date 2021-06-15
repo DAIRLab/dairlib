@@ -34,7 +34,7 @@ DEFINE_double(alpha, 0.25, "Transparency of the robots");
 DEFINE_string(poses_file_name, "examples/KoopmanMPC/saved_runs/walking_visualization.csv", "filename for saved trajectory");
 DEFINE_int32(max_poses, 12, "maximum number of poses to draw");
 
-void visualizeFullOrderModelPose(int argc, char* argv[]) {
+void VisualizePlanarWalkerPosesFromCsv(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   MatrixXd poses = readCSV(FLAGS_poses_file_name);
@@ -52,6 +52,6 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
 }// namespace dairlib
 
 int main(int argc, char* argv[]) {
-  dairlib::visualizeFullOrderModelPose(argc, argv);
+  dairlib::VisualizePlanarWalkerPosesFromCsv(argc, argv);
   return 0;
 }

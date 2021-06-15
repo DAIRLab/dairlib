@@ -396,7 +396,7 @@ RotationalInertia<T> CalcLinkInertiaAboutPlantCom(
     const BodyFrame<T>& frame,
     const std::string link_name ) {
     // Get plant center of mass
-    Vector3<T> CoM = plant.CalcCenterOfMassPosition(context);
+    Vector3<T> CoM = plant.CalcCenterOfMassPositionInWorld(context);
     // Find inertia of link in link's own frame
     SpatialInertia<T> I = plant.GetBodyByName(link_name).CalcSpatialInertiaInBodyFrame(context);
     // Rotate inertia to world frame
@@ -406,7 +406,7 @@ RotationalInertia<T> CalcLinkInertiaAboutPlantCom(
                                          frame));
 
     // Shift inertia to find about CoM
-    I.ShiftInPlace(CoM - plant.GetBodyByName(link_name).EvalPoseInWorld(context).translation());
+    I.ShiftInPlace(plant.GetBodyByName(link_name).EvalPoseInWorld(context).translation() - CoM);
     return I.CalcRotationalInertia();
 }
 

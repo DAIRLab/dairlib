@@ -11,9 +11,9 @@ namespace koopman_examples{
 
 
 /// re-implements examples/Cassie/osc/WalkingSpeedControl for the planar case
-class LipmWalkingSpeedControl : public drake::systems::LeafSystem<double> {
+class PlanarLipmWalkingSpeedControl : public drake::systems::LeafSystem<double> {
  public:
-  LipmWalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
+  PlanarLipmWalkingSpeedControl(const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context, double k_ff, double k_fb,
       std::string base_name, double swing_phase_duration=0);
 

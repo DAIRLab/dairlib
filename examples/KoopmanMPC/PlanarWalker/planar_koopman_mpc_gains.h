@@ -1,5 +1,5 @@
-#include "drake/common/yaml/yaml_read_archive.h"
-#include "yaml-cpp/yaml.h"
+#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/yaml/yaml_read_archive.h"
+#include "include/yaml-cpp/yaml.h"
 #include "include/_usr_include_eigen3/Eigen/src/Core/Matrix.h"
 
 using Eigen::MatrixXd;

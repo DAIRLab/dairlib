@@ -48,25 +48,25 @@ cc_binary(
 )
 
 cc_library(
-    name = "osc_walking_gains",
-    hdrs = ["osc_walking_gains.h"],
+    name = "planar_osc_walking_gains",
+    hdrs = ["PlanarWalker/planar_osc_walking_gains.h"],
     deps = [
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
-    name = "koopman_mpc_gains",
-    hdrs = ["koopman_mpc_gains.h"],
+    name = "planar_walker_koopman_mpc_gains",
+    hdrs = ["PlanarWalker/planar_koopman_mpc_gains.h"],
     deps = [
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
-    name = "lipm_walking_speed_control",
-    srcs = ["lipm_walking_speed_control.cc"],
-    hdrs = ["lipm_walking_speed_control.h"],
+    name = "planar_lipm_walking_speed_control",
+    srcs = ["PlanarWalker/planar_lipm_walking_speed_control.cc"],
+    hdrs = ["PlanarWalker/planar_lipm_walking_speed_control.h"],
     deps = [
         "//multibody:utils",
         "//systems/framework:vector",
@@ -75,8 +75,8 @@ cc_library(
 )
 
 cc_binary(
-    name = "run_visualizer",
-    srcs = ["run_visualizer.cc"],
+    name = "run_planar_walker_visualizer",
+    srcs = ["run_planar_walker_visualizer.cc"],
     deps = [
         ":model_utils",
         "//common",
@@ -93,8 +93,8 @@ cc_binary(
     srcs = ["run_koopman_mpc_process.cc"],
     deps = [
         ":koopman_mpc",
-        ":koopman_mpc_gains",
         ":model_utils",
+        ":planar_walker_koopman_mpc_gains",
         "//common",
         "//examples/PlanarWalker:urdf",
         "//multibody:utils",
@@ -117,7 +117,7 @@ cc_binary(
         ":koopman_mpc",
         ":model_utils",
         ":mpc_trajectory_reciever",
-        ":osc_walking_gains",
+        ":planar_osc_walking_gains",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
@@ -138,9 +138,9 @@ cc_binary(
     name = "run_osc_walking_lipm",
     srcs = ["run_osc_walking_lipm.cc"],
     deps = [
-        ":lipm_walking_speed_control",
         ":model_utils",
-        ":osc_walking_gains",
+        ":planar_lipm_walking_speed_control",
+        ":planar_osc_walking_gains",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
@@ -161,8 +161,8 @@ cc_binary(
 
 cc_library(
     name = "model_utils",
-    srcs = ["model_utils.cc"],
-    hdrs = ["model_utils.h"],
+    srcs = ["PlanarWalker/planar_walker_model_utils.cc"],
+    hdrs = ["PlanarWalker/planar_walker_model_utils.h"],
     deps = [
         "//common",
         "//examples/PlanarWalker:urdf",
@@ -173,8 +173,8 @@ cc_library(
 )
 
 cc_binary(
-    name = "visualize_positions_lcm_log",
-    srcs = ["visualize_positions_lcm_log.cc"],
+    name = "visualize_positions_csv",
+    srcs = ["visualize_positions_csv.cc"],
     data = glob(["examples/PlanarWalker/PlanarWalkerWithTorso.urdf"]),
     deps = [
         "//common",

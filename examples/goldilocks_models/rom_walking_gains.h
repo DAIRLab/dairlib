@@ -11,7 +11,6 @@ struct RomWalkingGains {
   int rom_option;
   int model_iter;
   int sample_idx;
-  double stride_length;
   bool set_constant_walking_speed;
   double constant_step_length_x;
   double constant_step_length_y;
@@ -109,7 +108,6 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(rom_option));
     a->Visit(DRAKE_NVP(model_iter));
     a->Visit(DRAKE_NVP(sample_idx));
-    a->Visit(DRAKE_NVP(stride_length));
     a->Visit(DRAKE_NVP(set_constant_walking_speed));
     a->Visit(DRAKE_NVP(constant_step_length_x));
     a->Visit(DRAKE_NVP(constant_step_length_y));

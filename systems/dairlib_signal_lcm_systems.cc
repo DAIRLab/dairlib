@@ -38,18 +38,18 @@ void DairlibSignalReceiver::UnpackLcmIntoVector(
 }
 
 /*--------------------------------------------------------------------------*/
-// methods implementation for DrakeSignalSender.
+// methods implementation for DairlibSignalSender.
 
-DrakeSignalSender::DrakeSignalSender(
+DairlibSignalSender::DairlibSignalSender(
     const std::vector<std::string>& signal_names, double stride_period)
     : signal_names_(signal_names),
       signal_size_(signal_names.size()),
       stride_period_(stride_period) {
   this->DeclareVectorInputPort(BasicVector<double>(signal_names.size()));
-  this->DeclareAbstractOutputPort(&DrakeSignalSender::PackVectorIntoLcm);
+  this->DeclareAbstractOutputPort(&DairlibSignalSender::PackVectorIntoLcm);
 }
 
-void DrakeSignalSender::PackVectorIntoLcm(
+void DairlibSignalSender::PackVectorIntoLcm(
     const Context<double>& context, dairlib::lcmt_dairlib_signal* msg) const {
   const auto* input_vector = this->EvalVectorInput(context, 0);
 

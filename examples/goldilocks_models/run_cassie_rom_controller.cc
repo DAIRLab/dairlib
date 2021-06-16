@@ -311,7 +311,7 @@ int DoMain(int argc, char* argv[]) {
                   mux->get_input_port(2));
   std::vector<std::string> singal_names = {"fsm", "t_lo", "fsm_idx"};
   auto fsm_and_liftoff_time_sender =
-      builder.AddSystem<systems::DrakeSignalSender>(
+      builder.AddSystem<systems::DairlibSignalSender>(
           singal_names, left_support_duration + double_support_duration);
   builder.Connect(mux->get_output_port(0),
                   fsm_and_liftoff_time_sender->get_input_port(0));

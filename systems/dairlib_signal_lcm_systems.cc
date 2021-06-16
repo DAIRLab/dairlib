@@ -136,5 +136,29 @@ void DairlibSignalSender::PackVectorIntoLcm(
   }
 }
 
+/*--------------------------------------------------------------------------*/
+// methods implementation for TimestampedVectorSender.
+
+TimestampedVectorSender::TimestampedVectorSender(int signal_size)
+    : signal_size_(signal_size) {
+  this->DeclareVectorInputPort(BasicVector<double>(signal_size));
+  this->DeclareAbstractOutputPort(&TimestampedVectorSender::PackVectorIntoLcm);
+}
+
+void TimestampedVectorSender::PackVectorIntoLcm(
+    const Context<double>& context,
+    dairlib::lcmt_timestamped_vector* msg) const {
+  const auto* input_vector = this->EvalVectorInput(context, 0);
+
+  // using the time from the context
+  msg->utime = context.get_time() * 1e6;
+
+  msg->size = signal_size_;
+  msg->data.resize(signal_size_);
+  for (int i = 0; i < signal_size_; i++) {
+    msg->data[i] = input_vector->get_value()(i);
+  }
+}
+
 }  // namespace systems
 }  // namespace dairlib

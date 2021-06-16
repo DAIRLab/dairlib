@@ -6,6 +6,7 @@
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
+#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
@@ -16,6 +17,7 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/constraint_factory.h"
 #include "solvers/optimization_utils.h"
+#include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -200,6 +202,20 @@ int do_main(int argc, char* argv[]) {
                   contact_results_publisher.get_input_port());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
+
+  // MBP Acceleration
+  bool publish_acceleration = false;
+  if (publish_acceleration) {
+    auto accel_sender = builder.AddSystem<systems::TimestampedVectorSender>(
+        plant.num_velocities());
+    auto accel_pub = builder.AddSystem(
+        LcmPublisherSystem::Make<dairlib::lcmt_timestamped_vector>(
+            "CASSIE_ACCELERATION", lcm, 1.0 / FLAGS_publish_rate));
+    builder.Connect(plant.get_generalized_acceleration_output_port(),
+                    accel_sender->get_input_port(0));
+    builder.Connect(accel_sender->get_output_port(0),
+                    accel_pub->get_input_port());
+  }
 
   auto diagram = builder.Build();
 

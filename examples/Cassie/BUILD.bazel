@@ -228,6 +228,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//solvers:optimization_utils",
+        "//systems:dairlib_signal_lcm_systems",
         "//systems:robot_lcm_systems",
         "//systems/framework:vector",
         "//systems/primitives",

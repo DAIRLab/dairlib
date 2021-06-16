@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "dairlib/lcmt_dairlib_signal.hpp"
+#include "dairlib/lcmt_timestamped_vector.hpp"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
@@ -44,6 +45,28 @@ class DairlibSignalSender : public drake::systems::LeafSystem<double> {
   // For testing
   bool with_hacks_;
   double stride_period_;
+};
+
+/*class TimestampedVectorReceiver : public drake::systems::LeafSystem<double> {
+ public:
+  explicit TimestampedVectorReceiver(int signal_size);
+
+ private:
+  void UnpackLcmIntoVector(const drake::systems::Context<double>& context,
+                           systems::TimestampedVector<double>* output) const;
+
+  int signal_size_;
+};*/
+
+class TimestampedVectorSender : public drake::systems::LeafSystem<double> {
+ public:
+  explicit TimestampedVectorSender(int signal_size);
+
+ private:
+  void PackVectorIntoLcm(const drake::systems::Context<double>& context,
+                         dairlib::lcmt_timestamped_vector* output) const;
+
+  int signal_size_;
 };
 
 }  // namespace systems

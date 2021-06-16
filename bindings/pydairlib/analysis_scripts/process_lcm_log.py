@@ -52,9 +52,11 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   t_u = []
   t_controller_switch = []
   t_contact_info = []
+  t_vdot = []
   fsm = []
   q = []
   v = []
+  vdot = []
   u_meas = []
   u = []
   kp = []
@@ -146,16 +148,22 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
           osc_debug[msg.tracking_data[i].name] = lcmt_osc_tracking_data_t()
         osc_debug[msg.tracking_data[i].name].append(msg.tracking_data[i], msg.utime / 1e6)
       fsm.append(msg.fsm_state)
+    if event.channel == "CASSIE_ACCELERATION":
+      msg = dairlib.lcmt_timestamped_vector.decode(event.data)
+      vdot.append(msg.data)
+      t_vdot.append(msg.utime / 1e6)
 
   # Convert into numpy arrays
   t_x = np.array(t_x)
   t_u = np.array(t_u)
   t_controller_switch = np.array(t_controller_switch)
   t_contact_info = np.array(t_contact_info)
+  t_vdot = np.array(t_vdot)
   t_pd = np.array(t_pd)
   fsm = np.array(fsm)
   q = np.array(q)
   v = np.array(v)
+  vdot = np.array(vdot)
   u_meas = np.array(u_meas)
   u = np.array(u)
   u_pd = np.array(u_pd)

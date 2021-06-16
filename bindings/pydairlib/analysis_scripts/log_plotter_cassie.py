@@ -114,7 +114,30 @@ def main():
 
   PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
 
+  # CompareVdot(x, t_x, vdot, t_vdot)
+
   plt.show()
+
+
+def CompareVdot(x, t_x, vdot, t_vdot):
+  # Finite differencing seems accurate enough
+
+  dx = np.diff(x, axis=0)
+  dt = np.diff(t_x)
+  vdot_numerical = dx[:, nq:]
+  for i in range(len(dt)):
+    vdot_numerical[i, :] /= dt[i]
+
+  print("t_vdot.shape = ", t_vdot.shape)
+  print("vdot.shape = ", vdot.shape)
+  print("t_x.shape = ", t_x.shape)
+  print("vdot_numerical.shape = ", vdot_numerical.shape)
+
+  idx = 0
+
+  plt.figure()
+  plt.plot(t_vdot, vdot[:, idx])
+  plt.plot(t_x[1:], vdot_numerical[:, idx])
 
 
 def plot_contact_est(log):

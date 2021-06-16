@@ -103,7 +103,7 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All plotting scripts here
-  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u)
+  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x)
 
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
 
@@ -119,7 +119,7 @@ def main():
   plt.show()
 
 
-def plot_contact_est(log, t_osc_debug, fsm, t_u, u):
+def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x):
   t_contact = []
   contact = []
   for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
@@ -153,9 +153,10 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u):
 
   plt.plot(t_osc_debug, 30 * fsm)
 
+  plt.plot(t_x[t_slice], 250 * x[t_slice, 5])
   plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
 
-  plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact"])
+  plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y"])
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):

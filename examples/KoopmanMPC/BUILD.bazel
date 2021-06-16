@@ -62,6 +62,15 @@ cc_binary(
 )
 
 cc_binary(
+    name = "get_cassie_srbd_model",
+    srcs = ["get_cassie_srbd_model.cc"],
+    deps = [
+        "//examples/KoopmanMPC/Cassie:cassie",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_koopman_mpc_process",
     srcs = ["run_koopman_mpc_process.cc"],
     deps = [

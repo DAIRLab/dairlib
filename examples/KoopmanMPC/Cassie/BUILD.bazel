@@ -4,7 +4,7 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "planar_walker",
+    name = "cassie",
     deps = [
         "//examples/KoopmanMPC/Cassie:cassie_model_utils",
     ],
@@ -12,11 +12,13 @@ cc_library(
 
 cc_library(
     name = "cassie_model_utils",
-    srcs = ["planar_walker_model_utils.cc"],
-    hdrs = ["planar_walker_model_utils.h"],
+    srcs = ["cassie_model_utils.cc"],
+    hdrs = ["cassie_model_utils.h"],
     deps = [
         "//common",
-        "//examples/PlanarWalker:urdf",
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
         "//multibody:multibody_solvers",
         "//multibody:utils",
         "@drake//:drake_shared_library",

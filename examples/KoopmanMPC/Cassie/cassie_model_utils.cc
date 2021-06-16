@@ -33,7 +33,7 @@ void PrintCassieSingleRigidBodyParameters(double h_des, std::vector<std::string>
   VectorXd q_init, u_init, lambda_init;
   double mu_fp = 0;
   double min_norml_fp = 70;
-  double toe_spread = 0.2;
+  double toe_spread = 0.125;
 
   CassieFixedPointSolver(plant, h_des, mu_fp, min_norml_fp,
                          true, toe_spread, &q_init, &u_init, &lambda_init);

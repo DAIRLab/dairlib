@@ -1038,7 +1038,7 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  double contact_force_threshold = 50;
+  double contact_force_threshold = 70;
   if (!(lambda[2] > 2 * contact_force_threshold) !=
       !(lambda[5] > 2 * contact_force_threshold)) {
     left_contact = lambda[2] / (2 * contact_force_threshold);

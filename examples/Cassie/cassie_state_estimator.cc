@@ -1015,8 +1015,8 @@ void CassieStateEstimator::EstimateContactForces(
   MatrixXd B = plant_.MakeActuationMatrix();
   drake::multibody::MultibodyForces<double> f_app(plant_);
   plant_.CalcForceElementsContribution(*context_, &f_app);
-  double beta = 0.001;
-  double gamma = 0.005;
+  double beta = 0.01;
+  double gamma = 0.01;
 
   VectorXd v = output.GetVelocities();
   VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
@@ -1038,8 +1038,8 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  left_contact = lambda[2] > 50;
-  right_contact = lambda[5] > 50;
+  left_contact = lambda[2] > 140;
+  right_contact = lambda[5] > 140;
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(

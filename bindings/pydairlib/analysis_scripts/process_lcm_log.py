@@ -52,6 +52,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   t_u = []
   t_controller_switch = []
   t_contact_info = []
+  t_osc_debug = []
   fsm = []
   q = []
   v = []
@@ -69,13 +70,15 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   osc_output = []
   u_pd = []
   t_u_pd = []
+  contact_switch = []
+  t_contact_switch = []
 
   full_log = dict()
   channel_to_type_map = dict()
   unknown_types = set()
   known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
-                     drake.lcmt_contact_results_for_viz]
+                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
 
   cassie_state_channel_name = ""
   for event in log:
@@ -145,7 +148,46 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
         if msg.tracking_data[i].name not in osc_debug:
           osc_debug[msg.tracking_data[i].name] = lcmt_osc_tracking_data_t()
         osc_debug[msg.tracking_data[i].name].append(msg.tracking_data[i], msg.utime / 1e6)
+      t_osc_debug.append(msg.utime / 1e6)
       fsm.append(msg.fsm_state)
+    if event.channel == "CASSIE_CONTACT_DISPATCHER":
+      msg = dairlib.lcmt_contact.decode(event.data)
+      contact_switch.append(msg.contact)
+      t_contact_switch.append(msg.utime / 1e6)
+    if event.channel == "CASSIE_CONTACT_DRAKE" or event.channel == "CASSIE_CONTACT_MUJOCO":
+      # Need to distinguish between front and rear contact forces
+      # Best way is to track the contact location and group by proximity
+      msg = drake.lcmt_contact_results_for_viz.decode(event.data)
+      t_contact_info.append(msg.timestamp / 1e6)
+      num_left_contacts = 0
+      num_right_contacts = 0
+      for i in range(msg.num_point_pair_contacts):
+        if "toe_left" in msg.point_pair_contact_info[i].body2_name:
+          if(num_left_contacts >= 2):
+            continue
+          contact_info_locs[num_left_contacts].append(
+            msg.point_pair_contact_info[i].contact_point)
+          contact_forces[num_left_contacts].append(
+            msg.point_pair_contact_info[i].contact_force)
+          num_left_contacts += 1
+        elif "toe_right" in msg.point_pair_contact_info[i].body2_name:
+          if(num_right_contacts >= 2):
+            continue
+          contact_info_locs[2 + num_right_contacts].append(
+            msg.point_pair_contact_info[i].contact_point)
+          contact_forces[2 + num_right_contacts].append(
+            msg.point_pair_contact_info[i].contact_force)
+          num_right_contacts += 1
+      while num_left_contacts != 2:
+        contact_forces[num_left_contacts].append((0.0, 0.0, 0.0))
+        contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))
+        num_left_contacts += 1
+      while num_right_contacts != 2:
+        contact_forces[2 + num_right_contacts].append((0.0, 0.0, 0.0))
+        contact_info_locs[2 + num_right_contacts].append((0.0, 0.0,
+                                                          0.0))
+        num_right_contacts += 1
+
 
   # Convert into numpy arrays
   t_x = np.array(t_x)
@@ -153,6 +195,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   t_controller_switch = np.array(t_controller_switch)
   t_contact_info = np.array(t_contact_info)
   t_pd = np.array(t_pd)
+  t_osc_debug = np.array(t_osc_debug)
   fsm = np.array(fsm)
   q = np.array(q)
   v = np.array(v)
@@ -165,6 +208,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
   switch_signal = np.array(switch_signal)
   contact_forces = np.array(contact_forces)
   contact_info_locs = np.array(contact_info_locs)
+  contact_switch = np.array(contact_switch)
+  t_contact_switch = np.array(t_contact_switch)
 
   for i in range(contact_info_locs.shape[1]):
     # Swap front and rear contacts if necessary
@@ -181,7 +226,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
 
   x = np.hstack((q, v))  # combine into state vector
 
-  return x, u_meas, t_x, u, t_u, contact_forces, contact_info_locs, \
-         t_contact_info, osc_debug, fsm, estop_signal, \
+  return x, u_meas, t_x, u, t_u, contact_switch, t_contact_switch, contact_forces, contact_info_locs, \
+         t_contact_info, osc_debug, t_osc_debug, fsm, estop_signal, \
          switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
          t_u_pd, osc_output, full_log

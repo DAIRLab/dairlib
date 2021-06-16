@@ -102,7 +102,7 @@ void DoMain() {
   scene_graph.set_name("scene_graph");
   MultibodyPlant<double> plant(0.0);
 
-  string file_name = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  string file_name = "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf";
   if (FLAGS_use_springs) file_name = "examples/Cassie/urdf/cassie_v2.urdf";
   addCassieMultibody(&plant, &scene_graph, true, file_name, false, false);
   plant.Finalize();
@@ -402,8 +402,8 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_left")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_right")));
 
-  trajopt->AddBoundingBoxConstraint(0.05, 0.2, x0(pos_map.at("hip_roll_left")));
-  trajopt->AddBoundingBoxConstraint(-0.2, -0.05,
+  trajopt->AddBoundingBoxConstraint(0.00, 0.1, x0(pos_map.at("hip_roll_left")));
+  trajopt->AddBoundingBoxConstraint(-0.1, -0.00,
                                     x0(pos_map.at("hip_roll_right")));
 
   // hip yaw and roll constraints
@@ -499,12 +499,13 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto left_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          0.2 * VectorXd::Ones(1), 0.25 * VectorXd::Ones(1));
+          0.1 * VectorXd::Ones(1), 0.15 * VectorXd::Ones(1));
   auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          -0.25 * VectorXd::Ones(1), -0.2 * VectorXd::Ones(1));
-  for (int mode = 2; mode < 3; ++mode) {
+          -0.15 * VectorXd::Ones(1), -0.1 * VectorXd::Ones(1));
+//  for (int mode = 2; mode < 3; ++mode) {
+  for (int mode : {0, 2}) {
     for (int index = 0; index < mode_lengths[mode]; index++) {
       // Assumes mode_lengths are the same across modes
       auto x_i = trajopt->state((mode_lengths[mode] - 1) * mode + index);
@@ -514,18 +515,18 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   }
 
   // Jumping distance constraint for platform clearance
-  auto left_foot_x_platform_constraint =
-      std::make_shared<PointPositionConstraint<double>>(
-          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
-          0.25 * (FLAGS_distance - eps) * VectorXd::Ones(1),
-          0.25 * (FLAGS_distance + eps) * VectorXd::Ones(1));
-  auto right_foot_x_platform_constraint =
-      std::make_shared<PointPositionConstraint<double>>(
-          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
-          0.25 * (FLAGS_distance - eps) * VectorXd::Ones(1),
-          0.25 * (FLAGS_distance + eps) * VectorXd::Ones(1));
-  trajopt->AddConstraint(left_foot_x_platform_constraint, x_top.head(n_q));
-  trajopt->AddConstraint(right_foot_x_platform_constraint, x_top.head(n_q));
+//  auto left_foot_x_platform_constraint =
+//      std::make_shared<PointPositionConstraint<double>>(
+//          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
+//          0.25 * (FLAGS_distance - eps) * VectorXd::Ones(1),
+//          0.25 * (FLAGS_distance + eps) * VectorXd::Ones(1));
+//  auto right_foot_x_platform_constraint =
+//      std::make_shared<PointPositionConstraint<double>>(
+//          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
+//          0.25 * (FLAGS_distance - eps) * VectorXd::Ones(1),
+//          0.25 * (FLAGS_distance + eps) * VectorXd::Ones(1));
+//  trajopt->AddConstraint(left_foot_x_platform_constraint, x_top.head(n_q));
+//  trajopt->AddConstraint(right_foot_x_platform_constraint, x_top.head(n_q));
 
   // Jumping distance constraint
   auto left_foot_x_constraint =

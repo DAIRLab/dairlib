@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.010
+impact_threshold: 0.000
 use_traj_opt_feet_traj: true
 
 # High level command gains (with radio)
@@ -42,11 +42,11 @@ max_CoM_to_footstep_dist: 0.3
 footstep_offset: 0.04
 center_line_offset: 0.03
 mid_foot_height: 0.02
-final_foot_height: 0.000
+final_foot_height: -0.02
 final_foot_velocity_z: -0.1
 
 # LIPM trajectory
-lipm_height: 0.95
+lipm_height: 0.85
 
 # OSC gains
 mu: 0.8
@@ -67,13 +67,13 @@ CoMW:
       0,    0,     0,
       0,    0,    10]
 CoMKp:
-  [   0,    0,     0,
-      0,    0,     0,
-      0,    0,    10]
+  [  1,    0,     0,
+      0,    1,     0,
+      0,    0,    1]
 CoMKd:
-  [   0,    0,     0,
-      0,    0,     0,
-      0,    0,     2]
+  [   2,    0,     0,
+      0,    2,     0,
+      0,    0,    10]
 
 PelvisBalanceW:
   [ 1,      0,     0,
@@ -84,7 +84,7 @@ PelvisBalanceKp:
    0,    100,    0,
    0,      0,    0]
 PelvisBalanceKd:
-  [  20,     0,    0,
+  [ 10,     0,    0,
      0,    20,    0,
      0,     0,    0]
 

@@ -118,8 +118,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  t_start = 30.595
-  t_end = 30.87
+  # t_start = 30.595
+  # t_end = 30.87
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
@@ -127,9 +127,9 @@ def main():
   # All plotting scripts here
   # plot_status(full_log)
   # plot_ekf(full_log, pos_map, vel_map)
-  plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
+  # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  # plot_contact_est(full_log)
+  plot_contact_est(full_log)
 
   if False:
     # front_contact_disp = np.zeros(3)

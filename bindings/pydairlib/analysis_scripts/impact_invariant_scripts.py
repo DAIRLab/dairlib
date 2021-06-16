@@ -70,10 +70,10 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   plt.figure("joint velocities")
   for i in range(0,6):
     # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12:], xlabel='Time since Start of Impact (ms)', ylabel='Joint Velocities (rad/s)')
-    # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
-    # ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
-    ps.plot(t_x[t_slice], x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i), linestyle = linestyle)
-    ps.plot(t_x[t_slice], x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i), linestyle = linestyle)
+    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
+    ps.plot(1e3*(t_x[t_slice] - 30.645), x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+    # ps.plot(t_x[t_slice], x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i), linestyle = linestyle)
+    # ps.plot(t_x[t_slice], x_wo_spr[t_slice, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i), linestyle = linestyle)
 
 
     # ps.plot(t_x[t_slice], x_wo_spr[t_slice, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
@@ -96,22 +96,22 @@ def plot_ii_projection(ps, t_x, x, plant, context, t_slice, pos_map_spr_to_wo_sp
   ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
 
   plt.ylim([-8, 8])
-  # plt.xlim([-50, 100])
+  plt.xlim([-50, 100])
   # plt.xticks(np.arange(-50, 30+0.1, 10))
   plt.yticks(np.arange(-8, 8.1, 2))
   # ps.save_fig('joint_velocities_hardware_for_video.png')
 
   plt.figure("projected velocities")
   for i in range(0, 6):
-    # ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
-    # ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
-    ps.plot(t_x[t_slice], proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
-    ps.plot(t_x[t_slice], proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+    ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
+    ps.plot(1e3*(t_x[t_slice] - 30.645), proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
+    # ps.plot(t_x[t_slice], proj_vel.T[:, -12 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(2*i))
+    # ps.plot(t_x[t_slice], proj_vel.T[:, -11 + 2*i], xlabel='Time since Start of Impact (ms)', ylabel='Velocity (rad/s)', color=ps.cmap(1 + 2*i))
   ps.add_legend(['%s' % name for name in x_wo_spr_datatypes[-12:]])
   # ps.add_legend(['%.0f' % i for i in range(18)])
 
   plt.ylim([-3, 1])
-  # plt.xlim([-50, 100])
+  plt.xlim([-50, 100])
   # plt.xticks(np.arange(-50, 30+0.1, 10))
   plt.yticks(np.arange(-3, 1.1, 2))
   legend_elements_lines = []

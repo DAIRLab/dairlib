@@ -1,116 +1,56 @@
-rows: 3
+CoMKd: [2, 0, 0, 0, 2, 0, 0, 0, 10]
+CoMKp: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+CoMW: [0, 0, 0, 0, 0, 0, 0, 0, 10]
+PelvisBalanceKd: [10, 0, 0, 0, 20, 0, 0, 0, 0]
+PelvisBalanceKp: [50, 0, 0, 0, 100, 0, 0, 0, 0]
+PelvisBalanceW: [1, 0, 0, 0, 1, 0, 0, 0, 0]
+PelvisHeadingKd: [0, 0, 0, 0, 0, 0, 0, 0, 2]
+PelvisHeadingKp: [0, 0, 0, 0, 0, 0, 0, 0, 0.1000]
+PelvisHeadingW: [0, 0, 0, 0, 0, 0, 0, 0, 0.0100]
+SwingFootKd: [5, 0, 0, 0, 1, 0, 0, 0, 1]
+SwingFootKp: [50, 0, 0, 0, 100, 0, 0, 0, 100]
+SwingFootW: [4, 0, 0, 0, 4, 0, 0, 0, 1]
+center_line_offset: 0.0300
 cols: 3
-
-# Invariant Impacts
-impact_threshold: 0.100
-use_traj_opt_feet_traj: true
-
-# High level command gains (with radio)
-vel_scale_rot: -1
-vel_scale_trans_sagital: 0.30
-vel_scale_trans_lateral: -0.15
-
-# High level command gains (without radio)
+ds_time: 0.0500
+final_foot_height: -0.0200
+final_foot_velocity_z: -0.1000
+footstep_offset: 0.0247
 global_target_position_x: 0
 global_target_position_y: 0
-yaw_deadband_blur: 5
-yaw_deadband_radius: 1.5
-kp_yaw: 0
-kd_yaw: 0.0
-vel_max_yaw: 0.5
-
-kp_pos_sagital: 0.3
-kd_pos_sagital: 0.3
-vel_max_sagital: 0.25
-kp_pos_lateral: 0.3
-kd_pos_lateral: 0.25
-vel_max_lateral: 0.15
-target_pos_offset: -0.0
-
-# Speed control gains
-k_ff_sagittal: 0
-k_fb_sagittal: 0.2
-k_ff_lateral: 0
-k_fb_lateral: 0.15
-
-# Finite state machine
-ss_time: 0.35
-ds_time: 0.05
-
-# Swing foot trajectory
-max_CoM_to_footstep_dist: 0.3
-footstep_offset: 0.04
-center_line_offset: 0.03
-mid_foot_height: 0.02
-final_foot_height: -0.02
-final_foot_velocity_z: -0.1
-
-# LIPM trajectory
-lipm_height: 0.85
-
-# OSC gains
-mu: 0.8
-
-w_accel: 0.00000000001
-w_soft_constraint: 80
-
-w_swing_toe: 1
-swing_toe_kp: 1500
-swing_toe_kd: 10
-
-w_hip_yaw: 0.5
+hip_yaw_kd: 0.5000
 hip_yaw_kp: 60
-hip_yaw_kd: 0.5
-
-CoMW:
-  [   0,    0,     0,
-      0,    0,     0,
-      0,    0,    10]
-CoMKp:
-  [  1,    0,     0,
-      0,    1,     0,
-      0,    0,    1]
-CoMKd:
-  [   2,    0,     0,
-      0,    2,     0,
-      0,    0,    10]
-
-PelvisBalanceW:
-  [ 1,      0,     0,
-    0,      1,     0,
-    0,      0,     0]
-PelvisBalanceKp:
-  [50,      0,    0,
-   0,    100,    0,
-   0,      0,    0]
-PelvisBalanceKd:
-  [ 10,     0,    0,
-     0,    20,    0,
-     0,     0,    0]
-
-PelvisHeadingW:
-  [   0,    0,     0,
-      0,    0,     0,
-      0,    0,    0.01]
-PelvisHeadingKp:
-  [   0,     0,    0,
-      0,     0,    0,
-      0,     0,   0.1]
-PelvisHeadingKd:
-  [   0,     0,    0,
-      0,     0,    0,
-      0,     0,    2]
-period_of_no_heading_control: 0.0
-
-SwingFootW:
-  [ 4,    0,     0,
-    0,    4,     0,
-    0,      0,   1]
-SwingFootKp:
-  [ 50,   0,     0,
-    0,   100,     0,
-    0,     0,   100]
-SwingFootKd:
-  [   5,    0,     0,
-      0,    1,     0,
-      0,    0,     1]
+impact_threshold: 0.0000
+k_fb_lateral: 0.1500
+k_fb_sagittal: 0.2000
+k_ff_lateral: 0
+k_ff_sagittal: 0
+kd_pos_lateral: 0.2500
+kd_pos_sagital: 0.3000
+kd_yaw: 0.0000
+kp_pos_lateral: 0.3000
+kp_pos_sagital: 0.3000
+kp_yaw: 0
+lipm_height: 0.8500
+max_CoM_to_footstep_dist: 0.3000
+mid_foot_height: 0.0200
+mu: 0.8000
+period_of_no_heading_control: 0.0000
+rows: 3
+ss_time: 0.3500
+swing_toe_kd: 10
+swing_toe_kp: 1500
+target_pos_offset: -0.0000
+use_traj_opt_feet_traj: true
+vel_max_lateral: 0.1500
+vel_max_sagital: 0.2500
+vel_max_yaw: 0.5000
+vel_scale_rot: -1
+vel_scale_trans_lateral: -0.1500
+vel_scale_trans_sagital: 0.3000
+w_accel: 0.0000
+w_hip_yaw: 0.5000
+w_soft_constraint: 80
+w_swing_toe: 1
+yaw_deadband_blur: 5
+yaw_deadband_radius: 1.5000

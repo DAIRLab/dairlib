@@ -231,6 +231,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_q_;
   int n_v_;
   int n_u_;
+  int n_joints_;
 
   // Size of holonomic constraint and total/active contact constraints
   int n_h_;
@@ -243,6 +244,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // robot input limits
   Eigen::VectorXd u_min_;
   Eigen::VectorXd u_max_;
+
+  // robot joint limits
+  Eigen::VectorXd q_min_;
+  Eigen::VectorXd q_max_;
+
+  // robot joint limits
+  Eigen::MatrixXd K_joint_pos;
+  Eigen::MatrixXd K_joint_vel;
 
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
@@ -267,6 +276,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;
@@ -292,6 +302,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
+
+  // Joint limit penalty
+  Eigen::VectorXd w_joint_limit_;
 
   // Map finite state machine state to its active contact indices
   std::map<int, std::set<int>> contact_indices_map_ = {};

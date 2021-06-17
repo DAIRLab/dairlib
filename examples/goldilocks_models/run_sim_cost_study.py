@@ -431,7 +431,8 @@ def plot_nominal_cost(model_indices, sample_idx):
       contents = f.read()
     cost_x = find_cost_in_string(contents, "cost_x =")
     cost_u = find_cost_in_string(contents, "cost_u =")
-    total_cost = cost_x + cost_u
+    cost_accel = find_cost_in_string(contents, "cost_joint_acceleration =")
+    total_cost = cost_x + cost_u + cost_accel
     costs = np.vstack([costs, total_cost])
 
   # figname = "Nominal cost over model iterations"

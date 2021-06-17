@@ -23,8 +23,9 @@ def main():
   n_step = 4  # steps to average over
 
   # Weight used in model optimization
-  w_Q = 0.1
+  w_Q = 0.005  # Assume all joints have the same cost weight, though not what trajopt is using
   w_R = 0.0002
+  w_accel = 0.002 * w_Q
 
   # Read the controller parameters
   a_yaml_file = open(
@@ -225,6 +226,12 @@ def main():
     x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
     x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
 
+  # Get joint acceleration
+  dx = np.diff(x_extracted, axis=0)
+  vdot_numerical = dx[:, nq:]
+  for i in range(len(dt_x)):
+    vdot_numerical[i, :] /= dt_x[i]
+
   cost_x = 0.0
   for i in range(n_x_data - 1):
     v_i = x_extracted[i, nq:]
@@ -237,7 +244,13 @@ def main():
     cost_u += (u_i.T @ u_i) * dt_u[i]
   cost_u *= (w_R / n_step)
 
-  total_cost = cost_x + cost_u
+  cost_accel = 0.0
+  for i in range(n_x_data - 1):
+    vdot_i = vdot_numerical[i, :]
+    cost_accel += (vdot_i.T @ vdot_i) * dt_x[i]
+  cost_accel *= (w_accel / n_step)
+
+  total_cost = cost_x + cost_u + cost_accel
   print("step_idx_start = " + str(step_idx_start))
   print("step_idx_end = " + str(step_idx_end))
   print("t_start = " + str(t_start))
@@ -246,16 +259,20 @@ def main():
   print("n_u_data = " + str(n_u_data))
   print("cost_x = " + str(cost_x))
   print("cost_u = " + str(cost_u))
+  print("cost_accel = " + str(cost_accel))
   print("total_cost = " + str(total_cost))
   # import pdb; pdb.set_trace()
+
 
   # Store into files
   names = ['cost_x',
            'cost_u',
+           'cost_accel',
            'total_cost']
   names = ', '.join(names)
   values = [str(cost_x),
             str(cost_u),
+            str(cost_accel),
             str(total_cost)]
   values = ', '.join(values)
 

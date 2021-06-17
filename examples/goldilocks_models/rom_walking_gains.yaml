@@ -116,17 +116,17 @@ vel_scale_trans_lateral: -0.15
 
 #High level command gains(without radio)
 yaw_deadband_blur: 5
-yaw_deadband_radius: 1
+yaw_deadband_radius: 5  # intentionally made this big to not track pelvis yaw
 
 kp_yaw: 1
 kd_yaw: 0.2
 vel_max_yaw: 0.5
 
-kp_pos_sagital: 1.0
-kd_pos_sagital: 0.2
+kp_pos_sagital: 0.1 #1.0
+kd_pos_sagital: 0.01 #0.2
 vel_max_sagital: 0.25
-kp_pos_lateral: 0.5
-kd_pos_lateral: 0.1
+kp_pos_lateral: 0.1 #0.5
+kd_pos_lateral: 0.01 #0.1
 vel_max_lateral: 0.15
 target_pos_offset: -0.16
 

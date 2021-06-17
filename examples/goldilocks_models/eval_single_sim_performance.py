@@ -101,8 +101,8 @@ def main():
   matplotlib.rcParams["savefig.directory"] = path
 
   # Read the log file
-  x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
-  osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+  x, u_meas, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
+  osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map,
     act_map, controller_channel)
 

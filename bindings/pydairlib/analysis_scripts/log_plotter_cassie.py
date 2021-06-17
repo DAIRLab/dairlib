@@ -70,8 +70,8 @@ def main():
 
   matplotlib.rcParams["savefig.directory"] = path
 
-  x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
-  osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+  x, u_meas, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
+  osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
@@ -103,9 +103,11 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All plotting scripts here
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
+  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
+
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot")
@@ -140,38 +142,47 @@ def CompareVdot(x, t_x, vdot, t_vdot):
   plt.plot(t_x[1:], vdot_numerical[:, idx])
 
 
-def plot_contact_est(log):
+def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   t_contact = []
-  t_filtered_contact = []
-  t_gm_contact = []
   contact = []
-  contact_filtered = []
-  gm_contact = []
   for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
     msg = log["CASSIE_CONTACT_DISPATCHER"][i]
     t_contact.append(msg.utime / 1e6)
     contact.append(list(msg.contact))
-  for i in range(len(log["CASSIE_FILTERED_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_FILTERED_CONTACT_DISPATCHER"][i]
-    t_filtered_contact.append(msg.utime / 1e6)
-    contact_filtered.append(list(msg.contact))
+  t_contact = np.array(t_contact)
+  contact = np.array(contact)
+
+  t_contact_force = []
+  contact_force = []
+  contact_force = np.zeros((len(log["CASSIE_GM_CONTACT_DISPATCHER"]), 2))
   for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
     msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_gm_contact.append(msg.utime / 1e6)
-    gm_contact.append(list(msg.contact))
-  t_contact = np.array(t_contact)
-  t_filtered_contact = np.array(t_filtered_contact)
-  t_gm_contact = np.array(t_gm_contact)
-  contact = np.array(contact)
-  contact_filtered = np.array(contact_filtered)
-  gm_contact = np.array(gm_contact)
+    t_contact_force.append(msg.timestamp / 1e6)
+    for j in range(msg.num_point_pair_contacts):
+      contact_force[i][j] = msg.point_pair_contact_info[j].contact_force[2]
+  t_contact_force = np.array(t_contact_force)
+  contact_force = np.array(contact_force)
 
-  plt.figure("Contact estimation")
-  # plt.plot(t_contact[t_slice], contact[t_slice], '-')
-  plt.plot(t_filtered_contact[t_slice], contact_filtered[t_slice, 0], '-')
-  plt.plot(t_gm_contact[t_slice], gm_contact[t_slice, 0], '-')
-  plt.legend(["l_contact", "r_contact", "l_contact_filt", "r_contact_filt",
-              "l_gm_contact", "r_gm_contact"])
+  plt.figure("Contact estimation: " + filename)
+  plt.plot(t_contact_force[t_slice], contact_force[t_slice, 0])
+  plt.plot(t_contact_force[t_slice], contact_force[t_slice, 1])
+  # plt.xlabel('Time Since Nominal Impact (s)')
+  # plt.ylabel('Estimated Normal Contact Force (N)')
+  # plt.legend(["Left Foot", "Right Foot"])
+
+  # plt.figure("Contact estimation")
+  plt.plot(t_contact[t_slice], 100 * contact[t_slice], '-')
+  # plt.legend(["l_contact", "r_contact"])
+
+  plt.plot(t_osc_debug, 30 * fsm)
+
+  plt.plot(t_x[t_slice], 250 * x[t_slice, 5])
+
+  # plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
+  # plt.plot(t_x[t_slice], u_meas[t_slice, 0])
+
+  plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y"])
+  # plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y", "u", "u_meas"])
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):

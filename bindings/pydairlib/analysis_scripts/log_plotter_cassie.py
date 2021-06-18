@@ -194,12 +194,14 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   plt.plot(t_osc_debug, 30 * fsm)
 
   plt.plot(t_x[t_slice], 250 * x[t_slice, 5])
+  plt.plot(t_x[t_slice], 250 * x[t_slice, nq + 4])
 
-  # plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
-  # plt.plot(t_x[t_slice], u_meas[t_slice, 0])
+  plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
+  plt.plot(t_x[t_slice], u_meas[t_slice, 0])
 
-  plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y"])
-  # plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y", "u", "u_meas"])
+
+  # plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y"])
+  plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y", "pelvis ydot", "u", "u_meas"])
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):

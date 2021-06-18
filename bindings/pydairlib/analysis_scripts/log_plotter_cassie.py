@@ -103,9 +103,9 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All plotting scripts here
-  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
+  # plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
 
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
 
   # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
@@ -113,10 +113,11 @@ def main():
   #   t_x, t_slice, "left foot")
 
   plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  plt.plot(t_osc_debug, 0.1 * fsm)
 
   PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
 
-  # CompareVdot(x, t_x, vdot, t_vdot)
+  PlotVdot(x, t_x, x_datatypes)
 
   plt.show()
 
@@ -142,6 +143,22 @@ def CompareVdot(x, t_x, vdot, t_vdot):
   plt.plot(t_x[1:], vdot_numerical[:, idx])
 
 
+def PlotVdot(x, t_x, x_datatypes):
+  # Finite differencing seems accurate enough
+  dx = np.diff(x, axis=0)
+  dt = np.diff(t_x)
+  vdot_numerical = dx[:, nq:]
+  for i in range(len(dt)):
+    vdot_numerical[i, :] /= dt[i]
+
+  vel_indices = slice(6, nv)
+  v_datatypes = x_datatypes[nq:]
+
+  plt.figure("acceleration-- " + filename)
+  plt.plot(t_x[1:], vdot_numerical[:, vel_indices])
+  plt.legend(v_datatypes[vel_indices])
+
+
 def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   t_contact = []
   contact = []
@@ -163,7 +180,7 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   t_contact_force = np.array(t_contact_force)
   contact_force = np.array(contact_force)
 
-  plt.figure("Contact estimation: " + filename)
+  plt.figure("Contact estimation-- " + filename)
   plt.plot(t_contact_force[t_slice], contact_force[t_slice, 0])
   plt.plot(t_contact_force[t_slice], contact_force[t_slice, 1])
   # plt.xlabel('Time Since Nominal Impact (s)')
@@ -311,7 +328,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       context, JacobianWrtVariable.kV, toe_frame, contact_point,
       world,
       world) @ x[i, -nv:]
-  fig = plt.figure('foot pos: ' + filename)
+  fig = plt.figure('foot pos-- ' + filename)
   # state_indices = slice(4, 5)
   state_indices = slice(2, 6)
   # state_indices = slice(5, 6)
@@ -364,13 +381,13 @@ def compare_ekf(log, pos_map, vel_map):
 
   pos_indices = slice(4, 7)
   vel_indices = slice(4, 5)
-  plt.figure("EKF positions: " + filename)
+  plt.figure("EKF positions-- " + filename)
   plt.plot(t_x, q[:, pos_indices], '-')
   plt.plot(t_x_est, q_est[:, pos_indices], '--')
-  plt.figure("EKF velocities: " + filename)
+  plt.figure("EKF velocities-- " + filename)
   plt.plot(t_x, v[:, vel_indices], '-')
   plt.plot(t_x_est, v_est[:, vel_indices], '--')
-  plt.figure("IMU: " + filename)
+  plt.figure("IMU-- " + filename)
   plt.plot(t_x, imu, 'k-')
 
 
@@ -386,19 +403,19 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   vel_indices = slice(nq + 6, nq + nv - 2)
   u_indices = slice(0, 10)
 
-  plt.figure("positions: " + filename)
+  plt.figure("positions-- " + filename)
   # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
   # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
   plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
-  plt.figure("velocities: " + filename)
+  plt.figure("velocities-- " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
   plt.plot(t_u[t_u_slice], fsm[t_u_slice])
-  plt.figure("efforts: " + filename)
+  plt.figure("efforts-- " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
   plt.legend(u_datatypes[u_indices])
-  # plt.figure("efforts meas: " + filename)
+  # plt.figure("efforts meas-- " + filename)
   # plt.figure("Delay characterization")
   # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
   # plt.legend(u_datatypes[u_indices])

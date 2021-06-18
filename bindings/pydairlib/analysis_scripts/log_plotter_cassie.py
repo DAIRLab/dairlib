@@ -128,8 +128,8 @@ def main():
   # plot_status(full_log)
   # plot_ekf(full_log, pos_map, vel_map)
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
-  plot_contact_est(full_log)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  # plot_contact_est(full_log)
 
   if False:
     # front_contact_disp = np.zeros(3)
@@ -484,7 +484,7 @@ def plot_ekf(log, pos_map, vel_map):
 
 def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # non-floating base states
-  pos_indices = slice(0 + 7, 23)
+  pos_indices = slice(0 + 7, 11)
   vel_indices = slice(23 + 6, 45)
   # floating base states
   # pos_indices = slice(0, 7)

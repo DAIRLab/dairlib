@@ -15,7 +15,7 @@ Additional dependencies
                  hdrs = ["cnpy.h"],
                  visibility = ["//visibility:public"],
                )
-        - set the environment variable `CNPY_LOCAL_PATH`  
+        - set the environment variable `CNPY_LOCAL_PATH` to the path of the `BUILD.bazel` in the cnpy directory
                
 
 Key files:
@@ -43,6 +43,7 @@ Key files:
     - standalone Cassie simulation that initializes the simulation from time `start_time` from the specified log
     - state and input data are broadcast using lcm
         - to record and then analyze this data, use `lcm-logger` and plot the log using `log_plotter_cassie`
+    - other simulation parameters such as the `terrain_height` or `realtime_rate` can also be set.
         
 Data files:
 -
@@ -60,7 +61,10 @@ Typical process to compare the hardware data and sim data
 - start the `lcm-logger` to log the data in the chosen data folder
 - run `bazel-bin/examples/Cassie/multibody_sim_playback` with the desired parameters:
     - example: `bazel-bin/examples/Cassie/multibody_sim_playback --npy_num=28 --start_time=30.595`
+    - 30.595 is approximately 50ms before the impact event
 - plot the state/input data from the hardware data using `log_plotter_cassie`
+    - for example, to plot the hardware data from `02_12_21/lcmlog-28` use the command 
+    `bazel-bin/bindings/pydairlib/analysis_scripts/log_plotter_cassie 02_12_21/lcmlog-28 OSC_JUMPING` 
 - plot the state/input data from the simulated data using `log_plotter_cassie`
 
 

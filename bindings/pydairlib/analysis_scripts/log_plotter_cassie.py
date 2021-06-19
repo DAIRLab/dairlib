@@ -92,8 +92,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 11
-  # t_end = 13
+  # t_start = 124
+  # t_end = 125.5
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -103,21 +103,23 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All plotting scripts here
-  # plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
+  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
+
+  plot_measured_torque(t_u, t_x, u_meas, u_datatypes, fsm)
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
 
   # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
-  # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
-  #   t_x, t_slice, "left foot")
+  plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
+    t_x, t_slice, "left foot", True)
 
-  plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
-  plt.plot(t_osc_debug, 0.1 * fsm)
-
-  PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
-
-  PlotVdot(x, t_x, x_datatypes)
+  # plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  # plt.plot(t_osc_debug, 0.1 * fsm)
+  #
+  # PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
+  #
+  # PlotVdot(x, t_x, x_datatypes)
 
   plt.show()
 
@@ -185,7 +187,7 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   plt.plot(t_contact_force[t_slice], contact_force[t_slice, 1])
   # plt.xlabel('Time Since Nominal Impact (s)')
   # plt.ylabel('Estimated Normal Contact Force (N)')
-  # plt.legend(["Left Foot", "Right Foot"])
+  # plt.legend(["Left Foot force", "Right Foot force"])
 
   # plt.figure("Contact estimation")
   plt.plot(t_contact[t_slice], 100 * contact[t_slice], '-')
@@ -194,12 +196,14 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   plt.plot(t_osc_debug, 30 * fsm)
 
   plt.plot(t_x[t_slice], 250 * x[t_slice, 5])
+  # plt.plot(t_x[t_slice], 250 * x[t_slice, nq + 4])
 
   # plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
   # plt.plot(t_x[t_slice], u_meas[t_slice, 0])
 
-  plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y"])
-  # plt.legend(["Left Foot", "Right Foot", "l_contact", "r_contact", "fsm", "pelvis y", "u", "u_meas"])
+
+  # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y"])
+  # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y", "pelvis ydot", "u", "u_meas"])
 
 
 def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
@@ -318,7 +322,7 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
 
 
 def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
-                        t_x, t_x_slice, foot_type):
+                        t_x, t_x_slice, foot_type, wrt_pelvis=False):
   foot_x = np.zeros((6, t_x.size))
   for i in range(t_x.size):
     plant.SetPositionsAndVelocities(context, x[i, :])
@@ -328,16 +332,21 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
       context, JacobianWrtVariable.kV, toe_frame, contact_point,
       world,
       world) @ x[i, -nv:]
-  fig = plt.figure('foot pos-- ' + filename)
+
+  if wrt_pelvis:
+    foot_x[:3,:] -= x[:, 4:7].T
+    foot_x[3:,:] -= x[:, nq+3:nq+6].T
+
+  string_wrt_pelvis = ' wrt pelvis' if wrt_pelvis else ''
+  fig = plt.figure('foot pos' + string_wrt_pelvis + '-- ' + filename)
   # state_indices = slice(4, 5)
-  state_indices = slice(2, 6)
+  state_indices = slice(1, 6, 3)
   # state_indices = slice(5, 6)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
-  plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
-           label=state_names[state_indices])
-  plt.legend()
+  plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices])
+  plt.legend(state_names[state_indices])
 
 
 def compare_ekf(log, pos_map, vel_map):
@@ -401,7 +410,8 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
   vel_indices = slice(nq + 6, nq + nv - 2)
-  u_indices = slice(0, 10)
+  vel_indices = slice(nq + 6, nq + 6 + 8)
+  u_indices = slice(0, 8)
 
   plt.figure("positions-- " + filename)
   # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])
@@ -415,6 +425,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   plt.figure("efforts-- " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
   plt.legend(u_datatypes[u_indices])
+  plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
   # plt.figure("efforts meas-- " + filename)
   # plt.figure("Delay characterization")
   # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
@@ -431,6 +442,14 @@ def plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes):
   plt.ylabel("position (m) or velocity (m/s)")
   plt.legend(["pelvis_y", "pelvis_z", "pelvis_xdot", "pelvis_ydot", "pelvis_zdot"])
 
+
+def plot_measured_torque(t_u, t_x, u_meas, u_datatypes, fsm):
+  u_indices = slice(0, 8)
+
+  plt.figure("efforts meas-- " + filename)
+  plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
+  plt.legend(u_datatypes[u_indices])
+  plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
 
 def PlotCenterOfMass(x, t_x, plant, world, context):
   # Compute COM and Comdot

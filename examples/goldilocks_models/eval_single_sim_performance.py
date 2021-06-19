@@ -231,6 +231,9 @@ def main():
   vdot_numerical = dx[:, nq:]
   for i in range(len(dt_x)):
     vdot_numerical[i, :] /= dt_x[i]
+  # Testing -- set the toe acceleration to 0
+  #vdot_numerical[:, vel_map["toe_leftdot"]] = 0
+  #vdot_numerical[:, vel_map["toe_rightdot"]] = 0
 
   cost_x = 0.0
   for i in range(n_x_data - 1):

@@ -1,7 +1,7 @@
 # When seeing "_tkinter.TclError: no display name and no $DISPLAY environment variable",
 # uncomment the following two lines code
-#import matplotlib
-#matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 
 import subprocess
 import time
@@ -346,16 +346,21 @@ def eval_cost_in_multithread(model_indices, log_indices):
 def delete_most_logs(model_indices, log_indices):
   if log_indices[0] != 0:
     raise ValueError("log index should start from 0")
-  input("WARNING: deleting lcmlog files! (type anything to continue)")
 
   model_len = len(model_indices)
-  sampled_model_indices = list(set(
-    [model_indices[0], model_indices[int(model_len / 2)], model_indices[-1]]))
+  if model_indices[0] == 1:
+    sampled_model_indices = list(
+      {model_indices[0], model_indices[int(model_len / 2)], model_indices[-1]})
+  else:
+    sampled_model_indices = list(
+      {model_indices[int(model_len / 2) - 1], model_indices[-1]})
+  sampled_model_indices.sort()
   print("sampled_model_indices = ", sampled_model_indices)
 
   # Create a temp folder
   Path(eval_dir + "temp").mkdir(parents=True, exist_ok=True)
 
+  file_saving_command_list = []
   for model_idx in sampled_model_indices:
     # Get log indices to save
     # parameter
@@ -388,15 +393,31 @@ def delete_most_logs(model_indices, log_indices):
       mid_success_log_idx2, max_success_log_idx))
 
     # Save log indices
-    run_command(['cp', lcmlog_file_path(model_idx, min_success_log_idx),
-                 lcmlog_file_path(model_idx, min_success_log_idx, "temp/")])
-    run_command(['cp', lcmlog_file_path(model_idx, max_success_log_idx),
-                 lcmlog_file_path(model_idx, max_success_log_idx, "temp/")])
-    run_command(['cp', lcmlog_file_path(model_idx, mid_success_log_idx1),
-                 lcmlog_file_path(model_idx, mid_success_log_idx1, "temp/")])
-    run_command(['cp', lcmlog_file_path(model_idx, mid_success_log_idx2),
-                 lcmlog_file_path(model_idx, mid_success_log_idx2, "temp/")])
+    file_saving_command_list.append(
+      ['cp', lcmlog_file_path(model_idx, min_success_log_idx),
+       lcmlog_file_path(model_idx, min_success_log_idx, "temp/")])
+    file_saving_command_list.append(
+      ['cp', lcmlog_file_path(model_idx, max_success_log_idx),
+       lcmlog_file_path(model_idx, max_success_log_idx, "temp/")])
+    file_saving_command_list.append(
+      ['cp', lcmlog_file_path(model_idx, mid_success_log_idx1),
+       lcmlog_file_path(model_idx, mid_success_log_idx1, "temp/")])
+    file_saving_command_list.append(
+      ['cp', lcmlog_file_path(model_idx, mid_success_log_idx2),
+       lcmlog_file_path(model_idx, mid_success_log_idx2, "temp/")])
 
+  # Check if all lcmlogs exist
+  for command in file_saving_command_list:
+    if not os.path.exists(command[1]):
+      raise ValueError(
+        "%s doesn't exist. `model_indices` was probably set incorrectly" %
+        command[1])
+
+  input("WARNING: Going to delete lcmlog files! (type anything to continue)")
+
+  # Save logs
+  for command in file_saving_command_list:
+    run_command(command)
   # Delete the rest of the file
   run_command('rm ' + eval_dir + 'lcmlog-idx_*', True)
   # Copy back the successful files
@@ -565,20 +586,29 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
     # The line along which we evaluate the cost (using interpolation)
     n_model_iter = model_indices[-1] - model_indices[0]
     x = np.linspace(0, n_model_iter, n_model_iter + 1)
-    y = task_slice_value * np.ones(n_model_iter + 1)
 
     plt.figure(figsize=(6.4, 4.8))
     plt.rcParams.update({'font.size': 14})
     triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
     interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
-    z = interpolator(x, y)
-    plt.plot(x, z, 'k-', linewidth=3, label="Drake simulation")
+
+    for task_slice_value in task_slice_value_list:
+      y = task_slice_value * np.ones(n_model_iter + 1)
+      z = interpolator(x, y)
+      # plt.plot(x, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m (Drake sim)")
+      plt.plot(x, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m")
+      # plt.plot(x, z, 'k-', linewidth=3, label="Drake simulation")
+
     if plot_nominal:
+      plt.gca().set_prop_cycle(None)  # reset color cycle
       triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
       interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
-      z = interpolator(x, y)
-      plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
-      # plt.plot(model_indices, nominal_mtc[:, 2], 'k--', linewidth=3, label="trajectory optimization")
+      for task_slice_value in task_slice_value_list:
+        y = task_slice_value * np.ones(n_model_iter + 1)
+        z = interpolator(x, y)
+        plt.plot(x, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m (traj opt)")
+        # plt.plot(x, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m")
+        # plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
 
     # plt.xlim([0, 135])
     # plt.ylim([0.53, 1])
@@ -586,7 +616,7 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
     plt.ylabel('total cost')
     # plt.legend()
     plt.legend(loc='upper right')
-    plt.title('stride length ' + str(task_slice_value) + " m")
+    # plt.title('stride length ' + str(task_slice_value) + " m")
     # plt.title('speed %.2f m/s' % (task_slice_value / 0.4))
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
@@ -605,14 +635,13 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
       triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
       interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
       z = interpolator(x, y)
-      plt.plot(y, z, '-', color=color_names[i],
+      plt.plot(y, z, '-',  # color=color_names[i],
         linewidth=3, label="iter " + str(model_iter))
       # if plot_nominal:
       #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
       #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
       #   z = interpolator(x, y)
       #   plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
-      #   # plt.plot(model_indices, nominal_mtc[:, 2], 'k--', linewidth=3, label="trajectory optimization")
 
     plt.xlabel('stride length (m)')
     plt.ylabel('total cost')
@@ -730,11 +759,12 @@ if __name__ == "__main__":
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
 
   # 2D plot (cost vs model)
-  task_slice_value = 0.4
+  task_slice_value_list = [-0.16, 0, 0.16]
+  # task_slice_value_list = [-0.2, -0.1, 0, 0.1, 0.2]
 
   # 2D plot (cost vs task)
-  model_slices = [1, 40]
-  color_names = ["darkblue", "maroon"]
+  model_slices = [1, 50, 100, 150]
+  # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
   ### Set up environment
@@ -800,7 +830,7 @@ if __name__ == "__main__":
   # eval_cost_in_multithread(model_indices, log_indices)
 
   # Delete all logs but a few successful ones (for analysis later)
-  #delete_most_logs(model_indices, log_indices)
+  # delete_most_logs(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

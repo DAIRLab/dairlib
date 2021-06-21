@@ -639,15 +639,12 @@ EventStatus CassieStateEstimator::Update(
         *context_gt_, JacobianWrtVariable::kV, pelvis_frame_, imu_pos_, world_,
         world_, &J);
     imu_vel_wrt_world_gt.tail(3) = J * output_gt.GetVelocities();
+
+    // print for debugging
     if (print_info_to_terminal_) {
-      // Print for debugging
-      cout << "Ground Truth: " << endl;
-      cout << "Positions: " << endl;
-      cout << imu_pos_wrt_world_gt.transpose() << endl;
-      cout << "Orientation (quaternion) : " << endl;
-      cout << quat.transpose() << endl;
-      cout << "Velocities: " << endl;
-      cout << imu_vel_wrt_world_gt.transpose() << endl;
+      cout << "Ground Truth:\nPositions:\n" << imu_pos_wrt_world_gt.transpose() << endl;
+      cout << "Orientation (quaternion) :\n" << quat.transpose() << endl;
+      cout << "Velocities:\n" << imu_vel_wrt_world_gt.transpose() << endl;
     }
   }
 
@@ -671,20 +668,15 @@ EventStatus CassieStateEstimator::Update(
 
   // Print for debugging
   if (print_info_to_terminal_) {
+    Quaterniond q_prop = Quaterniond(ekf.getState().getRotation());
+    q_prop.normalize();
+
     cout << "Prediction: " << endl;
-    // cout << "Orientation (quaternion) : " << endl;
-    // Quaterniond q_prop = Quaterniond(ekf.getState().getRotation());
-    // q_prop.normalize();
-    // cout << q_prop.w() << " ";
-    // cout << q_prop.vec().transpose() << endl;
-    cout << "Velocities: " << endl;
-    cout << ekf.getState().getVelocity().transpose() << endl;
-    cout << "Positions: " << endl;
-    cout << ekf.getState().getPosition().transpose() << endl;
-    // cout << "X: " << endl;
-    // cout << ekf.getState().getX() << endl;
-    // cout << "P: " << endl;
-    // cout << ekf.getState().getP() << endl;
+    cout << "Orientation (quaternion):\n" << q_prop.w() << " " << q_prop.vec().transpose() << endl;
+    cout << "Velocities:\n" << ekf.getState().getVelocity().transpose() << endl;
+    cout << "Positions:\n" << ekf.getState().getPosition().transpose() << endl;
+    cout << "X:\n" << ekf.getState().getX() << endl;
+    cout << "P:\n" << ekf.getState().getP() << endl;
     if (test_with_ground_truth_state_) {
       cout << "z difference: "
            << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[6] << endl;

@@ -142,7 +142,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    if event.channel == "OSC_DEBUG":  # OSC_DEBUG_WALKING
+    if event.channel == "OSC_DEBUG":  # OSC_DEBUG_WALKING  # OSC_DEBUG_STANDING for standing controller
       msg = dairlib.lcmt_osc_output.decode(event.data)
       osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)

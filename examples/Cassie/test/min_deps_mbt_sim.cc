@@ -2,16 +2,17 @@
 #include <memory>
 #include <chrono>
 
-#include "drake/common/find_resource.h"
-#include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/scene_graph.h"
+
 #include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/multibody/tree/revolute_joint.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
+#include "drake/multibody/tree/revolute_joint.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/geometry/scene_graph.h"
+#include "drake/common/find_resource.h"
 
 namespace dairlib {
 using drake::geometry::DrakeVisualizer;

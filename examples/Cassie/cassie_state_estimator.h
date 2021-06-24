@@ -142,6 +142,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::lcmt_contact_results_for_viz* contact_msg) const;
 
+  void PrintFloatingBaseState(const Eigen::VectorXd& state) const;
+
   int n_q_;
   int n_v_;
   int n_u_;

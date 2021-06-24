@@ -727,8 +727,8 @@ EventStatus CassieStateEstimator::Update(
   estimated_fb_state.tail(3) =
       ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
 
-  std::cout << "Propogate Delta: \n";
-  std::cout << pre_prop_fb_state - estimated_fb_state << "--------------------------------\n" << std::endl;
+  std::cout << "\nPropogate Delta: \n";
+  PrintFloatingBaseState(estimated_fb_state - pre_prop_fb_state);
 
   // Estimated robot output
   OutputVector<double> filtered_output(n_q_, n_v_, n_u_);
@@ -885,8 +885,8 @@ EventStatus CassieStateEstimator::Update(
   corrected_state.tail(3) =
       ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
 
-  std::cout << "Measurement Delta: \n";
-  std::cout << corrected_state - estimated_fb_state << "--------------------------------\n" << std::endl;
+  std::cout << "\nMeasurement Delta: \n";
+  PrintFloatingBaseState(corrected_state - estimated_fb_state);
 
 //  if (print_info_to_terminal_) {
 //    // Print for debugging
@@ -938,6 +938,9 @@ EventStatus CassieStateEstimator::Update(
           .get_mutable_vector(fb_state_idx_)
           .get_mutable_value()
       << estimated_fb_state;
+
+  std::cout << "\nTotal Delta:\n";
+  PrintFloatingBaseState(estimated_fb_state - pre_prop_fb_state);
 
   // Store imu measurement
   state->get_mutable_discrete_state()
@@ -1126,5 +1129,11 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
   }
 }
 
+void CassieStateEstimator::PrintFloatingBaseState(const VectorXd& state) const {
+  std::cout << "quat:\n" << state.head(4) << std::endl;
+  std::cout << "pos:\n" << state.segment(4,3) << std::endl;
+  std::cout << "omega:\n" << state.segment(7,3) << std::endl;
+  std::cout << "vel:\n" << state.tail(3) << std::endl;
+}
 }  // namespace systems
 }  // namespace dairlib

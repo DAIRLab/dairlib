@@ -1957,10 +1957,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_q_hip_roll = .1 * all_cost_scale * reduce_reg_weight;
   double w_q_hip_yaw = .1 * all_cost_scale * reduce_reg_weight;
   double w_q_quat = .1 * all_cost_scale * reduce_reg_weight;
-  // TODO: if you want to use w_q_quat, you need to modify it for turning
-  if (w_q_quat) {
-    DRAKE_DEMAND(turning_rate == 0);
-  }
   // Additional cost on pelvis
   double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y
   double w_Q_vz = w_Q * 1;  // avoid pelvis rocking in z

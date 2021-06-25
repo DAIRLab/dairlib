@@ -1,3 +1,5 @@
+#include <drake/solvers/snopt_solver.h>
+#include <drake/solvers/ipopt_solver.h>
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -9,6 +11,7 @@
 #include "drake/common/text_logging.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/solve.h"
+#include "drake/solvers/snopt_solver.h"
 
 namespace dairlib {
 
@@ -83,6 +86,15 @@ void CassieFixedPointSolver(
       q(positions_map.at("hip_pitch_right")));
   program.AddConstraint(q(positions_map.at("hip_roll_left")) ==
       -q(positions_map.at("hip_roll_right")));
+  program.AddConstraint(q(positions_map.at("ankle_joint_left")) ==
+      q(positions_map.at("ankle_joint_right")));
+  program.AddConstraint(q(positions_map.at("toe_left")) ==
+      q(positions_map.at("toe_right")));
+  program.AddConstraint(q(positions_map.at("knee_joint_left")) ==
+      q(positions_map.at("knee_joint_right")));
+  program.AddConstraint(q(positions_map.at("ankle_spring_joint_left")) ==
+      q(positions_map.at("ankle_spring_joint_right")));
+
   program.AddConstraint(q(positions_map.at("hip_yaw_right")) == 0);
   program.AddConstraint(q(positions_map.at("hip_yaw_left")) == 0);
 
@@ -132,6 +144,7 @@ void CassieFixedPointSolver(
 
   // Only cost in this program: u^T u
   program.AddQuadraticCost(u.dot(1.0 * u));
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1e-6);
 
   // Random guess, except for the positions
   Eigen::VectorXd guess = Eigen::VectorXd::Random(program.num_vars());

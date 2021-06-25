@@ -40,14 +40,17 @@ void PrintCassieSingleRigidBodyParameters(double h_des, std::vector<std::string>
 
   plant.SetPositions(plant_context.get(), q_init);
 
-  RotationalInertia I = multibody::CalcLinkInertiaAboutPlantCom(plant, *plant_context,
-      plant.world_frame(), link_names[0]);
+  auto pelvis_pair = multibody::CalcLinkInertiaAboutPlantCom(plant, *plant_context,
+      plant.GetBodyByName("pelvis").body_frame(), link_names[0]);
+
+  auto I = pelvis_pair.first;
+  std::cout << "CoM w.r.t Pelvis:\n" << pelvis_pair.second << std::endl;
 
   double mass = plant.GetBodyByName(link_names[0]).get_mass(*plant_context);
 
   for (int i = 1; i < link_names.size(); i ++) {
     mass += plant.GetBodyByName(link_names[i]).get_mass(*plant_context);
-    I += multibody::CalcLinkInertiaAboutPlantCom(plant, *plant_context, plant.world_frame(), link_names[i]);
+    I += multibody::CalcLinkInertiaAboutPlantCom(plant, *plant_context, plant.world_frame(), link_names[i]).first;
   }
 
   auto left_toe = LeftToeFront(plant);
@@ -69,8 +72,8 @@ void PrintCassieSingleRigidBodyParameters(double h_des, std::vector<std::string>
   plant.CalcPointsPositions(*plant_context, right_toe_mid.second,
                             right_toe_mid.first, plant.world_frame(), &right_pos);
 
-  std::cout << "Com Position:\n" << com_pos << "\nLeft Foot Pos\n" << left_pos
-            << "\nRight Foot Pos\n" << right_pos << std::endl;
-  std::cout << "Rotational Inertia:\n" << I << "\n\nMass: " << mass << std::endl;
+  std::cout << "\nCom Position:\n" << com_pos << "\n\nLeft Foot Pos\n" << left_pos
+            << "\n\nRight Foot Pos\n" << right_pos << std::endl;
+  std::cout << "\nRotational Inertia:\n" << I << "\n\nMass: " << mass << std::endl;
 }
 }

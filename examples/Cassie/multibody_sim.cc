@@ -56,6 +56,9 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+using std::pair;
+using std::vector;
+
 // Optimal ROM controller
 DEFINE_bool(publish_at_initialization, true, "");
 DEFINE_double(pause_second, 0, "pause after initialization");
@@ -102,7 +105,8 @@ void CassieInitStateSolver(
 class SimTerminator : public drake::systems::LeafSystem<double> {
  public:
   SimTerminator(const drake::multibody::MultibodyPlant<double>& plant,
-                double update_period) {
+                double update_period)
+      : plant_(plant), toes_({LeftToeFront(plant), RightToeFront(plant)}) {
     this->set_name("termination");
 
     // Input/Output Setup
@@ -114,10 +118,24 @@ class SimTerminator : public drake::systems::LeafSystem<double> {
  private:
   void Check(const drake::systems::Context<double>& context,
              drake::systems::DiscreteValues<double>* discrete_state) const {
-    const BasicVector<double>* robot_state = this->EvalVectorInput(context, 0);
+    drake::VectorX<double> x = this->EvalVectorInput(context, 0)->get_value();
+    multibody::SetPositionsIfNew<double>(plant_, x.head(plant_.num_positions()),
+                                         context_.get());
 
-    DRAKE_DEMAND(robot_state->get_value()(6) > 0.3);
+    drake::VectorX<double> pt_world(3);
+    for (int i = 0; i < 2; i++) {
+      plant_.CalcPointsPositions(*context_, toes_.at(i).second,
+                                 Vector3d::Zero(), plant_.world_frame(),
+                                 &pt_world);
+
+      // Pelvis height wrt toe height
+      DRAKE_DEMAND(x(6) - pt_world(2) > 0.2);
+    }
   };
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  vector<pair<const Vector3d, const drake::multibody::Frame<double>&>> toes_;
 };
 
 int do_main(int argc, char* argv[]) {

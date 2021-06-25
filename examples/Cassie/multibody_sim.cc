@@ -94,11 +94,14 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
 DEFINE_double(pelvis_y_vel, 0.3, "for stability");
 
+// Terrain
+DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
+
 void CassieInitStateSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
     const VectorXd& pelvis_xy_vel, double height, double mu,
     double min_normal_force, bool linear_friction_cone, double toe_spread,
-    const VectorXd& q_desired, const VectorXd& u_desired,
+    double ground_incline, const VectorXd& q_desired, const VectorXd& u_desired,
     const VectorXd& lambda_desired, VectorXd* q_result, VectorXd* v_result,
     VectorXd* u_result, VectorXd* lambda_result);
 
@@ -106,7 +109,9 @@ class SimTerminator : public drake::systems::LeafSystem<double> {
  public:
   SimTerminator(const drake::multibody::MultibodyPlant<double>& plant,
                 double update_period)
-      : plant_(plant), toes_({LeftToeFront(plant), RightToeFront(plant)}) {
+      : plant_(plant),
+        context_(plant_.CreateDefaultContext()),
+        toes_({LeftToeFront(plant), RightToeFront(plant)}) {
     this->set_name("termination");
 
     // Input/Output Setup
@@ -119,8 +124,9 @@ class SimTerminator : public drake::systems::LeafSystem<double> {
   void Check(const drake::systems::Context<double>& context,
              drake::systems::DiscreteValues<double>* discrete_state) const {
     drake::VectorX<double> x = this->EvalVectorInput(context, 0)->get_value();
-    multibody::SetPositionsIfNew<double>(plant_, x.head(plant_.num_positions()),
-                                         context_.get());
+    /*multibody::SetPositionsIfNew<double>(plant_,
+       x.head(plant_.num_positions()), context_.get());*/
+    plant_.SetPositions(context_.get(), x.head(plant_.num_positions()));
 
     drake::VectorX<double> pt_world(3);
     for (int i = 0; i < 2; i++) {
@@ -141,6 +147,11 @@ class SimTerminator : public drake::systems::LeafSystem<double> {
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  // Ground direction
+  DRAKE_DEMAND(abs(FLAGS_ground_incline) <= 0.3);
+  Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
+                         cos(FLAGS_ground_incline));
+
   // Plant/System initialization
   DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -149,7 +160,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8, ground_normal);
   }
 
   std::string urdf;
@@ -247,8 +258,8 @@ int do_main(int argc, char* argv[]) {
 
   // Set initial conditions of the simulation
   VectorXd q_init, v_init, u_init, lambda_init;
-  double mu_fp = 0;
-  double min_normal_fp = 70;
+  double mu_fp = 0.5;         // 0
+  double min_normal_fp = 10;  // 70
   double toe_spread = .15;
   // Create a plant for CassieFixedPointSolver.
   // Note that we cannot use the plant from the above diagram, because after the
@@ -260,16 +271,20 @@ int do_main(int argc, char* argv[]) {
                      FLAGS_spring_model, true);
   plant_for_solver.Finalize();
   if (FLAGS_floating_base) {
+    VectorXd all_sol;
     CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
                            min_normal_fp, true, toe_spread, &q_init, &u_init,
-                           &lambda_init);
+                           &lambda_init, "", 0, &all_sol);
+    CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
+                           min_normal_fp, true, toe_spread, &q_init, &u_init,
+                           &lambda_init, "", FLAGS_ground_incline, &all_sol);
 
     VectorXd pelvis_xy_vel(2);
     pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
     CassieInitStateSolver(plant_for_solver, pelvis_xy_vel, FLAGS_init_height,
-                          mu_fp, min_normal_fp, true, toe_spread, q_init,
-                          u_init, lambda_init, &q_init, &v_init, &u_init,
-                          &lambda_init);
+                          mu_fp, min_normal_fp, true, toe_spread,
+                          FLAGS_ground_incline, q_init, u_init, lambda_init,
+                          &q_init, &v_init, &u_init, &lambda_init);
   } else {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
@@ -403,9 +418,18 @@ void CassieInitStateSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
     const VectorXd& pelvis_xy_vel, double height, double mu,
     double min_normal_force, bool linear_friction_cone, double toe_spread,
-    const VectorXd& q_desired, const VectorXd& u_desired,
+    double ground_incline, const VectorXd& q_desired, const VectorXd& u_desired,
     const VectorXd& lambda_desired, VectorXd* q_result, VectorXd* v_result,
     VectorXd* u_result, VectorXd* lambda_result) {
+  // Get the rotational matrix
+  Eigen::AngleAxisd rollAngle(ground_incline, Eigen::Vector3d::UnitZ());
+  Eigen::AngleAxisd yawAngle(0, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd pitchAngle(0, Eigen::Vector3d::UnitX());
+  Eigen::Quaternion<double> quat = rollAngle * yawAngle * pitchAngle;
+  Eigen::Matrix3d rotationMatrix = quat.matrix();
+  // Get normal direction
+  Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
+
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
   // Add loop closures
@@ -417,26 +441,26 @@ void CassieInitStateSolver(
   // Add contact points
   auto left_toe = LeftToeFront(plant);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, Eigen::Matrix3d::Identity(),
-      Eigen::Vector3d(0, toe_spread, 0), {1, 2});
+      plant, left_toe.first, left_toe.second, rotationMatrix,
+      Eigen::Vector3d(0, toe_spread, 1e-4), {1, 2});
   evaluators.add_evaluator(&left_toe_evaluator);
 
   auto left_heel = LeftToeRear(plant);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, left_heel.first, left_heel.second, Eigen::Vector3d(0, 0, 1),
-      Eigen::Vector3d::Zero(), false);
+      plant, left_heel.first, left_heel.second, ground_normal,
+      Eigen::Vector3d(0, 0, 1e-4), false);
   evaluators.add_evaluator(&left_heel_evaluator);
 
   auto right_toe = RightToeFront(plant);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, right_toe.first, right_toe.second, Eigen::Matrix3d::Identity(),
+      plant, right_toe.first, right_toe.second, rotationMatrix,
       Eigen::Vector3d(0, -toe_spread, 0), {1, 2});
   evaluators.add_evaluator(&right_toe_evaluator);
 
   auto right_heel = RightToeRear(plant);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, right_heel.first, right_heel.second, Eigen::Vector3d(0, 0, 1),
-      Eigen::Vector3d::Zero(), false);
+      plant, right_heel.first, right_heel.second, ground_normal,
+      Eigen::Vector3d(0, 0, 1e-4), false);
   evaluators.add_evaluator(&right_heel_evaluator);
 
   auto program = multibody::MultibodyProgram(plant);

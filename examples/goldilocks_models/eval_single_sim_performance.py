@@ -267,6 +267,27 @@ def main():
   # import pdb; pdb.set_trace()
 
 
+  # # Testing ankle and toe accleration
+  # vdot_numerical_copy1 = np.copy(vdot_numerical)
+  # vdot_numerical_copy1[:, :nv-4] = 0
+  # cost_accel_toe_ankle = 0.0
+  # for i in range(n_x_data - 1):
+  #   vdot_i = vdot_numerical_copy1[i, :]
+  #   cost_accel_toe_ankle += (vdot_i.T @ vdot_i) * dt_x[i]
+  # cost_accel_toe_ankle *= (w_accel / n_step)
+  # print("cost_accel_toe_ankle = " + str(cost_accel_toe_ankle))
+  #
+  # # Testing ankle and toe accleration
+  # vdot_numerical_copy2 = np.copy(vdot_numerical)
+  # vdot_numerical_copy2[:, nv-4:] = 0
+  # cost_accel_except_toe_ankle = 0.0
+  # for i in range(n_x_data - 1):
+  #   vdot_i = vdot_numerical_copy2[i, :]
+  #   cost_accel_except_toe_ankle += (vdot_i.T @ vdot_i) * dt_x[i]
+  # cost_accel_except_toe_ankle *= (w_accel / n_step)
+  # print("cost_accel_except_toe_ankle = " + str(cost_accel_except_toe_ankle))
+
+
   # Store into files
   names = ['cost_x',
            'cost_u',

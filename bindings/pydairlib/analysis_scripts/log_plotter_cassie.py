@@ -31,12 +31,12 @@ def main():
 
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant_w_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_v2.urdf"))
   # Parser(plant_w_spr).AddModelFromFile(
   #   FindResourceOrThrow(
-  #     "examples/Cassie/urdf/cassie_fixed_springs.urdf"))
+  #     "examples/Cassie/urdf/cassie_v2.urdf"))
+  Parser(plant_w_spr).AddModelFromFile(
+    FindResourceOrThrow(
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf"))
   plant_w_spr.mutable_gravity_field().set_gravity_vector(
     -9.81 * np.array([0, 0, 1]))
   plant_w_spr.Finalize()
@@ -52,6 +52,7 @@ def main():
   world = plant_w_spr.world_frame()
   context = plant_w_spr.CreateDefaultContext()
 
+  global front_contact_disp, rear_contact_disp, mid_contact_disp
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
   mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2
@@ -93,8 +94,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 124
-  # t_end = 125.5
+  t_start = 10.35
+  t_end = 10.4
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -108,15 +109,19 @@ def main():
   t_osc_debug_slice = slice(0, len(t_osc_debug))
 
   ### All plotting scripts here
-  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
+  # plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
 
   # plot_measured_torque(t_u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
 
-  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
-  plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
+  # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
+  #   t_x, t_slice, "left foot", True)
+  plot_feet_positions(plant_w_spr, context, x, l_toe_frame, front_contact_disp, world,
+    t_x, t_slice, "left foot", True)
+  plot_feet_positions(plant_w_spr, context, x, l_toe_frame, rear_contact_disp, world,
     t_x, t_slice, "left foot", True)
 
   # plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
@@ -124,7 +129,7 @@ def main():
   #
   # PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
   #
-  # PlotVdot(x, t_x, x_datatypes)
+  PlotVdot(x, t_x, x_datatypes)
 
   plt.show()
 
@@ -157,6 +162,9 @@ def PlotVdot(x, t_x, x_datatypes):
   vdot_numerical = dx[:, nq:]
   for i in range(len(dt)):
     vdot_numerical[i, :] /= dt[i]
+
+  # Testing -- plot squared accleration
+  # vdot_numerical = np.square(vdot_numerical)
 
   vel_indices = slice(6, nv)
   v_datatypes = x_datatypes[nq:]
@@ -219,7 +227,6 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   tracking_cost_map = dict()
   num_tracking_cost = 0
 
-  import pdb; pdb.set_trace()
   for i in range(t_osc_debug.shape[0]):
     input_cost[i] = osc_output[i].input_cost
     acceleration_cost[i] = osc_output[i].acceleration_cost
@@ -243,8 +250,8 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   # osc_traj0 = "swing_ft_traj"
-  # osc_traj0 = "optimal_rom_traj"
-  osc_traj0 = "com_traj"
+  osc_traj0 = "optimal_rom_traj"
+  # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
   osc_traj2 = "pelvis_balance_traj"
@@ -344,16 +351,24 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
     foot_x[:3,:] -= x[:, 4:7].T
     foot_x[3:,:] -= x[:, nq+3:nq+6].T
 
+  contact_name = ''
+  if (contact_point == front_contact_disp).all():
+    contact_name = ' ' + toe_frame.name() + ', front_contact'
+  elif (contact_point == rear_contact_disp).all():
+    contact_name = ' ' + toe_frame.name() + ', rear_contact'
+  elif (contact_point == mid_contact_disp).all():
+    contact_name = ' ' + toe_frame.name() + ', mid_contact'
+
   string_wrt_pelvis = ' wrt pelvis' if wrt_pelvis else ''
   fig = plt.figure('foot pos' + string_wrt_pelvis + '-- ' + filename)
   # state_indices = slice(4, 5)
-  state_indices = slice(1, 6, 3)
-  # state_indices = slice(5, 6)
-  # state_indices = slice(5, 6)
+  # state_indices = slice(1, 6, 3) # only the z component
+  state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
-  plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices])
-  plt.legend(state_names[state_indices])
+  plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices], label=contact_name)
+  # plt.legend(state_names[state_indices])
+  plt.legend()
 
 
 def compare_ekf(log, pos_map, vel_map):
@@ -417,8 +432,9 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   # pos_indices = [pos_map["knee_joint_right"], pos_map["ankle_spring_joint_right"]]
   # pos_indices = tuple(slice(x) for x in pos_indices)
   vel_indices = slice(nq + 6, nq + nv - 2)
-  # vel_indices = slice(nq + 6, nq + 6 + 8)
-  vel_indices = slice(nq + 3, nq + 6)
+  vel_indices = slice(nq + 6, nq + 6 + 8)
+  vel_indices = slice(nq + 6 + 8, nq + nv)
+  # vel_indices = slice(nq + 3, nq + 6)
   u_indices = slice(0, 8)
 
   plt.figure("positions-- " + filename)

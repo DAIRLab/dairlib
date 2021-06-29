@@ -126,6 +126,23 @@ cc_library(
 )
 
 cc_library(
+    name = "srbd_nmpc",
+    srcs = ["srbd_nmpc.cc"],
+    hdrs = ["srbd_nmpc.h"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:multibody_solvers",
+        "//multibody:utils",
+        "//solvers:constraint_factory",
+        "//solvers:nonlinear_constraint",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "swing_ft_traj_gen",
     srcs = ["swing_ft_traj_gen.cc"],
     hdrs = ["swing_ft_traj_gen.h"],

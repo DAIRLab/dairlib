@@ -63,7 +63,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "0.drake-director (with pd panel)" {
-        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py  --script examples/Cassie/director_scripts/show_time.py";
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py  --script examples/Cassie/director_scripts/show_time_hardware.py";
         host = "localhost";
     }
     cmd "3.0.switch-to-rom-mpc1" {

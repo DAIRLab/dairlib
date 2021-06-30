@@ -126,9 +126,10 @@ cc_library(
 )
 
 cc_library(
-    name = "srbd_nmpc",
-    srcs = ["srbd_nmpc.cc"],
-    hdrs = ["srbd_nmpc.h"],
+    name = "srbd_cmpc",
+    srcs = ["srbd_cmpc.cc"],
+    hdrs = ["srbd_cmpc.h"],
+    tags = ["manual"],
     deps = [
         "//common",
         "//lcm:lcm_trajectory_saver",
@@ -136,7 +137,6 @@ cc_library(
         "//multibody:multibody_solvers",
         "//multibody:utils",
         "//solvers:constraint_factory",
-        "//solvers:nonlinear_constraint",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

@@ -2,7 +2,7 @@
 // Created by brian on 3/8/21.
 //
 
-#include "srbd_nmpc.h"
+#include "srbd_cmpc.h"
 #include "common/file_utils.h"
 
 
@@ -438,8 +438,7 @@ VectorXd SrbdCMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
     auto base_transform = plant_.EvalBodyPoseInWorld(*plant_context_,
                                                      plant_.GetBodyByName(base_));
 
-    Quaterniond q_base = base_transform.rotation().ToQuaternion();
-    base_orientation << q_base.w(), q_base.vec();
+    base_orientation << base_transform.rotation().ToQuaternionAsVector4();
     MatrixXd J_spatial(6, nv_);
     plant_.CalcJacobianSpatialVelocity(*plant_context_, JacobianWrtVariable::kV,
                                        plant_.GetBodyByName(base_).body_frame(), frame_pose_.translation(),

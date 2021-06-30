@@ -120,7 +120,7 @@ group "2.setup" {
         host = "dair-cassie";
     }
     cmd "3.standing-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_u=OSC_STANDING --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_u=OSC_STANDING --channel_x=CASSIE_STATE_DISPATCHER --cost_weight_multiplier=1";
         host = "dair-cassie";
     }
 }

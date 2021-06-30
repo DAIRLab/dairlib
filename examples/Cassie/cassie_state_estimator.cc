@@ -726,10 +726,10 @@ EventStatus CassieStateEstimator::Update(
   // Translational velocity
   estimated_fb_state.tail(3) =
       ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
-
+ /*
   std::cout << "\nPropogate Delta: \n";
   PrintFloatingBaseState(estimated_fb_state - pre_prop_fb_state);
-
+*/
   // Estimated robot output
   OutputVector<double> filtered_output(n_q_, n_v_, n_u_);
   AssignImuValueToOutputVector(cassie_out, &filtered_output);
@@ -884,10 +884,10 @@ EventStatus CassieStateEstimator::Update(
   // Translational velocity
   corrected_state.tail(3) =
       ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
-
+   /*
   std::cout << "\nMeasurement Delta: \n";
   PrintFloatingBaseState(corrected_state - estimated_fb_state);
-
+    */
 //  if (print_info_to_terminal_) {
 //    // Print for debugging
 //    q = Quaterniond(ekf.getState().getRotation()).normalized();
@@ -938,10 +938,10 @@ EventStatus CassieStateEstimator::Update(
           .get_mutable_vector(fb_state_idx_)
           .get_mutable_value()
       << estimated_fb_state;
-
+  /*
   std::cout << "\nTotal Delta:\n";
   PrintFloatingBaseState(estimated_fb_state - pre_prop_fb_state);
-
+  */
   // Store imu measurement
   state->get_mutable_discrete_state()
           .get_mutable_vector(prev_imu_idx_)

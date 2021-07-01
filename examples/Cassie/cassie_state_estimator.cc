@@ -730,8 +730,8 @@ EventStatus CassieStateEstimator::Update(
     EstimateContactForEkf(output_gt, &left_contact, &right_contact);
   } else {
     EstimateContactForEkf(filtered_output, &left_contact, &right_contact);
-    EstimateContactForces(context, filtered_output, lambda_est, left_contact,
-                          right_contact);
+    // EstimateContactForces(context, filtered_output, lambda_est, left_contact,
+    //                       right_contact);
   }
   state->get_mutable_discrete_state(contact_forces_idx_).get_mutable_value()
       << lambda_est;

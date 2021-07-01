@@ -156,6 +156,11 @@ def CompareVdot(x, t_x, vdot, t_vdot):
 
 
 def PlotVdot(x, t_x, x_datatypes):
+  # Remove the first element (in simulation, we have two 0 timestamps)
+  if t_x[0] == 0:
+    x = x[1:, :]
+    t_x = t_x[1:]
+
   # Finite differencing seems accurate enough
   dx = np.diff(x, axis=0)
   dt = np.diff(t_x)

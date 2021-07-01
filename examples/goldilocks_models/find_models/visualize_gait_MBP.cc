@@ -68,6 +68,8 @@ DEFINE_bool(construct_cubic, false,
 
 DEFINE_string(path, "", "");
 
+DEFINE_bool(draw_ground, false, "");
+
 void swapTwoBlocks(MatrixXd* mat, int i_1, int j_1, int i_2, int j_2, int n_row,
                    int n_col) {
   MatrixXd temp_block1 = mat->block(i_1, j_1, n_row, n_col);
@@ -104,11 +106,6 @@ void visualizeGait(int argc, char* argv[]) {
       (FLAGS_iter_end >= FLAGS_iter_start) ? FLAGS_iter_end : FLAGS_iter_start;
   int n_step = FLAGS_n_step;  // Should be > 0
 
-  // Read in task name
-  vector<string> task_name = ParseCsvToStringVec(directory + "task_names.csv");
-  Task task(task_name);
-  int ground_incline_idx = task.name_to_index_map().at("ground_incline");
-
   // Construct a list of (iteration #, sample #) pairs to visualize for
   std::vector<std::pair<int, int>> iter_sample_pair_list;
   for (int iter = iter_start; iter <= iter_end; iter++) {
@@ -119,11 +116,6 @@ void visualizeGait(int argc, char* argv[]) {
   for (const auto& iter_sample_pair : iter_sample_pair_list) {
     int iter = iter_sample_pair.first;
     int sample = iter_sample_pair.second;
-
-    // Read in ground incline
-    double ground_incline =
-        readCSV(directory + to_string(iter) + string("_") + to_string(sample) +
-                string("_task.csv"))(ground_incline_idx, 0);
 
     // Read in trajectory
     dairlib::DirconTrajectory dircon_traj(directory + to_string(iter) +
@@ -316,8 +308,22 @@ void visualizeGait(int argc, char* argv[]) {
     drake::systems::DiagramBuilder<double> builder;
     MultibodyPlant<double> plant(0.0);
     SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
-    Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
-    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
+    if (FLAGS_draw_ground) {
+      // Read in task name
+      vector<string> task_name =
+          ParseCsvToStringVec(directory + "task_names.csv");
+      Task task(task_name);
+      int ground_incline_idx = task.name_to_index_map().at("ground_incline");
+
+      // Read in ground incline
+      double ground_incline = readCSV(
+          directory + to_string(iter) + string("_") + to_string(sample) +
+          string("_task.csv"))(ground_incline_idx, 0);
+
+      // Add ground
+      Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
+      multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
+    }
     Parser parser(&plant, &scene_graph);
     std::string full_name;
     if (FLAGS_robot_option == 0) {

@@ -94,8 +94,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  t_start = 10.35
-  t_end = 10.4
+  # t_start = 10.35
+  # t_end = 10.4
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -440,7 +440,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   vel_indices = slice(nq + 6, nq + 6 + 8)
   vel_indices = slice(nq + 6 + 8, nq + nv)
   # vel_indices = slice(nq + 3, nq + 6)
-  u_indices = slice(0, 8)
+  u_indices = slice(0, 10)
 
   plt.figure("positions-- " + filename)
   # plt.plot(t_x[t_slice], x[t_slice, pos_map["knee_joint_right"]])

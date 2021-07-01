@@ -235,6 +235,10 @@ def main():
   #vdot_numerical[:, vel_map["toe_leftdot"]] = 0
   #vdot_numerical[:, vel_map["toe_rightdot"]] = 0
 
+  # Testing (hacks) -- cap the acceleration within 500 to avoid contact spikes
+  # max_accel = 500
+  # vdot_numerical = np.clip(vdot_numerical, -max_accel, max_accel)
+
   cost_x = 0.0
   for i in range(n_x_data - 1):
     v_i = x_extracted[i, nq:]

@@ -28,6 +28,7 @@ using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::Matrix3d;
 using Eigen::Quaterniond;
 
 using dairlib::multibody::WorldPointEvaluator;
@@ -433,7 +434,7 @@ VectorXd SrbdCMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
                              contact_points_.at(kLeft).second, world_frame_, &left_pos);
   plant_.CalcPointsPositions(*plant_context_, contact_points_.at(kRight).first,
                              contact_points_.at(kRight).second, world_frame_, &right_pos);
-  VectorXd base_orientation;
+  Vector3d base_orientation;
   VectorXd base_omega;
 
   /*** Adjustment for slope ***/
@@ -447,7 +448,8 @@ VectorXd SrbdCMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
     auto base_transform = plant_.EvalBodyPoseInWorld(*plant_context_,
                                                      plant_.GetBodyByName(base_));
 
-    base_orientation << base_transform.rotation().ToQuaternionAsVector4();
+    rpy_.SetFromRotationMatrix(base_transform.rotation());
+    base_orientation << rpy_.vector();
     MatrixXd J_spatial(6, nv_);
     plant_.CalcJacobianSpatialVelocity(*plant_context_, JacobianWrtVariable::kV,
                                        plant_.GetBodyByName(base_).body_frame(), frame_pose_.translation(),
@@ -843,5 +845,34 @@ std::pair<int,int> SrbdCMPC::GetTerminalStepIdx() const {
     return std::pair<int,int>(nmodes_ - 1, modes_.back().N);
   }
   return std::pair<int,int>(x0_idx_[0]-1, modes_.at(x0_idx_[0]-1).N);
+}
+void SrbdCMPC::CopyDiscreteSrbDynamics(Eigen::MatrixXd b_I, double m, double y_offset,
+                                       double yaw, BipedStance stance,
+                                       const drake::EigenPtr<Eigen::MatrixXd> &Al,
+                                       const drake::EigenPtr<Eigen::MatrixXd> &Bl,
+                                       const drake::EigenPtr<Eigen::MatrixXd> &bl) {
+  drake::math::RollPitchYaw rpy(0.0, 0.0, yaw);
+  Matrix3d R_yaw = rpy.ToMatrix3ViaRotationMatrix();
+  Vector3d tau = {0.0,0.0,1.0};
+  Vector3d mg = {0.0, 0.0, m * 9.81};
+  Matrix3d lambda_hat;
+  lambda_hat << 0, -m*9.81, 0, m*9.81, 0, 0, 0, 0, 0;
+  Matrix3d g_I_inv = (R_yaw * b_I * R_yaw.transpose()).inverse();
+
+
+  MatrixXd A = MatrixXd::Zero(18,18);
+  MatrixXd B = MatrixXd::Zero(18,10);
+  VectorXd b = VectorXd::Zero(18);
+
+  A.block(0, 6, 3, 3) = Matrix3d::Identity();
+  A.block(3, 9, 3, 3) = R_yaw;
+  A.block(9, 0, 3, 3) = g_I_inv * lambda_hat;
+  if (stance == BipedStance::kLeft) {
+    A.block(9, 12, 3, 3) = - g_I_inv * lambda_hat;
+  } else if (stance == BipedStance::kRight) {
+    A.block(9, 15, 3, 3) = -g_I_inv * lambda_hat;
+  }
+
+  
 }
 } // dairlib

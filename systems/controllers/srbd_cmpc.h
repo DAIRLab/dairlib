@@ -128,6 +128,11 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
     return drake::solvers::Solve(prog_);
   }
 
+  void CopyDiscreteSrbDynamics(Eigen::MatrixXd b_I, double m, double y_offset, double yaw, BipedStance stance,
+                               const drake::EigenPtr<Eigen::MatrixXd>& Al,
+                               const drake::EigenPtr<Eigen::MatrixXd>& Bl,
+                               const drake::EigenPtr<Eigen::MatrixXd>& bl);
+
   void print_initial_state_constraints() const;
   void print_state_knot_constraints() const;
   void print_dynamics_constraints() const;
@@ -149,7 +154,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void MakeStateKnotConstraints();
   void MakeInitialStateConstraints();
   void MakeFlatGroundConstraints(const Eigen::MatrixXd& W);
-  Eigen::Vector3d CalcEulerAnglesFromPose(const drake::math::RigidTransform<double>& pose);
 
   Eigen::MatrixXd CalcSwingFootKnotPoints(const Eigen::VectorXd& x,
                                           const drake::solvers::MathematicalProgramResult& result,
@@ -245,6 +249,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   int base_angle_vel_idx_;
 
   mutable drake::systems::Context<double>* plant_context_;
+  mutable drake::math::RollPitchYaw<double> rpy_;
   mutable Eigen::VectorXd x_des_;
   mutable Eigen::MatrixXd x_des_mat_;
 

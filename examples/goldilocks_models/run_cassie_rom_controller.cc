@@ -456,7 +456,7 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem<cassie::osc::WalkingSpeedControl>(
             plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
             gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
-            left_support_duration);
+            left_support_duration, gains.speed_control_offset_sagittal);
     if (!gains.set_constant_walking_speed) {
       builder.Connect(high_level_command->get_xy_output_port(),
                       walking_speed_control->get_input_port_des_hor_vel());

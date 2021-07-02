@@ -47,7 +47,8 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
                       drake::systems::Context<double>* context,
                       double k_ff_lateral, double k_fb_lateral,
                       double k_ff_sagittal, double k_fb_sagittal,
-                      double swing_phase_duration = 0);
+                      double swing_phase_duration = 0,
+                      double speed_control_offset_sagittal = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -89,6 +90,8 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
   // Foot placement control (Sagittal) parameters
   double k_fp_ff_sagittal_;
   double k_fp_fb_sagittal_;
+  // Hacks
+  double speed_control_offset_sagittal_;
 
   // COM vel filtering
   // TODO(yminchen): extract this filter out of WalkingSpeedControl and

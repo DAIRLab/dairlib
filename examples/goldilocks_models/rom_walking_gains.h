@@ -58,6 +58,7 @@ struct RomWalkingGains {
   double k_fb_lateral;
   double k_ff_sagittal;
   double k_fb_sagittal;
+  double speed_control_offset_sagittal;
   double kp_pos_sagital;
   double kd_pos_sagital;
   double vel_max_sagital;
@@ -158,6 +159,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(k_fb_lateral));
     a->Visit(DRAKE_NVP(k_ff_sagittal));
     a->Visit(DRAKE_NVP(k_fb_sagittal));
+    a->Visit(DRAKE_NVP(speed_control_offset_sagittal));
     // High level command gains (without radio)
     a->Visit(DRAKE_NVP(kp_pos_sagital));
     a->Visit(DRAKE_NVP(kd_pos_sagital));

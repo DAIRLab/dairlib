@@ -34,7 +34,8 @@ namespace osc {
 WalkingSpeedControl::WalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
     Context<double>* context, double k_ff_lateral, double k_fb_lateral,
-    double k_ff_sagittal, double k_fb_sagittal, double swing_phase_duration)
+    double k_ff_sagittal, double k_fb_sagittal, double swing_phase_duration,
+    double speed_control_offset_sagittal)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -44,7 +45,8 @@ WalkingSpeedControl::WalkingSpeedControl(
       k_fp_ff_lateral_(k_ff_lateral),
       k_fp_fb_lateral_(k_fb_lateral),
       k_fp_ff_sagittal_(k_ff_sagittal),
-      k_fp_fb_sagittal_(k_fb_sagittal) {
+      k_fp_fb_sagittal_(k_fb_sagittal),
+      speed_control_offset_sagittal_(speed_control_offset_sagittal) {
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -135,7 +137,8 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
   // Velocity control
   double delta_x_fs_sagital =
       -k_fp_ff_sagittal_ * des_sagital_vel -
-      k_fp_fb_sagittal_ * (des_sagital_vel - com_vel_sagital);
+      k_fp_fb_sagittal_ * (des_sagital_vel - com_vel_sagital) +
+      speed_control_offset_sagittal_;
   Vector3d delta_x_fs_sagital_3D_local(delta_x_fs_sagital, 0, 0);
   delta_x_fs_sagital_3D_global =
       drake::math::quatRotateVec(quat, delta_x_fs_sagital_3D_local);

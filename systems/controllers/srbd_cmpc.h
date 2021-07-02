@@ -35,7 +35,14 @@ enum BipedStance {
   kRight=1
 };
 
+typedef struct SrbdDynamics{
+  Eigen::MatrixXd A;
+  Eigen::MatrixXd B;
+  Eigen::MatrixXd b;
+} SrbdDynamics;
+
 typedef struct SrbdMode {
+  SrbdDynamics dynamics;
   BipedStance stance;
   int N;
   std::vector<drake::solvers::VectorXDecisionVariable> xx;
@@ -53,6 +60,8 @@ typedef struct SrbdMode {
 } SrbdMode;
 
 
+
+
 class SrbdCMPC : public drake::systems::LeafSystem<double> {
  public:
   SrbdCMPC(const drake::multibody::MultibodyPlant<double>& plant,
@@ -62,19 +71,18 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
            bool use_com = true);
 
 
-  void AddMode(BipedStance stance, int N);
-
-
-  void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&,
-                                 Eigen::Vector3d> pt, BipedStance stance);
-
+  /// Appends a contact mode to the end of the planning horizon. Currently SrbdCMPC only supports the contact sequence
+  /// [kLeft, kRight] so one should call AddMode(BipedStance::kLeft, BipedStance::kRight
+  /// @param stance BipedStance::kLeft or BipedStance::kRight
+  /// @param dynamics
+  /// @param N
+  void AddMode(BipedStance stance,  SrbdDynamics dynamics, int N);
+  void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&, Eigen::Vector3d> pt, BipedStance stance);
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
   void AddTrajectoryTrackingObjective(const Eigen::MatrixXd& traj, const Eigen::MatrixXd& Q);
   void SetTerminalCost(const Eigen::MatrixXd& Qf);
   void AddInputRegularization(const Eigen::MatrixXd& R);
-
   void SetFlatGroundSoftConstraint(const Eigen::MatrixXd& W) {MakeFlatGroundConstraints(W);}
-
   void AddJointToTrackBaseAngle(const std::string& joint_pos_name,
                                 const std::string& joint_vel_name);
 
@@ -141,6 +149,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void MakeStateKnotConstraints();
   void MakeInitialStateConstraints();
   void MakeFlatGroundConstraints(const Eigen::MatrixXd& W);
+  Eigen::Vector3d CalcEulerAnglesFromPose(const drake::math::RigidTransform<double>& pose);
 
   Eigen::MatrixXd CalcSwingFootKnotPoints(const Eigen::VectorXd& x,
                                           const drake::solvers::MathematicalProgramResult& result,

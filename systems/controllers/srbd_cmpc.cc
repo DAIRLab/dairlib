@@ -92,7 +92,7 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
   x_des_ = VectorXd ::Zero(nx_);
 }
 
-void SrbdCMPC::AddMode(BipedStance stance, int N) {
+void SrbdCMPC::AddMode(BipedStance stance, SrbdDynamics dynamics, int N) {
 
   SrbdMode mode;
   mode.stance = stance;
@@ -198,8 +198,17 @@ void SrbdCMPC::MakeStanceFootConstraints() {
 
 void SrbdCMPC::MakeDynamicsConstraints() {
   for (auto & mode : modes_) {
+    MatrixXd dyn = MatrixXd::Zero(nxi_, 2*nxi_ + nu_);
+    dyn.block(0,0,nxi_, nxi_) = mode.dynamics.A;
+    dyn.block(0, nxi_, nxi_, nu_) = mode.dynamics.B;
+    dyn.block(0, nxi_ + nu_, nxi_, nxi_) = -MatrixXd::Identity(nxi_, nxi_);
     for (int i = 0; i < mode.N; i++) {
-      mode.dynamics_constraints.push_back(/* TODO: Add nonlinear dynamics constraint */);
+      mode.dynamics_constraints.push_back(
+      prog_.AddLinearEqualityConstraint(
+              dyn, -mode.dynamics.b,
+              {mode.xx.at(i), mode.uu.at(i), mode.xx.at(i+1)})
+          .evaluator()
+          .get());
 
       mode.dynamics_constraints.at(i)->set_description(
           "dyn" + std::to_string(mode.stance) + "." + std::to_string(i));

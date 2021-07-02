@@ -67,6 +67,9 @@ DEFINE_int64(test_mode, -1,
              "2: both feet always in contact with the ground until contact is"
              " detected in which case it swtiches to test mode -1.");
 
+// Testing
+DEFINE_double(joint_vel_cutoff_freq, 1e8, "");
+
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
 // Note that we assume the ground is flat in the IK.
@@ -193,7 +196,7 @@ int do_main(int argc, char* argv[]) {
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
       &right_contact_evaluator, FLAGS_test_with_ground_truth_state,
-      FLAGS_print_ekf_info, FLAGS_test_mode);
+      FLAGS_print_ekf_info, FLAGS_test_mode, FLAGS_joint_vel_cutoff_freq);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot

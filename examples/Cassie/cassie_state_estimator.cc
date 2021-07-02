@@ -46,7 +46,7 @@ CassieStateEstimator::CassieStateEstimator(
     const KinematicEvaluatorSet<double>* left_contact_evaluator,
     const KinematicEvaluatorSet<double>* right_contact_evaluator,
     bool test_with_ground_truth_state, bool print_info_to_terminal,
-    int hardware_test_mode)
+    int hardware_test_mode, double cutoff_freq)
     : plant_(plant),
       fourbar_evaluator_(fourbar_evaluator),
       left_contact_evaluator_(left_contact_evaluator),
@@ -64,7 +64,8 @@ CassieStateEstimator::CassieStateEstimator(
       context_gt_(plant_.CreateDefaultContext()),
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
-      hardware_test_mode_(hardware_test_mode) {
+      hardware_test_mode_(hardware_test_mode),
+      cutoff_freq_(cutoff_freq) {
   DRAKE_DEMAND(&fourbar_evaluator->plant() == &plant);
   DRAKE_DEMAND(&left_contact_evaluator->plant() == &plant);
   DRAKE_DEMAND(&right_contact_evaluator->plant() == &plant);
@@ -920,6 +921,24 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
   AssignImuValueToOutputVector(cassie_out, output);
   AssignActuationFeedbackToOutputVector(cassie_out, output);
   AssignNonFloatingBaseStateToOutputVector(cassie_out, output);
+
+  // Apply low pass filter to joint velcoity
+  double current_time = context.get_time();
+  if (current_time != last_timestamp_) {
+    double dt = current_time - last_timestamp_;
+    last_timestamp_ = current_time;
+
+    if (filtered_joint_vel_.size() == 0) {
+      // Initialize
+      filtered_joint_vel_ = output->GetVelocities().tail(n_v_);
+    } else {
+      double alpha =
+          2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+      filtered_joint_vel_ = alpha * output->GetVelocities().tail(n_v_) +
+                            (1 - alpha) * filtered_joint_vel_;
+    }
+  }
+
   // Copy the floating base base state
   if (is_floating_base_) {
     AssignFloatingBaseStateToOutputVector(

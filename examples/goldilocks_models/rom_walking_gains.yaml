@@ -135,7 +135,7 @@ k_ff_sagittal: 0
 k_fb_sagittal: 0.14
 k_ff_lateral: 0
 k_fb_lateral: 0.2
-speed_control_offset_sagittal: -0.02
+speed_control_offset_sagittal: -0.05
 
 #Finite state machine
 ss_time: 0.

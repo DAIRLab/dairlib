@@ -3,6 +3,17 @@ import drake
 import numpy as np
 
 
+def get_state_channel_name(log):
+  cassie_state_channel_name = ""
+  for event in log:
+    if event.channel == "CASSIE_STATE_DISPATCHER":
+      cassie_state_channel_name = "CASSIE_STATE_DISPATCHER"
+      break
+    elif event.channel == "CASSIE_STATE_SIMULATION":
+      cassie_state_channel_name = "CASSIE_STATE_SIMULATION"
+      break
+  return cassie_state_channel_name
+
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 class lcmt_osc_tracking_data_t:
   def __init__(self):
@@ -82,14 +93,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
                      drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
 
-  cassie_state_channel_name = ""
-  for event in log:
-    if event.channel == "CASSIE_STATE_DISPATCHER":
-      cassie_state_channel_name = "CASSIE_STATE_DISPATCHER"
-      break
-    elif event.channel == "CASSIE_STATE_SIMULATION":
-      cassie_state_channel_name = "CASSIE_STATE_SIMULATION"
-      break
+  cassie_state_channel_name = get_state_channel_name(log)
   print("cassie_state_channel_name = " + cassie_state_channel_name)
 
   for event in log:

@@ -13,6 +13,7 @@ from pydrake.systems.framework import DiagramBuilder
 import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
+import dairlib
 
 
 def main():
@@ -29,14 +30,31 @@ def main():
   global vel_map
   global act_map
 
+  filename = sys.argv[1]
+  controller_channel = sys.argv[2]
+  log = lcm.EventLog(filename, "r")
+  path = pathlib.Path(filename).parent
+  filename = filename.split("/")[-1]
+
+  # Get the urdf model
+  cassie_state_channel_name = process_lcm_log.get_state_channel_name(log)
+  urdf_file_path = ""
+  for event in log:
+    if event.channel == cassie_state_channel_name:
+      msg = dairlib.lcmt_robot_output.decode(event.data)
+      if msg.num_positions == 19:
+        urdf_file_path = "examples/Cassie/urdf/cassie_fixed_springs.urdf"
+      elif msg.num_positions == 23:
+        urdf_file_path = "examples/Cassie/urdf/cassie_v2.urdf"
+      else:
+        raise ValueError("The dimension of q is not correct")
+      break
+  print("urdf_file_path = " + urdf_file_path + "\n")
+
+  # Build a MBP
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  # Parser(plant_w_spr).AddModelFromFile(
-  #   FindResourceOrThrow(
-  #     "examples/Cassie/urdf/cassie_v2.urdf"))
-  Parser(plant_w_spr).AddModelFromFile(
-    FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf"))
+  Parser(plant_w_spr).AddModelFromFile(FindResourceOrThrow(urdf_file_path))
   plant_w_spr.mutable_gravity_field().set_gravity_vector(
     -9.81 * np.array([0, 0, 1]))
   plant_w_spr.Finalize()
@@ -63,12 +81,6 @@ def main():
 
   x_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant_w_spr)
   u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant_w_spr)
-
-  filename = sys.argv[1]
-  controller_channel = sys.argv[2]
-  log = lcm.EventLog(filename, "r")
-  path = pathlib.Path(filename).parent
-  filename = filename.split("/")[-1]
 
   matplotlib.rcParams["savefig.directory"] = path
 

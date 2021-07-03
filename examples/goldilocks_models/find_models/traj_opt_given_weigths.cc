@@ -2079,6 +2079,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   bool much_bigger_weight_at_last_knot = false;
   double multiplier_big_last_knot = 100;
 
+  // Testing -- add a height limit so that the solver doesn't find a gait that's
+  // right at the joint limit
+  // Set it to negative if we don't want to impose this constraint.
+  double max_height_at_end_points = 1.0;
+
   // Setup cost matrices
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
   W_Q(4, 4) = w_Q_vy;
@@ -2960,6 +2965,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       trajopt.AddBoundingBoxConstraint(base_vy_lb, base_vy_ub,
                                        xi(n_q + vel_map.at("base_vy")));
     }
+  }
+
+  // Testing -- add constraint on the pelivs height (wrt stance foot)
+  if (max_height_at_end_points > 0) {
+    // offset the height by 0.05m because we are using toe origin
+    max_height_at_end_points -= 0.05;
+
+    // 0 < q.segment<1>(6) + tan(ground_incline_) * q.segment<1>(4) < max_height
+    trajopt.AddLinearConstraint(x0(6) + tan(ground_incline) * x0(4) <
+                                max_height_at_end_points);
+    trajopt.AddLinearConstraint(0 < x0(6) + tan(ground_incline) * x0(4));
+    trajopt.AddLinearConstraint(xf(6) + tan(ground_incline) * xf(4) <
+                                max_height_at_end_points);
+    trajopt.AddLinearConstraint(0 < xf(6) + tan(ground_incline) * xf(4));
   }
 
   // Scale decision variable

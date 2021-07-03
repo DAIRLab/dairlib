@@ -2973,12 +2973,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     max_height_at_end_points -= 0.05;
 
     // 0 < q.segment<1>(6) + tan(ground_incline_) * q.segment<1>(4) < max_height
-    trajopt.AddLinearConstraint(x0(6) + tan(ground_incline) * x0(4) <
+    trajopt.AddLinearConstraint(x0(6) + tan(ground_incline) * x0(4) <=
                                 max_height_at_end_points);
-    trajopt.AddLinearConstraint(0 < x0(6) + tan(ground_incline) * x0(4));
-    trajopt.AddLinearConstraint(xf(6) + tan(ground_incline) * xf(4) <
+    trajopt.AddLinearConstraint(0 <= x0(6) + tan(ground_incline) * x0(4));
+    trajopt.AddLinearConstraint(xf(6) + tan(ground_incline) * xf(4) <=
                                 max_height_at_end_points);
-    trajopt.AddLinearConstraint(0 < xf(6) + tan(ground_incline) * xf(4));
+    trajopt.AddLinearConstraint(0 <= xf(6) + tan(ground_incline) * xf(4));
   }
 
   // Scale decision variable

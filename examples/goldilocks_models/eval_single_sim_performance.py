@@ -17,6 +17,13 @@ import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 import pydrake.common as mut
 
+def PrintAndLogStatus(msg):
+  print(msg)
+  f = open(path_status_log, "a")
+  f.write(msg)
+  f.close()
+
+
 def IsSimLogGood(x, t_x, desried_sim_end_time):
   # Check if the simulation ended early
   sim_time_tolerance = 0.1
@@ -45,32 +52,36 @@ def IsSimLogGood(x, t_x, desried_sim_end_time):
 
   return True
 
+
 ### Check if it's close to steady state
-def CheckSteadyState(x, t_x, time_list_at_td, separate_left_right_leg = False):
+def CheckSteadyState(x, t_x, td_times, Print=True,
+    separate_left_right_leg=False):
+  is_steady_state = True
+
   t_x_touchdown_indices = []
-  for time in time_list_at_td:
-    t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < 1e-3)[0][0])
+  for time in td_times:
+    t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < 2e-3)[0][0])
 
   # 1. stride length
+  max_step_diff = 0.0
   pelvis_x_at_td = np.zeros(len(t_x_touchdown_indices))
   for i in range(len(t_x_touchdown_indices)):
     pelvis_x_at_td[i] = x[t_x_touchdown_indices[i], 4]
   pelvis_x_at_td_list = [pelvis_x_at_td[0::2], pelvis_x_at_td[1::2]] \
     if separate_left_right_leg else [pelvis_x_at_td]
   for i in range(len(pelvis_x_at_td_list)):
-    stride_lengths = np.diff(pelvis_x_at_td_list[i])
-    min_stride_length = min(stride_lengths)
-    max_stride_length = max(stride_lengths)
-    if abs(max_stride_length - min_stride_length) > stride_length_variation_tol:
-      msg = msg_first_column + \
-            ": not close to steady state. min and max stride length are " + \
-            str(min_stride_length) + ", " + str(max_stride_length) + \
-            "tolerance is " + str(stride_length_variation_tol) + "\n"
-      print(msg)
-      f = open(path_status_log, "a")
-      f.write(msg)
-      f.close()
-      return False
+    step_lengths = np.diff(pelvis_x_at_td_list[i])
+    min_step_length = min(step_lengths)
+    max_step_length = max(step_lengths)
+    max_step_diff = max(max_step_diff, abs(max_step_length - min_step_length))
+    if abs(max_step_length - min_step_length) > step_length_variation_tol:
+      is_steady_state = False
+      if Print:
+        msg = msg_first_column + \
+              ": not close to steady state. min and max stride length are " + \
+              str(min_step_length) + ", " + str(max_step_length) + \
+              "tolerance is " + str(step_length_variation_tol) + "\n"
+        PrintAndLogStatus(msg)
 
   # 2. pelvis height
   pelvis_z_at_td = np.zeros(len(t_x_touchdown_indices))
@@ -78,17 +89,18 @@ def CheckSteadyState(x, t_x, time_list_at_td, separate_left_right_leg = False):
     pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 6]
   min_pelvis_height = min(pelvis_z_at_td)
   max_pelvis_height = max(pelvis_z_at_td)
+  max_pelvis_height_diff = abs(max_pelvis_height - min_pelvis_height)
   if abs(max_pelvis_height - min_pelvis_height) > pelvis_height_variation_tol:
-    msg = msg_first_column + \
-          ": not close to steady state. min and max pelvis height are " + \
-          str(min_pelvis_height) + ", " + str(max_pelvis_height) + \
-          "tolerance is " + str(pelvis_height_variation_tol) + "\n"
-    print(msg)
-    f = open(path_status_log, "a")
-    f.write(msg)
-    f.close()
-    return False
-  return True
+    is_steady_state = False
+    if Print:
+      msg = msg_first_column + \
+            ": not close to steady state. min and max pelvis height are " + \
+            str(min_pelvis_height) + ", " + str(max_pelvis_height) + \
+            "tolerance is " + str(pelvis_height_variation_tol) + "\n"
+      PrintAndLogStatus(msg)
+
+  return is_steady_state, max_step_diff + max_pelvis_height_diff
+
 
 def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
   is_steady_state = False
@@ -104,31 +116,43 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
     post_left_double_support = parsed_yaml.get('post_left_double_support')
     post_right_double_support = parsed_yaml.get('post_right_double_support')
 
-    # Find the start time fo the double support state
+    max_diff_list = []
+    start_end_time_list = []
     prev_state = -1
     for i in range(len(fsm)):
+      if t_osc_debug[i] + n_step * stride_period > t_shutoff:
+        break
+
       state = fsm[i]
+      # At the start of the double support state
       if ((prev_state == left_support) and
           (state == post_left_double_support)) or \
           ((prev_state == right_support) and
            (state == post_right_double_support)):
-        # import pdb;pdb.set_trace()
         t_fsm_start = t_osc_debug[i]
 
         if t_fsm_start + n_step * stride_period <= t_x[-1]:
-          # Create time_list_at_td
-          time_list_at_td = [t_fsm_start]
-          for i in range(n_step):
-            time_list_at_td.append(time_list_at_td[-1] + stride_period)
+          # Create a list of times at touchdown
+          td_times = [t_fsm_start]
+          for _ in range(n_step):
+            td_times.append(td_times[-1] + stride_period)
 
-          is_steady_state = CheckSteadyState(x, t_x, time_list_at_td)
-
-          # Stop moving the window to the future once we found one steady state window
-          if is_steady_state:
-            t_start = t_fsm_start
-            t_end = t_fsm_start + n_step * stride_period
-            break
+          sub_window_is_ss, max_diff = CheckSteadyState(x, t_x, td_times, False)
+          if sub_window_is_ss:
+            max_diff_list.append(max_diff)
+            start_end_time_list.append([td_times[0], td_times[-1]])
       prev_state = state
+
+    # start_end_time_list would be non-empty when there is a window with steady state
+    is_steady_state = len(start_end_time_list) > 0
+    if is_steady_state:
+      idx = np.argmin(max_diff_list).item()
+      t_start = start_end_time_list[idx][0]
+      t_end = start_end_time_list[idx][1]
+    else:
+      msg = msg_first_column + ": not close to steady state."
+      PrintAndLogStatus(msg)
+
   else:
     step_idx_start = int(t_end / stride_period) - n_step
     step_idx_end = int(t_end / stride_period)
@@ -137,16 +161,19 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
     t_start = stride_period * step_idx_start
     t_end = stride_period * step_idx_end
 
-    time_list_at_td = []
+    # Create a list of times at touchdown
+    td_times = []
     for idx in range(step_idx_start, step_idx_end + 1):
-      time_list_at_td.append(stride_period * idx)
-    is_steady_state = CheckSteadyState(x, t_x, time_list_at_td)
+      td_times.append(stride_period * idx)
+    is_steady_state = CheckSteadyState(x, t_x, td_times)
 
   if is_steady_state:
     return t_start, t_end
   else:
     return -1, -1
 
+
+# TODO: maybe we should use pelvis height wrt stance foot in CheckSteadyState()
 
 def main():
   # Script input arguments
@@ -177,8 +204,8 @@ def main():
   w_accel = 0.002 * w_Q
 
   # Steady state parameters
-  global stride_length_variation_tol, pelvis_height_variation_tol
-  stride_length_variation_tol = 0.05 if is_hardware else 0.02
+  global step_length_variation_tol, pelvis_height_variation_tol
+  step_length_variation_tol = 0.05 if is_hardware else 0.02
   pelvis_height_variation_tol = 0.05 if is_hardware else 0.05
 
   # Read the controller parameters
@@ -196,8 +223,11 @@ def main():
   directory = "../dairlib_data/goldilocks_models/hardware_cost_eval/" \
     if is_hardware else "../dairlib_data/goldilocks_models/sim_cost_eval/"
   Path(directory).mkdir(parents=True, exist_ok=True)
-  path_status_log = directory + "hardware_status.txt" if is_hardware else "sim_status.txt"
+  path_status_log = directory + (
+    "hardware_status.txt" if is_hardware else "sim_status.txt")
   filename = file_path.split("/")[-1]
+  print("directory = ", directory)
+  print("path_status_log = ", path_status_log)
 
   # Message first column
   global msg_first_column
@@ -263,6 +293,16 @@ def main():
 
   print("Finished parsing the log")
 
+  global t_shutoff
+  if is_hardware:
+    t_shutoff = t_cassie_out[-1]
+    for i in reversed(range(len(cassie_out))):
+      if cassie_out[i].pelvis.radio.channel[-1] < 0:  # soft e-stop triggered
+        t_shutoff = t_cassie_out[i]
+      if cassie_out[i].pelvis.radio.channel[8] < 0:  # hard e-stop triggered
+        t_shutoff = t_cassie_out[i]
+    print("t_shutoff = ", t_shutoff)
+
   # Check if the log data is ok for simulation
   if not is_hardware:
     if not IsSimLogGood(x, t_x, desried_sim_end_time):
@@ -270,6 +310,7 @@ def main():
 
   # Pick the start and end time
   t_start, t_end = GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug)
+  # print("t_start, t_end = ", t_start, t_end)
   if t_start < 0:
     return
 

@@ -243,7 +243,7 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
   // Create a block that gets the stance leg
-  std::vector<int> ss_fsm_states = {LEFT_STANCE, RIGHT_STANCE};
+  std::vector<int> ss_fsm_states = {gains.left_support, gains.right_support};
   auto stance_foot_getter = builder.AddSystem<CurrentStanceFoot>(ss_fsm_states);
   builder.Connect(controller_signal_receiver->get_output_port(0),
                   stance_foot_getter->get_input_port_fsm_and_lo_time());

@@ -27,6 +27,13 @@ sample_idx: 19 #21 works for iter150
 
 
 ### For both planner and controller
+# Finite state machine states
+left_support: 0
+right_support: 1
+double_support: 2
+post_left_double_support: 3
+post_right_double_support: 4
+
 # Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
 left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
 right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4

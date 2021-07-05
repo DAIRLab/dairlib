@@ -245,10 +245,10 @@ int DoMain(int argc, char* argv[]) {
                   simulator_drift->get_input_port_state());
 
   // Create finite state machine
-  int left_stance_state = LEFT_STANCE;
-  int right_stance_state = RIGHT_STANCE;
-  int post_left_double_support_state = POST_LEFT_DOUBLE_STANCE;
-  int post_right_double_support_state = POST_RIGHT_DOUBLE_STANCE;
+  int left_stance_state = gains.left_support;
+  int right_stance_state = gains.right_support;
+  int post_left_double_support_state = gains.post_left_double_support;
+  int post_right_double_support_state = gains.post_right_double_support;
   double left_support_duration = gains.left_support_duration;
   double right_support_duration = gains.right_support_duration;
   double double_support_duration = gains.double_support_duration;

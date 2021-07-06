@@ -1975,6 +1975,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   double w_joint_accel = 0.002;  // The final weight is w_joint_accel * W_Q
 
+  // Overwrite gains for faster convergence
+  bool fast_convergence_gain = false;
+  if (fast_convergence_gain) {
+    // TODO
+  }
+
   // Flags for constraints
   bool periodic_quaternion = false;
   bool periodic_joint_pos = true;

@@ -122,6 +122,7 @@ def main():
 
   ### All plotting scripts here
   # plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
+  # PlotEkfMeasurementError()
 
   # plot_measured_torque(t_u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
@@ -141,9 +142,19 @@ def main():
   #
   # PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
   #
-  PlotVdot(x, t_x, x_datatypes, True)
+  # PlotVdot(x, t_x, x_datatypes, True)
 
   plt.show()
+
+def PlotEkfMeasurementError():
+  file_array = np.loadtxt("../ekf_error.txt", delimiter=',')
+  error_mag = np.zeros(file_array.shape[0])
+  for i in range(len(error_mag)):
+    error_mag[i] = np.sum(np.abs(file_array[i, 2:])) / file_array[i, 1]
+
+  plt.figure("ekf measurement (feet pos) error")
+  plt.plot(file_array[:, 0], error_mag)
+  plt.legend(["abs_error_per_contact"])
 
 # cutoff_freq is in Hz
 def ApplyLowPassFilter(x, t, cutoff_freq):

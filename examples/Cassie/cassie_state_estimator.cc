@@ -839,6 +839,9 @@ EventStatus CassieStateEstimator::Update(
            << rear_covariance.block<3, 3>(3, 3) << endl;
     }
   }
+  //  std::ofstream outfile;
+  //  outfile.open("../ekf_error.txt", std::ios_base::app);
+  //  outfile << current_time << ", ";
   ekf.CorrectKinematics(measured_kinematics);
 
   if (print_info_to_terminal_) {

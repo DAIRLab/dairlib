@@ -122,7 +122,8 @@ def main():
 
   ### All plotting scripts here
   # plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
-  # PlotEkfMeasurementError()
+  # PlotEkfMeasurementError(t_osc_debug, fsm)
+  # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (250x)", "pelvis ydot (250x)", "abs_error_per_contact (1000x)"])
 
   # plot_measured_torque(t_u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
@@ -146,15 +147,17 @@ def main():
 
   plt.show()
 
-def PlotEkfMeasurementError():
-  file_array = np.loadtxt("../ekf_error.txt", delimiter=',')
+def PlotEkfMeasurementError(t_osc_debug, fsm):
+  file_array = np.loadtxt("../ekf_error_w_momentum_observer.txt", delimiter=',')
   error_mag = np.zeros(file_array.shape[0])
   for i in range(len(error_mag)):
     error_mag[i] = np.sum(np.abs(file_array[i, 2:])) / file_array[i, 1]
 
-  plt.figure("ekf measurement (feet pos) error")
-  plt.plot(file_array[:, 0], error_mag)
-  plt.legend(["abs_error_per_contact"])
+  # plt.figure("ekf measurement (feet pos) error")
+  plt.plot(file_array[:, 0], 1000 * error_mag)
+  # plt.legend(["abs_error_per_contact"])
+  # plt.plot(t_osc_debug, 0.01 * fsm)
+
 
 # cutoff_freq is in Hz
 def ApplyLowPassFilter(x, t, cutoff_freq):
@@ -258,7 +261,7 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   plt.plot(t_osc_debug, 30 * fsm)
 
   plt.plot(t_x[t_slice], 250 * x[t_slice, 5])
-  # plt.plot(t_x[t_slice], 250 * x[t_slice, nq + 4])
+  plt.plot(t_x[t_slice], 250 * x[t_slice, nq + 4])
 
   # plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
   # plt.plot(t_x[t_slice], u_meas[t_slice, 0])

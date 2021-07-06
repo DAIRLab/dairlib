@@ -141,10 +141,19 @@ def main():
   #
   # PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
   #
-  PlotVdot(x, t_x, x_datatypes)
+  PlotVdot(x, t_x, x_datatypes, True)
 
   plt.show()
 
+# cutoff_freq is in Hz
+def ApplyLowPassFilter(x, t, cutoff_freq):
+  dt = np.diff(t)
+  x_filtered = x[0, :]
+  for i in range(len(dt)):
+    alpha = 2 * np.pi * dt[i] * cutoff_freq / (2 * np.pi * dt[i] * cutoff_freq + 1)
+    x_filtered = alpha * x[i + 1, :] + (1 - alpha) * x_filtered
+    x[i + 1, :] = x_filtered
+  return x
 
 def CompareVdot(x, t_x, vdot, t_vdot):
   # Finite differencing seems accurate enough
@@ -167,11 +176,16 @@ def CompareVdot(x, t_x, vdot, t_vdot):
   plt.plot(t_x[1:], vdot_numerical[:, idx])
 
 
-def PlotVdot(x, t_x, x_datatypes):
+def PlotVdot(x, t_x, x_datatypes, low_pass_filter = True):
   # Remove the first element (in simulation, we have two 0 timestamps)
   if t_x[0] == 0:
     x = x[1:, :]
     t_x = t_x[1:]
+
+  # Low pass filter to velocity before doing finite differencing, because there
+  # is encoder noise
+  if low_pass_filter:
+    x[:, nq:] = ApplyLowPassFilter(x[:, nq:], t_x, 100)
 
   # Finite differencing seems accurate enough
   dx = np.diff(x, axis=0)
@@ -180,13 +194,20 @@ def PlotVdot(x, t_x, x_datatypes):
   for i in range(len(dt)):
     vdot_numerical[i, :] /= dt[i]
 
+  # Testing -- Apply low pass filter to vdot as well
+  if low_pass_filter:
+    vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x[1:], 100)
+
   # Testing -- plot squared accleration
   # vdot_numerical = np.square(vdot_numerical)
 
   vel_indices = slice(6, nv)
   v_datatypes = x_datatypes[nq:]
 
-  plt.figure("acceleration-- " + filename)
+  name = "acceleration-- " + filename
+  if low_pass_filter:
+    name = "filtered " + name
+  plt.figure(name)
   plt.plot(t_x[1:], vdot_numerical[:, vel_indices])
   plt.legend(v_datatypes[vel_indices])
 

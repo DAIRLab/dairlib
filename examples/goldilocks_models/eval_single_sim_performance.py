@@ -149,6 +149,10 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
       idx = np.argmin(max_diff_list).item()
       t_start = start_end_time_list[idx][0]
       t_end = start_end_time_list[idx][1]
+      print("max_diff_list = ", max_diff_list)
+      print("idx = ", idx)
+      max_diff_list.sort()
+      print("sorted = ", max_diff_list)
     else:
       msg = msg_first_column + ": not close to steady state."
       PrintAndLogStatus(msg)
@@ -171,6 +175,16 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
     return t_start, t_end
   else:
     return -1, -1
+
+# cutoff_freq is in Hz
+def ApplyLowPassFilter(x, t, cutoff_freq):
+  dt = np.diff(t)
+  x_filtered = x[0, :]
+  for i in range(len(dt)):
+    alpha = 2 * np.pi * dt[i] * cutoff_freq / (2 * np.pi * dt[i] * cutoff_freq + 1)
+    x_filtered = alpha * x[i + 1, :] + (1 - alpha) * x_filtered
+    x[i + 1, :] = x_filtered
+  return x
 
 
 # TODO: maybe we should use pelvis height wrt stance foot in CheckSteadyState()
@@ -207,6 +221,9 @@ def main():
   global step_length_variation_tol, pelvis_height_variation_tol
   step_length_variation_tol = 0.05 if is_hardware else 0.02
   pelvis_height_variation_tol = 0.05 if is_hardware else 0.05
+
+  # Some parameters
+  low_pass_filter = True
 
   # Read the controller parameters
   global parsed_yaml, stride_period
@@ -343,17 +360,24 @@ def main():
     x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
     x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
 
+  # Apply low pass filter to vel
+  if low_pass_filter:
+    x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted, 100)
+
   # Get joint acceleration
   dx = np.diff(x_extracted, axis=0)
   vdot_numerical = dx[:, nq:]
   for i in range(len(dt_x)):
     vdot_numerical[i, :] /= dt_x[i]
+  if low_pass_filter:
+    vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], 100)
+
   # Testing -- set the toe acceleration to 0
   # vdot_numerical[:, vel_map["toe_leftdot"]] = 0
   # vdot_numerical[:, vel_map["toe_rightdot"]] = 0
 
   # Testing (hacks) -- cap the acceleration within 500 to avoid contact spikes
-  # max_accel = 500
+  # max_accel = 750
   # vdot_numerical = np.clip(vdot_numerical, -max_accel, max_accel)
 
   cost_x = 0.0

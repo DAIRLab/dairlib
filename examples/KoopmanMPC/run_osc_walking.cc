@@ -20,7 +20,7 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "examples/KoopmanMPC/PlanarWalker/planar_osc_walking_gains.h"
-#include "examples/KoopmanMPC/mpc_trajectory_reciever.h"
+#include "systems/controllers/mpc/mpc_trajectory_reciever.h"
 #include "examples/KoopmanMPC/koopman_mpc.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"

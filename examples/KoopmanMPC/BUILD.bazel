@@ -19,17 +19,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "mpc_trajectory_reciever",
-    srcs = ["mpc_trajectory_reciever.cc"],
-    hdrs = ["mpc_trajectory_reciever.h"],
-    deps = [
-        "//common",
-        "//lcm:lcm_trajectory_saver",
-        "@drake//:drake_shared_library",
-    ],
-)
-
 cc_binary(
     name = "run_planar_walker_sim",
     srcs = ["run_planar_walker_sim.cc"],
@@ -96,7 +85,6 @@ cc_binary(
     srcs = ["run_osc_walking.cc"],
     deps = [
         ":koopman_mpc",
-        ":mpc_trajectory_reciever",
         "//common",
         "//examples/KoopmanMPC/PlanarWalker:planar_walker",
         "//lcm:lcm_trajectory_saver",
@@ -104,6 +92,7 @@ cc_binary(
         "//multibody/kinematic",
         "//systems:dairlib_signal_lcm_systems",
         "//systems:robot_lcm_systems",
+        "//systems/controllers:mpc_trajectory_reciever",
         "//systems/controllers:time_based_fsm",
         "//systems/controllers/osc:operational_space_control",
         "//systems/controllers/osc:osc_tracking_data",

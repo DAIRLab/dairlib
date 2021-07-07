@@ -874,6 +874,7 @@ void SrbdCMPC::CopyDiscreteSrbDynamics(const Eigen::MatrixXd &b_I,
   MatrixXd B = MatrixXd::Zero(18,10);
   VectorXd b = VectorXd::Zero(18);
 
+
   // Continuous A matrix
   A.block(0, 6, 3, 3) = Matrix3d::Identity();
   A.block(3, 9, 3, 3) = R_yaw;

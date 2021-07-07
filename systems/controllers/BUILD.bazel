@@ -127,8 +127,8 @@ cc_library(
 
 cc_library(
     name = "srbd_cmpc",
-    srcs = ["srbd_cmpc.cc"],
-    hdrs = ["srbd_cmpc.h"],
+    srcs = ["mpc/srbd_cmpc.cc"],
+    hdrs = ["mpc/srbd_cmpc.h"],
     deps = [
         "//common",
         "//lcm:lcm_trajectory_saver",
@@ -137,6 +137,17 @@ cc_library(
         "//multibody:utils",
         "//solvers:constraint_factory",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "mpc_trajectory_reciever",
+    srcs = ["mpc/mpc_trajectory_reciever.cc"],
+    hdrs = ["mpc/mpc_trajectory_reciever.h"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
     ],
 )

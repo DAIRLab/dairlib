@@ -448,6 +448,28 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_srbd_cmpc_process",
+    srcs = ["run_srbd_cmpc_process.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//common",
+        "//examples/Cassie/mpc",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:dairlib_signal_lcm_systems",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
+        "//systems/controllers:srbd_cmpc",
+        "//systems/controllers:time_based_fsm",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "visualize_trajectory",
     srcs = ["visualize_trajectory.cc"],
     deps = [

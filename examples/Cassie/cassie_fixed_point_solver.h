@@ -1,3 +1,4 @@
+#pragma once
 #include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {

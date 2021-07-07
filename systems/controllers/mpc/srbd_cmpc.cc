@@ -39,6 +39,12 @@ using dairlib::LcmTrajectory;
 
 namespace dairlib{
 
+Matrix3d HatOperator3x3(const Vector3d& v){
+  Eigen::Matrix3d v_hat = Eigen::Matrix3d::Zero();
+  v_hat << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
+  return v_hat;
+}
+
 SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
                    Context<double> *plant_context, double dt,
                    double swing_ft_height, bool planar, bool traj,
@@ -93,10 +99,11 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
   x_des_ = VectorXd ::Zero(nx_);
 }
 
-void SrbdCMPC::AddMode(BipedStance stance, SrbdDynamics dynamics, int N) {
+void SrbdCMPC::AddMode(SrbdDynamics dynamics, BipedStance stance, int N) {
 
   SrbdMode mode;
   mode.stance = stance;
+  mode.dynamics = dynamics;
   mode.N = N;
 
   mode_knot_counts_.push_back(mode.N);
@@ -141,7 +148,7 @@ double SrbdCMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
   return mass;
 }
 
-void SrbdCMPC::SetReachabilityLimit(const Eigen::VectorXd& kinematic_limit,
+void SrbdCMPC::SetReachabilityLimit(const Vector3d& kinematic_limit,
                                     const std::vector<Eigen::VectorXd> &nominal_relative_pos,
                                     const MatrixXd& kin_reach_soft_contraint_w) {
   DRAKE_DEMAND(kinematic_limit.size() == kLinearDim_);
@@ -201,7 +208,7 @@ void SrbdCMPC::MakeStanceFootConstraints() {
 void SrbdCMPC::MakeDynamicsConstraints() {
   for (auto & mode : modes_) {
     MatrixXd dyn = MatrixXd::Zero(nxi_, 2*nxi_ + nu_);
-    dyn.block(0,0,nxi_, nxi_) = mode.dynamics.A;
+    dyn.block(0,0, nxi_, nxi_) = mode.dynamics.A;
     dyn.block(0, nxi_, nxi_, nu_) = mode.dynamics.B;
     dyn.block(0, nxi_ + nu_, nxi_, nxi_) = -MatrixXd::Identity(nxi_, nxi_);
     for (int i = 0; i < mode.N; i++) {
@@ -273,7 +280,7 @@ void SrbdCMPC::MakeKinematicReachabilityConstraints() {
 void SrbdCMPC::MakeFrictionConeConstraints() {
   for (auto & mode : modes_) {
     for (int i = 0; i <= mode.N; i++) {
-      if (! planar_ ) {
+      if (! planar_) {
         mode.friction_constraints.push_back(
             prog_.AddConstraint(
                     solvers::CreateLinearFrictionConstraint(mu_),
@@ -339,8 +346,8 @@ void SrbdCMPC::MakeStateKnotConstraints() {
 
 void SrbdCMPC::AddTrackingObjective(const VectorXd &xdes, const MatrixXd &Q) {
   DRAKE_DEMAND(Q.rows() == Q.cols());
-  DRAKE_DEMAND(Q.rows() == nx_);
-  DRAKE_DEMAND(xdes.rows() == nx_);
+  DRAKE_DEMAND(Q.rows() == nxi_);
+  DRAKE_DEMAND(xdes.rows() == nxi_);
 
   Q_ = Q;
   x_des_ = xdes;
@@ -350,7 +357,7 @@ void SrbdCMPC::AddTrackingObjective(const VectorXd &xdes, const MatrixXd &Q) {
       if (i != 0) {
         mode.tracking_cost.push_back(
             prog_.AddQuadraticErrorCost(
-                    Q, xdes, mode.xx.at(i).head(nx_))
+                    Q, xdes, mode.xx.at(i).head(nxi_))
                 .evaluator().get());
       }
     }
@@ -377,14 +384,14 @@ void SrbdCMPC::AddTrajectoryTrackingObjective(const MatrixXd& traj, const Matrix
 
 void SrbdCMPC::SetTerminalCost(const MatrixXd& Qf) {
   DRAKE_DEMAND(Qf.rows() == Qf.cols());
-  DRAKE_DEMAND(Qf.rows() == nx_);
+  DRAKE_DEMAND(Qf.rows() == nxi_);
 
   Qf_ = Qf;
   for (auto & mode : modes_) {
     for (int i = 0; i <= mode.N; i++) {
       mode.terminal_cost.push_back(
-          prog_.AddQuadraticCost(MatrixXd::Zero(nx_, nx_),
-                                 VectorXd::Zero(nx_),mode.xx.at(i).head(nx_))
+          prog_.AddQuadraticCost(MatrixXd::Zero(nxi_, nxi_),
+                                 VectorXd::Zero(nxi_),mode.xx.at(i).head(nxi_))
               .evaluator().get());
     }
   }
@@ -421,11 +428,14 @@ VectorXd SrbdCMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
   if (use_com_) {
     com_pos = plant_.CalcCenterOfMassPositionInWorld(*plant_context_);
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(*plant_context_,
-                                                         JacobianWrtVariable::kV, world_frame_, world_frame_, &J_CoM_v);
+                                                         JacobianWrtVariable::kV, world_frame_,
+                                                         world_frame_, &J_CoM_v);
   } else {
-    com_pos = plant_.GetBodyByName(base_).EvalPoseInWorld(*plant_context_).translation();
+    plant_.CalcPointsPositions(*plant_context_, plant_.GetBodyByName(base_).body_frame(),
+        com_from_base_origin_, world_frame_, &com_pos);
     plant_.CalcJacobianTranslationalVelocity(*plant_context_,
-                                             JacobianWrtVariable::kV,plant_.GetBodyByName(base_).body_frame(),
+                                             JacobianWrtVariable::kV,
+                                             plant_.GetBodyByName(base_).body_frame(),
                                              com_from_base_origin_, world_frame_, world_frame_, &J_CoM_v);
   }
 
@@ -663,8 +673,7 @@ double SrbdCMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> bod
   return mass;
 }
 
-/// TODO(@Brian-Acosta) Update this function to not assume planar for angular
-/// traj and to not assume uniform N
+/// TODO(@Brian-Acosta) Update trajectory to be pelvis trajectory given offset
 lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
                                              double time, double time_since_last_touchdown,
                                              const VectorXd& state) const {
@@ -853,20 +862,22 @@ std::pair<int,int> SrbdCMPC::GetTerminalStepIdx() const {
   }
   return std::pair<int,int>(x0_idx_[0]-1, modes_.at(x0_idx_[0]-1).N);
 }
-void SrbdCMPC::CopyDiscreteSrbDynamics(const Eigen::MatrixXd &b_I,
+
+void SrbdCMPC::CopyDiscreteSrbDynamics(double dt, double m, double yaw,
+                                       BipedStance stance,
+                                       const Eigen::MatrixXd &b_I,
                                        const Eigen::Vector3d &eq_com_pos,
                                        const Eigen::Vector3d &eq_foot_pos,
-                                       double m,
-                                       double yaw,
-                                       BipedStance stance,
                                        const drake::EigenPtr<MatrixXd> &Ad,
                                        const drake::EigenPtr<MatrixXd> &Bd,
-                                       const drake::EigenPtr<MatrixXd> &bd) {
+                                       const drake::EigenPtr<VectorXd> &bd) {
+
+  const Eigen::Vector3d g = {0.0, 0.0, 9.81};
   drake::math::RollPitchYaw rpy(0.0, 0.0, yaw);
   Matrix3d R_yaw = rpy.ToMatrix3ViaRotationMatrix();
   Vector3d tau = {0.0,0.0,1.0};
   Vector3d mg = {0.0, 0.0, m * 9.81};
-  Matrix3d lambda_hat = HatOperator3x3(-m * gravity_);
+  Matrix3d lambda_hat = HatOperator3x3(m * g);
   Matrix3d g_I_inv = (R_yaw * b_I * R_yaw.transpose()).inverse();
 
 
@@ -892,12 +903,12 @@ void SrbdCMPC::CopyDiscreteSrbDynamics(const Eigen::MatrixXd &b_I,
   B.block(12, 0, 6, 6) = MatrixXd::Identity(6, 6);
 
   // Continuous Affine portion (b)
-  b.segment(6, 3) = gravity_;
-  b.segment(9, 3) = g_I_inv * HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos)) * (-m * gravity_);
+  b.segment(6, 3) = -g;
+  b.segment(9, 3) = g_I_inv * HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos)) * (m * g);
 
-  *Ad = MatrixXd::Identity(A.rows(), A.cols()) + dt_ * A;
-  *Bd = dt_ * B;
-  *bd = dt_ * b;
+  *Ad = MatrixXd::Identity(A.rows(), A.cols()) + dt * A;
+  *Bd = dt * B;
+  *bd = dt * b;
   
 }
 } // dairlib

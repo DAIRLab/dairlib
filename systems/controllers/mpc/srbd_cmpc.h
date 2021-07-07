@@ -3,6 +3,7 @@
 //
 
 #pragma once
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -25,9 +26,7 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/constraint_factory.h"
 #include "systems/framework/output_vector.h"
-#include "solvers/nonlinear_constraint.h"
-#include "include/_usr_include_eigen3/Eigen/src/Core/Matrix.h"
-#include "external/drake/common/_virtual_includes/essential/drake/common/eigen_types.h"
+
 
 namespace dairlib {
 
@@ -60,11 +59,7 @@ typedef struct SrbdMode {
   std::vector<drake::solvers::LinearEqualityConstraint*> init_state_constraint_;
 } SrbdMode;
 
-Eigen::Matrix3d HatOperator3x3(const Eigen::Vector3d v) {
-  Eigen::Matrix3d v_hat = Eigen::Matrix3d::Zero();
-  v_hat << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
-  return v_hat;
-}
+Eigen::Matrix3d HatOperator3x3(const Eigen::Vector3d& v);
 
 class SrbdCMPC : public drake::systems::LeafSystem<double> {
  public:
@@ -80,7 +75,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   /// @param stance BipedStance::kLeft or BipedStance::kRight
   /// @param dynamics
   /// @param N
-  void AddMode(BipedStance stance,  SrbdDynamics dynamics, int N);
+  void AddMode(SrbdDynamics dynamics, BipedStance stance, int N);
   void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&, Eigen::Vector3d> pt, BipedStance stance);
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
   void AddTrajectoryTrackingObjective(const Eigen::MatrixXd& traj, const Eigen::MatrixXd& Q);
@@ -90,7 +85,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void AddJointToTrackBaseAngle(const std::string& joint_pos_name,
                                 const std::string& joint_vel_name);
 
-  int num_state_() { return nx_; }
+  int num_state() { return nx_;}
+  int num_state_inflated() {return nxi_;}
   int saggital_idx() const { return saggital_idx_;}
   int vertical_idx() const { return vertical_idx_;}
 
@@ -118,7 +114,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   }
 
 
-  void SetReachabilityLimit(const Eigen::VectorXd& kinematic_limit,
+  void SetReachabilityLimit(const Eigen::Vector3d& kinematic_limit,
                             const std::vector<Eigen::VectorXd>& nominal_relative_pos,
                             const Eigen::MatrixXd& kin_reach_soft_contraint_w);
 
@@ -133,15 +129,14 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
     return drake::solvers::Solve(prog_);
   }
 
-  void CopyDiscreteSrbDynamics(const Eigen::MatrixXd &b_I,
-                               const Eigen::Vector3d &eq_com_pos,
-                               const Eigen::Vector3d &eq_foot_pos,
-                               double m,
-                               double yaw,
-                               BipedStance stance,
-                               const drake::EigenPtr<Eigen::MatrixXd> &Ad,
-                               const drake::EigenPtr<Eigen::MatrixXd> &Bd,
-                               const drake::EigenPtr<Eigen::MatrixXd> &bd);
+  static void CopyDiscreteSrbDynamics(double dt, double m, double yaw,
+                                      BipedStance stance,
+                                      const Eigen::MatrixXd &b_I,
+                                      const Eigen::Vector3d &eq_com_pos,
+                                      const Eigen::Vector3d &eq_foot_pos,
+                                      const drake::EigenPtr<Eigen::MatrixXd> &Ad,
+                                      const drake::EigenPtr<Eigen::MatrixXd> &Bd,
+                                      const drake::EigenPtr<Eigen::VectorXd> &bd);
 
   void print_initial_state_constraints() const;
   void print_state_knot_constraints() const;
@@ -176,8 +171,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void UpdateInitialStateConstraint(const Eigen::VectorXd& x0,
                                     int fsm_state, double t_since_last_switch) const;
 
-  void ResetDynamicsConstraint(drake::solvers::LinearEqualityConstraint* constraint) const;
-  void RemoveDynamicsConstraint(drake::solvers::LinearEqualityConstraint** constraint) const;
 
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
   void UpdateTrajectoryTrackingObjective(const Eigen::VectorXd& traj) const;
@@ -270,7 +263,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const bool planar_;
   const bool traj_tracking_;
   const int kNxPlanar = 6;
-  const int kNx3d = 13;
+  const int kNx3d = 12;
   const int kNuPlanar = 6;
   const int kNu3d = 10;
   const int saggital_idx_ = 0;

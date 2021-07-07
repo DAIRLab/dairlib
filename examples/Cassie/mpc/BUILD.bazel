@@ -1,0 +1,27 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "mpc",
+    deps = [
+        "//examples/Cassie/mpc:cassie_mpc_osc_walking_gains",
+        "//examples/Cassie/mpc:cassie_srbd_cmpc_gains",
+    ],
+)
+
+cc_library(
+    name = "cassie_mpc_osc_walking_gains",
+    hdrs = ["cassie_mpc_osc_walking_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "cassie_srbd_cmpc_gains",
+    hdrs = ["cassie_srbd_cmpc_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

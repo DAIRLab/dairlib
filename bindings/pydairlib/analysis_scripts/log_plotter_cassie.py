@@ -125,7 +125,7 @@ def main():
   # PlotEkfMeasurementError(t_osc_debug, fsm)
   # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (250x)", "pelvis ydot (250x)", "abs_error_per_contact (1000x)"])
 
-  # plot_measured_torque(t_u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
+  # plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
 
@@ -550,14 +550,15 @@ def plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes):
   plt.legend(["pelvis_y", "pelvis_z", "pelvis_xdot", "pelvis_ydot", "pelvis_zdot"])
 
 
-def plot_measured_torque(t_u, t_x, t_osc_debug, u_meas, u_datatypes, fsm):
+def plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm):
   u_indices = slice(0, 8)
 
   plt.figure("efforts meas-- " + filename)
   plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
   plt.legend(u_datatypes[u_indices])
-  plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
-  # plt.plot(t_osc_debug[t_osc_debug_slice], 30 * fsm[t_osc_debug_slice])
+  plt.plot(t_u[t_u_slice], u[t_u_slice])
+  # plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
+  plt.plot(t_osc_debug[t_osc_debug_slice], 30 * fsm[t_osc_debug_slice])
 
 def PlotCenterOfMass(x, t_x, plant, world, context):
   # Compute COM and Comdot

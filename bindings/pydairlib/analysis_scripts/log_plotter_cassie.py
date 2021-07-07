@@ -143,7 +143,7 @@ def main():
   #
   # PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
   #
-  # PlotVdot(x, t_x, x_datatypes, True)
+  PlotVdot(x, t_x, x_datatypes, True)
 
   # PlotOscQpSol(t_osc_debug, osc_output)
 
@@ -267,26 +267,31 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   t_contact = np.array(t_contact)
   contact = np.array(contact)
 
+  use_contact_force = len(log["CASSIE_GM_CONTACT_DISPATCHER"]) > 0
   t_contact_force = []
   contact_force = []
   contact_force = np.zeros((len(log["CASSIE_GM_CONTACT_DISPATCHER"]), 2))
-  for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
-    msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
-    t_contact_force.append(msg.timestamp / 1e6)
-    for j in range(msg.num_point_pair_contacts):
-      contact_force[i][j] = msg.point_pair_contact_info[j].contact_force[2]
-  t_contact_force = np.array(t_contact_force)
-  contact_force = np.array(contact_force)
+  if use_contact_force:
+    for i in range(len(log["CASSIE_GM_CONTACT_DISPATCHER"])):
+      msg = log["CASSIE_GM_CONTACT_DISPATCHER"][i]
+      t_contact_force.append(msg.timestamp / 1e6)
+      for j in range(msg.num_point_pair_contacts):
+        contact_force[i][j] = msg.point_pair_contact_info[j].contact_force[2]
+    t_contact_force = np.array(t_contact_force)
+    contact_force = np.array(contact_force)
 
   plt.figure("Contact estimation-- " + filename)
-  plt.plot(t_contact_force[t_slice], contact_force[t_slice, 0])
-  plt.plot(t_contact_force[t_slice], contact_force[t_slice, 1])
-  # plt.xlabel('Time Since Nominal Impact (s)')
-  # plt.ylabel('Estimated Normal Contact Force (N)')
-  # plt.legend(["Left Foot force", "Right Foot force"])
+  if use_contact_force:
+    # print("plottingn contact force")
+    # plt.plot(t_contact_force[t_slice], contact_force[t_slice, 0])
+    # plt.plot(t_contact_force[t_slice], contact_force[t_slice, 1])
+    # plt.xlabel('Time Since Nominal Impact (s)')
+    # plt.ylabel('Estimated Normal Contact Force (N)')
+    # plt.legend(["Left Foot force", "Right Foot force"])
+    pass
 
   # plt.figure("Contact estimation")
-  plt.plot(t_contact[t_slice], 100 * contact[t_slice], '-')
+  plt.plot(t_contact[t_slice], 10 * contact[t_slice], '-')
   # plt.legend(["l_contact", "r_contact"])
 
   plt.plot(t_osc_debug, 30 * fsm)
@@ -297,9 +302,9 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   # plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
   # plt.plot(t_x[t_slice], u_meas[t_slice, 0])
 
-
-  # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y"])
-  # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y", "pelvis ydot", "u", "u_meas"])
+  # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (250x)"])
+  # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (250x)", "pelvis ydot (250x)", "u", "u_meas"])
+  plt.legend(["l_contact", "r_contact", "fsm", "pelvis y (250x)", "pelvis ydot (250x)"])
 
 
 def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
@@ -333,11 +338,12 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   # osc_traj0 = "swing_ft_traj"
-  osc_traj0 = "optimal_rom_traj"
+  # osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
-  osc_traj2 = "pelvis_balance_traj"
+  # osc_traj2 = "pelvis_balance_traj"
+  osc_traj2 = "pelvis_rot_traj"  # for standing controller
   osc_traj3 = "swing_hip_yaw_traj"
 
   # osc_traj0 = "left_support_traj"
@@ -349,22 +355,22 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   #   plot_osc(osc_debug, osc_traj0, i, "accel")
 
   #
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
-  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
-
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  #
+  # # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  #
+  # # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plt.plot(osc_debug[osc_traj1].t[t_osc_debug_slice], fsm[t_osc_debug_slice])
@@ -509,6 +515,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   # pos_indices = slice(0 + 7, 23, 2)
   # vel_indices = slice(23 + 6, 45, 2)
   pos_indices = slice(0,7)
+  pos_indices2 = slice(7,7 + 8)
   vel_indices = slice(nq, nq + 6)
   u_indices = slice(6, 8)
   # overwrite
@@ -516,7 +523,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   # pos_indices = tuple(slice(x) for x in pos_indices)
   vel_indices = slice(nq + 6, nq + nv - 2)
   vel_indices = slice(nq + 6, nq + 6 + 8)
-  vel_indices = slice(nq + 6 + 8, nq + nv)
+  vel_indices2 = slice(nq + 6 + 8, nq + nv)
   # vel_indices = slice(nq + 3, nq + 6)
   u_indices = slice(0, 10)
 
@@ -525,9 +532,15 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   # plt.plot(t_x[t_slice], x[t_slice, pos_map["ankle_spring_joint_right"]])
   plt.plot(t_x[t_slice], x[t_slice, pos_indices])
   plt.legend(x_datatypes[pos_indices])
+  plt.figure("positions2-- " + filename)
+  plt.plot(t_x[t_slice], x[t_slice, pos_indices2])
+  plt.legend(x_datatypes[pos_indices2])
   plt.figure("velocities-- " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
+  plt.figure("velocities2-- " + filename)
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices2])
+  plt.legend(x_datatypes[vel_indices2])
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
   plt.figure("efforts-- " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])

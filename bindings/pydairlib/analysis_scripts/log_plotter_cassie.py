@@ -133,10 +133,10 @@ def main():
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot", True)
-  plot_feet_positions(plant_w_spr, context, x, l_toe_frame, front_contact_disp, world,
-    t_x, t_slice, "left foot", True)
-  plot_feet_positions(plant_w_spr, context, x, l_toe_frame, rear_contact_disp, world,
-    t_x, t_slice, "left foot", True)
+  # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, front_contact_disp, world,
+  #   t_x, t_slice, "left foot", True)
+  # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, rear_contact_disp, world,
+  #   t_x, t_slice, "left foot", True)
 
   # plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
   # plt.plot(t_osc_debug, 0.1 * fsm)
@@ -145,7 +145,38 @@ def main():
   #
   # PlotVdot(x, t_x, x_datatypes, True)
 
+  # PlotOscQpSol(t_osc_debug, osc_output)
+
   plt.show()
+
+def PlotOscQpSol(t_osc_debug, osc_output):
+  if len(osc_output) == 0:
+    raise ValueError("osc_output is empty. Check the channel name.")
+
+  lambda_c_dim = osc_output[0].qp_output.lambda_c_dim
+  epsilon_dim = osc_output[0].qp_output.epsilon_dim
+  v_dim = osc_output[0].qp_output.v_dim
+
+  contact_forces = np.zeros((len(osc_output), lambda_c_dim))
+  epsilons = np.zeros((len(osc_output), epsilon_dim))
+  vdot = np.zeros((len(osc_output), v_dim))
+  for i in range(len(osc_output)):
+    contact_forces[i] = osc_output[i].qp_output.lambda_c_sol
+    epsilons[i] = osc_output[i].qp_output.epsilon_sol
+    vdot[i] = osc_output[i].qp_output.dv_sol
+
+  plt.figure("Qp sol -- contact forces")
+  plt.plot(t_osc_debug[:], contact_forces)
+  plt.legend([str(i) for i in range(lambda_c_dim)])
+
+  plt.figure("Qp sol -- epsilons")
+  plt.plot(t_osc_debug[:], epsilons)
+  plt.legend([str(i) for i in range(epsilon_dim)])
+
+  plt.figure("Qp sol -- vdot")
+  plt.plot(t_osc_debug[:], vdot[:, 0:6])
+  plt.legend([str(i) for i in range(6)])
+
 
 def PlotEkfMeasurementError(t_osc_debug, fsm):
   file_array = np.loadtxt("../ekf_error_w_momentum_observer.txt", delimiter=',')

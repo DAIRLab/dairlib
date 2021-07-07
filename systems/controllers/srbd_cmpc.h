@@ -10,7 +10,6 @@
 #include <set>
 #include <drake/multibody/plant/multibody_plant.h>
 #include <dairlib/lcmt_saved_traj.hpp>
-#include <Eigen/src/Core/Matrix.h>
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -27,6 +26,8 @@
 #include "solvers/constraint_factory.h"
 #include "systems/framework/output_vector.h"
 #include "solvers/nonlinear_constraint.h"
+#include "include/_usr_include_eigen3/Eigen/src/Core/Matrix.h"
+#include "external/drake/common/_virtual_includes/essential/drake/common/eigen_types.h"
 
 namespace dairlib {
 
@@ -59,8 +60,11 @@ typedef struct SrbdMode {
   std::vector<drake::solvers::LinearEqualityConstraint*> init_state_constraint_;
 } SrbdMode;
 
-
-
+Eigen::Matrix3d HatOperator3x3(const Eigen::Vector3d v) {
+  Eigen::Matrix3d v_hat = Eigen::Matrix3d::Zero();
+  v_hat << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
+  return v_hat;
+}
 
 class SrbdCMPC : public drake::systems::LeafSystem<double> {
  public:
@@ -114,8 +118,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   }
 
 
-  void SetReachabilityLimit(const Eigen::VectorXd& kl,
-                            const std::vector<Eigen::VectorXd>& kn, const Eigen::MatrixXd& KinReachW);
+  void SetReachabilityLimit(const Eigen::VectorXd& kinematic_limit,
+                            const std::vector<Eigen::VectorXd>& nominal_relative_pos,
+                            const Eigen::MatrixXd& kin_reach_soft_contraint_w);
 
   void SetMu(double mu) { mu_ = mu; }
   int num_modes() { return nmodes_; }
@@ -128,10 +133,15 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
     return drake::solvers::Solve(prog_);
   }
 
-  void CopyDiscreteSrbDynamics(Eigen::MatrixXd b_I, double m, double y_offset, double yaw, BipedStance stance,
-                               const drake::EigenPtr<Eigen::MatrixXd>& Al,
-                               const drake::EigenPtr<Eigen::MatrixXd>& Bl,
-                               const drake::EigenPtr<Eigen::MatrixXd>& bl);
+  void CopyDiscreteSrbDynamics(const Eigen::MatrixXd &b_I,
+                               const Eigen::Vector3d &eq_com_pos,
+                               const Eigen::Vector3d &eq_foot_pos,
+                               double m,
+                               double yaw,
+                               BipedStance stance,
+                               const drake::EigenPtr<Eigen::MatrixXd> &Ad,
+                               const drake::EigenPtr<Eigen::MatrixXd> &Bd,
+                               const drake::EigenPtr<Eigen::MatrixXd> &bd);
 
   void print_initial_state_constraints() const;
   void print_state_knot_constraints() const;
@@ -245,8 +255,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   std::string base_;
   Eigen::Isometry3d frame_pose_;
   Eigen::Vector3d com_from_base_origin_;
-  int base_angle_pos_idx_;
-  int base_angle_vel_idx_;
+  int base_angle_pos_idx_{};
+  int base_angle_vel_idx_{};
 
   mutable drake::systems::Context<double>* plant_context_;
   mutable drake::math::RollPitchYaw<double> rpy_;
@@ -265,7 +275,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const int kNu3d = 10;
   const int saggital_idx_ = 0;
   const int vertical_idx_ = 2;
-  const Eigen::Vector3d gravity_ = {0.0, 0.0, -9.8};
+  const Eigen::Vector3d gravity_ = {0.0, 0.0, -9.81};
   double mu_ = 0;
   double mass_ = 0;
   double planar_inertia_ = 0;

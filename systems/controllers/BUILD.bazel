@@ -129,7 +129,6 @@ cc_library(
     name = "srbd_cmpc",
     srcs = ["srbd_cmpc.cc"],
     hdrs = ["srbd_cmpc.h"],
-    tags = ["manual"],
     deps = [
         "//common",
         "//lcm:lcm_trajectory_saver",

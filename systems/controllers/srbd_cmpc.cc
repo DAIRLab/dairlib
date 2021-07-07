@@ -5,7 +5,6 @@
 #include "srbd_cmpc.h"
 #include "common/file_utils.h"
 
-
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::BodyFrame;
@@ -53,7 +52,8 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
     planar_(planar),
     traj_tracking_(traj),
     use_com_(use_com),
-    use_fsm_(used_with_finite_state_machine){
+    use_fsm_(used_with_finite_state_machine),
+    rpy_(drake::math::RollPitchYaw<double>(0, 0, 0)){
 
   nq_ = plant.num_positions();
   nv_ = plant.num_velocities();
@@ -141,15 +141,16 @@ double SrbdCMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
   return mass;
 }
 
-void SrbdCMPC::SetReachabilityLimit(const Eigen::VectorXd& kl,
-                                    const std::vector<Eigen::VectorXd> &kn, const MatrixXd& KinReachW) {
-  DRAKE_DEMAND(kl.size() == kLinearDim_);
-  DRAKE_DEMAND(KinReachW.rows() == kLinearDim_);
-  DRAKE_DEMAND(KinReachW.cols() == kLinearDim_);
+void SrbdCMPC::SetReachabilityLimit(const Eigen::VectorXd& kinematic_limit,
+                                    const std::vector<Eigen::VectorXd> &nominal_relative_pos,
+                                    const MatrixXd& kin_reach_soft_contraint_w) {
+  DRAKE_DEMAND(kinematic_limit.size() == kLinearDim_);
+  DRAKE_DEMAND(kin_reach_soft_contraint_w.rows() == kLinearDim_);
+  DRAKE_DEMAND(kin_reach_soft_contraint_w.cols() == kLinearDim_);
 
-  kin_lim_ = kl;
-  W_kin_reach_ = KinReachW;
-  for (auto pos : kn) {
+  kin_lim_ = kinematic_limit;
+  W_kin_reach_ = kin_reach_soft_contraint_w;
+  for (auto pos : nominal_relative_pos) {
     kin_nominal_.push_back(pos);
   }
 }
@@ -613,7 +614,12 @@ void SrbdCMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     Aeq.block(0, nxi_, nxi_, nxi_) = -MatrixXd::Identity(nxi_, nxi_);
     state_knot_constraints_.at(x0_idx_[0])->UpdateCoefficients(Aeq, VectorXd::Zero(nxi_));
   } else {
-    ResetDynamicsConstraint(modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1));
+    MatrixXd dyn = MatrixXd::Zero(nxi_, 2 * nxi_ + nu_);
+    dyn.block(0, 0, nxi_, nxi_) = modes_.at(x0_idx_[0]).dynamics.A;
+    dyn.block(0, nxi_, nxi_, nu_) = modes_.at(x0_idx_[0]).dynamics.B;
+    dyn.block(0, nxi_ + nu_, nxi_, nxi_) = - MatrixXd::Identity(nxi_, nxi_);
+    modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
+        UpdateCoefficients(dyn, -modes_.at(x0_idx_[0]).dynamics.b);
   }
 
 
@@ -639,7 +645,8 @@ void SrbdCMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     state_knot_constraints_.at(x0_idx_[0])->UpdateCoefficients(
         MatrixXd::Zero(1, 2 * nxi_), VectorXd::Zero(1));
   } else {
-    RemoveDynamicsConstraint(modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1));
+    modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
+        UpdateCoefficients(MatrixXd::Zero(1, 2*nxi_ + nu_), VectorXd::Zero(1));
   }
 
   // Add terminal cost to new x_f
@@ -846,17 +853,20 @@ std::pair<int,int> SrbdCMPC::GetTerminalStepIdx() const {
   }
   return std::pair<int,int>(x0_idx_[0]-1, modes_.at(x0_idx_[0]-1).N);
 }
-void SrbdCMPC::CopyDiscreteSrbDynamics(Eigen::MatrixXd b_I, double m, double y_offset,
-                                       double yaw, BipedStance stance,
-                                       const drake::EigenPtr<Eigen::MatrixXd> &Al,
-                                       const drake::EigenPtr<Eigen::MatrixXd> &Bl,
-                                       const drake::EigenPtr<Eigen::MatrixXd> &bl) {
+void SrbdCMPC::CopyDiscreteSrbDynamics(const Eigen::MatrixXd &b_I,
+                                       const Eigen::Vector3d &eq_com_pos,
+                                       const Eigen::Vector3d &eq_foot_pos,
+                                       double m,
+                                       double yaw,
+                                       BipedStance stance,
+                                       const drake::EigenPtr<MatrixXd> &Ad,
+                                       const drake::EigenPtr<MatrixXd> &Bd,
+                                       const drake::EigenPtr<MatrixXd> &bd) {
   drake::math::RollPitchYaw rpy(0.0, 0.0, yaw);
   Matrix3d R_yaw = rpy.ToMatrix3ViaRotationMatrix();
   Vector3d tau = {0.0,0.0,1.0};
   Vector3d mg = {0.0, 0.0, m * 9.81};
-  Matrix3d lambda_hat;
-  lambda_hat << 0, -m*9.81, 0, m*9.81, 0, 0, 0, 0, 0;
+  Matrix3d lambda_hat = HatOperator3x3(-m * gravity_);
   Matrix3d g_I_inv = (R_yaw * b_I * R_yaw.transpose()).inverse();
 
 
@@ -864,6 +874,7 @@ void SrbdCMPC::CopyDiscreteSrbDynamics(Eigen::MatrixXd b_I, double m, double y_o
   MatrixXd B = MatrixXd::Zero(18,10);
   VectorXd b = VectorXd::Zero(18);
 
+  // Continuous A matrix
   A.block(0, 6, 3, 3) = Matrix3d::Identity();
   A.block(3, 9, 3, 3) = R_yaw;
   A.block(9, 0, 3, 3) = g_I_inv * lambda_hat;
@@ -873,6 +884,19 @@ void SrbdCMPC::CopyDiscreteSrbDynamics(Eigen::MatrixXd b_I, double m, double y_o
     A.block(9, 15, 3, 3) = -g_I_inv * lambda_hat;
   }
 
+  // Continuous B matrix
+  B.block(6, 6, 3, 3) = (1.0 / m) * Matrix3d::Identity();
+  B.block(9, 6, 3, 3) = g_I_inv * HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos));
+  B.block(9, 9, 3, 1) = g_I_inv * Vector3d(0.0, 0.0, 1.0);
+  B.block(12, 0, 6, 6) = MatrixXd::Identity(6, 6);
+
+  // Continuous Affine portion (b)
+  b.segment(6, 3) = gravity_;
+  b.segment(9, 3) = g_I_inv * HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos)) * (-m * gravity_);
+
+  *Ad = MatrixXd::Identity(A.rows(), A.cols()) + dt_ * A;
+  *Bd = dt_ * B;
+  *bd = dt_ * b;
   
 }
 } // dairlib

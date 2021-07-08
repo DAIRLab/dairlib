@@ -938,6 +938,7 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
                             (1 - alpha) * filtered_joint_vel_;
     }
   }
+  output->SetVelocities(filtered_joint_vel_);
 
   // Copy the floating base base state
   if (is_floating_base_) {

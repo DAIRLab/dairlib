@@ -80,6 +80,15 @@ struct OSCStandingGains {
   std::vector<double> CoMW;
   std::vector<double> PelvisW;
 
+  std::vector<double> PelvisHeadingW;
+  std::vector<double> PelvisHeadingKp;
+  std::vector<double> PelvisHeadingKd;
+
+
+  MatrixXd W_pelvis_heading;
+  MatrixXd K_p_pelvis_heading;
+  MatrixXd K_d_pelvis_heading;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
@@ -96,6 +105,21 @@ struct OSCStandingGains {
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(HipYawW));
+
+    a->Visit(DRAKE_NVP(PelvisHeadingW));
+    a->Visit(DRAKE_NVP(PelvisHeadingKp));
+    a->Visit(DRAKE_NVP(PelvisHeadingKd));
+
+
+    W_pelvis_heading = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisHeadingW.data(), this->rows, this->cols);
+    K_p_pelvis_heading = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisHeadingKp.data(), this->rows, this->cols);
+    K_d_pelvis_heading = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisHeadingKd.data(), this->rows, this->cols);
   }
 };
 
@@ -233,7 +257,7 @@ int DoMain(int argc, char* argv[]) {
   double w_contact_relax = gains.w_soft_constraint;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
   // Friction coefficient
-  double mu = 0.8;
+  double mu = 2;
   osc->SetContactFriction(mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
@@ -277,6 +301,21 @@ int DoMain(int argc, char* argv[]) {
       plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_rot_traj);
+
+
+  // Pelvis rotation tracking (yaw)
+  std::cout << "gains.K_p_pelvis_heading = " << gains.K_p_pelvis_heading << std::endl;
+  std::cout << "gains.K_d_pelvis_heading = " << gains.K_d_pelvis_heading << std::endl;
+  std::cout << "gains.W_pelvis_heading = " << gains.W_pelvis_heading << std::endl;
+
+  RotTaskSpaceTrackingData pelvis_heading_traj(
+      "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
+      gains.W_pelvis_heading, plant_w_springs, plant_wo_springs);
+  pelvis_heading_traj.AddFrameToTrack("pelvis");
+  //osc->AddConstTrackingData(&pelvis_heading_traj, VectorXd::Zero(1));
+  VectorXd pelvis_desired_quat(4);
+  pelvis_desired_quat << 1, 0, 0, 0;
+  osc->AddConstTrackingData(&pelvis_heading_traj, pelvis_desired_quat);
 
   JointSpaceTrackingData hip_yaw_left_tracking(
       "hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw,

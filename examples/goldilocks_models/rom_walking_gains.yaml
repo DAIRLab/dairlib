@@ -15,7 +15,8 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210416_3dlipm_grid_all_files/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210505_3dlipm_all_files/"
 #dir_model: "/media/yuming/DATA/Research backup/Not uploaded to google drive/model_optimization/20210505_3dlipm_decrease_regularization_weight/robot_1/"
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210602_3dlipm/"
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210602_3dlipm/"
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210612_3dlipm/"
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter

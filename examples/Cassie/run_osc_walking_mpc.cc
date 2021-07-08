@@ -69,8 +69,7 @@ DEFINE_string(mpc_channel, "SRBD_MPC_OUT", "channel to recieve koopman mpc messa
 
 DEFINE_string(
     gains_filename,
-    "examples/KoopmanMPC/planar_osc_walking_gains.yaml",
-    "Filepath containing gains");
+    "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.yaml","Filepath containing gains");
 
 DEFINE_bool(track_com, false,
             "use com tracking data (otherwise uses trans space)");
@@ -96,8 +95,6 @@ int DoMain(int argc, char* argv[]) {
   // plants)
   auto left_toe = LeftToeFront(plant_w_springs);
   auto left_heel = LeftToeRear(plant_w_springs);
-  auto right_toe = RightToeFront(plant_w_springs);
-  auto right_heel = RightToeRear(plant_w_springs);
 
   // Get body frames and points
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2.0;
@@ -192,8 +189,8 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj",
                                              gains.K_p_swing_foot, gains.K_d_swing_foot, gains.W_swing_foot, plant_w_springs, plant_w_springs);
 
-  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kLeft, "toe_left", left_toe_mid.first);
-  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kRight, "toe_right", right_toe_mid.first);
+  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kRight, "toe_left", left_toe_mid.first);
+  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kLeft, "toe_right", right_toe_mid.first);
 
   osc->AddTrackingData(&swing_foot_traj);
 
@@ -213,7 +210,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&pelvis_traj);
   }
 
-  RotTaskSpaceTrackingData angular_traj("base_angle", gains.K_p_orientation,
+  RotTaskSpaceTrackingData angular_traj("base_orientation", gains.K_p_orientation,
                                       gains.K_d_orientation, gains.W_orientation, plant_w_springs, plant_w_springs);
 
   angular_traj.AddFrameToTrack("pelvis");
@@ -241,7 +238,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("com_traj"));
 
   builder.Connect(mpc_reciever->get_angular_traj_output_port(),
-                  osc->get_tracking_data_input_port("base_angle"));
+                  osc->get_tracking_data_input_port("base_orientation"));
 
   builder.Connect(mpc_reciever->get_swing_ft_traj_output_port(),
                   osc->get_tracking_data_input_port("swing_ft_traj"));

@@ -17,59 +17,254 @@ import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 import pydrake.common as mut
 
+def PrintAndLogStatus(msg):
+  print(msg)
+  f = open(path_status_log, "a")
+  f.write(msg)
+  f.close()
+
+
+def IsSimLogGood(x, t_x, desried_sim_end_time):
+  # Check if the simulation ended early
+  sim_time_tolerance = 0.1
+  if desried_sim_end_time > 0:
+    if abs(t_x[-1] - desried_sim_end_time) > sim_time_tolerance:
+      msg = msg_first_column + ": sim end time (" + str(
+        t_x[-1]) + " s) is too different from the desired sim time (" + str(
+        desried_sim_end_time) + " s)\n"
+      print(msg)
+      f = open(path_status_log, "a")
+      f.write(msg)
+      f.close()
+      return False
+
+  # Check that the pelvis didn't fall below a certain height
+  min_height = 0.4
+  for idx in range(x.shape[0]):
+    if x[idx, 6] < min_height:
+      msg = msg_first_column + ": pelvis fell below " + str(
+        min_height) + " at time " + str(t_x[idx]) + "\n"
+      print(msg)
+      f = open(path_status_log, "a")
+      f.write(msg)
+      f.close()
+      return False
+
+  return True
+
+
+### Check if it's close to steady state
+def CheckSteadyState(x, t_x, td_times, Print=True,
+    separate_left_right_leg=False):
+  is_steady_state = True
+
+  t_x_touchdown_indices = []
+  for time in td_times:
+    t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < 2e-3)[0][0])
+
+  # 1. stride length
+  max_step_diff = 0.0
+  pelvis_x_at_td = np.zeros(len(t_x_touchdown_indices))
+  for i in range(len(t_x_touchdown_indices)):
+    pelvis_x_at_td[i] = x[t_x_touchdown_indices[i], 4]
+  pelvis_x_at_td_list = [pelvis_x_at_td[0::2], pelvis_x_at_td[1::2]] \
+    if separate_left_right_leg else [pelvis_x_at_td]
+  for i in range(len(pelvis_x_at_td_list)):
+    step_lengths = np.diff(pelvis_x_at_td_list[i])
+    min_step_length = min(step_lengths)
+    max_step_length = max(step_lengths)
+    max_step_diff = max(max_step_diff, abs(max_step_length - min_step_length))
+    if abs(max_step_length - min_step_length) > step_length_variation_tol:
+      is_steady_state = False
+      if Print:
+        msg = msg_first_column + \
+              ": not close to steady state. min and max stride length are " + \
+              str(min_step_length) + ", " + str(max_step_length) + \
+              "tolerance is " + str(step_length_variation_tol) + "\n"
+        PrintAndLogStatus(msg)
+
+  # 2. pelvis height
+  pelvis_z_at_td = np.zeros(len(t_x_touchdown_indices))
+  for i in range(len(t_x_touchdown_indices)):
+    pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 6]
+  min_pelvis_height = min(pelvis_z_at_td)
+  max_pelvis_height = max(pelvis_z_at_td)
+  max_pelvis_height_diff = abs(max_pelvis_height - min_pelvis_height)
+  if abs(max_pelvis_height - min_pelvis_height) > pelvis_height_variation_tol:
+    is_steady_state = False
+    if Print:
+      msg = msg_first_column + \
+            ": not close to steady state. min and max pelvis height are " + \
+            str(min_pelvis_height) + ", " + str(max_pelvis_height) + \
+            "tolerance is " + str(pelvis_height_variation_tol) + "\n"
+      PrintAndLogStatus(msg)
+
+  return is_steady_state, max_step_diff + max_pelvis_height_diff
+
+
+def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
+  is_steady_state = False
+
+  # Default time window values, can override
+  t_start = t_u[10]
+  t_end = t_u[-10]
+
+  # Override t_start and t_end here
+  if is_hardware:
+    left_support = parsed_yaml.get('left_support')
+    right_support = parsed_yaml.get('right_support')
+    post_left_double_support = parsed_yaml.get('post_left_double_support')
+    post_right_double_support = parsed_yaml.get('post_right_double_support')
+
+    max_diff_list = []
+    start_end_time_list = []
+    prev_state = -1
+    for i in range(len(fsm)):
+      if t_osc_debug[i] + n_step * stride_period > t_shutoff:
+        break
+
+      state = fsm[i]
+      # At the start of the double support state
+      if ((prev_state == left_support) and
+          (state == post_left_double_support)) or \
+          ((prev_state == right_support) and
+           (state == post_right_double_support)):
+        t_fsm_start = t_osc_debug[i]
+
+        if t_fsm_start + n_step * stride_period <= t_x[-1]:
+          # Create a list of times at touchdown
+          td_times = [t_fsm_start]
+          for _ in range(n_step):
+            td_times.append(td_times[-1] + stride_period)
+
+          sub_window_is_ss, max_diff = CheckSteadyState(x, t_x, td_times, False)
+          if sub_window_is_ss:
+            max_diff_list.append(max_diff)
+            start_end_time_list.append([td_times[0], td_times[-1]])
+      prev_state = state
+
+    # start_end_time_list would be non-empty when there is a window with steady state
+    is_steady_state = len(start_end_time_list) > 0
+    if is_steady_state:
+      idx = np.argmin(max_diff_list).item()
+      t_start = start_end_time_list[idx][0]
+      t_end = start_end_time_list[idx][1]
+      print("max_diff_list = ", max_diff_list)
+      print("idx = ", idx)
+      max_diff_list.sort()
+      print("sorted = ", max_diff_list)
+    else:
+      msg = msg_first_column + ": not close to steady state."
+      PrintAndLogStatus(msg)
+
+  else:
+    step_idx_start = int(t_end / stride_period) - n_step
+    step_idx_end = int(t_end / stride_period)
+    # step_idx_start = 14
+    # step_idx_end = step_idx_start + n_step
+    t_start = stride_period * step_idx_start
+    t_end = stride_period * step_idx_end
+
+    # Create a list of times at touchdown
+    td_times = []
+    for idx in range(step_idx_start, step_idx_end + 1):
+      td_times.append(stride_period * idx)
+    is_steady_state = CheckSteadyState(x, t_x, td_times)
+
+  if is_steady_state:
+    return t_start, t_end
+  else:
+    return -1, -1
+
+# cutoff_freq is in Hz
+def ApplyLowPassFilter(x, t, cutoff_freq):
+  dt = np.diff(t)
+  x_filtered = x[0, :]
+  for i in range(len(dt)):
+    alpha = 2 * np.pi * dt[i] * cutoff_freq / (2 * np.pi * dt[i] * cutoff_freq + 1)
+    x_filtered = alpha * x[i + 1, :] + (1 - alpha) * x_filtered
+    x[i + 1, :] = x_filtered
+  return x
+
+
+# TODO: maybe we should use pelvis height wrt stance foot in CheckSteadyState()
 
 def main():
+  # Script input arguments
+  global is_hardware
+  rom_iter_idx = -1
+  log_idx = -1
+  desried_sim_end_time = -1.0
+  spring_model = True
+
+  file_path = sys.argv[1]
+  controller_channel = sys.argv[2]
+  is_hardware = (sys.argv[3].lower() == "true")
+  if is_hardware:
+    spring_model = True
+  else:
+    rom_iter_idx = int(sys.argv[3])
+    log_idx = int(sys.argv[4])
+    desried_sim_end_time = float(sys.argv[5])
+    spring_model = (sys.argv[6].lower() == "true")
+
   # Parameters
+  global n_step
   n_step = 4  # steps to average over
 
   # Weight used in model optimization
-  w_Q = 0.005  # Assume all joints have the same cost weight, though not what trajopt is using
+  w_Q = 0.005  # Assume all joints have the same cost weight, though not what trajopt is using. TODO: improve this
   w_R = 0.0002
   w_accel = 0.002 * w_Q
 
+  # Steady state parameters
+  global step_length_variation_tol, pelvis_height_variation_tol
+  step_length_variation_tol = 0.05 if is_hardware else 0.02
+  pelvis_height_variation_tol = 0.05 if is_hardware else 0.05
+
+  # Some parameters
+  low_pass_filter = True
+
   # Read the controller parameters
-  a_yaml_file = open(
-    "examples/goldilocks_models/rom_walking_gains.yaml")
-  parsed_yaml_file = yaml.load(a_yaml_file)
-
-  stride_length_x = parsed_yaml_file.get('constant_step_length_x')
-  left_support_duration = parsed_yaml_file.get('left_support_duration')
-  double_support_duration = parsed_yaml_file.get('double_support_duration')
-
+  global parsed_yaml, stride_period
+  parsed_yaml = yaml.full_load(open(
+    "examples/goldilocks_models/rom_walking_gains.yaml"))
+  stride_length_x = parsed_yaml.get('constant_step_length_x')
+  left_support_duration = parsed_yaml.get('left_support_duration')
+  double_support_duration = parsed_yaml.get('double_support_duration')
   stride_period = left_support_duration + double_support_duration
   const_walking_speed_x = stride_length_x / stride_period
 
   # File setting
-  directory = "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  global directory, path_status_log
+  directory = "../dairlib_data/goldilocks_models/hardware_cost_eval/" \
+    if is_hardware else "../dairlib_data/goldilocks_models/sim_cost_eval/"
   Path(directory).mkdir(parents=True, exist_ok=True)
+  path_status_log = directory + (
+    "hardware_status.txt" if is_hardware else "sim_status.txt")
+  filename = file_path.split("/")[-1]
+  print("directory = ", directory)
+  print("path_status_log = ", path_status_log)
 
-  # Script input arguments
-  rom_iter_idx = int(sys.argv[3])
-  log_idx = int(sys.argv[4])
-  desried_sim_end_time = float(sys.argv[5])
-  spring_model = (sys.argv[6].lower() == "true")
-
-  global t_start
-  global t_end
-  global t_slice
-  global t_u_slice
-  global filename
-  global nq
-  global nv
-  global nx
-  global pos_map
-  global vel_map
-  global act_map
+  # Message first column
+  global msg_first_column
+  msg_first_column = "hardware_" + filename if is_hardware else \
+    "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx)
+  file_prefix = filename if is_hardware else "%d_%d" % (rom_iter_idx, log_idx)
 
   # Build plant
   mut.set_log_level("err")  # ignore warnings about joint limits
   builder = DiagramBuilder()
   plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  urdf_path = "examples/Cassie/urdf/cassie_v2.urdf" if spring_model else "examples/Cassie/urdf/cassie_fixed_springs.urdf"
+  urdf_path = "examples/Cassie/urdf/cassie_v2.urdf" if spring_model else \
+    "examples/Cassie/urdf/cassie_fixed_springs.urdf"
   Parser(plant).AddModelFromFile(FindResourceOrThrow(urdf_path))
   plant.mutable_gravity_field().set_gravity_vector(
     -9.81 * np.array([0, 0, 1]))
   plant.Finalize()
+
+  global nq, nv, nx
+  global pos_map, vel_map, act_map
 
   # relevant MBP parameters
   nq = plant.num_positions()
@@ -92,13 +287,9 @@ def main():
   x_datatypes = pydairlib.multibody.createStateNameVectorFromMap(plant)
   u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant)
 
-  filename = sys.argv[1]
-  controller_channel = sys.argv[2]
-  log = lcm.EventLog(filename, "r")
-  path = pathlib.Path(filename).parent
-  filename = filename.split("/")[-1]
+  log = lcm.EventLog(file_path, "r")
 
-  matplotlib.rcParams["savefig.directory"] = path
+  matplotlib.rcParams["savefig.directory"] = pathlib.Path(file_path).parent
 
   # Read the log file
   x, u_meas, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
@@ -117,19 +308,31 @@ def main():
     motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
     estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
 
-  # Default time window values, can override
-  t_start = t_u[10]
-  t_end = t_u[-10]
-  # Override here #
-  # t_start = 5
-  # t_end = 6
-  step_idx_start = int(t_end / stride_period) - n_step
-  step_idx_end = int(t_end / stride_period)
-  # step_idx_start = 14
-  # step_idx_end = step_idx_start + n_step
-  t_start = stride_period * step_idx_start
-  t_end = stride_period * step_idx_end
-  ### Convert times to indices
+  print("Finished parsing the log")
+
+  global t_shutoff
+  if is_hardware:
+    t_shutoff = t_cassie_out[-1]
+    for i in reversed(range(len(cassie_out))):
+      if cassie_out[i].pelvis.radio.channel[-1] < 0:  # soft e-stop triggered
+        t_shutoff = t_cassie_out[i]
+      if cassie_out[i].pelvis.radio.channel[8] < 0:  # hard e-stop triggered
+        t_shutoff = t_cassie_out[i]
+    print("t_shutoff = ", t_shutoff)
+
+  # Check if the log data is ok for simulation
+  if not is_hardware:
+    if not IsSimLogGood(x, t_x, desried_sim_end_time):
+      return
+
+  # Pick the start and end time
+  t_start, t_end = GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug)
+  # print("t_start, t_end = ", t_start, t_end)
+  if t_start < 0:
+    return
+
+  ### Get indices from time
+  global t_slice, t_u_slice
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
   t_slice = slice(t_start_idx, t_end_idx)
@@ -137,76 +340,7 @@ def main():
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 3e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
 
-  ### All analysis scripts here
-
-  # Check if the simulation ended early
-  sim_time_tolerance = 0.1
-  if desried_sim_end_time > 0:
-    if abs(t_x[-1] - desried_sim_end_time) > sim_time_tolerance:
-      msg = "iteration #" + str(rom_iter_idx) + "log #" + str(
-        log_idx) + ": sim end time (" + str(
-        t_x[-1]) + " s) is too different from the desired sim time (" + str(
-        desried_sim_end_time) + " s)\n"
-      print(msg)
-      f = open(directory + "sim_status.txt", "a")
-      f.write(msg)
-      f.close()
-      return
-
-  # Check that the pelvis didn't fall below a certain height
-  min_height = 0.4
-  for idx in range(x.shape[0]):
-    if x[idx, 6] < min_height:
-      msg = "iteration #" + str(rom_iter_idx) + "log #" + str(
-        log_idx) + ": pelvis fell below " + str(
-        min_height) + " at time " + str(t_x[idx]) + "\n"
-      print(msg)
-      f = open(directory + "sim_status.txt", "a")
-      f.write(msg)
-      f.close()
-      return
-
-  # Check if it's close to steady state
-  t_x_touchdown_indices = []
-  for idx in range(step_idx_start, step_idx_end + 1):
-    time = stride_period * idx
-    t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < 1e-3)[0][0])
-  # 1. stride length
-  stride_length_variation_tol = 0.02
-  pelvis_x_at_td = np.zeros(len(t_x_touchdown_indices))
-  for i in range(len(t_x_touchdown_indices)):
-    pelvis_x_at_td[i] = x[t_x_touchdown_indices[i], 4]
-  stride_lengths = np.diff(pelvis_x_at_td)
-  min_stride_length = min(stride_lengths)
-  max_stride_length = max(stride_lengths)
-  if abs(max_stride_length - min_stride_length) > stride_length_variation_tol:
-    msg = "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx) + \
-          ": not close to steady state. min and max stride length are " + \
-          str(min_stride_length) + ", " + str(max_stride_length) + \
-          "tolerance is " + str(stride_length_variation_tol) + "\n"
-    print(msg)
-    f = open(directory + "sim_status.txt", "a")
-    f.write(msg)
-    f.close()
-    return
-  # 2. pelvis height
-  pelvis_height_variation_tol = 0.05
-  pelvis_z_at_td = np.zeros(len(t_x_touchdown_indices))
-  for i in range(len(t_x_touchdown_indices)):
-    pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 6]
-  min_pelvis_height = min(pelvis_z_at_td)
-  max_pelvis_height = max(pelvis_z_at_td)
-  if abs(max_pelvis_height - min_pelvis_height) > pelvis_height_variation_tol:
-    msg = "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx) + \
-          ": not close to steady state. min and max pelvis height are " + \
-          str(min_pelvis_height) + ", " + str(max_pelvis_height) + \
-          "tolerance is " + str(pelvis_height_variation_tol) + "\n"
-    print(msg)
-    f = open(directory + "sim_status.txt", "a")
-    f.write(msg)
-    f.close()
-    return
-
+  # Extract the trajectories that we use to calculate the cost
   t_x_extracted = t_x[t_slice]
   t_u_extracted = t_u[t_u_slice]
   x_extracted = x[t_slice, :]
@@ -226,17 +360,24 @@ def main():
     x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
     x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
 
+  # Apply low pass filter to vel
+  if low_pass_filter:
+    x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted, 100)
+
   # Get joint acceleration
   dx = np.diff(x_extracted, axis=0)
   vdot_numerical = dx[:, nq:]
   for i in range(len(dt_x)):
     vdot_numerical[i, :] /= dt_x[i]
+  if low_pass_filter:
+    vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], 100)
+
   # Testing -- set the toe acceleration to 0
-  #vdot_numerical[:, vel_map["toe_leftdot"]] = 0
-  #vdot_numerical[:, vel_map["toe_rightdot"]] = 0
+  # vdot_numerical[:, vel_map["toe_leftdot"]] = 0
+  # vdot_numerical[:, vel_map["toe_rightdot"]] = 0
 
   # Testing (hacks) -- cap the acceleration within 500 to avoid contact spikes
-  # max_accel = 500
+  # max_accel = 750
   # vdot_numerical = np.clip(vdot_numerical, -max_accel, max_accel)
 
   cost_x = 0.0
@@ -258,8 +399,6 @@ def main():
   cost_accel *= (w_accel / n_step)
 
   total_cost = cost_x + cost_u + cost_accel
-  print("step_idx_start = " + str(step_idx_start))
-  print("step_idx_end = " + str(step_idx_end))
   print("t_start = " + str(t_start))
   print("t_end = " + str(t_end))
   print("n_x_data = " + str(n_x_data))
@@ -269,7 +408,6 @@ def main():
   print("cost_accel = " + str(cost_accel))
   print("total_cost = " + str(total_cost))
   # import pdb; pdb.set_trace()
-
 
   # # Testing ankle and toe accleration
   # vdot_numerical_copy1 = np.copy(vdot_numerical)
@@ -291,7 +429,6 @@ def main():
   # cost_accel_except_toe_ankle *= (w_accel / n_step)
   # print("cost_accel_except_toe_ankle = " + str(cost_accel_except_toe_ankle))
 
-
   # Store into files
   names = ['cost_x',
            'cost_u',
@@ -310,19 +447,19 @@ def main():
   f.write(names)
   f.close()
 
-  path = directory + "%d_%d_cost_values.csv" % (rom_iter_idx, log_idx)
+  path = directory + "%s_cost_values.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
   f.write(values)
   f.close()
 
-  path = directory + "%d_%d_ave_stride_length.csv" % (rom_iter_idx, log_idx)
+  path = directory + "%s_ave_stride_length.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str((x_extracted[-1, 4] - x_extracted[0, 4]) / n_step))
   f.close()
 
-  path = directory + "%d_%d_success.csv" % (rom_iter_idx, log_idx)
+  path = directory + "%s_success.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
   f.write("1")

@@ -15,7 +15,8 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210416_3dlipm_grid_all_files/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210505_3dlipm_all_files/"
 #dir_model: "/media/yuming/DATA/Research backup/Not uploaded to google drive/model_optimization/20210505_3dlipm_decrease_regularization_weight/robot_1/"
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210602_3dlipm/"
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210602_3dlipm/"
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210612_3dlipm/"
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
@@ -27,6 +28,13 @@ sample_idx: 19 #21 works for iter150
 
 
 ### For both planner and controller
+# Finite state machine states
+left_support: 0
+right_support: 1
+double_support: 2
+post_left_double_support: 3
+post_right_double_support: 4
+
 # Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
 left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
 right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4

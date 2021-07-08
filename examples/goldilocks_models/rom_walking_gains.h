@@ -31,6 +31,11 @@ struct RomWalkingGains {
   double max_speed_lipm_mpc;
   double w_p_lipm_mpc;
   double w_v_lipm_mpc;
+  int left_support;
+  int right_support;
+  int double_support;
+  int post_left_double_support;
+  int post_right_double_support;
   double left_support_duration;
   double right_support_duration;
   double double_support_duration;
@@ -128,6 +133,11 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(max_speed_lipm_mpc));
     a->Visit(DRAKE_NVP(w_p_lipm_mpc));
     a->Visit(DRAKE_NVP(w_v_lipm_mpc));
+    a->Visit(DRAKE_NVP(left_support));
+    a->Visit(DRAKE_NVP(right_support));
+    a->Visit(DRAKE_NVP(double_support));
+    a->Visit(DRAKE_NVP(post_left_double_support));
+    a->Visit(DRAKE_NVP(post_right_double_support));
     a->Visit(DRAKE_NVP(left_support_duration));
     a->Visit(DRAKE_NVP(right_support_duration));
     a->Visit(DRAKE_NVP(double_support_duration));

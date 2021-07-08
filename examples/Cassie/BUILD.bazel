@@ -470,6 +470,27 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_osc_walking_mpc",
+    srcs = ["run_osc_walking_mpc.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/mpc",
+        "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:dairlib_signal_lcm_systems",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:mpc_trajectory_reciever",
+        "//systems/controllers:srbd_cmpc",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "visualize_trajectory",
     srcs = ["visualize_trajectory.cc"],
     deps = [

@@ -58,13 +58,13 @@ using systems::DairlibSignalReceiver;
 
 namespace examples {
 
-DEFINE_string(channel_x, "PLANAR_STATE",
+DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "The name of the channel which receives state");
-DEFINE_string(channel_u, "PLANAR_INPUT",
+DEFINE_string(channel_u, "OSC_MPC_WALKING",
               "The name of the channel which publishes command");
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
 
-DEFINE_string(mpc_channel, "KOOPMAN_MPC_OUT", "channel to recieve koopman mpc message");
+DEFINE_string(mpc_channel, "SRBD_MPC_OUT", "channel to recieve koopman mpc message");
 
 
 DEFINE_string(

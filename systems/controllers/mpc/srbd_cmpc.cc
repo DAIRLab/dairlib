@@ -68,7 +68,7 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
   nx_ = planar ? kNxPlanar : kNx3d;
   nu_ = planar ? kNuPlanar : kNu3d;
   kLinearDim_ = planar ? 2 : 3;
-  kAngularDim_ = planar ? 1 : 4;
+  kAngularDim_ = planar ? 1 : 3;
 
   nxi_ = nx_ + 2*kLinearDim_;
   Q_ = MatrixXd::Zero(nx_, nx_);
@@ -79,7 +79,7 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
 
   if (!traj_tracking_) {
     x_des_port_ = this->DeclareVectorInputPort(
-        BasicVector<double>(nx_)).get_index();
+        BasicVector<double>(nxi_)).get_index();
   }
 
   traj_out_port_ = this->DeclareAbstractOutputPort(&SrbdCMPC::GetMostRecentMotionPlan).get_index();
@@ -279,7 +279,7 @@ void SrbdCMPC::MakeKinematicReachabilityConstraints() {
 
 void SrbdCMPC::MakeFrictionConeConstraints() {
   for (auto & mode : modes_) {
-    for (int i = 0; i <= mode.N; i++) {
+    for (int i = 0; i < mode.N; i++) {
       if (! planar_) {
         mode.friction_constraints.push_back(
             prog_.AddConstraint(
@@ -297,6 +297,7 @@ void SrbdCMPC::MakeFrictionConeConstraints() {
                 .evaluator()
                 .get());
       }
+
       mode.friction_constraints.at(i)->set_description(
           "Friction" + std::to_string(mode.stance) + "." + std::to_string(i));
     }
@@ -702,7 +703,7 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
 
   /** preallocate Eigen matrices for trajectory blocks **/
   MatrixXd x = MatrixXd::Zero(nx_ ,  total_knots_);
-  MatrixXd lambda = MatrixXd::Zero(kLinearDim_, total_knots_);
+  MatrixXd lambda = MatrixXd::Zero(2*kLinearDim_, total_knots_ - nmodes_);
   VectorXd x_time_knots = VectorXd::Zero(total_knots_);
 
   int idx_x0 = x0_idx_[0] * modes_.front().N + x0_idx_[1];
@@ -716,7 +717,7 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
 
       x.block(0, col_i, nx_, 1) =
           result.GetSolution(mode.xx.at(j).head(nx_));
-      lambda.col(col_i) =
+      lambda.block(0, col_i, kLinearDim_, 1) =
           result.GetSolution(mode.uu.at(j).segment(nu_ - (kLinearDim_ +1), kLinearDim_));
       x_time_knots(col_i) = time + dt_ * col_i;
     }
@@ -731,14 +732,11 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
   CoMTraj.time_vector = x_time_knots;
   CoMTraj.datapoints = x_com_knots;
 
-  MatrixXd orientation_knots(kAngularDim_ + (planar_ ? kAngularDim_ : 0), x.cols());
-  if (planar_) {
-    orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols()),
+  MatrixXd orientation_knots(2*kAngularDim_, x.cols());
+
+  orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols()),
         x.block(kLinearDim_ * 2 + kAngularDim_, 0, kAngularDim_, x.cols());
-  } else {
-    /// TODO (@Brian-Acosta) add quaternion derivative
-    orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols());
-  }
+
 
   AngularTraj.time_vector = x_time_knots;
   AngularTraj.datapoints = orientation_knots;

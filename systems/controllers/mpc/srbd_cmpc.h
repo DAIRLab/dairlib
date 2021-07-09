@@ -26,7 +26,7 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/constraint_factory.h"
 #include "systems/framework/output_vector.h"
-
+#include "solvers/fast_osqp_solver.h"
 
 namespace dairlib {
 
@@ -231,7 +231,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   int kAngularDim_;
 
   // Solver
-  drake::solvers::OsqpSolver solver_;
+  std::unique_ptr<solvers::FastOsqpSolver> solver_;
   mutable drake::solvers::MathematicalProgramResult result_;
   mutable drake::solvers::MathematicalProgram prog_;
   mutable int x0_idx_[2] = {0, 0};

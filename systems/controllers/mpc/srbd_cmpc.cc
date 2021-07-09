@@ -71,7 +71,7 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
   kAngularDim_ = planar ? 1 : 3;
 
   nxi_ = nx_ + 2*kLinearDim_;
-  Q_ = MatrixXd::Zero(nx_, nx_);
+  Q_ = MatrixXd::Zero(nxi_, nxi_);
 
   // Create Ports
   state_port_ = this->DeclareVectorInputPort(
@@ -96,7 +96,9 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
         this->DeclareDiscreteState(VectorXd::Zero(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
   }
-  x_des_ = VectorXd ::Zero(nx_);
+  x_des_ = VectorXd ::Zero(nxi_);
+
+  solver_ = std::make_unique<solvers::FastOsqpSolver>();
 }
 
 void SrbdCMPC::AddMode(SrbdDynamics dynamics, BipedStance stance, int N) {
@@ -183,9 +185,17 @@ void SrbdCMPC::Build() {
   std::cout << "Built Koopman Mpc QP: \nModes: " << std::to_string(nmodes_) <<
             "\nTotal Knots: " << std::to_string(total_knots_) << std::endl;
 
-
-  prog_.SetSolverOption(OsqpSolver().id(), "eps_abs", 1e-7);
-  prog_.SetSolverOption(OsqpSolver().id(), "eps_rel", 1e-7);
+  drake::solvers::SolverOptions solver_options;
+  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
+  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
+  std::cout << solver_options << std::endl;
+  solver_->InitializeSolver(prog_, solver_options);
 }
 
 void SrbdCMPC::MakeStanceFootConstraints() {
@@ -551,21 +561,21 @@ EventStatus SrbdCMPC::PeriodicUpdate(
         CalcCentroidalStateFromPlant(x, timestamp), 0, 0);
   }
 
-  solver_.Solve(prog_, {}, {}, &result_);
+  result_ = solver_->Solve(prog_);
 
-  if (!result_.is_success()) {
-    std::cout << "Infeasible\n";
-    print_current_init_state_constraint();
-  }
+//  if (!result_.is_success()) {
+//    std::cout << "Infeasible\n";
+//    print_current_init_state_constraint();
+//  }
 
-  DRAKE_DEMAND(result_.is_success());
-  /* Debugging - (not that helpful)
-  if (result.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
+  // DRAKE_DEMAND(result_.is_success());
+  /* Debugging - (not that helpful) */
+  if (result_.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
     std::cout << "Infeasible problem! See infeasible constraints below:\n";
-    for (auto name : result.GetInfeasibleConstraintNames(prog_)) {
+    for (auto name : result_.GetInfeasibleConstraintNames(prog_)) {
       std::cout << name << std::endl;
     }
-  } */
+  }
 
   most_recent_sol_ = MakeLcmTrajFromSol(
       result_, timestamp, time_since_last_event,  x);

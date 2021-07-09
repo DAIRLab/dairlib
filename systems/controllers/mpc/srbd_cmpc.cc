@@ -683,19 +683,16 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
   LcmTrajectory::Trajectory CoMTraj;
   LcmTrajectory::Trajectory AngularTraj;
   LcmTrajectory::Trajectory SwingFootTraj;
-  LcmTrajectory::Trajectory LambdaTraj;
 
   CoMTraj.traj_name = "com_traj";
   AngularTraj.traj_name = "orientation";
   SwingFootTraj.traj_name = "swing_foot_traj";
-  LambdaTraj.traj_name = "lambda_traj";
 
 
   /** need to set datatypes for LcmTrajectory to save properly **/
   for (int i = 0; i < 2*kLinearDim_; i++) {
     CoMTraj.datatypes.emplace_back("double");
     SwingFootTraj.datatypes.emplace_back("double");
-    LambdaTraj.datatypes.emplace_back("double");
   }
   for (int i = 0; i < 2*kAngularDim_; i++) {
     AngularTraj.datatypes.emplace_back("double");
@@ -703,7 +700,6 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
 
   /** preallocate Eigen matrices for trajectory blocks **/
   MatrixXd x = MatrixXd::Zero(nx_ ,  total_knots_);
-  MatrixXd lambda = MatrixXd::Zero(2*kLinearDim_, total_knots_ - nmodes_);
   VectorXd x_time_knots = VectorXd::Zero(total_knots_);
 
   int idx_x0 = x0_idx_[0] * modes_.front().N + x0_idx_[1];
@@ -717,14 +713,9 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
 
       x.block(0, col_i, nx_, 1) =
           result.GetSolution(mode.xx.at(j).head(nx_));
-      lambda.block(0, col_i, kLinearDim_, 1) =
-          result.GetSolution(mode.uu.at(j).segment(nu_ - (kLinearDim_ +1), kLinearDim_));
       x_time_knots(col_i) = time + dt_ * col_i;
     }
   }
-
-  LambdaTraj.time_vector = x_time_knots;
-  LambdaTraj.datapoints = lambda;
 
   MatrixXd x_com_knots(2*kLinearDim_, x.cols());
   x_com_knots << x.block(0, 0, kLinearDim_, x.cols()),
@@ -752,7 +743,6 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
   lcm_traj.AddTrajectory(CoMTraj.traj_name, CoMTraj);
   lcm_traj.AddTrajectory(AngularTraj.traj_name, AngularTraj);
   lcm_traj.AddTrajectory(SwingFootTraj.traj_name, SwingFootTraj);
-  lcm_traj.AddTrajectory(LambdaTraj.traj_name, LambdaTraj);
 
   return lcm_traj.GenerateLcmObject();
 }

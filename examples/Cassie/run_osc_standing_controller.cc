@@ -7,6 +7,8 @@
 #include "examples/Cassie/osc/standing_com_traj.h"
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/kinematic/fixed_joint_evaluator.h"
+
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -40,6 +42,7 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using multibody::FixedJointEvaluator;
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -106,12 +109,12 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
   addCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
                      "examples/Cassie/urdf/cassie_v2.urdf",
-                     true /*spring model*/, false /*loop closure*/);
+                     false /*spring model*/, false /*loop closure*/);
   plant_w_springs.Finalize();
   // Build fix-spring Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
   addCassieMultibody(&plant_wo_springs, nullptr, true,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     "examples/Cassie/urdf/cassie_v2.urdf", false,
                      false);
   plant_wo_springs.Finalize();
 
@@ -226,6 +229,25 @@ int DoMain(int argc, char* argv[]) {
   auto right_loop = RightLoopClosureEvaluator(plant_wo_springs);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
+
+  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_wo_springs);
+  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_wo_springs);
+  auto left_fixed_knee_spring =
+      FixedJointEvaluator(plant_wo_springs, pos_idx_map.at("knee_joint_left"),
+                          vel_idx_map.at("knee_joint_leftdot"), 0);
+  auto right_fixed_knee_spring =
+      FixedJointEvaluator(plant_wo_springs, pos_idx_map.at("knee_joint_right"),
+                          vel_idx_map.at("knee_joint_rightdot"), 0);
+  auto left_fixed_ankle_spring = FixedJointEvaluator(
+      plant_wo_springs, pos_idx_map.at("ankle_spring_joint_left"),
+      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+  auto right_fixed_ankle_spring = FixedJointEvaluator(
+      plant_wo_springs, pos_idx_map.at("ankle_spring_joint_right"),
+      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+  evaluators.add_evaluator(&left_fixed_knee_spring);
+  evaluators.add_evaluator(&right_fixed_knee_spring);
+  evaluators.add_evaluator(&left_fixed_ankle_spring);
+  evaluators.add_evaluator(&right_fixed_ankle_spring);
   osc->AddKinematicConstraint(&evaluators);
   // Soft constraint
   // We don't want w_contact_relax to be too big, cause we want tracking

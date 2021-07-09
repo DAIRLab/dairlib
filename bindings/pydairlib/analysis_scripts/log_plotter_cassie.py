@@ -118,20 +118,25 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  t_start = 30.645
-  t_end = t_start + 0.08
+  # t_start = 30
+  # t_end = 30.5
+  # t_start = 3
+  # t_end = 3.5
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
+
+  # print(np.average(np.diff(t_u[t_u_slice])))
+  # plt.plot(t_u[t_u_slice], np.diff(t_u[t_u_slice], prepend=30), '.')
 
   # All plotting scripts here
   # plot_status(full_log)
   # plot_ekf(full_log, pos_map, vel_map)
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
-  if True:
+  if False:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
                         front_contact_disp,
@@ -146,7 +151,7 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
   plt.show()
 
@@ -179,7 +184,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   tracking_cost_map = dict()
   qp_solve_time = np.zeros(t_u.shape[0])
   num_tracking_cost = 0
-  import pdb; pdb.set_trace()
 
   for i in range(t_u.shape[0] - 10):
     input_cost[i] = osc_output[i].input_cost
@@ -209,7 +213,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
-  if(controller_channel == 'OSC_JUMPING'):
+  if(controller_channel == 'OSC_JUMPING' or controller_channel == 'CASSIE_INPUT'):
     # For Jumping
     osc_traj0 = "com_traj"
     osc_traj1 = "left_ft_traj"
@@ -217,7 +221,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     osc_traj3 = "left_toe_angle_traj"
     osc_traj4 = "right_toe_angle_traj"
     osc_traj5 = "swing_hip_yaw_left_traj"
-    osc_traj6 = "swing_hip_yaw_left_traj"
+    osc_traj6 = "swing_hip_yaw_right_traj"
     osc_traj7 = "pelvis_rot_tracking_data"
   elif(controller_channel == 'OSC_WALKING'):
     # For Walking
@@ -253,17 +257,19 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
-  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  plot_osc(osc_debug, osc_traj0, 2, "pos")
+  ps.plot(t_u[t_u_slice], 0.25 * fsm[t_u_slice])
+
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
   # plot_osc(osc_debug, osc_traj0, 2, "vel")
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "acc")
-  plot_osc(osc_debug, osc_traj0, 1, "acc")
+  # plot_osc(osc_debug, osc_traj0, 1, "acc")
   # plot_osc(osc_debug, osc_traj0, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
@@ -294,10 +300,10 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
-  # plot_osc(osc_debug, osc_traj5, 0, "pos")
-  # plot_osc(osc_debug, osc_traj6, 0, "pos")
-  # plot_osc(osc_debug, osc_traj5, 0, "vel")
-  # plot_osc(osc_debug, osc_traj6, 0, "vel")
+  plot_osc(osc_debug, osc_traj5, 0, "pos")
+  plot_osc(osc_debug, osc_traj6, 0, "pos")
+  plot_osc(osc_debug, osc_traj5, 0, "vel")
+  plot_osc(osc_debug, osc_traj6, 0, "vel")
   # plot_osc(osc_debug, osc_traj5, 0, "acc")
   # plot_osc(osc_debug, osc_traj6, 0, "acc")
   # plot_osc(osc_debug, osc_traj7, 0, "pos")
@@ -495,6 +501,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # floating base states
   # pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
+  vel_indices = slice(23 + 6, 23 + 10)
   # all motor torques
   u_indices = slice(0, 10)
 
@@ -510,7 +517,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   #
   plt.figure("efforts: " + filename)
   ps.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
-  ps.plot(t_x[t_slice], u_meas[t_slice, u_indices], linestyle='--')
+  # ps.plot(t_x[t_slice], u_meas[t_slice, u_indices], linestyle='--')
   plt.legend(u_datatypes[u_indices] + u_datatypes[u_indices])
 
 def plot_status(full_log):

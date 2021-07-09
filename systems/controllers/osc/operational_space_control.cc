@@ -736,10 +736,10 @@ VectorXd OperationalSpaceControl::SolveQp(
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   // Extract solutions
-  if(!result.is_success()){
-    std::cout << "reverting to old sol" << std::endl;
-    return *u_sol_;
-  }
+//  if(!result.is_success()){
+//    std::cout << "reverting to old sol" << std::endl;
+//    return *u_sol_;
+//  }
   *dv_sol_ = result.GetSolution(dv_);
   *u_sol_ = result.GetSolution(u_);
   *lambda_c_sol_ = result.GetSolution(lambda_c_);

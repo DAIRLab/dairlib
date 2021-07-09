@@ -25,17 +25,17 @@ def main():
   force_datatypes = dircon_traj.GetTrajectory("force_vars1").datatypes
 
   collocation_force_points = dircon_traj.GetCollocationForceSamples(0)
-
-  M = reflected_joints()
-
-  mirror_traj = lcm_trajectory.Trajectory()
-  mirror_traj.traj_name = 'mirror_matrix'
-  mirror_traj.time_vector = np.zeros(M.shape[0])
-  mirror_traj.datapoints = M
-  mirror_traj.datatypes = [''] * M.shape[0]
-
-  dircon_traj.AddTrajectory('mirror_matrix', mirror_traj)
-  dircon_traj.WriteToFile(filename)
+  import pdb; pdb.set_trace()
+  # M = reflected_joints()
+  #
+  # mirror_traj = lcm_trajectory.Trajectory()
+  # mirror_traj.traj_name = 'mirror_matrix'
+  # mirror_traj.time_vector = np.zeros(M.shape[0])
+  # mirror_traj.datapoints = M
+  # mirror_traj.datatypes = [''] * M.shape[0]
+  #
+  # dircon_traj.AddTrajectory('mirror_matrix', mirror_traj)
+  # dircon_traj.WriteToFile(filename)
 
   n_points = 500
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
@@ -47,16 +47,16 @@ def main():
     input_samples[i] = input_traj.value(t[i])[:, 0]
     # force_samples[i] = force_traj[0].value(t[i])[:, 0]
 
-  reflected_state_samples = state_samples @ M
+  # reflected_state_samples = state_samples @ M
   # Plotting reconstructed state trajectories
   plt.figure("state trajectory")
-  plt.plot(t, state_samples[:, 7:13])
+  plt.plot(t, state_samples[:, 0:7])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 0:7])
   # plt.plot(t, state_samples[:, -18:])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 7:13])
   # plt.plot(t, state_samples[:, 25:31])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 25:31])
-  plt.legend(state_datatypes[7:13])
+  plt.legend(state_datatypes[0:7])
 
   plt.figure("input trajectory")
   plt.plot(t, input_samples[:, :])
@@ -67,7 +67,7 @@ def main():
   plt.plot(force_t_samples, force_samples.T)
   plt.legend(force_datatypes)
 
-  # plt.show()
+  plt.show()
 
 def reflected_joints():
 

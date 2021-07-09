@@ -56,6 +56,8 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
+DEFINE_double(contact_force_threshold, 60,
+              "Contact force threshold. Set to 140 for walking");
 
 // Testing mode
 DEFINE_int64(test_mode, -1,
@@ -191,7 +193,7 @@ int do_main(int argc, char* argv[]) {
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
       &right_contact_evaluator, FLAGS_test_with_ground_truth_state,
-      FLAGS_print_ekf_info, FLAGS_test_mode);
+      FLAGS_print_ekf_info, FLAGS_test_mode, FLAGS_contact_force_threshold);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -203,8 +205,10 @@ int do_main(int argc, char* argv[]) {
   // connect cassie_out publisher
   builder.Connect(*output_sender, *output_pub);
 
+
   // Connect appropriate input receiver for simulation
   systems::CassieOutputReceiver* input_receiver = nullptr;
+  LcmPublisherSystem* output_local_pub = nullptr;
   if (FLAGS_simulation) {
     input_receiver = builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
@@ -226,6 +230,12 @@ int do_main(int argc, char* argv[]) {
                       state_estimator->get_input_port(1));
     }
   }
+  else{
+    output_local_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+            "CASSIE_OUTPUT", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(*output_sender, *output_local_pub);
+  }
 
   // Create and connect RobotOutput publisher.
   auto robot_output_sender =
@@ -240,16 +250,10 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_contact_output_port(),
                   contact_pub->get_input_port());
-  // Create and connect contact estimation publisher.
-  auto filtered_contact_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
-          "CASSIE_FILTERED_CONTACT_DISPATCHER", &lcm_local,
-          {TriggerType::kForced}));
-  auto gm_contact_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+  // TODO(yangwill): Consider filtering contact estimation
+  auto gm_contact_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
-  builder.Connect(state_estimator->get_filtered_contact_output_port(),
-                  filtered_contact_pub->get_input_port());
   builder.Connect(state_estimator->get_gm_contact_output_port(),
                   gm_contact_pub->get_input_port());
 
@@ -272,7 +276,8 @@ int do_main(int argc, char* argv[]) {
 
   auto imu_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
       state_estimator->get_robot_output_port().size(),
-      robot_output_sender->get_input_port_state().size() + robot_output_sender->get_input_port_effort().size(),
+      robot_output_sender->get_input_port_state().size() +
+          robot_output_sender->get_input_port_effort().size(),
       robot_output_sender->get_input_port_imu().size());
 
   builder.Connect(state_estimator->get_robot_output_port(),
@@ -347,6 +352,7 @@ int do_main(int argc, char* argv[]) {
         std::cout << "Difference is too large, resetting dispatcher time."
                   << std::endl;
         simulator.get_mutable_context().SetTime(time);
+        simulator.Initialize();
       }
 
       state_estimator->set_next_message_time(time);

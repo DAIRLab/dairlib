@@ -11,7 +11,6 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/constraint.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/solvers/solve.h"
 
 #include "drake/common/find_resource.h"

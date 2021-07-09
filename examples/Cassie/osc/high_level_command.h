@@ -23,8 +23,11 @@ namespace osc {
 ///
 /// We use logistic function to implement the weighting for the current position
 /// y_c and y_t.
-/// Logistic function = 1 / (1 - params_1*exp(x-params_2))
+/// Logistic function = 1 / (1 +exp(-params_1*(x-params_2)))
 /// Function visualization: https://www.desmos.com/calculator/agxuc5gip8
+/// As an example, the function 1/(1+exp(-5*(x-1))) outputs 0.0007 when x = 0
+///                                                         0.5    when x = 1
+///                                                         0.9993 when x = 2
 ///
 /// The desired velocities are derived based on PD position control.
 ///

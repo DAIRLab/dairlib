@@ -1,10 +1,11 @@
 #include "multibody/multipose_visualizer.h"
 
-#include "drake/geometry/geometry_visualization.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -87,10 +88,10 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
     }
   }
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, *scene_graph, lcm);
+  DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph, lcm);
   diagram_ = builder.Build();
   diagram_context_ = diagram_->CreateDefaultContext();
-  drake::geometry::DispatchLoadMessage(*scene_graph, lcm);
+  DrakeVisualizer<double>::DispatchLoadMessage(*scene_graph, lcm);
 }
 
 void MultiposeVisualizer::DrawPoses(MatrixXd poses) {

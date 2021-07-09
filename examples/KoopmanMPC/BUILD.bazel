@@ -106,6 +106,7 @@ cc_binary(
 cc_binary(
     name = "run_osc_walking_lipm",
     srcs = ["run_osc_walking_lipm.cc"],
+    tags = ["manual"],
     deps = [
         "//common",
         "//examples/KoopmanMPC/PlanarWalker:planar_walker",

@@ -117,9 +117,9 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     //                  1: saggital_vel (left joystick up/down)
     //                  2: lateral_vel (left joystick left/right)
     Vector3d des_vel;
-    des_vel << -1 * vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
+    des_vel << vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
         vel_scale_trans_sagital_ * cassie_out->pelvis.radio.channel[0],
-        -1 * vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
+        vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
   } else {
     discrete_state->get_mutable_vector(des_vel_idx_)
@@ -140,7 +140,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   plant_.SetPositions(context_, q);
 
   // Get center of mass position and velocity
-  Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d com_pos = plant_.CalcCenterOfMassPositionInWorld(*context_);
   MatrixXd J(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
       *context_, JacobianWrtVariable::kV, world_, world_, &J);

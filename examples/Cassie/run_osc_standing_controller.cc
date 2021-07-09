@@ -56,6 +56,7 @@ DEFINE_double(cost_weight_multiplier, 0.001,
 DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
+DEFINE_bool(use_radio, false, "use the radio to set height or not");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -198,7 +199,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height);
+      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height, FLAGS_use_radio);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
           plant_w_springs, context_w_spr.get(), feet_contact_points,
@@ -254,10 +255,6 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
-  Q_accel(6, 6) = 0.1;
-  Q_accel(7, 7) = 0.1;
-  Q_accel(8, 8) = 0.1;
-  Q_accel(9, 9) = 0.1;
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
@@ -277,18 +274,18 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_rot_traj);
 
-  JointSpaceTrackingData hip_yaw_left_tracking(
-      "hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
-  JointSpaceTrackingData hip_yaw_right_tracking(
-      "hip_yaw_right_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
-  hip_yaw_left_tracking.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-  hip_yaw_right_tracking.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&hip_yaw_left_tracking, 0.0 * VectorXd::Ones(1));
-  osc->AddConstTrackingData(&hip_yaw_right_tracking, 0.0 * VectorXd::Ones(1));
+//  JointSpaceTrackingData hip_yaw_left_tracking(
+//      "hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw,
+//      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
+//      plant_wo_springs);
+//  JointSpaceTrackingData hip_yaw_right_tracking(
+//      "hip_yaw_right_traj", K_p_hip_yaw, K_d_hip_yaw,
+//      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
+//      plant_wo_springs);
+//  hip_yaw_left_tracking.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+//  hip_yaw_right_tracking.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+//  osc->AddConstTrackingData(&hip_yaw_left_tracking, 0.0 * VectorXd::Ones(1));
+//  osc->AddConstTrackingData(&hip_yaw_right_tracking, 0.0 * VectorXd::Ones(1));
 
   // Build OSC problem
   osc->Build();

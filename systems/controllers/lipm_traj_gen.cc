@@ -4,6 +4,8 @@
 
 #include <string>
 
+#include <drake/math/saturate.h>
+
 using std::cout;
 using std::endl;
 using std::string;
@@ -35,8 +37,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
         contact_points_in_each_state,
-    std::string pelvis_body_name,
-    bool use_CoM, bool constant_target_height)
+    bool use_CoM)
     : plant_(plant),
       context_(context),
       desired_com_height_(desired_com_height),
@@ -44,8 +45,6 @@ LIPMTrajGenerator::LIPMTrajGenerator(
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
       world_(plant_.world_frame()),
-      pelvis_body_name_(pelvis_body_name),
-      constant_target_height_(constant_target_height),
       use_com_(use_CoM) {
   if (use_CoM) {
     this->set_name("lipm_traj");
@@ -65,7 +64,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
                                                         plant.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
-  fsm_switch_time_port_ =
+  touchdown_time_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
@@ -83,34 +82,31 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);
   // The last FSM event time
-  prev_fsm_event_idx_ = this->DeclareDiscreteState(
-      -std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
+  prev_touchdown_time_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
   // The stance foot position in the beginning of the swing phase
-  prev_touchdown_stance_foot_idx_ = this->DeclareDiscreteState(3);
+  stance_foot_pos_idx_ = this->DeclareDiscreteState(3);
   // COM state at touchdown
-  prev_touchdown_com_pos_idx_ = this->DeclareDiscreteState(3);
-  prev_touchdown_com_vel_idx_ = this->DeclareDiscreteState(3);
-  VectorXd starting_fsm(1);
-  starting_fsm << -1;
-  prev_fsm_idx_ = this->DeclareDiscreteState(starting_fsm);
+  touchdown_com_pos_idx_ = this->DeclareDiscreteState(3);
+  touchdown_com_vel_idx_ = this->DeclareDiscreteState(3);
+  prev_fsm_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
 }
 
 EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   // Read in previous touchdown time
-  auto old_prev_fsm_event_time =
-      discrete_state->get_mutable_vector(prev_fsm_event_idx_)
+  auto prev_touchdown_time =
+      discrete_state->get_mutable_vector(prev_touchdown_time_idx_)
           .get_mutable_value();
-  double new_prev_event_time =
-      this->EvalVectorInput(context, fsm_switch_time_port_)->get_value()(0);
+  double touchdown_time =
+      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
 
   // Read in finite state machine
   auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
   // when entering a new stance phase
   if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
-    old_prev_fsm_event_time << new_prev_event_time;
+    prev_touchdown_time << touchdown_time;
 
     // Read in current state
     const OutputVector<double>* robot_output =
@@ -124,8 +120,8 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
                    fsm_state);
     int mode_index = std::distance(unordered_fsm_states_.begin(), it);
     if (it == unordered_fsm_states_.end()) {
-      cout << "WARNING: fsm state number " << fsm_state
-           << " doesn't exist in LIPMTrajGenerator\n";
+      std::cerr << "WARNING: fsm state number " << fsm_state
+                << " doesn't exist in LIPMTrajGenerator\n";
       mode_index = 0;
     }
 
@@ -144,27 +140,26 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     Vector3d CoM;
     MatrixXd J(3, plant_.num_velocities());
     if (use_com_) {
-      CoM = plant_.CalcCenterOfMassPosition(*context_);
+      CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
       plant_.CalcJacobianCenterOfMassTranslationalVelocity(
           *context_, JacobianWrtVariable::kV, world_, world_, &J);
     } else {
       plant_.CalcPointsPositions(*context_,
-                                 plant_.GetBodyByName(pelvis_body_name_).body_frame(),
+                                 plant_.GetBodyByName("pelvis").body_frame(),
                                  VectorXd::Zero(3), world_, &CoM);
       plant_.CalcJacobianTranslationalVelocity(
           *context_, JacobianWrtVariable::kV,
-          plant_.GetBodyByName(pelvis_body_name_).body_frame(), VectorXd::Zero(3),
+          plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3),
           world_, world_, &J);
     }
     Vector3d dCoM = J * v;
 
-    discrete_state->get_mutable_vector(prev_touchdown_stance_foot_idx_)
-            .get_mutable_value()
+    discrete_state->get_mutable_vector(stance_foot_pos_idx_).get_mutable_value()
         << stance_foot_pos;
-    discrete_state->get_mutable_vector(prev_touchdown_com_pos_idx_)
+    discrete_state->get_mutable_vector(touchdown_com_pos_idx_)
             .get_mutable_value()
         << CoM;
-    discrete_state->get_mutable_vector(prev_touchdown_com_vel_idx_)
+    discrete_state->get_mutable_vector(touchdown_com_vel_idx_)
             .get_mutable_value()
         << dCoM;
   }
@@ -178,12 +173,11 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
     const VectorXd& CoM, const VectorXd& dCoM, const VectorXd& stance_foot_pos,
     double start_time, double end_time_of_this_fsm_state) const {
   // Get CoM_wrt_foot for LIPM
-  const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
-  const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
-  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  const double dCoM_wrt_foot_x = dCoM(0);
-  const double dCoM_wrt_foot_y = dCoM(1);
-  // const double dCoM_wrt_foot_z = dCoM(2);
+  double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
+  double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
+  double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
+  double dCoM_wrt_foot_x = dCoM(0);
+  double dCoM_wrt_foot_y = dCoM(1);
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
@@ -199,17 +193,13 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double max_height_diff_per_step = 0.05;
-  double final_height = (desired_com_height_ + stance_foot_pos(2) - CoM(2) >
-                         max_height_diff_per_step)
-                            ? CoM(2) + max_height_diff_per_step
-                            : desired_com_height_ + stance_foot_pos(2);
-  //  Y[0](2, 0) = CoM(2);
-  //  Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
-  Y[0](2, 0) = constant_target_height_ ? final_height : CoM(2);
+  double final_height = drake::math::saturate(
+      desired_com_height_ + stance_foot_pos(2),
+      CoM(2) - max_height_diff_per_step, CoM(2) + max_height_diff_per_step);
+  Y[0](2, 0) = final_height;
   Y[1](2, 0) = final_height;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  //  MatrixXd Y_dot_start = dCoM;
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
 
   PiecewisePolynomial<double> pp_part =
@@ -247,36 +237,34 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd v = robot_output->GetVelocities();
-
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
   // Read in finite state machine switch time
   VectorXd prev_event_time =
-      this->EvalVectorInput(context, fsm_switch_time_port_)->get_value();
+      this->EvalVectorInput(context, touchdown_time_port_)->get_value();
 
   // Find fsm_state in unordered_fsm_states_
   auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
                  int(fsm_state(0)));
   int mode_index = std::distance(unordered_fsm_states_.begin(), it);
   if (it == unordered_fsm_states_.end()) {
-    cout << "WARNING: fsm state number " << fsm_state(0)
-         << " doesn't exist in LIPMTrajGenerator\n";
+    std::cerr << "WARNING: fsm state number " << fsm_state(0)
+              << " doesn't exist in LIPMTrajGenerator\n";
     mode_index = 0;
   }
 
   // Get time
   double timestamp = robot_output->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
+  double start_time = timestamp;
 
-  double end_time_of_this_fsm_state =
+  double end_time =
       prev_event_time(0) + unordered_state_durations_[mode_index];
-  // Ensure "current_time < end_time_of_this_fsm_state" to avoid error in
+  // Ensure "current_time < end_time" to avoid error in
   // creating trajectory.
-  if ((end_time_of_this_fsm_state <= current_time + 0.001)) {
-    end_time_of_this_fsm_state = current_time + 0.002;
-  }
+  start_time = drake::math::saturate(
+      start_time, -std::numeric_limits<double>::infinity(), end_time - 0.001);
 
   VectorXd q = robot_output->GetPositions();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
@@ -285,16 +273,16 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   Vector3d CoM;
   MatrixXd J(3, plant_.num_velocities());
   if (use_com_) {
-    CoM = plant_.CalcCenterOfMassPosition(*context_);
+    CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(
         *context_, JacobianWrtVariable::kV, world_, world_, &J);
   } else {
     plant_.CalcPointsPositions(*context_,
-                               plant_.GetBodyByName(pelvis_body_name_).body_frame(),
+                               plant_.GetBodyByName("pelvis").body_frame(),
                                VectorXd::Zero(3), world_, &CoM);
     plant_.CalcJacobianTranslationalVelocity(
         *context_, JacobianWrtVariable::kV,
-        plant_.GetBodyByName(pelvis_body_name_).body_frame(), VectorXd::Zero(3), world_,
+        plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3), world_,
         world_, &J);
   }
   Vector3d dCoM = J * v;
@@ -313,8 +301,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, current_time,
-                                   end_time_of_this_fsm_state);
+  *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(
     const Context<double>& context,
@@ -325,8 +312,9 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
   VectorXd fsm_state = fsm_output->get_value();
   // Read in finite state machine switch time
   VectorXd prev_event_time =
-      this->EvalVectorInput(context, fsm_switch_time_port_)->get_value();
+      this->EvalVectorInput(context, touchdown_time_port_)->get_value();
 
+  // TODO(yangwill): move this in a function or make it shorter
   // Find fsm_state in unordered_fsm_states_
   auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
                  int(fsm_state(0)));
@@ -342,16 +330,16 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
 
   // Get center of mass position and velocity
   const auto CoM_at_touchdown =
-      context.get_discrete_state(prev_touchdown_com_pos_idx_).get_value();
+      context.get_discrete_state(touchdown_com_pos_idx_).get_value();
   const auto dCoM_at_touchdown =
-      context.get_discrete_state(prev_touchdown_com_vel_idx_).get_value();
+      context.get_discrete_state(touchdown_com_vel_idx_).get_value();
 
   // Stance foot position
   const auto stance_foot_pos_at_touchdown =
-      context.get_discrete_state(prev_touchdown_stance_foot_idx_).get_value();
+      context.get_discrete_state(stance_foot_pos_idx_).get_value();
 
   double prev_touchdown_time =
-      this->EvalVectorInput(context, fsm_switch_time_port_)->get_value()(0);
+      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<

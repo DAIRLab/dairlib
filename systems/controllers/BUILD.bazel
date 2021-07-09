@@ -109,6 +109,7 @@ cc_library(
     srcs = ["fsm_event_time.cc"],
     hdrs = ["fsm_event_time.h"],
     deps = [
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

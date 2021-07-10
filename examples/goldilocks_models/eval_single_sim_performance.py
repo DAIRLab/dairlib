@@ -169,7 +169,7 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
     td_times = []
     for idx in range(step_idx_start, step_idx_end + 1):
       td_times.append(stride_period * idx)
-    is_steady_state = CheckSteadyState(x, t_x, td_times)
+    is_steady_state, _ = CheckSteadyState(x, t_x, td_times)
 
   if is_steady_state:
     return t_start, t_end

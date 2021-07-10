@@ -343,7 +343,8 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
   # osc_traj2 = "pelvis_balance_traj"
-  osc_traj2 = "pelvis_rot_traj"  # for standing controller
+  osc_traj2 = "pelvis_heading_traj"
+  # osc_traj2 = "pelvis_rot_traj"  # for standing controller
   osc_traj3 = "swing_hip_yaw_traj"
 
   # osc_traj0 = "left_support_traj"
@@ -382,17 +383,17 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   # plot_osc(osc_debug, osc_traj1, 1, "vel")
   # plot_osc(osc_debug, osc_traj1, 2, "vel")
   #
-  # plot_osc(osc_debug, osc_traj2, 0, "pos")
-  # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  # plot_osc(osc_debug, osc_traj2, 2, "pos")
-  #
-  # plot_osc(osc_debug, osc_traj2, 0, "vel")
-  # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
-  #
-  # plot_osc(osc_debug, osc_traj2, 0, "accel")
-  # plot_osc(osc_debug, osc_traj2, 1, "accel")
-  # plot_osc(osc_debug, osc_traj2, 2, "accel")
+  plot_osc(osc_debug, osc_traj2, 0, "pos")
+  plot_osc(osc_debug, osc_traj2, 1, "pos")
+  plot_osc(osc_debug, osc_traj2, 2, "pos")
+
+  plot_osc(osc_debug, osc_traj2, 0, "vel")
+  plot_osc(osc_debug, osc_traj2, 1, "vel")
+  plot_osc(osc_debug, osc_traj2, 2, "vel")
+
+  plot_osc(osc_debug, osc_traj2, 0, "accel")
+  plot_osc(osc_debug, osc_traj2, 1, "accel")
+  plot_osc(osc_debug, osc_traj2, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "accel")
   # plot_osc(osc_debug, osc_traj1, 1, "accel")

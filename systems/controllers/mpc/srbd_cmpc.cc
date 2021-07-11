@@ -97,8 +97,6 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
     prev_event_time_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
   }
   x_des_ = VectorXd ::Zero(nxi_);
-
-  solver_ = std::make_unique<solvers::FastOsqpSolver>();
 }
 
 void SrbdCMPC::AddMode(SrbdDynamics dynamics, BipedStance stance, int N) {
@@ -194,8 +192,9 @@ void SrbdCMPC::Build() {
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
+  prog_.SetSolverOptions(solver_options);
   std::cout << solver_options << std::endl;
-  solver_->InitializeSolver(prog_, solver_options);
+
 }
 
 void SrbdCMPC::MakeStanceFootConstraints() {
@@ -412,11 +411,13 @@ void SrbdCMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
   DRAKE_DEMAND(R.cols() == nu_);
   DRAKE_DEMAND(R.rows() == nu_);
 
+  VectorXd ueq = VectorXd::Zero(nu_);
+  ueq(nu_-2) = mass_ * 9.81;
   for(auto & mode : modes_) {
     // loop over N inputs
     for (int i = 0; i < mode.N; i++) {
       input_cost_.push_back(
-          prog_.AddQuadraticCost(R, VectorXd::Zero(nu_), mode.uu.at(i))
+          prog_.AddQuadraticErrorCost(R, ueq, mode.uu.at(i))
               .evaluator()
               .get());
     }
@@ -561,7 +562,7 @@ EventStatus SrbdCMPC::PeriodicUpdate(
         CalcCentroidalStateFromPlant(x, timestamp), 0, 0);
   }
 
-  result_ = solver_->Solve(prog_);
+  solver_.Solve(prog_, {}, {}, &result_);
 
 //  if (!result_.is_success()) {
 //    std::cout << "Infeasible\n";
@@ -704,7 +705,7 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
     CoMTraj.datatypes.emplace_back("double");
     SwingFootTraj.datatypes.emplace_back("double");
   }
-  for (int i = 0; i < 2*kAngularDim_; i++) {
+  for (int i = 0; i < 4; i++) {
     AngularTraj.datatypes.emplace_back("double");
   }
 
@@ -733,11 +734,14 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
   CoMTraj.time_vector = x_time_knots;
   CoMTraj.datapoints = x_com_knots;
 
-  MatrixXd orientation_knots(2*kAngularDim_, x.cols());
+  // TODO: Update OSC to use RPY -- currently just doing quaternions
+  // NOT SUITABLE FOR PLANAR implementation
+  MatrixXd orientation_knots(4, x.cols());
 
-  orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols()),
-        x.block(kLinearDim_ * 2 + kAngularDim_, 0, kAngularDim_, x.cols());
-
+  for (int i = 0; i < x.cols(); i++) {
+    rpy_.set(x.block(kLinearDim_, i, kAngularDim_, 1));
+    orientation_knots.col(i) = rpy_.ToRotationMatrix().ToQuaternionAsVector4();
+  }
 
   AngularTraj.time_vector = x_time_knots;
   AngularTraj.datapoints = orientation_knots;

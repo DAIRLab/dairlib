@@ -231,7 +231,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   int kAngularDim_;
 
   // Solver
-  std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  drake::solvers::OsqpSolver solver_;
   mutable drake::solvers::MathematicalProgramResult result_;
   mutable drake::solvers::MathematicalProgram prog_;
   mutable int x0_idx_[2] = {0, 0};

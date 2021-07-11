@@ -31,10 +31,10 @@ MpcTrajectoryReceiver::MpcTrajectoryReceiver(
     com_traj_port_ = this->DeclareAbstractOutputPort("com_traj",
         traj_inst, &MpcTrajectoryReceiver::MakeComTrajFromLcm).get_index();
 
-    angular_traj_port_ = this->DeclareAbstractOutputPort("angular_traj",
+    angular_traj_port_ = this->DeclareAbstractOutputPort("orientation_traj",
         traj_inst, &MpcTrajectoryReceiver::MakeAngularTrajFromLcm).get_index();
 
-    swing_ft_traj_port_ = this->DeclareAbstractOutputPort("swing_foot_traj",
+    swing_ft_traj_port_ = this->DeclareAbstractOutputPort("swing_ft_traj",
         traj_inst, &MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm).get_index();
 }
 
@@ -62,7 +62,7 @@ void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
     auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
             traj);
-    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(
         orientation.time_vector, orientation.datapoints);
   }
 }

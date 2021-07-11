@@ -210,7 +210,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&pelvis_traj);
   }
 
-  RotTaskSpaceTrackingData angular_traj("base_orientation", gains.K_p_orientation,
+  RotTaskSpaceTrackingData angular_traj("orientation_traj", gains.K_p_orientation,
                                       gains.K_d_orientation, gains.W_orientation, plant_w_springs, plant_w_springs);
 
   angular_traj.AddFrameToTrack("pelvis");
@@ -238,7 +238,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("com_traj"));
 
   builder.Connect(mpc_reciever->get_angular_traj_output_port(),
-                  osc->get_tracking_data_input_port("base_orientation"));
+                  osc->get_tracking_data_input_port("orientation_traj"));
 
   builder.Connect(mpc_reciever->get_swing_ft_traj_output_port(),
                   osc->get_tracking_data_input_port("swing_ft_traj"));

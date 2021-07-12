@@ -260,7 +260,7 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
 
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return mpc_subscriber->GetInternalMessageCount() > 1; });
+    return mpc_subscriber->GetInternalMessageCount() > 0; });
 
   auto& loop_context = loop.get_diagram_mutable_context();
   mpc_subscriber->Publish(loop.get_diagram()->

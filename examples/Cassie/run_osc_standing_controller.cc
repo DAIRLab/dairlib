@@ -51,9 +51,9 @@ DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
-DEFINE_double(cost_weight_multiplier, 0.001,
+DEFINE_double(cost_weight_multiplier,  .001,
               "A cosntant times with cost weight of OSC traj tracking");
-DEFINE_double(height, .8, "The initial COM height (m)");
+DEFINE_double(height, 0.95, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");

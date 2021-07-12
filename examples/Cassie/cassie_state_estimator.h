@@ -233,6 +233,19 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Contacts
   const int num_contacts_ = 2;
   const std::vector<std::string> contact_names_ = {"left", "right"};
+
+  // Hysterisis model
+  void ApplyHysteresismodel(double t, OutputVector<double>* output) const;
+  double backlash_ = 2 / 180 * M_PI;
+  mutable double filtered_roll_l_ = 0;
+  mutable double filtered_roll_r_ = 0;
+  mutable double prev_filtered_roll_l_ = 0;
+  mutable double prev_filtered_roll_r_ = 0;
+  // Velocity filter
+  double cutoff_freq_ = 1000;  // = 10;  // in Hz.
+  mutable double last_timestamp_ = 0;
+  mutable double filtered_roll_vel_l_ = 0;
+  mutable double filtered_roll_vel_r_ = 0;
 };
 
 }  // namespace systems

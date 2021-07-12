@@ -146,13 +146,15 @@ CassieStateEstimator::CassieStateEstimator(
     P.block<3, 3>(12, 12) = 0.01 * MatrixXd::Identity(3, 3);  // accel bias
     initial_state.setP(P);
     // initialize ekf input noise
-    cov_w_ = 0.000289 * Eigen::MatrixXd::Identity(16, 16);
+    //    cov_w_ = 0.000289 * Eigen::MatrixXd::Identity(16, 16);
+    double err_encoder = 10 * M_PI / 180;
+    cov_w_ = err_encoder * err_encoder * Eigen::MatrixXd::Identity(16, 16);
     inekf::NoiseParams noise_params;
     noise_params.setGyroscopeNoise(0.002);
     noise_params.setAccelerometerNoise(0.04);
     noise_params.setGyroscopeBiasNoise(0.001);
     noise_params.setAccelerometerBiasNoise(0.001);
-    noise_params.setContactNoise(0.05);
+    noise_params.setContactNoise(0.1);  // 0.1 // originally 0.05
     // 2. estimated EKF state (imu frame)
     inekf::InEKF value(initial_state, noise_params);
     ekf_idx_ = DeclareAbstractState(*AbstractValue::Make<inekf::InEKF>(value));
@@ -579,6 +581,60 @@ void CassieStateEstimator::EstimateContactForController(
   }
 }
 
+void CassieStateEstimator::ApplyHysteresismodel(
+    double t, OutputVector<double>* output) const {
+
+  // Hysteresis model
+  double hip_roll_l =
+      output->GetPositionAtIndex(position_idx_map_.at("hip_roll_left"));
+  double diff = hip_roll_l - filtered_roll_l_;
+  if (diff < -backlash_) {
+    filtered_roll_l_ = hip_roll_l + backlash_;
+  } else if (diff > backlash_) {
+    filtered_roll_l_ = hip_roll_l - backlash_;
+  }
+  output->SetPositionAtIndex(position_idx_map_.at("hip_roll_left"),
+                             filtered_roll_l_);
+
+  double hip_roll_r =
+      output->GetPositionAtIndex(position_idx_map_.at("hip_roll_right"));
+  diff = hip_roll_r - filtered_roll_r_;
+  if (diff < -backlash_) {
+    filtered_roll_r_ = hip_roll_r + backlash_;
+  } else if (diff > backlash_) {
+    filtered_roll_r_ = hip_roll_r - backlash_;
+  }
+  output->SetPositionAtIndex(position_idx_map_.at("hip_roll_right"),
+                             filtered_roll_r_);
+
+  // Finite differencing to get joint vel
+  if (last_timestamp_ == 0) {
+    last_timestamp_ = t;
+    prev_filtered_roll_l_ = filtered_roll_l_;
+    prev_filtered_roll_r_ = filtered_roll_r_;
+  } else {
+    double dt = t - last_timestamp_;
+    if (dt > 0) {
+      double vdot_l_ = (filtered_roll_l_ - prev_filtered_roll_l_) / dt;
+      double vdot_r_ = (filtered_roll_r_ - prev_filtered_roll_r_) / dt;
+      prev_filtered_roll_l_ = filtered_roll_l_;
+      prev_filtered_roll_r_ = filtered_roll_r_;
+      double alpha =
+          2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+      filtered_roll_vel_l_ =
+          alpha * vdot_l_ + (1 - alpha) * filtered_roll_vel_l_;
+      filtered_roll_vel_r_ =
+          alpha * vdot_r_ + (1 - alpha) * filtered_roll_vel_r_;
+    }
+  }
+
+  output->SetVelocityAtIndex(velocity_idx_map_.at("hip_roll_leftdot"),
+                             filtered_roll_vel_l_);
+  output->SetVelocityAtIndex(velocity_idx_map_.at("hip_roll_rightdot"),
+                             filtered_roll_vel_r_);
+  last_timestamp_ = t;
+}
+
 EventStatus CassieStateEstimator::Update(
     const Context<double>& context,
     drake::systems::State<double>* state) const {
@@ -718,6 +774,7 @@ EventStatus CassieStateEstimator::Update(
   AssignImuValueToOutputVector(cassie_out, &filtered_output);
   AssignActuationFeedbackToOutputVector(cassie_out, &filtered_output);
   AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
+  ApplyHysteresismodel(context.get_time(), &filtered_output);
   AssignFloatingBaseStateToOutputVector(estimated_fb_state, &filtered_output);
 
   // Step 3 - Estimate which foot/feet are in contact with the ground
@@ -923,6 +980,7 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
   AssignImuValueToOutputVector(cassie_out, output);
   AssignActuationFeedbackToOutputVector(cassie_out, output);
   AssignNonFloatingBaseStateToOutputVector(cassie_out, output);
+  ApplyHysteresismodel(context.get_time(), output);
   // Copy the floating base base state
   if (is_floating_base_) {
     AssignFloatingBaseStateToOutputVector(
@@ -1006,7 +1064,6 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
     VectorXd& lambda, int& left_contact, int& right_contact) const {
-
   // TODO(yangwill) add a discrete time filter to the force estimate
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
@@ -1026,7 +1083,6 @@ void CassieStateEstimator::EstimateContactForces(
   VectorXd tau_d = gamma * beta * M * v_prev -
                    (1 - gamma) * (beta * M * v + B * output.GetEfforts() + C -
                                   g + f_app.generalized_forces());
-
 
   // Simplifying to 2 feet contacts, might need to change it to two contacts per
   // foot and sum them up

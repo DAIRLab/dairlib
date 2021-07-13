@@ -12,7 +12,6 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "examples/KoopmanMPC/PlanarWalker/planar_walker_model_utils.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/parsing/parser.h"

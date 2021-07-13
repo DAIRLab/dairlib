@@ -4,7 +4,6 @@
 #pragma once
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/framework/context.h"
 #include "multibody/multibody_utils.h"
 #include "common/find_resource.h"

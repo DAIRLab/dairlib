@@ -5,6 +5,7 @@
 #include "solvers/constraint_factory.h"
 
 #include "drake/solvers/solve.h"
+#include "drake/geometry/scene_graph.h"
 
 namespace dairlib {
 

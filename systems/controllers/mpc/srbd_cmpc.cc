@@ -705,7 +705,7 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
     CoMTraj.datatypes.emplace_back("double");
     SwingFootTraj.datatypes.emplace_back("double");
   }
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 2*kAngularDim_; i++) {
     AngularTraj.datatypes.emplace_back("double");
   }
 
@@ -734,9 +734,7 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
   CoMTraj.time_vector = x_time_knots;
   CoMTraj.datapoints = x_com_knots;
 
-  // TODO: Update OSC to use RPY -- currently just doing quaternions
-  // NOT SUITABLE FOR PLANAR implementation
-  MatrixXd orientation_knots(4, x.cols());
+  MatrixXd orientation_knots(2*kAngularDim_, x.cols());
 
   for (int i = 0; i < x.cols(); i++) {
     rpy_.set(x.block(kLinearDim_, i, kAngularDim_, 1));

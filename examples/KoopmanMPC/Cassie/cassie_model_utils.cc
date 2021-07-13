@@ -5,7 +5,6 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/framework/context.h"
 
 namespace dairlib{

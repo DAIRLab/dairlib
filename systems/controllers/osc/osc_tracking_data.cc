@@ -427,7 +427,7 @@ void RpyTaskSpaceTrackingData::UpdateYAndError(const Eigen::VectorXd& x_w_spr,
   RollPitchYaw<double> rpy_des(y_des_);
 
   // Get relative quaternion (from current to desired)
-  auto ax_ang = rpy_des.ToRotationMatrix().InvertAndCompose(transform_mat.rotation()).ToAnlgeAxis();
+  auto ax_ang = rpy_des.ToRotationMatrix().InvertAndCompose(transform_mat.rotation()).ToAngleAxis();
   error_y_ = ax_ang.angle() * ax_ang.axis();
 }
 
@@ -456,7 +456,7 @@ void RpyTaskSpaceTrackingData::UpdateYddotDes() {
   // Convert ddt_rpy into angular acceleration
   RollPitchYaw<double> rpy_des(y_des_);
   Vector3d M_r_ddot = rpy_des.CalcAngularVelocityInParentFromRpyDt(yddot_des_);
-  Matrix3d Mdot = rpy_des.CalcDtMatrixRelatingAngularVelocityInParentToRpyDt();
+  Matrix3d Mdot = rpy_des.CalcDtMatrixRelatingAngularVelocityInParentToRpyDt(ydot_des_);
   yddot_des_converted_ = M_r_ddot + Mdot * ydot_des_;
 }
 

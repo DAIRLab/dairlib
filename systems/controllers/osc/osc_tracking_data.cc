@@ -5,7 +5,7 @@
 #include <algorithm>
 
 #include <drake/multibody/plant/multibody_plant.h>
-
+#include <drake/math/roll_pitch_yaw.h>
 #include "multibody/multibody_utils.h"
 
 using std::cout;
@@ -14,6 +14,9 @@ using std::endl;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
+using drake::math::RollPitchYaw;
+
+using Eigen::Matrix3d;
 using Eigen::Isometry3d;
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;
@@ -211,6 +214,7 @@ void TransTaskSpaceTrackingData::AddPointToTrack(const std::string& body_name,
       &plant_wo_spr_.GetBodyByName(body_name).body_frame());
   pts_on_body_.push_back(pt_on_body);
 }
+
 void TransTaskSpaceTrackingData::AddStateAndPointToTrack(
     int state, const std::string& body_name, const Vector3d& pt_on_body) {
   AddState(state);
@@ -301,15 +305,14 @@ void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
 
 void RotTaskSpaceTrackingData::UpdateYAndError(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
-  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(
-      context_w_spr,
-      plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
+  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(context_w_spr,
+                                                        plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
   Quaterniond y_quat(transform_mat.rotation() *
-                     frame_pose_.at(GetStateIdx()).linear());
+      frame_pose_.at(GetStateIdx()).linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
-  DRAKE_DEMAND(y_des_.size() == 4);
+  DRAKE_DEMAND(y_des_.size() == 3);
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
   y_quat_des.normalize();
 
@@ -383,6 +386,117 @@ void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
     DRAKE_DEMAND(frame_pose_.size() == 1);
   }
 }
+
+/**** RpyTaskSpaceTrackingData ****/
+RpyTaskSpaceTrackingData::RpyTaskSpaceTrackingData(
+  const std::string& name, const Eigen::MatrixXd& K_p,
+  const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
+  const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+  const drake::multibody::MultibodyPlant<double>& plant_wo_spr)
+  : TaskSpaceTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr, plant_wo_spr) {}
+
+void RpyTaskSpaceTrackingData::AddFrameToTrack(const std::string& body_name,
+                                               const Eigen::Isometry3d& frame_pose) {
+  DRAKE_DEMAND(plant_w_spr_.HasBodyNamed(body_name));
+  DRAKE_DEMAND(plant_wo_spr_.HasBodyNamed(body_name));
+  body_frames_w_spr_.push_back(
+      &plant_w_spr_.GetBodyByName(body_name).body_frame());
+  body_frames_wo_spr_.push_back(
+      &plant_wo_spr_.GetBodyByName(body_name).body_frame());
+  body_index_w_spr_.push_back(plant_w_spr_.GetBodyByName(body_name).index());
+  body_index_wo_spr_.push_back(plant_wo_spr_.GetBodyByName(body_name).index());
+  frame_pose_.push_back(frame_pose);
+}
+
+void RpyTaskSpaceTrackingData::AddStateAndFrameToTrack(int state, const std::string &body_name,
+                                                       const Eigen::Isometry3d &frame_pose) {
+  AddState(state);
+  AddFrameToTrack(body_name, frame_pose);
+}
+
+void RpyTaskSpaceTrackingData::UpdateYAndError(const Eigen::VectorXd& x_w_spr,
+                     const Context<double>& context_w_spr) {
+
+  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(context_w_spr,
+      plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
+
+  RollPitchYaw<double> rpy(transform_mat.rotation());
+  y_ = rpy.vector();
+  DRAKE_DEMAND(y_des_.size() == kSpaceDim);
+
+  RollPitchYaw<double> rpy_des(y_des_);
+
+  // Get relative quaternion (from current to desired)
+  auto ax_ang = rpy_des.ToRotationMatrix().InvertAndCompose(transform_mat.rotation()).ToAnlgeAxis();
+  error_y_ = ax_ang.angle() * ax_ang.axis();
+}
+
+void RpyTaskSpaceTrackingData::UpdateYdotAndError(
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
+  MatrixXd J_spatial(6, plant_w_spr_.num_velocities());
+  plant_w_spr_.CalcJacobianSpatialVelocity(
+      context_w_spr, JacobianWrtVariable::kV,
+      *body_frames_w_spr_.at(GetStateIdx()),
+      frame_pose_.at(GetStateIdx()).translation(), world_w_spr_, world_w_spr_,
+      &J_spatial);
+  ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
+      x_w_spr.tail(plant_w_spr_.num_velocities());
+
+  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(context_w_spr,
+      plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
+
+  // Transform rpydot to w
+  RollPitchYaw<double> rpy(transform_mat.rotation());
+  Vector3d w_des_ = rpy.CalcAngularVelocityInParentFromRpyDt(ydot_des_);
+
+  error_ydot_ = w_des_ - ydot_;
+}
+
+void RpyTaskSpaceTrackingData::UpdateYddotDes() {
+  // Convert ddt_rpy into angular acceleration
+  RollPitchYaw<double> rpy_des(y_des_);
+  Vector3d M_r_ddot = rpy_des.CalcAngularVelocityInParentFromRpyDt(yddot_des_);
+  Matrix3d Mdot = rpy_des.CalcDtMatrixRelatingAngularVelocityInParentToRpyDt();
+  yddot_des_converted_ = M_r_ddot + Mdot * ydot_des_;
+}
+
+void RpyTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
+                                       const Context<double>& context_wo_spr) {
+  MatrixXd J_spatial(6, plant_wo_spr_.num_velocities());
+  plant_wo_spr_.CalcJacobianSpatialVelocity(
+      context_wo_spr, JacobianWrtVariable::kV,
+      *body_frames_wo_spr_.at(GetStateIdx()),
+      frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_, world_wo_spr_,
+      &J_spatial);
+  J_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols());
+}
+
+void RpyTaskSpaceTrackingData::UpdateJdotV(
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
+  JdotV_ = plant_wo_spr_
+      .CalcBiasSpatialAcceleration(
+          context_wo_spr, JacobianWrtVariable::kV,
+          *body_frames_wo_spr_.at(GetStateIdx()),
+          frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
+          world_wo_spr_)
+      .rotational();
+}
+
+void RpyTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
+  if (body_index_w_spr_.empty()) {
+    body_index_w_spr_ = body_index_wo_spr_;
+  }
+  DRAKE_DEMAND(body_index_w_spr_.size() == frame_pose_.size());
+  DRAKE_DEMAND(body_index_wo_spr_.size() == frame_pose_.size());
+  DRAKE_DEMAND(state_.empty() || (state_.size() == frame_pose_.size()));
+  if (state_.empty()) {
+    DRAKE_DEMAND(body_index_w_spr_.size() == 1);
+    DRAKE_DEMAND(body_index_wo_spr_.size() == 1);
+    DRAKE_DEMAND(frame_pose_.size() == 1);
+  }
+}
+
+
 
 /**** JointSpaceTrackingData ****/
 JointSpaceTrackingData::JointSpaceTrackingData(

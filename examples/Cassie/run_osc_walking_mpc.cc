@@ -139,7 +139,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto mpc_reciever = builder.AddSystem<MpcTrajectoryReceiver>(
       TrajectoryType::kCubicHermite, TrajectoryType::kCubicHermite,
-      TrajectoryType::kCubicHermite, true);
+      TrajectoryType::kCubicHermite, false);
 
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(

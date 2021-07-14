@@ -75,9 +75,8 @@ def main():
   controller_input_traj = lcm_trajectory.Trajectory()
   controller_input_traj.traj_name = 'controller_inputs'
   controller_input_traj.time_vector = t_u
-  controller_input_traj.datapoints = u_meas
-  controller_input_traj.datatypes = [''] * u_meas.shape[1]
-  import pdb; pdb.set_trace()
+  controller_input_traj.datapoints = u_meas.transpose()
+  controller_input_traj.datatypes = [''] * u_meas.shape[0]
   lcm_traj = lcm_trajectory.LcmTrajectory()
   lcm_traj.AddTrajectory('controller_inputs', controller_input_traj)
   lcm_traj.WriteToFile(ps.directory + 'u_traj_' + log_file_num)

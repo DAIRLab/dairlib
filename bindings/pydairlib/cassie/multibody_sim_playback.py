@@ -1,6 +1,8 @@
 import numpy as np
 import sys
+import time
 from scipy import interpolate
+import subprocess
 
 try:
   from yaml import CLoader as Loader, CDumper as Dumper
@@ -33,7 +35,7 @@ def run_sim():
   end_time = start_time + sim_time
   penetration_allowance = 2e-3
   terrain_height = 0.0
-  realtime_rate = 1.0
+  realtime_rate = 0.25
   log_num = sys.argv[1]
 
   x_traj = np.load(folder_path + 'x_' + log_num + '.npy')
@@ -41,7 +43,6 @@ def run_sim():
 
   x_interp = interpolate.interp1d(t[:,0], x_traj, axis=0, bounds_error=False)
   x_init = x_interp(start_time)
-  print(x_init)
   write_initial_state(x_init)
   simulator_cmd = ['bazel-bin/examples/Cassie/multibody_sim_playback',
                    '--folder_path=%s' % folder_path,
@@ -54,7 +55,10 @@ def run_sim():
                    '--start_time=%.3f' % start_time,
                    '--log_num=' + log_num,
                    ]
-  print(' '.join(simulator_cmd))
+  simulator_process = subprocess.Popen(simulator_cmd)
+  time.sleep(sim_time / realtime_rate)
+  simulator_process.kill()
+
 
 if __name__ == '__main__':
     run_sim()

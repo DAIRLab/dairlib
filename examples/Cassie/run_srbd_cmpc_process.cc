@@ -126,9 +126,9 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd Br = MatrixXd::Zero(nxi, nu);
   VectorXd br = VectorXd::Zero(nxi);
 
-  SrbdCMPC::CopyDiscreteSrbDynamics(FLAGS_dt, mass, 0.0, BipedStance::kLeft,
+  SrbdCMPC::CopyContinuous3dSrbDynamics(mass, 0.0, BipedStance::kLeft,
       I_rot, des_com_pos, left_neutral_foot_pos, &Al, &Bl, &bl);
-  SrbdCMPC::CopyDiscreteSrbDynamics(FLAGS_dt, mass, 0.0, BipedStance::kRight,
+  SrbdCMPC::CopyContinuous3dSrbDynamics(mass, 0.0, BipedStance::kRight,
       I_rot, des_com_pos, right_neutral_foot_pos, &Ar, &Br, &br);
 
   SrbdDynamics left_stance_dynamics = {Al, Bl, bl};

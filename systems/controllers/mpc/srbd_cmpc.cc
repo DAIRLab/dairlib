@@ -99,23 +99,24 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
   x_des_ = VectorXd ::Zero(nxi_);
 }
 
-void SrbdCMPC::AddMode(SrbdDynamics dynamics, BipedStance stance, int N) {
+void SrbdCMPC::AddMode(const SrbdDynamics&  dynamics, BipedStance stance, int N) {
 
   SrbdMode mode;
   mode.stance = stance;
   mode.dynamics = dynamics;
   mode.N = N;
 
+  mode.A_collocation = MakeCollocationConstraintAMatrix(dynamics.A, dynamics.B);
+  mode.b_collocation = (3.0/2.0) * dynamics.b;
+
   mode_knot_counts_.push_back(mode.N);
   total_knots_ += N;
 
   for ( int i = 0; i < N+1; i++) {
     mode.xx.push_back(prog_.NewContinuousVariables(nxi_, "x_" + std::to_string(i)));
+    mode.uu.push_back(prog_.NewContinuousVariables(nu_, "u_" + std::to_string(i)));
     mode.kin_slack.push_back(
         prog_.NewContinuousVariables(kLinearDim_, "kin_slack" + std::to_string(i)));
-  }
-  for (int i = 0; i < N; i++) {
-    mode.uu.push_back(prog_.NewContinuousVariables(nu_, "u_" + std::to_string(i+1)));
   }
   modes_.push_back(mode);
   nmodes_++;
@@ -142,7 +143,7 @@ void SrbdCMPC::AddBaseFrame(const std::string &body_name,
   com_from_base_origin_ = offset;
 }
 
-double SrbdCMPC::SetMassFromListOfBodies(std::vector<std::string> bodies) {
+double SrbdCMPC::SetMassFromListOfBodies(const std::vector<std::string>& bodies) {
   double mass = CalcCentroidalMassFromListOfBodies(bodies);
   mass_ = mass;
   return mass;
@@ -164,11 +165,13 @@ void SrbdCMPC::SetReachabilityLimit(const Vector3d& kinematic_limit,
 
 void SrbdCMPC::CheckProblemDefinition() {
   DRAKE_DEMAND(!modes_.empty());
-  DRAKE_DEMAND(!input_cost_.empty());
   DRAKE_DEMAND(mu_ > 0 );
   DRAKE_DEMAND(!contact_points_.empty());
   DRAKE_DEMAND(!kin_nominal_.empty());
   DRAKE_DEMAND(mass_ > 0);
+  DRAKE_DEMAND(x_des_.rows() == nxi_);
+  DRAKE_DEMAND(Q_.rows() == nxi_);
+  DRAKE_DEMAND(R_.rows() == nu_);
 }
 
 void SrbdCMPC::Build() {
@@ -179,6 +182,7 @@ void SrbdCMPC::Build() {
   MakeKinematicReachabilityConstraints();
   MakeStateKnotConstraints();
   MakeInitialStateConstraints();
+  MakeTrackingCost();
 
   std::cout << "Built Koopman Mpc QP: \nModes: " << std::to_string(nmodes_) <<
             "\nTotal Knots: " << std::to_string(total_knots_) << std::endl;
@@ -201,7 +205,7 @@ void SrbdCMPC::MakeStanceFootConstraints() {
   MatrixXd S = MatrixXd::Identity(kLinearDim_, kLinearDim_);
   for (auto & mode : modes_) {
     // Loop over N inputs
-    for (int i = 0; i < mode.N; i++) {
+    for (int i = 0; i <= mode.N; i++) {
       mode.stance_foot_constraints.push_back(
           prog_.AddLinearEqualityConstraint(
                   S, VectorXd::Zero(kLinearDim_),
@@ -216,15 +220,10 @@ void SrbdCMPC::MakeStanceFootConstraints() {
 
 void SrbdCMPC::MakeDynamicsConstraints() {
   for (auto & mode : modes_) {
-    MatrixXd dyn = MatrixXd::Zero(nxi_, 2*nxi_ + nu_);
-    dyn.block(0,0, nxi_, nxi_) = mode.dynamics.A;
-    dyn.block(0, nxi_, nxi_, nu_) = mode.dynamics.B;
-    dyn.block(0, nxi_ + nu_, nxi_, nxi_) = -MatrixXd::Identity(nxi_, nxi_);
     for (int i = 0; i < mode.N; i++) {
       mode.dynamics_constraints.push_back(
-      prog_.AddLinearEqualityConstraint(
-              dyn, -mode.dynamics.b,
-              {mode.xx.at(i), mode.uu.at(i), mode.xx.at(i+1)})
+      prog_.AddLinearEqualityConstraint( mode.A_collocation, mode.b_collocation,
+              {mode.xx.at(i), mode.xx.at(i+1), mode.uu.at(i), mode.uu.at(i+1)})
           .evaluator()
           .get());
 
@@ -239,7 +238,7 @@ void SrbdCMPC::MakeInitialStateConstraints() {
     for (int i = 0; i < mode.N; i++) {
       mode.init_state_constraint_.push_back(
           prog_.AddLinearEqualityConstraint(
-                  MatrixXd::Zero(1, nxi_), VectorXd::Zero(1),
+                  MatrixXd::Zero(nxi_, nxi_), VectorXd::Zero(nxi_),
                   mode.xx.at(i))
               .evaluator()
               .get());
@@ -288,7 +287,7 @@ void SrbdCMPC::MakeKinematicReachabilityConstraints() {
 
 void SrbdCMPC::MakeFrictionConeConstraints() {
   for (auto & mode : modes_) {
-    for (int i = 0; i < mode.N; i++) {
+    for (int i = 0; i < mode.N+1; i++) {
       if (! planar_) {
         mode.friction_constraints.push_back(
             prog_.AddConstraint(
@@ -318,7 +317,7 @@ void SrbdCMPC::MakeFlatGroundConstraints(const MatrixXd& W) {
   DRAKE_DEMAND(W.rows() == 1);
 
   for (auto & mode : modes_) {
-    for (int i = 0; i < mode.N; i++) {
+    for (int i = 0; i < mode.N + 1; i++) {
       mode.flat_ground_soft_constraints.push_back(
           prog_.AddQuadraticCost(
                   W, VectorXd::Zero(1),
@@ -354,6 +353,21 @@ void SrbdCMPC::MakeStateKnotConstraints() {
   }
 }
 
+void SrbdCMPC::MakeTrackingCost(){
+  for (auto & mode : modes_) {
+    mode.Q_total_col_cost = MakeSimpsonIntegratedTrackingAndInputCost(mode.dynamics.A, mode.dynamics.B);
+    mode.y_col_cost = MakeSplineSegmentReferenceStateAndInput();
+    for (int i = 0; i < mode.N; i++) {
+      mode.tracking_cost.push_back(
+          prog_.AddQuadraticCost(2.0 * mode.Q_total_col_cost,
+                                 -2.0 * mode.Q_total_col_cost * mode.y_col_cost,
+                                 {mode.xx.at(i), mode.xx.at(i + 1), mode.uu.at(i), mode.uu.at(i + 1)})
+              .evaluator()
+              .get());
+    }
+  }
+}
+
 void SrbdCMPC::AddTrackingObjective(const VectorXd &xdes, const MatrixXd &Q) {
   DRAKE_DEMAND(Q.rows() == Q.cols());
   DRAKE_DEMAND(Q.rows() == nxi_);
@@ -361,35 +375,6 @@ void SrbdCMPC::AddTrackingObjective(const VectorXd &xdes, const MatrixXd &Q) {
 
   Q_ = Q;
   x_des_ = xdes;
-  for (auto & mode : modes_) {
-    // loop over N+1 states
-    for (int i = 0; i < mode.N; i++ ) {
-      if (i != 0) {
-        mode.tracking_cost.push_back(
-            prog_.AddQuadraticErrorCost(
-                    Q, xdes, mode.xx.at(i).head(nxi_))
-                .evaluator().get());
-      }
-    }
-  }
-}
-
-void SrbdCMPC::AddTrajectoryTrackingObjective(const MatrixXd& traj, const MatrixXd& Q){
-  DRAKE_DEMAND(Q.rows() == Q.cols());
-  DRAKE_DEMAND(Q.rows() == nx_);
-  DRAKE_DEMAND(traj.rows() == nx_);
-  DRAKE_DEMAND(traj.cols() == total_knots_);
-
-  int j = 0;
-  for (auto & mode : modes_) {
-    for (int i = 0; i <= mode.N; i++) {
-      mode.tracking_cost.push_back(
-          prog_.AddQuadraticErrorCost(
-                  Q, traj.col(mode.N * j + i), mode.xx.at(i).head(nx_))
-              .evaluator().get());
-    }
-    j++;
-  }
 }
 
 void SrbdCMPC::SetTerminalCost(const MatrixXd& Qf) {
@@ -400,6 +385,7 @@ void SrbdCMPC::SetTerminalCost(const MatrixXd& Qf) {
   for (auto & mode : modes_) {
     for (int i = 0; i <= mode.N; i++) {
       mode.terminal_cost.push_back(
+          // terminal cost will be applied to the correct node in the update function - set to zero for now
           prog_.AddQuadraticCost(MatrixXd::Zero(nxi_, nxi_),
                                  VectorXd::Zero(nxi_),mode.xx.at(i).head(nxi_))
               .evaluator().get());
@@ -410,18 +396,7 @@ void SrbdCMPC::SetTerminalCost(const MatrixXd& Qf) {
 void SrbdCMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
   DRAKE_DEMAND(R.cols() == nu_);
   DRAKE_DEMAND(R.rows() == nu_);
-
-  VectorXd ueq = VectorXd::Zero(nu_);
-  ueq(nu_-2) = mass_ * 9.81;
-  for(auto & mode : modes_) {
-    // loop over N inputs
-    for (int i = 0; i < mode.N; i++) {
-      input_cost_.push_back(
-          prog_.AddQuadraticErrorCost(R, ueq, mode.uu.at(i))
-              .evaluator()
-              .get());
-    }
-  }
+  R_ = R;
 }
 
 VectorXd SrbdCMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
@@ -594,19 +569,9 @@ void SrbdCMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
   x_des_ = xdes;
   for (auto & mode : modes_) {
     for (auto & cost : mode.tracking_cost) {
-      cost->UpdateCoefficients(2.0 * Q_, - 2.0 * Q_ * xdes);
+      cost->UpdateCoefficients(2.0 * mode.Q_total_col_cost,
+          - 2.0 *  mode.Q_total_col_cost * MakeSplineSegmentReferenceStateAndInput());
     }
-  }
-}
-
-void SrbdCMPC::UpdateTrajectoryTrackingObjective(const VectorXd& traj) const {
-  DRAKE_ASSERT(traj.rows() == total_knots_ * modes_.front().N);
-  int j = 0;
-  for (auto & mode : modes_) {
-    for (int i = 0; i <= mode.N; i++) {
-      mode.tracking_cost.at(i)->UpdateCoefficients(2*Q_, -2 * Q_ * traj.segment(j*mode.N + i, nx_));
-    }
-    j++;
   }
 }
 
@@ -626,7 +591,7 @@ void SrbdCMPC::UpdateInitialStateConstraint(const VectorXd& x0,
 
   // Remove current initial state constraint
   modes_.at(x0_idx_[0]).init_state_constraint_.at(x0_idx_[1])->
-      UpdateCoefficients(MatrixXd::Zero(1, nxi_), VectorXd::Zero(1));
+      UpdateCoefficients(MatrixXd::Zero(nxi_, nxi_), VectorXd::Zero(nxi_));
 
 
   // Re-create current knot constraint if necessary.
@@ -636,12 +601,9 @@ void SrbdCMPC::UpdateInitialStateConstraint(const VectorXd& x0,
     Aeq.block(0, nxi_, nxi_, nxi_) = -MatrixXd::Identity(nxi_, nxi_);
     state_knot_constraints_.at(x0_idx_[0])->UpdateCoefficients(Aeq, VectorXd::Zero(nxi_));
   } else {
-    MatrixXd dyn = MatrixXd::Zero(nxi_, 2 * nxi_ + nu_);
-    dyn.block(0, 0, nxi_, nxi_) = modes_.at(x0_idx_[0]).dynamics.A;
-    dyn.block(0, nxi_, nxi_, nu_) = modes_.at(x0_idx_[0]).dynamics.B;
-    dyn.block(0, nxi_ + nu_, nxi_, nxi_) = - MatrixXd::Identity(nxi_, nxi_);
     modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
-        UpdateCoefficients(dyn, -modes_.at(x0_idx_[0]).dynamics.b);
+        UpdateCoefficients(modes_.at(x0_idx_[0]).A_collocation,
+                           modes_.at(x0_idx_[0]).b_collocation);
   }
 
 
@@ -665,10 +627,10 @@ void SrbdCMPC::UpdateInitialStateConstraint(const VectorXd& x0,
   // remove one constraint to break circular dependency
   if (x0_idx_[1] == 0) {
     state_knot_constraints_.at(x0_idx_[0])->UpdateCoefficients(
-        MatrixXd::Zero(1, 2 * nxi_), VectorXd::Zero(1));
+        MatrixXd::Zero(nxi_, 2 * nxi_), VectorXd::Zero(nxi_));
   } else {
     modes_.at(x0_idx_[0]).dynamics_constraints.at(x0_idx_[1]-1)->
-        UpdateCoefficients(MatrixXd::Zero(1, 2*nxi_ + nu_), VectorXd::Zero(1));
+        UpdateCoefficients(MatrixXd::Zero(nxi_, 2*nxi_ + 2*nu_), VectorXd::Zero(nxi_));
   }
 
   // Add terminal cost to new x_f
@@ -863,8 +825,7 @@ std::pair<int,int> SrbdCMPC::GetTerminalStepIdx() const {
   return std::pair<int,int>(x0_idx_[0]-1, modes_.at(x0_idx_[0]-1).N);
 }
 
-void SrbdCMPC::CopyDiscreteSrbDynamics(double dt, double m, double yaw,
-                                       BipedStance stance,
+void SrbdCMPC::CopyContinuous3dSrbDynamics(double m, double yaw, BipedStance stance,
                                        const Eigen::MatrixXd &b_I,
                                        const Eigen::Vector3d &eq_com_pos,
                                        const Eigen::Vector3d &eq_foot_pos,
@@ -906,9 +867,72 @@ void SrbdCMPC::CopyDiscreteSrbDynamics(double dt, double m, double yaw,
   b.segment(6, 3) = -g;
   b.segment(9, 3) = g_I_inv * HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos)) * (m * g);
 
-  *Ad = MatrixXd::Identity(A.rows(), A.cols()) + dt * A;
-  *Bd = dt * B;
-  *bd = dt * b;
+  *Ad = A;
+  *Bd = B;
+  *bd = b;
   
 }
+
+MatrixXd SrbdCMPC::MakeCollocationConstraintAMatrix(const MatrixXd& A,
+                                                    const MatrixXd& B) {
+  DRAKE_ASSERT(A.rows() == A.cols());
+  DRAKE_ASSERT(A.cols() == nxi_);
+  DRAKE_ASSERT(B.rows() == A.rows());
+  DRAKE_ASSERT(B.cols() == nu_);
+
+  std::cout << "Probe 1\n";
+  // useful constants
+  int n = A.cols();
+  int m = B.cols();
+  MatrixXd I = MatrixXd::Identity(n, n);
+  double h = dt_;
+
+  MatrixXd A_col = MatrixXd::Zero(n, 2 * n + 2 * m);
+  A_col.block(0, 0, n, n) = (-3.0 / (2.0 * h)) * I - A * ((h / 8.0) * A + (3.0 / 4.0) * I);
+  A_col.block(0, n, n, n) = (3.0 / (2.0 * h)) * I - A * ((-h / 8.0) * A + (3.0 / 4.0) * I);
+  A_col.block(0, 2*n, n, m) = (-h/8.0) * A * B - (3.0/4.0) * B;
+  A_col.block(0, 2*n +m, n, m) = (h/8.0) * A * B - (3.0/4.0) * B;
+  return A_col;
+}
+
+MatrixXd SrbdCMPC::MakeSimpsonIntegratedTrackingAndInputCost(const Eigen::MatrixXd &A,
+                                                             const Eigen::MatrixXd &B) const {
+  //useful constants
+  int n = nxi_;
+  int m = nu_;
+  double h = dt_;
+
+  MatrixXd In = MatrixXd::Identity(n, n);
+  MatrixXd Im = MatrixXd::Identity(m, m);
+  MatrixXd P = MatrixXd::Zero(n, 2*n+2*m);
+  MatrixXd Z = MatrixXd::Zero(m, 2*m);
+  MatrixXd Q_tot = MatrixXd::Zero(2*(n+m), 2*(n+m));
+
+  P.block(0, 0, n, n) = 0.5*In + (h/8) * A;
+  P.block(0, n, n, n) = 0.5 * In -(h/8) * A;
+  P.block(0, 2*n, n, m) = (h/8) * B;
+  P.block(0, 2*n + m, n, m) = -(h/8) * B;
+
+  Z.block(0, 0, m, m) = 0.5 * Im;
+  Z.block(0, m, m, m) = 0.5 * Im;
+
+  Q_tot.block(0, 0, n, n) = Q_;
+  Q_tot.block(n, n, n, n) = Q_;
+  Q_tot.block(2*n, 2*n, m, m) = R_;
+  Q_tot.block(2*n+m, 2*2+m, m, m) = R_;
+
+  Q_tot += 4.0 * P.transpose() * Q_ * P;
+  Q_tot.block(2*n, 2*n, 2*m, 2*m) += 4.0 * Z.transpose() * R_ * Z;
+
+  return Q_tot;
+}
+
+VectorXd SrbdCMPC::MakeSplineSegmentReferenceStateAndInput() const {
+  VectorXd yref(2*nxi_ + 2* nu_);
+  VectorXd ustar = VectorXd::Zero(nu_);
+  ustar(nu_-2) = 9.81 * mass_;
+  yref << x_des_, x_des_, ustar, ustar;
+  return yref;
+}
+
 } // dairlib

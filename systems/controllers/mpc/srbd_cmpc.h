@@ -43,6 +43,10 @@ typedef struct SrbdDynamics{
 
 typedef struct SrbdMode {
   SrbdDynamics dynamics;
+  Eigen::MatrixXd A_collocation;
+  Eigen::MatrixXd b_collocation;
+  Eigen::VectorXd y_col_cost;
+  Eigen::MatrixXd Q_total_col_cost;
   BipedStance stance;
   int N;
   std::vector<drake::solvers::VectorXDecisionVariable> xx;
@@ -75,10 +79,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   /// @param stance BipedStance::kLeft or BipedStance::kRight
   /// @param dynamics
   /// @param N
-  void AddMode(SrbdDynamics dynamics, BipedStance stance, int N);
+  void AddMode(const SrbdDynamics&  dynamics, BipedStance stance, int N);
   void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&, Eigen::Vector3d> pt, BipedStance stance);
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
-  void AddTrajectoryTrackingObjective(const Eigen::MatrixXd& traj, const Eigen::MatrixXd& Q);
   void SetTerminalCost(const Eigen::MatrixXd& Qf);
   void AddInputRegularization(const Eigen::MatrixXd& R);
   void SetFlatGroundSoftConstraint(const Eigen::MatrixXd& W) {MakeFlatGroundConstraints(W);}
@@ -90,7 +93,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   int saggital_idx() const { return saggital_idx_;}
   int vertical_idx() const { return vertical_idx_;}
 
-  double SetMassFromListOfBodies(std::vector<std::string> bodies);
+  double SetMassFromListOfBodies(const std::vector<std::string>& bodies);
 
   void SetMass(double mass) {mass_ = mass;}
 
@@ -118,6 +121,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
                             const std::vector<Eigen::VectorXd>& nominal_relative_pos,
                             const Eigen::MatrixXd& kin_reach_soft_contraint_w);
 
+
   void SetMu(double mu) { mu_ = mu; }
   int num_modes() { return nmodes_; }
 
@@ -129,8 +133,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
     return drake::solvers::Solve(prog_);
   }
 
-  static void CopyDiscreteSrbDynamics(double dt, double m, double yaw,
-                                      BipedStance stance,
+  static void CopyContinuous3dSrbDynamics(double m, double yaw, BipedStance stance,
                                       const Eigen::MatrixXd &b_I,
                                       const Eigen::Vector3d &eq_com_pos,
                                       const Eigen::Vector3d &eq_foot_pos,
@@ -152,6 +155,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
   double CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies);
 
+  Eigen::MatrixXd MakeSimpsonIntegratedTrackingAndInputCost(const Eigen::MatrixXd &A, const Eigen::MatrixXd &B) const;
+  Eigen::VectorXd MakeSplineSegmentReferenceStateAndInput() const ;
   void MakeStanceFootConstraints();
   void MakeKinematicReachabilityConstraints();
   void MakeDynamicsConstraints();
@@ -159,10 +164,15 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void MakeStateKnotConstraints();
   void MakeInitialStateConstraints();
   void MakeFlatGroundConstraints(const Eigen::MatrixXd& W);
+  void MakeTrackingCost();
+  void UpdateTrackingCost();
 
   Eigen::MatrixXd CalcSwingFootKnotPoints(const Eigen::VectorXd& x,
                                           const drake::solvers::MathematicalProgramResult& result,
                                           double time_since_last_touchdown) const;
+
+
+  Eigen::MatrixXd MakeCollocationConstraintAMatrix(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B);
 
   lcmt_saved_traj MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
                                      double time, double time_since_last_touchdown,
@@ -173,8 +183,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
 
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
-  void UpdateTrajectoryTrackingObjective(const Eigen::VectorXd& traj) const;
-
 
   Eigen::VectorXd CalcCentroidalStateFromPlant(const Eigen::VectorXd& x, double t) const;
 
@@ -208,6 +216,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
   // Problem variables
   Eigen::MatrixXd Q_;
+  Eigen::MatrixXd R_;
+  Eigen::VectorXd xdes_;
   Eigen::MatrixXd Qf_;
   std::vector<SrbdMode> modes_;
   std::vector<int> mode_knot_counts_;
@@ -239,7 +249,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
   // constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> state_knot_constraints_;
-  std::vector<drake::solvers::QuadraticCost*> input_cost_;
 
 
   // drake boilerplate

@@ -158,14 +158,6 @@ OperationalSpaceControl::OperationalSpaceControl(
   q_min_ = q_min;
   q_max_ = q_max;
 
-  //  // Get joint limits
-  //  for (JointIndex q_i(6); q_i < n_joints_; ++q_i){
-  //    std::cout << q_i << std::endl;
-  //    std::cout << plant_wo_spr.get_joint(q_i).name() << std::endl;
-  //    q_min(q_i) = plant_wo_spr.get_joint(q_i).position_lower_limits()[0];
-  //    q_max(q_i) = plant_wo_spr.get_joint(q_i).position_upper_limits()[0];
-  //  }
-
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
 }
@@ -580,8 +572,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (!all_contacts_.empty()) {
-    //    VectorXd inf_vectorxd(1);
-    //    inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
         friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));

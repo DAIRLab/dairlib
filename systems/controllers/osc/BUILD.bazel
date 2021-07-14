@@ -18,6 +18,7 @@ cc_library(
         "//multibody/kinematic",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
+        "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
     ],
 )

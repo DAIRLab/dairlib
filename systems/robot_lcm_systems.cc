@@ -230,8 +230,12 @@ void RobotCommandSender::OutputCommand(
   input_msg->efforts.resize(num_actuators_);
   for (int i = 0; i < num_actuators_; i++) {
     input_msg->effort_names[i] = ordered_actuator_names_[i];
-    input_msg->efforts[i] = command->GetAtIndex(i);
-  }
+    if(std::isnan(command->GetAtIndex(i))){
+      input_msg->efforts[i] = 0;
+    }
+    else{
+      input_msg->efforts[i] = command->GetAtIndex(i);
+    }  }
 }
 
 }  // namespace systems

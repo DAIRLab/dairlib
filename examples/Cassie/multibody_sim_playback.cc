@@ -14,6 +14,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
@@ -65,12 +66,23 @@ DEFINE_double(platform_x, 0.0, "x location of the  landing terrain");
 DEFINE_double(start_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
-DEFINE_string(npy_num, "", "Name of the saved initial state");
+DEFINE_string(log_num, "", "Name of the saved initial state");
 DEFINE_string(
-    folder_path_npy,
+    folder_path,
     "/home/yangwill/Documents/research/projects/impact_uncertainty/data/",
     "Name of the saved initial state");
+DEFINE_string(initial_state_file, "examples/Cassie/data/initial_state.yaml",
+              "YAML file containing the initial state.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+
+struct InitialState {
+  std::vector<double> x_init;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(x_init));
+  }
+};
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -120,22 +132,18 @@ int do_main(int argc, char* argv[]) {
       multibody::makeNameToVelocitiesMap(plant);
   std::map<std::string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
-  Eigen::MatrixXd t_u_init_npy;
-  Eigen::MatrixXd u_init_npy;
-  cnpy2eigen(FLAGS_folder_path_npy + "t_x_" + FLAGS_npy_num + ".npy",
-             t_u_init_npy);
-  cnpy2eigen(FLAGS_folder_path_npy + "u_" + FLAGS_npy_num + ".npy", u_init_npy);
-  Eigen::VectorXd t_u_vec_npy(
-      Eigen::Map<Eigen::VectorXd>(t_u_init_npy.data(), t_u_init_npy.size()));
-  auto u_init_traj =
-      PiecewisePolynomial<double>::FirstOrderHold(t_u_vec_npy, u_init_npy);
+  auto lcm_trajectory =
+      LcmTrajectory(FLAGS_folder_path + "u_traj_" + FLAGS_log_num);
+  const LcmTrajectory::Trajectory u_traj =
+      lcm_trajectory.GetTrajectory("controller_inputs");
+  auto u_init_traj = PiecewisePolynomial<double>::FirstOrderHold(
+      u_traj.time_vector, u_traj.datapoints);
   auto controller_playback = builder.AddSystem<systems::TrajectoryPlayback>(
       u_init_traj, plant.num_actuators());
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-  auto command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto input_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           "CASSIE_INPUT", lcm, 1.0 / FLAGS_publish_rate));
@@ -188,7 +196,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-
   if (FLAGS_terrain_height != 0.0) {
     DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   }
@@ -212,19 +219,13 @@ int do_main(int argc, char* argv[]) {
   Eigen::MatrixXd map_no_spring_to_spring =
       multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
 
-  Eigen::MatrixXd t_init_npy;
-  Eigen::MatrixXd x_init_npy;
+  InitialState init_state;
+  const YAML::Node& root =
+      YAML::LoadFile(FindResourceOrThrow(FLAGS_initial_state_file));
+  drake::yaml::YamlReadArchive(root).Accept(&init_state);
 
-  cnpy2eigen(FLAGS_folder_path_npy + "t_x_" + FLAGS_npy_num + ".npy",
-             t_init_npy);
-  cnpy2eigen(FLAGS_folder_path_npy + "x_" + FLAGS_npy_num + ".npy", x_init_npy);
-
-  Eigen::VectorXd t_vec_npy(
-      Eigen::Map<Eigen::VectorXd>(t_init_npy.data(), t_init_npy.size()));
-
-  auto x_init_traj =
-      PiecewisePolynomial<double>::FirstOrderHold(t_vec_npy, x_init_npy);
-  Eigen::VectorXd x_init = x_init_traj.value(FLAGS_start_time);
+  Eigen::VectorXd x_init =
+      Eigen::Map<Eigen::VectorXd>(init_state.x_init.data(), init_state.x_init.size());
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 

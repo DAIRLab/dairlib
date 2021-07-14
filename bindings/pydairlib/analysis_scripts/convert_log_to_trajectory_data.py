@@ -9,6 +9,7 @@ from pydairlib.lcm import process_lcm_log
 import pydairlib.multibody
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.common import plot_styler
+from pydairlib.lcm import lcm_trajectory
 
 
 def main():
@@ -70,6 +71,16 @@ def main():
   np.save(ps.directory + 'x_' + log_file_num, x)
   np.save(ps.directory + 't_x_' + log_file_num, t_x)
   np.save(ps.directory + 'u_' + log_file_num, u_meas)
+
+  controller_input_traj = lcm_trajectory.Trajectory()
+  controller_input_traj.traj_name = 'controller_inputs'
+  controller_input_traj.time_vector = t_u
+  controller_input_traj.datapoints = u_meas
+  controller_input_traj.datatypes = [''] * u_meas.shape[1]
+  import pdb; pdb.set_trace()
+  lcm_traj = lcm_trajectory.LcmTrajectory()
+  lcm_traj.AddTrajectory('controller_inputs', controller_input_traj)
+  lcm_traj.WriteToFile(ps.directory + 'u_traj_' + log_file_num)
 
 if __name__ == '__main__':
   main()

@@ -46,6 +46,24 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "multibody_sim_playback",
+    srcs = ["multibody_sim_playback.py"],
+    data = [
+        "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        "cassie_utils_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/lcm:lcm_py",
+        "//bindings/pydairlib/multibody:kinematic_py",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

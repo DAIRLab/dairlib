@@ -13,12 +13,12 @@ from pydrake.trajectories import PiecewisePolynomial
 from pydairlib.lcm import lcm_trajectory
 from pydairlib.lcm import process_lcm_log
 import pydairlib.multibody
+from pydairlib.multibody.kinematic import DistanceEvaluator
 from impact_invariant_scripts import plot_ii_projection
 from pydairlib.cassie.cassie_utils import *
 
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.common import plot_styler
-
 
 def main():
   global filename
@@ -59,10 +59,14 @@ def main():
   plant_w_spr.Finalize()
   plant_wo_spr.Finalize()
 
+  context_w_spr = plant_w_spr.CreateDefaultContext()
+  context_wo_spr = plant_wo_spr.CreateDefaultContext()
+
   # Reference trajectory
   delay_time = 2.0
   filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
   jumping_traj = lcm_trajectory.DirconTrajectory(filename)
+  state_traj = jumping_traj.ReconstructStateTrajectory()
   input_traj = jumping_traj.ReconstructInputTrajectory()
   input_traj.shiftRight(delay_time)
 
@@ -78,8 +82,6 @@ def main():
   l_toe_frame = plant_w_spr.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant_w_spr.GetBodyByName("toe_right").body_frame()
   world = plant_w_spr.world_frame()
-  context = plant_w_spr.CreateDefaultContext()
-  context_wo_spr = plant_wo_spr.CreateDefaultContext()
 
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
@@ -96,6 +98,7 @@ def main():
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
+  log_num = filename.split('-')[-1]
 
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
@@ -118,42 +121,40 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 30
-  # t_end = 30.5
-  # t_start = 3
-  # t_end = 3.5
+  # t_start = 30.645
+  # t_end = t_start + 0.08
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
 
-  # print(np.average(np.diff(t_u[t_u_slice])))
-  # plt.plot(t_u[t_u_slice], np.diff(t_u[t_u_slice], prepend=30), '.')
 
   # All plotting scripts here
   # plot_status(full_log)
   # plot_ekf(full_log, pos_map, vel_map)
-  # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-')
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  plot_control_rate(t_u, u)
+  # plot_ii_projection(ps, t_x, x, plant_w_spr, context_w_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
+  plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
   if False:
     # front_contact_disp = np.zeros(3)
-    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+    plot_feet_positions(plant_w_spr, context_w_spr, x, l_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "left_", "_front")
-    plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
+    plot_feet_positions(plant_w_spr, context_w_spr, x, r_toe_frame,
                         front_contact_disp,
                         world, t_x, t_slice, "right_", "_front")
-    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+    plot_feet_positions(plant_w_spr, context_w_spr, x, l_toe_frame,
                         rear_contact_disp,
                         world, t_x, t_slice, "left_", "_rear")
-    plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
+    plot_feet_positions(plant_w_spr, context_w_spr, x, r_toe_frame,
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
-  plt.show()
+  # plt.show()
 
 def plot_contact_est(log):
   t_contact = []
@@ -256,10 +257,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     osc_traj3 = "hip_yaw_right_traj"
 
   #
-  # plot_osc(osc_debug, osc_traj0, 0, "pos")
-  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  plot_osc(osc_debug, osc_traj0, 0, "pos")
+  plot_osc(osc_debug, osc_traj0, 1, "pos")
   plot_osc(osc_debug, osc_traj0, 2, "pos")
-  ps.plot(t_u[t_u_slice], 0.25 * fsm[t_u_slice])
 
 
   #
@@ -300,10 +300,10 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
-  plot_osc(osc_debug, osc_traj5, 0, "pos")
-  plot_osc(osc_debug, osc_traj6, 0, "pos")
-  plot_osc(osc_debug, osc_traj5, 0, "vel")
-  plot_osc(osc_debug, osc_traj6, 0, "vel")
+  # plot_osc(osc_debug, osc_traj5, 0, "pos")
+  # plot_osc(osc_debug, osc_traj6, 0, "pos")
+  # plot_osc(osc_debug, osc_traj5, 0, "vel")
+  # plot_osc(osc_debug, osc_traj6, 0, "vel")
   # plot_osc(osc_debug, osc_traj5, 0, "acc")
   # plot_osc(osc_debug, osc_traj6, 0, "acc")
   # plot_osc(osc_debug, osc_traj7, 0, "pos")
@@ -410,7 +410,7 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim], color=ps.blue)
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot[t_u_slice, dim], color=ps.red)
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim] - osc_debug[osc_traj].ydot[t_u_slice, dim], color=ps.yellow)
-    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim], color=ps.grey)
+    # ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim], color=ps.grey)
     ps.add_legend(["ydot_des", "ydot", "error_ydot", "projected_error_ydot"])
     # plt.legend(["error_ydot", "corrected_error"])
   elif (derivative == "acc"):
@@ -418,7 +418,6 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command[t_u_slice, dim])
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].yddot_command_sol[t_u_slice, dim])
     ps.add_legend(["yddot_des", "yddot_command", "yddot_command_sol"])
-
 
 def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
                         t_x, t_x_slice, foot_type, contact_type):
@@ -452,18 +451,18 @@ def plot_ekf(log, pos_map, vel_map):
   imu = []
   q_est = []
   v_est = []
-  # for i in range(len(log["CASSIE_STATE_SIMULATION"])):
-  #   msg = log["CASSIE_STATE_SIMULATION"][i]
-  #   q_temp = [[] for i in range(len(msg.position))]
-  #   v_temp = [[] for i in range(len(msg.velocity))]
-  #   for i in range(len(q_temp)):
-  #     q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
-  #   for i in range(len(v_temp)):
-  #     v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
-  #   q.append(q_temp)
-  #   v.append(v_temp)
-  #   imu.append(msg.imu_accel)
-  #   t_x.append(msg.utime / 1e6)
+  for i in range(len(log["CASSIE_STATE_SIMULATION"])):
+    msg = log["CASSIE_STATE_SIMULATION"][i]
+    q_temp = [[] for i in range(len(msg.position))]
+    v_temp = [[] for i in range(len(msg.velocity))]
+    for i in range(len(q_temp)):
+      q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
+    for i in range(len(v_temp)):
+      v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
+    q.append(q_temp)
+    v.append(v_temp)
+    # imu.append(msg.imu_accel)
+    t_x.append(msg.utime / 1e6)
   for i in range(len(log["CASSIE_STATE_DISPATCHER"])):
     msg = log["CASSIE_STATE_DISPATCHER"][i]
     q_temp = [[] for i in range(len(msg.position))]
@@ -488,9 +487,13 @@ def plot_ekf(log, pos_map, vel_map):
   pos_indices = slice(4, 7)
   vel_indices = slice(3, 6)
   plt.figure("EKF positions: " + filename)
+  ps.plot(t_x_est[t_slice], q[t_slice, pos_indices])
   ps.plot(t_x_est[t_slice], q_est[t_slice, pos_indices])
+  ps.add_legend(['ground_truth', 'EKF'])
   plt.figure("EKF velocities: " + filename)
+  ps.plot(t_x_est[t_slice], v[t_slice, vel_indices])
   ps.plot(t_x_est[t_slice], v_est[t_slice, vel_indices])
+  ps.add_legend(['ground_truth', 'EKF'])
   plt.figure("IMU: " + filename)
   ps.plot(t_x_est[t_slice], imu[t_slice,:])
 
@@ -499,13 +502,11 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   pos_indices = slice(0 + 7, 11)
   vel_indices = slice(23 + 6, 45)
   # floating base states
-  # pos_indices = slice(0, 7)
+  pos_indices = slice(0, 7)
   # vel_indices = slice(23, 23 + 6)
-  vel_indices = slice(23 + 6, 23 + 10)
+  # vel_indices = slice(23 + 6, 23 + 10)
   # all motor torques
   u_indices = slice(0, 10)
-
-  # overwrite
 
   plt.figure("positions: " + filename)
   ps.plot(t_x[t_slice], x[t_slice, pos_indices])
@@ -547,6 +548,10 @@ def plot_status(full_log):
               'vel_limit',
               'act_limit',
               'act_delay'])
+
+def plot_control_rate(t_u, u):
+  print(np.average(np.diff(t_u[t_u_slice])))
+  plt.plot(t_u[t_u_slice], np.diff(t_u[t_u_slice], prepend=30), '.')
 
 def load_maps():
   global pos_map_spr_to_wo_spr

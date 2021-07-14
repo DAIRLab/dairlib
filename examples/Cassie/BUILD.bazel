@@ -195,33 +195,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_simple_sim",
-    srcs = ["run_simple_sim.cc"],
-    deprecation = "Attic/RigidBodyTree is deprecated.",
-    tags = ["manual"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
-        "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "standalone_multibody_sim",
-    srcs = ["standalone_multibody_sim.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "multibody_sim",
     srcs = ["multibody_sim.cc"],
     deps = [

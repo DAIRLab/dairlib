@@ -377,10 +377,12 @@ cc_binary(
         ":sim_cassie_sensor_aggregator",
         "//common",
         "//multibody:utils",
+        "//multibody:pinocchio_plant",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
+        "@pinocchio"
     ],
 )
 

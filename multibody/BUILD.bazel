@@ -64,6 +64,20 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "pinocchio_plant",
+    srcs = [
+        "pinocchio_plant.cc",
+    ],
+    hdrs = [
+        "pinocchio_plant.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@pinocchio"
+    ],
+)
+
 cc_binary(
     name = "multipose_visualizer_test",
     srcs = ["test/multipose_visualizer_test.cc"],

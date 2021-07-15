@@ -53,6 +53,7 @@ class MpcTrajectoryReceiver : public drake::systems::LeafSystem<double> {
   const TrajectoryType angular_type_;
   const TrajectoryType swing_ft_type_;
   const bool planar_;
+  const int kAngularDim_;
 
   int com_traj_port_;
   int angular_traj_port_;

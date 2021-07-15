@@ -20,7 +20,8 @@ MpcTrajectoryReceiver::MpcTrajectoryReceiver(
     TrajectoryType com_type, TrajectoryType swing_ft_type,
     TrajectoryType angular_type, bool planar) :
     com_type_(com_type), angular_type_(angular_type),
-    swing_ft_type_(swing_ft_type), planar_(planar) {
+    swing_ft_type_(swing_ft_type), planar_(planar),
+    kAngularDim_ (planar ? 1 : 3) {
 
     this->DeclareAbstractInputPort(
         "lcmt_saved_trajectory", drake::Value<lcmt_saved_traj>{});
@@ -50,21 +51,14 @@ void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
   LcmTrajectory lcm_traj(input_msg);
   LcmTrajectory::Trajectory orientation = lcm_traj.GetTrajectory("orientation");
 
-  if (planar_) {
-    MatrixXd knots = orientation.datapoints.block(0, 0, 1, orientation.datapoints.cols());
-    MatrixXd knots_dot = orientation.datapoints.block(1, 0, 1, orientation.datapoints.cols());
-    auto* casted_traj =
+  MatrixXd knots = orientation.datapoints.block(0, 0, kAngularDim_, orientation.datapoints.cols());
+  MatrixXd knots_dot = orientation.datapoints.block(kAngularDim_, 0, kAngularDim_, orientation.datapoints.cols());
+
+  auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
             traj);
-    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
         orientation.time_vector, knots, knots_dot);
-  } else {
-    auto* casted_traj =
-        (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-            traj);
-    *casted_traj = drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(
-        orientation.time_vector, orientation.datapoints);
-  }
 }
 
 void MpcTrajectoryReceiver::MakeComTrajFromLcm(
@@ -89,8 +83,8 @@ void MpcTrajectoryReceiver::MakeComTrajFromLcm(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-      com_traj.time_vector, knots);
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+      com_traj.time_vector, knots, knots_dot);
 }
 
 void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
@@ -117,8 +111,8 @@ void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
 
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-      swing_ft_traj.time_vector, knots);
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+      swing_ft_traj.time_vector, knots, knots_dot);
 }
 
 MatrixXd MpcTrajectoryReceiver::Make3dFromPlanar(MatrixXd planar_knots) const {
@@ -133,5 +127,4 @@ MatrixXd MpcTrajectoryReceiver::Make3dFromPlanar(MatrixXd planar_knots) const {
 
   return knots_3d;
 }
-
 }

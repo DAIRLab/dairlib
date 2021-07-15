@@ -312,7 +312,7 @@ void RotTaskSpaceTrackingData::UpdateYAndError(
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
-  DRAKE_DEMAND(y_des_.size() == 3);
+  DRAKE_DEMAND(y_des_.size() == 4);
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
   y_quat_des.normalize();
 

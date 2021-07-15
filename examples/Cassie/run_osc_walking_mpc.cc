@@ -52,7 +52,7 @@ using drake::trajectories::PiecewisePolynomial;
 using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
-using systems::controllers::RotTaskSpaceTrackingData;
+using systems::controllers::RpyTaskSpaceTrackingData;
 using systems::TimeBasedFiniteStateMachine;
 using systems::DairlibSignalReceiver;
 
@@ -210,7 +210,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&pelvis_traj);
   }
 
-  RotTaskSpaceTrackingData angular_traj("orientation_traj", gains.K_p_orientation,
+  RpyTaskSpaceTrackingData angular_traj("orientation_traj", gains.K_p_orientation,
                                       gains.K_d_orientation, gains.W_orientation, plant_w_springs, plant_w_springs);
 
   angular_traj.AddFrameToTrack("pelvis");

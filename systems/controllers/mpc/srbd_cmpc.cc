@@ -908,7 +908,7 @@ MatrixXd SrbdCMPC::MakeSimpsonIntegratedTrackingAndInputCost(const Eigen::Matrix
   MatrixXd Z = MatrixXd::Zero(m, 2*m);
   MatrixXd Q_tot = MatrixXd::Zero(2*(n+m), 2*(n+m));
 
-  P.block(0, 0, n, n) = 0.5*In + (h/8) * A;
+  P.block(0, 0, n, n) = 0.5 * In + (h/8) * A;
   P.block(0, n, n, n) = 0.5 * In -(h/8) * A;
   P.block(0, 2*n, n, m) = (h/8) * B;
   P.block(0, 2*n + m, n, m) = -(h/8) * B;
@@ -919,7 +919,7 @@ MatrixXd SrbdCMPC::MakeSimpsonIntegratedTrackingAndInputCost(const Eigen::Matrix
   Q_tot.block(0, 0, n, n) = Q_;
   Q_tot.block(n, n, n, n) = Q_;
   Q_tot.block(2*n, 2*n, m, m) = R_;
-  Q_tot.block(2*n+m, 2*2+m, m, m) = R_;
+  Q_tot.block(2*n+m, 2*n+m, m, m) = R_;
 
   Q_tot += 4.0 * P.transpose() * Q_ * P;
   Q_tot.block(2*n, 2*n, 2*m, 2*m) += 4.0 * Z.transpose() * R_ * Z;

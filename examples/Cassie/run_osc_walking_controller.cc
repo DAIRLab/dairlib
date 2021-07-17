@@ -386,6 +386,7 @@ int DoMain(int argc, char* argv[]) {
       gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
+
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_balance_traj, pelvis_desired_quat);
   // Pelvis rotation tracking (yaw)

@@ -1,14 +1,14 @@
 group "1.controllers-and-dispatchers" {
     cmd "2.srbd_mpc" {
-        exec = "bazel-bin/examples/Cassie/run_srbd_cmpc_process --v_des=1.25 --dt=0.05 --stance_time=0.25 --swing_ft_height=0.01";
+        exec = "bazel-bin/examples/Cassie/run_srbd_cmpc_process --v_des=1.25 --dt=0.05 --stance_time=0.25 --swing_ft_height=0.01 --channel_x=CASSIE_STATE_SIMULATION";
         host = "localhost";
-     }
+    }
     cmd "3.osc-mpc-tracking-controller (dispatched)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_mpc";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_mpc --channel_x=CASSIE_STATE_SIMULATION";
         host = "localhost";
     }
     cmd "3.osc-standing-controller (dispatched)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER  --height=.85 --cost_weight_multiplier=1";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER  --height=.85 --channel_x=CASSIE_STATE_SIMULATION";
         host = "localhost";
     }
     cmd "3.osc-walking-controller (dispatched)" {
@@ -27,7 +27,7 @@ group "1.controllers-and-dispatchers" {
 
 group "2.drake-simulator" {
     cmd "1.simulator-floating" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --dt=1e-4 --publish_rate=1000 --init_height=0.95";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --dt=1e-4 --publish_rate=1000 --init_height=0.85";
         host = "localhost";
     }
 }
@@ -76,6 +76,7 @@ group "4.lcm-tools" {
         host = "localhost";
     }
 }
+
 
 script "cassie_walking" {
     stop cmd "1.simulator-floating" wait "stopped";

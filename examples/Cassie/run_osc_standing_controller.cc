@@ -38,7 +38,7 @@ using drake::systems::lcm::TriggerTypeSet;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
-using systems::controllers::RotTaskSpaceTrackingData;
+using systems::controllers::RpyTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -204,6 +204,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
           plant_w_springs, context_w_spr.get(), feet_contact_points,
           "pelvis_rot_traj");
+
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
@@ -267,7 +268,7 @@ int DoMain(int argc, char* argv[]) {
   center_of_mass_traj.AddPointToTrack("pelvis");
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
-  RotTaskSpaceTrackingData pelvis_rot_traj(
+  RpyTaskSpaceTrackingData pelvis_rot_traj(
       "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
       W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);

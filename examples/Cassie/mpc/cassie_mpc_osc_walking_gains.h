@@ -10,6 +10,9 @@ struct OSCWalkingGains {
   double mu;
   double w_accel;
   double w_soft_constraint;
+  double w_swing_toe;
+  double swing_toe_kp;
+  double swing_toe_kd;
 
   std::vector<double> CoMW;
   std::vector<double> CoMKp;
@@ -30,6 +33,9 @@ struct OSCWalkingGains {
   MatrixXd W_swing_foot;
   MatrixXd K_p_swing_foot;
   MatrixXd K_d_swing_foot;
+  MatrixXd W_swing_toe;
+  MatrixXd K_p_swing_toe;
+  MatrixXd K_d_swing_toe;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -38,6 +44,9 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));
+    a->Visit(DRAKE_NVP(w_swing_toe));
+    a->Visit(DRAKE_NVP(swing_toe_kp));
+    a->Visit(DRAKE_NVP(swing_toe_kd));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
     a->Visit(DRAKE_NVP(CoMKd));
@@ -76,5 +85,8 @@ struct OSCWalkingGains {
     K_d_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->SwingFootKd.data(), this->rows, this->cols);
+    W_swing_toe = this->w_swing_toe * MatrixXd::Identity(1, 1);
+    K_p_swing_toe = this->swing_toe_kp * MatrixXd::Identity(1, 1);
+    K_d_swing_toe = this->swing_toe_kd * MatrixXd::Identity(1, 1);
   }
 };

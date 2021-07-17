@@ -26,6 +26,7 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "systems/dairlib_signal_lcm_systems.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/osc/swing_toe_traj_generator.h"
 
 namespace dairlib {
 
@@ -60,7 +61,7 @@ namespace examples {
 
 DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "The name of the channel which receives state");
-DEFINE_string(channel_u, "OSC_MPC_WALKING",
+DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
 
@@ -95,6 +96,8 @@ int DoMain(int argc, char* argv[]) {
   // plants)
   auto left_toe = LeftToeFront(plant_w_springs);
   auto left_heel = LeftToeRear(plant_w_springs);
+  auto right_toe = RightToeFront(plant_w_springs);
+  auto right_heel = RightToeRear(plant_w_springs);
 
   // Get body frames and points
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2.0;
@@ -171,26 +174,62 @@ int DoMain(int argc, char* argv[]) {
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);
 
+  // Add contact points (The position doesn't matter. It's not used in OSC)
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_w_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_w_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {0, 1, 2});
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_w_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_w_springs, right_heel.first, right_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {0, 1, 2});
+
   Vector3d foot_contact_disp(0, 0, 0);
 
-  auto left_foot_evaluator = multibody::WorldPointEvaluator(plant_w_springs,
-                                                            left_toe_mid.first, left_toe_mid.second, Matrix3d::Identity(),
-                                                            foot_contact_disp, {0, 2});
+  osc->AddStateAndContactPoint(BipedStance::kLeft, &left_toe_evaluator);
+  osc->AddStateAndContactPoint(BipedStance::kLeft, &left_heel_evaluator);
+  osc->AddStateAndContactPoint(BipedStance::kRight, &right_toe_evaluator);
+  osc->AddStateAndContactPoint(BipedStance::kRight, &right_heel_evaluator);
 
-  auto right_foot_evaluator = multibody::WorldPointEvaluator(plant_w_springs,
-                                                             right_toe_mid.first, right_toe_mid.second, Matrix3d::Identity(),
-                                                             foot_contact_disp, {0, 2});
+  // Swing toe joint trajectory
+  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
+      left_heel, left_toe};
+  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
+      right_heel, right_toe};
+  auto left_toe_angle_traj_gen = builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+      plant_w_springs, plant_context.get(), pos_map["toe_left"], left_foot_points,
+      "left_toe_angle_traj");
+  auto right_toe_angle_traj_gen = builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
+      plant_w_springs, plant_context.get(), pos_map["toe_right"], right_foot_points,
+      "right_toe_angle_traj");
 
-  osc->AddStateAndContactPoint(BipedStance::kLeft, &left_foot_evaluator);
-  osc->AddStateAndContactPoint(BipedStance::kRight, &right_foot_evaluator);
 
+  // Swing toe joint tracking
+  JointSpaceTrackingData swing_toe_traj_left(
+      "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+      gains.W_swing_toe, plant_w_springs, plant_w_springs);
+  JointSpaceTrackingData swing_toe_traj_right(
+      "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+      gains.W_swing_toe, plant_w_springs, plant_w_springs);
+  swing_toe_traj_right.AddStateAndJointToTrack(BipedStance::kLeft, "toe_right",
+                                               "toe_rightdot");
+  swing_toe_traj_left.AddStateAndJointToTrack(BipedStance::kRight, "toe_left",
+                                              "toe_leftdot");
+  osc->AddTrackingData(&swing_toe_traj_left);
+  osc->AddTrackingData(&swing_toe_traj_right);
 
   /*** tracking data ***/
   TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj",
                                              gains.K_p_swing_foot, gains.K_d_swing_foot, gains.W_swing_foot, plant_w_springs, plant_w_springs);
 
-  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kRight, "toe_left", left_toe_mid.first);
   swing_foot_traj.AddStateAndPointToTrack(BipedStance::kLeft, "toe_right", right_toe_mid.first);
+  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kRight, "toe_left", left_toe_mid.first);
+
+
 
   osc->AddTrackingData(&swing_foot_traj);
 
@@ -242,6 +281,16 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(mpc_reciever->get_swing_ft_traj_output_port(),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
+
+  //toe angles
+  builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+  builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+  builder.Connect(state_receiver->get_output_port(0),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  right_toe_angle_traj_gen->get_state_input_port());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

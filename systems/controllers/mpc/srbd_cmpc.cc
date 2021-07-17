@@ -404,7 +404,7 @@ VectorXd SrbdCMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
 
   Vector3d com_pos;
   Vector3d com_vel;
-  MatrixXd  J_CoM_v = MatrixXd::Zero(3, nv_);
+  MatrixXd J_CoM_v = MatrixXd::Zero(3, nv_);
 
   Vector3d left_pos;
   Vector3d right_pos;
@@ -691,17 +691,14 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
   }
 
   MatrixXd x_com_knots(2*kLinearDim_, x.cols());
+  MatrixXd orientation_knots(2*kAngularDim_, x.cols());
   x_com_knots << x.block(0, 0, kLinearDim_, x.cols()),
-      x.block(kLinearDim_ + kAngularDim_, 0, kLinearDim_, x.cols());
+                 x.block(kLinearDim_ + kAngularDim_, 0, kLinearDim_, x.cols());
+  orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols()),
+                       x.block(2*kLinearDim_ + kAngularDim_, 0, kAngularDim_, x.cols());
+
   CoMTraj.time_vector = x_time_knots;
   CoMTraj.datapoints = x_com_knots;
-
-  MatrixXd orientation_knots(2*kAngularDim_, x.cols());
-
-  for (int i = 0; i < x.cols(); i++) {
-    rpy_.set(x.block(kLinearDim_, i, kAngularDim_, 1));
-    orientation_knots.col(i) = rpy_.ToRotationMatrix().ToQuaternionAsVector4();
-  }
 
   AngularTraj.time_vector = x_time_knots;
   AngularTraj.datapoints = orientation_knots;

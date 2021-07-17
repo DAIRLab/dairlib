@@ -426,8 +426,8 @@ void RpyTaskSpaceTrackingData::UpdateYAndError(const Eigen::VectorXd& x_w_spr,
 
   RollPitchYaw<double> rpy_des(y_des_);
 
-  // Get relative quaternion (from current to desired)
-  auto ax_ang = rpy_des.ToRotationMatrix().InvertAndCompose(transform_mat.rotation()).ToAngleAxis();
+  // Get relative rotation (from current to desired)
+  auto ax_ang = (transform_mat.rotation().InvertAndCompose(rpy_des.ToRotationMatrix())).ToAngleAxis();
   error_y_ = ax_ang.angle() * ax_ang.axis();
 }
 

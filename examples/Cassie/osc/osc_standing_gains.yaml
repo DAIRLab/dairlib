@@ -9,7 +9,7 @@
 rows: 3
 cols: 3
 w_input: 0
-w_accel: 0.00001
+w_accel: 0.0001
 w_soft_constraint: 200
 HipYawKp: 10
 HipYawKd: 1
@@ -29,13 +29,13 @@ CoMKp:
 CoMKd:
   [  1.5,    0,    0,
      0,    1.5,    0,
-     0,    0,    2]
+     0,    0,    1]
 PelvisRotKp:
-  [10,  0,   0,
-   0,  10,   0,
-   0,   0,  10]
+  [100,  0,   0,
+   0,  100,   0,
+   0,   0,  100]
 PelvisRotKd:
-  [0.5,  0,   0,
-   0,  0.5,   0,
-   0,    0,  0.5]
+  [5,  0,   0,
+   0,  5,   0,
+   0,  0,   5]
 

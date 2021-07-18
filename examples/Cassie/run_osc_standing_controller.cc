@@ -39,6 +39,7 @@ using drake::systems::lcm::TriggerTypeSet;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RpyTaskSpaceTrackingData;
+using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -51,7 +52,7 @@ DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
-DEFINE_double(cost_weight_multiplier,  .001,
+DEFINE_double(cost_weight_multiplier,  1,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, 0.95, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
@@ -268,7 +269,7 @@ int DoMain(int argc, char* argv[]) {
   center_of_mass_traj.AddPointToTrack("pelvis");
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
-  RpyTaskSpaceTrackingData pelvis_rot_traj(
+  RotTaskSpaceTrackingData pelvis_rot_traj(
       "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
       W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);

@@ -60,13 +60,13 @@ DEFINE_string(gains_filename, "examples/Cassie/mpc/cassie_srbd_cmpc_gains.yaml",
 DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER", "channel to publish/receive cassie state");
 DEFINE_string(channel_plan, "SRBD_MPC_OUT", "channel to publish plan trajectory");
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
-DEFINE_double(stance_time, 0.25, "duration of each stance phase");
+DEFINE_double(stance_time, 0.3, "duration of each stance phase");
 DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
 DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location");
 DEFINE_double(debug_time, 0.00, "time to simulate system at");
 DEFINE_double(swing_ft_height, 0.01, "Swing foot height");
 DEFINE_double(v_des, 0.4, "desired walking speed");
-DEFINE_double(h_des, 0.95, "Desired pelvis height");
+DEFINE_double(h_des, 0.75, "Desired pelvis height");
 DEFINE_double(dt, 0.01, "time step for koopman mpc");
 
 // Code-gen of cross product basis
@@ -139,7 +139,7 @@ int DoMain(int argc, char* argv[]) {
 
   // add contact points
   auto left_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
-      plant.GetBodyByName("toe_right").body_frame(), Vector3d(0.0423, 0.056, 0));
+      plant.GetBodyByName("toe_left").body_frame(), Vector3d(0.0423, 0.056, 0));
 
   auto right_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
       plant.GetBodyByName("toe_right").body_frame(), Vector3d(0.0423, 0.056, 0));

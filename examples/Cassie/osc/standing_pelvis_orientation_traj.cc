@@ -83,7 +83,8 @@ void StandingPelvisOrientationTraj::CalcTraj(
           -M_PI, M_PI) +
           cassie_out->pelvis.radio.channel[3];
 
-  *casted_traj = PiecewisePolynomial<double>(rpy);
+  drake::math::RollPitchYaw<double> rpyd(rpy);
+  *casted_traj = PiecewisePolynomial<double>(rpyd.ToRotationMatrix().ToQuaternionAsVector4());
 }
 
 }  // namespace dairlib::cassie::osc

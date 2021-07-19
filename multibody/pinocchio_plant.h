@@ -27,6 +27,8 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
 
   void BuildPermutations();
 
+  void Finalize();
+
   void CalcMassMatrix(const drake::systems::Context<T>& context,
                       drake::EigenPtr<drake::MatrixX<T>> M) const;
 

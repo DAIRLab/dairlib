@@ -19,11 +19,9 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 
-#include "multibody/pinocchio_plant.h"
 
 using drake::multibody::MultibodyPlant;
 
-using dairlib::multibody::PinocchioPlant;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 namespace drake {
@@ -369,47 +367,6 @@ int do_main() {
 //   std::cout << "dvdot/dv difference (inf-norm: "
 //             << d_dv_diff.lpNorm<Eigen::Infinity>() << ")" << std::endl;
 //   std::cout << d_dv_diff << std::endl << std::endl;
-
-
-  //
-  // Build and test pinocchio plant
-  //
-  std::string urdf =
-      dairlib::FindResourceOrThrow("examples/Cassie/urdf/cassie_v2.urdf");
-  systems::DiagramBuilder<double> pinocchio_builder;
-  PinocchioPlant<double>& pinocchio_plant =
-      *pinocchio_builder.AddSystem<PinocchioPlant>(0, urdf);
-
-  multibody::Parser pinocchio_parser(&pinocchio_plant);
-  pinocchio_parser.AddModelFromFile(urdf);
-
-  pinocchio_plant.WeldFrames(pinocchio_plant.world_frame(),
-                             pinocchio_plant.GetFrameByName("pelvis"));
-  pinocchio_plant.Finalize();
-
-  nq = pinocchio_plant.num_positions();
-  nv = pinocchio_plant.num_velocities();
-  nu = pinocchio_plant.num_actuators();
-
-  x = VectorXd::Zero(nq + nv);
-  u = VectorXd::Zero(nu);
-
-  auto pinocchio_context = pinocchio_plant.CreateDefaultContext();
-
-  start = my_clock::now();
-  M = MatrixXd(nv, nv);
-  for (int i = 0; i < num_reps; i++) {
-    x(0) = i;
-    pinocchio_plant.SetPositionsAndVelocities(pinocchio_context.get(), x);
-    pinocchio_plant.CalcMassMatrix(*pinocchio_context, &M);
-  }
-  stop = my_clock::now();
-  duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  std::cout << "(pinocchio_plant) " << std::to_string(num_reps)
-            << "x inertia calculations took " << duration.count()
-            << " miliseconds. " << 1000 * duration.count() / num_reps
-            << " microseconds per." << std::endl;
 
   return 0;
 }

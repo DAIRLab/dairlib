@@ -33,8 +33,6 @@ class PinocchioPlantTest : public ::testing::Test {
     plant_->WeldFrames(plant_->world_frame(),
                            plant_->GetFrameByName("pelvis"));
     plant_->Finalize();
-
-    plant_->BuildPermutations();
   }
 
   std::unique_ptr<PinocchioPlant<double>> plant_{};
@@ -48,6 +46,7 @@ TEST_F(PinocchioPlantTest, MassMatrixTest) {
   VectorXd x = VectorXd::Random(nq + nv);
 
   auto context = plant_->CreateDefaultContext();
+  plant_->SetPositionsAndVelocities(context.get(), x);
   EXPECT_TRUE(plant_->TestMassMatrix(*context, 1e-9));
 }
 

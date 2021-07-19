@@ -6,6 +6,7 @@ namespace dairlib {
 namespace multibody {
 
 using drake::AutoDiffXd;
+using drake::VectorX;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::MatrixXd;
@@ -18,6 +19,24 @@ PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf) :
       MultibodyPlant<T>(time_step) {
     pinocchio::urdf::buildModel(urdf, pinocchio_model_);
     pinocchio_data_ = pinocchio::Data(pinocchio_model_);
+}
+
+template<typename T>
+void PinocchioPlant<T>::Finalize() {
+  MultibodyPlant<T>::Finalize();
+
+  BuildPermutations();
+
+  // Check that models match
+  int nq = this->num_positions();
+  int nv = this->num_velocities();
+  int nu = this->num_actuators();
+
+  VectorX<T> x =  VectorX<T>::Random(nq + nv);
+  VectorX<T> u =  VectorX<T>::Random(nu);
+
+  auto context = createContext<T>(*this, x, u);
+  TestMassMatrix(*context, 1e-6);
 }
 
 template<typename T>
@@ -37,14 +56,23 @@ void PinocchioPlant<T>::BuildPermutations() {
     // TODO: floating base options
     // Skipping i=0 for the world (TODO--doesn't handle floating base yet)
     // Assumes that URDF root is welded to the world
+    // TODO: new, stripped down benchmark using a single class
     const auto& name = pinocchio_model_.names[i];
+
+    if (pos_map.count(name) == 0) {
+      throw std::runtime_error("PinocchioPlant::BuildPermutations: " + name +
+                               " was not found in the position map.");
+    }
+
+    if (vel_map.count(name + "dot") == 0) {
+      throw std::runtime_error("PinocchioPlant::BuildPermutations: " + name +
+                               " was not found in the velocity map.");
+    }
+
     int pos_ind = pos_map[name];
     int vel_ind = vel_map[name + "dot"];
     pos_indices(i - 1) = pos_ind;
     vel_indices(i - 1) = vel_ind;
-
-    // std::cout << pos_ind << ": " << name << std::endl;
-    // std::cout << vel_ind << ": " << name << std::endl;
   }
 
   q_perm_.indices() = pos_indices;
@@ -58,7 +86,7 @@ void PinocchioPlant<double>::CalcMassMatrix(const Context<double>& context,
   pinocchio::crba(pinocchio_model_, pinocchio_data_, q_perm_.inverse() * q);
 
   // Pinocchio builds an upper triangular matrix, skipping the parts
-  // below the diagonal
+  // below the diagonal. Fill those in here.
   *M = pinocchio_data_.M;
   for (int i = 0; i < M->cols(); i++) {
     for (int j = i + 1; j < M->rows(); j++) {
@@ -72,6 +100,7 @@ template<>
 void PinocchioPlant<AutoDiffXd>::CalcMassMatrix(
     const Context<AutoDiffXd>& context, 
     drake::EigenPtr<drake::MatrixX<AutoDiffXd>> M) const {
+  throw std::domain_error("CalcMassMatrix not implemented with AutoDiffXd");
 }
 
 template<>
@@ -87,6 +116,12 @@ template<>
   CalcMassMatrix(context, &pin_M);
 
   return drake::CompareMatrices(M, pin_M, tol);
+}
+
+template<>
+::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestMassMatrix(
+    const Context<AutoDiffXd>& context, double tol) const {
+  throw std::domain_error("TestMassMatrix not implemented with AutoDiffXd");
 }
 
 }  // namespace multibody

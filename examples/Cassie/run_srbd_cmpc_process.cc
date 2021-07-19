@@ -104,8 +104,10 @@ int DoMain(int argc, char* argv[]) {
   Vector3d des_com_pos = {0, 0, 0.82};
   Vector3d des_pelvis_pos = {0, 0, 0.95};
   Vector3d com_offset = {0, 0, -0.128};
-  Vector3d left_neutral_foot_pos = {0,  0.125, 0};
+  Vector3d left_neutral_foot_pos = {0,  0.05, 0};
+  Vector3d left_safe_nominal_foot_pos = {0, 0.125, 0};
   Vector3d right_neutral_foot_pos = -left_neutral_foot_pos;
+  Vector3d right_safe_nomonal_foot_pos = -left_safe_nominal_foot_pos;
   Matrix3d I_rot;
   I_rot << 0.91, 0.04, 0.09, 0.04, 0.55, -0.001, 0.08, -0.001, 0.89;
   double mass = 30.0218;
@@ -137,16 +139,20 @@ int DoMain(int argc, char* argv[]) {
   cmpc->AddMode(left_stance_dynamics, BipedStance::kLeft, std::round(FLAGS_stance_time / dt));
   cmpc->AddMode(right_stance_dynamics, BipedStance::kRight, std::round(FLAGS_stance_time / dt));
 
+  auto left_toe = LeftToeFront(plant);
+  auto left_heel = LeftToeRear(plant);
+  Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2.0;
+
   // add contact points
   auto left_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
-      plant.GetBodyByName("toe_left").body_frame(), Vector3d(0.0423, 0.056, 0));
+      plant.GetBodyByName("toe_left").body_frame(), mid_contact_point);
 
   auto right_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
-      plant.GetBodyByName("toe_right").body_frame(), Vector3d(0.0423, 0.056, 0));
+      plant.GetBodyByName("toe_right").body_frame(), mid_contact_point);
 
   cmpc->AddContactPoint(left_pt, BipedStance::kLeft);
   cmpc->AddContactPoint(right_pt, BipedStance::kRight);
-  std::vector<VectorXd> kin_nom = {des_com_pos - left_neutral_foot_pos, des_com_pos - right_neutral_foot_pos};
+  std::vector<VectorXd> kin_nom = {des_com_pos - left_safe_nominal_foot_pos, des_com_pos - right_safe_nomonal_foot_pos};
   cmpc->SetReachabilityLimit(gains.kin_reachability_lim, kin_nom, gains.W_kin_reach);
 
   // set mass

@@ -77,7 +77,7 @@ DEFINE_bool(track_com, false,
 
 DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
 
-void print_gains(const OSCWalkingGains& gains);
+void print_gains(const CassieMpcOSCWalkingGains& gains);
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -123,7 +123,7 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant_w_springs);
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  OSCWalkingGains gains;
+  CassieMpcOSCWalkingGains gains;
   const YAML::Node& root =
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
@@ -309,7 +309,7 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
 
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return mpc_subscriber->GetInternalMessageCount() > 0; });
+    return mpc_subscriber->GetInternalMessageCount() > 1; });
 
   auto& loop_context = loop.get_diagram_mutable_context();
   mpc_subscriber->Publish(loop.get_diagram()->
@@ -321,7 +321,7 @@ int DoMain(int argc, char* argv[]) {
   return 0;
 }
 
-void print_gains(const OSCWalkingGains& gains) {
+void print_gains(const CassieMpcOSCWalkingGains& gains) {
   std::cout <<"======== OSC WALKING GAINS ==========\n";
 }
 

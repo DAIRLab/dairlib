@@ -4,7 +4,7 @@
 
 using Eigen::MatrixXd;
 
-struct OSCWalkingGains {
+struct CassieMpcOSCWalkingGains {
   int rows;
   int cols;
   double mu;

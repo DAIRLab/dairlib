@@ -70,9 +70,13 @@ def main():
 
   matplotlib.rcParams["savefig.directory"] = path
 
+  robot_out_channel = "CASSIE_STATE_SIMULATION"
+  mpc_channel = "SRBD_MPC_OUT"
+
   x, u_meas, t_x, u, t_u, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
+  osc_output, mpc_output, full_log = process_lcm_log.process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
+  mpc_channel, controller_channel, "OSC_DEBUG_WALKING")
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
@@ -87,6 +91,7 @@ def main():
     t_cassie_out[i] = cassie_out[i].utime / 1e6
     motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
     estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
+
 
   # Default time window values, can override
   t_start = t_u[10]
@@ -125,9 +130,41 @@ def main():
   #                 plant_w_spr, r_toe_frame, rear_contact_disp, t_slice, t_u,
   #                 t_u_slice, t_x, world, x, x_datatypes)
 
-  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  #plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+
+  plot_mpc_com_sol(mpc_output[25],0)
+  plot_mpc_com_sol(mpc_output[25],1)
+  plot_mpc_com_sol(mpc_output[25],2)
+  plot_mpc_swing_sol(mpc_output[25],0)
+  plot_mpc_swing_sol(mpc_output[25],1)
+  plot_mpc_swing_sol(mpc_output[25],2)
+  plot_mpc_orientation_sol(mpc_output[25],0)
+  plot_mpc_orientation_sol(mpc_output[25],1)
+  plot_mpc_orientation_sol(mpc_output[25],2)
+
   plt.show()
 
+def plot_mpc_com_sol(mpc_sol, dim):
+    fig_com = plt.figure("mpc com_traj " + str(dim))
+    com_traj = mpc_sol.trajectories["com_traj"]
+    plt.plot(com_traj.time_vec, com_traj.datapoints[dim, :])
+    t, r = mpc_sol.traj_as_cubic_hermite("com_traj", 100)
+    plt.plot(t,r[:,dim])
+
+def plot_mpc_swing_sol(mpc_sol, dim):
+  fig_swing_ft = plt.figure("mpc swing ft traj " + str(dim))
+  swing_ft_traj = mpc_sol.trajectories["swing_foot_traj"]
+  plt.plot(swing_ft_traj.time_vec, swing_ft_traj.datapoints[dim, :])
+  t, r = mpc_sol.traj_as_cubic_with_continuous_second_derivatives("swing_foot_traj",100)
+  plt.plot(t, r[:,dim])
+
+def plot_mpc_orientation_sol(mpc_sol, dim):
+  fig_orientation = plt.figure("mpc orientation" + str(dim))
+  orientation_traj = mpc_sol.trajectories["orientation"]
+  plt.plot(orientation_traj.time_vec, orientation_traj.datapoints[dim, :])
+  t, r = mpc_sol.traj_as_cubic_with_continuous_second_derivatives("orientation",100)
+  plt.plot(t, r[:,dim])
 
 def investigate_ekf(context, front_contact_disp, fsm, full_log, l_toe_frame,
                     plant_w_spr, r_toe_frame, rear_contact_disp, t_slice, t_u,
@@ -230,9 +267,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
-  # osc_traj0 = "swing_ft_traj"
+  osc_traj0 = "swing_ft_traj"
   osc_traj1 = "com_traj"
-  osc_traj2 = "pelvis_rot_traj"
+  osc_traj2 = "orientation_traj"
 
 
   # plot_osc(osc_debug, osc_traj0, 0, "pos")

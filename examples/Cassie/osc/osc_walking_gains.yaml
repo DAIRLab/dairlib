@@ -76,12 +76,12 @@ PelvisBalanceW:
     0,      1,     0,
     0,      0,     0]
 PelvisBalanceKp:
-  [50,      0,    0,
-   0,    100,    0,
+  [100,      0,    0,
+   0,    150,    0,
    0,      0,    0]
 PelvisBalanceKd:
-  [  20,     0,    0,
-     0,    20,    0,
+  [  0,    0,    0,
+     0,    0,    0,
      0,     0,    0]
 
 PelvisHeadingW:

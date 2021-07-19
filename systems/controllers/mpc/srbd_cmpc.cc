@@ -757,7 +757,7 @@ MatrixXd SrbdCMPC::CalcSwingFootKnotPoints(const VectorXd& x,
                                    .segment(nx_ + kLinearDim_ * next_mode.stance, kLinearDim_));
 
   mid_pos(0) = (curr_pos(0)  + end_pos(0)) / 2.0;
-  mid_pos(kLinearDim_ - 1) = swing_ft_ht_ - pow((time_since_last_touchdown - (dt_* (double) curr_mode.N)/2.0), 2);
+  mid_pos(kLinearDim_ - 1) = swing_ft_ht_ - pow((time_since_last_touchdown - (dt_* curr_mode.N)/2.0), 2);
 
   swing_ft_traj.block(0, 0, kLinearDim_, 1) = curr_pos;
   swing_ft_traj.block(0, 1, kLinearDim_, 1) = mid_pos;

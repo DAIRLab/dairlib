@@ -1,6 +1,7 @@
 #include "examples/Cassie/cassie_utils.h"
 
 #include "common/find_resource.h"
+#include "systems/primitives/encoder.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/rigid_transform.h"
@@ -197,11 +198,24 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
   const auto& accelerometer = Accelerometer<double>::AddToDiagram(
       body, X_BS, plant.gravity_field().gravity_vector(), plant, builder);
 
+  std::vector<int> joint_selections = {7,  8,  9,  10, 11, 12, 13,
+                                       14, 15, 16, 17, 18, 20, 22};
+
+  std::vector<int> ticks_per_revolution = {
+      ENC_RES_LOW,  ENC_RES_LOW,  ENC_RES_LOW, ENC_RES_LOW,  ENC_RES_LOW,
+      ENC_RES_LOW,  ENC_RES_LOW,  ENC_RES_LOW, ENC_RES_HIGH, ENC_RES_HIGH,
+      ENC_RES_HIGH, ENC_RES_HIGH, ENC_RES_LOW, ENC_RES_LOW};
+
+  const auto& encoders = builder->AddSystem<systems::Encoder>(
+      plant, joint_selections, ticks_per_revolution);
+
   auto sensor_aggregator =
       builder->AddSystem<systems::SimCassieSensorAggregator>(plant);
   builder->Connect(actuation_port,
                    sensor_aggregator->get_input_port_input());
   builder->Connect(plant.get_state_output_port(),
+                   encoders->get_input_port());
+  builder->Connect(encoders->get_output_port(),
                    sensor_aggregator->get_input_port_state());
   builder->Connect(accelerometer.get_measurement_output_port(),
                    sensor_aggregator->get_input_port_acce());

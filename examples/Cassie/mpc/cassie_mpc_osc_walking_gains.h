@@ -13,6 +13,9 @@ struct CassieMpcOSCWalkingGains {
   double w_swing_toe;
   double swing_toe_kp;
   double swing_toe_kd;
+  double w_hip_yaw;
+  double hip_yaw_kp;
+  double hip_yaw_kd;
 
   std::vector<double> CoMW;
   std::vector<double> CoMKp;
@@ -36,6 +39,9 @@ struct CassieMpcOSCWalkingGains {
   MatrixXd W_swing_toe;
   MatrixXd K_p_swing_toe;
   MatrixXd K_d_swing_toe;
+  MatrixXd W_hip_yaw;
+  MatrixXd K_p_hip_yaw;
+  MatrixXd K_d_hip_yaw;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -47,6 +53,9 @@ struct CassieMpcOSCWalkingGains {
     a->Visit(DRAKE_NVP(w_swing_toe));
     a->Visit(DRAKE_NVP(swing_toe_kp));
     a->Visit(DRAKE_NVP(swing_toe_kd));
+    a->Visit(DRAKE_NVP(w_hip_yaw));
+    a->Visit(DRAKE_NVP(hip_yaw_kp));
+    a->Visit(DRAKE_NVP(hip_yaw_kd));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
     a->Visit(DRAKE_NVP(CoMKd));
@@ -88,5 +97,8 @@ struct CassieMpcOSCWalkingGains {
     W_swing_toe = this->w_swing_toe * MatrixXd::Identity(1, 1);
     K_p_swing_toe = this->swing_toe_kp * MatrixXd::Identity(1, 1);
     K_d_swing_toe = this->swing_toe_kd * MatrixXd::Identity(1, 1);
+    W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
+    K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
+    K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
   }
 };

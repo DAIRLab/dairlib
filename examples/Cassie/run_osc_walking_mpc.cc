@@ -27,6 +27,7 @@
 #include "systems/dairlib_signal_lcm_systems.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
+#include "multibody/kinematic/fixed_joint_evaluator.h"
 
 namespace dairlib {
 
@@ -39,6 +40,8 @@ using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+
+using multibody::FixedJointEvaluator;
 
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
@@ -168,6 +171,36 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(nv, nv);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
+   // Constraints in OSC
+  multibody::KinematicEvaluatorSet<double> evaluators(plant_w_springs);
+  // 1. fourbar constraint
+  auto left_loop = LeftLoopClosureEvaluator(plant_w_springs);
+  auto right_loop = RightLoopClosureEvaluator(plant_w_springs);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
+  // 2. fixed spring constraint
+  // Note that we set the position value to 0, but this is not used in OSC,
+  // because OSC constraint only use JdotV and J.
+  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_springs);
+  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_springs);
+  auto left_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_springs, pos_idx_map.at("knee_joint_left"),
+                          vel_idx_map.at("knee_joint_leftdot"), 0);
+  auto right_fixed_knee_spring =
+      FixedJointEvaluator(plant_w_springs, pos_idx_map.at("knee_joint_right"),
+                          vel_idx_map.at("knee_joint_rightdot"), 0);
+  auto left_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_springs, pos_idx_map.at("ankle_spring_joint_left"),
+      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+  auto right_fixed_ankle_spring = FixedJointEvaluator(
+      plant_w_springs, pos_idx_map.at("ankle_spring_joint_right"),
+      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+  evaluators.add_evaluator(&left_fixed_knee_spring);
+  evaluators.add_evaluator(&right_fixed_knee_spring);
+  evaluators.add_evaluator(&left_fixed_ankle_spring);
+  evaluators.add_evaluator(&right_fixed_ankle_spring);
+  osc->AddKinematicConstraint(&evaluators);
+
   // Soft constraint on contacts
   osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
 
@@ -229,8 +262,6 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_traj.AddStateAndPointToTrack(BipedStance::kLeft, "toe_right", right_toe_mid.first);
   swing_foot_traj.AddStateAndPointToTrack(BipedStance::kRight, "toe_left", left_toe_mid.first);
 
-
-
   osc->AddTrackingData(&swing_foot_traj);
 
   // CoM offset
@@ -255,6 +286,16 @@ int DoMain(int argc, char* argv[]) {
   angular_traj.AddFrameToTrack("pelvis");
 
   osc->AddTrackingData(&angular_traj);
+
+  // Swing hip yaw joint tracking
+  JointSpaceTrackingData swing_hip_yaw_traj(
+      "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      gains.W_hip_yaw, plant_w_springs, plant_w_springs);
+  swing_hip_yaw_traj.AddStateAndJointToTrack(
+      BipedStance::kLeft, "hip_yaw_right","hip_yaw_rightdot");
+  swing_hip_yaw_traj.AddStateAndJointToTrack(
+      BipedStance::kRight, "hip_yaw_left","hip_yaw_leftdot");
+  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
 
   // Build OSC problem
   osc->Build();

@@ -155,13 +155,13 @@
     <parent link="hip"/>
     <child link="left_upper_leg"/>
   </joint>
-  <joint name="hip_pin" type="continuous">
+  <joint name="hip_pin" type="revolute">
     <parent link="hip"/>
     <child link="right_upper_leg"/>
     <axis xyz="0 1 0"/>
     <limit upper="2" lower="-2" effort="1e6" velocity="100"/>
   </joint>
-  <joint name="left_knee_pin" type="continuous">
+  <joint name="left_knee_pin" type="revolute">
     <parent link="left_upper_leg"/>
     <child link="left_lower_leg"/>
     <axis xyz="0 1 0"/>

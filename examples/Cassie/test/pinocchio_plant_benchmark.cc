@@ -13,6 +13,7 @@
 #include "pinocchio/multibody/joint/joint-free-flyer.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 
+#include "drake/common/find_resource.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/parsing/parser.h"
@@ -33,7 +34,7 @@ namespace {
 typedef std::chrono::steady_clock my_clock;
 
 int do_main() {
-  const int num_reps = 10000;
+  const int num_reps = 10000 ;
   const int num_autodiff_reps = 100;
 
   //
@@ -89,6 +90,42 @@ int do_main() {
             << "x inertia calculations took " << duration.count()
             << " miliseconds. " << 1e6 * duration.count() / num_reps
             << " nanoseconds per." << std::endl;
+
+  VectorXd vdot;
+  drake::multibody::MultibodyForces<double> forces(plant);
+  start = my_clock::now();
+  for (int i = 0; i < num_reps; i++) {
+    x(0) = i;
+    vdot = VectorXd::Random(nv);
+    plant.SetPositionsAndVelocities(context.get(), x);
+
+    plant.CalcInverseDynamics(*context, vdot, forces);
+  }
+  stop = my_clock::now();
+  duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "(pinocchio_plant) " << std::to_string(num_reps)
+            << "x inverse dynamics calculations took " << duration.count()
+            << " miliseconds. " << 1e6 * duration.count() / num_reps
+            << " nanoseconds per." << std::endl;
+
+
+  start = my_clock::now();
+  for (int i = 0; i < num_reps; i++) {
+    x(0) = i;
+    vdot = VectorXd::Random(nv);
+    plant.SetPositionsAndVelocities(context.get(), x);
+
+    plant.MultibodyPlant::CalcInverseDynamics(*context, vdot, forces);
+  }
+  stop = my_clock::now();
+  duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "(multibody_plant) " << std::to_string(num_reps)
+            << "x inverse dynamics calculations took " << duration.count()
+            << " miliseconds. " << 1e6 * duration.count() / num_reps
+            << " nanoseconds per." << std::endl;
+
 
   return 0;
 }

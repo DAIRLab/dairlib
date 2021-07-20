@@ -2,15 +2,8 @@
 #include <gtest/gtest.h>
 
 #include "drake/multibody/plant/multibody_plant.h"
-
-#include "pinocchio/algorithm/aba-derivatives.hpp"
-#include "pinocchio/algorithm/aba.hpp"
-#include "pinocchio/algorithm/crba.hpp"
-#include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/algorithm/rnea-derivatives.hpp"
-#include "pinocchio/algorithm/rnea.hpp"
-#include "pinocchio/multibody/joint/joint-free-flyer.hpp"
-#include "pinocchio/parsers/urdf.hpp"
+#include "pinocchio/multibody/model.hpp"
+#include "pinocchio/multibody/data.hpp"
 
 // TODO: Needs a fixed vs. floating base mechanism
 // Move test methods here as self-verification steps
@@ -32,6 +25,10 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   void CalcMassMatrix(const drake::systems::Context<T>& context,
                       drake::EigenPtr<drake::MatrixX<T>> M) const;
 
+  drake::VectorX<T> CalcInverseDynamics(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& known_vdot,
+      const drake::multibody::MultibodyForces<T>& external_forces) const;
 
   //
   // Comparisons against MultibodyPlant
@@ -40,6 +37,12 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   ::testing::AssertionResult TestMassMatrix(
       const drake::systems::Context<T>& context, double tol = 1e-5) const;
 
+  ::testing::AssertionResult TestInverseDynamics(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& known_vdot,
+      const drake::multibody::MultibodyForces<T>& external_forces,
+      double tol) const;
+
  private:
   pinocchio::Model pinocchio_model_;
   mutable pinocchio::Data pinocchio_data_;
@@ -47,6 +50,7 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   // permutation matrices maps from Pinocchio to MBP
   Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> q_perm_;
   Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> v_perm_;
+  Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> u_perm_;
 };
 }  // namespace multibody
 }  // namespace dairlib

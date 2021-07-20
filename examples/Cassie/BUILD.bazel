@@ -392,6 +392,7 @@ cc_binary(
     testonly = 1,
     deps = [
         ":cassie_urdf",
+        "//examples/PlanarWalker:urdf",
         ":sim_cassie_sensor_aggregator",
         "//common",
         "//multibody:utils",

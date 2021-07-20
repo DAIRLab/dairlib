@@ -2,6 +2,15 @@
 #include "multibody/multibody_utils.h"
 #include "drake/common/test_utilities/eigen_matrix_compare.h"
 
+#include "pinocchio/algorithm/aba-derivatives.hpp"
+#include "pinocchio/algorithm/aba.hpp"
+#include "pinocchio/algorithm/crba.hpp"
+#include "pinocchio/algorithm/joint-configuration.hpp"
+#include "pinocchio/algorithm/rnea-derivatives.hpp"
+#include "pinocchio/algorithm/rnea.hpp"
+#include "pinocchio/multibody/joint/joint-free-flyer.hpp"
+#include "pinocchio/parsers/urdf.hpp"
+
 namespace dairlib {
 namespace multibody {
 
@@ -18,6 +27,8 @@ template <typename T>
 PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf) :
       MultibodyPlant<T>(time_step) {
     pinocchio::urdf::buildModel(urdf, pinocchio_model_);
+
+    // Do i need to buildReducedModel? Do What about joints?
     pinocchio_data_ = pinocchio::Data(pinocchio_model_);
 }
 
@@ -33,10 +44,23 @@ void PinocchioPlant<T>::Finalize() {
   int nu = this->num_actuators();
 
   VectorX<T> x =  VectorX<T>::Random(nq + nv);
-  VectorX<T> u =  VectorX<T>::Random(nu);
+  x.head(4) = x.head(4) / x.head(4).norm();
+  VectorX<T> u = 0*VectorX<T>::Random(nu);
+  VectorX<T> vdot =  0*VectorX<T>::Random(nv);
+
+  x = 0 * x;
 
   auto context = createContext<T>(*this, x, u);
-  TestMassMatrix(*context, 1e-6);
+  // TODO: need to test actual forces
+  drake::multibody::MultibodyForces<T> forces(*this);
+  this->CalcForceElementsContribution(*context, &forces);
+  
+  if (!TestMassMatrix(*context, 1e-6)) {
+    std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
+  }
+  if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
+    std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
+  }
 }
 
 template<typename T>
@@ -48,15 +72,11 @@ void PinocchioPlant<T>::BuildPermutations() {
   Eigen::VectorXi pos_indices(nq);
   Eigen::VectorXi vel_indices(nv);
 
-    // for (auto const &pair: vel_map) {
-    //     std::cout << "{" << pair.first << ": " << pair.second << "}\n";
-    // }
 
   for (int i = 1; i < pinocchio_model_.names.size(); i++) {
     // TODO: floating base options
     // Skipping i=0 for the world (TODO--doesn't handle floating base yet)
     // Assumes that URDF root is welded to the world
-    // TODO: new, stripped down benchmark using a single class
     const auto& name = pinocchio_model_.names[i];
 
     if (pos_map.count(name) == 0) {
@@ -82,8 +102,8 @@ void PinocchioPlant<T>::BuildPermutations() {
 template <>
 void PinocchioPlant<double>::CalcMassMatrix(const Context<double>& context,
     drake::EigenPtr<Eigen::MatrixXd> M) const {
-  VectorXd q = GetPositions(context);
-  pinocchio::crba(pinocchio_model_, pinocchio_data_, q_perm_.inverse() * q);
+  pinocchio::crba(pinocchio_model_, pinocchio_data_,
+                  q_perm_.inverse() * GetPositions(context));
 
   // Pinocchio builds an upper triangular matrix, skipping the parts
   // below the diagonal. Fill those in here.
@@ -94,6 +114,24 @@ void PinocchioPlant<double>::CalcMassMatrix(const Context<double>& context,
     }
   }
   *M = v_perm_ * (*M) * v_perm_.inverse();
+}
+
+template <>
+VectorXd PinocchioPlant<double>::CalcInverseDynamics(
+    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
+    const drake::multibody::MultibodyForces<double>& external_forces) const {
+
+  // TODO: support body forces
+  if (external_forces.body_forces().size() > 0) {
+    // throw std::runtime_error(
+        // "PinocchioPlant::CalcInverseDynamics: body forces not yet supported");
+  }
+
+  auto f_pin = pinocchio::rnea(pinocchio_model_, pinocchio_data_,
+                               q_perm_.inverse() * GetPositions(context),
+                               v_perm_.inverse() * GetVelocities(context),
+                               v_perm_.inverse() * known_vdot);
+  return v_perm_ * f_pin - external_forces.generalized_forces();
 }
 
 template<>
@@ -117,6 +155,19 @@ template<>
 
   return drake::CompareMatrices(M, pin_M, tol);
 }
+
+template <>
+::testing::AssertionResult PinocchioPlant<double>::TestInverseDynamics(
+    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
+    const drake::multibody::MultibodyForces<double>& external_forces,
+    double tol) const {
+auto f = MultibodyPlant<double>::CalcInverseDynamics(context, known_vdot,
+                                                     external_forces);
+auto pin_f = CalcInverseDynamics(context, known_vdot, external_forces);
+
+return drake::CompareMatrices(f, pin_f, tol);
+}
+
 
 template<>
 ::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestMassMatrix(

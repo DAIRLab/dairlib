@@ -213,6 +213,7 @@ def main():
   n_step = 4  # steps to average over
 
   # Weight used in model optimization
+  # TODO: read the weight from nominal traj log files (you already have the code in a python script). You can create a copy of the file to sim_cost_eval_folder when you evaluate.
   w_Q = 0.005  # Assume all joints have the same cost weight, though not what trajopt is using. TODO: improve this
   w_R = 0.0002
   w_accel = 0.002 * w_Q

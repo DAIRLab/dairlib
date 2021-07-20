@@ -61,6 +61,7 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO" ,"LCM channel for virtual radio command");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

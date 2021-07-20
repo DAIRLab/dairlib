@@ -68,6 +68,7 @@ cc_binary(
     deps = [
         "//common",
         "//lcm:trajectory_saver",
+        "//multibody:visualization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

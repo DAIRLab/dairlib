@@ -27,7 +27,6 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
-using drake::multibody::Parser;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -169,7 +168,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd q_init, u_init, lambda_init;
   double mu_fp = 0;
   double min_normal_fp = 70;
-  double toe_spread = .2;
+  double toe_spread = .10;
   // Create a plant for CassieFixedPointSolver.
   // Note that we cannot use the plant from the above diagram, because after the
   // diagram is built, plant.get_actuation_input_port().HasValue(*context)

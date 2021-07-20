@@ -58,6 +58,7 @@ cc_library(
     deps = [
         "//multibody:utils",
         "//systems/controllers/osc:osc_gains",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )
@@ -69,6 +70,7 @@ cc_library(
     deps = [
         "//multibody:utils",
         "//systems/controllers/osc:osc_gains",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )
@@ -80,6 +82,7 @@ cc_library(
     deps = [
         "//multibody:utils",
         "//systems/controllers/osc:osc_gains",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )

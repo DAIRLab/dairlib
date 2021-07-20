@@ -114,6 +114,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   vel_map_ = multibody::makeNameToVelocitiesMap(plant_control);
 
   // Reduced order model
+  cout << "model directory = " << param_.dir_model << endl;
   rom_ = CreateRom(param_.rom_option, ROBOT, plant_control, false);
   ReadModelParameters(rom_.get(), param_.dir_model, param_.iter);
 

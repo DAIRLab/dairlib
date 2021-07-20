@@ -47,6 +47,7 @@ using drake::systems::lcm::TriggerTypeSet;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
+using systems::controllers::RpyTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::FixedJointEvaluator;
@@ -381,14 +382,13 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&center_of_mass_traj);
   }
   // Pelvis rotation tracking (pitch and roll)
-  RotTaskSpaceTrackingData pelvis_balance_traj(
+  RpyTaskSpaceTrackingData pelvis_balance_traj(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
       gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
-  VectorXd pelvis_desired_quat(4);
+  Vector3d pelvis_desired_rpy = Vector3d::Zero();
 
-  pelvis_desired_quat << 1, 0, 0, 0;
-  osc->AddConstTrackingData(&pelvis_balance_traj, pelvis_desired_quat);
+  osc->AddConstTrackingData(&pelvis_balance_traj, pelvis_desired_rpy);
   // Pelvis rotation tracking (yaw)
   RotTaskSpaceTrackingData pelvis_heading_traj(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,

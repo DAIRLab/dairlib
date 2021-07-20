@@ -9,7 +9,7 @@ StateW:
 FinalStateW:
   [0, 0, 200,           # x, y, z
    0, 0, 0,             # roll, pitch , yaw
-   1000, 1000, 0,       # vx, vy, vz
+   1000, 1000, 1000,       # vx, vy, vz
    10, 10, 10,             # omega
    0, 0, 0, 0, 0, 0]    # Foot position (should always be zero)
 InputW:

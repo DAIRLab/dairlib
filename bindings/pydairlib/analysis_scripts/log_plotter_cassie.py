@@ -131,7 +131,7 @@ def main():
   #                 t_u_slice, t_x, world, x, x_datatypes)
 
   # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
-  #plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   plot_mpc_com_sol(mpc_output[25],0)
   plot_mpc_com_sol(mpc_output[25],1)

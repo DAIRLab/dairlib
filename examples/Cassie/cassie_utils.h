@@ -15,6 +15,9 @@ namespace dairlib {
 
 static constexpr double kCassieAchillesLength = 0.5012;
 
+#define ENC_RES_LOW 8192
+#define ENC_RES_HIGH 262144
+
 template <typename T>
 std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
 LeftToeFront(const drake::multibody::MultibodyPlant<T>& plant);

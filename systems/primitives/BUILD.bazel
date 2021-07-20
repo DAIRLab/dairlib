@@ -20,6 +20,7 @@ cc_library(
         "timestamped_subvector_pass_through-inl.h",
     ],
     deps = [
+        ":encoder",
         "//systems/framework:vector",
         "gaussian_noise_pass_through",
         "@drake//:drake_shared_library",
@@ -49,6 +50,18 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
+    ],
+)
+
+cc_library(
+    name = "encoder",
+    srcs = ["encoder.cc"],
+    hdrs = [
+        "encoder.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )
 

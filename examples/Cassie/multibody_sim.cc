@@ -1,6 +1,5 @@
 #include <memory>
 
-#include <drake/systems/primitives/discrete_time_delay.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
@@ -14,15 +13,14 @@
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
-#include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/discrete_time_delay.h"
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
@@ -51,7 +49,6 @@ DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
-DEFINE_string(channel_u, "CASSIE_INPUT", "LCM channel to receive inputs on");
 DEFINE_double(dt, 8e-5,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
@@ -65,7 +62,11 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
-DEFINE_double(delay, 0.0, "Delay in commanded to actual motor inputs");
+DEFINE_string(channel_u, "CASSIE_INPUT",
+              "LCM channel to receive controller inputs on");
+DEFINE_double(actuator_delay, 0.0,
+              "Duration of actuator delay. Set to 0.0 by default.");
+DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -107,11 +108,12 @@ int do_main(int argc, char* argv[]) {
       plant.get_actuation_input_port().size());
   auto discrete_time_delay =
       builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-          1.0 / FLAGS_publish_rate, FLAGS_delay * FLAGS_publish_rate, plant.num_actuators());
+          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay * FLAGS_publish_rate, plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant, true);
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+      plant, FLAGS_publish_efforts);
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
@@ -167,7 +169,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd q_init, u_init, lambda_init;
   double mu_fp = 0;
   double min_normal_fp = 70;
-  double toe_spread = .1;
+  double toe_spread = .2;
   // Create a plant for CassieFixedPointSolver.
   // Note that we cannot use the plant from the above diagram, because after the
   // diagram is built, plant.get_actuation_input_port().HasValue(*context)

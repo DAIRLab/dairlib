@@ -4,7 +4,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <drake/geometry/drake_visualizer.h>
 #include <gflags/gflags.h>
 
 #include "common/file_utils.h"
@@ -16,12 +15,14 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/visualization_utils.h"
 #include "solvers/nonlinear_constraint.h"
 #include "solvers/optimization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon/dircon.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -249,7 +250,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   } else {
     // Snopt settings
     auto id = drake::solvers::SnoptSolver::id();
-    trajopt.SetSolverOption(id, "Print file", "../snopt.out");
+    // trajopt.SetSolverOption(id, "Print file", "../snopt.out");
     trajopt.SetSolverOption(id, "Major iterations limit", max_iter);
     trajopt.SetSolverOption(id, "Iterations limit", 100000);
     trajopt.SetSolverOption(id, "Verify level", 0);
@@ -269,19 +270,15 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto x = trajopt.state();
   auto x0 = trajopt.initial_state();
   auto xf = trajopt.state_vars(0, num_knotpoints - 1);
-  auto xf_m1 = trajopt.state_vars(0, num_knotpoints - 2);
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
 
   // height constraint
   trajopt.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
-  trajopt.AddBoundingBoxConstraint(0.8, 0.8, xmid(positions_map.at("base_z")));
-  trajopt.AddBoundingBoxConstraint(1, 1, xf(positions_map.at("base_z")));
+  trajopt.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
 
   // initial pelvis position
   trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
   trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
-  trajopt.AddBoundingBoxConstraint(0, 0, xf(positions_map.at("base_x")));
-  trajopt.AddBoundingBoxConstraint(0, 0, xf(positions_map.at("base_y")));
 
   // pelvis pose constraints
   for (int i = 0; i < num_knotpoints; i++) {
@@ -295,8 +292,6 @@ void DoMain(double duration, int max_iter, string data_directory,
   // start/end velocity constraints
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    x0.tail(n_v));
-  //  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-  //                                   xf_m1.tail(n_v));
   trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    xf.tail(n_v));
 
@@ -325,17 +320,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
 
-  // hip yaw constraint
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_yaw_left")) ==
-                                       0);
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_yaw_right")) ==
-                                       0);
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("base_z")) <= 1.0);
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_roll_left")) ==
-                                       0);
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("hip_roll_right")) ==
-                                       0);
-
   // joint limits
   for (const auto& member : joint_names) {
     trajopt.AddConstraintToAllKnotPoints(
@@ -351,18 +335,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     auto ui = trajopt.input_vars(0, i);
     trajopt.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
                                      VectorXd::Constant(n_u, +300), ui);
-  }
-
-  // Symmetry constraints
-  for (const auto& l_r_pair : l_r_pairs) {
-    for (const auto& sym_joint_name : sym_joint_names) {
-      trajopt.AddLinearConstraint(
-          x0(positions_map[sym_joint_name + l_r_pair.first]) ==
-          x0(positions_map[sym_joint_name + l_r_pair.second]));
-      trajopt.AddLinearConstraint(
-          xf(positions_map[sym_joint_name + l_r_pair.first]) ==
-          xf(positions_map[sym_joint_name + l_r_pair.second]));
-    }
   }
 
   // toe position constraint in y direction (avoid leg crossing)
@@ -397,16 +369,8 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt.AddConstraint(foot_y_constraint, x.head(n_q));
   }
 
-  for (int index = 0; index < num_knotpoints; index++) {
-    auto lambda = trajopt.force_vars(0, index);
-    trajopt.AddLinearConstraint(lambda(2) >= 15);
-    trajopt.AddLinearConstraint(lambda(5) >= 15);
-    trajopt.AddLinearConstraint(lambda(8) >= 15);
-    trajopt.AddLinearConstraint(lambda(11) >= 15);
-  }
-
   // add cost
-  const MatrixXd Q = 1000 * MatrixXd::Identity(n_v, n_v);
+  const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
   trajopt.AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt.AddRunningCost(u.transpose() * R * u);
@@ -462,8 +426,8 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   // initial guess
   if (!init_file.empty()) {
-    DirconTrajectory init_traj(data_directory + init_file);
-    trajopt.SetInitialGuessForAllVariables(init_traj.GetDecisionVariables());
+    MatrixXd z0 = readCSV(data_directory + init_file);
+    trajopt.SetInitialGuessForAllVariables(z0);
   } else {
     // Add random initial guess first (the seed for RNG is fixed)
     trajopt.SetInitialGuessForAllVariables(
@@ -471,9 +435,9 @@ void DoMain(double duration, int max_iter, string data_directory,
 
     VectorXd q0, qf, u0, uf, lambda0, lambdaf;
     double min_normal_force = 70;
-    double toe_spread = .1;
+    double toe_spread = .3;
     double init_height = 1.0;
-    double final_height = 0.8;
+    double final_height = 1.1;
     double init_time = .5;
     CassieFixedPointSolver(plant, init_height, 0, min_normal_force, true,
                            toe_spread, &q0, &u0, &lambda0);
@@ -516,8 +480,6 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt.SetInitialGuess(xi(3), 0);
     }
   }
-
-  trajopt.AddDurationBounds(duration, duration);
 
   double alpha = .2;
   int num_poses = std::min(num_knotpoints, 5);
@@ -620,23 +582,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   // *******Add COM visualization**********
   bool plot_com = true;
   bool com_on_ground = true;
-  auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
+  auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
   if (plot_com) {
-    double radius = .02;
-    UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);
-    SpatialInertia<double> M_Bcm(1, Eigen::Vector3d::Zero(), G_Bcm);
-
-    const drake::multibody::RigidBody<double>& ball =
-        ball_plant->AddRigidBody("Ball", M_Bcm);
-
-    ball_plant->RegisterAsSourceForSceneGraph(&scene_graph);
-    // Add visual for the COM.
-    const Eigen::Vector4d orange(1.0, 0.55, 0.0, 1.0);
-    const RigidTransformd X_BS = RigidTransformd::Identity();
-    ball_plant->RegisterVisualGeometry(ball, X_BS, Sphere(radius), "visual",
-                                       orange);
-    ball_plant->Finalize();
-
     // connect
     auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
         plant.num_positions() + plant.num_velocities(), 0,

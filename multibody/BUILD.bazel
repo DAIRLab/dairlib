@@ -32,7 +32,6 @@ cc_library(
         "multibody_utils.h",
     ],
     deps = [
-        ":visualization_utils",
         "@drake//multibody/plant",
     ],
 )
@@ -46,6 +45,8 @@ cc_library(
         "visualization_utils.h",
     ],
     deps = [
+        "//common:find_resource",
+        "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
@@ -84,4 +85,9 @@ cc_test(
         "@drake//:drake_shared_library",
         "@gtest//:main",
     ],
+)
+
+cc_library(
+    name = "ball_urdf",
+    data = glob(["multibody/ball.urdf"]),
 )

@@ -82,13 +82,6 @@ CassieStateEstimator::CassieStateEstimator(
       this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
                                     &CassieStateEstimator::CopyStateOut)
           .get_index();
-  contact_output_port_ =
-      this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
-          .get_index();
-  contact_forces_output_port_ =
-      this->DeclareAbstractOutputPort(
-              &CassieStateEstimator::CopyEstimatedContactForces)
-          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -96,6 +89,14 @@ CassieStateEstimator::CassieStateEstimator(
   velocity_idx_map_ = multibody::makeNameToVelocitiesMap(plant);
 
   if (is_floating_base_) {
+    contact_output_port_ =
+        this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
+            .get_index();
+    contact_forces_output_port_ =
+        this->DeclareAbstractOutputPort(
+                &CassieStateEstimator::CopyEstimatedContactForces)
+            .get_index();
+
     // Middle point between the front and the rear contact points
     front_contact_disp_ = LeftToeFront(plant).first;
     rear_contact_disp_ = LeftToeRear(plant).first;
@@ -1086,6 +1087,8 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
       auto& uu_events = events->get_mutable_unrestricted_update_events();
       uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
           drake::systems::TriggerType::kTimed, callback));
+    }else{
+      *time = INFINITY;
     }
   }
 }

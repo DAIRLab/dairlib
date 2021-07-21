@@ -205,6 +205,8 @@ cc_binary(
         ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+                ":cassie_encoder",
+
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -236,8 +238,9 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+                "//systems/primitives",
+
         "//systems/controllers:trajectory_playback",
-        ":cassie_encoder",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

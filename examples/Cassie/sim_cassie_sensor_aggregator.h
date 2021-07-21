@@ -40,6 +40,9 @@ class SimCassieSensorAggregator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_gyro() const {
     return this->get_input_port(gyro_input_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_input_port_);
+  }
 
  private:
   void Aggregate(const drake::systems::Context<double>& context,
@@ -49,6 +52,7 @@ class SimCassieSensorAggregator : public drake::systems::LeafSystem<double> {
   int state_input_port_;
   int acce_input_port_;
   int gyro_input_port_;
+  int radio_input_port_;
 
   int num_positions_;
   int num_velocities_;

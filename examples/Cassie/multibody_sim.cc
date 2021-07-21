@@ -115,6 +115,8 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
+  auto radio_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(FLAGS_radio_channel, lcm));
   const auto& sensor_aggregator = AddImuAndAggregator(
       &builder, plant, passthrough->get_output_port());
   auto sensor_pub =
@@ -138,6 +140,8 @@ int do_main(int argc, char* argv[]) {
                   contact_viz.get_input_port(0));
   builder.Connect(contact_viz.get_output_port(0),
                   contact_results_publisher.get_input_port());
+  builder.Connect(radio_sub->get_output_port(),
+                  sensor_aggregator.get_input_port_radio());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 

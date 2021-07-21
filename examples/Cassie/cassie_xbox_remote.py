@@ -1,22 +1,8 @@
-'''
-Uses Pygame (pip install pygame) to capture keyboard input. The virtual remote must be the active window to register commands.
-W / S to increase/decrease sagittal velocity
-A / D to increase/decrease longitudinal velocity
-
-use Keyboard Manager trim_x and trim_y member variables to add trim to the velocity commands
-'''
-
-import sys
 import pygame
-from pygame.locals import *
-import numpy as np
-
 import dairlib.lcmt_radio_out
-
-import time
 import lcm
 
-
+# colors
 cassie_blue = (6, 61, 128)
 white = (255, 255, 255)
 
@@ -49,15 +35,6 @@ class TextPrint:
     def unindent(self):
         self.x -= 10
 
-
-def wait_for_joysticks(textPrint, screen, clock):
-    while (pygame.joystick.get_count() != 1):
-        screen.fill(cassie_blue)
-        textPrint.reset()
-        textPrint.print(screen, "please connect exactly one\ncontroller to use xbox remote feature")
-        pygame.display.flip()
-        clock.tick(20)
-
 def main():
     publisher = lcm.LCM()
 
@@ -75,7 +52,8 @@ def main():
     radio_channel_6_pos = 0
     radio_channel_6_delta = 0.05
 
-    wait_for_joysticks(textPrint, screen, clock)
+    if (pygame.joystick.get_count() != 1):
+        raise RuntimeError("Please connect exactly one controller")
 
     joystick = pygame.joystick.Joystick(0)
     joystick.init()
@@ -96,10 +74,7 @@ def main():
 
         for event in pygame.event.get():
             if event.type == pygame.JOYDEVICEREMOVED:
-                wait_for_joysticks(textPrint, screen, clock)
-
-                joystick = pygame.joystick.Joystick(0)
-                joystick.init()
+                raise RuntimeError("Joystick removed. please reconnect and restart")
 
             if event.type == pygame.QUIT: # If user clicked close
                 done=True # Flag that we are done so we exit this loop

@@ -36,7 +36,7 @@ echo ===== copy files for nomial gaits =====
 cp ../dairlib_data/goldilocks_models/find_models/robot_$robot/0_* ../dairlib_data/goldilocks_models/find_models/robot_$robot/nominal_no_constraint_traj/
 
 echo ===== evaluate nomial traj \(without snopt scaling\) =====
-./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=false \
+./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
  --swing_foot_cublic_spline=true \
 --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --fix_node_number=true 2>&1 | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log
 

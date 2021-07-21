@@ -202,13 +202,20 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
   std::vector<int> joint_vel_indices;
   std::vector<int> ticks_per_revolution;
   std::map<std::string, int> joint_encoder_resolutions = {
-      {"hip_roll_left", ENC_RES_LOW},     {"hip_roll_right", ENC_RES_LOW},
-      {"hip_yaw_left", ENC_RES_LOW},      {"hip_yaw_right", ENC_RES_LOW},
-      {"hip_pitch_left", ENC_RES_LOW},    {"hip_pitch_right", ENC_RES_LOW},
-      {"knee_left", ENC_RES_LOW},         {"knee_right", ENC_RES_LOW},
-      {"knee_joint_left", ENC_RES_HIGH},  {"knee_joint_right", ENC_RES_HIGH},
-      {"ankle_joint_left", ENC_RES_HIGH}, {"ankle_joint_right", ENC_RES_HIGH},
-      {"toe_left", ENC_RES_LOW},          {"toe_right", ENC_RES_LOW}};
+      {"hip_roll_left", CASSIE_ENC_RES_LOW},
+      {"hip_roll_right", CASSIE_ENC_RES_LOW},
+      {"hip_yaw_left", CASSIE_ENC_RES_LOW},
+      {"hip_yaw_right", CASSIE_ENC_RES_LOW},
+      {"hip_pitch_left", CASSIE_ENC_RES_LOW},
+      {"hip_pitch_right", CASSIE_ENC_RES_LOW},
+      {"knee_left", CASSIE_ENC_RES_LOW},
+      {"knee_right", CASSIE_ENC_RES_LOW},
+      {"knee_joint_left", CASSIE_ENC_RES_HIGH},
+      {"knee_joint_right", CASSIE_ENC_RES_HIGH},
+      {"ankle_joint_left", CASSIE_ENC_RES_HIGH},
+      {"ankle_joint_right", CASSIE_ENC_RES_HIGH},
+      {"toe_left", CASSIE_ENC_RES_LOW},
+      {"toe_right", CASSIE_ENC_RES_LOW}};
 
   auto pos_map = multibody::makeNameToPositionsMap(plant);
   auto vel_map = multibody::makeNameToVelocitiesMap(plant);

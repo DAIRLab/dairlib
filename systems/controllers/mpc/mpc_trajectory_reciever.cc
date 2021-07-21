@@ -111,8 +111,8 @@ void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
 
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
-      swing_ft_traj.time_vector, knots, knots_dot);
+  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+      swing_ft_traj.time_vector, knots);
 }
 
 MatrixXd MpcTrajectoryReceiver::Make3dFromPlanar(MatrixXd planar_knots) const {

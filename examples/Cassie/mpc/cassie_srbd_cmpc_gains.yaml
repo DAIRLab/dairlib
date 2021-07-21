@@ -1,9 +1,9 @@
 mu: 0.8
-ReachabilityLim: [0.25, 0.2, 0.1]
+ReachabilityLim: [0.25, 0.05, 0.1]
 StateW:
-  [0, 0, 100,          # x, y, z
+  [0, 0, 1000,          # x, y, z
    1000, 1000, 1000,         # roll, pitch , yaw
-   200, 200, 100,     # vx, vy, vz
+   200, 500, 100,     # vx, vy, vz
    500, 500, 500,          # omega
    0, 0, 0, 0, 0, 0]    # Foot position (should always be zero)
 FinalStateW:

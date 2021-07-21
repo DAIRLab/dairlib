@@ -1,6 +1,7 @@
 #include <memory>
 
 #include <drake/systems/primitives/discrete_time_delay.h>
+#include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
@@ -18,11 +19,11 @@
 #include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/discrete_time_delay.h"
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
@@ -67,6 +68,11 @@ DEFINE_double(init_height, .7,
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_double(delay, 0.0, "Delay in commanded to actual motor inputs");
 
+DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO" ,"LCM channel for virtual radio command");
+DEFINE_double(actuator_delay, 0.0,
+              "Duration of actuator delay. Set to 0.0 by default.");
+DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
+
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -107,11 +113,13 @@ int do_main(int argc, char* argv[]) {
       plant.get_actuation_input_port().size());
   auto discrete_time_delay =
       builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-          1.0 / FLAGS_publish_rate, FLAGS_delay * FLAGS_publish_rate, plant.num_actuators());
+          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay * FLAGS_publish_rate,
+          plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant, true);
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+      plant, FLAGS_publish_efforts);
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
@@ -123,8 +131,11 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
+  auto radio_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(FLAGS_radio_channel, lcm));
   const auto& sensor_aggregator =
       AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
+
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
@@ -150,6 +161,8 @@ int do_main(int argc, char* argv[]) {
                   contact_viz.get_input_port(0));
   builder.Connect(contact_viz.get_output_port(0),
                   contact_results_publisher.get_input_port());
+  builder.Connect(radio_sub->get_output_port(),
+                  sensor_aggregator.get_input_port_radio());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 

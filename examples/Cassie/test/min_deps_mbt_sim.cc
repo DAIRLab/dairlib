@@ -2,17 +2,16 @@
 #include <memory>
 #include <chrono>
 
-
-#include "drake/lcm/drake_lcm.h"
+#include "drake/common/find_resource.h"
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/scene_graph.h"
+#include "drake/lcm/drake_lcm.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/multibody/tree/revolute_joint.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
-#include "drake/multibody/tree/revolute_joint.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/geometry/scene_graph.h"
-#include "drake/common/find_resource.h"
 
 namespace dairlib {
 using drake::geometry::DrakeVisualizer;
@@ -25,7 +24,7 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 
 // Simulation parameters.
-DEFINE_double(target_realtime_rate, 1.0,  
+DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
 DEFINE_bool(time_stepping, false, "If 'true', the plant is modeled as a "
@@ -108,7 +107,7 @@ int do_main(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   simulator.AdvanceTo(5);
   auto stop = std::chrono::high_resolution_clock::now();
-  auto duration = 
+  auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
   std::cout << "5 second simulation took " << duration.count() <<
                " milliseconds." << std::endl;

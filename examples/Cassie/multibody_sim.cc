@@ -1,10 +1,11 @@
 #include <memory>
 
+#include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
+#include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_cassie_out.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
@@ -16,11 +17,11 @@
 #include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/discrete_time_delay.h"
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
@@ -61,6 +62,11 @@ DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_string(channel_u, "CASSIE_INPUT",
+              "LCM channel to receive controller inputs on");
+DEFINE_double(actuator_delay, 0.0,
+              "Duration of actuator delay. Set to 0.0 by default.");
+DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -94,15 +100,20 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", lcm));
+          FLAGS_channel_u, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
       plant.get_actuation_input_port().size());
+  auto discrete_time_delay =
+      builder.AddSystem<drake::systems::DiscreteTimeDelay>(
+          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay * FLAGS_publish_rate,
+          plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+      plant, FLAGS_publish_efforts);
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
@@ -114,8 +125,8 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
-  const auto& sensor_aggregator = AddImuAndAggregator(
-      &builder, plant, passthrough->get_output_port());
+  const auto& sensor_aggregator =
+      AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
@@ -124,9 +135,13 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*input_sub, *input_receiver);
   builder.Connect(*input_receiver, *passthrough);
   builder.Connect(passthrough->get_output_port(),
+                  discrete_time_delay->get_input_port());
+  builder.Connect(discrete_time_delay->get_output_port(),
                   plant.get_actuation_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
+  builder.Connect(discrete_time_delay->get_output_port(),
+                  state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
       plant.get_geometry_poses_output_port(),

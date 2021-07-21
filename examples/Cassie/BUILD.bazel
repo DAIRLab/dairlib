@@ -33,6 +33,7 @@ cc_library(
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
+        ":cassie_encoder",
         "@drake//:drake_shared_library",
     ],
 )
@@ -229,6 +230,7 @@ cc_binary(
         ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+        ":cassie_encoder",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -463,5 +465,17 @@ cc_binary(
         "//multibody:visualization_utils",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+cc_library(
+    name = "cassie_encoder",
+    srcs = ["cassie_encoder.cc"],
+    hdrs = [
+        "cassie_encoder.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )

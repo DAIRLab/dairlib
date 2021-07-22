@@ -274,19 +274,6 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_rot_traj);
 
-//  JointSpaceTrackingData hip_yaw_left_tracking(
-//      "hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw,
-//      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
-//      plant_wo_springs);
-//  JointSpaceTrackingData hip_yaw_right_tracking(
-//      "hip_yaw_right_traj", K_p_hip_yaw, K_d_hip_yaw,
-//      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
-//      plant_wo_springs);
-//  hip_yaw_left_tracking.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-//  hip_yaw_right_tracking.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-//  osc->AddConstTrackingData(&hip_yaw_left_tracking, 0.0 * VectorXd::Ones(1));
-//  osc->AddConstTrackingData(&hip_yaw_right_tracking, 0.0 * VectorXd::Ones(1));
-
   // Build OSC problem
   osc->Build();
   // Connect ports

@@ -208,7 +208,6 @@ int do_main(int argc, char* argv[]) {
 
   // Connect appropriate input receiver for simulation
   systems::CassieOutputReceiver* input_receiver = nullptr;
-  LcmPublisherSystem* output_local_pub = nullptr;
   if (FLAGS_simulation) {
     input_receiver = builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
@@ -230,12 +229,6 @@ int do_main(int argc, char* argv[]) {
                       state_estimator->get_input_port(1));
     }
   }
-  else{
-    output_local_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-            "CASSIE_OUTPUT", &lcm_local, {TriggerType::kForced}));
-    builder.Connect(*output_sender, *output_local_pub);
-  }
 
   // Create and connect RobotOutput publisher.
   auto robot_output_sender =
@@ -244,18 +237,20 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
 
-  // Create and connect contact estimation publisher.
-  auto contact_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
-          "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
-  builder.Connect(state_estimator->get_contact_output_port(),
-                  contact_pub->get_input_port());
-  // TODO(yangwill): Consider filtering contact estimation
-  auto gm_contact_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
-  builder.Connect(state_estimator->get_gm_contact_output_port(),
-                  gm_contact_pub->get_input_port());
+  if(FLAGS_floating_base){
+    // Create and connect contact estimation publisher.
+    auto contact_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
+            "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(state_estimator->get_contact_output_port(),
+                    contact_pub->get_input_port());
+    //TODO(yangwill): Consider filtering contact estimation
+    auto gm_contact_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+            "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(state_estimator->get_gm_contact_output_port(),
+                    gm_contact_pub->get_input_port());
+  }
 
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_pub =

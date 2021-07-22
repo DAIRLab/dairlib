@@ -50,6 +50,8 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   }
 
   const drake::systems::InputPort<double>& get_input_port_effort() const {
+    if(!publish_efforts_)
+      std::cerr << "RobotOutputSender not configured to publish efforts." << std::endl;
     return this->get_input_port(effort_input_port_);
   }
 
@@ -70,9 +72,9 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
   std::map<std::string, int> effortIndexMap_;
-  int state_input_port_;
-  int effort_input_port_;
-  int imu_input_port_;
+  int state_input_port_ = -1;
+  int effort_input_port_ = -1;
+  int imu_input_port_ = -1;
   bool publish_efforts_;
   bool publish_imu_;
 };

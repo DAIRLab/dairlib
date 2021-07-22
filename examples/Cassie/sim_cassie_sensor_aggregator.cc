@@ -30,6 +30,9 @@ SimCassieSensorAggregator::SimCassieSensorAggregator(
                        BasicVector<double>(3)).get_index();
   gyro_input_port_ = this->DeclareVectorInputPort(
                        BasicVector<double>(3)).get_index();
+  radio_input_port_ = this->DeclareAbstractInputPort("lcmt_radio_out Input Port",
+      drake::Value<lcmt_radio_out>{}).get_index();
+
   this->DeclareAbstractOutputPort(&SimCassieSensorAggregator::Aggregate);
 }
 
@@ -39,6 +42,10 @@ void SimCassieSensorAggregator::Aggregate(const Context<double>& context,
   const auto state = this->EvalVectorInput(context, state_input_port_);
   const auto accel = this->EvalVectorInput(context, acce_input_port_);
   const auto gyro = this->EvalVectorInput(context, gyro_input_port_);
+
+  if (this->get_input_port(radio_input_port_).HasValue(context)) {
+    cassie_out_msg->pelvis.radio = *(this->EvalInputValue<lcmt_radio_out>(context, radio_input_port_));
+  }
 
   // using the time from the context
   cassie_out_msg->utime = context.get_time() * 1e6;

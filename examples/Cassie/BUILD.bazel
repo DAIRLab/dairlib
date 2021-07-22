@@ -33,6 +33,7 @@ cc_library(
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
+        ":cassie_encoder",
         "@drake//:drake_shared_library",
     ],
 )
@@ -229,6 +230,7 @@ cc_binary(
         ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+        ":cassie_encoder",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -464,4 +466,52 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+)
+
+cc_library(
+    name = "cassie_encoder",
+    srcs = ["cassie_encoder.cc"],
+    hdrs = [
+        "cassie_encoder.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+py_binary(
+    name = "cassie_virtual_remote_py",
+    srcs = ["cassie_virtual_remote.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "cassie_virtual_remote.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "cassie_xbox_remote_py",
+    srcs = ["cassie_xbox_remote.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "cassie_xbox_remote.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
+
+drake_runfiles_binary(
+    name = "cassie_virtual_remote",
+    target = "cassie_virtual_remote_py",
+)
+
+drake_runfiles_binary(
+    name = "cassie_xbox_remote",
+    target = "cassie_xbox_remote_py",
 )

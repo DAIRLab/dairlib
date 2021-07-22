@@ -82,13 +82,6 @@ CassieStateEstimator::CassieStateEstimator(
       this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
                                     &CassieStateEstimator::CopyStateOut)
           .get_index();
-  contact_output_port_ =
-      this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
-          .get_index();
-  contact_forces_output_port_ =
-      this->DeclareAbstractOutputPort(
-              &CassieStateEstimator::CopyEstimatedContactForces)
-          .get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
@@ -96,6 +89,14 @@ CassieStateEstimator::CassieStateEstimator(
   velocity_idx_map_ = multibody::makeNameToVelocitiesMap(plant);
 
   if (is_floating_base_) {
+    contact_output_port_ =
+        this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
+            .get_index();
+    contact_forces_output_port_ =
+        this->DeclareAbstractOutputPort(
+                &CassieStateEstimator::CopyEstimatedContactForces)
+            .get_index();
+
     // Middle point between the front and the rear contact points
     front_contact_disp_ = LeftToeFront(plant).first;
     rear_contact_disp_ = LeftToeRear(plant).first;
@@ -276,15 +277,16 @@ void CassieStateEstimator::solveFourbarLinkage(
 
     // Pick the only physically feasible solution from the two intersections
     Vector3d r_sol_wrt_heel_base =
-        (sol_1_cross_sol_2(2) >= 0) ? sol_2_wrt_heel_base : sol_1_wrt_heel_base;
-
+        (sol_2_wrt_heel_base(0) >= sol_1_wrt_heel_base(0))
+            ? sol_2_wrt_heel_base
+            : sol_1_wrt_heel_base;
     // Get the heel spring deflection direction and magnitude
-    const Vector3d spring_rest_dir(1, 0, 0);
-    double heel_spring_angle =
-        acos(r_sol_wrt_heel_base.dot(spring_rest_dir) /
-             (r_sol_wrt_heel_base.norm() * spring_rest_dir.norm()));
+    const Vector3d spring_rest_dir_wrt_spring_base(1, 0, 0);
+    double heel_spring_angle = acos(
+        r_sol_wrt_heel_base.dot(spring_rest_dir_wrt_spring_base) /
+        (r_sol_wrt_heel_base.norm() * spring_rest_dir_wrt_spring_base.norm()));
     Vector3d r_rest_dir_cross_r_hs_to_sol =
-        spring_rest_dir.cross(r_sol_wrt_heel_base);
+        spring_rest_dir_wrt_spring_base.cross(r_sol_wrt_heel_base);
     int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1 : -1;
     if (i == 0)
       *left_heel_spring =
@@ -1086,6 +1088,8 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
       auto& uu_events = events->get_mutable_unrestricted_update_events();
       uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
           drake::systems::TriggerType::kTimed, callback));
+    }else{
+      *time = INFINITY;
     }
   }
 }

@@ -21,5 +21,14 @@ cc_library(
     hdrs = ["vector_scope.h"],
     deps = [
         "@drake//:drake_shared_library",
-    ]
+    ],
+)
+
+cc_library(
+    name = "system_utils",
+    srcs = ["system_utils.cc"],
+    hdrs = ["system_utils.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
 )

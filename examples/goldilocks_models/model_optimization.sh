@@ -16,9 +16,9 @@ final_iter=100
 if [ "$1" = "rm" ]; then
 	echo Delete and create a new folder dairlib_data/goldilocks_models/find_models/robot_$robot/
 	rm -rf ../dairlib_data/goldilocks_models/find_models/robot_$robot/
-	mkdir -p ../dairlib_data/goldilocks_models/find_models/robot_$robot/nominal_no_constraint_traj/
-	mkdir -p ../dairlib_data/goldilocks_models/find_models/robot_$robot/nominal_traj_cubic_swing_foot/
 fi
+mkdir -p ../dairlib_data/goldilocks_models/find_models/robot_$robot/nominal_no_constraint_traj/
+mkdir -p ../dairlib_data/goldilocks_models/find_models/robot_$robot/nominal_traj_cubic_swing_foot/
 
 # Build the program
 bazel build examples/goldilocks_models:find_goldilocks_models

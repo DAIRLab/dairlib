@@ -1090,9 +1090,9 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
                  drake::systems::State<double>* s) { this->Update(c, s); };
 
       auto& uu_events = events->get_mutable_unrestricted_update_events();
-      uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+      uu_events.AddEvent(UnrestrictedUpdateEvent<double>(
           drake::systems::TriggerType::kTimed, callback));
-    }else{
+    } else {
       *time = INFINITY;
     }
   }

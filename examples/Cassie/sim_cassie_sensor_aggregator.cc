@@ -38,7 +38,8 @@ SimCassieSensorAggregator::SimCassieSensorAggregator(
                                      drake::Value<lcmt_radio_out>{})
           .get_index();
 
-  this->DeclareAbstractOutputPort(&SimCassieSensorAggregator::Aggregate);
+  this->DeclareAbstractOutputPort("lcmt_cassie_out",
+                                  &SimCassieSensorAggregator::Aggregate);
 }
 
 void SimCassieSensorAggregator::Aggregate(const Context<double>& context,

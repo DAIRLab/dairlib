@@ -30,7 +30,8 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
       feet_contact_points_(feet_contact_points) {
   // Input/Output setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("robot_output",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
@@ -41,7 +42,7 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->set_name(traj_name);
-  this->DeclareAbstractOutputPort(traj_name, traj_inst,
+  this->DeclareAbstractOutputPort("traj", traj_name, traj_inst,
                                   &StandingPelvisOrientationTraj::CalcTraj);
 }
 

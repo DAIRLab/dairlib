@@ -36,12 +36,13 @@ HeadingTrajGenerator::HeadingTrajGenerator(
       pelvis_(plant_.GetBodyByName("pelvis")) {
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("robot_output",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
   des_yaw_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("yaw", BasicVector<double>(1)).get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;

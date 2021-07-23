@@ -26,7 +26,8 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       transition_delay_(delay_time),
       init_state_(init_state) {
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("robot_output",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
@@ -36,7 +37,7 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                           "lcmt_contact_info",
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
-  this->DeclareVectorOutputPort(BasicVector<double>(1),
+  this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),
                                 &JumpingEventFsm::CalcFiniteState);
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
 

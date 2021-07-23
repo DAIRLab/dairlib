@@ -42,7 +42,7 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->set_name(traj_name);
-  this->DeclareAbstractOutputPort("traj", traj_name, traj_inst,
+  this->DeclareAbstractOutputPort(traj_name, traj_inst,
                                   &StandingPelvisOrientationTraj::CalcTraj);
 }
 

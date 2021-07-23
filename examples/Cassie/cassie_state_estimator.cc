@@ -501,22 +501,26 @@ void CassieStateEstimator::EstimateContactFromSprings(
       position_idx_map_.at("ankle_spring_joint_left"));
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
-//  bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_ &&
-//                              left_heel_spring < heel_spring_threshold_ekf_);
-//  bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
-//                               right_heel_spring < heel_spring_threshold_ekf_);
+  //  bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_
+  //  &&
+  //                              left_heel_spring <
+  //                              heel_spring_threshold_ekf_);
+  //  bool right_contact_spring = (right_knee_spring <
+  //  knee_spring_threshold_ekf_ &&
+  //                               right_heel_spring <
+  //                               heel_spring_threshold_ekf_);
 
   *left_contact = 0.5 * left_knee_spring / knee_spring_threshold_ekf_ +
                   0.5 * left_heel_spring / heel_spring_threshold_ekf_;
   *right_contact = 0.5 * right_knee_spring / knee_spring_threshold_ekf_ +
-                  0.5 * right_heel_spring / heel_spring_threshold_ekf_;
-//  // Determine contacts based on both spring deflation and QP cost
-//  if (left_contact_spring) {
-//    *left_contact = 1;
-//  }
-//  if (right_contact_spring) {
-//    *right_contact = 1;
-//  }
+                   0.5 * right_heel_spring / heel_spring_threshold_ekf_;
+  //  // Determine contacts based on both spring deflation and QP cost
+  //  if (left_contact_spring) {
+  //    *left_contact = 1;
+  //  }
+  //  if (right_contact_spring) {
+  //    *right_contact = 1;
+  //  }
 
   if (print_info_to_terminal_) {
     cout << "left/right knee spring, threshold = " << left_knee_spring << ", "
@@ -738,14 +742,18 @@ EventStatus CassieStateEstimator::Update(
 
   VectorXd lambda_est = VectorXd::Zero(num_contacts_ * 3);
   if (test_with_ground_truth_state_) {
-    EstimateContactFromSprings(output_gt, &left_spring_prob, &right_spring_prob);
+    EstimateContactFromSprings(output_gt, &left_spring_prob,
+                               &right_spring_prob);
   } else {
-    EstimateContactFromSprings(filtered_output, &left_spring_prob, &right_spring_prob);
-    EstimateContactForces(context, filtered_output, lambda_est, &left_force_prob,
-                          &right_force_prob);
+    EstimateContactFromSprings(filtered_output, &left_spring_prob,
+                               &right_spring_prob);
+    EstimateContactForces(context, filtered_output, lambda_est,
+                          &left_force_prob, &right_force_prob);
   }
-  left_contact = (0.8 * left_force_prob + 0.2 * left_spring_prob) > 1.0;
-  right_contact = (0.8 * right_force_prob + 0.2 * right_spring_prob) > 1.0;
+//  left_contact = (0.8 * left_force_prob + 0.2 * left_spring_prob) > 1.0;
+//  right_contact = (0.8 * right_force_prob + 0.2 * right_spring_prob) > 1.0;
+  left_contact = left_force_prob > 1.0;
+  right_contact = right_force_prob > 1.0;
 
   state->get_mutable_discrete_state(contact_forces_idx_).get_mutable_value()
       << lambda_est;
@@ -777,8 +785,8 @@ EventStatus CassieStateEstimator::Update(
   state->get_mutable_discrete_state()
           .get_mutable_vector(contact_idx_)
           .get_mutable_value()
-      << (0.8 * left_force_prob + 0.2 * left_spring_prob),
-      (0.8 * right_force_prob + 0.2 * right_spring_prob);
+      << left_contact,
+      right_contact;
 
   std::vector<std::pair<int, bool>> contacts;
   contacts.push_back(std::pair<int, bool>(0, left_contact));
@@ -1048,14 +1056,14 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  if (!(lambda[2] > 2 * contact_force_threshold_) !=
-      !(lambda[5] > 2 * contact_force_threshold_)) {
-    *left_contact = lambda[2] / (2 * contact_force_threshold_);
-    *right_contact = lambda[5] / (2 * contact_force_threshold_);
-  } else {
-    *left_contact = lambda[2] / contact_force_threshold_;
-    *right_contact = lambda[5] / contact_force_threshold_;
-  }
+  //  if (!(lambda[2] > 2 * contact_force_threshold_) !=
+  //      !(lambda[5] > 2 * contact_force_threshold_)) {
+  //    *left_contact = lambda[2] / (2 * contact_force_threshold_);
+  //    *right_contact = lambda[5] / (2 * contact_force_threshold_);
+  //  } else {
+  *left_contact = lambda[2] / contact_force_threshold_;
+  *right_contact = lambda[5] / contact_force_threshold_;
+  //  }
 }
 
 void CassieStateEstimator::DoCalcNextUpdateTime(
@@ -1088,7 +1096,7 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
       auto& uu_events = events->get_mutable_unrestricted_update_events();
       uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
           drake::systems::TriggerType::kTimed, callback));
-    }else{
+    } else {
       *time = INFINITY;
     }
   }

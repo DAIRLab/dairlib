@@ -120,7 +120,7 @@ group "0.operator" {
     }
 }
 
-group "4.lcm-tools" {
+group "5.lcm-tools" {
     cmd "1.signal-scope" {
         exec = "bazel-bin/signalscope/signal-scope";
         host = "localhost";
@@ -154,7 +154,7 @@ group "1.rom-space-controller-with-init-traj" {
     }
 }
 
-group "5.mujoco-simulator" {
+group "4.mujoco-simulator" {
     cmd "0. cassie-mujoco" {
         exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -s";
         host = "localhost";

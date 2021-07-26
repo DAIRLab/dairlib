@@ -349,6 +349,7 @@ int do_main(int argc, char* argv[]) {
                          *state_estimator, &diagram_context);
     }
 
+    double prev_time = -1;
     drake::log()->info("dispatcher_robot_out started");
     while (true) {
       // Wait for an lcmt_cassie_out message.
@@ -358,6 +359,12 @@ int do_main(int argc, char* argv[]) {
       // Write the lcmt_robot_input message into the context and advance.
       input_value.GetMutableData()->set_value(input_sub.message());
       const double time = input_sub.message().utime * 1e-6;
+
+      // Hacks -- for some reason, sometimes the lcm from Mujoco is not in order
+      if (prev_time > time) {
+        std::cout << time << std::endl;
+        continue;
+      }
 
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)
@@ -375,6 +382,8 @@ int do_main(int argc, char* argv[]) {
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
       diagram.Publish(diagram_context);
+
+      prev_time = time;
     }
   } else {
     auto& output_sender_context =

@@ -19,9 +19,11 @@ EndEffectorVelocityController::EndEffectorVelocityController(
       "endpoint_twist_commanded", BasicVector<double>(6)).get_index();
 
   // Note that this function contains a pointer to the callback function below.
-  endpoint_torque_output_port_ = this->DeclareVectorOutputPort(
-      BasicVector<double>(num_joints_),
-      &EndEffectorVelocityController::CalcOutputTorques).get_index();
+  endpoint_torque_output_port_ =
+      this->DeclareVectorOutputPort(
+              "u", BasicVector<double>(num_joints_),
+              &EndEffectorVelocityController::CalcOutputTorques)
+          .get_index();
 
   ee_contact_frame_ = ee_contact_frame;
   k_d_ = k_d;

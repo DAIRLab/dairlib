@@ -47,18 +47,20 @@ WalkingSpeedControl::WalkingSpeedControl(
       k_fp_fb_sagittal_(k_fb_sagittal) {
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("robot_output",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
-  xy_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
-  this->DeclareVectorOutputPort(BasicVector<double>(2),
+  xy_port_ =
+      this->DeclareVectorInputPort("xy", BasicVector<double>(2)).get_index();
+  this->DeclareVectorOutputPort("foot_placement", BasicVector<double>(2),
                                 &WalkingSpeedControl::CalcFootPlacement);
 
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
   if (is_using_predicted_com_) {
     fsm_switch_time_port_ =
-        this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+        this->DeclareVectorInputPort("fsm_switch_time", BasicVector<double>(1)).get_index();
 
     com_port_ =
         this->DeclareAbstractInputPort(

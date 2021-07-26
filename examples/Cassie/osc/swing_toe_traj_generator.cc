@@ -27,7 +27,8 @@ SwingToeTrajGenerator::SwingToeTrajGenerator(
   DRAKE_DEMAND(feet_contact_points_.size() == 2);
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("robot_output",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();

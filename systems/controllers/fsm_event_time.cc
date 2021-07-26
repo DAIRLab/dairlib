@@ -27,21 +27,23 @@ FiniteStateMachineEventTime::FiniteStateMachineEventTime(
   this->set_name("fsm_event_time");
 
   // Input/Output Setup
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   robot_output_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("robot_output",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
   start_time_port_ =
       this->DeclareVectorOutputPort(
-              BasicVector<double>(1),
+              "start_time", BasicVector<double>(1),
               &FiniteStateMachineEventTime::AssignStartTimeOfCurrentState)
           .get_index();
   if (!fsm_states_of_interest.empty()) {
     start_time_of_interest_port_ =
         this->DeclareVectorOutputPort(
-                BasicVector<double>(1),
+                "start_time_of_interest", BasicVector<double>(1),
                 &FiniteStateMachineEventTime::AssignStartTimeOfStateOfInterest)
             .get_index();
   }

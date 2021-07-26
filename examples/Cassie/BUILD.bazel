@@ -266,7 +266,6 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
-        "//examples/Cassie/networking:udp_driven_loop",
         "//lcmtypes:lcmt_robot",
         "//multibody:multibody_solvers",
         "//systems:robot_lcm_systems",

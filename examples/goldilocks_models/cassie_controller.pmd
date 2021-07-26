@@ -1,6 +1,6 @@
 group "1.rom-space-controller" {
     cmd "1.original-walking-controller" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING";
         host = "localhost";
     }
     cmd "2.1.rom-walking-controller" {

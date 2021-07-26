@@ -65,6 +65,7 @@ DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
 DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location");
 DEFINE_double(debug_time, 0.00, "time to simulate system at");
 DEFINE_double(swing_ft_height, 0.01, "Swing foot height");
+DEFINE_double(stance_width, 0.0, "stance width to use in dynamics linearization");
 DEFINE_double(v_des, 0.4, "desired walking speed");
 DEFINE_double(h_des, 0.75, "Desired pelvis height");
 DEFINE_double(dt, 0.01, "time step for koopman mpc");
@@ -104,7 +105,7 @@ int DoMain(int argc, char* argv[]) {
   Vector3d des_com_pos = {0, 0, 0.82};
   Vector3d des_pelvis_pos = {0, 0, 0.95};
   Vector3d com_offset = {0, 0, -0.128};
-  Vector3d left_neutral_foot_pos = {0,  0.075, 0};
+  Vector3d left_neutral_foot_pos = {0,  FLAGS_stance_width, 0};
   Vector3d left_safe_nominal_foot_pos = {0, 0.125, 0};
   Vector3d right_neutral_foot_pos = -left_neutral_foot_pos;
   Vector3d right_safe_nomonal_foot_pos = -left_safe_nominal_foot_pos;
@@ -160,7 +161,7 @@ int DoMain(int argc, char* argv[]) {
 
   // add tracking objective
   VectorXd x_des = VectorXd::Zero(cmpc->num_state_inflated());
-  x_des(2) = des_pelvis_pos(2);
+  x_des(2) = des_com_pos(2);
   x_des(3) = FLAGS_v_des;
 
   std::cout << "x desired:\n" << x_des <<std::endl;

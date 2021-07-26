@@ -48,17 +48,17 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::Frame<double>& world_;
   const drake::multibody::Frame<double>& hip_frame_;
 
-  drake::trajectories::PiecewisePolynomial<double> foot_traj_;
-
   // Raibert Footstep Gains
   Eigen::MatrixXd Kp_ = Eigen::MatrixXd::Zero(2, 2);
   Eigen::MatrixXd Kd_ = Eigen::MatrixXd::Zero(2, 2);
+  bool is_left_foot_;
 
   bool relative_feet_;
   int state_port_;
   int target_vel_port_;
   int fsm_port_;
-  bool is_left_foot_;
+
+  drake::trajectories::PiecewisePolynomial<double> foot_traj_;
 };
 
 }  // namespace dairlib::examples::osc_run

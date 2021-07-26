@@ -30,7 +30,7 @@ WalkingEventFsm::WalkingEventFsm(const MultibodyPlant<double>& plant,
     std::cout << "fsm time: " << t << std::endl;
   }
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x",OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
@@ -40,7 +40,7 @@ WalkingEventFsm::WalkingEventFsm(const MultibodyPlant<double>& plant,
                           "lcmt_contact_info",
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
-  this->DeclareVectorOutputPort(BasicVector<double>(1),
+  this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),
                                 &WalkingEventFsm::CalcFiniteState);
   DeclarePerStepDiscreteUpdateEvent(&WalkingEventFsm::DiscreteVariableUpdate);
 

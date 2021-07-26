@@ -43,11 +43,11 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
 
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
+      this->DeclareVectorInputPort("x",OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
           .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_port_ = this->DeclareVectorInputPort("fsm",BasicVector<double>(1)).get_index();
 
   fsm_idx_ = this->DeclareDiscreteState(1);
   time_shift_idx_ = this->DeclareDiscreteState(1);

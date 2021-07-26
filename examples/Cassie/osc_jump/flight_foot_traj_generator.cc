@@ -99,15 +99,10 @@ void FlightFootTrajGenerator::CalcTraj(
   VectorXd x = robot_output->GetState();
   double timestamp = robot_output->get_timestamp();
 
-  // Read in finite state machine
-  const auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
-
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-//  if (fsm_state[0] == FLIGHT) {
   *casted_traj = generateFlightTraj(robot_output->GetState(), timestamp);
-//  }
 }
 
 }  // namespace dairlib::examples::osc_jump

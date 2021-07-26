@@ -42,14 +42,14 @@ PelvisRollTrajGenerator::PelvisRollTrajGenerator(
       axis_(axis) {
   this->set_name(system_name);
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
-                                                        plant_.num_velocities(),
-                                                        plant_.num_actuators()))
-          .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  state_port_ = this->DeclareVectorInputPort(
+                        "x", OutputVector<double>(plant_.num_positions(),
+                                                  plant_.num_velocities(),
+                                                  plant_.num_actuators()))
+                    .get_index();
+  fsm_port_ = this->DeclareVectorInputPort("fsm",BasicVector<double>(1)).get_index();
   clock_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("t_clock",BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
@@ -74,8 +74,8 @@ PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
   VectorXd v = robot_output->GetVelocities();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
-//  int hip_roll_idx_ = 1;
-//  int hip_rolldot_idx_ = 3;
+  //  int hip_roll_idx_ = 1;
+  //  int hip_rolldot_idx_ = 3;
   VectorXd correction = VectorXd::Zero(1);
 
   drake::math::RotationMatrix pelvis_rot =
@@ -84,18 +84,18 @@ PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
   drake::math::RollPitchYawd pelvis_rpy = drake::math::RollPitchYaw(pelvis_rot);
   double pelvis_roll = pelvis_rpy.roll_angle();
 
-//  correction << 0.5 * (-pelvis_roll) +
-//                    0.1 * (v(hip_rolldot_idx_) -
-//                           pelvis_roll_traj_.EvalDerivative(t, 1)(0));
+  //  correction << 0.5 * (-pelvis_roll) +
+  //                    0.1 * (v(hip_rolldot_idx_) -
+  //                           pelvis_roll_traj_.EvalDerivative(t, 1)(0));
   correction << -pelvis_roll;
-//  if (fsm_state == 0) correction *= -1;
+  //  if (fsm_state == 0) correction *= -1;
   std::vector<double> breaks = hip_roll_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd foot_offset_points = correction.replicate(1, breaks.size());
   PiecewisePolynomial<double> offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
                                                  foot_offset_points);
-//  std::cout << "pelvis roll correction: " << correction << std::endl;
+  //  std::cout << "pelvis roll correction: " << correction << std::endl;
   return hip_roll_traj_ + offset_traj;
 }
 

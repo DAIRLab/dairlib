@@ -29,12 +29,12 @@ target_pos_offset: 0.2
 
 # Speed control gains
 k_ff_sagittal: 0
-k_fb_sagittal: 0.2
+k_fb_sagittal: 0.15
 k_ff_lateral: 0
-k_fb_lateral: 0.15
+k_fb_lateral: 0.2
 
 # Finite state machine
-ss_time: 0.35
+ss_time: 0.3
 ds_time: 0.05
 
 # Swing foot trajectory
@@ -46,7 +46,7 @@ final_foot_height: 0.00
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
-lipm_height: 0.85
+lipm_height: 0.9
 
 # OSC gains
 mu: 0.8
@@ -69,7 +69,7 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    2]
+      0,    0,    50]
 CoMKd:
   [   2,    0,     0,
       0,    2,     0,

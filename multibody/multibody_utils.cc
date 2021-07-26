@@ -417,6 +417,25 @@ std::pair<RotationalInertia<T>, Vector3<T>> CalcLinkInertiaAboutPlantCom(
     return {I.CalcRotationalInertia(), com_in_B};
 }
 
+void MakePlantApproximateRigidBody(drake::systems::Context<double>* context,
+                                   drake::multibody::MultibodyPlant<double>& plant,
+                                   std::string srbd_body, std::vector<std::string> bodies_to_change,
+                                   Eigen::Vector3d b_R_com,
+                                   RotationalInertia<double> b_I, double mass,
+                                   double mass_ratio) {
+
+  SpatialInertia<double> srbd_inertia =
+      SpatialInertia<double>::MakeFromCentralInertia(mass, b_R_com, b_I);
+  plant.GetRigidBodyByName(srbd_body).SetSpatialInertiaInBodyFrame(context, srbd_inertia);
+
+  double max_mass = mass_ratio * mass;
+
+  for (auto& name : bodies_to_change) {
+    plant.GetRigidBodyByName(name).SetMass(context,
+        std::min(max_mass, plant.GetRigidBodyByName(name).get_mass(*context)));
+  }
+}
+
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT

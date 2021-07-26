@@ -80,6 +80,9 @@ DEFINE_bool(track_com, false,
 
 DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
 
+DEFINE_bool(make_srbd_approx, false, "modify plant to closer approximate single rigid body assumption");
+
+
 void print_gains(const CassieMpcOSCWalkingGains& gains);
 
 int DoMain(int argc, char* argv[]) {
@@ -114,7 +117,19 @@ int DoMain(int argc, char* argv[]) {
       Vector3d::Zero(), plant_w_springs.GetFrameByName("toe_right"));
 
   auto plant_context = plant_w_springs.CreateDefaultContext();
+  Vector3d com_offset = {0, 0, -0.128};
 
+  if (FLAGS_make_srbd_approx) {
+    std::vector<std::string> links = {"yaw_left", "yaw_right", "hip_left", "hip_right",
+                                      "thigh_left", "thigh_right", "knee_left", "knee_right", "shin_left",
+                                      "shin_right"};
+    drake::multibody::RotationalInertia I_rot(
+        0.91, 0.55, 0.89, 0.04, 0.09, -.001);
+    double mass = 30.0218;
+
+    multibody::MakePlantApproximateRigidBody(plant_context.get(), plant_w_springs,
+                                             "pelvis", links, com_offset, I_rot, mass, 0.02);
+  }
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_springs or plant_wo_springs because the contact frames exit in both
   // plants)
@@ -264,8 +279,6 @@ int DoMain(int argc, char* argv[]) {
 
   osc->AddTrackingData(&swing_foot_traj);
 
-  // CoM offset
-  Vector3d com_offset = {0, 0, -0.128};
 
   ComTrackingData com_traj("com_traj", gains.K_p_com,
                            gains.K_d_com, gains.W_com, plant_w_springs, plant_w_springs);

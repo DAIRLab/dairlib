@@ -102,9 +102,12 @@ int DoMain(int argc, char* argv[]) {
   auto x0 = plant.GetPositionsAndVelocities(*plant_context);
 
   // Cassie SRBD model setup
-  Vector3d des_com_pos = {0, 0, 0.82};
-  Vector3d des_pelvis_pos = {0, 0, 0.95};
+
+
   Vector3d com_offset = {0, 0, -0.128};
+  Vector3d des_pelvis_pos = {0, 0, FLAGS_h_des};
+  Vector3d des_com_pos = des_pelvis_pos + com_offset;
+
   Vector3d left_neutral_foot_pos = {0,  FLAGS_stance_width, 0};
   Vector3d left_safe_nominal_foot_pos = {0, 0.125, 0};
   Vector3d right_neutral_foot_pos = -left_neutral_foot_pos;

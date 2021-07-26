@@ -73,6 +73,8 @@ DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO" ,"LCM channel for virtual ra
 DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
 DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
+DEFINE_bool(make_srbd_approx, false, "modify plant to closer approximate single rigid body assumption");
+
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -198,6 +200,19 @@ int do_main(int argc, char* argv[]) {
   } else {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
+  }
+
+  if (FLAGS_make_srbd_approx) {
+    std::vector<std::string> links = {"yaw_left", "yaw_right", "hip_left", "hip_right",
+                                      "thigh_left", "thigh_right", "knee_left", "knee_right", "shin_left",
+                                      "shin_right"};
+    Vector3d com_offset = {0, 0, -0.128};
+    drake::multibody::RotationalInertia I_rot(
+        0.91, 0.55, 0.89, 0.04, 0.09, -.001);
+    double mass = 30.0218;
+
+    multibody::MakePlantApproximateRigidBody(&plant_context, plant,
+                                             "pelvis", links, com_offset, I_rot, mass, 0.02);
   }
 
   plant.SetPositions(&plant_context, q_init);

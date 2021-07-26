@@ -134,5 +134,16 @@ std::pair<drake::multibody::RotationalInertia<T>, drake::Vector3<T>> CalcLinkIne
     const drake::multibody::BodyFrame<T>& frame,
     std::string link_name);
 
+/// Modify MultibodyPlant to approximate a single rigid body by
+/// assigning most of the plant's mass in the specified link
+/// with the specified inertia parameters.
+/// Mass ratio sets the maximum link mass/inertia in relation to the total mass/inertia
+void MakePlantApproximateRigidBody(
+    drake::systems::Context<double>* context,
+    drake::multibody::MultibodyPlant<double>& plant,
+    std::string srbd_body, std::vector<std::string> bodies_to_change,
+    Eigen::Vector3d b_R_com,
+    drake::multibody::RotationalInertia<double> b_I, double mass, double mass_ratio);
+
 }  // namespace multibody
 }  // namespace dairlib

@@ -29,7 +29,6 @@ cc_library(
         "eigen_utils.h",
     ],
     deps = [
-        "@cnpy_repo//:cnpy",
         "@drake//:drake_shared_library",
     ],
 )

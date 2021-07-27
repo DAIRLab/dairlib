@@ -47,21 +47,21 @@ lipm_height: 0.9
 # OSC gains
 mu: 0.8
 
-w_accel: 0.000001
-w_soft_constraint: 8000
+w_accel: 0.00000001
+w_soft_constraint: 80
 
-w_swing_toe: 100
+w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 50
+w_hip_yaw: 0.5
 hip_yaw_kp: 40
 hip_yaw_kd: 0.5
 
 CoMW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,  1000]
+      0,    0,    10]
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
@@ -72,9 +72,9 @@ CoMKd:
       0,    0,     5]
 
 PelvisBalanceW:
-  [ 200,    0,     0,
-    0,    400,     0,
-    0,      0,     0]
+  [ 2,    0,     0,
+    0,    4,     0,
+    0,    0,     0]
 PelvisBalanceKp:
   [20,      0,    0,
     0,    100,    0,
@@ -87,7 +87,7 @@ PelvisBalanceKd:
 PelvisHeadingW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    10]
+      0,    0,   0.1]
 PelvisHeadingKp:
   [   0,     0,    0,
       0,     0,    0,
@@ -99,9 +99,9 @@ PelvisHeadingKd:
 period_of_no_heading_control: 0.0
 
 SwingFootW:
-  [ 400,    0,     0,
-    0,    400,     0,
-    0,      0,   400]
+  [ 4,    0,     0,
+    0,    4,     0,
+    0,    0,     4]
 SwingFootKp:
   [ 200,    0,     0,
     0,  200,     0,

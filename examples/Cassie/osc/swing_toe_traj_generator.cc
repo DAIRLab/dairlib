@@ -27,7 +27,7 @@ SwingToeTrajGenerator::SwingToeTrajGenerator(
   DRAKE_DEMAND(feet_contact_points_.size() == 2);
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort("robot_output",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
@@ -35,7 +35,7 @@ SwingToeTrajGenerator::SwingToeTrajGenerator(
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
 
-  this->DeclareAbstractOutputPort("swing_toe_traj", traj_inst,
+  this->DeclareAbstractOutputPort("toe_ang", traj_inst,
                                   &SwingToeTrajGenerator::CalcTraj);
 }
 

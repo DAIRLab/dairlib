@@ -10,11 +10,11 @@ using drake::multibody::MultibodyPlant;
 ComPoseSystem::ComPoseSystem(
     const MultibodyPlant<double>& plant) : plant_(plant) {
   com_output_port_ =
-      this->DeclareVectorOutputPort("com", BasicVector<double>(7),
+      this->DeclareVectorOutputPort("com_quat_xyz", BasicVector<double>(7),
                                     &ComPoseSystem::OutputCom)
           .get_index();
   xy_com_output_port_ =
-      this->DeclareVectorOutputPort("com_xy", BasicVector<double>(7),
+      this->DeclareVectorOutputPort("com_quat_xyz_ground", BasicVector<double>(7),
                                     &ComPoseSystem::OutputXyCom)
           .get_index();
   position_input_port_ = this->DeclareVectorInputPort("q", BasicVector<double>(

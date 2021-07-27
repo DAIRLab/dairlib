@@ -27,7 +27,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(
-      "robot_output",
+      "x, u, t",
       OutputVector<double>(plant.num_positions(), plant.num_velocities(),
                            plant.num_actuators()),
       &RobotOutputReceiver::CopyOutput);
@@ -185,7 +185,7 @@ RobotInputReceiver::RobotInputReceiver(
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_input",
                                  drake::Value<dairlib::lcmt_robot_input>{});
-  this->DeclareVectorOutputPort("u", TimestampedVector<double>(num_actuators_),
+  this->DeclareVectorOutputPort("u, t", TimestampedVector<double>(num_actuators_),
                                 &RobotInputReceiver::CopyInputOut);
 }
 
@@ -217,7 +217,7 @@ RobotCommandSender::RobotCommandSender(
     ordered_actuator_names_.push_back(plant.get_joint_actuator(i).name());
   }
 
-  this->DeclareVectorInputPort("u", TimestampedVector<double>(num_actuators_));
+  this->DeclareVectorInputPort("u, t", TimestampedVector<double>(num_actuators_));
   this->DeclareAbstractOutputPort("lcmt_robot_input",
                                   &RobotCommandSender::OutputCommand);
 }

@@ -87,17 +87,17 @@ HighLevelCommand::HighLevelCommand(
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   state_port_ =
-      this->DeclareVectorInputPort("robot_output",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
 
-  yaw_port_ = this->DeclareVectorOutputPort("yaw", BasicVector<double>(1),
+  yaw_port_ = this->DeclareVectorOutputPort("pelvis_yaw", BasicVector<double>(1),
                                             &HighLevelCommand::CopyHeadingAngle)
                   .get_index();
   xy_port_ =
-      this->DeclareVectorOutputPort("xy", BasicVector<double>(2),
+      this->DeclareVectorOutputPort("pelvis_xy", BasicVector<double>(2),
                                     &HighLevelCommand::CopyDesiredHorizontalVel)
           .get_index();
   // Declare update event

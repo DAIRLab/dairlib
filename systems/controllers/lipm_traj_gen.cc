@@ -59,7 +59,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
 
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort("robot_output",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
@@ -67,18 +67,18 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   touchdown_time_port_ =
-      this->DeclareVectorInputPort("touchdown_time", BasicVector<double>(1))
+      this->DeclareVectorInputPort("t_touchdown", BasicVector<double>(1))
           .get_index();
 
   // Provide an instance to allocate the memory first (for the output)
   ExponentialPlusPiecewisePolynomial<double> exp;
   drake::trajectories::Trajectory<double>& traj_inst = exp;
   output_port_lipm_from_current_ =
-      this->DeclareAbstractOutputPort("lipm_traj_from_current", traj_inst,
+      this->DeclareAbstractOutputPort("lipm_xyz_from_current", traj_inst,
                                       &LIPMTrajGenerator::CalcTrajFromCurrent)
           .get_index();
   output_port_lipm_from_touchdown_ =
-      this->DeclareAbstractOutputPort("lipm_traj_from_touchdown", traj_inst,
+      this->DeclareAbstractOutputPort("lipm_xyz_from_touchdown", traj_inst,
                                       &LIPMTrajGenerator::CalcTrajFromTouchdown)
           .get_index();
 

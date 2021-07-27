@@ -51,7 +51,7 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
 
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort("robot_output",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))

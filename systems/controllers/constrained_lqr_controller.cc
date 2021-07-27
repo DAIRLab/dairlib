@@ -28,7 +28,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Input port that takes in an OutputVector containing the current Cassie
   // state
   input_port_info_index_ =
-      this->DeclareVectorInputPort("robot_output",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
@@ -37,7 +37,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Output port that outputs the efforts
   output_port_efforts_index_ =
       this->DeclareVectorOutputPort(
-              "u", TimestampedVector<double>(plant_.num_actuators()),
+              "u, t", TimestampedVector<double>(plant_.num_actuators()),
               &ConstrainedLQRController::CalcControl)
           .get_index();
 

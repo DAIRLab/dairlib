@@ -108,7 +108,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
   auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
   // when entering a new stance phase
-  if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
+  if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0) && fsm_state != 2) {
     prev_touchdown_time << touchdown_time;
 
     // Read in current state

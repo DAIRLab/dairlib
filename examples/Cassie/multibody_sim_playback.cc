@@ -196,9 +196,9 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-  if (FLAGS_terrain_height != 0.0) {
-    DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
-  }
+//  if (FLAGS_terrain_height != 0.0) {
+//    DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+//  }
 
   auto diagram = builder.Build();
 

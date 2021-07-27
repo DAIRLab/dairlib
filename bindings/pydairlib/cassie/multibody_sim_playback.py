@@ -28,13 +28,14 @@ def write_initial_state(x_init):
     f.write(yaml.dump(data, default_flow_style=None))
     f.close()
 
-def run_sim():
+def run_sim(params):
+  # params
   folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
   start_time = 30.595
   sim_time = 0.5
   end_time = start_time + sim_time
   penetration_allowance = 2e-3
-  terrain_height = 0.0
+  terrain_height = 0.00
   realtime_rate = 0.25
   log_num = sys.argv[1]
 
@@ -61,4 +62,5 @@ def run_sim():
 
 
 if __name__ == '__main__':
-    run_sim()
+  params = {}
+  run_sim(params)

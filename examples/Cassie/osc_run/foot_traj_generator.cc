@@ -33,8 +33,8 @@ FootTrajGenerator::FootTrajGenerator(
       context_(context),
       world_(plant.world_frame()),
       hip_frame_(plant.GetFrameByName(hip_name)),
-      is_left_foot_(isLeftFoot),
       foot_traj_(foot_traj),
+      is_left_foot_(isLeftFoot),
       relative_feet_(relative_feet) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;

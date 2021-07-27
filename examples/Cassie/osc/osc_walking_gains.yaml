@@ -2,8 +2,8 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.050
-use_traj_opt_feet_traj: true
+impact_threshold: 0.025
+use_traj_opt_feet_traj: false
 
 # High level command gains (with radio)
 vel_scale_rot: -1
@@ -14,27 +14,27 @@ vel_scale_trans_lateral: -0.15
 global_target_position_x: 0
 global_target_position_y: 0
 yaw_deadband_blur: 5
-yaw_deadband_radius: 1.5
+yaw_deadband_radius: 0.5
 kp_yaw: 0
 kd_yaw: 0.0
 vel_max_yaw: 0.5
 
 kp_pos_sagital: 0.3
-kd_pos_sagital: 0.3
+kd_pos_sagital: 0.5
 vel_max_sagital: 0.25
 kp_pos_lateral: 0.3
 kd_pos_lateral: 0.25
 vel_max_lateral: 0.15
-target_pos_offset: 0.2
+target_pos_offset: 0.0
 
 # Speed control gains
 k_ff_sagittal: 0
 k_fb_sagittal: 0.15
 k_ff_lateral: 0
-k_fb_lateral: 0.2
+k_fb_lateral: 0.23
 
 # Finite state machine
-ss_time: 0.3
+ss_time: 0.35
 ds_time: 0.05
 
 # Swing foot trajectory
@@ -42,7 +42,7 @@ max_CoM_to_footstep_dist: 0.5
 footstep_offset: 0.04
 center_line_offset: 0.03
 mid_foot_height: 0.02
-final_foot_height: 0.00
+final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
@@ -51,7 +51,7 @@ lipm_height: 0.9
 # OSC gains
 mu: 0.8
 
-w_accel: 0.00000000001
+w_accel: 0.0
 w_soft_constraint: 80
 
 w_swing_toe: 1
@@ -69,11 +69,11 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    50]
+      0,    0,    15]
 CoMKd:
   [   2,    0,     0,
       0,    2,     0,
-      0,    0,    10]
+      0,    0,     5]
 
 PelvisBalanceW:
   [ 1,      0,     0,

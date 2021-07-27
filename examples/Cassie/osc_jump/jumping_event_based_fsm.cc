@@ -26,7 +26,7 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       transition_delay_(delay_time),
       init_state_(init_state) {
   state_port_ =
-      this->DeclareVectorInputPort("robot_output",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
@@ -34,7 +34,7 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
 
   // Configure the contact info port for the particular simulator
   contact_port_ = this->DeclareAbstractInputPort(
-                          "lcmt_contact_info",
+                          "lcmt_contact_results_for_viz",
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
   this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),

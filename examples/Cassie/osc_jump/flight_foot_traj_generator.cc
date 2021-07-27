@@ -42,17 +42,17 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
 
   if (isLeftFoot) {
     this->set_name("l_foot_traj");
-    this->DeclareAbstractOutputPort("l_foot_traj", traj_inst,
+    this->DeclareAbstractOutputPort("l_foot_xyz", traj_inst,
                                     &FlightFootTrajGenerator::CalcTraj);
   } else {
     this->set_name("r_foot_traj");
-    this->DeclareAbstractOutputPort("r_foot_traj", traj_inst,
+    this->DeclareAbstractOutputPort("r_foot_xyz", traj_inst,
                                     &FlightFootTrajGenerator::CalcTraj);
   }
 
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort("robot_output",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))

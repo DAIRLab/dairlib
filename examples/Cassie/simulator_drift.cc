@@ -10,7 +10,7 @@ SimulatorDrift::SimulatorDrift(
   DRAKE_ASSERT(drift_mean_.size() == drift_cov_.cols());
   DRAKE_ASSERT(drift_mean_.size() == plant.num_positions());
   state_port_ =
-      this->DeclareVectorInputPort("robot_output_in",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
@@ -22,7 +22,7 @@ SimulatorDrift::SimulatorDrift(
 
   time_idx_ = this->DeclareDiscreteState(1);
   this->DeclareVectorOutputPort(
-      "robot_output_out",
+      "x, u, t",
       OutputVector<double>(plant_.num_positions(), plant_.num_velocities(),
                            plant_.num_actuators()),
       &SimulatorDrift::CalcAdjustedState);

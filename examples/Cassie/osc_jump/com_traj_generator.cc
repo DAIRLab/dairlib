@@ -46,7 +46,7 @@ COMTrajGenerator::COMTrajGenerator(
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort("robot_output",
+      this->DeclareVectorInputPort("x, u, t",
                                    OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
@@ -56,7 +56,7 @@ COMTrajGenerator::COMTrajGenerator(
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
-  this->DeclareAbstractOutputPort("com_traj", traj_inst,
+  this->DeclareAbstractOutputPort("com_xyz", traj_inst,
                                   &COMTrajGenerator::CalcTraj);
   com_x_offset_idx_ = this->DeclareDiscreteState(1);
   fsm_idx_ = this->DeclareDiscreteState(1);

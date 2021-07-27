@@ -79,7 +79,7 @@ CassieStateEstimator::CassieStateEstimator(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
                                .get_index();
   estimated_state_output_port_ =
-      this->DeclareVectorOutputPort("robot_output",
+      this->DeclareVectorOutputPort("x, u, t",
                                     OutputVector<double>(n_q_, n_v_, n_u_),
                                     &CassieStateEstimator::CopyStateOut)
           .get_index();
@@ -91,12 +91,12 @@ CassieStateEstimator::CassieStateEstimator(
 
   if (is_floating_base_) {
     contact_output_port_ =
-        this->DeclareAbstractOutputPort("contact",
+        this->DeclareAbstractOutputPort("lcmt_contact",
                                         &CassieStateEstimator::CopyContact)
             .get_index();
     contact_forces_output_port_ =
         this->DeclareAbstractOutputPort(
-                "contact_forces",
+                "lcmt_contact_results_for_viz",
                 &CassieStateEstimator::CopyEstimatedContactForces)
             .get_index();
 
@@ -109,7 +109,7 @@ CassieStateEstimator::CassieStateEstimator(
     // state)
     if (test_with_ground_truth_state_) {
       state_input_port_ =
-          this->DeclareVectorInputPort("robot_output",
+          this->DeclareVectorInputPort("x, u, t",
                                        OutputVector<double>(n_q_, n_v_, n_u_))
               .get_index();
     }

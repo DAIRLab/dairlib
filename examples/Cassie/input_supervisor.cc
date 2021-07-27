@@ -31,12 +31,12 @@ InputSupervisor::InputSupervisor(
 
   // Create input ports
   command_input_port_ = this->DeclareVectorInputPort(
-                                "u_in", TimestampedVector<double>(num_actuators_))
+                                "u, t", TimestampedVector<double>(num_actuators_))
                             .get_index();
   ;
   state_input_port_ =
       this->DeclareVectorInputPort(
-              "robbot_output",
+              "x, u, t",
               OutputVector<double>(num_positions_, num_velocities_,
                                    num_actuators_))
           .get_index();
@@ -52,7 +52,7 @@ InputSupervisor::InputSupervisor(
 
   // Create output port for commands
   command_output_port_ =
-      this->DeclareVectorOutputPort("u_out",
+      this->DeclareVectorOutputPort("u, t",
                                     TimestampedVector<double>(num_actuators_),
                                     &InputSupervisor::SetMotorTorques)
           .get_index();

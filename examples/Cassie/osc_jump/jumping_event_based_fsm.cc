@@ -28,7 +28,7 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       init_state_(init_state),
       blend_func_(blend_func) {
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();

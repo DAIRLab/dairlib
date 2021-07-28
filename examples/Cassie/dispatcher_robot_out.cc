@@ -58,6 +58,8 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
+DEFINE_double(contact_force_threshold, 60,
+              "Contact force threshold. Set to 140 for walking");
 
 // Testing mode
 DEFINE_int64(test_mode, -1,
@@ -193,7 +195,7 @@ int do_main(int argc, char* argv[]) {
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
       &right_contact_evaluator, FLAGS_test_with_ground_truth_state,
-      FLAGS_print_ekf_info, FLAGS_test_mode);
+      FLAGS_print_ekf_info, FLAGS_test_mode, FLAGS_contact_force_threshold);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -204,6 +206,7 @@ int do_main(int argc, char* argv[]) {
           FLAGS_pub_rate));
   // connect cassie_out publisher
   builder.Connect(*output_sender, *output_pub);
+
 
   // Connect appropriate input receiver for simulation
   systems::CassieOutputReceiver* input_receiver = nullptr;
@@ -233,18 +236,20 @@ int do_main(int argc, char* argv[]) {
   auto robot_output_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
 
+  if(FLAGS_floating_base){
   // Create and connect contact estimation publisher.
   auto contact_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
           "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_contact_output_port(),
                   contact_pub->get_input_port());
-  // TODO(yangwill): Consider filtering contact estimation
-  auto gm_contact_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+  //TODO(yangwill): Consider filtering contact estimation
+  auto gm_contact_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
   builder.Connect(state_estimator->get_gm_contact_output_port(),
                   gm_contact_pub->get_input_port());
+  }
 
   // Pass through to drop all but positions and velocities
   auto state_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
@@ -349,6 +354,7 @@ int do_main(int argc, char* argv[]) {
                          *state_estimator, &diagram_context);
     }
 
+    double prev_time = -1;
     drake::log()->info("dispatcher_robot_out started");
     while (true) {
       // Wait for an lcmt_cassie_out message.
@@ -359,6 +365,12 @@ int do_main(int argc, char* argv[]) {
       input_value.GetMutableData()->set_value(input_sub.message());
       const double time = input_sub.message().utime * 1e-6;
 
+      // Hacks -- for some reason, sometimes the lcm from Mujoco is not in order
+      if (prev_time > time) {
+        std::cout << time << std::endl;
+        continue;
+      }
+
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)
       if (time > simulator.get_context().get_time() + 1.0 ||
@@ -368,6 +380,7 @@ int do_main(int argc, char* argv[]) {
         std::cout << "Difference is too large, resetting dispatcher time."
                   << std::endl;
         simulator.get_mutable_context().SetTime(time);
+        simulator.Initialize();
       }
 
       state_estimator->set_next_message_time(time);
@@ -375,6 +388,8 @@ int do_main(int argc, char* argv[]) {
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
       diagram.Publish(diagram_context);
+
+      prev_time = time;
     }
   } else {
     auto& output_sender_context =

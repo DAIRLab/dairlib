@@ -63,7 +63,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
       bool test_with_ground_truth_state = false,
-      bool print_info_to_terminal = false, int hardware_test_mode = -1);
+      bool print_info_to_terminal = false, int hardware_test_mode = -1, double contact_force_threshold = 60);
 
   const drake::systems::OutputPort<double>& get_robot_output_port() const {
     return this->get_output_port(estimated_state_output_port_);
@@ -79,22 +79,22 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
                            double* left_heel_spring,
                            double* right_heel_spring) const;
 
-  /// EstimateContactForEkf() and EstimateContactForController()
+  /// EstimateContactFromSprings() and EstimateContactForController()
   /// estimate the ground contacts based on the optimal costs and spring
   /// deflections.
-  /// Estimation from EstimateContactForEkf() is more conservative compared to
+  /// Estimation from EstimateContactFromSprings() is more conservative compared to
   /// EstimateContactForController(). See the cc file for more detail.
   /// The methods are set to be public in order to unit test them.
 
-  void EstimateContactForEkf(const systems::OutputVector<double>& output,
-                             int* left_contact, int* right_contact) const;
+  void EstimateContactFromSprings(const systems::OutputVector<double>& output,
+                             double* left_contact, double* right_contact) const;
   void EstimateContactForController(const systems::OutputVector<double>& output,
                                     int* left_contact,
                                     int* right_contact) const;
   void EstimateContactForces(const drake::systems::Context<double>& context,
                              const systems::OutputVector<double>& output,
-                             Eigen::VectorXd& lambda, int& left_contact,
-                             int& right_contact) const;
+                             Eigen::VectorXd& lambda, double* left_contact,
+                             double* right_contact) const;
 
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,
@@ -217,6 +217,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const double heel_spring_threshold_ctrl_ = -0.01;
   const double heel_spring_threshold_ekf_ = -0.01;
   const double w_soft_constraint_ = 100;  // Soft constraint cost
+  const double contact_force_threshold_;  // Soft constraint cost
 
   // flag for testing and tuning
   std::unique_ptr<drake::systems::Context<double>> context_gt_;

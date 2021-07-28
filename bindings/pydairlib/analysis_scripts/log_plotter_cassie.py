@@ -31,7 +31,7 @@ def main():
   global act_map
 
   filename = sys.argv[1]
-  controller_channel = sys.argv[2]
+  controller_channel = ""  # sys.argv[2]  #I'm not using this argument now
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]

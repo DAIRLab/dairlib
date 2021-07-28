@@ -12,7 +12,44 @@ def get_state_channel_name(log):
     elif event.channel == "CASSIE_STATE_SIMULATION":
       cassie_state_channel_name = "CASSIE_STATE_SIMULATION"
       break
+  if cassie_state_channel_name == "":
+    raise ValueError("Didn't find state channel name")
   return cassie_state_channel_name
+
+def get_input_channel_name(log):
+  controller_channel_name = ""
+  for event in log:
+    if event.channel == "ROM_WALKING":
+      controller_channel_name = "ROM_WALKING"
+      break
+    elif event.channel == "OSC_WALKING":
+      controller_channel_name = "OSC_WALKING"
+      break
+    elif event.channel == "CASSIE_INPUT":
+      controller_channel_name = "CASSIE_INPUT"
+      break
+    elif event.channel == "OSC_STANDING":
+      controller_channel_name = "OSC_STANDING"
+      break
+  if controller_channel_name == "":
+    raise ValueError("Didn't find controller channel name")
+  return controller_channel_name
+
+def get_osc_debug_channel_name(log):
+  osc_debug_channel_name = ""
+  for event in log:
+    if event.channel == "OSC_DEBUG":
+      osc_debug_channel_name = "OSC_DEBUG"
+      break
+    elif event.channel == "OSC_DEBUG_WALKING":
+      osc_debug_channel_name = "OSC_DEBUG_WALKING"
+      break
+    elif event.channel == "OSC_DEBUG_STANDING":  # for standing controller
+      osc_debug_channel_name = "OSC_DEBUG_STANDING"
+      break
+  if osc_debug_channel_name == "":
+    raise ValueError("Didn't find osc_debug channel name")
+  return osc_debug_channel_name
 
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 class lcmt_osc_tracking_data_t:
@@ -58,7 +95,7 @@ class lcmt_osc_tracking_data_t:
     self.yddot_command_sol = np.array(self.yddot_command_sol)
 
 
-def process_log(log, pos_map, vel_map, act_map, controller_channel):
+def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   t_x = []
   t_u = []
   t_controller_switch = []
@@ -95,6 +132,10 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
 
   cassie_state_channel_name = get_state_channel_name(log)
   print("cassie_state_channel_name = " + cassie_state_channel_name)
+  controller_channel_name = get_input_channel_name(log)
+  print("controller_channel_name = " + controller_channel_name)
+  osc_debug_channel_name = get_osc_debug_channel_name(log)
+  print("osc_debug_channel_name = " + osc_debug_channel_name)
 
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:
@@ -126,7 +167,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
       u_meas.append(u_temp)
       t_x.append(msg.utime / 1e6)
     # if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
-    if event.channel == "CASSIE_INPUT" or event.channel == controller_channel:
+    if event.channel == controller_channel_name:
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_u.append(msg.utime / 1e6)
@@ -146,7 +187,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
     if event.channel == "CASSIE_OUTPUT_ECHO":
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
-    if event.channel == "OSC_DEBUG":  # OSC_DEBUG_WALKING  # OSC_DEBUG_STANDING for standing controller
+    if event.channel == osc_debug_channel_name:
       msg = dairlib.lcmt_osc_output.decode(event.data)
       osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)

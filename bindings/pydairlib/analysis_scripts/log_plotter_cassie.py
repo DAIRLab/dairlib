@@ -153,17 +153,24 @@ def PlotOscQpSol(t_osc_debug, osc_output):
   if len(osc_output) == 0:
     raise ValueError("osc_output is empty. Check the channel name.")
 
+  u_dim = osc_output[0].qp_output.u_dim
   lambda_c_dim = osc_output[0].qp_output.lambda_c_dim
   epsilon_dim = osc_output[0].qp_output.epsilon_dim
   v_dim = osc_output[0].qp_output.v_dim
 
+  u_sol = np.zeros((len(osc_output), u_dim))
   contact_forces = np.zeros((len(osc_output), lambda_c_dim))
   epsilons = np.zeros((len(osc_output), epsilon_dim))
   vdot = np.zeros((len(osc_output), v_dim))
   for i in range(len(osc_output)):
+    u_sol[i] = osc_output[i].qp_output.u_sol
     contact_forces[i] = osc_output[i].qp_output.lambda_c_sol
     epsilons[i] = osc_output[i].qp_output.epsilon_sol
     vdot[i] = osc_output[i].qp_output.dv_sol
+
+  plt.figure("Qp sol -- efforts")
+  plt.plot(t_osc_debug[:], u_sol)
+  plt.legend([str(i) for i in range(u_dim)])
 
   plt.figure("Qp sol -- contact forces")
   plt.plot(t_osc_debug[:], contact_forces)
@@ -339,13 +346,13 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.plot(t_osc_debug[t_osc_debug_slice], tracking_cost[t_osc_debug_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
-  # osc_traj0 = "swing_ft_traj"
+  osc_traj0 = "swing_ft_traj"
   # osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
-  # osc_traj2 = "pelvis_balance_traj"
-  osc_traj2 = "pelvis_heading_traj"
+  osc_traj2 = "pelvis_balance_traj"
+  # osc_traj2 = "pelvis_heading_traj"
   # osc_traj2 = "pelvis_rot_traj"  # for standing controller
   osc_traj3 = "swing_hip_yaw_traj"
 
@@ -357,22 +364,22 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   # for i in range(10):
   #   plot_osc(osc_debug, osc_traj0, i, "accel")
 
-  #
-  # # plot_osc(osc_debug, osc_traj0, 0, "pos")
+
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  # # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   #
-  # # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
   #
-  # # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  # plot_osc(osc_debug, osc_traj0, 0, "accel")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   # plot_osc(osc_debug, osc_traj0, 1, "accel")
-  # # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
@@ -384,18 +391,18 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   # plot_osc(osc_debug, osc_traj1, 0, "vel")
   # plot_osc(osc_debug, osc_traj1, 1, "vel")
   # plot_osc(osc_debug, osc_traj1, 2, "vel")
+
+  # plot_osc(osc_debug, osc_traj2, 0, "pos")
+  # plot_osc(osc_debug, osc_traj2, 1, "pos")
+  # plot_osc(osc_debug, osc_traj2, 2, "pos")
   #
-  plot_osc(osc_debug, osc_traj2, 0, "pos")
-  plot_osc(osc_debug, osc_traj2, 1, "pos")
-  plot_osc(osc_debug, osc_traj2, 2, "pos")
-
-  plot_osc(osc_debug, osc_traj2, 0, "vel")
-  plot_osc(osc_debug, osc_traj2, 1, "vel")
-  plot_osc(osc_debug, osc_traj2, 2, "vel")
-
-  plot_osc(osc_debug, osc_traj2, 0, "accel")
-  plot_osc(osc_debug, osc_traj2, 1, "accel")
-  plot_osc(osc_debug, osc_traj2, 2, "accel")
+  # plot_osc(osc_debug, osc_traj2, 0, "vel")
+  # plot_osc(osc_debug, osc_traj2, 1, "vel")
+  # plot_osc(osc_debug, osc_traj2, 2, "vel")
+  #
+  # plot_osc(osc_debug, osc_traj2, 0, "accel")
+  # plot_osc(osc_debug, osc_traj2, 1, "accel")
+  # plot_osc(osc_debug, osc_traj2, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "accel")
   # plot_osc(osc_debug, osc_traj1, 1, "accel")
@@ -527,7 +534,8 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   vel_indices = slice(nq + 6, nq + nv - 2)
   vel_indices = slice(nq + 6, nq + 6 + 8)
   vel_indices2 = slice(nq + 6 + 8, nq + nv)
-  # vel_indices = slice(nq + 3, nq + 6)
+  # vel_indices = slice(nq, nq + nv)
+  # vel_indices = slice(nq, nq + 6)
   u_indices = slice(0, 10)
 
   plt.figure("positions-- " + filename)

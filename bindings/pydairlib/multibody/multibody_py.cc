@@ -30,7 +30,12 @@ PYBIND11_MODULE(multibody, m) {
            py::arg("plant"))
    .def("makeNameToActuatorsMap",
            &dairlib::multibody::makeNameToActuatorsMap<double>,
-           py::arg("plant"));
+           py::arg("plant"))
+   .def("addFlatTerrain",
+           &dairlib::multibody::addFlatTerrain<double>,
+           py::arg("plant"), py::arg("scene_graph"),
+           py::arg("mu_static"), py::arg("mu_kinetic"),
+           py::arg("normal_W"));
 }
 
 }  // namespace pydairlib

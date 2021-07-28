@@ -1,6 +1,5 @@
 #include <memory>
 
-#include <cnpy.h>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"

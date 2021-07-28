@@ -13,3 +13,41 @@ load(
     "drake_py_library",
     "drake_py_unittest",
 )
+
+py_library(
+    name = "urdf",
+    data = ["urdf/cube.urdf"],
+)
+
+py_library(
+    name = "cube_sim",
+    srcs = ["cube_sim.py"],
+    deps = [],
+)
+
+py_library(
+    name = "drake_cube_sim_py",
+    srcs = ["drake_cube_sim.py"],
+    deps = [
+        ":cube_sim",
+        ":urdf",
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "mujoco_cube_sim_py",
+    srcs = ["mujoco_cube_sim.py"],
+    deps = [":cube_sim"],
+)
+
+py_binary(
+    name = "cube_sim_test",
+    srcs = ["cube_sim_test.py"],
+    deps = [
+        ":cube_sim",
+        ":drake_cube_sim_py",
+        ":mujoco_cube_sim_py",
+    ],
+)

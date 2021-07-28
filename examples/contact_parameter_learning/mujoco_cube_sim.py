@@ -1,6 +1,6 @@
 from mujoco_py import load_model_from_xml, MjSim, MjViewer, MjRenderContextOffscreen
 import numpy as np
-from cube_sim import CubeSim, CUBE_DATA_DT
+from cube_sim import CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT
 
 default_mujoco_contact_params = {"stiffness" : 300, 
                   "damping" : 36.02, 
@@ -48,10 +48,10 @@ class MujocoCubeSim(CubeSim):
     def set_initial_condition(self, initial_state):
 
         sim_state = self.sim.get_state()
-        sim_state.qpos[:3] = initial_state[0:3]
-        sim_state.qpos[3:] = initial_state[3:7]
-        sim_state.qvel[:3] = initial_state[7:10]
-        sim_state.qvel[3:] = initial_state[10:]
+        sim_state.qpos[:3] = initial_state[CUBE_DATA_POSITION_SLICE]
+        sim_state.qpos[3:] = initial_state[CUBE_DATA_QUATERNION_SLICE]
+        sim_state.qvel[:3] = initial_state[CUBE_DATA_VELOCITY_SLICE]
+        sim_state.qvel[3:] = initial_state[CUBE_DATA_OMEGA_SLICE]
         self.sim.set_state(sim_state)
         self.sim.forward()
 

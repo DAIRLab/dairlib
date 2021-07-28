@@ -12,7 +12,6 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/parsing/parser.h"
@@ -32,6 +31,7 @@ using drake::multibody::Parser;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
+using drake::geometry::DrakeVisualizer;
 
 using drake::systems::lcm::LcmPublisherSystem;
 
@@ -172,7 +172,7 @@ int do_main(int argc, char* argv[]) {
                   sensor_pub->get_input_port());
 
   if (FLAGS_terrain_height != 0.0) {
-    drake::geometry::DrakeVisualizer::AddToBuilder(&builder, scene_graph);
+    DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   }
 
   auto diagram = builder.Build();

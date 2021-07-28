@@ -374,6 +374,29 @@ void OperationalSpaceControl::Build() {
                                  .get());
   }
 
+  // Testing -- contact force blending
+  if (w_blend_constraint_) {
+    epsilon_blend_ =
+        prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
+    blend_constraint_ =
+        prog_
+            ->AddLinearEqualityConstraint(
+                MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
+                {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
+            .evaluator()
+            .get();
+    /// Soft constraint version
+    //  prog_->AddQuadraticCost(
+    //      w_blend_constraint_ *
+    //          MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
+    //      VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
+    /// hard constraint version
+    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
+  }
+
   // 5. Joint Limit cost
   w_joint_limit_ = VectorXd::Zero(n_joints_);
   K_joint_pos = MatrixXd::Identity(n_joints_, n_joints_);
@@ -613,6 +636,41 @@ VectorXd OperationalSpaceControl::SolveQp(
            q_min_)
               .cwiseMin(0);
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
+
+  // Testing -- blend contact forces during double support phase
+  // WARNING: we hard coded the finite state machine state here. We also hard
+  // coded the double support duration
+  // Left, right and double support state have to be 0, 1 and 2, resp.
+  if (w_blend_constraint_ > 0) {
+    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
+    if (fsm_state == 2) {
+      const double prev_fsm_state =
+          context.get_discrete_state(prev_fsm_state_idx_).get_value()(0);
+      double alpha_left = 0;
+      double alpha_right = 0;
+      if (prev_fsm_state) {  // We assume right support state is 1
+        // We want left foot force to gradually increase
+        alpha_left = -1;
+        alpha_right = time_since_last_state_switch /
+            (0.05 - time_since_last_state_switch);
+
+      } else if (!prev_fsm_state) {  // We assume left support state is 0
+        alpha_left = time_since_last_state_switch /
+            (0.05 - time_since_last_state_switch);
+        alpha_right = -1;
+      }
+      A(0, 0) = alpha_left / 2;
+      A(0, 1) = alpha_left / 2;
+      A(0, 2) = alpha_right / 2;
+      A(0, 3) = alpha_right / 2;
+      A(0, 4) = 1;
+      A(0, 5) = 1;
+      A(0, 6) = 1;
+      A(0, 7) = 1;
+    }
+    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
+  }
+
 
   // Solve the QP
   //  const MathematicalProgramResult result = qp_solver_.Solve(*prog_);

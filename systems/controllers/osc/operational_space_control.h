@@ -320,6 +320,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_;
 
+  // Testing contact force blend
+  drake::solvers::LinearEqualityConstraint* blend_constraint_;
+  double w_blend_constraint_ = 0.1;  // for soft constraint
+  drake::solvers::VectorXDecisionVariable epsilon_blend_;
+
   // testing
   bool use_new_qp_setting_;
 };

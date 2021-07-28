@@ -1,6 +1,6 @@
 from mujoco_py import load_model_from_xml, MjSim, MjViewer, MjRenderContextOffscreen
 import numpy as np
-from cube_sim import *
+from cube_sim import CubeSim, CUBE_DATA_DT
 
 default_params = {"stiffness" : 300, 
                   "damping" : 36.02, 

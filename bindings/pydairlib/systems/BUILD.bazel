@@ -12,14 +12,13 @@ load(
 )
 
 pybind_py_library(
-    name = "multibody_py",
+    name = "robot_lcm_systems_py",
     cc_deps = [
-        "//multibody:multipose_visualizer",
-        "//multibody:utils",
+        "//systems:robot_lcm_systems",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "multibody",
-    cc_srcs = ["multibody_py.cc"],
+    cc_so_name = "robot_lcm_systems",
+    cc_srcs = ["robot_lcm_systems_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
         ":module_py",
@@ -28,28 +27,18 @@ pybind_py_library(
 )
 
 pybind_py_library(
-    name = "kinematic_py",
+    name = "primitives_py",
     cc_deps = [
-        "//multibody/kinematic",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "kinematic",
-    cc_srcs = ["kinematic_py.cc"],
+    cc_so_name = "primitives",
+    cc_srcs = ["primitives_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
         ":module_py",
     ],
     py_imports = ["."],
-)
-
-py_binary(
-    name = "multipose_visualizer_test",
-    srcs = ["test/multipose_visualizer_test.py"],
-    deps = [
-        ":module_py",
-        ":multibody_py",
-        "//bindings/pydairlib/common",
-    ],
 )
 
 # This determines how `PYTHONPATH` is configured, and how to install the
@@ -68,13 +57,13 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":multibody_py",
-    ":kinematic_py",
+    ":robot_lcm_systems_py",
+    ":primitives_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "multibody",
+    name = "systems",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

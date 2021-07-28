@@ -43,11 +43,11 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
+      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
           .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_port_ = this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;

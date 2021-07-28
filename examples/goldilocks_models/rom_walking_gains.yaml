@@ -141,10 +141,10 @@ target_pos_offset: -0.16
 
 #Speed control gains
 k_ff_sagittal: 0
-k_fb_sagittal: 0.14
+k_fb_sagittal: 0.16
 k_ff_lateral: 0
 k_fb_lateral: 0.2
-speed_control_offset_sagittal: -0.02  # -0.05 for hardware; -0.02 for simulation
+speed_control_offset_sagittal: -0.01  # -0.05 for hardware; -0.02 for simulation
 
 #Finite state machine
 ss_time: 0.

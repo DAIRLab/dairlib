@@ -2,75 +2,75 @@ rows: 3
 cols: 3
 
 ### OSC gains (Simulation)
-mu: 0.4
+mu: 0.8
 
-w_accel: 2
-w_soft_constraint: 2000
+w_accel: 0.00000001
+w_soft_constraint: 80
 
-w_swing_toe: 200
+w_swing_toe: 2
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 50
+w_hip_yaw: 0.5
 hip_yaw_kp: 40
 hip_yaw_kd: 0.5
 
-#RomW:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 2000]
-#RomKp:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 50]
-#RomKd:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 5]
 RomW:
-  [   2,    0,     0,
-      0,    2,     0,
-      0,    0,  2000]
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 10]
 RomKp:
-  [  50,    0,     0,
-     0,   50,     0,
-     0,    0,    50]
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 50]
 RomKd:
-  [   5,    0,     0,
-      0,    5,     0,
-      0,    0,     5]
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 5]
+#RomW:
+#  [0.02,    0,     0,
+#      0, 0.02,     0,
+#      0,    0,    10]
+#RomKp:
+#  [  50,    0,     0,
+#     0,   50,     0,
+#     0,    0,    50]
+#RomKd:
+#  [   5,    0,     0,
+#      0,    5,     0,
+#      0,    0,     5]
 
 PelvisBalanceW:
-  [ 200,    0,     0,
-    0,    200,     0,
-    0,      0,     0]
+  [ 2,    0,     0,
+    0,    4,     0,
+    0,    0,     0]
 PelvisBalanceKp:
-  [200,      0,    0,
-   0,    200,    0,
+  [50,      0,    0,
+   0,    100,    0,
    0,      0,    0]
 PelvisBalanceKd:
-  [  80,     0,    0,
-     0,    80,    0,
-     0,     0,    0]
+  [   20,     0,    0,
+      0,    10,    0,
+      0,     0,    0]
 
 PelvisHeadingW:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    200]
+      0,    0,   0.1]
 PelvisHeadingKp:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,   50]
+      0,     0,   10]
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    40]
-period_of_no_heading_control: 0.1
+      0,     0,    2]
+period_of_no_heading_control: 0.0
 
 SwingFootW:
-  [ 400,    0,     0,
-    0,    400,     0,
-    0,      0,   400]
+  [ 4,    0,     0,
+    0,    4,     0,
+    0,    0,     4]
 SwingFootKp:
   [ 200,    0,     0,
     0,  200,     0,

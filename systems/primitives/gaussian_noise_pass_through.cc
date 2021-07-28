@@ -5,6 +5,8 @@
 namespace dairlib {
 namespace systems {
 
+using drake::systems::kUseDefaultName;
+
 GaussianNoisePassThrough::GaussianNoisePassThrough(
     int num_positions, int num_velocities, int num_inputs,
     const drake::MatrixX<double>& pos_variance,
@@ -17,8 +19,8 @@ GaussianNoisePassThrough::GaussianNoisePassThrough(
                                       num_inputs);
   systems::OutputVector<double> output(num_positions, num_velocities,
                                        num_inputs);
-  this->DeclareVectorInputPort(input);
-  this->DeclareVectorOutputPort(output,
+  this->DeclareVectorInputPort(kUseDefaultName, input);
+  this->DeclareVectorOutputPort(kUseDefaultName, output,
                                 &GaussianNoisePassThrough::DoCalcVectorOutput);
 }
 

@@ -42,21 +42,23 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
 
   if (isLeftFoot) {
     this->set_name("l_foot_traj");
-    this->DeclareAbstractOutputPort("l_foot_traj", traj_inst,
+    this->DeclareAbstractOutputPort("l_foot_xyz", traj_inst,
                                     &FlightFootTrajGenerator::CalcTraj);
   } else {
     this->set_name("r_foot_traj");
-    this->DeclareAbstractOutputPort("r_foot_traj", traj_inst,
+    this->DeclareAbstractOutputPort("r_foot_xyz", traj_inst,
                                     &FlightFootTrajGenerator::CalcTraj);
   }
 
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
           .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
   // Shift trajectory by time_offset
   foot_traj_.shiftRight(time_offset);

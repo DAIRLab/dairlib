@@ -15,11 +15,11 @@ kp_yaw: 1
 kd_yaw: 0.2
 vel_max_yaw: 0.5
 
-kp_pos_sagital: 1.0
+kp_pos_sagital: 0.3
 kd_pos_sagital: 0.2
 vel_max_sagital: 0.25
-kp_pos_lateral: 0.5
-kd_pos_lateral: 0.1
+kp_pos_lateral: 0.3
+kd_pos_lateral: 0.2
 vel_max_lateral: 0.15
 target_pos_offset: -0.16
 
@@ -76,11 +76,11 @@ PelvisBalanceW:
     0,    4,     0,
     0,    0,     0]
 PelvisBalanceKp:
-  [20,      0,    0,
+  [50,      0,    0,
     0,    100,    0,
     0,      0,    0]
 PelvisBalanceKd:
-  [   1,     0,    0,
+  [   20,     0,    0,
       0,    10,    0,
       0,     0,    0]
 
@@ -105,7 +105,7 @@ SwingFootW:
 SwingFootKp:
   [ 200,    0,     0,
     0,  200,     0,
-    0,    0,   100]
+    0,    0,   200]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

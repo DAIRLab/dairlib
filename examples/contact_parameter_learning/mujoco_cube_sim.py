@@ -2,7 +2,7 @@ from mujoco_py import load_model_from_xml, MjSim, MjViewer, MjRenderContextOffsc
 import numpy as np
 from cube_sim import CubeSim, CUBE_DATA_DT
 
-default_params = {"stiffness" : 300, 
+default_mujoco_contact_params = {"stiffness" : 300, 
                   "damping" : 36.02, 
                   "cube_mu_tangent" : 0.3, 
                   "table_mu_tangent" : 1.0, 
@@ -10,7 +10,7 @@ default_params = {"stiffness" : 300,
                   "mu_rolling" : 0.0001}
 
 def get_model_xml_text(params=None):
-    if (params is None) : params = default_params
+    if (params is None) : params = default_mujoco_contact_params
 
     return f'<mujoco model=\"Cube\"> <compiler inertiafromgeom=\"true\" angle=\"degree\"/> <option timestep = \"{CUBE_DATA_DT}\"> \
 <flag refsafe = \"disable\" /> </option><asset> <texture name=\"grid\" type=\"2d\" builtin=\"checker\" rgb1=\".2 .3 .4\" rgb2=\".1 .15 .2\" \

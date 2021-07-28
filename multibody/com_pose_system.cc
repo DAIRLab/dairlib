@@ -9,11 +9,15 @@ using drake::multibody::MultibodyPlant;
 
 ComPoseSystem::ComPoseSystem(
     const MultibodyPlant<double>& plant) : plant_(plant) {
-  com_output_port_  = this->DeclareVectorOutputPort(BasicVector<double>(7),
-      &ComPoseSystem::OutputCom).get_index();
-  xy_com_output_port_  = this->DeclareVectorOutputPort(BasicVector<double>(7),
-      &ComPoseSystem::OutputXyCom).get_index();
-  position_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
+  com_output_port_ =
+      this->DeclareVectorOutputPort("com_quat_xyz", BasicVector<double>(7),
+                                    &ComPoseSystem::OutputCom)
+          .get_index();
+  xy_com_output_port_ =
+      this->DeclareVectorOutputPort("com_quat_xyz_ground", BasicVector<double>(7),
+                                    &ComPoseSystem::OutputXyCom)
+          .get_index();
+  position_input_port_ = this->DeclareVectorInputPort("q", BasicVector<double>(
       plant_.num_positions())).get_index();
 }
 
@@ -23,7 +27,7 @@ void ComPoseSystem::OutputCom(
 
   auto plant_context = plant_.CreateDefaultContext();
   plant_.SetPositions(plant_context.get(), q->get_value());
-  auto com = plant_.CalcCenterOfMassPosition(*plant_context);
+  auto com = plant_.CalcCenterOfMassPositionInWorld(*plant_context);
   auto pose = output->get_mutable_value();
   pose << 1, 0, 0, 0, com;
 }
@@ -34,7 +38,7 @@ void ComPoseSystem::OutputXyCom(
 
   auto plant_context = plant_.CreateDefaultContext();
   plant_.SetPositions(plant_context.get(), q->get_value());
-  auto com = plant_.CalcCenterOfMassPosition(*plant_context);
+  auto com = plant_.CalcCenterOfMassPositionInWorld(*plant_context);
   auto pose = output->get_mutable_value();
   pose << 1, 0, 0, 0, com.head(2), 0;
 }

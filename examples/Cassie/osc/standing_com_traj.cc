@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include <dairlib/lcmt_cassie_out.hpp>
+#include <drake/math/saturate.h>
 
 #include "multibody/multibody_utils.h"
 
@@ -30,15 +31,17 @@ StandingComTraj::StandingComTraj(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
-    double height)
+    double height, bool set_target_height_by_radio)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       feet_contact_points_(feet_contact_points),
-      height_(height) {
+      height_(height),
+      set_target_height_by_radio_(set_target_height_by_radio){
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
@@ -48,13 +51,13 @@ StandingComTraj::StandingComTraj(
               drake::Value<dairlib::lcmt_target_standing_height>{})
           .get_index();
   radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_cassie_output",
+      this->DeclareAbstractInputPort("lcmt_cassie_out",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
-  this->DeclareAbstractOutputPort("com_traj", traj_inst,
+  this->DeclareAbstractOutputPort("com_xyz", traj_inst,
                                   &StandingComTraj::CalcDesiredTraj);
 }
 
@@ -64,21 +67,28 @@ void StandingComTraj::CalcDesiredTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  double target_height =
-      this->EvalInputValue<dairlib::lcmt_target_standing_height>(
-              context, target_height_port_)->target_height;
   const auto& cassie_out =
       this->EvalInputValue<dairlib::lcmt_cassie_out>(context, radio_port_);
 
-  // When there is no message, the value at the input port will use the default
-  // constructor which has a timestamp of 0.
-  // If this is the case, we use the default height: height_
-  if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
-              context, target_height_port_)->timestamp < 1e-3) {
-    target_height = height_;
+
+  double target_height = height_;
+
+  // Get target height from radio or lcm
+  if (set_target_height_by_radio_) {
+    target_height = kTargetHeightMean + kTargetHeightScale * cassie_out->pelvis.radio.channel[6];
+  } else {
+    if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
+        context, target_height_port_)->timestamp > 1e-3) {
+      target_height = this->EvalInputValue<dairlib::lcmt_target_standing_height>(
+          context, target_height_port_)->target_height;
+    }
   }
-  target_height = std::max(std::min(target_height, kMaxHeight), kMinHeight);
+
+  // Add offset position from sticks
   target_height += kHeightScale * cassie_out->pelvis.radio.channel[0];
+
+  // Saturate based on min and max height
+  target_height = drake::math::saturate(target_height, kMinHeight, kMaxHeight);
   double x_offset = kCoMXScale * cassie_out->pelvis.radio.channel[4];
   double y_offset = kCoMYScale * cassie_out->pelvis.radio.channel[5];
   VectorXd q = robot_output->GetPositions();

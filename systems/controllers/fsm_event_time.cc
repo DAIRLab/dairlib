@@ -21,21 +21,29 @@ namespace dairlib {
 namespace systems {
 
 FiniteStateMachineEventTime::FiniteStateMachineEventTime(
+    const drake::multibody::MultibodyPlant<double>& plant,
     std::vector<int> fsm_states_of_interest)
     : fsm_states_of_interest_(fsm_states_of_interest) {
   this->set_name("fsm_event_time");
 
   // Input/Output Setup
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
+  robot_output_port_ =
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+          .get_index();
   start_time_port_ =
       this->DeclareVectorOutputPort(
-              BasicVector<double>(1),
+              "t_start", BasicVector<double>(1),
               &FiniteStateMachineEventTime::AssignStartTimeOfCurrentState)
           .get_index();
   if (!fsm_states_of_interest.empty()) {
     start_time_of_interest_port_ =
         this->DeclareVectorOutputPort(
-                BasicVector<double>(1),
+                "t_start_state_of_interest", BasicVector<double>(1),
                 &FiniteStateMachineEventTime::AssignStartTimeOfStateOfInterest)
             .get_index();
   }
@@ -56,30 +64,31 @@ EventStatus FiniteStateMachineEventTime::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   // Read in current finite state machine state
-  auto fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
+  VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
   // Read in previous finite state machine state
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
                             .get_mutable_value();
-
-  // Check if the current state is of our interest
-  auto it = find(fsm_states_of_interest_.begin(), fsm_states_of_interest_.end(),
-                 int(fsm_state(0)));
-  bool is_state_of_interest = it != fsm_states_of_interest_.end();
 
   // when entering a new state which is in fsm_states_of_interest
   if (fsm_state(0) != prev_fsm_state(0)) {
     prev_fsm_state(0) = fsm_state(0);
 
     // Record time
-    discrete_state->get_mutable_vector(prev_time_idx_)
-        .get_mutable_value() << context.get_time();
+    const OutputVector<double>* robot_output =
+        (OutputVector<double>*)this->EvalVectorInput(context,
+                                                     robot_output_port_);
+    discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value()
+        << robot_output->get_timestamp();
 
+    // Check if the current state is of our interest
+    auto it = find(fsm_states_of_interest_.begin(),
+                   fsm_states_of_interest_.end(), int(fsm_state(0)));
+    bool is_state_of_interest = it != fsm_states_of_interest_.end();
     if (is_state_of_interest) {
       // Record time
       discrete_state->get_mutable_vector(prev_time_of_state_of_interest_idx_)
-          .get_mutable_value() << context.get_time();
+              .get_mutable_value()
+          << robot_output->get_timestamp();
     }
   }
 

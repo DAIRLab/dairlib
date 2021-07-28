@@ -25,12 +25,40 @@ cc_library(
 )
 
 cc_library(
+    name = "fast_osqp_solver",
+    srcs = [
+        "fast_osqp_solver.cc",
+        "fast_osqp_solver_common.cc",
+    ],
+    hdrs = [
+        "fast_osqp_solver.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@osqp",
+    ],
+)
+
+cc_library(
     name = "nonlinear_constraint",
     srcs = [
         "nonlinear_constraint.cc",
     ],
     hdrs = [
         "nonlinear_constraint.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "nonlinear_cost",
+    srcs = [
+        "nonlinear_cost.cc",
+    ],
+    hdrs = [
+        "nonlinear_cost.h",
     ],
     deps = [
         "@drake//:drake_shared_library",

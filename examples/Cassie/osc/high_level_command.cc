@@ -87,16 +87,17 @@ HighLevelCommand::HighLevelCommand(
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
 
-  yaw_port_ = this->DeclareVectorOutputPort(BasicVector<double>(1),
+  yaw_port_ = this->DeclareVectorOutputPort("pelvis_yaw", BasicVector<double>(1),
                                             &HighLevelCommand::CopyHeadingAngle)
                   .get_index();
   xy_port_ =
-      this->DeclareVectorOutputPort(BasicVector<double>(2),
+      this->DeclareVectorOutputPort("pelvis_xy", BasicVector<double>(2),
                                     &HighLevelCommand::CopyDesiredHorizontalVel)
           .get_index();
   // Declare update event
@@ -140,7 +141,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   plant_.SetPositions(context_, q);
 
   // Get center of mass position and velocity
-  Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d com_pos = plant_.CalcCenterOfMassPositionInWorld(*context_);
   MatrixXd J(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
       *context_, JacobianWrtVariable::kV, world_, world_, &J);

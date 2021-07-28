@@ -17,6 +17,10 @@ static constexpr double kMinHeight = 0.3;
 static constexpr double kHeightScale = 0.2;
 static constexpr double kCoMXScale = 0.05;
 static constexpr double kCoMYScale = -0.05;
+static constexpr double kMaxTargetHeight = 0.9;
+static constexpr double kMinTargetHeight = 0.35;
+static constexpr double kTargetHeightMean = (kMinTargetHeight + kMaxTargetHeight) / 2.0;
+static constexpr double kTargetHeightScale = (kMaxTargetHeight - kMinTargetHeight) / 2.0;
 
 class StandingComTraj : public drake::systems::LeafSystem<double> {
  public:
@@ -26,7 +30,8 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
           feet_contact_points,
-      double height = 0.9);
+      double height = 0.9,
+      bool set_target_height_by_radio = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -60,6 +65,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
       feet_contact_points_;
 
   double height_;
+  bool set_target_height_by_radio_;
 };
 
 }  // namespace osc

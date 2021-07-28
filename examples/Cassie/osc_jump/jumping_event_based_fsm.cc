@@ -28,22 +28,23 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       init_state_(init_state),
       blend_func_(blend_func) {
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
 
   // Configure the contact info port for the particular simulator
   contact_port_ = this->DeclareAbstractInputPort(
-                          "lcmt_contact_info",
+                          "lcmt_contact_results_for_viz",
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
   fsm_output_port_ =
-      this->DeclareVectorOutputPort(BasicVector<double>(1),
+      this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),
                                     &JumpingEventFsm::CalcFiniteState)
           .get_index();
   near_impact_output_port =
-      this->DeclareVectorOutputPort(BasicVector<double>(2),
+      this->DeclareVectorOutputPort("fsm, t_to_impact", BasicVector<double>(2),
                                     &JumpingEventFsm::CalcNearImpact)
           .get_index();
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);

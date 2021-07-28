@@ -2,31 +2,29 @@
 #include <memory>
 #include <chrono>
 
-
+#include "drake/common/find_resource.h"
+#include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/scene_graph.h"
 #include "drake/lcm/drake_lcm.h"
-#include "drake/geometry/geometry_visualization.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/multibody/tree/revolute_joint.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
-#include "drake/multibody/tree/revolute_joint.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/geometry/scene_graph.h"
-#include "drake/common/find_resource.h"
 
 namespace dairlib {
-using drake::systems::DiagramBuilder;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
-using drake::multibody::multibody_plant::MultibodyPlant;
-using drake::systems::Context;
-using drake::systems::Simulator;
 using drake::multibody::RevoluteJoint;
-using drake::geometry::SceneGraph;
+using drake::multibody::multibody_plant::MultibodyPlant;
 using drake::multibody::parsing::Parser;
-
+using drake::systems::Context;
+using drake::systems::DiagramBuilder;
+using drake::systems::Simulator;
 
 // Simulation parameters.
-DEFINE_double(target_realtime_rate, 1.0,  
+DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
 DEFINE_bool(time_stepping, false, "If 'true', the plant is modeled as a "
@@ -71,7 +69,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
 
@@ -109,7 +107,7 @@ int do_main(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   simulator.AdvanceTo(5);
   auto stop = std::chrono::high_resolution_clock::now();
-  auto duration = 
+  auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
   std::cout << "5 second simulation took " << duration.count() <<
                " milliseconds." << std::endl;

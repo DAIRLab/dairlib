@@ -1,6 +1,7 @@
 #pragma once
 #include "multibody/kinematic/kinematic_evaluator.h"
 
+#include "drake/math/rotation_matrix.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 
@@ -80,7 +81,7 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   const Eigen::Vector3d pt_A_;
   const drake::multibody::Frame<T>& frame_A_;
   const Eigen::Vector3d offset_;
-  const Eigen::Matrix3d rotation_;
+  const drake::math::RotationMatrix<double> rotation_;
   bool is_frictional_ = false;
 };
 

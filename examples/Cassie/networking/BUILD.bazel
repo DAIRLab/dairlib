@@ -28,7 +28,6 @@ cc_library(
         "cassie_output_receiver.cc",
         "cassie_output_sender.cc",
         "cassie_udp_publisher.cc",
-        "cassie_udp_subscriber.cc",
         "simple_cassie_udp_subscriber.cc",
         "udp_serializer.cc",
     ],
@@ -39,7 +38,6 @@ cc_library(
         "cassie_output_receiver.h",
         "cassie_output_sender.h",
         "cassie_udp_publisher.h",
-        "cassie_udp_subscriber.h",
         "simple_cassie_udp_subscriber.h",
         "udp_serializer.h",
     ],
@@ -63,36 +61,6 @@ cc_library(
     deps = [
         "//examples/Cassie/datatypes:cassie_inout_types",
         "@drake//common",
-    ],
-)
-
-cc_library(
-    name = "udp_driven_loop",
-    srcs = ["udp_driven_loop.cc"],
-    hdrs = ["udp_driven_loop.h"],
-    deps = [
-        ":cassie_udp_pub_sub",
-        "@drake//systems/analysis:simulator",
-    ],
-)
-
-cc_binary(
-    name = "udp_driven_loop_test",
-    srcs = ["test/udp_driven_loop_test.cc"],
-    deps = [
-        ":udp_driven_loop",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "cassie_udp_subscriber_test",
-    srcs = ["test/cassie_udp_subscriber_test.cc"],
-    deps = [
-        ":cassie_udp_pub_sub",
-        "@drake//systems/analysis:simulator",
-        "@drake//systems/framework",
-        "@gflags",
     ],
 )
 

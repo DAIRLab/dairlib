@@ -42,8 +42,8 @@ class StateDependentDamper : public LeafSystem<T> {
     DRAKE_DEMAND(stiffness.size() == num_v);
     DRAKE_DEMAND(damping_ratio.size() == num_v);
 
-    this->DeclareInputPort(kVectorValued, num_x);
-    this->DeclareVectorOutputPort(BasicVector<T>(num_v),
+    this->DeclareInputPort("x", kVectorValued, num_x);
+    this->DeclareVectorOutputPort("u", BasicVector<T>(num_v),
                                   &StateDependentDamper<T>::CalcTorque);
   }
 

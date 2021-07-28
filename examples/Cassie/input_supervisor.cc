@@ -30,13 +30,16 @@ InputSupervisor::InputSupervisor(
   }
 
   // Create input ports
-  command_input_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
+  command_input_port_ = this->DeclareVectorInputPort(
+                                "u, t", TimestampedVector<double>(num_actuators_))
+                            .get_index();
+  ;
+  state_input_port_ =
+      this->DeclareVectorInputPort(
+              "x, u, t",
+              OutputVector<double>(num_positions_, num_velocities_,
+                                   num_actuators_))
           .get_index();
-  state_input_port_ = this
-                          ->DeclareVectorInputPort(OutputVector<double>(
-                              num_positions_, num_velocities_, num_actuators_))
-                          .get_index();
   controller_switch_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_controller_switch",
@@ -49,13 +52,15 @@ InputSupervisor::InputSupervisor(
 
   // Create output port for commands
   command_output_port_ =
-      this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
+      this->DeclareVectorOutputPort("u, t",
+                                    TimestampedVector<double>(num_actuators_),
                                     &InputSupervisor::SetMotorTorques)
           .get_index();
 
   // Create output port for status
   status_output_port_ =
-      this->DeclareAbstractOutputPort(&InputSupervisor::SetStatus).get_index();
+      this->DeclareAbstractOutputPort("status", &InputSupervisor::SetStatus)
+          .get_index();
 
   // Create error flag as discrete state
   // Store both values in single discrete vector

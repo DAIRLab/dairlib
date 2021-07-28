@@ -18,8 +18,11 @@ EndEffectorPositionController::EndEffectorPositionController(
 	  "endpoint_position_commanded", BasicVector<double>(3)).get_index();
   endpoint_orientation_commanded_port_ = this->DeclareVectorInputPort(
 	  "endpoint_orientation_commanded", BasicVector<double>(4)).get_index();
-  endpoint_twist_cmd_output_port_ = this->DeclareVectorOutputPort(
-	  BasicVector<double>(6), &EndEffectorPositionController::CalcOutputTwist).get_index();
+  endpoint_twist_cmd_output_port_ =
+      this->DeclareVectorOutputPort(
+              "endpoint_twist_command", BasicVector<double>(6),
+              &EndEffectorPositionController::CalcOutputTwist)
+          .get_index();
 
   // The coordinates for the end effector with respect to the last joint.
   // Eventually passed into transformPointsJacobian()

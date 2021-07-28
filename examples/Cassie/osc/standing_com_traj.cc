@@ -40,7 +40,8 @@ StandingComTraj::StandingComTraj(
       set_target_height_by_radio_(set_target_height_by_radio){
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
@@ -50,13 +51,13 @@ StandingComTraj::StandingComTraj(
               drake::Value<dairlib::lcmt_target_standing_height>{})
           .get_index();
   radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_cassie_output",
+      this->DeclareAbstractInputPort("lcmt_cassie_out",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
-  this->DeclareAbstractOutputPort("com_traj", traj_inst,
+  this->DeclareAbstractOutputPort("com_xyz", traj_inst,
                                   &StandingComTraj::CalcDesiredTraj);
 }
 

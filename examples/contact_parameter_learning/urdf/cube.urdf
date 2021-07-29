@@ -14,7 +14,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <geometry>
-                <box size="0.1 0.1 0.1"/>
+                <box size="0.1048 0.1048 0.1048"/>
             </geometry>
             <material name="pennred">
                 <color rgba="0.6 0 0 1.0" />
@@ -22,7 +22,7 @@
         </visual>
         <collision>
             <geometry>
-                <box size="0.1 0.1 0.1"/>
+                <box size="0.1048 0.1048 0.1048"/>
             </geometry>
             <origin xyz="0 0 0" rpy="0 0 0" />
         </collision>

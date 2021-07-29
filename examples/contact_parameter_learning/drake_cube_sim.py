@@ -12,9 +12,11 @@ from pydairlib.common import FindResourceOrThrow
 from pydairlib.multibody import makeNameToPositionsMap
 
 
+# Note that the mu_ratio defines the ratio 
+# mu_kinetic/mu_static = [0 ... 1] to enforce that mu_kinetic <= mu_static
 default_drake_contact_params = {
     "mu_static": 0.8,
-    "mu_kinetic": 0.8,
+    "mu_ratio": 1.0,
     "pen_allow": 1e-5, 
     "stiction_tol": 1e-3 }
 
@@ -36,7 +38,7 @@ class DrakeCubeSim(CubeSim):
         terrain_normal=np.array([0.0, 0.0, 1.0])
         terrain_point=np.zeros((3,))
         terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
-        friction=CoulombFriction(params["mu_static"], params["mu_kinetic"])
+        friction=CoulombFriction(params["mu_static"], params["mu_ratio"]*params["mu_static"])
         X_WG = RigidTransform(HalfSpace.MakePose(terrain_normal, terrain_point))
 
         Parser(self.plant).AddModelFromFile(
@@ -75,19 +77,16 @@ class DrakeCubeSim(CubeSim):
         data_arr[0,CUBE_DATA_VELOCITY_SLICE] = cube_state[10:]
         
         new_time = self.sim.get_mutable_context().get_time() + dt
-        print(new_time)
         self.sim.AdvanceTo(new_time)
 
         if (self.visualize):
             self.meshcat_vis.vis.render_static()
-            
+
         return data_arr
 
     def set_initial_condition(self, initial_state):
         q = np.zeros((self.plant.num_positions(),))
         v = np.zeros((self.plant.num_velocities(),))
-
-        print(f'Number of positions:{self.plant.num_positions()}\nnumber of velocities:{self.plant.num_velocities()}')
 
         q[0:4] = initial_state[CUBE_DATA_QUATERNION_SLICE]
         q[4:] = initial_state[CUBE_DATA_POSITION_SLICE]
@@ -103,7 +102,3 @@ class DrakeCubeSim(CubeSim):
         self.plant.SetVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()), v)
-
-        
-
-        

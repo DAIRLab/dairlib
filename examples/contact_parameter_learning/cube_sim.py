@@ -48,16 +48,18 @@ def load_cube_toss(filename):
     return state_traj
 
 ''' Interface method with the optimizer'''
-def calculate_cubesim_loss(contact_params, toss_id, data_folder, cube_sim):
+def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, debug=False):
     data_file = data_folder + str(toss_id) + '.pt'
     state_traj = load_cube_toss(data_file)
     window, state_traj_in_window = get_window_around_contact_event(state_traj)
 
-    cube_sim.init_sim(contact_params)
+    sim.init_sim(contact_params)
 
-    simulated_trajectory = cube_sim.get_sim_traj_initial_state(
-        state_traj_in_window[:,0], state_traj_in_window.shape[0], CUBE_DATA_DT)
+    simulated_trajectory = sim.get_sim_traj_initial_state(
+        state_traj_in_window[0], state_traj_in_window.shape[0], CUBE_DATA_DT)
 
     diff = simulated_trajectory.ravel() - state_traj_in_window.ravel()
-    loss = np.dot(diff, diff)
-    return loss / state_traj_in_window.shape[1]  # normalize loss by duration of the trajectory
+    loss = np.dot(diff, diff) / state_traj_in_window.shape[1]
+    if(debug):
+        print(loss)
+    return loss # normalize loss by duration of the trajectory

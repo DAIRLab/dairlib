@@ -51,3 +51,13 @@ py_binary(
         ":mujoco_cube_sim_py",
     ],
 )
+
+py_binary(
+    name = "learn_parameters",
+    srcs = ["learn_parameters.py"],
+    deps = [
+        ":cube_sim",
+        ":drake_cube_sim_py",
+        ":mujoco_cube_sim_py",
+    ],
+)

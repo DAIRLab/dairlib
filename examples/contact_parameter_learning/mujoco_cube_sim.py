@@ -20,9 +20,9 @@ texuniform=\"true\" reflectance=\".3\"/></asset><worldbody><geom name=\"floor\" 
 <light directional=\"false\" diffuse=\".8 .8 .8\" specular=\"0.3 0.3 0.3\" pos=\"0 0 4.0\" dir=\"0 0 -1\"/> \
 <body name=\"cube\" pos=\"0.1 -0.1 0.1\"> \
 <inertial pos=\"0.0 0.0 0.0\" mass=\"0.37\" fullinertia=\"0.0006167 0.0006167 0.0006167 0 0 0\"/> \
-<freejoint name=\"cube_board\"/><geom name=\"cube_geom\" type=\"box\" size=\"0.05 0.05 0.05\" quat=\"1 0 0 0\" \
+<freejoint name=\"cube_board\"/><geom name=\"cube_geom\" type=\"box\" size=\"0.1048 0.1048 0.1048\" quat=\"1 0 0 0\" \
 friction=\"{params["cube_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" rgba=\"0 1 0 1.0\"  /> \
-</body><body name=\"board\" pos=\"0.0 0.0 -0.3\"><geom size=\"2.0 2.0 0.3\" rgba=\"1 0 0 1\" type=\"box\" \
+</body><body name=\"board\" pos=\"0.0 0.0 -0.15\"><geom size=\"5.0 5.0 0.3\" rgba=\"1 0 0 1\" type=\"box\" \
 solref = \"-{params["stiffness"]} -{params["damping"]}\" \
 friction=\"{params["table_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" /> \
 </body>\<camera name=\"cam1\" mode=\"targetbody\" target=\"cube\" pos=\"-0.5 -0.5 0.1\" /> \

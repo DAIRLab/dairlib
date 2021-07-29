@@ -374,7 +374,15 @@ void OperationalSpaceControl::Build() {
                                  .get());
   }
 
-  // Testing -- contact force blending
+  // 5. Joint Limit cost
+  w_joint_limit_ = VectorXd::Zero(n_joints_);
+  K_joint_pos = MatrixXd::Identity(n_joints_, n_joints_);
+  joint_limit_cost_.push_back(
+      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_joints_))
+          .evaluator()
+          .get());
+
+  // (Testing) 6. contact force blending
   if (w_blend_constraint_) {
     epsilon_blend_ =
         prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
@@ -397,13 +405,14 @@ void OperationalSpaceControl::Build() {
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
-  // 5. Joint Limit cost
-  w_joint_limit_ = VectorXd::Zero(n_joints_);
-  K_joint_pos = MatrixXd::Identity(n_joints_, n_joints_);
-  joint_limit_cost_.push_back(
-      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_joints_))
-          .evaluator()
-          .get());
+  // (Testing) 7. Cost for staying close to the previous input
+  if (w_input_reg_ > 0) {
+    W_input_reg_ = w_input_reg_ * MatrixXd::Identity(n_u_, n_u_);
+    input_reg_cost_ =
+        prog_->AddQuadraticCost(W_input_reg_, VectorXd::Zero(n_u_), u_)
+            .evaluator()
+            .get();
+  }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
@@ -433,6 +442,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
                             .get_mutable_value();
   if (fsm_state(0) != prev_fsm_state(0)) {
+    prev_distinct_fsm_state_ = prev_fsm_state(0);
     prev_fsm_state(0) = fsm_state(0);
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
@@ -637,24 +647,22 @@ VectorXd OperationalSpaceControl::SolveQp(
               .cwiseMin(0);
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
-  // Testing -- blend contact forces during double support phase
+  // (Testing) 6. blend contact forces during double support phase
   // WARNING: we hard coded the finite state machine state here. We also hard
   // coded the double support duration
   // Left, right and double support state have to be 0, 1 and 2, resp.
   if (w_blend_constraint_ > 0) {
     MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
     if (fsm_state == 2) {
-      const double prev_fsm_state =
-          context.get_discrete_state(prev_fsm_state_idx_).get_value()(0);
       double alpha_left = 0;
       double alpha_right = 0;
-      if (prev_fsm_state) {  // We assume right support state is 1
+      if (prev_distinct_fsm_state_) {  // We assume right support state is 1
         // We want left foot force to gradually increase
         alpha_left = -1;
         alpha_right = time_since_last_state_switch /
             (0.05 - time_since_last_state_switch);
 
-      } else if (!prev_fsm_state) {  // We assume left support state is 0
+      } else if (!prev_distinct_fsm_state_) {  // Assume left support state is 0
         alpha_left = time_since_last_state_switch /
             (0.05 - time_since_last_state_switch);
         alpha_right = -1;
@@ -671,6 +679,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
   }
 
+  // (Testing) 7. Cost for staying close to the previous input
+  if (w_input_reg_ > 0) {
+    input_reg_cost_->UpdateCoefficients(W_input_reg_,
+                                        -W_input_reg_ * (*u_sol_));
+  }
 
   // Solve the QP
   //  const MathematicalProgramResult result = qp_solver_.Solve(*prog_);

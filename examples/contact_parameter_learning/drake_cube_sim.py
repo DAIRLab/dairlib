@@ -7,7 +7,7 @@ from pydrake.systems.framework import DiagramBuilder
 from pydrake.systems.meshcat_visualizer import MeshcatVisualizer, ConnectMeshcatVisualizer
 from pydrake.systems.rendering import MultibodyPositionToGeometryPose
 from pydrake.math import RigidTransform
-from pydrake.geometry import DrakeVisualizer, HalfSpace
+from pydrake.geometry import DrakeVisualizer, HalfSpace, Box
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.multibody import makeNameToPositionsMap
 
@@ -38,12 +38,14 @@ class DrakeCubeSim(CubeSim):
         terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
         friction=CoulombFriction(params["mu_static"], params["mu_kinetic"])
         X_WG = RigidTransform(HalfSpace.MakePose(terrain_normal, terrain_point))
-        self.plant.RegisterCollisionGeometry(self.plant.world_body(), X_WG, HalfSpace(), "collision", friction)
-        self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, HalfSpace(), "visual", terrain_color)
-        
+
         Parser(self.plant).AddModelFromFile(
             FindResourceOrThrow(
                 "examples/contact_parameter_learning/urdf/cube.urdf"))
+
+        self.plant.RegisterCollisionGeometry(self.plant.world_body(), X_WG, HalfSpace(), "collision", friction)
+        self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(1, 1, 0.001), "visual", terrain_color)
+        
 
         self.plant.Finalize()
         self.plant.set_penetration_allowance(params["pen_allow"])
@@ -56,13 +58,17 @@ class DrakeCubeSim(CubeSim):
 
         self.diagram = self.builder.Build()
         self.diagram_context = self.diagram.CreateDefaultContext()
-        self.plant_context = self.plant.GetMyMutableContextFromRoot(self.diagram_context)
+        
         self.sim = Simulator(self.diagram)
         self.sim.Initialize()
 
     def sim_step(self, dt):
         data_arr = np.zeros((1,13))
-        cube_state = self.plant.GetPositionsAndVelocities(self.plant_context)
+
+        cube_state = self.plant.GetPositionsAndVelocities(
+            self.plant.GetMyMutableContextFromRoot(
+                self.sim.get_mutable_context()))
+        
         data_arr[0,CUBE_DATA_QUATERNION_SLICE] = cube_state[0:4]
         data_arr[0,CUBE_DATA_POSITION_SLICE] = cube_state[4:7]
         data_arr[0,CUBE_DATA_OMEGA_SLICE] = cube_state[7:10]
@@ -71,21 +77,33 @@ class DrakeCubeSim(CubeSim):
         new_time = self.sim.get_mutable_context().get_time() + dt
         print(new_time)
         self.sim.AdvanceTo(new_time)
+
         if (self.visualize):
             self.meshcat_vis.vis.render_static()
-        
+            
         return data_arr
 
     def set_initial_condition(self, initial_state):
         q = np.zeros((self.plant.num_positions(),))
         v = np.zeros((self.plant.num_velocities(),))
+
+        print(f'Number of positions:{self.plant.num_positions()}\nnumber of velocities:{self.plant.num_velocities()}')
+
         q[0:4] = initial_state[CUBE_DATA_QUATERNION_SLICE]
         q[4:] = initial_state[CUBE_DATA_POSITION_SLICE]
         v[0:3] = initial_state[CUBE_DATA_OMEGA_SLICE]
         v[3:] = initial_state[CUBE_DATA_VELOCITY_SLICE]
-        self.plant.SetPositions(self.plant_context, q)
-        self.plant.SetVelocities(self.plant_context, v)
-        self.sim.get_mutable_context().SetTime(.0)
-        print(self.plant.GetPositions(self.plant_context))
-        print(self.plant.GetPositions(self.plant.GetMyMutableContextFromRoot(self.diagram_context)))
+
+        self.sim.get_mutable_context().SetTime(0.0)
         self.sim.Initialize()
+
+        self.plant.SetPositions(
+            self.plant.GetMyMutableContextFromRoot(
+                self.sim.get_mutable_context()), q)
+        self.plant.SetVelocities(
+            self.plant.GetMyMutableContextFromRoot(
+                self.sim.get_mutable_context()), v)
+
+        
+
+        

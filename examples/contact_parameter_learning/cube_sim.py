@@ -61,5 +61,3 @@ def calculate_cubesim_loss(contact_params, toss_id, data_folder, cube_sim):
     diff = simulated_trajectory.ravel() - state_traj_in_window.ravel()
     loss = np.dot(diff, diff)
     return loss / state_traj_in_window.shape[1]  # normalize loss by duration of the trajectory
-
-

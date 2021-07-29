@@ -56,11 +56,11 @@ class MujocoCubeSim(CubeSim):
         self.sim.forward()
 
     def sim_step(self, dt):
-        blank_arr = np.zeros((1,13))
-        blank_arr[0, :7] = self.sim.get_state().qpos
-        blank_arr[0, 7:] = self.sim.get_state().qvel
+        data_arr = np.zeros((1,13))
+        data_arr[0, :7] = self.sim.get_state().qpos
+        data_arr[0, 7:] = self.sim.get_state().qvel
         self.sim.step()
         if (self.visualize) :
             self.viewer.render()
         
-        return blank_arr
+        return data_arr

@@ -13,18 +13,21 @@ AffineController::AffineController(int num_positions, int num_velocities,
   // Input port that corresponds to the state information
   input_port_info_index_ =
       this->DeclareVectorInputPort(
+              "x, u, t",
               OutputVector<double>(num_positions, num_velocities, num_efforts))
           .get_index();
 
   // Input port that corresponds to the parameters (constants and desired state)
   // of the controller
   input_port_params_index_ =
-      this->DeclareVectorInputPort(AffineParams(num_states_, num_efforts_))
+      this->DeclareVectorInputPort("K, E, x_des, t",
+                                   AffineParams(num_states_, num_efforts_))
           .get_index();
 
   // Ouput port for the actuator efforts
   output_port_control_index_ =
-      this->DeclareVectorOutputPort(TimestampedVector<double>(num_efforts_),
+      this->DeclareVectorOutputPort("u, t",
+                                    TimestampedVector<double>(num_efforts_),
                                     &AffineController::CalcControl)
           .get_index();
 }

@@ -30,12 +30,13 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
       feet_contact_points_(feet_contact_points) {
   // Input/Output setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
   radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_cassie_output",
+      this->DeclareAbstractInputPort("lcmt_cassie_out",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));

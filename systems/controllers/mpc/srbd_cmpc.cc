@@ -356,6 +356,7 @@ void SrbdCMPC::MakeStateKnotConstraints() {
 void SrbdCMPC::MakeTrackingCost(){
   for (auto & mode : modes_) {
     mode.Q_total_col_cost = MakeSimpsonIntegratedTrackingAndInputCost(mode.dynamics.A, mode.dynamics.B);
+    std::cout << "Q_total:\n"<< mode.Q_total_col_cost << std::endl;
     mode.y_col_cost = MakeSplineSegmentReferenceStateAndInput();
     for (int i = 0; i < mode.N; i++) {
       mode.tracking_cost.push_back(

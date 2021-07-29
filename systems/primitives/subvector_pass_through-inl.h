@@ -15,6 +15,8 @@
 namespace dairlib {
 namespace systems {
 
+using drake::systems::kUseDefaultName;
+
 template <typename T>
 SubvectorPassThrough<T>::SubvectorPassThrough(int vector_size, int start,
       int length)
@@ -24,8 +26,8 @@ SubvectorPassThrough<T>::SubvectorPassThrough(int vector_size, int start,
   DRAKE_DEMAND(vector_size != -1);
   drake::systems::BasicVector<T> input(vector_size);
   drake::systems::BasicVector<T> output(length);
-  this->DeclareVectorInputPort(input);
-  this->DeclareVectorOutputPort(
+  this->DeclareVectorInputPort(kUseDefaultName, input);
+  this->DeclareVectorOutputPort(kUseDefaultName,
       output, &SubvectorPassThrough::DoCalcVectorOutput);
 }
 

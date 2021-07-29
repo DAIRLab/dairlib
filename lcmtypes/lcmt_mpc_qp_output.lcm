@@ -1,0 +1,10 @@
+struct lcmt_mpc_qp_output
+{
+  int32_t u_dim;
+  int32_t x_dim;
+  int32_t epsilon_dim;
+  double solve_time;
+  double u_sol[u_dim];
+  double x_sol[x_dim];
+  double epsilon_sol[epsilon_dim];
+}

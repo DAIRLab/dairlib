@@ -22,18 +22,24 @@ SimCassieSensorAggregator::SimCassieSensorAggregator(
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
 
-  input_input_port_ = this->DeclareVectorInputPort(
-                        BasicVector<double>(10)).get_index();
-  state_input_port_ = this->DeclareVectorInputPort(
-            BasicVector<double>(num_positions_ + num_velocities_)).get_index();
-  acce_input_port_ = this->DeclareVectorInputPort(
-                       BasicVector<double>(3)).get_index();
-  gyro_input_port_ = this->DeclareVectorInputPort(
-                       BasicVector<double>(3)).get_index();
-  radio_input_port_ = this->DeclareAbstractInputPort("lcmt_radio_out Input Port",
-      drake::Value<lcmt_radio_out>{}).get_index();
+  input_input_port_ =
+      this->DeclareVectorInputPort("u", BasicVector<double>(10)).get_index();
+  state_input_port_ =
+      this->DeclareVectorInputPort(
+              "x", BasicVector<double>(num_positions_ + num_velocities_))
+          .get_index();
+  acce_input_port_ =
+      this->DeclareVectorInputPort("imu_acceleration", BasicVector<double>(3))
+          .get_index();
+  gyro_input_port_ =
+      this->DeclareVectorInputPort("gyro", BasicVector<double>(3)).get_index();
+  radio_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<lcmt_radio_out>{})
+          .get_index();
 
-  this->DeclareAbstractOutputPort(&SimCassieSensorAggregator::Aggregate);
+  this->DeclareAbstractOutputPort("lcmt_cassie_out",
+                                  &SimCassieSensorAggregator::Aggregate);
 }
 
 void SimCassieSensorAggregator::Aggregate(const Context<double>& context,

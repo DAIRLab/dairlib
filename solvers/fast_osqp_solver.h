@@ -3,12 +3,14 @@
 #include <osqp.h>
 
 #include "drake/common/drake_copyable.h"
-#include "drake/solvers/solver_base.h"
 #include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/solver_base.h"
 
 namespace dairlib {
 namespace solvers {
 /**
+ * This class is a slight modification of Drake's OsqpSolver that saves the
+ * osqp_settings_ and workspace_ along with warm starting the solve.
  * The OSQP solver details after calling Solve() function. The user can call
  * MathematicalProgramResult::get_solver_details<OsqpSolver>() to obtain the
  * details.
@@ -29,7 +31,8 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
   static drake::solvers::SolverId id();
   static bool is_available();
   static bool is_enabled();
-  static bool ProgramAttributesSatisfied(const drake::solvers::MathematicalProgram&);
+  static bool ProgramAttributesSatisfied(
+      const drake::solvers::MathematicalProgram&);
   //@}
 
   void InitializeSolver(const drake::solvers::MathematicalProgram&,

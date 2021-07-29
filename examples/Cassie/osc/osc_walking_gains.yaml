@@ -10,33 +10,33 @@ vel_scale_trans_lateral: -0.15
 global_target_position_x: 0
 global_target_position_y: 0
 yaw_deadband_blur: 5
-yaw_deadband_radius: 1
+yaw_deadband_radius: 1000
 kp_yaw: 1
 kd_yaw: 0.2
 vel_max_yaw: 0.5
 
-kp_pos_sagital: 0.3
-kd_pos_sagital: 0.2
-vel_max_sagital: 0.25
-kp_pos_lateral: 0.3
-kd_pos_lateral: 0.2
-vel_max_lateral: 0.15
-target_pos_offset: -0.16
+kp_pos_sagital: 0  # 0.3
+kd_pos_sagital: 0  # 0.3
+vel_max_sagital: 0  # 0.5
+kp_pos_lateral: 0  # 0.3
+kd_pos_lateral: 0  # 0.3
+vel_max_lateral: 0  # 0.3
+target_pos_offset: 0  # -0.16
 
 # Speed control gains
 k_ff_sagittal: 0
-k_fb_sagittal: 0.14
+k_fb_sagittal: 0.24
 k_ff_lateral: 0
-k_fb_lateral: 0.2
+k_fb_lateral: 0.25
 
 # Finite state machine
 ss_time: 0.30
 ds_time: 0.05
 
 # Swing foot trajectory
-max_CoM_to_footstep_dist: 0.4
-footstep_offset: 0.04
-center_line_offset: 0.05
+max_CoM_to_footstep_dist: 0.55
+footstep_offset: 0.03
+center_line_offset: 0.03
 mid_foot_height: 0.03
 final_foot_height: 0.000
 final_foot_velocity_z: 0.0
@@ -92,7 +92,7 @@ PelvisBalanceKp:
     0,    100,    0,
     0,      0,    0]
 PelvisBalanceKd:
-  [   20,     0,    0,
+  [   30,     0,    0,
       0,    10,    0,
       0,     0,    0]
 
@@ -117,7 +117,7 @@ SwingFootW:
 SwingFootKp:
   [ 200,    0,     0,
     0,  200,     0,
-    0,    0,   200]
+    0,    0,   100]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

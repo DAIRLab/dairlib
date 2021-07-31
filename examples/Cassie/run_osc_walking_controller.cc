@@ -410,6 +410,7 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData swing_foot_traj(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
+  swing_foot_traj.DisableFeedforwardAccel({2});
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);

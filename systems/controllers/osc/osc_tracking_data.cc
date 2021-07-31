@@ -86,6 +86,10 @@ bool OscTrackingData::Update(
       UpdateYdotAndError(x_w_spr, context_w_spr);
     }
     UpdateYddotDes();
+    for (auto idx : idx_zero_feedforward_accel_) {
+      yddot_des_converted_(idx) = 0;
+    }
+
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
 

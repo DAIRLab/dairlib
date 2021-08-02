@@ -143,6 +143,11 @@ void CassieFixedPointSolver(
 
   // Only cost in this program: u^T u
   program.AddQuadraticCost(u.dot(1.0 * u));
+  // Added contact forces so that the COM is at the center of support polygon
+  program.AddQuadraticCost(lambda(4) * lambda(4));
+  program.AddQuadraticCost(lambda(7) * lambda(7));
+  program.AddQuadraticCost(lambda(10) * lambda(10));
+  program.AddQuadraticCost(lambda(13) * lambda(13));
 
   // Random guess, except for the positions
   Eigen::VectorXd guess = Eigen::VectorXd::Random(program.num_vars());

@@ -279,6 +279,7 @@ int do_main(int argc, char* argv[]) {
 
   // Set initial conditions of the simulation
   VectorXd q_init, v_init, u_init, lambda_init;
+  v_init = VectorXd::Zero(plant.num_velocities());
   double mu_fp = 0.5;         // 0
   double min_normal_fp = 10;  // 70
   double toe_spread = .15;
@@ -299,6 +300,8 @@ int do_main(int argc, char* argv[]) {
     CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
                            min_normal_fp, true, toe_spread, &q_init, &u_init,
                            &lambda_init, "", FLAGS_ground_incline, &all_sol);
+    std::cout << "q_init = \n" << q_init << std::endl;
+    std::cout << "v_init = \n" << v_init << std::endl;
 
     VectorXd pelvis_xy_vel(2);
     pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
@@ -306,6 +309,8 @@ int do_main(int argc, char* argv[]) {
                           mu_fp, min_normal_fp, true, toe_spread,
                           FLAGS_ground_incline, q_init, u_init, lambda_init,
                           &q_init, &v_init, &u_init, &lambda_init);
+    std::cout << "q_init = \n" << q_init << std::endl;
+    std::cout << "v_init = \n" << v_init << std::endl;
   } else {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
@@ -315,8 +320,8 @@ int do_main(int argc, char* argv[]) {
   q_init.head<4>() << cos(theta / 2), 0, 0, sin(theta / 2);
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, v_init);
-  std::cout << "q_init = \n" << q_init << std::endl;
-  std::cout << "v_init = \n" << v_init << std::endl;
+//  std::cout << "q_init = \n" << q_init << std::endl;
+//  std::cout << "v_init = \n" << v_init << std::endl;
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
@@ -587,7 +592,7 @@ void CassieInitStateSolver(
       lambda);
   auto v_cost_binding =
       program.AddQuadraticCost(v.tail(n_v - 6).dot(0.001 * v.tail(n_v - 6)));
-  auto vdot_cost_binding = program.AddQuadraticCost(vdot.dot(0.001 * vdot));
+  // auto vdot_cost_binding = program.AddQuadraticCost(vdot.dot(0.001 * vdot));
 
   // Initial guesses
   program.SetInitialGuessForAllVariables(

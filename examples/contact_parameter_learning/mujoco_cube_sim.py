@@ -1,6 +1,6 @@
 from mujoco_py import load_model_from_xml, MjSim, MjViewer, MjRenderContextOffscreen
 import numpy as np
-from cube_sim import CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT
+from cube_sim import CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
 
 default_mujoco_contact_params = {"stiffness" : 300, 
                   "damping" : 36.02, 
@@ -18,11 +18,11 @@ width=\"512\" height=\"512\" mark=\"edge\" markrgb=\".8 .8 .8\"/> <material name
 texuniform=\"true\" reflectance=\".3\"/></asset><worldbody><geom name=\"floor\" pos=\"0 0 -1.0\" size=\".0 .0 .01\" type=\"plane\" material=\"grid\"/> \
 <light directional=\"true\" diffuse=\".2 .2 .2\" specular=\"0 0 0\" pos=\"0 0 5\" dir=\"0 0 -1\" castshadow=\"false\"/> \
 <light directional=\"false\" diffuse=\".8 .8 .8\" specular=\"0.3 0.3 0.3\" pos=\"0 0 4.0\" dir=\"0 0 -1\"/> \
-<body name=\"cube\" pos=\"0.1 -0.1 0.1\"> \
+<body name=\"cube\" pos=\"0 0 0\"> \
 <inertial pos=\"0.0 0.0 0.0\" mass=\"0.37\" fullinertia=\"0.0006167 0.0006167 0.0006167 0 0 0\"/> \
 <freejoint name=\"cube_board\"/><geom name=\"cube_geom\" type=\"box\" size=\"0.1048 0.1048 0.1048\" quat=\"1 0 0 0\" \
 friction=\"{params["cube_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" rgba=\"0 1 0 1.0\"  /> \
-</body><body name=\"board\" pos=\"0.0 0.0 -0.15\"><geom size=\"5.0 5.0 0.3\" rgba=\"1 0 0 1\" type=\"box\" \
+</body><body name=\"board\" pos=\"0.0 0.0 -0.0001\"><geom size=\"5.0 5.0 0.0001\" rgba=\"1 0 0 1\" type=\"box\" \
 solref = \"-{params["stiffness"]} -{params["damping"]}\" \
 friction=\"{params["table_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" /> \
 </body>\<camera name=\"cam1\" mode=\"targetbody\" target=\"cube\" pos=\"-0.5 -0.5 0.1\" /> \
@@ -64,3 +64,37 @@ class MujocoCubeSim(CubeSim):
             self.viewer.render()
         
         return data_arr
+
+    def visualize_data_file(self, data_folder, toss_id):
+        data_file = data_folder + str(toss_id) + '.pt'
+        toss = load_cube_toss(data_file)
+        self.visualize=True
+        self.init_sim(default_mujoco_contact_params)
+        self.visualize_data_rollout(toss)
+
+    def visualize_data_rollout(self, data):
+
+        while(True):
+            for i in range(data.shape[0]):
+                x_des = data[i,CUBE_DATA_POSITION_SLICE]
+                quat_des = data[i,CUBE_DATA_QUATERNION_SLICE]
+                dx_des = data[i,CUBE_DATA_VELOCITY_SLICE]
+                dw_des = data[i,CUBE_DATA_OMEGA_SLICE]
+
+                sim_state = self.sim.get_state()
+
+                sim_state.qpos[:3] = x_des
+                sim_state.qpos[3:] = quat_des
+                sim_state.qvel[:3] = dx_des
+                sim_state.qvel[3:] = dw_des
+
+                self.sim.set_state(sim_state)
+                self.sim.forward()
+                self.viewer.render()
+
+    def visualize_sim_rollout(self, params, initial_state, steps):
+        self.visualize=True
+        self.init_sim(params)
+        data = self.get_sim_traj_initial_state(initial_state, steps, 0)
+        import pdb; pdb.set_trace()
+        self.visualize_data_rollout(data)

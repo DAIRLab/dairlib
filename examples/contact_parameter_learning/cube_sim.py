@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from torch import load as torch_load
 import numpy as np
-
+import os
 
 CUBE_DATA_DT = 1.0/148.0
 CUBE_DATA_HZ = 148.0
@@ -33,6 +33,8 @@ class CubeSim(ABC):
             x_sim[i,:] = self.sim_step(dt)
         return x_sim
 
+def make_cube_toss_filename(data_folder, toss_id):
+    return os.path.join(data_folder, str(toss_id) + '.pt')
 
 
 def get_window_around_contact_event(state_traj):
@@ -49,8 +51,8 @@ def load_cube_toss(filename):
 
 ''' Interface method with the optimizer'''
 def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, debug=False):
-    data_file = data_folder + str(toss_id) + '.pt'
-    state_traj = load_cube_toss(data_file)
+    
+    state_traj = load_cube_toss(make_cube_toss_filename(data_folder, toss_id))
     window, state_traj_in_window = get_window_around_contact_event(state_traj)
 
     sim.init_sim(contact_params)

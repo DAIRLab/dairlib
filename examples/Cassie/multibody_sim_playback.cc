@@ -216,8 +216,8 @@ int do_main(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      true);
   plant_wo_spr.Finalize();
-  Eigen::MatrixXd map_no_spring_to_spring =
-      multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
+//  Eigen::MatrixXd map_no_spring_to_spring =
+//      multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
 
   InitialState init_state;
   const YAML::Node& root =

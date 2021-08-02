@@ -192,8 +192,7 @@ class OscTrackingData {
       const drake::systems::Context<double>& context_w_spr) = 0;
   virtual void UpdateYdotAndError(
       const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr,
-      const Eigen::VectorXd& v_proj) = 0;
+      const drake::systems::Context<double>& context_w_spr) = 0;
   virtual void UpdateYddotDes() = 0;
   virtual void UpdateJ(
       const Eigen::VectorXd& x_wo_spr,
@@ -238,9 +237,9 @@ class ComTrackingData final : public OscTrackingData {
   void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          const drake::systems::Context<double>& context_w_spr,
-                          const Eigen::VectorXd& v_proj) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
@@ -301,9 +300,9 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
   void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          const drake::systems::Context<double>& context_w_spr,
-                          const Eigen::VectorXd& v_proj) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
@@ -349,9 +348,9 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
   void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          const drake::systems::Context<double>& context_w_spr,
-                          const Eigen::VectorXd& v_proj) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
@@ -395,9 +394,9 @@ class JointSpaceTrackingData final : public OscTrackingData {
   void UpdateYAndError(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          const drake::systems::Context<double>& context_w_spr,
-                          const Eigen::VectorXd& v_proj) final;
+  void UpdateYdotAndError(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;

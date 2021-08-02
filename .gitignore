@@ -8,3 +8,4 @@ __pycache__/
 attic/multibody/solver_log/
 .clwb/
 .csv
+.ijwb

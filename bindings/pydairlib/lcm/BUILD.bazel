@@ -12,43 +12,46 @@ load(
 )
 
 pybind_py_library(
-    name = "multibody_py",
+    name = "lcm_trajectory_py",
     cc_deps = [
-        "//multibody:multipose_visualizer",
-        "//multibody:utils",
+        "//lcm:dircon_trajectory_saver",
+        "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "multibody",
-    cc_srcs = ["multibody_py.cc"],
-    py_deps = [
-        "@drake//bindings/pydrake",
-        ":module_py",
-    ],
-    py_imports = ["."],
-)
-
-pybind_py_library(
-    name = "kinematic_py",
-    cc_deps = [
-        "//multibody/kinematic",
-        "@drake//:drake_shared_library",
-    ],
-    cc_so_name = "kinematic",
-    cc_srcs = ["kinematic_py.cc"],
-    py_deps = [
-        "@drake//bindings/pydrake",
-        ":module_py",
-    ],
+    cc_so_name = "lcm_trajectory",
+    cc_srcs = ["lcm_trajectory_py.cc"],
+    py_deps = ["@drake//bindings/pydrake"],
     py_imports = ["."],
 )
 
 py_binary(
-    name = "multipose_visualizer_test",
-    srcs = ["test/multipose_visualizer_test.py"],
+    name = "lcm_trajectory_plotter",
+    srcs = [":lcm_trajectory_plotter.py"],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "dircon_trajectory_plotter",
+    srcs = [":dircon_trajectory_plotter.py"],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_library(
+    name = "process_lcm_log_py",
+    srcs = [":process_lcm_log.py"],
     deps = [
         ":module_py",
-        ":multibody_py",
-        "//bindings/pydairlib/common",
+        "//lcmtypes:lcmtypes_robot_py",
     ],
 )
 
@@ -68,13 +71,15 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":multibody_py",
-    ":kinematic_py",
+    ":dircon_trajectory_plotter",
+    ":lcm_trajectory_plotter",
+    ":lcm_trajectory_py",
+    ":process_lcm_log_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "multibody",
+    name = "lcm",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

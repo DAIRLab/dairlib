@@ -49,8 +49,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
-    bool used_with_finite_state_machine,
-    bool print_tracking_info,
+    bool used_with_finite_state_machine, bool print_tracking_info,
     double qp_time_limit)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
@@ -60,7 +59,7 @@ OperationalSpaceControl::OperationalSpaceControl(
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
       print_tracking_info_(print_tracking_info),
-      qp_time_limit_(qp_time_limit){
+      qp_time_limit_(qp_time_limit) {
   this->set_name("OSC");
 
   n_q_ = plant_wo_spr.num_positions();
@@ -72,15 +71,16 @@ OperationalSpaceControl::OperationalSpaceControl(
   int n_u_w_spr = plant_w_spr.num_actuators();
 
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                        "x, u, t",
-                        OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(
+              "x, u, t", OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
+          .get_index();
   if (used_with_finite_state_machine) {
     fsm_port_ =
         this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
-    near_impact_port_ =
-        this->DeclareVectorInputPort("next_fsm, t_to_impact", BasicVector<double>(2)).get_index();
+    near_impact_port_ = this->DeclareVectorInputPort("next_fsm, t_to_impact",
+                                                     BasicVector<double>(2))
+                            .get_index();
 
     // Discrete update to record the last state event time
     DeclarePerStepDiscreteUpdateEvent(
@@ -89,11 +89,10 @@ OperationalSpaceControl::OperationalSpaceControl(
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
-  osc_output_port_ =
-      this->DeclareVectorOutputPort("u, t",
-                                    TimestampedVector<double>(n_u_w_spr),
-                                    &OperationalSpaceControl::CalcOptimalInput)
-          .get_index();
+  osc_output_port_ = this->DeclareVectorOutputPort(
+                             "u, t", TimestampedVector<double>(n_u_w_spr),
+                             &OperationalSpaceControl::CalcOptimalInput)
+                         .get_index();
   osc_debug_port_ =
       this->DeclareAbstractOutputPort(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
@@ -146,17 +145,32 @@ OperationalSpaceControl::OperationalSpaceControl(
   u_min_ = u_min;
   u_max_ = u_max;
 
-  VectorXd q_min(n_v_ - 6);
-  VectorXd q_max(n_v_ - 6);
-  n_joints_ = 0;
+  n_revolute_joints_ = 0;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
-    if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
-      q_min(vel_map_wo_spr.at(joint.name() + "dot") - 6) =
+    if (joint.type_name() == "revolute") {
+      n_revolute_joints_ += 1;
+    }
+  }
+  VectorXd q_min(n_revolute_joints_);
+  VectorXd q_max(n_revolute_joints_);
+  int floating_base_offset = n_v_ - n_revolute_joints_;
+  for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
+    const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
+    if (joint.type_name() == "revolute") {
+      q_min(vel_map_wo_spr.at(joint.name() + "dot") - floating_base_offset) =
           plant_wo_spr.get_joint(i).position_lower_limits()[0];
-      q_max(vel_map_wo_spr.at(joint.name() + "dot") - 6) =
+      q_max(vel_map_wo_spr.at(joint.name() + "dot") - floating_base_offset) =
           plant_wo_spr.get_joint(i).position_upper_limits()[0];
-      n_joints_ += 1;
+    }
+    if (joint.type_name() == "prismatic" &&
+        (joint.position_lower_limits()[0] !=
+             -std::numeric_limits<double>::infinity() ||
+         (joint.position_upper_limits()[0] !=
+          std::numeric_limits<double>::infinity()))) {
+      std::cerr << "Warning: joint limits have not been implemented for "
+                   "prismatic joints: "
+                << std::endl;
     }
   }
   q_min_ = q_min;
@@ -402,10 +416,10 @@ void OperationalSpaceControl::Build() {
   }
 
   // 5. Joint Limit cost
-  w_joint_limit_ = VectorXd::Zero(n_joints_);
-  K_joint_pos = MatrixXd::Identity(n_joints_, n_joints_);
+  w_joint_limit_ = VectorXd::Zero(n_revolute_joints_);
+  K_joint_pos = MatrixXd::Identity(n_revolute_joints_, n_revolute_joints_);
   joint_limit_cost_.push_back(
-      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_joints_))
+      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_revolute_joints_))
           .evaluator()
           .get());
 
@@ -646,14 +660,14 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Add joint limit constraints
   VectorXd w_joint_limit =
-      K_joint_pos *
-          (x_wo_spr.head(plant_wo_spr_.num_positions()).tail(n_joints_) -
-           q_max_)
-              .cwiseMax(0) +
-      K_joint_pos *
-          (x_wo_spr.head(plant_wo_spr_.num_positions()).tail(n_joints_) -
-           q_min_)
-              .cwiseMin(0);
+      K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
+                         .tail(n_revolute_joints_) -
+                     q_max_)
+                        .cwiseMax(0) +
+      K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
+                         .tail(n_revolute_joints_) -
+                     q_min_)
+                        .cwiseMin(0);
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
   // Solve the QP

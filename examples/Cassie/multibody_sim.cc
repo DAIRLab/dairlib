@@ -583,16 +583,18 @@ void CassieInitStateSolver(
   program.AddLinearConstraint(lambda(13) >= min_normal_force);
 
   // Add costs
+  double s = 100;
   auto q_cost_binding = program.AddQuadraticErrorCost(
-      MatrixXd::Identity(q.size(), q.size()), q_desired, q);
+      s * MatrixXd::Identity(q.size(), q.size()), q_desired, q);
   auto u_cost_binding = program.AddQuadraticErrorCost(
-      0.01 * MatrixXd::Identity(u.size(), u.size()), u_desired, u);
+      s * 0.001 * MatrixXd::Identity(u.size(), u.size()), u_desired, u);
   auto lambda_cost_binding = program.AddQuadraticErrorCost(
-      0.001 * MatrixXd::Identity(lambda.size(), lambda.size()), lambda_desired,
-      lambda);
-  auto v_cost_binding =
-      program.AddQuadraticCost(v.tail(n_v - 6).dot(0.001 * v.tail(n_v - 6)));
-  // auto vdot_cost_binding = program.AddQuadraticCost(vdot.dot(0.001 * vdot));
+      s * 0.000001 * MatrixXd::Identity(lambda.size(), lambda.size()),
+      lambda_desired, lambda);
+  auto v_cost_binding = program.AddQuadraticCost(
+      v.tail(n_v - 6).dot(s * 0.001 * v.tail(n_v - 6)));
+  // auto vdot_cost_binding = program.AddQuadraticCost(vdot.dot(s * 0.001 *
+  // vdot));
 
   // Initial guesses
   program.SetInitialGuessForAllVariables(
@@ -606,7 +608,7 @@ void CassieInitStateSolver(
   //                          "../snopt_test.out");
   program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
   program.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", 1e-4);
+                          "Major optimality tolerance", 1e-3);
   program.SetSolverOption(drake::solvers::SnoptSolver::id(),
                           "Major feasibility tolerance", 1e-4);
 

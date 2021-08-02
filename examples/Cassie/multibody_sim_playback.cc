@@ -3,6 +3,7 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
+#include "common/file_utils.h"
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -25,6 +26,7 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
+#include "drake/systems/primitives/signal_logger.h"
 
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::DrakeVisualizer;
@@ -53,10 +55,12 @@ DEFINE_double(target_realtime_rate, 1.0,
               "Simulator::set_target_realtime_rate() for details.");
 DEFINE_double(dt, 8e-5,
               "The step size to use for time_stepping, ignored for continuous");
-DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
+DEFINE_double(stiction_tol, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. Nearly equivalent"
               " to (m)");
+DEFINE_double(mu_static, 0.8, "Coefficient of static friction.");
+DEFINE_double(mu_kinetic, 0.8, "Coefficient of kinematic friction.");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(publish_rate, 2000, "Publish rate for simulator");
@@ -73,6 +77,7 @@ DEFINE_string(
 DEFINE_string(initial_state_file, "examples/Cassie/data/initial_state.yaml",
               "YAML file containing the initial state.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+
 
 struct InitialState {
   std::vector<double> x_init;
@@ -94,7 +99,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_dt;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu_static, FLAGS_mu_kinetic);
   }
 
   if (FLAGS_terrain_height != 0) {
@@ -115,7 +120,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
-  plant.set_stiction_tolerance(FLAGS_v_stiction);
+  plant.set_stiction_tolerance(FLAGS_stiction_tol);
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
@@ -195,10 +200,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-//  if (FLAGS_terrain_height != 0.0) {
-//    DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
-//  }
-
+  auto logger = drake::systems::LogOutput(plant.get_state_output_port(), &builder);
+  logger->set_publish_period(1.0 / FLAGS_publish_rate);
   auto diagram = builder.Build();
 
   // Create a context for this system:
@@ -236,6 +239,13 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
   simulator.AdvanceTo(FLAGS_end_time);
+
+//  auto x_traj = logger->data();
+  auto timestamps = logger->sample_times();
+//  std::cout << x_traj.cols() << std::endl;
+//  std::cout << x_traj.rows() << std::endl;
+  writeCSV("x_traj.csv", logger->data());
+  writeCSV("t_x.csv", timestamps);
 
   return 0;
 }

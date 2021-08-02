@@ -49,7 +49,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
-    bool used_with_finite_state_machine, bool print_tracking_info)
+    bool used_with_finite_state_machine, bool print_tracking_info,  double max_solve_duation)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -57,7 +57,8 @@ OperationalSpaceControl::OperationalSpaceControl(
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
-      print_tracking_info_(print_tracking_info) {
+      print_tracking_info_(print_tracking_info),
+      kMaxSolveDuration_(max_solve_duation){
   this->set_name("OSC");
 
   n_q_ = plant_wo_spr.num_positions();
@@ -408,7 +409,7 @@ void OperationalSpaceControl::Build() {
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  solver_options.SetOption(OsqpSolver::id(), "time_limit", kMaxSolveDuration);
+  solver_options.SetOption(OsqpSolver::id(), "time_limit", kMaxSolveDuration_);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);

@@ -26,9 +26,6 @@
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
 
-// Maximum time limit for each QP solve
-static constexpr double kMaxSolveDuration = 0.002;
-
 namespace dairlib::systems::controllers {
 
 /// `OperationalSpaceControl` takes in desired trajectory in world frame and
@@ -101,7 +98,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context_w_spr,
       drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
-      bool print_tracking_info = false);
+      bool print_tracking_info = false, double max_solve_duation=0.002);
 
   const drake::systems::OutputPort<double>& get_osc_output_port() const {
     return this->get_output_port(osc_output_port_);
@@ -163,6 +160,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // OSC LeafSystem builder
   void Build();
+
+  // Maximum time limit for each QP solve
+  const double kMaxSolveDuration_;
 
  private:
   // Osc checkers and constructor-related methods

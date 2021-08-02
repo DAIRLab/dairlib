@@ -71,10 +71,13 @@ bool OscTrackingData::Update(
 
     // Update feedback output (Calling virtual methods)
     UpdateYAndError(x_w_spr, context_w_spr);
-    UpdateYdotAndError(x_w_spr, context_w_spr, v_proj);
+    UpdateYdotAndError(x_w_spr, context_w_spr);
     UpdateYddotDes();
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
+    if(impact_invariant_projection_){
+      error_ydot_ -= GetJ() * v_proj;
+    }
 
     // Update command output (desired output with pd control)
     yddot_command_ =
@@ -156,14 +159,13 @@ void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
 }
 
 void ComTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
-                                         const Context<double>& context_w_spr,
-                                         const VectorXd& v_proj) {
+                                         const Context<double>& context_w_spr) {
   MatrixXd J_w_spr(kSpaceDim, plant_w_spr_.num_velocities());
   plant_w_spr_.CalcJacobianCenterOfMassTranslationalVelocity(
       context_w_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_,
       &J_w_spr);
   ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_.num_velocities());
-  error_ydot_ = ydot_des_ - ydot_ - GetJ() * v_proj;
+  error_ydot_ = ydot_des_ - ydot_;
   //  error_ydot_ = ydot_des_ - ydot_;
 }
 
@@ -229,15 +231,14 @@ void TransTaskSpaceTrackingData::UpdateYAndError(
 }
 
 void TransTaskSpaceTrackingData::UpdateYdotAndError(
-    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
-    const VectorXd& v_proj) {
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   MatrixXd J(kSpaceDim, plant_w_spr_.num_velocities());
   plant_w_spr_.CalcJacobianTranslationalVelocity(
       context_w_spr, JacobianWrtVariable::kV,
       *body_frames_w_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
       world_w_spr_, world_w_spr_, &J);
   ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
-  error_ydot_ = ydot_des_ - ydot_ - GetJ() * v_proj;
+  error_ydot_ = ydot_des_ - ydot_;
 }
 
 void TransTaskSpaceTrackingData::UpdateYddotDes() {
@@ -325,8 +326,7 @@ void RotTaskSpaceTrackingData::UpdateYAndError(
 }
 
 void RotTaskSpaceTrackingData::UpdateYdotAndError(
-    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
-    const VectorXd& v_proj) {
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   MatrixXd J_spatial(6, plant_w_spr_.num_velocities());
   plant_w_spr_.CalcJacobianSpatialVelocity(
       context_w_spr, JacobianWrtVariable::kV,
@@ -340,7 +340,7 @@ void RotTaskSpaceTrackingData::UpdateYdotAndError(
   Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
                           ydot_des_(3));
   Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
-  error_ydot_ = w_des_ - ydot_ - J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) * v_proj;
+  error_ydot_ = w_des_ - ydot_;
 }
 
 void RotTaskSpaceTrackingData::UpdateYddotDes() {
@@ -421,12 +421,11 @@ void JointSpaceTrackingData::UpdateYAndError(
 }
 
 void JointSpaceTrackingData::UpdateYdotAndError(
-    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
-    const VectorXd& v_proj) {
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   MatrixXd J = MatrixXd::Zero(1, plant_w_spr_.num_velocities());
   J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
   ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
-  error_ydot_ = ydot_des_ - ydot_ - GetJ() * v_proj;
+  error_ydot_ = ydot_des_ - ydot_;
 }
 
 void JointSpaceTrackingData::UpdateYddotDes() {

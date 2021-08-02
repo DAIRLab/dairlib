@@ -7,4 +7,6 @@ __pycache__/
 *.DS_Store*
 attic/multibody/solver_log/
 .clwb/
-.csv
+.ijwb
+*.csv
+/examples/Cassie/saved_trajectories/

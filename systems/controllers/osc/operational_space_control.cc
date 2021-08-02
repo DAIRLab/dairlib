@@ -49,7 +49,8 @@ OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
-    bool used_with_finite_state_machine, bool print_tracking_info)
+    bool used_with_finite_state_machine, bool print_tracking_info,
+    double qp_time_limit)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -57,7 +58,8 @@ OperationalSpaceControl::OperationalSpaceControl(
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
-      print_tracking_info_(print_tracking_info) {
+      print_tracking_info_(print_tracking_info),
+      qp_time_limit_(qp_time_limit) {
   this->set_name("OSC");
 
   n_q_ = plant_wo_spr.num_positions();
@@ -69,17 +71,17 @@ OperationalSpaceControl::OperationalSpaceControl(
   int n_u_w_spr = plant_w_spr.num_actuators();
 
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                        "robot_state",
-                        OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(
+              "x, u, t", OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
+          .get_index();
   if (used_with_finite_state_machine) {
     fsm_port_ =
-        this->DeclareVectorInputPort("fsm_state",BasicVector<double>(1)).get_index();
+        this->DeclareVectorInputPort("fsm",BasicVector<double>(1)).get_index();
     clock_port_ =
         this->DeclareVectorInputPort("clock",BasicVector<double>(1)).get_index();
     near_impact_port_ =
-        this->DeclareVectorInputPort("near_impact",BasicVector<double>(2)).get_index();
+        this->DeclareVectorInputPort("next_fsm, t_to_impact",BasicVector<double>(2)).get_index();
 
     // Discrete update to record the last state event time
     DeclarePerStepDiscreteUpdateEvent(
@@ -88,14 +90,14 @@ OperationalSpaceControl::OperationalSpaceControl(
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
-  osc_output_port_ =
-      this->DeclareVectorOutputPort("controller_command",
-                                    TimestampedVector<double>(n_u_w_spr),
-                                    &OperationalSpaceControl::CalcOptimalInput)
+  osc_output_port_ = this->DeclareVectorOutputPort(
+                             "u, t", TimestampedVector<double>(n_u_w_spr),
+                             &OperationalSpaceControl::CalcOptimalInput)
+                         .get_index();
+  osc_debug_port_ =
+      this->DeclareAbstractOutputPort(
+              "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
-  osc_debug_port_ = this->DeclareAbstractOutputPort("osc_debug",
-                            &OperationalSpaceControl::AssignOscLcmOutput)
-                        .get_index();
 
   const std::map<string, int>& pos_map_w_spr =
       multibody::makeNameToPositionsMap(plant_w_spr);
@@ -144,29 +146,36 @@ OperationalSpaceControl::OperationalSpaceControl(
   u_min_ = u_min;
   u_max_ = u_max;
 
-  VectorXd q_min(n_v_ - 6);
-  VectorXd q_max(n_v_ - 6);
-  n_joints_ = 0;
+  n_revolute_joints_ = 0;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
-    if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
-      q_min(vel_map_wo_spr.at(joint.name() + "dot") - 6) =
+    if (joint.type_name() == "revolute") {
+      n_revolute_joints_ += 1;
+    }
+  }
+  VectorXd q_min(n_revolute_joints_);
+  VectorXd q_max(n_revolute_joints_);
+  int floating_base_offset = n_v_ - n_revolute_joints_;
+  for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
+    const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
+    if (joint.type_name() == "revolute") {
+      q_min(vel_map_wo_spr.at(joint.name() + "dot") - floating_base_offset) =
           plant_wo_spr.get_joint(i).position_lower_limits()[0];
-      q_max(vel_map_wo_spr.at(joint.name() + "dot") - 6) =
+      q_max(vel_map_wo_spr.at(joint.name() + "dot") - floating_base_offset) =
           plant_wo_spr.get_joint(i).position_upper_limits()[0];
-      n_joints_ += 1;
+    }
+    if (joint.type_name() == "prismatic" &&
+        (joint.position_lower_limits()[0] !=
+             -std::numeric_limits<double>::infinity() ||
+         (joint.position_upper_limits()[0] !=
+          std::numeric_limits<double>::infinity()))) {
+      std::cerr << "Warning: joint limits have not been implemented for "
+                   "prismatic joints: "
+                << std::endl;
     }
   }
   q_min_ = q_min;
   q_max_ = q_max;
-
-  //  // Get joint limits
-  //  for (JointIndex q_i(6); q_i < n_joints_; ++q_i){
-  //    std::cout << q_i << std::endl;
-  //    std::cout << plant_wo_spr.get_joint(q_i).name() << std::endl;
-  //    q_min(q_i) = plant_wo_spr.get_joint(q_i).position_lower_limits()[0];
-  //    q_max(q_i) = plant_wo_spr.get_joint(q_i).position_upper_limits()[0];
-  //  }
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
@@ -408,17 +417,17 @@ void OperationalSpaceControl::Build() {
   }
 
   // 5. Joint Limit cost
-  w_joint_limit_ = VectorXd::Zero(n_joints_);
-  K_joint_pos = MatrixXd::Identity(n_joints_, n_joints_);
+  w_joint_limit_ = VectorXd::Zero(n_revolute_joints_);
+  K_joint_pos = MatrixXd::Identity(n_revolute_joints_, n_revolute_joints_);
   joint_limit_cost_.push_back(
-      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_joints_))
+      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_revolute_joints_))
           .evaluator()
           .get());
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  solver_options.SetOption(OsqpSolver::id(), "time_limit", kMaxSolveDuration);
+  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
@@ -583,8 +592,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (!all_contacts_.empty()) {
-//    VectorXd inf_vectorxd(1);
-//    inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
         friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
@@ -598,70 +605,12 @@ VectorXd OperationalSpaceControl::SolveQp(
   //  Invariant Impacts
   //  Only update when near an impact
   bool near_impact = alpha != 0;
+  VectorXd v_proj = VectorXd::Zero(n_v_);
   if (near_impact) {
-    auto map_iterator = contact_indices_map_.find(next_fsm_state);
-    if (map_iterator == contact_indices_map_.end()) {
-      throw std::out_of_range(
-          "Contact mode: " + std::to_string(next_fsm_state) +
-          " was not found in the OSC");
-    }
-    std::set<int> next_contact_set = map_iterator->second;
-    int active_contact_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
-    MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
-    int row_start = 0;
-    for (unsigned int i = 0; i < all_contacts_.size(); i++) {
-      if (next_contact_set.find(i) != next_contact_set.end()) {
-        J_c_next.block(row_start, 0, kSpaceDim, n_v_) =
-            all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
-        row_start += kSpaceDim;
-      }
-    }
-    // Holonomic constraints
-    if (n_h_ > 0) {
-      J_c_next.block(row_start, 0, n_h_, n_v_) = J_h;
-    }
-    M_Jt_ = M.inverse() * J_c_next.transpose();
-
-    int active_tracking_data_dim = 0;
-    for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-      auto tracking_data = tracking_data_vec_->at(i);
-
-      if (tracking_data->IsActive()) {
-        VectorXd v_proj = VectorXd::Zero(n_v_);
-        active_tracking_data_dim += tracking_data->GetYDim();
-        if (fixed_position_vec_.at(i).size() != 0) {
-          // Create constant trajectory and update
-          tracking_data->Update(
-              x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
-              PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-              fsm_state, v_proj);
-        } else {
-          // Read in traj from input port
-          const string& traj_name = tracking_data->GetName();
-          int port_index = traj_name_to_port_index_map_.at(traj_name);
-          const drake::AbstractValue* input_traj =
-              this->EvalAbstractInput(context, port_index);
-          const auto& traj =
-              input_traj->get_value<drake::trajectories::Trajectory<double>>();
-          tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                                *context_wo_spr_, traj, t, fsm_state, v_proj);
-        }
-      }
-    }
-    MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_contact_dim);
-    VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
-    int start_row = 0;
-    for (auto tracking_data : *tracking_data_vec_) {
-      if (tracking_data->IsActive()) {
-        A.block(start_row, 0, tracking_data->GetYDim(), active_contact_dim) =
-            tracking_data->GetJ() * M_Jt_;
-        ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
-            tracking_data->GetErrorYdot();
-        start_row += tracking_data->GetYDim();
-      }
-    }
-
-    ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
+    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t, fsm_state,
+                                    next_fsm_state, M, J_h);
+    // Need to call Update before this to get the updated jacobian
+    v_proj = alpha * M_Jt_ * ii_lambda_sol_;
   }
 
   // Update costs
@@ -669,12 +618,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
     // When not using the projection, set it equal to zero
-    VectorXd v_proj = VectorXd::Zero(n_v_);
-
-    if (near_impact && tracking_data->IsActive()) {
-      // Need to call Update before this to get the updated jacobian
-      v_proj = alpha * M_Jt_ * ii_lambda_sol_;
-    }
 
     // Check whether or not it is a constant trajectory, and update TrackingData
     if (fixed_position_vec_.at(i).size() != 0) {
@@ -718,28 +661,24 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Add joint limit constraints
   VectorXd w_joint_limit =
-      K_joint_pos *
-          (x_wo_spr.head(plant_wo_spr_.num_positions()).tail(n_joints_) -
-           q_max_)
-              .cwiseMax(0) +
-      K_joint_pos *
-          (x_wo_spr.head(plant_wo_spr_.num_positions()).tail(n_joints_) -
-           q_min_)
-              .cwiseMin(0);
+      K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
+                         .tail(n_revolute_joints_) -
+                     q_max_)
+                        .cwiseMax(0) +
+      K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
+                         .tail(n_revolute_joints_) -
+                     q_min_)
+                        .cwiseMin(0);
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
   // Solve the QP
 
-//  const MathematicalProgramResult result = Solve(*prog_);
+  //  const MathematicalProgramResult result = Solve(*prog_);
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   // Extract solutions
-//  if(!result.is_success()){
-//    std::cout << "reverting to old sol" << std::endl;
-//    return *u_sol_;
-//  }
   *dv_sol_ = result.GetSolution(dv_);
   *u_sol_ = result.GetSolution(u_);
   *lambda_c_sol_ = result.GetSolution(lambda_c_);
@@ -807,6 +746,75 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   return *u_sol_;
+}
+void OperationalSpaceControl::UpdateImpactInvariantProjection(
+    const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
+    const Context<double>& context, double t, int fsm_state, int next_fsm_state,
+    const MatrixXd& M, const MatrixXd& J_h) const {
+  auto map_iterator = contact_indices_map_.find(next_fsm_state);
+  if (map_iterator == contact_indices_map_.end()) {
+    throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
+                            " was not found in the OSC");
+  }
+  std::set<int> next_contact_set = map_iterator->second;
+  int active_contact_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
+  MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
+  int row_start = 0;
+  for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+    if (next_contact_set.find(i) != next_contact_set.end()) {
+      J_c_next.block(row_start, 0, kSpaceDim, n_v_) =
+          all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
+      row_start += kSpaceDim;
+    }
+  }
+  // Holonomic constraints
+  if (n_h_ > 0) {
+    J_c_next.block(row_start, 0, n_h_, n_v_) = J_h;
+  }
+  M_Jt_ = M.llt().solve(J_c_next.transpose());
+
+  int active_tracking_data_dim = 0;
+  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
+    auto tracking_data = tracking_data_vec_->at(i);
+
+    if (tracking_data->IsActive() &&
+        tracking_data->GetImpactInvariantProjection()) {
+      VectorXd v_proj = VectorXd::Zero(n_v_);
+      active_tracking_data_dim += tracking_data->GetYDim();
+      if (fixed_position_vec_.at(i).size() != 0) {
+        // Create constant trajectory and update
+        tracking_data->Update(
+            x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
+            PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
+            fsm_state, v_proj);
+      } else {
+        // Read in traj from input port
+        const string& traj_name = tracking_data->GetName();
+        int port_index = traj_name_to_port_index_map_.at(traj_name);
+        const drake::AbstractValue* input_traj =
+            EvalAbstractInput(context, port_index);
+        const auto& traj =
+            input_traj->get_value<drake::trajectories::Trajectory<double>>();
+        tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                              *context_wo_spr_, traj, t, fsm_state, v_proj);
+      }
+    }
+  }
+  MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_contact_dim);
+  VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
+  int start_row = 0;
+  for (auto tracking_data : *tracking_data_vec_) {
+    if (tracking_data->IsActive() &&
+        tracking_data->GetImpactInvariantProjection()) {
+      A.block(start_row, 0, tracking_data->GetYDim(), active_contact_dim) =
+          tracking_data->GetJ() * M_Jt_;
+      ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
+          tracking_data->GetErrorYdot();
+      start_row += tracking_data->GetYDim();
+    }
+  }
+
+  ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
@@ -935,6 +943,16 @@ void OperationalSpaceControl::CalcOptimalInput(
       clock_time = clock->get_value()(0);
     }
     VectorXd fsm_state = fsm_output->get_value();
+
+    double alpha = 0;
+    int next_fsm_state = -1;
+    if (this->get_near_impact_input_port().HasValue(context)) {
+      const BasicVector<double>* near_impact =
+          (BasicVector<double>*)this->EvalVectorInput(context,
+                                                      near_impact_port_);
+      alpha = near_impact->get_value()(0);
+      next_fsm_state = near_impact->get_value()(1);
+    }
 
     // Get discrete states
     const auto prev_event_time =

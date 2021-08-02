@@ -730,7 +730,7 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
     double eps = 1e-3;
     Vector3d eps_vec = eps * VectorXd::Ones(3);
     double height_offset = apex_height - factor * (i - num_knot_points / 2.0) *
-                                             (i - num_knot_points / 2.0);
+        (i - num_knot_points / 2.0);
     Vector3d pelvis_pos(0.0, 0.0, rest_height + height_offset);
     // Do not raise the toes as much as the pelvis, (leg extension)
     Vector3d left_toe_pos(0.0, 0.12, 0.05 + height_offset * 0.5);
@@ -759,11 +759,11 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
     ik.get_mutable_prog()->AddLinearConstraint(
         (ik.q())(positions_map.at("knee_left")) +
             (ik.q())(positions_map.at("ankle_joint_left")) ==
-        M_PI * 13 / 180.0);
+            M_PI * 13 / 180.0);
     ik.get_mutable_prog()->AddLinearConstraint(
         (ik.q())(positions_map.at("knee_right")) +
             (ik.q())(positions_map.at("ankle_joint_right")) ==
-        M_PI * 13 / 180.0);
+            M_PI * 13 / 180.0);
 
     ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
     const auto result = Solve(ik.prog());

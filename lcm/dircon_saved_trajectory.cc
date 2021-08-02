@@ -166,7 +166,7 @@ DirconTrajectory::DirconTrajectory(
          ++i) {
       force_names.push_back("lambda_" + std::to_string(num_forces));
       collocation_force_names.push_back("lambda_c_" +
-                                        std::to_string(num_forces));
+          std::to_string(num_forces));
       ++num_forces;
     }
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -241,12 +241,13 @@ DirconTrajectory::DirconTrajectory(
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
-    const {
-  PiecewisePolynomial<double> state_traj =
-      PiecewisePolynomial<double>::CubicHermite(
-          x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
+const {
+  PiecewisePolynomial<double> state_traj;
+//  =
+//      PiecewisePolynomial<double>::CubicHermite(
+//          x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
 
-  for (int mode = 1; mode < num_modes_; ++mode) {
+  for (int mode = 0; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
     if (x_[mode]->time_vector.size() < 2) {
       continue;

@@ -238,9 +238,24 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
-                "//systems/primitives",
+        "//systems/primitives",
+        ":cassie_encoder",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
 
-        "//systems/controllers:trajectory_playback",
+cc_binary(
+    name = "multibody_sim_w_platform",
+    srcs = ["multibody_sim_w_platform.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

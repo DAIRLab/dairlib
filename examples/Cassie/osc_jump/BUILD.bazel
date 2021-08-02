@@ -52,6 +52,19 @@ cc_library(
 )
 
 cc_library(
+    name = "toe_angle_traj_generator",
+    srcs = ["toe_angle_traj_generator.cc"],
+    hdrs = ["toe_angle_traj_generator.h"],
+    deps = [
+        ":jumping_event_based_fsm",
+        "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "pelvis_orientation_traj_generator",
     srcs = ["basic_trajectory_passthrough.cc"],
     hdrs = ["basic_trajectory_passthrough.h"],

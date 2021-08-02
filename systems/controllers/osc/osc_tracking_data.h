@@ -114,6 +114,9 @@ class OscTrackingData {
   const Eigen::VectorXd& GetJdotTimesV() const { return JdotV_; }
   const Eigen::VectorXd& GetYddotCommand() const { return yddot_command_; }
   const Eigen::MatrixXd& GetWeight() const { return W_; }
+  const bool GetImpactInvariantProjection() const {
+    return impact_invariant_projection_;
+  }
 
   // Getters
   const std::string& GetName() const { return name_; };
@@ -125,6 +128,11 @@ class OscTrackingData {
 
   // Print feedback and desired values
   void PrintFeedbackAndDesiredValues(const Eigen::VectorXd& dv);
+
+  // Set whether or not to use the impact invariant projection
+  void SetImpactInvariantProjection(bool use_impact_invariant_projection) {
+    impact_invariant_projection_ = use_impact_invariant_projection;
+  }
 
   // Finalize and ensure that users construct OscTrackingData class
   // correctly.
@@ -160,6 +168,8 @@ class OscTrackingData {
   // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.
   std::vector<int> state_;
+
+  bool impact_invariant_projection_ = false;
 
   /// OSC calculates feedback positions/velocities from `plant_w_spr_`,
   /// but in the optimization it uses `plant_wo_spr_`. The reason of using

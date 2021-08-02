@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 #include "systems/framework/output_vector.h"
 
 #include "drake/multibody/parsing/parser.h"

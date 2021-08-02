@@ -166,6 +166,7 @@ int DoMain(int argc, char* argv[]) {
         joint_name + "_traj", K_p, K_d, W, plant, plant));
     joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
                                                         joint_name + "dot");
+    joint_tracking_data_vec[joint_idx]->SetImpactInvariantProjection(true);
     auto joint_traj = dircon_trajectory.ReconstructJointTrajectory(
         pos_map_wo_spr[joint_name]);
     auto joint_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(

@@ -98,7 +98,14 @@ std::vector<std::string> createActuatorNameVectorFromMap(
 /// \param plant_w_spr
 /// \param plant_wo_spr
 template <typename T>
-Eigen::MatrixXd createWithSpringsToWithoutSpringsMap(
+Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(
+    const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<T>& plant_wo_spr);
+
+/// \param plant_w_spr
+/// \param plant_wo_spr
+template <typename T>
+Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(
     const drake::multibody::MultibodyPlant<T>& plant_w_spr,
     const drake::multibody::MultibodyPlant<T>& plant_wo_spr);
 

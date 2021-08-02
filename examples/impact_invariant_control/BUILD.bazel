@@ -1,0 +1,105 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+cc_library(
+    name = "impact_aware_time_based_fsm",
+    srcs = ["impact_aware_time_based_fsm.cc"],
+    hdrs = ["impact_aware_time_based_fsm.h"],
+    deps = [
+        "//systems/controllers:time_based_fsm",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "five_link_biped_sim",
+    srcs = ["five_link_biped_sim.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "five_link_biped_visualizer",
+    srcs = ["five_link_biped_visualizer.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_dircon_walking",
+    srcs = ["run_dircon_walking.cc"],
+    data = [":five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//lcm:trajectory_saver",
+        "//systems/primitives",
+        "//multibody:visualization_utils",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "joint_space_walking_gains",
+    hdrs = ["joint_space_walking_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "run_joint_space_walking_controller",
+    srcs = ["run_joint_space_walking_controller.cc"],
+    data = [":five_link_biped.urdf"],
+    deps = [
+        ":impact_aware_time_based_fsm",
+        ":joint_space_walking_gains",
+        "//common",
+        "//examples/Cassie/osc_jump",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

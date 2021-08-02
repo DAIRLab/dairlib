@@ -660,11 +660,11 @@ VectorXd OperationalSpaceControl::SolveQp(
         // We want left foot force to gradually increase
         alpha_left = -1;
         alpha_right = time_since_last_state_switch /
-            (0.05 - time_since_last_state_switch);
+            (ds_duration_ - time_since_last_state_switch);
 
       } else if (!prev_distinct_fsm_state_) {  // Assume left support state is 0
         alpha_left = time_since_last_state_switch /
-            (0.05 - time_since_last_state_switch);
+            (ds_duration_ - time_since_last_state_switch);
         alpha_right = -1;
       }
       A(0, 0) = alpha_left / 2;

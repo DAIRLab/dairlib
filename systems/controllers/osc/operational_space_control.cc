@@ -667,6 +667,9 @@ VectorXd OperationalSpaceControl::SolveQp(
             (ds_duration_ - time_since_last_state_switch);
         alpha_right = -1;
       }
+      /*cout << "ds_duration_ = " << ds_duration_ << endl;
+      cout << "time_since_last_state_switch = " << time_since_last_state_switch
+           << endl;*/
       A(0, 0) = alpha_left / 2;
       A(0, 1) = alpha_left / 2;
       A(0, 2) = alpha_right / 2;
@@ -676,6 +679,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       A(0, 6) = 1;
       A(0, 7) = 1;
     }
+    // cout << "A = " << A << endl;
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
   }
 

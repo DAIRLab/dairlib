@@ -27,21 +27,6 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-py_binary(
-    name = "multibody_sim_playback",
-    srcs = ["multibody_sim_playback.py"],
-    data = [
-        "//examples/Cassie:cassie_urdf",
-        "@lcm//:lcm-python",
-    ],
-    deps = [
-        "cassie_utils_py",
-        "//bindings/pydairlib/common",
-#        "//bindings/pydairlib/lcm:lcm_py",
-        "//bindings/pydairlib/multibody:multibody_py",
-    ],
-)
-
 py_library(
     name = "mujoco_lcm_utils",
     srcs = ["mujoco_lcm_utils.py"],

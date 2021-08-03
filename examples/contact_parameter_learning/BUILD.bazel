@@ -42,6 +42,11 @@ py_library(
     deps = [":cube_sim"],
 )
 
+py_library(
+    name = "drake_cassie_sim_py",
+    srcs = ["drake_cassie_sim.py"],
+)
+
 py_binary(
     name = "cube_sim_test",
     srcs = ["cube_sim_test.py"],
@@ -58,6 +63,16 @@ py_binary(
     deps = [
         ":cube_sim",
         ":drake_cube_sim_py",
+        ":mujoco_cube_sim_py",
+    ],
+)
+
+py_binary(
+    name = "learn_cassie_parameters",
+    srcs = ["learn_cassie_parameters.py"],
+    deps = [
+        ":cube_sim",
+        ":drake_cassie_sim_py",
         ":mujoco_cube_sim_py",
     ],
 )

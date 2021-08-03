@@ -320,8 +320,8 @@ int do_main(int argc, char* argv[]) {
   q_init.head<4>() << cos(theta / 2), 0, 0, sin(theta / 2);
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, v_init);
-//  std::cout << "q_init = \n" << q_init.transpose() << std::endl;
-//  std::cout << "v_init = \n" << v_init.transpose() << std::endl;
+  //  std::cout << "q_init = \n" << q_init.transpose() << std::endl;
+  //  std::cout << "v_init = \n" << v_init.transpose() << std::endl;
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
@@ -529,6 +529,8 @@ void CassieInitStateSolver(
   program.AddBoundingBoxConstraint(height, height,
                                    q(positions_map.at("base_z")));
 
+  program.AddBoundingBoxConstraint(-10, 10, v);
+
   program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wx")));
   program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wy")));
   program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wz")));
@@ -604,11 +606,12 @@ void CassieInitStateSolver(
   program.SetInitialGuess(lambda, lambda_desired);
 
   // Snopt settings
-  //  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-  //                          "../snopt_test.out");
+  // program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+  //                         "../snopt_test.out");
+  std::cout << "Save log to ../snopt_test.out\n";
   program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
   program.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", 1e-3);
+                          "Major optimality tolerance", 1e-2);
   program.SetSolverOption(drake::solvers::SnoptSolver::id(),
                           "Major feasibility tolerance", 1e-4);
 
@@ -647,9 +650,9 @@ void CassieInitStateSolver(
   //  std::cout << "v_cost_binding = "
   //            << solvers::EvalCostGivenSolution(result, v_cost_binding)
   //            << std::endl;
-  //  std::cout << "vdot_cost_binding = "
-  //            << solvers::EvalCostGivenSolution(result, vdot_cost_binding)
-  //            << std::endl;
+  // //  std::cout << "vdot_cost_binding = "
+  // //            << solvers::EvalCostGivenSolution(result, vdot_cost_binding)
+  // //            << std::endl;
 }
 
 }  // namespace dairlib

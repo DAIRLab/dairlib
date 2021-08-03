@@ -1,8 +1,8 @@
 from mujoco_py import load_model_from_xml, MjSim, MjViewer, MjRenderContextOffscreen
 import numpy as np
-from cube_sim import CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
+from cube_sim import BLOCK_HALF_WIDTH, CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
 
-default_mujoco_contact_params = {"stiffness" : 300, 
+default_mujoco_contact_params = {"stiffness" : 2000, 
                   "damping" : 36.02, 
                   "cube_mu_tangent" : 0.3, 
                   "table_mu_tangent" : 1.0, 
@@ -20,9 +20,9 @@ texuniform=\"true\" reflectance=\".3\"/></asset><worldbody><geom name=\"floor\" 
 <light directional=\"false\" diffuse=\".8 .8 .8\" specular=\"0.3 0.3 0.3\" pos=\"0 0 4.0\" dir=\"0 0 -1\"/> \
 <body name=\"cube\" pos=\"0 0 0\"> \
 <inertial pos=\"0.0 0.0 0.0\" mass=\"0.37\" fullinertia=\"0.0006167 0.0006167 0.0006167 0 0 0\"/> \
-<freejoint name=\"cube_board\"/><geom name=\"cube_geom\" type=\"box\" size=\"0.1048 0.1048 0.1048\" quat=\"1 0 0 0\" \
+<freejoint name=\"cube_board\"/><geom name=\"cube_geom\" type=\"box\" size=\"{BLOCK_HALF_WIDTH} {BLOCK_HALF_WIDTH} {BLOCK_HALF_WIDTH}\" quat=\"1 0 0 0\" \
 friction=\"{params["cube_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" rgba=\"0 1 0 1.0\"  /> \
-</body><body name=\"board\" pos=\"0.0 0.0 -0.0001\"><geom size=\"5.0 5.0 0.0001\" rgba=\"1 0 0 1\" type=\"box\" \
+</body><body name=\"board\" pos=\"0.0 0.0 -0.2\"><geom size=\"5.0 5.0 0.2\" rgba=\"1 0 0 1\" type=\"box\" \
 solref = \"-{params["stiffness"]} -{params["damping"]}\" \
 friction=\"{params["table_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" /> \
 </body>\<camera name=\"cam1\" mode=\"targetbody\" target=\"cube\" pos=\"-0.5 -0.5 0.1\" /> \
@@ -89,5 +89,4 @@ class MujocoCubeSim(CubeSim):
         self.visualize=True
         self.init_sim(params)
         data = self.get_sim_traj_initial_state(initial_state, steps, 0)
-        import pdb; pdb.set_trace()
         self.visualize_data_rollout(data)

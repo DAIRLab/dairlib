@@ -18,9 +18,9 @@ def test_mujoco():
     mujoco_sim = mujoco_cube_sim.MujocoCubeSim(visualize=True)
     contact_params = mujoco_cube_sim.default_mujoco_contact_params
     mujoco_sim.init_sim(contact_params)
-    state_traj = mujoco_sim.get_sim_traj_initial_state(test_state, 2000, cube_sim.CUBE_DATA_DT)
+    state_traj = mujoco_sim.get_sim_traj_initial_state(test_state, 300, cube_sim.CUBE_DATA_DT)
     return state_traj
 
 if (__name__ == "__main__"):
-    data = test_drake()
+    data = test_mujoco()
     print(data)

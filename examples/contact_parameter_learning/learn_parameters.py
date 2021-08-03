@@ -31,7 +31,7 @@ def visualize_learned_params(params, sim, toss_id):
         
 
     
-    #vis_sim_data.visualize_data_rollout(cube_data)
+    vis_sim_data.visualize_data_rollout(cube_data)
     vis_sim_params.visualize_sim_rollout(params, initial_state, cube_data.shape[0])
 
 ####################################
@@ -39,7 +39,7 @@ def visualize_learned_params(params, sim, toss_id):
 
 def get_drake_loss(params):
     get_drake_loss.sim = drake_cube_sim.DrakeCubeSim()
-    return cube_sim.calculate_cubesim_loss(params, 33, cube_data_folder, get_drake_loss.sim, True)
+    return cube_sim.calculate_cubesim_loss(params, 33, cube_data_folder, get_drake_loss.sim, debug=True)
 
 def learn_drake_params():
     
@@ -61,7 +61,7 @@ def learn_drake_params():
 
 def get_mujoco_loss(params):
     get_mujoco_loss.sim = mujoco_cube_sim.MujocoCubeSim()
-    return cube_sim.calculate_cubesim_loss(params, 33, cube_data_folder, get_mujoco_loss.sim, True)
+    return cube_sim.calculate_cubesim_loss(params, 33, cube_data_folder, get_mujoco_loss.sim, debug=True)
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
@@ -76,12 +76,12 @@ def learn_mujoco_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=100)
     params = optimizer.minimize(get_mujoco_loss)
     print(params.value)
-    save_params('mujoco', 33, params.value)
+    #save_params('mujoco', 33, params.value)
     visualize_learned_params(params.value, 'mujoco', 33)
 
 
     
 
 if (__name__ == '__main__'):
-    #learn_mujoco_params()
-    learn_drake_params()
+    learn_mujoco_params()
+    #learn_drake_params()

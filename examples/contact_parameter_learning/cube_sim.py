@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from torch import load as torch_load
 import numpy as np
 import os
+from scipy.spatial.transform import Rotation as R
 
 CUBE_DATA_DT = 1.0/148.0
 CUBE_DATA_HZ = 148.0
@@ -33,6 +34,55 @@ class CubeSim(ABC):
             x_sim[i,:] = self.sim_step(dt)
         return x_sim
 
+class LossWeights():
+
+    def __init__(self, 
+                 pos=np.ones((3,)),
+                 vel=np.ones((3,)),
+                 omega=np.ones((3,)), 
+                 quat=1):
+        self.pos = np.diag(pos)
+        self.vel = np.diag(vel)
+        self.omega = np.diag(omega)
+        self.quat = quat
+    
+    def CalcPositionsLoss(self, traj1, traj2):
+        return np.dot(traj1.ravel(), (self.pos @ traj2.T).ravel()) / traj1.shape[0]
+    
+    def CalcVelocitiesLoss(self, traj1, traj2):
+        return np.dot(traj1.ravel(), (self.vel @ traj2.T).ravel()) / traj1.shape[0]
+    
+    def CalcOmegaLoss(self, traj1, traj2):
+        return np.dot(traj1.ravel(), (self.vel @ traj2.T).ravel()) / traj1.shape[0]
+
+    def CalcQuatLoss(self, traj1, traj2):
+        loss = 0
+        for i in range(traj1.shape[0]):
+            quat_diff = self.calc_rotational_distance(traj1[i], traj2[i])
+            loss += quat_diff ** 2
+        loss *= self.quat / traj1.shape[0]
+        return loss 
+
+    def CalculateLoss(self, traj1, traj2):
+        l_pos = self.CalcPositionsLoss(traj1[:,CUBE_DATA_POSITION_SLICE], traj2[:,CUBE_DATA_POSITION_SLICE])
+        l_vel = self.CalcVelocitiesLoss(traj1[:,CUBE_DATA_VELOCITY_SLICE], traj2[:,CUBE_DATA_VELOCITY_SLICE])
+        l_omega = self.CalcOmegaLoss(traj1[:,CUBE_DATA_OMEGA_SLICE], traj2[:,CUBE_DATA_OMEGA_SLICE])
+        l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
+        return l_pos + l_vel + l_omega + l_quat
+
+    def calc_rotational_distance(self, quat1, quat2):
+        q1 = quat1.ravel()
+        q2 = quat2.ravel()
+        R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
+        R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
+        Rel = R1 * R2.inv()
+        return np.linalg.norm(Rel.as_rotvec()) ** 2
+        
+
+
+
+
+
 def make_cube_toss_filename(data_folder, toss_id):
     return os.path.join(data_folder, str(toss_id) + '.pt')
 
@@ -49,8 +99,8 @@ def load_cube_toss(filename):
     state_traj[:, CUBE_DATA_VELOCITY_SLICE] *= BLOCK_HALF_WIDTH
     return state_traj
 
-''' Interface method with the optimizer'''
-def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, debug=False):
+''' Interface method to calculate the loss for a given set of parameters and a trajectory'''
+def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, weights=LossWeights(), debug=False):
     
     state_traj = load_cube_toss(make_cube_toss_filename(data_folder, toss_id))
     window, state_traj_in_window = get_window_around_contact_event(state_traj)
@@ -59,9 +109,7 @@ def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, debug=Fals
 
     simulated_trajectory = sim.get_sim_traj_initial_state(
         state_traj_in_window[0], state_traj_in_window.shape[0], CUBE_DATA_DT)
-
-    diff = simulated_trajectory.ravel() - state_traj_in_window.ravel()
-    loss = np.dot(diff, diff) / state_traj_in_window.shape[1]
+    loss = weights.CalculateLoss(simulated_trajectory, state_traj_in_window)
     if(debug):
         print(loss)
     return loss # normalize loss by duration of the trajectory

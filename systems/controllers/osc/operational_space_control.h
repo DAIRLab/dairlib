@@ -329,7 +329,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Testing -- regularizing input
   drake::solvers::QuadraticCost* input_reg_cost_;
-  double w_input_reg_ = 0.0000000;
+  double w_input_reg_ = 0.0000001;
   Eigen::MatrixXd W_input_reg_;
 
 

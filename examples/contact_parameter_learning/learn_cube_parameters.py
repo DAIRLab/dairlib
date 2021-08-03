@@ -29,7 +29,7 @@ def visualize_learned_params(params, sim, toss_id):
         vis_sim_data = drake_cube_sim.DrakeCubeSim(visualize=True)
         vis_sim_data.init_sim(drake_cube_sim.default_drake_contact_params)
         
-    vis_sim_data.visualize_data_rollout(cube_data)
+    #vis_sim_data.visualize_data_rollout(cube_data)
     vis_sim_params.visualize_sim_rollout(params, initial_state, cube_data.shape[0])
 
 ####################################
@@ -71,7 +71,7 @@ def learn_mujoco_params():
         mu_rolling=ng.p.Scalar(lower=0.000001, upper=0.1)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
-    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=100)
+    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=10000)
     params = optimizer.minimize(get_mujoco_loss)
     print(params.value)
     #save_params('mujoco', 33, params.value)

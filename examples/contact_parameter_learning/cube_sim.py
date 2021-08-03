@@ -53,7 +53,7 @@ class LossWeights():
         return np.dot(traj1.ravel(), (self.vel @ traj2.T).ravel()) / traj1.shape[0]
     
     def CalcOmegaLoss(self, traj1, traj2):
-        return np.dot(traj1.ravel(), (self.vel @ traj2.T).ravel()) / traj1.shape[0]
+        return np.dot(traj1.ravel(), (self.omega @ traj2.T).ravel()) / traj1.shape[0]
 
     def CalcQuatLoss(self, traj1, traj2):
         loss = 0

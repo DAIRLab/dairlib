@@ -53,8 +53,8 @@ py_binary(
 )
 
 py_binary(
-    name = "learn_parameters",
-    srcs = ["learn_parameters.py"],
+    name = "learn_cube_parameters",
+    srcs = ["learn_cube_parameters.py"],
     deps = [
         ":cube_sim",
         ":drake_cube_sim_py",

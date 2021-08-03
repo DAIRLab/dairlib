@@ -1,6 +1,6 @@
 group "1.rom-space-controller" {
     cmd "1.original-walking-controller" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true";
         host = "localhost";
     }
     cmd "2.1.rom-walking-controller" {
@@ -21,6 +21,10 @@ group "1.rom-space-controller" {
     }
     cmd "2.2.rom-walking-controller(with dispatcher)" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller(with dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true";
         host = "localhost";
     }
 }
@@ -72,7 +76,7 @@ group "3.drake-simulator" {
         host = "localhost";
     }
     cmd "0.simulator(realtime)" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u=ROM_WALKING --init_height=1.0 --pause_second=4 --target_realtime_rate=1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u=ROM_WALKING --init_height=0.8 --pause_second=4 --target_realtime_rate=1 --spring_model=true --end_time=10000";
         host = "localhost";
     }
 }

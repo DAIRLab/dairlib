@@ -1,4 +1,4 @@
-from cube_sim import CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT
+from cube_sim import CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
 import numpy as np
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph, CoulombFriction
@@ -102,3 +102,45 @@ class DrakeCubeSim(CubeSim):
         self.plant.SetVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()), v)
+
+    def visualize_data_file(self, data_folder, toss_id):
+        data_file = data_folder + str(toss_id) + '.pt'
+        toss = load_cube_toss(data_file)
+        self.visualize=True
+        self.init_sim(default_drake_contact_params)
+        self.visualize_data_rollout(toss)
+
+    def visualize_data_rollout(self, data):
+        self.sim.set_target_realtime_rate(1.0)
+        while(True):
+            self.set_initial_condition(data[0].ravel())
+
+            for i in range(data.shape[0]):
+                q = np.zeros((self.plant.num_positions(),))
+                v = np.zeros((self.plant.num_velocities(),))
+
+                q[0:4] = data[i,CUBE_DATA_QUATERNION_SLICE]
+                q[4:] = data[i,CUBE_DATA_POSITION_SLICE]
+                v[0:3] = data[i,CUBE_DATA_OMEGA_SLICE]
+                v[3:] = data[i,CUBE_DATA_VELOCITY_SLICE]
+
+                self.plant.SetPositions(
+                    self.plant.GetMyMutableContextFromRoot(
+                        self.sim.get_mutable_context()), q)
+                self.plant.SetVelocities(
+                    self.plant.GetMyMutableContextFromRoot(
+                        self.sim.get_mutable_context()), v)
+
+                new_time = self.sim.get_mutable_context().get_time() + CUBE_DATA_DT
+                self.sim.AdvanceTo(new_time)
+
+                if (self.visualize):
+                    self.meshcat_vis.vis.render_static()
+
+
+    def visualize_sim_rollout(self, params, initial_state, steps):
+        self.visualize=True
+        self.init_sim(params)
+        data = self.get_sim_traj_initial_state(initial_state, steps, 0)
+        self.visualize_data_rollout(data)
+

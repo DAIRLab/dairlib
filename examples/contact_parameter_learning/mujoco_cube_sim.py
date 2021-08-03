@@ -65,13 +65,6 @@ class MujocoCubeSim(CubeSim):
         
         return data_arr
 
-    def visualize_data_file(self, data_folder, toss_id):
-        data_file = data_folder + str(toss_id) + '.pt'
-        toss = load_cube_toss(data_file)
-        self.visualize=True
-        self.init_sim(default_mujoco_contact_params)
-        self.visualize_data_rollout(toss)
-
     def visualize_data_rollout(self, data):
 
         while(True):

@@ -19,6 +19,7 @@ cols: 3
 dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210612_3dlipm/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210702_lipm_limit_height/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210709_3dlipm_bigger_task_range/"
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210802_3dlipm_bigger_range_bigger_mu/"
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter

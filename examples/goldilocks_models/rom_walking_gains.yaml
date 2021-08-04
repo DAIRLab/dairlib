@@ -39,8 +39,8 @@ post_left_double_support: 3
 post_right_double_support: 4
 
 # Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
-left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
-right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
+left_support_duration: 0.35 #0.3   # 0.23 # 0.35 # 0.4
+right_support_duration: 0.35 #0.3  # 0.23 # 0.35 # 0.4
 double_support_duration: 0.05 #0.02
 
 set_constant_walking_speed: true
@@ -133,20 +133,20 @@ kp_yaw: 1
 kd_yaw: 0.2
 vel_max_yaw: 0.5
 
-kp_pos_sagital: 0.1 #1.0
-kd_pos_sagital: 0.01 #0.2
-vel_max_sagital: 0.25
-kp_pos_lateral: 0.1 #0.5
-kd_pos_lateral: 0.01 #0.1
-vel_max_lateral: 0.15
-target_pos_offset: -0.16
+kp_pos_sagital: 0 # 0.1 #1.0
+kd_pos_sagital: 0 # 0.01 #0.2
+vel_max_sagital: 0 # 0.25
+kp_pos_lateral: 0 # 0.1 #0.5
+kd_pos_lateral: 0 # 0.01 #0.1
+vel_max_lateral: 0 # 0.15
+target_pos_offset: 0 # -0.16
 
 #Speed control gains
 k_ff_sagittal: 0
-k_fb_sagittal: 0.16
+k_fb_sagittal: 0.24
 k_ff_lateral: 0
-k_fb_lateral: 0.2
-speed_control_offset_sagittal: -0.01  # -0.05 for hardware; -0.02 for simulation
+k_fb_lateral: 0.25
+speed_control_offset_sagittal: -0.0  # -0.05 for hardware; -0.02 for simulation
 
 #Finite state machine
 ss_time: 0.
@@ -154,14 +154,14 @@ ds_time: 0.
 
 #Swing foot trajectory
 max_CoM_to_footstep_dist: 0.4
-footstep_offset: 0.04
-center_line_offset: 0.05
-mid_foot_height: 0.05  #0.03
+footstep_offset: 0.03
+center_line_offset: 0.03
+mid_foot_height: 0.03  #0.03
 final_foot_height: 0.000
 final_foot_velocity_z: 0.0
 
 #LIPM trajectory
-lipm_height: 0.89
+lipm_height: 0.9
 
 
 ### For IK controller (testing)

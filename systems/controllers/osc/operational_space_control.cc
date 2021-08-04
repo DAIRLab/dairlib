@@ -653,7 +653,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Left, right and double support state have to be 0, 1 and 2, resp.
   if (w_blend_constraint_ > 0) {
     MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
-    if (fsm_state == 2) {
+    if ((fsm_state == 2) || (fsm_state == 3) || (fsm_state == 4)) {
       double alpha_left = 0;
       double alpha_right = 0;
       if (prev_distinct_fsm_state_) {  // We assume right support state is 1

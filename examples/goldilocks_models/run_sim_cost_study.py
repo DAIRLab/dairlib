@@ -1,5 +1,5 @@
 # When seeing "_tkinter.TclError: no display name and no $DISPLAY environment variable",
-# uncomment the following two lines code
+# uncomment the following two lines code (or just restart computer because it has something to do with ssh)
 # import matplotlib
 # matplotlib.use('Agg')
 
@@ -136,6 +136,7 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
   # print(' '.join(planner_cmd))
   # print(' '.join(controller_cmd))
   # print(' '.join(simulator_cmd))
+  # input("type anything to continue")
 
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)
@@ -413,11 +414,12 @@ def delete_most_logs(model_indices, log_indices):
         "%s doesn't exist. `model_indices` was probably set incorrectly" %
         command[1])
 
-  input("WARNING: Going to delete lcmlog files! (type anything to continue)")
-
   # Save logs
   for command in file_saving_command_list:
     run_command(command)
+
+  input("WARNING: Going to delete lcmlog files! (type anything to continue)")
+
   # Delete the rest of the file
   run_command('rm ' + eval_dir + 'lcmlog-idx_*', True)
   # Copy back the successful files

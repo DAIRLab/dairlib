@@ -9,7 +9,8 @@ from json import dump, load
 ## COMMON VALUES AND FUNCTIONS
 
 cube_data_folder = os.path.join(os.getcwd(), '..', 'contact-nets/data/tosses_processed/')
-model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters')
+model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
+TRIAL_NUM = 33
 
 def save_params(simulator, id, params):
     filename = os.path.join(model_folder, simulator + str(id) +'.json')
@@ -28,8 +29,8 @@ def visualize_learned_params(params, sim, toss_id):
         vis_sim_params = drake_cube_sim.DrakeCubeSim(visualize=True)
         vis_sim_data = drake_cube_sim.DrakeCubeSim(visualize=True)
         vis_sim_data.init_sim(drake_cube_sim.default_drake_contact_params)
-        
-    #vis_sim_data.visualize_data_rollout(cube_data)
+    
+    vis_sim_data.visualize_data_rollout(cube_data)
     vis_sim_params.visualize_sim_rollout(params, initial_state, cube_data.shape[0])
 
 ####################################
@@ -37,7 +38,7 @@ def visualize_learned_params(params, sim, toss_id):
 
 def get_drake_loss(params):
     get_drake_loss.sim = drake_cube_sim.DrakeCubeSim()
-    return cube_sim.calculate_cubesim_loss(params, 33, cube_data_folder, get_drake_loss.sim, debug=True)
+    return cube_sim.calculate_cubesim_loss(params, TRIAL_NUM, cube_data_folder, get_drake_loss.sim, debug=True)
 
 def learn_drake_params():
     
@@ -51,15 +52,15 @@ def learn_drake_params():
     optimization_param.value=drake_cube_sim.default_drake_contact_params
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=10000)
     params = optimizer.minimize(get_drake_loss)
-    save_params('drake', 33, params.value)
-    visualize_learned_params(params.value, 'drake', 33)
+    save_params('drake', TRIAL_NUM, params.value)
+    visualize_learned_params(params.value, 'drake', TRIAL_NUM)
 
 ####################################
 ## MUJOCO FUNCTIONS
 
 def get_mujoco_loss(params):
     get_mujoco_loss.sim = mujoco_cube_sim.MujocoCubeSim()
-    return cube_sim.calculate_cubesim_loss(params, 33, cube_data_folder, get_mujoco_loss.sim, debug=True)
+    return cube_sim.calculate_cubesim_loss(params, TRIAL_NUM, cube_data_folder, get_mujoco_loss.sim, debug=True)
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
@@ -75,7 +76,7 @@ def learn_mujoco_params():
     params = optimizer.minimize(get_mujoco_loss)
     print(params.value)
     #save_params('mujoco', 33, params.value)
-    visualize_learned_params(params.value, 'mujoco', 33)
+    visualize_learned_params(params.value, 'mujoco', TRIAL_NUM)
     
 
 if (__name__ == '__main__'):

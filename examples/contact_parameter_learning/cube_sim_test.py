@@ -1,5 +1,5 @@
 import numpy as np
-import mujoco_cube_sim
+#import mujoco_cube_sim
 import drake_cube_sim
 import cube_sim
 
@@ -11,16 +11,18 @@ def test_drake():
     drake_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
     contact_params = drake_cube_sim.default_drake_contact_params
     drake_sim.init_sim(contact_params)
-    state_traj = drake_sim.get_sim_traj_initial_state(test_state, 2000, cube_sim.CUBE_DATA_DT)
+    state_traj = drake_sim.get_sim_traj_initial_state(test_state, 200, cube_sim.CUBE_DATA_DT)
     return state_traj
-
+'''
 def test_mujoco():
     mujoco_sim = mujoco_cube_sim.MujocoCubeSim(visualize=True)
     contact_params = mujoco_cube_sim.default_mujoco_contact_params
     mujoco_sim.init_sim(contact_params)
     state_traj = mujoco_sim.get_sim_traj_initial_state(test_state, 300, cube_sim.CUBE_DATA_DT)
     return state_traj
-
+'''
 if (__name__ == "__main__"):
-    data = test_mujoco()
+    data = test_drake()
+    sim = drake_cube_sim.DrakeCubeSim()
+    sim.visualize_data_rollout(data)
     print(data)

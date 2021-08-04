@@ -4,7 +4,10 @@ import drake_cube_sim
 import mujoco_cube_sim
 import os
 from json import dump, load
+from random import sample, choice
 import numpy as np
+from concurrent import futures
+
 
 ####################################
 ## COMMON VALUES AND FUNCTIONS
@@ -12,7 +15,18 @@ import numpy as np
 cube_data_folder = os.path.join(os.getcwd(), '..', 'contact-nets/data/tosses_processed/')
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
+batch_size = 10
+num_workers = 8
+num_trials = 570
+num_train = 470
+num_test = num_trials - num_train
 TRIAL_NUM = 79
+
+# Make a list of train and test trials 
+trial_idxs = range(num_trials)
+training_idxs = sample(trial_idxs, num_train)
+test_idxs = [idx if not (idx in training_idxs) else [] for idx in trial_idxs]
+
 
 def save_params(simulator, id, params):
     filename = os.path.join(model_folder, simulator + str(id) +'.json')
@@ -39,9 +53,16 @@ def visualize_learned_params(params, sim, toss_id):
 ####################################
 ## DRAKE FUNCTIONS
 
-def get_drake_loss(params):
-    get_drake_loss.sim = drake_cube_sim.DrakeCubeSim(visualize=True)
-    return cube_sim.calculate_cubesim_loss(params, TRIAL_NUM, cube_data_folder, get_drake_loss.sim, debug=True, weights=default_loss)
+def get_drake_loss_mp(params):
+    loss_sum = 0
+    for i in range(batch_size):
+        loss_sum += get_drake_loss(params)
+    return loss_sum
+
+def get_drake_loss(params, trial_num=None):
+    if (trial_num == None): trial_num = choice(training_idxs)
+    sim = drake_cube_sim.DrakeCubeSim(visualize=True)
+    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=True, weights=default_loss)
 
 def learn_drake_params():
     
@@ -53,17 +74,24 @@ def learn_drake_params():
     )
 
     optimization_param.value=drake_cube_sim.default_drake_contact_params
-    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=10000)
-    params = optimizer.minimize(get_drake_loss)
-    save_params('drake', TRIAL_NUM, params.value)
-    visualize_learned_params(params.value, 'drake', TRIAL_NUM)
+    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=10000, num_workers=num_workers)
+    with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
+        optimal_params = optimizer.minimize(get_drake_loss_mp, executor=executor, batch_mode=True)
+    save_params('drake', 00, optimal_params.value)
 
 ####################################
 ## MUJOCO FUNCTIONS
 
-def get_mujoco_loss(params):
-    get_mujoco_loss.sim = mujoco_cube_sim.MujocoCubeSim()
-    return cube_sim.calculate_cubesim_loss(params, TRIAL_NUM, cube_data_folder, get_mujoco_loss.sim, debug=True, weights=default_loss)
+def get_mujoco_loss_mp(params):
+    loss_sum = 0
+    for i in range(batch_size):
+        loss_sum += get_mujoco_loss(params)
+    return loss_sum
+
+def get_mujoco_loss(params, trial_num=None):
+    if (trial_num == None): trial_num = choice(training_idxs)
+    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False)
+    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=True, weights=default_loss)
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
@@ -75,11 +103,10 @@ def learn_mujoco_params():
         mu_rolling=ng.p.Scalar(lower=0.000001, upper=0.1)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
-    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=10000)
-    params = optimizer.minimize(get_mujoco_loss)
-    print(params.value)
-    #save_params('mujoco', 33, params.value)
-    visualize_learned_params(params.value, 'mujoco', TRIAL_NUM)
+    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=10000, num_workers=num_workers)
+    with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
+        optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
+    save_params('mujoco', 33, optimal_params.value)
     
 
 if (__name__ == '__main__'):

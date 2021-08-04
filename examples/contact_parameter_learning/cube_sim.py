@@ -70,15 +70,15 @@ class LossWeights():
     
     def CalcPositionsLoss(self, traj1, traj2):
         diff = traj1 - traj2
-        return np.dot(diff.ravel(), (self.pos @ diff.T).T.ravel()) / diff.shape[0]
+        return np.dot(diff.ravel(), (diff @ self.pos).ravel()) / diff.shape[0]
     
     def CalcVelocitiesLoss(self, traj1, traj2):
         diff = traj1 - traj2
-        return np.dot(diff.ravel(), (self.vel @ diff.T).T.ravel()) / diff.shape[0]
+        return np.dot(diff.ravel(), (diff @ self.pos).ravel()) / diff.shape[0]
     
     def CalcOmegaLoss(self, traj1, traj2):
         diff = traj1 - traj2
-        return np.dot(diff.ravel(), (self.pos @ diff.T).T.ravel()) / diff.shape[0]
+        return np.dot(diff.ravel(), (diff @ self.pos).ravel()) / diff.shape[0]
 
     def CalcQuatLoss(self, traj1, traj2):
         loss = 0
@@ -131,5 +131,5 @@ def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, weights=Lo
         state_traj_in_window[0], state_traj_in_window.shape[0], CUBE_DATA_DT)
     loss = weights.CalculateLoss(simulated_trajectory, state_traj_in_window)
     if(debug):
-        print(loss)
+        print(f'toss id: {toss_id}\t\tloss: {loss}')
     return loss # normalize loss by duration of the trajectory

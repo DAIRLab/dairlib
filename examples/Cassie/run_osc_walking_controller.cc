@@ -73,6 +73,8 @@ DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 
+DEFINE_bool(spring_model, true, "");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -84,9 +86,15 @@ int DoMain(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
-                     true /*spring model*/, false /*loop closure*/);
+  if (FLAGS_spring_model) {
+    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+                       "examples/Cassie/urdf/cassie_v2.urdf",
+                       true /*spring model*/, false /*loop closure*/);
+  } else {
+    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+                       "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+                       false /*spring model*/, false /*loop closure*/);
+  }
   plant_w_spr.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
@@ -356,24 +364,30 @@ int DoMain(int argc, char* argv[]) {
   // 2. fixed spring constraint
   // Note that we set the position value to 0, but this is not used in OSC,
   // because OSC constraint only use JdotV and J.
-  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
-  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
-  auto left_fixed_knee_spring =
-      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
-                          vel_idx_map.at("knee_joint_leftdot"), 0);
-  auto right_fixed_knee_spring =
-      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_right"),
-                          vel_idx_map.at("knee_joint_rightdot"), 0);
-  auto left_fixed_ankle_spring = FixedJointEvaluator(
-      plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
-      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
-  auto right_fixed_ankle_spring = FixedJointEvaluator(
-      plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
-      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
-  evaluators.add_evaluator(&left_fixed_knee_spring);
-  evaluators.add_evaluator(&right_fixed_knee_spring);
-  evaluators.add_evaluator(&left_fixed_ankle_spring);
-  evaluators.add_evaluator(&right_fixed_ankle_spring);
+  std::unique_ptr<FixedJointEvaluator<double>> left_fixed_knee_spring;
+  std::unique_ptr<FixedJointEvaluator<double>> right_fixed_knee_spring;
+  std::unique_ptr<FixedJointEvaluator<double>> left_fixed_ankle_spring;
+  std::unique_ptr<FixedJointEvaluator<double>> right_fixed_ankle_spring;
+  if (FLAGS_spring_model) {
+    auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
+    auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+    left_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
+        plant_w_spr, pos_idx_map.at("knee_joint_left"),
+        vel_idx_map.at("knee_joint_leftdot"), 0);
+    right_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
+        plant_w_spr, pos_idx_map.at("knee_joint_right"),
+        vel_idx_map.at("knee_joint_rightdot"), 0);
+    left_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
+        plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
+        vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+    right_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
+        plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
+        vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+    evaluators.add_evaluator(left_fixed_knee_spring.get());
+    evaluators.add_evaluator(right_fixed_knee_spring.get());
+    evaluators.add_evaluator(left_fixed_ankle_spring.get());
+    evaluators.add_evaluator(right_fixed_ankle_spring.get());
+  }
   osc->AddKinematicConstraint(&evaluators);
 
   // Soft constraint
@@ -410,7 +424,9 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData swing_foot_traj(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
-  swing_foot_traj.DisableFeedforwardAccel({2});
+  if (FLAGS_spring_model) {
+    swing_foot_traj.DisableFeedforwardAccel({2});
+  }
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);

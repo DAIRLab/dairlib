@@ -321,14 +321,15 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::SolverOptions solver_options_;
 
   // Testing contact force blend
+  double ds_duration_ = 0.05;
+  double w_blend_constraint_ = 0.1; //0.1 // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
   drake::solvers::LinearEqualityConstraint* blend_constraint_;
-  double w_blend_constraint_ = 0.1;  // for soft constraint
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
 
   // Testing -- regularizing input
   drake::solvers::QuadraticCost* input_reg_cost_;
-  double w_input_reg_ = 0.0000000;
+  double w_input_reg_ = 0.0000003;
   Eigen::MatrixXd W_input_reg_;
 
 

@@ -1473,8 +1473,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "Git commit hash: " << endl;
   int sys_ret = std::system("git rev-parse HEAD");
   DRAKE_DEMAND(sys_ret != -1);
-  cout << "Result of \"git diff-index HEAD\":" << endl;
-  sys_ret = std::system("git diff-index HEAD");
+  cout << "\n\n==============================\n";
+  cout << "Result of \"git diff\":" << endl;
+  sys_ret = std::system("git diff");
+  //  sys_ret = std::system("git diff-index HEAD");
+  cout << "\n==============================\n\n";
   DRAKE_DEMAND(sys_ret != -1);
 
   // Create MBP

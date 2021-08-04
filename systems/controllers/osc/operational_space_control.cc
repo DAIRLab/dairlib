@@ -420,8 +420,8 @@ void OperationalSpaceControl::Build() {
   solver_options.SetOption(OsqpSolver::id(), "time_limit", kMaxSolveDuration);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
@@ -660,13 +660,16 @@ VectorXd OperationalSpaceControl::SolveQp(
         // We want left foot force to gradually increase
         alpha_left = -1;
         alpha_right = time_since_last_state_switch /
-            (0.05 - time_since_last_state_switch);
+            (ds_duration_ - time_since_last_state_switch);
 
       } else if (!prev_distinct_fsm_state_) {  // Assume left support state is 0
         alpha_left = time_since_last_state_switch /
-            (0.05 - time_since_last_state_switch);
+            (ds_duration_ - time_since_last_state_switch);
         alpha_right = -1;
       }
+      /*cout << "ds_duration_ = " << ds_duration_ << endl;
+      cout << "time_since_last_state_switch = " << time_since_last_state_switch
+           << endl;*/
       A(0, 0) = alpha_left / 2;
       A(0, 1) = alpha_left / 2;
       A(0, 2) = alpha_right / 2;
@@ -676,6 +679,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       A(0, 6) = 1;
       A(0, 7) = 1;
     }
+    // cout << "A = " << A << endl;
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
   }
 

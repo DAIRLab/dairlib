@@ -121,7 +121,7 @@ def main():
   t_osc_debug_slice = slice(0, len(t_osc_debug))
 
   ### All plotting scripts here
-  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
+  # plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
   # PlotEkfMeasurementError(t_osc_debug, fsm)
   # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (250x)", "pelvis ydot (250x)", "abs_error_per_contact (1000x)"])
 
@@ -145,7 +145,7 @@ def main():
   #
   PlotVdot(x, t_x, x_datatypes, True)
 
-  # PlotOscQpSol(t_osc_debug, osc_output)
+  PlotOscQpSol(t_osc_debug, osc_output)
 
   plt.show()
 
@@ -162,27 +162,39 @@ def PlotOscQpSol(t_osc_debug, osc_output):
   contact_forces = np.zeros((len(osc_output), lambda_c_dim))
   epsilons = np.zeros((len(osc_output), epsilon_dim))
   vdot = np.zeros((len(osc_output), v_dim))
+  solve_time = np.zeros(len(osc_output))
   for i in range(len(osc_output)):
     u_sol[i] = osc_output[i].qp_output.u_sol
     contact_forces[i] = osc_output[i].qp_output.lambda_c_sol
     epsilons[i] = osc_output[i].qp_output.epsilon_sol
     vdot[i] = osc_output[i].qp_output.dv_sol
+    solve_time[i] = osc_output[i].qp_output.solve_time
 
-  plt.figure("Qp sol -- efforts")
+  plt.figure("Qp sol -- efforts " + filename)
   plt.plot(t_osc_debug[:], u_sol)
   plt.legend([str(i) for i in range(u_dim)])
 
-  plt.figure("Qp sol -- contact forces")
-  plt.plot(t_osc_debug[:], contact_forces)
-  plt.legend([str(i) for i in range(lambda_c_dim)])
+  # plt.figure("Qp sol -- contact forces " + filename)
+  # plt.plot(t_osc_debug[:], contact_forces)
+  # plt.legend([str(i) for i in range(lambda_c_dim)])
+  plt.figure("Qp sol -- contact forces (idx 0 to 5) " + filename)
+  plt.plot(t_osc_debug[:], contact_forces[:, 0:6])
+  plt.legend([str(i) for i in range(6)])
+  plt.figure("Qp sol -- contact forces (idx 6 to 11) " + filename)
+  plt.plot(t_osc_debug[:], contact_forces[:, 6:12])
+  plt.legend([str(i) for i in range(6, 12)])
 
-  plt.figure("Qp sol -- epsilons")
+  plt.figure("Qp sol -- epsilons " + filename)
   plt.plot(t_osc_debug[:], epsilons)
   plt.legend([str(i) for i in range(epsilon_dim)])
 
-  plt.figure("Qp sol -- vdot")
+  plt.figure("Qp sol -- vdot " + filename)
   plt.plot(t_osc_debug[:], vdot[:, 0:6])
   plt.legend([str(i) for i in range(6)])
+
+  plt.figure("Qp solve time " + filename)
+  plt.plot(t_osc_debug[:], solve_time)
+
 
 
 def PlotEkfMeasurementError(t_osc_debug, fsm):
@@ -371,14 +383,14 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   plot_osc(osc_debug, osc_traj0, 2, "pos")
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-
+  #
   # plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   plot_osc(osc_debug, osc_traj0, 2, "vel")
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-
+  #
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   # plot_osc(osc_debug, osc_traj0, 1, "accel")

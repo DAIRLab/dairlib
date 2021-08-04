@@ -3,6 +3,7 @@ from torch import load as torch_load
 import numpy as np
 import os
 from scipy.spatial.transform import Rotation as R
+import matplotlib.pyplot as plt
 
 CUBE_DATA_DT = 1.0/148.0
 CUBE_DATA_HZ = 148.0
@@ -34,6 +35,27 @@ class CubeSim(ABC):
             x_sim[i,:] = self.sim_step(dt)
         return x_sim
 
+    def make_traj_timestamps(self, traj):
+        return np.arange(0.0, CUBE_DATA_DT * (traj.shape[0]), CUBE_DATA_DT)
+
+    def make_comparison_plot(self, params, data_folder, toss_id):
+        data_traj = load_cube_toss(make_cube_toss_filename(data_folder, toss_id))
+        _, data_traj = get_window_around_contact_event(data_traj)
+        self.init_sim(params)
+        sim_traj = self.get_sim_traj_initial_state(data_traj[0], data_traj.shape[0], CUBE_DATA_DT)
+
+        tvec = self.make_traj_timestamps(data_traj)
+        position_error = np.linalg.norm(data_traj[:,CUBE_DATA_POSITION_SLICE] - sim_traj[:,CUBE_DATA_POSITION_SLICE], axis=1)
+        position_error /= BLOCK_HALF_WIDTH
+        vel_error = np.linalg.norm(data_traj[:,CUBE_DATA_VELOCITY_SLICE] - sim_traj[:,CUBE_DATA_VELOCITY_SLICE], axis=1)
+        vel_error /= BLOCK_HALF_WIDTH
+        omega_error = np.linalg.norm(data_traj[:,CUBE_DATA_OMEGA_SLICE] - sim_traj[:,CUBE_DATA_OMEGA_SLICE], axis=1)
+
+        plt.plot(tvec, position_error)
+        plt.show()
+        
+
+
 class LossWeights():
 
     def __init__(self, 
@@ -47,13 +69,16 @@ class LossWeights():
         self.quat = quat
     
     def CalcPositionsLoss(self, traj1, traj2):
-        return np.dot(traj1.ravel(), (self.pos @ traj2.T).ravel()) / traj1.shape[0]
+        diff = traj1 - traj2
+        return np.dot(diff.ravel(), (self.pos @ diff.T).T.ravel()) / diff.shape[0]
     
     def CalcVelocitiesLoss(self, traj1, traj2):
-        return np.dot(traj1.ravel(), (self.vel @ traj2.T).ravel()) / traj1.shape[0]
+        diff = traj1 - traj2
+        return np.dot(diff.ravel(), (self.vel @ diff.T).T.ravel()) / diff.shape[0]
     
     def CalcOmegaLoss(self, traj1, traj2):
-        return np.dot(traj1.ravel(), (self.omega @ traj2.T).ravel()) / traj1.shape[0]
+        diff = traj1 - traj2
+        return np.dot(diff.ravel(), (self.pos @ diff.T).T.ravel()) / diff.shape[0]
 
     def CalcQuatLoss(self, traj1, traj2):
         loss = 0
@@ -77,11 +102,6 @@ class LossWeights():
         R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
         Rel = R1 * R2.inv()
         return np.linalg.norm(Rel.as_rotvec()) ** 2
-        
-
-
-
-
 
 def make_cube_toss_filename(data_folder, toss_id):
     return os.path.join(data_folder, str(toss_id) + '.pt')

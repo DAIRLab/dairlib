@@ -84,7 +84,7 @@ class DrakeCubeSim(CubeSim):
         self.plant.Finalize()
         
         # Setup trajectory source
-        t_traj = np.arange(0.0, CUBE_DATA_DT * (traj_to_play_back.shape[0]), CUBE_DATA_DT)
+        t_traj = self.make_traj_timestamps(traj_to_play_back)
         traj_converted = np.zeros((7,traj_to_play_back.shape[0]))
         traj_converted[0:4,:] = traj_to_play_back[:,CUBE_DATA_QUATERNION_SLICE].T
         traj_converted[4:,:] = traj_to_play_back[:,CUBE_DATA_POSITION_SLICE].T

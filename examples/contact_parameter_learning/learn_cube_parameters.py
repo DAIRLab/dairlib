@@ -4,13 +4,15 @@ import drake_cube_sim
 import mujoco_cube_sim
 import os
 from json import dump, load
+import numpy as np
 
 ####################################
 ## COMMON VALUES AND FUNCTIONS
 
 cube_data_folder = os.path.join(os.getcwd(), '..', 'contact-nets/data/tosses_processed/')
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
-TRIAL_NUM = 33
+default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
+TRIAL_NUM = 79
 
 def save_params(simulator, id, params):
     filename = os.path.join(model_folder, simulator + str(id) +'.json')
@@ -30,6 +32,7 @@ def visualize_learned_params(params, sim, toss_id):
         vis_sim_data = drake_cube_sim.DrakeCubeSim(visualize=True)
         vis_sim_data.init_sim(drake_cube_sim.default_drake_contact_params)
     
+    vis_sim_data.make_comparison_plot(params, cube_data_folder, toss_id)
     vis_sim_data.visualize_data_rollout(cube_data)
     vis_sim_params.visualize_sim_rollout(params, initial_state, cube_data.shape[0])
 
@@ -37,8 +40,8 @@ def visualize_learned_params(params, sim, toss_id):
 ## DRAKE FUNCTIONS
 
 def get_drake_loss(params):
-    get_drake_loss.sim = drake_cube_sim.DrakeCubeSim()
-    return cube_sim.calculate_cubesim_loss(params, TRIAL_NUM, cube_data_folder, get_drake_loss.sim, debug=True)
+    get_drake_loss.sim = drake_cube_sim.DrakeCubeSim(visualize=True)
+    return cube_sim.calculate_cubesim_loss(params, TRIAL_NUM, cube_data_folder, get_drake_loss.sim, debug=True, weights=default_loss)
 
 def learn_drake_params():
     
@@ -60,7 +63,7 @@ def learn_drake_params():
 
 def get_mujoco_loss(params):
     get_mujoco_loss.sim = mujoco_cube_sim.MujocoCubeSim()
-    return cube_sim.calculate_cubesim_loss(params, TRIAL_NUM, cube_data_folder, get_mujoco_loss.sim, debug=True)
+    return cube_sim.calculate_cubesim_loss(params, TRIAL_NUM, cube_data_folder, get_mujoco_loss.sim, debug=True, weights=default_loss)
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
@@ -81,4 +84,4 @@ def learn_mujoco_params():
 
 if (__name__ == '__main__'):
     learn_mujoco_params()
-    #learn_drake_params()
+    learn_drake_params()

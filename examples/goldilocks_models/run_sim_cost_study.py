@@ -124,6 +124,7 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
     '--end_time=%.3f' % sim_end_time,
     '--pause_second=%.3f' % pause_second,
     '--init_height=%.3f' % 1.0,
+    '--pelvis_x_vel=%.3f' % (task_value / duration) if init_sim_vel else 0,
     '--target_realtime_rate=%.3f' % target_realtime_rate,
     '--spring_model=%s' % str(spring_model).lower(),
   ]
@@ -729,6 +730,7 @@ if __name__ == "__main__":
   # Parameters that are modified often
   target_realtime_rate = 1  # 0.04
   foot_step_from_planner = False
+  init_sim_vel = True
 
   ### parameters for model, task, and log indices
   # Model iteration list

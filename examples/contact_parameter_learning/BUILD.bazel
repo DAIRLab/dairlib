@@ -37,6 +37,15 @@ py_library(
 )
 
 py_library(
+    name = "cassie_loss_utils",
+    srcs = ["cassie_loss_utils.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
     name = "mujoco_cube_sim_py",
     srcs = ["mujoco_cube_sim.py"],
     deps = [":cube_sim"],
@@ -45,6 +54,7 @@ py_library(
 py_library(
     name = "drake_cassie_sim_py",
     srcs = ["drake_cassie_sim.py"],
+    deps = [":cassie_loss_utils"],
 )
 
 py_binary(
@@ -71,6 +81,7 @@ py_binary(
     name = "learn_cassie_parameters",
     srcs = ["learn_cassie_parameters.py"],
     deps = [
+        ":cassie_loss_utils",
         ":cube_sim",
         ":drake_cassie_sim_py",
         ":mujoco_cube_sim_py",

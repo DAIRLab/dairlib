@@ -46,6 +46,6 @@ def print_drake_cassie_params():
   import pdb; pdb.set_trace()
 
 if (__name__ == '__main__'):
-  print_drake_cassie_params()
-  # learn_drake_cassie_params()
+  # print_drake_cassie_params()
+  learn_drake_cassie_params()
   #learn_drake_params()

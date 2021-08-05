@@ -16,9 +16,10 @@ cube_data_folder = os.path.join(os.getcwd(), '..', 'contact-nets/data/tosses_pro
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
 batch_size = 10
-num_workers = 8
+num_workers = 1
 num_trials = 570
 num_train = 470
+budget = 1000
 num_test = num_trials - num_train
 TRIAL_NUM = 79
 
@@ -57,12 +58,13 @@ def get_drake_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
         loss_sum += get_drake_loss(params)
+    print(loss_sum)
     return loss_sum
 
 def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
-    sim = drake_cube_sim.DrakeCubeSim(visualize=True)
-    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=True, weights=default_loss)
+    sim = drake_cube_sim.DrakeCubeSim(visualize=False)
+    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
 
 def learn_drake_params():
     
@@ -74,9 +76,12 @@ def learn_drake_params():
     )
 
     optimization_param.value=drake_cube_sim.default_drake_contact_params
-    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=10000, num_workers=num_workers)
-    with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
-        optimal_params = optimizer.minimize(get_drake_loss_mp, executor=executor, batch_mode=True)
+    bayes_opt = ng.optimizers.ParametrizedBO()
+    optimizer = bayes_opt(parametrization=optimization_param, budget=budget)
+    optimal_params = optimizer.minimize(get_drake_loss_mp)
+    # optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
+    # with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
+    #     optimal_params = optimizer.minimize(get_drake_loss_mp, executor=executor, batch_mode=True)
     save_params('drake', 00, optimal_params.value)
 
 ####################################
@@ -86,12 +91,13 @@ def get_mujoco_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
         loss_sum += get_mujoco_loss(params)
+    print(loss_sum)
     return loss_sum
 
 def get_mujoco_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
     sim = mujoco_cube_sim.MujocoCubeSim(visualize=False)
-    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=True, weights=default_loss)
+    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
@@ -103,10 +109,13 @@ def learn_mujoco_params():
         mu_rolling=ng.p.Scalar(lower=0.000001, upper=0.1)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
-    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=10000, num_workers=num_workers)
-    with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
-        optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
-    save_params('mujoco', 33, optimal_params.value)
+    bayes_opt = ng.optimizers.ParametrizedBO()
+    optimizer = bayes_opt(parametrization=optimization_param, budget=budget)
+    optimal_params = optimizer.minimize(get_mujoco_loss_mp)
+    # optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
+    # with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
+    #     optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
+    save_params('mujoco', 00, optimal_params.value)
     
 
 if (__name__ == '__main__'):

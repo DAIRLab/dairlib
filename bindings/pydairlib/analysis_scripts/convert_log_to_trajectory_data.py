@@ -57,7 +57,7 @@ def main():
   t_end = t_u[-10]
   # Override here #
   t_start = 30.595
-  t_end = t_start + 0.51
+  t_end = t_start + 1.0
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
   t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])

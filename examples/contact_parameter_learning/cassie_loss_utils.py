@@ -36,13 +36,16 @@ class CassieLoss():
       return pickle.load(f)
 
   def CalcPositionsLoss(self, traj1, traj2):
-    return np.dot(traj1.ravel(), (self.weights.pos @ traj2.T).ravel()) / traj1.shape[0]
+    diff = traj1 - traj2
+    return np.dot(diff.ravel(), (diff @ self.weights.pos).ravel()) / traj1.shape[0]
 
   def CalcVelocitiesLoss(self, traj1, traj2):
-    return np.dot(traj1.ravel(), (self.weights.vel @ traj2.T).ravel()) / traj1.shape[0]
+    diff = traj1 - traj2
+    return np.dot(diff.ravel(), (diff @ self.weights.vel).ravel()) / traj1.shape[0]
 
   def CalcOmegaLoss(self, traj1, traj2):
-    return np.dot(traj1.ravel(), (self.weights.omega @ traj2.T).ravel()) / traj1.shape[0]
+    diff = traj1 - traj2
+    return np.dot(diff.ravel(), (diff @ self.weights.omega).ravel()) / traj1.shape[0]
 
   def CalcQuatLoss(self, traj1, traj2):
     loss = 0

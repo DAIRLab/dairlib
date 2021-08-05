@@ -18,6 +18,7 @@ class DrakeCassieSim():
   def __init__(self, drake_sim_dt=5e-5, loss_filename='default_loss_weights'):
     self.folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
+    self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
     self.start_time = 30.595
     self.sim_time = 0.5
     self.end_time = self.start_time + self.sim_time
@@ -28,6 +29,7 @@ class DrakeCassieSim():
       "pen_allow": 1e-5,
       "stiction_tol": 1e-3}
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
+    self.iter_num = 0
 
   def write_initial_state(self, x_init):
     gains_path = "/home/yangwill/workspace/dairlib/examples/Cassie/data/"
@@ -48,18 +50,18 @@ class DrakeCassieSim():
       f.close()
 
   def save_params(self, params, sim_id):
-    with open('drake_cassie_params/' + sim_id + '.pkl', 'wb') as f:
+    with open(self.params_folder + sim_id + '.pkl', 'wb') as f:
       pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
 
   def load_params(self, sim_id):
-    with open('drake_cassie_params/' + sim_id + '.pkl', 'rb') as f:
+    with open(self.params_folder + sim_id + '.pkl', 'rb') as f:
       return pickle.load(f)
 
   def run(self, params, log_num):
     # params
 
     penetration_allowance = params['pen_allow']
-    print(penetration_allowance)
+    # print(penetration_allowance)
     mu_static = params['mu_static']
     mu_kinetic = params['mu_ratio'] * params['mu_static']
     stiction_tol = params['stiction_tol']
@@ -86,14 +88,17 @@ class DrakeCassieSim():
     # print((' ').join(simulator_cmd))
     simulator_process = subprocess.Popen(simulator_cmd)
     simulator_process.wait()
-    x_traj = np.genfromtxt('x_traj.csv', delimiter=',', skip_header=True, dtype='f16')
-    t_x = np.genfromtxt('t_x.csv', skip_header=True)
+    x_traj = np.genfromtxt('x_traj.csv', delimiter=',', dtype='f16')
+    t_x = np.genfromtxt('t_x.csv')
     t_x = np.append(t_x, self.start_time + self.sim_time)
     sim_id = log_num + str(np.abs(hash(frozenset(params))))
     # self.save_params(params, sim_id)
     np.save(self.sim_data_folder + 'x_traj' + sim_id, x_traj)
     np.save(self.sim_data_folder + 't_x' + sim_id, t_x)
-    print('saving trial to: ' + 'x_traj' + sim_id)
+
+    self.iter_num += 1
+    print("iter: " + str(self.iter_num))
+
     return sim_id
 
   def load_sim_trial(self, sim_id):
@@ -104,9 +109,9 @@ class DrakeCassieSim():
 
   def get_window_around_contact_event(self, x_traj, t_x):
     # return whole trajectory for now
-    import pdb; pdb.set_trace()
-    start_idx = np.argwhere(np.isclose(t_x, self.start_time + 0.0005))[0][0]
-    end_idx = np.argwhere(np.isclose(t_x, self.end_time))[0][0]
+
+    start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[0][0]
+    end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[0][0]
     window = slice(start_idx, end_idx)
     return window, x_traj
 
@@ -115,9 +120,9 @@ class DrakeCassieSim():
     t_x_log = np.load(self.folder_path + 't_x_' + log_num + '.npy')
     x_traj, t_x = self.load_sim_trial(sim_id)
     window, x_traj_in_window = self.get_window_around_contact_event(x_traj_log, t_x_log)
-    import pdb; pdb.set_trace()
 
-    return
+    loss = self.loss_func.CalculateLoss(x_traj.transpose(), x_traj_in_window[window])
+    return loss
 
 
 if __name__ == '__main__':

@@ -8,9 +8,10 @@ import numpy as np
 
 sim = drake_cassie_sim.DrakeCassieSim()
 loss_over_time = []
+log_num = '00'
+
 
 def get_drake_loss(params):
-  log_num = '27'
   sim_id = sim.run(params, log_num)
   loss = sim.compute_loss(log_num, sim_id)
   print('loss:' + str(loss))
@@ -30,16 +31,18 @@ def learn_drake_cassie_params():
     stiction_tol=ng.p.Log(lower=1e-4, upper=1e-1)
   )
 
-  budget = 1000
+  budget = 250
   optimization_param.value=sim.default_drake_contact_params
   optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
   params = optimizer.minimize(get_drake_loss)
   loss = np.array(loss_over_time)
-  np.save(sim.params_folder + 'loss_trajectory_' + str(budget), loss)
-  sim.save_params(params, "optimized_params_" + str(budget))
+  np.save(sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
+  sim.save_params(params, log_num + '_optimized_params_' + str(budget))
 
 def print_drake_cassie_params():
-  optimal_params = sim.load_params('optimized_params')
+  # optimal_params = sim.load_params('optimized_params')
+  budget = 250
+  optimal_params = sim.load_params(log_num + '_optimized_params_' + str(budget))
   import pdb; pdb.set_trace()
 
 if (__name__ == '__main__'):

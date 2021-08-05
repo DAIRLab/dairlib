@@ -193,8 +193,10 @@ int do_main(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      true);
   plant_wo_spr.Finalize();
-  Eigen::MatrixXd map_no_spring_to_spring =
-      multibody::createWithSpringsToWithoutSpringsMap(plant, plant_wo_spr);
+  Eigen::MatrixXd map_no_spring_to_spring_pos =
+      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant, plant_wo_spr);
+  Eigen::MatrixXd map_no_spring_to_spring_vel =
+      multibody::CreateWithSpringsToWithoutSpringsMapVel(plant, plant_wo_spr);
 
   const DirconTrajectory& dircon_trajectory =
       DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
@@ -202,9 +204,14 @@ int do_main(int argc, char* argv[]) {
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
 
+  int nq = plant.num_positions();
+  int nv = plant.num_velocities();
   Eigen::VectorXd x_init = state_traj.value(FLAGS_start_time);
-  if (FLAGS_spring_model)
-    x_init = map_no_spring_to_spring * state_traj.value(FLAGS_start_time);
+  if (FLAGS_spring_model) {
+    x_init = Eigen::VectorXd::Zero(nq + nv);
+    x_init << map_no_spring_to_spring_pos * x_init.head(nq),
+        map_no_spring_to_spring_vel * x_init.tail(nv);
+  }
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 
   diagram_context->SetTime(FLAGS_start_time);

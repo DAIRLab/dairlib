@@ -166,7 +166,7 @@ DirconTrajectory::DirconTrajectory(
          ++i) {
       force_names.push_back("lambda_" + std::to_string(num_forces));
       collocation_force_names.push_back("lambda_c_" +
-                                        std::to_string(num_forces));
+          std::to_string(num_forces));
       ++num_forces;
     }
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -241,12 +241,13 @@ DirconTrajectory::DirconTrajectory(
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
-    const {
-  PiecewisePolynomial<double> state_traj =
-      PiecewisePolynomial<double>::CubicHermite(
-          x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
+const {
+  PiecewisePolynomial<double> state_traj;
+//  =
+//      PiecewisePolynomial<double>::CubicHermite(
+//          x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
 
-  for (int mode = 1; mode < num_modes_; ++mode) {
+  for (int mode = 0; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
     if (x_[mode]->time_vector.size() < 2) {
       continue;
@@ -257,8 +258,26 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
   return state_traj;
 }
 
+PiecewisePolynomial<double> DirconTrajectory::ReconstructJointTrajectory(int joint_idx)
+const {
+  PiecewisePolynomial<double> state_traj;
+//  =
+//      PiecewisePolynomial<double>::CubicHermite(
+//          x_[0]->time_vector, x_[0]->datapoints.row(joint_idx), xdot_[0]->datapoints.row(joint_idx));
+
+  for (int mode = 0; mode < num_modes_; ++mode) {
+    // Cannot form trajectory with only a single break
+    if (x_[mode]->time_vector.size() < 2) {
+      continue;
+    }
+    state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        x_[mode]->time_vector, x_[mode]->datapoints.row(joint_idx), xdot_[mode]->datapoints.row(joint_idx)));
+  }
+  return state_traj;
+}
+
 PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory()
-    const {
+const {
   PiecewisePolynomial<double> input_traj =
       PiecewisePolynomial<double>::FirstOrderHold(u_->time_vector,
                                                   u_->datapoints);
@@ -269,13 +288,13 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory()
 std::vector<PiecewisePolynomial<double>>
 DirconTrajectory::ReconstructLambdaTrajectory() const {
   std::vector<PiecewisePolynomial<double>> lambda_traj;
-  for (int mode_index = 0; mode_index < num_modes_; mode_index++) {
-    if (lambda_[mode_index]->time_vector.size() > 1) {
-      lambda_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(
-          lambda_[mode_index]->time_vector, lambda_[mode_index]->datapoints));
-    } else {
-      lambda_traj.push_back(
-          (PiecewisePolynomial<double>(lambda_[mode_index]->datapoints)));
+  for(int mode_index = 0; mode_index < num_modes_; mode_index ++){
+    if(lambda_[mode_index]->datapoints.size() > 0) {
+      lambda_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(lambda_[mode_index]->time_vector,
+                                                                        lambda_[mode_index]->datapoints));
+    }else{
+      lambda_traj.push_back(PiecewisePolynomial<double>::FirstOrderHold(lambda_[mode_index]->time_vector,
+                            MatrixXd::Zero(1,lambda_[mode_index]->time_vector.size())));
     }
   }
   return lambda_traj;
@@ -321,7 +340,7 @@ void DirconTrajectory::LoadFromFile(const std::string& filepath) {
             &GetTrajectory("collocation_force_vars" + std::to_string(mode)));
         gamma_c_.push_back(
             &GetTrajectory("collocation_slack_vars" + std::to_string(mode)));
-      } catch (std::exception&) {
+      }catch(std::exception&){
         // Temporary fix to work with old versions of saved dircon trajectories
         continue;
       }
@@ -336,8 +355,8 @@ Eigen::VectorXd DirconTrajectory::GetCollocationPoints(
   // using a + (b - a) / 2 midpoint
   int num_knotpoints = time_vector.size();
   return time_vector.head(num_knotpoints - 1) +
-         0.5 * (time_vector.tail(num_knotpoints - 1) -
-                time_vector.head(num_knotpoints - 1));
+      0.5 * (time_vector.tail(num_knotpoints - 1) -
+          time_vector.head(num_knotpoints - 1));
 }
 
 }  // namespace dairlib

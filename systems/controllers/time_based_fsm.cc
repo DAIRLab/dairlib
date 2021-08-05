@@ -46,11 +46,10 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto current_sim_time = static_cast<double>(robot_output->get_timestamp());
 
-  double m = floor((current_sim_time - t0_) / period_);
-  double remainder = (current_sim_time - t0_) - m * period_;
+  double remainder = fmod(current_sim_time, period_);
 
   // Get current finite state
-  VectorXd current_finite_state(1);
+  VectorXd current_finite_state = VectorXd::Zero(1);
   if (current_sim_time >= t0_) {
     for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
       if (remainder < accu_state_durations_[i]) {

@@ -8,41 +8,45 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
-namespace dairlib::examples::osc_jump {
+namespace dairlib::cassie::osc_jump {
 
-class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
+class FlightToeAngleTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  FlightFootTrajGenerator(
+  FlightToeAngleTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context, const std::string& hip_name,
-      bool isLeftFoot,
-      const drake::trajectories::PiecewisePolynomial<double>& foot_traj, bool relative_feet = false,
-      double time_offset = 0.0);
+      drake::systems::Context<double>* context, int swing_toe_idx,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+      feet_contact_points,
+      const std::string& traj_name);
 
+  // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
   }
+
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
 
  private:
-  drake::trajectories::PiecewisePolynomial<double> generateFlightTraj(
-      const Eigen::VectorXd& x, double t) const;
+  drake::trajectories::PiecewisePolynomial<double> CalcToeAngle(
+      Eigen::VectorXd q) const;
 
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::Frame<double>& world_;
-  const drake::multibody::Frame<double>& hip_frame_;
+  const drake::multibody::BodyFrame<double>& world_;
 
-  drake::trajectories::PiecewisePolynomial<double> foot_traj_;
+  int swing_toe_idx_;
+  // A list of pairs of contact body frame and contact point
+  const std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
+      feet_contact_points_;
 
-  bool relative_feet_;
   int state_port_;
   int fsm_port_;
 };
-
-}  // namespace dairlib::examples::osc_jump
+}  // namespace dairlib::cassie::osc_jump

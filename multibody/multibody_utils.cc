@@ -339,7 +339,70 @@ vector<string> createActuatorNameVectorFromMap(
 
 
 template <typename T>
-Eigen::MatrixXd createWithSpringsToWithoutSpringsMap(
+Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(
+    const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
+  int nq_wo_spr = plant_wo_spr.num_positions();
+  int nv_wo_spr = plant_wo_spr.num_velocities();
+  int nq_w_spr = plant_w_spr.num_positions();
+  int nv_w_spr = plant_w_spr.num_velocities();
+
+  int nx_wo_spr = nq_wo_spr + nv_wo_spr;
+  int nx_w_spr = nq_w_spr + nv_w_spr;
+
+  const std::map<string, int>& pos_map_w_spr =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>& vel_map_w_spr =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  const std::map<string, int>& pos_map_wo_spr =
+      multibody::makeNameToPositionsMap(plant_wo_spr);
+  const std::map<string, int>& vel_map_wo_spr =
+      multibody::makeNameToVelocitiesMap(plant_wo_spr);
+
+  // Initialize the mapping from states for the plant without springs to the
+  // plant with springs. Note: this is a tall matrix
+  Eigen::MatrixXd map_position_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nq_w_spr, nq_wo_spr);
+  Eigen::MatrixXd map_velocity_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nv_w_spr, nv_wo_spr);
+  Eigen::MatrixXd map_state_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nx_w_spr, nx_wo_spr);
+
+  for (const auto& pos_pair_wo_spr : pos_map_wo_spr) {
+    bool successfully_added = false;
+    for (const auto& pos_pair_w_spr : pos_map_w_spr) {
+      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
+        map_position_from_no_spring_to_spring(pos_pair_w_spr.second,
+                                              pos_pair_wo_spr.second) = 1;
+        successfully_added = true;
+      }
+    }
+    DRAKE_DEMAND(successfully_added);
+  }
+
+  for (const auto& vel_pair_wo_spr : vel_map_wo_spr) {
+    bool successfully_added = false;
+    for (const auto& vel_pair_w_spr : vel_map_w_spr) {
+      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
+        map_velocity_from_no_spring_to_spring(vel_pair_w_spr.second,
+                                              vel_pair_wo_spr.second) = 1;
+        successfully_added = true;
+      }
+    }
+    DRAKE_DEMAND(successfully_added);
+  }
+
+  map_state_from_no_spring_to_spring.block(0, 0, nq_w_spr, nq_wo_spr) =
+      map_position_from_no_spring_to_spring;
+  map_state_from_no_spring_to_spring.block(nq_w_spr, nq_wo_spr, nv_w_spr,
+                                           nv_wo_spr) =
+      map_velocity_from_no_spring_to_spring;
+  return map_state_from_no_spring_to_spring;
+}
+
+
+template <typename T>
+Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(
     const drake::multibody::MultibodyPlant<T>& plant_w_spr,
     const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
   int nq_wo_spr = plant_wo_spr.num_positions();
@@ -464,7 +527,8 @@ template vector<string> createStateNameVectorFromMap(const MultibodyPlant<double
 template vector<string> createStateNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
 template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
 template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
-template Eigen::MatrixXd createWithSpringsToWithoutSpringsMap(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT

@@ -11,7 +11,6 @@ from pydrake.math import RigidTransform
 from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box
 from pydrake.trajectories import PiecewisePolynomial
 from pydairlib.common import FindResourceOrThrow
-from pydairlib.multibody import makeNameToPositionsMap
 
 
 # Note that the mu_ratio defines the ratio 

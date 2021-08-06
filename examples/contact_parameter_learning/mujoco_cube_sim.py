@@ -11,6 +11,7 @@ default_mujoco_contact_params = {"stiffness" : 2000,
 
 def get_model_xml_text(params=None):
     if (params is None) : params = default_mujoco_contact_params
+    ixx = 0.00081
 
     return f'<mujoco model=\"Cube\"> <compiler inertiafromgeom=\"true\" angle=\"degree\"/> <option timestep = \"{CUBE_DATA_DT}\"> \
 <flag refsafe = \"disable\" /> </option><asset> <texture name=\"grid\" type=\"2d\" builtin=\"checker\" rgb1=\".2 .3 .4\" rgb2=\".1 .15 .2\" \
@@ -19,7 +20,7 @@ texuniform=\"true\" reflectance=\".3\"/></asset><worldbody><geom name=\"floor\" 
 <light directional=\"true\" diffuse=\".2 .2 .2\" specular=\"0 0 0\" pos=\"0 0 5\" dir=\"0 0 -1\" castshadow=\"false\"/> \
 <light directional=\"false\" diffuse=\".8 .8 .8\" specular=\"0.3 0.3 0.3\" pos=\"0 0 4.0\" dir=\"0 0 -1\"/> \
 <body name=\"cube\" pos=\"0 0 0\"> \
-<inertial pos=\"0.0 0.0 0.0\" mass=\"0.37\" fullinertia=\"0.0006167 0.0006167 0.0006167 0 0 0\"/> \
+<inertial pos=\"0.0 0.0 0.0\" mass=\"0.37\" fullinertia=\"{ixx} {ixx} {ixx} 0 0 0\"/> \
 <freejoint name=\"cube_board\"/><geom name=\"cube_geom\" type=\"box\" size=\"{BLOCK_HALF_WIDTH} {BLOCK_HALF_WIDTH} {BLOCK_HALF_WIDTH}\" quat=\"1 0 0 0\" \
 friction=\"{params["cube_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" rgba=\"0 1 0 1.0\"  /> \
 </body><body name=\"board\" pos=\"0.0 0.0 -0.2\"><geom size=\"5.0 5.0 0.2\" rgba=\"1 0 0 1\" type=\"box\" \

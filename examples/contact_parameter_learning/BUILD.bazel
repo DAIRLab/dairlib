@@ -85,5 +85,6 @@ py_binary(
         ":cube_sim",
         ":drake_cassie_sim_py",
         ":mujoco_cube_sim_py",
+        "//bindings/pydairlib/common:plot_styler",
     ],
 )

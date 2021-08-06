@@ -31,6 +31,15 @@ class DrakeCassieSim():
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
 
+    self.x_trajs = {}
+    self.t_xs = {}
+
+    self.log_nums = np.hstack((np.arange(0, 2), np.arange(8, 18), np.arange(20, 34)))
+    self.log_nums = ['%0.2d' % i for i in self.log_nums]
+    for log_num in self.log_nums:
+      self.x_trajs[log_num] = np.load(self.folder_path + 'x_' + log_num + '.npy')
+      self.t_xs[log_num] = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+
   def write_initial_state(self, x_init):
     gains_path = "/home/yangwill/workspace/dairlib/examples/Cassie/data/"
 
@@ -60,15 +69,21 @@ class DrakeCassieSim():
   def run(self, params, log_num):
     # params
 
+
+    penetration_allowance = self.default_drake_contact_params['pen_allow']
+    mu_static = self.default_drake_contact_params['mu_static']
+    mu_kinetic = self.default_drake_contact_params['mu_ratio'] * self.default_drake_contact_params['mu_static']
+    stiction_tol = self.default_drake_contact_params['stiction_tol']
     penetration_allowance = params['pen_allow']
-    # print(penetration_allowance)
-    mu_static = params['mu_static']
-    mu_kinetic = params['mu_ratio'] * params['mu_static']
-    stiction_tol = params['stiction_tol']
+    # mu_static = params['mu_static']
+    # mu_kinetic = params['mu_ratio'] * params['mu_static']
+    # stiction_tol = params['stiction_tol']
     # delta_x_init = params['delta_x_init']
     terrain_height = 0.00
-    x_traj = np.load(self.folder_path + 'x_' + log_num + '.npy')
-    t = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+    # x_traj = np.load(self.folder_path + 'x_' + log_num + '.npy')
+    # t = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+    x_traj = self.x_trajs[log_num]
+    t = self.t_xs[log_num]
 
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
     x_init = x_interp(self.start_time)
@@ -116,8 +131,11 @@ class DrakeCassieSim():
     return window, x_traj[window]
 
   def compute_loss(self, log_num, sim_id):
-    x_traj_log = np.load(self.folder_path + 'x_' + log_num + '.npy')
-    t_x_log = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+    # x_traj_log = np.load(self.folder_path + 'x_' + log_num + '.npy')
+    # t_x_log = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+    x_traj_log = self.x_trajs[log_num]
+    t_x_log = self.t_xs[log_num]
+
     x_traj, t_x = self.load_sim_trial(sim_id)
     window, x_traj_in_window = self.get_window_around_contact_event(x_traj_log, t_x_log)
     min_time_length = min(x_traj.shape[0], x_traj_in_window.shape[0])

@@ -5,47 +5,64 @@ import pickle
 from json import dump, load
 import cassie_loss_utils
 import numpy as np
+import plot_styler
+import matplotlib.pyplot as plt
 
 sim = drake_cassie_sim.DrakeCassieSim()
 loss_over_time = []
+pen_allow_over_time = []
 log_num = '00'
-
+ps = plot_styler.PlotStyler()
+budget = 1000
 
 def get_drake_loss(params):
   sim_id = sim.run(params, log_num)
   loss = sim.compute_loss(log_num, sim_id)
   print('loss:' + str(loss))
   loss_over_time.append(loss)
+  pen_allow_over_time.append(params['pen_allow'])
   # print(loss_over_time)
   return loss
 
 def learn_drake_cassie_params():
   # loss_weights_file = 'default_loss_weights'
-  sim = drake_cassie_sim.DrakeCassieSim()
+  # sim = drake_cassie_sim.DrakeCassieSim()
   # sim.run(sim.default_drake_contact_params, '27')
 
   optimization_param = ng.p.Dict(
-    mu_static = ng.p.Scalar(lower=0.001, upper=1.0),
-    mu_ratio = ng.p.Scalar(lower=0.001, upper=1.0),
-    pen_allow=ng.p.Log(lower=1e-5, upper=1e-1),
-    stiction_tol=ng.p.Log(lower=1e-4, upper=1e-1)
+    # mu_static = ng.p.Scalar(lower=0.001, upper=1.0),
+    # mu_ratio = ng.p.Scalar(lower=0.001, upper=1.0),
+    pen_allow=ng.p.Log(lower=5e-6, upper=5e-4),
+    # stiction_tol=ng.p.Log(lower=1e-4, upper=1e-1)
   )
 
-  budget = 250
-  optimization_param.value=sim.default_drake_contact_params
+  # optimization_param.value=sim.default_drake_contact_params
+  optimization_param.value={
+    "pen_allow": 1e-5}
   optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
   params = optimizer.minimize(get_drake_loss)
   loss = np.array(loss_over_time)
+  pen_allow = np.array(pen_allow_over_time)
   np.save(sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
+  np.save(sim.params_folder + log_num + '_pen_allow_trajectory_' + str(budget), pen_allow)
   sim.save_params(params, log_num + '_optimized_params_' + str(budget))
+
+def plot_loss_trajectory():
+  loss_t = np.load(sim.params_folder + log_num + '_loss_trajectory_' + str(budget) + '.npy')
+  pen_allow_t = np.load(sim.params_folder + log_num + '_pen_allow_trajectory_' + str(budget) + '.npy')
+  ps.scatter(pen_allow_t, loss_t)
+  plt.show()
 
 def print_drake_cassie_params():
   # optimal_params = sim.load_params('optimized_params')
-  budget = 250
   optimal_params = sim.load_params(log_num + '_optimized_params_' + str(budget))
+  sim_id = sim.run(optimal_params.value, log_num)
+  loss = sim.compute_loss(log_num, sim_id)
+  print(loss)
   import pdb; pdb.set_trace()
 
 if (__name__ == '__main__'):
+  plot_loss_trajectory()
   # print_drake_cassie_params()
-  learn_drake_cassie_params()
+  # learn_drake_cassie_params()
   #learn_drake_params()

@@ -56,6 +56,28 @@ class PlotStyler():
 
     plt.grid(grid, which='major')
 
+  def scatter(self, xdata, ydata, xlim=None, ylim=None, color=None,
+           grid=True, xlabel=None, ylabel=None, title=None, legend=None, data_label=None):
+
+    plt.scatter(xdata, ydata, color=color, label=data_label)
+    if xlim:
+      plt.xlim(xlim)
+    if ylim:
+      plt.ylim(ylim)
+    if xlabel:
+      # plt.xlabel(xlabel, fontweight="bold")
+      plt.xlabel(xlabel)
+    if ylabel:
+      # plt.ylabel(ylabel, fontweight="bold")
+      plt.ylabel(ylabel)
+    if title:
+      # plt.title(title, fontweight="bold")
+      plt.title(title)
+    if legend:
+      plt.legend(legend)
+
+    plt.grid(grid, which='major')
+
   def plot_bands(self, x_low, x_high, y_low, y_high, color='C0'):
     vertices = np.block([[x_low, x_high[::-1]],
                          [y_low, y_high[::-1]]]).T

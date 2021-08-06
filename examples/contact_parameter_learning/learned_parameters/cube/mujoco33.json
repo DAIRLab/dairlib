@@ -1,1 +1,1 @@
-{"stiffness": 1067.1036085994308, "damping": 43.025417302306344, "cube_mu_tangent": 0.13426905241948692, "table_mu_tangent": 0.25959379568739144, "mu_torsion": 0.42856044894644696, "mu_rolling": 0.013852563673787552}
+{"stiffness": 10.0, "damping": 35.08502483075259, "cube_mu_tangent": 0.35109689881978123, "table_mu_tangent": 0.0001, "mu_torsion": 0.2473442566349599, "mu_rolling": 1e-06}

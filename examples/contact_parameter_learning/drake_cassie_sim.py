@@ -5,6 +5,8 @@ from scipy import interpolate
 import cassie_loss_utils
 import subprocess
 import pickle
+import matplotlib.pyplot as plt
+import plot_styler
 
 try:
   from yaml import CLoader as Loader, CDumper as Dumper
@@ -19,10 +21,13 @@ class DrakeCassieSim():
     self.folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
-    self.start_time = 30.495
+    self.start_time = 30.595
     self.sim_time = 0.5
     self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
+    self.realtime_rate = 1.0
+    self.ps = plot_styler.PlotStyler()
+    self.ps.set_default_styling()
     self.default_drake_contact_params = {
       "mu_static": 0.8,
       "mu_ratio": 1.0,
@@ -34,7 +39,7 @@ class DrakeCassieSim():
     self.x_trajs = {}
     self.t_xs = {}
 
-    self.log_nums = np.hstack((np.arange(0, 2), np.arange(8, 18), np.arange(20, 34)))
+    self.log_nums = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums = ['%0.2d' % i for i in self.log_nums]
     for log_num in self.log_nums:
       self.x_trajs[log_num] = np.load(self.folder_path + 'x_' + log_num + '.npy')
@@ -75,9 +80,9 @@ class DrakeCassieSim():
     mu_kinetic = self.default_drake_contact_params['mu_ratio'] * self.default_drake_contact_params['mu_static']
     stiction_tol = self.default_drake_contact_params['stiction_tol']
     penetration_allowance = params['pen_allow']
-    # mu_static = params['mu_static']
-    # mu_kinetic = params['mu_ratio'] * params['mu_static']
-    # stiction_tol = params['stiction_tol']
+    mu_static = params['mu_static']
+    mu_kinetic = params['mu_ratio'] * params['mu_static']
+    stiction_tol = params['stiction_tol']
     # delta_x_init = params['delta_x_init']
     terrain_height = 0.00
     # x_traj = np.load(self.folder_path + 'x_' + log_num + '.npy')
@@ -98,6 +103,7 @@ class DrakeCassieSim():
                      '--stiction_tol=%.7f' % stiction_tol,
                      '--mu_static=%.5f' % mu_static,
                      '--mu_kinetic=%.5f' % mu_kinetic,
+                     '--target_realtime_rate=%.2f' % self.realtime_rate,
                      # '--delta_x_init=%.5f' % delta_x_init,
                      ]
     # print((' ').join(simulator_cmd))
@@ -130,7 +136,7 @@ class DrakeCassieSim():
     window = slice(start_idx, end_idx)
     return window, x_traj[window]
 
-  def compute_loss(self, log_num, sim_id):
+  def compute_loss(self, log_num, sim_id, plot=False):
     # x_traj_log = np.load(self.folder_path + 'x_' + log_num + '.npy')
     # t_x_log = np.load(self.folder_path + 't_x_' + log_num + '.npy')
     x_traj_log = self.x_trajs[log_num]
@@ -139,6 +145,10 @@ class DrakeCassieSim():
     x_traj, t_x = self.load_sim_trial(sim_id)
     window, x_traj_in_window = self.get_window_around_contact_event(x_traj_log, t_x_log)
     min_time_length = min(x_traj.shape[0], x_traj_in_window.shape[0])
+    if plot:
+      self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45], color='b')
+      self.ps.plot(t_x_log[:min_time_length], x_traj_log[:min_time_length, 23:45], color='r')
+      plt.show()
     loss = self.loss_func.CalculateLoss(x_traj[:min_time_length], x_traj_in_window[:min_time_length])
     return loss
 

@@ -5,6 +5,7 @@ from scipy import interpolate
 import cassie_loss_utils
 import subprocess
 import pickle
+import mujoco_sim
 
 try:
   from yaml import CLoader as Loader, CDumper as Dumper
@@ -13,17 +14,17 @@ except ImportError:
 import yaml
 
 
-class DrakeCassieSim():
+class LearningMujocoCassieSim():
 
   def __init__(self, drake_sim_dt=5e-5, loss_filename='default_loss_weights'):
     self.folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
-    self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
+    self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/mujoco_cassie_params/"
     self.start_time = 30.595
     self.sim_time = 0.5
     self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
-    self.default_drake_contact_params = {
+    self.default_mujoco_contact_params = {
       "mu_static": 0.8,
       "mu_ratio": 1.0,
       "pen_allow": 1e-5,

@@ -1,10 +1,11 @@
 from mujoco_py import load_model_from_xml, MjSim, MjViewer, MjRenderContextOffscreen
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 from cube_sim import BLOCK_HALF_WIDTH, CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
 
 default_mujoco_contact_params = {"stiffness" : 2000, 
                   "damping" : 36.02, 
-                  "cube_mu_tangent" : 0.3, 
+                  "cube_mu_tangent" : 0.18, 
                   "table_mu_tangent" : 1.0, 
                   "mu_torsion" : 0.005, 
                   "mu_rolling" : 0.0001}
@@ -47,7 +48,7 @@ class MujocoCubeSim(CubeSim):
             self.viewer = MjViewer(self.sim)
 
     def set_initial_condition(self, initial_state):
-
+        
         sim_state = self.sim.get_state()
         sim_state.qpos[:3] = initial_state[CUBE_DATA_POSITION_SLICE]
         sim_state.qpos[3:] = initial_state[CUBE_DATA_QUATERNION_SLICE]

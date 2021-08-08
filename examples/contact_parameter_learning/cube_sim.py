@@ -53,7 +53,21 @@ class CubeSim(ABC):
 
         plt.plot(tvec, position_error)
         plt.show()
-        
+
+
+    def convert_state_local_to_global_omega(self, state):
+        new_state = state.ravel()
+        q = new_state[CUBE_DATA_QUATERNION_SLICE]
+        rot = R.from_quat([q[1], q[2], q[3], q[0]])
+        new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE])
+        return new_state
+
+    def convert_state_global_to_local_omega(self, state):
+        new_state = state.ravel()
+        q = new_state[CUBE_DATA_QUATERNION_SLICE]
+        rot = R.from_quat([q[1], q[2], q[3], q[0]])
+        new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE], inverse=True)
+        return new_state
 
 
 class LossWeights():

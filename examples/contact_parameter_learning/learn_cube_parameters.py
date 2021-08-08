@@ -13,7 +13,7 @@ import time
 ## COMMON VALUES AND FUNCTIONS
 
 # File paths
-cube_data_folder = os.path.join(os.getcwd(), '..', 'contact-nets/data/tosses_processed/')
+cube_data_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/cleaned_cube_trajectories/data')
 drake_data_folder = os.path.join(os.getcwd(), 
     'examples/contact_parameter_learning/simulated_cube_trajectories/drake')
 mujoco_data_folder = os.path.join(os.getcwd(), 
@@ -24,8 +24,8 @@ default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones(
 
 batch_size = 50
 num_workers = 1
-num_trials = 570
-num_train = 470
+num_trials = 550
+num_train = 445
 budget = 5000
 num_test = num_trials - num_train
 
@@ -124,10 +124,10 @@ def learn_mujoco_params():
     optimization_param = ng.p.Dict(
         stiffness=ng.p.Scalar(lower=100, upper=10000),
         damping=ng.p.Scalar(lower=0, upper=1000),
-        cube_mu_tangent=ng.p.Scalar(lower=0.1, upper=1.0),
-        table_mu_tangent=ng.p.Scalar(lower=0.1, upper=1.0),
+        cube_mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
+        table_mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
         mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
-        mu_rolling=ng.p.Scalar(lower=0.000001, upper=0.1)
+        mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)

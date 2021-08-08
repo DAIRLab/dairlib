@@ -16,7 +16,7 @@ from pydairlib.common import FindResourceOrThrow
 # Note that the mu_ratio defines the ratio 
 # mu_kinetic/mu_static = [0 ... 1] to enforce that mu_kinetic <= mu_static
 default_drake_contact_params = {
-    "mu_static": 0.8,
+    "mu_static": 0.18,
     "mu_ratio": 1.0,
     "pen_allow": 1e-5, 
     "stiction_tol": 1e-3 }

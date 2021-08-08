@@ -26,7 +26,7 @@ batch_size = 50
 num_workers = 1
 num_trials = 570
 num_train = 470
-budget = 1000
+budget = 5000
 num_test = num_trials - num_train
 
 # Make a list of train and test trials 
@@ -103,7 +103,7 @@ def learn_drake_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
     with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         optimal_params = optimizer.minimize(get_drake_loss_mp, executor=executor, batch_mode=True)
-    save_params('drake', 00, optimal_params.value)
+    save_params('drake', 805, optimal_params.value)
 
 ####################################
 ## MUJOCO FUNCTIONS
@@ -133,7 +133,7 @@ def learn_mujoco_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
     with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
-    save_params('mujoco', 00, optimal_params.value)
+    save_params('mujoco', 805, optimal_params.value)
 
 
 if (__name__ == '__main__'):

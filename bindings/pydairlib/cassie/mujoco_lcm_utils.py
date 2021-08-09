@@ -127,7 +127,7 @@ def pack_robot_output(robot_output, q, v, u, t):
   # floating base and left hip
   # memcpy(message->velocity, &v[6 - voffset], (3 + voffset) * sizeof(double));
   for i in range(3 + voffset):
-    robot_output.velocity[i] = q[6 - qoffset + i]
+    robot_output.velocity[i] = v[6 - voffset + i]
 
   # remainder of left legqoffsetqoffset
   robot_output.velocity[3 + voffset] = v[12]  # knee

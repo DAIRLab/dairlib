@@ -48,6 +48,7 @@ class MujocoCassieSim():
     for i in range(10):
       j = self.actuator_index_map[robot_in.effort_names[i]]
       u[j] = robot_in.efforts[i]
+    # print(u)
     return u
 
   def pack_input_pd(self):

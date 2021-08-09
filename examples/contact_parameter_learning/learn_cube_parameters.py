@@ -20,13 +20,15 @@ mujoco_data_folder = os.path.join(os.getcwd(),
     'examples/contact_parameter_learning/simulated_cube_trajectories/mujoco')
 log_folder = os.path.join(os.getcwd(), 'examples/contact_paramter_learning/logs/cube')
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
-default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
+default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
+                                    vel=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
+                                    omega=0.25*np.ones((3,)))
 
-batch_size = 10
+batch_size = 25
 num_workers = 1
 num_trials = 550
 num_train = 445
-budget = 10000
+budget = 5000
 num_test = num_trials - num_train
 
 # Make a list of train and test trials 
@@ -82,8 +84,8 @@ def get_drake_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
         loss_sum += get_drake_loss(params)
-    print(loss_sum)
-    return loss_sum
+    print(loss_sum / batch_size)
+    return loss_sum / batch_size
 
 def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
@@ -138,4 +140,4 @@ def learn_mujoco_params():
 
 if (__name__ == '__main__'):
     learn_mujoco_params()
-    learn_drake_params()
+    #learn_drake_params()

@@ -88,11 +88,11 @@ class LossWeights():
     
     def CalcVelocitiesLoss(self, traj1, traj2):
         diff = traj1 - traj2
-        return np.dot(diff.ravel(), (diff @ self.pos).ravel()) / diff.shape[0]
+        return np.dot(diff.ravel(), (diff @ self.vel).ravel()) / diff.shape[0]
     
     def CalcOmegaLoss(self, traj1, traj2):
         diff = traj1 - traj2
-        return np.dot(diff.ravel(), (diff @ self.pos).ravel()) / diff.shape[0]
+        return np.dot(diff.ravel(), (diff @ self.omega).ravel()) / diff.shape[0]
 
     def CalcQuatLoss(self, traj1, traj2):
         loss = 0
@@ -107,6 +107,7 @@ class LossWeights():
         l_vel = self.CalcVelocitiesLoss(traj1[:,CUBE_DATA_VELOCITY_SLICE], traj2[:,CUBE_DATA_VELOCITY_SLICE])
         l_omega = self.CalcOmegaLoss(traj1[:,CUBE_DATA_OMEGA_SLICE], traj2[:,CUBE_DATA_OMEGA_SLICE])
         l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
+        #print(f'l_pos: {l_pos}, l_vel: {l_vel}, l_omega: {l_omega}, l_quat: {l_quat}')
         return l_pos + l_vel + l_omega + l_quat
 
     def calc_rotational_distance(self, quat1, quat2):

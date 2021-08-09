@@ -23,7 +23,7 @@ default_drake_contact_params = {
 
 class DrakeCubeSim(CubeSim):
 
-    def __init__(self, drake_sim_dt=1e-4, visualize=False):
+    def __init__(self, drake_sim_dt=8e-5, visualize=False):
         if (not type(visualize) == bool) : 
             raise TypeError('visualize argument must be set to a boolean value')
         self.drake_sim_dt = drake_sim_dt
@@ -68,7 +68,7 @@ class DrakeCubeSim(CubeSim):
         self.builder = DiagramBuilder()
         
         # Add a cube as MultibodyPlant
-        self.plant = MultibodyPlant(1e-4)
+        self.plant = MultibodyPlant(self.drake_sim_dt)
         self.scene_graph = self.builder.AddSystem(SceneGraph())
         plant_id = self.plant.RegisterAsSourceForSceneGraph(self.scene_graph)
 
@@ -108,7 +108,7 @@ class DrakeCubeSim(CubeSim):
         cube_state = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()))
-        
+
         data_arr[0,CUBE_DATA_QUATERNION_SLICE] = cube_state[0:4]
         data_arr[0,CUBE_DATA_POSITION_SLICE] = cube_state[4:7]
         data_arr[0,CUBE_DATA_OMEGA_SLICE] = cube_state[7:10]

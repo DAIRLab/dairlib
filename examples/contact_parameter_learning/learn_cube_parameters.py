@@ -22,11 +22,11 @@ log_folder = os.path.join(os.getcwd(), 'examples/contact_paramter_learning/logs/
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
 
-batch_size = 50
+batch_size = 10
 num_workers = 1
 num_trials = 550
 num_train = 445
-budget = 5000
+budget = 10000
 num_test = num_trials - num_train
 
 # Make a list of train and test trials 
@@ -103,7 +103,7 @@ def learn_drake_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
     with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         optimal_params = optimizer.minimize(get_drake_loss_mp, executor=executor, batch_mode=True)
-    save_params('drake', 805, optimal_params.value)
+    save_params('drake', 809, optimal_params.value)
 
 ####################################
 ## MUJOCO FUNCTIONS
@@ -133,7 +133,7 @@ def learn_mujoco_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
     with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
-    save_params('mujoco', 805, optimal_params.value)
+    save_params('mujoco', 809, optimal_params.value)
 
 
 if (__name__ == '__main__'):

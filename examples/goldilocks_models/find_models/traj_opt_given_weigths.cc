@@ -1953,8 +1953,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_u_diff = 2e-7 * all_cost_scale;
   // Cost on position
   //  for w_q_hip_roll, maybe 1 if mu = 0.1, and 10 if mu = 1?
+  //  w_q_hip_roll = 0.1 seems too small for fast walking. (leg swung too outward)
   double reduce_reg_weight = 1;
-  double w_q_hip_roll = .1 * all_cost_scale * reduce_reg_weight;
+  double w_q_hip_roll = 1 * all_cost_scale * reduce_reg_weight;
   double w_q_hip_yaw = .1 * all_cost_scale * reduce_reg_weight;
   double w_q_quat = .1 * all_cost_scale * reduce_reg_weight;
   // Additional cost on pelvis

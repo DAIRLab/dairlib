@@ -109,19 +109,22 @@ class DrakeCubeSim(CubeSim):
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()))
 
-        data_arr[0,CUBE_DATA_QUATERNION_SLICE] = cube_state[0:4]
-        data_arr[0,CUBE_DATA_POSITION_SLICE] = cube_state[4:7]
-        data_arr[0,CUBE_DATA_OMEGA_SLICE] = cube_state[7:10]
-        data_arr[0,CUBE_DATA_VELOCITY_SLICE] = cube_state[10:]
+        data_arr[0, CUBE_DATA_QUATERNION_SLICE] = cube_state[0:4]
+        data_arr[0, CUBE_DATA_POSITION_SLICE] = cube_state[4:7]
+        data_arr[0, CUBE_DATA_OMEGA_SLICE] = cube_state[7:10]
+        data_arr[0, CUBE_DATA_VELOCITY_SLICE] = cube_state[10:]
         
         new_time = self.sim.get_mutable_context().get_time() + dt
         self.sim.AdvanceTo(new_time)
 
+        data_arr[0] = self.reexpress_state_global_to_local_omega(data_arr[0])
         return data_arr
 
-    def set_initial_condition(self, initial_state):
+    def set_initial_condition(self, state):
         q = np.zeros((self.plant.num_positions(),))
         v = np.zeros((self.plant.num_velocities(),))
+
+        initial_state = self.reexpress_state_local_to_global_omega(state)
 
         q[0:4] = initial_state[CUBE_DATA_QUATERNION_SLICE]
         q[4:] = initial_state[CUBE_DATA_POSITION_SLICE]

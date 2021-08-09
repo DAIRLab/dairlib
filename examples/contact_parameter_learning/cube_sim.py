@@ -55,14 +55,14 @@ class CubeSim(ABC):
         plt.show()
 
 
-    def convert_state_local_to_global_omega(self, state):
+    def reexpress_state_local_to_global_omega(self, state):
         new_state = state.ravel()
         q = new_state[CUBE_DATA_QUATERNION_SLICE]
         rot = R.from_quat([q[1], q[2], q[3], q[0]])
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE])
         return new_state
 
-    def convert_state_global_to_local_omega(self, state):
+    def reexpress_state_global_to_local_omega(self, state):
         new_state = state.ravel()
         q = new_state[CUBE_DATA_QUATERNION_SLICE]
         rot = R.from_quat([q[1], q[2], q[3], q[0]])
@@ -72,7 +72,7 @@ class CubeSim(ABC):
 
 class LossWeights():
 
-    def __init__(self, 
+    def __init__(self, debug=False,
                  pos=np.ones((3,)),
                  vel=np.ones((3,)),
                  omega=np.ones((3,)), 
@@ -81,6 +81,7 @@ class LossWeights():
         self.vel = np.diag(vel)
         self.omega = np.diag(omega)
         self.quat = quat
+        self.debug=debug
     
     def CalcPositionsLoss(self, traj1, traj2):
         diff = traj1 - traj2
@@ -91,6 +92,7 @@ class LossWeights():
         return np.dot(diff.ravel(), (diff @ self.vel).ravel()) / diff.shape[0]
     
     def CalcOmegaLoss(self, traj1, traj2):
+
         diff = traj1 - traj2
         return np.dot(diff.ravel(), (diff @ self.omega).ravel()) / diff.shape[0]
 
@@ -107,7 +109,7 @@ class LossWeights():
         l_vel = self.CalcVelocitiesLoss(traj1[:,CUBE_DATA_VELOCITY_SLICE], traj2[:,CUBE_DATA_VELOCITY_SLICE])
         l_omega = self.CalcOmegaLoss(traj1[:,CUBE_DATA_OMEGA_SLICE], traj2[:,CUBE_DATA_OMEGA_SLICE])
         l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
-        #print(f'l_pos: {l_pos}, l_vel: {l_vel}, l_omega: {l_omega}, l_quat: {l_quat}')
+        if (self.debug): print(f'l_pos: {l_pos}, l_vel: {l_vel}, l_omega: {l_omega}, l_quat: {l_quat}')
         return l_pos + l_vel + l_omega + l_quat
 
     def calc_rotational_distance(self, quat1, quat2):

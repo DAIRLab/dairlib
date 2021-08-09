@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5)
 loss_over_time = []
 pen_allow_over_time = []
-log_num = '02'
-budget = 250
+log_num = '01'
+budget = 1000
 
 def get_drake_loss(params):
   sim_id = sim.run(params, log_num)
@@ -20,10 +20,32 @@ def get_drake_loss(params):
   print('loss:' + str(loss))
   loss_over_time.append(loss)
   pen_allow_over_time.append(params['pen_allow'])
-  # print(loss_over_time)
   return loss
 
 def learn_drake_cassie_params():
+  # loss_weights_file = 'default_loss_weights'
+  # sim = drake_cassie_sim.DrakeCassieSim()
+  # sim.run(sim.default_drake_contact_params, '27')
+
+  optimization_param = ng.p.Dict(
+    mu_static = ng.p.Scalar(lower=0.001, upper=1.0),
+    mu_ratio = ng.p.Scalar(lower=0.001, upper=1.0),
+    pen_allow=ng.p.Log(lower=5e-6, upper=5e-2),
+    stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2)
+  )
+
+  optimization_param.value=sim.default_drake_contact_params
+  # optimization_param.value={
+  #   "pen_allow": 1e-5}
+  optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
+  params = optimizer.minimize(get_drake_loss)
+  loss = np.array(loss_over_time)
+  pen_allow = np.array(pen_allow_over_time)
+  np.save(sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
+  np.save(sim.params_folder + log_num + '_pen_allow_trajectory_' + str(budget), pen_allow)
+  sim.save_params(params, log_num + '_optimized_params_' + str(budget))
+
+def learn_mujoco_cassie_params():
   # loss_weights_file = 'default_loss_weights'
   # sim = drake_cassie_sim.DrakeCassieSim()
   # sim.run(sim.default_drake_contact_params, '27')

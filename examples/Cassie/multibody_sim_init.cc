@@ -45,7 +45,7 @@ namespace dairlib {
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
-DEFINE_double(target_realtime_rate, 1.0,
+DEFINE_double(realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
 DEFINE_double(dt, 8e-5,
@@ -212,6 +212,7 @@ int do_main(int argc, char* argv[]) {
     x_init << map_no_spring_to_spring_pos * x_init.head(nq),
         map_no_spring_to_spring_vel * x_init.tail(nv);
   }
+
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 
   diagram_context->SetTime(FLAGS_start_time);
@@ -219,7 +220,7 @@ int do_main(int argc, char* argv[]) {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
+  simulator.set_target_realtime_rate(FLAGS_realtime_rate);
   simulator.Initialize();
   simulator.AdvanceTo(FLAGS_end_time);
 

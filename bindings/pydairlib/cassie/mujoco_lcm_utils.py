@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.spatial.transform import Rotation as R
+
 import dairlib
 
 def init_robot_output():
@@ -82,6 +84,10 @@ def init_cassie_out():
   return
 
 def pack_robot_output(robot_output, q, v, u, t):
+  q = np.array(q)
+  v = np.array(v)
+  u = np.array(u)
+  # import pdb; pdb.set_trace()
   robot_output.utime = int(t * 1e6)
   # If we are not in a floating base, need to skip the first 7 postions
   # (x,y,z,quat) and the first 6 velocities (linear and ang. velocity)
@@ -101,7 +107,6 @@ def pack_robot_output(robot_output, q, v, u, t):
   # base coordinates if necessary
   for i in range(3 + qoffset):
     robot_output.position[i] = q[7 - qoffset + i]
-  # memcpy(message->position, &q[7 - qoffset], (3 + qoffset) * sizeof(double));
 
   # remainder of left leg
   robot_output.position[3 + qoffset] = q[14]  # knee
@@ -125,11 +130,13 @@ def pack_robot_output(robot_output, q, v, u, t):
   # get velocities
   # See cassiemujoco.h cassie_sim_qvel for ordering of v
   # floating base and left hip
-  # memcpy(message->velocity, &v[6 - voffset], (3 + voffset) * sizeof(double));
   for i in range(3 + voffset):
     robot_output.velocity[i] = v[6 - voffset + i]
 
-  # remainder of left legqoffsetqoffset
+  # Convert rotational velocity to global frame
+  rot = R.from_quat([q[6], q[3], q[4], q[5]])
+  robot_output.velocity[3:6] = rot.as_dcm() @ robot_output.velocity[3:6]
+  # remainder of left leg
   robot_output.velocity[3 + voffset] = v[12]  # knee
   robot_output.velocity[4 + voffset] = v[18]  # foot
   robot_output.velocity[5 + voffset] = v[13]  # shin
@@ -137,7 +144,6 @@ def pack_robot_output(robot_output, q, v, u, t):
   robot_output.velocity[7 + voffset] = v[15]  # heel spring
 
   # right hip
-  # memcpy(&message->velocity[8 + voffset], &v[19], 3 * sizeof(double));
   robot_output.velocity[8 + voffset] = v[19]
   robot_output.velocity[9 + voffset] = v[20]
   robot_output.velocity[10 + voffset] = v[21]

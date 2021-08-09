@@ -91,12 +91,19 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
+
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
   plant.Finalize();
 
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
+
+  // Create maps for joints
+  std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+  std::map<std::string, int> vel_map =
+      multibody::makeNameToVelocitiesMap(plant);
+  std::map<std::string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();

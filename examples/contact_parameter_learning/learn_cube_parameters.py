@@ -2,7 +2,9 @@ import nevergrad as ng
 import cube_sim
 import drake_cube_sim
 import mujoco_cube_sim
+import bullet_cube_sim
 import os
+import sys
 from json import dump, load
 from random import sample, choice
 import numpy as np
@@ -21,14 +23,14 @@ mujoco_data_folder = os.path.join(os.getcwd(),
 log_folder = os.path.join(os.getcwd(), 'examples/contact_paramter_learning/logs/cube')
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
-                                    vel=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
-                                    omega=0.25*np.ones((3,)))
+                                    vel=(0.1/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
+                                    omega=0.1*np.ones((3,)))
 
 batch_size = 25
 num_workers = 1
 num_trials = 550
 num_train = 445
-budget = 5000
+budget = 10000
 num_test = num_trials - num_train
 
 # Make a list of train and test trials 
@@ -137,7 +139,45 @@ def learn_mujoco_params():
         optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
     save_params('mujoco', 809, optimal_params.value)
 
+####################################
+## BULLET FUNCTIONS
+
+def get_bullet_loss_mp(params):
+    loss_sum = 0
+    for i in range(batch_size):
+        loss_sum += get_bullet_loss(params)
+    print(loss_sum / batch_size)
+    return loss_sum / batch_size
+
+def get_bullet_loss(params, trial_num=None):
+    if (trial_num == None): trial_num = choice(training_idxs)
+    sim = bullet_cube_sim.BulletCubeSim(visualize=False)
+    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
+
+def learn_bullet_params():
+    optimization_param = ng.p.Dict(
+        stiffness=ng.p.Scalar(lower=100, upper=10000),
+        damping=ng.p.Scalar(lower=0, upper=1000),
+        restitution=ng.p.Scalar(lower=0.01, upper=0.3),
+        mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
+        mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
+        mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
+    )
+    optimization_param.value=bullet_cube_sim.default_bullet_contact_params
+    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
+    with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
+        optimal_params = optimizer.minimize(get_bullet_loss_mp, executor=executor, batch_mode=True)
+    save_params('bullet', 809, optimal_params.value)
 
 if (__name__ == '__main__'):
-    learn_mujoco_params()
-    #learn_drake_params()
+    sim_choice = sys.argv[1]
+
+    if (sim_choice == 'drake'):
+        learn_drake_params()
+    elif (sim_choice == 'mujoco'):
+        learn_mujoco_params
+    elif (sim_choice == 'bullet'):
+        learn_bullet_params()
+
+    else:
+        print('please pick a simulator')

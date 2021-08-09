@@ -109,8 +109,6 @@ class DrakeCubeSim(CubeSim):
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()))
 
-        cube_state = self.reexpress_state_global_to_local_omega(cube_state)
-
         data_arr[0, CUBE_DATA_QUATERNION_SLICE] = cube_state[0:4]
         data_arr[0, CUBE_DATA_POSITION_SLICE] = cube_state[4:7]
         data_arr[0, CUBE_DATA_OMEGA_SLICE] = cube_state[7:10]
@@ -119,6 +117,7 @@ class DrakeCubeSim(CubeSim):
         new_time = self.sim.get_mutable_context().get_time() + dt
         self.sim.AdvanceTo(new_time)
 
+        data_arr[0] = self.reexpress_state_global_to_local_omega(data_arr[0])
         return data_arr
 
     def set_initial_condition(self, state):

@@ -82,6 +82,7 @@ def init_cassie_out():
   return
 
 def pack_robot_output(robot_output, q, v, u, t):
+  robot_output.utime = int(t * 1e6)
   # If we are not in a floating base, need to skip the first 7 postions
   # (x,y,z,quat) and the first 6 velocities (linear and ang. velocity)
   qoffset = 0

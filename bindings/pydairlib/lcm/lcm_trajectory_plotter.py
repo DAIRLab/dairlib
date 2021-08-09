@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt, u_traj = PiecewisePolynomial.Zeros()
 from pydairlib.lcm import lcm_trajectory
 import numpy as np
 from pydrake.trajectories import PiecewisePolynomial

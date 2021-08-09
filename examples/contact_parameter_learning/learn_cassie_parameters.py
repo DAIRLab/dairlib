@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5)
 loss_over_time = []
 pen_allow_over_time = []
-log_num = '15'
-budget = 2500
+log_num = '02'
+budget = 250
 
 def get_drake_loss(params):
   sim_id = sim.run(params, log_num)

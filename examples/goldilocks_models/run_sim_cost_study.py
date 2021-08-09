@@ -134,10 +134,21 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
     lcmlog_file_path(rom_iter_idx, log_idx),
   ]
 
-  # print(' '.join(planner_cmd))
-  # print(' '.join(controller_cmd))
-  # print(' '.join(simulator_cmd))
-  # input("type anything to continue")
+  # Testing code to get command
+  # if (rom_iter_idx == 100) and (log_idx == 37) and (not get_init_file):
+  #   print(' '.join(planner_cmd))
+  #   print(' '.join(controller_cmd))
+  #   print(' '.join(simulator_cmd))
+  #   input("type anything to continue")
+  # else:
+  #   return
+
+  path = eval_dir + "%d_%d_commands.txt" % (rom_iter_idx, log_idx)
+  f = open(path, "w")
+  f.write(' '.join(planner_cmd))
+  f.write(' '.join(controller_cmd))
+  f.write(' '.join(simulator_cmd))
+  f.close()
 
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)

@@ -20,6 +20,8 @@ drake_data_folder = os.path.join(os.getcwd(),
     'examples/contact_parameter_learning/simulated_cube_trajectories/drake')
 mujoco_data_folder = os.path.join(os.getcwd(), 
     'examples/contact_parameter_learning/simulated_cube_trajectories/mujoco')
+bullet_data_folder = os.path.join(os.getcwd(), 
+    'examples/contact_parameter_learning/simulated_cube_trajectories/bullet')
 log_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/logs/cube')
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 
@@ -28,6 +30,7 @@ default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones(
                                     omega=0.1*np.ones((3,)))
 
 SIM_ERROR_LOSS = 100
+
 batch_size = 25
 num_workers = 1
 num_trials = 550
@@ -75,37 +78,6 @@ def log_optimization(sim_name, test, loss, weights, params_over_time, optimal_pa
     params_filename = os.path.join(model_folder, datetime_str +'.json')
     with open(params_filename, 'w+') as fp:
         dump(optimal_params, fp)
-
-def save_params(simulator, id, params):
-    filename = os.path.join(model_folder, simulator + str(id) +'.json')
-    with open(filename, 'w+') as fp:
-        dump(params, fp)
-
-def load_params(simulator, id):
-    filename = os.path.join(model_folder, simulator + str(id) +'.json')
-    with open(filename, 'r+') as fp:
-        return load(fp)
-
-def visualize_learned_params(params, sim, toss_id):
-    cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
-    initial_state = cube_data[0].ravel()
-
-    vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
-
-    if (sim == 'mujoco'):
-        data_sim = mujoco_cube_sim.MujocoCubeSim()
-    elif (sim == 'drake'):
-        data_sim = drake_cube_sim.DrakeCubeSim()
-    elif (sim == 'bullet'):
-        data_sim = bullet_cube_sim.BulletCubeSim()
-
-    data_sim.init_sim(params)
-    sim_data = data_sim.get_sim_traj_initial_state(initial_state, cube_data.shape[0], cube_sim.CUBE_DATA_DT)
-
-    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.2)
-
-
-    
 
 ####################################
 ## DRAKE FUNCTIONS
@@ -176,7 +148,7 @@ def learn_mujoco_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
     with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
-    save_params('mujoco', 811, optimal_params.value)
+
     log_optimization('mujoco', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
 
 
@@ -217,13 +189,6 @@ def learn_bullet_params():
 
 if (__name__ == '__main__'):
     sim_choice = sys.argv[1]
-
-    if (len(sys.argv) > 2):
-        params_file_id = sys.argv[2]
-        toss_id = sys.argv[3]
-        print(f'Visualizing toss {toss_id} in {sim_choice} simulator with params from {params_file_id}')
-        params = load_params(sim_choice, params_file_id)
-        visualize_learned_params(params, sim_choice, toss_id)
 
     if (sim_choice == 'drake'):
         learn_drake_params()

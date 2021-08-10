@@ -39,7 +39,7 @@ class CubeSim(ABC):
     def make_traj_timestamps(self, traj):
         return np.arange(0.0, CUBE_DATA_DT * (traj.shape[0]), CUBE_DATA_DT)
 
-    def make_comparison_plot(self, params, data_folder, toss_id):
+    def make_comparison_plots(self, params, data_folder, toss_id):
         data_traj = load_cube_toss(make_cube_toss_filename(data_folder, toss_id))
         _, data_traj = get_window_around_contact_event(data_traj)
         self.init_sim(params)

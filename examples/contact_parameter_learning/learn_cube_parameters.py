@@ -20,37 +20,61 @@ drake_data_folder = os.path.join(os.getcwd(),
     'examples/contact_parameter_learning/simulated_cube_trajectories/drake')
 mujoco_data_folder = os.path.join(os.getcwd(), 
     'examples/contact_parameter_learning/simulated_cube_trajectories/mujoco')
-log_folder = os.path.join(os.getcwd(), 'examples/contact_paramter_learning/logs/cube')
+log_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/logs/cube')
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
+
 default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
-                                    vel=(0.1/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
+                                    vel=(0.5/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
                                     omega=0.1*np.ones((3,)))
 
+SIM_ERROR_LOSS = 100
 batch_size = 25
 num_workers = 1
 num_trials = 550
 num_train = 445
-budget = 10000
+budget = 2000
 num_test = num_trials - num_train
 
 # Make a list of train and test trials 
 trial_idxs = range(num_trials)
 training_idxs = sample(trial_idxs, num_train)
-test_idxs = [idx if not (idx in training_idxs) else [] for idx in trial_idxs]
+test_idxs = [idx for idx in trial_idxs if not (idx in training_idxs)]
 
-def log_optimization(sim_name, loss, weights, params):
-    datetime_str = time.strftime("%Y_%m_%d_%H%M%S")
-    base_filename = os.path.join(log_folder, sim_name + '_' + datetime_str + '_')
+
+loss_over_time = []
+params_over_time = []
+
+
+def log_optimization(sim_name, test, loss, weights, params_over_time, optimal_params):
+    datetime_str = sim_name + '_' + time.strftime("%Y_%m_%d_%H_%M")
+    os.mkdir(os.path.join(log_folder, datetime_str))
+
+    base_filename = os.path.join(log_folder, datetime_str)
     loss_log_name = os.path.join(base_filename, 'loss.npy')
     weights_file_name = os.path.join(base_filename, 'weights.json')
+    test_idx_filename = os.path.join(base_filename, 'test_set.json') 
 
-    with open(loss_log_name, 'w+') as fpl:
+    params_names = optimal_params.keys()
+    for name in params_names:
+        param_vals = []
+        for i in range(len(params_over_time)):
+            param_vals.append(params_over_time[i][name])
+        filename = os.path.join(base_filename, name + '.npy')
+        with open(filename, 'wb+') as fp:
+            np.save(fp, np.array(param_vals))
+    
+    with open(test_idx_filename, 'w+') as fpt:
+        dump(test, fpt)
+
+    with open(loss_log_name, 'wb+') as fpl:
         np.save(fpl, loss)
 
-    with open(weights_file_name, 'w+') as fpw:
-        dump(weights, fpw)
+    with open(weights_file_name, 'wb+') as fpw:
+        weights.save(fpw)
 
-    save_params(sim_name, datetime_str, params)
+    params_filename = os.path.join(model_folder, datetime_str +'.json')
+    with open(params_filename, 'w+') as fp:
+        dump(optimal_params, fp)
 
 def save_params(simulator, id, params):
     filename = os.path.join(model_folder, simulator + str(id) +'.json')
@@ -91,12 +115,19 @@ def get_drake_loss_mp(params):
     for i in range(batch_size):
         loss_sum += get_drake_loss(params)
     print(loss_sum / batch_size)
+
+    params_over_time.append(params)
+    loss_over_time.append(loss_sum / batch_size)
     return loss_sum / batch_size
 
 def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
-    sim = drake_cube_sim.DrakeCubeSim(visualize=False)
-    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
+    try:
+        sim = drake_cube_sim.DrakeCubeSim(visualize=False)
+        loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
+    except:
+        loss = SIM_ERROR_LOSS
+    return loss
 
 def learn_drake_params():
     
@@ -111,7 +142,8 @@ def learn_drake_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
     with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         optimal_params = optimizer.minimize(get_drake_loss_mp, executor=executor, batch_mode=True)
-    save_params('drake', 809, optimal_params.value)
+
+    log_optimization('drake', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
 
 ####################################
 ## MUJOCO FUNCTIONS
@@ -121,6 +153,9 @@ def get_mujoco_loss_mp(params):
     for i in range(batch_size):
         loss_sum += get_mujoco_loss(params)
     print(loss_sum / batch_size)
+
+    params_over_time.append(params)
+    loss_over_time.append(loss_sum / batch_size)
     return loss_sum / batch_size
 
 def get_mujoco_loss(params, trial_num=None):
@@ -141,7 +176,9 @@ def learn_mujoco_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
     with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
-    save_params('mujoco', 809, optimal_params.value)
+    save_params('mujoco', 811, optimal_params.value)
+    log_optimization('mujoco', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
+
 
 ####################################
 ## BULLET FUNCTIONS
@@ -151,6 +188,9 @@ def get_bullet_loss_mp(params):
     for i in range(batch_size):
         loss_sum += get_bullet_loss(params)
     print(loss_sum / batch_size)
+
+    params_over_time.append(params)
+    loss_over_time.append(loss_sum / batch_size)
     return loss_sum / batch_size
 
 def get_bullet_loss(params, trial_num=None):
@@ -171,7 +211,9 @@ def learn_bullet_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
     with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         optimal_params = optimizer.minimize(get_bullet_loss_mp, executor=executor, batch_mode=True)
-    save_params('bullet', 809, optimal_params.value)
+    
+    log_optimization('bullet', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
+    
 
 if (__name__ == '__main__'):
     sim_choice = sys.argv[1]
@@ -186,7 +228,7 @@ if (__name__ == '__main__'):
     if (sim_choice == 'drake'):
         learn_drake_params()
     elif (sim_choice == 'mujoco'):
-        learn_mujoco_params
+        learn_mujoco_params()
     elif (sim_choice == 'bullet'):
         learn_bullet_params()
 

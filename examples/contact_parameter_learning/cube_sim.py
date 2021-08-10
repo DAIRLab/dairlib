@@ -4,6 +4,7 @@ import numpy as np
 import os
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
+import pickle
 
 CUBE_DATA_DT = 1.0/148.0
 CUBE_DATA_HZ = 148.0
@@ -69,7 +70,6 @@ class CubeSim(ABC):
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE], inverse=True)
         return new_state
 
-
 class LossWeights():
 
     def __init__(self, debug=False,
@@ -82,7 +82,13 @@ class LossWeights():
         self.omega = np.diag(omega)
         self.quat = quat
         self.debug=debug
-    
+
+    def save(self, fp):
+        self.pos = self.pos.tolist()
+        self.vel = self.vel.tolist()
+        self.omega = self.omega.tolist()
+        pickle.dump(self, fp)
+
     def CalcPositionsLoss(self, traj1, traj2):
         diff = traj1 - traj2
         return np.dot(diff.ravel(), (diff @ self.pos).ravel()) / diff.shape[0]
@@ -119,6 +125,14 @@ class LossWeights():
         R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
         Rel = R1 * R2.inv()
         return np.linalg.norm(Rel.as_rotvec()) ** 2
+
+    @classmethod
+    def load_weights(cls, fp):
+        loss_weights = pickle.load(fp)
+        loss_weights.pos = np.array(loss_weights.pos)
+        loss_weights.vel = np.array(loss_weights.vel)
+        loss_weights.omega = np.array(loss_weights.omega)
+        return loss_weights
 
 def make_cube_toss_filename(data_folder, toss_id):
     return os.path.join(data_folder, str(toss_id) + '.pt')

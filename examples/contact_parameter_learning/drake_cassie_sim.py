@@ -22,12 +22,13 @@ class DrakeCassieSim():
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
     self.start_time = 30.595
-    self.sim_time = 0.5
+    self.sim_time = 0.25
     self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
-    self.realtime_rate = 1.0
+    self.realtime_rate = 2.0
     self.ps = plot_styler.PlotStyler()
-    self.ps.set_default_styling()
+    self.ps.set_default_styling(
+      directory='/home/yangwill/Documents/research/projects/impact_uncertainty/figures/learning_parameters')
     self.default_drake_contact_params = {
       "mu_static": 0.8,
       "mu_ratio": 1.0,
@@ -73,7 +74,6 @@ class DrakeCassieSim():
 
   def run(self, params, log_num):
     # params
-
 
     penetration_allowance = self.default_drake_contact_params['pen_allow']
     mu_static = self.default_drake_contact_params['mu_static']

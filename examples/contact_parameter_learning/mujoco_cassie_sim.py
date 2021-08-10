@@ -21,7 +21,7 @@ class LearningMujocoCassieSim():
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/mujoco_cassie_params/"
     self.start_time = 30.595
-    self.sim_time = 0.5
+    self.sim_time = 0.1
     self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
     self.default_mujoco_contact_params = {

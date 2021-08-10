@@ -130,6 +130,7 @@ class MujocoCassieSim():
     # x_init.set_qpos(qpos)
     # x_init.set_qvel(qvel)
     # self.cassie_env.set_state(x_init)
+    np.set_printoptions(precision=4)
 
     while self.cassie_env.time() < end_time:
       now = time.time()  # get the time
@@ -137,6 +138,9 @@ class MujocoCassieSim():
       if len(self.input_sub.message.efforts) != 0:
         u = self.unpack_robot_in(self.input_sub.message)
       q, v, u, t = self.sim_step(u)
+      print(q)
+      # print(v)
+      import pdb; pdb.set_trace()
       if (self.publish_state):
         robot_output = pack_robot_output(self.robot_output, q, v, u, t)
         self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())

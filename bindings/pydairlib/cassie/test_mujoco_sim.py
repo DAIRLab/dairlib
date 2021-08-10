@@ -31,6 +31,6 @@ def test_playback():
 
 
 if __name__ == '__main__':
-  # test_default()
-  test_playback()
+  test_default()
+  # test_playback()
   # sim.run_sim(0.0, 30.0)

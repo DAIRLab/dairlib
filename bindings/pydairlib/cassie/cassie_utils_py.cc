@@ -21,10 +21,10 @@ PYBIND11_MODULE(cassie_utils, m) {
       .def("RightToeFront", &dairlib::RightToeFront<double>)
       .def("LeftToeRear", &dairlib::LeftToeRear<double>)
       .def("RightToeRear", &dairlib::RightToeRear<double>)
-      .def("LeftRodOnThigh", &dairlib::LeftRodOnThigh<double>)
-      .def("RightRodOnThigh", &dairlib::RightRodOnThigh<double>)
-      .def("LeftRodOnHeel", &dairlib::LeftRodOnHeel<double>)
-      .def("RightRodOnHeel", &dairlib::RightRodOnHeel<double>)
+      .def("LeftRodOnThigh", &dairlib::LeftRodOnThigh<double>, py::return_value_policy::reference)
+      .def("RightRodOnThigh", &dairlib::RightRodOnThigh<double>, py::return_value_policy::reference)
+      .def("LeftRodOnHeel", &dairlib::LeftRodOnHeel<double>, py::return_value_policy::reference)
+      .def("RightRodOnHeel", &dairlib::RightRodOnHeel<double>, py::return_value_policy::reference)
       .def("LeftLoopClosureEvaluator",
            &dairlib::LeftLoopClosureEvaluator<double>, py::arg("plant"))
       .def("RightLoopClosureEvaluator",

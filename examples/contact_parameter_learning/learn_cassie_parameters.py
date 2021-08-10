@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5)
 loss_over_time = []
 pen_allow_over_time = []
-log_num = '01'
-budget = 1000
+log_num = '28'
+budget = 2500
 
 def get_drake_loss(params):
   sim_id = sim.run(params, log_num)
@@ -71,7 +71,7 @@ def learn_mujoco_cassie_params():
 def plot_loss_trajectory():
   loss_t = np.load(sim.params_folder + log_num + '_loss_trajectory_' + str(budget) + '.npy')
   pen_allow_t = np.load(sim.params_folder + log_num + '_pen_allow_trajectory_' + str(budget) + '.npy')
-  sim.ps.scatter(pen_allow_t, loss_t)
+  sim.ps.scatter(pen_allow_t, loss_t, xlabel='penetration_allowance (m)', ylabel='loss')
   plt.show()
 
 def print_drake_cassie_params():

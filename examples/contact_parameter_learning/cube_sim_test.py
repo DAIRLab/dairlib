@@ -3,7 +3,7 @@ import mujoco_cube_sim
 import drake_cube_sim
 import bullet_cube_sim
 import cube_sim
-from learn_cube_parameters import cube_data_folder, drake_data_folder, mujoco_data_folder, num_trials
+from learn_cube_parameters import cube_data_folder, drake_data_folder, mujoco_data_folder, bullet_data_folder, num_trials
 
 test_state = np.array([ 0.18629883,  0.02622872,  1.89283257, -0.52503014,  0.39360754,
        -0.29753734, -0.67794127,  0.01438053,  1.29095332, -0.21252927,
@@ -34,6 +34,16 @@ def make_mujoco_sim_tests():
     sim = mujoco_cube_sim.MujocoCubeSim(visualize=False)
     cube_sim.make_simulated_traj_data_for_training(mujoco_cube_sim.default_mujoco_contact_params, 
     range(num_trials), cube_data_folder, mujoco_data_folder, sim)
+
+def make_drake_sim_tests():
+    sim = drake_cube_sim.DrakeCubeSim(visualize=False)
+    cube_sim.make_simulated_traj_data_for_training(drake_cube_sim.default_drake_contact_params, 
+    range(num_trials), cube_data_folder, drake_data_folder, sim)
+
+def make_bullet_sim_tests():
+    sim = bullet_cube_sim.BulletCubeSim(visualize=False)
+    cube_sim.make_simulated_traj_data_for_training(bullet_cube_sim.default_bullet_contact_params, 
+    range(num_trials), cube_data_folder, bullet_data_folder, sim)
 
 if (__name__ == "__main__"):
     #make_mujoco_sim_tests()

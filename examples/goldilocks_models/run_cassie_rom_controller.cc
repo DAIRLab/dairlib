@@ -156,6 +156,12 @@ int DoMain(int argc, char* argv[]) {
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
+  if (gains.set_constant_walking_speed) {
+    // We require global_target_position_x so that the desired yaw position is
+    // towards x axis direction
+    DRAKE_DEMAND(gains.global_target_position_x >= 100);
+  }
+
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
                          ? "examples/Cassie/urdf/cassie_v2.urdf"

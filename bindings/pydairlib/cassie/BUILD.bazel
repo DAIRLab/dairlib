@@ -41,6 +41,7 @@ py_binary(
     deps = [
         ":mujoco_lcm_utils",
         "@drake//bindings/pydrake",
+                "//bindings/pydairlib/lcm",
         "@lcm//:lcm-python",
     ],
 )

@@ -134,8 +134,8 @@ def pack_robot_output(robot_output, q, v, u, t):
     robot_output.velocity[i] = v[6 - voffset + i]
 
   # Convert rotational velocity to global frame
-  rot = R.from_quat([q[6], q[3], q[4], q[5]])
-  robot_output.velocity[3:6] = rot.as_dcm() @ robot_output.velocity[3:6]
+  # rot = R.from_quat([q[6], q[3], q[4], q[5]])
+  # robot_output.velocity[3:6] = rot.as_dcm() @ robot_output.velocity[3:6]
   # remainder of left leg
   robot_output.velocity[3 + voffset] = v[12]  # knee
   robot_output.velocity[4 + voffset] = v[18]  # foot

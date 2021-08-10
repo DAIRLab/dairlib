@@ -36,34 +36,20 @@ class CubeSim(ABC):
             x_sim[i,:] = self.sim_step(dt)
         return x_sim
 
-    def make_traj_timestamps(self, traj):
+    @classmethod
+    def make_traj_timestamps(cls, traj):
         return np.arange(0.0, CUBE_DATA_DT * (traj.shape[0]), CUBE_DATA_DT)
 
-    def make_comparison_plots(self, params, data_folder, toss_id):
-        data_traj = load_cube_toss(make_cube_toss_filename(data_folder, toss_id))
-        _, data_traj = get_window_around_contact_event(data_traj)
-        self.init_sim(params)
-        sim_traj = self.get_sim_traj_initial_state(data_traj[0], data_traj.shape[0], CUBE_DATA_DT)
-
-        tvec = self.make_traj_timestamps(data_traj)
-        position_error = np.linalg.norm(data_traj[:,CUBE_DATA_POSITION_SLICE] - sim_traj[:,CUBE_DATA_POSITION_SLICE], axis=1)
-        position_error /= BLOCK_HALF_WIDTH
-        vel_error = np.linalg.norm(data_traj[:,CUBE_DATA_VELOCITY_SLICE] - sim_traj[:,CUBE_DATA_VELOCITY_SLICE], axis=1)
-        vel_error /= BLOCK_HALF_WIDTH
-        omega_error = np.linalg.norm(data_traj[:,CUBE_DATA_OMEGA_SLICE] - sim_traj[:,CUBE_DATA_OMEGA_SLICE], axis=1)
-
-        plt.plot(tvec, position_error)
-        plt.show()
-
-
-    def reexpress_state_local_to_global_omega(self, state):
+    @classmethod
+    def reexpress_state_local_to_global_omega(cls, state):
         new_state = state.ravel()
         q = new_state[CUBE_DATA_QUATERNION_SLICE]
         rot = R.from_quat([q[1], q[2], q[3], q[0]])
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE])
         return new_state
 
-    def reexpress_state_global_to_local_omega(self, state):
+    @classmethod
+    def reexpress_state_global_to_local_omega(cls, state):
         new_state = state.ravel()
         q = new_state[CUBE_DATA_QUATERNION_SLICE]
         rot = R.from_quat([q[1], q[2], q[3], q[0]])
@@ -118,13 +104,14 @@ class LossWeights():
         if (self.debug): print(f'l_pos: {l_pos}, l_vel: {l_vel}, l_omega: {l_omega}, l_quat: {l_quat}')
         return l_pos + l_vel + l_omega + l_quat
 
-    def calc_rotational_distance(self, quat1, quat2):
+    @classmethod
+    def calc_rotational_distance(cls, quat1, quat2):
         q1 = quat1.ravel()
         q2 = quat2.ravel()
         R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
         R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
         Rel = R1 * R2.inv()
-        return np.linalg.norm(Rel.as_rotvec()) ** 2
+        return np.linalg.norm(Rel.as_rotvec())
 
     @classmethod
     def load_weights(cls, fp):
@@ -140,11 +127,6 @@ def make_cube_toss_filename(data_folder, toss_id):
 def make_simulated_toss_filename(data_folder, toss_id):
     return os.path.join(data_folder, str(toss_id) + '.npy')
 
-
-def get_window_around_contact_event(state_traj):
-    # return whole trajectory for now
-    window = slice(0, state_traj.shape[0],1)
-    return window, state_traj
 
 def load_cube_toss(filename):
     data_all = torch_load(filename)
@@ -175,13 +157,12 @@ def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, weights=Lo
         state_traj = load_sim_traj(make_simulated_toss_filename(data_folder, toss_id))
     else:
         state_traj = load_cube_toss(make_cube_toss_filename(data_folder, toss_id))
-    window, state_traj_in_window = get_window_around_contact_event(state_traj)
 
     sim.init_sim(contact_params)
 
     simulated_trajectory = sim.get_sim_traj_initial_state(
-        state_traj_in_window[0], state_traj_in_window.shape[0], CUBE_DATA_DT)
-    loss = weights.CalculateLoss(simulated_trajectory, state_traj_in_window)
+        state_traj[0], state_traj.shape[0], CUBE_DATA_DT)
+    loss = weights.CalculateLoss(simulated_trajectory, state_traj)
     if(debug):
         print(f'toss id: {toss_id}\t\tloss: {loss}')
     return loss # normalize loss by duration of the trajectory

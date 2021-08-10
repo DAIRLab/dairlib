@@ -198,4 +198,4 @@ if (__name__ == '__main__'):
         learn_bullet_params()
 
     else:
-        print('please pick a simulator')
+        print('please pick a supported simulator')

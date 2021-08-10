@@ -35,13 +35,23 @@ py_library(
     ],
 )
 
+py_library(
+    name = "drake_to_mujoco_converter",
+    srcs = ["drake_to_mujoco_converter.py"],
+    deps = [
+        "@drake//bindings/pydrake",
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 py_binary(
     name = "mujoco_sim",
     srcs = ["mujoco_sim.py"],
     deps = [
         ":mujoco_lcm_utils",
         "@drake//bindings/pydrake",
-                "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/lcm",
         "@lcm//:lcm-python",
     ],
 )

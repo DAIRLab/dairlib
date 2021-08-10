@@ -65,19 +65,23 @@ def load_params(simulator, id):
 def visualize_learned_params(params, sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
     initial_state = cube_data[0].ravel()
-    
+
+    vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
+
     if (sim == 'mujoco'):
-        vis_sim_params = mujoco_cube_sim.MujocoCubeSim(visualize=True)
-        vis_sim_data = mujoco_cube_sim.MujocoCubeSim(visualize=True)
-        vis_sim_data.init_sim(mujoco_cube_sim.default_mujoco_contact_params)
+        data_sim = mujoco_cube_sim.MujocoCubeSim()
     elif (sim == 'drake'):
-        vis_sim_params = drake_cube_sim.DrakeCubeSim(visualize=True)
-        vis_sim_data = drake_cube_sim.DrakeCubeSim(visualize=True)
-        vis_sim_data.init_sim(drake_cube_sim.default_drake_contact_params)
+        data_sim = drake_cube_sim.DrakeCubeSim()
+    elif (sim == 'bullet'):
+        data_sim = bullet_cube_sim.BulletCubeSim()
+
+    data_sim.init_sim(params)
+    sim_data = data_sim.get_sim_traj_initial_state(initial_state, cube_data.shape[0], cube_sim.CUBE_DATA_DT)
+
+    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.2)
+
+
     
-    vis_sim_data.make_comparison_plot(params, cube_data_folder, toss_id)
-    vis_sim_data.visualize_data_rollout(cube_data)
-    vis_sim_params.visualize_sim_rollout(params, initial_state, cube_data.shape[0])
 
 ####################################
 ## DRAKE FUNCTIONS
@@ -171,6 +175,13 @@ def learn_bullet_params():
 
 if (__name__ == '__main__'):
     sim_choice = sys.argv[1]
+
+    if (len(sys.argv) > 2):
+        params_file_id = sys.argv[2]
+        toss_id = sys.argv[3]
+        print(f'Visualizing toss {toss_id} in {sim_choice} simulator with params from {params_file_id}')
+        params = load_params(sim_choice, params_file_id)
+        visualize_learned_params(params, sim_choice, toss_id)
 
     if (sim_choice == 'drake'):
         learn_drake_params()

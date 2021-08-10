@@ -100,6 +100,57 @@ class DrakeCubeSim(CubeSim):
         self.diagram = self.builder.Build()
         self.sim = Simulator(self.diagram)
         self.sim.set_publish_every_time_step(True)
+
+    def visualize_two_cubes(self, cube_data, sim_data, realtime_rate):
+        self.builder = DiagramBuilder()
+        
+        # Add a cube as MultibodyPlant
+        self.plant = MultibodyPlant(self.drake_sim_dt)
+        self.scene_graph = self.builder.AddSystem(SceneGraph())
+        plant_id = self.plant.RegisterAsSourceForSceneGraph(self.scene_graph)
+
+        terrain_normal=np.array([0.0, 0.0, 1.0])
+        terrain_point=np.zeros((3,))
+        terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
+        X_WG = RigidTransform(HalfSpace.MakePose(terrain_normal, terrain_point))
+        red_cube = Parser(self.plant).AddModelFromFile(
+            FindResourceOrThrow(
+                "examples/contact_parameter_learning/urdf/cube.urdf"), model_name="red_cube")
+        blue_cube = Parser(self.plant).AddModelFromFile(
+            FindResourceOrThrow(
+                "examples/contact_parameter_learning/urdf/cube_blue.urdf"), model_name="blue_cube")
+        self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(10, 10, 0.001), "visual", terrain_color)
+        self.plant.Finalize()
+        
+        # Setup trajectory source
+        t_traj = self.make_traj_timestamps(cube_data)
+        cube_data_converted = np.zeros((14,cube_data.shape[0]))
+        cube_data_converted[0:4,:] = cube_data[:,CUBE_DATA_QUATERNION_SLICE].T
+        cube_data_converted[4:7,:] = cube_data[:,CUBE_DATA_POSITION_SLICE].T
+        cube_data_converted[7:11,:] = sim_data[:,CUBE_DATA_QUATERNION_SLICE].T
+        cube_data_converted[11:,:] = sim_data[:,CUBE_DATA_POSITION_SLICE].T
+
+        pp_traj = PiecewisePolynomial.FirstOrderHold(t_traj, cube_data_converted)
+        
+        # Wire up the simulation
+        self.traj_source = self.builder.AddSystem(TrajectorySource(pp_traj))
+        self.q_to_pose = self.builder.AddSystem(MultibodyPositionToGeometryPose(self.plant))
+        self.builder.Connect(self.traj_source.get_output_port(), self.q_to_pose.get_input_port())
+        self.builder.Connect(self.q_to_pose.get_output_port(), self.scene_graph.get_source_pose_port(plant_id))        
+        
+        DrakeVisualizer.AddToBuilder(self.builder, self.scene_graph)
+        self.diagram = self.builder.Build()
+        self.sim = Simulator(self.diagram)
+        self.sim.set_publish_every_time_step(True)
+
+        t_end = CUBE_DATA_DT * cube_data.shape[0]
+        self.sim.set_target_realtime_rate(realtime_rate)
+        
+        while(True):
+            self.sim.get_mutable_context().SetTime(0.0)
+            self.sim.Initialize()
+            self.sim.AdvanceTo(t_end)
+
         
 
     def sim_step(self, dt):

@@ -99,9 +99,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,
                        double time) const;
-  void setInitialPelvisPose(drake::systems::Context<double>* context,
-                            Eigen::Vector4d quat,
-                            Eigen::Vector3d position) const;
+  void setInitialPelvisPose(
+      drake::systems::Context<double>* context, Eigen::Vector4d quat,
+      Eigen::Vector3d position,
+      Eigen::Vector3d pelvis_vel = Eigen::Vector3d::Zero()) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
                                  const Eigen::VectorXd& imu_value) const;
 

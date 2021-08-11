@@ -69,6 +69,10 @@ DEFINE_int64(test_mode, -1,
              "2: both feet always in contact with the ground until contact is"
              " detected in which case it swtiches to test mode -1.");
 
+// Initial condition (used for simulation)
+DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
+DEFINE_double(pelvis_y_vel, 0, "for stability");
+
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
 // Note that we assume the ground is flat in the IK.
@@ -132,12 +136,15 @@ void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "q sol = " << q_sol.transpose() << "\n\n";
 
+  // Pelvis vel
+  Vector3d pelvis_vel(FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel, 0);
+
   // Set initial time and floating base position
   auto& state_estimator_context =
       diagram.GetMutableSubsystemContext(state_estimator, diagram_context);
   state_estimator.setPreviousTime(&state_estimator_context, t0);
   state_estimator.setInitialPelvisPose(&state_estimator_context, q_sol.head(4),
-                                       q_sol.segment<3>(4));
+                                       q_sol.segment<3>(4), pelvis_vel);
   // Set initial imu value
   // Note that initial imu values are all 0 if the robot is dropped from the air
   Eigen::VectorXd init_prev_imu_value = Eigen::VectorXd::Zero(6);

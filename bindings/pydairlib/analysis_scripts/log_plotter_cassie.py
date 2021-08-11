@@ -145,11 +145,11 @@ def main():
   #
   # PlotVdot(x, t_x, x_datatypes, True)
 
-  PlotOscQpSol(t_osc_debug, osc_output)
+  PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
   plt.show()
 
-def PlotOscQpSol(t_osc_debug, osc_output):
+def PlotOscQpSol(t_osc_debug, osc_output, fsm):
   if len(osc_output) == 0:
     raise ValueError("osc_output is empty. Check the channel name.")
 
@@ -194,6 +194,7 @@ def PlotOscQpSol(t_osc_debug, osc_output):
 
   plt.figure("Qp solve time " + filename)
   plt.plot(t_osc_debug[:], solve_time)
+  plt.plot(t_osc_debug[t_u_slice], 0.0005 * fsm[t_u_slice])
 
 
 

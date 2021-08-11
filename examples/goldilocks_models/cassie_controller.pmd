@@ -35,7 +35,7 @@ group "1.rom-space-controller" {
 
 group "1.0.dispatchers" {
     cmd "4.dispatcher-robot-out (lcm, floating-base)" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true --pelvis_y_vel=0.3";
         host = "localhost";
     }
     cmd "1.dispatcher-robot-in" {

@@ -12,6 +12,7 @@ using std::endl;
 
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;
+using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
@@ -184,43 +185,46 @@ PlannerFinalPosition::PlannerFinalPosition(
 void PlannerFinalPosition::CalcFinalPos(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* local_final_pos_output) const {
-  double init_phase =
-      this->EvalVectorInput(context, phase_port_)->get_value()(0);
-  // Read in current robot state
-  const VectorXd& current_pelvis_pos_xy =
-      static_cast<const OutputVector<double>*>(
-          this->EvalVectorInput(context, state_port_))
-          ->GetPositions()
-          .segment<2>(4);
-
-  Eigen::Vector2d pos_diff;
   if (use_const_step_length_) {
-    pos_diff = const_step_length_ * (n_step_ - init_phase);
+    double init_phase =
+        this->EvalVectorInput(context, phase_port_)->get_value()(0);
+    Vector2d local_pos_diff = const_step_length_ * (n_step_ - init_phase);
+
+    // Assign local_final_pos
+    local_final_pos_output->get_mutable_value() << local_pos_diff;
   } else {
-    pos_diff = global_target_pos_ - current_pelvis_pos_xy;
+    // Read in current robot state
+    const VectorXd& current_pelvis_pos_xy =
+        static_cast<const OutputVector<double>*>(
+            this->EvalVectorInput(context, state_port_))
+            ->GetPositions()
+            .segment<2>(4);
+
+    Vector2d global_pos_diff = global_target_pos_ - current_pelvis_pos_xy;
+
+    // Rotate the position from global to local
+    const VectorXd& quat = static_cast<const OutputVector<double>*>(
+        this->EvalVectorInput(context, state_port_))
+        ->GetPositions()
+        .head<4>();
+    Vector3d pelvis_x = Quaterniond(quat(0), quat(1), quat(2), quat(3))
+                            .toRotationMatrix()
+                            .col(0);
+    double yaw = atan2(pelvis_x(1), pelvis_x(0));
+    Eigen::Rotation2D<double> rot(-yaw);
+
+    // Assign local_final_pos
+    local_final_pos_output->get_mutable_value()
+        << rot.toRotationMatrix() * global_pos_diff;
+
+    /*cout << "current_pelvis_pos_xy = " << current_pelvis_pos_xy << endl;
+    cout << "pelvis_x = " << pelvis_x.transpose() << endl;
+    cout << "yaw = " << yaw << endl;
+    cout << "global_pos_diff = " << global_pos_diff.transpose() << endl;
+    cout << "rot = \n" << rot.toRotationMatrix() << endl;
+    cout << "rot * global_pos_diff = " << (rot.toRotationMatrix() * global_pos_diff).transpose()
+         << endl;*/
   }
-
-  // Rotate the position from global to local
-  const VectorXd& quat = static_cast<const OutputVector<double>*>(
-                             this->EvalVectorInput(context, state_port_))
-                             ->GetPositions()
-                             .head<4>();
-  Vector3d pelvis_x =
-      Quaterniond(quat(0), quat(1), quat(2), quat(3)).toRotationMatrix().col(0);
-  double yaw = atan2(pelvis_x(1), pelvis_x(0));
-  Eigen::Rotation2D<double> rot(-yaw);
-
-  // Assign local_final_pos
-  local_final_pos_output->get_mutable_value()
-      << rot.toRotationMatrix() * pos_diff;
-
-  /*cout << "current_pelvis_pos_xy = " << current_pelvis_pos_xy << endl;
-  cout << "pelvis_x = " << pelvis_x.transpose() << endl;
-  cout << "yaw = " << yaw << endl;
-  cout << "pos_diff = " << pos_diff.transpose() << endl;
-  cout << "rot = \n" << rot.toRotationMatrix() << endl;
-  cout << "rot * pos_diff = " << (rot.toRotationMatrix() * pos_diff).transpose()
-       << endl;*/
 }
 
 ///

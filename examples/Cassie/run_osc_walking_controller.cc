@@ -190,7 +190,8 @@ int DoMain(int argc, char* argv[]) {
   // Create finite state machine
   int left_stance_state = 0;
   int right_stance_state = 1;
-  int double_support_state = 2;
+  int post_left_double_support_state = 3;
+  int post_right_double_support_state = 4;
   double left_support_duration = gains.ss_time;
   double right_support_duration = gains.ss_time;
   double double_support_duration = gains.ds_time;
@@ -200,8 +201,8 @@ int DoMain(int argc, char* argv[]) {
     fsm_states = {left_stance_state, right_stance_state};
     state_durations = {left_support_duration, right_support_duration};
   } else {
-    fsm_states = {left_stance_state, double_support_state, right_stance_state,
-                  double_support_state};
+    fsm_states = {left_stance_state, post_left_double_support_state,
+                  right_stance_state, post_right_double_support_state};
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
   }
@@ -221,9 +222,11 @@ int DoMain(int argc, char* argv[]) {
                   liftoff_event_time->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
                   liftoff_event_time->get_input_port_state());
+  std::vector<int> double_support_states = {post_left_double_support_state,
+                                            post_right_double_support_state};
   auto touchdown_event_time =
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
-          plant_w_spr, std::vector<int>(1, double_support_state));
+          plant_w_spr, double_support_states);
   touchdown_event_time->set_name("touchdown_time");
   builder.Connect(fsm->get_output_port(0),
                   touchdown_event_time->get_input_port_fsm());
@@ -245,12 +248,15 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({right_toe_mid});
   } else {
     unordered_fsm_states = {left_stance_state, right_stance_state,
-                            double_support_state};
+                            post_left_double_support_state,
+        post_right_double_support_state};
     unordered_state_durations = {left_support_duration, right_support_duration,
+                                 double_support_duration,
                                  double_support_duration};
     contact_points_in_each_state.push_back({left_toe_mid});
     contact_points_in_each_state.push_back({right_toe_mid});
-    contact_points_in_each_state.push_back({left_toe_mid, right_toe_mid});
+    contact_points_in_each_state.push_back({left_toe_mid});
+    contact_points_in_each_state.push_back({right_toe_mid});
   }
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
@@ -414,10 +420,22 @@ int DoMain(int argc, char* argv[]) {
   osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
   if (!FLAGS_is_two_phase) {
-    osc->AddStateAndContactPoint(double_support_state, &left_toe_evaluator);
-    osc->AddStateAndContactPoint(double_support_state, &left_heel_evaluator);
-    osc->AddStateAndContactPoint(double_support_state, &right_toe_evaluator);
-    osc->AddStateAndContactPoint(double_support_state, &right_heel_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &left_toe_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &left_heel_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &right_toe_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &right_heel_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &left_toe_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &left_heel_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &right_toe_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &right_heel_evaluator);
   }
 
   // Swing foot tracking

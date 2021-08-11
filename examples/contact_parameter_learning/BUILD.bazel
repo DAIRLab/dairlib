@@ -78,6 +78,18 @@ py_binary(
 )
 
 py_binary(
+    name = "evaluate_cube_parameters",
+    srcs = ["evaluate_cube_parameters.py"],
+    deps = [
+        ":learn_cube_parameters",
+        ":cube_sim",
+        ":drake_cube_sim_py",
+        ":mujoco_cube_sim_py",
+        "//bindings/pydairlib/common:plot_styler"
+    ],
+)
+
+py_binary(
     name = "learn_cassie_parameters",
     srcs = ["learn_cassie_parameters.py"],
     deps = [

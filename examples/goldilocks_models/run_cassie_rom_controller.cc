@@ -4,10 +4,12 @@
 //  from local to global frame if the ROM is dependent on x, y or yaw.
 
 #include <string>
+
 #include <dairlib/lcmt_target_standing_height.hpp>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
+#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
@@ -28,6 +30,7 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/rom_walking_gains.h"
+#include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -42,8 +45,6 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-#include "dairlib/lcmt_dairlib_signal.hpp"
-#include "lcm/rom_planner_saved_trajectory.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -93,6 +94,7 @@ DEFINE_int32(iter, -1, "The iteration # of the model that you use");
 
 DEFINE_double(stride_length, -10000, "set constant walking stride length");
 DEFINE_double(stride_length_scaling, 1.0, "");
+DEFINE_double(turning_rate, -10000, "set constant turning rate");
 DEFINE_bool(start_with_left_stance, true, "");
 
 DEFINE_string(init_traj_file_name, "",
@@ -155,12 +157,20 @@ int DoMain(int argc, char* argv[]) {
     gains.constant_step_length_x = FLAGS_stride_length;
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
+  if (FLAGS_turning_rate > -100) {
+    gains.set_constant_turning_rate = true;
+    gains.constant_turning_rate = FLAGS_turning_rate;
+  }
 
-  if (gains.set_constant_walking_speed) {
+  if (gains.set_constant_walking_speed && !gains.set_constant_turning_rate) {
     // We require global_target_position_x so that the desired yaw position is
     // towards x axis direction
     DRAKE_DEMAND(gains.global_target_position_x >= 100);
   }
+
+  // TODO: (low priority) Check why it can only turn 180 degree with constant
+  //  walking turning rate.
+  // DRAKE_DEMAND(!gains.set_constant_turning_rate);
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
@@ -419,8 +429,10 @@ int DoMain(int argc, char* argv[]) {
         plant_w_spr, context_w_spr.get());
     builder.Connect(simulator_drift->get_output_port(0),
                     head_traj_gen->get_state_input_port());
-    builder.Connect(high_level_command->get_yaw_output_port(),
-                    head_traj_gen->get_yaw_input_port());
+    if (!gains.set_constant_turning_rate) {
+      builder.Connect(high_level_command->get_yaw_output_port(),
+                      head_traj_gen->get_yaw_input_port());
+    }
 
     // Create CoM trajectory generator
     double desired_com_height = gains.lipm_height;
@@ -718,7 +730,8 @@ int DoMain(int argc, char* argv[]) {
     mutable_state = traj_msg;
 
     // Set constant walking speed
-    if (gains.set_constant_walking_speed && !FLAGS_get_swing_foot_from_planner) {
+    if (gains.set_constant_walking_speed &&
+        !FLAGS_get_swing_foot_from_planner) {
       double const_walking_speed_x =
           gains.constant_step_length_x / stride_period;
 
@@ -729,6 +742,18 @@ int DoMain(int argc, char* argv[]) {
           &walking_speed_control_context,
           drake::systems::BasicVector<double>({const_walking_speed_x, 0}));
       cout << "Set constant walking speed " << const_walking_speed_x << endl;
+    }
+
+    // Set constant turning rate
+    if (gains.set_constant_turning_rate) {
+      auto& head_traj_gen_context =
+          loop.get_diagram()->GetMutableSubsystemContext(*head_traj_gen,
+                                                         &diagram_context);
+      head_traj_gen->get_yaw_input_port().FixValue(
+          &head_traj_gen_context,
+          drake::systems::BasicVector<double>({gains.constant_turning_rate}));
+      cout << "Set constant turning rate " << gains.constant_turning_rate
+           << endl;
     }
 
     loop.Simulate();

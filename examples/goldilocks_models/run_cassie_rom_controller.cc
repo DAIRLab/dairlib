@@ -623,7 +623,7 @@ int DoMain(int argc, char* argv[]) {
                                     mirrored_rom);
     osc->AddTrackingData(&optimal_rom_traj);
     // Pelvis rotation tracking (pitch and roll)
-    bool constant_pelvis_balance = true;
+    bool constant_pelvis_balance = false;
     RotTaskSpaceTrackingData pelvis_balance_traj(
         "pelvis_balance_traj", osc_gains.K_p_pelvis_balance,
         osc_gains.K_d_pelvis_balance, weight_scale * osc_gains.W_pelvis_balance,

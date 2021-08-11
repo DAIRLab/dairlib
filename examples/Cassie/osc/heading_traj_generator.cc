@@ -80,10 +80,11 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   /// to transform the yaw trajectory into quaternion representation.
   double dt = 10;
   double approx_pelvis_yaw_f = approx_pelvis_yaw_i + des_yaw_vel(0) * dt;
-  Eigen::Vector4d pelvis_rotation_i(q.head(4));
-  // We don't need to use the one below. It doesn't seem to matter
-  //  Eigen::Vector4d pelvis_rotation_i(cos(approx_pelvis_yaw_i / 2), 0, 0,
-  //                                    sin(approx_pelvis_yaw_i / 2));
+  // We set pitch and roll = 0, because we also use this traj for balance in
+  // some controller
+  Eigen::Vector4d pelvis_rotation_i(cos(approx_pelvis_yaw_i / 2), 0, 0,
+                                    sin(approx_pelvis_yaw_i / 2));
+  //  Eigen::Vector4d pelvis_rotation_i(q.head(4));
   Eigen::Vector4d pelvis_rotation_f(cos(approx_pelvis_yaw_f / 2), 0, 0,
                                     sin(approx_pelvis_yaw_f / 2));
 

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5)
 loss_over_time = []
 pen_allow_over_time = []
-log_num = '28'
+log_num = '15'
 budget = 2500
 
 def get_drake_loss(params):
@@ -78,13 +78,13 @@ def print_drake_cassie_params():
   # optimal_params = sim.load_params('optimized_params')
   optimal_params = sim.load_params(log_num + '_optimized_params_' + str(budget))
   sim_id = sim.run(optimal_params.value, log_num)
-  loss = sim.compute_loss(log_num, sim_id, plot=True)
+  loss = sim.compute_loss(log_num, sim_id, plot=False)
   print(loss)
   import pdb; pdb.set_trace()
 
 if (__name__ == '__main__'):
   # sim.run(sim.default_drake_contact_params, log_num)
-  plot_loss_trajectory()
+  # plot_loss_trajectory()
   print_drake_cassie_params()
   # learn_drake_cassie_params()
   #learn_drake_params()

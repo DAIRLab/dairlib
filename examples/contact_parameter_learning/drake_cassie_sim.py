@@ -22,7 +22,7 @@ class DrakeCassieSim():
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
     self.start_time = 30.595
-    self.sim_time = 0.25
+    self.sim_time = 0.3
     self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
     self.realtime_rate = 2.0

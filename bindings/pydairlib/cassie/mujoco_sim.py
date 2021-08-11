@@ -37,11 +37,14 @@ class MujocoCassieSim():
     self.publish_state = publish_state
     self.drake_to_mujoco_converter = DrakeToMujocoConverter(sim_dt)
 
-  def pack_input(self, cassie_in, u):
+  def pack_input(self, cassie_in, u_drake):
+    act_map = self.drake_to_mujoco_converter.act_map
     # Set control parameters
-    for i in range(10):
-      cassie_in.torque[i] = u[i]
-    return cassie_in
+    u_mujoco = np.zeros(10)
+    for u_name in act_map:
+      cassie_in.torque[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
+      u_mujoco[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
+    return cassie_in, u_mujoco
 
   def pack_cassie_out(self):
     return self.cassie_out
@@ -68,7 +71,7 @@ class MujocoCassieSim():
 
 
   def sim_step(self, u):
-    action = self.pack_input(self.cassie_in, u)
+    action, u = self.pack_input(self.cassie_in, u)
     self.cassie_env.step(action)
     t = self.cassie_env.time()
     q = self.cassie_env.qpos()
@@ -130,17 +133,12 @@ class MujocoCassieSim():
     # x_init.set_qpos(qpos)
     # x_init.set_qvel(qvel)
     # self.cassie_env.set_state(x_init)
-    np.set_printoptions(precision=4)
-
     while self.cassie_env.time() < end_time:
       now = time.time()  # get the time
       self.lcm.HandleSubscriptions(0)
       if len(self.input_sub.message.efforts) != 0:
         u = self.unpack_robot_in(self.input_sub.message)
       q, v, u, t = self.sim_step(u)
-      print(q)
-      import pdb; pdb.set_trace()
-      # print(v)
       if (self.publish_state):
         robot_output = pack_robot_output(self.robot_output, q, v, u, t)
         self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())

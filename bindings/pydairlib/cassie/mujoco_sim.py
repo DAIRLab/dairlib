@@ -139,8 +139,8 @@ class MujocoCassieSim():
         u = self.unpack_robot_in(self.input_sub.message)
       q, v, u, t = self.sim_step(u)
       print(q)
-      # print(v)
       import pdb; pdb.set_trace()
+      # print(v)
       if (self.publish_state):
         robot_output = pack_robot_output(self.robot_output, q, v, u, t)
         self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())
@@ -154,6 +154,5 @@ class MujocoCassieSim():
     return x_traj, u_traj, t_traj
     # cassie_env.step_pd(u_pd)
 
-    # import pdb; pdb.set_trace()
 
     # print(state)

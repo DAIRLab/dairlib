@@ -27,6 +27,10 @@ group "1.rom-space-controller" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true";
         host = "localhost";
     }
+    cmd "3.1.rom-planner (short time limit)(with dispatcher)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
 }
 
 group "1.0.dispatchers" {
@@ -76,7 +80,7 @@ group "3.drake-simulator" {
         host = "localhost";
     }
     cmd "0.simulator(realtime)" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u=ROM_WALKING --init_height=0.8 --pause_second=4 --target_realtime_rate=1 --spring_model=true --end_time=10000";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u=ROM_WALKING --init_height=1 --pause_second=4 --target_realtime_rate=1 --spring_model=true --end_time=10000";
         host = "localhost";
     }
 }
@@ -91,7 +95,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=570";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=0";
         host = "localhost";
     }
     cmd "2.2. cassie planner pose (multi-pose); files with debug_ prefix" {
@@ -103,11 +107,11 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame (1 solve)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=54";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=26";
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame (multiple solves)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --realtime_rate=.1 --solve_idx=0 --solve_idx_end=495";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --realtime_rate=.1 --solve_idx=0 --solve_idx_end=26";
         host = "localhost";
     }
     cmd "2.4. cassie planner pose (multi-pose); regularization poses" {

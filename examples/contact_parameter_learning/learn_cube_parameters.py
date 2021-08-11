@@ -26,8 +26,8 @@ log_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/logs
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 
 default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
-                                    vel=(0.5/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
-                                    omega=0.1*np.ones((3,)))
+                                    vel= np.zeros((3,)),
+                                    omega=np.zeros((3,)))
 
 SIM_ERROR_LOSS = 100
 

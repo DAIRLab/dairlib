@@ -151,6 +151,7 @@ def make_simulated_traj_data_for_training(contact_params, toss_ids, cube_data_fo
         print(id)
 
 
+
 ''' Interface method to calculate the loss for a given set of parameters and a trajectory'''
 def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, weights=LossWeights(), debug=False, simulated=False):
     if simulated:

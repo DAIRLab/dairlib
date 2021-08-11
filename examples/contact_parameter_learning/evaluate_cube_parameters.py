@@ -7,9 +7,11 @@ import os
 import sys
 import json
 from random import choice
-from learn_cube_parameters import cube_data_folder, model_folder, log_folder, default_loss
+from learn_cube_parameters import cube_data_folder, model_folder, log_folder
 from matplotlib import pyplot as plt
 import numpy as np
+
+mse_loss = cube_sim.LossWeights() # default weights are all ones
 
 def visualize_learned_params(params, sim_type, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
@@ -82,7 +84,7 @@ def make_sim_to_real_comparison_plots_single_toss(traj_pair):
         plt.plot(tvec, errors[key])
         plt.title(key)
 
-def get_error_and_loss_stats(traj_pairs):
+def get_error_and_loss_stats(traj_pairs, loss_weights):
     pos = []
     vel = []
     omega = []
@@ -96,7 +98,7 @@ def get_error_and_loss_stats(traj_pairs):
         vel.append(np.mean(errors['velocity_error']))
         omega.append(np.mean(errors['omega_error']))
         rot.append(np.mean(errors['rotational_error']))
-        loss.append(default_loss.CalculateLoss(pair[0], pair[1]))
+        loss.append(loss_weights.CalculateLoss(pair[0], pair[1]))
         if not (i % 25): print(f'calculating means {i} %')
         i += 1
     pos_mean = np.mean(np.array(pos))
@@ -105,11 +107,22 @@ def get_error_and_loss_stats(traj_pairs):
     rot_mean = np.mean(np.array(rot))
     loss_mean = np.mean(np.array(loss))
 
+    pos_std = np.std(np.array(pos))
+    vel_std = np.std(np.array(vel))
+    omega_std = np.std(np.array(omega))
+    rot_std = np.std(np.array(rot))
+    loss_std = np.std(np.array(loss))
+
     return {'pos_mean' : pos_mean, 
             'vel_mean' : vel_mean,
             'omega_mean' : omega_mean, 
             'rot_mean' : rot_mean,
-            'loss_mean' : loss_mean}
+            'loss_mean' : loss_mean, 
+            'pos_std' : pos_std, 
+            'vel_std' : vel_std,
+            'omega_std' : omega_std, 
+            'rot_std' : rot_std,
+            'loss_std' : loss_std, }
 
 def load_params(simulator, id):
     filename = os.path.join(model_folder, simulator + '_' + id +'.json')
@@ -139,7 +152,9 @@ if (__name__ == '__main__'):
     with open(os.path.join(logdir, 'test_set.json'), 'r') as fp:
         test_set = json.load(fp)
     
+    with open(os.path.join(logdir, 'weights.json'), 'rb') as fp:
+        loss_weights = cube_sim.LossWeights.load_weights(fp) 
+
     traj_pairs = load_traj_pairs(eval_sim, params, test_set)
-    stats = get_error_and_loss_stats(traj_pairs)
+    stats = get_error_and_loss_stats(traj_pairs, mse_loss)
     print(stats)
-    

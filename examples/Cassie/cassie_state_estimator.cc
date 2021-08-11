@@ -994,7 +994,8 @@ void CassieStateEstimator::setPreviousTime(Context<double>* context,
 }
 void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
                                                 Eigen::Vector4d quat,
-                                                Vector3d pelvis_pos) const {
+                                                Vector3d pelvis_pos,
+                                                Vector3d pelvis_vel) const {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(7)
       << quat,
       pelvis_pos;
@@ -1004,10 +1005,12 @@ void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
   Matrix3d imu_rot_mat =
       Quaterniond(quat[0], quat[1], quat[2], quat[3]).toRotationMatrix();
   Vector3d imu_position = pelvis_pos + imu_rot_mat * imu_pos_;
+  Vector3d imu_velocity = pelvis_vel;  // assuming omega = 0
   auto& filter = context->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
   auto state = filter.getState();
   state.setPosition(imu_position);
   state.setRotation(imu_rot_mat);
+  state.setVelocity(imu_velocity);
   filter.setState(state);
   cout << "Set initial IMU position to \n"
        << filter.getState().getPosition().transpose() << endl;

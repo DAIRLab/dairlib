@@ -53,12 +53,12 @@ def calc_error_between_trajectories(traj_pair):
     errors = {}
     errors['position_error'] = np.linalg.norm(
         data_traj[:,cube_sim.CUBE_DATA_POSITION_SLICE] - \
-        sim_traj[:,cube_sim.CUBE_DATA_POSITION_SLICE], axis=1) / cube_sim.BLOCK_HALF_WIDTH
+        sim_traj[:,cube_sim.CUBE_DATA_POSITION_SLICE], axis=1) / (2*cube_sim.BLOCK_HALF_WIDTH)
 
     errors['velocity_error'] = np.linalg.norm(
         data_traj[:,cube_sim.CUBE_DATA_VELOCITY_SLICE] - \
-        sim_traj[:,cube_sim.CUBE_DATA_VELOCITY_SLICE], axis=1) / cube_sim.BLOCK_HALF_WIDTH
-    
+        sim_traj[:,cube_sim.CUBE_DATA_VELOCITY_SLICE], axis=1) 
+
     errors['omega_error'] = np.linalg.norm(
         data_traj[:,cube_sim.CUBE_DATA_OMEGA_SLICE] - \
         sim_traj[:,cube_sim.CUBE_DATA_OMEGA_SLICE], axis=1)

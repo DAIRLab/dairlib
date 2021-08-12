@@ -129,6 +129,21 @@ def load_params(simulator, id):
     with open(filename, 'r+') as fp:
         return json.load(fp)
 
+# load learned parameters and logging info
+def load_params_and_logs(result_id):
+    
+    with open(os.path.join(model_folder, result_id + '.json'), 'r') as fp:
+        learned_params = json.load(fp)
+
+    logdir = os.path.join(log_folder, result_id)
+    with open(os.path.join(logdir, 'test_set.json'), 'r') as fp:
+        test_set = json.load(fp)
+    
+    with open(os.path.join(logdir, 'weights.json'), 'rb') as fp:
+        loss_weights = cube_sim.LossWeights.load_weights(fp) 
+    
+    return learned_params, test_set, loss_weights
+
 if (__name__ == '__main__'):
     
     learning_result = sys.argv[1]
@@ -144,16 +159,7 @@ if (__name__ == '__main__'):
         print(f'{sim_type} is not a supported simulator - please check for spelling mistakes and try again')
         quit()
     
-    # load learned parameters and logging info
-    with open(os.path.join(model_folder, learning_result + '.json'), 'r') as fp:
-        params = json.load(fp)
-    
-    logdir = os.path.join(log_folder, learning_result)
-    with open(os.path.join(logdir, 'test_set.json'), 'r') as fp:
-        test_set = json.load(fp)
-    
-    with open(os.path.join(logdir, 'weights.json'), 'rb') as fp:
-        loss_weights = cube_sim.LossWeights.load_weights(fp) 
+    params, test_set, _ = load_params_and_logs(learning_result)
 
     traj_pairs = load_traj_pairs(eval_sim, params, test_set)
     stats = get_error_and_loss_stats(traj_pairs, mse_loss)

@@ -54,7 +54,7 @@
     <link name="foot_crank_left">
         <inertial>
             <origin
-                    xyz="0.058 -0.034 0.02275"
+                    xyz="0.00493 2e-05 -0.00215"
                     rpy="0 0 0" />
             <mass value="0.1261" />
             <inertia
@@ -80,7 +80,7 @@
     <link name="plantar_rod_left">
         <inertial>
             <origin
-                    xyz="0.055 0 -0.00791"
+                    xyz="0.17792 0 0"
                     rpy="0 0 0" />
             <mass value="0.1186" />
             <inertia
@@ -104,15 +104,6 @@
         </visual>
     </link>
 
-<!--    <joint name="ankle_joint_left" type="revolute">-->
-<!--        <origin xyz="0.43476 0.02 0" rpy="0 0 0" />-->
-<!--        <parent link="shin_left" />-->
-<!--        <child link="tarsus_left" />-->
-<!--        <axis xyz="0 0 1" />-->
-<!--        <limit lower=".8" upper="3"/>-->
-<!--        <dynamics damping="0.1" />-->
-<!--    </joint>-->
-
     <joint name="toe_left" type="revolute">
         <origin xyz="0.408 -0.040 0" rpy="0 0 0" />
         <parent link="tarsus_left" />
@@ -123,11 +114,11 @@
     </joint>
 
     <joint name="foot_crank_left" type="revolute">
-        <origin xyz=".055 0 .00776"/>
-        <parent link="toe_left" />
+        <origin xyz=".058 -0.034 0.02275"/>
+        <parent link="tarsus_left" />
         <child link="foot_crank_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.393" upper="0.393" effort="300"/>
+        <limit lower="-2.8" upper="0" effort="300"/>
         <dynamics damping="1" />
     </joint>
 
@@ -136,7 +127,7 @@
         <parent link="foot_crank_left" />
         <child link="plantar_rod_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.393" upper="0.393" effort="300"/>
+        <limit lower="0" upper="2.8" effort="300"/>
         <dynamics damping="1" />
     </joint>
 

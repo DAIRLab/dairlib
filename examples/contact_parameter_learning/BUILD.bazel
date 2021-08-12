@@ -113,3 +113,15 @@ py_binary(
         "//bindings/pydairlib/common:plot_styler",
     ],
 )
+
+py_binary(
+    name = "test_drake_sim",
+    srcs = ["test_drake_sim.py"],
+    deps = [
+        ":cassie_loss_utils",
+        ":cube_sim",
+        ":drake_cassie_sim_py",
+        ":mujoco_cube_sim_py",
+        "//bindings/pydairlib/common:plot_styler",
+    ],
+)

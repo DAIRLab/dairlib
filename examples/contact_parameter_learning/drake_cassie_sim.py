@@ -25,7 +25,7 @@ class DrakeCassieSim():
     self.sim_time = 0.3
     self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
-    self.realtime_rate = 2.0
+    self.realtime_rate = 1.0
     self.ps = plot_styler.PlotStyler()
     self.ps.set_default_styling(
       directory='/home/yangwill/Documents/research/projects/impact_uncertainty/figures/learning_parameters')
@@ -48,14 +48,13 @@ class DrakeCassieSim():
 
   def write_initial_state(self, x_init):
     gains_path = "/home/yangwill/workspace/dairlib/examples/Cassie/data/"
-
+    # print(x_init)
     def float_representer(dumper, value):
       text = '{0:.5f}'.format(value)
       return dumper.represent_scalar(u'tag:yaml.org,2002:float', text)
 
     yaml.add_representer(float, float_representer)
 
-    new_gains = x_init
     with open(gains_path + 'initial_state.yaml', 'r') as f:
       data = yaml.load(f, Loader=Loader)
       data['x_init'] = x_init.tolist()

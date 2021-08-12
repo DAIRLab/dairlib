@@ -10,7 +10,7 @@ from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.cassie_utils import *
 from scipy.spatial.transform import Rotation as R
 from pydairlib.multibody import *
-
+from pydrake.solvers.mathematicalprogram import MathematicalProgram, Solve
 
 class DrakeToMujocoConverter():
 
@@ -29,14 +29,12 @@ class DrakeToMujocoConverter():
 
     temp = makeNameToPositionsMap(self.foot_crank_plant)
 
-
     self.pos_map = makeNameToPositionsMap(self.plant)
     self.vel_map = makeNameToVelocitiesMap(self.plant)
     self.act_map = makeNameToActuatorsMap(self.plant)
 
     self.map_q_drake_to_mujoco = np.zeros((23, 35))
     self.map_v_drake_to_mujoco = np.zeros((22, 32))
-
 
     # for vel in self.vel_map:
     #   print(vel + str(self.vel_map[vel]))
@@ -61,15 +59,24 @@ class DrakeToMujocoConverter():
     # self.left_toe_joint = (toe_joint_offset, self.plant.GetBodyByName('toe_left').body_frame())
     # self.right_toe_joint = (toe_joint_offset, self.plant.GetBodyByName('toe_right').body_frame())
 
-    self.left_achilles_frame = np.zeros((3,3))
-    self.left_achilles_frame[:, 0] = np.array([0.7922,  -0.60599, -0.072096])
-    self.left_achilles_frame[:, 1] = np.array([0.60349,  0.79547, -0.054922])
+    self.left_achilles_frame = np.zeros((3, 3))
+    self.left_achilles_frame[:, 0] = np.array([0.7922, -0.60599, -0.072096])
+    self.left_achilles_frame[:, 1] = np.array([0.60349, 0.79547, -0.054922])
     self.left_achilles_frame[:, 2] = np.cross(self.left_achilles_frame[:, 0], self.left_achilles_frame[:, 1])
-    self.right_achilles_frame = np.zeros((3,3))
-    self.right_achilles_frame[:, 0] = np.array([0.7922, -0.60599,  0.072096])
-    self.right_achilles_frame[:, 1] = np.array([0.60349, 0.79547,  0.054922])
+    self.right_achilles_frame = np.zeros((3, 3))
+    self.right_achilles_frame[:, 0] = np.array([0.7922, -0.60599, 0.072096])
+    self.right_achilles_frame[:, 1] = np.array([0.60349, 0.79547, 0.054922])
     self.right_achilles_frame[:, 2] = np.cross(self.right_achilles_frame[:, 0], self.right_achilles_frame[:, 1])
 
+    self.plantar_rod_frame = self.foot_crank_plant.GetBodyByName('plantar_rod_left').body_frame()
+    self.toe_left_frame = self.foot_crank_plant.GetBodyByName('toe_left').body_frame()
+    self.plantar_rod_anchor_point = np.array([0.35012, 0, 0])
+    self.toe_left_anchor_point = np.array([0.04885482, 0.00394248, 0.01484])
+
+    self.ik_solver.AddPositionConstraint(self.plantar_rod_frame, self.plantar_rod_anchor_point, self.toe_left_frame,
+                                         self.toe_left_anchor_point - 2e-3*np.ones(3), self.toe_left_anchor_point + 2e-3*np.ones(3))
+    self.toe_angle_constraint = self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[7], 0)
+    self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[0:7], np.array([1, 0, 0, 0, 0, 0, 0]))
 
   def convert_to_drake(self, q, v):
     q_drake = np.zeros(23)
@@ -79,7 +86,6 @@ class DrakeToMujocoConverter():
     # x_drake =
 
     return q_drake, v_drake
-
 
   def convert_to_mujoco(self, x):
     # q_full = np.zeros(35)
@@ -92,37 +98,6 @@ class DrakeToMujocoConverter():
     q_full = q_missing + q_copy
 
     v_full = v_missing + v_copy
-    # rot = R.from_quat([q[6], q[3], q[4], q[5]])
-    # v_full[3:6] = rot.as_dcm().T @ v[3:6]
-    # left achilles omega
-    # v_full[9] =  v
-    # v_full[10] = v
-    # v_full[11] = v
-    # v_full[12] = v[9]
-    # v_full[13] = v[11]
-    # v_full[14] = v[12]
-    # v_full[15] = v[13]
-    # left foot crank + left planar rod
-    # v_full[16] = v
-    # v_full[17] = v
-    # v_full[18] = v[10]
-    # v_full[19] = v[14]
-    # v_full[20] = v[15]
-    # v_full[21] = v[16]
-    # right achilles omega
-    # v_full[22] = v
-    # v_full[23] = v
-    # v_full[24] = v
-    # v_full[25] = v[17]
-    # v_full[26] = v[19]
-    # v_full[27] = v[20]
-    # v_full[28] = v[21]
-    # right foot crank + right planar rod
-    # v_full[29] = v
-    # v_full[30] = v
-    # v_full[31] = v[18]
-
-    # x_full = np.hstack((q_full, v_full))
     return q_full, v_full
 
   # def solve_foot_angles(self):
@@ -130,9 +105,26 @@ class DrakeToMujocoConverter():
   def solve_IK(self, x):
     self.plant.SetPositionsAndVelocities(self.context, x)
 
-    # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, x[self.pos_map['toe_left']]])
-    # self.foot_crank_plant.SetPositionsAndVelocities(self.foot_crank_plant, left_foot_crank_state)
-    # self.ik_solver.AddPositionConstraint()
+    # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, -1.5968, -1.5244, 1.5244])
+    # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, -1.5968, -1.5244, 1.5244])
+    # -1.7439499847110957, 1.7254888878481534, -1.8498456916286636
+    # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, -1.5244, 1.5244, -1.5968])
+    # self.foot_crank_plant.SetPositions(self.foot_crank_context, left_foot_crank_state)
+    # toe_left_anchor_point = self.foot_crank_plant.CalcPointsPositions(self.foot_crank_context, self.plantar_rod_frame,
+    #                                                                   self.plantar_rod_anchor_point,
+    #                                                                   self.toe_left_frame)
+    # print(toe_left_anchor_point)
+    self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[x[self.pos_map['toe_left']]])
+    result = Solve(self.ik_solver.prog())
+    left_foot_crank_state = result.GetSolution()
+    print(result.get_solution_result())
+    self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[x[self.pos_map['toe_right']]])
+    result = Solve(self.ik_solver.prog())
+    right_foot_crank_state = result.GetSolution()
+    print(result.get_solution_result())
+    # import pdb; pdb.set_trace()
+    # self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[7], -1.5968)
+    # self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[7], -1.84984)
 
     # self.plant.CalcRelativeTransform(self.context, self.world)
     left_thigh = self.plant.CalcPointsPositions(self.context, self.left_thigh_rod[1], self.left_thigh_rod[0],
@@ -167,8 +159,10 @@ class DrakeToMujocoConverter():
     r_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.right_thigh_rod[1])
     l_bar_frame = np.vstack((l_x_vec, l_y_vec, l_z_vec)).T
     r_bar_frame = np.vstack((r_x_vec, r_y_vec, r_z_vec)).T
-    l_bar_quat = R.from_dcm(self.left_achilles_frame.T @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame).as_quat()
-    r_bar_quat = R.from_dcm(self.right_achilles_frame.T @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame).as_quat()
+    l_bar_quat = R.from_dcm(
+      self.left_achilles_frame.T @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame).as_quat()
+    r_bar_quat = R.from_dcm(
+      self.right_achilles_frame.T @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame).as_quat()
     # l_bar_quat = R.from_dcm(l_bar_frame).as_quat()
     # print(l_bar_quat)
     # l_bar_quat = R.from_dcm(self.left_achilles_frame.T @ l_bar_frame).as_quat()
@@ -197,7 +191,6 @@ class DrakeToMujocoConverter():
     # left_plantar_rod = math.acos(np.dot(l_plantar_x_vec, l_toe_frame.rotation().matrix()[0]))
     # right_plantar_rod = math.acos(np.dot(r_plantar_x_vec, r_toe_frame.rotation().matrix()[0]))
 
-
     q_missing = np.zeros(35)
     v_missing = np.zeros(32)
 
@@ -205,10 +198,10 @@ class DrakeToMujocoConverter():
     # l_bar_quat = np.array([[ 0.97850359, -0.0164015, 0.01785328, -0.20479984]])
     # r_bar_quat = np.array([[ 0.97850359, -0.0164015, 0.01785328, -0.20479984]])
     # r_bar_quat = np.array([1, 0, 0, 0])
-    left_foot_crank_ang = -1.5212260470160093
-    left_plantar_rod = 1.5190997625212834
-    right_foot_crank_ang = -1.5212260470160093
-    right_plantar_rod = 1.5190997625212834
+    left_foot_crank_ang = left_foot_crank_state[8]
+    left_plantar_rod = left_foot_crank_state[9]
+    right_foot_crank_ang = right_foot_crank_state[8]
+    right_plantar_rod = right_foot_crank_state[9]
     q_missing[10:14] = l_bar_quat
     q_missing[18] = left_foot_crank_ang
     q_missing[19] = left_plantar_rod
@@ -224,8 +217,6 @@ class DrakeToMujocoConverter():
     # v_missing[30] = right_plantar_rod_dot
 
     return q_missing, v_missing
-
-
 
   def generate_matrices(self):
     self.map_q_drake_to_mujoco = np.zeros((35, 23))

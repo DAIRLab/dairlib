@@ -26,7 +26,7 @@ RomKp:
 RomKd:
 [0, 0, 0,
  0, 0, 0,
- 0, 0, 5]
+ 0, 0, 1]
 #RomW:  # Weight for the old qp solver
 #  [0.02,    0,     0,
 #      0, 0.02,     0,
@@ -50,18 +50,18 @@ RomKd:
 #RomKd:
 #  [   0.05,    0,     0,
 #      0,    0.05,     0,
-#      0,    0,     5]
+#      0,    0,     1]
 
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,
     0,    0,     0]
 PelvisBalanceKp:
-  [80,      0,    0,
+  [200,      0,    0,
    0,    100,    0,
    0,      0,    0]
 PelvisBalanceKd:
-  [   30,     0,    0,
+  [   10,     0,    0,
       0,    10,    0,
       0,     0,    0]
 
@@ -69,14 +69,14 @@ PelvisHeadingW:
   [   0,    0,     0,
       0,    0,     0,
       0,    0,   0.1]
-PelvisHeadingKp:
+PelvisHeadingKp:  # We are not using kp for pelvis yaw
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,   10]
+      0,     0,   0]
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    2]
+      0,     0,    20]
 period_of_no_heading_control: 0.0
 
 SwingFootW:
@@ -86,7 +86,7 @@ SwingFootW:
 SwingFootKp:
   [ 80,    0,     0,
     0,  100,     0,
-    0,    0,   150]
+    0,    0,   100]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

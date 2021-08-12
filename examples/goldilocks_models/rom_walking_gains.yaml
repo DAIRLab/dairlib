@@ -149,7 +149,7 @@ k_ff_sagittal: 0
 k_fb_sagittal: 0.24
 k_ff_lateral: 0
 k_fb_lateral: 0.25
-speed_control_offset_sagittal: -0.0  # -0.05 for hardware; -0.02 for simulation
+speed_control_offset_sagittal: -0.01  # -0.05 for hardware; -0.01 for drake with springs; -0.03 for mujoco with springs
 
 #Finite state machine
 ss_time: 0.
@@ -157,7 +157,7 @@ ds_time: 0.
 
 #Swing foot trajectory
 max_CoM_to_footstep_dist: 0.4
-footstep_offset: 0.03
+footstep_offset: 0.02
 center_line_offset: 0.03
 mid_foot_height: 0.03  #0.03
 final_foot_height: 0.000

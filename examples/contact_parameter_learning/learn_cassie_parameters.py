@@ -13,7 +13,7 @@ from random import sample, choice
 SIM_ERROR_LOSS = 100
 
 drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5)
-mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(visualize=False)
+mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim()
 loss_over_time = []
 pen_allow_over_time = []
 log_num = '15'
@@ -132,7 +132,7 @@ def print_drake_cassie_params():
 
 if (__name__ == '__main__'):
   # sim.run(sim.default_drake_contact_params, log_num)
-  # plot_loss_trajectory()
-  # print_drake_cassie_params()
-  learn_drake_cassie_params()
+  plot_loss_trajectory()
+  print_drake_cassie_params()
+  # learn_drake_cassie_params()
   #learn_drake_params()

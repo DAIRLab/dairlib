@@ -55,7 +55,6 @@ class MujocoCassieSim():
     for i in range(10):
       j = self.actuator_index_map[robot_in.effort_names[i]]
       u[j] = robot_in.efforts[i]
-    # print(u)
     return u
 
   def pack_input_pd(self):
@@ -86,8 +85,9 @@ class MujocoCassieSim():
     mujoco_state.set_qvel(v_mujoco)
     self.cassie_env.set_state(mujoco_state)
 
-  def run_sim_playback(self, x_init, start_time, end_time, input_traj=PiecewisePolynomial(np.zeros(10)), params={}):
-    self.model = load_model_from_xml(get_model_xml_text(params))
+  def run_sim_playback(self, x_init, start_time, end_time, input_traj=PiecewisePolynomial(np.zeros(10)), params=None):
+    # self.model = load_model_from_xml(get_model_xml_text(params))
+    # self.cassie_env = CassieSim(load_model_from_xml(get_model_xml_text(params)))
     self.cassie_env.set_time(start_time)
     self.set_state(x_init)
     # u = np.zeros(10)

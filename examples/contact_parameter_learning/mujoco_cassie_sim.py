@@ -5,7 +5,6 @@ from scipy import interpolate
 import cassie_loss_utils
 import subprocess
 import pickle
-import mujoco_sim
 from pydairlib.lcm import lcm_trajectory
 from pydrake.trajectories import PiecewisePolynomial
 

@@ -161,4 +161,4 @@ def pack_robot_output(robot_output, q, v, u, t):
   for i in range(10):
     robot_output.effort[i] = u[i]
 
-  return robot_output
+  return

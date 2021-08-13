@@ -27,12 +27,13 @@ class MujocoCassieSim():
     self.realtime_rate = realtime_rate
     self.cycle_usec = 1000000 / (2000 * self.realtime_rate)
     self.lcm = DrakeLcm()
-    self.model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
+    self.default_model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
+    self.model_xml = ''
     self.robot_output = init_robot_output()
     self.cassie_out = init_cassie_out()
     self.u_pd = pd_in_t()
     self.cassie_in = cassie_user_in_t()
-    self.cassie_env = CassieSim(self.model_file)
+    self.cassie_env = CassieSim(self.default_model_file)
     self.input_sub = Subscriber(lcm=self.lcm, channel="CASSIE_INPUT", lcm_type=dairlib.lcmt_robot_input)
     self.publish_state = publish_state
     self.drake_to_mujoco_converter = DrakeToMujocoConverter(sim_dt)
@@ -85,7 +86,8 @@ class MujocoCassieSim():
     mujoco_state.set_qvel(v_mujoco)
     self.cassie_env.set_state(mujoco_state)
 
-  def run_sim_playback(self, x_init, start_time, end_time, input_traj=PiecewisePolynomial(np.zeros(10))):
+  def run_sim_playback(self, x_init, start_time, end_time, input_traj=PiecewisePolynomial(np.zeros(10)), params={}):
+    self.model = load_model_from_xml(get_model_xml_text(params))
     self.cassie_env.set_time(start_time)
     self.set_state(x_init)
     # u = np.zeros(10)
@@ -98,7 +100,7 @@ class MujocoCassieSim():
       u = input_traj.value(t)
       q, v, u, t = self.sim_step(u)
       if (self.publish_state):
-        robot_output = pack_robot_output(self.robot_output, q, v, u, t)
+        pack_robot_output(self.robot_output, q, v, u, t)
         self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())
       x_traj.append([q, v])
       u_traj.append(u)
@@ -117,22 +119,7 @@ class MujocoCassieSim():
     x_traj = []
     u_traj = []
     t_traj = []
-    t = start_time
 
-    # x_init = self.cassie_env.get_state()
-    # qvel = x_init.qvel()
-    # qpos = x_init.qpos()
-    # qpos[3] = 0.7316889
-    # qpos[4] = 0
-    # qpos[5] = 0
-    # qpos[6] = 0.6816388
-    # rot = R.from_quat([qpos[6], qpos[3], qpos[4], qpos[5]])
-    # qvel[5] = 20
-    # rot_mat = rot.as_dcm().T
-    # qvel[3:6] = (rot_mat @ qvel[3:6]).tolist()
-    # x_init.set_qpos(qpos)
-    # x_init.set_qvel(qvel)
-    # self.cassie_env.set_state(x_init)
     while self.cassie_env.time() < end_time:
       now = time.time()  # get the time
       self.lcm.HandleSubscriptions(0)
@@ -140,7 +127,7 @@ class MujocoCassieSim():
         u = self.unpack_robot_in(self.input_sub.message)
       q, v, u, t = self.sim_step(u)
       if (self.publish_state):
-        robot_output = pack_robot_output(self.robot_output, q, v, u, t)
+        pack_robot_output(self.robot_output, q, v, u, t)
         self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())
       x_traj.append([q, v])
       u_traj.append(u)
@@ -150,7 +137,4 @@ class MujocoCassieSim():
       #   time.sleep(self.cycle_usec * 1e-6 - elapsed)
 
     return x_traj, u_traj, t_traj
-    # cassie_env.step_pd(u_pd)
 
-
-    # print(state)

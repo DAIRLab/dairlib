@@ -85,7 +85,7 @@ def cube_sensitivity_analysis_main(learning_result):
 
     sweep = get_sensitivity_analysis(
         eval_sim, 
-        cube_sim.LossWeights(), 
+        cube_sim.LossWeights(pos=(1/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,))), 
         params, 
         params_range, 
         test_set)

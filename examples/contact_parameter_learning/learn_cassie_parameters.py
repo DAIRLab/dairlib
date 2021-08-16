@@ -16,8 +16,8 @@ drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5)
 mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim()
 loss_over_time = []
 pen_allow_over_time = []
-log_num = '15'
-budget = 5000
+log_num = 'all'
+budget = 50000
 
 all_logs = drake_sim.log_nums_real
 num_train = int(0.8 * len(all_logs))
@@ -75,7 +75,8 @@ def learn_drake_cassie_params():
     z_offset=ng.p.Array(shape=(len(all_logs),)).set_bounds(lower=-0.05, upper=0.05)
   )
 
-  optimization_param.value=drake_sim.default_drake_contact_params
+  # optimization_param.value=drake_sim.default_drake_contact_params
+  optimization_param.value=drake_sim.load_params('15' + '_optimized_params_5000').value
   optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
   params = optimizer.minimize(get_drake_loss)
   loss = np.array(loss_over_time)
@@ -89,13 +90,6 @@ def learn_mujoco_cassie_params():
   # sim = drake_cassie_sim.DrakeCassieSim()
   # sim.run(sim.default_drake_contact_params, '27')
 
-  optimization_param = ng.p.Dict(
-    mu_static = ng.p.Scalar(lower=0.001, upper=1.0),
-    mu_ratio = ng.p.Scalar(lower=0.001, upper=1.0),
-    pen_allow=ng.p.Log(lower=5e-6, upper=5e-2),
-    stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2)
-
-  )
   optimization_param = ng.p.Dict(
     stiffness=ng.p.Scalar(lower=100, upper=10000),
     damping=ng.p.Scalar(lower=0, upper=1000),
@@ -124,15 +118,20 @@ def plot_loss_trajectory():
 
 def print_drake_cassie_params():
   # optimal_params = sim.load_params('optimized_params')
+  single_log_num = '15'
   optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
-  sim_id = drake_sim.run(optimal_params.value, log_num)
-  loss = drake_sim.compute_loss(log_num, sim_id, plot=False)
+  sim_id = drake_sim.run(optimal_params.value, single_log_num)
+  loss = drake_sim.compute_loss(single_log_num, sim_id, plot=False)
   print(loss)
+  z_offsets = optimal_params.value['z_offset']
+  vel_offsets = optimal_params.value['vel_offset']
+  np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offsets)
+  np.save(drake_sim.params_folder + log_num + '_vel_offset_' + str(budget), vel_offsets)
   import pdb; pdb.set_trace()
 
 if (__name__ == '__main__'):
   # sim.run(sim.default_drake_contact_params, log_num)
-  plot_loss_trajectory()
+  # plot_loss_trajectory()
   print_drake_cassie_params()
   # learn_drake_cassie_params()
   #learn_drake_params()

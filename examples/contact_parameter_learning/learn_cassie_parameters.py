@@ -43,7 +43,8 @@ def get_drake_loss(params, log_num=None):
   # return loss
 
 def get_mujoco_loss(params, log_num=None):
-  if (log_num == None): log_num = choice(training_idxs)
+  if (log_num == None):
+    log_num = choice(training_idxs)
   # try:
   print(log_num)
   sim_id = mujoco_sim.run(params, log_num)
@@ -71,12 +72,12 @@ def learn_drake_cassie_params():
     mu_ratio = ng.p.Scalar(lower=0.001, upper=1.0),
     pen_allow=ng.p.Log(lower=5e-6, upper=5e-2),
     stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2),
-    vel_offset=ng.p.Array(shape=(len(all_logs) * 3,)).set_bounds(lower=-1, upper=1),
-    z_offset=ng.p.Array(shape=(len(all_logs),)).set_bounds(lower=-0.05, upper=0.05)
+    # vel_offset=ng.p.Array(shape=(len(all_logs) * 3,)).set_bounds(lower=-1, upper=1),
+    # z_offset=ng.p.Array(shape=(len(all_logs),)).set_bounds(lower=-0.05, upper=0.05)
   )
 
-  # optimization_param.value=drake_sim.default_drake_contact_params
-  optimization_param.value=drake_sim.load_params('15' + '_optimized_params_5000').value
+  optimization_param.value=drake_sim.default_drake_contact_params
+  # optimization_param.value=drake_sim.load_params('15' + '_optimized_params_5000').value
   optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
   params = optimizer.minimize(get_drake_loss)
   loss = np.array(loss_over_time)
@@ -116,22 +117,35 @@ def plot_loss_trajectory():
   drake_sim.ps.scatter(pen_allow_t, loss_t, xlabel='penetration_allowance (m)', ylabel='loss')
   plt.show()
 
-def print_drake_cassie_params():
+def print_drake_cassie_params(single_log_num):
   # optimal_params = sim.load_params('optimized_params')
-  single_log_num = '15'
-  optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
+  # single_log_num = '15'
+  # optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
+  optimal_params = drake_sim.load_params('all' + '_optimized_params_' + str(budget))
   sim_id = drake_sim.run(optimal_params.value, single_log_num)
   loss = drake_sim.compute_loss(single_log_num, sim_id, plot=False)
   print(loss)
   z_offsets = optimal_params.value['z_offset']
   vel_offsets = optimal_params.value['vel_offset']
-  np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offsets)
-  np.save(drake_sim.params_folder + log_num + '_vel_offset_' + str(budget), vel_offsets)
-  import pdb; pdb.set_trace()
+  # np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offsets)
+  # np.save(drake_sim.params_folder + log_num + '_vel_offset_' + str(budget), vel_offsets)
+  # import pdb; pdb.set_trace()
+  return loss
+
+def plot_per_log_loss():
+  log_nums = []
+  losses = []
+  for log_num_ in all_logs:
+    print(log_num_)
+    losses.append(print_drake_cassie_params(log_num_))
+    log_nums.append((log_num_))
+  drake_sim.ps.plot(log_nums, losses, xlabel='log number', ylabel='best loss')
+  plt.show()
 
 if (__name__ == '__main__'):
   # sim.run(sim.default_drake_contact_params, log_num)
   # plot_loss_trajectory()
-  print_drake_cassie_params()
-  # learn_drake_cassie_params()
+  # print_drake_cassie_params('15')
+  # plot_per_log_loss()
+  learn_drake_cassie_params()
   #learn_drake_params()

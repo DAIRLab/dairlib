@@ -16,12 +16,13 @@ default_bullet_contact_params = {"stiffness" : 2000,
 
 class BulletCubeSim(CubeSim):
 
-    def __init__(self, visualize=False):
+    def __init__(self, visualize=False, substeps=1):
         self.visualize = visualize
         if (self.visualize):
             p.connect(p.GUI)
         else:
             p.connect(p.DIRECT)
+        self.substeps = substeps
 
     def init_sim(self, params):
         p.setGravity(0,0,-9.81)
@@ -35,7 +36,7 @@ class BulletCubeSim(CubeSim):
                             contactStiffness=params['stiffness'],
                             contactDamping=params['damping'])
 
-        p.setTimeStep(CUBE_DATA_DT)
+        p.setTimeStep(CUBE_DATA_DT / self.substeps)
         
     def set_initial_condition(self, initial_state):
 
@@ -60,7 +61,8 @@ class BulletCubeSim(CubeSim):
         data_arr[0, CUBE_DATA_VELOCITY_SLICE] = cube_vel
         data_arr[0, CUBE_DATA_OMEGA_SLICE] = cube_omega
 
-        p.stepSimulation()
+        for i in range(self.substeps):
+            p.stepSimulation()
 
         data_arr[0] = self.reexpress_state_global_to_local_omega(data_arr[0])
         return data_arr

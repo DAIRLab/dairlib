@@ -39,6 +39,8 @@ def plot_sensitivity_analysis(loss_sweeps, params_range):
         plt.figure()
         ps.plot(params_range[key], loss_sweeps[key])
         plt.title(key)
+        if (key == 'pen_allow' or key == 'stiction_tol' or key == 'mu_torsion' or key == 'mu_rolling'):
+            plt.xscale('log')
     plt.show()
 
 def get_cube_params_range(sim_type):
@@ -50,7 +52,7 @@ def get_cube_params_range(sim_type):
         params_range['stiction_tol'] = np.logspace(-6, -1, 20).tolist()
         return params_range
     else:
-        params_range['stiffness'] = np.arange(100, 10000, 100).tolist()
+        params_range['stiffness'] = np.arange(1000, 10000, 250).tolist()
         params_range['damping'] = np.arange(0, 100, 4).tolist()
         params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
         params_range['mu_rolling'] = np.logspace(-6, -2, 10).tolist()
@@ -79,13 +81,12 @@ def cube_sensitivity_analysis_main(learning_result):
         print(f'{sim_type} is not a supported simulator - please check for spelling mistakes and try again')
         quit()
     
-    params, test_set, _ = load_params_and_logs(learning_result)
-    test_set = sample(test_set, 20)
+    params, test_set, training_loss = load_params_and_logs(learning_result)
     params_range = get_cube_params_range(sim_type)
 
     sweep = get_sensitivity_analysis(
         eval_sim, 
-        cube_sim.LossWeights(pos=(1/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,))), 
+        training_loss, 
         params, 
         params_range, 
         test_set)

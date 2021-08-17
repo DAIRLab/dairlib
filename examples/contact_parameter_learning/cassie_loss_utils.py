@@ -3,24 +3,27 @@ import pickle
 from scipy.spatial.transform import Rotation as R
 from pydairlib.common import FindResourceOrThrow
 
-
 LOSS_WEIGHTS_FOLDER = 'examples/contact_parameter_learning/cassie_loss_weights/'
+
 
 class CassieLossWeights():
   def __init__(self,
                pos=np.ones((19,)),
                vel=np.ones((19,)),
                omega=np.ones((3,)),
-               quat=1):
+               quat=1,
+               pos_offset_weight=1):
     self.pos = np.diag(pos)
     self.vel = np.diag(vel)
     self.omega = np.diag(omega)
     self.quat = quat
+    self.pos_offset_weight = pos_offset_weight
 
   def save(self, filename):
     rel_filepath = LOSS_WEIGHTS_FOLDER + filename
     with open(rel_filepath + '.pkl', 'wb') as f:
       pickle.dump(self, f)
+
 
 class CassieLoss():
 
@@ -30,9 +33,11 @@ class CassieLoss():
     self.quat_slice = slice(0, 4)
     self.rot_vel_slice = slice(23, 26)
     self.weights = self.load_weights(filename)
-    self.weights.pos = 10 * self.weights.pos
-    self.weights.quat = 10 * self.weights.quat
-    self.weights.save('pos_loss_weights')
+    # self.weights = CassieLossWeights()
+    # self.weights.pos = 10 * self.weights.pos
+    # self.weights.quat = 10 * self.weights.quat
+    # self.weights.pos_offset_weight = 20
+    # self.weights.save('pos_loss_weights')
 
   def load_weights(self, filename):
     with open(LOSS_WEIGHTS_FOLDER + filename + '.pkl', 'rb') as f:
@@ -58,7 +63,7 @@ class CassieLoss():
     loss *= self.weights.quat / traj1.shape[0]
     return loss
 
-  def CalculateLoss(self, traj1, traj2):
+  def CalculateLossTraj(self, traj1, traj2):
     l_pos = self.CalcPositionsLoss(traj1[:, self.position_slice], traj2[:, self.position_slice])
     l_vel = self.CalcVelocitiesLoss(traj1[:, self.velocity_slice], traj2[:, self.velocity_slice])
     l_omega = self.CalcOmegaLoss(traj1[:, self.rot_vel_slice], traj2[:, self.rot_vel_slice])
@@ -68,6 +73,16 @@ class CassieLoss():
     # print('l_omega: ' + str(l_omega))
     # print('l_quat: ' + str(l_quat))
     return l_pos + l_vel + l_omega + l_quat
+
+  def CalculateLossParams(self, params):
+    # Regularize the state offsets
+    vel_offset = params['vel_offset']
+    z_offset = params['z_offset']
+
+    vel_offset_cost = vel_offset.T @ vel_offset
+    z_offset_cost = self.weights.pos_offset_weight * z_offset.T @ z_offset
+
+    return vel_offset_cost + z_offset_cost
 
   def calc_rotational_distance(self, quat1, quat2):
     q1 = quat1.ravel()

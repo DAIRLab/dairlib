@@ -98,7 +98,7 @@ def get_error_and_loss_stats(traj_pairs, loss_weights):
         vel.append(np.mean(errors['velocity_error']))
         omega.append(np.mean(errors['omega_error']))
         rot.append(np.mean(errors['rotational_error']))
-        loss.append(loss_weights.CalculateLoss(pair[0], pair[1]))
+        loss.append(loss_weights.CalculateLossTraj(pair[0], pair[1]))
         if not (i % 25): print(f'calculating means {i} %')
         i += 1
     pos_mean = np.mean(np.array(pos))

@@ -30,8 +30,7 @@ class DrakeCassieSim():
     self.ps = plot_styler.PlotStyler()
     self.base_z_idx = 6
     self.base_vel_idx = slice(26,29)
-    self.ps.set_default_styling(
-      directory='/home/yangwill/Documents/research/projects/impact_uncertainty/figures/learning_parameters')
+
 
     self.x_trajs = {}
     self.t_xs = {}
@@ -53,8 +52,8 @@ class DrakeCassieSim():
       "mu_ratio": 1.0,
       "pen_allow": 1e-5,
       "stiction_tol": 1e-3,
-      # "vel_offset": np.zeros(len(self.log_nums_real) * 3),
-      # "z_offset": np.zeros(len(self.log_nums_real)),
+      "vel_offset": np.zeros(len(self.log_nums_real) * 3),
+      "z_offset": np.zeros(len(self.log_nums_real)),
     }
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
@@ -100,10 +99,7 @@ class DrakeCassieSim():
     log_idx = self.log_nums_real.index(log_num)
     # log_idx = self.log_nums_real.index('15')
     # print('log_idx' + str(log_idx))
-    # z_offset = self.z_offsets[log_idx]
-    # vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
 
-    # delta_x_init = params['delta_x_init']
     # x_traj = np.load(self.folder_path + 'x_' + log_num + '.npy')
     # t = np.load(self.folder_path + 't_x_' + log_num + '.npy')
     x_traj = self.x_trajs[log_num]
@@ -113,8 +109,10 @@ class DrakeCassieSim():
 
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
     x_init = x_interp(self.start_time)
-    z_offset = self.z_offsets[log_idx]
-    vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
+    # z_offset = self.z_offsets[log_idx]
+    # vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
+    z_offset = params['z_offset'][log_idx]
+    vel_offset = params['vel_offset'][3*log_idx:3*(log_idx + 1)]
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset
     self.write_initial_state(x_init)
@@ -138,7 +136,6 @@ class DrakeCassieSim():
     t_x = np.genfromtxt('t_x.csv')
     t_x = np.append(t_x, self.start_time + self.sim_time)
     sim_id = log_num + str(np.abs(hash(frozenset(params))))
-    # self.save_params(params, sim_id)
     np.save(self.sim_data_folder + 'x_traj' + sim_id, x_traj)
     np.save(self.sim_data_folder + 't_x' + sim_id, t_x)
 
@@ -161,7 +158,7 @@ class DrakeCassieSim():
     window = slice(start_idx, end_idx)
     return window, x_traj[window]
 
-  def compute_loss(self, log_num, sim_id, plot=False):
+  def compute_loss(self, log_num, sim_id, params, plot=False):
     # x_traj_log = np.load(self.folder_path + 'x_' + log_num + '.npy')
     # t_x_log = np.load(self.folder_path + 't_x_' + log_num + '.npy')
     x_traj_log = self.x_trajs[log_num]
@@ -174,8 +171,9 @@ class DrakeCassieSim():
       self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45], color='b')
       self.ps.plot(t_x_log[:min_time_length], x_traj_log[:min_time_length, 23:45], color='r')
       plt.show()
-    loss = self.loss_func.CalculateLoss(x_traj[:min_time_length], x_traj_in_window[:min_time_length])
-    return loss
+    traj_loss = self.loss_func.CalculateLossTraj(x_traj[:min_time_length], x_traj_in_window[:min_time_length])
+    regularization_loss = self.loss_func.CalculateLossParams(params)
+    return traj_loss + regularization_loss
 
 
 if __name__ == '__main__':

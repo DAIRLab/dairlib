@@ -11,6 +11,7 @@ from scipy.spatial.transform import Rotation as R
 from pydrake.multibody.inverse_kinematics import InverseKinematics
 from drake_to_mujoco_converter import DrakeToMujocoConverter
 
+
 class MujocoCassieSim():
 
   def __init__(self, sim_dt=5e-5, loss_filename='default_loss_weights', publish_state=True, realtime_rate=1.0):
@@ -27,6 +28,7 @@ class MujocoCassieSim():
     self.realtime_rate = realtime_rate
     self.cycle_usec = 1000000 / (2000 * self.realtime_rate)
     self.lcm = DrakeLcm()
+    self.default_model_directory = '/home/yangwill/workspace/cassie-mujoco-sim/model/'
     self.default_model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
     self.model_xml = ''
     self.robot_output = init_robot_output()
@@ -37,6 +39,9 @@ class MujocoCassieSim():
     self.input_sub = Subscriber(lcm=self.lcm, channel="CASSIE_INPUT", lcm_type=dairlib.lcmt_robot_input)
     self.publish_state = publish_state
     self.drake_to_mujoco_converter = DrakeToMujocoConverter(sim_dt)
+
+  def reinit_env(self, model_file):
+    self.cassie_env = CassieSim(model_file)
 
   def pack_input(self, cassie_in, u_drake):
     act_map = self.drake_to_mujoco_converter.act_map
@@ -102,7 +107,8 @@ class MujocoCassieSim():
       if (self.publish_state):
         pack_robot_output(self.robot_output, q, v, u, t)
         self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())
-      x_traj.append([q, v])
+      q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
+      x_traj.append(np.hstack((q, v)))
       u_traj.append(u)
       t_traj.append(t)
       elapsed = time.time() - now

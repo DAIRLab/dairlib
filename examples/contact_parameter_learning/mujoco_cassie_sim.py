@@ -3,34 +3,55 @@ import sys
 import time
 from scipy import interpolate
 import cassie_loss_utils
-import subprocess
 import pickle
+from mujoco_sim import MujocoCassieSim
 from pydairlib.lcm import lcm_trajectory
 from pydrake.trajectories import PiecewisePolynomial
-
+import xml.etree.ElementTree as ET
 try:
   from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
   from yaml import Loader, Dumper
-import yaml
 
 
 class LearningMujocoCassieSim():
 
   def __init__(self, drake_sim_dt=5e-5, loss_filename='default_loss_weights'):
+    self.sim = MujocoCassieSim(publish_state=False, realtime_rate=2.0)
     self.folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/mujoco_cassie_params/"
+    self.drake_params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
     self.start_time = 30.595
-    self.sim_time = 0.1
+    self.sim_time = 0.25
     self.end_time = self.start_time + self.sim_time
     self.default_mujoco_contact_params = {
-      "mu_static": 0.8,
-      "mu_ratio": 1.0,
-      "pen_allow": 1e-5,
-      "stiction_tol": 1e-3}
+      "timeconst": 0.005,
+      "dampratio": 1,
+      "ground_mu_tangent": 1.0,
+      "mu_torsion": 0.0001,
+      "mu_rolling": 0.00001}
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
+    self.base_z_idx = 6
+    self.base_vel_idx = slice(26,29)
+
+    self.x_trajs = {}
+    self.t_xs = {}
+
+    self.z_offsets = np.load(self.drake_params_folder + 'all_z_offset_50000.npy')
+    self.vel_offsets = np.load(self.drake_params_folder + 'all_vel_offset_50000.npy')
+
+    self.log_nums_all = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
+    self.log_nums_real = np.hstack((np.arange(8, 18), np.arange(20, 34)))
+    self.log_nums_sim = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
+    self.log_nums_all = ['%0.2d' % i for i in self.log_nums_all]
+    self.log_nums_real = ['%0.2d' % i for i in self.log_nums_real]
+    for log_num in self.log_nums_all:
+      self.x_trajs[log_num] = np.load(self.folder_path + 'x_' + log_num + '.npy')
+      self.t_xs[log_num] = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+
+    self.tree = ET.parse(self.sim.default_model_file)
 
   def save_params(self, params, sim_id):
     with open(self.params_folder + sim_id + '.pkl', 'wb') as f:
@@ -41,30 +62,38 @@ class LearningMujocoCassieSim():
       return pickle.load(f)
 
   def run(self, params, log_num):
+
+    timeconst = params['timeconst']
+    dampratio = params['dampratio']
+    mu_ground = params['ground_mu_tangent']
+    mu_torsion = params['mu_torsion']
+    mu_rolling = params['mu_rolling']
+    self.tree.getroot().find('default').find('geom').set('solref', '%.5f %.5f' % (timeconst, dampratio))
+    self.tree.getroot().find('default').find('geom').set('friction', '%.5f %.5f %.5f' % (mu_ground, mu_torsion, mu_rolling))
+    self.tree.write(self.sim.default_model_directory + 'cassie_new_params.xml')
+    self.sim.reinit_env(self.sim.default_model_directory + 'cassie_new_params.xml')
     # params
-    penetration_allowance = params['pen_allow']
-    # print(penetration_allowance)
-    mu_static = params['mu_static']
-    mu_kinetic = params['mu_ratio'] * params['mu_static']
-    stiction_tol = params['stiction_tol']
-    # delta_x_init = params['delta_x_init']
-    terrain_height = 0.00
-    x_traj = np.load(self.folder_path + 'x_' + log_num + '.npy')
-    t = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+    log_idx = self.log_nums_real.index(log_num)
+    x_traj = self.x_trajs[log_num]
+    t = self.t_xs[log_num]
 
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
     x_init = x_interp(self.start_time)
 
+    z_offset = self.z_offsets[log_idx]
+    vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
+    x_init[self.base_z_idx] += z_offset
+    x_init[self.base_vel_idx] += vel_offset
+
     lcm_traj = lcm_trajectory.LcmTrajectory(self.folder_path + 'u_traj_' + log_num)
     u_traj = lcm_traj.GetTrajectory("controller_inputs")
     u_init_traj = PiecewisePolynomial.FirstOrderHold(u_traj.time_vector, u_traj.datapoints)
-    x_traj, u_traj, t_x = sim.run_sim_playback(x_init, self.start_time, self.end_time, u_init_traj)
+    x_traj, u_traj, t_x = self.sim.run_sim_playback(x_init, self.start_time, self.end_time, u_init_traj)
 
-    # x_traj = np.genfromtxt('x_traj.csv', delimiter=',', dtype='f16')
-    # t_x = np.genfromtxt('t_x.csv')
-    # t_x = np.append(t_x, self.start_time + self.sim_time)
     sim_id = log_num + str(np.abs(hash(frozenset(params))))
-    # self.save_params(params, sim_id)
+    x_traj = np.array(x_traj)
+    u_traj = np.array(u_traj)
+    t_x = np.array(t_x)
     np.save(self.sim_data_folder + 'x_traj' + sim_id, x_traj)
     np.save(self.sim_data_folder + 't_x' + sim_id, t_x)
 
@@ -81,7 +110,6 @@ class LearningMujocoCassieSim():
 
   def get_window_around_contact_event(self, x_traj, t_x):
     # return whole trajectory for now
-
     start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[0][0]
     end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[0][0]
     window = slice(start_idx, end_idx)
@@ -92,13 +120,7 @@ class LearningMujocoCassieSim():
     t_x_log = np.load(self.folder_path + 't_x_' + log_num + '.npy')
     x_traj, t_x = self.load_sim_trial(sim_id)
     window, x_traj_in_window = self.get_window_around_contact_event(x_traj_log, t_x_log)
+    min_time_length = min(x_traj.shape[0], x_traj_in_window.shape[0])
 
-    loss = self.loss_func.CalculateLoss(x_traj.transpose(), x_traj_in_window[window])
+    loss = self.loss_func.CalculateLossTraj(x_traj[:min_time_length], x_traj_in_window[:min_time_length])
     return loss
-
-
-if __name__ == '__main__':
-  log_num = sys.argv[1]
-  loss_func = cassie_loss_utils.CassieLoss()
-  sim = DrakeCassieSim()
-  sim.run(sim.default_drake_contact_params, log_num)

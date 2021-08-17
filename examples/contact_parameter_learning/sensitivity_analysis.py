@@ -25,7 +25,7 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
                 pairs = load_traj_pairs(sim, params, test_traj_set)
                 for pair_idx in pairs:
                     pair = pairs[pair_idx]
-                    loss_sum += loss_weights.CalculateLoss(pair[0], pair[1])
+                    loss_sum += loss_weights.CalculateLossTraj(pair[0], pair[1])
                 loss_sweep.append(loss_sum / len(pairs))
             else:
                 raise NotImplementedError('Need to define a cassie method for this')

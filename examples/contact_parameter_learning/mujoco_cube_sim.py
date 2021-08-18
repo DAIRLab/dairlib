@@ -10,11 +10,11 @@ default_mujoco_contact_params = {"stiffness" : 2000,
                   "mu_torsion" : 0.005, 
                   "mu_rolling" : 0.0001}
 
-def get_model_xml_text(params=None):
+def get_model_xml_text(substeps, params=None,):
     if (params is None) : params = default_mujoco_contact_params
     ixx = 0.00081
 
-    return f'<mujoco model=\"Cube\"> <compiler inertiafromgeom=\"true\" angle=\"degree\"/> <option timestep = \"{CUBE_DATA_DT}\"> \
+    return f'<mujoco model=\"Cube\"> <compiler inertiafromgeom=\"true\" angle=\"degree\"/> <option timestep = \"{CUBE_DATA_DT / substeps}\"> \
 <flag refsafe = \"disable\" /> </option><asset> <texture name=\"grid\" type=\"2d\" builtin=\"checker\" rgb1=\".2 .3 .4\" rgb2=\".1 .15 .2\" \
 width=\"512\" height=\"512\" mark=\"edge\" markrgb=\".8 .8 .8\"/> <material name=\"grid\" texture=\"grid\" texrepeat=\"1 1\" \
 texuniform=\"true\" reflectance=\".3\"/></asset><worldbody><geom name=\"floor\" pos=\"0 0 -1.0\" size=\".0 .0 .01\" type=\"plane\" material=\"grid\"/> \
@@ -35,20 +35,21 @@ friction=\"{params["table_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolli
 
 class MujocoCubeSim(CubeSim):
 
-    def __init__(self, visualize=False):
+    def __init__(self, visualize=False, substeps=1):
         if (not type(visualize) == bool) : 
             raise TypeError('visualize argument must be set to a boolean value')
         self.visualize=visualize
+        self.substeps=substeps
 
 
     def init_sim(self, params):
-        self.model = load_model_from_xml(get_model_xml_text(params))
+        self.model = load_model_from_xml(get_model_xml_text(self.substeps, params=params))
         self.sim = MjSim(self.model)
         if (self.visualize) :
             self.viewer = MjViewer(self.sim)
 
     def set_initial_condition(self, initial_state):
-        
+
         sim_state = self.sim.get_state()
         sim_state.qpos[:3] = initial_state[CUBE_DATA_POSITION_SLICE]
         sim_state.qpos[3:] = initial_state[CUBE_DATA_QUATERNION_SLICE]
@@ -61,10 +62,13 @@ class MujocoCubeSim(CubeSim):
         data_arr = np.zeros((1,13))
         data_arr[0, :7] = self.sim.get_state().qpos
         data_arr[0, 7:] = self.sim.get_state().qvel
-        self.sim.step()
+        
+        for i in range(self.substeps):
+            self.sim.step()
+            
         if (self.visualize) :
             self.viewer.render()
-        
+
         return data_arr
 
     def visualize_data_rollout(self, data):

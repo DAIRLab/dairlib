@@ -20,7 +20,7 @@ def visualize_learned_params(params, sim_type, toss_id):
     vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
 
     if (sim_type == 'mujoco'):
-        data_sim = mujoco_cube_sim.MujocoCubeSim()
+        data_sim = mujoco_cube_sim.MujocoCubeSim(substeps=1000)
     elif (sim_type == 'drake'):
         data_sim = drake_cube_sim.DrakeCubeSim()
     elif (sim_type == 'bullet'):
@@ -29,7 +29,7 @@ def visualize_learned_params(params, sim_type, toss_id):
     data_sim.init_sim(params)
     sim_data = data_sim.get_sim_traj_initial_state(initial_state, cube_data.shape[0], cube_sim.CUBE_DATA_DT)
 
-    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.2)
+    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.05)
 
 def load_traj_pairs(sim, params, test_set):
     sim.init_sim(params)
@@ -117,12 +117,12 @@ def get_error_and_loss_stats(traj_pairs, loss_weights):
             'vel_mean' : vel_mean,
             'omega_mean' : omega_mean, 
             'rot_mean' : rot_mean,
-            'loss_mean' : loss_mean, 
+            'mse_mean' : loss_mean, 
             'pos_std' : pos_std, 
             'vel_std' : vel_std,
             'omega_std' : omega_std, 
             'rot_std' : rot_std,
-            'loss_std' : loss_std, }
+            'mse_std' : loss_std, }
 
 def load_params(simulator, id):
     filename = os.path.join(model_folder, simulator + '_' + id +'.json')
@@ -160,6 +160,8 @@ if (__name__ == '__main__'):
         quit()
     
     params, test_set, _ = load_params_and_logs(learning_result)
+
+    visualize_learned_params(params, sim_type, 101)
 
     traj_pairs = load_traj_pairs(eval_sim, params, test_set)
     stats = get_error_and_loss_stats(traj_pairs, mse_loss)

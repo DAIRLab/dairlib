@@ -153,10 +153,10 @@ def plot_per_log_loss_mujoco():
 
 
 if (__name__ == '__main__'):
-  # learn_drake_cassie_params()
+  learn_drake_cassie_params()
   # learn_mujoco_cassie_params()
   #plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
-  print_drake_cassie_params('15')
+  # print_drake_cassie_params('15')
   # print_mujoco_cassie_params()
    #plot_loss_trajectory()

@@ -11,21 +11,33 @@ from pydairlib.cassie.cassie_utils import *
 from scipy.spatial.transform import Rotation as R
 from pydairlib.multibody import *
 from pydrake.solvers.mathematicalprogram import MathematicalProgram, Solve
+from pydrake.systems.rendering import MultibodyPositionToGeometryPose
+from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box
+from pydrake.systems.analysis import Simulator
+from pydrake.systems.primitives import TrajectorySource
+
 
 class DrakeToMujocoConverter():
 
   def __init__(self, drake_sim_dt=5e-5):
     self.builder = DiagramBuilder()
-
+    self.drake_sim_dt = drake_sim_dt
     # Add a cube as MultibodyPlant
     self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, drake_sim_dt)
     addCassieMultibody(self.plant, self.scene_graph, True,
                        "examples/Cassie/urdf/cassie_v2.urdf", False, False)
     self.plant.Finalize()
 
-    self.foot_crank_plant = MultibodyPlant(drake_sim_dt)
+    # self.foot_crank_plant = MultibodyPlant(drake_sim_dt)
+    self.foot_crank_builder = DiagramBuilder()
+    self.foot_crank_plant, self.foot_crank_scene_graph = AddMultibodyPlantSceneGraph(self.foot_crank_builder, drake_sim_dt)
+    # DrakeVisualizer.AddToBuilder(self.foot_crank_builder, self.foot_crank_scene_graph)
+
     Parser(self.foot_crank_plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_foot_crank.urdf'))
     self.foot_crank_plant.Finalize()
+
+    self.diagram = self.builder.Build()
+    self.diagram_context = self.diagram.CreateDefaultContext()
 
     temp = makeNameToPositionsMap(self.foot_crank_plant)
 
@@ -71,10 +83,16 @@ class DrakeToMujocoConverter():
     self.plantar_rod_frame = self.foot_crank_plant.GetBodyByName('plantar_rod_left').body_frame()
     self.toe_left_frame = self.foot_crank_plant.GetBodyByName('toe_left').body_frame()
     self.plantar_rod_anchor_point = np.array([0.35012, 0, 0])
-    self.toe_left_anchor_point = np.array([0.04885482, 0.00394248, 0.01484])
+    # self.toe_left_anchor_point = np.array([0.04885482, 0.00394248, 0.01484])
+    self.toe_left_anchor_point = np.array([0.05485482, 0, 0.01484])
+    # self.toe_left_anchor_point = np.array([0.05512, 0.006, 0.01484])
 
+    # self.ik_solver.AddPositionConstraint(self.plantar_rod_frame, self.plantar_rod_anchor_point, self.toe_left_frame,
+    #                                      self.toe_left_anchor_point - 2e-3 * np.ones(3),
+    #                                      self.toe_left_anchor_point + 2e-3 * np.ones(3))
     self.ik_solver.AddPositionConstraint(self.plantar_rod_frame, self.plantar_rod_anchor_point, self.toe_left_frame,
-                                         self.toe_left_anchor_point - 2e-3*np.ones(3), self.toe_left_anchor_point + 2e-3*np.ones(3))
+                                         self.toe_left_anchor_point,
+                                         self.toe_left_anchor_point)
     self.toe_angle_constraint = self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[7], 0)
     self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[0:7], np.array([1, 0, 0, 0, 0, 0, 0]))
 
@@ -98,7 +116,47 @@ class DrakeToMujocoConverter():
     v_full = v_missing + v_copy
     return q_full, v_full
 
-  # def solve_foot_angles(self):
+  def visualize_state(self, x):
+    self.plant.SetPositionsAndVelocities(self.context, x)
+    self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[x[self.pos_map['toe_left']]])
+    result = Solve(self.ik_solver.prog())
+    left_foot_crank_state = result.GetSolution()
+    print(result.get_solution_result())
+    builder = DiagramBuilder()
+
+    # Add a cube as MultibodyPlant
+    plant = MultibodyPlant(self.drake_sim_dt)
+    scene_graph = builder.AddSystem(SceneGraph())
+    plant_id = plant.RegisterAsSourceForSceneGraph(scene_graph)
+
+    Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_foot_crank.urdf'))
+    # plant.RegisterVisualGeometry(plant.world_body(), X_WG, Box(10, 10, 0.001), "visual", terrain_color)
+    plant.Finalize()
+    plant_context = plant.CreateDefaultContext()
+
+    pp_traj = PiecewisePolynomial(left_foot_crank_state)
+
+    traj_source = builder.AddSystem(TrajectorySource(pp_traj))
+    q_to_pose = builder.AddSystem(MultibodyPositionToGeometryPose(plant))
+    builder.Connect(traj_source.get_output_port(), q_to_pose.get_input_port())
+    builder.Connect(q_to_pose.get_output_port(), scene_graph.get_source_pose_port(plant_id))
+
+
+    # self.builder.Connect(self.foot_crank_plant.get_geometry_poses_output_port(),
+    #                      self.foot_crank_scene_graph.get_source_pose_port(self.foot_crank_plant.get_source_id().value()))
+
+    # self.q_to_pose = self.builder.AddSystem(MultibodyPositionToGeometryPose(self.plant))
+    # self.builder.Connect(self.q_to_pose.get_output_port(), self.foot_crank_scene_graph.get_source_pose_port(plant_id))
+    DrakeVisualizer.AddToBuilder(builder, scene_graph)
+    diagram = builder.Build()
+    sim = Simulator(diagram)
+    sim.set_publish_every_time_step(True)
+    sim.get_mutable_context().SetTime(0.0)
+    plant.SetPositions(plant_context, left_foot_crank_state)
+    sim.Initialize()
+    sim.AdvanceTo(0.1)
+
+    import pdb; pdb.set_trace()
 
   def solve_IK(self, x):
     self.plant.SetPositionsAndVelocities(self.context, x)
@@ -111,10 +169,12 @@ class DrakeToMujocoConverter():
     # toe_left_anchor_point = self.foot_crank_plant.CalcPointsPositions(self.foot_crank_context, self.plantar_rod_frame,
     #                                                                   self.plantar_rod_anchor_point,
     #                                                                   self.toe_left_frame)
-    # print(toe_left_anchor_point)
+    print('toe_left_anchor_point:')
+    print(toe_left_anchor_point)
     self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[x[self.pos_map['toe_left']]])
     result = Solve(self.ik_solver.prog())
     left_foot_crank_state = result.GetSolution()
+    self.visualize_state(left_foot_crank_state)
     print(result.get_solution_result())
     self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[x[self.pos_map['toe_right']]])
     result = Solve(self.ik_solver.prog())

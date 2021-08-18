@@ -70,7 +70,7 @@
                     xyz="0 0 0"
                     rpy="0 0 0" />
             <geometry>
-                <mesh filename="meshes/agility/left-foot-crank.obj" />
+                <mesh filename="meshes/agility/foot_crank.obj" />
             </geometry>
             <material name="">
                 <color rgba="0.4 0.4 0.4 1" />
@@ -96,7 +96,7 @@
                     xyz="0 0 0"
                     rpy="0 0 0" />
             <geometry>
-                <mesh filename="meshes/agility/left-plantar-rod.obj" />
+                <mesh filename="meshes/agility/plantar_rod.obj" />
             </geometry>
             <material name="">
                 <color rgba="0.4 0.4 0.4 1" />

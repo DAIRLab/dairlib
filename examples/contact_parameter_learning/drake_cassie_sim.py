@@ -97,7 +97,7 @@ class DrakeCassieSim():
     mu_kinetic = params['mu_ratio'] * params['mu_static']
     stiction_tol = params['stiction_tol']
     log_idx = self.log_nums_real.index(log_num)
-    # log_idx = self.log_nums_real.index('15')
+    log_idx = self.log_nums_real.index('15')
     # print('log_idx' + str(log_idx))
 
     # x_traj = np.load(self.folder_path + 'x_' + log_num + '.npy')
@@ -168,8 +168,11 @@ class DrakeCassieSim():
     window, x_traj_in_window = self.get_window_around_contact_event(x_traj_log, t_x_log)
     min_time_length = min(x_traj.shape[0], x_traj_in_window.shape[0])
     if plot:
-      self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45], color='b')
-      self.ps.plot(t_x_log[:min_time_length], x_traj_log[:min_time_length, 23:45], color='r')
+      self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45])
+      self.ps.plot(t_x_log[:min_time_length], x_traj_log[:min_time_length, 23:45])
+      plt.figure('loss')
+      self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45] - x_traj_log[:min_time_length, 23:45], color=self.ps.grey)
+
       plt.show()
     traj_loss = self.loss_func.CalculateLossTraj(x_traj[:min_time_length], x_traj_in_window[:min_time_length])
     regularization_loss = self.loss_func.CalculateLossParams(params)

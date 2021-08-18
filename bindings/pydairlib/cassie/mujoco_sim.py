@@ -144,3 +144,5 @@ class MujocoCassieSim():
 
     return x_traj, u_traj, t_traj
 
+  def visualize_IK(self, x):
+    self.drake_to_mujoco_converter.visualize_state(x)

@@ -29,7 +29,7 @@ def visualize_learned_params(params, sim_type, toss_id):
     data_sim.init_sim(params)
     sim_data = data_sim.get_sim_traj_initial_state(initial_state, cube_data.shape[0], cube_sim.CUBE_DATA_DT)
 
-    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.05)
+    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.1)
 
 def load_traj_pairs(sim, params, test_set):
     sim.init_sim(params)
@@ -90,6 +90,7 @@ def get_error_and_loss_stats(traj_pairs, loss_weights):
     omega = []
     rot = []
     loss = []
+
     i = 0
     for pair_idx in traj_pairs:
         pair = traj_pairs[pair_idx]
@@ -101,6 +102,7 @@ def get_error_and_loss_stats(traj_pairs, loss_weights):
         loss.append(loss_weights.CalculateLossTraj(pair[0], pair[1]))
         if not (i % 25): print(f'calculating means {i} %')
         i += 1
+    
     pos_mean = np.mean(np.array(pos))
     vel_mean = np.mean(np.array(vel))
     omega_mean = np.mean(np.array(omega))
@@ -122,7 +124,17 @@ def get_error_and_loss_stats(traj_pairs, loss_weights):
             'vel_std' : vel_std,
             'omega_std' : omega_std, 
             'rot_std' : rot_std,
-            'mse_std' : loss_std, }
+            'mse_std' : loss_std }
+
+def sort_traj_pairs_by_loss(pairs, loss_weights):
+    loss = {}
+    for idx, pair in pairs.items():
+        loss[idx] = loss_weights.CalculateLoss(pair[0], pair[1])
+        
+    sorted_pairs = {idx : pair for idx, pair in sorted(pairs.items(), 
+        key=lambda item: loss[item[0]], reverse=True)}
+
+    return sorted_pairs, loss
 
 def load_params(simulator, id):
     filename = os.path.join(model_folder, simulator + '_' + id +'.json')
@@ -160,9 +172,14 @@ if (__name__ == '__main__'):
         quit()
     
     params, test_set, _ = load_params_and_logs(learning_result)
-
-    visualize_learned_params(params, sim_type, 101)
-
     traj_pairs = load_traj_pairs(eval_sim, params, test_set)
-    stats = get_error_and_loss_stats(traj_pairs, mse_loss)
-    print(stats)
+
+    sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
+    print('Test set sorted from highest to lowest MSE')
+    for key in sorted_pairs:
+        print(f'Toss: {key} \t\t MSE: {losses[key]}')
+
+    # stats = get_error_and_loss_stats(traj_pairs, mse_loss)
+    # print(stats)
+
+    visualize_learned_params(params, sim_type, list(sorted_pairs.keys())[-1])

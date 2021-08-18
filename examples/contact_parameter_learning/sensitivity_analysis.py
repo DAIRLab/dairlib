@@ -25,7 +25,7 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
                 pairs = load_traj_pairs(sim, params, test_traj_set)
                 for pair_idx in pairs:
                     pair = pairs[pair_idx]
-                    loss_sum += loss_weights.CalculateLossTraj(pair[0], pair[1])
+                    loss_sum += loss_weights.CalculateLoss(pair[0], pair[1])
                 loss_sweep.append(loss_sum / len(pairs))
             else:
                 raise NotImplementedError('Need to define a cassie method for this')
@@ -64,6 +64,7 @@ def get_cube_params_range(sim_type):
     elif (sim_type == 'bullet'):
 
         params_range['mu_tangent'] = np.arange(0.1, 1.0, 0.05).tolist()
+        params_range['restitution'] = np.arange(0.01, 1.0, 0.1).tolist()
     
     return params_range
 

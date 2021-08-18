@@ -65,7 +65,7 @@ py_binary(
 )
 
 py_library(
-    name = "process_lcm_log_py",
+    name = "process_lcm_log",
     srcs = [":process_lcm_log.py"],
     deps = [
         ":module_py",
@@ -92,7 +92,7 @@ PY_LIBRARIES = [
     ":dircon_trajectory_plotter",
     ":lcm_trajectory_plotter",
     ":lcm_trajectory_py",
-    ":process_lcm_log_py",
+    ":process_lcm_log",
     ":lcm_py",
 ]
 

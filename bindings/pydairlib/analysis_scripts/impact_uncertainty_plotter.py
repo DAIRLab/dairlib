@@ -35,7 +35,7 @@ def main():
 def plot_error_bands():
 
   data_range = np.arange(28, 35, 1)
-  # data_range = np.concatenate((np.arange(12, 17, 1), data_range))
+  data_range = np.concatenate((np.arange(12, 17, 1), data_range))
   # v_all = np.empty()
   v_all = []
   vproj_all = []
@@ -54,8 +54,10 @@ def plot_error_bands():
     v_all.append(v_interp(t_master))
     vproj_all.append(vproj_interp(t_master))
     ps.plot(t[:n_samples], v[:n_samples, joint_idx], color='b')
+    # import pdb; pdb.set_trace()
     # ps.plot(t, vproj[:n_samples, joint_idx], color='r')
-  plt.xlim([-10, 30])
+  # plt.xlim([-10, 30])
+  plt.show()
   v_all = np.stack(v_all, axis=-1)
   vproj_all = np.stack(vproj_all, axis=-1)
 

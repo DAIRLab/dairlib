@@ -71,7 +71,7 @@ def main():
   input_traj.shiftRight(delay_time)
 
   nominal_impact_time = jumping_traj.GetStateBreaks(2)[0]
-
+  import pdb; pdb.set_trace()
 
   # relevant MBP parameters
   nq = plant_w_spr.num_positions()
@@ -131,7 +131,7 @@ def main():
   # All plotting scripts here
   # plot_status(full_log)
   # plot_ekf(full_log, pos_map, vel_map)
-  plot_control_rate(t_u, u)
+  # plot_control_rate(t_u, u)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context_w_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
   plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
@@ -154,7 +154,7 @@ def main():
 
   # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
-  # plt.show()
+  plt.show()
 
 def plot_contact_est(log):
   t_contact = []

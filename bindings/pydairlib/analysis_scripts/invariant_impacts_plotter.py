@@ -10,7 +10,7 @@ from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 from pydairlib.cassie.cassie_utils import *
 import pydairlib.multibody
-from pydairlib.analysis_scripts.process_lcm_log import process_log
+from process_lcm_log import process_log
 
 import matplotlib.pyplot as plt
 
@@ -31,8 +31,8 @@ def main():
   ps.set_default_styling(directory=figure_directory)
 
   filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
-  jumping_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
-  output_trajs = pydairlib.lcm_trajectory.LcmTrajectory(
+  jumping_traj = lcm_trajectory.DirconTrajectory(filename)
+  output_trajs = lcm_trajectory.LcmTrajectory(
     "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/jumping_0.15h_0.3d_processed")
   lcm_right_foot_traj = output_trajs.GetTrajectory("right_foot_trajectory0")
   right_foot_traj = PiecewisePolynomial.CubicHermite(lcm_right_foot_traj.time_vector, lcm_right_foot_traj.datapoints[0:3], lcm_right_foot_traj.datapoints[3:6])

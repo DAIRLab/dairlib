@@ -1,6 +1,7 @@
 #include <memory>
 
 #include <gflags/gflags.h>
+#include <z3.h>
 
 #include "common/eigen_utils.h"
 #include "common/file_utils.h"
@@ -59,6 +60,11 @@ DEFINE_double(stiction_tol, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. Nearly equivalent"
               " to (m)");
+DEFINE_double(stiffness, 1e4,
+              "Stiffness value the contact model");
+DEFINE_double(dissipation_rate, 0.5,
+              "Penetration allowance for the contact model. Nearly equivalent"
+              " to (m)");
 DEFINE_double(mu_static, 0.8, "Coefficient of static friction.");
 DEFINE_double(mu_kinetic, 0.8, "Coefficient of kinematic friction.");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
@@ -77,7 +83,6 @@ DEFINE_string(
 DEFINE_string(initial_state_file, "examples/Cassie/data/initial_state.yaml",
               "YAML file containing the initial state.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
-
 
 struct InitialState {
   std::vector<double> x_init;
@@ -99,7 +104,9 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_dt;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu_static, FLAGS_mu_kinetic);
+    multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu_static,
+                              FLAGS_mu_kinetic, Eigen::Vector3d(0, 0, 1),
+                              FLAGS_stiffness, FLAGS_dissipation_rate);
   }
 
   if (FLAGS_terrain_height != 0) {
@@ -119,7 +126,45 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  plant.set_penetration_allowance(FLAGS_penetration_allowance);
+  //  // Drake models the normal compliant force fn as: fn = fₙ = k⋅(1−d⋅vₙ)⋅ϕ
+  //  Where
+  //  // ϕ
+  //  //   is the signed distance between the geometries (positive if not in
+  //  contact
+  //  //   and negative if overlaping), vₙ = dϕ/dt the normal separation
+  //  velocity
+  //  //   (positive if separating, negative if getting closer), k is the linear
+  //  //   stiffness in N/m and d is the Hung & Crossley dissipation in s/m.
+  //  const double stiffness = 1.0e4;  // k. Linear stiffness in N/m.
+  //  const double dissipation = 0.5;  // d. Hunt & Crossley dissipation in s/m.
+  //
+  //  // Drake uses a Coulomb friction model, where μ is the coefficient of
+  //  dynamic
+  //  // friction (static friction equals dynamics friction).
+  //  const double friction = 0.2;  // μ. Coefficient of friction,
+  //  dimensionless.
+  //
+  //  drake::geometry::ProximityProperties props;
+  //  props.AddProperty("material", "point_contact_stiffness", FLAGS_stiffness);
+  //  props.AddProperty("material", "hunt_crossley_dissipation",
+  //                    FLAGS_dissipation_rate);
+  //  props.AddProperty(drake::geometry::internal::kMaterialGroup,
+  //                    drake::geometry::internal::kFriction,
+  //                    drake::multibody::CoulombFriction<double>(friction,
+  //                    friction));
+  //
+  //  // When you programatically register your geometry you do:
+  //  // const auto& body = plant.AddRigidBody(...) or,
+  //  // const auto& body = plant.GetBodyByName("BodyName");
+  //  // N.B. Here we use "props" created above to specify the properties of the
+  //  new
+  //  // geometry register for "body".
+  //  plant.RegisterCollisionGeometry(body,
+  //  drake::math::RigidTransformd::Identity(),
+  //                                  drake::geometry::Box(...),
+  //                                  "CollisionGeometryName", props);
+
+  //  plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_stiction_tol);
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
@@ -200,7 +245,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-  auto logger = drake::systems::LogOutput(plant.get_state_output_port(), &builder);
+  auto logger =
+      drake::systems::LogOutput(plant.get_state_output_port(), &builder);
   logger->set_publish_period(1.0 / FLAGS_publish_rate);
   auto diagram = builder.Build();
 
@@ -224,8 +270,8 @@ int do_main(int argc, char* argv[]) {
       YAML::LoadFile(FindResourceOrThrow(FLAGS_initial_state_file));
   drake::yaml::YamlReadArchive(root).Accept(&init_state);
 
-  Eigen::VectorXd x_init =
-      Eigen::Map<Eigen::VectorXd>(init_state.x_init.data(), init_state.x_init.size());
+  Eigen::VectorXd x_init = Eigen::Map<Eigen::VectorXd>(
+      init_state.x_init.data(), init_state.x_init.size());
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 
@@ -238,10 +284,10 @@ int do_main(int argc, char* argv[]) {
   simulator.Initialize();
   simulator.AdvanceTo(FLAGS_end_time);
 
-//  auto x_traj = logger->data();
+  //  auto x_traj = logger->data();
   auto timestamps = logger->sample_times();
-//  std::cout << x_traj.cols() << std::endl;
-//  std::cout << x_traj.rows() << std::endl;
+  //  std::cout << x_traj.cols() << std::endl;
+  //  std::cout << x_traj.rows() << std::endl;
   writeCSV("x_traj.csv", logger->data());
   writeCSV("t_x.csv", timestamps);
 

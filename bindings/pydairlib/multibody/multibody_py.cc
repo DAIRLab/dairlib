@@ -40,7 +40,7 @@ PYBIND11_MODULE(multibody, m) {
            &dairlib::multibody::addFlatTerrain<double>,
            py::arg("plant"), py::arg("scene_graph"),
            py::arg("mu_static"), py::arg("mu_kinetic"),
-           py::arg("normal_W"));
+           py::arg("normal_W"), py::arg("stiffness"), py::arg("dissipation_rate"));
 }
 
 }  // namespace pydairlib

@@ -16,14 +16,14 @@ drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='po
 mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='pos_loss_weights')
 loss_over_time = []
 pen_allow_over_time = []
-log_num = 'all'
-budget = 50000
+log_num = '15_24'
+budget = 5000
 # budget = 25000
 
 all_logs = drake_sim.log_nums_real
 # num_train = int(0.8 * len(all_logs))
 # training_idxs = sample(all_logs, num_train)
-training_idxs = ['15', '24']
+training_idxs = ['15']
 test_idxs = [idx for idx in all_logs if not (idx in training_idxs)]
 
 ps = plot_styler.PlotStyler()
@@ -38,7 +38,7 @@ def get_drake_loss(params, log_num=None):
   sim_id = drake_sim.run(params, log_num)
   loss = drake_sim.compute_loss(log_num, sim_id, params)
   loss_over_time.append(loss)
-  pen_allow_over_time.append(params['pen_allow'])
+  # pen_allow_over_time.append(params['pen_allow'])
   print('loss:' + str(loss))
   return loss
 
@@ -59,10 +59,13 @@ def learn_drake_cassie_params():
   optimization_param = ng.p.Dict(
     mu_static=ng.p.Scalar(lower=0.001, upper=1.0),
     mu_ratio=ng.p.Scalar(lower=0.001, upper=1.0),
-    pen_allow=ng.p.Log(lower=5e-6, upper=5e-2),
+    stiffness=ng.p.Log(lower=1e3, upper=1e8),
+    dissipation=ng.p.Scalar(lower=0.1, upper=1),
     stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2),
-    vel_offset=ng.p.Array(shape=(len(all_logs) * 3,)).set_bounds(lower=-1, upper=1),
-    z_offset=ng.p.Array(shape=(len(all_logs),)).set_bounds(lower=-0.05, upper=0.05)
+    vel_offset=ng.p.Array(shape=(3,)).set_bounds(lower=-1, upper=1),
+    z_offset=ng.p.Array(shape=(1,)).set_bounds(lower=-0.05, upper=0.05)
+    # vel_offset=ng.p.Array(shape=(len(all_logs) * 3,)).set_bounds(lower=-1, upper=1),
+    # z_offset=ng.p.Array(shape=(len(all_logs),)).set_bounds(lower=-0.05, upper=0.05)
   )
 
   optimization_param.value = drake_sim.default_drake_contact_params
@@ -98,13 +101,15 @@ def learn_mujoco_cassie_params():
 def plot_loss_trajectory():
   loss_t = np.load(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget) + '.npy')
   pen_allow_t = np.load(drake_sim.params_folder + log_num + '_pen_allow_trajectory_' + str(budget) + '.npy')
-  ps.scatter(pen_allow_t, loss_t, xlabel='penetration_allowance (m)', ylabel='loss')
+  # ps.scatter(pen_allow_t, loss_t, xlabel='penetration_allowance (m)', ylabel='loss')
+  ps.plot(np.arange(0, loss_t.shape[0]), loss_t, xlabel='iter', ylabel='loss')
   plt.show()
 
 
 def print_drake_cassie_params(single_log_num):
   # optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
-  optimal_params = drake_sim.load_params('all' + '_optimized_params_' + str(budget))
+  # optimal_params = drake_sim.load_params('all' + '_optimized_params_' + str(budget))
+  optimal_params = drake_sim.load_params('15_24' + '_optimized_params_' + str(budget))
 
   sim_id = drake_sim.run(optimal_params.value, single_log_num)
   loss = drake_sim.compute_loss(single_log_num, sim_id, optimal_params.value, plot=True)
@@ -155,8 +160,8 @@ def plot_per_log_loss_mujoco():
 if (__name__ == '__main__'):
   learn_drake_cassie_params()
   # learn_mujoco_cassie_params()
-  #plot_per_log_loss_drake()
+  # plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
   # print_drake_cassie_params('15')
   # print_mujoco_cassie_params()
-   #plot_loss_trajectory()
+  # plot_loss_trajectory()

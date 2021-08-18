@@ -21,8 +21,9 @@ class DrakeCassieSim():
     self.folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
-    self.start_time = 30.595
-    self.sim_time = 0.03
+    # self.start_time = 30.595
+    self.start_time = 30.6477
+    self.sim_time = 0.05
     self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
     self.realtime_rate = 1.0
@@ -50,10 +51,14 @@ class DrakeCassieSim():
     self.default_drake_contact_params = {
       "mu_static": 0.8,
       "mu_ratio": 1.0,
-      "pen_allow": 1e-5,
+      # "pen_allow": 1e-5,
+      "stiffness": 1e4,
+      "dissipation": 0.5,
       "stiction_tol": 1e-3,
-      "vel_offset": np.zeros(len(self.log_nums_real) * 3),
-      "z_offset": np.zeros(len(self.log_nums_real)),
+      # "vel_offset": np.zeros(len(self.log_nums_real) * 3),
+      # "z_offset": np.zeros(len(self.log_nums_real)),
+      "vel_offset": np.zeros(3),
+      "z_offset": np.zeros(1),
     }
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
@@ -92,7 +97,9 @@ class DrakeCassieSim():
     # mu_static = self.default_drake_contact_params['mu_static']
     # mu_kinetic = self.default_drake_contact_params['mu_ratio'] * self.default_drake_contact_params['mu_static']
     # stiction_tol = self.default_drake_contact_params['stiction_tol']
-    penetration_allowance = params['pen_allow']
+    # penetration_allowance = params['pen_allow']
+    stiffness = params['stiffness']
+    dissipation = params['dissipation']
     mu_static = params['mu_static']
     mu_kinetic = params['mu_ratio'] * params['mu_static']
     stiction_tol = params['stiction_tol']
@@ -111,8 +118,10 @@ class DrakeCassieSim():
     x_init = x_interp(self.start_time)
     # z_offset = self.z_offsets[log_idx]
     # vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
-    z_offset = params['z_offset'][log_idx]
-    vel_offset = params['vel_offset'][3*log_idx:3*(log_idx + 1)]
+    # z_offset = params['z_offset'][log_idx]
+    # vel_offset = params['vel_offset'][3*log_idx:3*(log_idx + 1)]
+    z_offset = params['z_offset']
+    vel_offset = params['vel_offset']
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset
     self.write_initial_state(x_init)
@@ -122,7 +131,9 @@ class DrakeCassieSim():
                      '--terrain_height=%.4f' % self.terrain_height,
                      '--start_time=%.3f' % self.start_time,
                      '--log_num=' + log_num,
-                     '--penetration_allowance=%.7f' % penetration_allowance,
+                     # '--penetration_allowance=%.7f' % penetration_allowance,
+                     '--stiffness=%.1f' % stiffness,
+                     '--dissipation_rate=%.3f' % dissipation,
                      '--stiction_tol=%.7f' % stiction_tol,
                      '--mu_static=%.5f' % mu_static,
                      '--mu_kinetic=%.5f' % mu_kinetic,
@@ -153,8 +164,10 @@ class DrakeCassieSim():
   def get_window_around_contact_event(self, x_traj, t_x):
     # return whole trajectory for now
 
-    start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[0][0]
-    end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[0][0]
+    # start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[0][0]
+    # end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[0][0]
+    start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[1][0]
+    end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[1][0]
     window = slice(start_idx, end_idx)
     return window, x_traj[window]
 
@@ -167,9 +180,14 @@ class DrakeCassieSim():
     x_traj, t_x = self.load_sim_trial(sim_id)
     window, x_traj_in_window = self.get_window_around_contact_event(x_traj_log, t_x_log)
     min_time_length = min(x_traj.shape[0], x_traj_in_window.shape[0])
+    # import pdb; pdb.set_trace()
     if plot:
-      self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45])
-      self.ps.plot(t_x_log[:min_time_length], x_traj_log[:min_time_length, 23:45])
+      # self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45])
+      # self.ps.plot(t_x_log[window][:min_time_length], x_traj_in_window[:min_time_length, 23:45])
+      # self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 31:35], color='b')
+      # self.ps.plot(t_x_log[window][:min_time_length], x_traj_in_window[:min_time_length, 31:35], color='r')
+      self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 4:7], color='b')
+      self.ps.plot(t_x[:min_time_length], x_traj_in_window[:min_time_length, 4:7], color='r')
       plt.figure('loss')
       self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45] - x_traj_log[:min_time_length, 23:45], color=self.ps.grey)
 

@@ -1,7 +1,6 @@
 #include <memory>
 
 #include <gflags/gflags.h>
-#include <z3.h>
 
 #include "common/eigen_utils.h"
 #include "common/file_utils.h"

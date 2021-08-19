@@ -602,10 +602,15 @@ void InitialStateForPlanner::AdjustKneeAndAnklePos(
 
   /// Assign
   if (feedback_is_spring_model_) {
-    x_init->segment<1>(knee_ankle_pos_idx_list_[0]) +=
-        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
-    x_init->segment<1>(knee_ankle_pos_idx_list_[1]) +=
-        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
+    // Testing -- disabling this for the controller thread (basically assuming
+    // no deflection)
+//    x_init->segment<1>(knee_ankle_pos_idx_list_[0]) +=
+//        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
+//    x_init->segment<1>(knee_ankle_pos_idx_list_[1]) +=
+//        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
+
+    // We don't need to translate ankle joint because it doesn't affect the
+    // forward kinematics
     //  x_init->segment<1>(knee_ankle_pos_idx_list_[2]) -=
     //  x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[2]);
     //  x_init->segment<1>(knee_ankle_pos_idx_list_[3]) -=

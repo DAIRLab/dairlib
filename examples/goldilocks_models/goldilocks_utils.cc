@@ -246,6 +246,9 @@ void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
     DRAKE_DEMAND((rom->B() - readCSV(dir + string("rom_B.csv"))).norm() == 0);
   }
 
+  cout << "reading model parameter "
+       << dir + to_string(model_iter) + "_theta_y.csv\n";
+
   // Update the ROM parameters from file
   VectorXd theta_y =
       readCSV(dir + to_string(model_iter) + string("_theta_y.csv")).col(0);

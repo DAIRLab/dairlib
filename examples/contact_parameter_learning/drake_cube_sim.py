@@ -11,7 +11,7 @@ from pydrake.math import RigidTransform
 from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box, ProximityProperties
 from pydrake.trajectories import PiecewisePolynomial
 from pydairlib.common import FindResourceOrThrow
-
+# from ctypes import c_double
 
 # Note that the mu_ratio defines the ratio 
 # mu_kinetic/mu_static = [0 ... 1] to enforce that mu_kinetic <= mu_static

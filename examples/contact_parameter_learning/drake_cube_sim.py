@@ -8,7 +8,7 @@ from pydrake.systems.meshcat_visualizer import MeshcatVisualizer, ConnectMeshcat
 from pydrake.systems.rendering import MultibodyPositionToGeometryPose
 from pydrake.systems.primitives import TrajectorySource
 from pydrake.math import RigidTransform
-from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box
+from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box, ProximityProperties
 from pydrake.trajectories import PiecewisePolynomial
 from pydairlib.common import FindResourceOrThrow
 
@@ -16,10 +16,10 @@ from pydairlib.common import FindResourceOrThrow
 # Note that the mu_ratio defines the ratio 
 # mu_kinetic/mu_static = [0 ... 1] to enforce that mu_kinetic <= mu_static
 default_drake_contact_params = {
-    "mu_static": 0.18,
-    "mu_ratio": 1.0,
-    "pen_allow": 1e-5, 
-    "stiction_tol": 1e-3 }
+    "mu": 0.18,
+    "stiffness": 1.0e4, 
+    "stiction_tol": 1e-3, 
+    "dissipation":0.5 }
 
 class DrakeCubeSim(CubeSim):
 
@@ -51,14 +51,19 @@ class DrakeCubeSim(CubeSim):
         terrain_normal=np.array([0.0, 0.0, 1.0])
         terrain_point=np.zeros((3,))
         terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
-        friction=CoulombFriction(params["mu_static"], params["mu_ratio"]*params["mu_static"])
+
+        props = ProximityProperties()
+        props.AddProperty("material", "point_contact_stiffness", params['stiffness'])
+        props.AddProperty("material", "hunt_crossley_dissipation", params['dissipation'])
+        props.AddProperty("material", "coulomb_friction", params['mu'])
+
         X_WG = RigidTransform(HalfSpace.MakePose(terrain_normal, terrain_point))
 
         Parser(self.plant).AddModelFromFile(
             FindResourceOrThrow(
                 "examples/contact_parameter_learning/urdf/cube.urdf"))
 
-        self.plant.RegisterCollisionGeometry(self.plant.world_body(), X_WG, HalfSpace(), "collision", friction)
+        self.plant.RegisterCollisionGeometry(self.plant.world_body(), X_WG, HalfSpace(), "collision", props)
         self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(1, 1, 0.001), "visual", terrain_color)
         self.plant.Finalize()
         self.plant.set_penetration_allowance(params["pen_allow"])

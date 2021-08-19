@@ -51,11 +51,11 @@ class DrakeCubeSim(CubeSim):
         terrain_normal=np.array([0.0, 0.0, 1.0])
         terrain_point=np.zeros((3,))
         terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
-
+        friction = CoulombFriction(params['mu'], params['mu'])
         props = ProximityProperties()
         props.AddProperty("material", "point_contact_stiffness", params['stiffness'])
         props.AddProperty("material", "hunt_crossley_dissipation", params['dissipation'])
-        props.AddProperty("material", "coulomb_friction", params['mu'])
+        props.AddProperty("material", "coulomb_friction", friction)
 
         X_WG = RigidTransform(HalfSpace.MakePose(terrain_normal, terrain_point))
 
@@ -66,7 +66,6 @@ class DrakeCubeSim(CubeSim):
         self.plant.RegisterCollisionGeometry(self.plant.world_body(), X_WG, HalfSpace(), "collision", props)
         self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(1, 1, 0.001), "visual", terrain_color)
         self.plant.Finalize()
-        self.plant.set_penetration_allowance(params["pen_allow"])
         self.plant.set_stiction_tolerance(params["stiction_tol"])
 
     def init_playback_sim(self, traj_to_play_back):

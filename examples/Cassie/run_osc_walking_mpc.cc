@@ -20,6 +20,7 @@
 
 #include "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.h"
 #include "systems/controllers/mpc/mpc_trajectory_reciever.h"
+#include "systems/system_utils.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -82,6 +83,7 @@ DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
 
 DEFINE_bool(make_srbd_approx, false, "modify plant to closer approximate single rigid body assumption");
 
+DEFINE_bool(print_diagram, false, "whether to print the graphviz diagram");
 
 void print_gains(const CassieMpcOSCWalkingGains& gains);
 
@@ -356,11 +358,15 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc_walking_controller"));
+  owned_diagram->set_name(("osc_walking_controller_mpc"));
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
+
+  if (FLAGS_print_diagram) {
+    DrawAndSaveDiagramGraph(*loop.get_diagram());
+  }
 
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
     return mpc_subscriber->GetInternalMessageCount() > 1; });

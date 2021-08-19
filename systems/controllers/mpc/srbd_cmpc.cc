@@ -867,7 +867,6 @@ void SrbdCMPC::CopyContinuous3dSrbDynamics(double m, double yaw, BipedStance sta
   *Ad = A;
   *Bd = B;
   *bd = b;
-  
 }
 
 MatrixXd SrbdCMPC::MakeCollocationConstraintAMatrix(const MatrixXd& A,

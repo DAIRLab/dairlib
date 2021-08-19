@@ -19,6 +19,7 @@
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/dairlib_signal_lcm_systems.h"
+#include "systems/system_utils.h"
 #include "examples/Cassie/mpc/cassie_srbd_cmpc_gains.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/controllers/mpc/srbd_cmpc.h"
@@ -63,6 +64,7 @@ DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based f
 DEFINE_double(stance_time, 0.3, "duration of each stance phase");
 DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
 DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location");
+DEFINE_bool(print_diagram, false, "print block diagram");
 DEFINE_double(debug_time, 0.00, "time to simulate system at");
 DEFINE_double(swing_ft_height, 0.01, "Swing foot height");
 DEFINE_double(stance_width, 0.0, "stance width to use in dynamics linearization");
@@ -114,8 +116,9 @@ int DoMain(int argc, char* argv[]) {
   Vector3d right_safe_nomonal_foot_pos = -left_safe_nominal_foot_pos;
   Matrix3d I_rot;
   I_rot << 0.91, 0.04, 0.09, 0.04, 0.55, -0.001, 0.08, -0.001, 0.89;
-  double mass = 30.0218;
+  //I_rot << 0.91, 0.0, 0.0, 0.0, 0.55, 0.0, 0.0, 0.0, 0.89;
 
+  double mass = 30.0218;
   auto cmpc = builder.AddSystem<SrbdCMPC>(plant, plant_context.get(), dt,
                                             FLAGS_swing_ft_height,
                                             false, false, true,  FLAGS_use_com);
@@ -139,6 +142,8 @@ int DoMain(int argc, char* argv[]) {
 
   SrbdDynamics left_stance_dynamics = {Al, Bl, bl};
   SrbdDynamics right_stance_dynamics = {Ar, Br, br};
+
+  std::cout << Al << '\n' << Bl << '\n' << bl << std::endl;
 
   cmpc->AddMode(left_stance_dynamics, BipedStance::kLeft, std::round(FLAGS_stance_time / dt));
   cmpc->AddMode(right_stance_dynamics, BipedStance::kRight, std::round(FLAGS_stance_time / dt));
@@ -223,6 +228,10 @@ int DoMain(int argc, char* argv[]) {
   *owned_diagram;
   LcmDrivenLoop<lcmt_robot_output> loop(&lcm_local, std::move(owned_diagram),
                                         robot_out, FLAGS_channel_x, true);
+
+  if (FLAGS_print_diagram) {
+    DrawAndSaveDiagramGraph(*loop.get_diagram());
+  }
 
   if (!FLAGS_debug_mode) {
     loop.Simulate();

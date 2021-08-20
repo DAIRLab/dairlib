@@ -92,11 +92,11 @@ def get_drake_loss_mp(params):
 
 def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
-    #try:
-    sim = drake_cube_sim.DrakeCubeSim(visualize=False)
-    loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
-    #except:
-    #    loss = SIM_ERROR_LOSS
+    try:
+        sim = drake_cube_sim.DrakeCubeSim(visualize=False)
+        loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
+    except:
+        loss = SIM_ERROR_LOSS
     return loss
 
 def learn_drake_params():

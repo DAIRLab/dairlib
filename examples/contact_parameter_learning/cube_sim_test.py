@@ -46,9 +46,5 @@ def make_bullet_sim_tests():
     range(num_trials), cube_data_folder, bullet_data_folder, sim)
 
 if (__name__ == "__main__"):
-    #make_mujoco_sim_tests()
-    data = test_bullet()
-    print(data)
-    # sim = drake_cube_sim.DrakeCubeSim()
-    # sim.visualize_data_rollout(data)
-    # print(data)
+    sim = drake_cube_sim.DrakeCubeSim(visualize=True)
+    loss = cube_sim.calculate_cubesim_loss(drake_cube_sim.default_drake_contact_params, 100, cube_data_folder, sim, cube_sim.LossWeights())

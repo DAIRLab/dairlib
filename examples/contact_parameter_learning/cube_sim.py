@@ -142,6 +142,14 @@ def save_sim_traj(filename, traj):
 def load_sim_traj(filename):
     return np.load(filename)
 
+def get_window_around_contact_event(data_traj):
+    # return whole trajectory for now
+    start_idx = np.argwhere(data_traj[:,CUBE_DATA_POSITION_SLICE][:,2] <= BLOCK_HALF_WIDTH * np.sqrt(3.0))[0].tolist()[0] - 2
+    start_idx = np.max([0, start_idx])
+    return data_traj[start_idx:]
+
+
+
 def make_simulated_traj_data_for_training(contact_params, toss_ids, cube_data_folder, save_folder, sim):
     for id in toss_ids:
         state_traj = load_cube_toss(make_cube_toss_filename(cube_data_folder, id))
@@ -151,13 +159,13 @@ def make_simulated_traj_data_for_training(contact_params, toss_ids, cube_data_fo
         print(id)
 
 
-
 ''' Interface method to calculate the loss for a given set of parameters and a trajectory'''
 def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, weights=LossWeights(), debug=False, simulated=False):
     if simulated:
         state_traj = load_sim_traj(make_simulated_toss_filename(data_folder, toss_id))
     else:
         state_traj = load_cube_toss(make_cube_toss_filename(data_folder, toss_id))
+    state_traj = get_window_around_contact_event(state_traj)
 
     sim.init_sim(contact_params)
 

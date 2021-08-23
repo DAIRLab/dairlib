@@ -102,7 +102,7 @@ def get_drake_loss(params, trial_num=None):
 def learn_drake_params():
     
     optimization_param = ng.p.Dict(
-        mu = ng.p.Scalar(lower=0.1, upper=1.0), 
+        mu = ng.p.Scalar(lower=0.01, upper=1.0), 
         stiffness = ng.p.Scalar(lower=1e2, upper=1e5),
         dissipation = ng.p.Scalar(lower=0, upper=2.0),
         stiction_tol=ng.p.Log(lower=1e-6, upper=1e-1)

@@ -13,7 +13,7 @@ import cube_sim
 def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, test_traj_set, plant='cube'):
     
     loss_sweeps = {}
-    for param_key in optimal_params:
+    for param_key in params_range:
         loss_sweep = []
         params = deepcopy(optimal_params)
         print(f'sweeping {param_key}')
@@ -46,10 +46,10 @@ def plot_sensitivity_analysis(loss_sweeps, params_range):
 def get_cube_params_range(sim_type):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['mu_static'] = np.arange(0.1, 1.0, 0.05).tolist()
-        params_range['mu_ratio'] = np.arange(0.1, 1.0, 0.05).tolist()
-        params_range['pen_allow'] = np.logspace(-10, -2, 20).tolist()
-        params_range['stiction_tol'] = np.logspace(-6, -1, 20).tolist()
+        params_range['mu'] = np.arange(0.01, 0.2, 0.01).tolist()
+        # params_range['stiffness'] = np.arange(100.0, 100000.0, 10000.0).tolist()
+        # params_range['dissipation'] = np.arange(0, 2.5, 0.25).tolist()
+        # params_range['stiction_tol'] = np.logspace(-6, -1, 20).tolist()
         return params_range
     else:
         params_range['stiffness'] = np.arange(1000, 10000, 250).tolist()

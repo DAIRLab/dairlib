@@ -45,6 +45,10 @@ class DrakeCubeSim(CubeSim):
         self.diagram_context = self.diagram.CreateDefaultContext()
         
         self.sim = Simulator(self.diagram)
+
+        if (self.visualize):
+            self.sim.set_target_realtime_rate(0.05)
+
         self.sim.Initialize()
 
     def add_plant_and_terrain(self, params):

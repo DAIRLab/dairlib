@@ -112,6 +112,16 @@ py_binary(
 )
 
 py_binary(
+    name = "cube_frequency_test",
+    srcs = ["cube_frequency_test.py"],
+    deps = [
+        ":cube_sim", 
+        ":drake_cube_sim_py", 
+        "//bindings/pydairlib/common:plot_styler"
+    ],
+)
+
+py_binary(
     name = "learn_cassie_parameters",
     srcs = ["learn_cassie_parameters.py"],
     deps = [

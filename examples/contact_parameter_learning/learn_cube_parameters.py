@@ -130,7 +130,7 @@ def get_mujoco_loss_mp(params):
 
 def get_mujoco_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
-    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False)
+    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=10)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
 
 def learn_mujoco_params():
@@ -165,7 +165,7 @@ def get_bullet_loss_mp(params):
 
 def get_bullet_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
-    sim = bullet_cube_sim.BulletCubeSim(visualize=False)
+    sim = bullet_cube_sim.BulletCubeSim(visualize=False, substeps=10)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
 
 def learn_bullet_params():

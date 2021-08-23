@@ -335,6 +335,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // testing
   bool use_new_qp_setting_;
+
+  // Testing
+  std::vector<int> knee_ankle_pos_idx_list_;
+  std::vector<int> knee_ankle_vel_idx_list_;
 };
 
 }  // namespace dairlib::systems::controllers

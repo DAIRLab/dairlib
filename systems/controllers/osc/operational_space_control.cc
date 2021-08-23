@@ -135,6 +135,20 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
+
+  // Testing
+  const std::map<string, int>& pos_map_w_spr =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>& vel_map_w_spr =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  knee_ankle_pos_idx_list_ = {pos_map_w_spr.at("knee_joint_left"),
+                              pos_map_w_spr.at("knee_joint_right"),
+                              pos_map_w_spr.at("ankle_spring_joint_left"),
+                              pos_map_w_spr.at("ankle_spring_joint_right")};
+  knee_ankle_vel_idx_list_ = {vel_map_w_spr.at("knee_joint_leftdot"),
+                              vel_map_w_spr.at("knee_joint_rightdot"),
+                              vel_map_w_spr.at("ankle_spring_joint_leftdot"),
+                              vel_map_w_spr.at("ankle_spring_joint_rightdot")};
 }
 
 // Cost methods
@@ -869,6 +883,11 @@ void OperationalSpaceControl::CalcOptimalInput(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
+
+  // Testing: Zero out the spring joints (avoid doing feedback with springs)
+  //  for(auto i : knee_ankle_pos_idx_list_) {q_w_spr(i) = 0;}
+  //  for(auto i : knee_ankle_vel_idx_list_) {v_w_spr(i) = 0;}
+
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
                    plant_w_spr_.num_velocities());
   x_w_spr << q_w_spr, v_w_spr;

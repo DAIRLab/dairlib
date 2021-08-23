@@ -1919,6 +1919,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double ground_incline = task.get("ground_incline");
   double turning_rate = task.get("turning_rate");
   double duration = task.get("duration");
+  double pelvis_height = task.get("pelvis_height");
   // double walking_vel = stride_length / duration;
 
   double all_cost_scale = setting.all_cost_scale;
@@ -2089,7 +2090,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing -- add a height limit so that the solver doesn't find a gait that's
   // right at the joint limit
   // Set it to negative if we don't want to impose this constraint.
-  double max_height_at_end_points = 1.0;
+  // double max_height_at_end_points = 1.0;
 
   // Setup cost matrices
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
@@ -2975,7 +2976,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   // Testing -- add constraint on the pelivs height (wrt stance foot)
-  if (max_height_at_end_points > 0) {
+  /*if (max_height_at_end_points > 0) {
     // offset the height by 0.05m because we are using toe origin
     max_height_at_end_points -= 0.05;
 
@@ -2986,7 +2987,14 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt.AddLinearConstraint(xf(6) + tan(ground_incline) * xf(4) <=
                                 max_height_at_end_points);
     trajopt.AddLinearConstraint(0 <= xf(6) + tan(ground_incline) * xf(4));
-  }
+  }*/
+
+  // Testing -- set target pelvis height
+  // 0 < q.segment<1>(6) + tan(ground_incline_) * q.segment<1>(4) < max_height
+  //  trajopt.AddLinearConstraint(x0(6) + tan(ground_incline) * x0(4) ==
+  //      pelvis_height);
+  // simple version
+  trajopt.AddBoundingBoxConstraint(pelvis_height, pelvis_height, x0(6));
 
   // Scale decision variable
   std::vector<int> idx_list;

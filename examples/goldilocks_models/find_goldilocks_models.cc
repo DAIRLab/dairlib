@@ -65,6 +65,7 @@ DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
 DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
 DEFINE_int32(N_sample_du, 1, "Sampling # for stride duration");
 DEFINE_int32(N_sample_tr, 1, "Sampling # for turning rate");
+DEFINE_int32(N_sample_ph, 1, "Sampling # for pelvis height");
 DEFINE_double(sl_min, 0.25, "min stride length");
 DEFINE_double(sl_max, 0.25, "max stride length");
 DEFINE_double(gi_min, 0, "min ground incline");
@@ -73,6 +74,8 @@ DEFINE_double(du_min, 0.4, "min stride duration");
 DEFINE_double(du_max, 0.4, "max stride duration");
 DEFINE_double(tr_min, 0, "min turning rate");
 DEFINE_double(tr_max, 0, "max turning rate");
+DEFINE_double(ph_min, 0.8, "min pelvis height");
+DEFINE_double(ph_max, 0.8, "max pelvis height");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
@@ -1511,14 +1514,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
           std::vector<bool>(3, FLAGS_is_stochastic));
     } else if (FLAGS_robot_option == 1) {
       task_gen_grid = GridTasksGenerator(
-          4, {"stride_length", "ground_incline", "duration", "turning_rate"},
+          5,
+          {"stride_length", "ground_incline", "duration", "turning_rate",
+           "pelvis_height"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
-           FLAGS_N_sample_tr},
-          {0, 0, 0.4, FLAGS_turning_rate_center}, {0.03, 0.05, 0.05, 0.125},
+           FLAGS_N_sample_tr, FLAGS_N_sample_ph},
+          {0, 0, 0.4, FLAGS_turning_rate_center, 0.8},
+          {0.03, 0.05, 0.05, 0.125, 0.1},
           {(FLAGS_N_sample_sl > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_gi > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_du > 1) && FLAGS_is_stochastic,
-           (FLAGS_N_sample_tr > 1) && FLAGS_is_stochastic});
+           (FLAGS_N_sample_tr > 1) && FLAGS_is_stochastic,
+           (FLAGS_N_sample_ph > 1) && FLAGS_is_stochastic});
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_grid = GridTasksGenerator();
@@ -1533,11 +1540,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
           {FLAGS_sl_max, FLAGS_gi_max, FLAGS_du_max});
     } else if (FLAGS_robot_option == 1) {
       task_gen_uniform = UniformTasksGenerator(
-          4, {"stride_length", "ground_incline", "duration", "turning_rate"},
+          5,
+          {"stride_length", "ground_incline", "duration", "turning_rate",
+           "pelvis_height"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
-           FLAGS_N_sample_tr},
-          {FLAGS_sl_min, FLAGS_gi_min, FLAGS_du_min, FLAGS_tr_min},
-          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_du_max, FLAGS_tr_max});
+           FLAGS_N_sample_tr, FLAGS_N_sample_ph},
+          {FLAGS_sl_min, FLAGS_gi_min, FLAGS_du_min, FLAGS_tr_min,
+           FLAGS_ph_min},
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_du_max, FLAGS_tr_max,
+           FLAGS_ph_max});
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_uniform = UniformTasksGenerator();

@@ -11,6 +11,8 @@ import time
 import sys
 plt.rcParams.update({'font.size': 18})
 
+save_figure = False
+
 only_plot_average_cost = True
 normalize_by_nominal_cost = True
 only_add_successful_samples_to_average_cost = False
@@ -184,5 +186,8 @@ while 1:
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
 
-    plt.pause(10)
-    plt.clf()
+    if save_figure:
+        plt.savefig("../cost.png")
+    else:
+        plt.pause(10)
+        plt.clf()

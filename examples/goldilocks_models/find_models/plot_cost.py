@@ -1,3 +1,8 @@
+# When seeing "_tkinter.TclError: no display name and no $DISPLAY environment variable",
+# uncomment the following two lines code (or just restart computer because it has something to do with ssh)
+# import matplotlib
+# matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import numpy as np
 import csv

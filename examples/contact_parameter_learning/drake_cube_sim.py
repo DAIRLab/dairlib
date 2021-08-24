@@ -17,6 +17,7 @@ from pydairlib.common import FindResourceOrThrow
 # mu_kinetic/mu_static = [0 ... 1] to enforce that mu_kinetic <= mu_static
 default_drake_contact_params = {
     "mu": 0.18,
+    "mu_ratio": 1.0,
     "stiffness": 1.0e4, 
     "stiction_tol": 1e-3, 
     "dissipation":0.5 }
@@ -55,7 +56,7 @@ class DrakeCubeSim(CubeSim):
         terrain_normal=np.array([0.0, 0.0, 1.0])
         terrain_point=np.zeros((3,))
         terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
-        friction = CoulombFriction(params['mu'], params['mu'])
+        friction = CoulombFriction(params['mu'], params['mu'] * params['mu_ratio'])
         props = ProximityProperties()
         props.AddProperty("material", "point_contact_stiffness", params['stiffness'])
         props.AddProperty("material", "hunt_crossley_dissipation", params['dissipation'])

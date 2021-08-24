@@ -182,4 +182,4 @@ if (__name__ == '__main__'):
     # stats = get_error_and_loss_stats(traj_pairs, mse_loss)
     # print(stats)
 
-    visualize_learned_params(params, sim_type, list(sorted_pairs.keys())[-1])
+    visualize_learned_params(params, sim_type, list(sorted_pairs.keys())[0])

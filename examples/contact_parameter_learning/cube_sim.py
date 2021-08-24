@@ -134,6 +134,9 @@ def load_cube_toss(filename):
     state_traj = data_all[0,:,0:13].numpy()
     state_traj[:, CUBE_DATA_POSITION_SLICE] *= BLOCK_HALF_WIDTH
     state_traj[:, CUBE_DATA_VELOCITY_SLICE] *= BLOCK_HALF_WIDTH
+
+    state_traj = get_window_around_contact_event(state_traj)
+
     return state_traj
 
 def save_sim_traj(filename, traj):
@@ -141,7 +144,8 @@ def save_sim_traj(filename, traj):
         np.save(filename, traj)
 
 def load_sim_traj(filename):
-    return np.load(filename)
+    state_traj = np.load(filename)
+    return get_window_around_contact_event(state_traj)
 
 def get_window_around_contact_event(data_traj):
     # return whole trajectory for now
@@ -166,7 +170,6 @@ def calculate_cubesim_loss(contact_params, toss_id, data_folder, sim, weights=Lo
         state_traj = load_sim_traj(make_simulated_toss_filename(data_folder, toss_id))
     else:
         state_traj = load_cube_toss(make_cube_toss_filename(data_folder, toss_id))
-    state_traj = get_window_around_contact_event(state_traj)
 
     sim.init_sim(contact_params)
 

@@ -26,6 +26,7 @@
 
 # This script hasn't been not tested yet.
 
+# Note that you need to bazel build the binary, because not all machines/nodes have it.
 
 cd /scratch/$USER/dairlib
 

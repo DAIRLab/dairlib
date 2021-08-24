@@ -23,15 +23,17 @@ if len(sys.argv) >= 4:
     robot_option = int(sys.argv[3])
 
 
-n_sampel_sl = 3  # should be > 0
+n_sampel_sl = 13  # should be > 0
 n_sampel_gi = 3  # should be > 0
 n_sampel_v = 1  # should be > 0
 n_sampel_tr = 1  # should be > 0
-N_sample = n_sampel_sl * n_sampel_gi * n_sampel_v * n_sampel_tr
+n_sampel_ph = 5  # should be > 0
+N_sample = n_sampel_sl * n_sampel_gi * n_sampel_v * n_sampel_tr * n_sampel_ph
 print('n_sampel_sl = ' + str(n_sampel_sl))
 print('n_sampel_gi = ' + str(n_sampel_gi))
 print('n_sampel_v = ' + str(n_sampel_v))
 print('n_sampel_tr = ' + str(n_sampel_tr))
+print('n_sampel_ph = ' + str(n_sampel_ph))
 
 # dist_0 = 0.2
 # delta_dist = 0.015 #0.1

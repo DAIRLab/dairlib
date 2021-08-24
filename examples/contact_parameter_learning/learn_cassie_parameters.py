@@ -16,14 +16,15 @@ drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='po
 mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='pos_loss_weights')
 loss_over_time = []
 pen_allow_over_time = []
-log_num = '15_24'
+log_num = '03'
 budget = 5000
 # budget = 25000
 
 all_logs = drake_sim.log_nums_real
 # num_train = int(0.8 * len(all_logs))
 # training_idxs = sample(all_logs, num_train)
-training_idxs = ['15']
+# training_idxs = ['14']
+training_idxs = [log_num]
 test_idxs = [idx for idx in all_logs if not (idx in training_idxs)]
 
 ps = plot_styler.PlotStyler()
@@ -77,6 +78,8 @@ def learn_drake_cassie_params():
   np.save(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
   np.save(drake_sim.params_folder + log_num + '_pen_allow_trajectory_' + str(budget), pen_allow)
   drake_sim.save_params(params, log_num + '_optimized_params_' + str(budget))
+  print('optimal params:')
+  print(params)
 
 
 def learn_mujoco_cassie_params():
@@ -109,14 +112,15 @@ def plot_loss_trajectory():
 def print_drake_cassie_params(single_log_num):
   # optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
   # optimal_params = drake_sim.load_params('all' + '_optimized_params_' + str(budget))
-  optimal_params = drake_sim.load_params('15_24' + '_optimized_params_' + str(budget))
+  optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
 
   sim_id = drake_sim.run(optimal_params.value, single_log_num)
   loss = drake_sim.compute_loss(single_log_num, sim_id, optimal_params.value, plot=True)
-  import pdb; pdb.set_trace()
   print(loss)
+  # import pdb; pdb.set_trace()
   z_offsets = optimal_params.value['z_offset']
   vel_offsets = optimal_params.value['vel_offset']
+  print(z_offsets)
   # np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offsets)
   # np.save(drake_sim.params_folder + log_num + '_vel_offset_' + str(budget), vel_offsets)
   return loss
@@ -158,10 +162,16 @@ def plot_per_log_loss_mujoco():
 
 
 if (__name__ == '__main__'):
-  learn_drake_cassie_params()
+  # for i in all_logs:
+  # print(i)
+  # log_num = i
+  # training_idxs = [log_num]
+  # learn_drake_cassie_params()
+  # print_drake_cassie_params(i)
   # learn_mujoco_cassie_params()
   # plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
-  # print_drake_cassie_params('15')
   # print_mujoco_cassie_params()
+  log_num = '33'
+  print_drake_cassie_params('33')
   # plot_loss_trajectory()

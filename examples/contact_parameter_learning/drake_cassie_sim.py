@@ -32,6 +32,8 @@ class DrakeCassieSim():
     self.base_z_idx = 6
     self.base_vel_idx = slice(26,29)
 
+    with open("x_datatypes", "rb") as fp:
+      self.x_datatypes = pickle.load(fp)
 
     self.x_trajs = {}
     self.t_xs = {}
@@ -181,17 +183,22 @@ class DrakeCassieSim():
     window, x_traj_in_window = self.get_window_around_contact_event(x_traj_log, t_x_log)
     min_time_length = min(x_traj.shape[0], x_traj_in_window.shape[0])
     # import pdb; pdb.set_trace()
+    joints = np.arange(23, 45)
     if plot:
-      # self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45])
-      # self.ps.plot(t_x_log[window][:min_time_length], x_traj_in_window[:min_time_length, 23:45])
+      for joint in joints:
+        plt.figure("joint vel: " + self.x_datatypes[joint])
+
+        self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, joint])
+        self.ps.plot(t_x_log[window][:min_time_length], x_traj_in_window[:min_time_length, joint])
+        self.ps.add_legend([self.x_datatypes[joint] + ': sim', self.x_datatypes[joint] + ': real'])
       # self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 31:35], color='b')
       # self.ps.plot(t_x_log[window][:min_time_length], x_traj_in_window[:min_time_length, 31:35], color='r')
-      self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 4:7], color='b')
-      self.ps.plot(t_x[:min_time_length], x_traj_in_window[:min_time_length, 4:7], color='r')
-      plt.figure('loss')
-      self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45] - x_traj_log[:min_time_length, 23:45], color=self.ps.grey)
+      # self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 4:7], color='b')
+      # self.ps.plot(t_x[:min_time_length], x_traj_in_window[:min_time_length, 4:7], color='r')
+      #   plt.figure('loss')
+      #   self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45] - x_traj_log[:min_time_length, 23:45], color=self.ps.grey)
 
-      plt.show()
+    plt.show()
     traj_loss = self.loss_func.CalculateLossTraj(x_traj[:min_time_length], x_traj_in_window[:min_time_length])
     regularization_loss = self.loss_func.CalculateLossParams(params)
     return traj_loss + regularization_loss

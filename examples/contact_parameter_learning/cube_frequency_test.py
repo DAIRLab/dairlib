@@ -11,3 +11,5 @@ position_loss = cube_sim.LossWeights(vel=np.zeros((3,)), omega=np.zeros((3,)), q
 
 w_n = np.sqrt(drake_cube_sim.default_drake_contact_params['stiffness'] / cube_sim.CUBE_MASS)
 print(w_n)
+
+dts = np.logspace(0.01/w_n, 10/w_n, 20)

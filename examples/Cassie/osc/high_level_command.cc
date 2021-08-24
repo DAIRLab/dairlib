@@ -140,7 +140,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   plant_.SetPositions(context_, q);
 
   // Get center of mass position and velocity
-  Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d com_pos = plant_.CalcCenterOfMassPositionInWorld(*context_);
   MatrixXd J(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
       *context_, JacobianWrtVariable::kV, world_, world_, &J);

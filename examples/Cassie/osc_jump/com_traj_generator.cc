@@ -85,7 +85,7 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
 
     VectorXd q = robot_output->GetPositions();
     plant_.SetPositions(context_.get(), q);
-    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
+    VectorXd center_of_mass = plant_.CalcCenterOfMassPositionInWorld(*context_);
     com_x_offset(0) =
         kLandingOffset + (center_of_mass(0) - crouch_traj_.value(timestamp)(0));
     // TODO(yangwill) Remove this or calculate it based on the robot's state.
@@ -105,7 +105,7 @@ COMTrajGenerator::generateBalanceTraj(
   plant_.SetPositions(context_.get(), q);
 
   Vector3d target_com = crouch_traj_.value(time_offset_);
-  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d curr_com = plant_.CalcCenterOfMassPositionInWorld(*context_);
 
   // generate a trajectory from current position to target position
   MatrixXd centerOfMassPoints(3, 2);

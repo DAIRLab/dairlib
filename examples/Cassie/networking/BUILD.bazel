@@ -2,7 +2,6 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
-
 load(
     "@drake//tools/skylark:drake_lcm.bzl",
     "drake_lcm_cc_library",
@@ -11,93 +10,101 @@ load(
 )
 
 cc_library(
-  name = "udp_lcm_translator",
-  srcs = ["udp_lcm_translator.cc",],
-  hdrs = ["udp_lcm_translator.h"],
-  deps = [
-    "//examples/Cassie/datatypes:cassie_inout_types",
-    "//lcmtypes:lcmt_robot",
-  ]
+    name = "udp_lcm_translator",
+    srcs = ["udp_lcm_translator.cc"],
+    hdrs = ["udp_lcm_translator.h"],
+    deps = [
+        "//examples/Cassie/datatypes:cassie_inout_types",
+        "//lcmtypes:lcmt_robot",
+    ],
 )
 
 cc_library(
-  name = "cassie_udp_pub_sub",
-  srcs = ["udp_serializer.cc",
-          "cassie_udp_subscriber.cc",
-          "simple_cassie_udp_subscriber.cc",
-          "cassie_udp_publisher.cc",
-          "cassie_input_sender.cc",
-          "cassie_input_receiver.cc",
-          "cassie_input_translator.cc",
-          "cassie_output_sender.cc",
-          "cassie_output_receiver.cc"],
-  hdrs = ["udp_serializer.h",
-          "cassie_udp_subscriber.h",
-          "simple_cassie_udp_subscriber.h",
-          "cassie_udp_publisher.h",
-          "cassie_input_sender.h",
-          "cassie_input_receiver.h",
-          "cassie_input_translator.h",
-          "cassie_output_sender.h",
-          "cassie_output_receiver.h"],
-  deps = [
-    "@drake//:drake_shared_library",
-    "//examples/Cassie/datatypes:cassie_inout_types",
-    "//lcmtypes:lcmt_robot",
-    "//multibody:utils",
-    ":simple_cassie_udp_subscriber",
-    ":udp_lcm_translator",
-  ]
+    name = "cassie_udp_pub_sub",
+    srcs = [
+        "cassie_input_receiver.cc",
+        "cassie_input_sender.cc",
+        "cassie_input_translator.cc",
+        "cassie_output_receiver.cc",
+        "cassie_output_sender.cc",
+        "cassie_udp_publisher.cc",
+        "cassie_udp_subscriber.cc",
+        "simple_cassie_udp_subscriber.cc",
+        "udp_serializer.cc",
+    ],
+    hdrs = [
+        "cassie_input_receiver.h",
+        "cassie_input_sender.h",
+        "cassie_input_translator.h",
+        "cassie_output_receiver.h",
+        "cassie_output_sender.h",
+        "cassie_udp_publisher.h",
+        "cassie_udp_subscriber.h",
+        "simple_cassie_udp_subscriber.h",
+        "udp_serializer.h",
+    ],
+    deps = [
+        ":simple_cassie_udp_subscriber",
+        ":udp_lcm_translator",
+        "//examples/Cassie/datatypes:cassie_inout_types",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
 )
 
 cc_library(
-  name = "simple_cassie_udp_subscriber",
-  srcs = ["simple_cassie_udp_subscriber.cc",
-          ],
-  hdrs = ["simple_cassie_udp_subscriber.h",],
-  deps = [
-    "@drake//common",
-    "//examples/Cassie/datatypes:cassie_inout_types",
-  ]
+    name = "simple_cassie_udp_subscriber",
+    srcs = [
+        "simple_cassie_udp_subscriber.cc",
+    ],
+    hdrs = ["simple_cassie_udp_subscriber.h"],
+    deps = [
+        "//examples/Cassie/datatypes:cassie_inout_types",
+        "@drake//common",
+    ],
 )
 
 cc_library(
-  name = "udp_driven_loop",
-  srcs = ["udp_driven_loop.cc",],
-  hdrs = ["udp_driven_loop.h",],
-  deps = [
-    ":cassie_udp_pub_sub",
-    "@drake//systems/analysis:simulator",
-  ]
-)
-
-
-cc_binary(
-  name = "udp_driven_loop_test",
-  srcs = ["test/udp_driven_loop_test.cc"],
-  deps = [":udp_driven_loop",
-          "@gflags",
-         ],
+    name = "udp_driven_loop",
+    srcs = ["udp_driven_loop.cc"],
+    hdrs = ["udp_driven_loop.h"],
+    deps = [
+        ":cassie_udp_pub_sub",
+        "@drake//systems/analysis:simulator",
+    ],
 )
 
 cc_binary(
-  name = "cassie_udp_subscriber_test",
-  srcs = ["test/cassie_udp_subscriber_test.cc"],
-  deps = [":cassie_udp_pub_sub",
-          "@drake//systems/analysis:simulator",
-          "@drake//systems/framework",
-          "@gflags",
-         ],
+    name = "udp_driven_loop_test",
+    srcs = ["test/udp_driven_loop_test.cc"],
+    deps = [
+        ":udp_driven_loop",
+        "@gflags",
+    ],
 )
 
 cc_binary(
-  name = "cassie_udp_publisher_test",
-  srcs = ["test/cassie_udp_publisher_test.cc"],
-  deps = [":cassie_udp_pub_sub",
-          "@drake//systems/analysis:simulator",
-          "@drake//systems/framework",
-          "@gflags",
-         ],
+    name = "cassie_udp_subscriber_test",
+    srcs = ["test/cassie_udp_subscriber_test.cc"],
+    deps = [
+        ":cassie_udp_pub_sub",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "cassie_udp_publisher_test",
+    srcs = ["test/cassie_udp_publisher_test.cc"],
+    deps = [
+        ":cassie_udp_pub_sub",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gflags",
+    ],
 )
 
 cc_binary(
@@ -117,7 +124,7 @@ cc_test(
         ":cassie_udp_pub_sub",
         "@drake//systems/analysis:simulator",
         "@drake//systems/framework",
-        "@gtest//:main",
         "@gflags",
+        "@gtest//:main",
     ],
 )

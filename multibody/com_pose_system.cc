@@ -23,7 +23,7 @@ void ComPoseSystem::OutputCom(
 
   auto plant_context = plant_.CreateDefaultContext();
   plant_.SetPositions(plant_context.get(), q->get_value());
-  auto com = plant_.CalcCenterOfMassPosition(*plant_context);
+  auto com = plant_.CalcCenterOfMassPositionInWorld(*plant_context);
   auto pose = output->get_mutable_value();
   pose << 1, 0, 0, 0, com;
 }
@@ -34,7 +34,7 @@ void ComPoseSystem::OutputXyCom(
 
   auto plant_context = plant_.CreateDefaultContext();
   plant_.SetPositions(plant_context.get(), q->get_value());
-  auto com = plant_.CalcCenterOfMassPosition(*plant_context);
+  auto com = plant_.CalcCenterOfMassPositionInWorld(*plant_context);
   auto pose = output->get_mutable_value();
   pose << 1, 0, 0, 0, com.head(2), 0;
 }

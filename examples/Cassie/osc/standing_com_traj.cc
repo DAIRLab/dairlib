@@ -31,13 +31,13 @@ StandingComTraj::StandingComTraj(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
-    double height, bool use_radio)
+    double height, bool set_target_height_by_radio)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       feet_contact_points_(feet_contact_points),
       height_(height),
-      use_radio_(use_radio){
+      set_target_height_by_radio_(set_target_height_by_radio){
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -73,7 +73,7 @@ void StandingComTraj::CalcDesiredTraj(
   double target_height = height_;
 
   // Get target height from radio or lcm
-  if (use_radio_) {
+  if (set_target_height_by_radio_) {
     target_height = kTargetHeightMean + kTargetHeightScale * cassie_out->pelvis.radio.channel[6];
   } else {
     if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(

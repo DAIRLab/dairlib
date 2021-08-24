@@ -140,7 +140,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     Vector3d CoM;
     MatrixXd J(3, plant_.num_velocities());
     if (use_com_) {
-      CoM = plant_.CalcCenterOfMassPosition(*context_);
+      CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
       plant_.CalcJacobianCenterOfMassTranslationalVelocity(
           *context_, JacobianWrtVariable::kV, world_, world_, &J);
     } else {
@@ -273,7 +273,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   Vector3d CoM;
   MatrixXd J(3, plant_.num_velocities());
   if (use_com_) {
-    CoM = plant_.CalcCenterOfMassPosition(*context_);
+    CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
     plant_.CalcJacobianCenterOfMassTranslationalVelocity(
         *context_, JacobianWrtVariable::kV, world_, world_, &J);
   } else {

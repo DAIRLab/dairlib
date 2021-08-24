@@ -255,10 +255,6 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
-  Q_accel(6, 6) = 0.1;
-  Q_accel(7, 7) = 0.1;
-  Q_accel(8, 8) = 0.1;
-  Q_accel(9, 9) = 0.1;
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
@@ -277,19 +273,6 @@ int DoMain(int argc, char* argv[]) {
       plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_rot_traj);
-
-  JointSpaceTrackingData hip_yaw_left_tracking(
-      "hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
-  JointSpaceTrackingData hip_yaw_right_tracking(
-      "hip_yaw_right_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
-  hip_yaw_left_tracking.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-  hip_yaw_right_tracking.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&hip_yaw_left_tracking, 0.0 * VectorXd::Ones(1));
-  osc->AddConstTrackingData(&hip_yaw_right_tracking, 0.0 * VectorXd::Ones(1));
 
   // Build OSC problem
   osc->Build();

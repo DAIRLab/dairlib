@@ -90,7 +90,7 @@ int DoMain() {
   for (unsigned int i = 0; i < times.size(); ++i) {
     plant.SetPositionsAndVelocities(context.get(), xu.block(0, i, nx, 1));
     center_of_mass_points.block(0, i, 3, 1) =
-        plant.CalcCenterOfMassPosition(*context);
+        plant.CalcCenterOfMassPositionInWorld(*context);
     Eigen::Ref<Eigen::MatrixXd> l_foot_pos_block =
         l_foot_points.block(0, i, 3, 1);
     Eigen::Ref<Eigen::MatrixXd> r_foot_pos_block =

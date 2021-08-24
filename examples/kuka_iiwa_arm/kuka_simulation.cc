@@ -11,8 +11,8 @@
 #include <utility>
 
 #include "drake/common/find_resource.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/scene_graph.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_command_receiver.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_status_sender.h"
 #include "drake/math/rigid_transform.h"
@@ -38,16 +38,17 @@ namespace kuka_iiwa_arm {
  using Eigen::Vector3d;
  using Eigen::VectorXd;
 
+ using drake::geometry::DrakeVisualizer;
  using drake::geometry::SceneGraph;
  using drake::manipulation::kuka_iiwa::IiwaCommandReceiver;
  using drake::manipulation::kuka_iiwa::IiwaStatusSender;
  using drake::math::RigidTransform;
  using drake::math::RollPitchYaw;
  using drake::multibody::Joint;
+ using drake::multibody::ModelInstanceIndex;
  using drake::multibody::MultibodyPlant;
  using drake::multibody::RevoluteJoint;
  using drake::multibody::SpatialInertia;
- using drake::multibody::ModelInstanceIndex;
  using drake::systems::StateInterpolatorWithDiscreteDerivative;
 
 int DoMain() {
@@ -190,8 +191,7 @@ int DoMain() {
   builder.Connect(scene_graph->get_query_output_port(),
                   world_plant->get_geometry_query_input_port());
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, *scene_graph,
-      scene_graph->get_pose_bundle_output_port());
+  DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph);
 
   auto diagram = builder.Build();
   drake::systems::Simulator<double> simulator(*diagram);

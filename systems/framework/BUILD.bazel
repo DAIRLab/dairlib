@@ -57,3 +57,17 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "contact_results_to_force_vector",
+    srcs = [
+        "contact_results_to_force_vector.cc",
+    ],
+    hdrs = [
+        "contact_results_to_force_vector.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)

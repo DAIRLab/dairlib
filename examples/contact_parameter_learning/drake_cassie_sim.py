@@ -21,6 +21,7 @@ class DrakeCassieSim():
     self.folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
+    self.date_prefix = 'drake_' + time.strftime("%Y_%m_%d_%H_%M")
     # self.start_time = 30.595
     self.start_time = 30.6477
     self.sim_time = 0.05
@@ -38,8 +39,6 @@ class DrakeCassieSim():
     self.x_trajs = {}
     self.t_xs = {}
 
-    self.z_offsets = np.load(self.params_folder + 'all_z_offset_50000.npy')
-    self.vel_offsets = np.load(self.params_folder + 'all_vel_offset_50000.npy')
 
     self.log_nums_all = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_real = np.hstack((np.arange(8, 18), np.arange(20, 34)))
@@ -50,6 +49,14 @@ class DrakeCassieSim():
       self.x_trajs[log_num] = np.load(self.folder_path + 'x_' + log_num + '.npy')
       self.t_xs[log_num] = np.load(self.folder_path + 't_x_' + log_num + '.npy')
 
+    # self.z_offsets = np.load(self.params_folder + 'all_z_offset_50000.npy')
+    # self.vel_offsets = np.load(self.params_folder + 'all_vel_offset_50000.npy')
+
+    with open(self.params_folder + 'optimized_z_offsets.pkl', 'rb') as file:
+      self.z_offsets = pickle.load(file)
+    with open(self.params_folder + 'optimized_vel_offsets.pkl', 'rb') as file:
+      self.vel_offsets = pickle.load(file)
+
     self.default_drake_contact_params = {
       "mu_static": 0.8,
       "mu_ratio": 1.0,
@@ -59,8 +66,8 @@ class DrakeCassieSim():
       "stiction_tol": 1e-3,
       # "vel_offset": np.zeros(len(self.log_nums_real) * 3),
       # "z_offset": np.zeros(len(self.log_nums_real)),
-      "vel_offset": np.zeros(3),
-      "z_offset": np.zeros(1),
+      # "vel_offset": np.zeros(3),
+      # "z_offset": np.zeros(1),
     }
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
@@ -85,7 +92,7 @@ class DrakeCassieSim():
       f.close()
 
   def save_params(self, params, sim_id):
-    with open(self.params_folder + sim_id + '.pkl', 'wb') as f:
+    with open(self.params_folder + self.date_prefix + sim_id + '.pkl', 'wb') as f:
       pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
 
   def load_params(self, sim_id):
@@ -118,12 +125,12 @@ class DrakeCassieSim():
 
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
     x_init = x_interp(self.start_time)
-    # z_offset = self.z_offsets[log_idx]
-    # vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
+    z_offset = self.z_offsets[log_num]
+    vel_offset = self.vel_offsets[log_num]
     # z_offset = params['z_offset'][log_idx]
     # vel_offset = params['vel_offset'][3*log_idx:3*(log_idx + 1)]
-    z_offset = params['z_offset']
-    vel_offset = params['vel_offset']
+    # z_offset = params['z_offset']
+    # vel_offset = params['vel_offset']
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset
     self.write_initial_state(x_init)
@@ -146,20 +153,30 @@ class DrakeCassieSim():
     simulator_process = subprocess.Popen(simulator_cmd)
     simulator_process.wait()
     x_traj = np.genfromtxt('x_traj.csv', delimiter=',', dtype='f16')
+    lambda_traj = np.genfromtxt('lambda_traj.csv', delimiter=',', dtype='f16')
     t_x = np.genfromtxt('t_x.csv')
-    t_x = np.append(t_x, self.start_time + self.sim_time)
-    sim_id = log_num + str(np.abs(hash(frozenset(params))))
-    np.save(self.sim_data_folder + 'x_traj' + sim_id, x_traj)
-    np.save(self.sim_data_folder + 't_x' + sim_id, t_x)
+    # t_x = np.append(t_x, self.start_time + self.sim_time)
+    # sim_id = log_num + str(np.abs(hash(frozenset(params))))
+    np.save(self.sim_data_folder + 'x_' + log_num, x_traj)
+    np.save(self.sim_data_folder + 't_x_' + log_num, t_x)
+    lambda_traj = lambda_traj.reshape((4, 3, lambda_traj.shape[1]))
+    lambda_traj = np.transpose(lambda_traj, (0, 2, 1))
+    # self.ps.plot(t_x, lambda_traj[0, 2, :].T)
+    # self.ps.plot(t_x, lambda_traj[1, 2, :].T)
+    # self.ps.plot(t_x, lambda_traj[2, 2, :].T)
+    # self.ps.plot(t_x, lambda_traj[3, 2, :].T)
+    # self.ps.show_fig()
+    # import pdb; pdb.set_trace()
+    np.save(self.sim_data_folder + 'lambda_' + log_num, lambda_traj)
 
     self.iter_num += 1
     print("iter: " + str(self.iter_num))
 
-    return sim_id
+    return log_num
 
-  def load_sim_trial(self, sim_id):
-    x_traj = np.load(self.sim_data_folder + 'x_traj' + sim_id + '.npy')
-    t_x = np.load(self.sim_data_folder + 't_x' + sim_id + '.npy')
+  def load_sim_trial(self, log_num):
+    x_traj = np.load(self.sim_data_folder + 'x_' + log_num + '.npy')
+    t_x = np.load(self.sim_data_folder + 't_x_' + log_num + '.npy')
 
     return x_traj.transpose(), t_x
 
@@ -197,11 +214,12 @@ class DrakeCassieSim():
       # self.ps.plot(t_x[:min_time_length], x_traj_in_window[:min_time_length, 4:7], color='r')
       #   plt.figure('loss')
       #   self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45] - x_traj_log[:min_time_length, 23:45], color=self.ps.grey)
+      plt.show()
 
-    plt.show()
     traj_loss = self.loss_func.CalculateLossTraj(x_traj[:min_time_length], x_traj_in_window[:min_time_length])
-    regularization_loss = self.loss_func.CalculateLossParams(params)
-    return traj_loss + regularization_loss
+    # regularization_loss = self.loss_func.CalculateLossParams(params)
+    # return traj_loss + regularization_loss
+    return traj_loss
 
 
 if __name__ == '__main__':

@@ -22,8 +22,12 @@ class LearningMujocoCassieSim():
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/mujoco_cassie_params/"
     self.drake_params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
-    self.start_time = 30.595
-    self.sim_time = 0.25
+    self.date_prefix = 'mujoco_' + time.strftime("%Y_%m_%d_%H_%M")
+
+    # self.start_time = 30.595
+    # self.sim_time = 0.25
+    self.start_time = 30.6477
+    self.sim_time = 0.05
     self.end_time = self.start_time + self.sim_time
     self.default_mujoco_contact_params = {
       "timeconst": 0.005,
@@ -39,8 +43,13 @@ class LearningMujocoCassieSim():
     self.x_trajs = {}
     self.t_xs = {}
 
-    self.z_offsets = np.load(self.drake_params_folder + 'all_z_offset_50000.npy')
-    self.vel_offsets = np.load(self.drake_params_folder + 'all_vel_offset_50000.npy')
+    with open(self.drake_params_folder + 'optimized_z_offsets.pkl', 'rb') as file:
+      self.z_offsets = pickle.load(file)
+    with open(self.drake_params_folder + 'optimized_vel_offsets.pkl', 'rb') as file:
+      self.vel_offsets = pickle.load(file)
+
+    # self.z_offsets = np.load(self.drake_params_folder + 'all_z_offset_50000.npy')
+    # self.vel_offsets = np.load(self.drake_params_folder + 'all_vel_offset_50000.npy')
 
     self.log_nums_all = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_real = np.hstack((np.arange(8, 18), np.arange(20, 34)))
@@ -54,7 +63,7 @@ class LearningMujocoCassieSim():
     self.tree = ET.parse(self.sim.default_model_file)
 
   def save_params(self, params, sim_id):
-    with open(self.params_folder + sim_id + '.pkl', 'wb') as f:
+    with open(self.params_folder + self.date_prefix + sim_id + '.pkl', 'wb') as f:
       pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
 
   def load_params(self, sim_id):
@@ -80,8 +89,10 @@ class LearningMujocoCassieSim():
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
     x_init = x_interp(self.start_time)
 
-    z_offset = self.z_offsets[log_idx]
-    vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
+    # z_offset = self.z_offsets[log_idx]
+    # vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
+    z_offset = self.z_offsets[log_num]
+    vel_offset = self.vel_offsets[log_num]
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset
 

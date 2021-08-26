@@ -12,7 +12,7 @@ from pydairlib.common import plot_styler
 from pydairlib.lcm import lcm_trajectory
 
 
-def main():
+def convert_log(filename, controller_channel):
   figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
   ps = plot_styler.PlotStyler()
   ps.set_default_styling(directory=figure_directory)
@@ -42,8 +42,8 @@ def main():
   u_datatypes = pydairlib.multibody.createActuatorNameVectorFromMap(plant_w_spr)
 
   #
-  filename = sys.argv[1]
-  controller_channel = sys.argv[2]
+  # filename = sys.argv[1]
+  # controller_channel = sys.argv[2]
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
@@ -82,5 +82,76 @@ def main():
   lcm_traj.AddTrajectory('controller_inputs', controller_input_traj)
   lcm_traj.WriteToFile(ps.directory + 'u_traj_' + log_file_num)
 
+  # contact_forces = np.empty((len(full_log['CASSIE_GM_CONTACT_DISPATCHER']), 4, 3))
+  contact_info_locs = [[], [], [], []]
+  contact_forces = [[], [], [], []]  # Allocate space for all 4 point contacts
+  for msg in full_log['CASSIE_GM_CONTACT_DISPATCHER']:
+    num_left_contacts = 0
+    num_right_contacts = 0
+    # import pdb; pdb.set_trace()
+    for i in range(msg.num_point_pair_contacts):
+      if "toe_left" in msg.point_pair_contact_info[i].body1_name:
+        if (num_left_contacts >= 2):
+          continue
+        contact_info_locs[num_left_contacts].append(msg.point_pair_contact_info[i].contact_point)
+        contact_forces[num_left_contacts].append(msg.point_pair_contact_info[i].contact_force)
+        num_left_contacts += 1
+      elif "toe_right" in msg.point_pair_contact_info[i].body1_name:
+        if (num_right_contacts >= 2):
+          continue
+        contact_info_locs[2 + num_right_contacts].append(msg.point_pair_contact_info[i].contact_point)
+        contact_forces[2 + num_right_contacts].append(msg.point_pair_contact_info[i].contact_force)
+        num_right_contacts += 1
+    while num_left_contacts != 2:
+      contact_forces[num_left_contacts].append((0.0, 0.0, 0.0))
+      contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))
+      num_left_contacts += 1
+    while num_right_contacts != 2:
+      contact_forces[2 + num_right_contacts].append((0.0, 0.0, 0.0))
+      contact_info_locs[2 + num_right_contacts].append((0.0, 0.0, 0.0))
+      num_right_contacts += 1
+  contact_forces = np.array(contact_forces)
+  contact_info_locs = np.array(contact_info_locs)
+  for i in range(contact_info_locs.shape[1]):
+    # Swap front and rear contacts if necessary
+    # Order will be rear contact then front contact in index 1
+    if contact_info_locs[0, i, 0] > contact_info_locs[1, i, 0]:
+      contact_forces[[0, 1], i, :] = contact_forces[[1, 0], i, :]
+      contact_info_locs[[0, 1], i, :] = contact_info_locs[[1, 0], i, :]
+    if contact_info_locs[2, i, 0] > contact_info_locs[3, i, 0]:
+      contact_forces[[2, 3], i, :] = contact_forces[[3, 2], i, :]
+      contact_info_locs[[2, 3], i, :] = contact_info_locs[[3, 2], i, :]
+    # import pdb; pdb.set_trace()
+    # contact_forces[i, 0, :] = np.array(contact_info.point_pair_contact_info[0].contact_force)
+    # contact_forces[i, 1, :] = np.array(contact_info.point_pair_contact_info[1].contact_force)
+    # contact_forces[i, 2, :] = np.array(contact_info.point_pair_contact_info[2].contact_force)
+    # contact_forces[i, 3, :] = np.array(contact_info.point_pair_contact_info[3].contact_force)
+  contact_forces = contact_forces[:, t_slice, :]
+  np.save(ps.directory + 'lambda_' + log_file_num, contact_forces)
+
+def convert_all_hardware_jumping_logs():
+  controller_channel = 'OSC_JUMPING'
+  root_log_dir = '/home/yangwill/Documents/research/projects/cassie/hardware/logs/'
+  jan_logs = np.arange(8, 18)
+  feb_logs = np.arange(20, 34)
+  jan_logs = ['%0.2d' % i for i in jan_logs]
+  feb_logs = ['%0.2d' % i for i in feb_logs]
+
+  for log_num in jan_logs:
+    print('log_num: ' + log_num)
+    convert_log(root_log_dir + '01_27_21/lcmlog-' + log_num, controller_channel)
+  for log_num in feb_logs:
+    print('log_num: ' + log_num)
+    convert_log(root_log_dir + '02_12_21/lcmlog-' + log_num, controller_channel)
+
+  print('done')
+
+def main():
+
+  filename = sys.argv[1]
+  controller_channel = sys.argv[2]
+  convert_log(filename, controller_channel)
+
 if __name__ == '__main__':
-  main()
+  convert_all_hardware_jumping_logs()
+  # main()

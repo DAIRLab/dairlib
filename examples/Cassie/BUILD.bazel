@@ -263,6 +263,7 @@ cc_binary(
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/controllers:trajectory_playback",
+        "//systems/framework:contact_results_to_force_vector",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

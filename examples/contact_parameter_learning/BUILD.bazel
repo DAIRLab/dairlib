@@ -115,9 +115,9 @@ py_binary(
     name = "cube_frequency_test",
     srcs = ["cube_frequency_test.py"],
     deps = [
-        ":cube_sim", 
-        ":drake_cube_sim_py", 
-        "//bindings/pydairlib/common:plot_styler"
+        ":cube_sim",
+        ":drake_cube_sim_py",
+        "//bindings/pydairlib/common:plot_styler",
     ],
 )
 
@@ -148,6 +148,31 @@ py_binary(
 py_binary(
     name = "test_mujoco_sim",
     srcs = ["test_mujoco_sim.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//bindings/pydairlib/cassie:mujoco_sim",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+        "@lcm//:lcm-python",
+    ],
+)
+
+py_library(
+    name = "cassie_impact_data",
+    srcs = ["cassie_impact_data.py"],
+    deps = [
+        ":cassie_loss_utils",
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//bindings/pydairlib/cassie:mujoco_sim",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+        "@lcm//:lcm-python",
+    ],
+)
+
+py_binary(
+    name = "cassie_loss_plotter",
+    srcs = ["cassie_loss_plotter.py"],
     deps = [
         "//bindings/pydairlib/cassie:cassie_utils",
         "//bindings/pydairlib/cassie:mujoco_sim",

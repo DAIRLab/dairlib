@@ -113,7 +113,7 @@ class DrakeToMujocoConverter():
     v_copy = self.map_v_drake_to_mujoco @ v
     q_full = q_missing + q_copy
     v_full = v_missing + v_copy
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     return q_full, v_full
 
   def visualize_state(self, x):
@@ -160,7 +160,7 @@ class DrakeToMujocoConverter():
     sim.Initialize()
     sim.AdvanceTo(0.1)
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
   def solve_IK(self, x):
 
@@ -218,7 +218,7 @@ class DrakeToMujocoConverter():
       self.left_achilles_frame.T @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame).as_quat()
     r_bar_quat = R.from_dcm(
       self.right_achilles_frame.T @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame).as_quat()
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     l_bar_quat = np.hstack((l_bar_quat[3], l_bar_quat[0:3]))
     r_bar_quat = np.hstack((r_bar_quat[3], r_bar_quat[0:3]))
 

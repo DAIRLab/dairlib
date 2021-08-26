@@ -137,7 +137,7 @@ OperationalSpaceControl::OperationalSpaceControl(
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
 
   // Testing
-  const std::map<string, int>& pos_map_w_spr =
+  /*const std::map<string, int>& pos_map_w_spr =
       multibody::makeNameToPositionsMap(plant_w_spr);
   const std::map<string, int>& vel_map_w_spr =
       multibody::makeNameToVelocitiesMap(plant_w_spr);
@@ -148,7 +148,7 @@ OperationalSpaceControl::OperationalSpaceControl(
   knee_ankle_vel_idx_list_ = {vel_map_w_spr.at("knee_joint_leftdot"),
                               vel_map_w_spr.at("knee_joint_rightdot"),
                               vel_map_w_spr.at("ankle_spring_joint_leftdot"),
-                              vel_map_w_spr.at("ankle_spring_joint_rightdot")};
+                              vel_map_w_spr.at("ankle_spring_joint_rightdot")};*/
 }
 
 // Cost methods

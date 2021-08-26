@@ -1652,7 +1652,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   } else if (FLAGS_robot_option == 1) {
     if (is_grid_task) {
-      max_sample_cost_increase_rate = FLAGS_is_stochastic ? 0.5 : 0.01;  // 0.3
+      max_sample_cost_increase_rate = FLAGS_is_stochastic ? 2.0 : 0.01;  //0.5 // 0.3
     } else {
       max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
     }

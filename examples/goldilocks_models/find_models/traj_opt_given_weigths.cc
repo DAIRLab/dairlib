@@ -1957,7 +1957,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //  w_q_hip_roll = 0.1 seems too small for fast walking. (leg swung too outward)
   double reduce_reg_weight = 1;
   double w_q_hip_roll = 1 * all_cost_scale * reduce_reg_weight;
-  double w_q_hip_yaw = .1 * all_cost_scale * reduce_reg_weight;
+  double w_q_hip_yaw = 1 * all_cost_scale * reduce_reg_weight; // 0.1 is too small for low height walking with LIPM
   double w_q_quat = .1 * all_cost_scale * reduce_reg_weight;
   // Additional cost on pelvis
   double w_Q_vy = w_Q * 1;  // avoid pelvis rocking in y

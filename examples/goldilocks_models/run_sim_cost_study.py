@@ -762,6 +762,7 @@ if __name__ == "__main__":
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
+  pelvis_height = -1.0  # not used
 
   # log indices
   log_idx_offset = 0  # 0
@@ -801,11 +802,12 @@ if __name__ == "__main__":
   task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str,
     delimiter=',')
 
-  task_list = np.zeros((n_task, 4))
+  task_list = np.zeros((n_task, 5))
   task_list[:, 0] = stride_length
   task_list[:, 1] = ground_incline
   task_list[:, 2] = duration
   task_list[:, 3] = turning_rate
+  task_list[:, 4] = pelvis_height
   print("task_list = \n" + str(task_list))
 
   # index of task vector where we sweep through

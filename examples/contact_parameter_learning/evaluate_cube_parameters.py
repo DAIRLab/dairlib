@@ -99,7 +99,7 @@ def get_error_and_loss_stats(traj_pairs, loss_weights):
         vel.append(np.mean(errors['velocity_error']))
         omega.append(np.mean(errors['omega_error']))
         rot.append(np.mean(errors['rotational_error']))
-        loss.append(loss_weights.CalculateLossTraj(pair[0], pair[1]))
+        loss.append(loss_weights.CalculateLoss(pair[0], pair[1]))
         if not (i % 25): print(f'calculating means {i} %')
         i += 1
     
@@ -162,11 +162,11 @@ if (__name__ == '__main__'):
     sim_type = learning_result.split('_')[0]
 
     if (sim_type == 'mujoco'):
-        eval_sim = mujoco_cube_sim.MujocoCubeSim()
+        eval_sim = mujoco_cube_sim.MujocoCubeSim(substeps=10)
     elif (sim_type == 'drake'):
         eval_sim = drake_cube_sim.DrakeCubeSim()
     elif (sim_type == 'bullet'):
-        eval_sim = bullet_cube_sim.BulletCubeSim()
+        eval_sim = bullet_cube_sim.BulletCubeSim(substeps=10)
     else:
         print(f'{sim_type} is not a supported simulator - please check for spelling mistakes and try again')
         quit()
@@ -179,7 +179,7 @@ if (__name__ == '__main__'):
     for key in sorted_pairs:
         print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    # stats = get_error_and_loss_stats(traj_pairs, mse_loss)
-    # print(stats)
+    stats = get_error_and_loss_stats(traj_pairs, mse_loss)
+    print(stats)
 
-    visualize_learned_params(params, sim_type, list(sorted_pairs.keys())[0])
+    visualize_learned_params(params, sim_type, list(sorted_pairs.keys())[-2])

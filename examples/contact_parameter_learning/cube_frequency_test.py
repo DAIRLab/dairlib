@@ -13,7 +13,7 @@ position_loss = cube_sim.LossWeights(vel=np.zeros((3,)), omega=np.zeros((3,)), q
 w_n = np.sqrt(drake_cube_sim.default_drake_contact_params['stiffness'] / cube_sim.CUBE_MASS)
 print(f'w_n: {w_n}')
 
-dts = np.logspace(np.log(0.5/w_n), np.log(2*w_n), 50).tolist()
+dts = np.logspace(np.log(0.5/w_n), np.log(2/w_n), 50).tolist()
 
 continuous_contact_sim = drake_cube_sim.DrakeCubeSim(drake_sim_dt=0)
 continuous_contact_sim.init_sim(drake_cube_sim.default_drake_contact_params)

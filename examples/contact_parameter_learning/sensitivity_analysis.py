@@ -12,36 +12,42 @@ import cube_sim
 
 def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, test_traj_set, plant='cube'):
     
-    loss_sweeps = {}
+    loss_avgs = {}
+    loss_meds ={}
     for param_key in params_range:
-        loss_sweep = []
+        loss_avg = []
+        loss_med = []
         params = deepcopy(optimal_params)
         print(f'sweeping {param_key}')
+
         for param_val in params_range[param_key]:
-            loss_sum = 0
+            losses = []
             params[param_key] = param_val
             print(f'{param_key}: {param_val}')
             if (plant == 'cube'):
                 pairs = load_traj_pairs(sim, params, test_traj_set)
                 for pair_idx in pairs:
                     pair = pairs[pair_idx]
-                    loss_sum += loss_weights.CalculateLoss(pair[0], pair[1])
-                loss_sweep.append(loss_sum / len(pairs))
+                    losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
+                import pdb; pdb.set_trace()
+                loss_avg.append(np.average(losses))
+                loss_med.append(np.median(losses))
             else:
                 raise NotImplementedError('Need to define a cassie method for this')
-        loss_sweeps[param_key] = np.array(loss_sweep)
+        loss_avgs[param_key] = np.array(loss_avg)
+        loss_meds[param_key] = np.array(loss_med)
 
-    return loss_sweeps
+    return loss_avgs, loss_meds
 
-def plot_sensitivity_analysis(loss_sweeps, params_range):
+def plot_sensitivity_analysis(loss_sweeps, params_range, title=''):
     ps = plot_styler.PlotStyler()
+
     for key in loss_sweeps:
         plt.figure()
         ps.plot(params_range[key], loss_sweeps[key])
-        plt.title(key)
+        plt.title(f'{title} - {key}')
         if (key == 'pen_allow' or key == 'stiction_tol' or key == 'mu_torsion' or key == 'mu_rolling'):
             plt.xscale('log')
-    plt.show()
 
 def get_cube_params_range(sim_type):
     params_range = {}
@@ -54,17 +60,17 @@ def get_cube_params_range(sim_type):
     else:
         params_range['stiffness'] = np.arange(1000, 10000, 250).tolist()
         params_range['damping'] = np.arange(0, 100, 4).tolist()
-        params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
-        params_range['mu_rolling'] = np.logspace(-6, -2, 10).tolist()
+        # params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
+        # params_range['mu_rolling'] = np.logspace(-6, -2, 10).tolist()
 
     if (sim_type == 'mujoco'):
 
-        params_range['cube_mu_tangent'] = np.arange(0.1, 1.0, 0.05).tolist()
-        params_range['table_mu_tangent'] = np.arange(0.1, 1.0, 0.05).tolist()
+        params_range['cube_mu_tangent'] = np.arange(0.01, 0.4, 0.025).tolist()
+        params_range['table_mu_tangent'] = np.arange(0.01, 0.4, 0.025).tolist()
     elif (sim_type == 'bullet'):
 
-        params_range['mu_tangent'] = np.arange(0.1, 1.0, 0.05).tolist()
-        params_range['restitution'] = np.arange(0.01, 1.0, 0.1).tolist()
+        params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
+        params_range['restitution'] = np.arange(0.01, 0.3, 0.05).tolist()
     
     return params_range
 
@@ -73,11 +79,11 @@ def cube_sensitivity_analysis_main(learning_result):
     sim_type = learning_result.split('_')[0]
 
     if (sim_type == 'mujoco'):
-        eval_sim = mujoco_cube_sim.MujocoCubeSim()
+        eval_sim = mujoco_cube_sim.MujocoCubeSim(substeps=10)
     elif (sim_type == 'drake'):
         eval_sim = drake_cube_sim.DrakeCubeSim()
     elif (sim_type == 'bullet'):
-        eval_sim = bullet_cube_sim.BulletCubeSim()
+        eval_sim = bullet_cube_sim.BulletCubeSim(substeps=10)
     else:
         print(f'{sim_type} is not a supported simulator - please check for spelling mistakes and try again')
         quit()
@@ -85,14 +91,17 @@ def cube_sensitivity_analysis_main(learning_result):
     params, test_set, training_loss = load_params_and_logs(learning_result)
     params_range = get_cube_params_range(sim_type)
 
-    sweep = get_sensitivity_analysis(
+    avg, med = get_sensitivity_analysis(
         eval_sim, 
         training_loss, 
         params, 
         params_range, 
         test_set)
     
-    plot_sensitivity_analysis(sweep, params_range)
+    plot_sensitivity_analysis(avg, params_range, title='Avg loss sweep')
+    plot_sensitivity_analysis(med, params_range, title='Median loss sweep')
+
+    plt.show()
 
 if (__name__ == '__main__'):
     result_id = sys.argv[1]

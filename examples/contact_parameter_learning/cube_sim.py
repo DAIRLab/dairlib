@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from torch import load as torch_load
 import numpy as np
 import os
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation as R, Slerp
 import matplotlib.pyplot as plt
 import pickle
 
@@ -147,10 +147,30 @@ def load_sim_traj(filename):
     state_traj = np.load(filename)
     return get_window_around_contact_event(state_traj)
 
+def get_index_before_contact(data_traj):
+    start_idx = np.argwhere(data_traj[:,CUBE_DATA_POSITION_SLICE][:,2] <= BLOCK_HALF_WIDTH * np.sqrt(3.0))[0].tolist()[0] - 1
+    start_idx = np.max([0, start_idx])
+
+def fit_initial_condition(data_traj):
+    idx_pre = get_index_before_contact(data_traj)
+    if idx_pre == 0:
+        return get_window_around_contact_event(data_traj)
+        
+    q1 = data_traj[0,CUBE_DATA_QUATERNION_SLICE].ravel()
+    q2 = data_traj[idx_pre,CUBE_DATA_QUATERNION_SLICE].ravel()
+
+    R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
+    R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
+
+    R_rel = R2.inv() * R1
+
+    omega = R_rel.as_rotvec() / (CUBE_DATA_DT * idx_pre)
+
+
+
 def get_window_around_contact_event(data_traj):
     # return whole trajectory for now
-    start_idx = np.argwhere(data_traj[:,CUBE_DATA_POSITION_SLICE][:,2] <= BLOCK_HALF_WIDTH * np.sqrt(3.0))[0].tolist()[0] - 2
-    start_idx = np.max([0, start_idx])
+    start_idx = get_index_before_contact(data_traj)
     return data_traj[start_idx:]
 
 

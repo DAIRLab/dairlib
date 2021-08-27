@@ -17,8 +17,8 @@ mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='pos_loss_w
 loss_over_time = []
 stiffness_over_time = []
 log_num = 'training'
-budget = 15000
-# budget = 5000
+# budget = 15000
+budget = 5000
 # budget = 25000
 
 all_logs = drake_sim.log_nums_real
@@ -38,7 +38,11 @@ def get_drake_loss(params, log_num=None):
     log_num = choice(training_idxs)
   print(log_num)
   sim_id = drake_sim.run(params, log_num)
-  loss = drake_sim.compute_loss(log_num, sim_id, params)
+  if sim_id == '-1':
+    print('initial state was infeasible')
+    loss = 200
+  else:
+    loss = drake_sim.compute_loss(log_num, sim_id, params)
   loss_over_time.append(loss)
   stiffness_over_time.append(params['stiffness'])
   print('loss:' + str(loss))
@@ -116,8 +120,7 @@ def print_drake_cassie_params(single_log_num, plot=False):
   # optimal_params = drake_sim.load_params('old_params/' + log_num + '_optimized_params_' + str(budget))
   optimal_params = drake_sim.load_params('drake_2021_08_25_11_45_training_15000')
 
-  sim_id = drake_sim.run(optimal_params.value, single_log_num)
-  loss = drake_sim.compute_loss(single_log_num, sim_id, optimal_params.value, plot=plot)
+  loss = get_drake_loss(optimal_params.value, single_log_num)
   print(loss)
   # import pdb; pdb.set_trace()
   # z_offset = optimal_params.value['z_offset']
@@ -194,8 +197,17 @@ def print_params():
     log_num = i
     print_drake_cassie_params(log_num)
 
-if (__name__ == '__main__'):
 
+def learn_x_offsets():
+  global training_idxs
+  for i in all_logs:
+    print(i)
+    log_num = i
+    training_idxs = [log_num]
+    learn_drake_cassie_params()
+
+if (__name__ == '__main__'):
+  learn_x_offsets()
   # save_x_offsets()
   # print_params()
   # import pdb; pdb.set_trace()
@@ -206,5 +218,5 @@ if (__name__ == '__main__'):
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
-  print_drake_cassie_params('08', False)
+  # print_drake_cassie_params('16', False)
   # plot_loss_trajectory()

@@ -27,13 +27,13 @@ class CassieImpactData():
 
     # load in all the time series data (state, inputs, contact forces)
     self.x_trajs_hardware = {}
-    self.t_xs_hardware = {}
+    self.t_x_hardware = {}
     self.u_trajs_hardware = {}
     self.contact_forces_hardware = {}
 
     for log_num in self.log_nums_real:
       self.x_trajs_hardware[log_num] = np.load(self.data_directory + 'x_' + log_num + '.npy')
-      self.t_xs_hardware[log_num] = np.load(self.data_directory + 't_x_' + log_num + '.npy')
+      self.t_x_hardware[log_num] = np.load(self.data_directory + 't_x_' + log_num + '.npy')
       self.u_trajs_hardware[log_num] = np.load(self.data_directory + 'u_' + log_num + '.npy')
       self.contact_forces_hardware[log_num] = np.load(self.data_directory + 'lambda_' + log_num + '.npy')
 
@@ -41,13 +41,13 @@ class CassieImpactData():
 
     # load in all the time series data (state, inputs, contact forces)
     self.x_trajs_sim = {}
-    self.t_xs_sim = {}
+    self.t_x_sim = {}
     # self.u_trajs_sim = {}
     self.contact_forces_sim = {}
 
     for log_num in self.log_nums_real:
-      self.x_trajs_sim[log_num] = np.load(self.sim_data_directory + 'x_' + log_num + '.npy')
-      self.t_xs_sim[log_num] = np.load(self.sim_data_directory + 't_x_' + log_num + '.npy')
+      self.x_trajs_sim[log_num] = np.load(self.sim_data_directory + 'x_' + log_num + '.npy').T
+      self.t_x_sim[log_num] = np.load(self.sim_data_directory + 't_x_' + log_num + '.npy')
       # self.u_trajs_sim[log_num] = np.load(self.sim_data_directory + 'u_' + log_num + '.npy')
       self.contact_forces_sim[log_num] = np.load(self.sim_data_directory + 'lambda_' + log_num + '.npy')
 

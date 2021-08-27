@@ -174,6 +174,11 @@ int do_main(int argc, char* argv[]) {
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
 
+  auto left_toe_front = LeftToeFront(plant);
+  auto right_toe_front = RightToeFront(plant);
+  auto left_toe_rear = LeftToeRear(plant);
+  auto right_toe_rear = RightToeRear(plant);
+
   // Create maps for joints
   std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   std::map<std::string, int> vel_map =
@@ -280,6 +285,31 @@ int do_main(int argc, char* argv[]) {
       init_state.x_init.data(), init_state.x_init.size());
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
+
+  Eigen::Vector3d left_toe_front_pt;
+  Eigen::Vector3d right_toe_front_pt;
+  Eigen::Vector3d left_toe_rear_pt;
+  Eigen::Vector3d right_toe_rear_pt;
+  plant.CalcPointsPositions(plant_context, left_toe_front.second,
+                            left_toe_front.first, plant.world_frame(),
+                            &left_toe_front_pt);
+  plant.CalcPointsPositions(plant_context, right_toe_front.second,
+                            right_toe_front.first, plant.world_frame(),
+                            &right_toe_front_pt);
+  plant.CalcPointsPositions(plant_context, left_toe_rear.second,
+                            left_toe_rear.first, plant.world_frame(),
+                            &left_toe_rear_pt);
+  plant.CalcPointsPositions(plant_context, right_toe_rear.second,
+                            right_toe_rear.first, plant.world_frame(),
+                            &right_toe_rear_pt);
+
+  if ((left_toe_front_pt(2) < 0) || (right_toe_front_pt(2) < 0) ||
+      (left_toe_rear_pt(2) < 0) || (right_toe_rear_pt(2) < 0)) {
+    writeCSV("x_traj.csv", Eigen::MatrixXd::Zero(1, 1));
+    writeCSV("lambda_traj.csv", Eigen::MatrixXd::Zero(1, 1));
+    writeCSV("t_x.csv", Eigen::VectorXd::Zero(1));
+    return 1;
+  }
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

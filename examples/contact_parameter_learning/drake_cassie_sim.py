@@ -61,13 +61,13 @@ class DrakeCassieSim():
       "mu_static": 0.8,
       "mu_ratio": 1.0,
       # "pen_allow": 1e-5,
-      "stiffness": 1e4,
+      "stiffness": 4e4,
       "dissipation": 0.5,
       "stiction_tol": 1e-3,
       # "vel_offset": np.zeros(len(self.log_nums_real) * 3),
       # "z_offset": np.zeros(len(self.log_nums_real)),
-      # "vel_offset": np.zeros(3),
-      # "z_offset": np.zeros(1),
+      "vel_offset": np.zeros(3),
+      "z_offset": np.zeros(1),
     }
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
@@ -125,12 +125,12 @@ class DrakeCassieSim():
 
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
     x_init = x_interp(self.start_time)
-    z_offset = self.z_offsets[log_num]
-    vel_offset = self.vel_offsets[log_num]
-    # z_offset = params['z_offset'][log_idx]
-    # vel_offset = params['vel_offset'][3*log_idx:3*(log_idx + 1)]
-    # z_offset = params['z_offset']
-    # vel_offset = params['vel_offset']
+
+    # z_offset = self.z_offsets[log_num]
+    # vel_offset = self.vel_offsets[log_num]
+    z_offset = params['z_offset']
+    vel_offset = params['vel_offset']
+
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset
     self.write_initial_state(x_init)
@@ -152,6 +152,8 @@ class DrakeCassieSim():
     # print((' ').join(simulator_cmd))
     simulator_process = subprocess.Popen(simulator_cmd)
     simulator_process.wait()
+    if simulator_process.returncode == 1:
+      return '-1'
     x_traj = np.genfromtxt('x_traj.csv', delimiter=',', dtype='f16')
     lambda_traj = np.genfromtxt('lambda_traj.csv', delimiter=',', dtype='f16')
     t_x = np.genfromtxt('t_x.csv')

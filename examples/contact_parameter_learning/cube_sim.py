@@ -135,7 +135,7 @@ def load_cube_toss(filename):
     state_traj[:, CUBE_DATA_POSITION_SLICE] *= BLOCK_HALF_WIDTH
     state_traj[:, CUBE_DATA_VELOCITY_SLICE] *= BLOCK_HALF_WIDTH
 
-    state_traj = get_window_around_contact_event(state_traj)
+    state_traj = fit_initial_condition(state_traj)
 
     return state_traj
 
@@ -150,10 +150,11 @@ def load_sim_traj(filename):
 def get_index_before_contact(data_traj):
     start_idx = np.argwhere(data_traj[:,CUBE_DATA_POSITION_SLICE][:,2] <= BLOCK_HALF_WIDTH * np.sqrt(3.0))[0].tolist()[0] - 1
     start_idx = np.max([0, start_idx])
+    return start_idx
 
 def fit_initial_condition(data_traj):
     idx_pre = get_index_before_contact(data_traj)
-    if idx_pre == 0:
+    if idx_pre < 4:
         return get_window_around_contact_event(data_traj)
         
     q1 = data_traj[0,CUBE_DATA_QUATERNION_SLICE].ravel()
@@ -162,11 +163,28 @@ def fit_initial_condition(data_traj):
     R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
     R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
 
-    R_rel = R2.inv() * R1
+    R_rel = R1.inv() * R2
 
     omega = R_rel.as_rotvec() / (CUBE_DATA_DT * idx_pre)
 
+    positions = data_traj[:idx_pre,CUBE_DATA_POSITION_SLICE]
+    
+    times = CubeSim.make_traj_timestamps(positions)
+    times = times[:positions.shape[0]]
 
+    # fit parabolic trajectory with curvature -9.81 m/s to z position
+    A = np.hstack((np.ones((idx_pre,1)), times.reshape([-1,1])))
+    b = positions[:,-1] + (9.81 / 2) * np.square(times)
+    x = np.linalg.lstsq(A,b)[0]
+    
+    vel = np.array([
+        (positions[-1,0]-positions[0,0]) / times[-1], 
+        (positions[-1,1]-positions[0,1]) / times[-1],
+         x[1] - 9.81 * times[-1] ])
+
+    data_traj[idx_pre, CUBE_DATA_VELOCITY_SLICE] = vel
+    data_traj[idx_pre, CUBE_DATA_OMEGA_SLICE] = omega
+    return data_traj[idx_pre:,:]
 
 def get_window_around_contact_event(data_traj):
     # return whole trajectory for now

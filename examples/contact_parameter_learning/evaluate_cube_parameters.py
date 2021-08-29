@@ -31,6 +31,38 @@ def visualize_learned_params(params, sim_type, toss_id):
 
     vis_sim.visualize_two_cubes(cube_data, sim_data, 0.1)
 
+def calculate_contact_impulse(traj):
+    impulses = np.zeros((traj.shape[0],2))
+    for i in range(traj.shape[0]-1):
+        impulses[i,0] = cube_sim.CUBE_MASS * np.linalg.norm(
+            traj[i+1,cube_sim.CUBE_DATA_VELOCITY_SLICE][:2] - 
+            traj[i, cube_sim.CUBE_DATA_VELOCITY_SLICE][:2]) / cube_sim.CUBE_DATA_DT
+        impulses[i,1] = cube_sim.CUBE_MASS * (
+            (traj[i+1,cube_sim.CUBE_DATA_VELOCITY_SLICE][-1] - 
+            traj[i,cube_sim.CUBE_DATA_VELOCITY_SLICE][-1]) / cube_sim.CUBE_DATA_DT + 9.81)
+    return impulses
+
+def plot_contact_impulses(traj_pair, title=''):
+    data_impulses = calculate_contact_impulse(traj_pair[0])
+    sim_impulses = calculate_contact_impulse(traj_pair[1])
+
+    times = cube_sim.CubeSim.make_traj_timestamps(traj_pair[0])[:traj_pair[0].shape[0]]
+
+    plt.figure()
+    plt.plot(times, data_impulses[:,0])
+    plt.plot(times, sim_impulses[:,0])
+    plt.legend(['Data', 'Simulation'])
+    plt.title(f'{title}Tangent Impulses')
+
+    plt.figure()
+    plt.plot(times, data_impulses[:,1])
+    plt.plot(times, sim_impulses[:,1])
+    plt.legend(['Data', 'Simulation'])
+    plt.title(f'{title}Normal Impulses')
+
+    plt.show()
+    
+
 def load_traj_pairs(sim, params, test_set):
     sim.init_sim(params)
 
@@ -179,7 +211,8 @@ if (__name__ == '__main__'):
     for key in sorted_pairs:
         print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    stats = get_error_and_loss_stats(traj_pairs, mse_loss)
-    print(stats)
+    #stats = get_error_and_loss_stats(traj_pairs, mse_loss)
+    #print(stats)
+    plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[-1]])
 
-    visualize_learned_params(params, sim_type, list(sorted_pairs.keys())[-2])
+    #visualize_learned_params(params, sim_type, list(sorted_pairs.keys())[0])

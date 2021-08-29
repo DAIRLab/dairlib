@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 from scipy.spatial.transform import Rotation as R
 from pydairlib.common import FindResourceOrThrow
+from scipy.integrate import trapezoid, simpson
 
 LOSS_WEIGHTS_FOLDER = 'examples/contact_parameter_learning/cassie_loss_weights/'
 
@@ -18,6 +19,7 @@ class CassieLossWeights():
     self.omega = np.diag(omega)
     self.quat = quat
     self.pos_offset_weight = pos_offset_weight
+    self.impulse_weight = 1e-7
 
   def save(self, filename):
     rel_filepath = LOSS_WEIGHTS_FOLDER + filename
@@ -38,10 +40,25 @@ class CassieLoss():
     # self.weights.quat = 10 * self.weights.quat
     # self.weights.pos_offset_weight = 20
     # self.weights.save('pos_loss_weights')
+    # self.weights.save('pos_loss_weights')
 
   def load_weights(self, filename):
     with open(LOSS_WEIGHTS_FOLDER + filename + '.pkl', 'rb') as f:
       return pickle.load(f)
+
+  def print_weights(self):
+    print('pos weights: ')
+    print(self.weights.pos)
+    print('vel weights: ')
+    print(self.weights.vel)
+    print('omega weights: ')
+    print(self.weights.omega)
+    print('quat weights: ')
+    print(self.weights.quat)
+
+  # Using trapezoidal integration, calculate the per state integral of the trajectory
+  def integrate_trajectory(self, traj):
+    return trapezoid(traj, axis=0)
 
   def CalcPositionsLoss(self, traj1, traj2):
     diff = traj1 - traj2
@@ -83,6 +100,16 @@ class CassieLoss():
     z_offset_cost = self.weights.pos_offset_weight * z_offset.T @ z_offset
 
     return vel_offset_cost + z_offset_cost
+
+  def CalculateLossNetImpulse(self, traj1, traj2):
+    total_impulse_error = 0
+    impulse_errors = np.zeros((4, 3))
+    for foot in range(4):
+      net_impulse_1 = self.integrate_trajectory(traj1[foot])
+      net_impulse_2 = self.integrate_trajectory(traj2[foot])
+      impulse_errors[foot] = net_impulse_1 - net_impulse_2
+      total_impulse_error += self.weights.impulse_weight * impulse_errors[foot].T @ impulse_errors[foot]
+    return total_impulse_error
 
   def calc_rotational_distance(self, quat1, quat2):
     q1 = quat1.ravel()

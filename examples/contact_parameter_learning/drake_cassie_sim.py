@@ -23,31 +23,32 @@ class DrakeCassieSim():
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
     self.date_prefix = 'drake_' + time.strftime("%Y_%m_%d_%H_%M")
     # self.start_time = 30.595
-    self.start_time = 30.6477
-    self.sim_time = 0.05
+    self.start_time = 30.6
+    self.sim_time = 0.1
     self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
     self.realtime_rate = 1.0
     self.terrain_height = 0.00
     self.ps = plot_styler.PlotStyler()
     self.base_z_idx = 6
-    self.base_vel_idx = slice(26,29)
+    self.base_vel_idx = slice(26, 29)
 
     with open("x_datatypes", "rb") as fp:
       self.x_datatypes = pickle.load(fp)
 
     self.x_trajs = {}
-    self.t_xs = {}
-
+    self.lambda_trajs = {}
+    self.t_x = {}
 
     self.log_nums_all = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_real = np.hstack((np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_sim = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_all = ['%0.2d' % i for i in self.log_nums_all]
     self.log_nums_real = ['%0.2d' % i for i in self.log_nums_real]
-    for log_num in self.log_nums_all:
+    for log_num in self.log_nums_real:
       self.x_trajs[log_num] = np.load(self.folder_path + 'x_' + log_num + '.npy')
-      self.t_xs[log_num] = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+      self.lambda_trajs[log_num] = np.load(self.folder_path + 'lambda_' + log_num + '.npy')
+      self.t_x[log_num] = np.load(self.folder_path + 't_x_' + log_num + '.npy')
 
     # self.z_offsets = np.load(self.params_folder + 'all_z_offset_50000.npy')
     # self.vel_offsets = np.load(self.params_folder + 'all_vel_offset_50000.npy')
@@ -72,10 +73,9 @@ class DrakeCassieSim():
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
 
-
-
   def write_initial_state(self, x_init):
     gains_path = "/home/yangwill/workspace/dairlib/examples/Cassie/data/"
+
     # print(x_init)
     def float_representer(dumper, value):
       text = '{0:.5f}'.format(value)
@@ -119,17 +119,17 @@ class DrakeCassieSim():
     # x_traj = np.load(self.folder_path + 'x_' + log_num + '.npy')
     # t = np.load(self.folder_path + 't_x_' + log_num + '.npy')
     x_traj = self.x_trajs[log_num]
-    t = self.t_xs[log_num]
+    t = self.t_x[log_num]
 
     ### Overrides here
 
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
     x_init = x_interp(self.start_time)
 
-    # z_offset = self.z_offsets[log_num]
-    # vel_offset = self.vel_offsets[log_num]
-    z_offset = params['z_offset']
-    vel_offset = params['vel_offset']
+    z_offset = self.z_offsets[log_num]
+    vel_offset = self.vel_offsets[log_num]
+    # z_offset = params['z_offset']
+    # vel_offset = params['vel_offset']
 
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset
@@ -179,49 +179,53 @@ class DrakeCassieSim():
   def load_sim_trial(self, log_num):
     x_traj = np.load(self.sim_data_folder + 'x_' + log_num + '.npy')
     t_x = np.load(self.sim_data_folder + 't_x_' + log_num + '.npy')
+    lambda_traj = np.load(self.sim_data_folder + 'lambda_' + log_num + '.npy')
 
-    return x_traj.transpose(), t_x
+    return x_traj.transpose(), t_x, lambda_traj
 
-  def get_window_around_contact_event(self, x_traj, t_x):
+  def get_window_around_contact_event(self, t_x, x_traj, lambda_traj):
     # return whole trajectory for now
-
     # start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[0][0]
     # end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[0][0]
     start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[1][0]
     end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[1][0]
     window = slice(start_idx, end_idx)
-    return window, x_traj[window]
+    return t_x[window], x_traj[window], lambda_traj[:, window, :]
 
   def compute_loss(self, log_num, sim_id, params, plot=False):
-    # x_traj_log = np.load(self.folder_path + 'x_' + log_num + '.npy')
-    # t_x_log = np.load(self.folder_path + 't_x_' + log_num + '.npy')
-    x_traj_log = self.x_trajs[log_num]
-    t_x_log = self.t_xs[log_num]
+    # x_traj_hardware = np.load(self.folder_path + 'x_' + log_num + '.npy')
+    # t_x_hardware = np.load(self.folder_path + 't_x_' + log_num + '.npy')
+    x_traj_hardware = self.x_trajs[log_num]
+    t_x_hardware = self.t_x[log_num]
+    lambda_traj_hardware = self.lambda_trajs[log_num]
 
-    x_traj, t_x = self.load_sim_trial(sim_id)
-    window, x_traj_in_window = self.get_window_around_contact_event(x_traj_log, t_x_log)
-    min_time_length = min(x_traj.shape[0], x_traj_in_window.shape[0])
+    x_traj_sim, t_x_sim, lambda_traj_sim = self.load_sim_trial(sim_id)
+    t_x_hardware, x_traj_hardware, lambda_traj_hardware = self.get_window_around_contact_event(t_x_hardware,
+                                                                                               x_traj_hardware,
+                                                                                               lambda_traj_hardware)
+    min_time_length = min(x_traj_sim.shape[0], x_traj_hardware.shape[0])
     # import pdb; pdb.set_trace()
     joints = np.arange(23, 45)
     if plot:
       for joint in joints:
         plt.figure("joint vel: " + self.x_datatypes[joint])
 
-        self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, joint])
-        self.ps.plot(t_x_log[window][:min_time_length], x_traj_in_window[:min_time_length, joint])
+        self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, joint])
+        self.ps.plot(t_x_hardware[:min_time_length], x_traj_hardware[:min_time_length, joint])
         self.ps.add_legend([self.x_datatypes[joint] + ': sim', self.x_datatypes[joint] + ': real'])
-      # self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 31:35], color='b')
-      # self.ps.plot(t_x_log[window][:min_time_length], x_traj_in_window[:min_time_length, 31:35], color='r')
-      # self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 4:7], color='b')
-      # self.ps.plot(t_x[:min_time_length], x_traj_in_window[:min_time_length, 4:7], color='r')
+      # self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 31:35], color='b')
+      # self.ps.plot(t_x_hardware[window][:min_time_length], x_traj_hardware[:min_time_length, 31:35], color='r')
+      # self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 4:7], color='b')
+      # self.ps.plot(t_x_sim[:min_time_length], x_traj_hardware[:min_time_length, 4:7], color='r')
       #   plt.figure('loss')
-      #   self.ps.plot(t_x[:min_time_length], x_traj[:min_time_length, 23:45] - x_traj_log[:min_time_length, 23:45], color=self.ps.grey)
+      #   self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 23:45] - x_traj_hardware[:min_time_length, 23:45], color=self.ps.grey)
       plt.show()
-
-    traj_loss = self.loss_func.CalculateLossTraj(x_traj[:min_time_length], x_traj_in_window[:min_time_length])
+    traj_loss = self.loss_func.CalculateLossTraj(x_traj_sim[:min_time_length], x_traj_hardware[:min_time_length])
+    impulse_loss = self.loss_func.CalculateLossNetImpulse(lambda_traj_sim[:, :min_time_length, :],
+                                                          lambda_traj_hardware[:, :min_time_length, :])
     # regularization_loss = self.loss_func.CalculateLossParams(params)
     # return traj_loss + regularization_loss
-    return traj_loss
+    return traj_loss + impulse_loss
 
 
 if __name__ == '__main__':

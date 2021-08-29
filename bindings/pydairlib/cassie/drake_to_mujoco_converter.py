@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 from pydrake.multibody.inverse_kinematics import InverseKinematics
 from pydrake.multibody.parsing import Parser
@@ -30,16 +28,26 @@ class DrakeToMujocoConverter():
 
     # self.foot_crank_plant = MultibodyPlant(drake_sim_dt)
     self.foot_crank_builder = DiagramBuilder()
-    self.foot_crank_plant, self.foot_crank_scene_graph = AddMultibodyPlantSceneGraph(self.foot_crank_builder, drake_sim_dt)
+    self.foot_crank_plant, self.foot_crank_scene_graph = AddMultibodyPlantSceneGraph(self.foot_crank_builder,
+                                                                                     drake_sim_dt)
     # DrakeVisualizer.AddToBuilder(self.foot_crank_builder, self.foot_crank_scene_graph)
 
     Parser(self.foot_crank_plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_foot_crank.urdf'))
     self.foot_crank_plant.Finalize()
 
+    self.knee_linkage_builder = DiagramBuilder()
+    self.knee_linkage_plant, self.knee_linkage_scene_graph = AddMultibodyPlantSceneGraph(self.knee_linkage_builder,
+                                                                                         drake_sim_dt)
+    # DrakeVisualizer.AddToBuilder(self.foot_crank_builder, self.foot_crank_scene_graph)
+
+    Parser(self.knee_linkage_plant).AddModelFromFile(
+      FindResourceOrThrow('examples/Cassie/urdf/cassie_knee_linkage.urdf'))
+    self.knee_linkage_plant.Finalize()
+
     self.diagram = self.builder.Build()
     self.diagram_context = self.diagram.CreateDefaultContext()
 
-    temp = makeNameToPositionsMap(self.foot_crank_plant)
+    self.print_pos_indices(self.knee_linkage_plant)
 
     self.pos_map = makeNameToPositionsMap(self.plant)
     self.vel_map = makeNameToVelocitiesMap(self.plant)
@@ -75,6 +83,7 @@ class DrakeToMujocoConverter():
     self.left_achilles_frame[:, 0] = np.array([0.7922, -0.60599, -0.072096])
     self.left_achilles_frame[:, 1] = np.array([0.60349, 0.79547, -0.054922])
     self.left_achilles_frame[:, 2] = np.cross(self.left_achilles_frame[:, 0], self.left_achilles_frame[:, 1])
+    self.left_achilles_frame = self.left_achilles_frame.T
     self.right_achilles_frame = np.zeros((3, 3))
     self.right_achilles_frame[:, 0] = np.array([0.7922, -0.60599, 0.072096])
     self.right_achilles_frame[:, 1] = np.array([0.60349, 0.79547, 0.054922])
@@ -96,6 +105,11 @@ class DrakeToMujocoConverter():
     self.toe_angle_constraint = self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[7], 0)
     self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[0:7], np.array([1, 0, 0, 0, 0, 0, 0]))
 
+  def print_pos_indices(self, plant):
+    name_map = makeNameToPositionsMap(plant)
+    for name in name_map:
+      print(name + ': ' + str(name_map[name]))
+
   def convert_to_drake(self, q, v):
     q_drake = np.zeros(23)
     v_drake = np.zeros(22)
@@ -116,12 +130,13 @@ class DrakeToMujocoConverter():
     # import pdb; pdb.set_trace()
     return q_full, v_full
 
-  def visualize_state(self, x):
+  def visualize_state_lower(self, x):
     self.plant.SetPositionsAndVelocities(self.context, x)
     # toe_left_ang = x[self.pos_map['toe_left']]
     toe_left_ang = -1.5968
     self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_left_ang])
-    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(), np.array([1, 0, 0, 0, 0, 0, 0, toe_left_ang, toe_left_ang, -toe_left_ang]))
+    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
+                                          np.array([1, 0, 0, 0, 0, 0, 0, toe_left_ang, toe_left_ang, -toe_left_ang]))
     result = Solve(self.ik_solver.prog())
     left_foot_crank_state = result.GetSolution()
     print(left_foot_crank_state)
@@ -145,7 +160,6 @@ class DrakeToMujocoConverter():
     builder.Connect(traj_source.get_output_port(), q_to_pose.get_input_port())
     builder.Connect(q_to_pose.get_output_port(), scene_graph.get_source_pose_port(plant_id))
 
-
     # self.builder.Connect(self.foot_crank_plant.get_geometry_poses_output_port(),
     #                      self.foot_crank_scene_graph.get_source_pose_port(self.foot_crank_plant.get_source_id().value()))
 
@@ -160,10 +174,78 @@ class DrakeToMujocoConverter():
     sim.Initialize()
     sim.AdvanceTo(0.1)
 
+  def visualize_state_upper(self, quat, x):
+    # self.plant.SetPositionsAndVelocities(self.context, x)
+    # toe_left_ang = x[self.pos_map['toe_left']]
+    # toe_left_ang = -1.5968
+    # self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_left_ang])
+    # self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(), np.array([1, 0, 0, 0, 0, 0, 0, toe_left_ang, toe_left_ang, -toe_left_ang]))
+    # result = Solve(self.ik_solver.prog())
+    # left_foot_crank_state = result.GetSolution()
+    # print(left_foot_crank_state)
+    # print(result.get_solution_result())
+
+    rot = R.from_quat(np.hstack((quat[1:4], quat[0])))
+    euler_vec = rot.as_euler('xyz')
+
+    knee_linkage_state = np.array([1, 0, 0, 0, 0, 0, 0, -0.03944253, 0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])
+    knee_linkage_state[7:10] = -euler_vec
+    knee_linkage_state[10] = x[13]
+    knee_linkage_state[11] = x[15]
+    knee_linkage_state[12] = x[17]
+    knee_linkage_state[13] = x[19]
+    # knee_linkage_state = np.array([1, 0, 0, 0, 0, 0, 0, -0.03944253,  0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])
+    # knee_linkage_state = np.array([1, 0, 0, 0, 0, 0, 0, -0.03944253,  0.02825365,  -0.41339635, -1.1997, 0, 1.4267, 0])
+
+    builder = DiagramBuilder()
+
+    # Add a cube as MultibodyPlant
+    plant = MultibodyPlant(self.drake_sim_dt)
+    scene_graph = builder.AddSystem(SceneGraph())
+    plant_id = plant.RegisterAsSourceForSceneGraph(scene_graph)
+
+    Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_knee_linkage.urdf'))
+    # plant.RegisterVisualGeometry(plant.world_body(), X_WG, Box(10, 10, 0.001), "visual", terrain_color)
+    plant.Finalize()
+    plant_context = plant.CreateDefaultContext()
+
+    plant.SetPositions(plant_context, knee_linkage_state)
+
+    # offset = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('thigh_left').body_frame(), np.array([0, 0, 0.045]), plant.GetBodyByName('heel_spring_left').body_frame())
+    hip_mount = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('thigh_left').body_frame(),
+                                          np.array([0, 0, 0.045]), plant.world_frame())
+    heel_spring_mount = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('heel_spring_left').body_frame(),
+                                                  np.array([.11877, -.01, 0.0]), plant.world_frame())
+    achilles_end_point = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('achilles_rod_left').body_frame(),
+                                                   np.array([0.5012, 0, 0]), plant.world_frame())
+    print(achilles_end_point)
+    print(heel_spring_mount)
+    print(np.linalg.norm(hip_mount - heel_spring_mount))
+
+    pp_traj = PiecewisePolynomial(knee_linkage_state)
+
+    traj_source = builder.AddSystem(TrajectorySource(pp_traj))
+    q_to_pose = builder.AddSystem(MultibodyPositionToGeometryPose(plant))
+    builder.Connect(traj_source.get_output_port(), q_to_pose.get_input_port())
+    builder.Connect(q_to_pose.get_output_port(), scene_graph.get_source_pose_port(plant_id))
+
+    # self.builder.Connect(self.foot_crank_plant.get_geometry_poses_output_port(),
+    #                      self.foot_crank_scene_graph.get_source_pose_port(self.foot_crank_plant.get_source_id().value()))
+
+    # self.q_to_pose = self.builder.AddSystem(MultibodyPositionToGeometryPose(self.plant))
+    # self.builder.Connect(self.q_to_pose.get_output_port(), self.foot_crank_scene_graph.get_source_pose_port(plant_id))
+    DrakeVisualizer.AddToBuilder(builder, scene_graph)
+    diagram = builder.Build()
+    sim = Simulator(diagram)
+    sim.set_publish_every_time_step(True)
+    sim.get_mutable_context().SetTime(0.0)
+    # plant.SetPositions(plant_context, knee_linkage_state)
+    sim.Initialize()
+    sim.AdvanceTo(0.1)
+
     # import pdb; pdb.set_trace()
 
   def solve_IK(self, x):
-
     # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, -1.5968, -1.5244, 1.5244])
     # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, -1.5968, -1.5244, 1.5244])
     # -1.7439499847110957, 1.7254888878481534, -1.8498456916286636
@@ -176,14 +258,16 @@ class DrakeToMujocoConverter():
     # print(toe_left_anchor_point)
     toe_ang = x[self.pos_map['toe_left']]
     self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
-    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(), np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
+    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
+                                          np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
     result = Solve(self.ik_solver.prog())
     left_foot_crank_state = result.GetSolution()
     # self.visualize_state(left_foot_crank_state)
     print(result.get_solution_result())
     toe_ang = x[self.pos_map['toe_right']]
     self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
-    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(), np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
+    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
+                                          np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
     result = Solve(self.ik_solver.prog())
     right_foot_crank_state = result.GetSolution()
     print(result.get_solution_result())
@@ -200,27 +284,36 @@ class DrakeToMujocoConverter():
     world_frame = np.eye(3)
     l_x_vec = (left_heel - left_thigh)[:, 0]
     l_x_vec *= 1 / np.linalg.norm(l_x_vec)
-    l_y_vec = np.cross(l_x_vec, world_frame[0])
+    l_y_vec = np.cross(l_x_vec, world_frame[1])
     l_y_vec *= 1 / np.linalg.norm(l_y_vec)
     l_z_vec = np.cross(l_x_vec, l_y_vec)
+    l_z_vec *= 1 / np.linalg.norm(l_z_vec)
 
     r_x_vec = (right_heel - right_thigh)[:, 0]
     r_x_vec *= 1 / np.linalg.norm(r_x_vec)
-    r_y_vec = np.cross(r_x_vec, world_frame[0])
+    r_y_vec = np.cross(r_x_vec, world_frame[1])
     r_y_vec *= 1 / np.linalg.norm(r_y_vec)
     r_z_vec = np.cross(r_x_vec, r_y_vec)
+    r_z_vec *= 1 / np.linalg.norm(r_z_vec)
 
     l_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.left_thigh_rod[1])
     r_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.right_thigh_rod[1])
-    l_bar_frame = np.vstack((l_x_vec, l_y_vec, l_z_vec)).T
-    r_bar_frame = np.vstack((r_x_vec, r_y_vec, r_z_vec)).T
-    l_bar_quat = R.from_dcm(
-      self.left_achilles_frame.T @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame).as_quat()
-    r_bar_quat = R.from_dcm(
-      self.right_achilles_frame.T @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame).as_quat()
+    # l_bar_frame = np.vstack((l_x_vec, l_y_vec, l_z_vec)).T
+    # r_bar_frame = np.vstack((r_x_vec, r_y_vec, r_z_vec)).T
+    l_bar_frame = R.from_matrix(np.vstack((l_x_vec, l_y_vec, l_z_vec)).T)
+    # print(l_bar_frame.as_matrix())
+    r_bar_frame = R.from_matrix(np.vstack((r_x_vec, r_y_vec, r_z_vec)).T)
+    # l_bar_quat = R.from_matrix(
+    #   self.left_achilles_frame.T @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_quat()
+    l_bar_quat = R.from_matrix(
+      self.left_achilles_frame.T @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_quat()
+    r_bar_quat = R.from_matrix(
+      self.right_achilles_frame.T @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame.as_matrix()).as_quat()
     # import pdb; pdb.set_trace()
     l_bar_quat = np.hstack((l_bar_quat[3], l_bar_quat[0:3]))
     r_bar_quat = np.hstack((r_bar_quat[3], r_bar_quat[0:3]))
+
+    self.visualize_state_upper(l_bar_quat, x)
 
     q_missing = np.zeros(35)
     v_missing = np.zeros(32)

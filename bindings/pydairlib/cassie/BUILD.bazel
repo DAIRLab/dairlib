@@ -46,6 +46,16 @@ py_library(
 )
 
 py_library(
+    name = "kinematics_helper",
+    srcs = ["kinematics_helper.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//lcmtypes:lcmtypes_robot_py",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
     name = "mujoco_sim",
     srcs = ["mujoco_sim.py"],
     deps = [

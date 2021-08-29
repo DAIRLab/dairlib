@@ -9,11 +9,14 @@ import numpy as np
 import plot_styler
 import matplotlib.pyplot as plt
 from random import sample, choice
+import time
 
-SIM_ERROR_LOSS = 100
+SIM_ERROR_LOSS = 200
 
-drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='pos_loss_weights')
-mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='pos_loss_weights')
+# drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='pos_loss_weights')
+# mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='pos_loss_weights')
+drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename=time.strftime("%Y_%m_%d") + '_weights')
+mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename=time.strftime("%Y_%m_%d") + '_weights')
 loss_over_time = []
 stiffness_over_time = []
 log_num = 'training'
@@ -40,7 +43,7 @@ def get_drake_loss(params, log_num=None):
   sim_id = drake_sim.run(params, log_num)
   if sim_id == '-1':
     print('initial state was infeasible')
-    loss = 200
+    loss = SIM_ERROR_LOSS
   else:
     loss = drake_sim.compute_loss(log_num, sim_id, params)
   loss_over_time.append(loss)
@@ -61,6 +64,16 @@ def get_mujoco_loss(params, log_num=None):
   return loss
 
 
+def print_loss_weights(loss_filename):
+  new_loss_filename = time.strftime("%Y_%m_%d") + '_weights'
+  loss_weights = cassie_loss_utils.CassieLoss(loss_filename)
+  loss_weights.weights.vel[17, 17] = 0
+  loss_weights.weights.vel[15, 15] = 0
+  loss_weights.weights.omega = 5 * np.eye(3)
+  loss_weights.weights.impulse_weight = 1e-7
+  loss_weights.weights.save(new_loss_filename)
+  loss_weights.print_weights()
+
 def learn_drake_cassie_params():
   optimization_param = ng.p.Dict(
     mu_static=ng.p.Scalar(lower=0.001, upper=1.0),
@@ -68,8 +81,8 @@ def learn_drake_cassie_params():
     stiffness=ng.p.Log(lower=1e3, upper=1e8),
     dissipation=ng.p.Scalar(lower=0.1, upper=1),
     stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2),
-    # vel_offset=ng.p.Array(shape=(3,)).set_bounds(lower=-1, upper=1),
-    # z_offset=ng.p.Array(shape=(1,)).set_bounds(lower=-0.05, upper=0.05)
+    vel_offset=ng.p.Array(shape=(3,)).set_bounds(lower=-1, upper=1),
+    z_offset=ng.p.Array(shape=(1,)).set_bounds(lower=-0.05, upper=0.05)
     # vel_offset=ng.p.Array(shape=(len(all_logs) * 3,)).set_bounds(lower=-1, upper=1),
     # z_offset=ng.p.Array(shape=(len(all_logs),)).set_bounds(lower=-0.05, upper=0.05)
   )
@@ -207,7 +220,8 @@ def learn_x_offsets():
     learn_drake_cassie_params()
 
 if (__name__ == '__main__'):
-  learn_x_offsets()
+  # print_loss_weights('pos_loss_weights')
+  # learn_x_offsets()
   # save_x_offsets()
   # print_params()
   # import pdb; pdb.set_trace()
@@ -218,5 +232,6 @@ if (__name__ == '__main__'):
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
-  # print_drake_cassie_params('16', False)
+  print_drake_cassie_params('16', False)
   # plot_loss_trajectory()
+  pass

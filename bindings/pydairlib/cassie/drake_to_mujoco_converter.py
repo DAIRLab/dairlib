@@ -81,12 +81,11 @@ class DrakeToMujocoConverter():
 
     self.left_achilles_frame = np.zeros((3, 3))
     self.left_achilles_frame[:, 0] = np.array([0.7922, -0.60599, -0.072096])
-    self.left_achilles_frame[:, 1] = np.array([0.60349, 0.79547, -0.054922])
+    self.left_achilles_frame[:, 1] = -np.array([0.60349, 0.79547, -0.054922])
     self.left_achilles_frame[:, 2] = np.cross(self.left_achilles_frame[:, 0], self.left_achilles_frame[:, 1])
-    self.left_achilles_frame = self.left_achilles_frame.T
     self.right_achilles_frame = np.zeros((3, 3))
     self.right_achilles_frame[:, 0] = np.array([0.7922, -0.60599, 0.072096])
-    self.right_achilles_frame[:, 1] = np.array([0.60349, 0.79547, 0.054922])
+    self.right_achilles_frame[:, 1] = -np.array([0.60349, 0.79547, 0.054922])
     self.right_achilles_frame[:, 2] = np.cross(self.right_achilles_frame[:, 0], self.right_achilles_frame[:, 1])
 
     self.plantar_rod_frame = self.foot_crank_plant.GetBodyByName('plantar_rod_left').body_frame()
@@ -174,21 +173,17 @@ class DrakeToMujocoConverter():
     sim.Initialize()
     sim.AdvanceTo(0.1)
 
-  def visualize_state_upper(self, quat, x):
-    # self.plant.SetPositionsAndVelocities(self.context, x)
-    # toe_left_ang = x[self.pos_map['toe_left']]
-    # toe_left_ang = -1.5968
-    # self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_left_ang])
-    # self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(), np.array([1, 0, 0, 0, 0, 0, 0, toe_left_ang, toe_left_ang, -toe_left_ang]))
-    # result = Solve(self.ik_solver.prog())
-    # left_foot_crank_state = result.GetSolution()
-    # print(left_foot_crank_state)
-    # print(result.get_solution_result())
+  def visualize_state_upper(self, x):
+
+    q_missing, _ = self.solve_IK(x)
+    quat = q_missing[10:14]
 
     rot = R.from_quat(np.hstack((quat[1:4], quat[0])))
     euler_vec = rot.as_euler('xyz')
 
-    knee_linkage_state = np.array([1, 0, 0, 0, 0, 0, 0, -0.03944253, 0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])
+    fb_state = np.array([-0.14644661,  0.35355339,  0.35355339,  0.85355339, 0, 0, 1])
+    # knee_linkage_state = np.array([-0.5,  0.5,  0.5,  0.5, 0, 0, 1, -0.03944253, 0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])
+    knee_linkage_state = np.hstack((fb_state, np.array([-0.03944253, 0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])))
     knee_linkage_state[7:10] = -euler_vec
     knee_linkage_state[10] = x[13]
     knee_linkage_state[11] = x[15]
@@ -277,7 +272,8 @@ class DrakeToMujocoConverter():
                                                 self.world)
     right_thigh = self.plant.CalcPointsPositions(self.context, self.right_thigh_rod[1], self.right_thigh_rod[0],
                                                  self.world)
-    left_heel = self.plant.CalcPointsPositions(self.context, self.left_heel_rod[1], self.left_heel_rod[0], self.world)
+    left_heel = self.plant.CalcPointsPositions(self.context, self.left_heel_rod[1], self.left_heel_rod[0],
+                                               self.world)
     right_heel = self.plant.CalcPointsPositions(self.context, self.right_heel_rod[1], self.right_heel_rod[0],
                                                 self.world)
 
@@ -298,22 +294,16 @@ class DrakeToMujocoConverter():
 
     l_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.left_thigh_rod[1])
     r_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.right_thigh_rod[1])
-    # l_bar_frame = np.vstack((l_x_vec, l_y_vec, l_z_vec)).T
-    # r_bar_frame = np.vstack((r_x_vec, r_y_vec, r_z_vec)).T
     l_bar_frame = R.from_matrix(np.vstack((l_x_vec, l_y_vec, l_z_vec)).T)
-    # print(l_bar_frame.as_matrix())
     r_bar_frame = R.from_matrix(np.vstack((r_x_vec, r_y_vec, r_z_vec)).T)
-    # l_bar_quat = R.from_matrix(
-    #   self.left_achilles_frame.T @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_quat()
     l_bar_quat = R.from_matrix(
-      self.left_achilles_frame.T @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_quat()
+      self.left_achilles_frame @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_quat()
     r_bar_quat = R.from_matrix(
-      self.right_achilles_frame.T @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame.as_matrix()).as_quat()
-    # import pdb; pdb.set_trace()
+      self.right_achilles_frame @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame.as_matrix()).as_quat()
     l_bar_quat = np.hstack((l_bar_quat[3], l_bar_quat[0:3]))
     r_bar_quat = np.hstack((r_bar_quat[3], r_bar_quat[0:3]))
 
-    self.visualize_state_upper(l_bar_quat, x)
+    # self.visualize_state_upper(l_bar_quat, x)
 
     q_missing = np.zeros(35)
     v_missing = np.zeros(32)

@@ -13,10 +13,10 @@ import time
 
 SIM_ERROR_LOSS = 200
 
-# drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='pos_loss_weights')
-# mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='pos_loss_weights')
-drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename=time.strftime("%Y_%m_%d") + '_weights')
-mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename=time.strftime("%Y_%m_%d") + '_weights')
+drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='2021_08_27_weights')
+mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='2021_08_27_weights')
+# drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename=time.strftime("%Y_%m_%d") + '_weights')
+# mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename=time.strftime("%Y_%m_%d") + '_weights')
 loss_over_time = []
 stiffness_over_time = []
 log_num = 'training'
@@ -95,7 +95,8 @@ def learn_drake_cassie_params():
   stiffness = np.array(stiffness_over_time)
   np.save(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
   np.save(drake_sim.params_folder + log_num + '_stiffness_trajectory_' + str(budget), stiffness)
-  drake_sim.save_params(params, '_training_' + str(budget))
+  # drake_sim.save_params(params, '_training_' + str(budget))
+  drake_sim.save_params(params, log_num + '_x_offsets_' + str(budget))
   print('optimal params:')
   print(params)
 
@@ -213,6 +214,7 @@ def print_params():
 
 def learn_x_offsets():
   global training_idxs
+  global log_num
   for i in all_logs:
     print(i)
     log_num = i
@@ -221,7 +223,7 @@ def learn_x_offsets():
 
 if (__name__ == '__main__'):
   # print_loss_weights('pos_loss_weights')
-  # learn_x_offsets()
+  learn_x_offsets()
   # save_x_offsets()
   # print_params()
   # import pdb; pdb.set_trace()
@@ -232,6 +234,6 @@ if (__name__ == '__main__'):
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
-  print_drake_cassie_params('16', False)
+  # print_drake_cassie_params('16', False)
   # plot_loss_trajectory()
   pass

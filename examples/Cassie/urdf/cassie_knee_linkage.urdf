@@ -179,10 +179,8 @@
         <origin xyz="0 0 0.045" rpy="0 0.0907572539 -0.651007647" />
         <parent link="thigh_left" />
         <child link="achilles_rod_left" />
-<!--        <axis xyz="0 0 1" />-->
         <dynamics damping="1" />
     </drake:joint>
-<!--    0.9785, -0.0164, 0.01787, -0.2049-->
 
     <joint name="knee_left" type="revolute">
         <origin xyz="0.12 0 0.0045" rpy="0 0 0" />

@@ -106,7 +106,7 @@ class MujocoCassieSim():
       q, v, u, t = self.sim_step(u)
       if (self.publish_state):
         pack_robot_output(self.robot_output, q, v, u, t)
-        self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())
+        self.lcm.Publish('CASSIE_STATE_MUJOCO', self.robot_output.encode())
       q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
       x_traj.append(np.hstack((q, v)))
       u_traj.append(u)
@@ -134,7 +134,7 @@ class MujocoCassieSim():
       q, v, u, t = self.sim_step(u)
       if (self.publish_state):
         pack_robot_output(self.robot_output, q, v, u, t)
-        self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())
+        self.lcm.Publish('CASSIE_STATE_MUJOCO', self.robot_output.encode())
       x_traj.append([q, v])
       u_traj.append(u)
       t_traj.append(t)

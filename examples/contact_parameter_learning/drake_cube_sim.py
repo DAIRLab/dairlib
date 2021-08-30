@@ -17,14 +17,13 @@ from pydairlib.common import FindResourceOrThrow
 # mu_kinetic/mu_static = [0 ... 1] to enforce that mu_kinetic <= mu_static
 default_drake_contact_params = {
     "mu": 0.18,
-    "mu_ratio": 1.0,
     "stiffness": 1.0e4, 
     "stiction_tol": 1e-3, 
     "dissipation":0.5 }
 
 class DrakeCubeSim(CubeSim):
 
-    def __init__(self, drake_sim_dt=8e-5, visualize=False):
+    def __init__(self, drake_sim_dt=CUBE_DATA_DT/85.0, visualize=False):
         if (not type(visualize) == bool) : 
             raise TypeError('visualize argument must be set to a boolean value')
         self.drake_sim_dt = drake_sim_dt
@@ -48,7 +47,7 @@ class DrakeCubeSim(CubeSim):
         self.sim = Simulator(self.diagram)
 
         if (self.visualize):
-            self.sim.set_target_realtime_rate(0.05)
+            self.sim.set_target_realtime_rate(1.0)
 
         self.sim.Initialize()
 
@@ -56,7 +55,7 @@ class DrakeCubeSim(CubeSim):
         terrain_normal=np.array([0.0, 0.0, 1.0])
         terrain_point=np.zeros((3,))
         terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
-        friction = CoulombFriction(params['mu'], params['mu'] * params['mu_ratio'])
+        friction = CoulombFriction(params['mu'], params['mu'])
         props = ProximityProperties()
         props.AddProperty("material", "point_contact_stiffness", params['stiffness'])
         props.AddProperty("material", "hunt_crossley_dissipation", params['dissipation'])
@@ -132,7 +131,7 @@ class DrakeCubeSim(CubeSim):
         self.plant.Finalize()
         
         # Setup trajectory source
-        t_traj = self.make_traj_timestamps(cube_data)
+        t_traj = self.make_traj_timestamps(cube_data)[:cube_data.shape[0]]
         cube_data_converted = np.zeros((14,cube_data.shape[0]))
         cube_data_converted[0:4,:] = cube_data[:,CUBE_DATA_QUATERNION_SLICE].T
         cube_data_converted[4:7,:] = cube_data[:,CUBE_DATA_POSITION_SLICE].T

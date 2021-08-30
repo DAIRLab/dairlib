@@ -23,10 +23,10 @@ default_drake_contact_params = {
 
 class DrakeCubeSim(CubeSim):
 
-    def __init__(self, drake_sim_dt=CUBE_DATA_DT/85.0, visualize=False):
+    def __init__(self, visualize=False, substeps=1):
         if (not type(visualize) == bool) : 
             raise TypeError('visualize argument must be set to a boolean value')
-        self.drake_sim_dt = drake_sim_dt
+        self.drake_sim_dt = CUBE_DATA_DT / substeps
         self.visualize=visualize
 
     def init_sim(self, params):

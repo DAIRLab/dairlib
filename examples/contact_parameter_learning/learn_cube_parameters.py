@@ -26,15 +26,21 @@ log_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/logs
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 
 default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
-
 SIM_ERROR_LOSS = 100
 
+# timestepping definitions
+HIGH_RES_SUBSTEP = 100
+MED_RES_SUBSTEP = 10
+LOW_RES_SUBSTEP = 1
+
+# optimization parameters
 batch_size = 25
 num_workers = 1
 num_trials = 550
 num_train = 445
 budget = 2000
 num_test = num_trials - num_train
+
 
 # Make a list of train and test trials 
 trial_idxs = range(num_trials)
@@ -92,11 +98,11 @@ def get_drake_loss_mp(params):
 
 def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
-    # try:
-    sim = drake_cube_sim.DrakeCubeSim(visualize=False)
-    loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
-    # except:
-    #loss = SIM_ERROR_LOSS
+    try:
+        sim = drake_cube_sim.DrakeCubeSim(visualize=False)
+        loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
+    except:
+        loss = SIM_ERROR_LOSS
     return loss
 
 def learn_drake_params():
@@ -137,10 +143,9 @@ def learn_mujoco_params():
     optimization_param = ng.p.Dict(
         stiffness=ng.p.Scalar(lower=100, upper=10000),
         damping=ng.p.Scalar(lower=0, upper=1000),
-        cube_mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
-        table_mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
-        mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
-        mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
+        mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0)
+        # mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
+        # mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)

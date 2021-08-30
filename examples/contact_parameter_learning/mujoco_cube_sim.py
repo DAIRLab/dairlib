@@ -3,12 +3,12 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from cube_sim import BLOCK_HALF_WIDTH, CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
 
-default_mujoco_contact_params = {"stiffness" : 2000, 
+default_mujoco_contact_params = \
+                 {"stiffness" : 2000, 
                   "damping" : 36.02, 
-                  "cube_mu_tangent" : 0.18, 
-                  "table_mu_tangent" : 1.0, 
-                  "mu_torsion" : 0.005, 
-                  "mu_rolling" : 0.0001}
+                  "mu_tangent" : 0.18} #, 
+                #   "mu_torsion" : 0.005, 
+                #   "mu_rolling" : 0.0001}
 
 def get_model_xml_text(substeps, params=None,):
     if (params is None) : params = default_mujoco_contact_params
@@ -23,10 +23,10 @@ texuniform=\"true\" reflectance=\".3\"/></asset><worldbody><geom name=\"floor\" 
 <body name=\"cube\" pos=\"0 0 0\"> \
 <inertial pos=\"0.0 0.0 0.0\" mass=\"0.37\" fullinertia=\"{ixx} {ixx} {ixx} 0 0 0\"/> \
 <freejoint name=\"cube_board\"/><geom name=\"cube_geom\" type=\"box\" size=\"{BLOCK_HALF_WIDTH} {BLOCK_HALF_WIDTH} {BLOCK_HALF_WIDTH}\" quat=\"1 0 0 0\" \
-friction=\"{params["cube_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" rgba=\"0 1 0 1.0\"  /> \
+friction=\"{params["mu_tangent"]} .001 .001\" rgba=\"0 1 0 1.0\"  /> \
 </body><body name=\"board\" pos=\"0.0 0.0 -0.2\"><geom size=\"5.0 5.0 0.2\" rgba=\"1 0 0 1\" type=\"box\" \
 solref = \"-{params["stiffness"]} -{params["damping"]}\" \
-friction=\"{params["table_mu_tangent"]} {params["mu_torsion"]} {params["mu_rolling"]}\" /> \
+friction=\"{params["mu_tangent"]} .001 .001\" /> \
 </body>\<camera name=\"cam1\" mode=\"targetbody\" target=\"cube\" pos=\"-0.5 -0.5 0.1\" /> \
 </worldbody>\
 </mujoco>'

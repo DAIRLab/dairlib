@@ -58,18 +58,12 @@ def get_cube_params_range(sim_type):
         return params_range
     else:
         params_range['stiffness'] = np.arange(1000, 10000, 500).tolist()
+        params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
         # params_range['damping'] = np.arange(0, 500, 50).tolist()
         # params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
         # params_range['mu_rolling'] = np.logspace(-6, -2, 10).tolist()
-
-    if (sim_type == 'mujoco'):
-
-        params_range['cube_mu_tangent'] = np.arange(0.01, 0.4, 0.025).tolist()
-        params_range['table_mu_tangent'] = np.arange(0.01, 0.4, 0.025).tolist()
     
-    elif (sim_type == 'bullet'):
-
-        # params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
+    if (sim_type == 'bullet'):
         params_range['restitution'] = np.arange(0.01, 0.3, 0.05).tolist()
     
     return params_range

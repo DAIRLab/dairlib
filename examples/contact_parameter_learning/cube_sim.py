@@ -39,21 +39,21 @@ class CubeSim(ABC):
 
     @classmethod
     def make_traj_timestamps(cls, traj):
-        return np.arange(0.0, CUBE_DATA_DT * (traj.shape[0]), CUBE_DATA_DT)
+        times = np.arange(0.0, CUBE_DATA_DT * (traj.shape[0]), CUBE_DATA_DT)
+        return times[:traj.shape[0]]
+
 
     @classmethod
     def reexpress_state_local_to_global_omega(cls, state):
         new_state = state.ravel()
-        q = new_state[CUBE_DATA_QUATERNION_SLICE]
-        rot = R.from_quat([q[1], q[2], q[3], q[0]])
+        rot = quat_to_rotation(new_state[CUBE_DATA_QUATERNION_SLICE])
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE])
         return new_state
 
     @classmethod
     def reexpress_state_global_to_local_omega(cls, state):
         new_state = state.ravel()
-        q = new_state[CUBE_DATA_QUATERNION_SLICE]
-        rot = R.from_quat([q[1], q[2], q[3], q[0]])
+        rot = quat_to_rotation(new_state[CUBE_DATA_QUATERNION_SLICE])
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE], inverse=True)
         return new_state
 
@@ -107,10 +107,8 @@ class LossWeights():
 
     @classmethod
     def calc_rotational_distance(cls, quat1, quat2):
-        q1 = quat1.ravel()
-        q2 = quat2.ravel()
-        R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
-        R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
+        R1 = quat_to_rotation(quat1.ravel())
+        R2 = quat_to_rotation(quat2.ravel())
         Rel = R1 * R2.inv()
         return np.linalg.norm(Rel.as_rotvec())
 
@@ -157,11 +155,8 @@ def fit_initial_condition(data_traj):
     if idx_pre < 4:
         return get_window_around_contact_event(data_traj)
         
-    q1 = data_traj[0,CUBE_DATA_QUATERNION_SLICE].ravel()
-    q2 = data_traj[idx_pre,CUBE_DATA_QUATERNION_SLICE].ravel()
-
-    R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
-    R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
+    R1 = quat_to_rotation(data_traj[0,CUBE_DATA_QUATERNION_SLICE].ravel())
+    R2 = quat_to_rotation(data_traj[idx_pre,CUBE_DATA_QUATERNION_SLICE].ravel())
 
     R_rel = R1.inv() * R2
 
@@ -170,12 +165,11 @@ def fit_initial_condition(data_traj):
     positions = data_traj[:idx_pre,CUBE_DATA_POSITION_SLICE]
     
     times = CubeSim.make_traj_timestamps(positions)
-    times = times[:positions.shape[0]]
 
     # fit parabolic trajectory with curvature -9.81 m/s to z position
     A = np.hstack((np.ones((idx_pre,1)), times.reshape([-1,1])))
     b = positions[:,-1] + (9.81 / 2) * np.square(times)
-    x = np.linalg.lstsq(A,b)[0]
+    x = np.linalg.lstsq(A, b, rcond=None)[0]
     
     vel = np.array([
         (positions[-1,0]-positions[0,0]) / times[-1], 
@@ -191,6 +185,24 @@ def get_window_around_contact_event(data_traj):
     start_idx = get_index_before_contact(data_traj)
     return data_traj[start_idx:]
 
+def quat_to_rotation(q):
+    return R.from_quat([q[1], q[2], q[3], q[0]])
+
+def calc_lowest_corner_pos(state):
+    state = state.ravel()
+    pos = state[CUBE_DATA_POSITION_SLICE]
+    rot_mat = np.array(quat_to_rotation(state[CUBE_DATA_QUATERNION_SLICE]).as_matrix())
+    corners = BLOCK_HALF_WIDTH * np.array([[1, 1, 1],
+                                           [1, 1, -1],
+                                           [1, -1, 1], 
+                                           [-1, 1, 1],
+                                           [-1, -1, 1],
+                                           [-1, 1, -1], 
+                                           [1, -1, -1],
+                                           [-1, -1, -1]], dtype=float).T
+
+    corner_pos = rot_mat @ corners + pos.reshape([-1,1])
+    return np.min(corner_pos[-1,:])
 
 
 def make_simulated_traj_data_for_training(contact_params, toss_ids, cube_data_folder, save_folder, sim):

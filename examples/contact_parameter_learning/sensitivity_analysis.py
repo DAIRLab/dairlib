@@ -29,7 +29,6 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
                 for pair_idx in pairs:
                     pair = pairs[pair_idx]
                     losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
-                import pdb; pdb.set_trace()
                 loss_avg.append(np.average(losses))
                 loss_med.append(np.median(losses))
             else:
@@ -58,8 +57,8 @@ def get_cube_params_range(sim_type):
         # params_range['stiction_tol'] = np.logspace(-6, -1, 20).tolist()
         return params_range
     else:
-        params_range['stiffness'] = np.arange(1000, 10000, 250).tolist()
-        params_range['damping'] = np.arange(0, 100, 4).tolist()
+        params_range['stiffness'] = np.arange(1000, 10000, 500).tolist()
+        # params_range['damping'] = np.arange(0, 500, 50).tolist()
         # params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
         # params_range['mu_rolling'] = np.logspace(-6, -2, 10).tolist()
 
@@ -67,9 +66,10 @@ def get_cube_params_range(sim_type):
 
         params_range['cube_mu_tangent'] = np.arange(0.01, 0.4, 0.025).tolist()
         params_range['table_mu_tangent'] = np.arange(0.01, 0.4, 0.025).tolist()
+    
     elif (sim_type == 'bullet'):
 
-        params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
+        # params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
         params_range['restitution'] = np.arange(0.01, 0.3, 0.05).tolist()
     
     return params_range

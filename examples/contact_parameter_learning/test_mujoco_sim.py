@@ -6,6 +6,17 @@ import numpy as np
 from drake_to_mujoco_converter import DrakeToMujocoConverter
 
 
+q_mujoco_default = np.array([1, 0, 0, 0, 0, 0, 2.0,
+                                      0.0045, -0.0045,
+                                      0, 0,
+                                      0.4973, 0.4973,
+                                      -1.1997, -1.1997,
+                                      -0.00, -0.00,
+                                      1.4267, 1.4267,
+                                      -0.0, -1.5244,
+                                      -0.0, -1.5244])
+x_mujoco_default = np.hstack((q_mujoco_default, np.zeros(22)))
+
 def test_default():
   sim = MujocoCassieSim(realtime_rate=0.1)
   sim.run_sim(0.0, 30.0)
@@ -22,20 +33,20 @@ def test_initial_state():
                      1.77012, 1.77013,
                      -0.0, -1.7677,
                      -0.0, -1.7677])
-  # q_init = np.array([1, 0, 0, 0, 0, 0, 2.0,
-  #                    0.0045, -0.0045,
-  #                    0, 0,
-  #                    0.4973, 0.4973,
-  #                    -1.1997, -1.1997,
-  #                    -0.00, -0.00,
-  #                    1.4267, 1.4267,
-  #                    -0.0, -1.5244,
-  #                    -0.0, -1.5244])
+  q_init = np.array([1, 0, 0, 0, 0, 0, 2.0,
+                     0.0045, -0.0045,
+                     0, 0,
+                     0.4973, 0.4973,
+                     -1.1997, -1.1997,
+                     -0.00, -0.00,
+                     1.4267, 1.4267,
+                     -0.0, -1.5244,
+                     -0.0, -1.5244])
+  x_init = np.hstack((q_init, np.zeros(22)))
   # 0.0045, 0, 0.4973, 0.9785, -0.0164, 0.01787, -0.2049,
   # -1.1997, 0, 1.4267, 0, -1.5244, 1.5244, -1.5968,
   # -0.0045, 0, 0.4973, 0.9786, 0.00386, -0.01524, -0.2051,
   # -1.1997, 0, 1.4267, 0, -1.5244, 1.5244, -1.5968
-  x_init = np.hstack((q_init, np.zeros(22)))
   sim.run_sim(0.0, 30.0, x_init=x_init)
 
 
@@ -74,7 +85,8 @@ def visualize_loop_closures():
   x_init = x_interp(time)
 
   # sim.visualize_IK_lower(x_init)
-  sim.visualize_IK_upper(x_init)
+  # sim.visualize_IK_upper(x_init)
+  sim.visualize_IK_upper(x_mujoco_default)
 
 if __name__ == '__main__':
   # test_default()

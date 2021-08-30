@@ -47,7 +47,8 @@ class DrakeToMujocoConverter():
     self.diagram = self.builder.Build()
     self.diagram_context = self.diagram.CreateDefaultContext()
 
-    self.print_pos_indices(self.knee_linkage_plant)
+    # Print the indices for the newly constructed plants
+    # self.print_pos_indices(self.knee_linkage_plant)
 
     self.pos_map = makeNameToPositionsMap(self.plant)
     self.vel_map = makeNameToVelocitiesMap(self.plant)
@@ -138,7 +139,7 @@ class DrakeToMujocoConverter():
                                           np.array([1, 0, 0, 0, 0, 0, 0, toe_left_ang, toe_left_ang, -toe_left_ang]))
     result = Solve(self.ik_solver.prog())
     left_foot_crank_state = result.GetSolution()
-    print(left_foot_crank_state)
+    # print(left_foot_crank_state)
     print(result.get_solution_result())
     builder = DiagramBuilder()
 
@@ -178,6 +179,8 @@ class DrakeToMujocoConverter():
     q_missing, _ = self.solve_IK(x)
     quat = q_missing[10:14]
 
+    print(quat)
+
     rot = R.from_quat(np.hstack((quat[1:4], quat[0])))
     euler_vec = rot.as_euler('xyz')
 
@@ -213,9 +216,10 @@ class DrakeToMujocoConverter():
                                                   np.array([.11877, -.01, 0.0]), plant.world_frame())
     achilles_end_point = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('achilles_rod_left').body_frame(),
                                                    np.array([0.5012, 0, 0]), plant.world_frame())
-    print(achilles_end_point)
-    print(heel_spring_mount)
+    # print(achilles_end_point)
+    # print(heel_spring_mount)
     print(np.linalg.norm(hip_mount - heel_spring_mount))
+    print(np.linalg.norm(achilles_end_point - heel_spring_mount))
 
     pp_traj = PiecewisePolynomial(knee_linkage_state)
 
@@ -303,7 +307,7 @@ class DrakeToMujocoConverter():
     l_bar_quat = np.hstack((l_bar_quat[3], l_bar_quat[0:3]))
     r_bar_quat = np.hstack((r_bar_quat[3], r_bar_quat[0:3]))
 
-    # self.visualize_state_upper(l_bar_quat, x)
+    # l_bar_quat = np.array([0.9785, -0.0164, 0.01787, -0.2049])
 
     q_missing = np.zeros(35)
     v_missing = np.zeros(32)

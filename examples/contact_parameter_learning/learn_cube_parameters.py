@@ -33,6 +33,8 @@ HIGH_RES_SUBSTEP = 100
 MED_RES_SUBSTEP = 10
 LOW_RES_SUBSTEP = 1
 
+default_substep = HIGH_RES_SUBSTEP
+
 # optimization parameters
 batch_size = 25
 num_workers = 1
@@ -53,7 +55,7 @@ params_over_time = []
 
 
 def log_optimization(sim_name, test, loss, weights, params_over_time, optimal_params):
-    datetime_str = sim_name + '_' + time.strftime("%Y_%m_%d_%H_%M")
+    datetime_str = sim_name + '_' + time.strftime("%Y_%m_%d_%H_%M") + '_' + str(default_substep)
     os.mkdir(os.path.join(log_folder, datetime_str))
 
     base_filename = os.path.join(log_folder, datetime_str)
@@ -99,7 +101,7 @@ def get_drake_loss_mp(params):
 def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
     try:
-        sim = drake_cube_sim.DrakeCubeSim(visualize=False)
+        sim = drake_cube_sim.DrakeCubeSim(visualize=False, substeps=default_substep)
         loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
     except:
         loss = SIM_ERROR_LOSS
@@ -110,8 +112,7 @@ def learn_drake_params():
     optimization_param = ng.p.Dict(
         mu = ng.p.Scalar(lower=0.01, upper=1.0), 
         stiffness = ng.p.Scalar(lower=1e2, upper=1e5),
-        dissipation = ng.p.Scalar(lower=0, upper=2.0),
-        stiction_tol=ng.p.Log(lower=1e-6, upper=1e-1)
+        dissipation = ng.p.Scalar(lower=0, upper=2.0)
     )
 
     optimization_param.value=drake_cube_sim.default_drake_contact_params
@@ -136,7 +137,7 @@ def get_mujoco_loss_mp(params):
 
 def get_mujoco_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
-    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=10)
+    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=default_substep)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
 
 def learn_mujoco_params():
@@ -170,7 +171,7 @@ def get_bullet_loss_mp(params):
 
 def get_bullet_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
-    sim = bullet_cube_sim.BulletCubeSim(visualize=False, substeps=10)
+    sim = bullet_cube_sim.BulletCubeSim(visualize=False, substeps=default_substep)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
 
 def learn_bullet_params():

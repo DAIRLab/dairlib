@@ -31,6 +31,8 @@ def visualize_learned_params(params, sim_type, toss_id):
 
     vis_sim.visualize_two_cubes(cube_data, sim_data, 0.1)
 
+# calculate the net contact impulse trajectory (N * s) by taking momentum
+# differences between timestamps
 def calculate_contact_impulse(traj):
     impulses = np.zeros((traj.shape[0]-1,2))
     for i in range(traj.shape[0]-1):
@@ -42,12 +44,15 @@ def calculate_contact_impulse(traj):
             traj[i,cube_sim.CUBE_DATA_VELOCITY_SLICE][-1]) / cube_sim.CUBE_DATA_DT + 9.81)
     return impulses
 
+#calculate signed distance function over the trajectory
 def calculate_sdf_trajectory(traj):
     sdf = np.zeros((traj.shape[0],))
     for i in range(traj.shape[0]):
         sdf[i] = cube_sim.calc_lowest_corner_pos(traj[i])
     return sdf
 
+# visualize if there is action at a distance 
+# by checking impulses against sdf
 def plot_sdf_and_contact(traj, title=''):
     impulses = calculate_contact_impulse(traj)
     sdf = calculate_sdf_trajectory(traj) * 100.0
@@ -55,8 +60,8 @@ def plot_sdf_and_contact(traj, title=''):
     
     plt.figure()
     plt.plot(times, sdf)
-    plt.plot(times[1:], impulses[:,1])
-    plt.legend(['sdf (mm)', 'normal_impulse'])
+    plt.step(times[1:], impulses[:,1])
+    plt.legend(['sdf (mm)', 'Avg Force (N)'])
 
 
 def plot_contact_impulses(traj_pair, title=''):
@@ -66,16 +71,16 @@ def plot_contact_impulses(traj_pair, title=''):
     times = cube_sim.CubeSim.make_traj_timestamps(traj_pair[0])[1:]
 
     plt.figure()
-    plt.plot(times, data_impulses[:,0])
-    plt.plot(times, sim_impulses[:,0])
+    plt.step(times, data_impulses[:,0])
+    plt.step(times, sim_impulses[:,0])
     plt.legend(['Data', 'Simulation'])
-    plt.title(f'{title}Tangent Impulses')
+    plt.title(f'{title}Tangent Forces')
 
     plt.figure()
-    plt.plot(times, data_impulses[:,1])
-    plt.plot(times, sim_impulses[:,1])
+    plt.step(times, data_impulses[:,1])
+    plt.step(times, sim_impulses[:,1])
     plt.legend(['Data', 'Simulation'])
-    plt.title(f'{title}Normal Impulses')
+    plt.title(f'{title}Normal Forces')
     
 
 def load_traj_pairs(sim, params, test_set):

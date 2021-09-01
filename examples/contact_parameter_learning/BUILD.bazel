@@ -175,6 +175,7 @@ py_binary(
     srcs = ["cassie_loss_plotter.py"],
     deps = [
         "//bindings/pydairlib/cassie:cassie_utils",
+        "//bindings/pydairlib/cassie:kinematics_helper",
         "//bindings/pydairlib/cassie:mujoco_sim",
         "//bindings/pydairlib/multibody",
         "@drake//bindings/pydrake",

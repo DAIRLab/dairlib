@@ -36,6 +36,7 @@ class MujocoCassieSim():
     self.u_pd = pd_in_t()
     self.cassie_in = cassie_user_in_t()
     self.cassie_env = CassieSim(self.default_model_file)
+    # self.cassie_vis = CassieVis(self.cassie_env, self.default_model_file)
     self.input_sub = Subscriber(lcm=self.lcm, channel="CASSIE_INPUT_", lcm_type=dairlib.lcmt_robot_input)
     self.publish_state = publish_state
     self.drake_to_mujoco_converter = DrakeToMujocoConverter(sim_dt)
@@ -50,6 +51,9 @@ class MujocoCassieSim():
     for u_name in act_map:
       cassie_in.torque[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
       u_mujoco[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
+    # print('drake:')
+    # print(u_drake[5])
+    # print(u_mujoco[7])
     return cassie_in, u_mujoco
 
   def pack_cassie_out(self):
@@ -81,13 +85,16 @@ class MujocoCassieSim():
     t = self.cassie_env.time()
     q = self.cassie_env.qpos()
     v = self.cassie_env.qvel()
+    print(v[9:12])
     return q, v, u, t
 
   def set_state(self, x_init):
     q_mujoco, v_mujoco = self.drake_to_mujoco_converter.convert_to_mujoco(x_init)
+    # print(repr(q_mujoco))
     mujoco_state = self.cassie_env.get_state()
     mujoco_state.set_qpos(q_mujoco)
     mujoco_state.set_qvel(v_mujoco)
+    print(v_mujoco)
     self.cassie_env.set_state(mujoco_state)
 
   def run_sim_playback(self, x_init, start_time, end_time, input_traj=PiecewisePolynomial(np.zeros(10)), params=None):
@@ -101,12 +108,14 @@ class MujocoCassieSim():
     t_traj = []
     t = start_time
     while self.cassie_env.time() < end_time:
+      self.cassie_vis.draw(self.cassie_env)
       now = time.time()  # get the time
       u = input_traj.value(t)
+      # print(u)
       q, v, u, t = self.sim_step(u)
       if (self.publish_state):
         pack_robot_output(self.robot_output, q, v, u, t)
-        self.lcm.Publish('CASSIE_STATE_MUJOCO', self.robot_output.encode())
+        self.lcm.Publish('CASSIE_STATE_SIMULATION', self.robot_output.encode())
       q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
       x_traj.append(np.hstack((q, v)))
       u_traj.append(u)
@@ -121,12 +130,14 @@ class MujocoCassieSim():
     self.cassie_env.set_time(start_time)
     if x_init.size != 0:
       self.set_state(x_init)
+    self.cassie_vis.draw(self.cassie_env)
     u = np.zeros(10)
     x_traj = []
     u_traj = []
     t_traj = []
 
     while self.cassie_env.time() < end_time:
+      # self.cassie_vis.draw(self.cassie_env)
       now = time.time()  # get the time
       self.lcm.HandleSubscriptions(0)
       if len(self.input_sub.message.efforts) != 0:

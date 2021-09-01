@@ -9,7 +9,7 @@ from pydairlib.lcm import lcm_trajectory
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 from pydairlib.cassie.cassie_utils import *
-# from pydairlib.cassie.kinematics_helper import KinematicsHelper
+from pydairlib.cassie.kinematics_helper import KinematicsHelper
 import pydairlib.multibody
 from process_lcm_log import process_log
 from cassie_impact_data import CassieImpactData
@@ -54,15 +54,36 @@ def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False):
   com_vel_sim = np.empty((t_sim.shape[0], 3))
   com_pos_hardware = np.empty((t_hardware.shape[0], 3))
   com_vel_hardware = np.empty((t_hardware.shape[0], 3))
-  for i in t_sim.shape[0]:
+  for i in range(t_sim.shape[0]):
     x_sim_i = x_sim[i]
     if use_center_of_mass:
       com_pos_sim[i] = kinematics_calculator.compute_center_of_mass_pos(x_sim_i)
       com_vel_sim[i] = kinematics_calculator.compute_center_of_mass_vel(x_sim_i)
     else:
-      com_pos_sim[i] = kinematics_calculator.compute_center_of_mass_pos(x_sim_i)
-      com_vel_sim[i] = kinematics_calculator.compute_center_of_mass_vel(x_sim_i)
+      com_pos_sim[i] = x_sim_i[4:7]
+      com_vel_sim[i] = x_sim_i[26:29]
     #
+  for i in range(t_hardware.shape[0]):
+    x_i = x_hardware[i]
+    if use_center_of_mass:
+      com_pos_hardware[i] = kinematics_calculator.compute_center_of_mass_pos(x_i)
+      com_vel_hardware[i] = kinematics_calculator.compute_center_of_mass_vel(x_i)
+    else:
+      com_pos_hardware[i] = x_i[4:7]
+      com_vel_hardware[i] = x_i[26:29]
+    #
+  # ps.plot(t_sim, com_pos_sim)
+  # ps.plot(t_hardware, com_pos_hardware)
+  plt.figure('x')
+  ps.plot(t_sim, com_vel_sim[:, 0])
+  ps.plot(t_hardware, com_vel_hardware[:, 0])
+  plt.figure('y')
+  ps.plot(t_sim, com_vel_sim[:, 1])
+  ps.plot(t_hardware, com_vel_hardware[:, 1])
+  plt.figure('z')
+  ps.plot(t_sim, com_vel_sim[:, 2])
+  ps.plot(t_hardware, com_vel_hardware[:, 2])
+
   return
 
 def grf_single_log(impact_data, log_num):
@@ -91,7 +112,7 @@ def main():
   global end_time
   global kinematics_calculator
 
-  start_time = 30.6477
+  start_time = 30.64
   end_time = start_time + 0.05
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
   figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
@@ -102,7 +123,7 @@ def main():
     x_datatypes = pickle.load(fp)
 
   impact_data = CassieImpactData()
-  # kinematics_calculator = KinematicsHelper()
+  kinematics_calculator = KinematicsHelper()
 
   joint_vel_indices = range(29, 45)
   hip_joints_indices = range(29, 35)
@@ -115,9 +136,9 @@ def main():
   #   plt.figure(log_num)
   #   grf_single_log(impact_data, log_num)
   #   plot_velocity_trajectory(impact_data, log_num, hip_index)
-
+  plot_centroidal_trajectory(impact_data, '15')
   # plot_velocity_trajectory(impact_data, '08', hip_joints_indices)
-  plot_velocity_trajectory(impact_data, '21', joint_vel_indices)
+  # plot_velocity_trajectory(impact_data, '21', joint_vel_indices)
 
   ps.show_fig()
 

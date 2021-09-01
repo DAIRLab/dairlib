@@ -21,11 +21,36 @@ class DrakeCassieSim():
     self.folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
-    self.date_prefix = 'drake_' + time.strftime("%Y_%m_%d_%H_%M")
+    self.date_prefix = 'drake_' + time.strftime("%Y_%m_%d_%H")
     # self.start_time = 30.595
-    self.start_time = 30.6
-    self.sim_time = 0.1
-    self.end_time = self.start_time + self.sim_time
+    # self.start_time = 30.5
+    self.start_times = {'08': 30.61,
+                        '09': 30.61,
+                        '10': 30.61,
+                        '11': 30.62,
+                        '12': 30.64,
+                        '13': 30.64,
+                        '14': 30.65,
+                        '15': 30.64,
+                        '16': 30.64,
+                        '17': 30.64,
+                        '20': 30.64,
+                        '21': 30.64,
+                        '22': 30.64,
+                        '23': 30.64,
+                        '24': 30.64,
+                        '25': 30.64,
+                        '26': 30.64,
+                        '27': 30.64,
+                        '28': 30.64,
+                        '29': 30.64,
+                        '30': 30.64,
+                        '31': 30.63,
+                        '32': 30.63,
+                        '33': 30.63,
+    }
+    self.sim_time = 0.05
+    # self.end_time = self.start_time + self.sim_time
     self.drake_sim_dt = drake_sim_dt
     self.realtime_rate = 1.0
     self.terrain_height = 0.00
@@ -67,8 +92,8 @@ class DrakeCassieSim():
       "stiction_tol": 1e-3,
       # "vel_offset": np.zeros(len(self.log_nums_real) * 3),
       # "z_offset": np.zeros(len(self.log_nums_real)),
-      "vel_offset": np.zeros(3),
-      "z_offset": np.zeros(1),
+      # "vel_offset": np.zeros(3),
+      # "z_offset": np.zeros(1),
     }
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
@@ -121,24 +146,33 @@ class DrakeCassieSim():
     x_traj = self.x_trajs[log_num]
     t = self.t_x[log_num]
 
+    start_time = self.start_times[log_num]
+    end_time = start_time + self.sim_time
+
     ### Overrides here
 
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
-    x_init = x_interp(self.start_time)
+    x_init = x_interp(start_time)
 
-    z_offset = self.z_offsets[log_num]
-    vel_offset = self.vel_offsets[log_num]
+
+    # z_offset = self.z_offsets[log_num]
+    # vel_offset = self.vel_offsets[log_num]
     # z_offset = params['z_offset']
     # vel_offset = params['vel_offset']
+    z_offset = np.zeros(1)
+    vel_offset = np.zeros(3)
+    # print(z_offset)
+    # print(vel_offset)
 
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset
     self.write_initial_state(x_init)
+
     simulator_cmd = ['bazel-bin/examples/Cassie/multibody_sim_playback',
                      '--folder_path=%s' % self.folder_path,
-                     '--end_time=%.3f' % self.end_time,
+                     '--end_time=%.3f' % end_time,
                      '--terrain_height=%.4f' % self.terrain_height,
-                     '--start_time=%.3f' % self.start_time,
+                     '--start_time=%.3f' % start_time,
                      '--log_num=' + log_num,
                      # '--penetration_allowance=%.7f' % penetration_allowance,
                      '--stiffness=%.1f' % stiffness,
@@ -172,7 +206,7 @@ class DrakeCassieSim():
     np.save(self.sim_data_folder + 'lambda_' + log_num, lambda_traj)
 
     self.iter_num += 1
-    print("iter: " + str(self.iter_num))
+    print("sim_run: " + str(self.iter_num))
 
     return log_num
 
@@ -183,12 +217,12 @@ class DrakeCassieSim():
 
     return x_traj.transpose(), t_x, lambda_traj
 
-  def get_window_around_contact_event(self, t_x, x_traj, lambda_traj):
+  def get_window_around_contact_event(self, t_x_sim, t_x, x_traj, lambda_traj):
     # return whole trajectory for now
     # start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[0][0]
     # end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[0][0]
-    start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[1][0]
-    end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[1][0]
+    start_idx = np.argwhere(np.isclose(t_x, t_x_sim[0], atol=5e-4))[1][0]
+    end_idx = np.argwhere(np.isclose(t_x, t_x_sim[-1], atol=5e-4))[1][0]
     window = slice(start_idx, end_idx)
     return t_x[window], x_traj[window], lambda_traj[:, window, :]
 
@@ -200,12 +234,14 @@ class DrakeCassieSim():
     lambda_traj_hardware = self.lambda_trajs[log_num]
 
     x_traj_sim, t_x_sim, lambda_traj_sim = self.load_sim_trial(sim_id)
-    t_x_hardware, x_traj_hardware, lambda_traj_hardware = self.get_window_around_contact_event(t_x_hardware,
+    t_x_hardware, x_traj_hardware, lambda_traj_hardware = self.get_window_around_contact_event(t_x_sim,
+                                                                                               t_x_hardware,
                                                                                                x_traj_hardware,
                                                                                                lambda_traj_hardware)
     min_time_length = min(x_traj_sim.shape[0], x_traj_hardware.shape[0])
     # import pdb; pdb.set_trace()
-    joints = np.arange(23, 45)
+    # joints = np.arange(23, 45)
+    joints = np.arange(35, 37)
     if plot:
       for joint in joints:
         plt.figure("joint vel: " + self.x_datatypes[joint])
@@ -213,6 +249,7 @@ class DrakeCassieSim():
         self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, joint])
         self.ps.plot(t_x_hardware[:min_time_length], x_traj_hardware[:min_time_length, joint])
         self.ps.add_legend([self.x_datatypes[joint] + ': sim', self.x_datatypes[joint] + ': real'])
+        # self.ps.add_legend([self.x_datatypes[joint] + ': real'])
       # self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 31:35], color='b')
       # self.ps.plot(t_x_hardware[window][:min_time_length], x_traj_hardware[:min_time_length, 31:35], color='r')
       # self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 4:7], color='b')

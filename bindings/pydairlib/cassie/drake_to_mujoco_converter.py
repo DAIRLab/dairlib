@@ -184,10 +184,11 @@ class DrakeToMujocoConverter():
     rot = R.from_quat(np.hstack((quat[1:4], quat[0])))
     euler_vec = rot.as_euler('xyz')
 
-    fb_state = np.array([-0.14644661,  0.35355339,  0.35355339,  0.85355339, 0, 0, 1])
+    # fb_state = np.array([-0.14644661,  0.35355339,  0.35355339,  0.85355339, 0, 0, 1])
+    fb_state = np.array([1, 0, 0, 0, 0, 0, 0])
     # knee_linkage_state = np.array([-0.5,  0.5,  0.5,  0.5, 0, 0, 1, -0.03944253, 0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])
     knee_linkage_state = np.hstack((fb_state, np.array([-0.03944253, 0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])))
-    knee_linkage_state[7:10] = -euler_vec
+    knee_linkage_state[7:10] = euler_vec
     knee_linkage_state[10] = x[13]
     knee_linkage_state[11] = x[15]
     knee_linkage_state[12] = x[17]
@@ -219,7 +220,7 @@ class DrakeToMujocoConverter():
     # print(achilles_end_point)
     # print(heel_spring_mount)
     print(np.linalg.norm(hip_mount - heel_spring_mount))
-    print(np.linalg.norm(achilles_end_point - heel_spring_mount))
+    # print(np.linalg.norm(achilles_end_point - heel_spring_mount))
 
     pp_traj = PiecewisePolynomial(knee_linkage_state)
 
@@ -271,6 +272,10 @@ class DrakeToMujocoConverter():
     right_foot_crank_state = result.GetSolution()
     print(result.get_solution_result())
 
+    print(right_foot_crank_state[8])
+    print(right_foot_crank_state[9])
+    print(x[self.pos_map['toe_right']])
+
     self.plant.SetPositionsAndVelocities(self.context, x)
     left_thigh = self.plant.CalcPointsPositions(self.context, self.left_thigh_rod[1], self.left_thigh_rod[0],
                                                 self.world)
@@ -300,14 +305,26 @@ class DrakeToMujocoConverter():
     r_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.right_thigh_rod[1])
     l_bar_frame = R.from_matrix(np.vstack((l_x_vec, l_y_vec, l_z_vec)).T)
     r_bar_frame = R.from_matrix(np.vstack((r_x_vec, r_y_vec, r_z_vec)).T)
-    l_bar_quat = R.from_matrix(
-      self.left_achilles_frame @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_quat()
-    r_bar_quat = R.from_matrix(
-      self.right_achilles_frame @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame.as_matrix()).as_quat()
+    # l_bar_quat = R.from_matrix(
+    #   self.left_achilles_frame @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_quat()
+    # r_bar_quat = R.from_matrix(
+    #   self.right_achilles_frame @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame.as_matrix()).as_quat()
+    l_bar_euler = R.from_matrix(
+      self.left_achilles_frame @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_euler('xyz')
+    r_bar_euler = R.from_matrix(
+      self.right_achilles_frame @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame.as_matrix()).as_euler('xyz')
+
+    # l_rot = R.from_quat(l_bar_quat)
+    # r_rot = R.from_quat(l_bar_quat)
+    # l_euler_vec = l_rot.as_euler('xyz')
+    l_bar_quat = R.from_euler('xyz', -l_bar_euler).as_quat()
+    r_bar_quat = R.from_euler('xyz', -r_bar_euler).as_quat()
+    # r_bar_quat = l_rot.as_quat()
     l_bar_quat = np.hstack((l_bar_quat[3], l_bar_quat[0:3]))
     r_bar_quat = np.hstack((r_bar_quat[3], r_bar_quat[0:3]))
 
     # l_bar_quat = np.array([0.9785, -0.0164, 0.01787, -0.2049])
+    # r_bar_quat = np.array([0.9786, 0.00386, -0.01524, -0.2051])
 
     q_missing = np.zeros(35)
     v_missing = np.zeros(32)
@@ -322,6 +339,11 @@ class DrakeToMujocoConverter():
     q_missing[24:28] = r_bar_quat
     q_missing[32] = right_foot_crank_ang
     q_missing[33] = right_plantar_rod
+
+    v_missing[16] = x[23 + self.vel_map['toe_leftdot']]
+    v_missing[17] = -x[23 + self.vel_map['toe_leftdot']]
+    v_missing[29] = x[23 + self.vel_map['toe_rightdot']]
+    v_missing[30] = -x[23 + self.vel_map['toe_rightdot']]
 
     return q_missing, v_missing
 

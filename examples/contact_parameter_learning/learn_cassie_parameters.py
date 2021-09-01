@@ -69,7 +69,7 @@ def get_mujoco_loss(params, log_num=None):
     log_num = choice(training_idxs)
   print(log_num)
   sim_id = mujoco_sim.run(params, log_num)
-  loss = mujoco_sim.compute_loss(log_num, sim_id)
+  loss = mujoco_sim.compute_loss(log_num, sim_id, params)
   loss_over_time.append(loss)
   stiffness_over_time.append(params['timeconst'])
   print('loss:' + str(loss))
@@ -132,7 +132,7 @@ def learn_mujoco_cassie_params():
   stiffness = np.array(stiffness_over_time)
   np.save(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
   np.save(drake_sim.params_folder + log_num + '_stiffness_trajectory_' + str(budget), stiffness)
-  mujoco_sim.save_params(params, log_num + '_optimized_params_' + str(budget))
+  mujoco_sim.save_params(params, '_training_' + str(budget))
 
 
 def plot_loss_trajectory():
@@ -248,11 +248,11 @@ if (__name__ == '__main__'):
   # learn_drake_cassie_params()
   # learn_drake_cassie_params(batch=True)
   # print_drake_cassie_params(i)
-  # learn_mujoco_cassie_params()
+  learn_mujoco_cassie_params()
   # plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
-  print_drake_cassie_params(str(sys.argv[1]), True)
+  # print_drake_cassie_params(str(sys.argv[1]), True)
   # plot_loss_trajectory()
   pass

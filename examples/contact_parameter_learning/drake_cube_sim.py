@@ -18,15 +18,14 @@ from pydairlib.common import FindResourceOrThrow
 default_drake_contact_params = {
     "mu": 0.18,
     "stiffness": 1.0e4, 
-    "stiction_tol": 1e-3, 
     "dissipation":0.5 }
 
 class DrakeCubeSim(CubeSim):
 
-    def __init__(self, drake_sim_dt=CUBE_DATA_DT/85.0, visualize=False):
+    def __init__(self, visualize=False, substeps=1):
         if (not type(visualize) == bool) : 
             raise TypeError('visualize argument must be set to a boolean value')
-        self.drake_sim_dt = drake_sim_dt
+        self.drake_sim_dt = CUBE_DATA_DT / substeps
         self.visualize=visualize
 
     def init_sim(self, params):
@@ -70,7 +69,7 @@ class DrakeCubeSim(CubeSim):
         self.plant.RegisterCollisionGeometry(self.plant.world_body(), X_WG, HalfSpace(), "collision", props)
         self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(1, 1, 0.001), "visual", terrain_color)
         self.plant.Finalize()
-        self.plant.set_stiction_tolerance(params["stiction_tol"])
+        self.plant.set_stiction_tolerance(.0001)
 
     def init_playback_sim(self, traj_to_play_back):
         self.builder = DiagramBuilder()

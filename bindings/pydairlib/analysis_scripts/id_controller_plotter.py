@@ -12,14 +12,13 @@ from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.trajectories import PiecewisePolynomial
-import pydairlib.lcm_trajectory
 from IPython import get_ipython
 
 from pydairlib.common import FindResourceOrThrow
-from pydairlib.parameter_studies.plot_styler import PlotStyler
+from pydairlib.common import plot_styler
 from pydrake.trajectories import PiecewisePolynomial
-import pydairlib.lcm_trajectory
-from bindings.pydairlib.analysis_scripts.process_log import process_log
+from pydairlib.lcm import lcm_trajectory
+from pydairlib.lcm import process_lcm_log
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 from pydairlib.cassie.cassie_utils import *
@@ -46,20 +45,21 @@ def main():
   global t_start
   global t_end
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
-  figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
-  ps = PlotStyler()
+  # figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
+  figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/rabbit/'
+  ps = plot_styler.PlotStyler()
   ps.set_default_styling(directory=figure_directory)
 
   TXZ = np.array([[1, 0, 0], [0, 0, 1]])
 
   builder = DiagramBuilder()
   plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant).AddModelFromFile(FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf"))
+  Parser(plant).AddModelFromFile(FindResourceOrThrow("examples/impact_invariant_control/five_link_biped.urdf"))
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"))
   plant.Finalize()
 
   filename = "/home/yangwill/Documents/research/projects/five_link_biped/walking/saved_trajs/rabbit_walking"
-  dircon_traj = pydairlib.lcm_trajectory.DirconTrajectory(filename)
+  dircon_traj = lcm_trajectory.DirconTrajectory(filename)
   state_traj = dircon_traj.ReconstructStateTrajectory()
   input_traj = dircon_traj.ReconstructInputTrajectory()
 
@@ -108,11 +108,14 @@ def main():
 def animate_velocity_error(plant):
   filename = 'lcmlog-025_0KD'
   log = lcm.EventLog(log_dir + filename, "r")
-  t_state, t_osc, x, u, fsm, contact_info, contact_info_locs, osc_debug, osc_output, t_lcmlog_u = \
-    process_log(log, pos_map, vel_map)
+  x, u_meas, t_x, u, t_u, contact_forces, contact_info_locs, \
+  t_contact_info, osc_debug, fsm, estop_signal, \
+  switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
+  t_u_pd, osc_output, full_log, t_lcmlog_u = \
+    process_lcm_log.process_log(log, pos_map, vel_map, act_map, 'RABBIT_INPUT')
 
-  t_u_start_idx = np.argwhere(np.abs(t_osc - (t_start)) < 1e-3)[0, 0]
-  t_u_end_idx = np.argwhere(np.abs(t_osc - (t_end)) < 1e-3)[0, 0]
+  t_u_start_idx = np.argwhere(np.abs(t_u - (t_start)) < 1e-3)[0, 0]
+  t_u_end_idx = np.argwhere(np.abs(t_u - (t_end)) < 1e-3)[0, 0]
   t_slice = slice(t_u_start_idx, t_u_end_idx)
 
   x_range = [-50, 50]
@@ -123,7 +126,7 @@ def animate_velocity_error(plant):
   n_frames = 10
   ax.set_xlim(x_range)
   ax.set_ylim(y_range)
-  ps.plot(1e3*(t_osc[t_slice] - nominal_impact_time), osc_debug['right_knee_pin_traj'].ydot_des[t_slice], xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity (rad/s)', color=ps.blue)
+  ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['right_knee_pin_traj'].ydot_des[t_slice], xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity (rad/s)', color=ps.blue)
   ps.add_legend(['Reference Trajectory'])
 
 
@@ -133,9 +136,9 @@ def animate_velocity_error(plant):
     ax.set_xlim(x_range)
     ax.set_ylim(y_range)
 
-    i = int(i / n_frames * t_osc[t_slice].shape[0])
+    i = int(i / n_frames * t_u[t_slice].shape[0])
 
-    plot = ps.plot(1e3*(t_osc[t_slice][i] - nominal_impact_time), osc_debug['right_knee_pin_traj'].ydot[t_slice][i], color=ps.red)
+    plot = ps.plot(1e3*(t_u[t_slice][i] - nominal_impact_time), osc_debug['right_knee_pin_traj'].ydot[t_slice][i], color=ps.red)
 
     # if not ('google.colab' in str(get_ipython())):
     #   plt.draw()
@@ -153,12 +156,12 @@ def animate_velocity_error(plant):
   # plt.close()
   writervideo = animation.FFMpegWriter(fps=60)
   anim.save(ps.directory + 'actual_velocity_right_knee.mp4', writervideo)
-  import pdb; pdb.set_trace()
+  # import pdb; pdb.set_trace()
   ps.show_fig()
 
 def plot_ablation_study():
-  log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
-  # log_files = ['lcmlog-000', 'lcmlog-025']
+  # log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
+  log_files = ['lcmlog-000', 'lcmlog-025']
   # log_files = ['lcmlog-000_1', 'lcmlog-010', 'lcmlog-010_0KD_1']
   # log_files = ['lcmlog-0251']
   # log_files = ['lcmlog-0101']
@@ -168,68 +171,78 @@ def plot_ablation_study():
 
   for filename in log_files:
     log = lcm.EventLog(log_dir + filename, "r")
-    t_state, t_osc, x, u, fsm, contact_info, contact_info_locs, osc_debug, osc_output, t_lcmlog_u = \
-      process_log(log, pos_map, vel_map)
+    x, u_meas, t_x, u, t_u, contact_forces, contact_info_locs, \
+    t_contact_info, osc_debug, fsm, estop_signal, \
+    switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
+    t_u_pd, osc_output, full_log, t_lcmlog_u = \
+      process_lcm_log.process_log(log, pos_map, vel_map, act_map, 'RABBIT_INPUT')
     # import pdb; pdb.set_trace()
 
     plt.figure("velocities")
-    ps.plot(t_state, x[:, -7:], color=colors[color_idx])
+    ps.plot(t_x, x[:, -7:], color=colors[color_idx])
 
     # ps.plot(t_osc, u)
     # ps.add_legend(u_datatypes)
 
-    t_u_start_idx = np.argwhere(np.abs(t_osc - (t_start)) < 1e-3)[0, 0]
-    t_u_end_idx = np.argwhere(np.abs(t_osc - (t_end)) < 1e-3)[0, 0]
+    t_u_start_idx = np.argwhere(np.abs(t_u - (t_start)) < 1e-3)[0, 0]
+    t_u_end_idx = np.argwhere(np.abs(t_u - (t_end)) < 1e-3)[0, 0]
     t_slice = slice(t_u_start_idx, t_u_end_idx)
 
     plt.figure("inputs")
-    for i, linestyle in enumerate(linestyles):
-      ps.plot(1e3*(t_osc[t_slice] - nominal_impact_time), u[t_slice, i], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', color=colors[color_idx], linestyle=linestyle)
+    # for i, linestyle in enumerate(linestyles):
+    # for i, linestyle in enumerate(linestyles):
+    # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), u[t_slice, 0], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', color=colors[color_idx], linestyle=linestyle)
+    ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), u[t_slice, 3], xlabel='Time Since Impact (ms)', ylabel='Motor Effort (Nm)', color=colors[color_idx])
 
     plt.figure("swing_leg_joints")
     # ps.plot(t_osc, osc_debug['right_knee_pin_traj'].ydot, linestyle=colors[color_idx])
     # ps.plot(t_osc, osc_debug['right_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
-    # ps.plot(t_osc, osc_debug['right_knee_pin_traj'].error_ydot, linestyle='r')
+    ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['right_knee_pin_traj'].error_ydot[t_slice], xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
     right_knee_pin_error = np.abs(osc_debug['right_knee_pin_traj'].ydot_des[t_slice] - osc_debug['right_knee_pin_traj'].ydot[t_slice])
-    # ps.plot(1e3*(t_osc[t_slice] - t_start), right_knee_pin_error, xlabel='Time After Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
+    # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), right_knee_pin_error, xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
     # plt.figure("right_hip")
     # ps.plot(t_osc, osc_debug['right_hip_pin_traj'].ydot, linestyle=colors[color_idx])
     # ps.plot(t_osc, osc_debug['right_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_osc, osc_debug['right_hip_pin_traj'].error_ydot, linestyle='r')
-    right_hip_pin_error = np.abs(osc_debug['right_hip_pin_traj'].ydot_des[t_slice] - osc_debug['right_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_osc[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Impacting Leg')
+    # right_hip_pin_error = np.abs(osc_debug['right_hip_pin_traj'].ydot_des[t_slice] - osc_debug['right_hip_pin_traj'].ydot[t_slice])
+    # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), right_knee_pin_error + right_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Impacting Leg')
     plt.figure("stance_leg_joints")
     # ps.plot(t_osc, osc_debug['left_knee_pin_traj'].ydot, linestyle=colors[color_idx])
     # ps.plot(t_osc, osc_debug['left_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_osc, osc_debug['left_knee_pin_traj'].error_ydot, linestyle='r')
     left_knee_pin_error = np.abs(osc_debug['left_knee_pin_traj'].ydot_des[t_slice] - osc_debug['left_knee_pin_traj'].ydot[t_slice])
-    # ps.plot(1e3*(t_osc[t_slice] - t_start), left_knee_pin_error, xlabel='Time After Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
+    ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['left_knee_pin_traj'].error_ydot[t_slice], xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
+    # ps.plot(1e3*(t_osc[t_slice] - t_start), left_knee_pin_error, xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
     # plt.figure("left_hip")
     # ps.plot(t_osc, osc_debug['left_hip_pin_traj'].ydot, linestyle=colors[color_idx])
     # ps.plot(t_osc, osc_debug['left_hip_pin_traj'].ydot_des, linestyle=colors[color_idx])
     # ps.plot(t_osc, osc_debug['left_hip_pin_traj'].error_ydot, linestyle='r')
     left_hip_pin_error = np.abs(osc_debug['left_hip_pin_traj'].ydot_des[t_slice] - osc_debug['left_hip_pin_traj'].ydot[t_slice])
-    ps.plot(1e3*(t_osc[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Non-Impacting Leg')
+    # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), left_knee_pin_error + left_hip_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='L1 Norm Joint Velocity Error (rad/s)', color=colors[color_idx], title='Non-Impacting Leg')
     color_idx += 1
 
   plt.figure("stance_leg_joints")
   ax = plt.gca()
   # projection_window_a = matplotlib.patches.Rectangle((50, 100), 40, 30, edgecolor=ps.grey, facecolor=ps.grey, alpha=1.0)
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
+  # ps.add_legend(['Stance Knee Error', 'Projected Error'], loc=3)
+  ps.add_legend(['Default Controller', 'Impact Invariant Controller'], loc=2)
   # ps.add_legend(['Default Controller', 'No Derivative Feedback', 'Impact Invariant Projection', 'Projection Window'], loc=3)
   # ax.add_patch(projection_window_a)
   plt.xlim([-50, 50])
-  plt.ylim([0, 0.5])
+  # plt.ylim([0, 0.5])
   ps.save_fig('stance_leg_velocity_error.png')
 
   plt.figure("swing_leg_joints")
   ax = plt.gca()
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
   # ps.add_legend(['Default Controller', 'No Derivative Feedback', 'Impact Invariant Projection', 'Projection Window'], loc=3)
+  # ps.add_legend(['Impacting Knee Error', 'Projected Error'], loc=3)
+  ps.add_legend(['Default Controller', 'Impact Invariant Controller'], loc=2)
   # projection_window_b = matplotlib.patches.Rectangle((50, 100), 40, 30, edgecolor=ps.grey, facecolor=ps.grey, alpha=1.0)
   # ax.add_patch(projection_window_b)
   plt.xlim([-50, 50])
-  plt.ylim([0, 0.5])
+  # plt.ylim([0, 0.5])
   ps.save_fig('swing_leg_velocity_error.png')
   plt.figure("inputs")
   ax = plt.gca()
@@ -238,8 +251,11 @@ def plot_ablation_study():
 
 
   # ps.add_legend(u_datatypes)
+  plt.figure("inputs")
   plt.xlim([-50, 50])
+  ps.add_legend(['Default Controller', 'Impact Invariant Controller'], loc=2)
   # ps.save_fig('rabbit_controller_efforts.png')
+  ps.save_fig('impacting_knee_controller_effort.png')
 
   plt.figure("legend")
   ax = plt.gca()
@@ -261,7 +277,7 @@ def plot_foot_velocities(plant, context, t_state, x):
   nv = plant.num_velocities()
   l_foot_points = np.zeros((t_state.shape[0], 4))
   r_foot_points = np.zeros((t_state.shape[0], 4))
-  time_slice = get_time_slice(t_state, t0_, tf_)
+  time_slice = get_time_slice(t_state, t_start, t_end)
   l_contact_frame = plant.GetBodyByName("left_foot").body_frame()
   r_contact_frame = plant.GetBodyByName("right_foot").body_frame()
   world = plant.world_frame()

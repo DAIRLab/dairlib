@@ -79,7 +79,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel):
                      drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
   osc_debug_channels = ['OSC_DEBUG_WALKING', 'OSC_DEBUG_RUNNING', 'OSC_DEBUG_STANDING', 'OSC_DEBUG_JUMPING']
   # osc_debug_channels = ['OSC_DEBUG_WALKING', 'OSC_DEBUG_RUNNING', 'OSC_DEBUG_JUMPING']
-  state_feedback_channels = ['CASSIE_STATE_SIMULATION', 'CASSIE_STATE_DISPATCHER']
+  state_feedback_channels = ['CASSIE_STATE_SIMULATION', 'CASSIE_STATE_DISPATCHER', "RABBIT_STATE"]
 
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:

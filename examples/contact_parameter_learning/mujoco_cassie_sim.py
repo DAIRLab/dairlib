@@ -23,12 +23,33 @@ class LearningMujocoCassieSim():
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/mujoco_cassie_params/"
     self.drake_params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
     self.date_prefix = 'mujoco_' + time.strftime("%Y_%m_%d_%H_%M")
-
-    # self.start_time = 30.595
-    # self.sim_time = 0.25
-    self.start_time = 30.6477
+    self.start_times = {'08': 30.61,
+                        '09': 30.61,
+                        '10': 30.61,
+                        '11': 30.62,
+                        '12': 30.64,
+                        '13': 30.64,
+                        '14': 30.65,
+                        '15': 30.64,
+                        '16': 30.64,
+                        '17': 30.64,
+                        '20': 30.64,
+                        '21': 30.64,
+                        '22': 30.64,
+                        '23': 30.64,
+                        '24': 30.64,
+                        '25': 30.64,
+                        '26': 30.64,
+                        '27': 30.64,
+                        '28': 30.64,
+                        '29': 30.64,
+                        '30': 30.64,
+                        '31': 30.63,
+                        '32': 30.63,
+                        '33': 30.63,
+                        }
     self.sim_time = 0.05
-    self.end_time = self.start_time + self.sim_time
+    # self.end_time = self.start_time + self.sim_time
     self.default_mujoco_contact_params = {
       "timeconst": 0.005,
       "dampratio": 1,
@@ -86,8 +107,11 @@ class LearningMujocoCassieSim():
     x_traj = self.x_trajs[log_num]
     t = self.t_xs[log_num]
 
+    start_time = self.start_times[log_num]
+    end_time = start_time + self.sim_time
+
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
-    x_init = x_interp(self.start_time)
+    x_init = x_interp(start_time)
 
     # z_offset = self.z_offsets[log_idx]
     # vel_offset = self.vel_offsets[3*log_idx:3*(log_idx + 1)]
@@ -99,7 +123,7 @@ class LearningMujocoCassieSim():
     lcm_traj = lcm_trajectory.LcmTrajectory(self.folder_path + 'u_traj_' + log_num)
     u_traj = lcm_traj.GetTrajectory("controller_inputs")
     u_init_traj = PiecewisePolynomial.FirstOrderHold(u_traj.time_vector, u_traj.datapoints)
-    x_traj, u_traj, t_x = self.sim.run_sim_playback(x_init, self.start_time, self.end_time, u_init_traj)
+    x_traj, u_traj, t_x = self.sim.run_sim_playback(x_init, start_time, end_time, u_init_traj)
 
     sim_id = log_num + str(np.abs(hash(frozenset(params))))
     x_traj = np.array(x_traj)

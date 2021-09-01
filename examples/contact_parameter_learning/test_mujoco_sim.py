@@ -55,7 +55,7 @@ def test_playback():
   sim = MujocoCassieSim(realtime_rate=realtime_rate)
   # converter = DrakeToMujocoConverter()
   start_time = 30.495
-  end_time = start_time + 0.5
+  end_time = start_time + 0.05
   folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
   log_num = '02'
   x_traj = np.load(folder_path + 'x_' + log_num + '.npy')

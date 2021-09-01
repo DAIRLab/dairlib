@@ -24,7 +24,7 @@ CentroidalTrajOpt::CentroidalTrajOpt(Eigen::Matrix3d inertia_tensor,
 
 void CentroidalTrajOpt::SetModeSequence(std::vector<stance> sequence,
                                         std::vector<double> times) {
-  DRAKE_ASSERT(sequence.size() == times.size())
+  DRAKE_ASSERT(sequence.size() == times.size());
 
   sequence_ = sequence;
   times_ = times;

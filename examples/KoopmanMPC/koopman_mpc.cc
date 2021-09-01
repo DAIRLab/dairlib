@@ -124,20 +124,20 @@ void KoopmanMPC::AddMode(const KoopmanDynamics& dynamics,
 
 void KoopmanMPC::AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&,
                                            Eigen::Vector3d> pt, koopMpcStance stance) {
-  DRAKE_ASSERT(contact_points_.size() == stance)
+  DRAKE_ASSERT(contact_points_.size() == stance);
   contact_points_.push_back(pt);
 }
 
 void KoopmanMPC::AddJointToTrackBaseAngle(const std::string& joint_pos_name,
     const std::string& joint_vel_name) {
-  DRAKE_ASSERT(planar_)
+  DRAKE_ASSERT(planar_);
   base_angle_pos_idx_ = makeNameToPositionsMap(plant_)[joint_pos_name];
   base_angle_vel_idx_ = makeNameToVelocitiesMap(plant_)[joint_vel_name];
 }
 
 void KoopmanMPC::AddBaseFrame(const std::string &body_name,
 const Eigen::Vector3d& offset, const Eigen::Isometry3d& frame_pose) {
-  DRAKE_ASSERT(!(planar_ && use_com_))
+  DRAKE_ASSERT(!(planar_ && use_com_));
   base_ = body_name;
   frame_pose_ = frame_pose;
   com_from_base_origin_ = offset;

@@ -9,4 +9,5 @@ attic/multibody/solver_log/
 .clwb/
 .csv
 .ijwb/
+.vscode/
 rabbit_walking

@@ -161,7 +161,8 @@ def animate_velocity_error(plant):
 
 def plot_ablation_study():
   # log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
-  log_files = ['lcmlog-000', 'lcmlog-025']
+  # log_files = ['lcmlog-000', 'lcmlog-025']
+  log_files = ['lcmlog-025']
   # log_files = ['lcmlog-000_1', 'lcmlog-010', 'lcmlog-010_0KD_1']
   # log_files = ['lcmlog-0251']
   # log_files = ['lcmlog-0101']
@@ -178,15 +179,34 @@ def plot_ablation_study():
       process_lcm_log.process_log(log, pos_map, vel_map, act_map, 'RABBIT_INPUT')
     # import pdb; pdb.set_trace()
 
-    plt.figure("velocities")
-    ps.plot(t_x, x[:, -7:], color=colors[color_idx])
+    t_u_start_idx = np.argwhere(np.abs(t_u - (t_start)) < 1e-3)[0, 0]
+    t_u_end_idx = np.argwhere(np.abs(t_u - (t_end)) < 1e-3)[0, 0]
+    t_slice = slice(t_u_start_idx, t_u_end_idx)
+    # plt.figure("velocities")
+    # ps.plot(t_x, x[:, -7:], color=colors[color_idx])
+
+    lambdas = []
+    soft_constraint_costs = []
+    for osc in osc_output:
+      qp_output = osc.qp_output
+      # soft_constraint_costs.append(osc.soft_constraint_cost)
+      soft_constraint_costs.append(osc.fsm_state)
+      # lambdas.append(qp_output.lambda_c_sol)
+      lambdas.append(qp_output.dv_sol)
+    # import pdb; pdb.set_trace()
+    lambdas = np.array(lambdas)
+    plt.figure('lambdas')
+    ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), lambdas[t_slice])
+    plt.xlim([-50, 50])
+
+    plt.figure('soft_constraint')
+    ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), soft_constraint_costs[t_slice])
+    plt.xlim([-50, 50])
 
     # ps.plot(t_osc, u)
     # ps.add_legend(u_datatypes)
 
-    t_u_start_idx = np.argwhere(np.abs(t_u - (t_start)) < 1e-3)[0, 0]
-    t_u_end_idx = np.argwhere(np.abs(t_u - (t_end)) < 1e-3)[0, 0]
-    t_slice = slice(t_u_start_idx, t_u_end_idx)
+
 
     plt.figure("inputs")
     # for i, linestyle in enumerate(linestyles):
@@ -195,9 +215,11 @@ def plot_ablation_study():
     ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), u[t_slice, 3], xlabel='Time Since Impact (ms)', ylabel='Motor Effort (Nm)', color=colors[color_idx])
 
     plt.figure("swing_leg_joints")
-    # ps.plot(t_osc, osc_debug['right_knee_pin_traj'].ydot, linestyle=colors[color_idx])
-    # ps.plot(t_osc, osc_debug['right_knee_pin_traj'].ydot_des, linestyle=colors[color_idx])
+    # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['right_knee_pin_traj'].ydot[t_slice], color=colors[color_idx])
+    # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['right_knee_pin_traj'].ydot_des[t_slice], color=colors[color_idx])
     ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['right_knee_pin_traj'].error_ydot[t_slice], xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
+    ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['right_knee_pin_traj'].error_y[t_slice], xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
+    # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['right_hip_pin_traj'].error_ydot[t_slice], xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
     right_knee_pin_error = np.abs(osc_debug['right_knee_pin_traj'].ydot_des[t_slice] - osc_debug['right_knee_pin_traj'].ydot[t_slice])
     # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), right_knee_pin_error, xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
     # plt.figure("right_hip")
@@ -212,6 +234,8 @@ def plot_ablation_study():
     # ps.plot(t_osc, osc_debug['left_knee_pin_traj'].error_ydot, linestyle='r')
     left_knee_pin_error = np.abs(osc_debug['left_knee_pin_traj'].ydot_des[t_slice] - osc_debug['left_knee_pin_traj'].ydot[t_slice])
     ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['left_knee_pin_traj'].error_ydot[t_slice], xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
+    ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['left_knee_pin_traj'].error_y[t_slice], xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
+    # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), osc_debug['left_hip_pin_traj'].error_ydot[t_slice], xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', color=colors[color_idx])
     # ps.plot(1e3*(t_osc[t_slice] - t_start), left_knee_pin_error, xlabel='Time Since Impact (ms)', ylabel='Velocity Error (m/s)', linestyle=colors[color_idx])
     # plt.figure("left_hip")
     # ps.plot(t_osc, osc_debug['left_hip_pin_traj'].ydot, linestyle=colors[color_idx])
@@ -231,7 +255,7 @@ def plot_ablation_study():
   # ax.add_patch(projection_window_a)
   plt.xlim([-50, 50])
   # plt.ylim([0, 0.5])
-  ps.save_fig('stance_leg_velocity_error.png')
+  # ps.save_fig('stance_leg_velocity_error.png')
 
   plt.figure("swing_leg_joints")
   ax = plt.gca()
@@ -243,7 +267,7 @@ def plot_ablation_study():
   # ax.add_patch(projection_window_b)
   plt.xlim([-50, 50])
   # plt.ylim([0, 0.5])
-  ps.save_fig('swing_leg_velocity_error.png')
+  # ps.save_fig('swing_leg_velocity_error.png')
   plt.figure("inputs")
   ax = plt.gca()
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
@@ -255,7 +279,7 @@ def plot_ablation_study():
   plt.xlim([-50, 50])
   ps.add_legend(['Default Controller', 'Impact Invariant Controller'], loc=2)
   # ps.save_fig('rabbit_controller_efforts.png')
-  ps.save_fig('impacting_knee_controller_effort.png')
+  # ps.save_fig('impacting_knee_controller_effort.png')
 
   plt.figure("legend")
   ax = plt.gca()

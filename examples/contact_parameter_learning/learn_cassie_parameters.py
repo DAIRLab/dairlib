@@ -92,7 +92,7 @@ def learn_drake_cassie_params(batch=False):
     mu_ratio=ng.p.Scalar(lower=0.001, upper=1.0),
     stiffness=ng.p.Log(lower=1e3, upper=1e8),
     dissipation=ng.p.Scalar(lower=0.1, upper=1),
-    stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2),
+    # stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2),
     # vel_offset=ng.p.Array(shape=(3,)).set_bounds(lower=-0.5, upper=0.5),
     # z_offset=ng.p.Array(shape=(1,)).set_bounds(lower=-0.05, upper=0.05)
     # vel_offset=ng.p.Array(shape=(len(all_logs) * 3,)).set_bounds(lower=-1, upper=1),
@@ -246,13 +246,13 @@ if (__name__ == '__main__'):
   # print_params()
   # import pdb; pdb.set_trace()
   # learn_drake_cassie_params()
-  learn_drake_cassie_params(batch=True)
+  # learn_drake_cassie_params(batch=True)
   # print_drake_cassie_params(i)
   # learn_mujoco_cassie_params()
   # plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
-  # print_drake_cassie_params(str(sys.argv[1]), True)
+  print_drake_cassie_params(str(sys.argv[1]), True)
   # plot_loss_trajectory()
   pass

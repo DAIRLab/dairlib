@@ -117,12 +117,14 @@ class DrakeToMujocoConverter():
 
     return q_drake, v_drake
 
-  def convert_to_mujoco(self, x):
-    # q_full = np.zeros(35)
-    # v_full = np.zeros(32)
-    q = x[0:23]
-    v = x[23:45]
-    q_missing, v_missing = self.solve_IK(x)
+  def convert_to_mujoco(self, x_i):
+    q = x_i[0:23]
+    v = x_i[23:45]
+    q_missing, v_missing = self.solve_IK(x_i)
+    # if x_ip1 is not None:
+    #   q_missing_ip1, v_missing_ip1 = self.solve_IK(x_ip1)
+    #   v_missing[9:12] = self.estimate_omega_bar(q_missing[10:14], q_missing_ip1[10:14], dt)
+    #   v_missing[22:25] = self.estimate_omega_bar(q_missing[24:28], q_missing_ip1[24:28], dt)
     q_copy = self.map_q_drake_to_mujoco @ q
     v_copy = self.map_v_drake_to_mujoco @ v
     q_full = q_missing + q_copy
@@ -179,7 +181,7 @@ class DrakeToMujocoConverter():
     q_missing, _ = self.solve_IK(x)
     quat = q_missing[10:14]
 
-    print(quat)
+    # print(quat)
 
     rot = R.from_quat(np.hstack((quat[1:4], quat[0])))
     euler_vec = rot.as_euler('xyz')
@@ -245,38 +247,16 @@ class DrakeToMujocoConverter():
 
     # import pdb; pdb.set_trace()
 
-  def solve_IK(self, x):
-    # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, -1.5968, -1.5244, 1.5244])
-    # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, -1.5968, -1.5244, 1.5244])
-    # -1.7439499847110957, 1.7254888878481534, -1.8498456916286636
-    # left_foot_crank_state = np.array([1, 0, 0, 0, 0, 0, 0, -1.5244, 1.5244, -1.5968])
-    # self.foot_crank_plant.SetPositions(self.foot_crank_context, left_foot_crank_state)
-    # toe_left_anchor_point = self.foot_crank_plant.CalcPointsPositions(self.foot_crank_context, self.plantar_rod_frame,
-    #                                                                   self.plantar_rod_anchor_point,
-    #                                                                   self.toe_left_frame)
-    # print('toe_left_anchor_point:')
-    # print(toe_left_anchor_point)
-    toe_ang = x[self.pos_map['toe_left']]
-    self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
-    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
-                                          np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
-    result = Solve(self.ik_solver.prog())
-    left_foot_crank_state = result.GetSolution()
-    # self.visualize_state(left_foot_crank_state)
-    print(result.get_solution_result())
-    toe_ang = x[self.pos_map['toe_right']]
-    self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
-    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
-                                          np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
-    result = Solve(self.ik_solver.prog())
-    right_foot_crank_state = result.GetSolution()
-    print(result.get_solution_result())
+  def estimate_omega_bar(self, quat1, quat2, dt):
+    R1 = R.from_quat(np.hstack((quat1[1:4], quat1[0])))
+    R2 = R.from_quat(np.hstack((quat2[1:4], quat2[0])))
+    R_rel = R1.inv() * R2
+    omega = R_rel.as_rotvec() / dt
+    return omega
 
-    print(right_foot_crank_state[8])
-    print(right_foot_crank_state[9])
-    print(x[self.pos_map['toe_right']])
 
-    self.plant.SetPositionsAndVelocities(self.context, x)
+  def solve_for_achilles_rod_quats(self, q):
+    self.plant.SetPositions(self.context, q)
     left_thigh = self.plant.CalcPointsPositions(self.context, self.left_thigh_rod[1], self.left_thigh_rod[0],
                                                 self.world)
     right_thigh = self.plant.CalcPointsPositions(self.context, self.right_thigh_rod[1], self.right_thigh_rod[0],
@@ -305,10 +285,6 @@ class DrakeToMujocoConverter():
     r_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.right_thigh_rod[1])
     l_bar_frame = R.from_matrix(np.vstack((l_x_vec, l_y_vec, l_z_vec)).T)
     r_bar_frame = R.from_matrix(np.vstack((r_x_vec, r_y_vec, r_z_vec)).T)
-    # l_bar_quat = R.from_matrix(
-    #   self.left_achilles_frame @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_quat()
-    # r_bar_quat = R.from_matrix(
-    #   self.right_achilles_frame @ r_hip_pitch_frame.rotation().matrix().T @ r_bar_frame.as_matrix()).as_quat()
     l_bar_euler = R.from_matrix(
       self.left_achilles_frame @ l_hip_pitch_frame.rotation().matrix().T @ l_bar_frame.as_matrix()).as_euler('xyz')
     r_bar_euler = R.from_matrix(
@@ -322,6 +298,33 @@ class DrakeToMujocoConverter():
     # r_bar_quat = l_rot.as_quat()
     l_bar_quat = np.hstack((l_bar_quat[3], l_bar_quat[0:3]))
     r_bar_quat = np.hstack((r_bar_quat[3], r_bar_quat[0:3]))
+
+    return l_bar_quat, r_bar_quat
+
+  def solve_IK(self, x):
+    toe_ang = x[self.pos_map['toe_left']]
+    self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
+    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
+                                          np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
+    result = Solve(self.ik_solver.prog())
+    left_foot_crank_state = result.GetSolution()
+    # print(result.get_solution_result())
+    toe_ang = x[self.pos_map['toe_right']]
+    self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
+    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
+                                          np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
+    result = Solve(self.ik_solver.prog())
+    right_foot_crank_state = result.GetSolution()
+    # print(result.get_solution_result())
+
+    q = x[:self.plant.num_positions()]
+    v = x[-self.plant.num_velocities():]
+    l_bar_quat, r_bar_quat = self.solve_for_achilles_rod_quats(q)
+    q_dt = q + self.plant.MapVelocityToQDot(self.context, v) * self.drake_sim_dt
+    l_bar_quat_dt, r_bar_quat_dt = self.solve_for_achilles_rod_quats(q_dt)
+
+    l_bar_omega = self.estimate_omega_bar(l_bar_quat, l_bar_quat_dt, self.drake_sim_dt)
+    r_bar_omega = self.estimate_omega_bar(r_bar_quat, r_bar_quat_dt, self.drake_sim_dt)
 
     # l_bar_quat = np.array([0.9785, -0.0164, 0.01787, -0.2049])
     # r_bar_quat = np.array([0.9786, 0.00386, -0.01524, -0.2051])
@@ -344,6 +347,9 @@ class DrakeToMujocoConverter():
     v_missing[17] = -x[23 + self.vel_map['toe_leftdot']]
     v_missing[29] = x[23 + self.vel_map['toe_rightdot']]
     v_missing[30] = -x[23 + self.vel_map['toe_rightdot']]
+
+    v_missing[9:12] = l_bar_omega
+    v_missing[22:25] = r_bar_omega
 
     return q_missing, v_missing
 

@@ -89,7 +89,7 @@ class DrakeCassieSim():
       # "pen_allow": 1e-5,
       "stiffness": 4e4,
       "dissipation": 0.5,
-      "stiction_tol": 1e-3,
+      # "stiction_tol": 1e-3,
       # "vel_offset": np.zeros(len(self.log_nums_real) * 3),
       # "z_offset": np.zeros(len(self.log_nums_real)),
       # "vel_offset": np.zeros(3),
@@ -136,7 +136,7 @@ class DrakeCassieSim():
     dissipation = params['dissipation']
     mu_static = params['mu_static']
     mu_kinetic = params['mu_ratio'] * params['mu_static']
-    stiction_tol = params['stiction_tol']
+    stiction_tol = 1e-3
     log_idx = self.log_nums_real.index(log_num)
     log_idx = self.log_nums_real.index('15')
     # print('log_idx' + str(log_idx))

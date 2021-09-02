@@ -11,6 +11,7 @@ from pydrake.math import RigidTransform
 from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box, ProximityProperties
 from pydrake.trajectories import PiecewisePolynomial
 from pydairlib.common import FindResourceOrThrow
+from pydairlib.multibody import MultiposeVisualizer
 # from ctypes import c_double
 
 # Note that the mu_ratio defines the ratio 
@@ -108,9 +109,9 @@ class DrakeCubeSim(CubeSim):
         self.sim = Simulator(self.diagram)
         self.sim.set_publish_every_time_step(True)
 
-    def visualize_two_cubes(self, cube_data, sim_data, realtime_rate):
+    def add_double_cube_plant(self):
         self.builder = DiagramBuilder()
-        
+
         # Add a cube as MultibodyPlant
         self.plant = MultibodyPlant(self.drake_sim_dt)
         self.scene_graph = self.builder.AddSystem(SceneGraph())
@@ -120,25 +121,27 @@ class DrakeCubeSim(CubeSim):
         terrain_point=np.zeros((3,))
         terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
         X_WG = RigidTransform(HalfSpace.MakePose(terrain_normal, terrain_point))
-        red_cube = Parser(self.plant).AddModelFromFile(
+        cubes = Parser(self.plant).AddModelFromFile(
             FindResourceOrThrow(
-                "examples/contact_parameter_learning/urdf/cube.urdf"), model_name="red_cube")
-        blue_cube = Parser(self.plant).AddModelFromFile(
-            FindResourceOrThrow(
-                "examples/contact_parameter_learning/urdf/cube_blue.urdf"), model_name="blue_cube")
+                "examples/contact_parameter_learning/urdf/double_cube.urdf"), model_name="double_cube")
         self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(10, 10, 0.001), "visual", terrain_color)
         self.plant.Finalize()
-        
-        # Setup trajectory source
-        t_traj = self.make_traj_timestamps(cube_data)[:cube_data.shape[0]]
+        return plant_id
+
+    @classmethod
+    def make_two_cube_piecewise_polynomial(cls, cube_data, sim_data):
         cube_data_converted = np.zeros((14,cube_data.shape[0]))
         cube_data_converted[0:4,:] = cube_data[:,CUBE_DATA_QUATERNION_SLICE].T
         cube_data_converted[4:7,:] = cube_data[:,CUBE_DATA_POSITION_SLICE].T
         cube_data_converted[7:11,:] = sim_data[:,CUBE_DATA_QUATERNION_SLICE].T
         cube_data_converted[11:,:] = sim_data[:,CUBE_DATA_POSITION_SLICE].T
+        t_traj = cls.make_traj_timestamps(cube_data)
+        return PiecewisePolynomial.FirstOrderHold(t_traj, cube_data_converted), cube_data_converted
 
-        pp_traj = PiecewisePolynomial.FirstOrderHold(t_traj, cube_data_converted)
-        
+    def visualize_two_cubes(self, cube_data, sim_data, realtime_rate):
+        plant_id = self.add_double_cube_plant()
+        pp_traj, _ = self.make_two_cube_piecewise_polynomial(cube_data, sim_data)
+
         # Wire up the simulation
         self.traj_source = self.builder.AddSystem(TrajectorySource(pp_traj))
         self.q_to_pose = self.builder.AddSystem(MultibodyPositionToGeometryPose(self.plant))
@@ -158,7 +161,12 @@ class DrakeCubeSim(CubeSim):
             self.sim.Initialize()
             self.sim.AdvanceTo(t_end)
 
-        
+
+    def visualize_two_cubes_multipose(self, cube_traj, sim_traj):
+        _, cube_positions = self.make_two_cube_piecewise_polynomial(cube_traj, sim_traj)
+        visualizer = MultiposeVisualizer(
+            "examples/contact_parameter_learning/urdf/double_cube.urdf", cube_positions.shape[1], "")
+        visualizer.DrawPoses(cube_positions)
 
     def sim_step(self, dt):
         data_arr = np.zeros((1,13))
@@ -216,9 +224,7 @@ class DrakeCubeSim(CubeSim):
             self.sim.get_mutable_context().SetTime(0.0)
             self.sim.Initialize()
             self.sim.AdvanceTo(t_end)
-            
 
-    
     def visualize_sim_rollout(self, params, initial_state, steps):
         self.visualize=True
         self.init_sim(params)

@@ -10,7 +10,7 @@ test_state = np.array([ 0.18629883,  0.02622872,  1.89283257, -0.52503014,  0.39
         1.46313532, -4.85439428,  9.86961928]).reshape(-1,1)
 
 def test_drake():
-    drake_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
+    drake_sim = drake_cube_sim.DrakeCubeSim(visualize=False, substeps=10)
     contact_params = drake_cube_sim.default_drake_contact_params
     drake_sim.init_sim(contact_params)
     state_traj = drake_sim.get_sim_traj_initial_state(test_state, 300, cube_sim.CUBE_DATA_DT)
@@ -24,7 +24,7 @@ def test_mujoco():
     return state_traj
 
 def test_bullet():
-    bullet_sim = bullet_cube_sim.BulletCubeSim(visualize=True)
+    bullet_sim = bullet_cube_sim.BulletCubeSim(visualize=False)
     contact_params = bullet_cube_sim.default_bullet_contact_params
     bullet_sim.init_sim(contact_params)
     state_traj = bullet_sim.get_sim_traj_initial_state(test_state, 300, cube_sim.CUBE_DATA_DT)
@@ -41,10 +41,14 @@ def make_drake_sim_tests():
     range(num_trials), cube_data_folder, drake_data_folder, sim)
 
 def make_bullet_sim_tests():
-    sim = bullet_cube_sim.BulletCubeSim(visualize=False)
+    sim = bullet_cube_sim.BulletCubeSim(visualize=False, substeps=10)
     cube_sim.make_simulated_traj_data_for_training(bullet_cube_sim.default_bullet_contact_params, 
     range(num_trials), cube_data_folder, bullet_data_folder, sim)
 
 if (__name__ == "__main__"):
-    sim = drake_cube_sim.DrakeCubeSim(visualize=True)
-    loss = cube_sim.calculate_cubesim_loss(drake_cube_sim.default_drake_contact_params, 100, cube_data_folder, sim, cube_sim.LossWeights())
+    # sim = drake_cube_sim.DrakeCubeSim(visualize=True)
+    # loss = cube_sim.calculate_cubesim_loss(drake_cube_sim.default_drake_contact_params, 100, cube_data_folder, sim, cube_sim.LossWeights())
+    traj1 = test_drake()
+    traj2 = test_bullet()
+    vis_sim = drake_cube_sim.DrakeCubeSim()
+    vis_sim.visualize_two_cubes(traj1, traj2, 0.2)

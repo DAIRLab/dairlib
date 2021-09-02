@@ -40,14 +40,13 @@ class BulletCubeSim(CubeSim):
         
     def set_initial_condition(self, initial_state):
 
-        state = self.reexpress_state_local_to_global_omega(initial_state)
-        q = state[CUBE_DATA_QUATERNION_SLICE]
+        q = initial_state[CUBE_DATA_QUATERNION_SLICE]
         q_conv = np.array([q[1], q[2], q[3], q[0]]).ravel()
 
-        p.resetBasePositionAndOrientation(self.cube_id, posObj=state[CUBE_DATA_POSITION_SLICE], ornObj=q_conv)
+        p.resetBasePositionAndOrientation(self.cube_id, posObj=initial_state[CUBE_DATA_POSITION_SLICE], ornObj=q_conv)
         p.resetBaseVelocity(self.cube_id, 
-                            linearVelocity=state[CUBE_DATA_VELOCITY_SLICE], 
-                            angularVelocity=state[CUBE_DATA_OMEGA_SLICE])
+                            linearVelocity=initial_state[CUBE_DATA_VELOCITY_SLICE],
+                            angularVelocity=initial_state[CUBE_DATA_OMEGA_SLICE])
 
     def sim_step(self, dt):
         data_arr = np.zeros((1,13))
@@ -64,7 +63,6 @@ class BulletCubeSim(CubeSim):
         for i in range(self.substeps):
             p.stepSimulation()
 
-        data_arr[0] = self.reexpress_state_global_to_local_omega(data_arr[0])
         return data_arr
 
     def __del__(self):

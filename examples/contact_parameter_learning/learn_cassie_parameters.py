@@ -148,7 +148,7 @@ def print_drake_cassie_params(single_log_num, plot=False):
   # optimal_params = drake_sim.load_params('all' + '_optimized_params_' + str(budget))
   # optimal_params = drake_sim.load_params('old_params/' + log_num + '_optimized_params_' + str(budget))
   # optimal_params = drake_sim.load_params('drake_2021_08_25_11_45_training_15000')
-  optimal_params = drake_sim.load_params('drake_2021_08_31_15_training_15000').value
+  optimal_params = drake_sim.load_params('drake_2021_09_01_10_training_5000').value
   # optimal_params = drake_sim.load_params('drake_2021_08_28_22_26' + single_log_num + '_x_offsets_5000').value
 
   loss = get_drake_loss(optimal_params, single_log_num, plot)
@@ -248,11 +248,11 @@ if (__name__ == '__main__'):
   # learn_drake_cassie_params()
   # learn_drake_cassie_params(batch=True)
   # print_drake_cassie_params(i)
-  learn_mujoco_cassie_params()
+  # learn_mujoco_cassie_params()
   # plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
-  # print_drake_cassie_params(str(sys.argv[1]), True)
+  print_drake_cassie_params(str(sys.argv[1]), True)
   # plot_loss_trajectory()
   pass

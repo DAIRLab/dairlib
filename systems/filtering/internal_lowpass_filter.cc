@@ -1,7 +1,3 @@
-//
-// Created by brian on 9/3/21.
-//
-
 #include "internal_lowpass_filter.h"
 
 using Eigen::VectorXd;

@@ -1,7 +1,3 @@
-//
-// Created by brian on 9/3/21.
-//
-
 #include "timestamped_lowpass_filter.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/timestamped_vector.h"

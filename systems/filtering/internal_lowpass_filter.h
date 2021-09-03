@@ -1,7 +1,3 @@
-//
-// Created by brian on 9/3/21.
-//
-
 #pragma once
 #include <Eigen/Dense>
 

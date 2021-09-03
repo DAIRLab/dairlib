@@ -53,10 +53,10 @@ using drake::trajectories::PiecewisePolynomial;
 
 using systems::OutputVector;
 
-DEFINE_bool(broadcast, false,
+DEFINE_bool(hardware_broadcast, false,
             "broadcast between controller thread and planner thread");
 DEFINE_bool(create_new_data_folder, true,
-            "create new folder to prevent overwriting");
+            "create new folder to prevent overwriting; only for hardware");
 
 // Planner settings
 DEFINE_int32(rom_option, -1, "See find_goldilocks_models.cc");
@@ -162,40 +162,43 @@ int DoMain(int argc, char* argv[]) {
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
-  bool create_new_data_folder = FLAGS_create_new_data_folder;
-  if (!FLAGS_init_file.empty()) {
-    // DRAKE_DEMAND(!FLAGS_create_new_data_folder);
-    create_new_data_folder = false;
-  }
+  // We only create new data folders for hardware experiment (broadcast case)
+  if (FLAGS_hardware_broadcast) {
+    bool create_new_data_folder = FLAGS_create_new_data_folder;
+    if (!FLAGS_init_file.empty()) {
+      // DRAKE_DEMAND(!FLAGS_create_new_data_folder);
+      create_new_data_folder = false;
+    }
 
-  // Check if we want to use a new folder
-  string temp_path = gains.dir_data;
-  temp_path.pop_back();
-  bool assigned_a_folder = false;
-  int n_max_folders = 200;
-  if (create_new_data_folder) {
-    for (int i = 0; i < n_max_folders; i++) {
-      if (!folder_exist(temp_path + "_" + to_string(i), false)) {
-        gains.dir_data = temp_path + "_" + to_string(i) + "/";
-        assigned_a_folder = true;
-        break;
+    // Check if we want to use a new folder
+    string temp_path = gains.dir_data;
+    temp_path.pop_back();
+    bool assigned_a_folder = false;
+    int n_max_folders = 200;
+    if (create_new_data_folder) {
+      for (int i = 0; i < n_max_folders; i++) {
+        if (!folder_exist(temp_path + "_" + to_string(i), false)) {
+          gains.dir_data = temp_path + "_" + to_string(i) + "/";
+          assigned_a_folder = true;
+          break;
+        }
+      }
+    } else {
+      DRAKE_DEMAND(
+          !folder_exist(temp_path + "_" + to_string(n_max_folders), false));
+      for (int i = n_max_folders; i >= 0; i--) {
+        if (folder_exist(temp_path + "_" + to_string(i), false)) {
+          gains.dir_data = temp_path + "_" + to_string(i) + "/";
+          assigned_a_folder = true;
+          break;
+        }
       }
     }
-  } else {
-    DRAKE_DEMAND(
-        !folder_exist(temp_path + "_" + to_string(n_max_folders), false));
-    for (int i = n_max_folders; i >= 0; i--) {
-      if (folder_exist(temp_path + "_" + to_string(i), false)) {
-        gains.dir_data = temp_path + "_" + to_string(i) + "/";
-        assigned_a_folder = true;
-        break;
-      }
+    // DRAKE_DEMAND(assigned_a_folder);
+    if (!assigned_a_folder) {
+      throw std::runtime_error(
+          "Too many data folders! Delete some or increase the limit.");
     }
-  }
-  // DRAKE_DEMAND(assigned_a_folder);
-  if (!assigned_a_folder) {
-    throw std::runtime_error(
-        "Too many data folders! Delete some or increase the limit.");
   }
   cout << "data directory = " << gains.dir_data << endl;
 
@@ -277,7 +280,7 @@ int DoMain(int argc, char* argv[]) {
   // Create mpc traj publisher
   auto traj_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          FLAGS_channel_y, FLAGS_broadcast ? &lcm_network : &lcm_local,
+          FLAGS_channel_y, FLAGS_hardware_broadcast ? &lcm_network : &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 
   // Create a block that gets the stance leg
@@ -356,7 +359,7 @@ int DoMain(int argc, char* argv[]) {
                                              FLAGS_channel_x};
   systems::TwoLcmDrivenLoop<dairlib::lcmt_dairlib_signal,
                             dairlib::lcmt_robot_output>
-      loop(FLAGS_broadcast ? &lcm_network : &lcm_local,
+      loop(FLAGS_hardware_broadcast ? &lcm_network : &lcm_local,
            std::move(owned_diagram), lcm_parsers, input_channels, true,
            FLAGS_run_one_loop_to_get_init_file
                ? 1

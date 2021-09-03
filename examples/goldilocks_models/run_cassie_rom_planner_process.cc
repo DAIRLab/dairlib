@@ -199,6 +199,9 @@ int DoMain(int argc, char* argv[]) {
       throw std::runtime_error(
           "Too many data folders! Delete some or increase the limit.");
     }
+  } else {
+    // Create data folder if it doesn't exist
+    if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
   }
   cout << "data directory = " << gains.dir_data << endl;
 
@@ -239,9 +242,6 @@ int DoMain(int argc, char* argv[]) {
            param.n_step * VectorXd::Ones(1));
   writeCSV(param.dir_data + string("nodes_per_step.csv"),
            param.knots_per_mode * VectorXd::Ones(1));
-
-  // Create data folder if it doesn't exist
-  // if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model

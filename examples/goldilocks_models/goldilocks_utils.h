@@ -140,7 +140,7 @@ void storeTau(const std::vector<Eigen::VectorXd>& h_vec,
 Eigen::VectorXd createPrimeNumbers(int num_prime);
 
 bool file_exist(const std::string& name);
-bool folder_exist(const std::string& pathname_string);
+bool folder_exist(const std::string& pathname_string, bool print = true);
 // return false when the user want to stop
 bool CreateFolderIfNotExist(const std::string& dir,
                             bool ask_for_permission = true);

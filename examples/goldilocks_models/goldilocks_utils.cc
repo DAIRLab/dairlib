@@ -503,19 +503,19 @@ bool file_exist(const std::string& name) {
   return (stat(name.c_str(), &buffer) == 0);
 }
 
-bool folder_exist(const std::string& pathname_string) {
+bool folder_exist(const std::string& pathname_string, bool print) {
   // Convert string to char
   const char* pathname = pathname_string.c_str();
 
   struct stat info;
   if (stat(pathname, &info) != 0) {
-    printf("cannot access %s\n", pathname);
+    if (print) printf("cannot access %s\n", pathname);
     return false;
   } else if (info.st_mode & S_IFDIR) {
-    printf("%s is a directory\n", pathname);
+    if (print) printf("%s is a directory\n", pathname);
     return true;
   } else {
-    printf("%s is no directory\n", pathname);
+    if (print) printf("%s is no directory\n", pathname);
     return false;
   }
 }

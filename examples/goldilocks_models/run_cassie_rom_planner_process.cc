@@ -162,22 +162,42 @@ int DoMain(int argc, char* argv[]) {
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
-  // Check if we want to use a new folder
-  if (FLAGS_create_new_data_folder) {
-    string path = gains.dir_data;
-    path.pop_back();
+  bool create_new_data_folder = FLAGS_create_new_data_folder;
+  if (!FLAGS_init_file.empty()) {
+    // DRAKE_DEMAND(!FLAGS_create_new_data_folder);
+    create_new_data_folder = false;
+  }
 
-    bool assigned_a_folder = false;
-    for (int i = 0; i < 100; i++) {
-      if (!folder_exist(path + "_" + to_string(i))) {
-        gains.dir_data = path + "_" + to_string(i) + "/";
+  // Check if we want to use a new folder
+  string temp_path = gains.dir_data;
+  temp_path.pop_back();
+  bool assigned_a_folder = false;
+  int n_max_folders = 200;
+  if (create_new_data_folder) {
+    for (int i = 0; i < n_max_folders; i++) {
+      if (!folder_exist(temp_path + "_" + to_string(i), false)) {
+        gains.dir_data = temp_path + "_" + to_string(i) + "/";
         assigned_a_folder = true;
         break;
       }
     }
-    DRAKE_DEMAND(assigned_a_folder);
-    cout << "data path = " << gains.dir_data << endl;
+  } else {
+    DRAKE_DEMAND(
+        !folder_exist(temp_path + "_" + to_string(n_max_folders), false));
+    for (int i = n_max_folders; i >= 0; i--) {
+      if (folder_exist(temp_path + "_" + to_string(i), false)) {
+        gains.dir_data = temp_path + "_" + to_string(i) + "/";
+        assigned_a_folder = true;
+        break;
+      }
+    }
   }
+  // DRAKE_DEMAND(assigned_a_folder);
+  if (!assigned_a_folder) {
+    throw std::runtime_error(
+        "Too many data folders! Delete some or increase the limit.");
+  }
+  cout << "data directory = " << gains.dir_data << endl;
 
   // Parameters for the traj opt
   PlannerSetting param;
@@ -218,8 +238,7 @@ int DoMain(int argc, char* argv[]) {
            param.knots_per_mode * VectorXd::Ones(1));
 
   // Create data folder if it doesn't exist
-  // if (!CreateFolderIfNotExist(gains.dir_model)) return 0;
-  if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
+  // if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model

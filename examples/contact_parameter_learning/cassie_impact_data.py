@@ -14,6 +14,31 @@ class CassieImpactData():
 
     self.loss_func = cassie_loss_utils.CassieLoss('pos_loss_weights')
 
+    self.start_times = {'08': 30.61,
+                        '09': 30.61,
+                        '10': 30.61,
+                        '11': 30.62,
+                        '12': 30.64,
+                        '13': 30.64,
+                        '14': 30.65,
+                        '15': 30.64,
+                        '16': 30.64,
+                        '17': 30.64,
+                        '20': 30.64,
+                        '21': 30.64,
+                        '22': 30.64,
+                        '23': 30.64,
+                        '24': 30.64,
+                        '25': 30.64,
+                        '26': 30.64,
+                        '27': 30.64,
+                        '28': 30.64,
+                        '29': 30.64,
+                        '30': 30.64,
+                        '31': 30.63,
+                        '32': 30.63,
+                        '33': 30.63,
+                        }
 
     # list of valid log nums from hardware trials
     self.log_nums_all = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))

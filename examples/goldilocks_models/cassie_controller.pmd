@@ -7,7 +7,7 @@ group "1.rom-space-controller" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=false";
         host = "localhost";
     }
-    cmd "3.1.rom-planner" {
+    cmd "3.2.rom-planner" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --n_step=3 --zero_touchdown_impact=false --feas_tol=1e-4 --use_ipopt=true --log_solver_info=false";
         host = "localhost";
     }
@@ -15,7 +15,7 @@ group "1.rom-space-controller" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false";
         host = "localhost";
     }
-    cmd "3.2.rom-planner (debug a given solve_idx)" {
+    cmd "3.3.rom-planner (debug a given solve_idx)" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --n_step=2 --log_solver_info=true --debug_mode=true --use_ipopt=false --opt_tol=1e-2 --solve_idx_for_read_from_file=54";
         host = "localhost";
     }
@@ -29,6 +29,10 @@ group "1.rom-space-controller" {
     }
     cmd "3.1.rom-planner (short time limit)(with dispatcher)" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "3.2.rom-planner (with dispatcher)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --n_step=3 --zero_touchdown_impact=false --feas_tol=1e-4 --use_ipopt=true --log_solver_info=false";
         host = "localhost";
     }
 }

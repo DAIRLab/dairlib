@@ -199,11 +199,11 @@ int DoMain(int argc, char* argv[]) {
       throw std::runtime_error(
           "Too many data folders! Delete some or increase the limit.");
     }
-  } else {
-    // Create data folder if it doesn't exist
-    if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
   }
   cout << "data directory = " << gains.dir_data << endl;
+  
+  // Create data folder if it doesn't exist
+  if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
 
   // Parameters for the traj opt
   PlannerSetting param;

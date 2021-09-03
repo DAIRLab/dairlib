@@ -1,82 +1,97 @@
 rows: 3
 cols: 3
 
-### OSC gains (Hardware gains; ~master branch)
-
+### OSC gains (Hardware gains; copied from sim)
 mu: 0.8
 
-w_accel: 0.000001
-w_soft_constraint: 8000
+w_accel: 0.00000001  # 0.00001  trying to add back x component
+w_soft_constraint: 80
 
-w_swing_toe: 100
+w_swing_toe: 2
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 50
+w_hip_yaw: 0.5
 hip_yaw_kp: 40
 hip_yaw_kd: 0.5
 
-#RomW:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 1000]
-#RomKp:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 50]
-#RomKd:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 5]
+################## Tuned with dispatchers in both simulation ###################
+
 RomW:
- [   2,    0,     0,
-     0,    2,     0,
-     0,    0,  1000]
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 10]
 RomKp:
- [  50,    0,     0,
-    0,   50,     0,
-    0,    0,    50]
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 50]
 RomKd:
- [   5,    0,     0,
-     0,    5,     0,
-     0,    0,     5]
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 1]
+#RomW:  # Weight for the old qp solver
+#  [0.02,    0,     0,
+#      0, 0.02,     0,
+#      0,    0,    10]
+#RomKp:
+#  [  50,    0,     0,
+#     0,   50,     0,
+#     0,    0,    50]
+#RomKd:
+#  [   5,    0,     0,
+#      0,    5,     0,
+#      0,    0,     5]
+## Trying to add back x components
+#RomW:
+#  [0.1,    0,     0,
+#   0, 0,     0,
+#   0,    0,    10]
+#RomKp:
+#  [  1,    0,     0,
+#     0,    0,     0,
+#     0,    0,    50]
+#RomKd:
+#  [   0.01,    0,     0,
+#      0,    0,     0,
+#      0,    0,     0.2]
 
 PelvisBalanceW:
- [ 200,    0,     0,
-   0,    400,     0,
-   0,      0,     0]
+  [ 2,    0,     0,
+    0,    4,     0,
+    0,    0,     0]
 PelvisBalanceKp:
- [20,      0,    0,
-  0,    100,    0,
-  0,      0,    0]
+  [200,      0,    0,
+   0,    100,    0,
+   0,      0,    0]
 PelvisBalanceKd:
- [   1,     0,    0,
-     0,    10,    0,
-     0,     0,    0]
+  [   10,     0,    0,
+      0,    10,    0,
+      0,     0,    0]
 
 PelvisHeadingW:
- [   0,    0,     0,
-     0,    0,     0,
-     0,    0,    10]
-PelvisHeadingKp:
- [   0,     0,    0,
-     0,     0,    0,
-     0,     0,   10]
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,   0.1]
+PelvisHeadingKp:  # We are not using kp for pelvis yaw
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,   0]
 PelvisHeadingKd:
- [   0,     0,    0,
-     0,     0,    0,
-     0,     0,    2]
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,    20]
 period_of_no_heading_control: 0.0
 
 SwingFootW:
- [ 400,    0,     0,
-   0,    400,     0,
-   0,      0,   400]
+  [ 4,    0,     0,
+    0,    4,     0,
+    0,    0,     4]
 SwingFootKp:
- [ 200,    0,     0,
-   0,  200,     0,
-   0,    0,   100]
+  [ 80,    0,     0,
+    0,  100,     0,
+    0,    0,   100]
 SwingFootKd:
- [   1,    0,     0,
-     0,    1,     0,
-     0,    0,     1]
+  [   1,    0,     0,
+      0,    1,     0,
+      0,    0,     1]
+

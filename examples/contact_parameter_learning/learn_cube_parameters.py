@@ -33,7 +33,7 @@ HIGH_RES_SUBSTEP = 100
 MED_RES_SUBSTEP = 10
 LOW_RES_SUBSTEP = 1
 
-default_substep = HIGH_RES_SUBSTEP
+default_substep = MED_RES_SUBSTEP
 
 # optimization parameters
 batch_size = 25

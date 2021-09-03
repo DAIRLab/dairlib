@@ -55,6 +55,8 @@ using systems::OutputVector;
 
 DEFINE_bool(broadcast, false,
             "broadcast between controller thread and planner thread");
+DEFINE_bool(create_new_data_folder, true,
+            "create new folder to prevent overwriting");
 
 // Planner settings
 DEFINE_int32(rom_option, -1, "See find_goldilocks_models.cc");
@@ -159,6 +161,23 @@ int DoMain(int argc, char* argv[]) {
     gains.constant_step_length_x = FLAGS_stride_length;
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
+
+  // Check if we want to use a new folder
+  if (FLAGS_create_new_data_folder) {
+    string path = gains.dir_data;
+    path.pop_back();
+
+    bool assigned_a_folder = false;
+    for (int i = 0; i < 100; i++) {
+      if (!folder_exist(path + "_" + to_string(i))) {
+        gains.dir_data = path + "_" + to_string(i) + "/";
+        assigned_a_folder = true;
+        break;
+      }
+    }
+    DRAKE_DEMAND(assigned_a_folder);
+    cout << "data path = " << gains.dir_data << endl;
+  }
 
   // Parameters for the traj opt
   PlannerSetting param;

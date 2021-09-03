@@ -3,6 +3,7 @@
 #include "dairlib/lcmt_target_standing_height.hpp"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
+#include "systems/filtering/internal_lowpass_filter.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
@@ -55,9 +56,12 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
 
+  mutable InternalLowpassFilter command_filt_ = InternalLowpassFilter(1.0, 3);
+
   int state_port_;
   int target_height_port_;
   int radio_port_;
+
 
   // A list of pairs of contact body frame and contact point
   const std::vector<
@@ -66,6 +70,8 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
 
   double height_;
   bool set_target_height_by_radio_;
+
+
 };
 
 }  // namespace osc

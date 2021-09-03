@@ -53,8 +53,9 @@ using drake::trajectories::PiecewisePolynomial;
 
 using systems::OutputVector;
 
-DEFINE_bool(hardware_broadcast, false,
-            "broadcast between controller thread and planner thread");
+DEFINE_bool(broadcast, false,
+            "broadcast between controller thread and planner thread. only used "
+            "on hardware");
 DEFINE_bool(create_new_data_folder, true,
             "create new folder to prevent overwriting; only for hardware");
 
@@ -163,7 +164,7 @@ int DoMain(int argc, char* argv[]) {
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
   // We only create new data folders for hardware experiment (broadcast case)
-  if (FLAGS_hardware_broadcast) {
+  if (FLAGS_broadcast) {
     bool create_new_data_folder = FLAGS_create_new_data_folder;
     if (!FLAGS_init_file.empty()) {
       // DRAKE_DEMAND(!FLAGS_create_new_data_folder);
@@ -201,7 +202,7 @@ int DoMain(int argc, char* argv[]) {
     }
   }
   cout << "data directory = " << gains.dir_data << endl;
-  
+
   // Create data folder if it doesn't exist
   if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
 
@@ -280,7 +281,7 @@ int DoMain(int argc, char* argv[]) {
   // Create mpc traj publisher
   auto traj_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          FLAGS_channel_y, FLAGS_hardware_broadcast ? &lcm_network : &lcm_local,
+          FLAGS_channel_y, FLAGS_broadcast ? &lcm_network : &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 
   // Create a block that gets the stance leg
@@ -359,7 +360,7 @@ int DoMain(int argc, char* argv[]) {
                                              FLAGS_channel_x};
   systems::TwoLcmDrivenLoop<dairlib::lcmt_dairlib_signal,
                             dairlib::lcmt_robot_output>
-      loop(FLAGS_hardware_broadcast ? &lcm_network : &lcm_local,
+      loop(FLAGS_broadcast ? &lcm_network : &lcm_local,
            std::move(owned_diagram), lcm_parsers, input_channels, true,
            FLAGS_run_one_loop_to_get_init_file
                ? 1

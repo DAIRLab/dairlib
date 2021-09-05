@@ -146,7 +146,7 @@ def load_sim_traj(filename):
     return get_window_around_contact_event(state_traj)
 
 def get_index_before_contact(data_traj):
-    start_idx = np.argwhere(data_traj[:,CUBE_DATA_POSITION_SLICE][:,2] <= BLOCK_HALF_WIDTH * np.sqrt(3.0))[0].tolist()[0] - 1
+    start_idx = np.argwhere(data_traj[:,CUBE_DATA_POSITION_SLICE][:,2] <= BLOCK_HALF_WIDTH * np.sqrt(3.0))[0].tolist()[0] - 3
     start_idx = np.max([0, start_idx])
     return start_idx
 

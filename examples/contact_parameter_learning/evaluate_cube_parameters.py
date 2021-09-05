@@ -19,12 +19,12 @@ def visualize_learned_params(params, data_sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
     initial_state = cube_data[0].ravel()
     data_sim.init_sim(params)
+    
     sim_data = data_sim.get_sim_traj_initial_state(initial_state, cube_data.shape[0], cube_sim.CUBE_DATA_DT)
     
     vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
-
-    import pdb; pdb.set_trace()
-    vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=1)
+    vis_sim.init_sim(drake_cube_sim.default_drake_contact_params)
+    vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=10)
 
     input('Press enter to continue to video')
 
@@ -224,16 +224,16 @@ if (__name__ == '__main__'):
         quit()
     
     params, test_set, _ = load_params_and_logs(learning_result)
-    # traj_pairs = load_traj_pairs(eval_sim, params, test_set)
+    traj_pairs = load_traj_pairs(eval_sim, params, test_set)
 
-    # sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
-    # print('Test set sorted from highest to lowest MSE')
-    # for key in sorted_pairs:
-    #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
+    sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
+    print('Test set sorted from highest to lowest MSE')
+    for key in sorted_pairs:
+        print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    # stats = get_error_and_loss_stats(traj_pairs, mse_loss)
-    # print(stats)
-    # plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[-1]])
-    # plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[-1]][1])
-    # plt.show()
-    visualize_learned_params(params, eval_sim, test_set[0])
+    stats = get_error_and_loss_stats(traj_pairs, mse_loss)
+    print(stats)
+    plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[0]])
+    plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[0]][1])
+    plt.show()
+    visualize_learned_params(params, eval_sim, list(sorted_pairs.keys())[15])

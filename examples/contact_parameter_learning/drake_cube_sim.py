@@ -70,7 +70,6 @@ class DrakeCubeSim(CubeSim):
         self.plant.RegisterCollisionGeometry(self.plant.world_body(), X_WG, HalfSpace(), "collision", props)
         self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(1, 1, 0.001), "visual", terrain_color)
         self.plant.Finalize()
-        self.plant.set_stiction_tolerance(.0001)
 
     def init_playback_sim(self, traj_to_play_back):
         self.builder = DiagramBuilder()
@@ -163,9 +162,9 @@ class DrakeCubeSim(CubeSim):
 
 
     def visualize_two_cubes_multipose(self, cube_traj, sim_traj, downsampling_rate=1):
-        _, cube_traj = self.make_two_cube_piecewise_polynomial(cube_traj, sim_traj)
+        _, cube_positions = self.make_two_cube_piecewise_polynomial(cube_traj, sim_traj)
         
-        cube_positions = cube_traj[:,0:cube_traj.shape[1]:downsampling_rate]
+        cube_positions = cube_positions[:,0:cube_positions.shape[1]:downsampling_rate]
         # import pdb; pdb.set_trace()
         visualizer = MultiposeVisualizer(
             "examples/contact_parameter_learning/urdf/double_cube.urdf", cube_positions.shape[1], "")

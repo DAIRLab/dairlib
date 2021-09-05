@@ -299,7 +299,7 @@ class DrakeToMujocoConverter():
     l_bar_quat = np.hstack((l_bar_quat[3], l_bar_quat[0:3]))
     r_bar_quat = np.hstack((r_bar_quat[3], r_bar_quat[0:3]))
 
-    return l_bar_quat, r_bar_quat
+    return l_bar_quat, r_bar_quat, l_hip_pitch_frame, r_hip_pitch_frame
 
   def solve_IK(self, x):
     toe_ang = x[self.pos_map['toe_left']]
@@ -319,12 +319,12 @@ class DrakeToMujocoConverter():
 
     q = x[:self.plant.num_positions()]
     v = x[-self.plant.num_velocities():]
-    l_bar_quat, r_bar_quat = self.solve_for_achilles_rod_quats(q)
+    l_bar_quat, r_bar_quat, l_hip_pitch_frame, r_hip_pitch_frame = self.solve_for_achilles_rod_quats(q)
     q_dt = q + self.plant.MapVelocityToQDot(self.context, v) * self.drake_sim_dt
-    l_bar_quat_dt, r_bar_quat_dt = self.solve_for_achilles_rod_quats(q_dt)
+    l_bar_quat_dt, r_bar_quat_dt, _, _ = self.solve_for_achilles_rod_quats(q_dt)
 
-    l_bar_omega = self.estimate_omega_bar(l_bar_quat, l_bar_quat_dt, self.drake_sim_dt)
-    r_bar_omega = self.estimate_omega_bar(r_bar_quat, r_bar_quat_dt, self.drake_sim_dt)
+    l_bar_omega = l_hip_pitch_frame.rotation().matrix() @ self.estimate_omega_bar(l_bar_quat, l_bar_quat_dt, self.drake_sim_dt)
+    r_bar_omega = r_hip_pitch_frame.rotation().matrix() @ self.estimate_omega_bar(r_bar_quat, r_bar_quat_dt, self.drake_sim_dt)
 
     # l_bar_quat = np.array([0.9785, -0.0164, 0.01787, -0.2049])
     # r_bar_quat = np.array([0.9786, 0.00386, -0.01524, -0.2051])

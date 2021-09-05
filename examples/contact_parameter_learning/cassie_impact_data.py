@@ -7,7 +7,7 @@ import cassie_loss_utils
 class CassieImpactData():
   def __init__(self):
     self.data_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
-    self.sim_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/'
+    self.sim_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/drake_optimal/'
     self.drake_params_directory = "examples/contact_parameter_learning/drake_cassie_params/"
     self.mujoco_params_directory = "examples/contact_parameter_learning/mujoco_cassie_params/"
 

@@ -25,7 +25,7 @@ class LearningMujocoCassieSim():
     self.sim_data_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/mujoco_cassie_sim_data/"
     self.params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/mujoco_cassie_params/"
     self.drake_params_folder = "/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/drake_cassie_params/"
-    self.date_prefix = 'mujoco_' + time.strftime("%Y_%m_%d_%H_%M")
+    self.date_prefix = 'mujoco_' + time.strftime("%Y_%m_%d_%H")
     self.ps = plot_styler.PlotStyler()
     self.start_times = {'08': 30.61,
                         '09': 30.61,
@@ -146,7 +146,7 @@ class LearningMujocoCassieSim():
     np.save(self.sim_data_folder + 't_x_' + log_num, t_x)
 
     self.iter_num += 1
-    print("iter: " + str(self.iter_num))
+    print("sim_run: " + str(self.iter_num))
 
     return log_num
 

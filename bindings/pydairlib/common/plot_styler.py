@@ -26,7 +26,8 @@ class PlotStyler():
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 5
+    # matplotlib.rcParams['figure.figsize'] = 8, 5
+    matplotlib.rcParams['figure.figsize'] = 8, 12
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 18}
     matplotlib.rc('font', **font)
@@ -96,6 +97,7 @@ class PlotStyler():
   def save_fig(self, filename):
 
     plt.savefig(self.directory + filename, dpi=200)
+    plt.close()
     return
 
   def add_legend(self, legend, loc=0):

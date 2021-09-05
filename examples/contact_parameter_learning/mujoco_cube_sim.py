@@ -50,7 +50,10 @@ class MujocoCubeSim(CubeSim):
 
     def set_initial_condition(self, initial_state):
 
+        # import pdb; pdb.set_trace()
         sim_state = self.sim.get_state()
+
+
         sim_state.qpos[:3] = initial_state[CUBE_DATA_POSITION_SLICE]
         sim_state.qpos[3:] = initial_state[CUBE_DATA_QUATERNION_SLICE]
         sim_state.qvel[:3] = initial_state[CUBE_DATA_VELOCITY_SLICE]

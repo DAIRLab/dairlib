@@ -191,11 +191,14 @@ class DrakeCubeSim(CubeSim):
         v = np.zeros((self.plant.num_velocities(),))
 
         initial_state = self.reexpress_state_local_to_global_omega(state)
+        # import pdb; pdb.set_trace()
 
         q[0:4] = initial_state[CUBE_DATA_QUATERNION_SLICE]
         q[4:] = initial_state[CUBE_DATA_POSITION_SLICE]
         v[0:3] = initial_state[CUBE_DATA_OMEGA_SLICE]
         v[3:] = initial_state[CUBE_DATA_VELOCITY_SLICE]
+
+        
 
         self.sim.get_mutable_context().SetTime(0.0)
         self.sim.Initialize()

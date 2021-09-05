@@ -45,14 +45,14 @@ class CubeSim(ABC):
 
     @classmethod
     def reexpress_state_local_to_global_omega(cls, state):
-        new_state = state.ravel()
+        new_state = state.flatten()
         rot = quat_to_rotation(new_state[CUBE_DATA_QUATERNION_SLICE])
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE])
         return new_state
 
     @classmethod
     def reexpress_state_global_to_local_omega(cls, state):
-        new_state = state.ravel()
+        new_state = state.flatten()
         rot = quat_to_rotation(new_state[CUBE_DATA_QUATERNION_SLICE])
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE], inverse=True)
         return new_state

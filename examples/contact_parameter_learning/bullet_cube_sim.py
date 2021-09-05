@@ -38,7 +38,9 @@ class BulletCubeSim(CubeSim):
 
         p.setTimeStep(CUBE_DATA_DT / self.substeps)
         
-    def set_initial_condition(self, initial_state):
+    def set_initial_condition(self, state):
+
+        initial_state = self.reexpress_state_local_to_global_omega(state)
 
         q = initial_state[CUBE_DATA_QUATERNION_SLICE]
         q_conv = np.array([q[1], q[2], q[3], q[0]]).ravel()
@@ -62,7 +64,7 @@ class BulletCubeSim(CubeSim):
 
         for i in range(self.substeps):
             p.stepSimulation()
-
+        data_arr[0] = self.reexpress_state_global_to_local_omega(data_arr)
         return data_arr
 
     def __del__(self):

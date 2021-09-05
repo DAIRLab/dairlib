@@ -162,8 +162,11 @@ class DrakeCubeSim(CubeSim):
             self.sim.AdvanceTo(t_end)
 
 
-    def visualize_two_cubes_multipose(self, cube_traj, sim_traj):
-        _, cube_positions = self.make_two_cube_piecewise_polynomial(cube_traj, sim_traj)
+    def visualize_two_cubes_multipose(self, cube_traj, sim_traj, downsampling_rate=1):
+        _, cube_traj = self.make_two_cube_piecewise_polynomial(cube_traj, sim_traj)
+        
+        cube_positions = cube_traj[:,0:cube_traj.shape[1]:downsampling_rate]
+        # import pdb; pdb.set_trace()
         visualizer = MultiposeVisualizer(
             "examples/contact_parameter_learning/urdf/double_cube.urdf", cube_positions.shape[1], "")
         visualizer.DrawPoses(cube_positions)

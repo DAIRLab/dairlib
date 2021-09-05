@@ -1,4 +1,6 @@
 import os
+
+from numpy.core.fromnumeric import trace
 import cube_sim
 import drake_cube_sim
 import mujoco_cube_sim
@@ -13,21 +15,18 @@ import numpy as np
 
 mse_loss = cube_sim.LossWeights() # default weights are all ones
 
-def visualize_learned_params(params, sim_type, toss_id):
+def visualize_learned_params(params, data_sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
     initial_state = cube_data[0].ravel()
-
-    vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
-
-    if (sim_type == 'mujoco'):
-        data_sim = mujoco_cube_sim.MujocoCubeSim(substeps=1000)
-    elif (sim_type == 'drake'):
-        data_sim = drake_cube_sim.DrakeCubeSim()
-    elif (sim_type == 'bullet'):
-        data_sim = bullet_cube_sim.BulletCubeSim()
-
     data_sim.init_sim(params)
     sim_data = data_sim.get_sim_traj_initial_state(initial_state, cube_data.shape[0], cube_sim.CUBE_DATA_DT)
+    
+    vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
+
+    import pdb; pdb.set_trace()
+    vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=1)
+
+    input('Press enter to continue to video')
 
     vis_sim.visualize_two_cubes(cube_data, sim_data, 0.1)
 
@@ -212,28 +211,29 @@ if (__name__ == '__main__'):
     
     learning_result = sys.argv[1]
     sim_type = learning_result.split('_')[0]
+    substeps = int(learning_result.split('_')[-1])
 
     if (sim_type == 'mujoco'):
-        eval_sim = mujoco_cube_sim.MujocoCubeSim(substeps=10)
+        eval_sim = mujoco_cube_sim.MujocoCubeSim(substeps=substeps)
     elif (sim_type == 'drake'):
-        eval_sim = drake_cube_sim.DrakeCubeSim()
+        eval_sim = drake_cube_sim.DrakeCubeSim(substeps=substeps)
     elif (sim_type == 'bullet'):
-        eval_sim = bullet_cube_sim.BulletCubeSim(substeps=10)
+        eval_sim = bullet_cube_sim.BulletCubeSim(substeps=substeps)
     else:
         print(f'{sim_type} is not a supported simulator - please check for spelling mistakes and try again')
         quit()
     
     params, test_set, _ = load_params_and_logs(learning_result)
-    traj_pairs = load_traj_pairs(eval_sim, params, test_set)
+    # traj_pairs = load_traj_pairs(eval_sim, params, test_set)
 
-    sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
-    print('Test set sorted from highest to lowest MSE')
-    for key in sorted_pairs:
-        print(f'Toss: {key} \t\t MSE: {losses[key]}')
+    # sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
+    # print('Test set sorted from highest to lowest MSE')
+    # for key in sorted_pairs:
+    #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    #stats = get_error_and_loss_stats(traj_pairs, mse_loss)
-    #print(stats)
-    plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[-1]])
-    plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[-1]][1])
-    plt.show()
-    #visualize_learned_params(params, sim_type, list(sorted_pairs.keys())[0])
+    # stats = get_error_and_loss_stats(traj_pairs, mse_loss)
+    # print(stats)
+    # plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[-1]])
+    # plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[-1]][1])
+    # plt.show()
+    visualize_learned_params(params, eval_sim, test_set[0])

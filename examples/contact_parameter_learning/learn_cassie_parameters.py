@@ -12,7 +12,7 @@ from random import sample, choice
 import time
 import sys
 
-SIM_ERROR_LOSS = 200
+SIM_ERROR_LOSS = 400
 
 drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='2021_08_27_weights')
 mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='2021_08_27_weights')
@@ -67,14 +67,28 @@ def get_drake_loss_mp(params):
 def get_mujoco_loss(params, log_num=None):
   if (log_num == None):
     log_num = choice(training_idxs)
-  print(log_num)
-  sim_id = mujoco_sim.run(params, log_num)
-  loss = mujoco_sim.compute_loss(log_num, sim_id, params)
-  loss_over_time.append(loss)
-  stiffness_over_time.append(params['timeconst'])
-  print('loss:' + str(loss))
+  try:
+    sim_id = mujoco_sim.run(params, log_num)
+    loss = mujoco_sim.compute_loss(log_num, sim_id, params)
+  except:
+    loss = SIM_ERROR_LOSS
+  # print(log_num)
+  # sim_id = mujoco_sim.run(params, log_num)
+  # loss = mujoco_sim.compute_loss(log_num, sim_id, params)
+  # loss_over_time.append(loss)
+  # stiffness_over_time.append(params['timeconst'])
+  # print('loss:' + str(loss))
   return loss
 
+def get_mujoco_loss_mp(params):
+  loss_sum = 0
+  for i in range(batch_size):
+    loss_sum += get_mujoco_loss(params)
+  print(loss_sum / batch_size)
+
+  params_over_time.append(params)
+  loss_over_time.append(loss_sum / batch_size)
+  return loss_sum / batch_size
 
 def print_loss_weights(loss_filename):
   new_loss_filename = time.strftime("%Y_%m_%d") + '_weights'
@@ -127,7 +141,7 @@ def learn_mujoco_cassie_params():
 
   optimization_param.value = mujoco_sim.default_mujoco_contact_params
   optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
-  params = optimizer.minimize(get_mujoco_loss)
+  params = optimizer.minimize(get_mujoco_loss_mp)
   loss = np.array(loss_over_time)
   stiffness = np.array(stiffness_over_time)
   np.save(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
@@ -170,7 +184,7 @@ def print_drake_cassie_params(single_log_num, plot=False):
   # np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offset)
   # np.save(drake_sim.params_folder + log_num + '_vel_offset_' + str(budget), vel_offset)
   # return z_offset, vel_offset
-  return
+  return loss
 
 
 def print_mujoco_cassie_params(single_log_num):
@@ -249,10 +263,10 @@ if (__name__ == '__main__'):
   # learn_drake_cassie_params(batch=True)
   # print_drake_cassie_params(i)
   # learn_mujoco_cassie_params()
-  # plot_per_log_loss_drake()
+  plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
-  print_drake_cassie_params(str(sys.argv[1]), True)
+  # print_drake_cassie_params(str(sys.argv[1]), True)
   # plot_loss_trajectory()
   pass

@@ -86,11 +86,13 @@ class MujocoCassieSim():
     q = self.cassie_env.qpos()
     v = self.cassie_env.qvel()
     # print(v[9:12])
+    # print(v[22:25])
     return q, v, u, t
 
   def set_state(self, x_init):
     q_mujoco, v_mujoco = self.drake_to_mujoco_converter.convert_to_mujoco(x_init)
     # print(v_mujoco[9:12])
+    # print(v_mujoco[22:25])
     mujoco_state = self.cassie_env.get_state()
     mujoco_state.set_qpos(q_mujoco)
     mujoco_state.set_qvel(v_mujoco)

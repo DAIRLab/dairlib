@@ -144,18 +144,37 @@ def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False):
     else:
       com_pos_hardware[i] = x_i[4:7]
       com_vel_hardware[i] = x_i[26:29]
-    #
-  # ps.plot(t_sim, com_pos_sim)
-  # ps.plot(t_hardware, com_pos_hardware)
-  plt.figure('x' + log_num)
-  ps.plot(t_sim, com_vel_sim[:, 0])
-  ps.plot(t_hardware, com_vel_hardware[:, 0])
+  t_common = 0
+  n_samples_common = min(t_hardware.shape[0], t_sim.shape[0])
+  if(t_hardware.shape[0] < t_sim.shape[0]):
+    t_common = t_hardware
+  elif(t_hardware.shape[0] >= t_sim.shape[0]):
+    t_common = t_sim
+
+  figure_title = 'pelvis'
+  if use_center_of_mass:
+    figure_title = 'com'
+
+  plt.figure(figure_title + ': ' + log_num)
+  y_lim = [-2.0, 0.5]
+  ps.plot(t_common, com_vel_sim[:n_samples_common, 0], ylim=y_lim)
+  ps.plot(t_common, com_vel_hardware[:n_samples_common, 0])
   # plt.figure('y' + log_num)
-  ps.plot(t_sim, com_vel_sim[:, 1])
-  ps.plot(t_hardware, com_vel_hardware[:, 1])
+  ps.plot(t_common, com_vel_sim[:n_samples_common, 1])
+  ps.plot(t_common, com_vel_hardware[:n_samples_common, 1])
   # plt.figure('z' + log_num)
-  ps.plot(t_sim, com_vel_sim[:, 2])
-  ps.plot(t_hardware, com_vel_hardware[:, 2])
+  ps.plot(t_common, com_vel_sim[:n_samples_common, 2])
+  ps.plot(t_common, com_vel_hardware[:n_samples_common, 2])
+  ps.add_legend(['x_sim', 'x_hardware', 'y_sim', 'y_hardware', 'z_sim', 'z_hardware'])
+  ps.save_fig(figure_title + '_' + log_num)
+
+  plt.figure(figure_title + '_error: ' + log_num)
+  y_lim = [-0.2, 0.35]
+  ps.plot(t_common, com_vel_sim[:n_samples_common, 0] - com_vel_hardware[:n_samples_common, 0], ylim=y_lim)
+  ps.plot(t_common, com_vel_sim[:n_samples_common, 1] - com_vel_hardware[:n_samples_common, 1])
+  ps.plot(t_common, com_vel_sim[:n_samples_common, 2] - com_vel_hardware[:n_samples_common, 2])
+  ps.add_legend(['x', 'y', 'z'])
+  ps.save_fig(figure_title + '_error_' + log_num)
 
   return
 
@@ -194,7 +213,7 @@ def main():
   # data_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
   sim_data_directory = '/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/'
-  figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/figures/'
+  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/sim_to_real_comparison/'
   ps = PlotStyler()
   ps.set_default_styling(directory=figure_directory)
 
@@ -214,16 +233,18 @@ def main():
   joint_vel_indices = range(35, 37)
 
   # load all the data used for plotting
-  for log_num in ['08', '15', '24']:
+  # for log_num in ['08', '15', '24']:
+  for log_num in impact_data.log_nums_real:
     # plt.figure(log_num)
     # grf_single_log(impact_data, log_num)
     # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices)
-    plot_centroidal_trajectory(impact_data, log_num)
+    # plot_centroidal_trajectory(impact_data, log_num)
+    plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=True)
 
   # plot_velocity_trajectory(impact_data, '08', hip_joints_indices)
   # plot_velocity_trajectory(impact_data, '21', joint_vel_indices)
   # plot_error_bands(impact_data)
-  ps.show_fig()
+  # ps.show_fig()
 
 
 if __name__ == '__main__':

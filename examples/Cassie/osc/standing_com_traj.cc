@@ -59,7 +59,6 @@ StandingComTraj::StandingComTraj(
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("com_xyz", traj_inst,
                                   &StandingComTraj::CalcDesiredTraj);
-
 }
 
 void StandingComTraj::CalcDesiredTraj(
@@ -90,7 +89,6 @@ void StandingComTraj::CalcDesiredTraj(
 
   // Saturate based on min and max height
   target_height = drake::math::saturate(target_height, kMinHeight, kMaxHeight);
-
   double x_offset = kCoMXScale * cassie_out->pelvis.radio.channel[4];
   double y_offset = kCoMYScale * cassie_out->pelvis.radio.channel[5];
   VectorXd q = robot_output->GetPositions();
@@ -112,7 +110,7 @@ void StandingComTraj::CalcDesiredTraj(
                            feet_center_pos(2) + target_height);
 
   desired_com_pos = command_filt_.filter(robot_output->get_timestamp(), desired_com_pos);
-
+  
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(

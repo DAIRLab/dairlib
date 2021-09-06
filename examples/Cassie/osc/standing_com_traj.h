@@ -62,7 +62,6 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   int target_height_port_;
   int radio_port_;
 
-
   // A list of pairs of contact body frame and contact point
   const std::vector<
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
@@ -70,8 +69,6 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
 
   double height_;
   bool set_target_height_by_radio_;
-
-
 };
 
 }  // namespace osc

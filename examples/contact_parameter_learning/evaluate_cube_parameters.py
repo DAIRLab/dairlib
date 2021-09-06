@@ -135,7 +135,7 @@ def make_sim_to_real_comparison_plots_single_toss(traj_pair):
         plt.plot(tvec, errors[key])
         plt.title(key)
 
-def get_error_and_loss_stats(traj_pairs, loss_weights):
+def calc_error_and_loss_stats(traj_pairs, loss_weights):
     pos = []
     vel = []
     omega = []
@@ -207,11 +207,42 @@ def load_params_and_logs(result_id):
     
     return learned_params, test_set, loss_weights
 
-if (__name__ == '__main__'):
+
+def list_union(list1, list2):
+    return list(set(list1 | set(list2)))
+
+def load_list_of_results(training_results, loss_to_compare):
+    result_traj_pairs = {}
+    result_losses = {}
+    result_params = {}
+    sims = {}
+    union_of_test_sets = []
     
-    learning_result = sys.argv[1]
-    sim_type = learning_result.split('_')[0]
-    substeps = int(learning_result.split('_')[-1])
+    for result in training_results:
+        sims[result] = get_eval_sim(result)
+        result_params[result], test_set, _ = load_params_and_logs(result)
+        union_of_test_sets = list_union(union_of_test_sets, test_set)
+    for result in training_results:
+        traj_pairs = load_traj_pairs(sims[result], result_params[result], union_of_test_sets)
+        result_traj_pairs[result], result_losses[result] = sort_traj_pairs_by_loss(traj_pairs, loss_to_compare)
+
+    return result_traj_pairs, result_losses, result_params, sims, union_of_test_sets
+
+def compare_list_of_results(training_results):
+    traj_pairs, losses, params, sims, test_set = load_list_of_results(training_results, mse_loss)
+    stats = {}
+    for result in training_results:
+        stats[result] = calc_error_and_loss_stats(traj_pairs[result], mse_loss)
+    
+    plt.figure()
+    for result in training_results:
+        plt.hist(losses[result].values(), bins=20, range=(0,45), alpha=0.25)
+    
+    plt.legend(training_results)
+
+def get_eval_sim(result_id):
+    sim_type = result_id.split('_')[0]
+    substeps = int(result_id.split('_')[-1])
 
     if (sim_type == 'mujoco'):
         eval_sim = mujoco_cube_sim.MujocoCubeSim(substeps=substeps)
@@ -221,19 +252,36 @@ if (__name__ == '__main__'):
         eval_sim = bullet_cube_sim.BulletCubeSim(substeps=substeps)
     else:
         print(f'{sim_type} is not a supported simulator - please check for spelling mistakes and try again')
-        quit()
+        eval_sim = None
     
-    params, test_set, _ = load_params_and_logs(learning_result)
-    traj_pairs = load_traj_pairs(eval_sim, params, test_set)
+    return eval_sim
 
-    sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
-    print('Test set sorted from highest to lowest MSE')
-    for key in sorted_pairs:
-        print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    stats = get_error_and_loss_stats(traj_pairs, mse_loss)
-    print(stats)
-    plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[0]])
-    plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[0]][1])
-    plt.show()
-    visualize_learned_params(params, eval_sim, list(sorted_pairs.keys())[15])
+if (__name__ == '__main__'):
+    
+    ids = ['bullet_2021_08_31_16_53_100', 
+           'bullet_2021_08_31_16_54_100',
+           'bullet_2021_08_31_16_55_100']
+
+    compare_list_of_results(ids)
+
+    ## INDIVIDUAL LOG FUNCTIONS
+    # learning_result = sys.argv[1]
+
+    # eval_sim = get_eval_sim(learning_result)
+    # if (eval_sim == None): quit()
+
+    # params, test_set, _ = load_params_and_logs(learning_result)
+    # traj_pairs = load_traj_pairs(eval_sim, params, test_set)
+
+    # sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
+    # print('Test set sorted from highest to lowest MSE')
+    # for key in sorted_pairs:
+    #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
+
+    # stats = calc_error_and_loss_stats(traj_pairs, mse_loss)
+    # print(stats)
+    # plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[0]])
+    # plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[0]][1])
+    # plt.show()
+    # visualize_learned_params(params, eval_sim, list(sorted_pairs.keys())[15])

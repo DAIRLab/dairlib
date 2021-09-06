@@ -1,5 +1,5 @@
 #pragma once
-#include "timestamped_lowpass_filter.h"
+
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/timestamped_vector.h"
 

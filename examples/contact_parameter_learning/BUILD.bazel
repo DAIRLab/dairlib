@@ -89,10 +89,15 @@ py_binary(
 
 py_library(
     name = "bullet_cube_sim_py", 
-    srcs = "bullet_cube_sim.py",
+    srcs = ["bullet_cube_sim.py"],
     deps = [
         ":cube_sim",
     ]
+)
+
+py_library(
+    name = "plotting_utils", 
+    srcs = ["plotting_utils.py"]
 )
 
 py_binary(
@@ -102,6 +107,7 @@ py_binary(
         ":cube_sim",
         ":drake_cube_sim_py",
         ":learn_cube_parameters",
+        ":plotting_utils",
         ":mujoco_cube_sim_py",
         ":bullet_cube_sim_py",
         "//bindings/pydairlib",

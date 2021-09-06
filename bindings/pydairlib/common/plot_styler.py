@@ -18,16 +18,20 @@ class PlotStyler():
     self.grey = '#909090'
     self.orange = '#FE7F0E'
     self.directory = None
+    self.penn_color_wheel = [self.blue, self.red, self.yellow, self.grey, self.orange]
     return
 
-  def set_default_styling(self, directory=None):
+  def set_default_styling(self, directory=None, figsize=None):
     self.directory = directory
     matplotlib.rcParams["savefig.directory"] = directory
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     # matplotlib.rcParams['figure.figsize'] = 8, 5
-    matplotlib.rcParams['figure.figsize'] = 8, 12
+    if (figsize == None):
+      matplotlib.rcParams['figure.figsize'] = 8, 12
+    else:
+      matplotlib.rcParams['figure.figsize'] = figsize[0], figsize[1]
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 18}
     matplotlib.rc('font', **font)

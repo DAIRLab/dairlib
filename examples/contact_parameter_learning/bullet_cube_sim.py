@@ -68,4 +68,7 @@ class BulletCubeSim(CubeSim):
         return data_arr
 
     def __del__(self):
-        p.disconnect()
+        try:
+            p.disconnect()
+        except:
+            pass

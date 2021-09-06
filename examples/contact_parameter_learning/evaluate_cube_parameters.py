@@ -11,9 +11,16 @@ import json
 from random import choice
 from learn_cube_parameters import cube_data_folder, model_folder, log_folder
 from matplotlib import pyplot as plt
+from scipy.stats import gaussian_kde
 import numpy as np
+from pydairlib.common.plot_styler import PlotStyler
+from plotting_utils import format_sim_name
 
 mse_loss = cube_sim.LossWeights() # default weights are all ones
+figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures')
+
+ps = PlotStyler()
+ps.set_default_styling(directory=figure_directory, figsize=(20,12))
 
 def visualize_learned_params(params, data_sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
@@ -82,10 +89,11 @@ def plot_contact_impulses(traj_pair, title=''):
     plt.title(f'{title}Normal Forces')
     
 
-def load_traj_pairs(sim, params, test_set):
+def load_traj_pairs(sim, params, test_set, print_progress=False):
     sim.init_sim(params)
 
     traj_pairs = {}
+    i = 0
     for toss_id in test_set:
         cube_data = cube_sim.load_cube_toss(
             cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
@@ -93,8 +101,10 @@ def load_traj_pairs(sim, params, test_set):
         steps = cube_data.shape[0]
         sim_data = sim.get_sim_traj_initial_state(
             initial_state, steps, cube_sim.CUBE_DATA_DT)
-        
         traj_pairs[toss_id] = (cube_data, sim_data)
+        if (print_progress):
+            if not (i % 25): print(i)
+            i += 1
     
     return traj_pairs
 
@@ -151,7 +161,7 @@ def calc_error_and_loss_stats(traj_pairs, loss_weights):
         omega.append(np.mean(errors['omega_error']))
         rot.append(np.mean(errors['rotational_error']))
         loss.append(loss_weights.CalculateLoss(pair[0], pair[1]))
-        if not (i % 25): print(f'calculating means {i} %')
+        if not (i % 25): print(f'calculating means #{i}')
         i += 1
     
     pos_mean = np.mean(np.array(pos))
@@ -209,7 +219,7 @@ def load_params_and_logs(result_id):
 
 
 def list_union(list1, list2):
-    return list(set(list1 | set(list2)))
+    return list(set(list1) | set(list2))
 
 def load_list_of_results(training_results, loss_to_compare):
     result_traj_pairs = {}
@@ -219,26 +229,37 @@ def load_list_of_results(training_results, loss_to_compare):
     union_of_test_sets = []
     
     for result in training_results:
+        print(f'Loading logs for {result}')
         sims[result] = get_eval_sim(result)
         result_params[result], test_set, _ = load_params_and_logs(result)
         union_of_test_sets = list_union(union_of_test_sets, test_set)
+
     for result in training_results:
-        traj_pairs = load_traj_pairs(sims[result], result_params[result], union_of_test_sets)
+        print(f'Loading trajectories for {result}')
+        traj_pairs = load_traj_pairs(sims[result], result_params[result], union_of_test_sets, print_progress=True)
         result_traj_pairs[result], result_losses[result] = sort_traj_pairs_by_loss(traj_pairs, loss_to_compare)
 
     return result_traj_pairs, result_losses, result_params, sims, union_of_test_sets
 
-def compare_list_of_results(training_results):
-    traj_pairs, losses, params, sims, test_set = load_list_of_results(training_results, mse_loss)
-    stats = {}
+def plot_estimated_loss_pdfs(losses):
+    training_results = list(losses.keys())
+    i = 0
+    legend_strs = []
+    filename = ''
     for result in training_results:
-        stats[result] = calc_error_and_loss_stats(traj_pairs[result], mse_loss)
+        loss = np.array(list(losses[result].values()))
+        pts = np.linspace(np.min(loss), np.max(loss), 100)
+        pdf = gaussian_kde(loss).pdf(pts)
+        ps.plot(pts, pdf, color=ps.penn_color_wheel[i])
+        legend_strs.append(format_sim_name(result) + ' $T_{sim}$ = ' + str(148 * int(result.split('_')[-1])) + ' Hz')
+        filename += format_sim_name(result) + '_' + result.split('_')[-1] + '_'
+        i += 1
     
-    plt.figure()
-    for result in training_results:
-        plt.hist(losses[result].values(), bins=20, range=(0,45), alpha=0.25)
-    
-    plt.legend(training_results)
+    filename += '.pdf'
+    plt.title('Estimated Pdf of Cube Toss Error')
+    plt.xlabel('Avg. MSE')
+    plt.legend(legend_strs)
+    ps.save_fig(filename)
 
 def get_eval_sim(result_id):
     sim_type = result_id.split('_')[0]
@@ -259,11 +280,26 @@ def get_eval_sim(result_id):
 
 if (__name__ == '__main__'):
     
-    ids = ['bullet_2021_08_31_16_53_100', 
-           'bullet_2021_08_31_16_54_100',
+    # ids = ['bullet_2021_08_31_16_53_100', 
+    #        'bullet_2021_08_31_16_54_100',
+    #        'bullet_2021_08_31_16_55_100']
+
+    # ids = ['drake_2021_08_31_14_00_100', 
+    #        'drake_2021_08_31_14_04_100',
+    #        'drake_2021_08_31_17_28_100']
+
+    # ids = ['mujoco_2021_08_31_16_17_100', 
+    #        'mujoco_2021_08_31_16_18_100', 
+    #        'mujoco_2021_08_31_16_21_100']
+    
+    ids = ['mujoco_2021_08_31_16_17_100',
+           'drake_2021_08_31_14_04_100', 
            'bullet_2021_08_31_16_55_100']
 
-    compare_list_of_results(ids)
+    _, losses, _, _, _ = load_list_of_results(ids, mse_loss)
+
+    plot_estimated_loss_pdfs(losses)
+    plt.show()
 
     ## INDIVIDUAL LOG FUNCTIONS
     # learning_result = sys.argv[1]

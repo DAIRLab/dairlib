@@ -9,8 +9,8 @@ namespace dairlib {
 
 class InternalLowpassFilter {
  public:
-  InternalLowpassFilter(double tau, int n_states);
-  VectorXd filter(const double timestamp, const VectorXd& x);
+  InternalLowpassFilter(double tau, int n_y);
+  VectorXd filter(const double timestamp, const VectorXd& y);
 
  private:
   const double tau_;

@@ -58,7 +58,7 @@ class CassieImpactData():
 
     for log_num in self.log_nums_real:
       self.x_trajs_hardware[log_num] = np.load(self.data_directory + 'x_' + log_num + '.npy')
-      self.t_x_hardware[log_num] = np.load(self.data_directory + 't_x_' + log_num + '.npy')
+      self.t_x_hardware[log_num] = np.load(self.data_directory + 't_x_' + log_num + '.npy')[:, 0]
       self.u_trajs_hardware[log_num] = np.load(self.data_directory + 'u_' + log_num + '.npy')
       self.contact_forces_hardware[log_num] = np.load(self.data_directory + 'lambda_' + log_num + '.npy')
 
@@ -86,6 +86,7 @@ class CassieImpactData():
       self.z_offsets = pickle.load(file)
     with open(self.drake_params_directory + 'optimized_vel_offsets.pkl', 'rb') as file:
       self.vel_offsets = pickle.load(file)
+    # import pdb; pdb.set_trace()
 
     # for log_num in self.log_nums_real:
     #   print('hardware: ')

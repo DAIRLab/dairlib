@@ -39,6 +39,9 @@ class PlotStyler():
     plt.set_cmap('tab20')
     self.directory = directory
 
+  def set_figsize(self, size):
+    matplotlib.rcParams['figure.figsize'] = size
+
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None, linestyle=None,
            grid=True, xlabel=None, ylabel=None, title=None, legend=None, data_label=None):
 

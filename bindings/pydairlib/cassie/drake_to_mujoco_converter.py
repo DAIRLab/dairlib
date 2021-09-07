@@ -13,6 +13,7 @@ from pydrake.systems.rendering import MultibodyPositionToGeometryPose
 from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box
 from pydrake.systems.analysis import Simulator
 from pydrake.systems.primitives import TrajectorySource
+from pydairlib.multibody import MultiposeVisualizer
 
 
 class DrakeToMujocoConverter():
@@ -92,8 +93,8 @@ class DrakeToMujocoConverter():
     self.plantar_rod_frame = self.foot_crank_plant.GetBodyByName('plantar_rod_left').body_frame()
     self.toe_left_frame = self.foot_crank_plant.GetBodyByName('toe_left').body_frame()
     self.plantar_rod_anchor_point = np.array([0.35012, 0, 0])
-    # self.toe_left_anchor_point = np.array([0.04885482, 0.00394248, 0.01484])
-    self.toe_left_anchor_point = np.array([0.05485482, 0, 0.01484])
+    self.toe_left_anchor_point = np.array([0.04885482, 0.00394248, 0.01484])
+    # self.toe_left_anchor_point = np.array([0.05485482, 0, 0.01484])
     # self.toe_left_anchor_point = np.array([0.05512, 0.006, 0.01484])
 
     # self.ik_solver.AddPositionConstraint(self.plantar_rod_frame, self.plantar_rod_anchor_point, self.toe_left_frame,
@@ -129,7 +130,6 @@ class DrakeToMujocoConverter():
     v_copy = self.map_v_drake_to_mujoco @ v
     q_full = q_missing + q_copy
     v_full = v_missing + v_copy
-    # import pdb; pdb.set_trace()
     return q_full, v_full
 
   def visualize_state_lower(self, x):
@@ -145,36 +145,8 @@ class DrakeToMujocoConverter():
     print(result.get_solution_result())
     builder = DiagramBuilder()
 
-    # Add a cube as MultibodyPlant
-    plant = MultibodyPlant(self.drake_sim_dt)
-    scene_graph = builder.AddSystem(SceneGraph())
-    plant_id = plant.RegisterAsSourceForSceneGraph(scene_graph)
-
-    Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_foot_crank.urdf'))
-    # plant.RegisterVisualGeometry(plant.world_body(), X_WG, Box(10, 10, 0.001), "visual", terrain_color)
-    plant.Finalize()
-    plant_context = plant.CreateDefaultContext()
-
-    pp_traj = PiecewisePolynomial(left_foot_crank_state)
-
-    traj_source = builder.AddSystem(TrajectorySource(pp_traj))
-    q_to_pose = builder.AddSystem(MultibodyPositionToGeometryPose(plant))
-    builder.Connect(traj_source.get_output_port(), q_to_pose.get_input_port())
-    builder.Connect(q_to_pose.get_output_port(), scene_graph.get_source_pose_port(plant_id))
-
-    # self.builder.Connect(self.foot_crank_plant.get_geometry_poses_output_port(),
-    #                      self.foot_crank_scene_graph.get_source_pose_port(self.foot_crank_plant.get_source_id().value()))
-
-    # self.q_to_pose = self.builder.AddSystem(MultibodyPositionToGeometryPose(self.plant))
-    # self.builder.Connect(self.q_to_pose.get_output_port(), self.foot_crank_scene_graph.get_source_pose_port(plant_id))
-    DrakeVisualizer.AddToBuilder(builder, scene_graph)
-    diagram = builder.Build()
-    sim = Simulator(diagram)
-    sim.set_publish_every_time_step(True)
-    sim.get_mutable_context().SetTime(0.0)
-    plant.SetPositions(plant_context, left_foot_crank_state)
-    sim.Initialize()
-    sim.AdvanceTo(0.1)
+    visualizer = MultiposeVisualizer('examples/Cassie/urdf/cassie_foot_crank.urdf', 1, '')
+    visualizer.DrawPoses(left_foot_crank_state)
 
   def visualize_state_upper(self, x):
 
@@ -219,40 +191,17 @@ class DrakeToMujocoConverter():
                                                   np.array([.11877, -.01, 0.0]), plant.world_frame())
     achilles_end_point = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('achilles_rod_left').body_frame(),
                                                    np.array([0.5012, 0, 0]), plant.world_frame())
-    # print(achilles_end_point)
-    # print(heel_spring_mount)
-    print(np.linalg.norm(hip_mount - heel_spring_mount))
-    # print(np.linalg.norm(achilles_end_point - heel_spring_mount))
 
-    pp_traj = PiecewisePolynomial(knee_linkage_state)
-
-    traj_source = builder.AddSystem(TrajectorySource(pp_traj))
-    q_to_pose = builder.AddSystem(MultibodyPositionToGeometryPose(plant))
-    builder.Connect(traj_source.get_output_port(), q_to_pose.get_input_port())
-    builder.Connect(q_to_pose.get_output_port(), scene_graph.get_source_pose_port(plant_id))
-
-    # self.builder.Connect(self.foot_crank_plant.get_geometry_poses_output_port(),
-    #                      self.foot_crank_scene_graph.get_source_pose_port(self.foot_crank_plant.get_source_id().value()))
-
-    # self.q_to_pose = self.builder.AddSystem(MultibodyPositionToGeometryPose(self.plant))
-    # self.builder.Connect(self.q_to_pose.get_output_port(), self.foot_crank_scene_graph.get_source_pose_port(plant_id))
-    DrakeVisualizer.AddToBuilder(builder, scene_graph)
-    diagram = builder.Build()
-    sim = Simulator(diagram)
-    sim.set_publish_every_time_step(True)
-    sim.get_mutable_context().SetTime(0.0)
-    # plant.SetPositions(plant_context, knee_linkage_state)
-    sim.Initialize()
-    sim.AdvanceTo(0.1)
-
-    # import pdb; pdb.set_trace()
+    visualizer = MultiposeVisualizer('examples/Cassie/urdf/cassie_knee_linkage.urdf', 1, '')
+    visualizer.DrawPoses(knee_linkage_state)
 
   def estimate_omega_bar(self, quat1, quat2, dt):
     R1 = R.from_quat(np.hstack((quat1[1:4], quat1[0])))
     R2 = R.from_quat(np.hstack((quat2[1:4], quat2[0])))
     R_rel = R1.inv() * R2
     omega = R_rel.as_rotvec() / dt
-    return omega
+    return R1.apply(omega)
+    # return R1.apply(omega, inverse=True)
 
 
   def solve_for_achilles_rod_quats(self, q):
@@ -269,14 +218,14 @@ class DrakeToMujocoConverter():
     world_frame = np.eye(3)
     l_x_vec = (left_heel - left_thigh)[:, 0]
     l_x_vec *= 1 / np.linalg.norm(l_x_vec)
-    l_y_vec = np.cross(l_x_vec, world_frame[1])
+    l_y_vec = np.cross(l_x_vec, world_frame[0])
     l_y_vec *= 1 / np.linalg.norm(l_y_vec)
     l_z_vec = np.cross(l_x_vec, l_y_vec)
     l_z_vec *= 1 / np.linalg.norm(l_z_vec)
 
     r_x_vec = (right_heel - right_thigh)[:, 0]
     r_x_vec *= 1 / np.linalg.norm(r_x_vec)
-    r_y_vec = np.cross(r_x_vec, world_frame[1])
+    r_y_vec = np.cross(r_x_vec, world_frame[0])
     r_y_vec *= 1 / np.linalg.norm(r_y_vec)
     r_z_vec = np.cross(r_x_vec, r_y_vec)
     r_z_vec *= 1 / np.linalg.norm(r_z_vec)
@@ -308,14 +257,12 @@ class DrakeToMujocoConverter():
                                           np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
     result = Solve(self.ik_solver.prog())
     left_foot_crank_state = result.GetSolution()
-    # print(result.get_solution_result())
     toe_ang = x[self.pos_map['toe_right']]
     self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
     self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
                                           np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
     result = Solve(self.ik_solver.prog())
     right_foot_crank_state = result.GetSolution()
-    # print(result.get_solution_result())
 
     q = x[:self.plant.num_positions()]
     v = x[-self.plant.num_velocities():]
@@ -323,11 +270,15 @@ class DrakeToMujocoConverter():
     q_dt = q + self.plant.MapVelocityToQDot(self.context, v) * self.drake_sim_dt
     l_bar_quat_dt, r_bar_quat_dt, _, _ = self.solve_for_achilles_rod_quats(q_dt)
 
-    l_bar_omega = l_hip_pitch_frame.rotation().matrix() @ self.estimate_omega_bar(l_bar_quat, l_bar_quat_dt, self.drake_sim_dt)
-    r_bar_omega = r_hip_pitch_frame.rotation().matrix() @ self.estimate_omega_bar(r_bar_quat, r_bar_quat_dt, self.drake_sim_dt)
+    # l_bar_omega = l_hip_pitch_frame.rotation().matrix() @ self.estimate_omega_bar(l_bar_quat, l_bar_quat_dt, self.drake_sim_dt)
+    # r_bar_omega = r_hip_pitch_frame.rotation().matrix() @ self.estimate_omega_bar(r_bar_quat, r_bar_quat_dt, self.drake_sim_dt)
+    l_bar_omega = self.estimate_omega_bar(l_bar_quat, l_bar_quat_dt, self.drake_sim_dt)
+    r_bar_omega = self.estimate_omega_bar(r_bar_quat, r_bar_quat_dt, self.drake_sim_dt)
 
-    # l_bar_quat = np.array([0.9785, -0.0164, 0.01787, -0.2049])
-    # r_bar_quat = np.array([0.9786, 0.00386, -0.01524, -0.2051])
+    l_bar_quat_gt = np.array([0.9785, -0.0164, 0.01787, -0.2049])
+    r_bar_quat_gt = np.array([0.9786, 0.00386, -0.01524, -0.2051])
+
+    # import pdb; pdb.set_trace()
 
     q_missing = np.zeros(35)
     v_missing = np.zeros(32)

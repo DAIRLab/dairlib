@@ -131,12 +131,19 @@ def learn_drake_cassie_params(batch=False):
 
 
 def learn_mujoco_cassie_params():
+  # optimization_param = ng.p.Dict(
+  #   timeconst=ng.p.Log(lower=1e-4, upper=1e-2),
+  #   dampratio=ng.p.Scalar(lower=1e-2, upper=1e1),
+  #   ground_mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
+  #   mu_torsion=ng.p.Scalar(lower=0.00001, upper=1.0),
+  #   mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
+  # )
   optimization_param = ng.p.Dict(
-    timeconst=ng.p.Log(lower=1e-4, upper=1e-2),
-    dampratio=ng.p.Scalar(lower=1e-2, upper=1e1),
-    ground_mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
-    mu_torsion=ng.p.Scalar(lower=0.00001, upper=1.0),
-    mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
+    stiffness=ng.p.Scalar(lower=100, upper=10000),
+    damping=ng.p.Scalar(lower=0, upper=1000),
+    mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0)
+    # mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
+    # mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
   )
 
   optimization_param.value = mujoco_sim.default_mujoco_contact_params
@@ -262,8 +269,8 @@ if (__name__ == '__main__'):
   # learn_drake_cassie_params()
   # learn_drake_cassie_params(batch=True)
   # print_drake_cassie_params(i)
-  # learn_mujoco_cassie_params()
-  plot_per_log_loss_drake()
+  learn_mujoco_cassie_params()
+  # plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'

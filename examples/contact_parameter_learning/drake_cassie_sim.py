@@ -197,12 +197,6 @@ class DrakeCassieSim():
     np.save(self.sim_data_folder + 't_x_' + log_num, t_x)
     lambda_traj = lambda_traj.reshape((4, 3, lambda_traj.shape[1]))
     lambda_traj = np.transpose(lambda_traj, (0, 2, 1))
-    # self.ps.plot(t_x, lambda_traj[0, 2, :].T)
-    # self.ps.plot(t_x, lambda_traj[1, 2, :].T)
-    # self.ps.plot(t_x, lambda_traj[2, 2, :].T)
-    # self.ps.plot(t_x, lambda_traj[3, 2, :].T)
-    # self.ps.show_fig()
-    # import pdb; pdb.set_trace()
     np.save(self.sim_data_folder + 'lambda_' + log_num, lambda_traj)
 
     self.iter_num += 1
@@ -227,8 +221,6 @@ class DrakeCassieSim():
     return t_x[window], x_traj[window], lambda_traj[:, window, :]
 
   def compute_loss(self, log_num, sim_id, params, plot=False):
-    # x_traj_hardware = np.load(self.folder_path + 'x_' + log_num + '.npy')
-    # t_x_hardware = np.load(self.folder_path + 't_x_' + log_num + '.npy')
     x_traj_hardware = self.x_trajs[log_num]
     t_x_hardware = self.t_x[log_num]
     lambda_traj_hardware = self.lambda_trajs[log_num]
@@ -249,20 +241,13 @@ class DrakeCassieSim():
         self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, joint])
         self.ps.plot(t_x_hardware[:min_time_length], x_traj_hardware[:min_time_length, joint])
         self.ps.add_legend([self.x_datatypes[joint] + ': sim', self.x_datatypes[joint] + ': real'])
-        # self.ps.add_legend([self.x_datatypes[joint] + ': real'])
-      # self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 31:35], color='b')
-      # self.ps.plot(t_x_hardware[window][:min_time_length], x_traj_hardware[:min_time_length, 31:35], color='r')
-      # self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 4:7], color='b')
-      # self.ps.plot(t_x_sim[:min_time_length], x_traj_hardware[:min_time_length, 4:7], color='r')
-      #   plt.figure('loss')
-      #   self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 23:45] - x_traj_hardware[:min_time_length, 23:45], color=self.ps.grey)
       plt.show()
     traj_loss = self.loss_func.CalculateLossTraj(x_traj_sim[:min_time_length], x_traj_hardware[:min_time_length])
-    impulse_loss = self.loss_func.CalculateLossNetImpulse(lambda_traj_sim[:, :min_time_length, :],
-                                                          lambda_traj_hardware[:, :min_time_length, :])
+    # impulse_loss = self.loss_func.CalculateLossNetImpulse(lambda_traj_sim[:, :min_time_length, :],
+    #                                                       lambda_traj_hardware[:, :min_time_length, :])
     # regularization_loss = self.loss_func.CalculateLossParams(params)
     # return traj_loss + regularization_loss
-    return traj_loss + impulse_loss
+    return traj_loss
 
 
 if __name__ == '__main__':

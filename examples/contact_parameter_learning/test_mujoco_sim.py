@@ -5,21 +5,29 @@ from mujoco_sim import MujocoCassieSim
 import numpy as np
 from drake_to_mujoco_converter import DrakeToMujocoConverter
 
-
-q_mujoco_default = np.array([1, 0, 0, 0, 0, 0, 2.0,
+q_mujoco_default = np.array([1, 0, 0, 0, 0, 0, 1.01,
                                       0.0045, -0.0045,
                                       0, 0,
                                       0.4973, 0.4973,
                                       -1.1997, -1.1997,
                                       -0.00, -0.00,
                                       1.4267, 1.4267,
-                                      -0.0, -1.5244,
-                                      -0.0, -1.5244])
+                                      -0.0, -1.5968,
+                                      -0.0, -1.5968])
+
+# q_mujoco_default = np.array([0.0, 0.0, 1.01,
+#                              1.0, 0.0, 0.0, 0.0,
+#                              0.0045, 0.0, 0.4973,
+#                              0.9784830934748516, -0.016399716640763992, 0.017869691242100763, -0.2048964597373501,
+#                              -1.1997, 0.0, 1.4267, 0.0, -1.5244, 1.5244, -1.5968,
+#
+#                              -0.0045, 0.0, 0.4973, 0.978614127766972, 0.0038600557257107214, -0.01524022001550036, -0.20510296096975877, -1.1997, 0.0, 1.4267, 0.0, -1.5244, 1.5244, -1.5968])
 x_mujoco_default = np.hstack((q_mujoco_default, np.zeros(22)))
 
 def test_default():
   sim = MujocoCassieSim(realtime_rate=0.1)
-  sim.run_sim(0.0, 30.0)
+  sim.run_sim(0.0, 0.1, x_init=x_mujoco_default)
+  # sim.run_sim(0.0, 0.1)
 
 
 def test_initial_state():
@@ -86,7 +94,7 @@ def visualize_loop_closures():
 
   # sim.visualize_IK_lower(x_init)
   # sim.visualize_IK_upper(x_init)
-  sim.visualize_IK_upper(x_mujoco_default)
+  # sim.visualize_IK_upper(x_mujoco_default)
 
 if __name__ == '__main__':
   # test_default()

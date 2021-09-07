@@ -54,12 +54,10 @@ class LearningMujocoCassieSim():
                         }
     self.sim_time = 0.05
     # self.end_time = self.start_time + self.sim_time
-    self.default_mujoco_contact_params = {
-      "timeconst": 0.005,
-      "dampratio": 1,
-      "ground_mu_tangent": 1.0,
-      "mu_torsion": 0.0001,
-      "mu_rolling": 0.00001}
+    self.default_mujoco_contact_params = \
+      {"stiffness" : 2000,
+       "damping" : 36.02,
+       "mu_tangent" : 0.18}
     self.loss_func = cassie_loss_utils.CassieLoss(loss_filename)
     self.iter_num = 0
     self.base_z_idx = 6
@@ -101,14 +99,14 @@ class LearningMujocoCassieSim():
 
   def run(self, params, log_num):
 
-    timeconst = params['timeconst']
-    dampratio = params['dampratio']
-    mu_ground = params['ground_mu_tangent']
-    mu_torsion = params['mu_torsion']
-    mu_rolling = params['mu_rolling']
-    self.tree.getroot().find('default').find('geom').set('solref', '%.5f %.5f' % (timeconst, dampratio))
+    stiffness = params['stiffness']
+    damping = params['damping']
+    mu_tangent = params['mu_tangent']
+    # mu_torsion = params['mu_torsion']
+    # mu_rolling = params['mu_rolling']
+    self.tree.getroot().find('default').find('geom').set('solref', '%.5f %.5f' % (-stiffness, -damping))
     self.tree.getroot().find('default').find('geom').set('friction',
-                                                         '%.5f %.5f %.5f' % (mu_ground, mu_torsion, mu_rolling))
+                                                         '%.5f %.5f %.5f' % (mu_tangent, .001, .001))
     self.tree.write(self.sim.default_model_directory + 'cassie_new_params.xml')
     self.sim.reinit_env(self.sim.default_model_directory + 'cassie_new_params.xml')
     # params

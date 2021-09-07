@@ -80,23 +80,23 @@ py_binary(
     name = "learn_cube_parameters",
     srcs = ["learn_cube_parameters.py"],
     deps = [
+        ":bullet_cube_sim_py",
         ":cube_sim",
         ":drake_cube_sim_py",
-        ":bullet_cube_sim_py",
         ":mujoco_cube_sim_py",
     ],
 )
 
 py_library(
-    name = "bullet_cube_sim_py", 
+    name = "bullet_cube_sim_py",
     srcs = ["bullet_cube_sim.py"],
     deps = [
         ":cube_sim",
-    ]
+    ],
 )
 
 py_library(
-    name = "plotting_utils", 
+    name = "plotting_utils",
     srcs = ["plotting_utils.py"]
 )
 
@@ -104,12 +104,12 @@ py_binary(
     name = "evaluate_cube_parameters",
     srcs = ["evaluate_cube_parameters.py"],
     deps = [
+        ":bullet_cube_sim_py",
         ":cube_sim",
         ":drake_cube_sim_py",
         ":learn_cube_parameters",
         ":plotting_utils",
         ":mujoco_cube_sim_py",
-        ":bullet_cube_sim_py",
         "//bindings/pydairlib",
     ],
 )
@@ -118,11 +118,11 @@ py_binary(
     name = "sensitivity_analysis",
     srcs = ["sensitivity_analysis.py"],
     deps = [
+        ":bullet_cube_sim_py",
         ":cube_sim",
         ":drake_cube_sim_py",
         ":evaluate_cube_parameters",
         ":learn_cube_parameters",
-        ":bullet_cube_sim_py",
         ":mujoco_cube_sim_py",
         "//bindings/pydairlib/common:plot_styler",
     ],

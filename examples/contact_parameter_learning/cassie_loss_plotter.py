@@ -1,6 +1,6 @@
 import numpy as np
 import lcm
-from scipy.integrate import trapz
+# from scipy.integrate import trapz
 import pickle
 from pydairlib.common import FindResourceOrThrow
 from bindings.pydairlib.common.plot_styler import PlotStyler
@@ -16,49 +16,28 @@ from cassie_impact_data import CassieImpactData
 import scipy.linalg as linalg
 from scipy import interpolate
 import matplotlib.pyplot as plt
+import cassie_loss_utils
 
 
-def plot_error_bands(impact_data):
-
+def plot_error_bands(impact_data, save_figs=False):
   data_range = np.arange(28, 34, 1)
-  # data_range = np.concatenate((np.arange(12, 17, 1), data_range))
-  # v_all = np.empty()
   v_sim = []
   v_hardware = []
-  # vproj_all = []
   n_samples = 10000
-  # joint_idx = 6
 
-  # t_master = np.load(data_directory + 't_28.npy')[:n_samples]
-  t_master = impact_data.t_x_hardware['15'][:, 0]
+  t_master = impact_data.t_x_hardware['15']
   for i in data_range:
-    # t = np.load(data_directory + 't_' + '%.2d.npy' % i)
-    # v_hardware = np.load(data_directory + 'v_' + '%.2d.npy' % i)
-    # vproj = np.load(data_directory + 'vproj_' + '%.2d.npy' % i)
-    # import pdb; pdb.set_trace()
-    v_sim_interp = interpolate.interp1d(impact_data.t_x_sim['%.2d' % i], impact_data.x_trajs_sim['%.2d' % i], axis=0, bounds_error=False)
-    v_hardware_interp = interpolate.interp1d(impact_data.t_x_hardware['%.2d' % i][:,0], impact_data.x_trajs_hardware['%.2d' % i], axis=0, bounds_error=False)
-    # vproj_interp = interpolate.interp1d(t, vproj, axis=0, bounds_error=False)
-    # v_all.append(v[:n_samples, :])
-    # vproj_all.append(vproj[:n_samples, :])
-
-
-    # v_sim.append(v_sim_interp(t_master))
-    # v_hardware.append(v_hardware_interp(t_master))
+    v_sim_interp = interpolate.interp1d(impact_data.t_x_sim['%.2d' % i], impact_data.x_trajs_sim['%.2d' % i], axis=0,
+                                        bounds_error=False)
+    v_hardware_interp = interpolate.interp1d(impact_data.t_x_hardware['%.2d' % i],
+                                             impact_data.x_trajs_hardware['%.2d' % i], axis=0, bounds_error=False)
     v_sim.append(v_sim_interp(impact_data.t_x_sim['%.2d' % i]))
     v_hardware.append(v_hardware_interp(impact_data.t_x_sim['%.2d' % i]))
 
-
-    # vproj_all.append(vproj_interp(t_master))
-    # ps.plot(t[:n_samples], v[:n_samples, joint_idx], color='b')
-    # ps.plot(t[:n_samples], vproj[:n_samples, joint_idx], color='r')
-    # import pdb; pdb.set_trace()
   # plt.xlim([-10, 30])
   # plt.show()
-  import pdb; pdb.set_trace()
   v_all = np.stack(v_sim, axis=-1)
   vproj_all = np.stack(v_hardware, axis=-1)
-
 
   v_std = np.std(v_all, axis=2)
   v_mean = np.mean(v_all, axis=2)
@@ -73,7 +52,8 @@ def plot_error_bands(impact_data):
   plt.title('Joint Velocities')
   plt.xlabel('Time since Start of Impact (ms)')
   plt.ylabel('Velocity (rad/s)')
-  ps.save_fig('joint_velocities_w_dev.png')
+  if save_figs:
+    ps.save_fig('joint_velocities_w_dev.png')
   plt.figure('projected joint velocities')
   for i in range(12):
     ps.plot(t_master, vproj_mean[:, i], color=ps.cmap(i))
@@ -83,19 +63,22 @@ def plot_error_bands(impact_data):
   plt.title('Projected Joint Velocities')
   plt.xlabel('Time since Start of Impact (ms)')
   plt.ylabel('Velocity (rad/s)')
-  ps.save_fig('projected_joint_velocities_w_dev.png')
+  if save_figs:
+    ps.save_fig('projected_joint_velocities_w_dev.png')
 
   plt.show()
 
+
 def get_window_around_contact_event(x_traj, t_x, start_time, end_time):
-  # start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[0][0]
-  # end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[0][0]
-  start_idx = np.argwhere(np.isclose(t_x, start_time, atol=5e-4))[1][0]
-  end_idx = np.argwhere(np.isclose(t_x, end_time, atol=5e-4))[1][0]
+  # start_idx = np.argwhere(np.isclose(t_x, start_time, atol=5e-4))[0][0]
+  # end_idx = np.argwhere(np.isclose(t_x, end_time, atol=5e-4))[0][0]
+  start_idx = np.argwhere(np.isclose(t_x, start_time, atol=1e-4))[0][0]
+  end_idx = np.argwhere(np.isclose(t_x, end_time, atol=1e-4))[0][0]
   window = slice(start_idx, end_idx)
   return t_x[window], x_traj[window]
 
-def plot_velocity_trajectory(impact_data, log_num, indices):
+
+def plot_velocity_trajectory(impact_data, log_num, indices, save_fig=False):
   t_hardware = impact_data.t_x_hardware[log_num]
   x_hardware = impact_data.x_trajs_hardware[log_num]
   t_sim = impact_data.t_x_sim[log_num]
@@ -109,10 +92,15 @@ def plot_velocity_trajectory(impact_data, log_num, indices):
   for i in indices:
     # plt.figure(x_datatypes[i] + ': ' + str(i))
     plt.figure(log_num + '_' + x_datatypes[i] + ': ' + str(i))
-    ps.plot(t_hardware, x_hardware[:, i])
+    ps.plot(t_hardware, x_hardware[:, i], xlabel='time', ylabel='velocity')
     ps.plot(t_sim, x_sim[:, i])
+    ps.add_legend(['hardware', 'sim'])
+    if save_fig:
+      str_idx = max(x_datatypes[i].find('left'), x_datatypes[i].find('right'))
+      ps.save_fig(x_datatypes[i][:str_idx - 1] + '/' + x_datatypes[i] + '_' + log_num)
 
-def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False):
+
+def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, save_figs=False):
   t_hardware = impact_data.t_x_hardware[log_num]
   x_hardware = impact_data.x_trajs_hardware[log_num]
   t_sim = impact_data.t_x_sim[log_num]
@@ -146,17 +134,20 @@ def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False):
       com_vel_hardware[i] = x_i[26:29]
   t_common = 0
   n_samples_common = min(t_hardware.shape[0], t_sim.shape[0])
-  if(t_hardware.shape[0] < t_sim.shape[0]):
+  if (t_hardware.shape[0] < t_sim.shape[0]):
     t_common = t_hardware
-  elif(t_hardware.shape[0] >= t_sim.shape[0]):
+  elif (t_hardware.shape[0] >= t_sim.shape[0]):
     t_common = t_sim
 
   figure_title = 'pelvis'
+  y_lim = [-2.0, 1.0]
+  y_error_lim = [-0.2, 0.35]
   if use_center_of_mass:
     figure_title = 'com'
+    y_lim = [-2.0, 1.0]
+    y_error_lim = [-0.2, 0.35]
 
   plt.figure(figure_title + ': ' + log_num)
-  y_lim = [-2.0, 0.5]
   ps.plot(t_common, com_vel_sim[:n_samples_common, 0], ylim=y_lim)
   ps.plot(t_common, com_vel_hardware[:n_samples_common, 0])
   # plt.figure('y' + log_num)
@@ -166,17 +157,19 @@ def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False):
   ps.plot(t_common, com_vel_sim[:n_samples_common, 2])
   ps.plot(t_common, com_vel_hardware[:n_samples_common, 2])
   ps.add_legend(['x_sim', 'x_hardware', 'y_sim', 'y_hardware', 'z_sim', 'z_hardware'])
-  ps.save_fig(figure_title + '_' + log_num)
+  if save_figs:
+    ps.save_fig(figure_title + '_' + log_num)
 
   plt.figure(figure_title + '_error: ' + log_num)
-  y_lim = [-0.2, 0.35]
-  ps.plot(t_common, com_vel_sim[:n_samples_common, 0] - com_vel_hardware[:n_samples_common, 0], ylim=y_lim)
+  ps.plot(t_common, com_vel_sim[:n_samples_common, 0] - com_vel_hardware[:n_samples_common, 0], ylim=y_error_lim)
   ps.plot(t_common, com_vel_sim[:n_samples_common, 1] - com_vel_hardware[:n_samples_common, 1])
   ps.plot(t_common, com_vel_sim[:n_samples_common, 2] - com_vel_hardware[:n_samples_common, 2])
   ps.add_legend(['x', 'y', 'z'])
-  ps.save_fig(figure_title + '_error_' + log_num)
+  if save_figs:
+    ps.save_fig(figure_title + '_error_' + log_num)
 
   return
+
 
 def grf_single_log(impact_data, log_num):
   lambda_hardware = impact_data.contact_forces_hardware[log_num]
@@ -192,6 +185,51 @@ def grf_single_log(impact_data, log_num):
   ps.plot(t_sim, lambda_sim[3, :, 2])
 
 
+def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
+  t_hardware = impact_data.t_x_hardware[log_num]
+  x_hardware = impact_data.x_trajs_hardware[log_num]
+  t_sim = impact_data.t_x_sim[log_num]
+  x_sim = impact_data.x_trajs_sim[log_num]
+  compare_final = False
+  prefix = ''
+  if compare_final:
+    prefix = 'final_'
+
+  start_time = impact_data.start_times[log_num]
+  end_time = start_time + 0.05
+  t_hardware, x_hardware = get_window_around_contact_event(x_hardware, t_hardware, start_time, end_time)
+  t_sim, x_sim = get_window_around_contact_event(x_sim, t_sim, start_time, end_time)
+  min_time_length = min(t_hardware.shape[0], t_sim.shape[0])
+  t_hardware, x_hardware, t_sim, x_sim = t_hardware[:min_time_length], \
+                                         x_hardware[:min_time_length], \
+                                         t_sim[:min_time_length], \
+                                         x_sim[:min_time_length]
+
+  pos_diff = x_hardware[:, loss_func.position_slice] - x_sim[:, loss_func.position_slice]
+  if compare_final:
+    pos_diff = x_hardware[-1, loss_func.position_slice] - x_sim[-1, loss_func.position_slice]
+  pos_diff_vec = pos_diff.ravel()
+  pos_losses_vec = pos_diff_vec * pos_diff_vec
+  pos_losses = pos_losses_vec.reshape((-1, pos_diff.shape[1]))
+  if save_figs:
+    plt.figure( prefix + 'position_loss_breakdown: ' + log_num)
+    plt.bar(x_datatypes[loss_func.position_slice], pos_losses.sum(axis=0))
+    ps.save_fig( prefix + 'pos_error_breakdown_' + log_num)
+
+  vel_diff = x_hardware[:, loss_func.velocity_slice] - x_sim[:, loss_func.velocity_slice]
+  if compare_final:
+    vel_diff = x_hardware[-1, loss_func.velocity_slice] - x_sim[-1, loss_func.velocity_slice]
+  vel_diff_vec = vel_diff.ravel()
+  vel_losses_vec = vel_diff_vec * vel_diff_vec
+  vel_losses = vel_losses_vec.reshape((-1, vel_diff.shape[1]))
+  if save_figs:
+    plt.figure( prefix + 'velocity_loss_breakdown: ' + log_num)
+    plt.bar(x_datatypes[loss_func.velocity_slice], vel_losses.sum(axis=0))
+    ps.save_fig( prefix + 'vel_error_breakdown_' + log_num)
+
+  return pos_losses.sum(axis=0), vel_losses.sum(axis=0)
+
+
 def main():
   global ps
   global nominal_impact_time
@@ -204,8 +242,6 @@ def main():
   global penetration_allowances
   global threshold_durations
   global x_datatypes
-  # global start_time
-  # global end_time
   global kinematics_calculator
 
   # start_time = 30.64
@@ -216,10 +252,13 @@ def main():
   figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/sim_to_real_comparison/'
   ps = PlotStyler()
   ps.set_default_styling(directory=figure_directory)
+  ps.set_figsize([20, 12])
+  loss_func = cassie_loss_utils.CassieLoss('2021_08_27_weights')
 
   with open("x_datatypes", "rb") as fp:
     x_datatypes = pickle.load(fp)
 
+  # load all the data used for plotting
   impact_data = CassieImpactData()
   kinematics_calculator = KinematicsHelper()
 
@@ -227,24 +266,45 @@ def main():
   hip_joints_indices = range(29, 35)
   fb_vel_indices = range(23, 29)
   # joint_pos_indices = range(7, 23)
-  # hip_index = range(29,30)
   # knee_index = range(29,30)
 
-  joint_vel_indices = range(35, 37)
+  # joint_vel_indices = range(35, 37)
+  # joint_vel_indices = range(29, 39)
 
-  # load all the data used for plotting
   # for log_num in ['08', '15', '24']:
+  pos_losses = []
+  vel_losses = []
   for log_num in impact_data.log_nums_real:
     # plt.figure(log_num)
     # grf_single_log(impact_data, log_num)
-    # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices)
+    # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=True)
     # plot_centroidal_trajectory(impact_data, log_num)
-    plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=True)
+    # plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=True, save_figs=False)
+    pos_loss, vel_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False)
+    pos_losses.append(pos_loss)
+    vel_losses.append(vel_loss)
+    pass
+  pos_losses = np.array(pos_losses)
+  vel_losses = np.array(vel_losses)
 
+
+  plt.figure('total_pos_loss_breakdown')
+  plt.bar(x_datatypes[loss_func.position_slice], pos_losses.sum(axis=0))
+  ps.save_fig('total_pos_loss_breakdown')
+
+  plt.figure('total_vel_loss_breakdown')
+  plt.bar(x_datatypes[loss_func.velocity_slice], vel_losses.sum(axis=0))
+  ps.save_fig('total_vel_loss_breakdown')
+
+
+  # import pdb; pdb.set_trace()
   # plot_velocity_trajectory(impact_data, '08', hip_joints_indices)
-  # plot_velocity_trajectory(impact_data, '21', joint_vel_indices)
+  # plot_velocity_trajectory(impact_data, '08', joint_vel_indices, save_fig=True)
+  # grf_single_log(impact_data, '08')
   # plot_error_bands(impact_data)
+  # plot_loss_breakdown(impact_data, '08', loss_func, save_figs=False)
   # ps.show_fig()
+  pass
 
 
 if __name__ == '__main__':

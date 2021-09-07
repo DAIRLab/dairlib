@@ -63,7 +63,7 @@ bool OscTrackingData::Update(
 
   // Proceed based on the result of track_at_current_state_
   if (track_at_current_state_) {
-    // Careful: must update y_des_ before calling UpdateYAndError()
+    // Careful: must update y_des_ before calling UpdateYError()
     // Update desired output
     y_des_ = traj.value(t);
     if (traj.has_derivative()) {
@@ -82,18 +82,50 @@ bool OscTrackingData::Update(
       yddot_des_converted_(idx) = 0;
     }
 
-    //
+    // For low pass filter (temporary code)
     current_timestamp_ = t;
 
     // Update feedback output (Calling virtual methods)
     if (use_only_plant_wo_spr_in_evaluation_) {
-      UpdateYAndError(x_wo_spr, context_wo_spr);
-      UpdateYdotAndError(x_wo_spr, context_wo_spr);
+      UpdateY(x_wo_spr, context_wo_spr);
+      UpdateYdot(x_wo_spr, context_wo_spr);
     } else {
-      UpdateYAndError(x_w_spr, context_w_spr);
-      UpdateYdotAndError(x_w_spr, context_w_spr);
+      UpdateY(x_w_spr, context_w_spr);
+      UpdateYdot(x_w_spr, context_w_spr);
     }
+
+    // Testing -- low-pass filtering
+    // y
+    if (filtered_y_.norm() == 0) {
+      // Initialize
+      filtered_y_ = y_;
+    }
+    if (current_timestamp_ != last_timestamp_) {
+      double dt = current_timestamp_ - last_timestamp_;
+      double alpha =
+          2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+      filtered_y_ =
+          alpha * y_ + (1 - alpha) * filtered_y_;
+    }
+    y_ = filtered_y_;
+    // ydot
+    if (filtered_ydot_.norm() == 0) {
+      // Initialize
+      filtered_ydot_ = ydot_;
+    }
+    if (current_timestamp_ != last_timestamp_) {
+      double dt = current_timestamp_ - last_timestamp_;
+      double alpha =
+          2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+      filtered_ydot_ =
+          alpha * ydot_ + (1 - alpha) * filtered_ydot_;
+    }
+    ydot_ = filtered_ydot_;
+
     last_timestamp_ = current_timestamp_;
+
+    UpdateYError();
+    UpdateYdotError();
 
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
@@ -201,52 +233,20 @@ ComTrackingData::ComTrackingData(const string& name, const MatrixXd& K_p,
 
 void ComTrackingData::AddStateToTrack(int state) { AddState(state); }
 
-void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
+void ComTrackingData::UpdateY(const VectorXd& x_w_spr,
                                       const Context<double>& context_w_spr) {
   y_ = plant_w_spr_.CalcCenterOfMassPositionInWorld(context_w_spr);
-
-
-  // Testing -- filtering
-  if (filtered_y_.norm() == 0) {
-    // Initialize
-    filtered_y_ = y_;
-  }
-  if (current_timestamp_ != last_timestamp_) {
-    double dt = current_timestamp_ - last_timestamp_;
-    double alpha =
-        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
-    filtered_y_ =
-        alpha * y_ + (1 - alpha) * filtered_y_;
-  }
-  y_ = filtered_y_;
-
 
   error_y_ = y_des_ - y_;
 }
 
-void ComTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
+void ComTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                                          const Context<double>& context_w_spr) {
   MatrixXd J_w_spr(kSpaceDim, plant_w_spr_.num_velocities());
   plant_w_spr_.CalcJacobianCenterOfMassTranslationalVelocity(
       context_w_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_,
       &J_w_spr);
   ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_.num_velocities());
-
-
-  // Testing -- filtering
-  if (filtered_ydot_.norm() == 0) {
-    // Initialize
-    filtered_ydot_ = ydot_;
-  }
-  if (current_timestamp_ != last_timestamp_) {
-    double dt = current_timestamp_ - last_timestamp_;
-    double alpha =
-        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
-    filtered_ydot_ =
-        alpha * ydot_ + (1 - alpha) * filtered_ydot_;
-  }
-  ydot_ = filtered_ydot_;
-
 
   error_ydot_ = ydot_des_ - ydot_;
 }
@@ -303,35 +303,17 @@ void TransTaskSpaceTrackingData::AddStateAndPointToTrack(
   AddPointToTrack(body_name, pt_on_body);
 }
 
-void TransTaskSpaceTrackingData::UpdateYAndError(
+void TransTaskSpaceTrackingData::UpdateY(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   y_ = Vector3d::Zero();
   plant_w_spr_.CalcPointsPositions(
       context_w_spr, *body_frames_wo_spr_[GetStateIdx()],
       pts_on_body_[GetStateIdx()], world_w_spr_, &y_);
 
-
-
-  // Testing -- filtering
-  if (filtered_y_.norm() == 0) {
-    // Initialize
-    filtered_y_ = y_;
-  }
-  if (current_timestamp_ != last_timestamp_) {
-    double dt = current_timestamp_ - last_timestamp_;
-    double alpha =
-        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
-    filtered_y_ =
-        alpha * y_ + (1 - alpha) * filtered_y_;
-  }
-  y_ = filtered_y_;
-
-
-
   error_y_ = y_des_ - y_;
 }
 
-void TransTaskSpaceTrackingData::UpdateYdotAndError(
+void TransTaskSpaceTrackingData::UpdateYdot(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   MatrixXd J(kSpaceDim, plant_w_spr_.num_velocities());
   plant_w_spr_.CalcJacobianTranslationalVelocity(
@@ -339,23 +321,6 @@ void TransTaskSpaceTrackingData::UpdateYdotAndError(
       *body_frames_w_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
       world_w_spr_, world_w_spr_, &J);
   ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
-
-
-
-  // Testing -- filtering
-  if (filtered_ydot_.norm() == 0) {
-    // Initialize
-    filtered_ydot_ = ydot_;
-  }
-  if (current_timestamp_ != last_timestamp_) {
-    double dt = current_timestamp_ - last_timestamp_;
-    double alpha =
-        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
-    filtered_ydot_ =
-        alpha * ydot_ + (1 - alpha) * filtered_ydot_;
-  }
-  ydot_ = filtered_ydot_;
-
 
   error_ydot_ = ydot_des_ - ydot_;
 }
@@ -422,7 +387,7 @@ void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
   AddFrameToTrack(body_name, frame_pose);
 }
 
-void RotTaskSpaceTrackingData::UpdateYAndError(
+void RotTaskSpaceTrackingData::UpdateY(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(
       context_w_spr,
@@ -444,7 +409,7 @@ void RotTaskSpaceTrackingData::UpdateYAndError(
   error_y_ = theta * rot_axis;
 }
 
-void RotTaskSpaceTrackingData::UpdateYdotAndError(
+void RotTaskSpaceTrackingData::UpdateYdot(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   MatrixXd J_spatial(6, plant_w_spr_.num_velocities());
   plant_w_spr_.CalcJacobianSpatialVelocity(
@@ -567,7 +532,7 @@ void JointSpaceTrackingData::AddStateAndJointsToTrack(
   AddJointsToTrack(joint_pos_names, joint_vel_names);
 }
 
-void JointSpaceTrackingData::UpdateYAndError(
+void JointSpaceTrackingData::UpdateY(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   VectorXd y(GetYDim());
   for (int i = 0; i < GetYDim(); i++) {
@@ -577,7 +542,7 @@ void JointSpaceTrackingData::UpdateYAndError(
   error_y_ = y_des_ - y_;
 }
 
-void JointSpaceTrackingData::UpdateYdotAndError(
+void JointSpaceTrackingData::UpdateYdot(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   VectorXd ydot(GetYdotDim());
   for (int i = 0; i < GetYdotDim(); i++) {
@@ -648,14 +613,14 @@ void OptimalRomTrackingData::AddStateAndRom(
   AddRom(rom);
 }
 
-void OptimalRomTrackingData::UpdateYAndError(
+void OptimalRomTrackingData::UpdateY(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   y_ = rom_.at(GetStateIdx())
            ->EvalMappingFunc(x_wo_spr.head(plant_wo_spr_.num_positions()),
                              context_wo_spr);
   error_y_ = y_des_ - y_;
 }
-void OptimalRomTrackingData::UpdateYdotAndError(
+void OptimalRomTrackingData::UpdateYdot(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   ydot_ = rom_.at(GetStateIdx())
               ->EvalMappingFuncJV(x_wo_spr.head(plant_wo_spr_.num_positions()),

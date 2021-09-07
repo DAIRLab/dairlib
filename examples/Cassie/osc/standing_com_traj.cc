@@ -106,19 +106,19 @@ void StandingComTraj::CalcDesiredTraj(
   Vector3d feet_center_pos = contact_pos_sum / 4;
 
   // Testing -- filtering feet_center_pos
-  if (filterred_feet_center_pos_.norm() == 0) {
+  if (filtered_feet_center_pos_.norm() == 0) {
     // Initialize
-    filterred_feet_center_pos_ = feet_center_pos;
+    filtered_feet_center_pos_ = feet_center_pos;
   }
   if (robot_output->get_timestamp() != last_timestamp_) {
     double dt = robot_output->get_timestamp() - last_timestamp_;
     last_timestamp_ = robot_output->get_timestamp();
     double alpha =
         2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
-    filterred_feet_center_pos_ =
-        alpha * feet_center_pos + (1 - alpha) * filterred_feet_center_pos_;
+    filtered_feet_center_pos_ =
+        alpha * feet_center_pos + (1 - alpha) * filtered_feet_center_pos_;
   }
-  feet_center_pos = filterred_feet_center_pos_;
+  feet_center_pos = filtered_feet_center_pos_;
 
   // Desired com pos
   Vector3d desired_com_pos(feet_center_pos(0) + x_offset,

@@ -67,11 +67,11 @@ def get_drake_loss_mp(params):
 def get_mujoco_loss(params, log_num=None):
   if (log_num == None):
     log_num = choice(training_idxs)
-  try:
-    sim_id = mujoco_sim.run(params, log_num)
-    loss = mujoco_sim.compute_loss(log_num, sim_id, params)
-  except:
-    loss = SIM_ERROR_LOSS
+  # try:
+  sim_id = mujoco_sim.run(params, log_num)
+  loss = mujoco_sim.compute_loss(log_num, sim_id, params)
+  # except:
+  #   loss = SIM_ERROR_LOSS
   # print(log_num)
   # sim_id = mujoco_sim.run(params, log_num)
   # loss = mujoco_sim.compute_loss(log_num, sim_id, params)
@@ -158,32 +158,28 @@ def learn_mujoco_cassie_params():
 
 def plot_loss_trajectory():
   loss_t = np.load(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget) + '.npy')
-  stiffness_t = np.load(drake_sim.params_folder + log_num + '_stiffness_trajectory_' + str(budget) + '.npy')
+  # stiffness_t = np.load(drake_sim.params_folder + log_num + '_stiffness_trajectory_' + str(budget) + '.npy')
+  stiffness_t = np.load(drake_sim.params_folder + 'training_stiffness_trajectory_5000.npy')
+  import pdb; pdb.set_trace()
   # ps.scatter(stiffness_t, loss_t, xlabel='penetration_allowance (m)', ylabel='loss')
-  ps.plot(np.arange(0, loss_t.shape[0]), loss_t, xlabel='iter', ylabel='loss')
+  ps.plot(np.arange(0, loss_t.shape[0]), stiffness_t, xlabel='iter', ylabel='stiffness')
   plt.show()
 
 
 def print_drake_cassie_params(single_log_num, plot=False):
-  # optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
-  # optimal_params = drake_sim.load_params('all' + '_optimized_params_' + str(budget))
   # optimal_params = drake_sim.load_params('old_params/' + log_num + '_optimized_params_' + str(budget))
   # optimal_params = drake_sim.load_params('drake_2021_08_25_11_45_training_15000')
   optimal_params = drake_sim.load_params('drake_2021_09_01_10_training_5000').value
   # optimal_params = drake_sim.load_params('drake_2021_08_28_22_26' + single_log_num + '_x_offsets_5000').value
 
   loss = get_drake_loss(optimal_params, single_log_num, plot)
+  print(loss)
   # loss = get_drake_loss(drake_sim.default_drake_contact_params, single_log_num, plot)
-  print(single_log_num)
-  # import pdb; pdb.set_trace()
+  # print(single_log_num)
   # z_offset = optimal_params['z_offset']
   # vel_offset = optimal_params['vel_offset']
   stiffness = optimal_params['stiffness']
   dissipation = optimal_params['dissipation']
-  # print('z_offset')
-  # print(z_offset)
-  # print('vel_offset')
-  # print(vel_offset)
   print('stiffness')
   print(stiffness)
   print('dissipation')
@@ -196,9 +192,18 @@ def print_drake_cassie_params(single_log_num, plot=False):
 
 def print_mujoco_cassie_params(single_log_num):
   # optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
-  optimal_params = mujoco_sim.load_params('all' + '_optimized_params_' + str(budget))
-  sim_id = mujoco_sim.run(optimal_params.value, single_log_num)
-  loss = mujoco_sim.compute_loss(single_log_num, sim_id)
+  # optimal_params = mujoco_sim.load_params('all' + '_optimized_params_' + str(budget))
+  optimal_params = mujoco_sim.load_params('mujoco_2021_09_06_22_training_5000').value
+
+  # sim_id = mujoco_sim.run(optimal_params.value, single_log_num)
+  # loss = mujoco_sim.compute_loss(single_log_num, sim_id)
+  stiffness = optimal_params['stiffness']
+  damping = optimal_params['damping']
+  print('stiffness')
+  print(stiffness)
+  print('damping')
+  print(damping)
+  loss = get_mujoco_loss(optimal_params, single_log_num)
   print(loss)
   # z_offsets = optimal_params.value['z_offset']
   # vel_offsets = optimal_params.value['vel_offset']
@@ -215,6 +220,8 @@ def plot_per_log_loss_drake():
     losses.append(print_drake_cassie_params(log_num_))
     log_nums.append((log_num_))
   ps.plot(log_nums, losses, xlabel='log number', ylabel='best loss')
+  losses = np.array(losses)
+  print('average_loss: ' + str(np.average(losses)))
   plt.show()
 
 
@@ -226,6 +233,8 @@ def plot_per_log_loss_mujoco():
     losses.append(print_mujoco_cassie_params(log_num_))
     log_nums.append((log_num_))
   ps.plot(log_nums, losses, xlabel='log number', ylabel='best loss')
+  losses = np.array(losses)
+  print('average_loss: ' + str(np.average(losses)))
   plt.show()
 
 
@@ -268,10 +277,10 @@ if (__name__ == '__main__'):
   # import pdb; pdb.set_trace()
   # learn_drake_cassie_params()
   # learn_drake_cassie_params(batch=True)
-  # print_drake_cassie_params(i)
-  learn_mujoco_cassie_params()
+  # print_drake_cassie_params()
+  # learn_mujoco_cassie_params()
   # plot_per_log_loss_drake()
-  # plot_per_log_loss_mujoco()
+  plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
   # print_drake_cassie_params(str(sys.argv[1]), True)

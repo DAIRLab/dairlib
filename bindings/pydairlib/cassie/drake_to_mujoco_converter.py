@@ -115,6 +115,7 @@ class DrakeToMujocoConverter():
     q_drake = np.zeros(23)
     v_drake = np.zeros(22)
     q_drake = self.map_q_drake_to_mujoco.T @ q
+    v_drake = self.map_v_drake_to_mujoco.T @ v
 
     return q_drake, v_drake
 

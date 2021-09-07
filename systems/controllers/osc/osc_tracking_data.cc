@@ -117,6 +117,20 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
   track_at_current_state_ = it != state_.end();
 }
 
+void OscTrackingData::SetLowPassFilter(double tau,
+                                       const std::set<int>& element_idx) {
+  tau_ = tau;
+
+  DRAKE_DEMAND(n_y_ == n_ydot_);  // doesn't support quaternion yet
+  if (element_idx.empty()) {
+    for (int i = 0; i < n_y_; i++) {
+      low_pass_filter_element_idx_.insert(i);
+    }
+  } else {
+    low_pass_filter_element_idx_ = element_idx;
+  }
+}
+
 void OscTrackingData::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
   DRAKE_ASSERT(track_at_current_state_);
   cout << name_ << ":\n";

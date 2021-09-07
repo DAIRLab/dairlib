@@ -78,12 +78,6 @@ class OscTrackingData {
                   const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
                   bool use_only_plant_wo_spr_in_evaluation = false);
 
-  void SetLowPassFilter() {low_pass_filter_ = true;};
-  bool low_pass_filter_ = false;
-  double cutoff_freq_ = 1;  // in Hz.
-  mutable double last_timestamp_ = 0;
-  mutable double current_timestamp_ = 0; // don't need this after we clean up the code
-
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_state_
   //  - update desired output
@@ -103,6 +97,8 @@ class OscTrackingData {
               const drake::systems::Context<double>& context_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
               int finite_state_machine_state);
+
+  void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});
 
   // Getters for debugging
   const Eigen::VectorXd& GetY() const { return y_; }
@@ -196,6 +192,13 @@ class OscTrackingData {
   // World frames
   const drake::multibody::BodyFrame<double>& world_w_spr_;
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
+
+  // Members of low-pass filter
+  double tau_;
+  std::set<int> low_pass_filter_element_idx_;
+  double cutoff_freq_ = 1;  // in Hz.
+  mutable double last_timestamp_ = 0;
+  mutable double current_timestamp_ = 0; // don't need this after we clean up the code
 
  private:
   // Check if we should do tracking in the current state

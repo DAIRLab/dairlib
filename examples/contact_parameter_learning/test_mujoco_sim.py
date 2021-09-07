@@ -15,6 +15,7 @@ q_mujoco_default = np.array([1, 0, 0, 0, 0, 0, 1.01,
                                       -0.0, -1.5968,
                                       -0.0, -1.5968])
 
+
 # q_mujoco_default = np.array([0.0, 0.0, 1.01,
 #                              1.0, 0.0, 0.0, 0.0,
 #                              0.0045, 0.0, 0.4973,
@@ -26,8 +27,8 @@ x_mujoco_default = np.hstack((q_mujoco_default, np.zeros(22)))
 
 def test_default():
   sim = MujocoCassieSim(realtime_rate=0.1)
-  sim.run_sim(0.0, 0.1, x_init=x_mujoco_default)
-  # sim.run_sim(0.0, 0.1)
+  sim.run_sim(0.0, 0.01, x_init=x_mujoco_default)
+  # sim.run_sim(0.0, 0.01)
 
 
 def test_initial_state():

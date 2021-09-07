@@ -14,8 +14,8 @@ import sys
 
 SIM_ERROR_LOSS = 400
 
-drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='2021_08_27_weights')
-mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='2021_08_27_weights')
+drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='2021_09_07_weights')
+mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='2021_09_07_weights')
 # drake_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename=time.strftime("%Y_%m_%d") + '_weights')
 # mujoco_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename=time.strftime("%Y_%m_%d") + '_weights')
 loss_over_time = []
@@ -93,8 +93,15 @@ def get_mujoco_loss_mp(params):
 def print_loss_weights(loss_filename):
   new_loss_filename = time.strftime("%Y_%m_%d") + '_weights'
   loss_weights = cassie_loss_utils.CassieLoss(loss_filename)
+  loss_weights.weights.vel[0:3, 0:3] = 1e2 * np.eye(3)
+  loss_weights.weights.vel[3, 3] = 1e-2  # hip roll joints
+  loss_weights.weights.vel[4, 4] = 1e-2
+  loss_weights.weights.vel[11, 11] = 1e-2  # knee spring joints
+  loss_weights.weights.vel[12, 12] = 1e-2
+  loss_weights.weights.vel[15, 15] = 0  # ankle spring joint
   loss_weights.weights.vel[17, 17] = 0
-  loss_weights.weights.vel[15, 15] = 0
+  loss_weights.weights.vel[16, 16] = 1e-2  # toe joints
+  loss_weights.weights.vel[18, 18] = 1e-2
   loss_weights.weights.omega = 5 * np.eye(3)
   loss_weights.weights.impulse_weight = 1e-7
   loss_weights.weights.save(new_loss_filename)
@@ -102,10 +109,10 @@ def print_loss_weights(loss_filename):
 
 def learn_drake_cassie_params(batch=False):
   optimization_param = ng.p.Dict(
-    mu_static=ng.p.Scalar(lower=0.001, upper=1.0),
-    mu_ratio=ng.p.Scalar(lower=0.001, upper=1.0),
-    stiffness=ng.p.Log(lower=1e3, upper=1e8),
-    dissipation=ng.p.Scalar(lower=0.1, upper=1),
+    mu=ng.p.Scalar(lower=0.01, upper=1.0),
+    # mu_ratio=ng.p.Scalar(lower=0.001, upper=1.0),
+    stiffness=ng.p.Log(lower=1e3, upper=1e6),
+    dissipation=ng.p.Scalar(lower=0.0, upper=2.0),
     # stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2),
     # vel_offset=ng.p.Array(shape=(3,)).set_bounds(lower=-0.5, upper=0.5),
     # z_offset=ng.p.Array(shape=(1,)).set_bounds(lower=-0.05, upper=0.05)
@@ -139,7 +146,7 @@ def learn_mujoco_cassie_params():
   #   mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
   # )
   optimization_param = ng.p.Dict(
-    stiffness=ng.p.Scalar(lower=100, upper=10000),
+    stiffness=ng.p.Scalar(lower=1e3, upper=1e6),
     damping=ng.p.Scalar(lower=0, upper=1000),
     mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0)
     # mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
@@ -167,9 +174,8 @@ def plot_loss_trajectory():
 
 
 def print_drake_cassie_params(single_log_num, plot=False):
-  # optimal_params = drake_sim.load_params('old_params/' + log_num + '_optimized_params_' + str(budget))
-  # optimal_params = drake_sim.load_params('drake_2021_08_25_11_45_training_15000')
-  optimal_params = drake_sim.load_params('drake_2021_09_01_10_training_5000').value
+  # optimal_params = drake_sim.load_params('drake_2021_09_01_10_training_5000').value
+  optimal_params = drake_sim.load_params('drake_2021_09_07_16_training_1000').value
   # optimal_params = drake_sim.load_params('drake_2021_08_28_22_26' + single_log_num + '_x_offsets_5000').value
 
   loss = get_drake_loss(optimal_params, single_log_num, plot)
@@ -180,10 +186,10 @@ def print_drake_cassie_params(single_log_num, plot=False):
   # vel_offset = optimal_params['vel_offset']
   stiffness = optimal_params['stiffness']
   dissipation = optimal_params['dissipation']
-  print('stiffness')
-  print(stiffness)
-  print('dissipation')
-  print(dissipation)
+  # print('stiffness')
+  # print(stiffness)
+  # print('dissipation')
+  # print(dissipation)
   # np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offset)
   # np.save(drake_sim.params_folder + log_num + '_vel_offset_' + str(budget), vel_offset)
   # return z_offset, vel_offset
@@ -193,18 +199,19 @@ def print_drake_cassie_params(single_log_num, plot=False):
 def print_mujoco_cassie_params(single_log_num):
   # optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
   # optimal_params = mujoco_sim.load_params('all' + '_optimized_params_' + str(budget))
-  optimal_params = mujoco_sim.load_params('mujoco_2021_09_06_22_training_5000').value
+  # optimal_params = mujoco_sim.load_params('mujoco_2021_09_06_22_training_5000').value
+  optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_17_training_1000').value
+  loss = get_mujoco_loss(optimal_params, single_log_num)
+  print(loss)
 
   # sim_id = mujoco_sim.run(optimal_params.value, single_log_num)
   # loss = mujoco_sim.compute_loss(single_log_num, sim_id)
   stiffness = optimal_params['stiffness']
   damping = optimal_params['damping']
-  print('stiffness')
-  print(stiffness)
-  print('damping')
-  print(damping)
-  loss = get_mujoco_loss(optimal_params, single_log_num)
-  print(loss)
+  # print('stiffness')
+  # print(stiffness)
+  # print('damping')
+  # print(damping)
   # z_offsets = optimal_params.value['z_offset']
   # vel_offsets = optimal_params.value['vel_offset']
   # np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offsets)

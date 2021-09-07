@@ -78,6 +78,12 @@ class OscTrackingData {
                   const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
                   bool use_only_plant_wo_spr_in_evaluation = false);
 
+  void SetLowPassFilter() {low_pass_filter_ = true;};
+  bool low_pass_filter_ = false;
+  double cutoff_freq_ = 1;  // in Hz.
+  mutable double last_timestamp_ = 0;
+  mutable double current_timestamp_ = 0; // don't need this after we clean up the code
+
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_state_
   //  - update desired output
@@ -162,6 +168,8 @@ class OscTrackingData {
   Eigen::VectorXd ydot_;
   Eigen::MatrixXd J_;
   Eigen::VectorXd JdotV_;
+  Eigen::VectorXd filtered_y_;
+  Eigen::VectorXd filtered_ydot_;
 
   // Desired output
   Eigen::VectorXd y_des_;

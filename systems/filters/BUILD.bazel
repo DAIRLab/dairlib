@@ -1,0 +1,18 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "timestamped_low_pass_filter",
+    srcs = ["timestamped_low_pass_filter.cc"],
+    hdrs = ["timestamped_low_pass_filter.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "internal_low_pass_filter",
+    srcs = ["internal_low_pass_filter.cc"],
+    hdrs = ["internal_low_pass_filter.h"],
+    deps = ["@drake//:drake_shared_library"],
+)

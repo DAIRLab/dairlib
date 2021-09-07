@@ -1,4 +1,4 @@
-#include "timestamped_lowpass_filter.h"
+#include "timestamped_low_pass_filter.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/timestamped_vector.h"
 
@@ -13,22 +13,22 @@ namespace dairlib {
 using systems::TimestampedVector;
 
 
-TimestampedLowpassFilter::TimestampedLowpassFilter(double tau, int n_y) 
+TimestampedLowPassFilter::TimestampedLowPassFilter(double tau, int n_y)
                                                   : tau_(tau) {
   TimestampedVector<double> model_vector(n_y);
 
   this->DeclareVectorInputPort("x", model_vector);
   this->DeclareVectorOutputPort("y", model_vector, 
-      &TimestampedLowpassFilter::CalcFilter);
+      &TimestampedLowPassFilter::CalcFilter);
   this->DeclarePerStepDiscreteUpdateEvent(
-      &TimestampedLowpassFilter::DiscreteVariableUpdate);
+      &TimestampedLowPassFilter::DiscreteVariableUpdate);
 
   prev_val_idx_ = this->DeclareDiscreteState(VectorXd::Zero(n_y));
   prev_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
 
 }
 
-drake::systems::EventStatus TimestampedLowpassFilter::DiscreteVariableUpdate(
+drake::systems::EventStatus TimestampedLowPassFilter::DiscreteVariableUpdate(
     const drake::systems::Context<double> &context,
     drake::systems::DiscreteValues<double> *discrete_state) const {
 
@@ -48,7 +48,7 @@ drake::systems::EventStatus TimestampedLowpassFilter::DiscreteVariableUpdate(
   discrete_state->get_mutable_value(prev_val_idx_) << y;
 }
 
-void TimestampedLowpassFilter::CalcFilter(
+void TimestampedLowPassFilter::CalcFilter(
     const drake::systems::Context<double> &context,
     systems::TimestampedVector<double> *y) const {
   y->set_value(context.get_discrete_state(prev_val_idx_).get_value());

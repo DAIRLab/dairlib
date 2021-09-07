@@ -7,9 +7,9 @@ using Eigen::VectorXd;
 
 namespace dairlib {
 
-class InternalLowpassFilter {
+class InternalLowPassFilter {
  public:
-  InternalLowpassFilter(double tau, int n_y);
+  InternalLowPassFilter(double tau, int n_y);
   VectorXd filter(const double timestamp, const VectorXd& y);
 
  private:

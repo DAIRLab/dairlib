@@ -63,7 +63,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/controllers:control_utils",
-        "//systems/filtering:internal_lowpass_filter",
+        "//systems/filters:internal_low_pass_filter",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -76,7 +76,7 @@ cc_library(
     deps = [
         "//lcmtypes:lcmt_robot",
         "//systems/controllers:control_utils",
-        "//systems/filtering:internal_lowpass_filter",
+        "//systems/filters:internal_low_pass_filter",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

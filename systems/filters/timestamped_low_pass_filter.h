@@ -15,9 +15,9 @@ using drake::systems::Context;
 
 namespace dairlib {
 
-class TimestampedLowpassFilter : public LeafSystem<double> {
+class TimestampedLowPassFilter : public LeafSystem<double> {
  public:
-  TimestampedLowpassFilter(double tau, int n_y);
+  TimestampedLowPassFilter(double tau, int n_y);
 
  private:
   void CalcFilter(const drake::systems::Context<double> &context,

@@ -1,16 +1,16 @@
-#include "internal_lowpass_filter.h"
+#include "internal_low_pass_filter.h"
 
 using Eigen::VectorXd;
 
 namespace dairlib {
 
-InternalLowpassFilter::InternalLowpassFilter(double tau, int n_y) : tau_(tau) {
+InternalLowPassFilter::InternalLowPassFilter(double tau, int n_y) : tau_(tau) {
   prev_y_ = VectorXd::Zero(n_y);
   prev_time_ = -1;
 }
 
 
-VectorXd InternalLowpassFilter::filter(double timestamp, const VectorXd& y){
+VectorXd InternalLowPassFilter::filter(double timestamp, const VectorXd& y){
   if (prev_time_ < 0) {
     prev_time_ = timestamp;
     prev_y_ = y;

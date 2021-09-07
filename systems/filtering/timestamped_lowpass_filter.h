@@ -17,7 +17,7 @@ namespace dairlib {
 
 class TimestampedLowpassFilter : public LeafSystem<double> {
  public:
-  TimestampedLowpassFilter(double tau, int n_states);
+  TimestampedLowpassFilter(double tau, int n_y);
 
  private:
   void CalcFilter(const drake::systems::Context<double> &context,

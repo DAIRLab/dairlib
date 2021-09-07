@@ -15,7 +15,7 @@ using systems::TimestampedVector;
 
 TimestampedLowpassFilter::TimestampedLowpassFilter(double tau, int n_y) 
                                                   : tau_(tau) {
-  TimestampedVector<double> model_vector n_y);
+  TimestampedVector<double> model_vector(n_y);
 
   this->DeclareVectorInputPort("x", model_vector);
   this->DeclareVectorOutputPort("y", model_vector, 
@@ -23,7 +23,7 @@ TimestampedLowpassFilter::TimestampedLowpassFilter(double tau, int n_y)
   this->DeclarePerStepDiscreteUpdateEvent(
       &TimestampedLowpassFilter::DiscreteVariableUpdate);
 
-  prev_val_idx_ = this->DeclareDiscreteState(VectorXd::Zero n_y));
+  prev_val_idx_ = this->DeclareDiscreteState(VectorXd::Zero(n_y));
   prev_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
 
 }

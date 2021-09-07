@@ -72,8 +72,9 @@ def plot_error_bands(impact_data, save_figs=False):
 def get_window_around_contact_event(x_traj, t_x, start_time, end_time):
   # start_idx = np.argwhere(np.isclose(t_x, start_time, atol=5e-4))[0][0]
   # end_idx = np.argwhere(np.isclose(t_x, end_time, atol=5e-4))[0][0]
-  start_idx = np.argwhere(np.isclose(t_x, start_time, atol=1e-4))[0][0]
-  end_idx = np.argwhere(np.isclose(t_x, end_time, atol=1e-4))[0][0]
+  # import pdb; pdb.set_trace()
+  start_idx = np.argwhere(np.isclose(t_x, start_time, atol=5e-4))[0][0]
+  end_idx = np.argwhere(np.isclose(t_x, end_time, atol=5e-4))[0][0]
   window = slice(start_idx, end_idx)
   return t_x[window], x_traj[window]
 
@@ -190,7 +191,7 @@ def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
   x_hardware = impact_data.x_trajs_hardware[log_num]
   t_sim = impact_data.t_x_sim[log_num]
   x_sim = impact_data.x_trajs_sim[log_num]
-  compare_final = False
+  compare_final = True
   prefix = ''
   if compare_final:
     prefix = 'final_'
@@ -205,12 +206,15 @@ def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
                                          t_sim[:min_time_length], \
                                          x_sim[:min_time_length]
 
+  n_positions = loss_func.position_slice.stop - loss_func.position_slice.start
+  n_velocities = loss_func.velocity_slice.stop - loss_func.velocity_slice.start
+
   pos_diff = x_hardware[:, loss_func.position_slice] - x_sim[:, loss_func.position_slice]
   if compare_final:
     pos_diff = x_hardware[-1, loss_func.position_slice] - x_sim[-1, loss_func.position_slice]
   pos_diff_vec = pos_diff.ravel()
   pos_losses_vec = pos_diff_vec * pos_diff_vec
-  pos_losses = pos_losses_vec.reshape((-1, pos_diff.shape[1]))
+  pos_losses = pos_losses_vec.reshape((-1, n_positions))
   if save_figs:
     plt.figure( prefix + 'position_loss_breakdown: ' + log_num)
     plt.bar(x_datatypes[loss_func.position_slice], pos_losses.sum(axis=0))
@@ -221,7 +225,7 @@ def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
     vel_diff = x_hardware[-1, loss_func.velocity_slice] - x_sim[-1, loss_func.velocity_slice]
   vel_diff_vec = vel_diff.ravel()
   vel_losses_vec = vel_diff_vec * vel_diff_vec
-  vel_losses = vel_losses_vec.reshape((-1, vel_diff.shape[1]))
+  vel_losses = vel_losses_vec.reshape((-1, n_velocities))
   if save_figs:
     plt.figure( prefix + 'velocity_loss_breakdown: ' + log_num)
     plt.bar(x_datatypes[loss_func.velocity_slice], vel_losses.sum(axis=0))
@@ -249,7 +253,7 @@ def main():
   # data_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
   sim_data_directory = '/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/'
-  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/sim_to_real_comparison/'
+  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/mujoco_to_real_comparison/'
   ps = PlotStyler()
   ps.set_default_styling(directory=figure_directory)
   ps.set_figsize([20, 12])
@@ -259,7 +263,8 @@ def main():
     x_datatypes = pickle.load(fp)
 
   # load all the data used for plotting
-  impact_data = CassieImpactData()
+  impact_data = CassieImpactData(use_mujoco=True)
+  # impact_data = CassieImpactData(use_mujoco=False)
   kinematics_calculator = KinematicsHelper()
 
   joint_vel_indices = range(29, 45)
@@ -279,22 +284,22 @@ def main():
     # grf_single_log(impact_data, log_num)
     # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=True)
     # plot_centroidal_trajectory(impact_data, log_num)
-    # plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=True, save_figs=False)
-    pos_loss, vel_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False)
-    pos_losses.append(pos_loss)
-    vel_losses.append(vel_loss)
+    plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, save_figs=True)
+    # pos_loss, vel_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=True)
+    # pos_losses.append(pos_loss)
+    # vel_losses.append(vel_loss)
     pass
-  pos_losses = np.array(pos_losses)
-  vel_losses = np.array(vel_losses)
+  # pos_losses = np.array(pos_losses)
+  # vel_losses = np.array(vel_losses)
 
 
-  plt.figure('total_pos_loss_breakdown')
-  plt.bar(x_datatypes[loss_func.position_slice], pos_losses.sum(axis=0))
-  ps.save_fig('total_pos_loss_breakdown')
+  # plt.figure('total_pos_loss_breakdown')
+  # plt.bar(x_datatypes[loss_func.position_slice], pos_losses.sum(axis=0))
+  # ps.save_fig('total_pos_loss_breakdown')
 
-  plt.figure('total_vel_loss_breakdown')
-  plt.bar(x_datatypes[loss_func.velocity_slice], vel_losses.sum(axis=0))
-  ps.save_fig('total_vel_loss_breakdown')
+  # plt.figure('total_vel_loss_breakdown')
+  # plt.bar(x_datatypes[loss_func.velocity_slice], vel_losses.sum(axis=0))
+  # ps.save_fig('total_vel_loss_breakdown')
 
 
   # import pdb; pdb.set_trace()

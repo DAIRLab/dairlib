@@ -5,9 +5,11 @@ import pickle
 import cassie_loss_utils
 
 class CassieImpactData():
-  def __init__(self):
+  def __init__(self, use_mujoco=False):
     self.data_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
     self.sim_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/drake_optimal/'
+    if use_mujoco:
+      self.sim_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/mujoco_optimal/'
     self.drake_params_directory = "examples/contact_parameter_learning/drake_cassie_params/"
     self.mujoco_params_directory = "examples/contact_parameter_learning/mujoco_cassie_params/"
 
@@ -71,16 +73,20 @@ class CassieImpactData():
     self.contact_forces_sim = {}
 
     for log_num in self.log_nums_real:
-      self.x_trajs_sim[log_num] = np.load(self.sim_data_directory + 'x_' + log_num + '.npy').T
-      self.t_x_sim[log_num] = np.load(self.sim_data_directory + 't_x_' + log_num + '.npy')
+      if use_mujoco:
+        self.x_trajs_sim[log_num] = np.load(self.sim_data_directory + 'x_' + log_num + '.npy')
+        self.t_x_sim[log_num] = np.load(self.sim_data_directory + 't_x_' + log_num + '.npy')
+      else:
+        self.x_trajs_sim[log_num] = np.load(self.sim_data_directory + 'x_' + log_num + '.npy').T
+        self.t_x_sim[log_num] = np.load(self.sim_data_directory + 't_x_' + log_num + '.npy')
       # self.u_trajs_sim[log_num] = np.load(self.sim_data_directory + 'u_' + log_num + '.npy')
-      self.contact_forces_sim[log_num] = np.load(self.sim_data_directory + 'lambda_' + log_num + '.npy')
+      # self.contact_forces_sim[log_num] = np.load(self.sim_data_directory + 'lambda_' + log_num + '.npy')
 
 
     # Load in optimal parameters
-    with open(self.drake_params_directory + 'drake_2021_08_25_11_45_training_15000' + '.pkl', 'rb') as f:
+    with open(self.drake_params_directory + 'drake_2021_09_01_10_training_5000' + '.pkl', 'rb') as f:
       self.drake_contact_parameters = pickle.load(f)
-    with open(self.mujoco_params_directory + 'mujoco_2021_08_25_18_53_training_15000' + '.pkl', 'rb') as f:
+    with open(self.mujoco_params_directory + 'mujoco_2021_09_06_13_training_5000' + '.pkl', 'rb') as f:
       self.mujoco_contact_parameters = pickle.load(f)
     with open(self.drake_params_directory + 'optimized_z_offsets.pkl', 'rb') as file:
       self.z_offsets = pickle.load(file)

@@ -17,6 +17,8 @@ namespace dairlib {
 
 class TimestampedLowPassFilter : public LeafSystem<double> {
  public:
+  // For cutoff frequency w_c (in rad/s), tau = 1/w_c, 
+  // For cutoff frequency f in Hz, tau = 1/(2*pi*f) 
   TimestampedLowPassFilter(double tau, int n_y);
 
  private:

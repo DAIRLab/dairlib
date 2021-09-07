@@ -9,6 +9,9 @@ namespace dairlib {
 
 class InternalLowPassFilter {
  public:
+
+  // For cutoff frequency w_c (in rad/s), tau = 1/w_c, 
+  // For cutoff frequency f in Hz, tau = 1/(2*pi*f) 
   InternalLowPassFilter(double tau, int n_y);
   VectorXd filter(const double timestamp, const VectorXd& y);
 

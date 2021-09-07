@@ -17,10 +17,10 @@ from pydairlib.common.plot_styler import PlotStyler
 from plotting_utils import format_sim_name
 
 mse_loss = cube_sim.LossWeights() # default weights are all ones
-figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures')
+figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/')
 
 ps = PlotStyler()
-ps.set_default_styling(directory=figure_directory, figsize=(20,12))
+ps.set_default_styling(directory=figure_directory, figsize=(10,6))
 
 def visualize_learned_params(params, data_sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
@@ -31,7 +31,7 @@ def visualize_learned_params(params, data_sim, toss_id):
     
     vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
     vis_sim.init_sim(drake_cube_sim.default_drake_contact_params)
-    vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=10)
+    vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=2)
 
     input('Press enter to continue to video')
 
@@ -195,6 +195,9 @@ def sort_traj_pairs_by_loss(pairs, loss_weights):
     sorted_pairs = {idx : pair for idx, pair in sorted(pairs.items(), 
         key=lambda item: loss[item[0]], reverse=True)}
 
+    loss = {idx: loss for idx, loss in sorted(loss.items(), 
+        key=lambda item : item[1], reverse=True)}
+
     return sorted_pairs, loss
 
 def load_params(simulator, id):
@@ -217,6 +220,31 @@ def load_params_and_logs(result_id):
     
     return learned_params, test_set, loss_weights
 
+
+def compare_worst_case(result_losses):
+    toss_id_lists = {}
+    loss_lists = {}
+    worst_case_union = []
+    worst_case_by_result = {}
+    # Un-nest dicts to rearrange output format
+    for key in result_losses.keys():
+        loss_lists[key] = list(result_losses[key].values())
+        toss_id_lists[key] = list(result_losses[key].keys())
+        worst_case_union = list_union(worst_case_union, toss_id_lists[key][:20]) 
+        worst_case_by_result[key] = toss_id_lists[key][:20]
+        num_traj = len(loss_lists[key])
+        print(format_sim_name(key), end='     ')
+    
+    print()
+    for i in range(num_traj):
+        for key in result_losses.keys():
+            print(f'{toss_id_lists[key][i]}, {loss_lists[key][i]}', end='\t')
+        print()
+
+    return worst_case_union, worst_case_by_result   
+
+def list_complement(list1, list2):
+    return list(set(list1) - set(list2))
 
 def list_union(list1, list2):
     return list(set(list1) | set(list2))
@@ -292,31 +320,70 @@ if (__name__ == '__main__'):
     #        'mujoco_2021_08_31_16_18_100', 
     #        'mujoco_2021_08_31_16_21_100']
     
-    ids = ['mujoco_2021_08_31_16_17_100',
-           'drake_2021_08_31_14_04_100', 
-           'bullet_2021_08_31_16_55_100']
+    # ids = ['mujoco_2021_08_31_16_17_100',
+    #        'drake_2021_08_31_14_04_100', 
+    #        'bullet_2021_08_31_16_55_100']
 
-    _, losses, _, _, _ = load_list_of_results(ids, mse_loss)
+    ids = ['mujoco_2021_08_31_13_59_10',
+           'drake_2021_08_31_11_32_10', 
+           'bullet_2021_08_31_12_16_10']
 
-    plot_estimated_loss_pdfs(losses)
-    plt.show()
+    # ids = ['mujoco_2021_08_31_11_03_1',
+    #        'mujoco_2021_08_31_12_05_10',
+    #        'mujoco_2021_08_31_16_18_100']
+    
+    # ids = ['drake_2021_08_31_11_11_1', 
+    #        'drake_2021_08_31_11_32_10', 
+    #        'drake_2021_08_31_14_04_100']
+
+    # ids = ['bullet_2021_08_31_11_12_1', 
+    #        'bullet_2021_08_31_12_16_10', 
+    #        'bullet_2021_08_31_16_55_100']
+
+    sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, mse_loss)
+
+    worst_case_set, worst_case_by_id = compare_worst_case(losses)
+    print()
+    for i in range(3):
+        comp = list_complement([0, 1, 2], [i])
+
+        fails = list_complement(list_complement(worst_case_set,
+            worst_case_by_id[ids[comp[0]]]), worst_case_by_id[ids[comp[1]]])
+        
+        print(f'{format_sim_name(ids[i])} does poorly on:')
+        for toss_id in fails:
+            print(f'{toss_id}: {losses[ids[i]][toss_id]}, \
+                {format_sim_name(ids[comp[0]])}: {losses[ids[comp[0]]][toss_id]}, \
+                     {format_sim_name(ids[comp[1]])}: {losses[ids[comp[1]]][toss_id]}')
+
+        print()
+
+    visualize_learned_params(params[ids[0]], sims[ids[0]], 69)
+
+    # plot_sdf_and_contact(sorted_pairs[ids[0]][69][1])
+    # plot_sdf_and_contact(sorted_pairs[ids[0]][69][0])
+    # plt.show()
+
+
+    # plot_estimated_loss_pdfs(losses)
+    # plt.show()
 
     ## INDIVIDUAL LOG FUNCTIONS
-    # learning_result = sys.argv[1]
+#     learning_result = 'drake_2021_08_31_11_32_10'
+# # 
+#     eval_sim = get_eval_sim(learning_result)
+#     if (eval_sim == None): quit()
 
-    # eval_sim = get_eval_sim(learning_result)
-    # if (eval_sim == None): quit()
+#     params, test_set, _ = load_params_and_logs(learning_result)
+#     traj_pairs = load_traj_pairs(eval_sim, params, test_set)
 
-    # params, test_set, _ = load_params_and_logs(learning_result)
-    # traj_pairs = load_traj_pairs(eval_sim, params, test_set)
+#     # sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
+#     # print('Test set sorted from highest to lowest MSE')
+#     # for key in sorted_pairs:
+#     #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    # sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
-    # print('Test set sorted from highest to lowest MSE')
-    # for key in sorted_pairs:
-    #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
-
-    # stats = calc_error_and_loss_stats(traj_pairs, mse_loss)
-    # print(stats)
+#     stats = calc_error_and_loss_stats(traj_pairs, mse_loss)
+#     print(stats)
     # plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[0]])
     # plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[0]][1])
     # plt.show()

@@ -73,8 +73,8 @@ def get_window_around_contact_event(x_traj, t_x, start_time, end_time):
   # start_idx = np.argwhere(np.isclose(t_x, start_time, atol=5e-4))[0][0]
   # end_idx = np.argwhere(np.isclose(t_x, end_time, atol=5e-4))[0][0]
   # import pdb; pdb.set_trace()
-  start_idx = np.argwhere(np.isclose(t_x, start_time, atol=5e-4))[0][0]
-  end_idx = np.argwhere(np.isclose(t_x, end_time, atol=5e-4))[0][0]
+  start_idx = np.argwhere(np.isclose(t_x, start_time, atol=1e-4))[0][0]
+  end_idx = np.argwhere(np.isclose(t_x, end_time, atol=1e-4))[0][0]
   window = slice(start_idx, end_idx)
   return t_x[window], x_traj[window]
 
@@ -86,15 +86,15 @@ def plot_velocity_trajectory(impact_data, log_num, indices, save_fig=False):
   x_sim = impact_data.x_trajs_sim[log_num]
 
   start_time = impact_data.start_times[log_num]
-  end_time = start_time + 0.05
+  end_time = start_time + 0.1
 
   t_hardware, x_hardware = get_window_around_contact_event(x_hardware, t_hardware, start_time, end_time)
-  t_sim, x_sim = get_window_around_contact_event(x_sim, t_sim, start_time, end_time)
+  # t_sim, x_sim = get_window_around_contact_event(x_sim, t_sim, start_time, end_time)
+  plt.figure(log_num)
   for i in indices:
-    # plt.figure(x_datatypes[i] + ': ' + str(i))
-    plt.figure(log_num + '_' + x_datatypes[i] + ': ' + str(i))
+    # plt.figure(log_num + '_' + x_datatypes[i] + ': ' + str(i))
     ps.plot(t_hardware, x_hardware[:, i], xlabel='time', ylabel='velocity')
-    ps.plot(t_sim, x_sim[:, i])
+    # ps.plot(t_sim, x_sim[:, i])
     ps.add_legend(['hardware', 'sim'])
     if save_fig:
       str_idx = max(x_datatypes[i].find('left'), x_datatypes[i].find('right'))
@@ -185,6 +185,25 @@ def grf_single_log(impact_data, log_num):
   ps.plot(t_sim, lambda_sim[2, :, 2])
   ps.plot(t_sim, lambda_sim[3, :, 2])
 
+def plot_feet_positions_at_impact(impact_data, log_num):
+  t_hardware = impact_data.t_x_hardware[log_num]
+  x_hardware = impact_data.x_trajs_hardware[log_num]
+
+  start_time = impact_data.start_times[log_num]
+  end_time = start_time + 0.1
+  t_hardware, x_hardware = get_window_around_contact_event(x_hardware, t_hardware, start_time, end_time)
+
+  foot_pos_hardware = np.empty((t_hardware.shape[0], 4))
+  foot_vel_hardware = np.empty((t_hardware.shape[0], 4))
+  for i in range(t_hardware.shape[0]):
+    x_i = x_hardware[i]
+    foot_pos_hardware[i] = kinematics_calculator.compute_foot_z_position(x_i)
+    foot_vel_hardware[i] = kinematics_calculator.compute_foot_z_vel(x_i)
+
+  plt.figure(log_num)
+  ps.plot(t_hardware, foot_pos_hardware)
+  ps.plot(t_hardware, foot_vel_hardware)
+
 
 def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
   t_hardware = impact_data.t_x_hardware[log_num]
@@ -263,7 +282,7 @@ def main():
     x_datatypes = pickle.load(fp)
 
   # load all the data used for plotting
-  impact_data = CassieImpactData(use_mujoco=True)
+  impact_data = CassieImpactData(use_mujoco=False)
   # impact_data = CassieImpactData(use_mujoco=False)
   kinematics_calculator = KinematicsHelper()
 
@@ -271,10 +290,11 @@ def main():
   hip_joints_indices = range(29, 35)
   fb_vel_indices = range(23, 29)
   # joint_pos_indices = range(7, 23)
-  # knee_index = range(29,30)
 
   # joint_vel_indices = range(35, 37)
   # joint_vel_indices = range(29, 39)
+  joint_vel_indices = [33, 34, 35, 36, 37, 38]
+  # joint_vel_indices = [35, 36]
 
   # for log_num in ['08', '15', '24']:
   pos_losses = []
@@ -282,9 +302,11 @@ def main():
   for log_num in impact_data.log_nums_real:
     # plt.figure(log_num)
     # grf_single_log(impact_data, log_num)
-    # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=True)
+    # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=False)
+    # plot_feet_positions_at_impact(impact_data, log_num)
+    # ps.show_fig()
     # plot_centroidal_trajectory(impact_data, log_num)
-    plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, save_figs=True)
+    # plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, save_figs=True)
     # pos_loss, vel_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=True)
     # pos_losses.append(pos_loss)
     # vel_losses.append(vel_loss)
@@ -304,11 +326,12 @@ def main():
 
   # import pdb; pdb.set_trace()
   # plot_velocity_trajectory(impact_data, '08', hip_joints_indices)
-  # plot_velocity_trajectory(impact_data, '08', joint_vel_indices, save_fig=True)
+  plot_velocity_trajectory(impact_data, '12', joint_vel_indices, save_fig=False)
+  # plot_feet_positions_at_impact(impact_data, '12')
   # grf_single_log(impact_data, '08')
   # plot_error_bands(impact_data)
   # plot_loss_breakdown(impact_data, '08', loss_func, save_figs=False)
-  # ps.show_fig()
+  ps.show_fig()
   pass
 
 

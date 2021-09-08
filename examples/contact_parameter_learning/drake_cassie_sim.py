@@ -26,9 +26,9 @@ class DrakeCassieSim():
     # self.start_time = 30.5
     self.start_times = {'08': 30.61,
                         '09': 30.61,
-                        '10': 30.61,
+                        '10': 30.60,
                         '11': 30.62,
-                        '12': 30.64,
+                        '12': 30.66,
                         '13': 30.64,
                         '14': 30.65,
                         '15': 30.64,
@@ -45,9 +45,9 @@ class DrakeCassieSim():
                         '28': 30.64,
                         '29': 30.64,
                         '30': 30.64,
-                        '31': 30.63,
-                        '32': 30.63,
-                        '33': 30.63,
+                        '31': 30.635,
+                        '32': 30.635,
+                        '33': 30.635,
     }
     self.sim_time = 0.05
     # self.end_time = self.start_time + self.sim_time
@@ -67,9 +67,11 @@ class DrakeCassieSim():
 
     self.log_nums_all = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_real = np.hstack((np.arange(8, 18), np.arange(20, 34)))
+    # self.log_nums_real = np.hstack((np.arange(8, 12), np.arange(13, 18), np.arange(20, 34)))
     self.log_nums_sim = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_all = ['%0.2d' % i for i in self.log_nums_all]
     self.log_nums_real = ['%0.2d' % i for i in self.log_nums_real]
+    self.log_nums_w_offset = ['21', '23', '24', '25', '26', '27', '28', '30', '31', '32', '33']
     for log_num in self.log_nums_real:
       self.x_trajs[log_num] = np.load(self.folder_path + 'x_' + log_num + '.npy')
       self.lambda_trajs[log_num] = np.load(self.folder_path + 'lambda_' + log_num + '.npy')
@@ -84,9 +86,10 @@ class DrakeCassieSim():
       self.vel_offsets = pickle.load(file)
 
     self.default_drake_contact_params = {
-      "mu_static": 0.8,
-      "mu_ratio": 1.0,
+      # "mu_static": 0.8,
+      # "mu_ratio": 1.0,
       # "pen_allow": 1e-5,
+      "mu" : 0.8,
       "stiffness": 4e4,
       "dissipation": 0.5,
       # "stiction_tol": 1e-3,
@@ -134,8 +137,8 @@ class DrakeCassieSim():
     # penetration_allowance = params['pen_allow']
     stiffness = params['stiffness']
     dissipation = params['dissipation']
-    mu_static = params['mu_static']
-    mu_kinetic = params['mu_ratio'] * params['mu_static']
+    mu_static = params['mu']
+    mu_kinetic = params['mu']
     stiction_tol = 1e-3
     log_idx = self.log_nums_real.index(log_num)
     log_idx = self.log_nums_real.index('15')
@@ -159,8 +162,11 @@ class DrakeCassieSim():
     # vel_offset = self.vel_offsets[log_num]
     # z_offset = params['z_offset']
     # vel_offset = params['vel_offset']
+
     z_offset = np.zeros(1)
     vel_offset = np.zeros(3)
+    if log_num in self.log_nums_w_offset:
+      z_offset = np.array([-0.015])
     # print(z_offset)
     # print(vel_offset)
 
@@ -189,15 +195,11 @@ class DrakeCassieSim():
     if simulator_process.returncode == 1:
       return '-1'
     x_traj = np.genfromtxt('x_traj.csv', delimiter=',', dtype='f16')
-    lambda_traj = np.genfromtxt('lambda_traj.csv', delimiter=',', dtype='f16')
     t_x = np.genfromtxt('t_x.csv')
     # t_x = np.append(t_x, self.start_time + self.sim_time)
     # sim_id = log_num + str(np.abs(hash(frozenset(params))))
     np.save(self.sim_data_folder + 'x_' + log_num, x_traj)
     np.save(self.sim_data_folder + 't_x_' + log_num, t_x)
-    lambda_traj = lambda_traj.reshape((4, 3, lambda_traj.shape[1]))
-    lambda_traj = np.transpose(lambda_traj, (0, 2, 1))
-    np.save(self.sim_data_folder + 'lambda_' + log_num, lambda_traj)
 
     self.iter_num += 1
     print("sim_run: " + str(self.iter_num))
@@ -207,29 +209,26 @@ class DrakeCassieSim():
   def load_sim_trial(self, log_num):
     x_traj = np.load(self.sim_data_folder + 'x_' + log_num + '.npy')
     t_x = np.load(self.sim_data_folder + 't_x_' + log_num + '.npy')
-    lambda_traj = np.load(self.sim_data_folder + 'lambda_' + log_num + '.npy')
+    # lambda_traj = np.load(self.sim_data_folder + 'lambda_' + log_num + '.npy')
 
-    return x_traj.transpose(), t_x, lambda_traj
+    return x_traj.transpose(), t_x
 
-  def get_window_around_contact_event(self, t_x_sim, t_x, x_traj, lambda_traj):
+  def get_window_around_contact_event(self, t_x_sim, t_x, x_traj):
     # return whole trajectory for now
     # start_idx = np.argwhere(np.isclose(t_x, self.start_time, atol=5e-4))[0][0]
     # end_idx = np.argwhere(np.isclose(t_x, self.end_time, atol=5e-4))[0][0]
     start_idx = np.argwhere(np.isclose(t_x, t_x_sim[0], atol=5e-4))[1][0]
     end_idx = np.argwhere(np.isclose(t_x, t_x_sim[-1], atol=5e-4))[1][0]
     window = slice(start_idx, end_idx)
-    return t_x[window], x_traj[window], lambda_traj[:, window, :]
+    return t_x[window], x_traj[window]
 
   def compute_loss(self, log_num, sim_id, params, plot=False):
     x_traj_hardware = self.x_trajs[log_num]
     t_x_hardware = self.t_x[log_num]
-    lambda_traj_hardware = self.lambda_trajs[log_num]
+    # lambda_traj_hardware = self.lambda_trajs[log_num]
 
-    x_traj_sim, t_x_sim, lambda_traj_sim = self.load_sim_trial(sim_id)
-    t_x_hardware, x_traj_hardware, lambda_traj_hardware = self.get_window_around_contact_event(t_x_sim,
-                                                                                               t_x_hardware,
-                                                                                               x_traj_hardware,
-                                                                                               lambda_traj_hardware)
+    x_traj_sim, t_x_sim = self.load_sim_trial(sim_id)
+    t_x_hardware, x_traj_hardware = self.get_window_around_contact_event(t_x_sim, t_x_hardware, x_traj_hardware)
     min_time_length = min(x_traj_sim.shape[0], x_traj_hardware.shape[0])
     # import pdb; pdb.set_trace()
     # joints = np.arange(23, 45)
@@ -243,8 +242,6 @@ class DrakeCassieSim():
         self.ps.add_legend([self.x_datatypes[joint] + ': sim', self.x_datatypes[joint] + ': real'])
       plt.show()
     traj_loss = self.loss_func.CalculateLossTraj(x_traj_sim[:min_time_length], x_traj_hardware[:min_time_length])
-    # impulse_loss = self.loss_func.CalculateLossNetImpulse(lambda_traj_sim[:, :min_time_length, :],
-    #                                                       lambda_traj_hardware[:, :min_time_length, :])
     # regularization_loss = self.loss_func.CalculateLossParams(params)
     # return traj_loss + regularization_loss
     return traj_loss

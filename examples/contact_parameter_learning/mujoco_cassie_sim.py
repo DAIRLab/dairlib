@@ -29,9 +29,9 @@ class LearningMujocoCassieSim():
     self.ps = plot_styler.PlotStyler()
     self.start_times = {'08': 30.61,
                         '09': 30.61,
-                        '10': 30.61,
+                        '10': 30.60,
                         '11': 30.62,
-                        '12': 30.64,
+                        '12': 30.66,
                         '13': 30.64,
                         '14': 30.65,
                         '15': 30.64,
@@ -48,9 +48,9 @@ class LearningMujocoCassieSim():
                         '28': 30.64,
                         '29': 30.64,
                         '30': 30.64,
-                        '31': 30.63,
-                        '32': 30.63,
-                        '33': 30.63,
+                        '31': 30.635,
+                        '32': 30.635,
+                        '33': 30.635,
                         }
     self.sim_time = 0.05
     # self.end_time = self.start_time + self.sim_time
@@ -72,9 +72,11 @@ class LearningMujocoCassieSim():
 
     self.log_nums_all = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_real = np.hstack((np.arange(8, 18), np.arange(20, 34)))
+    # self.log_nums_real = np.hstack((np.arange(8, 12), np.arange(13, 18), np.arange(20, 34)))
     self.log_nums_sim = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_all = ['%0.2d' % i for i in self.log_nums_all]
     self.log_nums_real = ['%0.2d' % i for i in self.log_nums_real]
+    self.log_nums_w_offset = ['21', '23', '24', '25', '26', '27', '28', '30', '31', '32', '33']
     for log_num in self.log_nums_real:
       self.x_trajs[log_num] = np.load(self.folder_path + 'x_' + log_num + '.npy')
       self.lambda_trajs[log_num] = np.load(self.folder_path + 'lambda_' + log_num + '.npy')
@@ -127,6 +129,8 @@ class LearningMujocoCassieSim():
 
     z_offset = np.zeros(1)
     vel_offset = np.zeros(3)
+    if log_num in self.log_nums_w_offset:
+      z_offset = np.array([-0.015])
 
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset

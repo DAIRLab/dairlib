@@ -15,6 +15,7 @@ q_mujoco_default = np.array([1, 0, 0, 0, 0, 0, 1.01,
                                       -0.0, -1.5968,
                                       -0.0, -1.5968])
 
+
 # q_mujoco_default = np.array([0.0, 0.0, 1.01,
 #                              1.0, 0.0, 0.0, 0.0,
 #                              0.0045, 0.0, 0.4973,
@@ -26,8 +27,8 @@ x_mujoco_default = np.hstack((q_mujoco_default, np.zeros(22)))
 
 def test_default():
   sim = MujocoCassieSim(realtime_rate=0.1)
-  sim.run_sim(0.0, 0.1, x_init=x_mujoco_default)
-  # sim.run_sim(0.0, 0.1)
+  sim.run_sim(0.0, 0.01, x_init=x_mujoco_default)
+  # sim.run_sim(0.0, 0.01)
 
 
 def test_initial_state():
@@ -62,10 +63,11 @@ def test_playback():
   realtime_rate = 0.1
   sim = MujocoCassieSim(realtime_rate=realtime_rate)
   # converter = DrakeToMujocoConverter()
-  start_time = 30.64
-  end_time = start_time + 0.05
   folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
-  log_num = '15'
+  # log_num = '15'
+  log_num = '11'
+  start_time = 30.62
+  end_time = start_time + 0.05
   x_traj = np.load(folder_path + 'x_' + log_num + '.npy')
   t = np.load(folder_path + 't_x_' + log_num + '.npy')
 

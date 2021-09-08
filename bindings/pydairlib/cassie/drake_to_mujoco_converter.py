@@ -219,14 +219,14 @@ class DrakeToMujocoConverter():
     world_frame = np.eye(3)
     l_x_vec = (left_heel - left_thigh)[:, 0]
     l_x_vec *= 1 / np.linalg.norm(l_x_vec)
-    l_y_vec = np.cross(l_x_vec, world_frame[0])
+    l_y_vec = np.cross(l_x_vec, -world_frame[1])
     l_y_vec *= 1 / np.linalg.norm(l_y_vec)
     l_z_vec = np.cross(l_x_vec, l_y_vec)
     l_z_vec *= 1 / np.linalg.norm(l_z_vec)
 
     r_x_vec = (right_heel - right_thigh)[:, 0]
     r_x_vec *= 1 / np.linalg.norm(r_x_vec)
-    r_y_vec = np.cross(r_x_vec, world_frame[0])
+    r_y_vec = np.cross(r_x_vec, -world_frame[1])
     r_y_vec *= 1 / np.linalg.norm(r_y_vec)
     r_z_vec = np.cross(r_x_vec, r_y_vec)
     r_z_vec *= 1 / np.linalg.norm(r_z_vec)
@@ -279,7 +279,8 @@ class DrakeToMujocoConverter():
     l_bar_quat_gt = np.array([0.9785, -0.0164, 0.01787, -0.2049])
     r_bar_quat_gt = np.array([0.9786, 0.00386, -0.01524, -0.2051])
 
-    # import pdb; pdb.set_trace()
+    # print(r_bar_quat)
+    # print(r_bar_quat_gt)
 
     q_missing = np.zeros(35)
     v_missing = np.zeros(32)

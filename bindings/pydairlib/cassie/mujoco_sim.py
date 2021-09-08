@@ -87,6 +87,8 @@ class MujocoCassieSim():
     v = self.cassie_env.qvel()
     # print(v[9:12])
     # print(v[22:25])
+    # print(q[10:14])
+    # print(q[24:28])
     # print(q)
     # print(v)
     return q, v, u, t

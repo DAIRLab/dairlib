@@ -30,8 +30,6 @@ batch_size = 5
 all_logs = drake_sim.log_nums_real
 num_train = int(0.9 * len(all_logs))
 training_idxs = sample(all_logs, num_train)
-# training_idxs = ['14']
-# training_idxs = [log_num]
 test_idxs = [idx for idx in all_logs if not (idx in training_idxs)]
 
 ps = plot_styler.PlotStyler()
@@ -51,7 +49,6 @@ def get_drake_loss(params, log_num=None, plot=False):
     loss = drake_sim.compute_loss(log_num, sim_id, params, plot)
   loss_over_time.append(loss)
   stiffness_over_time.append(params['stiffness'])
-  # print('loss:' + str(loss))
   return loss
 
 def get_drake_loss_mp(params):
@@ -67,17 +64,11 @@ def get_drake_loss_mp(params):
 def get_mujoco_loss(params, log_num=None):
   if (log_num == None):
     log_num = choice(training_idxs)
-  # try:
   sim_id = mujoco_sim.run(params, log_num)
   loss = mujoco_sim.compute_loss(log_num, sim_id, params)
-  # except:
-  #   loss = SIM_ERROR_LOSS
-  # print(log_num)
   # sim_id = mujoco_sim.run(params, log_num)
   # loss = mujoco_sim.compute_loss(log_num, sim_id, params)
-  # loss_over_time.append(loss)
-  # stiffness_over_time.append(params['timeconst'])
-  # print('loss:' + str(loss))
+  loss_over_time.append(loss)
   return loss
 
 def get_mujoco_loss_mp(params):
@@ -175,24 +166,18 @@ def plot_loss_trajectory():
 
 def print_drake_cassie_params(single_log_num, plot=False):
   # optimal_params = drake_sim.load_params('drake_2021_09_01_10_training_5000').value
-  optimal_params = drake_sim.load_params('drake_2021_09_07_16_training_1000').value
+  # optimal_params = drake_sim.load_params('drake_2021_09_07_16_training_1000').value
   # optimal_params = drake_sim.load_params('drake_2021_08_28_22_26' + single_log_num + '_x_offsets_5000').value
 
+  optimal_params = drake_sim.load_params('drake_2021_09_07_18_training_5000').value
   loss = get_drake_loss(optimal_params, single_log_num, plot)
   print(loss)
-  # loss = get_drake_loss(drake_sim.default_drake_contact_params, single_log_num, plot)
-  # print(single_log_num)
-  # z_offset = optimal_params['z_offset']
-  # vel_offset = optimal_params['vel_offset']
   stiffness = optimal_params['stiffness']
   dissipation = optimal_params['dissipation']
   # print('stiffness')
   # print(stiffness)
   # print('dissipation')
   # print(dissipation)
-  # np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offset)
-  # np.save(drake_sim.params_folder + log_num + '_vel_offset_' + str(budget), vel_offset)
-  # return z_offset, vel_offset
   return loss
 
 
@@ -200,22 +185,17 @@ def print_mujoco_cassie_params(single_log_num):
   # optimal_params = drake_sim.load_params(log_num + '_optimized_params_' + str(budget))
   # optimal_params = mujoco_sim.load_params('all' + '_optimized_params_' + str(budget))
   # optimal_params = mujoco_sim.load_params('mujoco_2021_09_06_22_training_5000').value
-  optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_17_training_1000').value
+  # optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_17_training_1000').value
+  optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_18_training_5000').value
   loss = get_mujoco_loss(optimal_params, single_log_num)
   print(loss)
 
-  # sim_id = mujoco_sim.run(optimal_params.value, single_log_num)
-  # loss = mujoco_sim.compute_loss(single_log_num, sim_id)
   stiffness = optimal_params['stiffness']
   damping = optimal_params['damping']
   # print('stiffness')
   # print(stiffness)
   # print('damping')
   # print(damping)
-  # z_offsets = optimal_params.value['z_offset']
-  # vel_offsets = optimal_params.value['vel_offset']
-  # np.save(drake_sim.params_folder + log_num + '_z_offset_' + str(budget), z_offsets)
-  # np.save(drake_sim.params_folder + log_num + '_vel_offset_' + str(budget), vel_offsets)
   return loss
 
 
@@ -250,14 +230,11 @@ def save_x_offsets():
   vel_offsets = {}
   for i in all_logs:
     log_num = i
-    # z_offset, vel_offset = print_drake_cassie_params(log_num)
     print_drake_cassie_params(log_num)
-    # z_offsets[log_num] = z_offset
-    # vel_offsets[log_num] = vel_offset
-  with open(drake_sim.params_folder + 'optimized_z_offsets.pkl', 'wb') as file:
-    pickle.dump(z_offsets, file, protocol=pickle.HIGHEST_PROTOCOL)
-  with open(drake_sim.params_folder + 'optimized_vel_offsets.pkl', 'wb') as file:
-    pickle.dump(vel_offsets, file, protocol=pickle.HIGHEST_PROTOCOL)
+  # with open(drake_sim.params_folder + 'optimized_z_offsets.pkl', 'wb') as file:
+  #   pickle.dump(z_offsets, file, protocol=pickle.HIGHEST_PROTOCOL)
+  # with open(drake_sim.params_folder + 'optimized_vel_offsets.pkl', 'wb') as file:
+  #   pickle.dump(vel_offsets, file, protocol=pickle.HIGHEST_PROTOCOL)
 
 def print_params():
   global log_num
@@ -265,7 +242,6 @@ def print_params():
     print(i)
     log_num = i
     print_drake_cassie_params(log_num)
-
 
 def learn_x_offsets():
   global training_idxs
@@ -276,15 +252,34 @@ def learn_x_offsets():
     training_idxs = [log_num]
     learn_drake_cassie_params()
 
+def print_drake_optimal():
+  print('drake_optimal')
+  optimal_params = drake_sim.load_params('drake_2021_09_07_18_training_5000').value
+  print('stiffness')
+  print(optimal_params['stiffness'])
+  print('dissipation')
+  print(optimal_params['dissipation'])
+  print('mu')
+  print(optimal_params['mu'])
+
+def print_mujoco_optimal():
+  print('mujoco_optimal')
+  optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_18_training_5000').value
+  print('stiffness')
+  print(optimal_params['stiffness'])
+  print('damping')
+  print(optimal_params['damping'])
+  print('mu_tangent')
+  print(optimal_params['mu_tangent'])
+
 if (__name__ == '__main__'):
+  # print_drake_optimal()
+  # print_mujoco_optimal()
   # print_loss_weights('pos_loss_weights')
   # learn_x_offsets()
   # save_x_offsets()
-  # print_params()
-  # import pdb; pdb.set_trace()
-  # learn_drake_cassie_params()
-  # learn_drake_cassie_params(batch=True)
   # print_drake_cassie_params()
+  # learn_drake_cassie_params(batch=True)
   # learn_mujoco_cassie_params()
   # plot_per_log_loss_drake()
   plot_per_log_loss_mujoco()

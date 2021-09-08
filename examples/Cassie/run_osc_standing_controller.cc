@@ -277,6 +277,25 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_rot_traj);
 
+  // Hip yaw joint tracking
+  // We use hip yaw joint tracking instead of pelvis yaw tracking because the
+  // foot sometimes rotates about yaw, and we need hip yaw joint to go back to 0.
+  double w_hip_yaw = 0.5;
+  double hip_yaw_kp = 40;
+  double hip_yaw_kd = 0.5;
+  JointSpaceTrackingData left_hip_yaw_traj(
+      "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
+      hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
+      plant_w_springs, plant_wo_springs);
+  JointSpaceTrackingData right_hip_yaw_traj(
+      "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
+      hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
+      plant_w_springs, plant_wo_springs);
+  left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
+  right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
+
   // Build OSC problem
   osc->Build();
   // Connect ports

@@ -196,7 +196,7 @@ class OscTrackingData {
 
   // Members of low-pass filter
   void LowPassFiltering(double t);
-  double tau_;
+  double tau_ = -1;
   std::set<int> low_pass_filter_element_idx_;
   double last_timestamp_ = -1;
 

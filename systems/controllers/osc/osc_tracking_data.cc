@@ -91,7 +91,9 @@ bool OscTrackingData::Update(
     }
 
     // Low-pass filtering y_ and ydot_
-    LowPassFiltering(t);
+    if (tau_ > 0) {
+      LowPassFiltering(t);
+    }
 
     UpdateYError();
     UpdateYdotError();
@@ -120,6 +122,7 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
 
 void OscTrackingData::SetLowPassFilter(double tau,
                                        const std::set<int>& element_idx) {
+  DRAKE_DEMAND(tau > 0);
   tau_ = tau;
 
   DRAKE_DEMAND(n_y_ == n_ydot_);  // doesn't support quaternion yet

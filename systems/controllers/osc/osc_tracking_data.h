@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+
 #include <Eigen/Dense>
 #include <drake/common/trajectories/trajectory.h>
 #include <drake/multibody/plant/multibody_plant.h>
@@ -194,24 +195,25 @@ class OscTrackingData {
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
   // Members of low-pass filter
+  void LowPassFiltering(double t);
   double tau_;
   std::set<int> low_pass_filter_element_idx_;
-  double cutoff_freq_ = 1;  // in Hz.
-  mutable double last_timestamp_ = 0;
-  mutable double current_timestamp_ = 0; // don't need this after we clean up the code
+  double last_timestamp_ = -1;
 
  private:
   // Check if we should do tracking in the current state
   void UpdateTrackingFlag(int finite_state_machine_state);
 
   // Updaters of feedback output, jacobian and dJ/dt * v
-  virtual void UpdateYAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) = 0;
-  virtual void UpdateYdotAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) = 0;
   virtual void UpdateYddotDes() = 0;
+  virtual void UpdateY(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) = 0;
+  virtual void UpdateYError() = 0;
+  virtual void UpdateYdot(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr) = 0;
+  virtual void UpdateYdotError() = 0;
   virtual void UpdateJ(
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;
@@ -259,13 +261,13 @@ class ComTrackingData final : public OscTrackingData {
   void AddStateToTrack(int state);
 
  private:
-  void UpdateYAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
+  void UpdateY(const Eigen::VectorXd& x_w_spr,
+               const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYError() final;
+  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+                  const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -322,13 +324,13 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
 
  private:
-  void UpdateYAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
+  void UpdateY(const Eigen::VectorXd& x_w_spr,
+               const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYError() final;
+  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+                  const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -370,13 +372,13 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
  private:
-  void UpdateYAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
+  void UpdateY(const Eigen::VectorXd& x_w_spr,
+               const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYError() final;
+  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+                  const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -423,13 +425,13 @@ class JointSpaceTrackingData final : public OscTrackingData {
       const std::vector<std::string>& joint_vel_names);
 
  private:
-  void UpdateYAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYddotDes() final;
+  void UpdateY(const Eigen::VectorXd& x_w_spr,
+               const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYError() final;
+  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+                  const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -458,13 +460,13 @@ class OptimalRomTrackingData final : public OscTrackingData {
                       const goldilocks_models::ReducedOrderModel& rom);
 
  private:
-  void UpdateYAndError(
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateYdotAndError(
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateYddotDes() final;
+  void UpdateY(const Eigen::VectorXd& x_wo_spr,
+               const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYError() final;
+  void UpdateYdot(const Eigen::VectorXd& x_wo_spr,
+                  const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,

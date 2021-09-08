@@ -52,7 +52,7 @@ position_names = [
 # kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
 
 # Set of gains with which COM is within support polygon when we lower the hoist 
-joint_default = [-0.03,.03,0,0,0.55,0.55,-1.5,-1.5,-1.8,-1.8]
+joint_default = [-0.01,.01,0,0,0.55,0.55,-1.5,-1.5,-1.8,-1.8]
 kp_default = [i for i in [80,80,50,50,50,50,50,50,10,10]]
 kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
 

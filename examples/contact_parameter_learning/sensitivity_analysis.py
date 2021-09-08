@@ -1,15 +1,59 @@
+from examples.contact_parameter_learning.cube_sim import LossWeights
 import numpy as np
-import plot_styler
 import sys
 import matplotlib.pyplot as plt
-from evaluate_cube_parameters import load_traj_pairs, load_params_and_logs, get_eval_sim, ps
+from evaluate_cube_parameters import calc_error_between_trajectories, \
+    load_traj_pairs, load_params_and_logs, get_eval_sim
 from copy import deepcopy
-from random import sample
-import drake_cube_sim
-import mujoco_cube_sim
-import bullet_cube_sim
+from math import pi
 import cube_sim
 
+
+
+def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params_range, traj_set):
+    pos_avgs = {}
+    pos_meds = {}
+    rot_avgs = {}
+    rot_meds = {}
+
+    for param_key in params_range:
+        pos_avg = []
+        pos_med = []
+        rot_avg = []
+        rot_med = []
+        params = deepcopy(optimal_params)
+        print(f'sweeping {param_key}')
+
+        for param_val in params_range[param_key]:
+            pos = []
+            rot = []
+            params[param_key] = param_val
+            print(f'{param_key}: {param_val}')
+            pairs = load_traj_pairs(sim, params, traj_set, print_progress=True)
+            for pair in pairs.values():
+                pos_error = np.linalg.norm(
+                pair[0][:,cube_sim.CUBE_DATA_POSITION_SLICE] - \
+                pair[1][:,cube_sim.CUBE_DATA_POSITION_SLICE], axis=1) / (2*cube_sim.BLOCK_HALF_WIDTH)
+                pos.append(np.mean(pos_error))
+
+                quat_error = np.zeros((pair[0].shape[0]))
+
+                for i in range(pair[0].shape[0]):
+                    quat_error[i] = cube_sim.LossWeights.calc_rotational_distance(
+                    pair[0][i, cube_sim.CUBE_DATA_QUATERNION_SLICE], 
+                    pair[1][i, cube_sim.CUBE_DATA_QUATERNION_SLICE])
+                rot.append((180 / pi) * np.mean(quat_error))
+            pos_avg.append(np.mean(pos))
+            pos_med.append(np.median(pos))
+            rot_avg.append(np.mean(rot))
+            rot_med.append(np.median(rot))
+        
+        pos_avgs[param_key] = np.array(pos_avg)
+        pos_meds[param_key] = np.array(pos_med)
+        rot_avgs[param_key] = np.array(rot_avg)
+        rot_meds[param_key] = np.array(rot_med)
+
+    return pos_avgs, pos_meds, rot_avgs, rot_meds
 
 def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, test_traj_set, plant='cube'):
     
@@ -39,13 +83,16 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
 
     return loss_avgs, loss_meds
 
-def plot_sensitivity_analysis(loss_sweeps, params_range, title=''):
-    for key in loss_sweeps:
-        plt.figure()
-        ps.plot(params_range[key], loss_sweeps[key], color=ps.blue)
-        plt.title(f'{title} - {key}')
-        if (key == 'pen_allow' or key == 'stiction_tol' or key == 'mu_torsion' or key == 'mu_rolling'):
-            plt.xscale('log')
+
+def get_stiffness_range(sim_type):
+    params_range = {}
+    if (sim_type == 'drake'):
+        params_range['stiffness'] = np.arange(8000.0, 100000.0, 1000.0).tolist()
+    else:
+        params_range['stiffness'] = np.arange(1000, 10000, 500).tolist()
+
+    return params_range
+
 
 def get_cube_params_range(sim_type):
     params_range = {}
@@ -84,11 +131,6 @@ def cube_sensitivity_analysis_main(learning_result):
         params_range, 
         test_set)
     
-    plot_sensitivity_analysis(avg, params_range, title='Avg loss sweep')
-    plot_sensitivity_analysis(med, params_range, title='Median loss sweep')
-
-    plt.show()
-
 if (__name__ == '__main__'):
     result_id = sys.argv[1]
     cube_sensitivity_analysis_main(result_id)

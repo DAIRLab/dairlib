@@ -96,7 +96,7 @@ def load_traj_pairs(sim, params, test_set, print_progress=False):
             initial_state, steps, cube_sim.CUBE_DATA_DT)
         traj_pairs[toss_id] = (cube_data, sim_data)
         if (print_progress):
-            if not (i % 25): print(i)
+            if not (i % 5): print(i)
             i += 1
     
     return traj_pairs

@@ -6,7 +6,7 @@ import bullet_cube_sim
 import os
 import sys
 from json import dump, load
-from random import sample, choice
+from random import random, sample, choice, seed
 import numpy as np
 from concurrent import futures
 import time
@@ -46,6 +46,7 @@ num_test = num_trials - num_train
 
 # Make a list of train and test trials 
 trial_idxs = range(num_trials)
+seed(6)
 training_idxs = sample(trial_idxs, num_train)
 test_idxs = [idx for idx in trial_idxs if not (idx in training_idxs)]
 

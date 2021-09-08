@@ -6,21 +6,14 @@ import drake_cube_sim
 import mujoco_cube_sim
 import bullet_cube_sim
 import os
-import sys
 import json
 from random import choice
 from learn_cube_parameters import cube_data_folder, model_folder, log_folder
 from matplotlib import pyplot as plt
-from scipy.stats import gaussian_kde
 import numpy as np
-from pydairlib.common.plot_styler import PlotStyler
 from plotting_utils import format_sim_name
 
 mse_loss = cube_sim.LossWeights() # default weights are all ones
-figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/')
-
-ps = PlotStyler()
-ps.set_default_styling(directory=figure_directory, figsize=(10,6))
 
 def visualize_learned_params(params, data_sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
@@ -269,25 +262,6 @@ def load_list_of_results(training_results, loss_to_compare):
 
     return result_traj_pairs, result_losses, result_params, sims, union_of_test_sets
 
-def plot_estimated_loss_pdfs(losses):
-    training_results = list(losses.keys())
-    i = 0
-    legend_strs = []
-    filename = ''
-    for result in training_results:
-        loss = np.array(list(losses[result].values()))
-        pts = np.linspace(np.min(loss), np.max(loss), 100)
-        pdf = gaussian_kde(loss).pdf(pts)
-        ps.plot(pts, pdf, color=ps.penn_color_wheel[i])
-        legend_strs.append(format_sim_name(result) + ' $T_{sim}$ = ' + str(148 * int(result.split('_')[-1])) + ' Hz')
-        filename += format_sim_name(result) + '_' + result.split('_')[-1] + '_'
-        i += 1
-    
-    filename += '.pdf'
-    plt.title('Estimated Pdf of Cube Toss Error')
-    plt.xlabel('Avg. MSE')
-    plt.legend(legend_strs)
-    ps.save_fig(filename)
 
 def get_eval_sim(result_id):
     sim_type = result_id.split('_')[0]

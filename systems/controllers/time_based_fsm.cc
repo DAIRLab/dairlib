@@ -26,12 +26,15 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
 
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
-  fsm_port_ = this->DeclareVectorOutputPort(BasicVector<double>(1),
-                                &TimeBasedFiniteStateMachine::CalcFiniteState).get_index();
+  fsm_port_ = this->DeclareVectorOutputPort(
+                      "fsm", BasicVector<double>(1),
+                      &TimeBasedFiniteStateMachine::CalcFiniteState)
+                  .get_index();
 
   // Accumulate the durations to get timestamps
   double sum = 0;
@@ -56,7 +59,7 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
   double remainder = fmod(current_sim_time, period_);
 
   // Get current finite state
-  VectorXd current_finite_state(1);
+  VectorXd current_finite_state = VectorXd::Zero(1);
   if (current_sim_time >= t0_) {
     for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
       if (remainder < accu_state_durations_[i]) {

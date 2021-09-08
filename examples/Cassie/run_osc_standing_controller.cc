@@ -57,6 +57,7 @@ DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");
+DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -218,7 +219,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_wo_springs, context_w_spr.get(),
-      context_wo_spr.get(), false, FLAGS_print_osc);
+      context_wo_spr.get(), false, FLAGS_print_osc, FLAGS_qp_time_limit);
 
   // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);

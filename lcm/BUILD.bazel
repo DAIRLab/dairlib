@@ -13,6 +13,14 @@ cc_binary(
 )
 
 cc_library(
+    name = "trajectory_saver",
+    deps = [
+        "//lcm:dircon_trajectory_saver",
+        "//lcm:lcm_trajectory_saver",
+    ],
+)
+
+cc_library(
     name = "lcm_trajectory_saver",
     srcs = ["lcm_trajectory.cc"],
     hdrs = ["lcm_trajectory.h"],

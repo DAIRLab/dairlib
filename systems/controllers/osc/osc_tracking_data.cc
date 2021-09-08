@@ -56,7 +56,7 @@ bool OscTrackingData::Update(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
-    int finite_state_machine_state) {
+    int finite_state_machine_state, const Eigen::VectorXd& v_proj) {
   // Update track_at_current_state_
   UpdateTrackingFlag(finite_state_machine_state);
 
@@ -69,8 +69,8 @@ bool OscTrackingData::Update(
       ydot_des_ = traj.EvalDerivative(t, 1);
       yddot_des_ = traj.EvalDerivative(t, 2);
     }
-    // TODO (yangwill): Remove this edge case after EvalDerivative has been
-    // implemented for ExponentialPlusPiecewisePolynomial
+      // TODO (yangwill): Remove this edge case after EvalDerivative has been
+      // implemented for ExponentialPlusPiecewisePolynomial
     else {
       ydot_des_ = traj.MakeDerivative(1)->value(t);
       yddot_des_ = traj.MakeDerivative(2)->value(t);
@@ -100,6 +100,9 @@ bool OscTrackingData::Update(
 
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
+    if(impact_invariant_projection_){
+      error_ydot_ -= GetJ() * v_proj;
+    }
 
     // Update command output (desired output with pd control)
     yddot_command_ =
@@ -245,6 +248,7 @@ void ComTrackingData::UpdateYdot(const VectorXd& x_w_spr,
   ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_.num_velocities());
 
   error_ydot_ = ydot_des_ - ydot_;
+  //  error_ydot_ = ydot_des_ - ydot_;
 }
 
 void ComTrackingData::UpdateYdotError() { error_ydot_ = ydot_des_ - ydot_; }
@@ -400,7 +404,7 @@ void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
       context_w_spr,
       plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
   Quaterniond y_quat(transform_mat.rotation() *
-                     frame_pose_.at(GetStateIdx()).linear());
+      frame_pose_.at(GetStateIdx()).linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
@@ -459,12 +463,12 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void RotTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
-               .CalcBiasSpatialAcceleration(
-                   context_wo_spr, JacobianWrtVariable::kV,
-                   *body_frames_wo_spr_.at(GetStateIdx()),
-                   frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
-                   world_wo_spr_)
-               .rotational();
+      .CalcBiasSpatialAcceleration(
+          context_wo_spr, JacobianWrtVariable::kV,
+          *body_frames_wo_spr_.at(GetStateIdx()),
+          frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
+          world_wo_spr_)
+      .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
@@ -590,7 +594,6 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
     DRAKE_DEMAND(joint_vel_idx_w_spr_.at(i).size() == GetYdotDim());
     DRAKE_DEMAND(joint_vel_idx_wo_spr_.at(i).size() == GetYdotDim());
   }
-
   if (state_.empty()) {
     DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == 1);
     DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == 1);

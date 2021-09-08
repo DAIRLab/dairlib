@@ -7,15 +7,16 @@ LinearController::LinearController(int num_positions, int num_velocities,
                                    int num_inputs) {
   output_input_port_ =
       this->DeclareVectorInputPort(
+              "x, u, t",
               OutputVector<double>(num_positions, num_velocities, num_inputs))
           .get_index();
 
   config_input_port_ =
       this->DeclareVectorInputPort(
-              LinearConfig(num_positions + num_velocities, num_inputs))
+              "K, x_des, t", LinearConfig(num_positions + num_velocities, num_inputs))
           .get_index();
 
-  this->DeclareVectorOutputPort(TimestampedVector<double>(num_inputs),
+  this->DeclareVectorOutputPort("u", TimestampedVector<double>(num_inputs),
                                 &LinearController::CalcControl);
 }
 

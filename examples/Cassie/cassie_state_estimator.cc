@@ -79,7 +79,8 @@ CassieStateEstimator::CassieStateEstimator(
                                    "cassie_out_t", drake::Value<cassie_out_t>{})
                                .get_index();
   estimated_state_output_port_ =
-      this->DeclareVectorOutputPort(OutputVector<double>(n_q_, n_v_, n_u_),
+      this->DeclareVectorOutputPort("x, u, t",
+                                    OutputVector<double>(n_q_, n_v_, n_u_),
                                     &CassieStateEstimator::CopyStateOut)
           .get_index();
 
@@ -90,10 +91,12 @@ CassieStateEstimator::CassieStateEstimator(
 
   if (is_floating_base_) {
     contact_output_port_ =
-        this->DeclareAbstractOutputPort(&CassieStateEstimator::CopyContact)
+        this->DeclareAbstractOutputPort("lcmt_contact",
+                                        &CassieStateEstimator::CopyContact)
             .get_index();
     contact_forces_output_port_ =
         this->DeclareAbstractOutputPort(
+                "lcmt_contact_results_for_viz",
                 &CassieStateEstimator::CopyEstimatedContactForces)
             .get_index();
 
@@ -106,7 +109,8 @@ CassieStateEstimator::CassieStateEstimator(
     // state)
     if (test_with_ground_truth_state_) {
       state_input_port_ =
-          this->DeclareVectorInputPort(OutputVector<double>(n_q_, n_v_, n_u_))
+          this->DeclareVectorInputPort("x, u, t",
+                                       OutputVector<double>(n_q_, n_v_, n_u_))
               .get_index();
     }
 
@@ -1095,9 +1099,9 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
                  drake::systems::State<double>* s) { this->Update(c, s); };
 
       auto& uu_events = events->get_mutable_unrestricted_update_events();
-      uu_events.add_event(std::make_unique<UnrestrictedUpdateEvent<double>>(
+      uu_events.AddEvent(UnrestrictedUpdateEvent<double>(
           drake::systems::TriggerType::kTimed, callback));
-    }else{
+    } else {
       *time = INFINITY;
     }
   }

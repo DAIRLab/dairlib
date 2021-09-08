@@ -72,6 +72,7 @@ PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
   this->DeclareAbstractInputPort(
       "lcmt_pd_config", drake::Value<dairlib::lcmt_pd_config>{});
   this->DeclareVectorOutputPort(
+      "pd_config",
       LinearConfig(plant.num_positions() + plant.num_velocities(),
                    plant.num_actuators()),
       &PDConfigReceiver::CopyConfig);

@@ -66,24 +66,29 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
 
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   liftoff_time_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("t_liftoff", BasicVector<double>(1))
+          .get_index();
 
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
   com_port_ = this->DeclareAbstractInputPort(
-                      "com_traj",
+                      "com_xyz",
                       drake::Value<drake::trajectories::Trajectory<double>>(pp))
                   .get_index();
   footstep_adjustment_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
+      this->DeclareVectorInputPort("foot_adjustment_xy",
+                                   BasicVector<double>(2))
+          .get_index();
   // Provide an instance to allocate the memory first (for the output)
   drake::trajectories::Trajectory<double>& traj_instance = pp;
-  this->DeclareAbstractOutputPort("swing_ft_traj", traj_instance,
+  this->DeclareAbstractOutputPort("swing_foot_xyz", traj_instance,
                                   &SwingFootTrajGenerator::CalcTrajs);
 
   // State variables inside this controller block

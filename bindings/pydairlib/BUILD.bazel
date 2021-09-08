@@ -88,8 +88,8 @@ py_library(
 
 PY_LIBRARIES = [
     ":module_py",
-    ":lcm_trajectory_py",
     "//bindings/pydairlib/common",
+    "//bindings/pydairlib/lcm",
     "//bindings/pydairlib/multibody",
 ]
 

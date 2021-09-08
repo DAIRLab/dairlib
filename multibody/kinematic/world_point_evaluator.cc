@@ -2,10 +2,9 @@
 
 #include "solvers/constraint_factory.h"
 
-#include "drake/math/orthonormal_basis.h"
-
 using drake::MatrixX;
 using drake::VectorX;
+using drake::math::RotationMatrix;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::solvers::BoundingBoxConstraint;
@@ -45,7 +44,7 @@ WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(drake::math::ComputeBasisFromAxis(2, normal)) {
+      rotation_(RotationMatrix<double>::MakeFromOneVector(normal, 2)) {
   if (!tangent_active) {
     this->set_active_inds({2});  // only z is active
   }

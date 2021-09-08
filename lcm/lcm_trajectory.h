@@ -76,12 +76,13 @@ class LcmTrajectory {
   }
 
   lcmt_saved_traj GenerateLcmObject() const;
-
  protected:
   /// Constructs a lcmt_metadata object with a specified name and description
   /// Other relevant metadata details such as datatime and git status are
   /// automatically generated
   void ConstructMetadataObject(std::string name, std::string description);
+
+ private:
 
   lcmt_metadata metadata_;
 

@@ -120,10 +120,12 @@ py_binary(
     deps = [
         ":bullet_cube_sim_py",
         ":cube_sim",
+        ":drake_cassie_sim_py",
         ":drake_cube_sim_py",
         ":evaluate_cube_parameters",
         ":learn_cube_parameters",
         ":mujoco_cube_sim_py",
+        "//bindings/pydairlib/cassie:mujoco_sim",
         "//bindings/pydairlib/common:plot_styler",
     ],
 )
@@ -138,6 +140,17 @@ py_binary(
         ":evaluate_cube_parameters",
         ":mujoco_cube_sim_py",
         ":plotting_utils",
+        ":sensitivity_analysis",
+        "//bindings/pydairlib",
+    ],
+)
+
+py_binary(
+    name = "cassie_figures",
+    srcs = ["cassie_figures.py"],
+    deps = [
+        ":cassie_loss_plotter",
+        ":evaluate_cube_parameters",
         ":sensitivity_analysis",
         "//bindings/pydairlib",
     ],
@@ -161,6 +174,7 @@ py_binary(
         ":cube_sim",
         ":drake_cassie_sim_py",
         ":mujoco_cube_sim_py",
+        "//bindings/pydairlib/cassie:kinematics_helper",
         "//bindings/pydairlib/cassie:mujoco_sim",
         "//bindings/pydairlib/common:plot_styler",
     ],

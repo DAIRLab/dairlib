@@ -75,10 +75,6 @@ class MujocoCassieSim():
     self.u_pd.rightLeg.motorPd = u_pd.leftLeg.motorPd
     return self.u_pd
 
-  def set_contact_params(self):
-    return
-
-
   def sim_step(self, u):
     action, u = self.pack_input(self.cassie_in, u)
     self.cassie_env.step(action)

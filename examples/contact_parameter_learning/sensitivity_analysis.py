@@ -7,7 +7,8 @@ from evaluate_cube_parameters import calc_error_between_trajectories, \
 from copy import deepcopy
 from math import pi
 import cube_sim
-
+import drake_cassie_sim
+import mujoco_cassie_sim
 
 
 def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params_range, traj_set):
@@ -77,7 +78,12 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
                 loss_avg.append(np.average(losses))
                 loss_med.append(np.median(losses))
             else:
-                raise NotImplementedError('Need to define a cassie method for this')
+                for log_num in sim.log_nums_real:
+                    sim_id = sim.run(params, log_num)
+                    loss = sim.compute_loss(log_num, sim_id, params, plot=False)
+                    losses.append(loss)
+                loss_avg.append(np.average(losses))
+                loss_med.append(np.median(losses))
         loss_avgs[param_key] = np.array(loss_avg)
         loss_meds[param_key] = np.array(loss_med)
 
@@ -114,6 +120,22 @@ def get_cube_params_range(sim_type):
     
     return params_range
 
+def get_cassie_params_range(sim_type):
+    params_range = {}
+    if (sim_type == 'drake'):
+        params_range['mu'] = np.arange(0.01, 0.6, 0.01).tolist()
+        params_range['stiffness'] = np.arange(10000.0, 100000.0, 1000.0).tolist()
+        params_range['dissipation'] = np.arange(0, 1.0, 0.125).tolist()
+        # params_range['stiction_tol'] = np.logspace(-6, -1, 20).tolist()
+        return params_range
+    elif (sim_type == 'mujoco'):
+        params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
+        params_range['stiffness'] = np.arange(10000, 100000, 1000.0).tolist()
+        params_range['damping'] = np.arange(0, 500, 50).tolist()
+        # params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
+        # params_range['mu_rolling'] = np.logspace(-6, -2, 10).tolist()
+
+    return params_range
 
 def cube_sensitivity_analysis_main(learning_result):
     sim_type = learning_result.split('_')[0]
@@ -130,7 +152,37 @@ def cube_sensitivity_analysis_main(learning_result):
         params, 
         params_range, 
         test_set)
-    
+
+def get_cassie_sim(result_id):
+    sim_type = result_id.split('_')[0]
+    # substeps = int(result_id.split('_')[-1])
+    if (sim_type == 'mujoco'):
+        eval_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='2021_09_07_weights')
+    elif (sim_type == 'drake'):
+        eval_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='2021_09_07_weights')
+    else:
+        eval_sim = None
+    return eval_sim
+
+def cassie_sensitivity_analysis_main(optimal_param_file):
+    sim_type = optimal_param_file.split('_')[0]
+    eval_sim = get_cassie_sim(optimal_param_file)
+    if (eval_sim == None): quit()
+
+    params_range = get_cassie_params_range(sim_type)
+    params = eval_sim.load_params(optimal_param_file).value
+
+    avg, med = get_sensitivity_analysis(
+        eval_sim,
+        None,
+        params,
+        params_range,
+        None,
+        plant='cassie')
+
+    return avg, med
+
+
 if (__name__ == '__main__'):
     result_id = sys.argv[1]
     cube_sensitivity_analysis_main(result_id)

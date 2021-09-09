@@ -9,6 +9,7 @@ from pydairlib.cassie.cassie_utils import *
 from scipy.spatial.transform import Rotation as R
 from pydairlib.multibody import *
 from pydrake.multibody.tree import *
+from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.solvers.mathematicalprogram import MathematicalProgram, Solve
 from pydrake.systems.rendering import MultibodyPositionToGeometryPose
 from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box
@@ -48,34 +49,53 @@ class KinematicsHelper():
     return self.plant.CalcJacobianCenterOfMassTranslationalVelocity(self.context, JacobianWrtVariable.kV, self.world,
                                                                     self.world) @ state[-self.plant.num_velocities():]
 
-  def compute_foot_z_position(self, state):
+  def compute_foot_positions(self, state):
     self.plant.SetPositionsAndVelocities(self.context, state)
     l_rear = self.plant.CalcPointsPositions(self.context, self.l_toe_frame,
-                                            self.rear_contact_disp, self.world)
+                                            self.rear_contact_disp, self.world)[:, 0]
     l_front = self.plant.CalcPointsPositions(self.context, self.l_toe_frame,
-                                             self.front_contact_disp, self.world)
+                                             self.front_contact_disp, self.world)[:, 0]
     r_rear = self.plant.CalcPointsPositions(self.context, self.r_toe_frame,
-                                            self.rear_contact_disp, self.world)
+                                            self.rear_contact_disp, self.world)[:, 0]
     r_front = self.plant.CalcPointsPositions(self.context, self.r_toe_frame,
-                                             self.front_contact_disp, self.world)
-    return np.array([l_rear[2, 0], l_front[2, 0], r_rear[2, 0], r_front[2, 0]])
+                                             self.front_contact_disp, self.world)[:, 0]
+    return l_rear, l_front, r_rear, r_front
 
-  def compute_foot_z_vel(self, state):
+  def compute_foot_velocities(self, state):
     self.plant.SetPositionsAndVelocities(self.context, state)
     l_rear = self.plant.CalcJacobianTranslationalVelocity(
-        self.context, JacobianWrtVariable.kV, self.l_toe_frame, self.rear_contact_disp,
-        self.world,
-        self.world) @ state[-self.nv:]
+      self.context, JacobianWrtVariable.kV, self.l_toe_frame, self.rear_contact_disp,
+      self.world,
+      self.world) @ state[-self.nv:]
     l_front = self.plant.CalcJacobianTranslationalVelocity(
-        self.context, JacobianWrtVariable.kV, self.l_toe_frame, self.front_contact_disp,
-        self.world,
-        self.world) @ state[-self.nv:]
+      self.context, JacobianWrtVariable.kV, self.l_toe_frame, self.front_contact_disp,
+      self.world,
+      self.world) @ state[-self.nv:]
     r_rear = self.plant.CalcJacobianTranslationalVelocity(
-        self.context, JacobianWrtVariable.kV, self.r_toe_frame, self.rear_contact_disp,
-        self.world,
-        self.world) @ state[-self.nv:]
+      self.context, JacobianWrtVariable.kV, self.r_toe_frame, self.rear_contact_disp,
+      self.world,
+      self.world) @ state[-self.nv:]
     r_front = self.plant.CalcJacobianTranslationalVelocity(
-        self.context, JacobianWrtVariable.kV, self.r_toe_frame, self.front_contact_disp,
-        self.world,
-        self.world) @ state[-self.nv:]
+      self.context, JacobianWrtVariable.kV, self.r_toe_frame, self.front_contact_disp,
+      self.world,
+      self.world) @ state[-self.nv:]
+    return l_rear, l_front, r_rear, r_front
+
+  def compute_foot_z_position(self, state):
+    l_rear, l_front, r_rear, r_front = self.compute_foot_positions(state)
     return np.array([l_rear[2], l_front[2], r_rear[2], r_front[2]])
+
+  def compute_foot_z_vel(self, state):
+    l_rear, l_front, r_rear, r_front = self.compute_foot_velocities(state)
+    return np.array([l_rear[2], l_front[2], r_rear[2], r_front[2]])
+
+  def compute_pelvis_pos_w_fixed_feet(self, state):
+    self.plant.SetPositionsAndVelocities(self.context, state)
+    l_rear, l_front, r_rear, r_front = self.compute_foot_positions(state)
+    l_rear_vel, l_front_vel, r_rear_vel, r_front_vel = self.compute_foot_velocities(state)
+    pelvis_pos = state[4:7]
+    pelvis_vel = state[26:29]
+    foot_pos_average = 0.25 * (l_rear + l_front + r_rear + r_front)
+    foot_vel_average = 0.25 * (l_rear_vel + l_front_vel + r_rear_vel + r_front_vel)
+    return pelvis_pos - foot_pos_average, pelvis_vel - foot_vel_average
+

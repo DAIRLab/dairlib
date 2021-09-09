@@ -134,6 +134,10 @@ group "0.operator" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
+    cmd "2.0. cassie planner pose (multi-pose); global frame (all solves)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --realtime_rate=1 --solve_idx=0 --visualize_all_solves=true";
+        host = "localhost";
+    }
 }
 
 group "5.lcm-tools" {

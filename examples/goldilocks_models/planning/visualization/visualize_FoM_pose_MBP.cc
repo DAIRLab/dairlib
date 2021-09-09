@@ -63,6 +63,7 @@ DEFINE_int32(solve_idx, -1, "");
 DEFINE_int32(solve_idx_end, -1,
              "If this is set, we will visualize the poses"
              " from `solve_idx` to `solve_idx_end`");
+DEFINE_bool(visualize_all_solves, false, "");
 
 // Animation playback
 DEFINE_double(realtime_rate, 0.1, "realtime rate for playback");
@@ -107,9 +108,21 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   }
 
   // Setup solve indices
-  int solve_idx_start = FLAGS_solve_idx;
-  int solve_idx_end =
-      (FLAGS_solve_idx_end >= 0) ? FLAGS_solve_idx_end : FLAGS_solve_idx;
+  int solve_idx_start;
+  int solve_idx_end;
+  if (FLAGS_visualize_all_solves) {
+    int i = -1;
+    while (
+        file_exist(directory + std::to_string(i + 1) + "_current_time.csv")) {
+      i++;
+    }
+    solve_idx_start = 0;
+    solve_idx_end = i;
+  } else {
+    solve_idx_start = FLAGS_solve_idx;
+    solve_idx_end =
+        (FLAGS_solve_idx_end >= 0) ? FLAGS_solve_idx_end : FLAGS_solve_idx;
+  }
 
   if (solve_idx_start < 0) {
     cout << "Drawing debug_ files\n";

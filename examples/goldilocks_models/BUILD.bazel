@@ -207,10 +207,10 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
-        "//bindings/pydairlib:lcm_trajectory_py",
         "//bindings/pydairlib:module_py",
         "//bindings/pydairlib:process_lcm_log_py",
         "//bindings/pydairlib/common",
+        "//bindings/pydairlib/lcm:lcm_trajectory_py",
         "//bindings/pydairlib/multibody:multibody_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],

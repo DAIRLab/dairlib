@@ -25,6 +25,7 @@ class PlotStyler():
     self.directory = directory
     matplotlib.rcParams["savefig.directory"] = directory
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
+    matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     # matplotlib.rcParams['figure.figsize'] = 8, 5

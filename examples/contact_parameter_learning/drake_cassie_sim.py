@@ -66,8 +66,8 @@ class DrakeCassieSim():
     self.t_x = {}
 
     self.log_nums_all = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
-    self.log_nums_real = np.hstack((np.arange(8, 18), np.arange(20, 34)))
-    # self.log_nums_real = np.hstack((np.arange(8, 12), np.arange(13, 18), np.arange(20, 34)))
+    # self.log_nums_real = np.hstack((np.arange(8, 18), np.arange(20, 34)))
+    self.log_nums_real = np.hstack((np.arange(8, 12), np.arange(14, 18), np.arange(20, 34)))
     self.log_nums_sim = np.hstack((np.arange(0, 3), np.arange(8, 18), np.arange(20, 34)))
     self.log_nums_all = ['%0.2d' % i for i in self.log_nums_all]
     self.log_nums_real = ['%0.2d' % i for i in self.log_nums_real]

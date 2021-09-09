@@ -26,7 +26,7 @@ budget = 5000
 # budget = 5000
 # budget = 25000
 
-batch_size = 5
+batch_size = 10
 all_logs = drake_sim.log_nums_real
 num_train = int(0.9 * len(all_logs))
 training_idxs = sample(all_logs, num_train)
@@ -280,9 +280,9 @@ if (__name__ == '__main__'):
   # save_x_offsets()
   # print_drake_cassie_params()
   # learn_drake_cassie_params(batch=True)
-  # learn_mujoco_cassie_params()
+  learn_mujoco_cassie_params()
   # plot_per_log_loss_drake()
-  plot_per_log_loss_mujoco()
+  # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
   # print_drake_cassie_params(str(sys.argv[1]), True)

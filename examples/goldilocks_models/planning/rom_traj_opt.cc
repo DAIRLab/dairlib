@@ -1,19 +1,20 @@
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 
 #include <math.h>
+
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "drake/math/autodiff.h"
-#include "drake/solvers/decision_variable.h"
 
 #include "examples/goldilocks_models/planning/FoM_guard_and_feet_constraint.h"
 #include "examples/goldilocks_models/planning/FoM_reset_map_constraint.h"
 #include "examples/goldilocks_models/planning/FoM_stance_foot_constraint.h"
 #include "examples/goldilocks_models/planning/dynamics_constraint.h"
 #include "examples/goldilocks_models/planning/kinematics_constraint.h"
+
+#include "drake/math/autodiff.h"
+#include "drake/solvers/decision_variable.h"
 
 typedef std::numeric_limits<double> dbl;
 
@@ -254,7 +255,7 @@ RomTrajOpt::RomTrajOpt(
     PrintStatus("Adding constraint -- dynamics");
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       auto dyn_constraint = std::make_shared<planning::DynamicsConstraint>(
-          rom, "rom_dyn_" + to_string(i) + "_" + to_string(j));
+          rom, "rom_dyn_" + std::to_string(i) + "_" + std::to_string(j));
       DRAKE_DEMAND(static_cast<int>(dyn_constraint->num_constraints()) ==
                    num_states());
       dyn_constraint->SetConstraintScaling(rom_dyn_constraint_scaling_);
@@ -292,7 +293,7 @@ RomTrajOpt::RomTrajOpt(
       auto kin_constraint_start =
           std::make_shared<planning::KinematicsConstraint>(
               rom, plant, left_stance, state_mirror, relax_index,
-              "rom_fom_mapping_" + to_string(i) + "_start");
+              "rom_fom_mapping_" + std::to_string(i) + "_start");
       kin_constraint_start->SetConstraintScaling(
           rom_fom_mapping_constraint_scaling_);
       VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
@@ -302,7 +303,7 @@ RomTrajOpt::RomTrajOpt(
       auto kin_constraint_start =
           std::make_shared<planning::KinematicsConstraint>(
               rom, plant, left_stance, state_mirror, empty_idx,
-              "rom_fom_mapping_" + to_string(i) + "_start");
+              "rom_fom_mapping_" + std::to_string(i) + "_start");
       kin_constraint_start->SetConstraintScaling(
           rom_fom_mapping_constraint_scaling_);
       VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
@@ -311,7 +312,7 @@ RomTrajOpt::RomTrajOpt(
     PrintStatus("Adding constraint -- RoM-FoM mapping (end of mode)");
     auto kin_constraint_end = std::make_shared<planning::KinematicsConstraint>(
         rom, plant, left_stance, state_mirror, empty_idx,
-        "rom_fom_mapping_" + to_string(i) + "_end");
+        "rom_fom_mapping_" + std::to_string(i) + "_end");
     kin_constraint_end->SetConstraintScaling(
         rom_fom_mapping_constraint_scaling_);
     VectorXDecisionVariable z_f = state_vars_by_mode(i, mode_lengths_[i] - 1);
@@ -330,7 +331,8 @@ RomTrajOpt::RomTrajOpt(
     }
     VectorXd ub_guard = VectorXd::Zero(2 * swing_contacts.size());
     auto guard_constraint = std::make_shared<planning::FomGuardConstraint>(
-        plant, swing_contacts, lb_guard, ub_guard, "fom_guard_" + to_string(i));
+        plant, swing_contacts, lb_guard, ub_guard,
+        "fom_guard_" + std::to_string(i));
     guard_constraint->SetConstraintScaling(fom_guard_constraint_scaling_);
     AddConstraint(guard_constraint, xf);
     //    }
@@ -346,7 +348,7 @@ RomTrajOpt::RomTrajOpt(
       PrintStatus("Adding constraint -- FoM impact map");
       auto reset_map_constraint =
           std::make_shared<planning::FomResetMapConstraint>(
-              plant_, swing_contacts, "fom_discrete_dyn_" + to_string(i));
+              plant_, swing_contacts, "fom_discrete_dyn_" + std::to_string(i));
       reset_map_constraint->SetConstraintScaling(
           fom_discrete_dyn_constraint_scaling_);
       VectorXDecisionVariable Lambda = impulse_vars(i);
@@ -424,7 +426,7 @@ RomTrajOpt::RomTrajOpt(
     PrintStatus("Adding constraint -- full-order model stance foot pos");
     auto fom_sf_pos_constraint =
         std::make_shared<planning::FomStanceFootPosConstraint>(
-            plant_, stance_contacts, "fom_stance_ft_pos_" + to_string(i));
+            plant_, stance_contacts, "fom_stance_ft_pos_" + std::to_string(i));
     fom_sf_pos_constraint->SetConstraintScaling(
         fom_stance_ft_pos_constraint_scaling_);
     AddConstraint(fom_sf_pos_constraint, {x0.head(n_q_), xf.head(n_q_)});
@@ -434,14 +436,14 @@ RomTrajOpt::RomTrajOpt(
     auto fom_ft_vel_constraint_preimpact =
         std::make_shared<planning::FomStanceFootVelConstraint>(
             plant_, stance_contacts,
-            "fom_stance_ft_vel_" + to_string(i) + "_preimpact");
+            "fom_stance_ft_vel_" + std::to_string(i) + "_preimpact");
     fom_ft_vel_constraint_preimpact->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
     AddConstraint(fom_ft_vel_constraint_preimpact, xf);
     auto fom_ft_vel_constraint_postimpact =
         std::make_shared<planning::FomStanceFootVelConstraint>(
             plant_, post_stance_contacts,
-            "fom_stance_ft_vel_" + to_string(i) + "_postimpact");
+            "fom_stance_ft_vel_" + std::to_string(i) + "_postimpact");
     fom_ft_vel_constraint_postimpact->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
     AddConstraint(fom_ft_vel_constraint_postimpact, x0_post);
@@ -457,7 +459,8 @@ RomTrajOpt::RomTrajOpt(
       PrintStatus("Adding constraint -- FOM swing foot equation (end of mode)");
       auto fom_sw_ft_pos_var_constraint =
           std::make_shared<planning::FomSwingFootPosVariableConstraint>(
-              plant_, swing_origin, "fom_swing_ft_pos_var_" + to_string(i));
+              plant_, swing_origin,
+              "fom_swing_ft_pos_var_" + std::to_string(i));
       AddConstraint(fom_sw_ft_pos_var_constraint,
                     {xf.head(n_q_), touchdown_foot_var});
 
@@ -473,7 +476,7 @@ RomTrajOpt::RomTrajOpt(
       auto fom_sw_ft_pos_constraint =
           std::make_shared<planning::FomSwingFootPosConstraintV2>(
               plant_, plant.GetFrameByName("pelvis"), lb_swing, ub_swing,
-              "fom_swing_ft_pos_" + to_string(i));
+              "fom_swing_ft_pos_" + std::to_string(i));
       AddConstraint(fom_sw_ft_pos_constraint,
                     {xf.head(n_q_), touchdown_foot_var});
 
@@ -531,7 +534,7 @@ RomTrajOpt::RomTrajOpt(
           std::make_shared<planning::FomSwingFootPosConstraint>(
               plant_, plant.GetFrameByName("pelvis"), stance_contacts,
               swing_origin, lb_swing, ub_swing,
-              "fom_swing_ft_pos_" + to_string(i));
+              "fom_swing_ft_pos_" + std::to_string(i));
       AddConstraint(fom_sw_ft_pos_constraint, xf.head(n_q_));
 
       // Foot travel distance constraint (swing foot pos from start of mode to
@@ -543,7 +546,7 @@ RomTrajOpt::RomTrajOpt(
           std::make_shared<planning::FomSwingFootDistanceConstraint>(
               plant_, swing_origin, swing_foot_init_pos,
               max_swing_distance.at(i), i == 0,
-              "fom_swing_ft_dist_constraint" + to_string(i));
+              "fom_swing_ft_dist_constraint" + std::to_string(i));
       if (i == 0) {
         AddConstraint(fom_sw_ft_dist_constraint, xf.head(n_q_));
       } else {
@@ -562,7 +565,7 @@ RomTrajOpt::RomTrajOpt(
           std::make_shared<planning::FomStepLengthConstraint>(
               plant_, stance_origin, swing_origin, stance_foot_init_pos,
               step_distance, i == 0,
-              "fom_step_length_constraint" + to_string(i));
+              "fom_step_length_constraint" + std::to_string(i));
       if (i == 0) {
         AddConstraint(fom_step_length_constraint, xf.head(n_q_));
       } else {
@@ -766,7 +769,7 @@ void RomTrajOpt::AddTimeStepConstraint(
   if (fix_duration && equalize_timestep_size) {
     double dt_first_mode = first_mode_duration / (mode_lengths_[0] - 1);
     PrintStatus("Fix all timestep size in the first mode " +
-                to_string(dt_first_mode));
+                std::to_string(dt_first_mode));
     for (int i = 0; i < mode_lengths_[0] - 1; i++) {
       AddBoundingBoxConstraint(dt_first_mode, dt_first_mode, timestep(i));
     }
@@ -774,7 +777,7 @@ void RomTrajOpt::AddTimeStepConstraint(
       double dt_rest_of_modes =
           remaining_mode_duration_per_mode / (mode_lengths_[1] - 1);
       PrintStatus("Fix all timestep size in the rest of the modes to " +
-                  to_string(dt_rest_of_modes));
+                  std::to_string(dt_rest_of_modes));
       for (int i = mode_lengths_[0] - 1; i < this->N() - 1; i++) {
         AddBoundingBoxConstraint(dt_rest_of_modes, dt_rest_of_modes,
                                  timestep(i));
@@ -799,7 +802,8 @@ void RomTrajOpt::AddTimeStepConstraint(
     if (fix_duration) {
       double duration = first_mode_duration +
                         remaining_mode_duration_per_mode * (num_modes_ - 1);
-      PrintStatus("Fix time duration: total duration = " + to_string(duration));
+      PrintStatus("Fix time duration: total duration = " +
+                  std::to_string(duration));
       AddDurationBounds(duration, duration);
     }
 

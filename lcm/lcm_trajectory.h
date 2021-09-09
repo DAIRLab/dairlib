@@ -82,8 +82,6 @@ class LcmTrajectory {
   /// automatically generated
   void ConstructMetadataObject(std::string name, std::string description);
 
- private:
-
   lcmt_metadata metadata_;
 
  private:

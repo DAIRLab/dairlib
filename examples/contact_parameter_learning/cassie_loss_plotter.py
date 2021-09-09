@@ -266,62 +266,56 @@ def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
 
 def main():
   global ps
-  global nominal_impact_time
-  global impact_time
   global figure_directory
   global data_directory
   global sim_data_directory
-  global terrain_heights
-  global perturbations
-  global penetration_allowances
-  global threshold_durations
   global x_datatypes
   global kinematics_calculator
 
-  # start_time = 30.64
-  # end_time = start_time + 0.05
-  # data_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
   sim_data_directory = '/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/'
   figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/mujoco_to_real_comparison/'
   ps = PlotStyler()
   ps.set_default_styling(directory=figure_directory)
   ps.set_figsize([20, 12])
-  loss_func = cassie_loss_utils.CassieLoss('2021_08_27_weights')
+  # loss_func = cassie_loss_utils.CassieLoss('2021_08_27_weights')
+  loss_func = cassie_loss_utils.CassieLoss('2021_09_07_weights')
 
   with open("x_datatypes", "rb") as fp:
     x_datatypes = pickle.load(fp)
 
   # load all the data used for plotting
+  # set use_mujoco=False to use the Drake data
   impact_data = CassieImpactData(use_mujoco=False)
-  # impact_data = CassieImpactData(use_mujoco=False)
+  # impact_data = CassieImpactData(use_mujoco=True)
   kinematics_calculator = KinematicsHelper()
 
   joint_vel_indices = range(29, 45)
   hip_joints_indices = range(29, 35)
   fb_vel_indices = range(23, 29)
-  # joint_pos_indices = range(7, 23)
+  joint_pos_indices = range(7, 23)
 
   # joint_vel_indices = range(35, 37)
   # joint_vel_indices = range(29, 39)
   joint_vel_indices = [33, 34, 35, 36, 37, 38]
   # joint_vel_indices = [35, 36]
 
-  # for log_num in ['08', '15', '24']:
   pos_losses = []
   vel_losses = []
+
   for log_num in impact_data.log_nums_real:
     # plt.figure(log_num)
     # grf_single_log(impact_data, log_num)
     # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=False)
     # plot_feet_positions_at_impact(impact_data, log_num)
     # plot_centroidal_trajectory(impact_data, log_num)
-    plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, fixed_feet=True, save_figs=False)
+    # plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, fixed_feet=True, save_figs=False)
     # pos_loss, vel_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=True)
     # pos_losses.append(pos_loss)
     # vel_losses.append(vel_loss)
-    ps.show_fig()
+    # ps.show_fig()
     pass
+
   # pos_losses = np.array(pos_losses)
   # vel_losses = np.array(vel_losses)
 
@@ -333,6 +327,8 @@ def main():
   # plt.bar(x_datatypes[loss_func.velocity_slice], vel_losses.sum(axis=0))
   # ps.save_fig('total_vel_loss_breakdown')
 
+
+  ## All debugging scripts go here
   # import pdb; pdb.set_trace()
   # plot_velocity_trajectory(impact_data, '08', hip_joints_indices)
   # plot_velocity_trajectory(impact_data, '12', joint_vel_indices, save_fig=False)

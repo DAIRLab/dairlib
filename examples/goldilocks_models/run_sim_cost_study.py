@@ -145,10 +145,11 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
   #   return
 
   path = eval_dir + "%d_%d_commands.txt" % (rom_iter_idx, log_idx)
-  f = open(path, "w")
+  f = open(path, "a")
   f.write(' '.join(planner_cmd) + "\n")
   f.write(' '.join(controller_cmd) + "\n")
   f.write(' '.join(simulator_cmd) + "\n")
+  f.write("---\n")
   f.close()
 
   planner_process = subprocess.Popen(planner_cmd)

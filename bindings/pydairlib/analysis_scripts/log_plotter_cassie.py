@@ -10,7 +10,7 @@ from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
-import pydairlib.lcm_trajectory
+import pydairlib.lcm.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 import dairlib
@@ -127,7 +127,7 @@ def main():
 
   # plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
   plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
@@ -359,8 +359,8 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.plot(t_osc_debug[t_osc_debug_slice], tracking_cost[t_osc_debug_slice])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
-  osc_traj0 = "swing_ft_traj"
-  # osc_traj0 = "optimal_rom_traj"
+  # osc_traj0 = "swing_ft_traj"
+  osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
@@ -546,7 +546,7 @@ def compare_ekf(log, pos_map, vel_map):
   plt.plot(t_x, imu, 'k-')
 
 
-def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
+def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm):
   # pos_indices = slice(0 + 7, 23, 2)
   # vel_indices = slice(23 + 6, 45, 2)
   pos_indices = slice(0,7)
@@ -571,24 +571,24 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, fsm):
   plt.figure("positions2-- " + filename)
   plt.plot(t_x[t_slice], x[t_slice, pos_indices2])
   plt.legend(x_datatypes[pos_indices2])
-  plt.plot(t_u[t_u_slice], 0.3 * fsm[t_u_slice])
+  plt.plot(t_osc_debug[t_osc_debug_slice], 0.3 * fsm[t_osc_debug_slice])
   plt.figure("velocities-- " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices])
   plt.legend(x_datatypes[vel_indices])
-  plt.plot(t_u[t_u_slice], 0.25 * fsm[t_u_slice])
+  plt.plot(t_osc_debug[t_osc_debug_slice], 0.25 * fsm[t_osc_debug_slice])
   plt.figure("velocities1-- " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices1])
   plt.legend(x_datatypes[vel_indices1])
-  plt.plot(t_u[t_u_slice], 1 * fsm[t_u_slice])
+  plt.plot(t_osc_debug[t_osc_debug_slice], 1 * fsm[t_osc_debug_slice])
   plt.figure("velocities2-- " + filename)
   plt.plot(t_x[t_slice], x[t_slice, vel_indices2])
   plt.legend(x_datatypes[vel_indices2])
-  plt.plot(t_u[t_u_slice], 1 * fsm[t_u_slice])
-  # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
+  plt.plot(t_osc_debug[t_osc_debug_slice], 1 * fsm[t_osc_debug_slice])
+  # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
   plt.figure("efforts-- " + filename)
   plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices], '.')
   plt.legend(u_datatypes[u_indices])
-  # plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 30 * fsm[t_osc_debug_slice])
   # plt.figure("efforts meas-- " + filename)
   # plt.figure("Delay characterization")
   # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])

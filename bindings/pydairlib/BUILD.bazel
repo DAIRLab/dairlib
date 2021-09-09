@@ -11,30 +11,6 @@ load(
     "pybind_py_library",
 )
 
-pybind_py_library(
-    name = "lcm_trajectory_py",
-    cc_deps = [
-        "//lcm:dircon_trajectory_saver",
-        "//lcm:lcm_trajectory_saver",
-        "//lcm:rom_planner_trajectory_saver",
-        "@drake//:drake_shared_library",
-    ],
-    cc_so_name = "lcm_trajectory",
-    cc_srcs = ["lcm_trajectory_py.cc"],
-    py_deps = ["@drake//bindings/pydrake"],
-    py_imports = ["."],
-)
-
-py_binary(
-    name = "lcm_trajectory_plotter",
-    srcs = ["lcm_trajectory_plotter.py"],
-    deps = [
-        ":lcm_trajectory_py",
-        ":module_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
 py_library(
     name = "process_lcm_log_py",
     srcs = ["analysis_scripts/process_lcm_log.py"],
@@ -51,22 +27,10 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
-        ":lcm_trajectory_py",
         ":module_py",
         ":process_lcm_log_py",
         "//bindings/pydairlib/common",
-        "//bindings/pydairlib/multibody:multibody_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-py_binary(
-    name = "dircon_trajectory_plotter",
-    srcs = ["dircon_trajectory_plotter.py"],
-    deps = [
-        ":lcm_trajectory_py",
-        ":module_py",
-        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/lcm:lcm_trajectory_py",
         "//bindings/pydairlib/multibody:multibody_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],

@@ -56,8 +56,8 @@ using systems::OutputVector;
 DEFINE_bool(broadcast, false,
             "broadcast between controller thread and planner thread. only used "
             "on hardware");
-DEFINE_bool(create_new_data_folder, true,
-            "create new folder to prevent overwriting; only for hardware");
+/*DEFINE_bool(create_new_data_folder, true,
+            "create new folder to prevent overwriting; only for hardware");*/
 
 // Planner settings
 DEFINE_int32(rom_option, -1, "See find_goldilocks_models.cc");
@@ -164,7 +164,7 @@ int DoMain(int argc, char* argv[]) {
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
   // We only create new data folders for hardware experiment (broadcast case)
-  if (FLAGS_broadcast) {
+  /*if (FLAGS_broadcast) {
     bool create_new_data_folder = FLAGS_create_new_data_folder;
     if (!FLAGS_init_file.empty()) {
       // DRAKE_DEMAND(!FLAGS_create_new_data_folder);
@@ -200,7 +200,7 @@ int DoMain(int argc, char* argv[]) {
       throw std::runtime_error(
           "Too many data folders! Delete some or increase the limit.");
     }
-  }
+  }*/
   cout << "data directory = " << gains.dir_data << endl;
 
   // Create data folder if it doesn't exist

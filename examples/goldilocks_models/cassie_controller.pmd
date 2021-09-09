@@ -32,18 +32,22 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "3.2.rom-planner (with dispatcher)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --n_step=3 --zero_touchdown_impact=false --feas_tol=1e-4 --use_ipopt=true --log_solver_info=false";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --n_step=3 --zero_touchdown_impact=false --feas_tol=1e-4 --use_ipopt=true --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
 }
 
 group "1.0.dispatchers" {
-    cmd "4.dispatcher-robot-out (lcm, floating-base)" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true --pelvis_y_vel=0.3";
+    cmd "2.dispatcher-robot-out (lcm, floating-base)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
         host = "localhost";
     }
     cmd "1.dispatcher-robot-in" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_1=ROM_WALKING";
+        host = "localhost";
+    }
+    cmd "2.dispatcher-robot-out (lcm, floating-base) (w init pelvis vel)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true --pelvis_y_vel=0.3";
         host = "localhost";
     }
 }

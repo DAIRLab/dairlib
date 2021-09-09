@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+
 #include <gflags/gflags.h>
 
 #include "common/file_utils.h"
@@ -11,6 +12,7 @@
 #include "multibody/multipose_visualizer.h"
 #include "multibody/visualization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
@@ -50,8 +52,11 @@ DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 
 DEFINE_bool(global, false, "");
 DEFINE_bool(snopt_suffix, false, "");
-DEFINE_bool(regularization_pose, false, "if false, plot the solution; "
-                                        "if true, plot regularization poses");
+DEFINE_bool(regularization_pose, false,
+            "if false, plot the solution; "
+            "if true, plot regularization poses");
+
+DEFINE_string(dir_data, "", "Directory of the data folder");
 
 // Flags for solve indices
 DEFINE_int32(solve_idx, -1, "");
@@ -85,8 +90,11 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // parameters
-  const string directory = "../dairlib_data/goldilocks_models/planning/robot_" +
-                           to_string(FLAGS_robot_option) + "/data/";
+  const string directory =
+      FLAGS_dir_data.empty()
+          ? "../dairlib_data/goldilocks_models/planning/robot_" +
+                to_string(FLAGS_robot_option) + "/data/"
+          : FLAGS_dir_data;
 
   // Read in number of steps
   int end_mode = (FLAGS_end_mode >= 0)

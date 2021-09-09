@@ -36,11 +36,11 @@ LOW_RES_SUBSTEP = 1
 default_substep = MED_RES_SUBSTEP
 
 # optimization parameters
-batch_size = 25
+batch_size = 50
 num_workers = 1
 num_trials = 550
-num_train = 445
-budget = 2000
+num_train = 350
+budget = 10000
 num_test = num_trials - num_train
 
 

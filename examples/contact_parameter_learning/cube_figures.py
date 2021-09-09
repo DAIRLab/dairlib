@@ -1,6 +1,7 @@
 from json import load
 import evaluate_cube_parameters as cube_eval
 import os
+import glob
 import numpy as np
 from scipy.stats import gaussian_kde
 from matplotlib import pyplot as plt
@@ -13,6 +14,17 @@ figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learnin
 
 ps = PlotStyler()
 ps.set_default_styling(directory=figure_directory, figsize=(10,6))
+
+def plot_damping_ratios(ids):
+    stiffness = []
+    zeta = []
+    for id in ids:
+        params, _, _ = cube_eval.load_params_and_logs(id)
+        stiffness.append(params['stiffness'])
+        zeta.append(cube_eval.calc_damping_ratio(params))
+
+    plt.scatter(stiffness, zeta)
+    plt.show()
 
 
 def plot_estimated_loss_pdfs(losses):
@@ -87,6 +99,17 @@ def make_estimated_pdf_figure():
         ids, cube_eval.mse_loss)
 
     plot_estimated_loss_pdfs(mse)
+
+
+def make_mujoco_damping_ratio_figure():
+    id_paths = glob.glob('examples/contact_parameter_learning/learned_parameters/cube/mujoco_2021_0*_10.json')
+    ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
+    plot_damping_ratios(ids)
+
+def make_bullet_damping_ratio_figure():
+    id_paths = glob.glob('examples/contact_parameter_learning/learned_parameters/cube/bullet_2021_0*_10.json')
+    ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
+    plot_damping_ratios(ids)
 
 if __name__ == '__main__':
     #make_estimated_pdf_figure()

@@ -50,6 +50,10 @@ def calculate_sdf_trajectory(traj):
         sdf[i] = cube_sim.calc_lowest_corner_pos(traj[i])
     return sdf
 
+
+def calc_damping_ratio(params):
+    return params['damping'] / (2.0 * np.sqrt(params['stiffness']))
+
 # visualize if there is action at a distance 
 # by checking impulses against sdf
 def plot_sdf_and_contact(traj, title=''):
@@ -212,7 +216,6 @@ def load_params_and_logs(result_id):
         loss_weights = cube_sim.LossWeights.load_weights(fp) 
     
     return learned_params, test_set, loss_weights
-
 
 def compare_worst_case(result_losses):
     toss_id_lists = {}

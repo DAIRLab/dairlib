@@ -603,11 +603,13 @@ void InitialStateForPlanner::AdjustKneeAndAnklePos(
   /// Assign
   if (feedback_is_spring_model_) {
     // Testing -- disabling this for the controller thread (basically assuming
-    // no deflection)
-//    x_init->segment<1>(knee_ankle_pos_idx_list_[0]) +=
-//        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
-//    x_init->segment<1>(knee_ankle_pos_idx_list_[1]) +=
-//        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
+    // no deflection). In RomOscTrackingData, we map state with springs to state
+    // without springs by removing the spring joints.If we don't do this, there
+    // will be tracking error in x in OSC, and it will keep moving forward.
+    //    x_init->segment<1>(knee_ankle_pos_idx_list_[0]) +=
+    //        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
+    //    x_init->segment<1>(knee_ankle_pos_idx_list_[1]) +=
+    //        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
 
     // We don't need to translate ankle joint because it doesn't affect the
     // forward kinematics
@@ -791,7 +793,7 @@ void InitialStateForPlanner::CheckAdjustemnt(
   //  "\n\n";
 
   // Comparing positions
-  Vector3d left_foot_pos_wo_spr_original;
+  /*Vector3d left_foot_pos_wo_spr_original;
   Vector3d right_foot_pos_wo_spr_original;
   Vector3d left_foot_pos_wo_spr;
   Vector3d right_foot_pos_wo_spr;
@@ -858,7 +860,7 @@ void InitialStateForPlanner::CheckAdjustemnt(
     //  the DRAKE_UNREACHABLE()
     // DRAKE_UNREACHABLE();  // Put a check here for future investigation
   }
-  cout << "\n\n";
+  cout << "\n\n";*/
 
   // Comparing velocities
   Vector3d left_foot_vel_wo_spr_original;

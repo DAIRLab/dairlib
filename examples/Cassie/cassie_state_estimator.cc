@@ -482,10 +482,10 @@ void CassieStateEstimator::AssignFloatingBaseStateToOutputVector(
 ///  went back) Maybe it came from instability of the old walking controller.
 ///
 /// Warning: UpdateContactEstimationCosts() should be called to update the costs
-/// before calling EstimateContactFromSprings().
-void CassieStateEstimator::EstimateContactFromSprings(
-    const systems::OutputVector<double>& output, double* left_contact,
-    double* right_contact) const {
+/// before calling EstimateContactForEkf().
+void CassieStateEstimator::EstimateContactForEkf(
+    const systems::OutputVector<double>& output, int* left_contact,
+    int* right_contact) const {
   // Initialize
   *left_contact = 0;
   *right_contact = 0;
@@ -507,22 +507,18 @@ void CassieStateEstimator::EstimateContactFromSprings(
       position_idx_map_.at("ankle_spring_joint_left"));
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
-//  bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_ &&
-//                              left_heel_spring < heel_spring_threshold_ekf_);
-//  bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
-//                               right_heel_spring < heel_spring_threshold_ekf_);
+  bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_ &&
+                              left_heel_spring < heel_spring_threshold_ekf_);
+  bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
+                               right_heel_spring < heel_spring_threshold_ekf_);
 
-  *left_contact = 0.5 * left_knee_spring / knee_spring_threshold_ekf_ +
-                  0.5 * left_heel_spring / heel_spring_threshold_ekf_;
-  *right_contact = 0.5 * right_knee_spring / knee_spring_threshold_ekf_ +
-                  0.5 * right_heel_spring / heel_spring_threshold_ekf_;
-//  // Determine contacts based on both spring deflation and QP cost
-//  if (left_contact_spring) {
-//    *left_contact = 1;
-//  }
-//  if (right_contact_spring) {
-//    *right_contact = 1;
-//  }
+  // Determine contacts based on both spring deflation and QP cost
+  if (left_contact_spring) {
+    *left_contact = 1;
+  }
+  if (right_contact_spring) {
+    *right_contact = 1;
+  }
 
   if (print_info_to_terminal_) {
     cout << "left/right knee spring, threshold = " << left_knee_spring << ", "
@@ -732,27 +728,17 @@ EventStatus CassieStateEstimator::Update(
 
   // Step 3 - Estimate which foot/feet are in contact with the ground
   // Estimate feet contacts
-  double left_contact = 0;
-  double right_contact = 0;
-
-  double left_force_prob = 0;
-  double right_force_prob = 0;
-  double left_spring_prob = 0;
-  double right_spring_prob = 0;
-  double left_fsm_prob = 0;
-  double right_fsm_prob = 0;
+  int left_contact = 0;
+  int right_contact = 0;
 
   VectorXd lambda_est = VectorXd::Zero(num_contacts_ * 3);
   if (test_with_ground_truth_state_) {
-    EstimateContactFromSprings(output_gt, &left_spring_prob, &right_spring_prob);
+    EstimateContactForEkf(output_gt, &left_contact, &right_contact);
   } else {
-    EstimateContactFromSprings(filtered_output, &left_spring_prob, &right_spring_prob);
-//    EstimateContactForces(context, filtered_output, lambda_est, &left_force_prob,
-//                          &right_force_prob);
+    EstimateContactForEkf(filtered_output, &left_contact, &right_contact);
+    // EstimateContactForces(context, filtered_output, lambda_est, left_contact,
+    //                       right_contact);
   }
-  left_contact = (0.8 * left_force_prob + 0.2 * left_spring_prob) > 1.0;
-  right_contact = (0.8 * right_force_prob + 0.2 * right_spring_prob) > 1.0;
-
   state->get_mutable_discrete_state(contact_forces_idx_).get_mutable_value()
       << lambda_est;
 
@@ -784,8 +770,8 @@ EventStatus CassieStateEstimator::Update(
   state->get_mutable_discrete_state()
           .get_mutable_vector(contact_idx_)
           .get_mutable_value()
-      << (0.8 * left_force_prob + 0.2 * left_spring_prob),
-      (0.8 * right_force_prob + 0.2 * right_spring_prob);
+      << left_contact,
+      right_contact;
 
   std::vector<std::pair<int, bool>> contacts;
   contacts.push_back(std::pair<int, bool>(0, left_contact));
@@ -1028,7 +1014,9 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 }
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
-    VectorXd& lambda, double* left_contact, double* right_contact) const {
+    VectorXd& lambda, int& left_contact, int& right_contact) const {
+
+  // TODO(yangwill) add a discrete time filter to the force estimate
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
   plant_.SetPositionsAndVelocities(context_.get(), output.GetState());
@@ -1061,13 +1049,14 @@ void CassieStateEstimator::EstimateContactForces(
             .solve(joint_selection_matrices[leg] * tau_d)
             .transpose();
   }
-  if (!(lambda[2] > 2 * contact_force_threshold_) !=
-      !(lambda[5] > 2 * contact_force_threshold_)) {
-    *left_contact = lambda[2] / (2 * contact_force_threshold_);
-    *right_contact = lambda[5] / (2 * contact_force_threshold_);
+  double contact_force_threshold = 70;
+  if (!(lambda[2] > 2 * contact_force_threshold) !=
+      !(lambda[5] > 2 * contact_force_threshold)) {
+    left_contact = lambda[2] / (2 * contact_force_threshold);
+    right_contact = lambda[5] / (2 * contact_force_threshold);
   } else {
-    *left_contact = lambda[2] / contact_force_threshold_;
-    *right_contact = lambda[5] / contact_force_threshold_;
+    left_contact = lambda[2] / contact_force_threshold;
+    right_contact = lambda[5] / contact_force_threshold;
   }
 }
 

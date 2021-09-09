@@ -44,9 +44,11 @@ def get_osc_debug_channel_name(log):
     elif event.channel == "OSC_DEBUG_WALKING":
       osc_debug_channel_name = "OSC_DEBUG_WALKING"
       break
-    elif event.channel == "OSC_DEBUG_STANDING":  # for standing controller
-      osc_debug_channel_name = "OSC_DEBUG_STANDING"
-      break
+  if osc_debug_channel_name == "":
+    for event in log:
+      if event.channel == "OSC_DEBUG_STANDING":  # for standing controller
+        osc_debug_channel_name = "OSC_DEBUG_STANDING"
+        break
   if osc_debug_channel_name == "":
     raise ValueError("Didn't find osc_debug channel name")
   return osc_debug_channel_name

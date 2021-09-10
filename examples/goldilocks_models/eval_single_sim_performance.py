@@ -12,7 +12,7 @@ from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
-import pydairlib.lcm_trajectory
+import pydairlib.lcm.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 import pydrake.common as mut

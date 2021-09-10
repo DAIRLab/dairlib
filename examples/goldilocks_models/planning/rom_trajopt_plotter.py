@@ -1,6 +1,6 @@
 import sys
 import matplotlib.pyplot as plt
-import pydairlib.lcm_trajectory
+import pydairlib.lcm.lcm_trajectory
 from pydairlib.common import FindResourceOrThrow
 from pydrake.trajectories import PiecewisePolynomial
 import numpy as np
@@ -30,7 +30,7 @@ def main():
     filename = FindResourceOrThrow(
       '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
 
-  rom_traj = pydairlib.lcm_trajectory.RomPlannerTrajectory(filename)
+  rom_traj = pydairlib.lcm.lcm_trajectory.RomPlannerTrajectory(filename)
 
   # For saving figures
   global savefig, figsize, save_path

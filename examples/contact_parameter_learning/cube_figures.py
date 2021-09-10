@@ -1,3 +1,4 @@
+from examples.contact_parameter_learning.cube_sim import CubeSim
 from json import load
 import evaluate_cube_parameters as cube_eval
 import os
@@ -55,18 +56,35 @@ def plot_sensitivity_analysis(loss_sweeps, params_range, title=''):
         if (key == 'pen_allow' or key == 'stiction_tol' or key == 'mu_torsion' or key == 'mu_rolling'):
             plt.xscale('log')
 
+
+def plot_impulses_list_of_ids(ids, traj_id):
+    i = 0
+    legend_strs = []
+    for id in ids:
+        sim = cube_eval.get_eval_sim(id)
+        params, _, _ = cube_eval.load_params_and_logs(id)
+        pair = cube_eval.load_traj_pairs(sim, params, [traj_id])[traj_id]
+        impulse = cube_eval.calculate_contact_impulse(pair[1])
+        time = CubeSim.make_traj_timestamps(pair[1])
+        legend_strs.append(format_sim_name(id))
+        ps.step(time[1:], impulse[:,0], color=ps.penn_color_wheel[i])
+        i += 1
+    plt.legend(legend_strs)
+    plt.show()
+
+
 def make_pos_rot_sensitivity_analysis(ids, params_ranges):
     sweeps = {}
     for id in ids:
         sim_type = id.split('_')[0]
         sim = cube_eval.get_eval_sim(id)
-        params, _, _ = cube_eval.load_params_and_logs(id)
+        params, test_set, _ = cube_eval.load_params_and_logs(id)
         pos_avg, pos_med, rot_avg, rot_med = \
              sa.get_cube_position_and_rotation_error_sensitivity(
                 sim, 
                 params, 
                 params_ranges[id], 
-                range(550))
+                test_set)
 
         sweeps[id] = {'pos_avg' : pos_avg, 
                       'pos_med': pos_med, 
@@ -75,9 +93,8 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
     return sweeps
 
 def make_stiffness_sensitivity_analysis_figure():
-    ids = ['mujoco_2021_08_31_13_59_10',
-           'drake_2021_08_31_11_32_10', 
-           'bullet_2021_08_31_12_16_10']
+    ids = ['drake_2021_09_10_05_40_10',
+           'mujoco_2021_09_10_05_38_10']
     params_ranges = {}
     for id in ids:
         params_ranges[id] = sa.get_stiffness_range(id.split('_')[0])
@@ -86,7 +103,7 @@ def make_stiffness_sensitivity_analysis_figure():
 
     ## plotting
     for id in ids:
-        ps.plot(params_ranges[id]['stiffness'], sweeps[id]['pos_rot']['stiffness'])
+        ps.plot(params_ranges[id]['stiffness'], sweeps[id]['pos_med']['stiffness'])
 
     plt.show()
       
@@ -101,6 +118,19 @@ def make_estimated_pdf_figure():
     plot_estimated_loss_pdfs(mse)
 
 
+def plot_error_vs_time(ids, traj_id):
+    i=0
+    for id in ids:
+        sim = cube_eval.get_eval_sim(id)
+        params, _, _ = cube_eval.load_params_and_logs(id)
+        pair = cube_eval.load_traj_pairs(sim, params, [traj_id])[traj_id]
+        error = cube_eval.calc_error_between_trajectories(pair)['velocity_error']
+        time = CubeSim.make_traj_timestamps(pair[0])
+        ps.plot(time, error, color=ps.penn_color_wheel[i])
+        i+=1
+    plt.legend(ids)
+    plt.show()
+
 def make_mujoco_damping_ratio_figure():
     id_paths = glob.glob('examples/contact_parameter_learning/learned_parameters/cube/mujoco_2021_0*_10.json')
     ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
@@ -111,6 +141,22 @@ def make_bullet_damping_ratio_figure():
     ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
     plot_damping_ratios(ids)
 
+def make_error_vs_time_plot():
+    ids = ['bullet_2021_09_10_04_44_10',
+           'drake_2021_09_10_05_40_10', 
+           'mujoco_2021_09_10_05_38_10']
+    traj = 164
+    plot_error_vs_time(ids, traj)
+
+def make_contact_impulse_plot():
+    ids = ['bullet_2021_09_10_04_44_10',
+           'drake_2021_09_10_05_40_10', 
+           'mujoco_2021_09_10_05_38_10']
+    traj_id  = 164
+    plot_impulses_list_of_ids(ids, traj_id)
+
 if __name__ == '__main__':
-    #make_estimated_pdf_figure()
+    # make_estimated_pdf_figure()
     make_stiffness_sensitivity_analysis_figure()
+    # make_error_vs_time_plot()
+    # make_contact_impulse_plot()

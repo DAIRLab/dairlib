@@ -14,6 +14,7 @@ import numpy as np
 from plotting_utils import format_sim_name
 
 mse_loss = cube_sim.LossWeights() # default weights are all ones
+pos_rot_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
 
 def visualize_learned_params(params, data_sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
@@ -301,9 +302,9 @@ if (__name__ == '__main__'):
     #        'drake_2021_08_31_14_04_100', 
     #        'bullet_2021_08_31_16_55_100']
 
-    ids = ['mujoco_2021_08_31_13_59_10',
-           'drake_2021_08_31_11_32_10', 
-           'bullet_2021_08_31_12_16_10']
+    ids = ['bullet_2021_09_10_04_44_10',
+           'drake_2021_09_10_05_40_10', 
+           'mujoco_2021_09_10_05_38_10']
 
     # ids = ['mujoco_2021_08_31_11_03_1',
     #        'mujoco_2021_08_31_12_05_10',
@@ -317,7 +318,7 @@ if (__name__ == '__main__'):
     #        'bullet_2021_08_31_12_16_10', 
     #        'bullet_2021_08_31_16_55_100']
 
-    sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, mse_loss)
+    sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, pos_rot_loss)
 
     worst_case_set, worst_case_by_id = compare_worst_case(losses)
     print()
@@ -335,7 +336,7 @@ if (__name__ == '__main__'):
 
         print()
 
-    visualize_learned_params(params[ids[0]], sims[ids[0]], 69)
+    # visualize_learned_params(params[ids[0]], sims[ids[0]], 69)
 
     # plot_sdf_and_contact(sorted_pairs[ids[0]][69][1])
     # plot_sdf_and_contact(sorted_pairs[ids[0]][69][0])

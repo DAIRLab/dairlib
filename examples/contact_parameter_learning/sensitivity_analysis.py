@@ -28,6 +28,7 @@ def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params
         for param_val in params_range[param_key]:
             pos = []
             rot = []
+            assert param_key in params.keys()
             params[param_key] = param_val
             print(f'{param_key}: {param_val}')
             pairs = load_traj_pairs(sim, params, traj_set, print_progress=True)
@@ -123,15 +124,24 @@ def get_cube_params_range(sim_type):
 def get_cassie_params_range(sim_type):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['mu'] = np.arange(0.01, 0.6, 0.01).tolist()
-        params_range['stiffness'] = np.arange(10000.0, 100000.0, 1000.0).tolist()
-        params_range['dissipation'] = np.arange(0, 1.0, 0.125).tolist()
+        # params_range['mu'] = np.arange(0.01, 0.6, 0.01).tolist()
+        # params_range['stiffness'] = np.arange(10000.0, 100000.0, 1000.0).tolist()
+        # params_range['dissipation'] = np.arange(0, 1.0, 0.125).tolist()
         # params_range['stiction_tol'] = np.logspace(-6, -1, 20).tolist()
+        params_range['dissipation'] = np.linspace(0, 5.0, num=50).tolist()
+
+        # Below are the "true" ranges
+        # params_range['mu'] = np.linspace(0.01, 0.5, num=50).tolist()
+        # params_range['stiffness'] = np.linspace(1000.0, 50000.0, num=50).tolist()
+        # params_range['dissipation'] = np.linspace(0, 2.0, num=50).tolist()
         return params_range
     elif (sim_type == 'mujoco'):
-        params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
-        params_range['stiffness'] = np.arange(10000, 100000, 1000.0).tolist()
-        params_range['damping'] = np.arange(0, 500, 50).tolist()
+        # params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
+        # params_range['stiffness'] = np.arange(10000, 100000, 1000.0).tolist()
+        # params_range['damping'] = np.arange(0, 500, 50).tolist()
+        params_range['mu_tangent'] = np.linspace(0.05, 1.0, num=50).tolist()
+        params_range['stiffness'] = np.linspace(1000.0, 50000.0, num=50).tolist()
+        params_range['damping'] = np.linspace(0, 500, num=50).tolist()
         # params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
         # params_range['mu_rolling'] = np.logspace(-6, -2, 10).tolist()
 

@@ -80,6 +80,7 @@ def test_playback():
   # import pdb; pdb.set_trace()
 
   # sim.run_sim_playback(x_init, start_time, end_time)
+  sim.reinit_env(sim.default_model_directory + 'cassie_new_params.xml')
   sim.run_sim_playback(x_init, start_time, end_time, u_init_traj)
   # sim.visualize_IK_lower(x_init)
   # sim.visualize_IK_upper(x_init)

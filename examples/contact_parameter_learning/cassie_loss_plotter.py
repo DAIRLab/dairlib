@@ -78,6 +78,13 @@ def get_window_around_contact_event(x_traj, t_x, start_time, end_time):
   window = slice(start_idx, end_idx)
   return t_x[window], x_traj[window]
 
+def get_rigid_impact_trajectory(x_traj, t_x, impact_time):
+  impact_idx = np.argwhere(np.isclose(t_x, impact_time, atol=5e-4))[0][0]
+  x_pre_traj = x_traj[:impact_idx]
+  x_post = kinematics_calculator.compute_rigid_impact_map(x_traj[impact_idx])
+  x_post_traj = np.repeat(x_post[np.newaxis, : ], t_x.shape[0] - impact_idx, axis=0)
+  x_rigid_traj = np.concatenate((x_pre_traj, x_post_traj))
+  return t_x, x_rigid_traj
 
 def plot_velocity_trajectory(impact_data, log_num, indices, save_fig=False):
   t_hardware = impact_data.t_x_hardware[log_num]
@@ -86,19 +93,25 @@ def plot_velocity_trajectory(impact_data, log_num, indices, save_fig=False):
   x_sim = impact_data.x_trajs_sim[log_num]
 
   start_time = impact_data.start_times[log_num]
-  end_time = start_time + 0.1
-
+  end_time = start_time + 0.05
   t_hardware, x_hardware = get_window_around_contact_event(x_hardware, t_hardware, start_time, end_time)
-  # t_sim, x_sim = get_window_around_contact_event(x_sim, t_sim, start_time, end_time)
+  t_sim, x_sim = get_window_around_contact_event(x_sim, t_sim, start_time, end_time)
+  # impact_time = 0.5 * (start_time + end_time)
+  impact_time = 30.655
+  t_rigid, x_rigid = get_rigid_impact_trajectory(x_sim, t_sim, impact_time)
+  # import pdb; pdb.set_trace()
   # plt.figure(log_num)
   for i in indices:
     plt.figure(log_num + '_' + x_datatypes[i] + ': ' + str(i))
     ps.plot(t_hardware, x_hardware[:, i], xlabel='time', ylabel='velocity')
     ps.plot(t_sim, x_sim[:, i])
-    ps.add_legend(['hardware', 'sim'])
+    ps.plot(t_rigid, x_rigid[:, i])
+    # ps.add_legend(['hardware', 'sim'])
+    ps.add_legend(['hardware', 'sim', 'rigid'])
     if save_fig:
       str_idx = max(x_datatypes[i].find('left'), x_datatypes[i].find('right'))
       ps.save_fig(x_datatypes[i][:str_idx - 1] + '/' + x_datatypes[i] + '_' + log_num)
+  ps.show_fig()
 
 
 def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, fixed_feet=False, save_figs=False):
@@ -289,6 +302,7 @@ def main():
   impact_data = CassieImpactData(use_mujoco=False)
   # impact_data = CassieImpactData(use_mujoco=True)
   kinematics_calculator = KinematicsHelper()
+  # kinematics_calculator = KinematicsHelper("examples/Cassie/urdf/cassie_fixed_springs.urdf")
 
   joint_vel_indices = range(29, 45)
   hip_joints_indices = range(29, 35)
@@ -297,7 +311,7 @@ def main():
 
   # joint_vel_indices = range(35, 37)
   # joint_vel_indices = range(29, 39)
-  joint_vel_indices = [33, 34, 35, 36, 37, 38]
+  # joint_vel_indices = [33, 34, 35, 36, 37, 38]
   # joint_vel_indices = [35, 36]
 
   pos_losses = []
@@ -331,7 +345,7 @@ def main():
   ## All debugging scripts go here
   # import pdb; pdb.set_trace()
   # plot_velocity_trajectory(impact_data, '08', hip_joints_indices)
-  # plot_velocity_trajectory(impact_data, '12', joint_vel_indices, save_fig=False)
+  plot_velocity_trajectory(impact_data, '15', joint_vel_indices, save_fig=False)
   # plot_feet_positions_at_impact(impact_data, '12')
   # grf_single_log(impact_data, '08')
   # plot_error_bands(impact_data)

@@ -93,9 +93,9 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
 def get_stiffness_range(sim_type):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['stiffness'] = np.arange(8000.0, 100000.0, 1000.0).tolist()
+        params_range['stiffness'] = np.arange(15000.0, 60000.0, 1000.0).tolist()
     else:
-        params_range['stiffness'] = np.arange(1000, 10000, 500).tolist()
+        params_range['stiffness'] = np.arange(1000, 6000, 500).tolist()
 
     return params_range
 
@@ -104,12 +104,12 @@ def get_cube_params_range(sim_type):
     params_range = {}
     if (sim_type == 'drake'):
         params_range['mu'] = np.arange(0.01, 0.2, 0.01).tolist()
-        params_range['stiffness'] = np.arange(8000.0, 100000.0, 1000.0).tolist()
+        params_range['stiffness'] = np.arange(15000.0, 60000.0, 1000.0).tolist()
         params_range['dissipation'] = np.arange(0, 1.0, 0.125).tolist()
         # params_range['stiction_tol'] = np.logspace(-6, -1, 20).tolist()
         return params_range
     else:
-        params_range['stiffness'] = np.arange(1000, 10000, 500).tolist()
+        params_range['stiffness'] = np.arange(1000, 8000, 500).tolist()
         params_range['mu_tangent'] = np.arange(0.01, 0.5, 0.05).tolist()
         # params_range['damping'] = np.arange(0, 500, 50).tolist()
         # params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
@@ -152,6 +152,8 @@ def cube_sensitivity_analysis_main(learning_result):
         params, 
         params_range, 
         test_set)
+
+    return avg, med
 
 def get_cassie_sim(result_id):
     sim_type = result_id.split('_')[0]

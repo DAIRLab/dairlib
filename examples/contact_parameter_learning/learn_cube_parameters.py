@@ -36,18 +36,17 @@ LOW_RES_SUBSTEP = 1
 default_substep = MED_RES_SUBSTEP
 
 # optimization parameters
-batch_size = 50
+batch_size = 550
 num_workers = 1
 num_trials = 550
-num_train = 350
-budget = 10000
-num_test = num_trials - num_train
+budget = 2000
+
 
 
 # Make a list of train and test trials 
 trial_idxs = range(num_trials)
 seed(6)
-training_idxs = sample(trial_idxs, num_train)
+training_idxs = range(550)
 test_idxs = [idx for idx in trial_idxs if not (idx in training_idxs)]
 
 
@@ -63,6 +62,10 @@ def log_optimization(sim_name, test, loss, weights, params_over_time, optimal_pa
     loss_log_name = os.path.join(base_filename, 'loss.npy')
     weights_file_name = os.path.join(base_filename, 'weights.json')
     test_idx_filename = os.path.join(base_filename, 'test_set.json') 
+
+    params_filename = os.path.join(model_folder, datetime_str +'.json')
+    with open(params_filename, 'w+') as fp:
+        dump(optimal_params, fp)
 
     params_names = optimal_params.keys()
     for name in params_names:
@@ -82,17 +85,13 @@ def log_optimization(sim_name, test, loss, weights, params_over_time, optimal_pa
     with open(weights_file_name, 'wb+') as fpw:
         weights.save(fpw)
 
-    params_filename = os.path.join(model_folder, datetime_str +'.json')
-    with open(params_filename, 'w+') as fp:
-        dump(optimal_params, fp)
-
 ####################################
 ## DRAKE FUNCTIONS
 
 def get_drake_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
-        loss_sum += get_drake_loss(params)
+        loss_sum += get_drake_loss(params, trial_num=i)
     print(loss_sum / batch_size)
 
     params_over_time.append(params)
@@ -117,9 +116,8 @@ def learn_drake_params():
     )
 
     optimization_param.value=drake_cube_sim.default_drake_contact_params
-    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
-    with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
-        optimal_params = optimizer.minimize(get_drake_loss_mp, executor=executor, batch_mode=True)
+    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
+    optimal_params = optimizer.minimize(get_drake_loss_mp)
 
     log_optimization('drake', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
 
@@ -129,7 +127,7 @@ def learn_drake_params():
 def get_mujoco_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
-        loss_sum += get_mujoco_loss(params)
+        loss_sum += get_mujoco_loss(params, trial_num=i)
     print(loss_sum / batch_size)
 
     params_over_time.append(params)
@@ -150,9 +148,8 @@ def learn_mujoco_params():
         # mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
-    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
-    with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
-        optimal_params = optimizer.minimize(get_mujoco_loss_mp, executor=executor, batch_mode=True)
+    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
+    optimal_params = optimizer.minimize(get_mujoco_loss_mp)
 
     log_optimization('mujoco', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
 
@@ -163,7 +160,7 @@ def learn_mujoco_params():
 def get_bullet_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
-        loss_sum += get_bullet_loss(params)
+        loss_sum += get_bullet_loss(params, trial_num=i)
     print(loss_sum / batch_size)
 
     params_over_time.append(params)
@@ -185,9 +182,8 @@ def learn_bullet_params():
         mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
     )
     optimization_param.value=bullet_cube_sim.default_bullet_contact_params
-    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget, num_workers=num_workers)
-    with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
-        optimal_params = optimizer.minimize(get_bullet_loss_mp, executor=executor, batch_mode=True)
+    optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
+    optimal_params = optimizer.minimize(get_bullet_loss_mp)
     
     log_optimization('bullet', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
     

@@ -112,7 +112,7 @@ class MujocoCassieSim():
     t = start_time
     while self.cassie_env.time() < end_time:
       # self.cassie_vis.draw(self.cassie_env)
-      now = time.time()  # get the time
+      # now = time.time()  # get the time
       u = input_traj.value(t)
       # print(u)
       q, v, u, t = self.sim_step(u)
@@ -123,9 +123,9 @@ class MujocoCassieSim():
       x_traj.append(np.hstack((q, v)))
       u_traj.append(u)
       t_traj.append(t)
-      elapsed = time.time() - now
-      if(elapsed < self.cycle_usec * 1e-6):
-        time.sleep(self.cycle_usec * 1e-6 - elapsed)
+      # elapsed = time.time() - now
+      # if(elapsed < self.cycle_usec * 1e-6):
+      #   time.sleep(self.cycle_usec * 1e-6 - elapsed)
 
     return x_traj, u_traj, t_traj
 

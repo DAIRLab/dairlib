@@ -26,8 +26,9 @@ budget = 5000
 # budget = 5000
 # budget = 25000
 
-batch_size = 10
+# batch_size = 22
 all_logs = drake_sim.log_nums_real
+batch_size = len(all_logs)
 num_train = int(0.9 * len(all_logs))
 training_idxs = sample(all_logs, num_train)
 test_idxs = [idx for idx in all_logs if not (idx in training_idxs)]
@@ -53,8 +54,9 @@ def get_drake_loss(params, log_num=None, plot=False):
 
 def get_drake_loss_mp(params):
   loss_sum = 0
-  for i in range(batch_size):
-    loss_sum += get_drake_loss(params)
+  # for i in range(batch_size):
+  for i in all_logs:
+    loss_sum += get_drake_loss(params, i)
   print(loss_sum / batch_size)
 
   params_over_time.append(params)
@@ -73,8 +75,9 @@ def get_mujoco_loss(params, log_num=None):
 
 def get_mujoco_loss_mp(params):
   loss_sum = 0
-  for i in range(batch_size):
-    loss_sum += get_mujoco_loss(params)
+  # for i in range(batch_size):
+  for i in all_logs:
+    loss_sum += get_mujoco_loss(params, i)
   print(loss_sum / batch_size)
 
   params_over_time.append(params)
@@ -256,6 +259,7 @@ def print_drake_optimal():
   print('drake_optimal')
   # optimal_params = drake_sim.load_params('drake_2021_09_07_18_training_5000').value
   optimal_params = drake_sim.load_params('drake_2021_09_08_16_training_5000').value
+  optimal_params = drake_sim.load_params('drake_2021_09_09_15_training_5000').value
   print('stiffness')
   print(optimal_params['stiffness'])
   print('dissipation')
@@ -266,7 +270,8 @@ def print_drake_optimal():
 def print_mujoco_optimal():
   print('mujoco_optimal')
   # optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_18_training_5000').value
-  optimal_params = mujoco_sim.load_params('mujoco_2021_09_08_17_training_5000').value
+  # optimal_params = mujoco_sim.load_params('mujoco_2021_09_08_17_training_5000').value
+  optimal_params = mujoco_sim.load_params('mujoco_2021_09_09_15_training_5000').value
   print('stiffness')
   print(optimal_params['stiffness'])
   print('damping')
@@ -275,6 +280,7 @@ def print_mujoco_optimal():
   print(optimal_params['mu_tangent'])
 
 if (__name__ == '__main__'):
+
   print_drake_optimal()
   print_mujoco_optimal()
   # print_loss_weights('pos_loss_weights')

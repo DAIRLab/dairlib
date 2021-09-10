@@ -19,7 +19,7 @@ def main():
 
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
   sim_data_directory = '/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/'
-  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/mujoco_to_real_comparison/'
+  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/sensitivity_analysis/'
   figure_data_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/figure_data/'
   date_prefix = time.strftime("%Y_%m_%d_%H")
   ps = PlotStyler()
@@ -27,9 +27,12 @@ def main():
   with open("x_datatypes", "rb") as fp:
     x_datatypes = pickle.load(fp)
 
-  saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_09_13.pkl'}
+  # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_09_15.pkl'}
+  # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_10_13.pkl'}
+  saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_10_14_test.pkl'}
 
   make_stiffness_sensivity_analysis_figure(use_saved_data=True)
+  # make_stiffness_sensivity_analysis_figure(use_saved_data=True, save_figs=True)
 
   return
 
@@ -53,9 +56,19 @@ def get_sensitivity_analysis_results(ids, param_ranges):
                   'med': med}
   return sweeps
 
-def make_stiffness_sensivity_analysis_figure(use_saved_data=False):
-  ids = ['drake_2021_09_08_16_training_5000',
-         'mujoco_2021_09_08_17_training_5000']
+def make_stiffness_sensivity_analysis_figure(use_saved_data=False, save_figs=False):
+  # ids = ['drake_2021_09_08_16_training_5000',
+  #        'mujoco_2021_09_08_17_training_5000']
+  # ids = ['drake_2021_09_09_15_training_5000',
+  #        'mujoco_2021_09_09_15_training_5000']
+  # ids = ['mujoco_2021_09_09_15_training_5000',
+  #        'drake_2021_09_09_15_training_5000']
+
+  save_data_file = figure_data_directory + date_prefix + '_test' + '.pkl'
+
+  if use_saved_data == False:
+    print('saving to: ' + save_data_file)
+  ids = ['drake_2021_09_09_15_training_5000']
   params_ranges = {}
   for id in ids:
     params_ranges[id] = get_cassie_params_range(id.split('_')[0])
@@ -65,13 +78,22 @@ def make_stiffness_sensivity_analysis_figure(use_saved_data=False):
       sweeps = pickle.load(f)
   else:
     sweeps = get_sensitivity_analysis_results(ids, params_ranges)
-    with open(figure_data_directory + date_prefix + '.pkl', 'wb') as f:
+    with open(save_data_file, 'wb') as f:
       pickle.dump(sweeps, f, pickle.HIGHEST_PROTOCOL)
 
 
   for id in ids:
-    ps.plot(params_ranges[id]['stiffness'], sweeps[id]['avg']['stiffness'])
-    ps.plot(params_ranges[id]['stiffness'], sweeps[id]['med']['stiffness'])
+    sim_type = id.split('_')[0]
+    for param in params_ranges[id].keys():
+      # plt.figure(id)
+      plt.figure(id + param)
+      ps.plot(params_ranges[id][param], sweeps[id]['avg'][param])
+      # ps.plot(params_ranges[id][param], sweeps[id]['med'][param])
+      if save_figs:
+        ps.save_fig(sim_type + '_' + param + '_avg')
+        # ps.save_fig(sim_type + '_' + param + '_med')
+      # ps.plot(params_ranges[id]['stiffness'], sweeps[id]['avg']['stiffness'])
+      # ps.plot(params_ranges[id]['stiffness'], sweeps[id]['med']['stiffness'])
 
   ps.show_fig()
 

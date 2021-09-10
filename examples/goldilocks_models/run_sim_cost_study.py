@@ -752,7 +752,7 @@ if __name__ == "__main__":
   idx_spacing = 5
 
   # Task list
-  n_task = 60
+  n_task = 30
   stride_length = np.linspace(-0.6, 0.6, n_task)
   # stride_length = np.linspace(0, 0.1, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
@@ -764,7 +764,7 @@ if __name__ == "__main__":
   ground_incline = 0.0
   duration = 0.4
   turning_rate = 0.0
-  pelvis_height = -1.0  # not used
+  pelvis_height = 0.8  # not used in simulation; only used in CollectAllTrajoptSampleIndices
 
   # log indices
   log_idx_offset = 0  # 0

@@ -170,27 +170,27 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
     vdot[i] = osc_output[i].qp_output.dv_sol
     solve_time[i] = osc_output[i].qp_output.solve_time
 
-  plt.figure("Qp sol -- efforts " + filename)
-  plt.plot(t_osc_debug[:], u_sol)
-  plt.legend([str(i) for i in range(u_dim)])
-
-  # plt.figure("Qp sol -- contact forces " + filename)
-  # plt.plot(t_osc_debug[:], contact_forces)
-  # plt.legend([str(i) for i in range(lambda_c_dim)])
-  plt.figure("Qp sol -- contact forces (idx 0 to 5) " + filename)
-  plt.plot(t_osc_debug[:], contact_forces[:, 0:6])
-  plt.legend([str(i) for i in range(6)])
-  plt.figure("Qp sol -- contact forces (idx 6 to 11) " + filename)
-  plt.plot(t_osc_debug[:], contact_forces[:, 6:12])
-  plt.legend([str(i) for i in range(6, 12)])
-
-  plt.figure("Qp sol -- epsilons " + filename)
-  plt.plot(t_osc_debug[:], epsilons)
-  plt.legend([str(i) for i in range(epsilon_dim)])
-
-  plt.figure("Qp sol -- vdot " + filename)
-  plt.plot(t_osc_debug[:], vdot[:, 0:6])
-  plt.legend([str(i) for i in range(6)])
+  # plt.figure("Qp sol -- efforts " + filename)
+  # plt.plot(t_osc_debug[:], u_sol)
+  # plt.legend([str(i) for i in range(u_dim)])
+  #
+  # # plt.figure("Qp sol -- contact forces " + filename)
+  # # plt.plot(t_osc_debug[:], contact_forces)
+  # # plt.legend([str(i) for i in range(lambda_c_dim)])
+  # plt.figure("Qp sol -- contact forces (idx 0 to 5) " + filename)
+  # plt.plot(t_osc_debug[:], contact_forces[:, 0:6])
+  # plt.legend([str(i) for i in range(6)])
+  # plt.figure("Qp sol -- contact forces (idx 6 to 11) " + filename)
+  # plt.plot(t_osc_debug[:], contact_forces[:, 6:12])
+  # plt.legend([str(i) for i in range(6, 12)])
+  #
+  # plt.figure("Qp sol -- epsilons " + filename)
+  # plt.plot(t_osc_debug[:], epsilons)
+  # plt.legend([str(i) for i in range(epsilon_dim)])
+  #
+  # plt.figure("Qp sol -- vdot " + filename)
+  # plt.plot(t_osc_debug[:], vdot[:, 0:6])
+  # plt.legend([str(i) for i in range(6)])
 
   plt.figure("Qp solve time " + filename)
   plt.plot(t_osc_debug[:], solve_time)

@@ -1,4 +1,4 @@
-from examples.contact_parameter_learning.cube_sim import LossWeights
+from cube_sim import LossWeights
 import numpy as np
 import sys
 import matplotlib.pyplot as plt

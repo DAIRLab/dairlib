@@ -10,6 +10,8 @@ cc_library(
         "//examples/Cassie:cassie_hardware",
         "//examples/Cassie:dispatcher_robot_in",
         "//examples/Cassie:dispatcher_robot_out",
+        "//examples/Cassie:run_controller_switch",
+        "//examples/Cassie:run_pd_controller",
     ],
 )
 

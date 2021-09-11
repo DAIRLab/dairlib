@@ -121,7 +121,7 @@ def main():
   t_osc_debug_slice = slice(0, len(t_osc_debug))
 
   ### All plotting scripts here
-  # plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
+  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
   # PlotEkfMeasurementError(t_osc_debug, fsm)
   # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (250x)", "pelvis ydot (250x)", "abs_error_per_contact (1000x)"])
 
@@ -321,12 +321,19 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   plt.plot(t_x[t_slice], y_scale * x[t_slice, 5])
   plt.plot(t_x[t_slice], ydot_scale * x[t_slice, nq + 4])
 
-  # plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
-  # plt.plot(t_x[t_slice], u_meas[t_slice, 0])
+  plt.plot(t_u[t_u_slice], u[t_u_slice, 0])
+  plt.plot(t_x[t_slice], u_meas[t_slice, 0])
+
+  plt.plot(t_x[t_slice], 1000 * x[t_slice, pos_map["knee_joint_right"]])
+  plt.plot(t_x[t_slice], 1000 * x[t_slice, pos_map["ankle_spring_joint_right"]])
+  plt.plot(t_x[t_slice], 1000 * x[t_slice, pos_map["knee_joint_left"]])
+  plt.plot(t_x[t_slice], 1000 * x[t_slice, pos_map["ankle_spring_joint_left"]])
 
   # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (%dx)" % y_scale])
   # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (%dx)" % y_scale, "pelvis ydot (%dx)" % ydot_scale, "u", "u_meas"])
-  plt.legend(["l_contact", "r_contact", "fsm", "pelvis y (%dx)" % y_scale, "pelvis ydot (%dx)" % ydot_scale])
+  plt.legend(["l_contact", "r_contact", "fsm", "pelvis y (%dx)" % y_scale, "pelvis ydot (%dx)" % ydot_scale, "u", "u_meas", "knee_joint_right", "ankle_spring_joint_right", "knee_joint_left", "ankle_spring_joint_left"])
+  # plt.legend(["l_contact", "r_contact", "fsm", "pelvis y (%dx)" % y_scale, "pelvis ydot (%dx)" % ydot_scale, "u", "u_meas"])
+  # plt.legend(["l_contact", "r_contact", "fsm", "pelvis y (%dx)" % y_scale, "pelvis ydot (%dx)" % ydot_scale])
 
 
 def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):

@@ -1,4 +1,5 @@
-from examples.contact_parameter_learning.cube_sim import CubeSim
+from cube_sim import CUBE_DATA_DT, CubeSim, load_cube_toss, make_cube_toss_filename
+import drake_cube_sim
 from json import load
 import evaluate_cube_parameters as cube_eval
 import os
@@ -155,8 +156,19 @@ def make_contact_impulse_plot():
     traj_id  = 164
     plot_impulses_list_of_ids(ids, traj_id)
 
+def visualize_cube_initial_condition():
+    sim = drake_cube_sim.DrakeCubeSim(visualize=True, substeps=10)
+    sim.init_sim(drake_cube_sim.default_drake_contact_params)
+    cube_data = load_cube_toss(
+            make_cube_toss_filename(cube_eval.cube_data_folder, 69))
+    sim.set_initial_condition(cube_data[0])
+    sim.sim_step(CUBE_DATA_DT)
+    sim.sim_step(CUBE_DATA_DT)
+    sim.sim_step(CUBE_DATA_DT)
+
 if __name__ == '__main__':
     # make_estimated_pdf_figure()
-    make_stiffness_sensitivity_analysis_figure()
+    # make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
     # make_contact_impulse_plot()
+    visualize_cube_initial_condition()

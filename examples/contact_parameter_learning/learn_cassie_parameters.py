@@ -22,7 +22,8 @@ loss_over_time = []
 stiffness_over_time = []
 params_over_time = []
 log_num = 'training'
-budget = 5000
+budget = 2500
+# budget = 5000
 # budget = 5000
 # budget = 25000
 
@@ -106,7 +107,7 @@ def learn_drake_cassie_params(batch=False):
     mu=ng.p.Scalar(lower=0.01, upper=1.0),
     # mu_ratio=ng.p.Scalar(lower=0.001, upper=1.0),
     stiffness=ng.p.Log(lower=1e3, upper=1e6),
-    dissipation=ng.p.Scalar(lower=0.0, upper=2.0),
+    dissipation=ng.p.Scalar(lower=0.0, upper=3.0),
     # stiction_tol=ng.p.Log(lower=1e-4, upper=1e-2),
     # vel_offset=ng.p.Array(shape=(3,)).set_bounds(lower=-0.5, upper=0.5),
     # z_offset=ng.p.Array(shape=(1,)).set_bounds(lower=-0.05, upper=0.05)
@@ -172,11 +173,12 @@ def print_drake_cassie_params(single_log_num, plot=False):
   # optimal_params = drake_sim.load_params('drake_2021_09_07_16_training_1000').value
   # optimal_params = drake_sim.load_params('drake_2021_08_28_22_26' + single_log_num + '_x_offsets_5000').value
 
-  optimal_params = drake_sim.load_params('drake_2021_09_07_18_training_5000').value
+  # optimal_params = drake_sim.load_params('drake_2021_09_07_18_training_5000').value
+  optimal_params = drake_sim.load_params('drake_2021_09_10_17_training_2500').value
   loss = get_drake_loss(optimal_params, single_log_num, plot)
   print(loss)
-  stiffness = optimal_params['stiffness']
-  dissipation = optimal_params['dissipation']
+  # stiffness = optimal_params['stiffness']
+  # dissipation = optimal_params['dissipation']
   # print('stiffness')
   # print(stiffness)
   # print('dissipation')
@@ -189,7 +191,8 @@ def print_mujoco_cassie_params(single_log_num):
   # optimal_params = mujoco_sim.load_params('all' + '_optimized_params_' + str(budget))
   # optimal_params = mujoco_sim.load_params('mujoco_2021_09_06_22_training_5000').value
   # optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_17_training_1000').value
-  optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_18_training_5000').value
+  # optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_18_training_5000').value
+  optimal_params = mujoco_sim.load_params('mujoco_2021_09_09_15_training_5000').value
   loss = get_mujoco_loss(optimal_params, single_log_num)
   print(loss)
 
@@ -258,8 +261,9 @@ def learn_x_offsets():
 def print_drake_optimal():
   print('drake_optimal')
   # optimal_params = drake_sim.load_params('drake_2021_09_07_18_training_5000').value
-  optimal_params = drake_sim.load_params('drake_2021_09_08_16_training_5000').value
-  optimal_params = drake_sim.load_params('drake_2021_09_09_15_training_5000').value
+  # optimal_params = drake_sim.load_params('drake_2021_09_08_16_training_5000').value
+  # optimal_params = drake_sim.load_params('drake_2021_09_09_15_training_5000').value
+  optimal_params = drake_sim.load_params('drake_2021_09_10_17_training_2500').value
   print('stiffness')
   print(optimal_params['stiffness'])
   print('dissipation')
@@ -282,14 +286,14 @@ def print_mujoco_optimal():
 if (__name__ == '__main__'):
 
   print_drake_optimal()
-  print_mujoco_optimal()
+  # print_mujoco_optimal()
   # print_loss_weights('pos_loss_weights')
   # learn_x_offsets()
   # save_x_offsets()
   # print_drake_cassie_params()
   # learn_drake_cassie_params(batch=True)
   # learn_mujoco_cassie_params()
-  # plot_per_log_loss_drake()
+  plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'

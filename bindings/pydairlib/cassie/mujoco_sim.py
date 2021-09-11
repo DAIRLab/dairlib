@@ -111,7 +111,6 @@ class MujocoCassieSim():
     t_traj = []
     t = start_time
     while self.cassie_env.time() < end_time:
-      # self.cassie_vis.draw(self.cassie_env)
       # now = time.time()  # get the time
       u = input_traj.value(t)
       # print(u)

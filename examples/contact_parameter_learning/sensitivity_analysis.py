@@ -7,8 +7,8 @@ from evaluate_cube_parameters import calc_error_between_trajectories, \
 from copy import deepcopy
 from math import pi
 import cube_sim
-import drake_cassie_sim
-import mujoco_cassie_sim
+# import drake_cassie_sim
+# import mujoco_cassie_sim
 
 
 def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params_range, traj_set):
@@ -72,7 +72,7 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
             params[param_key] = param_val
             print(f'{param_key}: {param_val}')
             if (plant == 'cube'):
-                pairs = load_traj_pairs(sim, params, test_traj_set)
+                pairs = load_traj_pairs(sim, params, test_traj_set, print_progress=True)
                 for pair_idx in pairs:
                     pair = pairs[pair_idx]
                     losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
@@ -91,12 +91,12 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
     return loss_avgs, loss_meds
 
 
-def get_stiffness_range(sim_type):
+def get_stiffness_range(sim_type, k0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['stiffness'] = np.arange(10000.0, 30000.0, 1000.0).tolist()
+        params_range['stiffness'] = np.linspace(k0/2, k0*2, 20).tolist()
     else:
-        params_range['stiffness'] = np.arange(1000, 6000, 500).tolist()
+        params_range['stiffness'] = np.arange(k0/2, k0*2, 20).tolist()
 
     return params_range
 
@@ -150,7 +150,7 @@ def get_cassie_params_range(sim_type):
 
     return params_range
 
-def cube_sensitivity_analysis_main(learning_result):
+def cube_sensitivity_analysis_main(learning_result, use_all_traj=False):
     sim_type = learning_result.split('_')[0]
 
     eval_sim = get_eval_sim(learning_result)
@@ -158,6 +158,9 @@ def cube_sensitivity_analysis_main(learning_result):
 
     params, test_set, training_loss = load_params_and_logs(learning_result)
     params_range = get_cube_params_range(sim_type)
+
+    if (use_all_traj):
+        test_set = range(550)
 
     avg, med = get_sensitivity_analysis(
         eval_sim, 

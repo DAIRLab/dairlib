@@ -17,6 +17,8 @@ figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learnin
 ps = PlotStyler()
 ps.set_default_styling(directory=figure_directory, figsize=(10,6))
 
+sim_colors = {'MuJoCo': ps.blue, 'Drake' : ps.red, 'Bullet' : ps.yellow}
+
 def plot_damping_ratios(ids):
     stiffness = []
     zeta = []
@@ -59,7 +61,6 @@ def plot_sensitivity_analysis(loss_sweeps, params_range, title=''):
 
 
 def plot_impulses_list_of_ids(ids, traj_id):
-    i = 0
     legend_strs = []
     for id in ids:
         sim = cube_eval.get_eval_sim(id)
@@ -68,18 +69,31 @@ def plot_impulses_list_of_ids(ids, traj_id):
         impulse = cube_eval.calculate_contact_impulse(pair[1])
         time = CubeSim.make_traj_timestamps(pair[1])
         legend_strs.append(format_sim_name(id))
-        ps.step(time[1:], impulse[:,0], color=ps.penn_color_wheel[i])
+        ps.step(time[1:], impulse[:,0], color=sim_colors[legend_strs[id]])
         i += 1
     plt.legend(legend_strs)
     plt.show()
 
+def make_training_loss_sensitivity_analysis(ids, params_ranges):
+    sweeps = {}
+    for id in ids:
+        sim_type = id.split('_')[0]
+        sim = cube_eval.get_eval_sim(id)
+        params, _, weights = cube_eval.load_params_and_logs(id)
+        test_set = range(550)
+        loss_avg, loss_med = sa.get_sensitivity_analysis(
+            sim, weights, params, params_ranges[id], test_set)
+        sweeps[id] = {'loss_avg' : loss_avg, 
+                      'loss_med' : loss_med}
+    return sweeps
 
 def make_pos_rot_sensitivity_analysis(ids, params_ranges):
     sweeps = {}
     for id in ids:
         sim_type = id.split('_')[0]
         sim = cube_eval.get_eval_sim(id)
-        params, test_set, _ = cube_eval.load_params_and_logs(id)
+        params, _, _ = cube_eval.load_params_and_logs(id)
+        test_set = range(550)
         pos_avg, pos_med, rot_avg, rot_med = \
              sa.get_cube_position_and_rotation_error_sensitivity(
                 sim, 
@@ -94,18 +108,31 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
     return sweeps
 
 def make_stiffness_sensitivity_analysis_figure():
-    ids = ['drake_2021_09_10_05_40_10',
-           'mujoco_2021_09_10_05_38_10']
-    params_ranges = {}
-    for id in ids:
-        params_ranges[id] = sa.get_stiffness_range(id.split('_')[0])
+    ids = ['mujoco_2021_09_11_09_39_10', 
+           'drake_2021_09_11_16_44_10',
+           'bullet_2021_09_11_14_46_10']
 
-    sweeps = make_pos_rot_sensitivity_analysis(ids, params_ranges)
+    params_ranges = {}
+    params = {}
+    for id in ids:
+        param, _, _ = cube_eval.load_params_and_logs(id)
+        params[id] = param
+        params_ranges[id] = sa.get_stiffness_range(id.split('_')[0], param['stiffness'])
+    sweeps = make_training_loss_sensitivity_analysis(ids, params_ranges)
 
     ## plotting
+    legend_strs = []
     for id in ids:
-        ps.plot(params_ranges[id]['stiffness'], sweeps[id]['pos_med']['stiffness'])
+        legend_strs.append(format_sim_name(id))
+        k_opt = params[id]['stiffness']
+        k_ratio = np.array(params_ranges[id]['stiffness']) / k_opt
+        ps.plot(k_ratio, sweeps[id]['loss_avg']['stiffness'], color=sim_colors[legend_strs[id]])
 
+    plt.xlabel('$k / k^{*}$')
+    plt.legend(legend_strs)
+    plt.ylabel('Average $e_{q}$')
+    plt.ylim((0, 1.0))
+    ps.save_fig('StiffnessSensitivity.pdf')
     plt.show()
       
 
@@ -120,14 +147,15 @@ def make_estimated_pdf_figure():
 
 
 def plot_error_vs_time(ids, traj_id):
-    i=0
+    legend_strs = []
     for id in ids:
+        legend_strs.append(format_sim_name(id))
         sim = cube_eval.get_eval_sim(id)
         params, _, _ = cube_eval.load_params_and_logs(id)
         pair = cube_eval.load_traj_pairs(sim, params, [traj_id])[traj_id]
         error = cube_eval.calc_error_between_trajectories(pair)['velocity_error']
         time = CubeSim.make_traj_timestamps(pair[0])
-        ps.plot(time, error, color=ps.penn_color_wheel[i])
+        ps.plot(time, error, color=sim_colors[legend_strs[id]])
         i+=1
     plt.legend(ids)
     plt.show()
@@ -168,7 +196,7 @@ def visualize_cube_initial_condition():
 
 if __name__ == '__main__':
     # make_estimated_pdf_figure()
-    # make_stiffness_sensitivity_analysis_figure()
+    make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
     # make_contact_impulse_plot()
-    visualize_cube_initial_condition()
+    # visualize_cube_initial_condition()

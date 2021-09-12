@@ -12,7 +12,7 @@ from pydairlib.common import plot_styler
 from pydairlib.lcm import lcm_trajectory
 
 
-def convert_log(filename, controller_channel):
+def convert_log(filename, controller_channel, save_est_contact_forces=False):
   figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
   ps = plot_styler.PlotStyler()
   ps.set_default_styling(directory=figure_directory)
@@ -77,57 +77,60 @@ def convert_log(filename, controller_channel):
   controller_input_traj.traj_name = 'controller_inputs'
   controller_input_traj.time_vector = t_u
   controller_input_traj.datapoints = u_meas.transpose()
-  controller_input_traj.datatypes = [''] * u_meas.shape[0]
+  controller_input_traj.datatypes = [''] * u_meas.shape[1]
+  # import pdb; pdb.set_trace()
   lcm_traj = lcm_trajectory.LcmTrajectory()
   lcm_traj.AddTrajectory('controller_inputs', controller_input_traj)
   lcm_traj.WriteToFile(ps.directory + 'u_traj_' + log_file_num)
 
-  # contact_forces = np.empty((len(full_log['CASSIE_GM_CONTACT_DISPATCHER']), 4, 3))
-  contact_info_locs = [[], [], [], []]
-  contact_forces = [[], [], [], []]  # Allocate space for all 4 point contacts
-  for msg in full_log['CASSIE_GM_CONTACT_DISPATCHER']:
-    num_left_contacts = 0
-    num_right_contacts = 0
-    # import pdb; pdb.set_trace()
-    for i in range(msg.num_point_pair_contacts):
-      if "toe_left" in msg.point_pair_contact_info[i].body1_name:
-        if (num_left_contacts >= 2):
-          continue
-        contact_info_locs[num_left_contacts].append(msg.point_pair_contact_info[i].contact_point)
-        contact_forces[num_left_contacts].append(msg.point_pair_contact_info[i].contact_force)
+
+  if save_est_contact_forces:
+    # contact_forces = np.empty((len(full_log['CASSIE_GM_CONTACT_DISPATCHER']), 4, 3))
+    contact_info_locs = [[], [], [], []]
+    contact_forces = [[], [], [], []]  # Allocate space for all 4 point contacts
+    for msg in full_log['CASSIE_GM_CONTACT_DISPATCHER']:
+      num_left_contacts = 0
+      num_right_contacts = 0
+      # import pdb; pdb.set_trace()
+      for i in range(msg.num_point_pair_contacts):
+        if "toe_left" in msg.point_pair_contact_info[i].body1_name:
+          if (num_left_contacts >= 2):
+            continue
+          contact_info_locs[num_left_contacts].append(msg.point_pair_contact_info[i].contact_point)
+          contact_forces[num_left_contacts].append(msg.point_pair_contact_info[i].contact_force)
+          num_left_contacts += 1
+        elif "toe_right" in msg.point_pair_contact_info[i].body1_name:
+          if (num_right_contacts >= 2):
+            continue
+          contact_info_locs[2 + num_right_contacts].append(msg.point_pair_contact_info[i].contact_point)
+          contact_forces[2 + num_right_contacts].append(msg.point_pair_contact_info[i].contact_force)
+          num_right_contacts += 1
+      while num_left_contacts != 2:
+        contact_forces[num_left_contacts].append((0.0, 0.0, 0.0))
+        contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))
         num_left_contacts += 1
-      elif "toe_right" in msg.point_pair_contact_info[i].body1_name:
-        if (num_right_contacts >= 2):
-          continue
-        contact_info_locs[2 + num_right_contacts].append(msg.point_pair_contact_info[i].contact_point)
-        contact_forces[2 + num_right_contacts].append(msg.point_pair_contact_info[i].contact_force)
+      while num_right_contacts != 2:
+        contact_forces[2 + num_right_contacts].append((0.0, 0.0, 0.0))
+        contact_info_locs[2 + num_right_contacts].append((0.0, 0.0, 0.0))
         num_right_contacts += 1
-    while num_left_contacts != 2:
-      contact_forces[num_left_contacts].append((0.0, 0.0, 0.0))
-      contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))
-      num_left_contacts += 1
-    while num_right_contacts != 2:
-      contact_forces[2 + num_right_contacts].append((0.0, 0.0, 0.0))
-      contact_info_locs[2 + num_right_contacts].append((0.0, 0.0, 0.0))
-      num_right_contacts += 1
-  contact_forces = np.array(contact_forces)
-  contact_info_locs = np.array(contact_info_locs)
-  for i in range(contact_info_locs.shape[1]):
-    # Swap front and rear contacts if necessary
-    # Order will be rear contact then front contact in index 1
-    if contact_info_locs[0, i, 0] > contact_info_locs[1, i, 0]:
-      contact_forces[[0, 1], i, :] = contact_forces[[1, 0], i, :]
-      contact_info_locs[[0, 1], i, :] = contact_info_locs[[1, 0], i, :]
-    if contact_info_locs[2, i, 0] > contact_info_locs[3, i, 0]:
-      contact_forces[[2, 3], i, :] = contact_forces[[3, 2], i, :]
-      contact_info_locs[[2, 3], i, :] = contact_info_locs[[3, 2], i, :]
-    # import pdb; pdb.set_trace()
-    # contact_forces[i, 0, :] = np.array(contact_info.point_pair_contact_info[0].contact_force)
-    # contact_forces[i, 1, :] = np.array(contact_info.point_pair_contact_info[1].contact_force)
-    # contact_forces[i, 2, :] = np.array(contact_info.point_pair_contact_info[2].contact_force)
-    # contact_forces[i, 3, :] = np.array(contact_info.point_pair_contact_info[3].contact_force)
-  contact_forces = contact_forces[:, t_slice, :]
-  np.save(ps.directory + 'lambda_' + log_file_num, contact_forces)
+    contact_forces = np.array(contact_forces)
+    contact_info_locs = np.array(contact_info_locs)
+    for i in range(contact_info_locs.shape[1]):
+      # Swap front and rear contacts if necessary
+      # Order will be rear contact then front contact in index 1
+      if contact_info_locs[0, i, 0] > contact_info_locs[1, i, 0]:
+        contact_forces[[0, 1], i, :] = contact_forces[[1, 0], i, :]
+        contact_info_locs[[0, 1], i, :] = contact_info_locs[[1, 0], i, :]
+      if contact_info_locs[2, i, 0] > contact_info_locs[3, i, 0]:
+        contact_forces[[2, 3], i, :] = contact_forces[[3, 2], i, :]
+        contact_info_locs[[2, 3], i, :] = contact_info_locs[[3, 2], i, :]
+      # import pdb; pdb.set_trace()
+      # contact_forces[i, 0, :] = np.array(contact_info.point_pair_contact_info[0].contact_force)
+      # contact_forces[i, 1, :] = np.array(contact_info.point_pair_contact_info[1].contact_force)
+      # contact_forces[i, 2, :] = np.array(contact_info.point_pair_contact_info[2].contact_force)
+      # contact_forces[i, 3, :] = np.array(contact_info.point_pair_contact_info[3].contact_force)
+    contact_forces = contact_forces[:, t_slice, :]
+    np.save(ps.directory + 'lambda_' + log_file_num, contact_forces)
 
 def convert_all_hardware_jumping_logs():
   controller_channel = 'OSC_JUMPING'

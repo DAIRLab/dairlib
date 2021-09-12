@@ -32,11 +32,13 @@ def main():
   # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_10_13.pkl'}
   # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_10_14_test.pkl'}
   # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_10_21_combined.pkl'}
-  saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_11_12.pkl'}
+  # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_11_12.pkl'}
+  # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_11_20.pkl'}
+  saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_12_12.pkl'}
 
   # make_stiffness_sensivity_analysis_figure(use_saved_data=True)
-  # make_stiffness_sensivity_analysis_figure(use_saved_data=True, save_figs=True)
-  make_stiffness_sensivity_analysis_figure()
+  make_stiffness_sensivity_analysis_figure(use_saved_data=True, save_figs=True)
+  # make_stiffness_sensivity_analysis_figure()
 
   return
 
@@ -64,7 +66,7 @@ def make_stiffness_sensivity_analysis_figure(use_saved_data=False, save_figs=Fal
   # ids = ['drake_2021_09_08_16_training_5000',
   #        'mujoco_2021_09_08_17_training_5000']
   ids = ['drake_2021_09_10_17_training_2500',
-         'mujoco_2021_09_09_15_training_5000']
+         'mujoco_2021_09_11_18_training_2500']
   # ids = ['mujoco_2021_09_09_15_training_5000',
   #        'drake_2021_09_09_15_training_5000']
   # ids = ['drake_2021_09_09_15_training_5000']
@@ -85,6 +87,8 @@ def make_stiffness_sensivity_analysis_figure(use_saved_data=False, save_figs=Fal
     with open(save_data_file, 'wb') as f:
       pickle.dump(sweeps, f, pickle.HIGHEST_PROTOCOL)
 
+  figures = {}
+
   for id in ids:
     sim_type = id.split('_')[0]
     color = ps.penn_color_wheel[0]
@@ -94,15 +98,20 @@ def make_stiffness_sensivity_analysis_figure(use_saved_data=False, save_figs=Fal
       color = ps.penn_color_wheel[0]
 
     for param in params_ranges[id].keys():
+      param_name = param
+      if 'mu' in param:
+        param_name = 'mu'
       # plt.figure(id)
       # plt.figure(param)
-      plt.figure(sim_type + '_' + param)
+      # plt.figure(sim_type + '_' + param)
+      figures[param_name] = plt.figure(param_name)
+      figures[param_name].gca()
       ps.plot(params_ranges[id][param], sweeps[id]['avg'][param], xlabel=param, ylabel='Loss ', color=color, ylim=[0, 70], xlim=[0, params_ranges[id][param][-1]])
       # ps.plot(params_ranges[id]['stiffness'], sweeps[id]['avg']['stiffness'], xlabel=param, ylabel='Loss ', color=color)
       # ps.plot(params_ranges[id][param], sweeps[id]['med'][param])
-      if save_figs:
-        ps.save_fig(sim_type + '_' + param + '_avg')
-        # ps.save_fig('both' + '_' + param + '_avg')
+      if save_figs and sim_type == 'mujoco':
+        ps.save_fig('both' + '_' + param_name + '_avg')
+        # ps.save_fig(sim_type + '_' + param + '_avg')
   ps.show_fig()
 
 

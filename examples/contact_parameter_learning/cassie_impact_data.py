@@ -8,8 +8,10 @@ class CassieImpactData():
   def __init__(self, use_mujoco=False):
     self.data_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
     self.sim_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/drake_optimal/'
+    self.sim_plot_color_idx = 1
     if use_mujoco:
       self.sim_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/mujoco_optimal/'
+      self.sim_plot_color_idx = 0
     self.drake_params_directory = "examples/contact_parameter_learning/drake_cassie_params/"
     self.mujoco_params_directory = "examples/contact_parameter_learning/mujoco_cassie_params/"
 
@@ -93,7 +95,6 @@ class CassieImpactData():
       self.z_offsets = pickle.load(file)
     with open(self.drake_params_directory + 'optimized_vel_offsets.pkl', 'rb') as file:
       self.vel_offsets = pickle.load(file)
-    # import pdb; pdb.set_trace()
 
     # for log_num in self.log_nums_real:
     #   print('hardware: ')

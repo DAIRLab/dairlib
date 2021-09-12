@@ -202,7 +202,9 @@ class DrakeCassieSim():
     np.save(self.sim_data_folder + 't_x_' + log_num, t_x)
 
     self.iter_num += 1
-    print("sim_run: " + str(self.iter_num))
+    if not self.iter_num % 22:
+      # print("sim_run: " + str(self.iter_num))
+      print("iter: " + str(self.iter_num / 22))
 
     return log_num
 

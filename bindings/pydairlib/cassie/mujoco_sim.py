@@ -40,6 +40,7 @@ class MujocoCassieSim():
     self.input_sub = Subscriber(lcm=self.lcm, channel="CASSIE_INPUT_", lcm_type=dairlib.lcmt_robot_input)
     self.publish_state = publish_state
     self.drake_to_mujoco_converter = DrakeToMujocoConverter(sim_dt)
+    self.delay_duration = 0.003 # corresponds to 6 cycles at 2000Hz
 
   def reinit_env(self, model_file):
     self.cassie_env = CassieSim(model_file)
@@ -75,8 +76,8 @@ class MujocoCassieSim():
     self.u_pd.rightLeg.motorPd = u_pd.leftLeg.motorPd
     return self.u_pd
 
-  def sim_step(self, u):
-    action, u = self.pack_input(self.cassie_in, u)
+  def sim_step(self, u_drake):
+    action, u = self.pack_input(self.cassie_in, u_drake)
     self.cassie_env.step(action)
     t = self.cassie_env.time()
     q = self.cassie_env.qpos()
@@ -87,7 +88,7 @@ class MujocoCassieSim():
     # print(q[24:28])
     # print(q)
     # print(v)
-    return q, v, u, t
+    return q, v, u_drake, t
 
   def set_state(self, x_init):
     q_mujoco, v_mujoco = self.drake_to_mujoco_converter.convert_to_mujoco(x_init)
@@ -100,26 +101,42 @@ class MujocoCassieSim():
     # print(v_mujoco)
     self.cassie_env.set_state(mujoco_state)
 
+  # due to the mujoco simulator modeling actuator delays
+  # initialize the torque_delay array by running the sim before
+  def initialize_motor_efforts(self, start_time, input_traj):
+    self.cassie_env.set_time(start_time - self.delay_duration)
+    u0 = input_traj.value(start_time)
+    while not np.isclose(self.cassie_env.time(), start_time, atol=1e-4):
+      _, _, _, _ = self.sim_step(u0)
+
+
   def run_sim_playback(self, x_init, start_time, end_time, input_traj=PiecewisePolynomial(np.zeros(10)), params=None):
     # self.model = load_model_from_xml(get_model_xml_text(params))
     # self.cassie_env = CassieSim(load_model_from_xml(get_model_xml_text(params)))
+    # print(self.cassie_env.time(), start_time)
+    # assert np.isclose(self.cassie_env.time(), start_time)
+
+    self.set_state(x_init)
+    self.initialize_motor_efforts(start_time, input_traj)
     self.cassie_env.set_time(start_time)
     self.set_state(x_init)
     # u = np.zeros(10)
-    x_traj = []
-    u_traj = []
-    t_traj = []
     t = start_time
+    x_traj = [x_init]
+    u_traj = [input_traj.value(t + self.delay_duration)]
+    t_traj = [t]
     while self.cassie_env.time() < end_time:
       # now = time.time()  # get the time
-      u = input_traj.value(t)
-      # print(u)
+      u = input_traj.value(t + self.delay_duration)
+      # import pdb; pdb.set_trace()
       q, v, u, t = self.sim_step(u)
+      # import pdb; pdb.set_trace()
       if (self.publish_state):
         pack_robot_output(self.robot_output, q, v, u, t)
         self.lcm.Publish('CASSIE_STATE_MUJOCO', self.robot_output.encode())
       q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
       x_traj.append(np.hstack((q, v)))
+      # import pdb; pdb.set_trace()
       u_traj.append(u)
       t_traj.append(t)
       # elapsed = time.time() - now
@@ -166,3 +183,6 @@ class MujocoCassieSim():
 
   def visualize_IK_upper(self, x):
     self.drake_to_mujoco_converter.visualize_state_upper(x)
+
+  def visualize_entire_leg(self, x):
+    self.drake_to_mujoco_converter.visualize_entire_leg(x)

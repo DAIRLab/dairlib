@@ -1,17 +1,11 @@
 import numpy as np
-import lcm
-# from scipy.integrate import trapz
 import pickle
 from pydairlib.common import FindResourceOrThrow
 from bindings.pydairlib.common.plot_styler import PlotStyler
-from pydrake.trajectories import PiecewisePolynomial
-from pydairlib.lcm import lcm_trajectory
-from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
-from pydrake.systems.framework import DiagramBuilder
-from pydairlib.cassie.cassie_utils import *
+# from pydairlib.cassie.cassie_utils import *
+from pydrake.systems.framework import *
 from pydairlib.cassie.kinematics_helper import KinematicsHelper
 import pydairlib.multibody
-from process_lcm_log import process_log
 from cassie_impact_data import CassieImpactData
 import scipy.linalg as linalg
 from scipy import interpolate
@@ -96,6 +90,7 @@ def plot_velocity_trajectory(impact_data, log_num, indices, save_fig=False, comp
   end_time = start_time + 0.05
   t_hardware, x_hardware = get_window_around_contact_event(x_hardware, t_hardware, start_time, end_time)
   t_sim, x_sim = get_window_around_contact_event(x_sim, t_sim, start_time, end_time)
+
   # impact_time = 0.5 * (start_time + end_time)
   if compare_rigid:
     impact_time = 30.655
@@ -166,6 +161,8 @@ def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, f
     t_common = t_sim
 
   figure_title = 'pelvis'
+  if use_center_of_mass:
+    figure_title = 'com'
 
   if False:
     y_lim = [-2.0, 1.0]
@@ -176,23 +173,26 @@ def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, f
       y_error_lim = [-0.2, 0.35]
 
   plt.figure(figure_title + ': ' + log_num)
-  ps.plot(t_common, com_vel_sim[:n_samples_common, 0])
-  ps.plot(t_common, com_vel_hardware[:n_samples_common, 0])
+  # ps.plot(t_common, com_vel_sim[:n_samples_common, 0])
+  # ps.plot(t_common, com_vel_hardware[:n_samples_common, 0])
   # plt.figure('y' + log_num)
-  ps.plot(t_common, com_vel_sim[:n_samples_common, 1])
-  ps.plot(t_common, com_vel_hardware[:n_samples_common, 1])
+  # ps.plot(t_common, com_vel_sim[:n_samples_common, 1])
+  # ps.plot(t_common, com_vel_hardware[:n_samples_common, 1])
   # plt.figure('z' + log_num)
-  ps.plot(t_common, com_vel_sim[:n_samples_common, 2])
-  ps.plot(t_common, com_vel_hardware[:n_samples_common, 2])
-  ps.add_legend(['x sim', 'x hardware', 'y sim', 'y hardware', 'z sim', 'z_hardware'])
+  ps.plot(t_common, com_vel_sim[:n_samples_common, 2], color=ps.penn_color_wheel[impact_data.sim_plot_color_idx])
+  ps.plot(t_common, com_vel_hardware[:n_samples_common, 2], color=ps.penn_color_wheel[3])
+  # ps.add_legend(['cos_dist_sim', 'cos_dist_hardware', 'z sim', 'z_hardware'])
+  ps.add_legend(['z sim', 'z_hardware'])
+  # ps.add_legend(['x sim', 'x hardware', 'y sim', 'y hardware', 'z sim', 'z_hardware'])
   if save_figs:
     ps.save_fig(figure_title + '_' + log_num)
 
   plt.figure(figure_title + '_error: ' + log_num)
-  ps.plot(t_common, com_vel_sim[:n_samples_common, 0] - com_vel_hardware[:n_samples_common, 0])
-  ps.plot(t_common, com_vel_sim[:n_samples_common, 1] - com_vel_hardware[:n_samples_common, 1])
+  # ps.plot(t_common, com_vel_sim[:n_samples_common, 0] - com_vel_hardware[:n_samples_common, 0])
+  # ps.plot(t_common, com_vel_sim[:n_samples_common, 1] - com_vel_hardware[:n_samples_common, 1])
   ps.plot(t_common, com_vel_sim[:n_samples_common, 2] - com_vel_hardware[:n_samples_common, 2])
-  ps.add_legend(['x', 'y', 'z'])
+  # ps.add_legend(['x', 'y', 'z'])
+  ps.add_legend(['z'])
   if save_figs:
     ps.save_fig(figure_title + '_error_' + log_num)
 
@@ -232,12 +232,11 @@ def plot_feet_positions_at_impact(impact_data, log_num):
   ps.plot(t_hardware, foot_vel_hardware)
 
 
-def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
+def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False, compare_final=False):
   t_hardware = impact_data.t_x_hardware[log_num]
   x_hardware = impact_data.x_trajs_hardware[log_num]
   t_sim = impact_data.t_x_sim[log_num]
   x_sim = impact_data.x_trajs_sim[log_num]
-  compare_final = True
   prefix = ''
   if compare_final:
     prefix = 'final_'
@@ -258,7 +257,8 @@ def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
   pos_diff = x_hardware[:, loss_func.position_slice] - x_sim[:, loss_func.position_slice]
   if compare_final:
     pos_diff = x_hardware[-1, loss_func.position_slice] - x_sim[-1, loss_func.position_slice]
-  pos_diff_vec = pos_diff.ravel()
+  sqrt_pos_weights = np.sqrt(loss_func.weights.pos)
+  pos_diff_vec = (pos_diff @ sqrt_pos_weights).ravel()
   pos_losses_vec = pos_diff_vec * pos_diff_vec
   pos_losses = pos_losses_vec.reshape((-1, n_positions))
   if save_figs:
@@ -269,8 +269,9 @@ def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False):
   vel_diff = x_hardware[:, loss_func.velocity_slice] - x_sim[:, loss_func.velocity_slice]
   if compare_final:
     vel_diff = x_hardware[-1, loss_func.velocity_slice] - x_sim[-1, loss_func.velocity_slice]
-  vel_diff_vec = vel_diff.ravel()
-  vel_losses_vec = (loss_func.weights.vel @ vel_diff_vec) * vel_diff_vec
+  sqrt_vel_weights = np.sqrt(loss_func.weights.vel)
+  vel_diff_vec = (vel_diff @ sqrt_vel_weights).ravel()
+  vel_losses_vec = vel_diff_vec * vel_diff_vec
   vel_losses = vel_losses_vec.reshape((-1, n_velocities))
   if save_figs:
     plt.figure(prefix + 'velocity_loss_breakdown: ' + log_num)
@@ -289,21 +290,23 @@ def main():
   global kinematics_calculator
 
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
-  sim_data_directory = '/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data/'
-  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/mujoco_to_real_comparison/'
+  # figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/mujoco_to_real_comparison/'
+  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/sim_to_real_comparison/'
   ps = PlotStyler()
-  ps.set_default_styling(directory=figure_directory)
-  ps.set_figsize([20, 12])
+  ps.set_default_styling(directory=figure_directory, figsize=[8, 6])
+  # ps.set_figsize([20, 12])
   # loss_func = cassie_loss_utils.CassieLoss('2021_08_27_weights')
   loss_func = cassie_loss_utils.CassieLoss('2021_09_07_weights')
+
+  plt.close()
 
   with open("x_datatypes", "rb") as fp:
     x_datatypes = pickle.load(fp)
 
   # load all the data used for plotting
   # set use_mujoco=False to use the Drake data
-  # impact_data = CassieImpactData(use_mujoco=False)
-  impact_data = CassieImpactData(use_mujoco=True)
+  impact_data = CassieImpactData(use_mujoco=False)
+  # impact_data = CassieImpactData(use_mujoco=True)
   kinematics_calculator = KinematicsHelper()
   # kinematics_calculator = KinematicsHelper("examples/Cassie/urdf/cassie_fixed_springs.urdf")
 
@@ -324,10 +327,11 @@ def main():
     # plt.figure(log_num)
     # grf_single_log(impact_data, log_num)
     # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=True)
+    # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=True, compare_rigid=True)
     # plot_feet_positions_at_impact(impact_data, log_num)
     # plot_centroidal_trajectory(impact_data, log_num)
-    # plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, fixed_feet=True, save_figs=False)
-    pos_loss, vel_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=True)
+    # plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, fixed_feet=True, save_figs=True)
+    pos_loss, vel_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=True, compare_final=False)
     pos_losses.append(pos_loss)
     vel_losses.append(vel_loss)
     # ps.show_fig()

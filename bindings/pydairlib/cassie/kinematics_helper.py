@@ -113,9 +113,21 @@ class KinematicsHelper():
     l_rear_vel, l_front_vel, r_rear_vel, r_front_vel = self.compute_foot_velocities(state)
     pelvis_pos = state[4:7]
     pelvis_vel = state[26:29]
+    foot_pos = [l_rear, l_front, r_rear, r_front]
+    foot_vels = [l_rear_vel, l_front_vel, r_rear_vel, r_front_vel]
+
+    # compute only the average foot velocities of those that are mostly static
     foot_pos_average = 0.25 * (l_rear + l_front + r_rear + r_front)
     foot_vel_average = 0.25 * (l_rear_vel + l_front_vel + r_rear_vel + r_front_vel)
-    return pelvis_pos - foot_pos_average, pelvis_vel - foot_vel_average
+    # import pdb; pdb.set_trace()
+    # print(foot_vel_average[2])
+    # print(foot_vel_average[2])
+    # return pelvis_pos - foot_pos_average, pelvis_vel - foot_vel_average
+    pelvis_vel_rel = np.zeros(2)
+    pelvis_vel_rel[0] = np.linalg.norm(pelvis_vel[0:2] - foot_vel_average[0:2])
+    pelvis_vel_rel[1] = pelvis_vel[2] - foot_vel_average[2]
+    return pelvis_pos - foot_pos_average, pelvis_vel - l_rear_vel
+    # return pelvis_pos - foot_pos_average, pelvis_vel_rel
 
   def compute_rigid_impact_map(self, state):
     # import pdb; pdb.set_trace()

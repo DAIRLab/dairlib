@@ -81,8 +81,8 @@ int do_main(int argc, char* argv[]) {
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
 
   // *******Add COM visualization**********
-  auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
   if (FLAGS_com) {
+    auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
     // connect
     auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
         state_receiver->get_output_port(0).size(), 0, plant.num_positions());

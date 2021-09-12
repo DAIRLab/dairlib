@@ -133,19 +133,55 @@ class DrakeToMujocoConverter():
     v_full = v_missing + v_copy
     return q_full, v_full
 
-  def visualize_state_lower(self, x):
+  def visualize_entire_leg(self, x):
     self.plant.SetPositionsAndVelocities(self.context, x)
-    # toe_left_ang = x[self.pos_map['toe_left']]
-    toe_left_ang = -1.5968
+    q_missing, _ = self.solve_IK(x)
+    quat = q_missing[10:14]
+
+    rot = R.from_quat(np.hstack((quat[1:4], quat[0])))
+    euler_vec = rot.as_euler('xyz')
+
+    toe_left_ang = x[self.pos_map['toe_left']]
     self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_left_ang])
     self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
                                           np.array([1, 0, 0, 0, 0, 0, 0, toe_left_ang, toe_left_ang, -toe_left_ang]))
     result = Solve(self.ik_solver.prog())
     left_foot_crank_state = result.GetSolution()
-    # print(left_foot_crank_state)
-    print(result.get_solution_result())
+
     builder = DiagramBuilder()
 
+    # Add a cube as MultibodyPlant
+    plant = MultibodyPlant(self.drake_sim_dt)
+    scene_graph = builder.AddSystem(SceneGraph())
+
+    Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_left_leg.urdf'))
+    plant.Finalize()
+    self.print_pos_indices(plant)
+
+    plant_context = plant.CreateDefaultContext()
+    print(plant.num_positions())
+    fb_state = np.array([1, 0, 0, 0, 0, 0, 0])
+    left_leg_state = np.zeros(17)
+    left_leg_state[0:7] = fb_state
+    left_leg_state[7:10] = euler_vec
+    left_leg_state[10] = x[13]
+    left_leg_state[11] = x[15]
+    left_leg_state[12] = x[17]
+    left_leg_state[13] = x[19]
+    left_leg_state[14:17] = left_foot_crank_state[-3:]
+    plant.SetPositions(plant_context, left_leg_state)
+
+    visualizer = MultiposeVisualizer('examples/Cassie/urdf/cassie_left_leg.urdf', 1, '')
+    visualizer.DrawPoses(left_leg_state)
+
+  def visualize_state_lower(self, x):
+    self.plant.SetPositionsAndVelocities(self.context, x)
+    toe_left_ang = x[self.pos_map['toe_left']]
+    self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_left_ang])
+    self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
+                                          np.array([1, 0, 0, 0, 0, 0, 0, toe_left_ang, toe_left_ang, -toe_left_ang]))
+    result = Solve(self.ik_solver.prog())
+    left_foot_crank_state = result.GetSolution()
     visualizer = MultiposeVisualizer('examples/Cassie/urdf/cassie_foot_crank.urdf', 1, '')
     visualizer.DrawPoses(left_foot_crank_state)
 
@@ -154,44 +190,17 @@ class DrakeToMujocoConverter():
     q_missing, _ = self.solve_IK(x)
     quat = q_missing[10:14]
 
-    # print(quat)
-
     rot = R.from_quat(np.hstack((quat[1:4], quat[0])))
     euler_vec = rot.as_euler('xyz')
 
-    # fb_state = np.array([-0.14644661,  0.35355339,  0.35355339,  0.85355339, 0, 0, 1])
     fb_state = np.array([1, 0, 0, 0, 0, 0, 0])
-    # knee_linkage_state = np.array([-0.5,  0.5,  0.5,  0.5, 0, 0, 1, -0.03944253, 0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])
-    knee_linkage_state = np.hstack((fb_state, np.array([-0.03944253, 0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])))
+    knee_linkage_state = np.zeros(14)
+    knee_linkage_state[0:7] = fb_state
     knee_linkage_state[7:10] = euler_vec
     knee_linkage_state[10] = x[13]
     knee_linkage_state[11] = x[15]
     knee_linkage_state[12] = x[17]
     knee_linkage_state[13] = x[19]
-    # knee_linkage_state = np.array([1, 0, 0, 0, 0, 0, 0, -0.03944253,  0.02825365, -0.41339635, -1.1997, 0, 1.4267, 0])
-    # knee_linkage_state = np.array([1, 0, 0, 0, 0, 0, 0, -0.03944253,  0.02825365,  -0.41339635, -1.1997, 0, 1.4267, 0])
-
-    builder = DiagramBuilder()
-
-    # Add a cube as MultibodyPlant
-    plant = MultibodyPlant(self.drake_sim_dt)
-    scene_graph = builder.AddSystem(SceneGraph())
-    plant_id = plant.RegisterAsSourceForSceneGraph(scene_graph)
-
-    Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_knee_linkage.urdf'))
-    # plant.RegisterVisualGeometry(plant.world_body(), X_WG, Box(10, 10, 0.001), "visual", terrain_color)
-    plant.Finalize()
-    plant_context = plant.CreateDefaultContext()
-
-    plant.SetPositions(plant_context, knee_linkage_state)
-
-    # offset = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('thigh_left').body_frame(), np.array([0, 0, 0.045]), plant.GetBodyByName('heel_spring_left').body_frame())
-    hip_mount = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('thigh_left').body_frame(),
-                                          np.array([0, 0, 0.045]), plant.world_frame())
-    heel_spring_mount = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('heel_spring_left').body_frame(),
-                                                  np.array([.11877, -.01, 0.0]), plant.world_frame())
-    achilles_end_point = plant.CalcPointsPositions(plant_context, plant.GetBodyByName('achilles_rod_left').body_frame(),
-                                                   np.array([0.5012, 0, 0]), plant.world_frame())
 
     visualizer = MultiposeVisualizer('examples/Cassie/urdf/cassie_knee_linkage.urdf', 1, '')
     visualizer.DrawPoses(knee_linkage_state)

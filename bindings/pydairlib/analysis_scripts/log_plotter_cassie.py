@@ -115,10 +115,10 @@ def main():
   start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
-  # start_time_idx = np.argwhere(np.abs(t_osc_debug - t_start) < 1e-3)[0][0]
-  # end_time_idx = np.argwhere(np.abs(t_osc_debug - t_end) < 1e-3)[0][0]
-  # t_osc_debug_slice = slice(start_time_idx, end_time_idx)
-  t_osc_debug_slice = slice(0, len(t_osc_debug))
+  start_time_idx = np.argwhere(np.abs(t_osc_debug - t_start) < 1e-3)[0][0]
+  end_time_idx = np.argwhere(np.abs(t_osc_debug - t_end) < 1e-3)[0][0]
+  t_osc_debug_slice = slice(start_time_idx, end_time_idx)
+  # t_osc_debug_slice = slice(0, len(t_osc_debug))
 
   ### All plotting scripts here
   plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
@@ -127,7 +127,7 @@ def main():
 
   # plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
   plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
@@ -447,22 +447,29 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
+  # We have to get t_slice for each trajectory, because the lengths might not be different (sometimes we disable trajectory tracking in some finite state)
+  start_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_start) < 1e-3)[0][0]
+  end_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_end) < 1e-3)[0][0]
+  t_osc_debug_traj_slice = slice(start_time_idx, end_time_idx)
+
+  t_array = osc_debug[osc_traj].t[t_osc_debug_traj_slice]
+
   fig = plt.figure(osc_traj + " " + derivative + " tracking " + str(dim))
   if (derivative == "pos"):
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].y_des[t_osc_debug_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].y[t_osc_debug_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].error_y[t_osc_debug_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].y_des[t_osc_debug_traj_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].y[t_osc_debug_traj_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].error_y[t_osc_debug_traj_slice, dim])
     plt.legend(["y_des", "y", "error_y"])
     # plt.legend(["y_des", "y"])
   elif (derivative == "vel"):
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].ydot_des[t_osc_debug_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].ydot[t_osc_debug_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].error_ydot[t_osc_debug_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].ydot_des[t_osc_debug_traj_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].ydot[t_osc_debug_traj_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].error_ydot[t_osc_debug_traj_slice, dim])
     plt.legend(["ydot_des", "ydot", "error_ydot"])
   elif (derivative == "accel"):
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].yddot_des[t_osc_debug_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].yddot_command[t_osc_debug_slice, dim])
-    plt.plot(osc_debug[osc_traj].t[t_osc_debug_slice], osc_debug[osc_traj].yddot_command_sol[t_osc_debug_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].yddot_des[t_osc_debug_traj_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].yddot_command[t_osc_debug_traj_slice, dim])
+    plt.plot(t_array, osc_debug[osc_traj].yddot_command_sol[t_osc_debug_traj_slice, dim])
     plt.legend(["yddot_des", "yddot_command", "yddot_command_sol"])
 
 

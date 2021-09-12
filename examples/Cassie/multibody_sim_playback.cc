@@ -208,17 +208,17 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
   auto state_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, true);
-  auto contact_results_to_vector =
-      builder.AddSystem<systems::ContactResultsToForceVector>(plant);
+//  auto contact_results_to_vector =
+//      builder.AddSystem<systems::ContactResultsToForceVector>(plant);
 
   // Contact Information
-  ContactResultsToLcmSystem<double>& contact_viz =
-      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
-  contact_viz.set_name("contact_visualization");
-  auto& contact_results_publisher = *builder.AddSystem(
-      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
-  contact_results_publisher.set_name("contact_results_publisher");
+//  ContactResultsToLcmSystem<double>& contact_viz =
+//      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
+//  contact_viz.set_name("contact_visualization");
+//  auto& contact_results_publisher = *builder.AddSystem(
+//      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+//          "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
+//  contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
   const auto& sensor_aggregator =
@@ -244,21 +244,21 @@ int do_main(int argc, char* argv[]) {
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
-  builder.Connect(plant.get_contact_results_output_port(),
-                  contact_viz.get_input_port(0));
-  builder.Connect(plant.get_contact_results_output_port(),
-                  contact_results_to_vector->get_contact_result_input_port());
-  builder.Connect(contact_viz.get_output_port(0),
-                  contact_results_publisher.get_input_port());
+//  builder.Connect(plant.get_contact_results_output_port(),
+//                  contact_viz.get_input_port(0));
+//  builder.Connect(plant.get_contact_results_output_port(),
+//                  contact_results_to_vector->get_contact_result_input_port());
+//  builder.Connect(contact_viz.get_output_port(0),
+//                  contact_results_publisher.get_input_port());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
   auto state_logger =
       drake::systems::LogOutput(plant.get_state_output_port(), &builder);
   state_logger->set_publish_period(1.0 / FLAGS_publish_rate);
-  auto lambda_logger = drake::systems::LogOutput(
-      contact_results_to_vector->get_contact_forces_output_port(), &builder);
-  lambda_logger->set_publish_period(1.0 / FLAGS_publish_rate);
+//  auto lambda_logger = drake::systems::LogOutput(
+//      contact_results_to_vector->get_contact_forces_output_port(), &builder);
+//  lambda_logger->set_publish_period(1.0 / FLAGS_publish_rate);
   auto diagram = builder.Build();
 
   // Create a context for this system:
@@ -325,7 +325,7 @@ int do_main(int argc, char* argv[]) {
   //  std::cout << x_traj.cols() << std::endl;
   //  std::cout << x_traj.rows() << std::endl;
   writeCSV("x_traj.csv", state_logger->data());
-  writeCSV("lambda_traj.csv", lambda_logger->data());
+//  writeCSV("lambda_traj.csv", lambda_logger->data());
   writeCSV("t_x.csv", timestamps);
 
   return 0;

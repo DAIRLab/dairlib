@@ -112,7 +112,7 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
     return sweeps
 
 def make_stiffness_sensitivity_analysis_figure():
-    ids = ['mujoco_2021_09_11_09_39_10', 
+    ids = ['mujoco_2021_09_12_10_27_10', 
            'drake_2021_09_11_16_44_10',
            'bullet_2021_09_11_14_27_10']
 
@@ -135,7 +135,7 @@ def make_stiffness_sensitivity_analysis_figure():
     plt.xlabel('$k / k^{*}$')
     plt.legend(legend_strs)
     plt.ylabel('Average $e_{q}$')
-    plt.ylim((0, 1.0))
+    plt.ylim((0, 0.6))
     ps.save_fig('StiffnessSensitivity.pdf')
     plt.show()
       
@@ -199,8 +199,8 @@ def visualize_cube_initial_condition():
     sim.sim_step(CUBE_DATA_DT)
 
 if __name__ == '__main__':
-    make_estimated_pdf_figure()
-    # make_stiffness_sensitivity_analysis_figure()
+    # make_estimated_pdf_figure()
+    make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
     # make_contact_impulse_plot()
     # visualize_cube_initial_condition()

@@ -94,9 +94,9 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
 def get_stiffness_range(sim_type, k0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['stiffness'] = np.linspace(k0/2, k0*2, 5).tolist()
+        params_range['stiffness'] = np.linspace(k0/2, k0*2, 20).tolist()
     else:
-        params_range['stiffness'] = np.linspace(k0/2, k0*2, 5).tolist()
+        params_range['stiffness'] = np.linspace(k0/2, k0*2, 20).tolist()
 
     return params_range
 

@@ -31,7 +31,7 @@ def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params
             assert param_key in params.keys()
             params[param_key] = param_val
             print(f'{param_key}: {param_val}')
-            pairs = load_traj_pairs(sim, params, traj_set, print_progress=True)
+            pairs = load_traj_pairs(sim, params, traj_set, print_progress=False)
             for pair in pairs.values():
                 pos_error = np.linalg.norm(
                 pair[0][:,cube_sim.CUBE_DATA_POSITION_SLICE] - \
@@ -72,7 +72,7 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
             params[param_key] = param_val
             print(f'{param_key}: {param_val}')
             if (plant == 'cube'):
-                pairs = load_traj_pairs(sim, params, test_traj_set, print_progress=True)
+                pairs = load_traj_pairs(sim, params, test_traj_set, print_progress=False)
                 for pair_idx in pairs:
                     pair = pairs[pair_idx]
                     losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
@@ -94,9 +94,9 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
 def get_stiffness_range(sim_type, k0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['stiffness'] = np.linspace(k0/2, k0*2, 20).tolist()
+        params_range['stiffness'] = np.linspace(k0/2, k0*2, 5).tolist()
     else:
-        params_range['stiffness'] = np.arange(k0/2, k0*2, 20).tolist()
+        params_range['stiffness'] = np.linspace(k0/2, k0*2, 5).tolist()
 
     return params_range
 

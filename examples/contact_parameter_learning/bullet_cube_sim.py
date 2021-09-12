@@ -55,7 +55,7 @@ class BulletCubeSim(CubeSim):
         cube_pos, cube_quat = p.getBasePositionAndOrientation(self.cube_id)
         cube_vel, cube_omega = p.getBaseVelocity(self.cube_id)
 
-        q_conv = np.array([cube_quat[3], cube_quat[0], cube_quat[1], cube_quat[2]])
+        q_conv = np.array([cube_quat[3], cube_quat[0], cube_quat[1], cube_quat[2]]) / np.linalg.norm(cube_quat)
 
         data_arr[0, CUBE_DATA_POSITION_SLICE] = cube_pos
         data_arr[0, CUBE_DATA_QUATERNION_SLICE] = q_conv

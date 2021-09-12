@@ -93,7 +93,8 @@ class LossWeights():
     def CalcQuatLoss(self, traj1, traj2):
         loss = 0
         for i in range(traj1.shape[0]):
-            loss += (2 * Quaternion.distance(Quaternion(traj1[i]), Quaternion(traj2[i]))) ** 2
+            quat_diff = self.calc_rotational_distance(traj1[i], traj2[i])
+            loss += quat_diff ** 2
         loss *= self.quat / traj1.shape[0]
         return loss 
 

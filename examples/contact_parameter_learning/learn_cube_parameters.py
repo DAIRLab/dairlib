@@ -39,7 +39,7 @@ default_substep = MED_RES_SUBSTEP
 batch_size = 550
 num_workers = 1
 num_trials = 550
-budget = 5000
+budget = 2000
 
 
 

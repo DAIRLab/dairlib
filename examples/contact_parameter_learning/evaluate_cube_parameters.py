@@ -9,12 +9,13 @@ import os
 import json
 from random import choice
 from learn_cube_parameters import cube_data_folder, model_folder, log_folder
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, use
 import numpy as np
 from plotting_utils import format_sim_name
 
 mse_loss = cube_sim.LossWeights() # default weights are all ones
-pos_rot_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
+pos_rot_loss = cube_sim.LossWeights(pos=np.zeros((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
+# pos_rot_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
 
 def visualize_learned_params(params, data_sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
@@ -246,7 +247,7 @@ def list_complement(list1, list2):
 def list_union(list1, list2):
     return list(set(list1) | set(list2))
 
-def load_list_of_results(training_results, loss_to_compare):
+def load_list_of_results(training_results, loss_to_compare, eval_all_traj=False):
     result_traj_pairs = {}
     result_losses = {}
     result_params = {}
@@ -257,7 +258,10 @@ def load_list_of_results(training_results, loss_to_compare):
         print(f'Loading logs for {result}')
         sims[result] = get_eval_sim(result)
         result_params[result], test_set, _ = load_params_and_logs(result)
+        if (eval_all_traj):
+            test_set = range(550)
         union_of_test_sets = list_union(union_of_test_sets, test_set)
+        
 
     for result in training_results:
         print(f'Loading trajectories for {result}')
@@ -302,9 +306,9 @@ if (__name__ == '__main__'):
     #        'drake_2021_08_31_14_04_100', 
     #        'bullet_2021_08_31_16_55_100']
 
-    ids = ['bullet_2021_09_10_04_44_10',
-           'drake_2021_09_10_05_40_10', 
-           'mujoco_2021_09_10_05_38_10']
+    ids = ['mujoco_2021_09_12_10_27_10', 
+           'drake_2021_09_11_16_44_10',
+           'bullet_2021_09_11_14_27_10']
 
     # ids = ['mujoco_2021_08_31_11_03_1',
     #        'mujoco_2021_08_31_12_05_10',
@@ -318,21 +322,21 @@ if (__name__ == '__main__'):
     #        'bullet_2021_08_31_12_16_10', 
     #        'bullet_2021_08_31_16_55_100']
 
-    # sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, pos_rot_loss)
+    sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
 
-    # worst_case_set, worst_case_by_id = compare_worst_case(losses)
-    # print()
-    # for i in range(3):
-    #     comp = list_complement([0, 1, 2], [i])
+    worst_case_set, worst_case_by_id = compare_worst_case(losses)
+    print()
+    for i in range(3):
+        comp = list_complement([0, 1, 2], [i])
 
-    #     fails = list_complement(list_complement(worst_case_set,
-    #         worst_case_by_id[ids[comp[0]]]), worst_case_by_id[ids[comp[1]]])
+        fails = list_complement(list_complement(worst_case_set,
+            worst_case_by_id[ids[comp[0]]]), worst_case_by_id[ids[comp[1]]])
         
-    #     print(f'{format_sim_name(ids[i])} does poorly on:')
-    #     for toss_id in fails:
-    #         print(f'{toss_id}: {losses[ids[i]][toss_id]}, \
-    #             {format_sim_name(ids[comp[0]])}: {losses[ids[comp[0]]][toss_id]}, \
-    #                  {format_sim_name(ids[comp[1]])}: {losses[ids[comp[1]]][toss_id]}')
+        print(f'{format_sim_name(ids[i])} does poorly on:')
+        for toss_id in fails:
+            print(f'{toss_id}: {losses[ids[i]][toss_id]}, \
+                {format_sim_name(ids[comp[0]])}: {losses[ids[comp[0]]][toss_id]}, \
+                     {format_sim_name(ids[comp[1]])}: {losses[ids[comp[1]]][toss_id]}')
 
     #     print()
 
@@ -346,23 +350,23 @@ if (__name__ == '__main__'):
     # plot_estimated_loss_pdfs(losses)
     # plt.show()
 
-    ## INDIVIDUAL LOG FUNCTIONS
-    learning_result = 'bullet_2021_09_11_14_45_10'
-# 
-    eval_sim = get_eval_sim(learning_result)
-    if (eval_sim == None): quit()
+#     ## INDIVIDUAL LOG FUNCTIONS
+#     learning_result = 'bullet_2021_09_11_14_46_10'
+# # 
+#     eval_sim = get_eval_sim(learning_result)
+#     if (eval_sim == None): quit()
 
-    params, _, _ = load_params_and_logs(learning_result)
-    traj_pairs = load_traj_pairs(eval_sim, params, range(550))
+#     params, _, _ = load_params_and_logs(learning_result)
+#     traj_pairs = load_traj_pairs(eval_sim, params, range(550))
 
-    # sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, mse_loss)
-    # print('Test set sorted from highest to lowest MSE')
-    # for key in sorted_pairs:
-    #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
+#     sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, pos_rot_loss)
+#     print('Test set sorted from highest to lowest MSE')
+#     for key in sorted_pairs:
+#         print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    stats = calc_error_and_loss_stats(traj_pairs, mse_loss)
-    print(stats)
-    # plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[0]])
-    # plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[0]][1])
-    # plt.show()
-    # visualize_learned_params(params, eval_sim, list(sorted_pairs.keys())[15])
+#     # stats = calc_error_and_loss_stats(traj_pairs, pos_rot_loss)
+#     # print(stats)
+#     # plot_contact_impulses(sorted_pairs[list(sorted_pairs.keys())[0]])
+#     # plot_sdf_and_contact(sorted_pairs[list(sorted_pairs.keys())[0]][1])
+#     # plt.show()
+#     visualize_learned_params(params, eval_sim, list(sorted_pairs.keys())[0])

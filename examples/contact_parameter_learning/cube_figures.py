@@ -47,7 +47,8 @@ def plot_estimated_loss_pdfs(losses):
     
     filename += '.pdf'
     plt.ylabel('PDF Estimate')
-    plt.xlabel('$e_{tot}(\hat{x}_{t}, x_{t}^{*})$')
+    plt.xlabel('$e_{q}(\hat{x}_{t}, x_{t}^{*})$')
+    plt.xlim((0, 2.0))
     plt.legend(legend_strs)
     ps.save_fig(filename)
 
@@ -69,9 +70,12 @@ def plot_impulses_list_of_ids(ids, traj_id):
         impulse = cube_eval.calculate_contact_impulse(pair[1])
         time = CubeSim.make_traj_timestamps(pair[1])
         legend_strs.append(format_sim_name(id))
-        ps.step(time[1:], impulse[:,0], color=sim_colors[legend_strs[id]])
-        i += 1
+        ps.plot(time[1:], impulse[:,0], color=sim_colors[format_sim_name(id)])
+    plt.xlim((0, time[-1]/4.0))
+    plt.xlabel('t (s)')
+    plt.ylabel('Friction Force (N)')
     plt.legend(legend_strs)
+    ps.save_fig('ContactTangentImpulses.pdf')
     plt.show()
 
 def make_training_loss_sensitivity_analysis(ids, params_ranges):
@@ -110,7 +114,7 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
 def make_stiffness_sensitivity_analysis_figure():
     ids = ['mujoco_2021_09_11_09_39_10', 
            'drake_2021_09_11_16_44_10',
-           'bullet_2021_09_11_14_46_10']
+           'bullet_2021_09_11_14_27_10']
 
     params_ranges = {}
     params = {}
@@ -126,7 +130,7 @@ def make_stiffness_sensitivity_analysis_figure():
         legend_strs.append(format_sim_name(id))
         k_opt = params[id]['stiffness']
         k_ratio = np.array(params_ranges[id]['stiffness']) / k_opt
-        ps.plot(k_ratio, sweeps[id]['loss_avg']['stiffness'], color=sim_colors[legend_strs[id]])
+        ps.plot(k_ratio, sweeps[id]['loss_avg']['stiffness'], color=sim_colors[format_sim_name(id)])
 
     plt.xlabel('$k / k^{*}$')
     plt.legend(legend_strs)
@@ -137,13 +141,13 @@ def make_stiffness_sensitivity_analysis_figure():
       
 
 def make_estimated_pdf_figure():
-    ids = ['mujoco_2021_08_31_13_59_10',
-           'drake_2021_08_31_11_32_10', 
-           'bullet_2021_08_31_12_16_10']
-    _, mse, _, _, _ = cube_eval.load_list_of_results(
-        ids, cube_eval.mse_loss)
+    ids = ['mujoco_2021_09_11_09_39_10', 
+           'drake_2021_09_11_16_44_10',
+           'bullet_2021_09_11_14_27_10']
+    _, e_q, _, _, _ = cube_eval.load_list_of_results(
+        ids, cube_eval.pos_rot_loss, eval_all_traj=True)
 
-    plot_estimated_loss_pdfs(mse)
+    plot_estimated_loss_pdfs(e_q)
 
 
 def plot_error_vs_time(ids, traj_id):
@@ -160,15 +164,15 @@ def plot_error_vs_time(ids, traj_id):
     plt.legend(ids)
     plt.show()
 
-def make_mujoco_damping_ratio_figure():
-    id_paths = glob.glob('examples/contact_parameter_learning/learned_parameters/cube/mujoco_2021_0*_10.json')
-    ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
-    plot_damping_ratios(ids)
+# def make_mujoco_damping_ratio_figure():
+#     id_paths = glob.glob('examples/contact_parameter_learning/learned_parameters/cube/mujoco_2021_0*_10.json')
+#     ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
+#     plot_damping_ratios(ids)
 
-def make_bullet_damping_ratio_figure():
-    id_paths = glob.glob('examples/contact_parameter_learning/learned_parameters/cube/bullet_2021_0*_10.json')
-    ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
-    plot_damping_ratios(ids)
+# def make_bullet_damping_ratio_figure():
+#     id_paths = glob.glob('examples/contact_parameter_learning/learned_parameters/cube/bullet_2021_0*_10.json')
+#     ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
+#     plot_damping_ratios(ids)
 
 def make_error_vs_time_plot():
     ids = ['bullet_2021_09_10_04_44_10',
@@ -178,10 +182,10 @@ def make_error_vs_time_plot():
     plot_error_vs_time(ids, traj)
 
 def make_contact_impulse_plot():
-    ids = ['bullet_2021_09_10_04_44_10',
-           'drake_2021_09_10_05_40_10', 
-           'mujoco_2021_09_10_05_38_10']
-    traj_id  = 164
+    ids = ['mujoco_2021_09_12_10_27_10', 
+           'drake_2021_09_11_16_44_10',
+           'bullet_2021_09_11_14_27_10']
+    traj_id  = 361
     plot_impulses_list_of_ids(ids, traj_id)
 
 def visualize_cube_initial_condition():
@@ -195,8 +199,8 @@ def visualize_cube_initial_condition():
     sim.sim_step(CUBE_DATA_DT)
 
 if __name__ == '__main__':
-    # make_estimated_pdf_figure()
-    make_stiffness_sensitivity_analysis_figure()
+    make_estimated_pdf_figure()
+    # make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
     # make_contact_impulse_plot()
     # visualize_cube_initial_condition()

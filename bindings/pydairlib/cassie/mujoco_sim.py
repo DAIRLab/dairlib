@@ -183,3 +183,6 @@ class MujocoCassieSim():
 
   def visualize_IK_upper(self, x):
     self.drake_to_mujoco_converter.visualize_state_upper(x)
+
+  def visualize_entire_leg(self, x):
+    self.drake_to_mujoco_converter.visualize_entire_leg(x)

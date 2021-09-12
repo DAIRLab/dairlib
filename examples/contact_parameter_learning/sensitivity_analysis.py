@@ -140,7 +140,7 @@ def get_cassie_params_range(sim_type):
         # params_range['stiffness'] = np.arange(10000, 100000, 1000.0).tolist()
         # params_range['damping'] = np.arange(0, 500, 50).tolist()
         # params_range['mu_tangent'] = np.linspace(0.05, 0.5, num=50).tolist()
-        params_range['mu'] = np.linspace(0.05, 0.5, num=50).tolist()
+        params_range['mu_tangent'] = np.linspace(0.01, 0.5, num=50).tolist()
         params_range['stiffness'] = np.linspace(1000.0, 50000.0, num=50).tolist()
         params_range['damping'] = np.linspace(0, 500, num=50).tolist()
         # params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()

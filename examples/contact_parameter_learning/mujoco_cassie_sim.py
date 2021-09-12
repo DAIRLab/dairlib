@@ -139,7 +139,6 @@ class LearningMujocoCassieSim():
     u_traj = lcm_traj.GetTrajectory("controller_inputs")
     u_init_traj = PiecewisePolynomial.FirstOrderHold(u_traj.time_vector, u_traj.datapoints)
     x_traj, u_traj, t_x = self.sim.run_sim_playback(x_init, start_time, end_time, u_init_traj)
-
     # sim_id = log_num + str(np.abs(hash(frozenset(params))))
     x_traj = np.array(x_traj)
     u_traj = np.array(u_traj)
@@ -148,7 +147,9 @@ class LearningMujocoCassieSim():
     np.save(self.sim_data_folder + 't_x_' + log_num, t_x)
 
     self.iter_num += 1
-    print("sim_run: " + str(self.iter_num))
+    if not self.iter_num % 22:
+      # print("sim_run: " + str(self.iter_num))
+      print("iter: " + str(self.iter_num / 22))
 
     return log_num
 

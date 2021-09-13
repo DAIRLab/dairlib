@@ -126,7 +126,7 @@ class KinematicsHelper():
     pelvis_vel_rel = np.zeros(2)
     pelvis_vel_rel[0] = np.linalg.norm(pelvis_vel[0:2] - foot_vel_average[0:2])
     pelvis_vel_rel[1] = pelvis_vel[2] - foot_vel_average[2]
-    return pelvis_pos - foot_pos_average, pelvis_vel - l_rear_vel
+    return pelvis_pos - foot_pos_average, pelvis_vel - 0.5 * (l_rear_vel + r_rear_vel)
     # return pelvis_pos - foot_pos_average, pelvis_vel_rel
 
   def compute_rigid_impact_map(self, state):

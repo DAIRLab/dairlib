@@ -98,6 +98,7 @@ class MujocoCassieSim():
     mujoco_state = self.cassie_env.get_state()
     mujoco_state.set_qpos(q_mujoco)
     mujoco_state.set_qvel(v_mujoco)
+    # import pdb; pdb.set_trace()
     # print(v_mujoco)
     self.cassie_env.set_state(mujoco_state)
 
@@ -126,7 +127,7 @@ class MujocoCassieSim():
     u_traj = [input_traj.value(t + self.delay_duration)]
     t_traj = [t]
     while self.cassie_env.time() < end_time:
-      # now = time.time()  # get the time
+      now = time.time()  # get the time
       u = input_traj.value(t + self.delay_duration)
       # import pdb; pdb.set_trace()
       q, v, u, t = self.sim_step(u)
@@ -139,9 +140,9 @@ class MujocoCassieSim():
       # import pdb; pdb.set_trace()
       u_traj.append(u)
       t_traj.append(t)
-      # elapsed = time.time() - now
-      # if(elapsed < self.cycle_usec * 1e-6):
-      #   time.sleep(self.cycle_usec * 1e-6 - elapsed)
+      elapsed = time.time() - now
+      if(elapsed < self.cycle_usec * 1e-6):
+        time.sleep(self.cycle_usec * 1e-6 - elapsed)
 
     return x_traj, u_traj, t_traj
 

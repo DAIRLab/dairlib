@@ -59,15 +59,31 @@ def test_initial_state():
   sim.run_sim(0.0, 30.0, x_init=x_init)
 
 
+def test_from_feb_26():
+  realtime_rate = 0.1
+  sim = MujocoCassieSim(realtime_rate=realtime_rate)
+  folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
+  log_num = '16'
+  start_time = 50.425
+  end_time = start_time + 0.001
+  x_traj = np.load(folder_path + '02_26_21/x_' + log_num + '.npy')
+  t = np.load(folder_path + '02_26_21/t_x_' + log_num + '.npy')
+
+  x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=True)
+  x_init = x_interp(start_time)
+  sim.reinit_env(sim.default_model_directory + 'cassie_new_params.xml')
+  sim.run_sim(start_time, end_time, x_init=x_init)
+
 def test_playback():
   realtime_rate = 0.1
   sim = MujocoCassieSim(realtime_rate=realtime_rate)
   # converter = DrakeToMujocoConverter()
   folder_path = "/home/yangwill/Documents/research/projects/impact_uncertainty/data/"
-  log_num = '15'
+  log_num = '16'
   # log_num = '11'
   start_time = 30.64
-  end_time = start_time + 0.05
+  # start_time = 50.425
+  end_time = start_time + 0.5
   x_traj = np.load(folder_path + 'x_' + log_num + '.npy')
   t = np.load(folder_path + 't_x_' + log_num + '.npy')
 
@@ -102,6 +118,7 @@ def visualize_loop_closures():
 
 if __name__ == '__main__':
   # test_default()
-  # test_playback()
-  visualize_loop_closures()
+  test_playback()
+  # test_from_feb_26()
+  # visualize_loop_closures()
   # test_initial_state()

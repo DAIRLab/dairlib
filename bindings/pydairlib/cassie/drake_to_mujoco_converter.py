@@ -224,6 +224,8 @@ class DrakeToMujocoConverter():
                                                self.world)
     right_heel = self.plant.CalcPointsPositions(self.context, self.right_heel_rod[1], self.right_heel_rod[0],
                                                 self.world)
+    l_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.left_thigh_rod[1])
+    r_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.right_thigh_rod[1])
 
     world_frame = np.eye(3)
     l_x_vec = (left_heel - left_thigh)[:, 0]
@@ -240,8 +242,7 @@ class DrakeToMujocoConverter():
     r_z_vec = np.cross(r_x_vec, r_y_vec)
     r_z_vec *= 1 / np.linalg.norm(r_z_vec)
 
-    l_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.left_thigh_rod[1])
-    r_hip_pitch_frame = self.plant.CalcRelativeTransform(self.context, self.world, self.right_thigh_rod[1])
+
     l_bar_frame = R.from_matrix(np.vstack((l_x_vec, l_y_vec, l_z_vec)).T)
     r_bar_frame = R.from_matrix(np.vstack((r_x_vec, r_y_vec, r_z_vec)).T)
     l_bar_euler = R.from_matrix(
@@ -351,7 +352,7 @@ class DrakeToMujocoConverter():
     self.map_v_drake_to_mujoco[20, 9] = 1
     self.map_v_drake_to_mujoco[21, 11] = 1
     self.map_v_drake_to_mujoco[25, 13] = 1
-    self.map_v_drake_to_mujoco[26, 16] = 1
+    self.map_v_drake_to_mujoco[26, 15] = 1
     self.map_v_drake_to_mujoco[27, 17] = 1
     self.map_v_drake_to_mujoco[28, 20] = 1
     self.map_v_drake_to_mujoco[31, 21] = 1

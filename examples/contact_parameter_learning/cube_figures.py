@@ -263,10 +263,10 @@ def visualize_cube_initial_condition():
     sim.sim_step(CUBE_DATA_DT)
 
 if __name__ == '__main__':
-    make_estimated_pdf_figure()
+    # make_estimated_pdf_figure()
     # make_friction_sensitivity_analysis_figure()
     # make_damping_sensitivity_analysis_figure()
-    # make_stiffness_sensitivity_analysis_figure()
+    make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
-    make_contact_impulse_plot()
+    # make_contact_impulse_plot()
     # visualize_cube_initial_condition()

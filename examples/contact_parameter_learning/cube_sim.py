@@ -6,6 +6,8 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 import pickle
 from pyquaternion import Quaternion
+import pybullet as p
+from math import pi
 
 CUBE_DATA_DT = 1.0/148.0
 CUBE_DATA_HZ = 148.0
@@ -74,7 +76,10 @@ class FastLossWeights():
     def CalcQuatLoss(self, traj1, traj2):
         loss = np.zeros((traj1.shape[0],))
         for i in range(traj1.shape[0]):
-            loss[i] = self.calc_rotational_distance(traj1[i], traj2[i])
+            q1= p.getDifferenceQuaternion([traj1[i][1], traj1[i][2], traj1[i][3], traj1[i][0]],
+                                      [traj2[i][1], traj2[i][2], traj2[i][3], traj2[i][0]])
+            theta = 2 * np.arctan2(np.linalg.norm(q1[0:3]), q1[-1])
+            loss[i] = theta ** 2
         return np.mean(loss)
 
     def FastQuatLoss(self, traj1, traj2):
@@ -82,13 +87,6 @@ class FastLossWeights():
         for i in range(traj1.shape[0]):
             loss[i] = (2 * Quaternion.distance(Quaternion(traj1[i]), Quaternion(traj2[i]))) ** 2
         return np.mean(loss)
-
-    @classmethod
-    def calc_rotational_distance(cls, quat1, quat2):
-        R1 = quat_to_rotation(quat1.ravel())
-        R2 = quat_to_rotation(quat2.ravel())
-        Rel = (R1 * R2.inv()).as_rotvec()
-        return np.dot(Rel, Rel)
 
     def CalculateLoss(self, traj1, traj2):
         l_pos = self.CalcPositionsLoss(traj1[:,CUBE_DATA_POSITION_SLICE], traj2[:,CUBE_DATA_POSITION_SLICE])

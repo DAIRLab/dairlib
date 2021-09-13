@@ -3212,7 +3212,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       for (int j = 0; j < num_time_samples[i] - 1; j++) {
         // Add || Ax - b ||^2
         trajopt.cost_collocation_lambda_bindings_.push_back(
-            trajopt.AddL2NormCost(A, b, trajopt.collocation_force(i, j)));
+            trajopt.Add2NormSquaredCost(A, b, trajopt.collocation_force(i, j)));
       }
     }
   }

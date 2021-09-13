@@ -93,21 +93,27 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
   // Input/Output Setup
   stance_foot_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("stance_foot", BasicVector<double>(1))
+          .get_index();
   phase_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
-  state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_control.num_positions(),
-                                             plant_control.num_velocities(),
-                                             plant_control.num_actuators()))
-                    .get_index();
+      this->DeclareVectorInputPort("phase", BasicVector<double>(1)).get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(
+              "x, u, t", OutputVector<double>(plant_control.num_positions(),
+                                              plant_control.num_velocities(),
+                                              plant_control.num_actuators()))
+          .get_index();
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
+      this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
+          .get_index();
   quat_xyz_shift_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(7)).get_index();
+      this->DeclareVectorInputPort("quat_xyz_shift", BasicVector<double>(7))
+          .get_index();
   planner_final_pos_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
-  this->DeclareAbstractOutputPort(&CassiePlannerWithMixedRomFom::SolveTrajOpt);
+      this->DeclareVectorInputPort("final_pos", BasicVector<double>(2))
+          .get_index();
+  this->DeclareAbstractOutputPort("planner_output",
+                                  &CassiePlannerWithMixedRomFom::SolveTrajOpt);
 
   // Create index maps
   pos_map_ = multibody::makeNameToPositionsMap(plant_control);

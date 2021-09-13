@@ -45,9 +45,10 @@ CurrentStanceFoot::CurrentStanceFoot(
     : left_right_support_fsm_states_(left_right_support_fsm_states) {
   // Input/Output Setup
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
+      this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
+          .get_index();
 
-  this->DeclareVectorOutputPort(BasicVector<double>(1),
+  this->DeclareVectorOutputPort("stance_foot", BasicVector<double>(1),
                                 &CurrentStanceFoot::GetStance);
 }
 
@@ -85,15 +86,17 @@ PhaseInFirstMode::PhaseInFirstMode(
     double stride_period)
     : stride_period_(stride_period) {
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_feedback.num_positions(),
-                                             plant_feedback.num_velocities(),
-                                             plant_feedback.num_actuators()))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(
+              "x, u, t", OutputVector<double>(plant_feedback.num_positions(),
+                                              plant_feedback.num_velocities(),
+                                              plant_feedback.num_actuators()))
+          .get_index();
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
+      this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
+          .get_index();
 
-  this->DeclareVectorOutputPort(BasicVector<double>(1),
+  this->DeclareVectorOutputPort("phase", BasicVector<double>(1),
                                 &PhaseInFirstMode::CalcPhase);
 }
 
@@ -173,7 +176,8 @@ PlannerFinalPosition::PlannerFinalPosition(
   n_step_ = n_step;
 
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
+      this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
+          .get_index();
 }
 
 // Base constructor
@@ -182,15 +186,16 @@ PlannerFinalPosition::PlannerFinalPosition(
     int high_level_command_mode)
     : high_level_command_mode_(high_level_command_mode) {
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_feedback.num_positions(),
-                                             plant_feedback.num_velocities(),
-                                             plant_feedback.num_actuators()))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(
+              "x, u, t", OutputVector<double>(plant_feedback.num_positions(),
+                                              plant_feedback.num_velocities(),
+                                              plant_feedback.num_actuators()))
+          .get_index();
   phase_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("phase", BasicVector<double>(1)).get_index();
 
-  this->DeclareVectorOutputPort(BasicVector<double>(2),
+  this->DeclareVectorOutputPort("final_pos", BasicVector<double>(2),
                                 &PlannerFinalPosition::CalcFinalPos);
 }
 
@@ -376,26 +381,30 @@ InitialStateForPlanner::InitialStateForPlanner(
       feedback_is_spring_model_(feedback_is_spring_model) {
   // Input/Output Setup
   stance_foot_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
-  state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_feedback.num_positions(),
-                                             plant_feedback.num_velocities(),
-                                             plant_feedback.num_actuators()))
-                    .get_index();
+      this->DeclareVectorInputPort("stance_foot", BasicVector<double>(1))
+          .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(
+              "x, u, t", OutputVector<double>(plant_feedback.num_positions(),
+                                              plant_feedback.num_velocities(),
+                                              plant_feedback.num_actuators()))
+          .get_index();
   phase_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("phase", BasicVector<double>(1)).get_index();
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
+      this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
+          .get_index();
 
   adjusted_state_port_ =
       this->DeclareVectorOutputPort(
+              "x, u, t",
               OutputVector<double>(plant_control.num_positions(),
                                    plant_control.num_velocities(),
                                    plant_control.num_actuators()),
               &InitialStateForPlanner::CopyAdjustedState)
           .get_index();
   adjustment_port_ =
-      this->DeclareVectorOutputPort(BasicVector<double>(7),
+      this->DeclareVectorOutputPort("quat_xyz_shift", BasicVector<double>(7),
                                     &InitialStateForPlanner::CopyAdjustment)
           .get_index();
 
@@ -464,9 +473,9 @@ EventStatus InitialStateForPlanner::AdjustState(
       map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
 
   // Get phase in the first mode
-  const BasicVector<double>* phase_port =
-      this->EvalVectorInput(context, phase_port_);
-  double init_phase = phase_port->get_value()(0);
+  //  const BasicVector<double>* phase_port =
+  //      this->EvalVectorInput(context, phase_port_);
+  //  double init_phase = phase_port->get_value()(0);
 
   // Get stance foot
   bool is_right_stance =
@@ -697,9 +706,9 @@ void InitialStateForPlanner::AdjustKneeAndAnkleVel(
   VectorXd b_lf = left_foot_vel - J_lf_wo_spr * v;
   VectorXd b_rf = right_foot_vel - J_rf_wo_spr * v;
 
-  ik.AddL2NormCost(
+  ik.Add2NormSquaredCost(
       A_lf, b_lf, {knee_left, knee_right, ankle_joint_left, ankle_joint_right});
-  ik.AddL2NormCost(
+  ik.Add2NormSquaredCost(
       A_rf, b_rf, {knee_left, knee_right, ankle_joint_left, ankle_joint_right});
 
   // Initial guess
@@ -770,7 +779,7 @@ void InitialStateForPlanner::ZeroOutStanceFootVel(bool is_left_stance,
   ik.AddLinearEqualityConstraint(A, b, v_eps);
   ik.AddQuadraticErrorCost(MatrixXd::Identity(n_eps, n_eps),
                            VectorXd::Zero(n_eps), v_eps);
-  //  ik.AddL2NormCost(A, b, v_eps);
+  //  ik.Add2NormSquaredCost(A, b, v_eps);
 
   // Initial guess
   // Solved analytically. We don't need to give a initial guess

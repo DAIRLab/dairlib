@@ -135,6 +135,7 @@ def make_stiffness_sensitivity_analysis_figure():
 
     ## plotting
     legend_strs = []
+    ps.set_figsize((8,6))
     for id in ids:
         legend_strs.append(format_sim_name(id))
         k_opt = params[id]['stiffness']
@@ -164,7 +165,7 @@ def make_friction_sensitivity_analysis_figure():
 
     ## plotting
     legend_strs = []
-
+    ps.set_figsize((8,6))
     for id in ids:
         legend_strs.append(format_sim_name(id))
         k_opt = params[id][mu_keys[id]]
@@ -173,7 +174,7 @@ def make_friction_sensitivity_analysis_figure():
 
     plt.xlabel('$\mu / \mu^{*}$')
     plt.legend(legend_strs)
-    plt.ylabel('Average $e_{q}$')
+    # plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))
     ps.save_fig('FrictionSensitivity.png')
 
@@ -193,7 +194,7 @@ def make_damping_sensitivity_analysis_figure():
 
     ## plotting
     legend_strs = []
-
+    ps.set_figsize((8,6))
     for id in ids:
         legend_strs.append(format_sim_name(id))
         k_opt = params[id][mu_keys[id]]
@@ -202,7 +203,7 @@ def make_damping_sensitivity_analysis_figure():
 
     plt.xlabel('$b / b^{*}$')
     plt.legend(legend_strs)
-    plt.ylabel('Average $e_{q}$')
+    # plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))
     ps.save_fig('DampingSensitivity.png')
     # plt.show()
@@ -263,10 +264,10 @@ def visualize_cube_initial_condition():
     sim.sim_step(CUBE_DATA_DT)
 
 if __name__ == '__main__':
-    make_estimated_pdf_figure()
+    # make_estimated_pdf_figure()
     # make_friction_sensitivity_analysis_figure()
-    # make_damping_sensitivity_analysis_figure()
+    make_damping_sensitivity_analysis_figure()
     # make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
-    make_contact_impulse_plot()
+    # make_contact_impulse_plot()
     # visualize_cube_initial_condition()

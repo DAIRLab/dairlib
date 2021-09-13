@@ -3,7 +3,7 @@ import subprocess
 cmd = 'bazel-bin/examples/contact_parameter_learning/learn_cube_parameters'
 sims = ['drake', 'mujoco', 'bullet']
 
-n_experiments = 2
+n_experiments = 1
 
 for i in range(n_experiments):
     processes = []

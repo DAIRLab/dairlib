@@ -22,7 +22,7 @@ ps.set_default_styling(directory=figure_directory, figsize=(10,6))
 sim_colors = {'Drake' : ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
 
 paper_ids = ['drake_2021_09_11_16_44_10',
-           'mujoco_2021_09_12_10_27_10', 
+            'mujoco_2021_09_12_10_27_10', 
            'bullet_2021_09_12_22_00_10']
 
 # def plot_damping_ratios(ids):

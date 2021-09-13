@@ -376,6 +376,8 @@ if (__name__ == '__main__'):
             pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
              bullet=(format_sim_name(id) == 'Bullet'))
         stats = calc_error_and_loss_stats(traj_pairs, weights)
+        print()
+        print(id) 
         print(stats)
 
 #     sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, pos_rot_loss)

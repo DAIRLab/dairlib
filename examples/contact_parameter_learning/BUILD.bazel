@@ -150,6 +150,7 @@ py_binary(
     srcs = ["cassie_figures.py"],
     deps = [
         ":cassie_loss_plotter",
+        ":plotting_utils",
         ":evaluate_cube_parameters",
         ":sensitivity_analysis",
         "//bindings/pydairlib",

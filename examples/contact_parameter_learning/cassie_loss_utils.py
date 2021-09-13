@@ -48,11 +48,11 @@ class CassieLoss():
 
   def print_weights(self):
     print('pos weights: ')
-    print(self.weights.pos)
+    print(np.diag(self.weights.pos))
     print('vel weights: ')
-    print(self.weights.vel)
+    print(np.diag(self.weights.vel))
     print('omega weights: ')
-    print(self.weights.omega)
+    print(np.diag(self.weights.omega))
     print('quat weights: ')
     print(self.weights.quat)
 
@@ -76,7 +76,7 @@ class CassieLoss():
     loss = 0
     for i in range(traj1.shape[0]):
       quat_diff = self.calc_rotational_distance(traj1[i], traj2[i])
-      loss += quat_diff ** 2
+      loss += quat_diff
     loss *= self.weights.quat / traj1.shape[0]
     return loss
 

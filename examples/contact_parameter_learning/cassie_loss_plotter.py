@@ -108,6 +108,9 @@ def plot_velocity_trajectory(impact_data, log_num, indices, save_fig=False, comp
       ps.add_legend(['hardware', 'sim'])
     if save_fig:
       str_idx = max(x_datatypes[i].find('left'), x_datatypes[i].find('right'))
+      if
+      str_idx = max(str_idx, x_datatypes[i].find('_') + 1)
+      import pdb; pdb.set_trace()
       ps.save_fig(x_datatypes[i][:str_idx - 1] + '/' + x_datatypes[i] + '_' + log_num)
   # ps.show_fig()
 
@@ -180,7 +183,7 @@ def plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, f
   # ps.plot(t_common, com_vel_hardware[:n_samples_common, 1])
   # plt.figure('z' + log_num)
   ps.plot(t_common, com_vel_sim[:n_samples_common, 2], color=ps.penn_color_wheel[impact_data.sim_plot_color_idx])
-  ps.plot(t_common, com_vel_hardware[:n_samples_common, 2], color=ps.penn_color_wheel[3])
+  ps.plot(t_common, com_vel_hardware[:n_samples_common, 2], color=ps.penn_color_wheel[3], xlabel='time (s)', ylabel='velocity (rad/s)')
   # ps.add_legend(['cos_dist_sim', 'cos_dist_hardware', 'z sim', 'z_hardware'])
   ps.add_legend(['z sim', 'z_hardware'])
   # ps.add_legend(['x sim', 'x hardware', 'y sim', 'y hardware', 'z sim', 'z_hardware'])
@@ -253,6 +256,7 @@ def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False, compar
 
   n_positions = loss_func.position_slice.stop - loss_func.position_slice.start
   n_velocities = loss_func.velocity_slice.stop - loss_func.velocity_slice.start
+  n_omega = loss_func.rot_vel_slice.stop - loss_func.rot_vel_slice.start
 
   pos_diff = x_hardware[:, loss_func.position_slice] - x_sim[:, loss_func.position_slice]
   if compare_final:
@@ -278,7 +282,19 @@ def plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=False, compar
     plt.bar(x_datatypes[loss_func.velocity_slice], vel_losses.sum(axis=0))
     ps.save_fig(prefix + 'vel_error_breakdown_' + log_num)
 
-  return pos_losses.sum(axis=0), vel_losses.sum(axis=0)
+  omega_diff = x_hardware[:, loss_func.rot_vel_slice] - x_sim[:, loss_func.rot_vel_slice]
+  if compare_final:
+    vel_diff = x_hardware[-1, loss_func.rot_vel_slice] - x_sim[-1, loss_func.rot_vel_slice]
+  sqrt_omega_weights = np.sqrt(loss_func.weights.omega)
+  omega_diff_vec = (omega_diff @ sqrt_omega_weights).ravel()
+  omega_losses_vec = omega_diff_vec * omega_diff_vec
+  omega_losses = omega_losses_vec.reshape((-1, n_omega))
+  if save_figs:
+    plt.figure(prefix + 'omega_loss_breakdown: ' + log_num)
+    plt.bar(x_datatypes[loss_func.rot_vel_slice], omega_losses.sum(axis=0))
+    ps.save_fig(prefix + 'omega_error_breakdown_' + log_num)
+
+  return pos_losses.sum(axis=0), vel_losses.sum(axis=0), omega_losses.sum(axis=0)
 
 
 def main():
@@ -290,8 +306,8 @@ def main():
   global kinematics_calculator
 
   data_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/data/'
-  # figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/mujoco_to_real_comparison/'
-  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/sim_to_real_comparison/'
+  figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/mujoco_to_real_comparison/'
+  # figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/figures/sim_to_real_comparison/'
   ps = PlotStyler()
   ps.set_default_styling(directory=figure_directory, figsize=[8, 6])
   # ps.set_figsize([20, 12])
@@ -305,8 +321,8 @@ def main():
 
   # load all the data used for plotting
   # set use_mujoco=False to use the Drake data
-  impact_data = CassieImpactData(use_mujoco=False)
-  # impact_data = CassieImpactData(use_mujoco=True)
+  # impact_data = CassieImpactData(use_mujoco=False)
+  impact_data = CassieImpactData(use_mujoco=True)
   kinematics_calculator = KinematicsHelper()
   # kinematics_calculator = KinematicsHelper("examples/Cassie/urdf/cassie_fixed_springs.urdf")
 
@@ -319,26 +335,30 @@ def main():
   # joint_vel_indices = range(29, 39)
   # joint_vel_indices = [33, 34, 35, 36, 37, 38]
   # joint_vel_indices = [35, 36]
+  joint_vel_indices = range(23, 26)
 
   pos_losses = []
   vel_losses = []
+  omega_losses = []
 
   for log_num in impact_data.log_nums_real:
     # plt.figure(log_num)
     # grf_single_log(impact_data, log_num)
-    # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=True)
+    plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=True)
     # plot_velocity_trajectory(impact_data, log_num, joint_vel_indices, save_fig=True, compare_rigid=True)
     # plot_feet_positions_at_impact(impact_data, log_num)
     # plot_centroidal_trajectory(impact_data, log_num)
     # plot_centroidal_trajectory(impact_data, log_num, use_center_of_mass=False, fixed_feet=True, save_figs=True)
-    pos_loss, vel_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=True, compare_final=False)
+    pos_loss, vel_loss, omega_loss = plot_loss_breakdown(impact_data, log_num, loss_func, save_figs=True, compare_final=False)
     pos_losses.append(pos_loss)
     vel_losses.append(vel_loss)
+    omega_losses.append(omega_loss)
     # ps.show_fig()
     pass
 
   pos_losses = np.array(pos_losses)
   vel_losses = np.array(vel_losses)
+  omega_losses = np.array(omega_losses)
 
   plt.figure('total_pos_loss_breakdown')
   plt.bar(x_datatypes[loss_func.position_slice], pos_losses.sum(axis=0))
@@ -348,6 +368,9 @@ def main():
   plt.bar(x_datatypes[loss_func.velocity_slice], vel_losses.sum(axis=0))
   ps.save_fig('total_vel_loss_breakdown')
 
+  plt.figure('total_omega_loss_breakdown')
+  plt.bar(x_datatypes[loss_func.rot_vel_slice], omega_losses.sum(axis=0))
+  ps.save_fig('total_omega_loss_breakdown')
 
   ## All debugging scripts go here
   # import pdb; pdb.set_trace()

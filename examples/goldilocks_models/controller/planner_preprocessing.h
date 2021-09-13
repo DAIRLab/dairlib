@@ -1,14 +1,14 @@
 #pragma once
 
+#include "examples/goldilocks_models/reduced_order_models.h"
+#include "multibody/multibody_utils.h"
+#include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/equality_constrained_qp_solver.h"
 #include "drake/systems/framework/leaf_system.h"
-
-#include "examples/goldilocks_models/reduced_order_models.h"
-#include "multibody/multibody_utils.h"
-#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -74,6 +74,9 @@ class PlannerFinalPosition : public drake::systems::LeafSystem<double> {
   PlannerFinalPosition(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
       const Eigen::VectorXd& const_step_length, int n_step);
+  PlannerFinalPosition(
+      const drake::multibody::MultibodyPlant<double>& plant_feedback,
+      double stride_period, int n_step);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -81,8 +84,16 @@ class PlannerFinalPosition : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_init_phase() const {
     return this->get_input_port(phase_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_fsm_and_lo_time()
+      const {
+    return this->get_input_port(controller_signal_port_);
+  }
 
  private:
+  PlannerFinalPosition(
+      const drake::multibody::MultibodyPlant<double>& plant_feedback,
+      int high_level_command_mode);
+
   void CalcFinalPos(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* init_phase_output) const;
@@ -90,11 +101,13 @@ class PlannerFinalPosition : public drake::systems::LeafSystem<double> {
   // Port indices
   int state_port_;
   int phase_port_;
+  int controller_signal_port_;
 
-  bool use_const_step_length_;
-  const Eigen::VectorXd global_target_pos_;
-  const Eigen::VectorXd const_step_length_;
+  int high_level_command_mode_;
+  Eigen::VectorXd global_target_pos_;
+  Eigen::VectorXd const_step_length_;
   int n_step_;
+  double stride_period_;
 };
 
 ///

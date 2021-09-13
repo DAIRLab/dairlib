@@ -121,6 +121,9 @@ DEFINE_string(channel_y, "MPC_OUTPUT",
               "The name of the channel which receives MPC output");
 DEFINE_string(channel_ik, "IK_OUTPUT",
               "The name of the channel which receives IK traj");
+DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
+              "The name of the channel to receive the cassie out structure "
+              "from. (to get radio message)");
 
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
@@ -332,19 +335,52 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   event_time->get_input_port_state());
 
+  // Create human high-level control
+  Eigen::Vector2d global_target_position(gains.global_target_position_x,
+                                         gains.global_target_position_y);
+  cout << "global_target_position = " << global_target_position.transpose()
+       << endl;
+  Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
+                                       gains.yaw_deadband_radius);
+  cassie::osc::HighLevelCommand* high_level_command;
+  if (gains.use_radio) {
+    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+        plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
+        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
+    auto cassie_out_receiver =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+            FLAGS_cassie_out_channel, &lcm_local));
+    builder.Connect(cassie_out_receiver->get_output_port(),
+                    high_level_command->get_cassie_output_port());
+  } else {
+    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+        plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
+        gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
+        gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
+        gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
+        params_of_no_turning);
+  }
+  builder.Connect(state_receiver->get_output_port(0),
+                  high_level_command->get_state_input_port());
+
   // Create a multiplexer which combines current finite state machine state
   // and the latest lift-off event time, and create publisher for this
   // combined vector
-  auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(3);
+  std::vector<int> input_size = {1, 1, 1, 2};
+  auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(input_size);
   builder.Connect(fsm->get_output_port(0), mux->get_input_port(0));
   builder.Connect(event_time->get_output_port_event_time_of_interest(),
                   mux->get_input_port(1));
   builder.Connect(fsm->get_output_port_global_fsm_idx(),
                   mux->get_input_port(2));
-  std::vector<std::string> singal_names = {"fsm", "t_lo", "fsm_idx"};
+  builder.Connect(high_level_command->get_xy_output_port(),
+                  mux->get_input_port(3));
+
+  std::vector<std::string> signal_names = {"fsm", "t_lo", "fsm_idx", "des_vx",
+                                           "des_vy"};
   auto fsm_and_liftoff_time_sender =
       builder.AddSystem<systems::DairlibSignalSender>(
-          singal_names, left_support_duration + double_support_duration);
+          signal_names, left_support_duration + double_support_duration);
   builder.Connect(mux->get_output_port(0),
                   fsm_and_liftoff_time_sender->get_input_port(0));
   auto fsm_and_liftoff_time_publisher =
@@ -423,22 +459,6 @@ int DoMain(int argc, char* argv[]) {
                     optimal_rom_traj_gen->get_input_port_fsm());
     builder.Connect(simulator_drift->get_output_port(0),
                     optimal_rom_traj_gen->get_input_port_state());
-
-    // Create human high-level control
-    Eigen::Vector2d global_target_position(gains.global_target_position_x,
-                                           gains.global_target_position_y);
-    cout << "global_target_position = " << global_target_position.transpose()
-         << endl;
-    Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
-                                         gains.yaw_deadband_radius);
-    auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-        plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
-        gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
-        gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
-        gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
-        params_of_no_turning);
-    builder.Connect(state_receiver->get_output_port(0),
-                    high_level_command->get_state_input_port());
 
     // Create heading traj generator
     auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(

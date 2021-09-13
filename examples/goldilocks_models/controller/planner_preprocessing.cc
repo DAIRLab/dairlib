@@ -1,4 +1,5 @@
 #include "examples/goldilocks_models/controller/planner_preprocessing.h"
+
 #include "examples/Cassie/cassie_utils.h"
 #include "solvers/nonlinear_constraint.h"
 #include "systems/controllers/osc/osc_utils.h"
@@ -44,7 +45,7 @@ CurrentStanceFoot::CurrentStanceFoot(
     : left_right_support_fsm_states_(left_right_support_fsm_states) {
   // Input/Output Setup
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
+      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
 
   this->DeclareVectorOutputPort(BasicVector<double>(1),
                                 &CurrentStanceFoot::GetStance);
@@ -90,7 +91,7 @@ PhaseInFirstMode::PhaseInFirstMode(
                                              plant_feedback.num_actuators()))
                     .get_index();
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
+      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
 
   this->DeclareVectorOutputPort(BasicVector<double>(1),
                                 &PhaseInFirstMode::CalcPhase);
@@ -146,29 +147,40 @@ void PhaseInFirstMode::CalcPhase(
 /// PlannerFinalPosition
 ///
 
+// Constructor for global position tracking
 PlannerFinalPosition::PlannerFinalPosition(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
     const Eigen::VectorXd& global_target_pos)
-    : global_target_pos_(global_target_pos), use_const_step_length_(false) {
-  // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_feedback.num_positions(),
-                                             plant_feedback.num_velocities(),
-                                             plant_feedback.num_actuators()))
-                    .get_index();
-  phase_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
-
-  this->DeclareVectorOutputPort(BasicVector<double>(2),
-                                &PlannerFinalPosition::CalcFinalPos);
+    : PlannerFinalPosition(plant_feedback, 0) {
+  global_target_pos_ = global_target_pos;
 }
 
+// Constructor for constant step length
 PlannerFinalPosition::PlannerFinalPosition(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
     const Eigen::VectorXd& const_step_length, int n_step)
-    : const_step_length_(const_step_length),
-      n_step_(n_step),
-      use_const_step_length_(true) {
+    : PlannerFinalPosition(plant_feedback, 1) {
+  const_step_length_ = const_step_length;
+  n_step_ = n_step;
+}
+
+// Constructor for radio speed command
+PlannerFinalPosition::PlannerFinalPosition(
+    const drake::multibody::MultibodyPlant<double>& plant_feedback,
+    double stride_period, int n_step)
+    : PlannerFinalPosition(plant_feedback, 2) {
+  stride_period_ = stride_period;
+  n_step_ = n_step;
+
+  controller_signal_port_ =
+      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
+}
+
+// Base constructor
+PlannerFinalPosition::PlannerFinalPosition(
+    const drake::multibody::MultibodyPlant<double>& plant_feedback,
+    int high_level_command_mode)
+    : high_level_command_mode_(high_level_command_mode) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
                         OutputVector<double>(plant_feedback.num_positions(),
@@ -185,14 +197,7 @@ PlannerFinalPosition::PlannerFinalPosition(
 void PlannerFinalPosition::CalcFinalPos(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* local_final_pos_output) const {
-  if (use_const_step_length_) {
-    double init_phase =
-        this->EvalVectorInput(context, phase_port_)->get_value()(0);
-    Vector2d local_pos_diff = const_step_length_ * (n_step_ - init_phase);
-
-    // Assign local_final_pos
-    local_final_pos_output->get_mutable_value() << local_pos_diff;
-  } else {
+  if (high_level_command_mode_ == 0) {
     // Read in current robot state
     const VectorXd& current_pelvis_pos_xy =
         static_cast<const OutputVector<double>*>(
@@ -204,9 +209,9 @@ void PlannerFinalPosition::CalcFinalPos(
 
     // Rotate the position from global to local
     const VectorXd& quat = static_cast<const OutputVector<double>*>(
-        this->EvalVectorInput(context, state_port_))
-        ->GetPositions()
-        .head<4>();
+                               this->EvalVectorInput(context, state_port_))
+                               ->GetPositions()
+                               .head<4>();
     Vector3d pelvis_x = Quaterniond(quat(0), quat(1), quat(2), quat(3))
                             .toRotationMatrix()
                             .col(0);
@@ -222,8 +227,32 @@ void PlannerFinalPosition::CalcFinalPos(
     cout << "yaw = " << yaw << endl;
     cout << "global_pos_diff = " << global_pos_diff.transpose() << endl;
     cout << "rot = \n" << rot.toRotationMatrix() << endl;
-    cout << "rot * global_pos_diff = " << (rot.toRotationMatrix() * global_pos_diff).transpose()
+    cout << "rot * global_pos_diff = " << (rot.toRotationMatrix() *
+    global_pos_diff).transpose()
          << endl;*/
+
+  } else if (high_level_command_mode_ == 1) {
+    double init_phase =
+        this->EvalVectorInput(context, phase_port_)->get_value()(0);
+    Vector2d local_pos_diff = const_step_length_ * (n_step_ - init_phase);
+
+    // Assign local_final_pos
+    local_final_pos_output->get_mutable_value() << local_pos_diff;
+
+  } else if (high_level_command_mode_ == 2) {
+    auto des_vel = this->EvalVectorInput(context, controller_signal_port_)
+                       ->get_value()
+                       .segment<2>(3);
+
+    double init_phase =
+        this->EvalVectorInput(context, phase_port_)->get_value()(0);
+    Vector2d local_pos_diff = des_vel * stride_period_ * (n_step_ - init_phase);
+
+    // Assign local_final_pos
+    local_final_pos_output->get_mutable_value() << local_pos_diff;
+
+  } else {
+    DRAKE_UNREACHABLE();
   }
 }
 
@@ -356,7 +385,7 @@ InitialStateForPlanner::InitialStateForPlanner(
   phase_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
+      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
 
   adjusted_state_port_ =
       this->DeclareVectorOutputPort(

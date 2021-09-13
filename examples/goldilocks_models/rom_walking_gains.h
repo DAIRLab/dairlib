@@ -11,6 +11,7 @@ struct RomWalkingGains {
   int rom_option;
   int model_iter;
   int sample_idx;
+  bool use_radio;
   bool set_constant_walking_speed;
   bool set_constant_turning_rate;
   double constant_step_length_x;
@@ -116,6 +117,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(rom_option));
     a->Visit(DRAKE_NVP(model_iter));
     a->Visit(DRAKE_NVP(sample_idx));
+    a->Visit(DRAKE_NVP(use_radio));
     a->Visit(DRAKE_NVP(set_constant_walking_speed));
     a->Visit(DRAKE_NVP(set_constant_turning_rate));
     a->Visit(DRAKE_NVP(constant_step_length_x));

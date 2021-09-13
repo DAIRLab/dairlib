@@ -32,6 +32,24 @@ model_iter: 1 #150  #1 #30
 sample_idx: 19 #21 works for iter150
 
 
+### High-level command (for both planner and controller)
+global_target_position_x: 1000
+global_target_position_y: 0
+
+set_constant_walking_speed: true
+constant_step_length_x: 0
+constant_step_length_y: 0
+
+set_constant_turning_rate: false
+constant_turning_rate: 0
+
+# when use_radio=true, the above high level command parameters are discarded
+use_radio: false
+vel_scale_rot: -1
+vel_scale_trans_sagital: 0.25
+vel_scale_trans_lateral: -0.15
+
+
 ### For both planner and controller
 # Finite state machine states
 left_support: 0
@@ -45,15 +63,6 @@ left_support_duration: 0.35 #0.3   # 0.23 # 0.35 # 0.4
 right_support_duration: 0.35 #0.3  # 0.23 # 0.35 # 0.4
 double_support_duration: 0.05 #0.02
 
-global_target_position_x: 1000
-global_target_position_y: 0
-
-set_constant_walking_speed: true
-constant_step_length_x: 0
-constant_step_length_y: 0
-
-set_constant_turning_rate: false
-constant_turning_rate: 0
 
 ### For planner only
 # max_foot_speed should be more than two times bigger than the desired walking speed.
@@ -125,10 +134,6 @@ w_v_lipm_mpc: 0.1
 
 
 ### For controller only
-#High level command gains(with radio)
-vel_scale_rot: -1
-vel_scale_trans_sagital: 0.25
-vel_scale_trans_lateral: -0.15
 
 #High level command gains(without radio)
 yaw_deadband_blur: 5

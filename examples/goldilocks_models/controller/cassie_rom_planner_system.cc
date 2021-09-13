@@ -102,7 +102,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                                              plant_control.num_actuators()))
                     .get_index();
   controller_signal_port_ =
-      this->DeclareVectorInputPort(TimestampedVector<double>(3)).get_index();
+      this->DeclareVectorInputPort(TimestampedVector<double>(5)).get_index();
   quat_xyz_shift_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(7)).get_index();
   planner_final_pos_port_ =

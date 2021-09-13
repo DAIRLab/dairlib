@@ -1,16 +1,20 @@
 #include <stdlib.h>
 #include <unistd.h>  // sleep/usleep
+
 #include <cmath>
 #include <fstream>
 #include <string>
+
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
+#include "dairlib/lcmt_dairlib_signal.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
+#include "examples/goldilocks_models/controller/planner_preprocessing.h"
 #include "examples/goldilocks_models/rom_walking_gains.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
@@ -21,8 +25,6 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-#include "dairlib/lcmt_dairlib_signal.hpp"
-#include "examples/goldilocks_models/controller/planner_preprocessing.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -274,7 +276,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Lcm receiver for fsm and latest lift off time (translate the lcm to
   // BasicVector)
-  int lcm_vector_size = 3;
+  int lcm_vector_size = 5;
   auto controller_signal_receiver =
       builder.AddSystem<systems::DairlibSignalReceiver>(lcm_vector_size);
 
@@ -303,15 +305,22 @@ int DoMain(int argc, char* argv[]) {
   // Create a block that compute target position for the planner
   Eigen::Vector2d global_target_pos(gains.global_target_position_x,
                                     gains.global_target_position_y);
-  auto planner_final_pos =
-      gains.set_constant_walking_speed
-          ? builder.AddSystem<PlannerFinalPosition>(
-                plant_feedback,
-                Eigen::Vector2d(gains.constant_step_length_x,
-                                gains.constant_step_length_y),
-                param.n_step)
-          : builder.AddSystem<PlannerFinalPosition>(plant_feedback,
-                                                    global_target_pos);
+  PlannerFinalPosition* planner_final_pos;
+  if (gains.use_radio) {
+    planner_final_pos = builder.AddSystem<PlannerFinalPosition>(
+        plant_feedback, stride_period, param.n_step);
+    builder.Connect(controller_signal_receiver->get_output_port(0),
+                    planner_final_pos->get_input_port_fsm_and_lo_time());
+  } else {
+    planner_final_pos = gains.set_constant_walking_speed
+                            ? builder.AddSystem<PlannerFinalPosition>(
+                                  plant_feedback,
+                                  Eigen::Vector2d(gains.constant_step_length_x,
+                                                  gains.constant_step_length_y),
+                                  param.n_step)
+                            : builder.AddSystem<PlannerFinalPosition>(
+                                  plant_feedback, global_target_pos);
+  }
   builder.Connect(state_receiver->get_output_port(0),
                   planner_final_pos->get_input_port_state());
   builder.Connect(init_phase_calculator->get_output_port(0),
@@ -515,8 +524,8 @@ int DoMain(int argc, char* argv[]) {
                                                              final_position);
     rom_planner->get_input_port_fsm_and_lo_time().FixValue(
         &planner_context,
-        drake::systems::BasicVector(
-            {fsm_state, prev_lift_off_time, global_fsm_idx, current_time}));
+        drake::systems::BasicVector({fsm_state, prev_lift_off_time,
+                                     global_fsm_idx, 0.0, 0.0, current_time}));
 
     ///
     /// Eval output port and store data

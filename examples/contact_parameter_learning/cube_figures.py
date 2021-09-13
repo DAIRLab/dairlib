@@ -141,7 +141,7 @@ def make_stiffness_sensitivity_analysis_figure():
         k_ratio = np.array(params_ranges[id]['stiffness']) / k_opt
         ps.plot(k_ratio, sweeps[id]['loss_avg']['stiffness'], color=sim_colors[format_sim_name(id)])
 
-    plt.xlabel('$\mu / \mu^{*}$')
+    plt.xlabel('k / k^{*}$')
     plt.legend(legend_strs)
     plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))
@@ -264,9 +264,9 @@ def visualize_cube_initial_condition():
 
 if __name__ == '__main__':
     # make_estimated_pdf_figure()
-    # make_friction_sensitivity_analysis_figure()
+    make_friction_sensitivity_analysis_figure()
     # make_damping_sensitivity_analysis_figure()
-    make_stiffness_sensitivity_analysis_figure()
+    # make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
     # make_contact_impulse_plot()
     # visualize_cube_initial_condition()

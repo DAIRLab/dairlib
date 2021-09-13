@@ -92,27 +92,23 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
 
 
 def get_stiffness_range(sim_type, k0):
-    params_range = {}
-    if (sim_type == 'drake'):
-        params_range['stiffness'] = np.linspace(10, k0*2, 25).tolist()
-    else:
-        params_range['stiffness'] = np.linspace(10, k0*2, 25).tolist()
-    return params_range
+    return {'stiffness' : (k0 * np.logspace(-1, 1, num=20)).tolist()}
+    
 
 def get_friction_range(sim_type, mu_0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['mu'] = np.linspace(mu_0/2, mu_0*2, 10).tolist()
+        params_range['mu'] = (mu_0 * np.logspace(-1, 1, base=2, num=15)).tolist()
     else:
-        params_range['mu_tangent'] = np.linspace(mu_0/2, mu_0*2, 10).tolist()
+        params_range['mu_tangent'] = (mu_0 * np.logspace(-1, 1, base=2, num=15)).tolist()
     return params_range
 
 def get_damping_range(sim_type, b0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['dissipation'] = np.linspace(b0/2, b0*2, 10).tolist()
+        params_range['dissipation'] = (b0 * np.logspace(-1, 1, num=20)).tolist()
     else:
-        params_range['damping'] = np.linspace(b0/2, b0*2, 10).tolist()
+        params_range['damping'] = (b0 * np.logspace(-1, 1, num=20)).tolist()
     return params_range
 
 

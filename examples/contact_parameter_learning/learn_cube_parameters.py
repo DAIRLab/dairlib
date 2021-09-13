@@ -22,6 +22,7 @@ mujoco_data_folder = os.path.join(os.getcwd(),
     'examples/contact_parameter_learning/simulated_cube_trajectories/mujoco')
 bullet_data_folder = os.path.join(os.getcwd(), 
     'examples/contact_parameter_learning/simulated_cube_trajectories/bullet')
+
 log_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/logs/cube')
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 
@@ -39,16 +40,16 @@ default_substep = MED_RES_SUBSTEP
 batch_size = 550
 num_workers = 1
 num_trials = 550
-budget = 2000
+num_train = 300
+
+budget = 1000
 
 
 
 # Make a list of train and test trials 
 trial_idxs = range(num_trials)
-seed(6)
-training_idxs = range(550)
+training_idxs = trial_idxs #sample(trial_idxs, num_train)
 test_idxs = [idx for idx in trial_idxs if not (idx in training_idxs)]
-
 
 loss_over_time = []
 params_over_time = []
@@ -91,7 +92,7 @@ def log_optimization(sim_name, test, loss, weights, params_over_time, optimal_pa
 def get_drake_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
-        loss_sum += get_drake_loss(params, trial_num=i)
+        loss_sum += get_drake_loss(params, trial_num=training_idxs[i])
     print(loss_sum / batch_size)
 
     params_over_time.append(params)
@@ -128,7 +129,7 @@ def learn_drake_params():
 def get_mujoco_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
-        loss_sum += get_mujoco_loss(params, trial_num=i)
+        loss_sum += get_mujoco_loss(params, trial_num=training_idxs[i])
     print(loss_sum / batch_size)
 
     params_over_time.append(params)
@@ -162,7 +163,7 @@ def learn_mujoco_params():
 def get_bullet_loss_mp(params):
     loss_sum = 0
     for i in range(batch_size):
-        loss_sum += get_bullet_loss(params, trial_num=i)
+        loss_sum += get_bullet_loss(params, trial_num=training_idxs[i])
     print(loss_sum / batch_size)
 
     params_over_time.append(params)

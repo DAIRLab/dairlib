@@ -19,7 +19,11 @@ figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learnin
 ps = PlotStyler()
 ps.set_default_styling(directory=figure_directory, figsize=(10,6))
 
-sim_colors = {'MuJoCo': ps.blue, 'Drake' : ps.red, 'Bullet' : ps.yellow}
+sim_colors = {'Drake' : ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
+
+paper_ids = ['drake_2021_09_11_16_44_10',
+           'mujoco_2021_09_12_10_27_10', 
+           'bullet_2021_09_11_14_27_10']
 
 # def plot_damping_ratios(ids):
 #     stiffness = []
@@ -119,9 +123,7 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
     return sweeps
 
 def make_stiffness_sensitivity_analysis_figure():
-    ids = ['mujoco_2021_09_12_10_27_10', 
-           'drake_2021_09_11_16_44_10',
-           'bullet_2021_09_11_14_27_10']
+    ids = paper_ids
 
     params_ranges = {}
     params = {}
@@ -148,9 +150,7 @@ def make_stiffness_sensitivity_analysis_figure():
       
 
 def make_friction_sensitivity_analysis_figure():
-    ids = ['mujoco_2021_09_12_10_27_10', 
-           'drake_2021_09_11_16_44_10',
-           'bullet_2021_09_11_14_27_10']
+    ids = paper_ids
 
     mu_keys = {ids[0] : 'mu_tangent', ids[1] : 'mu', ids[2] : 'mu_tangent'}
 
@@ -167,22 +167,20 @@ def make_friction_sensitivity_analysis_figure():
 
     for id in ids:
         legend_strs.append(format_sim_name(id))
-        k_opt = params[id]['stiffness']
+        k_opt = params[id][mu_keys[id]]
         k_ratio = np.array(params_ranges[id][mu_keys[id]]) / k_opt
         ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
 
-    plt.xlabel('$k / k^{*}$')
+    plt.xlabel('$\mu / \mu^{*}$')
     plt.legend(legend_strs)
     plt.ylabel('Average $e_{q}$')
-    plt.ylim((0.2, 0.6))
+    # plt.ylim((0.2, 0.6))
     ps.save_fig('FrictionSensitivity.pdf')
     # plt.show()
 
 
 def make_estimated_pdf_figure():
-    ids = ['mujoco_2021_09_11_09_39_10', 
-           'drake_2021_09_11_16_44_10',
-           'bullet_2021_09_11_14_27_10']
+    ids = paper_ids
     _, e_q, _, _, _ = cube_eval.load_list_of_results(
         ids, cube_eval.pos_rot_loss, eval_all_traj=True)
 
@@ -213,17 +211,15 @@ def make_estimated_pdf_figure():
 #     ids = [os.path.basename(id_path).split('.')[0] for id_path in id_paths]
 #     plot_damping_ratios(ids)
 
-def make_error_vs_time_plot():
-    ids = ['bullet_2021_09_10_04_44_10',
-           'drake_2021_09_10_05_40_10', 
-           'mujoco_2021_09_10_05_38_10']
-    traj = 164
-    plot_error_vs_time(ids, traj)
+# def make_error_vs_time_plot():
+#     ids = ['drake_2021_09_11_16_44_10',
+#            'mujoco_2021_09_12_10_27_10', 
+#            'bullet_2021_09_11_14_27_10']
+#     traj = 164
+#     plot_error_vs_time(ids, traj)
 
 def make_contact_impulse_plot():
-    ids = ['mujoco_2021_09_12_10_27_10', 
-           'drake_2021_09_11_16_44_10',
-           'bullet_2021_09_11_14_27_10']
+    ids = paper_ids
     traj_id  = 361
     plot_impulses_list_of_ids(ids, traj_id)
 

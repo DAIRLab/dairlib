@@ -25,7 +25,7 @@ bullet_data_folder = os.path.join(os.getcwd(),
 log_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/logs/cube')
 model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
 
-default_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
+default_loss = cube_sim.LossWeights(pos=(2.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
 SIM_ERROR_LOSS = 100
 
 # timestepping definitions

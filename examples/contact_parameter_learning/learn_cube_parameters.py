@@ -42,7 +42,7 @@ num_workers = 1
 num_trials = 550
 num_train = 300
 
-budget = 1000
+budget = 2000
 
 
 

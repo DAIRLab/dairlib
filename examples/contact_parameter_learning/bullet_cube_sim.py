@@ -32,7 +32,7 @@ class BulletCubeSim(CubeSim):
                             contactDamping=params['damping'], 
                             physicsClientId=self.client_id)
 
-        p.setTimeStep(CUBE_DATA_DT / self.substeps), physicsClientId=self.client_id
+        p.setTimeStep(CUBE_DATA_DT / self.substeps, physicsClientId=self.client_id)
         
     def set_initial_condition(self, state):
 

@@ -22,7 +22,7 @@ def main():
   # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
   # filename = abs_path + "/rom_trajectory"
   # filename = "../rom_trajectory"
-  if len(sys.argv) == 2 and sys.argv[1] != "save":
+  if len(sys.argv) >= 2 and sys.argv[1] != "save":
     filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                sys.argv[1] + "_rom_trajectory"
     # filename = sys.argv[1]
@@ -36,13 +36,17 @@ def main():
   global savefig, figsize, save_path
   savefig = False
   figsize = (6.4, 4.8)
-  if len(sys.argv) == 2:
-    if sys.argv[1] == "save":
+  for i in range(len(sys.argv)):
+    if sys.argv[i] == "save":
       savefig = True
       figsize = (16, 9)
   import getpass
   username = getpass.getuser()
   save_path = "/home/" + username + "/"
+
+  print("filename = " + filename)
+  print("savefig = " + str(savefig))
+  print("save_path = " + save_path)
 
   """
   Construct full order model and related variables 

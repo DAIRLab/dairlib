@@ -209,7 +209,8 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
                        const Eigen::Vector3d& left_foot_pos_w_spr,
                        const Eigen::Vector3d& right_foot_pos_w_spr,
                        const Eigen::Vector3d& left_foot_vel_w_spr,
-                       const Eigen::Vector3d& right_foot_vel_w_spr) const;
+                       const Eigen::Vector3d& right_foot_vel_w_spr,
+                       bool is_left_stance) const;
 };
 
 }  // namespace goldilocks_models

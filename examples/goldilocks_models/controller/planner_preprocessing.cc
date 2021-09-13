@@ -496,7 +496,7 @@ EventStatus InitialStateForPlanner::AdjustState(
   if (feedback_is_spring_model_) {
     CheckAdjustemnt(x_w_spr, x_original, x_adjusted2, left_foot_pos_w_spr,
                     right_foot_pos_w_spr, left_foot_vel_w_spr,
-                    right_foot_vel_w_spr);
+                    right_foot_vel_w_spr, is_left_stance);
   }
 
   ///
@@ -772,7 +772,7 @@ void InitialStateForPlanner::CheckAdjustemnt(
     const VectorXd& x_w_spr, const VectorXd& x_original,
     const VectorXd& x_adjusted, const Vector3d& left_foot_pos_w_spr,
     const Vector3d& right_foot_pos_w_spr, const Vector3d& left_foot_vel_w_spr,
-    const Vector3d& right_foot_vel_w_spr) const {
+    const Vector3d& right_foot_vel_w_spr, bool is_left_stance) const {
   // Testing -- check the model difference (springs vs no springs).
   // cout << "=== COM and stance foot ===\n";
   //  cout << "\ncassie without springs:\n";
@@ -885,10 +885,11 @@ void InitialStateForPlanner::CheckAdjustemnt(
       left_vel_error_improved > left_vel_error_original;
   bool right_vel_did_not_improve =
       right_vel_error_improved > right_vel_error_original;
-  bool left_vel_error_still_too_large = left_vel_error_improved > 0.02;
-  bool right_vel_error_still_too_large = right_vel_error_improved > 0.02;
-  bool stance_foot_vel_too_big = (left_foot_vel_wo_spr_improved.norm() > 0.2) &&
-                                 (right_foot_vel_wo_spr_improved.norm() > 0.2);
+  bool left_vel_error_still_too_large = left_vel_error_improved > 0.03;
+  bool right_vel_error_still_too_large = right_vel_error_improved > 0.03;
+  bool stance_foot_vel_too_big =
+      (is_left_stance && (left_foot_vel_wo_spr_improved.norm() > 0.2)) ||
+      (!is_left_stance && (right_foot_vel_wo_spr_improved.norm() > 0.2));
   //  if (true) {
   if (left_vel_did_not_improve || right_vel_did_not_improve ||
       left_vel_error_still_too_large || right_vel_error_still_too_large ||

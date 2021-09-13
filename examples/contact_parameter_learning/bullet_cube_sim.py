@@ -6,12 +6,9 @@ import pybullet as p
 cube_urdf_path = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/urdf/cube.urdf')
 plane_urdf_path =  os.path.join(os.getcwd(), 'examples/contact_parameter_learning/urdf/plane.urdf')
 
-default_bullet_contact_params = {"stiffness" : 2000, 
-                                 "damping" : 36.02, 
-                                 "restitution": 0.125,
-                                 "mu_tangent" : 0.18, 
-                                 "mu_torsion" : 0.005, 
-                                 "mu_rolling" : 0.0001}
+default_bullet_contact_params = {"stiffness" : 6000, 
+                                 "damping" : 500.0, 
+                                 "mu_tangent" : 0.36}
 
 
 class BulletCubeSim(CubeSim):
@@ -30,9 +27,6 @@ class BulletCubeSim(CubeSim):
         self.plane_id = p.loadURDF(plane_urdf_path, useFixedBase=True)
         p.changeDynamics(self.plane_id, -1, 
                             lateralFriction=params['mu_tangent'], 
-                            spinningFriction=params['mu_torsion'],
-                            rollingFriction=params['mu_rolling'],
-                            restitution=params['restitution'], 
                             contactStiffness=params['stiffness'],
                             contactDamping=params['damping'])
 

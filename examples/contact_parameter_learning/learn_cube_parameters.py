@@ -100,9 +100,10 @@ def get_drake_loss_mp(params):
 
 def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
+    weights = cube_sim.FastLossWeights(pos=(2.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
     try:
         sim = drake_cube_sim.DrakeCubeSim(visualize=False, substeps=default_substep)
-        loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
+        loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=weights)
     except:
         loss = SIM_ERROR_LOSS
     return loss
@@ -136,8 +137,9 @@ def get_mujoco_loss_mp(params):
 
 def get_mujoco_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
+    weights = cube_sim.FastLossWeights(pos=(2.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
     sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=default_substep)
-    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
+    return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=weights)
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
@@ -169,6 +171,7 @@ def get_bullet_loss_mp(params):
 
 def get_bullet_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
+    weights = cube_sim.FastLossWeights(pos=(2.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), bullet=True)
     sim = bullet_cube_sim.BulletCubeSim(visualize=False, substeps=default_substep)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=default_loss)
 
@@ -176,10 +179,10 @@ def learn_bullet_params():
     optimization_param = ng.p.Dict(
         stiffness=ng.p.Scalar(lower=100, upper=10000),
         damping=ng.p.Scalar(lower=0, upper=1000),
-        restitution=ng.p.Scalar(lower=0.01, upper=0.3),
+        # restitution=ng.p.Scalar(lower=0.01, upper=0.3),
         mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
-        mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
-        mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
+        # mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
+        # mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
     )
     optimization_param.value=bullet_cube_sim.default_bullet_contact_params
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)

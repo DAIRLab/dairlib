@@ -181,6 +181,11 @@ int DoMain(int argc, char* argv[]) {
     gains.constant_turning_rate = FLAGS_turning_rate;
   }
 
+  if (gains.use_radio) {
+    gains.set_constant_walking_speed = false;
+    gains.set_constant_turning_rate = false;
+  }
+
   if (gains.set_constant_walking_speed && !gains.set_constant_turning_rate) {
     // We require global_target_position_x so that the desired yaw position is
     // towards x axis direction

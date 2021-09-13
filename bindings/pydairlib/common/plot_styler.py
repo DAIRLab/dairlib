@@ -2,8 +2,6 @@ import numpy as np
 import os
 import matplotlib
 # change matplotlib backen to work via ssh
-if not os.environ.get('DISPLAY'):
-  matplotlib.use('Agg')
 from matplotlib.collections import LineCollection
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt

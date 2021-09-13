@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 from cube_sim import CUBE_DATA_DT, CubeSim, BLOCK_HALF_WIDTH, FastLossWeights, load_cube_toss, make_cube_toss_filename
 import drake_cube_sim
 from json import load
@@ -153,7 +155,7 @@ def make_friction_sensitivity_analysis_figure():
     for id in ids:
         param, _, _ = cube_eval.load_params_and_logs(id)
         params[id] = param
-        params_ranges[id] = {'mu'}
+        params_ranges[id] = sa.get_friction_range(id.split('_')[0], param[mu_keys[id]])
     sweeps = make_training_loss_sensitivity_analysis(ids, params_ranges)
 
     ## plotting

@@ -100,6 +100,15 @@ def get_stiffness_range(sim_type, k0):
 
     return params_range
 
+def get_friction_range(sim_type, mu_0):
+    params_range = {}
+    if (sim_type == 'drake'):
+        params_range['mu'] = np.linspace(mu_0/2, mu_0*2, 10).tolist()
+    else:
+        params_range['mu_tangent'] = np.linspace(mu_0/2, mu_0*2, 10).tolist()
+
+    return params_range
+
 
 def get_cube_params_range(sim_type):
     params_range = {}

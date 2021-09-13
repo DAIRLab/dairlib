@@ -1,4 +1,4 @@
-from cube_sim import CUBE_DATA_DT, CubeSim, load_cube_toss, make_cube_toss_filename
+from cube_sim import CUBE_DATA_DT, CubeSim, BLOCK_HALF_WIDTH, FastLossWeights, load_cube_toss, make_cube_toss_filename
 import drake_cube_sim
 from json import load
 import evaluate_cube_parameters as cube_eval
@@ -80,10 +80,11 @@ def plot_impulses_list_of_ids(ids, traj_id):
 
 def make_training_loss_sensitivity_analysis(ids, params_ranges):
     sweeps = {}
+    weights = FastLossWeights(pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)))
     for id in ids:
         sim_type = id.split('_')[0]
         sim = cube_eval.get_eval_sim(id)
-        params, _, weights = cube_eval.load_params_and_logs(id)
+        params, _, _ = cube_eval.load_params_and_logs(id)
         test_set = range(550)
         loss_avg, loss_med = sa.get_sensitivity_analysis(
             sim, weights, params, params_ranges[id], test_set)

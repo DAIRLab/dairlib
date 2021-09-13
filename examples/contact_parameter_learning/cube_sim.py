@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from torch import load as torch_load
 import numpy as np
 import os
-from scipy.spatial.transform import Rotation as R, Slerp
+from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 import pickle
 from pyquaternion import Quaternion
@@ -57,6 +57,36 @@ class CubeSim(ABC):
         rot = quat_to_rotation(new_state[CUBE_DATA_QUATERNION_SLICE])
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE], inverse=True)
         return new_state
+
+class FastLossWeights():
+    def __init__(self, debug=False,
+                 pos=np.ones((3,)),
+                 quat=1):
+        self.pos = np.diag(pos)
+        self.quat = quat
+        self.debug = debug
+
+    def CalcPositionsLoss(self, traj1, traj2):
+        diff = traj1 - traj2
+        return np.dot(diff.ravel(), (diff @ self.pos).ravel()) / diff.shape[0]
+
+    def CalcQuatLoss(self, traj1, traj2):
+        loss = np.zeros((traj1.shape[0],))
+        for i in range(traj1.shape[0]):
+            loss[i] = self.calc_rotational_distance(traj1[i], traj2[i])
+        return np.mean(loss)
+
+    @classmethod
+    def calc_rotational_distance(cls, quat1, quat2):
+        R1 = quat_to_rotation(quat1.ravel())
+        R2 = quat_to_rotation(quat2.ravel())
+        Rel = (R1 * R2.inv()).as_rotvec()
+        return np.dot(Rel, Rel)
+
+    def CalculateLoss(self, traj1, traj2):
+        l_pos = self.CalcPositionsLoss(traj1[:,CUBE_DATA_POSITION_SLICE], traj2[:,CUBE_DATA_POSITION_SLICE])
+        l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
+        return l_pos + l_quat
 
 class LossWeights():
 

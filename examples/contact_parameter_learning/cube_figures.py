@@ -23,7 +23,7 @@ sim_colors = {'Drake' : ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
 
 paper_ids = ['drake_2021_09_11_16_44_10',
            'mujoco_2021_09_12_10_27_10', 
-           'bullet_2021_09_11_14_27_10']
+           'bullet_2021_09_12_22_00_10']
 
 # def plot_damping_ratios(ids):
 #     stiffness = []
@@ -51,7 +51,7 @@ def plot_estimated_loss_pdfs(losses):
         filename += format_sim_name(result) + '_' + result.split('_')[-1] + '_'
         i += 1
     
-    filename += '.pdf'
+    filename += '.png'
     plt.ylabel('PDF Estimate')
     plt.xlabel('$e_{q}(\hat{x}_{t}, x_{t}^{*})$')
     plt.xlim((0, 2.0))
@@ -81,7 +81,7 @@ def plot_impulses_list_of_ids(ids, traj_id):
     plt.xlabel('t (s)')
     plt.ylabel('Friction Force (N)')
     plt.legend(legend_strs)
-    ps.save_fig('ContactTangentImpulses.pdf')
+    ps.save_fig('ContactTangentImpulses.png')
     # plt.show()
 
 def make_training_loss_sensitivity_analysis(ids, params_ranges):
@@ -144,8 +144,8 @@ def make_stiffness_sensitivity_analysis_figure():
     plt.xlabel('$\mu / \mu^{*}$')
     plt.legend(legend_strs)
     plt.ylabel('Average $e_{q}$')
-    plt.ylim((0.2, 0.6))
-    ps.save_fig('StiffnessSensitivity.pdf')
+    plt.ylim((0, 0.8))
+    ps.save_fig('StiffnessSensitivity.png')
     # plt.show()
       
 
@@ -174,8 +174,37 @@ def make_friction_sensitivity_analysis_figure():
     plt.xlabel('$\mu / \mu^{*}$')
     plt.legend(legend_strs)
     plt.ylabel('Average $e_{q}$')
-    # plt.ylim((0.2, 0.6))
-    ps.save_fig('FrictionSensitivity.pdf')
+    plt.ylim((0, 0.8))
+    ps.save_fig('FrictionSensitivity.png')
+
+
+def make_damping_sensitivity_analysis_figure():
+    ids = paper_ids
+
+    mu_keys = {ids[0] : 'dissipation', ids[1] : 'damping', ids[2] : 'damping'}
+
+    params_ranges = {}
+    params = {}
+    for id in ids:
+        param, _, _ = cube_eval.load_params_and_logs(id)
+        params[id] = param
+        params_ranges[id] = sa.get_damping_range(id.split('_')[0], param[mu_keys[id]])
+    sweeps = make_training_loss_sensitivity_analysis(ids, params_ranges)
+
+    ## plotting
+    legend_strs = []
+
+    for id in ids:
+        legend_strs.append(format_sim_name(id))
+        k_opt = params[id][mu_keys[id]]
+        k_ratio = np.array(params_ranges[id][mu_keys[id]]) / k_opt
+        ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
+
+    plt.xlabel('$b / b^{*}$')
+    plt.legend(legend_strs)
+    plt.ylabel('Average $e_{q}$')
+    plt.ylim((0, 0.8))
+    ps.save_fig('DampingSensitivity.png')
     # plt.show()
 
 
@@ -235,8 +264,9 @@ def visualize_cube_initial_condition():
 
 if __name__ == '__main__':
     # make_estimated_pdf_figure()
-    make_friction_sensitivity_analysis_figure()
-    # make_stiffness_sensitivity_analysis_figure()
+    # make_friction_sensitivity_analysis_figure()
+    # make_damping_sensitivity_analysis_figure()
+    make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
     # make_contact_impulse_plot()
     # visualize_cube_initial_condition()

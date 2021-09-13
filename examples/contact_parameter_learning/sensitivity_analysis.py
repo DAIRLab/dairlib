@@ -97,7 +97,6 @@ def get_stiffness_range(sim_type, k0):
         params_range['stiffness'] = np.linspace(k0/2, k0*2, 20).tolist()
     else:
         params_range['stiffness'] = np.linspace(k0/2, k0*2, 20).tolist()
-
     return params_range
 
 def get_friction_range(sim_type, mu_0):
@@ -106,7 +105,14 @@ def get_friction_range(sim_type, mu_0):
         params_range['mu'] = np.linspace(mu_0/2, mu_0*2, 10).tolist()
     else:
         params_range['mu_tangent'] = np.linspace(mu_0/2, mu_0*2, 10).tolist()
+    return params_range
 
+def get_damping_range(sim_type, b0):
+    params_range = {}
+    if (sim_type == 'drake'):
+        params_range['dissipation'] = np.linspace(b0/2, b0*2, 10).tolist()
+    else:
+        params_range['damping'] = np.linspace(b0/2, b0*2, 10).tolist()
     return params_range
 
 

@@ -451,8 +451,10 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
   # We have to get t_slice for each trajectory, because the lengths might not be different (sometimes we disable trajectory tracking in some finite state)
-  start_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_start) < 1e-3)[0][0]
-  end_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_end) < 1e-3)[0][0]
+  t_i = max(np.min(osc_debug[osc_traj].t), t_start)
+  t_f = min(np.max(osc_debug[osc_traj].t), t_end)
+  start_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_i) < 1e-3)[0][0]
+  end_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_f) < 1e-3)[0][0]
   t_osc_debug_traj_slice = slice(start_time_idx, end_time_idx)
 
   t_array = osc_debug[osc_traj].t[t_osc_debug_traj_slice]

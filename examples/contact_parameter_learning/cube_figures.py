@@ -82,12 +82,16 @@ def plot_impulses_list_of_ids(ids, traj_id):
 
 def make_training_loss_sensitivity_analysis(ids, params_ranges):
     sweeps = {}
-    weights = FastLossWeights(pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)))
     for id in ids:
         sim_type = id.split('_')[0]
         sim = cube_eval.get_eval_sim(id)
         params, _, _ = cube_eval.load_params_and_logs(id)
         test_set = range(550)
+
+        weights = FastLossWeights(
+            pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),
+            bullet=(format_sim_name(id) == 'Bullet'))
+            
         loss_avg, loss_med = sa.get_sensitivity_analysis(
             sim, weights, params, params_ranges[id], test_set)
         sweeps[id] = {'loss_avg' : loss_avg, 

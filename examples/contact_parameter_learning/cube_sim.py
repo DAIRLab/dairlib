@@ -61,10 +61,11 @@ class CubeSim(ABC):
 class FastLossWeights():
     def __init__(self, debug=False,
                  pos=np.ones((3,)),
-                 quat=1):
+                 quat=1, bullet=False):
         self.pos = np.diag(pos)
         self.quat = quat
         self.debug = debug
+        self.bullet=bullet
 
     def CalcPositionsLoss(self, traj1, traj2):
         diff = traj1 - traj2
@@ -76,6 +77,12 @@ class FastLossWeights():
             loss[i] = self.calc_rotational_distance(traj1[i], traj2[i])
         return np.mean(loss)
 
+    def FastQuatLoss(self, traj1, traj2):
+        loss = np.zeros((traj1.shape[0],))
+        for i in range(traj1.shape[0]):
+            loss[i] = (2 * Quaternion.distance(Quaternion(traj1[i]), Quaternion(traj2[i]))) ** 2
+        return np.mean(loss)
+
     @classmethod
     def calc_rotational_distance(cls, quat1, quat2):
         R1 = quat_to_rotation(quat1.ravel())
@@ -85,7 +92,10 @@ class FastLossWeights():
 
     def CalculateLoss(self, traj1, traj2):
         l_pos = self.CalcPositionsLoss(traj1[:,CUBE_DATA_POSITION_SLICE], traj2[:,CUBE_DATA_POSITION_SLICE])
-        l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
+        if (self.bullet):
+            l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
+        else:
+            l_quat = self.FastQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
         return l_pos + l_quat
 
 class LossWeights():

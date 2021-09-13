@@ -129,7 +129,7 @@ def calc_error_between_trajectories(traj_pair):
         quat_error[i] = cube_sim.LossWeights.calc_rotational_distance(
             data_traj[i, cube_sim.CUBE_DATA_QUATERNION_SLICE], 
             sim_traj[i, cube_sim.CUBE_DATA_QUATERNION_SLICE])
-    errors['rotational_error'] = quat_error 
+    errors['rotational_error'] = quat_error * 180 / 3.14159265
 
     return errors
 
@@ -175,17 +175,30 @@ def calc_error_and_loss_stats(traj_pairs, loss_weights):
     rot_std = np.std(np.array(rot))
     loss_std = np.std(np.array(loss))
 
+    pos_med = np.median(np.array(pos))
+    vel_med = np.median(np.array(vel))
+    omega_med = np.median(np.array(omega))
+    rot_med = np.median(np.array(rot))
+    loss_med = np.median(np.array(loss))
+
+
     return {'pos_mean' : pos_mean, 
             'vel_mean' : vel_mean,
             'omega_mean' : omega_mean, 
             'rot_mean' : rot_mean,
             'mse_mean' : loss_mean, 
+            'pos_med' : pos_med, 
+            'vel_med' : vel_med,
+            'omega_med' : omega_med, 
+            'rot_med' : rot_med,
+            'mse_med' : loss_med, 
             'pos_std' : pos_std, 
             'vel_std' : vel_std,
             'omega_std' : omega_std, 
             'rot_std' : rot_std,
             'mse_std' : loss_std }
 
+    
 def sort_traj_pairs_by_loss(pairs, loss_weights):
     loss = {}
     for idx, pair in pairs.items():

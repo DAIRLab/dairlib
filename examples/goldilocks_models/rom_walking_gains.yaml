@@ -45,8 +45,8 @@ constant_turning_rate: 0
 
 # when use_radio=true, the above high level command parameters are discarded
 use_radio: false
-vel_scale_rot: -1
-vel_scale_trans_sagital: 0.25
+vel_scale_rot: 1
+vel_scale_trans_sagital: 0.4
 vel_scale_trans_lateral: -0.15
 
 

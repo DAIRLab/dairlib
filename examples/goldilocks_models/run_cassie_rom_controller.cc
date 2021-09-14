@@ -645,12 +645,23 @@ int DoMain(int argc, char* argv[]) {
                                    &right_heel_evaluator);
     }
 
+    // Gain scheduling
+    std::vector<double> breaks{0, left_support_duration / 2,
+                               left_support_duration};
+    std::vector<MatrixX<double>> samples(3, MatrixX<double>::Ones(1, 1));
+    samples[0] *= 0;
+    PiecewisePolynomial<double> gain_ratio =
+        PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
+
     // Swing foot tracking
     TransTaskSpaceTrackingData swing_foot_traj(
         "swing_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
         weight_scale * osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs);
     swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
     swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
+    //    swing_foot_traj.SetTimeVaryingGains(gain_ratio);
+    //    swing_foot_traj.DisableFeedforwardAccel({2});
+    //    swing_foot_traj.SetFeedforwardAccelRatio(gain_ratio);
     osc->AddTrackingData(&swing_foot_traj);
     // "Center of mass" tracking (Using RomTrackingData with initial ROM being
     // COM)
@@ -662,6 +673,15 @@ int DoMain(int argc, char* argv[]) {
     optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
     optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
                                     mirrored_rom);
+    std::vector<double> rom_ratio_breaks{0, left_support_duration / 2,
+                                         left_support_duration};
+    std::vector<MatrixX<double>> rom_ratio_samples(3,
+                                                   MatrixX<double>::Ones(1, 1));
+    rom_ratio_samples[0] *= 0;
+    PiecewisePolynomial<double> rom_gain_ratio =
+        PiecewisePolynomial<double>::FirstOrderHold(rom_ratio_breaks,
+                                                    rom_ratio_samples);
+    optimal_rom_traj.SetTimeVaryingGains(rom_gain_ratio);
     osc->AddTrackingData(&optimal_rom_traj);
     // Pelvis rotation tracking (pitch and roll)
     bool constant_pelvis_balance = false;
@@ -670,6 +690,15 @@ int DoMain(int argc, char* argv[]) {
         osc_gains.K_d_pelvis_balance, weight_scale * osc_gains.W_pelvis_balance,
         plant_w_spr, plant_wo_springs);
     pelvis_balance_traj.AddFrameToTrack("pelvis");
+    std::vector<double> balance_ratio_breaks{0, left_support_duration / 2,
+                                             left_support_duration};
+    std::vector<MatrixX<double>> balance_ratio_samples(
+        3, MatrixX<double>::Ones(1, 1));
+    balance_ratio_samples[0] *= 0.5;
+    PiecewisePolynomial<double> balance_gain_ratio =
+        PiecewisePolynomial<double>::FirstOrderHold(balance_ratio_breaks,
+                                                    balance_ratio_samples);
+    pelvis_balance_traj.SetTimeVaryingGains(balance_gain_ratio);
     if (constant_pelvis_balance) {
       VectorXd pelvis_desired_quat(4);
       pelvis_desired_quat << 1, 0, 0, 0;
@@ -683,13 +712,7 @@ int DoMain(int argc, char* argv[]) {
         osc_gains.K_d_pelvis_heading, weight_scale * osc_gains.W_pelvis_heading,
         plant_w_spr, plant_wo_springs);
     pelvis_heading_traj.AddFrameToTrack("pelvis");
-    std::vector<double> breaks{0, left_support_duration / 2,
-                               left_support_duration};
-    std::vector<MatrixX<double>> samples(3, MatrixX<double>::Ones(1, 1));
-    samples[0] *= 0;
-    PiecewisePolynomial<double> ratio_traj =
-        PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
-    pelvis_heading_traj.SetTimeVaryingGains(ratio_traj);
+    pelvis_heading_traj.SetTimeVaryingGains(gain_ratio);
     osc->AddTrackingData(&pelvis_heading_traj,
                          osc_gains.period_of_no_heading_control);
     // Swing toe joint tracking
@@ -714,6 +737,7 @@ int DoMain(int argc, char* argv[]) {
         left_stance_state, "hip_yaw_right", "hip_yaw_rightdot");
     swing_hip_yaw_traj.AddStateAndJointToTrack(
         right_stance_state, "hip_yaw_left", "hip_yaw_leftdot");
+    swing_hip_yaw_traj.SetTimeVaryingGains(gain_ratio);
     osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
     // Build OSC problem
     osc->Build();

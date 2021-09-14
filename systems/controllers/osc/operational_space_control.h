@@ -358,6 +358,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Testing
   std::vector<int> knee_ankle_pos_idx_list_;
   std::vector<int> knee_ankle_vel_idx_list_;
+
+  // Testing -- translating knee spring deflection to knee joint
+  bool two_models_;
+  std::vector<int> knee_ankle_pos_idx_list_wo_spr_;
+  std::vector<int> spring_pos_idx_list_w_spr_;
 };
 
 }  // namespace dairlib::systems::controllers

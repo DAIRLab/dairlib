@@ -167,6 +167,24 @@ OperationalSpaceControl::OperationalSpaceControl(
                               vel_map_w_spr.at("knee_joint_rightdot"),
                               vel_map_w_spr.at("ankle_spring_joint_leftdot"),
                               vel_map_w_spr.at("ankle_spring_joint_rightdot")};*/
+
+  // Testing -- translating knee spring deflection to knee joint
+  two_models_ = (plant_w_spr.num_positions() == 23) &&
+                (plant_wo_spr.num_positions() == 19);
+  if (two_models_) {
+    const std::map<string, int>& pos_map_w_spr =
+        multibody::makeNameToPositionsMap(plant_w_spr);
+    const std::map<string, int>& pos_map_wo_spr =
+        multibody::makeNameToPositionsMap(plant_wo_spr);
+    knee_ankle_pos_idx_list_wo_spr_ = {pos_map_wo_spr.at("knee_left"),
+                                       pos_map_wo_spr.at("knee_right"),
+                                       pos_map_wo_spr.at("ankle_joint_left"),
+                                       pos_map_wo_spr.at("ankle_joint_right")};
+    spring_pos_idx_list_w_spr_ = {pos_map_w_spr.at("knee_joint_left"),
+                                  pos_map_w_spr.at("knee_joint_right"),
+                                  pos_map_w_spr.at("ankle_spring_joint_left"),
+                                  pos_map_w_spr.at("ankle_spring_joint_right")};
+  }
 }
 
 // Cost methods
@@ -1002,6 +1020,15 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd x_wo_spr(n_q_ + n_v_);
   x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
       map_velocity_from_spring_to_no_spring_ * v_w_spr;
+
+  // Testing -- translating the knee spring to knee joint
+  /*if (two_models_) {
+    x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[0]) +=
+        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
+    x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[1]) +=
+        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
+    // TODO: also do this for velocity?
+  }*/
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {

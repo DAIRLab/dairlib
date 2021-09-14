@@ -81,7 +81,6 @@ class FastLossWeights():
                                       [traj2[i][1], traj2[i][2], traj2[i][3], traj2[i][0]])
             theta = 2 * np.arctan2(np.linalg.norm(q1[0:3]), q1[-1])
             loss[i] = theta ** 2
-            print(loss[i])
         return np.mean(loss)
 
     def CalculateLoss(self, traj1, traj2):

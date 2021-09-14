@@ -15,7 +15,7 @@ import sensitivity_analysis as sa
 from pydairlib.common.plot_styler import PlotStyler
 
 
-figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/testing')
+figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/')
 
 ps = PlotStyler()
 ps.set_default_styling(directory=figure_directory, figsize=(10,6))
@@ -24,7 +24,7 @@ sim_colors = {'Drake' : ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
 
 paper_ids = ['drake_2021_09_11_16_44_10',
             'mujoco_2021_09_12_10_27_10', 
-           'bullet_2021_09_12_22_00_10']
+           'bullet_2021_09_13_23_26_10']
 
 # def plot_damping_ratios(ids):
 #     stiffness = []
@@ -43,11 +43,12 @@ def plot_estimated_loss_pdfs(losses):
     i = 0
     legend_strs = []
     filename = ''
+    styles = ['-', '-', '--']
     for result in training_results:
         loss = np.array(list(losses[result].values()))
-        pts = np.linspace(np.min(loss), np.max(loss), 10)
+        pts = np.linspace(np.min(loss), np.max(loss), 100)
         pdf = gaussian_kde(loss).pdf(pts)
-        ps.plot(pts, pdf, color=ps.penn_color_wheel[i])
+        ps.plot(pts, pdf, linestyle=styles[i], color=ps.penn_color_wheel[i])
         legend_strs.append(format_sim_name(result))# + ' $T_{sim}$ = ' + str(148 * int(result.split('_')[-1])) + ' Hz')
         filename += format_sim_name(result) + '_' + result.split('_')[-1] + '_'
         i += 1
@@ -91,7 +92,7 @@ def make_training_loss_sensitivity_analysis(ids, params_ranges):
         sim_type = id.split('_')[0]
         sim = cube_eval.get_eval_sim(id)
         params, _, _ = cube_eval.load_params_and_logs(id)
-        test_set = sample(range(550), 100)
+        test_set = range(550)
 
         weights = FastLossWeights(
             pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),
@@ -143,7 +144,7 @@ def make_stiffness_sensitivity_analysis_figure():
         k_ratio = np.array(params_ranges[id]['stiffness']) / k_opt
         ps.plot(k_ratio, sweeps[id]['loss_avg']['stiffness'], color=sim_colors[format_sim_name(id)])
 
-    plt.xlabel('k / k^{*}$')
+    plt.xlabel('$k / k^{*}$')
     plt.xscale('log')
     plt.legend(legend_strs)
     plt.ylabel('Average $e_{q}$')
@@ -175,7 +176,6 @@ def make_friction_sensitivity_analysis_figure():
         ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
 
     plt.xlabel('$\mu / \mu^{*}$')
-    plt.xscale('log')
     plt.legend(legend_strs)
     # plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))
@@ -254,7 +254,7 @@ def make_estimated_pdf_figure():
 
 def make_contact_impulse_plot():
     ids = paper_ids
-    traj_id  = 361
+    traj_id  = 259
     plot_impulses_list_of_ids(ids, traj_id)
 
 def visualize_cube_initial_condition():
@@ -268,10 +268,10 @@ def visualize_cube_initial_condition():
     sim.sim_step(CUBE_DATA_DT)
 
 if __name__ == '__main__':
-    # make_estimated_pdf_figure()
-    # make_friction_sensitivity_analysis_figure()
+    make_estimated_pdf_figure()
+    make_friction_sensitivity_analysis_figure()
     make_damping_sensitivity_analysis_figure()
-    # make_stiffness_sensitivity_analysis_figure()
+    make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
-    # make_contact_impulse_plot()
+    make_contact_impulse_plot()
     # visualize_cube_initial_condition()

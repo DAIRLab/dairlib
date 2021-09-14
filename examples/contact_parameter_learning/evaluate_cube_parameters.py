@@ -321,7 +321,7 @@ if (__name__ == '__main__'):
 
     ids = ['mujoco_2021_09_12_10_27_10', 
            'drake_2021_09_11_16_44_10',
-           'bullet_2021_09_12_22_00_10']
+           'bullet_2021_09_13_23_26_10']
 
     # ids = ['mujoco_2021_08_31_11_03_1',
     #        'mujoco_2021_08_31_12_05_10',
@@ -335,23 +335,23 @@ if (__name__ == '__main__'):
     #        'bullet_2021_08_31_12_16_10', 
     #        'bullet_2021_08_31_16_55_100']
 
-    # sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
+    sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
 
-    # worst_case_set, worst_case_by_id = compare_worst_case(losses)
-    # print()
-    # for i in range(3):
-    #     comp = list_complement([0, 1, 2], [i])
+    worst_case_set, worst_case_by_id = compare_worst_case(losses)
+    print()
+    for i in range(3):
+        comp = list_complement([0, 1, 2], [i])
 
-    #     fails = list_complement(list_complement(worst_case_set,
-    #         worst_case_by_id[ids[comp[0]]]), worst_case_by_id[ids[comp[1]]])
+        fails = list_complement(list_complement(worst_case_set,
+            worst_case_by_id[ids[comp[0]]]), worst_case_by_id[ids[comp[1]]])
         
-    #     print(f'{format_sim_name(ids[i])} does poorly on:')
-    #     for toss_id in fails:
-    #         print(f'{toss_id}: {losses[ids[i]][toss_id]}, \
-    #             {format_sim_name(ids[comp[0]])}: {losses[ids[comp[0]]][toss_id]}, \
-    #                  {format_sim_name(ids[comp[1]])}: {losses[ids[comp[1]]][toss_id]}')
+        print(f'{format_sim_name(ids[i])} does poorly on:')
+        for toss_id in fails:
+            print(f'{toss_id}: {losses[ids[i]][toss_id]}, \
+                {format_sim_name(ids[comp[0]])}: {losses[ids[comp[0]]][toss_id]}, \
+                     {format_sim_name(ids[comp[1]])}: {losses[ids[comp[1]]][toss_id]}')
 
-    #     print()
+        print()
 
     # visualize_learned_params(params[ids[0]], sims[ids[0]], 69)
 
@@ -368,17 +368,17 @@ if (__name__ == '__main__'):
 # # 
 #     eval_sim = get_eval_sim(learning_result)
 #     if (eval_sim == None): quit()
-    for id in ids:
-        params, _, _ = load_params_and_logs(id)
-        eval_sim = get_eval_sim(id)
-        traj_pairs = load_traj_pairs(eval_sim, params, range(550))
-        weights=cube_sim.FastLossWeights(
-            pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
-             bullet=(format_sim_name(id) == 'Bullet'))
-        stats = calc_error_and_loss_stats(traj_pairs, weights)
-        print()
-        print(id) 
-        print(stats)
+    # for id in ids:
+    #     params, _, _ = load_params_and_logs(id)
+    #     eval_sim = get_eval_sim(id)
+    #     traj_pairs = load_traj_pairs(eval_sim, params, range(550))
+    #     weights=cube_sim.FastLossWeights(
+    #         pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
+    #          bullet=(format_sim_name(id) == 'Bullet'))
+    #     stats = calc_error_and_loss_stats(traj_pairs, weights)
+    #     print()
+    #     print(id) 
+    #     print(stats)
 
 #     sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, pos_rot_loss)
 #     print('Test set sorted from highest to lowest MSE')

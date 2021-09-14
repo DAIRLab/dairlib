@@ -22,6 +22,7 @@ class BulletCubeSim(CubeSim):
         self.substeps = substeps
 
     def init_sim(self, params):
+        p.resetSimulation(physicsClientId=self.client_id)
         p.setGravity(0,0,-9.81, physicsClientId=self.client_id)
         self.cube_id = p.loadURDF(cube_urdf_path, physicsClientId=self.client_id)
         self.plane_id = p.loadURDF(plane_urdf_path, useFixedBase=True,
@@ -35,7 +36,7 @@ class BulletCubeSim(CubeSim):
         p.setTimeStep(CUBE_DATA_DT / self.substeps, physicsClientId=self.client_id)
         
     def set_initial_condition(self, state):
-
+        
         initial_state = self.reexpress_state_local_to_global_omega(state)
 
         q = initial_state[CUBE_DATA_QUATERNION_SLICE]

@@ -1,6 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "plotters",
+    deps = [
+        "//bindings/pydairlib:log_plotter_cassie",
+        "//examples/goldilocks_models/find_models:dircon_traj_plotter",
+        "//examples/goldilocks_models/find_models:visualize_gait_MBP",
+        "//examples/goldilocks_models/planning:rom_trajopt_plotter",
+        "//examples/goldilocks_models/planning/visualization:visualize_FoM_pose_MBP",
+    ],
+)
+
+cc_library(
     name = "rom_control_real_robot",
     deps = [
         ":rom_control",

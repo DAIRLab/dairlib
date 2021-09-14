@@ -103,6 +103,7 @@ def main():
   Testing
   """
   com_vec, comdot_vec, comdot_end = PlotCOM(rom_traj)
+  # PlotFeet(rom_traj, True)
   feet_pos_vec, feet_vel_vec, feet_vel_end = PlotFeet(rom_traj)
   PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end, feet_pos_vec,
     feet_vel_vec, feet_vel_end, True)
@@ -165,7 +166,9 @@ def PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end,
   plt.legend(['x', 'y', 'z'])
 
 
-def PlotFeet(rom_traj):
+def PlotFeet(rom_traj, toe_center = False):
+  disp = np.array((0, 0, 0)) if toe_center else mid_contact_disp
+
   n_mode = rom_traj.GetNumModes()
   vars = rom_traj.GetTrajectory("decision_vars")
 
@@ -184,11 +187,10 @@ def PlotFeet(rom_traj):
   for k in range(2):
     for i in range(n_mode):
       feet_pos_vec[k][i][0], feet_vel_vec[k][i][0] = CalcPointPosAndVel(
-        x0[:, i], toe_frames[k], mid_contact_disp)
+        x0[:, i], toe_frames[k], disp)
       feet_pos_vec[k][i][1], feet_vel_vec[k][i][1] = CalcPointPosAndVel(
-        xf[:, i], toe_frames[k], mid_contact_disp)
-    _, feet_vel_end[k] = CalcPointPosAndVel(x0[:, n_mode], toe_frames[k],
-      mid_contact_disp)
+        xf[:, i], toe_frames[k], disp)
+    _, feet_vel_end[k] = CalcPointPosAndVel(x0[:, n_mode], toe_frames[k], disp)
 
     palette = ['r', 'b', 'g']
     figname = "Full model: " + names[k] + " foot pos"

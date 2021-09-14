@@ -105,8 +105,11 @@ class OscTrackingData {
   // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
   //  finite state
   void SetTimeVaryingGains(
-      const drake::trajectories::Trajectory<double>& ratio_traj);
-  const drake::trajectories::Trajectory<double>* ratio_traj_ = nullptr;
+      const drake::trajectories::Trajectory<double>& gain_ratio);
+  const drake::trajectories::Trajectory<double>* gain_ratio_ = nullptr;
+  void SetFeedforwardAccelRatio(
+      const drake::trajectories::Trajectory<double>& ff_accel_ratio);
+  const drake::trajectories::Trajectory<double>* ff_accel_ratio_ = nullptr;
 
   // Getters for debugging
   const Eigen::VectorXd& GetY() const { return y_; }

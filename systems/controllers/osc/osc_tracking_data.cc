@@ -81,6 +81,10 @@ bool OscTrackingData::Update(
     for (auto idx : idx_zero_feedforward_accel_) {
       yddot_des_converted_(idx) = 0;
     }
+    if (ff_accel_ratio_ != nullptr) {
+      yddot_des_converted_ *=
+          ff_accel_ratio_->value(t_since_last_state_switch)(0, 0);
+    }
 
     // Update feedback output (Calling virtual methods)
     if (use_only_plant_wo_spr_in_evaluation_) {
@@ -106,8 +110,8 @@ bool OscTrackingData::Update(
     }
 
     double gain_ratio = 1;
-    if (ratio_traj_ != nullptr) {
-      gain_ratio = ratio_traj_->value(t_since_last_state_switch)(0, 0);
+    if (gain_ratio_ != nullptr) {
+      gain_ratio = gain_ratio_->value(t_since_last_state_switch)(0, 0);
     }
 
     // Update command output (desired output with pd control)
@@ -130,12 +134,20 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
 }
 
 void OscTrackingData::SetTimeVaryingGains(
-    const drake::trajectories::Trajectory<double>& ratio_traj) {
-  DRAKE_DEMAND(ratio_traj.cols() == 1);
-  DRAKE_DEMAND(ratio_traj.rows() == 1);
-  DRAKE_DEMAND(ratio_traj.start_time() == 0);
-  //  DRAKE_DEMAND(ratio_traj.end_time() == );
-  ratio_traj_ = &ratio_traj;
+    const drake::trajectories::Trajectory<double>& gain_ratio) {
+  DRAKE_DEMAND(gain_ratio.cols() == 1);
+  DRAKE_DEMAND(gain_ratio.rows() == 1);
+  DRAKE_DEMAND(gain_ratio.start_time() == 0);
+  //  DRAKE_DEMAND(gain_ratio.end_time() == );
+  gain_ratio_ = &gain_ratio;
+}
+void OscTrackingData::SetFeedforwardAccelRatio(
+    const drake::trajectories::Trajectory<double>& ff_accel_ratio) {
+  DRAKE_DEMAND(ff_accel_ratio.cols() == 1);
+  DRAKE_DEMAND(ff_accel_ratio.rows() == 1);
+  DRAKE_DEMAND(ff_accel_ratio.start_time() == 0);
+  //  DRAKE_DEMAND(ff_accel_ratio.end_time() == );
+  ff_accel_ratio_ = &ff_accel_ratio;
 }
 
 void OscTrackingData::SetLowPassFilter(double tau,

@@ -70,8 +70,8 @@ DEFINE_double(sl_min, 0.25, "min stride length");
 DEFINE_double(sl_max, 0.25, "max stride length");
 DEFINE_double(gi_min, 0, "min ground incline");
 DEFINE_double(gi_max, 0, "max ground incline");
-DEFINE_double(du_min, 0.4, "min stride duration");
-DEFINE_double(du_max, 0.4, "max stride duration");
+DEFINE_double(du_min, 0.35, "min stride duration");
+DEFINE_double(du_max, 0.35, "max stride duration");
 DEFINE_double(tr_min, 0, "min turning rate");
 DEFINE_double(tr_max, 0, "max turning rate");
 DEFINE_double(ph_min, 0.8, "min pelvis height");
@@ -1519,7 +1519,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
            "pelvis_height"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph},
-          {0, 0, 0.4, FLAGS_turning_rate_center, 0.8},
+          {0, 0, 0.35, FLAGS_turning_rate_center, 0.8},
           {0.03, 0.05, 0.05, 0.125, 0.1},
           {(FLAGS_N_sample_sl > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_gi > 1) && FLAGS_is_stochastic,

@@ -659,10 +659,10 @@ void InitialStateForPlanner::AdjustKneeAndAnklePos(
     // no deflection). In RomOscTrackingData, we map state with springs to state
     // without springs by removing the spring joints.If we don't do this, there
     // will be tracking error in x in OSC, and it will keep moving forward.
-    //    x_init->segment<1>(knee_ankle_pos_idx_list_[0]) +=
-    //        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
-    //    x_init->segment<1>(knee_ankle_pos_idx_list_[1]) +=
-    //        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
+    x_init->segment<1>(knee_ankle_pos_idx_list_[0]) +=
+        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
+    x_init->segment<1>(knee_ankle_pos_idx_list_[1]) +=
+        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
 
     // We don't need to translate ankle joint because it doesn't affect the
     // forward kinematics

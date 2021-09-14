@@ -28,9 +28,11 @@ def get_input_channel_name(log):
     elif event.channel == "CASSIE_INPUT":
       controller_channel_name = "CASSIE_INPUT"
       break
-    elif event.channel == "OSC_STANDING":
-      controller_channel_name = "OSC_STANDING"
-      break
+  if controller_channel_name == "":
+    for event in log:
+      if event.channel == "OSC_STANDING":
+        controller_channel_name = "OSC_STANDING"
+        break
   if controller_channel_name == "":
     raise ValueError("Didn't find controller channel name")
   return controller_channel_name

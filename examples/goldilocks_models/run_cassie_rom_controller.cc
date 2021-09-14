@@ -683,6 +683,13 @@ int DoMain(int argc, char* argv[]) {
         osc_gains.K_d_pelvis_heading, weight_scale * osc_gains.W_pelvis_heading,
         plant_w_spr, plant_wo_springs);
     pelvis_heading_traj.AddFrameToTrack("pelvis");
+    std::vector<double> breaks{0, left_support_duration / 2,
+                               left_support_duration};
+    std::vector<MatrixX<double>> samples(3, MatrixX<double>::Ones(1, 1));
+    samples[0] *= 0;
+    PiecewisePolynomial<double> ratio_traj =
+        PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
+    pelvis_heading_traj.SetTimeVaryingGains(ratio_traj);
     osc->AddTrackingData(&pelvis_heading_traj,
                          osc_gains.period_of_no_heading_control);
     // Swing toe joint tracking

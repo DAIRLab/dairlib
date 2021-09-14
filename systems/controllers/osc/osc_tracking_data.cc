@@ -56,7 +56,8 @@ bool OscTrackingData::Update(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
-    int finite_state_machine_state, const Eigen::VectorXd& v_proj) {
+    double t_since_last_state_switch, int finite_state_machine_state,
+    const Eigen::VectorXd& v_proj) {
   // Update track_at_current_state_
   UpdateTrackingFlag(finite_state_machine_state);
 
@@ -104,9 +105,14 @@ bool OscTrackingData::Update(
       error_ydot_ -= GetJ() * v_proj;
     }
 
+    double gain_ratio = 1;
+    if (ratio_traj_ != nullptr) {
+      gain_ratio = ratio_traj_->value(t_since_last_state_switch)(0, 0);
+    }
+
     // Update command output (desired output with pd control)
-    yddot_command_ =
-        yddot_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_ydot_);
+    yddot_command_ = yddot_des_converted_ +
+                     gain_ratio * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
   }
   return track_at_current_state_;
 }
@@ -121,6 +127,15 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
   auto it = find(state_.begin(), state_.end(), finite_state_machine_state);
   state_idx_ = std::distance(state_.begin(), it);
   track_at_current_state_ = it != state_.end();
+}
+
+void OscTrackingData::SetTimeVaryingGains(
+    const drake::trajectories::Trajectory<double>& ratio_traj) {
+  DRAKE_DEMAND(ratio_traj.cols() == 1);
+  DRAKE_DEMAND(ratio_traj.rows() == 1);
+  DRAKE_DEMAND(ratio_traj.start_time() == 0);
+  //  DRAKE_DEMAND(ratio_traj.end_time() == );
+  ratio_traj_ = &ratio_traj;
 }
 
 void OscTrackingData::SetLowPassFilter(double tau,

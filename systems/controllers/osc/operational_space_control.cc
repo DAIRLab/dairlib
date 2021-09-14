@@ -647,7 +647,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   bool near_impact = alpha != 0;
   VectorXd v_proj = VectorXd::Zero(n_v_);
   if (near_impact) {
-    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t, fsm_state,
+    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
+                                    time_since_last_state_switch, fsm_state,
                                     next_fsm_state, M, J_h);
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
@@ -664,8 +665,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       // Create constant trajectory and update
       tracking_data->Update(
           x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
-          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state,
-          v_proj);
+          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
+          time_since_last_state_switch, fsm_state, v_proj);
     } else {
       // Read in traj from input port
       const string& traj_name = tracking_data->GetName();
@@ -677,7 +678,8 @@ VectorXd OperationalSpaceControl::SolveQp(
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, traj, t, fsm_state, v_proj);
+                            *context_wo_spr_, traj, t,
+                            time_since_last_state_switch, fsm_state, v_proj);
     }
     if (tracking_data->IsActive() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
@@ -837,8 +839,9 @@ VectorXd OperationalSpaceControl::SolveQp(
 }
 void OperationalSpaceControl::UpdateImpactInvariantProjection(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
-    const Context<double>& context, double t, int fsm_state, int next_fsm_state,
-    const MatrixXd& M, const MatrixXd& J_h) const {
+    const Context<double>& context, double t, double t_since_last_state_switch,
+    int fsm_state, int next_fsm_state, const MatrixXd& M,
+    const MatrixXd& J_h) const {
   auto map_iterator = contact_indices_map_.find(next_fsm_state);
   if (map_iterator == contact_indices_map_.end()) {
     throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
@@ -874,7 +877,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         tracking_data->Update(
             x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            fsm_state, v_proj);
+            t_since_last_state_switch, fsm_state, v_proj);
       } else {
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
@@ -884,7 +887,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                              *context_wo_spr_, traj, t, fsm_state, v_proj);
+                              *context_wo_spr_, traj, t,
+                              t_since_last_state_switch, fsm_state, v_proj);
       }
     }
   }

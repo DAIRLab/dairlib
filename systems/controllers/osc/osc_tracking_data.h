@@ -97,9 +97,16 @@ class OscTrackingData {
               const Eigen::VectorXd& x_wo_spr,
               const drake::systems::Context<double>& context_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
-              int finite_state_machine_state, const Eigen::VectorXd& v_proj);
+              double t_since_last_state_switch, int finite_state_machine_state,
+              const Eigen::VectorXd& v_proj);
 
   void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});
+
+  // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
+  //  finite state
+  void SetTimeVaryingGains(
+      const drake::trajectories::Trajectory<double>& ratio_traj);
+  const drake::trajectories::Trajectory<double>* ratio_traj_ = nullptr;
 
   // Getters for debugging
   const Eigen::VectorXd& GetY() const { return y_; }

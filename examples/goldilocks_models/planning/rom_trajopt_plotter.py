@@ -30,6 +30,7 @@ def main():
     filename = FindResourceOrThrow(
       '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
 
+  print("log file name = " + filename)
   rom_traj = pydairlib.lcm.lcm_trajectory.RomPlannerTrajectory(filename)
 
   # For saving figures

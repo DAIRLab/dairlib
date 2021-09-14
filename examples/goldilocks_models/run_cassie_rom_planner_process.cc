@@ -103,6 +103,7 @@ DEFINE_bool(run_one_loop_to_get_init_file, false, "");
 DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
 DEFINE_int32(solve_idx_for_read_from_file, -1,
              "Files index for input port values");
+DEFINE_string(dir_data, "", "data directory; for convenience when testing");
 
 // LCM channels (non debug mode)
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -203,9 +204,11 @@ int DoMain(int argc, char* argv[]) {
           "Too many data folders! Delete some or increase the limit.");
     }
   }*/
-  cout << "data directory = " << gains.dir_data << endl;
+
+  if (!FLAGS_dir_data.empty()) gains.dir_data = FLAGS_dir_data;
 
   // Create data folder if it doesn't exist
+  cout << "data directory = " << gains.dir_data << endl;
   if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
 
   // Parameters for the traj opt

@@ -3,6 +3,7 @@ matplotlib.use('Agg')
 from cube_sim import CUBE_DATA_DT, CubeSim, BLOCK_HALF_WIDTH, FastLossWeights, load_cube_toss, make_cube_toss_filename
 import drake_cube_sim
 from json import load
+from random import sample
 import evaluate_cube_parameters as cube_eval
 import os
 import glob
@@ -14,7 +15,7 @@ import sensitivity_analysis as sa
 from pydairlib.common.plot_styler import PlotStyler
 
 
-figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/')
+figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/testing')
 
 ps = PlotStyler()
 ps.set_default_styling(directory=figure_directory, figsize=(10,6))
@@ -44,7 +45,7 @@ def plot_estimated_loss_pdfs(losses):
     filename = ''
     for result in training_results:
         loss = np.array(list(losses[result].values()))
-        pts = np.linspace(np.min(loss), np.max(loss), 100)
+        pts = np.linspace(np.min(loss), np.max(loss), 10)
         pdf = gaussian_kde(loss).pdf(pts)
         ps.plot(pts, pdf, color=ps.penn_color_wheel[i])
         legend_strs.append(format_sim_name(result))# + ' $T_{sim}$ = ' + str(148 * int(result.split('_')[-1])) + ' Hz')
@@ -90,7 +91,7 @@ def make_training_loss_sensitivity_analysis(ids, params_ranges):
         sim_type = id.split('_')[0]
         sim = cube_eval.get_eval_sim(id)
         params, _, _ = cube_eval.load_params_and_logs(id)
-        test_set = range(550)
+        test_set = sample(range(550), 100)
 
         weights = FastLossWeights(
             pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),

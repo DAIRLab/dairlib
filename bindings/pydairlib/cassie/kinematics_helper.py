@@ -126,7 +126,9 @@ class KinematicsHelper():
     pelvis_vel_rel = np.zeros(2)
     pelvis_vel_rel[0] = np.linalg.norm(pelvis_vel[0:2] - foot_vel_average[0:2])
     pelvis_vel_rel[1] = pelvis_vel[2] - foot_vel_average[2]
-    return pelvis_pos - foot_pos_average, pelvis_vel - 0.5 * (l_rear_vel + r_rear_vel)
+    # return pelvis_pos - foot_pos_average, pelvis_vel - 0.5 * (l_rear_vel + r_rear_vel)
+    return pelvis_pos - foot_pos_average, pelvis_vel - foot_vel_average
+    # return pelvis_pos - foot_pos_average, pelvis_vel
     # return pelvis_pos - foot_pos_average, pelvis_vel_rel
 
   def compute_rigid_impact_map(self, state):
@@ -157,7 +159,6 @@ class KinematicsHelper():
     I = np.eye(self.nv)
     JMJ_inv = np.linalg.inv(J @ M_inv @ J.T)
     v_post = (I - M_inv @ J.T @ JMJ_inv @ J) @ state[-self.nv:]
-    # import pdb; pdb.set_trace()
     return np.hstack((state[:self.nq], v_post))
 
   def load_maps(self):

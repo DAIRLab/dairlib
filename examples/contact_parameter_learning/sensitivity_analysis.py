@@ -7,8 +7,8 @@ from evaluate_cube_parameters import calc_error_between_trajectories, \
 from copy import deepcopy
 from math import pi
 import cube_sim
-# import drake_cassie_sim
-# import mujoco_cassie_sim
+import drake_cassie_sim
+import mujoco_cassie_sim
 
 
 def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params_range, traj_set):
@@ -142,8 +142,8 @@ def get_cassie_params_range(sim_type):
         # params_range['dissipation'] = np.linspace(0, 5.0, num=50).tolist()
 
         # Below are the "true" ranges
-        params_range['mu'] = np.linspace(0.01, 0.5, num=50).tolist()
-        params_range['stiffness'] = np.linspace(1000.0, 50000.0, num=50).tolist()
+        params_range['mu'] = np.linspace(0.0, 0.5, num=50).tolist()
+        params_range['stiffness'] = np.linspace(500.0, 50000.0, num=50).tolist()
         params_range['dissipation'] = np.linspace(0, 5.0, num=50).tolist()
         return params_range
     elif (sim_type == 'mujoco'):
@@ -151,11 +151,14 @@ def get_cassie_params_range(sim_type):
         # params_range['stiffness'] = np.arange(10000, 100000, 1000.0).tolist()
         # params_range['damping'] = np.arange(0, 500, 50).tolist()
         # params_range['mu_tangent'] = np.linspace(0.05, 0.5, num=50).tolist()
-        params_range['mu_tangent'] = np.linspace(0.01, 0.5, num=50).tolist()
-        params_range['stiffness'] = np.linspace(1000.0, 50000.0, num=50).tolist()
-        params_range['damping'] = np.linspace(0, 500, num=50).tolist()
+        params_range['stiffness'] = np.linspace(000.0, 50000.0, num=50).tolist()
         # params_range['mu_torsion'] = np.logspace(-3, 0, 10).tolist()
         # params_range['mu_rolling'] = np.logspace(-6, -2, 10).tolist()
+
+        # range used for final plots
+        params_range['mu_tangent'] = np.linspace(0.0, 0.5, num=50).tolist()
+        # params_range['stiffness'] = np.linspace(1000.0, 50000.0, num=50).tolist()
+        params_range['damping'] = np.linspace(0, 500, num=50).tolist()
     else:
         print('Unknown simulator')
 
@@ -192,6 +195,13 @@ def get_cassie_sim(result_id):
     else:
         eval_sim = None
     return eval_sim
+
+def load_cassie_params(result_id):
+    sim_type = result_id.split('_')[0]
+    eval_sim = get_cassie_sim(result_id)
+    if (eval_sim == None): quit()
+    params = eval_sim.load_params(result_id).value
+    return params
 
 def cassie_sensitivity_analysis_main(optimal_param_file):
     sim_type = optimal_param_file.split('_')[0]

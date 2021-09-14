@@ -113,12 +113,15 @@ def visualize_loop_closures():
 
   # sim.visualize_IK_lower(x_init)
   # sim.visualize_IK_upper(x_init)
+  x_init[13] -= 0.3
+  # x_init[15] += 0.5
+  x_init[17] += 0.3
   sim.visualize_entire_leg(x_init)
   # sim.visualize_IK_upper(x_mujoco_default)
 
 if __name__ == '__main__':
   # test_default()
-  test_playback()
+  # test_playback()
   # test_from_feb_26()
-  # visualize_loop_closures()
+  visualize_loop_closures()
   # test_initial_state()

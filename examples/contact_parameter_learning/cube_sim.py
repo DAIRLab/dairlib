@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pickle
 from pyquaternion import Quaternion
 import pybullet as p
-import quaternionic
+# import quaternionic
 from math import pi
 
 CUBE_DATA_DT = 1.0/148.0

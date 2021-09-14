@@ -147,9 +147,9 @@ class LearningMujocoCassieSim():
     np.save(self.sim_data_folder + 't_x_' + log_num, t_x)
 
     self.iter_num += 1
-    if not self.iter_num % 22:
+    # if not self.iter_num % 22:
       # print("sim_run: " + str(self.iter_num))
-      print("iter: " + str(self.iter_num / 22))
+      # print("iter: " + str(self.iter_num / 22))
 
     return log_num
 

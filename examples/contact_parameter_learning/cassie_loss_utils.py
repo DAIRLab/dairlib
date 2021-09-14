@@ -3,6 +3,8 @@ import pickle
 from scipy.spatial.transform import Rotation as R
 from pydairlib.common import FindResourceOrThrow
 from scipy.integrate import trapezoid, simpson
+from pyquaternion import Quaternion
+
 
 LOSS_WEIGHTS_FOLDER = 'examples/contact_parameter_learning/cassie_loss_weights/'
 
@@ -73,12 +75,10 @@ class CassieLoss():
     return np.dot(diff.ravel(), (diff @ self.weights.omega).ravel()) / traj1.shape[0]
 
   def CalcQuatLoss(self, traj1, traj2):
-    loss = 0
+    loss = np.zeros((traj1.shape[0],))
     for i in range(traj1.shape[0]):
-      quat_diff = self.calc_rotational_distance(traj1[i], traj2[i])
-      loss += quat_diff
-    loss *= self.weights.quat / traj1.shape[0]
-    return loss
+      loss[i] = (2 * Quaternion.distance(Quaternion(traj1[i]), Quaternion(traj2[i]))) ** 2
+    return np.mean(loss)
 
   def CalculateLossTraj(self, traj1, traj2):
     l_pos = self.CalcPositionsLoss(traj1[:, self.position_slice], traj2[:, self.position_slice])
@@ -111,10 +111,10 @@ class CassieLoss():
       total_impulse_error += self.weights.impulse_weight * impulse_errors[foot].T @ impulse_errors[foot]
     return total_impulse_error
 
-  def calc_rotational_distance(self, quat1, quat2):
-    q1 = quat1.ravel()
-    q2 = quat2.ravel()
-    R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
-    R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
-    Rel = R1 * R2.inv()
-    return np.linalg.norm(Rel.as_rotvec()) ** 2
+  # def calc_rotational_distance(self, quat1, quat2):
+  #   q1 = quat1.ravel()
+  #   q2 = quat2.ravel()
+  #   R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
+  #   R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
+  #   Rel = R1 * R2.inv()
+  #   return np.linalg.norm(Rel.as_rotvec()) ** 2

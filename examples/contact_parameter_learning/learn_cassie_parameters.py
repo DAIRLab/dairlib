@@ -23,7 +23,8 @@ stiffness_over_time = []
 params_over_time = []
 log_num = 'training'
 # budget = 2500
-budget = 1500
+# budget = 1500
+budget = 1000
 # budget = 5000
 # budget = 5000
 # budget = 25000
@@ -31,7 +32,7 @@ budget = 1500
 # batch_size = 22
 all_logs = drake_sim.log_nums_real
 batch_size = len(all_logs)
-num_train = int(0.9 * len(all_logs))
+num_train = int(0.8 * len(all_logs))
 training_idxs = sample(all_logs, num_train)
 test_idxs = [idx for idx in all_logs if not (idx in training_idxs)]
 
@@ -57,13 +58,14 @@ def get_drake_loss(params, log_num=None, plot=False):
 def get_drake_loss_mp(params):
   loss_sum = 0
   # for i in range(batch_size):
-  for i in all_logs:
+  for i in training_idxs:
     loss_sum += get_drake_loss(params, i)
-  print(loss_sum / batch_size)
+  loss_avg = loss_sum / len(training_idxs)
+  print(loss_avg)
 
   params_over_time.append(params)
-  loss_over_time.append(loss_sum / batch_size)
-  return loss_sum / batch_size
+  loss_over_time.append(loss_avg)
+  return loss_avg
 
 def get_mujoco_loss(params, log_num=None):
   if (log_num == None):
@@ -81,10 +83,11 @@ def get_mujoco_loss_mp(params):
   # for i in all_logs:
   for i in training_idxs:
     loss_sum += get_mujoco_loss(params, i)
-  print(loss_sum / batch_size)
+  loss_avg = loss_sum / len(training_idxs)
+  print(loss_avg)
   params_over_time.append(params)
-  loss_over_time.append(loss_sum / batch_size)
-  return loss_sum / batch_size
+  loss_over_time.append(loss_avg)
+  return loss_avg
 
 def print_loss_weights(loss_filename):
   new_loss_filename = time.strftime("%Y_%m_%d") + '_weights'
@@ -103,7 +106,7 @@ def print_loss_weights(loss_filename):
   # loss_weights.weights.save(new_loss_filename)
   loss_weights.print_weights()
 
-def learn_drake_cassie_params(iter, batch=False):
+def learn_drake_cassie_params(iteration, batch=False):
   optimization_param = ng.p.Dict(
     mu=ng.p.Scalar(lower=0.01, upper=1.0),
     # mu_ratio=ng.p.Scalar(lower=0.001, upper=1.0),
@@ -126,14 +129,15 @@ def learn_drake_cassie_params(iter, batch=False):
   stiffness = np.array(stiffness_over_time)
   np.save(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
   np.save(drake_sim.params_folder + log_num + '_stiffness_trajectory_' + str(budget), stiffness)
-  np.save(mujoco_sim.params_folder + mujoco_sim.date_prefix + '_training_idx_' + iter)
-  drake_sim.save_params(params, '_training_' + iter + '_' + str(budget))
+  np.save(drake_sim.params_folder + drake_sim.date_prefix + '_training_idx_' + iteration, training_idxs)
+  np.save(drake_sim.params_folder + drake_sim.date_prefix + '_test_idx_' + iteration, test_idxs)
+  drake_sim.save_params(params, '_training_' + iteration + '_' + str(budget))
   # drake_sim.save_params(params, log_num + '_x_offsets_' + str(budget))
   print('optimal params:')
   print(params)
 
 
-def learn_mujoco_cassie_params(iter):
+def learn_mujoco_cassie_params(iteration):
   # optimization_param = ng.p.Dict(
   #   timeconst=ng.p.Log(lower=1e-4, upper=1e-2),
   #   dampratio=ng.p.Scalar(lower=1e-2, upper=1e1),
@@ -142,7 +146,7 @@ def learn_mujoco_cassie_params(iter):
   #   mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
   # )
   optimization_param = ng.p.Dict(
-    stiffness=ng.p.Scalar(lower=1e3, upper=1e6),
+    stiffness=ng.p.Scalar(lower=0, upper=1e6),
     damping=ng.p.Scalar(lower=0, upper=1000),
     mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0)
     # mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
@@ -156,19 +160,18 @@ def learn_mujoco_cassie_params(iter):
   stiffness = np.array(stiffness_over_time)
   np.save(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
   np.save(drake_sim.params_folder + log_num + '_stiffness_trajectory_' + str(budget), stiffness)
-  np.save(mujoco_sim.params_folder + mujoco_sim.date_prefix + '_training_idx_' + iter)
-  mujoco_sim.save_params(params, '_training_' + iter + '_' + str(budget))
+  np.save(mujoco_sim.params_folder + mujoco_sim.date_prefix + '_training_idx_' + iteration, training_idxs)
+  np.save(mujoco_sim.params_folder + mujoco_sim.date_prefix + '_test_idx_' + iteration, test_idxs)
+  mujoco_sim.save_params(params, '_training_' + iteration + '_' + str(budget))
 
 
 def plot_loss_trajectory():
   loss_t = np.load(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget) + '.npy')
   # stiffness_t = np.load(drake_sim.params_folder + log_num + '_stiffness_trajectory_' + str(budget) + '.npy')
   stiffness_t = np.load(drake_sim.params_folder + 'training_stiffness_trajectory_5000.npy')
-  import pdb; pdb.set_trace()
   # ps.scatter(stiffness_t, loss_t, xlabel='penetration_allowance (m)', ylabel='loss')
   ps.plot(np.arange(0, loss_t.shape[0]), stiffness_t, xlabel='iter', ylabel='stiffness')
   plt.show()
-
 
 def print_drake_cassie_params(single_log_num, plot=False):
   # optimal_params = drake_sim.load_params('drake_2021_09_01_10_training_5000').value
@@ -258,47 +261,180 @@ def learn_x_offsets():
     training_idxs = [log_num]
     learn_drake_cassie_params()
 
-def print_drake_optimal():
+def print_drake_optimal(param_id=None, should_print=False):
   print('drake_optimal')
   # optimal_params = drake_sim.load_params('drake_2021_09_07_18_training_5000').value
   # optimal_params = drake_sim.load_params('drake_2021_09_08_16_training_5000').value
   # optimal_params = drake_sim.load_params('drake_2021_09_09_15_training_5000').value
-  optimal_params = drake_sim.load_params('drake_2021_09_10_17_training_2500').value
-  print('stiffness')
-  print(optimal_params['stiffness'])
-  print('dissipation')
-  print(optimal_params['dissipation'])
-  print('mu')
-  print(optimal_params['mu'])
+  if param_id is None:
+    optimal_params = drake_sim.load_params('drake_2021_09_10_17_training_2500').value
+  else:
+    optimal_params = drake_sim.load_params(param_id).value
+  if should_print:
+    print('stiffness')
+    print(optimal_params['stiffness'])
+    print('dissipation')
+    print(optimal_params['dissipation'])
+    print('mu')
+    print(optimal_params['mu'])
+  return (optimal_params['stiffness'], optimal_params['dissipation'], optimal_params['mu']), optimal_params
 
-def print_mujoco_optimal():
+def print_mujoco_optimal(param_id=None):
   print('mujoco_optimal')
   # optimal_params = mujoco_sim.load_params('mujoco_2021_09_07_18_training_5000').value
   # optimal_params = mujoco_sim.load_params('mujoco_2021_09_08_17_training_5000').value
   # optimal_params = mujoco_sim.load_params('mujoco_2021_09_09_15_training_5000').value
   # optimal_params = mujoco_sim.load_params('mujoco_2021_09_11_18_training_500').value
-  optimal_params = mujoco_sim.load_params('mujoco_2021_09_12_22_training_2500').value
+  if param_id is None:
+    optimal_params = mujoco_sim.load_params('mujoco_2021_09_12_22_training_2500').value
+  else:
+    optimal_params = mujoco_sim.load_params(param_id).value
   print('stiffness')
   print(optimal_params['stiffness'])
   print('damping')
   print(optimal_params['damping'])
   print('mu_tangent')
   print(optimal_params['mu_tangent'])
+  return (optimal_params['stiffness'], optimal_params['damping'], optimal_params['mu_tangent']), optimal_params
+
+def print_mujoco_training_test_analysis():
+  global training_idxs
+  mujoco_ids = ['mujoco_2021_09_13_12',
+                'mujoco_2021_09_13_12',
+                'mujoco_2021_09_13_16',
+                'mujoco_2021_09_13_16',
+                'mujoco_2021_09_13_16',
+                'mujoco_2021_09_13_16',
+                'mujoco_2021_09_13_16',
+                'mujoco_2021_09_13_16',
+                'mujoco_2021_09_13_16',
+                'mujoco_2021_09_13_16',
+                ]
+  stiffness = np.zeros(10)
+  damping = np.zeros(10)
+  mu = np.zeros(10)
+
+  training_losses = np.zeros(10)
+  test_losses = np.zeros(10)
+  all_losses = np.zeros(10)
+
+  for i, param_id in enumerate(mujoco_ids):
+    (stiffness[i], damping[i], mu[i]), param = print_mujoco_optimal(param_id + '_training_' + str(i) + '_1000')
+    training_idxs = np.load(mujoco_sim.params_folder + param_id + '_training_idx_' + str(i) + '.npy')
+    training_losses[i] = get_mujoco_loss_mp(param)
+    training_idxs = np.load(mujoco_sim.params_folder + param_id + '_test_idx_' + str(i) + '.npy')
+    test_losses[i] = get_mujoco_loss_mp(param)
+    training_idxs = np.hstack((training_idxs, np.load(mujoco_sim.params_folder + param_id + '_training_idx_' + str(i) + '.npy')))
+    all_losses[i] = get_mujoco_loss_mp(param)
+    print('training loss:')
+    print(training_losses[i])
+    print('test loss:')
+    print(test_losses[i])
+
+  print('Average training loss')
+  print(np.mean(training_losses))
+  print('Average test loss')
+  print(np.mean(test_losses))
+  print('stdev training loss')
+  print(np.std(training_losses))
+  print('stdev test loss')
+  print(np.std(test_losses))
+  print('Average loss')
+  print(np.mean(all_losses))
+  print('stdev loss')
+  print(np.std(all_losses))
+
+  print('MuJoCo optimal params from different training sets')
+  print('averages (stiffness, damping, mu)')
+  print(np.mean(stiffness))
+  print(np.mean(damping))
+  print(np.mean(mu))
+  print('stdev (stiffness, damping, mu)')
+  print(np.std(stiffness))
+  print(np.std(damping))
+  print(np.std(mu))
+
+def print_drake_training_test_analysis():
+  global training_idxs
+  drake_ids = ['drake_2021_09_13_12',
+               'drake_2021_09_13_12',
+               'drake_2021_09_13_16',
+               'drake_2021_09_13_16',
+               'drake_2021_09_13_16',
+               'drake_2021_09_13_16',
+               'drake_2021_09_13_16',
+               'drake_2021_09_13_16',
+               'drake_2021_09_13_16',
+               'drake_2021_09_13_16',
+         ]
+  stiffness = np.zeros(10)
+  dissipation = np.zeros(10)
+  mu = np.zeros(10)
+
+  training_losses = np.zeros(10)
+  test_losses = np.zeros(10)
+  all_losses = np.zeros(10)
+
+  for i, param_id in enumerate(drake_ids):
+    (stiffness[i], dissipation[i], mu[i]), param = print_drake_optimal(param_id + '_training_' + str(i) + '_1000')
+    training_idxs = np.load(drake_sim.params_folder + param_id + '_training_idx_' + str(i) + '.npy')
+    training_losses[i] = get_drake_loss_mp(param)
+    training_idxs = np.load(drake_sim.params_folder + param_id + '_test_idx_' + str(i) + '.npy')
+    test_losses[i] = get_drake_loss_mp(param)
+    training_idxs = np.hstack((training_idxs, np.load(drake_sim.params_folder + param_id + '_training_idx_' + str(i) + '.npy')))
+    all_losses[i] = get_drake_loss_mp(param)
+    # print('training loss:')
+    # print(training_losses[i])
+    # print('test loss:')
+    # print(test_losses[i])
+
+  print('Average training loss')
+  print(np.mean(training_losses))
+  print('Average test loss')
+  print(np.mean(test_losses))
+  print('stdev training loss')
+  print(np.std(training_losses))
+  print('stdev test loss')
+  print(np.std(test_losses))
+  print('Average loss')
+  print(np.mean(all_losses))
+  print('stdev loss')
+  print(np.std(all_losses))
+
+  print('Drake optimal params from different training sets')
+  print('averages (stiffness, dissipation, mu)')
+  print(np.mean(stiffness))
+  print(np.mean(dissipation))
+  print(np.mean(mu))
+  print('stdev (stiffness, dissipation, mu)')
+  print(np.std(stiffness))
+  print(np.std(dissipation))
+  print(np.std(mu))
+
+  import pdb; pdb.set_trace()
+
 
 if (__name__ == '__main__'):
   plt.close()
+  print_drake_training_test_analysis()
+  # print_mujoco_training_test_analysis()
 
-  print_drake_optimal()
-  print_mujoco_optimal()
+
+  # print_drake_optimal()
+  # print_mujoco_optimal()
   # print_loss_weights('pos_loss_weights')
   # print_loss_weights('2021_09_07_weights')
   # learn_x_offsets()
   # save_x_offsets()
   # print_drake_cassie_params()
-  # learn_drake_cassie_params(batch=True)
-  # learn_mujoco_cassie_params()
-  plot_per_log_loss_drake()
-  plot_per_log_loss_mujoco()
+
+  # for i in range(2, 10):
+    # training_idxs = sample(all_logs, num_train)
+    # test_idxs = [idx for idx in all_logs if not (idx in training_idxs)]
+    # learn_drake_cassie_params(str(i), batch=True)
+    # learn_mujoco_cassie_params(str(i))
+  # plot_per_log_loss_drake()
+  # plot_per_log_loss_mujoco()
   # print_mujoco_cassie_params()
   # log_num = '33'
   # print_drake_cassie_params(str(sys.argv[1]), True)

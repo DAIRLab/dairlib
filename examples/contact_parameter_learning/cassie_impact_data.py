@@ -5,16 +5,12 @@ import pickle
 import cassie_loss_utils
 
 class CassieImpactData():
-  def __init__(self, use_mujoco=False):
+  def __init__(self):
     self.data_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
-    self.sim_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/drake_optimal/'
-    self.sim_plot_color_idx = 1
-    if use_mujoco:
-      self.sim_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/mujoco_optimal/'
-      self.sim_plot_color_idx = 0
+    self.drake_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/drake_optimal/'
+    self.mujoco_data_directory = 'examples/contact_parameter_learning/cassie_sim_data/mujoco_optimal/'
     self.drake_params_directory = "examples/contact_parameter_learning/drake_cassie_params/"
     self.mujoco_params_directory = "examples/contact_parameter_learning/mujoco_cassie_params/"
-
 
     self.loss_func = cassie_loss_utils.CassieLoss('pos_loss_weights')
 
@@ -70,18 +66,22 @@ class CassieImpactData():
     # Data from sim
 
     # load in all the time series data (state, inputs, contact forces)
-    self.x_trajs_sim = {}
-    self.t_x_sim = {}
+    self.x_trajs_drake = {}
+    self.t_x_drake = {}
+    self.x_trajs_mujoco = {}
+    self.t_x_mujoco = {}
+
+    self.x_trajs_rigid = {}
+    self.t_x_rigid = {}
+
+    # self.contact_forces_sim = {}
     # self.u_trajs_sim = {}
-    self.contact_forces_sim = {}
 
     for log_num in self.log_nums_real:
-      if use_mujoco:
-        self.x_trajs_sim[log_num] = np.load(self.sim_data_directory + 'x_' + log_num + '.npy')
-        self.t_x_sim[log_num] = np.load(self.sim_data_directory + 't_x_' + log_num + '.npy')
-      else:
-        self.x_trajs_sim[log_num] = np.load(self.sim_data_directory + 'x_' + log_num + '.npy').T
-        self.t_x_sim[log_num] = np.load(self.sim_data_directory + 't_x_' + log_num + '.npy')
+      self.x_trajs_drake[log_num] = np.load(self.drake_data_directory + 'x_' + log_num + '.npy').T
+      self.t_x_drake[log_num] = np.load(self.drake_data_directory + 't_x_' + log_num + '.npy')
+      self.x_trajs_mujoco[log_num] = np.load(self.mujoco_data_directory + 'x_' + log_num + '.npy')
+      self.t_x_mujoco[log_num] = np.load(self.mujoco_data_directory + 't_x_' + log_num + '.npy')
       # self.u_trajs_sim[log_num] = np.load(self.sim_data_directory + 'u_' + log_num + '.npy')
       # self.contact_forces_sim[log_num] = np.load(self.sim_data_directory + 'lambda_' + log_num + '.npy')
 
@@ -103,6 +103,9 @@ class CassieImpactData():
     #   print('sim: ')
     #   print(self.x_trajs_sim[log_num].shape)
 
+  def save(self, filename):
+    with open(self.data_directory + filename + '.pkl', 'wb') as f:
+      pickle.dump(self.__dict__, f, pickle.HIGHEST_PROTOCOL)
 
   def combine_into_single_data_file(self):
 

@@ -118,7 +118,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   InitialStateForPlanner(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
       const drake::multibody::MultibodyPlant<double>& plant_control, int n_step,
-      bool feedback_is_spring_model);
+      double stride_period, bool feedback_is_spring_model);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -173,8 +173,9 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   int nq_;
   int nv_;
 
-  // Parameters for traj opt
+  // Parameters from MPC
   int n_step_;
+  double stride_period_;
 
   // Stance foot height
   BodyPoint toe_mid_left_;
@@ -192,6 +193,11 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_feedback_;
   const drake::multibody::MultibodyPlant<double>& plant_control_;
   bool feedback_is_spring_model_;
+
+  // Zero toe joint velocity
+  double window_ = 0.1;  // in seconds
+  int idx_toe_leftdot_;
+  int idx_toe_rightdot_;
 
   // IK
   drake::solvers::EqualityConstrainedQPSolver qp_solver_;

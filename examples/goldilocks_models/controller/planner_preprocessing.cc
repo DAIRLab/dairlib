@@ -358,10 +358,11 @@ void CalcFeetVel(const drake::multibody::MultibodyPlant<double>& plant,
 InitialStateForPlanner::InitialStateForPlanner(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
     const drake::multibody::MultibodyPlant<double>& plant_control, int n_step,
-    bool feedback_is_spring_model)
+    double stride_period, bool feedback_is_spring_model)
     : nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
       n_step_(n_step),
+      stride_period_(stride_period),
       plant_feedback_(plant_feedback),
       plant_control_(plant_control),
       context_feedback_(plant_feedback.CreateDefaultContext()),
@@ -457,6 +458,9 @@ InitialStateForPlanner::InitialStateForPlanner(
                                vel_map_wo_spr_.at("knee_rightdot"),
                                vel_map_wo_spr_.at("ankle_joint_rightdot"),
                                vel_map_wo_spr_.at("toe_rightdot")};
+
+  idx_toe_leftdot_ = vel_map_wo_spr_.at("toe_leftdot");
+  idx_toe_rightdot_ = vel_map_wo_spr_.at("toe_rightdot");
 }
 
 EventStatus InitialStateForPlanner::AdjustState(
@@ -473,16 +477,13 @@ EventStatus InitialStateForPlanner::AdjustState(
       map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
 
   // Get phase in the first mode
-  //  const BasicVector<double>* phase_port =
-  //      this->EvalVectorInput(context, phase_port_);
-  //  double init_phase = phase_port->get_value()(0);
+  double init_phase =
+      this->EvalVectorInput(context, phase_port_)->get_value()(0);
 
   // Get stance foot
   bool is_right_stance =
       (bool)this->EvalVectorInput(context, stance_foot_port_)->get_value()(0);
   bool is_left_stance = !is_right_stance;
-
-  //    cout << "init_phase of the state we got = " << init_phase << endl;
 
   ///
   /// Adjust the knee/ankle joints to match the feet vel between the two models
@@ -529,12 +530,26 @@ EventStatus InitialStateForPlanner::AdjustState(
   ZeroOutStanceFootVel(is_left_stance, &x_adjusted2);
 
   ///
-  /// Testing
+  /// Check IK results
   ///
   if (feedback_is_spring_model_) {
     CheckAdjustemnt(x_w_spr, x_original, x_adjusted2, left_foot_pos_w_spr,
                     right_foot_pos_w_spr, left_foot_vel_w_spr,
                     right_foot_vel_w_spr, is_left_stance);
+  }
+
+  ///
+  /// Heuristic -- zero stance toe joint in the beginning of stance
+  ///
+  // We need this because the ROM uses mid_contact_point (we want this to be 0),
+  // and the toe joint vel is sometimes big in the beginning of stance.
+  // See folder: 20210912_bad_solve/2_reproduce_same_type_of_bad_solve
+  if (init_phase * stride_period_ < window_) {
+    if (is_left_stance) {
+      x_adjusted2(nq_ + idx_toe_leftdot_) = 0;
+    } else {
+      x_adjusted2(nq_ + idx_toe_rightdot_) = 0;
+    }
   }
 
   ///

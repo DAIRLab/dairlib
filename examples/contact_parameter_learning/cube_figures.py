@@ -143,6 +143,7 @@ def make_stiffness_sensitivity_analysis_figure():
         ps.plot(k_ratio, sweeps[id]['loss_avg']['stiffness'], color=sim_colors[format_sim_name(id)])
 
     plt.xlabel('k / k^{*}$')
+    plt.xscale('log')
     plt.legend(legend_strs)
     plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))
@@ -173,6 +174,7 @@ def make_friction_sensitivity_analysis_figure():
         ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
 
     plt.xlabel('$\mu / \mu^{*}$')
+    plt.xscale('log')
     plt.legend(legend_strs)
     # plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))
@@ -202,6 +204,7 @@ def make_damping_sensitivity_analysis_figure():
         ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
 
     plt.xlabel('$b / b^{*}$')
+    plt.xscale('log')
     plt.legend(legend_strs)
     # plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))

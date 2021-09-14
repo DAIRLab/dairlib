@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pickle
 from pyquaternion import Quaternion
 import pybullet as p
+import quaternionic
 from math import pi
 
 CUBE_DATA_DT = 1.0/148.0
@@ -80,20 +81,12 @@ class FastLossWeights():
                                       [traj2[i][1], traj2[i][2], traj2[i][3], traj2[i][0]])
             theta = 2 * np.arctan2(np.linalg.norm(q1[0:3]), q1[-1])
             loss[i] = theta ** 2
-        return np.mean(loss)
-
-    def FastQuatLoss(self, traj1, traj2):
-        loss = np.zeros((traj1.shape[0],))
-        for i in range(traj1.shape[0]):
-            loss[i] = (2 * Quaternion.distance(Quaternion(traj1[i]), Quaternion(traj2[i]))) ** 2
+            print(loss[i])
         return np.mean(loss)
 
     def CalculateLoss(self, traj1, traj2):
         l_pos = self.CalcPositionsLoss(traj1[:,CUBE_DATA_POSITION_SLICE], traj2[:,CUBE_DATA_POSITION_SLICE])
-        if (self.bullet):
-            l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
-        else:
-            l_quat = self.FastQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
+        l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
         return l_pos + l_quat
 
 class LossWeights():

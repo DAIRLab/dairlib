@@ -96,6 +96,10 @@ group "4.lcm-tools" {
 }
 
 group "1.rom-space-controller (wired ethernet)" {
+    cmd "testing.original-walking-controller(with dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true";
+        host = "dair-cassie";
+    }
     cmd "2.2.rom-planner (wired); generate init file" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false --use_ipopt=true --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";

@@ -100,10 +100,6 @@ group "4.lcm-tools" {
 }
 
 group "1.rom-space-controller (wired ethernet)" {
-    cmd "testing.original-walking-controller(with dispatcher)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true";
-        host = "dair-cassie";
-    }
     cmd "2.2.rom-planner (wired); generate init file" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false --use_ipopt=true --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";
@@ -115,6 +111,10 @@ group "1.rom-space-controller (wired ethernet)" {
     cmd "2.0 rename data to data_x" {
         exec = "python3.6 examples/goldilocks_models/misc/rename_data_folder.py";
         host = "localhost";
+    }
+    cmd "testing.original-walking-controller(with dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true --qp_time_limit=0.1 --use_radio=true ";
+        host = "dair-cassie";
     }
     cmd "1.dispatcher-robot-out (wired)" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=2 --broadcast_robot_state=true";
@@ -187,6 +187,12 @@ script "set_up_from_pd_to_osc_standing (wireless)" {
 script "set_up_from_pd_to_osc_standing(local-planner)" {
     restart cmd "1.dispatcher-robot-out (run local)";
     start cmd "3.standing-controller-real-robot";
+}
+
+script "switch to default walking (test)" {
+    start cmd "5.0.switch-to-default-walking";
+    wait ms 1000;
+    stop cmd "3.standing-controller-real-robot";
 }
 
 script "switch to standing" {

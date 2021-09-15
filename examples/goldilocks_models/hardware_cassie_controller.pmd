@@ -78,6 +78,10 @@ group "0.operator" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=ROM_WALKING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01";
         host = "dair-cassie";
     }
+    cmd "5.0.switch-to-default-walking" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=ROM_WALKING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01 --fsm_period=0.4 --fsm_offset=0.35";
+        host = "dair-cassie";
+    }
 }
 
 group "4.lcm-tools" {

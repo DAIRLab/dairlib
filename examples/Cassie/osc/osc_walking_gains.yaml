@@ -31,14 +31,14 @@ k_fb_lateral: 0.25
 
 # Finite state machine
 ss_time: 0.30
-ds_time: 0.05
+ds_time: 0.1
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.03
 center_line_offset: 0.03
-mid_foot_height: 0.03
-final_foot_height: 0.000
+mid_foot_height: 0.05
+final_foot_height: 0.01
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
@@ -117,7 +117,7 @@ SwingFootW:
 SwingFootKp:
   [ 80,    0,     0,
     0,  100,     0,
-    0,    0,   150]
+    0,    0,   200]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

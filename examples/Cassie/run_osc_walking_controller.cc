@@ -250,7 +250,7 @@ int DoMain(int argc, char* argv[]) {
   } else {
     unordered_fsm_states = {left_stance_state, right_stance_state,
                             post_left_double_support_state,
-        post_right_double_support_state};
+                            post_right_double_support_state};
     unordered_state_durations = {left_support_duration, right_support_duration,
                                  double_support_duration,
                                  double_support_duration};
@@ -444,7 +444,7 @@ int DoMain(int argc, char* argv[]) {
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   if (FLAGS_spring_model) {
-    swing_foot_traj.DisableFeedforwardAccel({2});
+    //    swing_foot_traj.DisableFeedforwardAccel({2});
   }
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
@@ -502,6 +502,10 @@ int DoMain(int argc, char* argv[]) {
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
                                              "hip_yaw_leftdot");
   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+
+  // Set double support duration for force blending
+  osc->SetDoubleSupportDurationForBlending(double_support_duration);
+
   // Build OSC problem
   osc->Build();
   // Connect ports

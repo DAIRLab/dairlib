@@ -764,6 +764,10 @@ int DoMain(int argc, char* argv[]) {
                                                     hip_yaw_ratio_samples);
     swing_hip_yaw_traj.SetTimeVaryingGains(hip_yaw_gain_ratio);
     osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+
+    // Set double support duration for force blending
+    osc->SetDoubleSupportDurationForBlending(double_support_duration);
+
     // Build OSC problem
     osc->Build();
     // Connect ports
@@ -988,6 +992,9 @@ int DoMain(int argc, char* argv[]) {
     right_support_traj.AddStateAndJointsToTrack(
         post_right_double_support_state, ordered_pos_names, ordered_vel_names);
     osc->AddTrackingData(&right_support_traj);
+
+    // Set double support duration for force blending
+    osc->SetDoubleSupportDurationForBlending(double_support_duration);
 
     // Build OSC problem
     osc->Build();

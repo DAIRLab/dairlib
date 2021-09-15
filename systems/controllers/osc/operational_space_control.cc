@@ -433,7 +433,7 @@ void OperationalSpaceControl::Build() {
           .get());
 
   // (Testing) 6. contact force blending
-  if (w_blend_constraint_) {
+  if (ds_duration_ > 0) {
     epsilon_blend_ =
         prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
     blend_constraint_ =
@@ -447,6 +447,7 @@ void OperationalSpaceControl::Build() {
             .evaluator()
             .get();
     /// Soft constraint version
+    //  DRAKE_DEMAND(w_blend_constraint_ > 0);
     //  prog_->AddQuadraticCost(
     //      w_blend_constraint_ *
     //          MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
@@ -717,7 +718,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // WARNING: we hard coded the finite state machine state here. We also hard
   // coded the double support duration
   // Left, right and double support state have to be 0, 1 and 2, resp.
-  if (w_blend_constraint_ > 0) {
+  if (ds_duration_ > 0) {
     MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
     if ((fsm_state == 2) || (fsm_state == 3) || (fsm_state == 4)) {
       double alpha_left = 0;

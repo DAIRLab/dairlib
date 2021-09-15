@@ -170,6 +170,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC LeafSystem builder
   void Build();
 
+  void SetDoubleSupportDurationForBlending(double ds_duration) {
+    ds_duration_ = ds_duration;
+  }
+
  private:
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
@@ -340,7 +344,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::SolverOptions solver_options_;
 
   // Testing contact force blend
-  double ds_duration_ = 0.05;
+  double ds_duration_ = -1;
   double w_blend_constraint_ = 0.1; //0.1 // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
   drake::solvers::LinearEqualityConstraint* blend_constraint_;

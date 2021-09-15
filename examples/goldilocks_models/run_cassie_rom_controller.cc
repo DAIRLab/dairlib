@@ -664,7 +664,7 @@ int DoMain(int argc, char* argv[]) {
     std::vector<MatrixX<double>> swing_ft_ratio_samples(
         3, MatrixX<double>::Identity(3, 3));
     //    swing_ft_ratio_samples[1](1, 1) *= 1.2;
-    //    swing_ft_ratio_samples[2](1, 1) *= 1.7;
+    //    swing_ft_ratio_samples[2](1, 1) *= 1.2;
     PiecewisePolynomial<double> swing_ft_ratio_gain_ratio =
         PiecewisePolynomial<double>::FirstOrderHold(swing_ft_ratio_breaks,
                                                     swing_ft_ratio_samples);
@@ -721,7 +721,15 @@ int DoMain(int argc, char* argv[]) {
         osc_gains.K_d_pelvis_heading, weight_scale * osc_gains.W_pelvis_heading,
         plant_w_spr, plant_wo_springs);
     pelvis_heading_traj.AddFrameToTrack("pelvis");
-    pelvis_heading_traj.SetTimeVaryingGains(gain_ratio);
+    /*std::vector<double> heading_breaks{0, left_support_duration / 2,
+                                       left_support_duration};
+    std::vector<MatrixX<double>> heading_samples(
+        3, MatrixX<double>::Identity(3, 3));
+    heading_samples[0] *= 0.5;
+    PiecewisePolynomial<double> heading_gain_ratio =
+        PiecewisePolynomial<double>::FirstOrderHold(heading_breaks,
+                                                    heading_samples);
+    pelvis_heading_traj.SetTimeVaryingGains(heading_gain_ratio);*/
     osc->AddTrackingData(&pelvis_heading_traj,
                          osc_gains.period_of_no_heading_control);
     // Swing toe joint tracking

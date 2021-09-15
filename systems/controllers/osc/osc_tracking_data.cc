@@ -109,9 +109,11 @@ bool OscTrackingData::Update(
       error_ydot_ -= GetJ() * v_proj;
     }
 
-    double gain_ratio = 1;
+    MatrixXd gain_ratio;
     if (gain_ratio_ != nullptr) {
-      gain_ratio = gain_ratio_->value(t_since_last_state_switch)(0, 0);
+      gain_ratio = gain_ratio_->value(t_since_last_state_switch);
+    } else {
+      gain_ratio = MatrixXd::Identity(n_ydot_, n_ydot_);
     }
 
     // Update command output (desired output with pd control)
@@ -135,8 +137,8 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
 
 void OscTrackingData::SetTimeVaryingGains(
     const drake::trajectories::Trajectory<double>& gain_ratio) {
-  DRAKE_DEMAND(gain_ratio.cols() == 1);
-  DRAKE_DEMAND(gain_ratio.rows() == 1);
+  DRAKE_DEMAND(gain_ratio.cols() == n_ydot_);
+  DRAKE_DEMAND(gain_ratio.rows() == n_ydot_);
   DRAKE_DEMAND(gain_ratio.start_time() == 0);
   //  DRAKE_DEMAND(gain_ratio.end_time() == );
   gain_ratio_ = &gain_ratio;

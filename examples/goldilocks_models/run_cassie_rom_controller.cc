@@ -648,7 +648,7 @@ int DoMain(int argc, char* argv[]) {
     // Gain scheduling
     std::vector<double> breaks{0, left_support_duration / 2,
                                left_support_duration};
-    std::vector<MatrixX<double>> samples(3, MatrixX<double>::Ones(1, 1));
+    std::vector<MatrixX<double>> samples(3, MatrixX<double>::Identity(3, 3));
     samples[0] *= 0;
     PiecewisePolynomial<double> gain_ratio =
         PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
@@ -659,7 +659,16 @@ int DoMain(int argc, char* argv[]) {
         weight_scale * osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs);
     swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
     swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
-    //    swing_foot_traj.SetTimeVaryingGains(gain_ratio);
+    std::vector<double> swing_ft_ratio_breaks{0, left_support_duration / 2,
+                                              left_support_duration};
+    std::vector<MatrixX<double>> swing_ft_ratio_samples(
+        3, MatrixX<double>::Identity(3, 3));
+    //    swing_ft_ratio_samples[1](1, 1) *= 1.2;
+    //    swing_ft_ratio_samples[2](1, 1) *= 1.7;
+    PiecewisePolynomial<double> swing_ft_ratio_gain_ratio =
+        PiecewisePolynomial<double>::FirstOrderHold(swing_ft_ratio_breaks,
+                                                    swing_ft_ratio_samples);
+    swing_foot_traj.SetTimeVaryingGains(swing_ft_ratio_gain_ratio);
     //    swing_foot_traj.DisableFeedforwardAccel({2});
     //    swing_foot_traj.SetFeedforwardAccelRatio(gain_ratio);
     osc->AddTrackingData(&swing_foot_traj);
@@ -675,8 +684,8 @@ int DoMain(int argc, char* argv[]) {
                                     mirrored_rom);
     std::vector<double> rom_ratio_breaks{0, left_support_duration / 2,
                                          left_support_duration};
-    std::vector<MatrixX<double>> rom_ratio_samples(3,
-                                                   MatrixX<double>::Ones(1, 1));
+    std::vector<MatrixX<double>> rom_ratio_samples(
+        3, MatrixX<double>::Identity(3, 3));
     rom_ratio_samples[0] *= 0;
     PiecewisePolynomial<double> rom_gain_ratio =
         PiecewisePolynomial<double>::FirstOrderHold(rom_ratio_breaks,
@@ -693,7 +702,7 @@ int DoMain(int argc, char* argv[]) {
     std::vector<double> balance_ratio_breaks{0, left_support_duration / 2,
                                              left_support_duration};
     std::vector<MatrixX<double>> balance_ratio_samples(
-        3, MatrixX<double>::Ones(1, 1));
+        3, MatrixX<double>::Identity(3, 3));
     balance_ratio_samples[0] *= 0.5;
     PiecewisePolynomial<double> balance_gain_ratio =
         PiecewisePolynomial<double>::FirstOrderHold(balance_ratio_breaks,
@@ -737,7 +746,15 @@ int DoMain(int argc, char* argv[]) {
         left_stance_state, "hip_yaw_right", "hip_yaw_rightdot");
     swing_hip_yaw_traj.AddStateAndJointToTrack(
         right_stance_state, "hip_yaw_left", "hip_yaw_leftdot");
-    swing_hip_yaw_traj.SetTimeVaryingGains(gain_ratio);
+    std::vector<double> hip_yaw_ratio_breaks{0, left_support_duration / 2,
+                                             left_support_duration};
+    std::vector<MatrixX<double>> hip_yaw_ratio_samples(
+        3, MatrixX<double>::Identity(1, 1));
+    hip_yaw_ratio_samples[0] *= 0;
+    PiecewisePolynomial<double> hip_yaw_gain_ratio =
+        PiecewisePolynomial<double>::FirstOrderHold(hip_yaw_ratio_breaks,
+                                                    hip_yaw_ratio_samples);
+    swing_hip_yaw_traj.SetTimeVaryingGains(hip_yaw_gain_ratio);
     osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
     // Build OSC problem
     osc->Build();

@@ -135,7 +135,7 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   // COM vel filtering
   // TODO(yminchen): extract this filter out of WalkingSpeedControl and
   //  SwingFootTrajGen
-  double cutoff_freq_ = 10; // in Hz.
+  double cutoff_freq_ = 200; // in Hz.
   mutable Eigen::Vector3d filtered_com_vel_ = Eigen::Vector3d::Zero();
   mutable double last_timestamp_ = 0;
 };

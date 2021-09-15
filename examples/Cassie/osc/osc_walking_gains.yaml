@@ -2,9 +2,9 @@ rows: 3
 cols: 3
 
 # High level command gains (with radio)
-vel_scale_rot: 1
-vel_scale_trans_sagital: 0.2
-vel_scale_trans_lateral: -0.15
+vel_scale_rot: 1.5
+vel_scale_trans_sagital: 0.1
+vel_scale_trans_lateral: -0.1
 
 # High level command gains (without radio)
 global_target_position_x: 0
@@ -27,7 +27,7 @@ target_pos_offset: 0  # -0.16
 k_ff_sagittal: 0
 k_fb_sagittal: 0.24
 k_ff_lateral: 0
-k_fb_lateral: 0.25
+k_fb_lateral: 0.3
 
 # Finite state machine
 ss_time: 0.30
@@ -37,8 +37,8 @@ ds_time: 0.1
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.03
 center_line_offset: 0.03
-mid_foot_height: 0.05
-final_foot_height: 0.01
+mid_foot_height: 0.07
+final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
@@ -88,8 +88,8 @@ PelvisBalanceW:
     0,    4,     0,
     0,    0,     0]
 PelvisBalanceKp:
-  [120,      0,    0,
-    0,    120,    0,
+  [200,      0,    0,
+    0,    200,    0,
     0,      0,    0]
 PelvisBalanceKd:
   [   10,     0,    0,
@@ -115,10 +115,10 @@ SwingFootW:
     0,    4,     0,
     0,    0,     4]
 SwingFootKp:
-  [ 80,    0,     0,
+  [ 100,    0,     0,
     0,  100,     0,
-    0,    0,   200]
+    0,    0,   100]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,
-      0,    0,     1]
+      0,    0,     3]

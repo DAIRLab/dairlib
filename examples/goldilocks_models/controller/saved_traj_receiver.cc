@@ -266,13 +266,15 @@ void SavedTrajReceiver::CalcSwingFootTraj(
     }
 
     // Fill in the double support phase with a constant zero traj
-    VectorXd T_double_support(2);
-    T_double_support << T_waypoint.at(2), xf_time(j);
-    /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
-    cout << "xf_time(j) = " << xf_time(j) << endl;*/
-    MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
-    pp.ConcatenateInTime(PiecewisePolynomial<double>::ZeroOrderHold(
-        T_double_support, Y_double_support));
+    if (double_support_duration_ > 0) {
+      VectorXd T_double_support(2);
+      T_double_support << T_waypoint.at(2), xf_time(j);
+      /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
+      cout << "xf_time(j) = " << xf_time(j) << endl;*/
+      MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
+      pp.ConcatenateInTime(PiecewisePolynomial<double>::ZeroOrderHold(
+          T_double_support, Y_double_support));
+    }
 
     left_stance = !left_stance;
   }

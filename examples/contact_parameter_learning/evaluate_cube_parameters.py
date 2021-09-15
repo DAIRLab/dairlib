@@ -26,7 +26,7 @@ def visualize_learned_params(params, data_sim, toss_id):
     
     vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
     vis_sim.init_sim(drake_cube_sim.default_drake_contact_params)
-    vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=2)
+    vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=8)
 
     input('Press enter to continue to video')
 
@@ -319,7 +319,9 @@ if (__name__ == '__main__'):
     #        'drake_2021_08_31_14_04_100', 
     #        'bullet_2021_08_31_16_55_100']
 
-    ids = ['mujoco_2021_09_12_10_27_10', 
+           
+    ids = [
+            'mujoco_2021_09_12_10_27_10', 
            'drake_2021_09_11_16_44_10',
            'bullet_2021_09_13_23_26_10']
 
@@ -335,23 +337,23 @@ if (__name__ == '__main__'):
     #        'bullet_2021_08_31_12_16_10', 
     #        'bullet_2021_08_31_16_55_100']
 
-    sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
+    # sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
 
-    worst_case_set, worst_case_by_id = compare_worst_case(losses)
-    print()
-    for i in range(3):
-        comp = list_complement([0, 1, 2], [i])
+    # worst_case_set, worst_case_by_id = compare_worst_case(losses)
+    # print()
+    # for i in range(3):
+    #     comp = list_complement([0, 1, 2], [i])
 
-        fails = list_complement(list_complement(worst_case_set,
-            worst_case_by_id[ids[comp[0]]]), worst_case_by_id[ids[comp[1]]])
+    #     fails = list_complement(list_complement(worst_case_set,
+    #         worst_case_by_id[ids[comp[0]]]), worst_case_by_id[ids[comp[1]]])
         
-        print(f'{format_sim_name(ids[i])} does poorly on:')
-        for toss_id in fails:
-            print(f'{toss_id}: {losses[ids[i]][toss_id]}, \
-                {format_sim_name(ids[comp[0]])}: {losses[ids[comp[0]]][toss_id]}, \
-                     {format_sim_name(ids[comp[1]])}: {losses[ids[comp[1]]][toss_id]}')
+    #     print(f'{format_sim_name(ids[i])} does poorly on:')
+    #     for toss_id in fails:
+    #         print(f'{toss_id}: {losses[ids[i]][toss_id]}, \
+    #             {format_sim_name(ids[comp[0]])}: {losses[ids[comp[0]]][toss_id]}, \
+    #                  {format_sim_name(ids[comp[1]])}: {losses[ids[comp[1]]][toss_id]}')
 
-        print()
+    #     print()
 
     # visualize_learned_params(params[ids[0]], sims[ids[0]], 69)
 
@@ -364,9 +366,19 @@ if (__name__ == '__main__'):
     # plt.show()
 
 #     ## INDIVIDUAL LOG FUNCTIONS
-#     learning_result = 'bullet_2021_09_11_14_46_10'
+    learning_result = ids[1]
 # # 
-#     eval_sim = get_eval_sim(learning_result)
+    eval_sim = get_eval_sim(learning_result)
+    params, _, _ = load_params_and_logs(learning_result)
+    # traj_pairs = load_traj_pairs(eval_sim, params, range(550))
+    # weights=cube_sim.FastLossWeights(
+    #         pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
+    # sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, weights)
+    # print('Test set sorted from highest to lowest MSE')
+    # for key in sorted_pairs:
+    #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
+
+    visualize_learned_params(params, eval_sim, 193) # list(sorted_pairs.keys())[0])
 #     if (eval_sim == None): quit()
     # for id in ids:
     #     params, _, _ = load_params_and_logs(id)

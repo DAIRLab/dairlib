@@ -18,7 +18,7 @@ from pydairlib.common.plot_styler import PlotStyler
 figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/')
 
 ps = PlotStyler()
-ps.set_default_styling(directory=figure_directory, figsize=(10,6))
+ps.set_default_styling(directory=figure_directory, figsize=(8,6))
 
 sim_colors = {'Drake' : ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
 
@@ -104,6 +104,23 @@ def make_training_loss_sensitivity_analysis(ids, params_ranges):
                       'loss_med' : loss_med}
     return sweeps
 
+def make_damping_ratio_sensitivity_analysis(ids, params_ranges):
+    sweeps = {}
+    for id in ids:
+        sim = cube_eval.get_eval_sim(id)
+        params, _, _ = cube_eval.load_params_and_logs(id)
+        test_set = range(550)
+        weights = FastLossWeights(
+            pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),
+            bullet=(format_sim_name(id) == 'Bullet'))
+            
+        loss_avg, loss_med = sa.get_dr_sensitivity_analysis(
+            sim, weights, params, params_ranges[id], test_set)
+        sweeps[id] = {'loss_avg' : loss_avg, 
+                      'loss_med' : loss_med}
+    return sweeps
+
+
 def make_pos_rot_sensitivity_analysis(ids, params_ranges):
     sweeps = {}
     for id in ids:
@@ -124,6 +141,39 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
                       'rot_med': rot_med}
     return sweeps
 
+def make_damping_ratio_sensitivity_analysis_figure():
+    ids = paper_ids[1:]
+
+    params_ranges = {}
+    params = {}
+    for id in ids:
+        param, _, _ = cube_eval.load_params_and_logs(id)
+        params[id] = param
+        params_ranges[id] = sa.get_damping_ratio_range(id.split('_')[0], param['stiffness'], param['damping'])
+    sweeps = make_damping_ratio_sensitivity_analysis(ids, params_ranges)
+
+    ## plotting
+    legend_strs = []
+    
+    for id in ids:
+        legend_strs.append(format_sim_name(id))
+        k_opt = params[id]['stiffness']
+        k_ratio = np.array(params_ranges[id]['stiffness']) / k_opt
+        ps.plot(k_ratio, sweeps[id]['loss_avg']['stiffness'], color=sim_colors[format_sim_name(id)])
+    plt.title('Cube Stiffness Sensitivity - Constant $\zeta$')
+    plt.xlabel('$k / k^{*}$')
+    plt.xscale('log')
+    frame = plt.gca()
+    frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ps.set_figsize((10,6))
+    plt.legend(legend_strs)
+    plt.ylabel('Average $e_{q}$')
+    plt.ylim((0, 0.8))
+    frame.axes.get_yaxis().set_ticks([0.1, 0.3, 0.5, 0.7])
+    plt.xlim((k_ratio[0], k_ratio[-1]))
+    ps.save_fig('StiffnessSensitivityDampingRatio.png')
+    # plt.show()
+
 def make_stiffness_sensitivity_analysis_figure():
     ids = paper_ids
 
@@ -137,18 +187,23 @@ def make_stiffness_sensitivity_analysis_figure():
 
     ## plotting
     legend_strs = []
-    ps.set_figsize((8,6))
+    
     for id in ids:
         legend_strs.append(format_sim_name(id))
         k_opt = params[id]['stiffness']
         k_ratio = np.array(params_ranges[id]['stiffness']) / k_opt
         ps.plot(k_ratio, sweeps[id]['loss_avg']['stiffness'], color=sim_colors[format_sim_name(id)])
-
+    plt.title('Cube Stiffness Sensitivity')
     plt.xlabel('$k / k^{*}$')
     plt.xscale('log')
+    frame = plt.gca()
+    frame.axes.get_xaxis().set_ticks([0.01, 0.03, 0.1, 0.3, 1.0, 3.1, 10])
+    frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ps.set_figsize((8,6))
     plt.legend(legend_strs)
     plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))
+    plt.xlim((k_ratio[0], k_ratio[-1]))
     ps.save_fig('StiffnessSensitivity.png')
     # plt.show()
       
@@ -174,11 +229,17 @@ def make_friction_sensitivity_analysis_figure():
         k_opt = params[id][mu_keys[id]]
         k_ratio = np.array(params_ranges[id][mu_keys[id]]) / k_opt
         ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
-
+    plt.title('Cube Friction Sensitivity')
     plt.xlabel('$\mu / \mu^{*}$')
-    plt.legend(legend_strs)
+    plt.xscale('log', basex=2)
+    # plt.legend(legend_strs)
+    frame = plt.gca()
+    frame.axes.get_xaxis().set_ticks([0.5, 0.7, 1.0, 1.4, 2.0])
+    frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    
     # plt.ylabel('Average $e_{q}$')
     plt.ylim((0, 0.8))
+    plt.xlim((k_ratio[0], k_ratio[-1]))
     ps.save_fig('FrictionSensitivity.png')
 
 
@@ -197,18 +258,25 @@ def make_damping_sensitivity_analysis_figure():
 
     ## plotting
     legend_strs = []
-    ps.set_figsize((8,6))
     for id in ids:
         legend_strs.append(format_sim_name(id))
         k_opt = params[id][mu_keys[id]]
         k_ratio = np.array(params_ranges[id][mu_keys[id]]) / k_opt
         ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
 
+    plt.title('Cube Damping Sensitivity')
     plt.xlabel('$b / b^{*}$')
     plt.xscale('log')
-    plt.legend(legend_strs)
+    ps.set_figsize((8,6))
+    # plt.legend(legend_strs)
     # plt.ylabel('Average $e_{q}$')
+    frame = plt.gca()
+    frame.axes.get_xaxis().set_ticks([0.1, 0.3, 1.0, 3.1, 10])
+    frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+
     plt.ylim((0, 0.8))
+    plt.xlim((k_ratio[0], k_ratio[-1]))
+
     ps.save_fig('DampingSensitivity.png')
     # plt.show()
 
@@ -267,11 +335,18 @@ def visualize_cube_initial_condition():
     sim.sim_step(CUBE_DATA_DT)
     sim.sim_step(CUBE_DATA_DT)
 
+def make_stroboscopic_figure(toss_id):
+    learning_result = paper_ids[1]
+    eval_sim = cube_eval.get_eval_sim(learning_result)
+    params, _, _ = cube_eval.load_params_and_logs(learning_result)
+    cube_eval.visualize_learned_params(params, eval_sim, toss_id)
+
 if __name__ == '__main__':
-    make_estimated_pdf_figure()
-    make_friction_sensitivity_analysis_figure()
-    make_damping_sensitivity_analysis_figure()
-    make_stiffness_sensitivity_analysis_figure()
+    # make_estimated_pdf_figure()
+    # make_friction_sensitivity_analysis_figure()
+    # make_damping_sensitivity_analysis_figure()
+    # make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
-    make_contact_impulse_plot()
+    # make_contact_impulse_plot()
     # visualize_cube_initial_condition()
+    make_damping_ratio_sensitivity_analysis_figure()

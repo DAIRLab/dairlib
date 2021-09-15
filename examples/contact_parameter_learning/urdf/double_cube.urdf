@@ -17,7 +17,7 @@
                 <box size="0.1048 0.1048 0.1048"/>
             </geometry>
             <material name="pennred">
-                <color rgba="0.6 0 0 1.0" />
+                <color rgba="0.6 0.6 0.6 1.0" />
             </material>
         </visual>
         <collision>
@@ -45,7 +45,7 @@
                 <box size="0.1048 0.1048 0.1048"/>
             </geometry>
             <material name="pennblue">
-                <color rgba="0 0 0.6 0.4" />
+                <color rgba="0 0 0.65 0.4" />
             </material>
         </visual>
         <collision>

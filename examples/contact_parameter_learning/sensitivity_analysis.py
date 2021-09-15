@@ -7,8 +7,8 @@ from evaluate_cube_parameters import calc_error_between_trajectories, \
 from copy import deepcopy
 from math import pi
 import cube_sim
-import drake_cassie_sim
-import mujoco_cassie_sim
+# import drake_cassie_sim
+# import mujoco_cassie_sim
 
 
 def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params_range, traj_set):
@@ -90,25 +90,63 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
 
     return loss_avgs, loss_meds
 
+# for bullet / mujoco only
+def get_dr_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, test_traj_set):
+    loss_avgs = []
+    loss_meds = []
+    params = deepcopy(optimal_params)
+    for i in range(len(params_range['stiffness'])):
+        losses = []
+        params['stiffness'] = params_range['stiffness'][i]
+        params['damping'] = params_range['damping'][i]
+        pairs = load_traj_pairs(sim, params, test_traj_set, print_progress=False)
+        for pair_idx in pairs:
+            pair = pairs[pair_idx]
+            losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
+        loss_avgs.append(np.average(losses))
+        loss_meds.append(np.median(losses))
+
+    return {'stiffness': loss_avgs}, {'stiffness': loss_meds}
+
+
+def get_damping_ratio_range(sim_type, k0, b0):
+    params_range = {}
+    mass = 0.37
+
+    zeta = b0 / (2 * np.sqrt(k0))
+    if not(sim_type == 'mujoco'):
+        zeta /= np.sqrt(mass)
+    print(zeta)
+
+    stiffness = k0 * np.logspace(-2, 2, num=35)
+    
+    if (sim_type == 'mujoco'):
+        params_range['damping'] = (2 * zeta * np.sqrt(stiffness)).tolist()
+        params_range['stiffness'] = stiffness
+    else:
+        params_range['damping'] = (2 * zeta * np.sqrt(mass) * np.sqrt(stiffness)).tolist()
+        params_range['stiffness'] = stiffness
+
+    return params_range
+
 
 def get_stiffness_range(sim_type, k0):
-    return {'stiffness' : (k0 * np.logspace(-1, 1, num=20)).tolist()}
-    
+    return {'stiffness' : (k0 * np.logspace(-1.9, 1, num=45)).tolist()}
 
 def get_friction_range(sim_type, mu_0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['mu'] = (mu_0 * np.logspace(-1, 1, base=2, num=15)).tolist()
+        params_range['mu'] = (mu_0 * np.logspace(-1, 1, base=2, num=45)).tolist()
     else:
-        params_range['mu_tangent'] = (mu_0 * np.logspace(-1, 1, base=2, num=15)).tolist()
+        params_range['mu_tangent'] = (mu_0 * np.logspace(-1, 1, base=2, num=55)).tolist()
     return params_range
 
 def get_damping_range(sim_type, b0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['dissipation'] = (b0 * np.logspace(-1, 1, num=20)).tolist()
+        params_range['dissipation'] = (b0 * np.logspace(-1, 1, num=55)).tolist()
     else:
-        params_range['damping'] = (b0 * np.logspace(-1, 1, num=20)).tolist()
+        params_range['damping'] = (b0 * np.logspace(-1, 1, num=55)).tolist()
     return params_range
 
 

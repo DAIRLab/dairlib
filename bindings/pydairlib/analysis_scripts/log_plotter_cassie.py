@@ -278,6 +278,9 @@ def PlotVdot(x, t_x, x_datatypes, low_pass_filter = True):
 
 
 def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
+  if not ("CASSIE_CONTACT_DISPATCHER" in log.keys()):
+    return
+
   t_contact = []
   contact = []
   for i in range(len(log["CASSIE_CONTACT_DISPATCHER"])):
@@ -453,8 +456,15 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
   # We have to get t_slice for each trajectory, because the lengths might not be different (sometimes we disable trajectory tracking in some finite state)
   t_i = max(np.min(osc_debug[osc_traj].t), t_start)
   t_f = min(np.max(osc_debug[osc_traj].t), t_end)
-  start_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_i) < 1e-3)[0][0]
-  end_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_f) < 1e-3)[0][0]
+  try:
+    start_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_i) < 1e-3)[0][0]
+  except IndexError:
+    start_time_idx = 0
+  try:
+    end_time_idx = np.argwhere(np.abs(osc_debug[osc_traj].t - t_f) < 1e-3)[0][0]
+  except IndexError:
+    end_time_idx = len(np.abs(osc_debug[osc_traj].t)) - 1
+
   t_osc_debug_traj_slice = slice(start_time_idx, end_time_idx)
 
   t_array = osc_debug[osc_traj].t[t_osc_debug_traj_slice]

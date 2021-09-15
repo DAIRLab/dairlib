@@ -2,6 +2,7 @@ import pickle
 import time
 from bindings.pydairlib.common.plot_styler import PlotStyler
 from matplotlib import pyplot as plt
+import matplotlib
 import numpy as np
 from plotting_utils import format_sim_name
 from scipy.stats import gaussian_kde
@@ -45,15 +46,18 @@ def main():
 
   # make_stiffness_sensivity_analysis_figure(use_saved_data=True)
   # make_all_sensivity_analysis_figure(use_saved_data=True, save_figs=True)
+
   # make_stiffness_sensitivity_analysis_figure()
-  saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_14_10_stiffness.pkl'}
+  saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_14_18_stiffness.pkl'}
   make_stiffness_sensitivity_analysis_figure(use_saved_data=True, save_figs=True)
+
   # make_damping_sensitivity_analysis_figure()
-  saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_14_11_damping.pkl'}
-  make_damping_sensitivity_analysis_figure(use_saved_data=True, save_figs=True)
+  # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_14_11_damping.pkl'}
+  # make_damping_sensitivity_analysis_figure(use_saved_data=True, save_figs=True)
+
   # make_friction_sensitivity_analysis_figure()
-  saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_14_11_mu.pkl'}
-  make_friction_sensitivity_analysis_figure(use_saved_data=True, save_figs=True)
+  # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_14_11_mu.pkl'}
+  # make_friction_sensitivity_analysis_figure(use_saved_data=True, save_figs=True)
 
   # make_estimated_pdf_figure()
 
@@ -114,6 +118,26 @@ def get_sensitivity_analysis_results(ids, param_ranges):
   return sweeps
 
 
+def get_dual_sensitivity_analysis_results(ids, param_ranges):
+  sweeps = {}
+  for param_id in ids:
+    sim_type = param_id.split('_')[0]
+    eval_sim = get_cassie_sim(param_id)
+    # params_range = get_cassie_params_range(sim_type)
+    # import pdb; pdb.set_trace()
+    params = eval_sim.load_params(param_id).value
+    avg, med = get_sensitivity_analysis_tuple(
+      eval_sim,
+      None,
+      params,
+      param_ranges[param_id],
+      None,
+      plant='cassie')
+
+    sweeps[param_id] = {'avg': avg,
+                        'med': med}
+  return sweeps
+
 
 def make_stiffness_sensitivity_analysis_figure(use_saved_data=False, save_figs=False):
   ids = ['drake_2021_09_10_17_training_2500',
@@ -147,8 +171,12 @@ def make_stiffness_sensitivity_analysis_figure(use_saved_data=False, save_figs=F
     # import pdb; pdb.set_trace()
     ps.plot(k_ratio, sweeps[param_id]['avg']['stiffness'], color=sim_colors[format_sim_name(sim_id)])
 
+  plt.title('Cassie Stiffness Sensitivity')
   plt.xlabel('$k / k^{*}$')
   plt.xscale('log')
+  frame = plt.gca()
+  frame.axes.get_xaxis().set_ticks([0.01, 0.30, 1.00, 3.10, 10.00])
+  frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
   plt.legend(legend_strs)
   plt.tick_params(axis='x', which='minor')
   # plt.xticks(np.logspace(-1, 1, num=5))
@@ -156,7 +184,7 @@ def make_stiffness_sensitivity_analysis_figure(use_saved_data=False, save_figs=F
   # import pdb; pdb.set_trace()
   plt.ylabel('Average $e_{cassie}$')
   plt.ylim((20, 70))
-  plt.xlim((0.1, 10))
+  plt.xlim((0.01, 10))
   if save_figs :
     ps.save_fig('StiffnessSensitivity_cassie.png')
 
@@ -193,8 +221,12 @@ def make_damping_sensitivity_analysis_figure(use_saved_data=False, save_figs=Fal
     # import pdb; pdb.set_trace()
     ps.plot(k_ratio, sweeps[param_id]['avg'][damping_keys[param_id]], color=sim_colors[format_sim_name(sim_id)])
 
+  plt.title('Cassie Damping Sensitivity')
   plt.xlabel('$b / b^{*}$')
   plt.xscale('log')
+  frame = plt.gca()
+  frame.axes.get_xaxis().set_ticks([0.10, 0.30, 1.00, 3.10, 10.00])
+  frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
   # plt.legend(legend_strs)
   # plt.ylabel('Average $e_{cassie}$')
   plt.ylim((20, 70))
@@ -235,8 +267,60 @@ def make_friction_sensitivity_analysis_figure(use_saved_data=False, save_figs=Fa
     # import pdb; pdb.set_trace()
     ps.plot(k_ratio, sweeps[param_id]['avg'][mu_keys[param_id]], color=sim_colors[format_sim_name(sim_id)])
 
+  plt.title('Cassie Friction Sensitivity')
   plt.xlabel('$\mu / \mu^{*}$')
-  # plt.xscale('log')
+  plt.xscale('log', basex=2)
+  frame = plt.gca()
+  frame.axes.get_xaxis().set_ticks([0.5, 0.7, 1.0, 1.4, 2.0])
+  frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+  # plt.xticks(np.logspace(0.5, 2, 5))
+  # plt.legend(legend_strs)
+  # plt.ylabel('Average $e_{cassie}$')
+  plt.ylim((20, 70))
+  plt.xlim((0.5, 2))
+  if save_figs :
+    ps.save_fig('FrictionSensitivity_cassie.png')
+
+def make_damping_ratio_sensitivity_analysis_figure(use_saved_data=False, save_figs=False):
+  ids = ['drake_2021_09_10_17_training_2500',
+         'mujoco_2021_09_12_22_training_2500']
+  mu_keys = {ids[0] : 'mu', ids[1] : 'mu_tangent'}
+  params_ranges = {}
+  params = {}
+  for param_id in ids:
+    param = load_cassie_params(param_id)
+    params[param_id] = param
+    params_ranges[param_id] = get_friction_range(param_id.split('_')[0], param[mu_keys[param_id]])
+
+  save_data_file = figure_data_directory + date_prefix + '_mu' + '.pkl'
+  sweeps = {}
+  if use_saved_data:
+    with open(saved_data['sensitivity_analysis'], 'rb') as f:
+      sweeps = pickle.load(f)
+  else:
+    print('saving to: ' + save_data_file)
+    sweeps = get_sensitivity_analysis_results(ids, params_ranges)
+    with open(save_data_file, 'wb') as f:
+      pickle.dump(sweeps, f, pickle.HIGHEST_PROTOCOL)
+
+  ## plotting
+  legend_strs = []
+  ps.set_figsize((8,6))
+  for param_id in ids:
+    sim_id = param_id.split('_')[0]
+    legend_strs.append(format_sim_name(param_id))
+    k_opt = params[param_id][mu_keys[param_id]]
+    k_ratio = np.array(params_ranges[param_id][mu_keys[param_id]]) / k_opt
+    # import pdb; pdb.set_trace()
+    ps.plot(k_ratio, sweeps[param_id]['avg'][mu_keys[param_id]], color=sim_colors[format_sim_name(sim_id)])
+
+  plt.title('Cassie Friction Sensitivity')
+  plt.xlabel('$\mu / \mu^{*}$')
+  plt.xscale('log', basex=2)
+  frame = plt.gca()
+  frame.axes.get_xaxis().set_ticks([0.5, 0.7, 1.0, 1.4, 2.0])
+  frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+  # plt.xticks(np.logspace(0.5, 2, 5))
   # plt.legend(legend_strs)
   # plt.ylabel('Average $e_{cassie}$')
   plt.ylim((20, 70))

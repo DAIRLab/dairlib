@@ -1,0 +1,142 @@
+<?xml version="1.0" ?>
+<robot name="finger_pen">
+
+    <material name="blue">
+        <color rgba="0 0 1 1"/>
+    </material>
+
+    <material name="green">
+        <color rgba="0 1 0 1"/>
+    </material>
+
+    <material name="red">
+        <color rgba="1 0 0 1"/>
+    </material>
+
+    <material name="white">
+        <color rgba="1 1 1 1"/>
+    </material>
+
+    <link name="base"/>
+<!--    <link name="base_z"/>-->
+    <link name="pen">
+        <inertial>
+            <mass value="12.0"/>
+            <inertia ixx="1.33" ixy="0" ixz="0" iyy="1.33" iyz="0" izz="1.33"/>
+        </inertial>
+        <visual>
+            <origin xyz="0 0 0.5"/>
+            <geometry>
+                <cylinder length="1.5" radius="0.05"/>
+            </geometry>
+            <material name="blue"/>
+        </visual>
+    </link>
+    <link name="bar1">
+        <visual>
+            <origin xyz="0 0 0.0"/>
+            <geometry>
+                <cylinder length="0.1" radius="0.06"/>
+            </geometry>
+            <material name="white"/>
+        </visual>
+    </link>
+    <link name="bar2">
+        <visual>
+            <origin xyz="0 0 0.5"/>
+            <geometry>
+                <cylinder length="0.1" radius="0.06"/>
+            </geometry>
+            <material name="white"/>
+        </visual>
+    </link>
+    <link name="bar3">
+        <visual>
+            <origin xyz="0 0 1.0"/>
+            <geometry>
+                <cylinder length="0.1" radius="0.06"/>
+            </geometry>
+            <material name="white"/>
+        </visual>
+    </link>
+    <link name="upper_finger_left">
+        <visual>
+            <origin xyz="-0.1 0 0.3125" rpy="0 -1.570796 0"/>
+            <geometry>
+                <cylinder length="0.1" radius="0.05"/>
+            </geometry>
+            <material name="red"/>
+        </visual>
+    </link>
+    <link name="upper_finger_right">
+        <visual>
+            <origin xyz="0.1 0 0.3125" rpy="0 -1.570796 0"/>
+            <geometry>
+                <cylinder length="0.1" radius="0.05"/>
+            </geometry>
+            <material name="red"/>
+        </visual>
+    </link>
+    <link name="lower_finger_left">
+        <visual>
+            <origin xyz="-0.1 0 -0.3125" rpy="0 -1.570796 0"/>
+            <geometry>
+                <cylinder length="0.1" radius="0.05"/>
+            </geometry>
+            <material name="red"/>
+        </visual>
+    </link>
+    <link name="lower_finger_right">
+        <visual>
+            <origin xyz="0.1 0 -0.3125" rpy="0 -1.570796 0"/>
+            <geometry>
+                <cylinder length="0.1" radius="0.05"/>
+            </geometry>
+            <material name="red"/>
+        </visual>
+    </link>
+
+
+    <joint name="pen" type="prismatic">
+        <parent link="base"/>
+        <child link="pen"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="lower_finger_left" type="prismatic">
+        <parent link="base"/>
+        <child link="lower_finger_left"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="lower_finger_right" type="prismatic">
+        <parent link="base"/>
+        <child link="lower_finger_right"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="upper_finger_left" type="prismatic">
+        <parent link="base"/>
+        <child link="upper_finger_left"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="upper_finger_right" type="prismatic">
+        <parent link="base"/>
+        <child link="upper_finger_right"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="bar1" type="fixed">
+        <parent link="pen"/>
+        <child link="bar1"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="bar2" type="fixed">
+        <parent link="pen"/>
+        <child link="bar2"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="bar3" type="fixed">
+        <parent link="pen"/>
+        <child link="bar3"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+
+</robot>
+

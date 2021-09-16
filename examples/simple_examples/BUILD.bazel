@@ -29,3 +29,18 @@ cc_binary(
         "@drake//math:gradient",
     ],
 )
+
+py_library(
+    name = "urdf",
+    data = ["urdf/finger_pen.urdf"],
+)
+
+py_binary(
+    name = "visualize_finger_gait",
+    srcs = ["visualize_finger_gait.py"],
+    deps = [
+        ":urdf",
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+)

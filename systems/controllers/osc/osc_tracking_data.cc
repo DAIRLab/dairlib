@@ -82,8 +82,8 @@ bool OscTrackingData::Update(
       yddot_des_converted_(idx) = 0;
     }
     if (ff_accel_ratio_ != nullptr) {
-      yddot_des_converted_ *=
-          ff_accel_ratio_->value(t_since_last_state_switch)(0, 0);
+      yddot_des_converted_ = ff_accel_ratio_->value(t_since_last_state_switch) *
+                             yddot_des_converted_;
     }
 
     // Update feedback output (Calling virtual methods)
@@ -145,8 +145,8 @@ void OscTrackingData::SetTimeVaryingGains(
 }
 void OscTrackingData::SetFeedforwardAccelRatio(
     const drake::trajectories::Trajectory<double>& ff_accel_ratio) {
-  DRAKE_DEMAND(ff_accel_ratio.cols() == 1);
-  DRAKE_DEMAND(ff_accel_ratio.rows() == 1);
+  DRAKE_DEMAND(ff_accel_ratio.cols() == n_ydot_);
+  DRAKE_DEMAND(ff_accel_ratio.rows() == n_ydot_);
   DRAKE_DEMAND(ff_accel_ratio.start_time() == 0);
   //  DRAKE_DEMAND(ff_accel_ratio.end_time() == );
   ff_accel_ratio_ = &ff_accel_ratio;

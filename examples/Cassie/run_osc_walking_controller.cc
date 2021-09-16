@@ -51,6 +51,8 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::FixedJointEvaluator;
 
+using drake::trajectories::PiecewisePolynomial;
+
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -443,11 +445,29 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData swing_foot_traj(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
-  if (FLAGS_spring_model) {
-    //    swing_foot_traj.DisableFeedforwardAccel({2});
-  }
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  std::vector<double> swing_ft_ratio_breaks{0, left_support_duration / 2,
+                                            left_support_duration};
+  std::vector<drake::MatrixX<double>> swing_ft_ratio_samples(
+      3, drake::MatrixX<double>::Identity(3, 3));
+  swing_ft_ratio_samples[2](2, 2) *= 0.3;
+  PiecewisePolynomial<double> swing_ft_ratio_gain_ratio =
+      PiecewisePolynomial<double>::FirstOrderHold(swing_ft_ratio_breaks,
+                                                  swing_ft_ratio_samples);
+  std::vector<double> swing_ft_accel_ratio_breaks{0, left_support_duration / 2,
+                                                  left_support_duration};
+  std::vector<drake::MatrixX<double>> swing_ft_accel_ratio_samples(
+      3, drake::MatrixX<double>::Identity(3, 3));
+  swing_ft_accel_ratio_samples[2](2, 2) *= 0;
+  PiecewisePolynomial<double> swing_ft_accel_ratio_gain_ratio =
+      PiecewisePolynomial<double>::FirstOrderHold(swing_ft_accel_ratio_breaks,
+                                                  swing_ft_accel_ratio_samples);
+  swing_foot_traj.SetTimeVaryingGains(swing_ft_ratio_gain_ratio);
+  swing_foot_traj.SetFeedforwardAccelRatio(swing_ft_accel_ratio_gain_ratio);
+  if (FLAGS_spring_model) {
+    // swing_foot_traj.DisableFeedforwardAccel({2});
+  }
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
   bool use_pelvis_for_lipm_tracking = true;

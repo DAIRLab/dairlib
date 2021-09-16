@@ -187,7 +187,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   // Filter the CoM_pos vel
   if (robot_output->get_timestamp() != last_timestamp_) {
     double dt = robot_output->get_timestamp() - last_timestamp_;
-    last_timestamp_ = robot_output->get_timestamp();
+    //last_timestamp_ = robot_output->get_timestamp();
     double alpha =
         2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
     filtered_com_vel_ = alpha * CoM_vel + (1 - alpha) * filtered_com_vel_;
@@ -204,12 +204,38 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
                            (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
                           omega;
   *x_fs = CoM_pos.head(2) - com_wrt_foot;
+  /*if (robot_output->get_timestamp() != last_timestamp_) {
+    std::ofstream outfile;
+    outfile.open("../ft_pos_nominal.txt", std::ios_base::app);
+    outfile << robot_output->get_timestamp() << ", ";
+    for (int i = 0; i < x_fs->size(); i++) {
+      outfile << (*x_fs)(i);
+      if (i == x_fs->size() - 1) {
+        outfile << "\n";
+      } else {
+        outfile << ", ";
+      }
+    }
+  }*/
 
   // Walking position control
   // Read in speed regularization term
   auto speed_control_output = (BasicVector<double>*)this->EvalVectorInput(
       context, footstep_adjustment_port_);
   *x_fs += speed_control_output->get_value();
+  /*if (robot_output->get_timestamp() != last_timestamp_) {
+    std::ofstream outfile;
+    outfile.open("../ft_pos_w_speed_control.txt", std::ios_base::app);
+    outfile << robot_output->get_timestamp() << ", ";
+    for (int i = 0; i < x_fs->size(); i++) {
+      outfile << (*x_fs)(i);
+      if (i == x_fs->size() - 1) {
+        outfile << "\n";
+      } else {
+        outfile << ", ";
+      }
+    }
+  }*/
 
   // Get approximated heading angle of pelvis
   Vector3d pelvis_heading_vec =
@@ -241,6 +267,8 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
 
   // Assignment for stance foot height
   *stance_foot_height = stance_foot_pos(2);
+
+  last_timestamp_ = robot_output->get_timestamp();
 }
 
 PiecewisePolynomial<double> SwingFootTrajGenerator::CreateSplineForSwingFoot(

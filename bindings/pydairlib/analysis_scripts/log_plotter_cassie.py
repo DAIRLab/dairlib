@@ -147,6 +147,8 @@ def main():
 
   PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
+  # PlotSwingFootData(t_osc_debug, fsm)
+
   plt.show()
 
 def PlotOscQpSol(t_osc_debug, osc_output, fsm):
@@ -195,6 +197,29 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
   plt.figure("Qp solve time " + filename)
   plt.plot(t_osc_debug[:], solve_time)
   plt.plot(t_osc_debug[t_u_slice], 0.0005 * fsm[t_u_slice])
+
+
+
+def PlotSwingFootData(t_osc_debug, fsm):
+  file_array = np.loadtxt("../ft_pos_nominal.txt", delimiter=',')
+  t_msg = file_array[:,0]
+  pos_msg = file_array[:,1:]
+
+  # import pdb; pdb.set_trace()
+
+  plt.figure("Neutral point")
+  plt.plot(t_msg, pos_msg)
+  plt.legend(["abs_error_per_contact"])
+  plt.plot(t_osc_debug, 0.01 * fsm)
+
+  # file_array = np.loadtxt("../ft_pos_w_speed_control.txt", delimiter=',')
+  # t_msg = file_array[:,0]
+  # pos_msg = file_array[:,1:]
+  #
+  # plt.figure("Neutral point with speed control delta")
+  # plt.plot(t_msg, pos_msg)
+  # plt.legend(["abs_error_per_contact"])
+  # plt.plot(t_osc_debug, 0.01 * fsm)
 
 
 

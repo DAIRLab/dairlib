@@ -24,7 +24,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "1.original-walking-controller(with dispatcher)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true --gains_filename=\"examples/Cassie/osc/osc_walking_gains_mujoco.yaml\"";
         host = "localhost";
     }
     cmd "3.1.rom-planner (short time limit)(with dispatcher)" {

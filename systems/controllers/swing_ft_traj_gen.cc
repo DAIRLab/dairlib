@@ -183,6 +183,32 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
       com_traj_output->get_value<drake::trajectories::Trajectory<double>>();
   CoM_pos = com_traj.value(end_time_of_this_interval);
   CoM_vel = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
+  /*if (robot_output->get_timestamp() != last_timestamp_) {
+    std::ofstream outfile;
+    outfile.open("../predicted_com_pos.txt", std::ios_base::app);
+    outfile << robot_output->get_timestamp() << ", ";
+    for (int i = 0; i < CoM_pos.size(); i++) {
+      outfile << CoM_pos(i);
+      if (i == CoM_pos.size() - 1) {
+        outfile << "\n";
+      } else {
+        outfile << ", ";
+      }
+    }
+  }
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    std::ofstream outfile;
+    outfile.open("../predicted_com_vel.txt", std::ios_base::app);
+    outfile << robot_output->get_timestamp() << ", ";
+    for (int i = 0; i < CoM_vel.size(); i++) {
+      outfile << CoM_vel(i);
+      if (i == CoM_vel.size() - 1) {
+        outfile << "\n";
+      } else {
+        outfile << ", ";
+      }
+    }
+  }*/
 
   // Filter the CoM_pos vel
   if (robot_output->get_timestamp() != last_timestamp_) {

@@ -216,6 +216,7 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   //   y = k_1 * exp(w*t) + k_2 * exp(-w*t)
   // where k_1 = (y0 + dy0/w)/2
   //       k_2 = (y0 - dy0/w)/2.
+  // double omega = sqrt(9.81 / (final_height - stance_foot_pos(2)));
   double omega = sqrt(9.81 / CoM_wrt_foot_z);
   double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
   double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
@@ -305,6 +306,15 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+
+  /*cout << "start_time = " << start_time << endl;
+  cout << "end_time = " << end_time << endl;
+  cout << "CoM - stance_foot_pos = " << (CoM - stance_foot_pos).transpose() << endl;
+  cout << "dCoM = " << dCoM.transpose() << endl;
+  for (int i = 0; i < 3; i++) {
+    cout << exp_pp_traj->value(start_time + i * (end_time - start_time)/2) << ", ";
+  }
+  cout << endl;*/
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(
     const Context<double>& context,

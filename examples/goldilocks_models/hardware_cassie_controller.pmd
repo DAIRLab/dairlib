@@ -79,7 +79,7 @@ group "0.operator" {
         host = "dair-cassie";
     }
     cmd "5.0.switch-to-default-walking" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=ROM_WALKING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01 --fsm_period=0.4 --fsm_offset=0.35";
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=ROM_WALKING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01 --fsm_period=0.4 --fsm_offset=0.35 --n_period_delay=2";
         host = "dair-cassie";
     }
 }
@@ -191,7 +191,7 @@ script "set_up_from_pd_to_osc_standing(local-planner)" {
 
 script "switch to default walking (test)" {
     start cmd "5.0.switch-to-default-walking";
-    wait ms 1000;
+    wait ms 2000;
     stop cmd "3.standing-controller-real-robot";
 }
 

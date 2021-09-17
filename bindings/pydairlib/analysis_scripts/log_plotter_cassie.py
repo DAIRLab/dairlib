@@ -202,24 +202,42 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
 
 def PlotSwingFootData(t_osc_debug, fsm):
   file_array = np.loadtxt("../ft_pos_nominal.txt", delimiter=',')
-  t_msg = file_array[:,0]
-  pos_msg = file_array[:,1:]
-
-  # import pdb; pdb.set_trace()
+  t_msg = file_array[:, 0]
+  pos_msg = file_array[:, 1:]
 
   plt.figure("Neutral point")
   plt.plot(t_msg, pos_msg)
-  plt.legend(["abs_error_per_contact"])
+  # plt.plot(t_osc_debug, 0.01 * fsm)
+  # plt.legend(["Neutral point x", "Neutral point y", "fsm"])
+
+  file_array = np.loadtxt("../ft_pos_w_speed_control.txt", delimiter=',')
+  t_msg = file_array[:, 0]
+  pos_msg = file_array[:, 1:]
+
+  # plt.figure("Neutral point with speed control delta")
+  plt.plot(t_msg, pos_msg)
+  plt.plot(t_osc_debug, 0.01 * fsm)
+  # plt.legend(["Neutral point w delta x", "Neutral point w delta y", "fsm"])
+
+  plt.legend(["Neutral point x", "Neutral point y", "Neutral point w delta x",
+              "Neutral point w delta y", "fsm"])
+
+  ###
+  file_array = np.loadtxt("../predicted_com_pos.txt", delimiter=',')
+  t_msg = file_array[:, 0]
+  pos_msg = file_array[:, 1:]
+
+  plt.figure("com")
+  plt.plot(t_msg, pos_msg)
+
+  file_array = np.loadtxt("../predicted_com_vel.txt", delimiter=',')
+  t_msg = file_array[:, 0]
+  vel_msg = file_array[:, 1:]
+
+  plt.plot(t_msg, vel_msg)
   plt.plot(t_osc_debug, 0.01 * fsm)
 
-  # file_array = np.loadtxt("../ft_pos_w_speed_control.txt", delimiter=',')
-  # t_msg = file_array[:,0]
-  # pos_msg = file_array[:,1:]
-  #
-  # plt.figure("Neutral point with speed control delta")
-  # plt.plot(t_msg, pos_msg)
-  # plt.legend(["abs_error_per_contact"])
-  # plt.plot(t_osc_debug, 0.01 * fsm)
+  plt.legend(["pos x", "pos y", "pos z", "vel x", "vel y", "vel z", "fsm"])
 
 
 

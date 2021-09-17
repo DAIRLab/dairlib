@@ -456,10 +456,12 @@ int DoMain(int argc, char* argv[]) {
       PiecewisePolynomial<double>::FirstOrderHold(swing_ft_ratio_breaks,
                                                   swing_ft_ratio_samples);
   std::vector<double> swing_ft_accel_ratio_breaks{0, left_support_duration / 2,
+                                                  left_support_duration * 3 / 4,
                                                   left_support_duration};
   std::vector<drake::MatrixX<double>> swing_ft_accel_ratio_samples(
-      3, drake::MatrixX<double>::Identity(3, 3));
+      4, drake::MatrixX<double>::Identity(3, 3));
   swing_ft_accel_ratio_samples[2](2, 2) *= 0;
+  swing_ft_accel_ratio_samples[3](2, 2) *= 0;
   PiecewisePolynomial<double> swing_ft_accel_ratio_gain_ratio =
       PiecewisePolynomial<double>::FirstOrderHold(swing_ft_accel_ratio_breaks,
                                                   swing_ft_accel_ratio_samples);

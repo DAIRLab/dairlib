@@ -481,14 +481,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Testing -- start the init ROM state form the previous plan
   bool initialize_with_rom_state = false;
   VectorXd init_rom_state(2 * n_y_);
-  if (counter_ != 0) {
+  /*if (counter_ != 0) {
     auto rom_traj = lightweight_saved_traj_.ConstructPositionTrajectory();
     initialize_with_rom_state = rom_traj.end_time() > current_time;
     if (initialize_with_rom_state) {
       init_rom_state << rom_traj.value(current_time),
           rom_traj.EvalDerivative(current_time, 1);
     }
-  }
+  }*/
 
   // Get phase in the first mode
   const BasicVector<double>* phase_port =

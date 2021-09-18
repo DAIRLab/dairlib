@@ -171,11 +171,44 @@ RomTrajOpt::RomTrajOpt(
   this->DoAddRunningCost((tau.transpose() * R * tau)(0, 0),
                          &rom_input_cost_bindings_);
 
+  // Initial state relaxation
+  int n_eps = relax_index.size();
+  eps_rom_var_ = NewContinuousVariables(n_eps, "eps_rom");
+  init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
+      MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps), eps_rom_var_));
+  /* // "linear cost + lower bound" version
+  if (relax_index.size() == 1 && *(relax_index.begin()) == 5) {
+    init_rom_relax_cost_bindings_.push_back(AddLinearCost(eps_rom_var_(0)));
+    AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
+                             eps_rom_var_);
+  } else {
+    init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
+        MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps),
+        eps_rom_var_));
+  }*/
+
   // Initial state constraint
   if (initialize_with_rom_state) {
-    // TODO: do we need to relax this so the problem is not sometimes infeasible
-    AddBoundingBoxConstraint(rom_state_init, rom_state_init,
-                             state_vars_by_mode(0, 0));
+    if (n_eps == 0) {
+      AddBoundingBoxConstraint(rom_state_init, rom_state_init,
+                               state_vars_by_mode(0, 0));
+    } else {
+      VectorXDecisionVariable z_0 = state_vars_by_mode(0, 0);
+      int idx_eps = 0;
+      Eigen::RowVectorXd A = Eigen::RowVectorXd::Ones(2);
+      for (int i = 0; i < 2 * n_y_; i++) {
+        if (relax_index.find(i) == relax_index.end()) {
+          AddBoundingBoxConstraint(rom_state_init(i), rom_state_init(i),
+                                   z_0(i));
+        } else {
+          // rom_state_init(i) == z_0(i) + eps_rom_var_(idx_eps)
+          AddLinearConstraint(
+              A, rom_state_init(i), rom_state_init(i),
+              {z_0.segment<1>(i), eps_rom_var_.segment<1>(idx_eps)});
+          idx_eps++;
+        }
+      }
+    }
 
     // We cannot get rid of x_init variable, because we still have stance foot
     // constraint for the first mode.
@@ -293,21 +326,6 @@ RomTrajOpt::RomTrajOpt(
       if (!initialize_with_rom_state) {
         PrintStatus(
             "Adding constraint -- RoM-FoM mapping (start of mode; relaxed)");
-        int n_eps = relax_index.size();
-        eps_rom_var_ = NewContinuousVariables(n_eps, "eps_rom");
-        init_rom_relax_cost_bindings_.push_back(
-            AddQuadraticCost(MatrixXd::Identity(n_eps, n_eps),
-                             VectorXd::Zero(n_eps), eps_rom_var_));
-        /* // "linear cost + lower bound" version
-        if (relax_index.size() == 1 && *(relax_index.begin()) == 5) {
-          init_rom_relax_cost_bindings_.push_back(AddLinearCost(eps_rom_var_(0)));
-          AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
-                                   eps_rom_var_);
-        } else {
-          init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
-              MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps),
-              eps_rom_var_));
-        }*/
         auto kin_constraint_start =
             std::make_shared<planning::KinematicsConstraint>(
                 rom, plant, left_stance, state_mirror, relax_index,

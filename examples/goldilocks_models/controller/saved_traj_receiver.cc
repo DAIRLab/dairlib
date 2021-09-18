@@ -1,11 +1,11 @@
 #include "examples/goldilocks_models/controller/saved_traj_receiver.h"
 
+#include <string>
+
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/multipose_visualizer.h"
 #include "systems/framework/output_vector.h"
-
-#include <string>
 
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -110,21 +110,8 @@ void SavedTrajReceiver::CalcRomTraj(
   // Benchmark: The unpacking time is about 10-20 us.
   RomPlannerTrajectory traj_data(*lcm_traj);
 
-  int n_mode = traj_data.GetNumModes();
-  VectorXd zero_vec = VectorXd::Zero(ny_);
-
-  PiecewisePolynomial<double> pp;
-  for (int mode = 0; mode < n_mode; ++mode) {
-    const LcmTrajectory::Trajectory& traj_i =
-        traj_data.GetTrajectory("state_traj" + std::to_string(mode));
-    pp.ConcatenateInTime(
-        both_pos_vel_in_traj_
-            ? PiecewisePolynomial<double>::CubicHermite(
-                  traj_i.time_vector, traj_i.datapoints.topRows(ny_),
-                  traj_i.datapoints.bottomRows(ny_))
-            : PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-                  traj_i.time_vector, traj_i.datapoints, zero_vec, zero_vec));
-  }
+  // Construct cubic splines
+  PiecewisePolynomial<double> pp = traj_data.ConstructPositionTrajectory();
 
   if (context.get_time() > pp.end_time()) {
     cout << "WARNING: exceeded trajectory's end time! ";

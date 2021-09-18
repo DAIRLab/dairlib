@@ -46,7 +46,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
   void LoadFromFile(const std::string& filepath, bool lightweight);
-  using LcmTrajectory::LoadFromFile; // get rid of the compiler warning
+  using LcmTrajectory::LoadFromFile;  // get rid of the compiler warning
 
   int GetNumModes() const { return num_modes_; }
 
@@ -80,6 +80,9 @@ class RomPlannerTrajectory : public LcmTrajectory {
     return global_xf_FOM_->time_vector;
   };
   const Eigen::VectorXd& get_stance_foot() const { return stance_foot_; };
+
+  drake::trajectories::PiecewisePolynomial<double> ConstructPositionTrajectory()
+      const;
 
  private:
   static Eigen::VectorXd GetCollocationPoints(

@@ -262,6 +262,20 @@ Eigen::VectorXd RomPlannerTrajectory::GetCollocationPoints(
                 time_vector.head(num_knotpoints - 1));
 }
 
+PiecewisePolynomial<double> RomPlannerTrajectory::ConstructPositionTrajectory()
+    const {
+  int n_y = x_[0]->datatypes.size() / 2;
+
+  PiecewisePolynomial<double> pp;
+  for (int mode = 0; mode < num_modes_; ++mode) {
+    const LcmTrajectory::Trajectory* traj_i = x_[mode];
+    pp.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        traj_i->time_vector, traj_i->datapoints.topRows(n_y),
+        traj_i->datapoints.bottomRows(n_y)));
+  }
+  return pp;
+}
+
 PiecewisePolynomial<double> RomPlannerTrajectory::ReconstructStateTrajectory()
     const {
   PiecewisePolynomial<double> state_traj =

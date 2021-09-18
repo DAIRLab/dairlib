@@ -456,8 +456,8 @@ int DoMain(int argc, char* argv[]) {
                                                  right_stance_state};
     auto optimal_rom_traj_gen = builder.AddSystem<SavedTrajReceiver>(
         *rom, plant_w_spr, plant_wo_springs, context_w_spr.get(),
-        left_right_foot, left_right_support_fsm_states, true,
-        left_support_duration, double_support_duration);
+        left_right_foot, left_right_support_fsm_states, left_support_duration,
+        double_support_duration);
     builder.Connect(planner_output_subscriber->get_output_port(),
                     optimal_rom_traj_gen->get_input_port_lcm_traj());
     builder.Connect(fsm->get_output_port(0),

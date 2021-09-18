@@ -1,16 +1,16 @@
 #pragma once
 
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "lcm/lcm_trajectory.h"
+#include "multibody/multibody_utils.h"
+#include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-
-#include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "dairlib/lcmt_trajectory_block.hpp"
-#include "lcm/lcm_trajectory.h"
-#include "multibody/multibody_utils.h"
-#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -26,7 +26,7 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant_control,
       drake::systems::Context<double>* context_feedback,
       const std::vector<BodyPoint>& left_right_foot,
-      std::vector<int> left_right_support_fsm_states, bool both_pos_vel_in_traj,
+      std::vector<int> left_right_support_fsm_states,
       double single_support_duration, double double_support_duration);
 
   const drake::systems::InputPort<double>& get_input_port_lcm_traj() const {
@@ -77,7 +77,6 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   int nq_;
   int nv_;
   int nx_;
-  bool both_pos_vel_in_traj_;
 
   std::map<int, BodyPoint> swing_foot_map_;
 

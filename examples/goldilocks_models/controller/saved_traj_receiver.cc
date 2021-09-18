@@ -34,7 +34,7 @@ SavedTrajReceiver::SavedTrajReceiver(
     const drake::multibody::MultibodyPlant<double>& plant_control,
     drake::systems::Context<double>* context_feedback,
     const std::vector<BodyPoint>& left_right_foot,
-    std::vector<int> left_right_support_fsm_states, bool both_pos_vel_in_traj,
+    std::vector<int> left_right_support_fsm_states,
     double single_support_duration, double double_support_duration)
     : ny_(rom.n_y()),
       plant_feedback_(plant_feedback),
@@ -46,7 +46,6 @@ SavedTrajReceiver::SavedTrajReceiver(
       nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
       nx_(plant_control.num_positions() + plant_control.num_velocities()),
-      both_pos_vel_in_traj_(both_pos_vel_in_traj),
       single_support_duration_(single_support_duration),
       double_support_duration_(double_support_duration) {
   saved_traj_lcm_port_ =

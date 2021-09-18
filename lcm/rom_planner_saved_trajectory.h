@@ -48,6 +48,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
   void LoadFromFile(const std::string& filepath, bool lightweight);
   using LcmTrajectory::LoadFromFile;  // get rid of the compiler warning
 
+  int get_utime() const { return utime_;};
   int GetNumModes() const { return num_modes_; }
 
   Eigen::MatrixXd GetStateSamples(int mode) const {
@@ -87,6 +88,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
  private:
   static Eigen::VectorXd GetCollocationPoints(
       const Eigen::VectorXd& time_vector);
+  int utime_;
   int num_modes_ = 0;
 
   const Trajectory* decision_vars_;
@@ -98,7 +100,5 @@ class RomPlannerTrajectory : public LcmTrajectory {
   const Trajectory* global_xf_FOM_;
   Eigen::VectorXd stance_foot_;
   //  const Eigen::MatrixXd* stance_foot_;
-
-  int utime_;
 };
 }  // namespace dairlib

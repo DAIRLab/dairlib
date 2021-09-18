@@ -484,14 +484,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (counter_ != 0) {
     auto rom_traj = lightweight_saved_traj_.ConstructPositionTrajectory();
     initialize_with_rom_state = rom_traj.end_time() > current_time;
-    cout << "initialize_with_rom_state = " << initialize_with_rom_state << endl;
     if (initialize_with_rom_state) {
       init_rom_state << rom_traj.value(current_time),
           rom_traj.EvalDerivative(current_time, 1);
-      cout << "init_rom_state = " << init_rom_state.transpose() << endl;
     }
   }
-  cout << "init_rom_state.size()" << init_rom_state.size() << endl;
 
   // Get phase in the first mode
   const BasicVector<double>* phase_port =
@@ -863,11 +860,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       time_limit -= min_solve_time_preserved_for_next_loop_;
     }
     time_limit /= param_.realtime_rate_for_time_limit;
-    cout << "Set the time limit to " << time_limit << endl;
-    solver_option_ipopt_.SetOption(drake::solvers::IpoptSolver::id(),
-                                   "max_cpu_time", time_limit);
-    solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
-                                   "Time limit", time_limit);
+    if (time_limit > 0) {
+      cout << "Set the time limit to " << time_limit << endl;
+      solver_option_ipopt_.SetOption(drake::solvers::IpoptSolver::id(),
+                                     "max_cpu_time", time_limit);
+      solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
+                                     "Time limit", time_limit);
+    } else {
+      cout << "WARNING: Not setting time limit because it's negative.\n";
+    }
   }
 
   auto break3 = std::chrono::high_resolution_clock::now();
@@ -958,6 +959,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       RomPlannerTrajectory(trajopt, result, global_x0_FOM_, global_xf_FOM_,
                            prefix, "", true, current_time);
   *traj_msg = lightweight_saved_traj_.GenerateLcmObject();
+  //  PrintTrajMsg(traj_msg);
 
   // Store the previous message
   previous_output_msg_ = *traj_msg;
@@ -1976,6 +1978,56 @@ void CassiePlannerWithMixedRomFom::ResolveWithAnotherSolver(
     cout << result2.get_solution_result() << " | ";
     cout << "Cost:" << result2.get_optimal_cost() << "\n";
   }
+}
+
+void CassiePlannerWithMixedRomFom::PrintTrajMsg(
+    dairlib::lcmt_timestamped_saved_traj* traj_msg) const {
+  // I created this function to debug the memory leak. (I didn't copy utime in
+  // RomPlannerTrajectory's copy assignment)
+  cout << "Printing lcm objects\n";
+  cout << "traj_msg->utime = " << traj_msg->utime << endl;
+  auto saved_traj = traj_msg->saved_traj;
+  //  dairlib::lcmt_metadata metadata;
+  //  int32_t    num_trajectories;
+  //  std::vector< dairlib::lcmt_trajectory_block > trajectories;
+  //  std::vector< std::string > trajectory_names;
+  cout << "num_trajectories = " << saved_traj.num_trajectories << endl;
+  cout << "name = ";
+  for (auto name : saved_traj.trajectory_names) {
+    cout << name << ", ";
+  }
+  cout << endl;
+  cout << "---\n";
+  for (auto traj_block : saved_traj.trajectories) {
+    //    std::string trajectory_name;
+    //    int32_t    num_points;
+    //    int32_t    num_datatypes;
+    //    std::vector< double > time_vec;
+    //    std::vector< std::vector< double > > datapoints;
+    //    std::vector< std::string > datatypes;
+    cout << "trajectory_name = " << traj_block.trajectory_name << endl;
+    cout << "num_points = " << traj_block.num_points << endl;
+    cout << "num_datatypes = " << traj_block.num_datatypes << endl;
+    cout << "time_vec = ";
+    for (auto time : traj_block.time_vec) {
+      cout << time << ", ";
+    }
+    cout << endl;
+    cout << "datatypes = ";
+    for (auto data_element_name : traj_block.datatypes) {
+      cout << data_element_name << ", ";
+    }
+    cout << endl;
+    cout << "datapoints = \n";
+    for (auto row : traj_block.datapoints) {
+      for (auto element : row) {
+        cout << element << ", ";
+      }
+      cout << endl;
+    }
+    cout << endl;
+  }
+  cout << "END;\n";
 }
 
 }  // namespace goldilocks_models

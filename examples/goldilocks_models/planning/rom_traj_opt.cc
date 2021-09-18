@@ -154,6 +154,13 @@ RomTrajOpt::RomTrajOpt(
         3 * num_time_samples.size(), "touchdown_foot_pos");
   }
 
+  /// Construct mode_start
+  int counter = 0;
+  for (int i = 0; i < num_modes_; i++) {
+    mode_start_.push_back(counter);
+    counter += mode_lengths_[i] - 1;
+  }
+
   /// Adding costs and constraints
   // Add cost
   PrintStatus("Adding cost...");
@@ -233,11 +240,9 @@ RomTrajOpt::RomTrajOpt(
   }
 
   // Loop over modes to add more constraints
-  int counter = 0;
   bool left_stance = start_with_left_stance;
   for (int i = 0; i < num_modes_; i++) {
     PrintStatus("Mode " + std::to_string(i) + "============================");
-    mode_start_.push_back(counter);
 
     VectorXDecisionVariable x0 = x0_vars_by_mode(i);  // start of mode
     VectorXDecisionVariable xf = xf_vars_by_mode(i);  // end of mode
@@ -590,7 +595,6 @@ RomTrajOpt::RomTrajOpt(
       }
     }
 
-    counter += mode_lengths_[i] - 1;
     left_stance = !left_stance;
   }
 }

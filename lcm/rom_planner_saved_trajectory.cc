@@ -14,12 +14,19 @@ namespace dairlib {
 using goldilocks_models::RomTrajOpt;
 
 // Assignment operator (for the lightweight version!)
+// Reminder: anything that you want to send to the controller thread should be
+// copied here.
+// The copy assignment is used in cassie_rom_planner_system.cc like
+//  lightweight_saved_traj_ =
+//      RomPlannerTrajectory(trajopt, result, global_x0_FOM_, global_xf_FOM_,
+//                           prefix, "", true, current_time);
 RomPlannerTrajectory& RomPlannerTrajectory::operator=(
     const RomPlannerTrajectory& old) {
   // Base class (LcmTrajectory)
   LcmTrajectory::operator=(old);
 
   // Derived class (RomPlannerTrajectory)
+  utime_ = old.get_utime();
   num_modes_ = old.GetNumModes();
 
   x_.clear();

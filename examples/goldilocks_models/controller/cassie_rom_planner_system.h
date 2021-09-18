@@ -292,6 +292,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& prefix, double current_time,
       const Eigen::VectorXd& quat_xyz_shift) const;
+  void PrintTrajMsg(dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
 };
 
 }  // namespace goldilocks_models

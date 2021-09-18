@@ -406,6 +406,7 @@ class TwoLcmDrivenLoop {
         std::cout << "Difference is too large, resetting " + diagram_name_ +
                          " time.\n";
         simulator_->get_mutable_context().SetTime(time);
+        simulator_->Initialize();
       }
 
       simulator_->AdvanceTo(time);

@@ -132,14 +132,14 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 
   /// Provide initial guess
   bool with_init_guess = true;
-  int n_y = rom_->n_y();
+  n_y_ = rom_->n_y();
   n_tau_ = rom_->n_tau();
   string model_dir_n_pref = param_.dir_model + to_string(param_.iter) +
                             string("_") + to_string(param_.sample) +
                             string("_");
   h_guess_ = VectorXd(param_.knots_per_mode);
-  y_guess_ = MatrixXd(n_y, param_.knots_per_mode);
-  dy_guess_ = MatrixXd(n_y, param_.knots_per_mode);
+  y_guess_ = MatrixXd(n_y_, param_.knots_per_mode);
+  dy_guess_ = MatrixXd(n_y_, param_.knots_per_mode);
   tau_guess_ = MatrixXd(n_tau_, param_.knots_per_mode);
   if (with_init_guess) {
     // Construct cubic spline from y and ydot and resample, and construct
@@ -335,7 +335,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       ((param_.n_step - 1) * stride_period) / 2;
 
   // Cost weight
-  Q_ = param_.gains.w_Q * MatrixXd::Identity(n_y, n_y);
+  Q_ = param_.gains.w_Q * MatrixXd::Identity(n_y_, n_y_);
   R_ = param_.gains.w_R * MatrixXd::Identity(n_tau_, n_tau_);
 
   // Pick solver
@@ -478,6 +478,21 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Testing
   //  x_init.segment(nq_, 3) << 0, 0, 0;
 
+  // Testing -- start the init ROM state form the previous plan
+  bool initialize_with_rom_state = false;
+  VectorXd init_rom_state(2 * n_y_);
+  if (counter_ != 0) {
+    auto rom_traj = lightweight_saved_traj_.ConstructPositionTrajectory();
+    initialize_with_rom_state = rom_traj.end_time() > current_time;
+    cout << "initialize_with_rom_state = " << initialize_with_rom_state << endl;
+    if (initialize_with_rom_state) {
+      init_rom_state << rom_traj.value(current_time),
+          rom_traj.EvalDerivative(current_time, 1);
+      cout << "init_rom_state = " << init_rom_state.transpose() << endl;
+    }
+  }
+  cout << "init_rom_state.size()" << init_rom_state.size() << endl;
+
   // Get phase in the first mode
   const BasicVector<double>* phase_port =
       this->EvalVectorInput(context, phase_port_);
@@ -488,7 +503,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       (bool)this->EvalVectorInput(context, stance_foot_port_)->get_value()(0);
   bool start_with_left_stance = !is_right_stance;
 
-  // Getquat_xyz_shift
+  // Get quat_xyz_shift
   VectorXd quat_xyz_shift =
       this->EvalVectorInput(context, quat_xyz_shift_port_)->get_value();
 
@@ -651,12 +666,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
-  RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_control_,
-                           state_mirror_, left_contacts_, right_contacts_,
-                           left_origin_, right_origin_, joint_name_lb_ub_,
-                           x_init, max_swing_distance_, start_with_left_stance,
-                           param_.zero_touchdown_impact, relax_index_, param_,
-                           single_eval_mode_ /*print_status*/);
+  RomTrajOptCassie trajopt(
+      num_time_samples, Q_, R_, *rom_, plant_control_, state_mirror_,
+      left_contacts_, right_contacts_, left_origin_, right_origin_,
+      joint_name_lb_ub_, x_init, init_rom_state, max_swing_distance_,
+      start_with_left_stance, param_.zero_touchdown_impact, relax_index_,
+      param_, initialize_with_rom_state, single_eval_mode_ /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints

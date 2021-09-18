@@ -2,9 +2,12 @@
 
 #include <tuple>
 #include <vector>
+
 #include <memory.h>
 
 #include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -13,8 +16,6 @@
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
-
-#include "examples/goldilocks_models/reduced_order_models.h"
 
 using drake::solvers::Binding;
 using drake::solvers::Cost;
@@ -45,11 +46,12 @@ class RomTrajOpt
              const BodyPoint& left_origin, const BodyPoint& right_origin,
              const std::vector<std::tuple<std::string, double, double>>&
                  fom_joint_name_lb_ub,
-             Eigen::VectorXd x_init,
+             const Eigen::VectorXd& x_init,
+             const Eigen::VectorXd& rom_state_init,
              const std::vector<double>& max_swing_distance,
              bool start_with_left_stance, bool zero_touchdown_impact,
              const std::set<int>& relax_index, const PlannerSetting& param,
-             bool print_status = true);
+             bool initialize_with_rom_state, bool print_status = true);
   ~RomTrajOpt() override {}
 
   void AddConstraintAndCostForLastFootStep(
@@ -217,11 +219,13 @@ class RomTrajOptCassie : public RomTrajOpt {
                    const BodyPoint& left_origin, const BodyPoint& right_origin,
                    const std::vector<std::tuple<std::string, double, double>>&
                        fom_joint_name_lb_ub,
-                   Eigen::VectorXd x_init,
+                   const Eigen::VectorXd& x_init,
+                   const Eigen::VectorXd& rom_state_init,
                    const std::vector<double>& max_swing_distance,
                    bool start_with_left_stance, bool zero_touchdown_impact,
                    const std::set<int>& relax_index,
-                   const PlannerSetting& param, bool print_status = true);
+                   const PlannerSetting& param, bool initialize_with_rom_state,
+                   bool print_status = true);
 
   void AddFomRegularizationCost(const std::vector<Eigen::VectorXd>& reg_x_FOM,
                                 double w_reg_quat, double w_reg_xy,

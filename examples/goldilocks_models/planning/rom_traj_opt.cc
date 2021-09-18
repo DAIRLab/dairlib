@@ -58,9 +58,10 @@ RomTrajOpt::RomTrajOpt(
     const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
     const BodyPoint& right_origin,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    VectorXd x_init, const std::vector<double>& max_swing_distance,
-    bool start_with_left_stance, bool zero_touchdown_impact,
-    const std::set<int>& relax_index, const PlannerSetting& param,
+    const VectorXd& x_init, const VectorXd& rom_state_init,
+    const std::vector<double>& max_swing_distance, bool start_with_left_stance,
+    bool zero_touchdown_impact, const std::set<int>& relax_index,
+    const PlannerSetting& param, bool initialize_with_rom_state,
     bool print_status)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
@@ -163,61 +164,72 @@ RomTrajOpt::RomTrajOpt(
   this->DoAddRunningCost((tau.transpose() * R * tau)(0, 0),
                          &rom_input_cost_bindings_);
 
-  // Initial pose constraint for the full order model
-  PrintStatus("Adding constraint -- initial pose of full-order model...");
-  bool soft_init_constraint = false;
-  if (soft_init_constraint) {
-    // Relaxing only the velocity would help with the infeasibility issue,
-    // because both pelvis and stance foot shift with the floating base
-    // coordinates
-    VectorXDecisionVariable x0 = x0_vars_by_mode(0);
-    /// relax the state
-    /* PrintStatus("(relax the whole state)");
-    auto eps = NewContinuousVariables(n_x_, "eps_x0_FOM");
-    MatrixXd Aeq = MatrixXd::Ones(1, 2);
-    for (int i = 0; i < n_x_; i++) {
-      AddLinearEqualityConstraint(
-          Aeq, x_init.segment<1>(i),
-          {x0.segment<1>(i), eps.segment<1>(i)});
-    }
-    MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
-    VectorXd b_x0 = VectorXd::Zero(n_x_);
-    x0_relax_cost_bindings_.push_back(AddQuadraticCost(Q_x0, b_x0, eps));
-    SetInitialGuess(eps, VectorXd::Zero(n_x_));*/
-    /// relax only the velocity
-    // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
-    /*PrintStatus("(relax only the velocity)");
-    int start_idx_v_relax = 3;
-    int len_v_relax = 3;
-    auto eps = NewContinuousVariables(len_v_relax, "eps_v0_FOM");
-    const VectorXDecisionVariable& v0_float_vars =
-        x0.segment(n_q + start_idx_v_relax, len_v_relax);
-    const VectorXd v_init =
-        x_init.segment(n_q + start_idx_v_relax, len_v_relax);
-    MatrixXd Aeq = MatrixXd::Ones(1, 2);
-    for (int i = 0; i < len_v_relax; i++) {
-      AddLinearEqualityConstraint(
-          Aeq, v_init.segment<1>(i),
-          {v0_float_vars.segment<1>(i), eps.segment<1>(i)});
-    }
-    MatrixXd Q_v0 = 1 * MatrixXd::Identity(len_v_relax, len_v_relax);
-    VectorXd b_v0 = VectorXd::Zero(len_v_relax);
-    v0_relax_cost_bindings_.push_back(AddQuadraticCost(Q_v0, b_v0, eps));
-    SetInitialGuess(eps, 0 * VectorXd::Ones(len_v_relax));
-    // The rest of the state should be hard-constrained
-    AddBoundingBoxConstraint(x_init.head(n_q + start_idx_v_relax),
-                             x_init.head(n_q + start_idx_v_relax),
-                             x0.head(n_q + start_idx_v_relax));
-    AddBoundingBoxConstraint(
-        x_init.segment(n_q + start_idx_v_relax + len_v_relax,
-                       n_v - start_idx_v_relax - len_v_relax),
-        x_init.segment(n_q + start_idx_v_relax + len_v_relax,
-                       n_v - start_idx_v_relax - len_v_relax),
-        x0.segment(n_q + start_idx_v_relax + len_v_relax,
-                   n_v - start_idx_v_relax - len_v_relax));*/
-  } else {
+  // Initial state constraint
+  if (initialize_with_rom_state) {
+    // TODO: do we need to relax this so the problem is not sometimes infeasible
+    AddBoundingBoxConstraint(rom_state_init, rom_state_init,
+                             state_vars_by_mode(0, 0));
+
+    // We cannot get rid of x_init variable, because we still have stance foot
+    // constraint for the first mode.
     AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
-    // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
+  } else {
+    // Initial pose constraint for the full order model
+    PrintStatus("Adding constraint -- initial pose of full-order model...");
+    bool soft_init_constraint = false;
+    if (soft_init_constraint) {
+      // Relaxing only the velocity would help with the infeasibility issue,
+      // because both pelvis and stance foot shift with the floating base
+      // coordinates
+      VectorXDecisionVariable x0 = x0_vars_by_mode(0);
+      /// relax the state
+      /* PrintStatus("(relax the whole state)");
+      auto eps = NewContinuousVariables(n_x_, "eps_x0_FOM");
+      MatrixXd Aeq = MatrixXd::Ones(1, 2);
+      for (int i = 0; i < n_x_; i++) {
+        AddLinearEqualityConstraint(
+            Aeq, x_init.segment<1>(i),
+            {x0.segment<1>(i), eps.segment<1>(i)});
+      }
+      MatrixXd Q_x0 = 100 * MatrixXd::Identity(n_x_, n_x_);
+      VectorXd b_x0 = VectorXd::Zero(n_x_);
+      x0_relax_cost_bindings_.push_back(AddQuadraticCost(Q_x0, b_x0, eps));
+      SetInitialGuess(eps, VectorXd::Zero(n_x_));*/
+      /// relax only the velocity
+      // TODO: not sure why the runtime is so slow. maybe tune Q_v0?
+      /*PrintStatus("(relax only the velocity)");
+      int start_idx_v_relax = 3;
+      int len_v_relax = 3;
+      auto eps = NewContinuousVariables(len_v_relax, "eps_v0_FOM");
+      const VectorXDecisionVariable& v0_float_vars =
+          x0.segment(n_q + start_idx_v_relax, len_v_relax);
+      const VectorXd v_init =
+          x_init.segment(n_q + start_idx_v_relax, len_v_relax);
+      MatrixXd Aeq = MatrixXd::Ones(1, 2);
+      for (int i = 0; i < len_v_relax; i++) {
+        AddLinearEqualityConstraint(
+            Aeq, v_init.segment<1>(i),
+            {v0_float_vars.segment<1>(i), eps.segment<1>(i)});
+      }
+      MatrixXd Q_v0 = 1 * MatrixXd::Identity(len_v_relax, len_v_relax);
+      VectorXd b_v0 = VectorXd::Zero(len_v_relax);
+      v0_relax_cost_bindings_.push_back(AddQuadraticCost(Q_v0, b_v0, eps));
+      SetInitialGuess(eps, 0 * VectorXd::Ones(len_v_relax));
+      // The rest of the state should be hard-constrained
+      AddBoundingBoxConstraint(x_init.head(n_q + start_idx_v_relax),
+                               x_init.head(n_q + start_idx_v_relax),
+                               x0.head(n_q + start_idx_v_relax));
+      AddBoundingBoxConstraint(
+          x_init.segment(n_q + start_idx_v_relax + len_v_relax,
+                         n_v - start_idx_v_relax - len_v_relax),
+          x_init.segment(n_q + start_idx_v_relax + len_v_relax,
+                         n_v - start_idx_v_relax - len_v_relax),
+          x0.segment(n_q + start_idx_v_relax + len_v_relax,
+                     n_v - start_idx_v_relax - len_v_relax));*/
+    } else {
+      AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
+      // AddLinearConstraint(x0_vars_by_mode(i)(0) == 0);
+    }
   }
 
   // Loop over modes to add more constraints
@@ -227,9 +239,9 @@ RomTrajOpt::RomTrajOpt(
     PrintStatus("Mode " + std::to_string(i) + "============================");
     mode_start_.push_back(counter);
 
-    VectorXDecisionVariable x0 = x0_vars_by_mode(i);
-    VectorXDecisionVariable xf = xf_vars_by_mode(i);
-    VectorXDecisionVariable x0_post = x0_vars_by_mode(i + 1);
+    VectorXDecisionVariable x0 = x0_vars_by_mode(i);  // start of mode
+    VectorXDecisionVariable xf = xf_vars_by_mode(i);  // end of mode
+    VectorXDecisionVariable xf_post = x0_vars_by_mode(i + 1);
 
     // Testing -- penalize the velocity of the FOM states (help to
     // regularize)
@@ -269,35 +281,37 @@ RomTrajOpt::RomTrajOpt(
            h_vars().segment(time_index, 1)});
     }
 
-    // Add RoM-FoM mapping constraints
+    // Add RoM-FoM mapping constraints (start of mode)
     // TODO: might need to rotate the local frame to align with the global
     std::set<int> empty_idx = {};
     if (i == 0) {
-      PrintStatus(
-          "Adding constraint -- RoM-FoM mapping (start of mode; relaxed)");
-      int n_eps = relax_index.size();
-      eps_rom_var_ = NewContinuousVariables(n_eps, "eps_rom");
-      init_rom_relax_cost_bindings_.push_back(
-          AddQuadraticCost(MatrixXd::Identity(n_eps, n_eps),
-                           VectorXd::Zero(n_eps), eps_rom_var_));
-      /* // "linear cost + lower bound" version
-      if (relax_index.size() == 1 && *(relax_index.begin()) == 5) {
-        init_rom_relax_cost_bindings_.push_back(AddLinearCost(eps_rom_var_(0)));
-        AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
-                                 eps_rom_var_);
-      } else {
-        init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
-            MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps),
-            eps_rom_var_));
-      }*/
-      auto kin_constraint_start =
-          std::make_shared<planning::KinematicsConstraint>(
-              rom, plant, left_stance, state_mirror, relax_index,
-              "rom_fom_mapping_" + std::to_string(i) + "_start");
-      kin_constraint_start->SetConstraintScaling(
-          rom_fom_mapping_constraint_scaling_);
-      VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
-      AddConstraint(kin_constraint_start, {z_0, x0, eps_rom_var_});
+      if (!initialize_with_rom_state) {
+        PrintStatus(
+            "Adding constraint -- RoM-FoM mapping (start of mode; relaxed)");
+        int n_eps = relax_index.size();
+        eps_rom_var_ = NewContinuousVariables(n_eps, "eps_rom");
+        init_rom_relax_cost_bindings_.push_back(
+            AddQuadraticCost(MatrixXd::Identity(n_eps, n_eps),
+                             VectorXd::Zero(n_eps), eps_rom_var_));
+        /* // "linear cost + lower bound" version
+        if (relax_index.size() == 1 && *(relax_index.begin()) == 5) {
+          init_rom_relax_cost_bindings_.push_back(AddLinearCost(eps_rom_var_(0)));
+          AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
+                                   eps_rom_var_);
+        } else {
+          init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
+              MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps),
+              eps_rom_var_));
+        }*/
+        auto kin_constraint_start =
+            std::make_shared<planning::KinematicsConstraint>(
+                rom, plant, left_stance, state_mirror, relax_index,
+                "rom_fom_mapping_" + std::to_string(i) + "_start");
+        kin_constraint_start->SetConstraintScaling(
+            rom_fom_mapping_constraint_scaling_);
+        VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
+        AddConstraint(kin_constraint_start, {z_0, x0, eps_rom_var_});
+      }
     } else {
       PrintStatus("Adding constraint -- RoM-FoM mapping (start of mode)");
       auto kin_constraint_start =
@@ -309,6 +323,8 @@ RomTrajOpt::RomTrajOpt(
       VectorXDecisionVariable z_0 = state_vars_by_mode(i, 0);
       AddConstraint(kin_constraint_start, {z_0, x0});
     }
+
+    // Add RoM-FoM mapping constraints (end of mode)
     PrintStatus("Adding constraint -- RoM-FoM mapping (end of mode)");
     auto kin_constraint_end = std::make_shared<planning::KinematicsConstraint>(
         rom, plant, left_stance, state_mirror, empty_idx,
@@ -343,7 +359,7 @@ RomTrajOpt::RomTrajOpt(
       // TODO: could use a more specific API so that drake doesn't have to
       //  parse the expression
       AddLinearConstraint(xf.segment(n_q_, n_v_) ==
-                          x0_post.segment(n_q_, n_v_));
+                          xf_post.segment(n_q_, n_v_));
     } else {
       PrintStatus("Adding constraint -- FoM impact map");
       auto reset_map_constraint =
@@ -352,7 +368,7 @@ RomTrajOpt::RomTrajOpt(
       reset_map_constraint->SetConstraintScaling(
           fom_discrete_dyn_constraint_scaling_);
       VectorXDecisionVariable Lambda = impulse_vars(i);
-      AddConstraint(reset_map_constraint, {xf, x0_post.tail(n_v_), Lambda});
+      AddConstraint(reset_map_constraint, {xf, xf_post.tail(n_v_), Lambda});
 
       // Constraint on impact impulse
       PrintStatus("Adding constraint -- FoM impulse friction");
@@ -416,11 +432,11 @@ RomTrajOpt::RomTrajOpt(
     // Full order model vel limits
     PrintStatus("Adding constraint -- full-order model generalized vel");
     AddBoundingBoxConstraint(-10, 10, xf.segment<3>(n_q_));
-    AddBoundingBoxConstraint(-10, 10, x0_post.segment<3>(n_q_));
+    AddBoundingBoxConstraint(-10, 10, xf_post.segment<3>(n_q_));
     AddBoundingBoxConstraint(-10, 10, xf.segment<3>(n_q_ + 3));
-    AddBoundingBoxConstraint(-10, 10, x0_post.segment<3>(n_q_ + 3));
+    AddBoundingBoxConstraint(-10, 10, xf_post.segment<3>(n_q_ + 3));
     AddBoundingBoxConstraint(-10, 10, xf.tail(n_v_ - 6));
-    AddBoundingBoxConstraint(-10, 10, x0_post.tail(n_v_ - 6));
+    AddBoundingBoxConstraint(-10, 10, xf_post.tail(n_v_ - 6));
 
     // Stitching x0 and xf (full-order model stance foot constraint)
     PrintStatus("Adding constraint -- full-order model stance foot pos");
@@ -446,7 +462,7 @@ RomTrajOpt::RomTrajOpt(
             "fom_stance_ft_vel_" + std::to_string(i) + "_postimpact");
     fom_ft_vel_constraint_postimpact->SetConstraintScaling(
         fom_stance_ft_vel_constraint_scaling_);
-    AddConstraint(fom_ft_vel_constraint_postimpact, x0_post);
+    AddConstraint(fom_ft_vel_constraint_postimpact, xf_post);
 
     const auto& swing_origin = left_stance ? right_origin : left_origin;
     const auto& stance_origin = left_stance ? left_origin : right_origin;
@@ -1044,15 +1060,17 @@ RomTrajOptCassie::RomTrajOptCassie(
     const vector<BodyPoint>& right_contacts, const BodyPoint& left_origin,
     const BodyPoint& right_origin,
     const vector<std::tuple<string, double, double>>& fom_joint_name_lb_ub,
-    Eigen::VectorXd x_init, const std::vector<double>& max_swing_distance,
-    bool start_with_left_stance, bool zero_touchdown_impact,
-    const std::set<int>& relax_index, const PlannerSetting& param,
+    const VectorXd& x_init, const VectorXd& rom_state_init,
+    const std::vector<double>& max_swing_distance, bool start_with_left_stance,
+    bool zero_touchdown_impact, const std::set<int>& relax_index,
+    const PlannerSetting& param, bool initialize_with_rom_state,
     bool print_status)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, left_origin, right_origin,
-                 fom_joint_name_lb_ub, x_init, max_swing_distance,
-                 start_with_left_stance, zero_touchdown_impact, relax_index,
-                 param, print_status) {
+                 fom_joint_name_lb_ub, x_init, rom_state_init,
+                 max_swing_distance, start_with_left_stance,
+                 zero_touchdown_impact, relax_index, param,
+                 initialize_with_rom_state, print_status) {
   quat_identity_ = VectorX<double>(4);
   quat_identity_ << 1, 0, 0, 0;
 }
@@ -1263,9 +1281,9 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
     bool zero_touchdown_impact)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, left_contacts.at(0),
-                 right_contacts.at(0), fom_joint_name_lb_ub, x_init, {},
-                 start_with_left_stance, zero_touchdown_impact, {},
-                 PlannerSetting()) {
+                 right_contacts.at(0), fom_joint_name_lb_ub, x_init,
+                 VectorXd(0), {}, start_with_left_stance, zero_touchdown_impact,
+                 {}, PlannerSetting(), false) {
   DRAKE_UNREACHABLE();  // I added a few things to RomTrajOpt which are not
                         // generalized to the five-link robot.
                         // E.g. PlannerSetting and others.

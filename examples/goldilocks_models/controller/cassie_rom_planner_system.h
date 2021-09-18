@@ -129,6 +129,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int nq_;
   int nv_;
   int nx_;
+  int n_y_;
   int n_tau_;
 
   const drake::multibody::MultibodyPlant<double>& plant_control_;

@@ -170,10 +170,22 @@ void DoMain() {
   double_stance_constraints.push_back(&distance_constraint_left);
   double_stance_constraints.push_back(&distance_constraint_right);
 
+  vector<DirconKinematicData<double>*> double_stance_land_constraints;
+  double_stance_land_constraints.push_back(&left_toe_front_constraint);
+  double_stance_land_constraints.push_back(&left_toe_rear_constraint);
+  double_stance_land_constraints.push_back(&right_toe_front_constraint);
+  double_stance_land_constraints.push_back(&right_toe_rear_constraint);
+  double_stance_land_constraints.push_back(&distance_constraint_left);
+  double_stance_land_constraints.push_back(&distance_constraint_right);
+
   auto double_stance_dataset = DirconKinematicDataSet<double>(
       plant, &double_stance_constraints, skip_constraint_inds);
+   auto double_stance_land_dataset = DirconKinematicDataSet<double>(
+      plant, &double_stance_land_constraints, skip_constraint_inds);
   auto double_stance_options =
       DirconOptions(double_stance_dataset.countConstraints(), plant);
+  auto double_stance_land_options =
+      DirconOptions(double_stance_land_dataset.countConstraints(), plant);
   /// Be careful setting relative constraint, because we also skip constraints.
   ///                 ||   lf  |   lr  |   rf  |   rr    | fourbar
   /// Before skipping || 0 1 2 | 3 4 5 | 6 7 8 | 9 10 11 | 12 13
@@ -185,6 +197,17 @@ void DoMain() {
   double_stance_options.setConstraintRelative(5, true);
   double_stance_options.setConstraintRelative(6, true);
   double_stance_options.setConstraintRelative(8, true);
+
+  double_stance_land_options.setConstraintRelative(0, true);
+  double_stance_land_options.setConstraintRelative(1, true);
+  double_stance_land_options.setConstraintRelative(2, true);
+  double_stance_land_options.setConstraintRelative(3, true);
+  double_stance_land_options.setConstraintRelative(4, true);
+  double_stance_land_options.setConstraintRelative(5, true);
+  double_stance_land_options.setConstraintRelative(6, true);
+  double_stance_land_options.setConstraintRelative(7, true);
+  double_stance_land_options.setConstraintRelative(8, true);
+  double_stance_land_options.setConstraintRelative(9, true);
 
   //   Flight mode (no contact)
   std::vector<DirconKinematicData<double>*> flight_mode_constraints;
@@ -215,11 +238,11 @@ void DoMain() {
   std::vector<DirconOptions> options_list;
   contact_mode_list.push_back(&double_stance_dataset);
   contact_mode_list.push_back(&flight_mode_dataset);
-  contact_mode_list.push_back(&double_stance_dataset);
+  contact_mode_list.push_back(&double_stance_land_dataset);
 
   options_list.push_back(double_stance_options);
   options_list.push_back(flight_mode_options);
-  options_list.push_back(double_stance_options);
+  options_list.push_back(double_stance_land_options);
 
   auto trajopt = std::make_shared<HybridDircon<double>>(
       plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);
@@ -421,7 +444,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddBoundingBoxConstraint(FLAGS_height + rest_height - eps,
                                     FLAGS_height + rest_height + eps,
                                     x_top(pos_map.at("base_z")));
-  trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
+  trajopt->AddBoundingBoxConstraint(FLAGS_height + rest_height - eps, FLAGS_height + rest_height + eps,
                                     xf(pos_map.at("base_z")));
 
   // Zero starting and final velocities
@@ -555,6 +578,19 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
           (1.5 * FLAGS_height + eps) * VectorXd::Ones(1));
   trajopt->AddConstraint(left_foot_z_constraint, x_top.head(n_q));
   trajopt->AddConstraint(right_foot_z_constraint, x_top.head(n_q));
+
+  auto left_foot_z_final_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+          (1.5 * FLAGS_height - eps) * VectorXd::Ones(1),
+          (1.5 * FLAGS_height + eps) * VectorXd::Ones(1));
+  auto right_foot_z_final_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+          (FLAGS_height - eps) * VectorXd::Ones(1),
+          (FLAGS_height + eps) * VectorXd::Ones(1));
+  trajopt->AddConstraint(left_foot_z_constraint, xf.head(n_q));
+  trajopt->AddConstraint(right_foot_z_constraint, xf.head(n_q));
 
   // Only add constraints of lambdas for stance modes
   vector<int> stance_modes{0, 2};
@@ -861,13 +897,7 @@ void SetInitialGuessFromTrajectory(HybridDircon<double>& trajopt,
   auto gamma_traj = previous_traj.ReconstructGammaCTrajectory();
 
   trajopt.SetInitialTrajectory(input_traj, state_traj);
-  for (int mode = 0; mode < trajopt.num_modes() - 1; ++mode) {
-    if (trajopt.mode_length(mode) > 1) {
-      std::cout << "mode: " << mode << std::endl;
-      trajopt.SetInitialForceTrajectory(mode, lambda_traj[mode],
-                                        lambda_c_traj[mode], gamma_traj[mode]);
-    }
-  }
+//  for (int mode = 0; mod11
 }
 
 MatrixXd loadSavedDecisionVars(const string& filepath) {

@@ -248,8 +248,8 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
 
     // Add cost for the input tau
     double w_tau = 0;  // 1e-6;
-    MatrixXd W = w_tau * MatrixXd::Identity(n_tau_, n_tau_);
-    if (is_add_tau_in_cost) {
+    if (is_add_tau_in_cost && (n_tau_ > 0) && (w_tau > 0)) {
+      MatrixXd W = w_tau * MatrixXd::Identity(n_tau_, n_tau_);
       int N_accum = 0;
       for (unsigned int i = 0; i < num_time_samples.size(); i++) {
         for (int j = 0; j < num_time_samples[i]; j++) {

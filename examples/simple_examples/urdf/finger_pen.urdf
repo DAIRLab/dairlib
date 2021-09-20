@@ -36,7 +36,7 @@
         <visual>
             <origin xyz="0 0 1.0"/>
             <geometry>
-                <cylinder length="0.1" radius="0.06"/>
+                <cylinder length="0.1" radius="0.051"/>
             </geometry>
             <material name="white"/>
         </visual>
@@ -45,7 +45,7 @@
         <visual>
             <origin xyz="0 0 1.5"/>
             <geometry>
-                <cylinder length="0.1" radius="0.06"/>
+                <cylinder length="0.1" radius="0.051"/>
             </geometry>
             <material name="white"/>
         </visual>
@@ -54,7 +54,7 @@
         <visual>
             <origin xyz="0 0 2.0"/>
             <geometry>
-                <cylinder length="0.1" radius="0.06"/>
+                <cylinder length="0.1" radius="0.051"/>
             </geometry>
             <material name="white"/>
         </visual>

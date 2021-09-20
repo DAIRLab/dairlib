@@ -127,7 +127,7 @@ if __name__ == '__main__':
   sim = Simulator(diagram)
   sim.set_publish_every_time_step(True)
 
-  realtime_rate = 1
+  realtime_rate = .5
   t_end = t_x[-1]
   sim.set_target_realtime_rate(realtime_rate)
 

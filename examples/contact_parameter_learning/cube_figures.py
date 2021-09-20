@@ -341,6 +341,38 @@ def make_stroboscopic_figure(toss_id):
     params, _, _ = cube_eval.load_params_and_logs(learning_result)
     cube_eval.visualize_learned_params(params, eval_sim, toss_id)
 
+def make_quad_cube_video(toss_id):
+    ids = paper_ids
+    cube_datas = [load_cube_toss(make_cube_toss_filename(cube_eval.cube_data_folder, toss_id))]
+    initial_state = cube_datas[0][0].ravel()
+    for id in ids:
+        eval_sim = cube_eval.get_eval_sim(id)
+        param, _, _ = cube_eval.load_params_and_logs(id)
+        eval_sim.init_sim(param)
+        sim_data = eval_sim.get_sim_traj_initial_state(
+            initial_state, 
+            cube_datas[0].shape[0], 
+            CUBE_DATA_DT)
+        cube_datas.append(sim_data)
+    vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
+    vis_sim.visualize_four_cubes(cube_datas, 0.05)
+
+
+def make_mujoco_comparison_video():
+    make_quad_cube_video(361)
+
+def make_inelastic_traj_video():
+    id = 'drake_2021_09_11_16_44_10'
+    params, _, _ = cube_eval.load_params_and_logs(id)
+    eval_sim = cube_eval.get_eval_sim(id)
+    cube_eval.visualize_learned_params(params, eval_sim, 193)
+
+def make_elastic_traj_video():
+    id = 'drake_2021_09_11_16_44_10'
+    params, _, _ = cube_eval.load_params_and_logs(id)
+    eval_sim = cube_eval.get_eval_sim(id)
+    cube_eval.visualize_learned_params(params, eval_sim, 313)
+
 if __name__ == '__main__':
     # make_estimated_pdf_figure()
     # make_friction_sensitivity_analysis_figure()
@@ -349,4 +381,6 @@ if __name__ == '__main__':
     # make_error_vs_time_plot()
     # make_contact_impulse_plot()
     # visualize_cube_initial_condition()
-    make_damping_ratio_sensitivity_analysis_figure()
+    # make_damping_ratio_sensitivity_analysis_figure()
+    # make_inelastic_traj_video()
+    make_elastic_traj_video()

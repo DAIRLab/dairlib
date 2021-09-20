@@ -109,8 +109,17 @@ class DrakeCubeSim(CubeSim):
         self.sim.set_publish_every_time_step(True)
 
     def add_double_cube_plant(self):
-        self.builder = DiagramBuilder()
+        return self.add_multi_cube_plant(
+            "examples/contact_parameter_learning/urdf/double_cube.urdf", 
+            "double_cube")
 
+    def add_quad_cube_plant(self):
+        return self.add_multi_cube_plant(
+            "examples/contact_parameter_learning/urdf/quad_cube.urdf", 
+            "quad_cube")
+
+    def add_multi_cube_plant(self, urdf, model_name):
+        self.builder = DiagramBuilder()
         # Add a cube as MultibodyPlant
         self.plant = MultibodyPlant(self.drake_sim_dt)
         self.scene_graph = self.builder.AddSystem(SceneGraph())
@@ -121,8 +130,7 @@ class DrakeCubeSim(CubeSim):
         terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
         X_WG = RigidTransform(HalfSpace.MakePose(terrain_normal, terrain_point))
         cubes = Parser(self.plant).AddModelFromFile(
-            FindResourceOrThrow(
-                "examples/contact_parameter_learning/urdf/double_cube.urdf"), model_name="double_cube")
+            FindResourceOrThrow(urdf), model_name=model_name)
         self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(10, 10, 0.001), "visual", terrain_color)
         self.plant.Finalize()
         return plant_id
@@ -135,6 +143,16 @@ class DrakeCubeSim(CubeSim):
         cube_data_converted[7:11,:] = sim_data[:,CUBE_DATA_QUATERNION_SLICE].T
         cube_data_converted[11:,:] = sim_data[:,CUBE_DATA_POSITION_SLICE].T
         t_traj = cls.make_traj_timestamps(cube_data)
+        return PiecewisePolynomial.FirstOrderHold(t_traj, cube_data_converted), cube_data_converted
+
+    @classmethod
+    def make_multi_cube_piecewise_polynomial(cls, cube_datas):
+        cube_data_converted = np.zeros((7*len(cube_datas), cube_datas[0].shape[0]))
+        for i, data in enumerate(cube_datas):
+            cube_data_converted[7*i:7*i+4,:] = data[:,CUBE_DATA_QUATERNION_SLICE].T
+            cube_data_converted[7*i+4:7*i+7] = data[:,CUBE_DATA_POSITION_SLICE].T
+
+        t_traj = cls.make_traj_timestamps(cube_datas[0])
         return PiecewisePolynomial.FirstOrderHold(t_traj, cube_data_converted), cube_data_converted
 
     def visualize_two_cubes(self, cube_data, sim_data, realtime_rate):
@@ -153,6 +171,29 @@ class DrakeCubeSim(CubeSim):
         self.sim.set_publish_every_time_step(True)
 
         t_end = CUBE_DATA_DT * cube_data.shape[0]
+        self.sim.set_target_realtime_rate(realtime_rate)
+        
+        while(True):
+            self.sim.get_mutable_context().SetTime(0.0)
+            self.sim.Initialize()
+            self.sim.AdvanceTo(t_end)
+
+    def visualize_four_cubes(self, cube_datas, realtime_rate):
+        plant_id = self.add_quad_cube_plant()
+        pp_traj, _ = self.make_multi_cube_piecewise_polynomial(cube_datas)
+
+        # Wire up the simulation
+        self.traj_source = self.builder.AddSystem(TrajectorySource(pp_traj))
+        self.q_to_pose = self.builder.AddSystem(MultibodyPositionToGeometryPose(self.plant))
+        self.builder.Connect(self.traj_source.get_output_port(), self.q_to_pose.get_input_port())
+        self.builder.Connect(self.q_to_pose.get_output_port(), self.scene_graph.get_source_pose_port(plant_id))        
+        
+        DrakeVisualizer.AddToBuilder(self.builder, self.scene_graph)
+        self.diagram = self.builder.Build()
+        self.sim = Simulator(self.diagram)
+        self.sim.set_publish_every_time_step(True)
+
+        t_end = CUBE_DATA_DT * cube_datas[0].shape[0]
         self.sim.set_target_realtime_rate(realtime_rate)
         
         while(True):

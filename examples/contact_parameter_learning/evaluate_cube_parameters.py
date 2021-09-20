@@ -26,11 +26,11 @@ def visualize_learned_params(params, data_sim, toss_id):
     
     vis_sim = drake_cube_sim.DrakeCubeSim(visualize=True)
     vis_sim.init_sim(drake_cube_sim.default_drake_contact_params)
-    vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=8)
+    # vis_sim.visualize_two_cubes_multipose(cube_data, sim_data, downsampling_rate=8)
 
-    input('Press enter to continue to video')
+    # input('Press enter to continue to video')
 
-    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.1)
+    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.05)
 
 # calculate the net contact impulse trajectory (N * s) by taking momentum
 # differences between timestamps
@@ -366,7 +366,7 @@ if (__name__ == '__main__'):
     # plt.show()
 
 #     ## INDIVIDUAL LOG FUNCTIONS
-    learning_result = ids[1]
+    learning_result = ids[2]
 # # 
     eval_sim = get_eval_sim(learning_result)
     params, _, _ = load_params_and_logs(learning_result)
@@ -378,7 +378,7 @@ if (__name__ == '__main__'):
     # for key in sorted_pairs:
     #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    visualize_learned_params(params, eval_sim, 193) # list(sorted_pairs.keys())[0])
+    visualize_learned_params(params, eval_sim, 361) # list(sorted_pairs.keys())[0])
 #     if (eval_sim == None): quit()
     # for id in ids:
     #     params, _, _ = load_params_and_logs(id)

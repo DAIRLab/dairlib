@@ -331,14 +331,22 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   for (int i = 0; i < n; i++) {
     times(i) = start_time + i * (end_time - start_time) / (n - 1);
   }
+  cout << "\"\"\"\n";
   cout << "\ntimes = " << times.transpose() << endl;
 
-  cout << "\neval along traj = \n";
+  cout << "\ncom along traj = \n";
   for (int i = 0; i < n; i++) {
     double t = times(i);
     VectorXd vec = exp_pp_traj->value(t);
     cout << vec(0) << ", " << vec(1) << ", " << vec(2) << endl;
   }
+  cout << "\ncomdot along traj = \n";
+  for (int i = 0; i < n; i++) {
+    double t = times(i);
+    VectorXd vec = exp_pp_traj->MakeDerivative(1)->value(t);
+    cout << vec(0) << ", " << vec(1) << ", " << vec(2) << endl;
+  }
+  cout << "\"\"\"\n";
   cout << endl;*/
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(

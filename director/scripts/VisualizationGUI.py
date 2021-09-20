@@ -90,8 +90,8 @@ class VisualizationGui(QWidget):
 
         self.modelFile = self.data['model_file']
 
-        if ('weld-body' in self.data):
-            self.weldBody = self.data['weld-body']
+        if ('weld_body' in self.data):
+            self.weldBody = self.data['weld_body']
 
         # create each object/shape to be drawn
         for data in self.data['data']:
@@ -508,20 +508,15 @@ class VisualizationGui(QWidget):
                 currShape.object.setPolyData(d.getPolyData())
         elif (currShape.type == "arrow"):
             arrow_vec = currShape.scale * currShape.arrow
-            print("before rotation")
-            print(arrow_vec)
             if (currShape.arrow_frame == "local"):
                 rigTrans = self.plant.EvalBodyPoseInWorld(self.context, self.plant.GetBodyByName(currShape.frame))
                 rot_matrix = rigTrans.rotation().matrix()
                 arrow_vec = rot_matrix @ arrow_vec
-                print("rotating")
-                print(arrow_vec)
-            arrow_target = next_loc + arrow_vec
-            print("target")
-            print(arrow_target)
+            arrow_start = next_loc - arrow_vec
+            arrow_end = next_loc
 
             d = DebugData()
-            d.addArrow(next_loc, arrow_target, headRadius=0.03, color = currShape.color)
+            d.addArrow(arrow_start, arrow_end, headRadius=currShape.thickness, tubeRadius=currShape.thickness/2, color = currShape.color)
 
             # create the 3 axes
             if (currShape.created == True):
@@ -616,7 +611,7 @@ class ObjectToDraw():
             self.thickness = otherObject.thickness
             self.scale = otherObject.scale
             self.arrow_frame = otherObject.arrow_frame
-            self.type_data = other.type_data
+            self.type_data = otherObject.type_data
 
 class LCMMessage():
     '''

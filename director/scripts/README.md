@@ -122,3 +122,21 @@ visualization of data during a simulation:
 
         Note that the axes will be color coded with red being the x-axis, green
         the y-axis, and blue the z-axis.
+
+        4) A single arrow: draws a single arrow in a given direction. No matter the source of the start location for the arrow (identical to other data category), the direction of the arrow must be specified in LCM. There is additionally an option to specify the reference frame for the direction, either "local" (the kinematic frame, non-functional for non-kinematic sources) or "global". The LCM indexing procedure mirrors that of LCM data catagories.
+
+        "alpha": The transparency as a value from 0 to 1
+        "type": "axes",
+        "thickness": The thickness of each arrow
+        "scale": A scaling factor applied to the arrow
+        "frame": "global" or "local", determines the frame of reference for the arrow direction specification, defaults to "global"
+
+        "abstract_channel" : See LCM listing under data above.
+
+        "abstract_type" : See LCM listing under data above.
+
+        "abstract_field" : See LCM listing under data above.
+
+       "index_field": See LCM listing under data above.
+
+       "index_element": See LCM listing under data above.

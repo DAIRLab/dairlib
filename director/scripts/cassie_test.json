@@ -61,6 +61,40 @@
                           "length": 0.25
                         }
             },
+            {"name": "left_toe_arrow",
+             "source_data" : {"category": "kinematic",
+                              "frame" : "toe_left",
+                              "point": [0, 0, 0]
+                             },
+             "type_data": {"type": "arrow",
+                          "color": [1, 1, 0],
+                          "alpha": 0.5,
+                          "thickness": 0.03,
+                          "scale": 0.003,
+                          "frame": "global",
+                          "abstract_channel" : "CASSIE_CONTACT_DRAKE",
+                          "abstract_type" : "drake.lcmt_contact_results_for_viz",
+                          "abstract_field" : "point_pair_contact_info[0].contact_force",
+                          "x_index" : 0
+                        }
+            },
+            {"name": "left_toe_local_arrow",
+             "source_data" : {"category": "kinematic",
+                              "frame" : "toe_left",
+                              "point": [0, 0, 0]
+                             },
+             "type_data": {"type": "arrow",
+                          "color": [0, 1, 1],
+                          "alpha": 0.5,
+                          "thickness": 0.05,
+                          "scale": 0.003,
+                          "frame": "local",
+                          "abstract_channel" : "CASSIE_CONTACT_DRAKE",
+                          "abstract_type" : "drake.lcmt_contact_results_for_viz",
+                          "abstract_field" : "point_pair_contact_info[0].contact_force",
+                          "x_index" : 0
+                        }
+            },
             {"name": "lcm_line",
              "source_data" : {"category":"lcm",
                               "abstract_channel" : "OSC_DEBUG",

@@ -3,6 +3,7 @@ from PythonQt.QtGui import *
 from PythonQt.QtCore import *
 
 # director library imports
+import drake
 import dairlib
 from pydairlib.common import FindResourceOrThrow
 from director import visualization as vis
@@ -57,6 +58,7 @@ class VisualizationGui(QWidget):
         self.clear = False
         self.ready = False
         self.lcmObjects = {}
+        self.arrowLcmObjects = {}
         self.subscriptions = []
 
         # JSON attributes
@@ -110,6 +112,12 @@ class VisualizationGui(QWidget):
                         self.lcmObjects[newObject.name].update(
                         newObject.source_data)
 
+            if (newObject.type == "arrow"):
+                if (newObject.name not in self.lcmObjects):
+                    self.arrowLcmObjects[newObject.name] = LCMMessage(newObject.type_data)
+                else:
+                    self.arrowLcmObjects[newObject.name].update(newObject.type_data)                    
+
             # if there exists a shape with the given name then simply update it
             if (newObject.name not in self.shapes):
                 self.shapes[newObject.name] = newObject
@@ -153,6 +161,12 @@ class VisualizationGui(QWidget):
 
             self.subscriptions.append(subscriber)
 
+        for name in self.arrowLcmObjects:
+            lcmMessage = self.arrowLcmObjects[name]
+            subscriber = lcmUtils.addSubscriber(lcmMessage.channel, messageClass=eval(lcmMessage.type), callback=lambda msg, lcmMessage=lcmMessage, name=name: self.arrow_handler(msg, name, lcmMessage))
+
+            self.subscriptions.append(subscriber)
+
         self.ready = True
 
     def deleteShapes(self):
@@ -188,13 +202,15 @@ class VisualizationGui(QWidget):
                 extension = " ---"
             elif (type == "axes"):
                 extension = " |/_"
+            elif (type == "arrow"):
+                extension =" ->"
 
             # create each checkbox and conditionally add it to the GUI
             addToList = False
             if (name not in self.checkBoxes):
                 self.checkBoxes[name] = QCheckBox(name + extension)
 
-                if (self.shapes[name].type == "point" or self.shapes[name].type == "line"):
+                if (self.shapes[name].type == "point" or self.shapes[name].type == "line" or self.shapes[name].type == "arrow"):
                     color = self.shapes[name].color
                     self.checkBoxes[name].setStyleSheet("color: rgb("+str(color[0] * 255)+", "+str(color[1] * 255)+", "+str(color[2] * 255)+")")
 
@@ -205,7 +221,41 @@ class VisualizationGui(QWidget):
             if (addToGUI == True):
                 self.vbox.addLayout(self.checkBoxArea)
 
-    def abstract_handler(self, msg, name, lcmMessage):
+    def substitute_field(self, msg ,msg_parsing):
+        field = msg_parsing.field
+        if ("%d" in field):
+            arr = self.getVector(msg, msg_parsing.index_field)
+            if (msg_parsing.index_element in arr):
+                i = arr.index(msg_parsing.index_element)
+                field = field.replace("%d", str(i))
+
+        return field
+
+    def arrow_handler(self, msg, name, msg_parsing):
+        '''
+        Function for handling arrow LCM messages
+
+        msg: the returning LCM message
+        field: the field name/path
+        name: name of corresponding shape
+        msg_parsing: specification for message parsing
+        '''
+        self.handle_checkBox(name)
+        attribute = msg
+        field = self.substitute_field(msg, msg_parsing)
+
+        if ("%d" not in field):
+            # parse field to get the appropriate information. This is done by
+            # recursively searching for the right attribute in the given message's field
+            attribute = self.getVector(attribute, field)
+            currShape = self.shapes[name]
+            x = msg_parsing.x
+            self.shapes[name].arrow = np.array([attribute[x], attribute[x+1], attribute[x+2]])
+        else:
+            print(msg_parsing.index_element + "is not present in " + msg_parsing.index_field + " and so it cannot be visualized")
+            print("")
+
+    def abstract_handler(self, msg, name, msg_parsing):
         '''
         Function for handling LCM messages originating from a different
         channel than the main one
@@ -213,28 +263,18 @@ class VisualizationGui(QWidget):
         msg: the returning LCM message
         field: the field name/path
         name: name of corresponding shape
-        x, y, z: indices for each of the 3 dimensions of the location where
-                 the shape is to be drawn. When the shape is an axis then x
-                 will be the first index of the quaternion array and the other
-                 3 will be the next indices in sequence
+        msg_parsing: specification for message parsing
         '''
         self.handle_checkBox(name)
         attribute = msg
-        field = lcmMessage.field
-
-        # if there is a %d in the field replace it with the actual index
-        if ("%d" in field):
-            arr = self.getVector(attribute, lcmMessage.index_field)
-            if (lcmMessage.index_element in arr):
-                i = arr.index(lcmMessage.index_element)
-                field = field.replace("%d", str(i))
+        field = self.substitute_field(msg, msg_parsing)
 
         if ("%d" not in field):
             # parse field to get the appropriate information. This is done by
             # recursively searching for the right attribute in the given message's field
             attribute = self.getVector(attribute, field)
             currShape = self.shapes[name]
-            x = lcmMessage.x
+            x = msg_parsing.x
 
             # special case of an axis data
             if (currShape.type == "axes"):
@@ -257,7 +297,7 @@ class VisualizationGui(QWidget):
                 next_loc = [attribute[x], attribute[x+1], attribute[x+2]]
                 self.drawShape(self.shapes[name], next_loc, msg)
         else:
-            print(lcmMessage.index_element + "is not present in " + lcmMessage.index_field + " and so it cannot be visualized")
+            print(msg_parsing.index_element + "is not present in " + msg_parsing.index_field + " and so it cannot be visualized")
             print("")
 
     def getVector(self, attribute, path):
@@ -330,7 +370,7 @@ class VisualizationGui(QWidget):
                     next_loc = pt_world.transpose()[0]
 
                 elif (currShape.category == "com"):
-                    next_loc = self.plant.CalcCenterOfMassPosition(context = self.context)
+                    next_loc = self.plant.CalcCenterOfMassPositionInWorld(context = self.context)
 
                 elif (currShape.category == "lcm"):
                     # in the case of an lcm message do not do anything as this is
@@ -372,8 +412,8 @@ class VisualizationGui(QWidget):
 
     def drawShape(self, currShape, next_loc, msg, rotation_matrix = None):
         '''
-        Function for drawing shapes. Currently this supports lines, points, and
-        3D axes
+        Function for drawing shapes. Currently this supports lines, points,
+        3D axes, and arrows
 
         currShape: the current shape to be drawn
         next_loc: the location where to draw the shape
@@ -464,7 +504,32 @@ class VisualizationGui(QWidget):
                 currShape.object.setProperty('Alpha', currShape.alpha)
                 currShape.created = False
             else:
-                # update the location of the last point
+                # update the location of the last arrow
+                currShape.object.setPolyData(d.getPolyData())
+        elif (currShape.type == "arrow"):
+            arrow_vec = currShape.scale * currShape.arrow
+            print("before rotation")
+            print(arrow_vec)
+            if (currShape.arrow_frame == "local"):
+                rigTrans = self.plant.EvalBodyPoseInWorld(self.context, self.plant.GetBodyByName(currShape.frame))
+                rot_matrix = rigTrans.rotation().matrix()
+                arrow_vec = rot_matrix @ arrow_vec
+                print("rotating")
+                print(arrow_vec)
+            arrow_target = next_loc + arrow_vec
+            print("target")
+            print(arrow_target)
+
+            d = DebugData()
+            d.addArrow(next_loc, arrow_target, headRadius=0.03, color = currShape.color)
+
+            # create the 3 axes
+            if (currShape.created == True):
+                currShape.object = vis.showPolyData(d.getPolyData(), currShape.name, colorByName='RGB255')
+                currShape.object.setProperty('Alpha', currShape.alpha)
+                currShape.created = False
+            else:
+                # update the location of the last arrow
                 currShape.object.setPolyData(d.getPolyData())
 
 class ObjectToDraw():
@@ -508,11 +573,22 @@ class ObjectToDraw():
             self.thickness = type_data['thickness']
             self.length = type_data['length']
 
+        elif (self.type =="arrow"):
+            if (self.category == "lcm"):
+                self.frame = self.source_data['frame']
+                self.point = self.source_data['point']
+                self.quaternion_index = self.source_data['quaternion_index']
+            self.thickness = type_data['thickness']
+            self.scale = type_data['scale']
+            self.arrow_frame = type_data['frame']
+            self.type_data = type_data
+            self.color = type_data['color']
+
     def update(self, otherObject):
         '''
         Function for updating certain attributes of already existing object
 
-        otherObject: the other ObcectToDraw instance
+        otherObject: the other ObjectToDraw instance
         '''
         self.alpha = otherObject.alpha
 
@@ -535,6 +611,12 @@ class ObjectToDraw():
         elif (self.type == "axes"):
             self.thickness = otherObject.thickness
             self.length = otherObject.length
+
+        elif (self.type == "arrow"):
+            self.thickness = otherObject.thickness
+            self.scale = otherObject.scale
+            self.arrow_frame = otherObject.arrow_frame
+            self.type_data = other.type_data
 
 class LCMMessage():
     '''

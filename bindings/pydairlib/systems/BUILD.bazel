@@ -15,6 +15,7 @@ pybind_py_library(
     name = "robot_lcm_systems_py",
     cc_deps = [
         "//systems:robot_lcm_systems",
+        "@drake//bindings/pydrake/systems:lcm_pybind",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "robot_lcm_systems",

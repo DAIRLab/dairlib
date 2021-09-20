@@ -6,8 +6,11 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/bindings/pydrake/systems/lcm_pybind.h"
+
 
 namespace py = pybind11;
+using drake::pydrake::pysystems::pylcm::BindCppSerializer;
 
 namespace dairlib {
 namespace pydairlib {
@@ -29,6 +32,8 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
       .def("get_input_port_state", &systems::RobotOutputSender::get_input_port_state, py::return_value_policy::reference_internal)
       .def("get_input_port_imu", &systems::RobotOutputSender::get_input_port_imu, py::return_value_policy::reference_internal)
       .def("get_input_port_effort", &systems::RobotOutputSender::get_input_port_effort, py::return_value_policy::reference_internal);
+
+  BindCppSerializer<dairlib::lcmt_robot_output>("dairlib");
 }
 
 }  // namespace pydairlib

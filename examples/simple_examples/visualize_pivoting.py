@@ -21,8 +21,8 @@ from pydrake.math import RigidTransform
 
 if __name__ == '__main__':
 
-  t_x = np.load('/home/dair/Downloads/alp_visual/finger_gaiting/' + 'time_finger_gait.npy')
-  x_traj = np.load('/home/dair/Downloads/alp_visual/finger_gaiting/' + 'state_finger_gait.npy')
+  t_x = np.load('/home/dair/Downloads/alp_visual/pivoting/' + 'time_pivoting.npy')
+  x_traj = np.load('/home/dair/Downloads/alp_visual/pivoting/' + 'state_pivoting.npy')
   # x_traj = np.load('x.npy')
 
   # t_x = np.zeros(10)
@@ -38,7 +38,7 @@ if __name__ == '__main__':
   plant_id = plant.RegisterAsSourceForSceneGraph(scene_graph)
 
 
-  Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/simple_examples/urdf/finger_pen.urdf'))
+  Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/simple_examples/urdf/pivoting.urdf'))
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    RigidTransform())
   plant.Finalize()
@@ -46,7 +46,7 @@ if __name__ == '__main__':
   name_map = makeNameToPositionsMap(plant)
   for name in name_map:
     print(name + ': ' + str(name_map[name]))
-  print(plant.num_positions())
+  print(plant.num_positions()) 
 
   # plant_id = plant.get_source_id()
   # import pdb; pdb.set_trace()
@@ -56,10 +56,14 @@ if __name__ == '__main__':
   q_traj = np.zeros((5, t_x.shape[0]))
   q_traj[0] = x_traj[0]
   q_traj[1] = x_traj[2]
-  q_traj[2] = x_traj[2]
-  q_traj[3] = x_traj[4]
-  q_traj[4] = x_traj[4]
-  q_traj *= 0.05
+  q_traj[2] = x_traj[4]
+  q_traj[3] = x_traj[6]
+  q_traj[4] = x_traj[8]
+
+  #import pdb; pdb.set_trace()
+
+  print(q_traj)
+  #q_traj *= 0.05
   pp_traj = PiecewisePolynomial.FirstOrderHold(t_x, q_traj)
 
   # Wire up the simulation
@@ -73,7 +77,7 @@ if __name__ == '__main__':
   sim = Simulator(diagram)
   sim.set_publish_every_time_step(True)
 
-  realtime_rate = 1.0
+  realtime_rate = 1
   t_end = t_x[-1]
   sim.set_target_realtime_rate(realtime_rate)
 

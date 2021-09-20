@@ -44,3 +44,13 @@ py_binary(
         "@drake//bindings/pydrake",
     ],
 )
+
+py_binary(
+    name = "visualize_pivoting",
+    srcs = ["visualize_pivoting.py"],
+    deps = [
+        ":urdf",
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+)

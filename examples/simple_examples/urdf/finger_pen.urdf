@@ -25,7 +25,7 @@
             <inertia ixx="1.33" ixy="0" ixz="0" iyy="1.33" iyz="0" izz="1.33"/>
         </inertial>
         <visual>
-            <origin xyz="0 0 0.5"/>
+            <origin xyz="0 0 1.5"/>
             <geometry>
                 <cylinder length="1.5" radius="0.05"/>
             </geometry>
@@ -34,7 +34,7 @@
     </link>
     <link name="bar1">
         <visual>
-            <origin xyz="0 0 0.0"/>
+            <origin xyz="0 0 1.0"/>
             <geometry>
                 <cylinder length="0.1" radius="0.06"/>
             </geometry>
@@ -43,7 +43,7 @@
     </link>
     <link name="bar2">
         <visual>
-            <origin xyz="0 0 0.5"/>
+            <origin xyz="0 0 1.5"/>
             <geometry>
                 <cylinder length="0.1" radius="0.06"/>
             </geometry>
@@ -52,7 +52,7 @@
     </link>
     <link name="bar3">
         <visual>
-            <origin xyz="0 0 1.0"/>
+            <origin xyz="0 0 2.0"/>
             <geometry>
                 <cylinder length="0.1" radius="0.06"/>
             </geometry>
@@ -61,7 +61,7 @@
     </link>
     <link name="upper_finger_left">
         <visual>
-            <origin xyz="-0.1 0 0.3125" rpy="0 -1.570796 0"/>
+            <origin xyz="-0.1 0 1.3125" rpy="0 -1.570796 0"/>
             <geometry>
                 <cylinder length="0.1" radius="0.05"/>
             </geometry>
@@ -70,7 +70,7 @@
     </link>
     <link name="upper_finger_right">
         <visual>
-            <origin xyz="0.1 0 0.3125" rpy="0 -1.570796 0"/>
+            <origin xyz="0.1 0 1.3125" rpy="0 -1.570796 0"/>
             <geometry>
                 <cylinder length="0.1" radius="0.05"/>
             </geometry>
@@ -79,7 +79,7 @@
     </link>
     <link name="lower_finger_left">
         <visual>
-            <origin xyz="-0.1 0 -0.3125" rpy="0 -1.570796 0"/>
+            <origin xyz="-0.1 0 0.6875" rpy="0 -1.570796 0"/>
             <geometry>
                 <cylinder length="0.1" radius="0.05"/>
             </geometry>
@@ -88,7 +88,7 @@
     </link>
     <link name="lower_finger_right">
         <visual>
-            <origin xyz="0.1 0 -0.3125" rpy="0 -1.570796 0"/>
+            <origin xyz="0.1 0 0.6875" rpy="0 -1.570796 0"/>
             <geometry>
                 <cylinder length="0.1" radius="0.05"/>
             </geometry>

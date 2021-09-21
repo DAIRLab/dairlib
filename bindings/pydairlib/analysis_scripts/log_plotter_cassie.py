@@ -14,7 +14,7 @@ import pydairlib.lcm.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 import dairlib
-
+from scipy import interpolate
 
 def main():
   global t_start
@@ -65,6 +65,7 @@ def main():
   nx = plant_w_spr.num_positions() + plant_w_spr.num_velocities()
   nu = plant_w_spr.num_actuators()
 
+  global l_toe_frame, r_toe_frame, world, context
   l_toe_frame = plant_w_spr.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant_w_spr.GetBodyByName("toe_right").body_frame()
   world = plant_w_spr.world_frame()
@@ -129,7 +130,7 @@ def main():
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot", True)
@@ -142,13 +143,15 @@ def main():
   # plt.plot(t_osc_debug, 0.1 * fsm)
   #
   # PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
-  #
+  PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
   # PlotVdot(x, t_x, x_datatypes, True)
 
   PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
-  PlotSwingFootData(t_osc_debug, fsm)
-  PlotAngularMomentumWrtCOM(t_osc_debug, fsm)
+  # PlotSwingFootData(t_osc_debug, fsm)
+  # PlotCentroidalAngularMomentum(t_osc_debug, fsm)
+
+  ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr)
 
   plt.show()
 
@@ -200,15 +203,37 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
   plt.plot(t_osc_debug[t_u_slice], 0.0005 * fsm[t_u_slice])
 
 
+def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr):
+  # plant_w_spr.SetPositionsAndVelocities(context, x)
+  # pos = plant_w_spr.CalcPointsPositions(context, frame, point, world)
+  # vel = plant_w_spr.CalcJacobianTranslationalVelocity(context,
+  #   JacobianWrtVariable.kV, frame, point, world, world) @ x[nq:]
 
-def PlotAngularMomentumWrtCOM(t_osc_debug, fsm):
+  centroidal_angular_momentum = np.zeros((t_x.size, 3))
+  for i in range(t_x.size):
+    plant_w_spr.SetPositionsAndVelocities(context, x[i])
+    com = plant_w_spr.CalcCenterOfMassPositionInWorld(context)
+    # J = plant_w_spr.CalcJacobianCenterOfMassTranslationalVelocity(context,
+    #   JacobianWrtVariable.kV, world, world)
+    # comdot = J @ x[i, nq:].T
+
+    h_WC_eval = plant_w_spr.CalcSpatialMomentumInWorldAboutPoint(context, com)
+    centroidal_angular_momentum[i] = h_WC_eval.rotational()
+
+  plt.figure("Centroidal angular momentum")
+  plt.plot(t_x, centroidal_angular_momentum)
+  plt.plot(t_osc_debug, 0.1 * fsm)
+  plt.legend(["x", "y", "z", "fsm"])
+
+
+def PlotCentroidalAngularMomentum(t_osc_debug, fsm):
   file_array = np.loadtxt("../debug_centroidal_momentum.txt", delimiter=',')
   t_msg = file_array[:, 0]
   ang_msg = file_array[:, 1:]
 
   plt.figure("Angular momentum wrt COM")
   plt.plot(t_msg, ang_msg)
-  plt.plot(t_osc_debug, 0.01 * fsm)
+  plt.plot(t_osc_debug, 0.1 * fsm)
   plt.legend(["x", "y", "z", "fsm"])
 
 
@@ -267,13 +292,14 @@ def PlotEkfMeasurementError(t_osc_debug, fsm):
 
 # cutoff_freq is in Hz
 def ApplyLowPassFilter(x, t, cutoff_freq):
+  x_copy = np.copy(x)
   dt = np.diff(t)
-  x_filtered = x[0, :]
+  x_filtered = x_copy[0, :]
   for i in range(len(dt)):
     alpha = 2 * np.pi * dt[i] * cutoff_freq / (2 * np.pi * dt[i] * cutoff_freq + 1)
-    x_filtered = alpha * x[i + 1, :] + (1 - alpha) * x_filtered
-    x[i + 1, :] = x_filtered
-  return x
+    x_filtered = alpha * x_copy[i + 1, :] + (1 - alpha) * x_filtered
+    x_copy[i + 1, :] = x_filtered
+  return x_copy
 
 def CompareVdot(x, t_x, vdot, t_vdot):
   # Finite differencing seems accurate enough
@@ -730,6 +756,66 @@ def PlotCenterOfMass(x, t_x, plant, world, context):
   # plt.xlabel('time (s)')
   # plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
 
+def PlotCenterOfMassAceel(x, t_x, plant, t_osc_debug, fsm):
+  ### Get actual com acceleration
+  com = np.zeros((t_x.shape[0], 3))
+  comdot = np.zeros((t_x.shape[0], 3))
+  for i in range(t_x.shape[0]):
+    xi = x[i, :]
+    plant.SetPositionsAndVelocities(context, xi)
+    com[i, :] = plant.CalcCenterOfMassPositionInWorld(context)
+    J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context,
+      JacobianWrtVariable.kV, world, world)
+    comdot[i, :] = J @ x[i, nq:]
+
+  ddcom = np.diff(comdot, axis=0)
+  dt = np.diff(t_x)
+  for i in range(len(dt)):
+    ddcom[i] /= dt[i]
+
+  ddcom_filtered = ApplyLowPassFilter(ddcom, t_x[1:], 20)
+
+  figname = "comddot traj"
+  plt.figure(figname)
+  plt.plot(t_x[1:], ddcom_filtered)
+  # plt.plot(t_osc_debug, 1 * fsm)
+  plt.xlabel('time (s)')
+  # plt.legend(["x", "y", "z", "fsm"])
+
+  ### Get LIPM com acceleration
+  comddot_lipm = np.zeros((t_x.shape[0], 3))
+
+  f = interpolate.interp1d(t_osc_debug, fsm, fill_value="extrapolate")
+  fsm_interpolated = f(t_x)
+
+  stance_foot = np.zeros((t_x.size, 3))
+  for i in range(t_x.size):
+    if fsm_interpolated[i] == 0: #left support
+      toe_frame = l_toe_frame
+    elif fsm_interpolated[i] == 1: #right support
+      toe_frame = r_toe_frame
+    else:
+      com[i] = np.zeros(3)
+      continue
+
+    plant.SetPositionsAndVelocities(context, x[i, :])
+    stance_foot[i, :] = plant.CalcPointsPositions(context, toe_frame,
+      mid_contact_disp, world).T
+    # stance_foot[i] = plant.CalcJacobianTranslationalVelocity(
+    #   context, JacobianWrtVariable.kV, toe_frame, mid_contact_disp,
+    #   world, world) @ x[i, -nv:]
+  com_wrt_stance_foot = com - stance_foot
+
+  for i in range(t_x.size):
+    comddot_lipm[i, :2] = 9.81 * com_wrt_stance_foot[i, :2] / com_wrt_stance_foot[i, 2]
+
+  # figname = "comddot traj"
+  # plt.figure(figname)
+  plt.plot(t_x, comddot_lipm)
+  plt.plot(t_osc_debug, 1 * fsm)
+  # plt.xlabel('time (s)')
+  # plt.legend(["x", "y", "z", "fsm"])
+  plt.legend(["x_actual", "y_actual", "z_actual", "x_lipm", "y_lipm", "z_lipm", "fsm"])
 
 if __name__ == "__main__":
   main()

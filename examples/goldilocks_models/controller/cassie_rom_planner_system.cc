@@ -762,7 +762,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int j = 0; j < num_time_samples.at(i); j++) {
       if ((param_.rom_option == 0) || (param_.rom_option == 1)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
-      } else if ((param_.rom_option == 4) || (param_.rom_option == 8)) {
+      } else if ((param_.rom_option == 4) || (param_.rom_option == 8) ||
+                 (param_.rom_option == 9)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(2), 1);
       } else {
         DRAKE_UNREACHABLE();

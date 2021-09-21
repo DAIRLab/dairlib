@@ -171,7 +171,7 @@ RomTrajOpt::RomTrajOpt(
   this->DoAddRunningCost((tau.transpose() * R * tau)(0, 0),
                          &rom_input_cost_bindings_);
 
-  // Initial state relaxation
+  // Initial state relaxation (both ROM and FOM init use this)
   int n_eps = relax_index.size();
   eps_rom_var_ = NewContinuousVariables(n_eps, "eps_rom");
   init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(

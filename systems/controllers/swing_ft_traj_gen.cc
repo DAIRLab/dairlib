@@ -185,7 +185,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   CoM_vel = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
   /*if (robot_output->get_timestamp() != last_timestamp_) {
     std::ofstream outfile;
-    outfile.open("../predicted_com_pos.txt", std::ios_base::app);
+    outfile.open("../debug_predicted_com_pos.txt", std::ios_base::app);
     outfile << robot_output->get_timestamp() << ", ";
     for (int i = 0; i < CoM_pos.size(); i++) {
       outfile << CoM_pos(i);
@@ -198,7 +198,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   }
   if (robot_output->get_timestamp() != last_timestamp_) {
     std::ofstream outfile;
-    outfile.open("../predicted_com_vel.txt", std::ios_base::app);
+    outfile.open("../debug_predicted_com_vel.txt", std::ios_base::app);
     outfile << robot_output->get_timestamp() << ", ";
     for (int i = 0; i < CoM_vel.size(); i++) {
       outfile << CoM_vel(i);
@@ -232,7 +232,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   *x_fs = CoM_pos.head(2) - com_wrt_foot;
   /*if (robot_output->get_timestamp() != last_timestamp_) {
     std::ofstream outfile;
-    outfile.open("../ft_pos_nominal.txt", std::ios_base::app);
+    outfile.open("../debug_ft_pos_nominal.txt", std::ios_base::app);
     outfile << robot_output->get_timestamp() << ", ";
     for (int i = 0; i < x_fs->size(); i++) {
       outfile << (*x_fs)(i);
@@ -251,7 +251,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   *x_fs += speed_control_output->get_value();
   /*if (robot_output->get_timestamp() != last_timestamp_) {
     std::ofstream outfile;
-    outfile.open("../ft_pos_w_speed_control.txt", std::ios_base::app);
+    outfile.open("../debug_ft_pos_w_speed_control.txt", std::ios_base::app);
     outfile << robot_output->get_timestamp() << ", ";
     for (int i = 0; i < x_fs->size(); i++) {
       outfile << (*x_fs)(i);

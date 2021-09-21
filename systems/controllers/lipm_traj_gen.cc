@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include <string>
+#include <fstream>
 
 #include <drake/math/saturate.h>
 
@@ -348,6 +349,24 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   }
   cout << "\"\"\"\n";
   cout << endl;*/
+
+  /// Test centroidal momentum
+  /*drake::Vector3<double> p_WC =
+      plant_.CalcCenterOfMassPositionInWorld(*context_);
+  drake::multibody::SpatialMomentum<double> h_WC_eval =
+      plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, p_WC);
+  auto angular_momentum_wrt_com = h_WC_eval.rotational();
+  std::ofstream outfile;
+  outfile.open("../debug_centroidal_momentum.txt", std::ios_base::app);
+  outfile << robot_output->get_timestamp() << ", ";
+  for (int i = 0; i < angular_momentum_wrt_com.size(); i++) {
+    outfile << angular_momentum_wrt_com(i);
+    if (i == angular_momentum_wrt_com.size() - 1) {
+      outfile << "\n";
+    } else {
+      outfile << ", ";
+    }
+  }*/
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(
     const Context<double>& context,

@@ -147,7 +147,8 @@ def main():
 
   PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
-  # PlotSwingFootData(t_osc_debug, fsm)
+  PlotSwingFootData(t_osc_debug, fsm)
+  PlotAngularMomentumWrtCOM(t_osc_debug, fsm)
 
   plt.show()
 
@@ -200,8 +201,19 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
 
 
 
+def PlotAngularMomentumWrtCOM(t_osc_debug, fsm):
+  file_array = np.loadtxt("../debug_centroidal_momentum.txt", delimiter=',')
+  t_msg = file_array[:, 0]
+  ang_msg = file_array[:, 1:]
+
+  plt.figure("Angular momentum wrt COM")
+  plt.plot(t_msg, ang_msg)
+  plt.plot(t_osc_debug, 0.01 * fsm)
+  plt.legend(["x", "y", "z", "fsm"])
+
+
 def PlotSwingFootData(t_osc_debug, fsm):
-  file_array = np.loadtxt("../ft_pos_nominal.txt", delimiter=',')
+  file_array = np.loadtxt("../debug_ft_pos_nominal.txt", delimiter=',')
   t_msg = file_array[:, 0]
   pos_msg = file_array[:, 1:]
 
@@ -210,7 +222,7 @@ def PlotSwingFootData(t_osc_debug, fsm):
   # plt.plot(t_osc_debug, 0.01 * fsm)
   # plt.legend(["Neutral point x", "Neutral point y", "fsm"])
 
-  file_array = np.loadtxt("../ft_pos_w_speed_control.txt", delimiter=',')
+  file_array = np.loadtxt("../debug_ft_pos_w_speed_control.txt", delimiter=',')
   t_msg = file_array[:, 0]
   pos_msg = file_array[:, 1:]
 
@@ -223,14 +235,14 @@ def PlotSwingFootData(t_osc_debug, fsm):
               "Neutral point w delta y", "fsm"])
 
   ###
-  file_array = np.loadtxt("../predicted_com_pos.txt", delimiter=',')
+  file_array = np.loadtxt("../debug_predicted_com_pos.txt", delimiter=',')
   t_msg = file_array[:, 0]
   pos_msg = file_array[:, 1:]
 
   plt.figure("com")
   plt.plot(t_msg, pos_msg)
 
-  file_array = np.loadtxt("../predicted_com_vel.txt", delimiter=',')
+  file_array = np.loadtxt("../debug_predicted_com_vel.txt", delimiter=',')
   t_msg = file_array[:, 0]
   vel_msg = file_array[:, 1:]
 

@@ -515,17 +515,19 @@ class VisualizationGui(QWidget):
             arrow_start = next_loc - arrow_vec
             arrow_end = next_loc
 
-            d = DebugData()
-            d.addArrow(arrow_start, arrow_end, headRadius=currShape.thickness, tubeRadius=currShape.thickness/2, color = currShape.color)
-
-            # create the 3 axes
-            if (currShape.created == True):
-                currShape.object = vis.showPolyData(d.getPolyData(), currShape.name, colorByName='RGB255')
-                currShape.object.setProperty('Alpha', currShape.alpha)
-                currShape.created = False
+            if (np.linalg.norm(arrow_vec) == 0):
+                om.removeFromObjectModel(currShape.object)
             else:
-                # update the location of the last arrow
-                currShape.object.setPolyData(d.getPolyData())
+                d = DebugData()
+                d.addArrow(arrow_start, arrow_end, headRadius=currShape.thickness, tubeRadius=currShape.thickness/2, color = currShape.color)
+
+                if (currShape.created == True):
+                    currShape.object = vis.showPolyData(d.getPolyData(), currShape.name, colorByName='RGB255')
+                    currShape.object.setProperty('Alpha', currShape.alpha)
+                    currShape.created = False
+                else:
+                    # update the location of the last arrow
+                    currShape.object.setPolyData(d.getPolyData())
 
 class ObjectToDraw():
     '''

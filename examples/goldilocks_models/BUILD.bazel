@@ -1,12 +1,18 @@
 package(default_visibility = ["//visibility:public"])
 
-cc_library(
-    name = "plotters",
+py_library(
+    name = "plotters_py",
     deps = [
         "//bindings/pydairlib:log_plotter_cassie",
         "//examples/goldilocks_models/find_models:dircon_traj_plotter",
-        "//examples/goldilocks_models/find_models:visualize_gait_MBP",
         "//examples/goldilocks_models/planning:rom_trajopt_plotter",
+    ],
+)
+
+cc_library(
+    name = "plotters_cc",
+    deps = [
+        "//examples/goldilocks_models/find_models:visualize_gait_MBP",
         "//examples/goldilocks_models/planning/visualization:visualize_FoM_pose_MBP",
     ],
 )

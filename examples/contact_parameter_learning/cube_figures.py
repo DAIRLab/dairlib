@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 from cube_sim import CUBE_DATA_DT, CubeSim, BLOCK_HALF_WIDTH, FastLossWeights, load_cube_toss, make_cube_toss_filename
+from random import choice
 import drake_cube_sim
 from json import load
 from random import sample
@@ -373,6 +374,14 @@ def make_elastic_traj_video():
     eval_sim = cube_eval.get_eval_sim(id)
     cube_eval.visualize_learned_params(params, eval_sim, 313)
 
+def quick_video():
+    id = paper_ids[2]
+    trajs = [51, 59, 237, 351, 412]
+    traj = trajs[4]
+    params, _, _ = cube_eval.load_params_and_logs(id)
+    eval_sim = cube_eval.get_eval_sim(id)
+    cube_eval.visualize_learned_params(params, eval_sim, traj)
+
 if __name__ == '__main__':
     # make_estimated_pdf_figure()
     # make_friction_sensitivity_analysis_figure()
@@ -383,4 +392,5 @@ if __name__ == '__main__':
     # visualize_cube_initial_condition()
     # make_damping_ratio_sensitivity_analysis_figure()
     # make_inelastic_traj_video()
-    make_elastic_traj_video()
+    # make_elastic_traj_video()
+    quick_video()

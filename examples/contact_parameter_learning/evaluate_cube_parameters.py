@@ -30,7 +30,7 @@ def visualize_learned_params(params, data_sim, toss_id):
 
     # input('Press enter to continue to video')
 
-    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.05)
+    vis_sim.visualize_two_cubes(cube_data, sim_data, 0.25)
 
 # calculate the net contact impulse trajectory (N * s) by taking momentum
 # differences between timestamps

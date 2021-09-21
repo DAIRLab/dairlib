@@ -22,6 +22,7 @@ dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210612_3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210802_3dlipm_bigger_range_bigger_mu/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210819_3dlipm_accel_as_regularization/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210825_3dlipm_varying_height/"
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210918_3dlipm_fix_xy_part/"
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter

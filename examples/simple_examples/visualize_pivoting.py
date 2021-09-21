@@ -86,7 +86,7 @@ if __name__ == '__main__':
   lambda_traj[2] = (lambda_raw_traj[1] - lambda_raw_traj[2])
   lambda_traj[0] = -u_traj[2]  #normal direction
 
-  lambda_traj[3] = -(lambda_raw_traj[1] - lambda_raw_traj[2])
+  lambda_traj[3] = -(lambda_raw_traj[5] - lambda_raw_traj[6])
   lambda_traj[5] = u_traj[3]
 
   # TODO: check signs here

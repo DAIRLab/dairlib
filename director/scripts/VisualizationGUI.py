@@ -515,8 +515,9 @@ class VisualizationGui(QWidget):
             arrow_start = next_loc - arrow_vec
             arrow_end = next_loc
 
-            if (np.linalg.norm(arrow_vec) == 0):
-                om.removeFromObjectModel(currShape.object)
+            if (np.linalg.norm(arrow_vec) < 1e-4):
+                if (currShape.object is not None):
+                    currShape.object.setProperty('Visible', False)
             else:
                 d = DebugData()
                 d.addArrow(arrow_start, arrow_end, headRadius=currShape.thickness, tubeRadius=currShape.thickness/2, color = currShape.color)
@@ -528,6 +529,7 @@ class VisualizationGui(QWidget):
                 else:
                     # update the location of the last arrow
                     currShape.object.setPolyData(d.getPolyData())
+                currShape.object.setProperty('Visible', True)
 
 class ObjectToDraw():
     '''

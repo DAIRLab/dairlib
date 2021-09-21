@@ -25,10 +25,16 @@ from pydrake.systems.lcm import LcmScopeSystem
 
 if __name__ == '__main__':
   lcm = DrakeLcm()
-  t_x = np.load('examples/simple_examples/data/alp_visual/pivoting/' + 'time_pivoting.npy')
-  x_traj = np.load('examples/simple_examples/data/alp_visual/pivoting/' + 'state_pivoting.npy')
-  u_traj = np.load('examples/simple_examples/data/alp_visual/pivoting/' + 'input_pivoting.npy')
-  lambda_raw_traj = np.load('examples/simple_examples/data/alp_visual/pivoting/' + 'contact_pivoting.npy')
+  #t_x = np.load('examples/simple_examples/data/alp_visual/pivoting/' + 'time_pivoting.npy')
+  #x_traj = np.load('examples/simple_examples/data/alp_visual/pivoting/' + 'state_pivoting.npy')
+  #u_traj = np.load('examples/simple_examples/data/alp_visual/pivoting/' + 'input_pivoting.npy')
+  #lambda_raw_traj = np.load('examples/simple_examples/data/alp_visual/pivoting/' + 'contact_pivoting.npy')
+
+  t_x = np.load('examples/simple_examples/data2/' + 'time_pivoting.npy')
+  x_traj = np.load('examples/simple_examples/data2/' + 'state_pivoting.npy')
+  u_traj = np.load('examples/simple_examples/data2/' + 'input_pivoting.npy')
+  lambda_raw_traj = np.load('examples/simple_examples/data2/' + 'contact_pivoting.npy')
+
   # x_traj = np.load('x.npy')
 
   # t_x = np.zeros(10)
@@ -84,7 +90,7 @@ if __name__ == '__main__':
   lambda_traj[5] = u_traj[3]
 
   # TODO: check signs here
-  lambda_traj[6] = (lambda_raw_traj[7] - lambda_raw_traj[8])
+  lambda_traj[6] = 10*(lambda_raw_traj[8] - lambda_raw_traj[7])
   lambda_traj[8] = lambda_raw_traj[9]
 
   print(q_traj)
@@ -127,7 +133,7 @@ if __name__ == '__main__':
   sim = Simulator(diagram)
   sim.set_publish_every_time_step(True)
 
-  realtime_rate = .5
+  realtime_rate = 1
   t_end = t_x[-1]
   sim.set_target_realtime_rate(realtime_rate)
 

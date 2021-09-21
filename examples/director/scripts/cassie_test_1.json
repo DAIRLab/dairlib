@@ -1,0 +1,93 @@
+{
+  "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
+  "channelName": "CASSIE_STATE_SIMULATION",
+  "data": [
+            {"name": "left_toe_line",
+             "source_data": {"category":"kinematic",
+                             "frame":"toe_left",
+                             "point":[0, 0, 0]
+                           },
+             "type_data" : {"color":[1, 0, 0],
+                            "alpha": 0.5,
+                            "type": "line",
+                            "thickness": 0.01,
+                            "history": -1
+                          }
+            },
+            {"name": "toe_point",
+             "source_data" : {"category":"kinematic",
+                              "frame":"toe_left",
+                              "point":[0, 0, 0]
+                            },
+              "type_data": {"color":[0, 1, 0],
+                            "alpha": 0.5,
+                            "type": "point",
+                            "radius": 0.5
+                          }
+            },
+            {"name": "right_toe_line",
+             "source_data" : {"category":"kinematic",
+                              "frame":"toe_right",
+                              "point":[0, 0, 0]
+                            },
+             "type_data" : {"color":[1, 0, 1],
+                            "alpha": 0.5,
+                            "type": "line",
+                            "thickness": 0.01,
+                            "history": 2
+                          }
+            },
+            {"name": "left_toe_axes",
+             "source_data" : {"category":"kinematic",
+                              "frame":"toe_left",
+                              "point":[0, 0, 0]
+                            },
+             "type_data" : {"alpha": 0.5,
+                            "type": "axes",
+                            "thickness": 0.01,
+                            "length": 0.4
+                          }
+            },
+            {"name": "com_point",
+             "source_data" : {"category":"com"},
+             "type_data" : {"color":[0, 1, 0],
+                            "alpha": 0.5,
+                            "type": "point",
+                            "radius": 1
+                           }
+            },
+
+            {"name": "right_toe_axis",
+             "source_data" : {"category":"lcm",
+                              "abstract_channel" : "CASSIE_STATE_SIMULATION",
+                              "abstract_type" : "dairlib.lcmt_robot_output",
+                              "abstract_field" : "position",
+                              "quaternion_index" : 0,
+                              "frame": "toe_right",
+                              "point": [0, 0, 0]
+                             },
+              "type_data": {"color":[1, 0, 0],
+                            "alpha": 0.5,
+                            "type": "axes",
+                            "thickness": 0.01,
+                            "length": 0.4
+                          }
+            },
+            {"name": "lcm_line",
+             "source_data" : {"category":"lcm",
+                              "abstract_channel" : "OSC_DEBUG",
+                              "abstract_type" : "dairlib.lcmt_osc_output",
+                              "abstract_field" : "tracking_data[%d].y",
+                              "index_field": "tracking_data_names",
+                              "index_element": "swing_ft_traj",
+                              "x_index" : 0
+                             },
+              "type_data": {"color":[0, 0, 1],
+                            "alpha": 0.5,
+                            "type": "line",
+                            "thickness": 0.01,
+                            "history": -1
+                          }
+            }
+          ]
+}

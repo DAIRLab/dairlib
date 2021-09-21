@@ -1,0 +1,22 @@
+{
+  "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
+  "channelName": "CASSIE_STATE_SIMULATION",
+  "data": [
+    {"name": "lcm_line",
+      "source_data" : {"category":"lcm",
+        "abstract_channel" : "FINGER_FORCE",
+        "abstract_type" : "dairlib.lcmt_finger_force",
+        "abstract_field" : "forces[%d]",
+        "index_field": "tracking_data_names",
+        "index_element": "lipm_traj",
+        "x_index" : 0
+      },
+      "type_data": {"color":[0, 0, 1],
+        "alpha": 0.5,
+        "type": "line",
+        "thickness": 0.5,
+        "history": 0
+      }
+    }
+  ]
+}

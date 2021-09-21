@@ -1,0 +1,76 @@
+{
+  "model_file": "examples/simple_examples/urdf/finger_pen.urdf",
+  "weld_body": "base",
+  "channelName": "STATE",
+  "data": [
+           
+            {"name": "upper_gripper_arrow",
+             "source_data" : {"category": "kinematic",
+                              "frame" : "upper_finger_left",
+                              "point": [-0.1, 0, 1.3125]
+                             },
+             "type_data": {"type": "arrow",
+                          "color": [1, 0, 1],
+                          "alpha": 1,
+                          "thickness": 0.05,
+                          "scale": 0.1,
+                          "frame": "local",
+                          "abstract_channel" : "FORCES",
+                          "abstract_type" : "drake.lcmt_scope",
+                          "abstract_field" : "value",
+                          "x_index" : 0
+                        }
+            },
+            {"name": "lower_gripper_arrow",
+             "source_data" : {"category": "kinematic",
+                              "frame" : "lower_finger_left",
+                              "point": [-0.1, 0, 0.6875]
+                             },
+             "type_data": {"type": "arrow",
+                          "color": [1, 0, 1],
+                          "alpha": 1,
+                          "thickness": 0.05,
+                          "scale": 0.1,
+                          "frame": "local",
+                          "abstract_channel" : "FORCES",
+                          "abstract_type" : "drake.lcmt_scope",
+                          "abstract_field" : "value",
+                          "x_index" : 3
+                        }
+            },
+            {"name": "upper_gripper_arrow_2",
+             "source_data" : {"category": "kinematic",
+                              "frame" : "upper_finger_right",
+                              "point": [0.1, 0, 1.3125]
+                             },
+             "type_data": {"type": "arrow",
+                          "color": [1, 0, 1],
+                          "alpha": 1,
+                          "thickness": 0.05,
+                          "scale": 0.1,
+                          "frame": "global",
+                          "abstract_channel" : "FORCES",
+                          "abstract_type" : "drake.lcmt_scope",
+                          "abstract_field" : "value",
+                          "x_index" : 6
+                        }
+            },
+            {"name": "lower_gripper_arrow_2",
+             "source_data" : {"category": "kinematic",
+                              "frame" : "lower_finger_right",
+                              "point": [0.1, 0, 0.6875]
+                             },
+             "type_data": {"type": "arrow",
+                          "color": [1, 0, 1],
+                          "alpha": 1,
+                          "thickness": 0.05,
+                          "scale": 0.1,
+                          "frame": "global",
+                          "abstract_channel" : "FORCES",
+                          "abstract_type" : "drake.lcmt_scope",
+                          "abstract_field" : "value",
+                          "x_index" : 9
+                        }
+            }
+          ]
+}

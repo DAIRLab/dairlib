@@ -199,6 +199,7 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   double final_height = drake::math::saturate(
       desired_com_height_ + stance_foot_pos(2),
       CoM(2) - max_height_diff_per_step, CoM(2) + max_height_diff_per_step);
+  //  double final_height = desired_com_height_ + stance_foot_pos(2);
   Y[0](2, 0) = final_height;
   Y[1](2, 0) = final_height;
 
@@ -223,6 +224,8 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega);
   double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega);
 
+  //  cout << "omega = " << omega << endl;
+
   // Sum of two exponential + one-segment 3D polynomial
   MatrixXd K = MatrixXd::Zero(3, 2);
   MatrixXd A = MatrixXd::Zero(2, 2);
@@ -232,6 +235,11 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   alpha << 1, 1;
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
+}
+
+void Print3dVector(VectorXd input) {
+  cout << "np.array([" << input(0) << ", " << input(1) << ", " << input(2)
+       << "])\n";
 }
 
 void LIPMTrajGenerator::CalcTrajFromCurrent(
@@ -309,11 +317,36 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
 
   /*cout << "start_time = " << start_time << endl;
   cout << "end_time = " << end_time << endl;
-  cout << "CoM - stance_foot_pos = " << (CoM - stance_foot_pos).transpose() << endl;
-  cout << "dCoM = " << dCoM.transpose() << endl;
-  for (int i = 0; i < 3; i++) {
-    cout << exp_pp_traj->value(start_time + i * (end_time - start_time)/2) << ", ";
+  cout << "stance_foot_pos = ";
+  Print3dVector(stance_foot_pos);
+  cout << "CoM_wrt_stance_foot_pos = ";
+  Print3dVector((CoM - stance_foot_pos));
+  cout << "dCoM = ";
+  Print3dVector(dCoM);
+  cout << "desired_com_height_ = " << desired_com_height_ << endl;
+  int n = 4;
+  cout << "N = " << n << endl;
+
+  VectorXd times(n);
+  for (int i = 0; i < n; i++) {
+    times(i) = start_time + i * (end_time - start_time) / (n - 1);
   }
+  cout << "\"\"\"\n";
+  cout << "\ntimes = " << times.transpose() << endl;
+
+  cout << "\ncom along traj = \n";
+  for (int i = 0; i < n; i++) {
+    double t = times(i);
+    VectorXd vec = exp_pp_traj->value(t);
+    cout << vec(0) << ", " << vec(1) << ", " << vec(2) << endl;
+  }
+  cout << "\ncomdot along traj = \n";
+  for (int i = 0; i < n; i++) {
+    double t = times(i);
+    VectorXd vec = exp_pp_traj->MakeDerivative(1)->value(t);
+    cout << vec(0) << ", " << vec(1) << ", " << vec(2) << endl;
+  }
+  cout << "\"\"\"\n";
   cout << endl;*/
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(

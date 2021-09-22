@@ -16,6 +16,8 @@ from pydairlib.common import FindResourceOrThrow
 import dairlib
 from scipy import interpolate
 
+from pydrake.multibody.math import SpatialMomentum
+
 def main():
   global t_start
   global t_end
@@ -52,9 +54,10 @@ def main():
   print("urdf_file_path = " + urdf_file_path + "\n")
 
   # Build a MBP
+  global plant_w_spr, model_instance
   builder = DiagramBuilder()
   plant_w_spr, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant_w_spr).AddModelFromFile(FindResourceOrThrow(urdf_file_path))
+  model_instance = Parser(plant_w_spr).AddModelFromFile(FindResourceOrThrow(urdf_file_path))
   plant_w_spr.mutable_gravity_field().set_gravity_vector(
     -9.81 * np.array([0, 0, 1]))
   plant_w_spr.Finalize()
@@ -204,18 +207,11 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
 
 
 def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr):
-  # plant_w_spr.SetPositionsAndVelocities(context, x)
-  # pos = plant_w_spr.CalcPointsPositions(context, frame, point, world)
-  # vel = plant_w_spr.CalcJacobianTranslationalVelocity(context,
-  #   JacobianWrtVariable.kV, frame, point, world, world) @ x[nq:]
-
+  ### Total centroidal angular momentum
   centroidal_angular_momentum = np.zeros((t_x.size, 3))
   for i in range(t_x.size):
     plant_w_spr.SetPositionsAndVelocities(context, x[i])
     com = plant_w_spr.CalcCenterOfMassPositionInWorld(context)
-    # J = plant_w_spr.CalcJacobianCenterOfMassTranslationalVelocity(context,
-    #   JacobianWrtVariable.kV, world, world)
-    # comdot = J @ x[i, nq:].T
 
     h_WC_eval = plant_w_spr.CalcSpatialMomentumInWorldAboutPoint(context, com)
     centroidal_angular_momentum[i] = h_WC_eval.rotational()
@@ -224,6 +220,61 @@ def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_sp
   plt.plot(t_x, centroidal_angular_momentum)
   plt.plot(t_osc_debug, 0.1 * fsm)
   plt.legend(["x", "y", "z", "fsm"])
+
+  ### Individual momentum
+  body_indices = plant_w_spr.GetBodyIndices(model_instance)
+  dictionary_centroidal_angular_momentum_per_body = {}
+  for body_idx in body_indices:
+    # No contribution from the world body.
+    if body_idx == 0:
+      continue
+    # Ensure MultibodyPlant method contains a valid body_index.
+    if int(body_idx) >= plant_w_spr.num_bodies():
+      raise ValueError("wrong index. Bug somewhere")
+
+    body = plant_w_spr.get_body(body_idx)
+    print(body.name())
+
+    angular_momentum_per_body = np.zeros((t_x.size, 3))
+    for i in range(t_x.size):
+      plant_w_spr.SetPositionsAndVelocities(context, x[i])
+      com = plant_w_spr.CalcCenterOfMassPositionInWorld(context)
+
+      body_pose = plant_w_spr.EvalBodyPoseInWorld(context, body)
+
+      R_AE = body_pose.rotation()
+      M_BBo_W = body.default_spatial_inertia().ReExpress(R_AE)
+      V_WBo_W = plant_w_spr.EvalBodySpatialVelocityInWorld(context, body)
+      L_WBo_W = M_BBo_W * V_WBo_W
+
+      # SpatialMomentumInWorldAboutWo
+      p_WoBo_W = body_pose.translation()
+      L_WS_W = L_WBo_W.Shift(-p_WoBo_W)
+
+      # SpatialMomentumInWorldAboutCOM
+      L_WS_W = L_WS_W.Shift(com)
+
+      angular_momentum_per_body[i] = L_WS_W.rotational()
+    dictionary_centroidal_angular_momentum_per_body[body.name()] = angular_momentum_per_body
+
+  dim = 0
+  plt.figure("Centroidal angular momentum per body")
+  plt.plot(t_osc_debug, 0.1 * fsm)
+  legend_list = ["fsm"]
+  for key in dictionary_centroidal_angular_momentum_per_body:
+    plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body[key][:,dim])
+    legend_list += [key]
+  plt.legend(legend_list)
+
+  # Testing -- check if my centroidal dynamics calculation is correct
+  centroidal_angular_momentum_my_calc = np.zeros((t_x.size, 3))
+  for key in dictionary_centroidal_angular_momentum_per_body:
+    centroidal_angular_momentum_my_calc += dictionary_centroidal_angular_momentum_per_body[key]
+  plt.figure("Test my calculation of the centroidal angular momentum")
+  plt.plot(t_x, centroidal_angular_momentum)
+  plt.plot(t_x, centroidal_angular_momentum_my_calc, '--')
+  plt.plot(t_osc_debug, 0.2 * fsm)
+  plt.legend(["x (Drake API)", "y (Drake API)", "z (Drake API)", "x (my calc)", "y (my calc)", "z (my calc)", "fsm"])
 
 
 def PlotCentroidalAngularMomentum(t_osc_debug, fsm):

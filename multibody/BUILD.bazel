@@ -22,6 +22,21 @@ cc_library(
 )
 
 cc_library(
+    name = "single_rigid_body_plant",
+    srcs = [
+        "single_rigid_body_plant.cc",
+    ],
+    hdrs = [
+        "single_rigid_body_plant.h",
+    ],
+    deps = [
+        ":utils",
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "utils",
     srcs = [
         "com_pose_system.cc",

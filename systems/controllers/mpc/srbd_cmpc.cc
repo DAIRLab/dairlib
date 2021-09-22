@@ -58,17 +58,16 @@ SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
     planar_(planar),
     traj_tracking_(traj),
     use_com_(use_com),
-    use_fsm_(used_with_finite_state_machine),
-    rpy_(drake::math::RollPitchYaw<double>(0, 0, 0)){
+    use_fsm_(used_with_finite_state_machine){
 
   nq_ = plant.num_positions();
   nv_ = plant.num_velocities();
   nu_p_ = plant.num_actuators();
 
-  nx_ = planar ? kNxPlanar : kNx3d;
-  nu_ = planar ? kNuPlanar : kNu3d;
-  kLinearDim_ = planar ? 2 : 3;
-  kAngularDim_ = planar ? 1 : 3;
+  nx_ = kNx3d;
+  nu_ = kNu3d;
+  kLinearDim_ = 3;
+  kAngularDim_ = 3;
 
   nxi_ = nx_ + 2*kLinearDim_;
   Q_ = MatrixXd::Zero(nxi_, nxi_);
@@ -122,32 +121,6 @@ void SrbdCMPC::AddMode(const SrbdDynamics&  dynamics, BipedStance stance, int N)
   nmodes_++;
 }
 
-void SrbdCMPC::AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&,
-                                         Eigen::Vector3d> pt, BipedStance stance) {
-  DRAKE_ASSERT(contact_points_.size() == stance);
-  contact_points_.push_back(pt);
-}
-
-void SrbdCMPC::AddJointToTrackBaseAngle(const std::string& joint_pos_name,
-                                        const std::string& joint_vel_name) {
-  DRAKE_ASSERT(planar_);
-  base_angle_pos_idx_ = makeNameToPositionsMap(plant_)[joint_pos_name];
-  base_angle_vel_idx_ = makeNameToVelocitiesMap(plant_)[joint_vel_name];
-}
-
-void SrbdCMPC::AddBaseFrame(const std::string &body_name,
-                            const Eigen::Vector3d& offset, const Eigen::Isometry3d& frame_pose) {
-  DRAKE_ASSERT(!(planar_ && use_com_));
-  base_ = body_name;
-  frame_pose_ = frame_pose;
-  com_from_base_origin_ = offset;
-}
-
-double SrbdCMPC::SetMassFromListOfBodies(const std::vector<std::string>& bodies) {
-  double mass = CalcCentroidalMassFromListOfBodies(bodies);
-  mass_ = mass;
-  return mass;
-}
 
 void SrbdCMPC::SetReachabilityLimit(const Vector3d& kinematic_limit,
                                     const std::vector<Eigen::VectorXd> &nominal_relative_pos,
@@ -166,7 +139,6 @@ void SrbdCMPC::SetReachabilityLimit(const Vector3d& kinematic_limit,
 void SrbdCMPC::CheckProblemDefinition() {
   DRAKE_DEMAND(!modes_.empty());
   DRAKE_DEMAND(mu_ > 0 );
-  DRAKE_DEMAND(!contact_points_.empty());
   DRAKE_DEMAND(!kin_nominal_.empty());
   DRAKE_DEMAND(mass_ > 0);
   DRAKE_DEMAND(x_des_.rows() == nxi_);
@@ -399,77 +371,6 @@ void SrbdCMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
   R_ = R;
 }
 
-VectorXd SrbdCMPC::CalcCentroidalStateFromPlant(const VectorXd& x,
-                                                double t) const {
-
-  Vector3d com_pos;
-  Vector3d com_vel;
-  MatrixXd J_CoM_v = MatrixXd::Zero(3, nv_);
-
-  Vector3d left_pos;
-  Vector3d right_pos;
-  VectorXd lambda;
-
-  SetPositionsAndVelocitiesIfNew<double>(plant_, x, plant_context_);
-
-  if (use_com_) {
-    com_pos = plant_.CalcCenterOfMassPositionInWorld(*plant_context_);
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(*plant_context_,
-                                                         JacobianWrtVariable::kV, world_frame_,
-                                                         world_frame_, &J_CoM_v);
-  } else {
-    plant_.CalcPointsPositions(*plant_context_, plant_.GetBodyByName(base_).body_frame(),
-        com_from_base_origin_, world_frame_, &com_pos);
-    plant_.CalcJacobianTranslationalVelocity(*plant_context_,
-                                             JacobianWrtVariable::kV,
-                                             plant_.GetBodyByName(base_).body_frame(),
-                                             com_from_base_origin_, world_frame_, world_frame_, &J_CoM_v);
-  }
-
-  com_vel = J_CoM_v * x.tail(nv_);
-
-  plant_.CalcPointsPositions(*plant_context_, contact_points_.at(kLeft).first,
-                             contact_points_.at(kLeft).second, world_frame_, &left_pos);
-  plant_.CalcPointsPositions(*plant_context_, contact_points_.at(kRight).first,
-                             contact_points_.at(kRight).second, world_frame_, &right_pos);
-  Vector3d base_orientation;
-  VectorXd base_omega;
-
-  /*** Adjustment for slope ***/
-//  com_pos(vertical_idx()) += (modes_.at(x0_idx_[0]).stance == kLeft) ?
-//      left_pos(vertical_idx()) : right_pos(vertical_idx());
-
-  if (planar_) {
-    base_orientation = x.head(nq_).segment(base_angle_pos_idx_, kAngularDim_);
-    base_omega = x.tail(nv_).segment(base_angle_vel_idx_, kAngularDim_);
-  } else {
-    auto base_transform = plant_.EvalBodyPoseInWorld(*plant_context_,
-                                                     plant_.GetBodyByName(base_));
-
-    rpy_.SetFromRotationMatrix(base_transform.rotation());
-    base_orientation << rpy_.vector();
-    MatrixXd J_spatial(6, nv_);
-    plant_.CalcJacobianSpatialVelocity(*plant_context_, JacobianWrtVariable::kV,
-                                       plant_.GetBodyByName(base_).body_frame(), frame_pose_.translation(),
-                                       world_frame_, world_frame_, &J_spatial);
-
-    base_omega = J_spatial.block(0, 0, 3, J_spatial.cols()) * x.tail(nv_);
-  }
-
-
-  VectorXd x_srbd(nxi_);
-
-  if (planar_) {
-    x_srbd << MakePlanarVectorFrom3d(com_pos), base_orientation,
-        MakePlanarVectorFrom3d(com_vel), base_omega, MakePlanarVectorFrom3d(left_pos),
-        MakePlanarVectorFrom3d(right_pos); // MakePlanarVectorFrom3d(lambda);
-  } else {
-    x_srbd << com_pos, base_orientation, com_vel, base_omega,
-        left_pos, right_pos;
-  }
-  return x_srbd;
-}
-
 void SrbdCMPC::GetMostRecentMotionPlan(const drake::systems::Context<double> &context,
                                        dairlib::lcmt_saved_traj *traj_msg) const {
   *traj_msg = most_recent_sol_;
@@ -639,14 +540,6 @@ void SrbdCMPC::UpdateInitialStateConstraint(const VectorXd& x0,
       UpdateCoefficients(2 * Qf_, -2 * Qf_ * x_des_, x_des_.transpose() * x_des_);
 }
 
-double SrbdCMPC::CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies) {
-  double mass = 0;
-  for (auto & name : bodies) {
-    mass += plant_.GetBodyByName(name).get_mass(*plant_context_);
-  }
-  return mass;
-}
-
 /// TODO(@Brian-Acosta) Update trajectory to be pelvis trajectory given offset
 lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
                                              double time, double time_since_last_touchdown,
@@ -767,10 +660,6 @@ MatrixXd SrbdCMPC::CalcSwingFootKnotPoints(const VectorXd& x,
   swing_ft_traj.block(kLinearDim_, 2, kLinearDim_, 1) = VectorXd::Zero(kLinearDim_);
 
   return swing_ft_traj;
-}
-
-Vector2d SrbdCMPC::MakePlanarVectorFrom3d(Vector3d vec) const {
-  return Vector2d(vec(saggital_idx_), vec(vertical_idx_));
 }
 
 void SrbdCMPC::print_initial_state_constraints() const {

@@ -80,26 +80,16 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   /// @param dynamics
   /// @param N
   void AddMode(const SrbdDynamics&  dynamics, BipedStance stance, int N);
-  void AddContactPoint(std::pair<const drake::multibody::BodyFrame<double>&, Eigen::Vector3d> pt, BipedStance stance);
   void AddTrackingObjective(const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
   void SetTerminalCost(const Eigen::MatrixXd& Qf);
   void AddInputRegularization(const Eigen::MatrixXd& R);
   void SetFlatGroundSoftConstraint(const Eigen::MatrixXd& W) {MakeFlatGroundConstraints(W);}
-  void AddJointToTrackBaseAngle(const std::string& joint_pos_name,
-                                const std::string& joint_vel_name);
 
   int num_state() { return nx_;}
   int num_state_inflated() {return nxi_;}
-  int saggital_idx() const { return saggital_idx_;}
-  int vertical_idx() const { return vertical_idx_;}
-
   double SetMassFromListOfBodies(const std::vector<std::string>& bodies);
 
   void SetMass(double mass) {mass_ = mass;}
-
-  void AddBaseFrame(const std::string &body_name,
-                    const Eigen::Vector3d& offset = Eigen::Vector3d::Zero(),
-                    const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
   void Build();
 
@@ -152,9 +142,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void GetMostRecentMotionPlan(const drake::systems::Context<double>& context,
                                lcmt_saved_traj* traj_msg) const;
 
-
-  double CalcCentroidalMassFromListOfBodies(std::vector<std::string> bodies);
-
   Eigen::MatrixXd MakeSimpsonIntegratedTrackingAndInputCost(const Eigen::MatrixXd &A, const Eigen::MatrixXd &B) const;
   Eigen::VectorXd MakeSplineSegmentReferenceStateAndInput() const ;
   void MakeStanceFootConstraints();
@@ -184,8 +171,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
 
-  Eigen::VectorXd CalcCentroidalStateFromPlant(const Eigen::VectorXd& x, double t) const;
-
   std::pair<int,int> GetTerminalStepIdx() const;
 
   // parameters
@@ -210,9 +195,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   drake::systems::EventStatus PeriodicUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
-
-  std::vector<std::pair<const drake::multibody::BodyFrame<double>&,
-                        Eigen::Vector3d>> contact_points_;
 
   // Problem variables
   Eigen::MatrixXd Q_;
@@ -255,13 +237,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::BodyFrame<double>& world_frame_;
   std::string base_;
-  Eigen::Isometry3d frame_pose_;
   Eigen::Vector3d com_from_base_origin_;
-  int base_angle_pos_idx_{};
-  int base_angle_vel_idx_{};
 
   mutable drake::systems::Context<double>* plant_context_;
-  mutable drake::math::RollPitchYaw<double> rpy_;
   mutable Eigen::VectorXd x_des_;
   mutable Eigen::MatrixXd x_des_mat_;
 
@@ -271,16 +249,11 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const bool use_com_;
   const bool planar_;
   const bool traj_tracking_;
-  const int kNxPlanar = 6;
   const int kNx3d = 12;
-  const int kNuPlanar = 6;
   const int kNu3d = 10;
-  const int saggital_idx_ = 0;
-  const int vertical_idx_ = 2;
   const Eigen::Vector3d gravity_ = {0.0, 0.0, -9.81};
   double mu_ = 0;
   double mass_ = 0;
-  double planar_inertia_ = 0;
   drake::multibody::RotationalInertia<double> rotational_inertia_;
 
 };

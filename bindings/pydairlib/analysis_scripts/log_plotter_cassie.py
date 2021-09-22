@@ -221,7 +221,7 @@ def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_sp
   plt.plot(t_osc_debug, 0.1 * fsm)
   plt.legend(["x", "y", "z", "fsm"])
 
-  ### Individual momentum
+  ### Individual momentum (reference: CalcSpatialMomentumInWorldAboutPoint)
   body_indices = plant_w_spr.GetBodyIndices(model_instance)
   dictionary_centroidal_angular_momentum_per_body = {}
   for body_idx in body_indices:
@@ -259,22 +259,59 @@ def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_sp
 
   dim = 0
   plt.figure("Centroidal angular momentum per body")
-  plt.plot(t_osc_debug, 0.1 * fsm)
+  plt.plot(t_osc_debug, 0.1 * fsm, 'k')
   legend_list = ["fsm"]
+  i = 0
+  linestyle = '-'
   for key in dictionary_centroidal_angular_momentum_per_body:
-    plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body[key][:,dim])
+    plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body[key][:,dim], linestyle)
     legend_list += [key]
+    if i == 9:
+      linestyle = '--'
+    if i == 19:
+      linestyle = '-.'
+    i+=1
   plt.legend(legend_list)
 
-  # Testing -- check if my centroidal dynamics calculation is correct
-  centroidal_angular_momentum_my_calc = np.zeros((t_x.size, 3))
-  for key in dictionary_centroidal_angular_momentum_per_body:
-    centroidal_angular_momentum_my_calc += dictionary_centroidal_angular_momentum_per_body[key]
-  plt.figure("Test my calculation of the centroidal angular momentum")
-  plt.plot(t_x, centroidal_angular_momentum)
-  plt.plot(t_x, centroidal_angular_momentum_my_calc, '--')
-  plt.plot(t_osc_debug, 0.2 * fsm)
-  plt.legend(["x (Drake API)", "y (Drake API)", "z (Drake API)", "x (my calc)", "y (my calc)", "z (my calc)", "fsm"])
+  ### Testing -- check if my centroidal dynamics calculation is correct
+  # centroidal_angular_momentum_my_calc = np.zeros((t_x.size, 3))
+  # for key in dictionary_centroidal_angular_momentum_per_body:
+  #   centroidal_angular_momentum_my_calc += dictionary_centroidal_angular_momentum_per_body[key]
+  # plt.figure("Test my calculation of the centroidal angular momentum")
+  # plt.plot(t_x, centroidal_angular_momentum)
+  # plt.plot(t_x, centroidal_angular_momentum_my_calc, '--')
+  # plt.plot(t_osc_debug, 0.2 * fsm)
+  # plt.legend(["x (Drake API)", "y (Drake API)", "z (Drake API)", "x (my calc)", "y (my calc)", "z (my calc)", "fsm"])
+
+  ### Testing -- Calculate pelvis linear velocity contribution
+  # body = plant_w_spr.GetBodyByName("pelvis")
+  # L_pelvis_linear_vel = np.zeros((t_x.shape[0], 3))
+  # for i in range(t_x.shape[0]):
+  #   xi = x[i, :]
+  #   plant_w_spr.SetPositionsAndVelocities(context, xi)
+  #   com = plant_w_spr.CalcCenterOfMassPositionInWorld(context)
+  #   r = xi[4:7] - com
+  #   P = body.get_default_mass() * xi[nq + 3: nq + 6]
+  #   L_pelvis_linear_vel[i] = np.cross(r, P)
+  # plt.figure("pelvis linear vel contribution to centroidal angular momentum")
+  # plt.plot(t_x, L_pelvis_linear_vel)
+  # plt.plot(t_osc_debug, 0.1 * fsm)
+  # plt.legend(["x", "y", "z", "fsm"])
+  # # Testing -- Calculate pelvis angular velocity contribution
+  # L_pelvis_angular_vel = np.zeros((t_x.shape[0], 3))
+  # for i in range(t_x.shape[0]):
+  #   xi = x[i, :]
+  #   plant_w_spr.SetPositionsAndVelocities(context, xi)
+  #   body_pose = plant_w_spr.EvalBodyPoseInWorld(context, body)
+  #   R_AE = body_pose.rotation()
+  #   M_BBo_W = body.default_spatial_inertia().ReExpress(R_AE)
+  #   # V_WBo_W = plant_w_spr.EvalBodySpatialVelocityInWorld(context, body)
+  #   I = M_BBo_W.CalcRotationalInertia().CopyToFullMatrix3()
+  #   L_pelvis_angular_vel[i] = I @ xi[nq:nq+3]
+  # plt.figure("pelvis angular vel contribution to centroidal angular momentum")
+  # plt.plot(t_x, L_pelvis_angular_vel)
+  # plt.plot(t_osc_debug, 0.1 * fsm)
+  # plt.legend(["x", "y", "z", "fsm"])
 
 
 def PlotCentroidalAngularMomentum(t_osc_debug, fsm):

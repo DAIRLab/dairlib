@@ -63,7 +63,7 @@ def main():
   context_wo_spr = plant_wo_spr.CreateDefaultContext()
 
   # Reference trajectory
-  delay_time = 2.0
+  delay_time = 1.0
   filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
   jumping_traj = lcm_trajectory.DirconTrajectory(filename)
   state_traj = jumping_traj.ReconstructStateTrajectory()
@@ -71,7 +71,6 @@ def main():
   input_traj.shiftRight(delay_time)
 
   nominal_impact_time = jumping_traj.GetStateBreaks(2)[0]
-  import pdb; pdb.set_trace()
 
   # relevant MBP parameters
   nq = plant_w_spr.num_positions()
@@ -133,7 +132,7 @@ def main():
   # plot_ekf(full_log, pos_map, vel_map)
   # plot_control_rate(t_u, u)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context_w_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
-  plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
+  # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
@@ -152,7 +151,7 @@ def main():
                         rear_contact_disp,
                         world, t_x, t_slice, "right_", "_rear")
 
-  # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   # plot_id_debug(t_u, osc_debug, osc_output)
   plt.show()
 
@@ -257,9 +256,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     osc_traj3 = "hip_yaw_right_traj"
 
   #
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
 
 
   #
@@ -272,16 +271,20 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 1, "acc")
   # plot_osc(osc_debug, osc_traj0, 2, "acc")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "pos")
+  plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plot_osc(osc_debug, osc_traj1, 1, "pos")
   # plot_osc(osc_debug, osc_traj1, 2, "pos")
   # #
-  # plot_osc(osc_debug, osc_traj2, 0, "pos")
+  plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
-  # plot_osc(osc_debug, osc_traj2, 0, "vel")
+  plot_osc(osc_debug, osc_traj1, 0, "vel")
+  # plot_osc(osc_debug, osc_traj2, 1, "vel")
+  # plot_osc(osc_debug, osc_traj2, 2, "vel")
+
+  plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
@@ -293,9 +296,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 1, "acc")
   # plot_osc(osc_debug, osc_traj2, 2, "acc")
 
-  # plot_osc(osc_debug, osc_traj3, 0, "pos")
+  plot_osc(osc_debug, osc_traj3, 0, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
-  # plot_osc(osc_debug, osc_traj4, 0, "pos")
+  plot_osc(osc_debug, osc_traj4, 0, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
@@ -433,13 +436,15 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
   fig = plt.figure('foot pos: ' + filename)
 
   # state_indices = slice(4, 5)
-  # state_indices = slice(2, 3)
-  state_indices = slice(5, 6)
+  state_indices = slice(0, 3)
+  # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
   state_names = [name + contact_type for name in state_names]
-  ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
-           data_label=state_names[state_indices])
+  # ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
+  #          data_label=state_names[state_indices])
+  ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices])
+  ps.add_legend(state_names[state_indices])
   plt.legend()
 
 

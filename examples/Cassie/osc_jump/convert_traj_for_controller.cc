@@ -8,6 +8,11 @@
 
 #include "drake/multibody/plant/multibody_plant.h"
 
+using std::map;
+using std::pair;
+using std::string;
+using std::vector;
+
 using drake::geometry::SceneGraph;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
@@ -49,6 +54,11 @@ int DoMain() {
       Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
+  // Create maps for joints
+  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 
   int nv = plant.num_velocities();
@@ -66,6 +76,8 @@ int DoMain() {
 
   std::vector<MatrixXd> all_l_foot_points;
   std::vector<MatrixXd> all_r_foot_points;
+  std::vector<MatrixXd> all_l_toe_points;
+  std::vector<MatrixXd> all_r_toe_points;
   std::vector<MatrixXd> all_l_hip_points;
   std::vector<MatrixXd> all_r_hip_points;
   std::vector<MatrixXd> all_pelvis_points;
@@ -84,6 +96,8 @@ int DoMain() {
     int n_points = times.size();
     MatrixXd l_foot_points(6, n_points);
     MatrixXd r_foot_points(6, n_points);
+    MatrixXd l_toe_points(2, n_points);
+    MatrixXd r_toe_points(2, n_points);
     MatrixXd l_hip_points(6, n_points);
     MatrixXd r_hip_points(6, n_points);
     MatrixXd pelvis_points(6, n_points);
@@ -100,6 +114,8 @@ int DoMain() {
           l_foot_points.block(0, i, 3, 1);
       Eigen::Ref<Eigen::MatrixXd> r_foot_pos_block =
           r_foot_points.block(0, i, 3, 1);
+      l_toe_points(0, i) = x_i(pos_map["toe_left"]);
+      r_toe_points(0, i) = x_i(pos_map["toe_right"]);
       Eigen::Ref<Eigen::MatrixXd> l_hip_pos_block =
           l_hip_points.block(0, i, 3, 1);
       Eigen::Ref<Eigen::MatrixXd> r_hip_pos_block =
@@ -133,6 +149,7 @@ int DoMain() {
       plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                               *r_toe_frame, zero_offset, *world,
                                               *world, &J_r_foot);
+
       plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                               *hip_left_frame, zero_offset,
                                               *world, *world, &J_l_hip);
@@ -144,6 +161,8 @@ int DoMain() {
       pelvis_points.block(3, i, 3, 1) = J_pelvis * v_i;
       l_foot_points.block(3, i, 3, 1) = J_l_foot * v_i;
       r_foot_points.block(3, i, 3, 1) = J_r_foot * v_i;
+      l_toe_points(1, i) = v_i(vel_map["toe_leftdot"]);
+      r_toe_points(1, i) = v_i(vel_map["toe_rightdot"]);
       l_hip_points.block(3, i, 3, 1) = J_l_hip * v_i;
       r_hip_points.block(3, i, 3, 1) = J_r_hip * v_i;
     }
@@ -155,6 +174,8 @@ int DoMain() {
     all_times.push_back(times);
     all_l_foot_points.push_back(l_foot_points);
     all_r_foot_points.push_back(r_foot_points);
+    all_l_toe_points.push_back(l_toe_points);
+    all_r_toe_points.push_back(r_toe_points);
     all_l_hip_points.push_back(l_hip_points);
     all_r_hip_points.push_back(r_hip_points);
     all_pelvis_points.push_back(pelvis_points);
@@ -177,6 +198,18 @@ int DoMain() {
     rfoot_traj_block.time_vector = all_times[mode];
     rfoot_traj_block.datatypes = {"rfoot_x",    "rfoot_y",    "rfoot_z",
                                   "rfoot_xdot", "rfoot_ydot", "rfoot_zdot"};
+  
+    auto ltoe_traj_block = LcmTrajectory::Trajectory();
+    ltoe_traj_block.traj_name = "left_toe_trajectory" + std::to_string(mode);
+    ltoe_traj_block.datapoints = all_l_toe_points[mode];
+    ltoe_traj_block.time_vector = all_times[mode];
+    ltoe_traj_block.datatypes = {"ltoe", "ltoe_dot"};
+
+    auto rtoe_traj_block = LcmTrajectory::Trajectory();
+    rtoe_traj_block.traj_name = "right_toe_trajectory" + std::to_string(mode);
+    rtoe_traj_block.datapoints = all_r_toe_points[mode];
+    rtoe_traj_block.time_vector = all_times[mode];
+    rtoe_traj_block.datatypes = {"rtoe", "rtoe_dot"};
 
     auto com_traj_block = LcmTrajectory::Trajectory();
     com_traj_block.traj_name = "pelvis_trans_trajectory" + std::to_string(mode);
@@ -196,10 +229,14 @@ int DoMain() {
 
     converted_trajectories.push_back(lfoot_traj_block);
     converted_trajectories.push_back(rfoot_traj_block);
+    converted_trajectories.push_back(ltoe_traj_block);
+    converted_trajectories.push_back(rtoe_traj_block);
     converted_trajectories.push_back(com_traj_block);
     converted_trajectories.push_back(pelvis_orientation_block);
     trajectory_names.push_back(lfoot_traj_block.traj_name);
     trajectory_names.push_back(rfoot_traj_block.traj_name);
+    trajectory_names.push_back(ltoe_traj_block.traj_name);
+    trajectory_names.push_back(rtoe_traj_block.traj_name);
     trajectory_names.push_back(com_traj_block.traj_name);
     trajectory_names.push_back(pelvis_orientation_block.traj_name);
   }

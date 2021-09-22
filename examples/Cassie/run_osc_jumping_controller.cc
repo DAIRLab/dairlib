@@ -134,6 +134,8 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> pelvis_trans_traj;
   PiecewisePolynomial<double> l_foot_trajectory;
   PiecewisePolynomial<double> r_foot_trajectory;
+  PiecewisePolynomial<double> l_toe_trajectory;
+  PiecewisePolynomial<double> r_toe_trajectory;
   PiecewisePolynomial<double> pelvis_rot_trajectory;
 
   for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
@@ -145,6 +147,12 @@ int DoMain(int argc, char* argv[]) {
                                    std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_foot_traj =
         output_trajs.GetTrajectory("right_foot_trajectory" +
+                                   std::to_string(mode));
+    const LcmTrajectory::Trajectory lcm_left_toe_traj =
+        output_trajs.GetTrajectory("left_toe_trajectory" +
+                                   std::to_string(mode));
+    const LcmTrajectory::Trajectory lcm_right_toe_traj =
+        output_trajs.GetTrajectory("right_toe_trajectory" +
                                    std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
         output_trajs.GetTrajectory("pelvis_rot_trajectory" +
@@ -164,6 +172,16 @@ int DoMain(int argc, char* argv[]) {
             lcm_right_foot_traj.time_vector,
             lcm_right_foot_traj.datapoints.topRows(3),
             lcm_right_foot_traj.datapoints.bottomRows(3)));
+    l_toe_trajectory.ConcatenateInTime(
+        PiecewisePolynomial<double>::CubicHermite(
+            lcm_left_toe_traj.time_vector,
+            lcm_left_toe_traj.datapoints.topRows(1),
+            lcm_left_toe_traj.datapoints.bottomRows(1)));
+    r_toe_trajectory.ConcatenateInTime(
+        PiecewisePolynomial<double>::CubicHermite(
+            lcm_right_toe_traj.time_vector,
+            lcm_right_toe_traj.datapoints.topRows(1),
+            lcm_right_toe_traj.datapoints.bottomRows(1)));
     pelvis_rot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::FirstOrderHold(
             lcm_pelvis_rot_traj.time_vector,
@@ -371,11 +389,11 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), pos_map["toe_left"],
+          plant_w_spr, context_w_spr.get(), l_toe_trajectory, pos_map["toe_left"],
           left_foot_points, "left_toe_angle_traj");
   auto right_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
+          plant_w_spr, context_w_spr.get(), r_toe_trajectory, pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
 
   left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",

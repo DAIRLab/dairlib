@@ -436,9 +436,6 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // We hard-coded the joint index in RomTrajOptCassie::AddFomRegularizationCost
   DRAKE_DEMAND(pos_map_.at("ankle_joint_left") == 7 + 8);
   DRAKE_DEMAND(pos_map_.at("ankle_joint_right") == 7 + 9);
-
-  cout.precision(dbl::max_digits10);
-
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
@@ -483,7 +480,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Testing -- start the init ROM state form the previous plan
   bool initialize_with_rom_state = false;
-  VectorXd init_rom_state = VectorXd::Zero(2 * n_y_);
+  VectorXd init_rom_state(2 * n_y_);
   /*if (counter_ != 0) {
     auto rom_traj = lightweight_saved_traj_.ConstructPositionTrajectory();
     initialize_with_rom_state = rom_traj.end_time() > current_time;
@@ -550,14 +547,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   CreateDesiredComPosAndVel(param_.n_step + param_.n_step_lipm,
                             start_with_left_stance, init_phase, final_position,
                             &des_xy_pos, &des_xy_vel);
-  cout << "des_xy_pos = \n";
-  for (auto ele : des_xy_pos) {
-    cout << ele.transpose() << endl;
-  }
-  cout << "des_xy_vel = \n";
-  for (auto ele : des_xy_vel) {
-    cout << ele.transpose() << endl;
-  }
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
@@ -621,10 +610,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       left_stance = !left_stance;
     }
   }
-  cout << "reg_x_FOM = \n";
-  for (auto ele : reg_x_FOM) {
-    cout << ele.transpose() << endl;
-  }
 
   ///
   /// Construct rom traj opt
@@ -675,25 +660,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                max_foot_speed_first_mode * remaining_time_til_touchdown);
   cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
        << endl;
-  cout << "max_swing_distance_ = ";
-  for (auto ele : max_swing_distance_) {
-    cout << ele << ", ";
-  }
-  cout << endl;
 
   // Construct
-  cout << "x_init = " << x_init << endl;
-  cout << "init_rom_state = " << init_rom_state << endl;
-  cout << "start_with_left_stance = " << start_with_left_stance << endl;
-  cout << "initialize_with_rom_state = " << initialize_with_rom_state << endl;
-  cout << "Q_ = " << Q_ << endl;
-  cout << "R_ = " << R_ << endl;
-  cout << "relax_index_ = ";
-  for (auto ele : relax_index_) {
-    cout << ele << ", ";
-  }
-  cout << endl;
-  param_.PrintAll();
   PrintStatus("\nConstructing optimization problem...");
   RomTrajOptCassie trajopt(
       num_time_samples, Q_, R_, *rom_, plant_control_, state_mirror_,
@@ -702,8 +670,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       start_with_left_stance, param_.zero_touchdown_impact, relax_index_,
       param_, initialize_with_rom_state, single_eval_mode_ /*print_status*/);
 
-  cout << "first_mode_duration = " << first_mode_duration << endl;
-  cout << "stride_period_ = " << stride_period_ << endl;
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
   trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
@@ -753,7 +719,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       des_predicted_xy_vel = des_xy_vel.at(param_.n_step - 2);
     }
 
-    cout << "des_predicted_xy_vel = " << des_predicted_xy_vel.transpose() << endl;
     // Constraint and cost for the last foot step location
     trajopt.AddConstraintAndCostForLastFootStep(
         param_.gains.w_predict_lipm_v, des_predicted_xy_vel, stride_period_);
@@ -785,11 +750,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Add rom state in cost
-  cout << "h_guess_ = " << h_guess_ << endl;
-  cout << "y_guess_ = " << y_guess_ << endl;
-  cout << "dy_guess_ = " << dy_guess_ << endl;
-  cout << "tau_guess_ = " << tau_guess_ << endl;
-  cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
   bool add_rom_regularization = true;
   if (add_rom_regularization) {
     trajopt.AddRomRegularizationCost(h_guess_, y_guess_, dy_guess_, tau_guess_,

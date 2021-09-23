@@ -239,6 +239,8 @@ int DoMain(int argc, char* argv[]) {
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
   if (FLAGS_solve_idx_for_read_from_file >= 0) {
+    param.iter = readCSV(param.dir_data + "model_iter.csv")(0, 0);
+    param.sample = readCSV(param.dir_data + "sample_idx.csv")(0, 0);
     param.init_file =
         to_string(FLAGS_solve_idx_for_read_from_file) + "_init_file.csv";
   }

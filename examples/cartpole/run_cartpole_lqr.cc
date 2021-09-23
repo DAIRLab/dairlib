@@ -6,13 +6,14 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/framework/diagram.h"
+#include "drake/systems/primitives/multiplexer.h"
+
 
 #include "systems/robot_lcm_systems.h"
 #include "common/find_resource.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/subvector_pass_through.h"
 
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -24,10 +25,12 @@ using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 
+
 using dairlib::systems::LcmDrivenLoop;
 using dairlib::FindResourceOrThrow;
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::RobotCommandSender;
+using dairlib::systems::SubvectorPassThrough;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -56,7 +59,9 @@ int controller_main(int argc, char* argv[]) {
   auto lqr = LinearQuadraticRegulator(
       plant, *plant_context, Q, R, MatrixXd::Zero(0,0),
       plant.get_actuation_input_port().get_index());
+  lqr->set_name("lqr");
   builder.AddSystem(std::move(lqr));
+
 
   // LCM
   drake::lcm::DrakeLcm lcm;
@@ -67,10 +72,28 @@ int controller_main(int argc, char* argv[]) {
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
   auto input_sender = builder.AddSystem<RobotCommandSender>(plant);
 
+
   // Wire diagram
-  builder.Connect(state_receiver->get_output_port(),
-      lqr->get_input_port());
-  builder.Connect(*lqr, *input_sender);
+  auto state_dmux = builder.AddSystem<SubvectorPassThrough>(
+      state_receiver->get_output_port().size(), 0,
+      plant.num_positions() + plant.num_velocities());
+
+  auto time_dmux = builder.AddSystem<SubvectorPassThrough>(
+      state_receiver->get_output_port().size(),
+      state_receiver->get_output_port().size() -1, 1);
+  std::vector sizes = {1, 1};
+
+  /// TODO: new input mux which creates timestamped vector
+  auto input_mux = builder.AddSystem<drake::systems::Multiplexer>(sizes);
+
+  builder.Connect(*state_receiver, *state_dmux);
+  builder.Connect(*state_receiver, *time_dmux);
+  builder.Connect(*state_dmux, *builder.GetSystems().at(0));
+  builder.Connect(builder.GetSystems().at(0)->get_output_port(),
+      input_mux->get_input_port(0));
+  builder.Connect(time_dmux->get_output_port(),
+      input_mux->get_input_port(1));
+  builder.Connect(*input_mux, *input_sender);
   builder.Connect(*input_sender, *input_publisher);
 
   // Build diagram

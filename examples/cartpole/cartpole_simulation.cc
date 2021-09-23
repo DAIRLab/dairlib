@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
       input_reciever->get_output_port().size(), 0,
       plant.get_actuation_input_port().size());
 
-  auto state_sender = builder.AddSystem<RobotOutputSender>(plant);
+  auto state_sender = builder.AddSystem<RobotOutputSender>(plant, true);
   auto state_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_channel_x, &lcm));

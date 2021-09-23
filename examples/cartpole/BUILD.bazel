@@ -18,6 +18,11 @@ cc_binary(
     name = "run_cartpole_lqr",
     srcs = ["run_cartpole_lqr.cc"],
     deps = [
+        "//common:find_resource",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

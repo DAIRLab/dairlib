@@ -729,9 +729,9 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
 
     # Make sure the averaged range is within the achievable task space
     # Method 1
-    # if min(mtcl[:, 1]) > stride_length_range_to_average[0]:
+    # if min(mtcl[mtcl[:, 0] == model_iter, 1]) > stride_length_range_to_average[0]:
     #   raise ValueError("iter %d: the range we average over is bigger than the achievable task space. Increase the range's lower bound" % model_iter)
-    # elif max(mtcl[:, 1]) < stride_length_range_to_average[1]:
+    # elif max(mtcl[mtcl[:, 0] == model_iter, 1]) < stride_length_range_to_average[1]:
     #   raise ValueError("the range we average over is bigger than the achievable task space. Decrease the range's upper bound" % model_iter)
     # Method 2
     if z.mask.sum() > 0:
@@ -754,7 +754,24 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
     plt.savefig("%saveraged_cost_vs_model_iter.png" % eval_dir)
 
 
+def ComputeAchievableTaskRangeOverIter(mtcl):
+  ### 2D plot (task range vs iteration)
+  task_range = np.zeros(len(model_indices))
+  for i in range(len(model_indices)):
+    model_iter = model_indices[i]
+    tasks = mtcl[mtcl[:, 0] == model_iter, 1]
+    # import pdb; pdb.set_trace()
+    task_range[i] = max(tasks) - min(tasks)
 
+  plt.figure(figsize=(6.4, 4.8))
+  plt.plot(model_indices, task_range, 'k-', linewidth=3)
+  plt.xlabel('model iteration')
+  plt.ylabel('achievable task space size (m)')
+  plt.title("Achievable task space size (stride length)")
+  plt.gcf().subplots_adjust(bottom=0.15)
+  plt.gcf().subplots_adjust(left=0.15)
+  if save_fig:
+    plt.savefig("%stask_space_vs_model_iter.png" % eval_dir)
 
 
 def GetVaryingTaskElementIdx(task_list):
@@ -940,6 +957,6 @@ if __name__ == "__main__":
   ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average)
 
   ### Compute task range over iteration
-  # ComputeAchievableTaskRangeOverIter(mtcl)
+  ComputeAchievableTaskRangeOverIter(mtcl)
 
   plt.show()

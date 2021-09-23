@@ -482,19 +482,7 @@ def plot_nominal_cost(model_indices, sample_idx):
   return costs
 
 
-def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
-    plot_3d=True):
-  # Parameters for visualization
-  max_cost_to_ignore = 100  # 2
-  mean_sl = 0.2
-  delta_sl = 0.1  # 0.1 #0.005
-  min_sl = mean_sl - delta_sl
-  max_sl = mean_sl + delta_sl
-  min_sl = -100
-  max_sl = 100
-  # min_sl = 0.15
-  # max_sl = -0.31
-
+def GetSamplesToPlot(model_indices, log_indices):
   # mtcl stores model index, task value, cost, and log index
   mtcl = np.zeros((0, 4))
   for rom_iter in model_indices:
@@ -529,180 +517,229 @@ def plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices=[],
         #         (current_mtcl[0, 0], current_mtcl[0, 3], current_mtcl[0, 2]))
   print("mtcl.shape = " + str(mtcl.shape))
 
-  # nominal_mtc stores model index, task value, and cost from trajopt
-  nominal_mtc = np.zeros((0, 3))
-  if plot_nominal:
-    for rom_iter in model_indices:
-      for i in range(len(sample_indices)):
-        sub_mtc = np.zeros((1, 3))
-        ### Read cost
-        cost = plot_nominal_cost([rom_iter], sample_indices[i])[0][0]
-        sub_mtc[0, 2] = cost
-        if cost.item() > max_cost_to_ignore:
-          continue
-        ### Read nominal task
-        path = model_dir + "%d_%d_task.csv" % (rom_iter, sample_indices[i])
-        if os.path.exists(path):
-          task = np.loadtxt(path)[varying_task_element_idx]
-          sub_mtc[0, 1] = task
-        else:
-          continue
-        if (task > max_sl) or (task < min_sl):
-          continue
-        ### Read model iteration
-        sub_mtc[0, 0] = rom_iter
-        ### Assign values
-        nominal_mtc = np.vstack([nominal_mtc, sub_mtc])
-  print("nominal_mtc.shape = " + str(nominal_mtc.shape))
-
-  # Plot
-  app = "_w_nom" if plot_nominal else ""
-  if plot_3d:
-    ### scatter plot
-    fig = plt.figure(figsize=(10, 7))
-    ax = plt.axes(projection="3d")
-    ax.scatter3D(mtcl[:, 0], mtcl[:, 1], mtcl[:, 2], color="green")
-    if plot_nominal:
-      ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
-    ax.set_xlabel('model iterations')
-    ax.set_ylabel('stride length (m)')
-    ax.set_zlabel('total cost')
-    # plt.title("")
-    if save_fig:
-      ax.view_init(90, -90)  # look from +z axis. model iter vs task
-      plt.savefig("%smodel_ter_vs_task_scatterplot%s.png" % (eval_dir, app))
-      ax.view_init(0, 0)  # look from x axis. cost vs task
-      plt.savefig("%scost_vs_task_scatterplot%s.png" % (eval_dir, app))
-      ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-      plt.savefig("%scost_vs_model_iter_scatterplot%s.png" % (eval_dir, app))
-    ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-
-    ### level set plot
-    fig = plt.figure(figsize=(10, 7))
-    ax = plt.axes(projection="3d")
-    if plot_nominal:
-      # tcf = ax.tricontour(nominal_mtc[:, 0], nominal_mtc[:, 1],
-      #   nominal_mtc[:, 2], zdir='y', cmap=cm.coolwarm)
-      ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
-      # tcf = ax.plot_trisurf(nominal_mtc[:, 0], nominal_mtc[:, 1],
-      #   nominal_mtc[:, 2], cmap=cm.coolwarm)
-      pass
-    tcf = ax.tricontour(mtcl[:, 0], mtcl[:, 1], mtcl[:, 2], zdir='y',
-      cmap=cm.coolwarm)
-    fig.colorbar(tcf)
-    ax.set_xlabel('model iterations')
-    ax.set_ylabel('stride length (m)')
-    ax.set_zlabel('total cost')
-    ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-    if save_fig:
-      plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
-
-  else:
-    ### 2D plot (cost vs iteration)
-    # The line along which we evaluate the cost (using interpolation)
-    n_model_iter = model_indices[-1] - model_indices[0]
-    x = np.linspace(0, n_model_iter, n_model_iter + 1)
-
-    plt.figure(figsize=(6.4, 4.8))
-    plt.rcParams.update({'font.size': 14})
-    triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
-    interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
-
-    for task_slice_value in task_slice_value_list:
-      y = task_slice_value * np.ones(n_model_iter + 1)
-      z = interpolator(x, y)
-      # plt.plot(x, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m (Drake sim)")
-      plt.plot(x, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m")
-      # plt.plot(x, z, 'k-', linewidth=3, label="Drake simulation")
-
-    if plot_nominal:
-      plt.gca().set_prop_cycle(None)  # reset color cycle
-      triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
-      interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
-      for task_slice_value in task_slice_value_list:
-        y = task_slice_value * np.ones(n_model_iter + 1)
-        z = interpolator(x, y)
-        plt.plot(x, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m (traj opt)")
-        # plt.plot(x, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m")
-        # plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
-
-    # plt.xlim([0, 135])
-    # plt.ylim([0.53, 1])
-    plt.xlabel('model iterations')
-    plt.ylabel('total cost')
-    # plt.legend()
-    plt.legend(loc='upper right')
-    # plt.title('stride length ' + str(task_slice_value) + " m")
-    # plt.title('speed %.2f m/s' % (task_slice_value / 0.4))
-    plt.gcf().subplots_adjust(bottom=0.15)
-    plt.gcf().subplots_adjust(left=0.15)
-    if save_fig:
-      plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
-
-    ### 2D plot (cost vs tasks)
-    plt.figure(figsize=(6.4, 4.8))
-    plt.rcParams.update({'font.size': 14})
-    for i in range(len(model_slices)):
-      model_iter = model_slices[i]
-      # The line along which we evaluate the cost (using interpolation)
-      x = model_iter * np.ones(500)
-      y = np.linspace(-0.8, 0.8, 500)
-
-      triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
-      interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
-      z = interpolator(x, y)
-      plt.plot(y, z, '-',  # color=color_names[i],
-        linewidth=3, label="iter " + str(model_iter))
-      # if plot_nominal:
-      #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
-      #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
-      #   z = interpolator(x, y)
-      #   plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
-
-    plt.xlabel('stride length (m)')
-    plt.ylabel('total cost')
-    plt.legend()
-    plt.gcf().subplots_adjust(bottom=0.15)
-    plt.gcf().subplots_adjust(left=0.15)
-    if save_fig:
-      plt.savefig("%scost_vs_task.png" % eval_dir)
-
-    ### 2D plot (iter vs tasks)
-    data_list = [mtcl, nominal_mtc]
-    title_list = ["(Drake sim)", "(traj opt)"]
-    app_list = ["", "_nom"]
-    for i in range(2 if plot_nominal else 1):
-      plt.rcParams.update({'font.size': 14})
-      fig, ax = plt.subplots()
-
-      data = data_list[i]
-      n_levels = 50
-      levels = list(set(
-        np.linspace(min(data[:, 2]), max(data[:, 2]), n_levels).round(
-          decimals=2)))  # set() is used to get rid of duplicates
-      levels.sort()
-      levels[0] -= 0.01
-      levels[-1] += 0.01
-      # levels = list(set(np.linspace(0.4, 3, n_levels)))
-      # levels.sort()
-      surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels)
-      fig.colorbar(surf, shrink=0.9, aspect=15)
-
-      # plt.xlim([0, 135])
-      plt.xlabel('model iterations')
-      plt.ylabel('stride length (m)')
-      plt.title('Cost landscape ' + title_list[i])
-      plt.gcf().subplots_adjust(bottom=0.15)
-      plt.gcf().subplots_adjust(left=0.15)
-      if save_fig:
-        plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
-
   ### Testing -- find the log idx with high cost
   cost_threshold = 3
   for mem in mtcl:
     if mem[2] > cost_threshold:
       print("(iter, log) = (%.0f, %.0f) has high cost %.3f" %
             (mem[0], mem[3], mem[2]))
+
+  return mtcl
+
+
+def GetNominalSamplesToPlot(model_indices):
+  ### Get all samples from trajopt for nominal cost
+  sample_indices = []
+  sample_indices = CollectAllTrajoptSampleIndices(task_list[0],
+    task_tolerance) if plot_nominal else []
+  print("sample_indices (trajopt) for nominal cost = \n" + str(sample_indices))
+
+  ### Get the samples to plot
+  # nominal_mtc stores model index, task value, and cost from trajopt
+  nominal_mtc = np.zeros((0, 3))
+  for rom_iter in model_indices:
+    for i in range(len(sample_indices)):
+      sub_mtc = np.zeros((1, 3))
+      ### Read cost
+      cost = plot_nominal_cost([rom_iter], sample_indices[i])[0][0]
+      sub_mtc[0, 2] = cost
+      if cost.item() > max_cost_to_ignore:
+        continue
+      ### Read nominal task
+      path = model_dir + "%d_%d_task.csv" % (rom_iter, sample_indices[i])
+      if os.path.exists(path):
+        task = np.loadtxt(path)[varying_task_element_idx]
+        sub_mtc[0, 1] = task
+      else:
+        continue
+      if (task > max_sl) or (task < min_sl):
+        continue
+      ### Read model iteration
+      sub_mtc[0, 0] = rom_iter
+      ### Assign values
+      nominal_mtc = np.vstack([nominal_mtc, sub_mtc])
+  print("nominal_mtc.shape = " + str(nominal_mtc.shape))
+
+  return nominal_mtc
+
+def Generate3dPlots(model_indices, mtcl, nominal_mtc):
+  app = "_w_nom" if plot_nominal else ""
+  ### scatter plot
+  fig = plt.figure(figsize=(10, 7))
+  ax = plt.axes(projection="3d")
+  ax.scatter3D(mtcl[:, 0], mtcl[:, 1], mtcl[:, 2], color="green")
+  if plot_nominal:
+    ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
+  ax.set_xlabel('model iterations')
+  ax.set_ylabel('stride length (m)')
+  ax.set_zlabel('total cost')
+  # plt.title("")
+  if save_fig:
+    ax.view_init(90, -90)  # look from +z axis. model iter vs task
+    plt.savefig("%smodel_ter_vs_task_scatterplot%s.png" % (eval_dir, app))
+    ax.view_init(0, 0)  # look from x axis. cost vs task
+    plt.savefig("%scost_vs_task_scatterplot%s.png" % (eval_dir, app))
+    ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
+    plt.savefig("%scost_vs_model_iter_scatterplot%s.png" % (eval_dir, app))
+  ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
+
+  ### level set plot
+  fig = plt.figure(figsize=(10, 7))
+  ax = plt.axes(projection="3d")
+  if plot_nominal:
+    # tcf = ax.tricontour(nominal_mtc[:, 0], nominal_mtc[:, 1],
+    #   nominal_mtc[:, 2], zdir='y', cmap=cm.coolwarm)
+    ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
+    # tcf = ax.plot_trisurf(nominal_mtc[:, 0], nominal_mtc[:, 1],
+    #   nominal_mtc[:, 2], cmap=cm.coolwarm)
+    pass
+  tcf = ax.tricontour(mtcl[:, 0], mtcl[:, 1], mtcl[:, 2], zdir='y',
+    cmap=cm.coolwarm)
+  fig.colorbar(tcf)
+  ax.set_xlabel('model iterations')
+  ax.set_ylabel('stride length (m)')
+  ax.set_zlabel('total cost')
+  ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
+  if save_fig:
+    plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
+
+
+def Generate2dPlots(model_indices, mtcl, nominal_mtc):
+  app = "_w_nom" if plot_nominal else ""
+  ### 2D plot (cost vs iteration)
+  # The line along which we evaluate the cost (using interpolation)
+  n_model_iter = model_indices[-1] - model_indices[0]
+  x = np.linspace(0, n_model_iter, n_model_iter + 1)
+
+  plt.figure(figsize=(6.4, 4.8))
+  plt.rcParams.update({'font.size': 14})
+  triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
+  interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
+
+  for task_slice_value in task_slice_value_list:
+    y = task_slice_value * np.ones(n_model_iter + 1)
+    z = interpolator(x, y)
+    # plt.plot(x, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m (Drake sim)")
+    plt.plot(x, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m")
+    # plt.plot(x, z, 'k-', linewidth=3, label="Drake simulation")
+
+  if plot_nominal:
+    plt.gca().set_prop_cycle(None)  # reset color cycle
+    triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
+    interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
+    for task_slice_value in task_slice_value_list:
+      y = task_slice_value * np.ones(n_model_iter + 1)
+      z = interpolator(x, y)
+      plt.plot(x, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m (traj opt)")
+      # plt.plot(x, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m")
+      # plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
+
+  # plt.xlim([0, 135])
+  # plt.ylim([0.53, 1])
+  plt.xlabel('model iterations')
+  plt.ylabel('total cost')
+  # plt.legend()
+  plt.legend(loc='upper right')
+  # plt.title('stride length ' + str(task_slice_value) + " m")
+  # plt.title('speed %.2f m/s' % (task_slice_value / 0.4))
+  plt.gcf().subplots_adjust(bottom=0.15)
+  plt.gcf().subplots_adjust(left=0.15)
+  if save_fig:
+    plt.savefig("%scost_vs_model_iter%s.png" % (eval_dir, app))
+
+  ### 2D plot (cost vs tasks)
+  plt.figure(figsize=(6.4, 4.8))
+  plt.rcParams.update({'font.size': 14})
+  for i in range(len(model_slices)):
+    model_iter = model_slices[i]
+    # The line along which we evaluate the cost (using interpolation)
+    x = model_iter * np.ones(500)
+    y = np.linspace(-0.8, 0.8, 500)
+
+    triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
+    interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
+    z = interpolator(x, y)
+    plt.plot(y, z, '-',  # color=color_names[i],
+             linewidth=3, label="iter " + str(model_iter))
+    # if plot_nominal:
+    #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
+    #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
+    #   z = interpolator(x, y)
+    #   plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
+
+  plt.xlabel('stride length (m)')
+  plt.ylabel('total cost')
+  plt.legend()
+  plt.gcf().subplots_adjust(bottom=0.15)
+  plt.gcf().subplots_adjust(left=0.15)
+  if save_fig:
+    plt.savefig("%scost_vs_task.png" % eval_dir)
+
+  ### 2D plot (iter vs tasks)
+  data_list = [mtcl, nominal_mtc]
+  title_list = ["(Drake sim)", "(traj opt)"]
+  app_list = ["", "_nom"]
+  for i in range(2 if plot_nominal else 1):
+    plt.rcParams.update({'font.size': 14})
+    fig, ax = plt.subplots()
+
+    data = data_list[i]
+    n_levels = 50
+    levels = list(set(
+      np.linspace(min(data[:, 2]), max(data[:, 2]), n_levels).round(
+        decimals=2)))  # set() is used to get rid of duplicates
+    levels.sort()
+    levels[0] -= 0.01
+    levels[-1] += 0.01
+    # levels = list(set(np.linspace(0.4, 3, n_levels)))
+    # levels.sort()
+    surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels)
+    fig.colorbar(surf, shrink=0.9, aspect=15)
+
+    # plt.xlim([0, 135])
+    plt.xlabel('model iterations')
+    plt.ylabel('stride length (m)')
+    plt.title('Cost landscape ' + title_list[i])
+    plt.gcf().subplots_adjust(bottom=0.15)
+    plt.gcf().subplots_adjust(left=0.15)
+    if save_fig:
+      plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
+
+
+def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
+  if len(stride_length_range_to_average) == 0:
+    return
+  elif len(stride_length_range_to_average) != 2:
+    raise ValueError("the range list has to be 2 dimensional")
+
+  ### 2D plot (cost vs tasks)
+  # for i in range(len(model_slices)):
+  #   model_iter = model_slices[i]
+  #   # The line along which we evaluate the cost (using interpolation)
+  #   x = model_iter * np.ones(500)
+  #   y = np.linspace(-0.8, 0.8, 500)
+  #
+  #   triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
+  #   interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
+  #   z = interpolator(x, y)
+  #   plt.plot(y, z, '-',  # color=color_names[i],
+  #            linewidth=3, label="iter " + str(model_iter))
+  #   # if plot_nominal:
+  #   #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
+  #   #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
+  #   #   z = interpolator(x, y)
+  #   #   plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
+  #
+  # plt.xlabel('stride length (m)')
+  # plt.ylabel('total cost')
+  # plt.legend()
+  # plt.gcf().subplots_adjust(bottom=0.15)
+  # plt.gcf().subplots_adjust(left=0.15)
+  # if save_fig:
+  #   plt.savefig("%scost_vs_task.png" % eval_dir)
+
+
+
 
 
 def GetVaryingTaskElementIdx(task_list):
@@ -779,11 +816,15 @@ if __name__ == "__main__":
   # 2D plot (cost vs model)
   task_slice_value_list = [-0.16, 0, 0.16]
   # task_slice_value_list = [-0.2, -0.1, 0, 0.1, 0.2]
+  # task_slice_value_list = [-0.4, -0.2, 0, 0.2, 0.4]
 
   # 2D plot (cost vs task)
   model_slices = [1, 50, 100, 150]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
+
+  # Expected (averaged) cost over a task range
+  stride_length_range_to_average = [-0.4, 0.4]
 
   ### Set up environment
   # Create folder if not exist
@@ -855,18 +896,32 @@ if __name__ == "__main__":
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
 
+  # Parameters for visualization
+  max_cost_to_ignore = 100  # 2
+  mean_sl = 0.2
+  delta_sl = 0.1  # 0.1 #0.005
+  min_sl = mean_sl - delta_sl
+  max_sl = mean_sl + delta_sl
+  min_sl = -100
+  max_sl = 100
+  # min_sl = 0.15
+  # max_sl = -0.31
+
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:
     log_indices = log_indices_for_plot
   print("log_indices for plotting = " + str(log_indices))
 
-  # Get all samples from trajopt for nominal cost
-  sample_indices = CollectAllTrajoptSampleIndices(task_list[0],
-    task_tolerance) if plot_nominal else []
-  print("sample_indices (trajopt) for nominal cost = \n" + str(sample_indices))
+  # Get samples to plot
+  # (mtcl stores model index, task value, cost, and log index)
+  mtcl = GetSamplesToPlot(model_indices, log_indices)
+  nominal_mtc = GetNominalSamplesToPlot(model_indices)
 
   # Plot
-  plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices, True)
-  plot_cost_vs_model_and_task(model_indices, log_indices, sample_indices, False)
+  Generate3dPlots(model_indices, mtcl, nominal_mtc)
+  Generate2dPlots(model_indices, mtcl, nominal_mtc)
+
+  ### Compute expected cost
+  ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average)
 
   plt.show()

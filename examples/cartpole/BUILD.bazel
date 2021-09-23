@@ -13,3 +13,11 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "run_cartpole_lqr",
+    srcs = ["run_cartpole_lqr.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

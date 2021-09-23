@@ -726,13 +726,28 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
     triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
     interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
     z = interpolator(x, y)
+
+    # Make sure the averaged range is within the achievable task space
+    # Method 1
+    # if min(mtcl[:, 1]) > stride_length_range_to_average[0]:
+    #   raise ValueError("iter %d: the range we average over is bigger than the achievable task space. Increase the range's lower bound" % model_iter)
+    # elif max(mtcl[:, 1]) < stride_length_range_to_average[1]:
+    #   raise ValueError("the range we average over is bigger than the achievable task space. Decrease the range's upper bound" % model_iter)
+    # Method 2
+    if z.mask.sum() > 0:
+      viable_min = min(mtcl[mtcl[:, 0] == model_iter, 1])
+      viable_max = max(mtcl[mtcl[:, 0] == model_iter, 1])
+      raise ValueError("iter %d: the range we average over is larger than the achievable task space. "
+                       "We should either increase the range's lower bound or decrease the range's upper bound. "
+                       "Viable (min, max) is (%f, %f)" % (model_iter, viable_min, viable_max))
+
     averaged_cost[i] = z.sum() / n_sample
 
   plt.figure(figsize=(6.4, 4.8))
   plt.plot(model_indices, averaged_cost, 'k-', linewidth=3)
   plt.xlabel('model iteration')
   plt.ylabel('averaged cost')
-  plt.title("averaged cost over stride length in [" + str(stride_length_range_to_average[0]) + ", " + str(stride_length_range_to_average[1]) + "] m")
+  plt.title("Averaged cost over stride length in [" + str(stride_length_range_to_average[0]) + ", " + str(stride_length_range_to_average[1]) + "] m")
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
@@ -824,7 +839,7 @@ if __name__ == "__main__":
   # color_names = ["k", "maroon"]
 
   # Expected (averaged) cost over a task range
-  stride_length_range_to_average = [-0.4, 0.4]
+  stride_length_range_to_average = [-0.2, 0.1897]
 
   ### Set up environment
   # Create folder if not exist
@@ -921,7 +936,10 @@ if __name__ == "__main__":
   Generate3dPlots(model_indices, mtcl, nominal_mtc)
   Generate2dPlots(model_indices, mtcl, nominal_mtc)
 
-  ### Compute expected cost
+  ### Compute expected (averaged) cost
   ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average)
+
+  ### Compute task range over iteration
+  # ComputeAchievableTaskRangeOverIter(mtcl)
 
   plt.show()

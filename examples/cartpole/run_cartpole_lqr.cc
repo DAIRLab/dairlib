@@ -1,7 +1,6 @@
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_output.hpp"
-#include "darilib/lcmt_robot_input.hpp"
 
 #include "drake/systems/controllers/linear_quadratic_regulator.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -47,6 +46,8 @@ int controller_main(int argc, char* argv[]) {
           "examples/cartpole/urdf/cartpole.urdf"));
   plant.Finalize();
   auto plant_context  = plant.CreateDefaultContext();
+  plant.get_actuation_input_port().FixValue(plant_context.get(),
+      VectorXd::Zero(1));
 
   MatrixXd Q = 10 * MatrixXd::Identity(4,4);
   MatrixXd R = MatrixXd::Identity(1,1);
@@ -67,7 +68,8 @@ int controller_main(int argc, char* argv[]) {
   auto input_sender = builder.AddSystem<RobotCommandSender>(plant);
 
   // Wire diagram
-  builder.Connect(*state_receiver, *lqr);
+  builder.Connect(state_receiver->get_output_port(),
+      lqr->get_input_port());
   builder.Connect(*lqr, *input_sender);
   builder.Connect(*input_sender, *input_publisher);
 

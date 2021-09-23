@@ -178,7 +178,9 @@ while 1:
 
     # Set limit
     # ax1.set_ylim(0, 6)
-
+    
+    plt.title("Traj opt cost over model iteration")
+    
     plt.draw()
 
     # so that the label is not cut off by the window

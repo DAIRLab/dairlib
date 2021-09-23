@@ -711,32 +711,32 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
     return
   elif len(stride_length_range_to_average) != 2:
     raise ValueError("the range list has to be 2 dimensional")
+  elif stride_length_range_to_average[0] > stride_length_range_to_average[1]:
+    raise ValueError("first element should be the lower bound of the range")
 
-  ### 2D plot (cost vs tasks)
-  # for i in range(len(model_slices)):
-  #   model_iter = model_slices[i]
-  #   # The line along which we evaluate the cost (using interpolation)
-  #   x = model_iter * np.ones(500)
-  #   y = np.linspace(-0.8, 0.8, 500)
-  #
-  #   triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
-  #   interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
-  #   z = interpolator(x, y)
-  #   plt.plot(y, z, '-',  # color=color_names[i],
-  #            linewidth=3, label="iter " + str(model_iter))
-  #   # if plot_nominal:
-  #   #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
-  #   #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
-  #   #   z = interpolator(x, y)
-  #   #   plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
-  #
-  # plt.xlabel('stride length (m)')
-  # plt.ylabel('total cost')
-  # plt.legend()
-  # plt.gcf().subplots_adjust(bottom=0.15)
-  # plt.gcf().subplots_adjust(left=0.15)
-  # if save_fig:
-  #   plt.savefig("%scost_vs_task.png" % eval_dir)
+  ### 2D plot (averaged cost vs iteration)
+  n_sample = 500
+  averaged_cost = np.zeros(len(model_indices))
+  for i in range(len(model_indices)):
+    model_iter = model_indices[i]
+    # The line along which we evaluate the cost (using interpolation)
+    x = model_iter * np.ones(n_sample)
+    y = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
+
+    triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
+    interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
+    z = interpolator(x, y)
+    averaged_cost[i] = z.sum() / n_sample
+
+  plt.figure(figsize=(6.4, 4.8))
+  plt.plot(model_indices, averaged_cost, '-', linewidth=3)
+  plt.xlabel('iteration')
+  plt.ylabel('averaged cost')
+  plt.title("averaged cost of stride length in [" + str(stride_length_range_to_average[0]) + ", "+ str(stride_length_range_to_average[1])+ "] m")
+  plt.gcf().subplots_adjust(bottom=0.15)
+  plt.gcf().subplots_adjust(left=0.15)
+  if save_fig:
+    plt.savefig("%saveraged_cost_vs_model_iter.png" % eval_dir)
 
 
 

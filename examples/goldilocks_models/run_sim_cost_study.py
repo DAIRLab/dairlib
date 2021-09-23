@@ -729,10 +729,10 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
     averaged_cost[i] = z.sum() / n_sample
 
   plt.figure(figsize=(6.4, 4.8))
-  plt.plot(model_indices, averaged_cost, '-', linewidth=3)
-  plt.xlabel('iteration')
+  plt.plot(model_indices, averaged_cost, 'k-', linewidth=3)
+  plt.xlabel('model iteration')
   plt.ylabel('averaged cost')
-  plt.title("averaged cost of stride length in [" + str(stride_length_range_to_average[0]) + ", "+ str(stride_length_range_to_average[1])+ "] m")
+  plt.title("averaged cost over stride length in [" + str(stride_length_range_to_average[0]) + ", " + str(stride_length_range_to_average[1]) + "] m")
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:

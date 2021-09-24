@@ -184,9 +184,9 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // Linear interpolate in between
     heuristic_ratio_ = 1;
     if (dist > foot_spread_ub_) {
-      heuristic_ratio_ = 0.8;
+      heuristic_ratio_ = 0.9;
     } else if (dist > foot_spread_lb_) {
-      heuristic_ratio_ = 1 + (0.8 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
+      heuristic_ratio_ = 1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
                                  (dist - foot_spread_lb_);
     }
   }
@@ -243,10 +243,11 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   //       k_2 = (y0 - dy0/w)/2.
   // double omega = sqrt(9.81 / (final_height - stance_foot_pos(2)));
   double omega = sqrt(9.81 / CoM_wrt_foot_z);
+  double omega_y = omega * heuristic_ratio_;
   double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
   double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
-  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega);
-  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega);
+  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega_y);
+  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega_y);
 
   //  cout << "omega = " << omega << endl;
 
@@ -260,11 +261,15 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   K(1, 3) = k2y;
   A(0, 0) = omega;
   A(1, 1) = -omega;
-  A(2, 2) = omega * heuristic_ratio_;
-  A(3, 3) = -omega * heuristic_ratio_;
+  A(2, 2) = omega_y;
+  A(3, 3) = -omega_y;
   // TODO: this is in global coordinate. But the ratio change should apply
-  //  locally. I think you just need to simply times a rotational matrix in
-  //  front. (lump it into K matrix)
+  //  locally. I think you just need to get the pos/vel in local frame + apply a
+  //  rotational matrix in front ( which can be lumped into K matrix). Then the
+  //  output is in global frame. For OSC swing foot tracking, we can simply view
+  //  the desired traj in local frame at the end of current calculation. And
+  //  change the wrt_frame when calling forward kinematic function in OSC
+  //  tracking data.
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }

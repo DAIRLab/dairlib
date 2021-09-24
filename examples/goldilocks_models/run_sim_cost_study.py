@@ -20,7 +20,7 @@ import codecs
 import math
 
 
-def build_files(bazel_file_argument):
+def BuildFiles(bazel_file_argument):
   build_cmd = ['bazel', 'build', bazel_file_argument, ]
   build_process = subprocess.Popen(build_cmd)
   while build_process.poll() is None:  # while subprocess is alive
@@ -28,7 +28,7 @@ def build_files(bazel_file_argument):
 
 
 # cmd should be a list if shell=False. Otherwise, a string.
-def run_command(cmd, use_shell=False):
+def RunCommand(cmd, use_shell=False):
   process = subprocess.Popen(cmd, shell=use_shell)
   while process.poll() is None:  # while subprocess is alive
     time.sleep(0.1)
@@ -52,7 +52,7 @@ def LogSimCostStudySetting():
   f.close()
 
 
-def lcmlog_file_path(rom_iter_idx, task_idx, extra_layer=""):
+def LcmlogFilePath(rom_iter_idx, task_idx, extra_layer=""):
   return eval_dir + extra_layer + 'lcmlog-idx_%d_%d' % (rom_iter_idx, task_idx)
 
 
@@ -66,7 +66,7 @@ def lcmlog_file_path(rom_iter_idx, task_idx, extra_layer=""):
 # Set `get_init_file` to True if you want to generate the initial traj for both
 # planner and controller
 # `sample_idx` is used for planner's initial guess and cost regularization term
-def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
+def RunSimAndController(sim_end_time, task_value, log_idx, rom_iter_idx,
     sample_idx, get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
@@ -132,7 +132,7 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
   lcm_logger_cmd = [
     'lcm-logger',
     '-f',
-    lcmlog_file_path(rom_iter_idx, log_idx),
+    LcmlogFilePath(rom_iter_idx, log_idx),
   ]
 
   # Testing code to get command
@@ -178,10 +178,10 @@ def run_sim_and_controller(sim_end_time, task_value, log_idx, rom_iter_idx,
 
 # sim_end_time is used to check if the simulation ended early
 # sample_idx here is used to name the file
-def eval_cost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
+def EvalCost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
-    lcmlog_file_path(rom_iter_idx, log_idx),
+    LcmlogFilePath(rom_iter_idx, log_idx),
     'ROM_WALKING',
     str(rom_iter_idx),
     str(log_idx),
@@ -263,13 +263,17 @@ def SaveLogCorrespondence():
   f.close()
 
 
-def run_sim_and_eval_cost(model_indices, log_indices, task_list,
+def RunSimAndEvalCost(model_indices, log_indices, task_list,
     do_eval_cost=False):
   # parameters
   max_n_fail = 0
 
   LogSimCostStudySetting()
   SaveLogCorrespondence()
+
+  ### Build files just in case forgetting
+  BuildFiles('examples/goldilocks_models/...')
+  BuildFiles('examples/Cassie:multibody_sim')
 
   ### Construct sample indices from the task list for simulation
   # `sample_idx` is for planner's initial guess and cost regularization term
@@ -297,18 +301,18 @@ def run_sim_and_eval_cost(model_indices, log_indices, task_list,
       # while True:
       while not os.path.exists(path):
         # Get the initial traj
-        run_sim_and_controller(sim_end_time, task[varying_task_element_idx],
+        RunSimAndController(sim_end_time, task[varying_task_element_idx],
           log_idx, rom_iter, sample_idx, True)
         # Run the simulation
-        run_sim_and_controller(sim_end_time, task[varying_task_element_idx],
+        RunSimAndController(sim_end_time, task[varying_task_element_idx],
           log_idx, rom_iter, sample_idx, False)
 
         # Evaluate the cost
         if do_eval_cost:
-          eval_cost(sim_end_time, rom_iter, log_idx)
+          EvalCost(sim_end_time, rom_iter, log_idx)
 
         # Delete the lcmlog
-        # os.remove(lcmlog_file_path(rom_iter_idx, log_idx))
+        # os.remove(LcmlogFilePath(rom_iter_idx, log_idx))
 
         if not os.path.exists(path):
           n_fail += 1
@@ -320,9 +324,12 @@ def run_sim_and_eval_cost(model_indices, log_indices, task_list,
 
 
 # This function assumes that simulation has been run and there exist lcm logs
-def eval_cost_in_multithread(model_indices, log_indices):
+def EvalCostInMultithread(model_indices, log_indices):
   working_threads = []
   n_max_thread = 12
+
+  ### Build files just in case forgetting
+  BuildFiles('examples/goldilocks_models:eval_single_sim_performance')
 
   n_total_sim = len(model_indices) * len(log_indices)
   counter = 0
@@ -335,7 +342,7 @@ def eval_cost_in_multithread(model_indices, log_indices):
       # Evaluate the cost
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
       if not os.path.exists(path):
-        working_threads.append(eval_cost(sim_end_time, rom_iter, idx, True))
+        working_threads.append(EvalCost(sim_end_time, rom_iter, idx, True))
       counter += 1
 
       # Wait for threads to finish once is more than n_max_thread
@@ -358,7 +365,7 @@ def eval_cost_in_multithread(model_indices, log_indices):
   print("Finished evaluating. Current time = " + str(datetime.now()))
 
 
-def delete_most_logs(model_indices, log_indices):
+def DeleteMostLogs(model_indices, log_indices):
   if log_indices[0] != 0:
     raise ValueError("log index should start from 0")
 
@@ -409,17 +416,17 @@ def delete_most_logs(model_indices, log_indices):
 
     # Save log indices
     file_saving_command_list.append(
-      ['cp', lcmlog_file_path(model_idx, min_success_log_idx),
-       lcmlog_file_path(model_idx, min_success_log_idx, "temp/")])
+      ['cp', LcmlogFilePath(model_idx, min_success_log_idx),
+       LcmlogFilePath(model_idx, min_success_log_idx, "temp/")])
     file_saving_command_list.append(
-      ['cp', lcmlog_file_path(model_idx, max_success_log_idx),
-       lcmlog_file_path(model_idx, max_success_log_idx, "temp/")])
+      ['cp', LcmlogFilePath(model_idx, max_success_log_idx),
+       LcmlogFilePath(model_idx, max_success_log_idx, "temp/")])
     file_saving_command_list.append(
-      ['cp', lcmlog_file_path(model_idx, mid_success_log_idx1),
-       lcmlog_file_path(model_idx, mid_success_log_idx1, "temp/")])
+      ['cp', LcmlogFilePath(model_idx, mid_success_log_idx1),
+       LcmlogFilePath(model_idx, mid_success_log_idx1, "temp/")])
     file_saving_command_list.append(
-      ['cp', lcmlog_file_path(model_idx, mid_success_log_idx2),
-       lcmlog_file_path(model_idx, mid_success_log_idx2, "temp/")])
+      ['cp', LcmlogFilePath(model_idx, mid_success_log_idx2),
+       LcmlogFilePath(model_idx, mid_success_log_idx2, "temp/")])
 
   # Check if all lcmlogs exist
   for command in file_saving_command_list:
@@ -430,19 +437,19 @@ def delete_most_logs(model_indices, log_indices):
 
   # Save logs
   for command in file_saving_command_list:
-    run_command(command)
+    RunCommand(command)
 
   input("WARNING: Going to delete lcmlog files! (type anything to continue)")
 
   # Delete the rest of the file
-  run_command('rm ' + eval_dir + 'lcmlog-idx_*', True)
+  RunCommand('rm ' + eval_dir + 'lcmlog-idx_*', True)
   # Copy back the successful files
-  run_command('cp ' + eval_dir + 'temp/lcmlog-idx_* ' + eval_dir, True)
+  RunCommand('cp ' + eval_dir + 'temp/lcmlog-idx_* ' + eval_dir, True)
   # Delete temp folder
-  run_command(['rm', '-rf', eval_dir + 'temp/'])
+  RunCommand(['rm', '-rf', eval_dir + 'temp/'])
 
 
-def find_cost_in_string(file_string, string_to_search):
+def FindCostInString(file_string, string_to_search):
   # We search from the end of the file
   word_location = file_string.rfind(string_to_search)
   number_idx_start = 0
@@ -459,16 +466,16 @@ def find_cost_in_string(file_string, string_to_search):
   return cost_value
 
 
-def plot_nominal_cost(model_indices, sample_idx):
+def PlotNominalCost(model_indices, sample_idx):
   filename = '_' + str(sample_idx) + '_trajopt_settings_and_cost_breakdown.txt'
 
   costs = np.zeros((0, 1))
   for rom_iter_idx in model_indices:
     with open(model_dir + str(rom_iter_idx) + filename, 'rt') as f:
       contents = f.read()
-    cost_x = find_cost_in_string(contents, "cost_x =")
-    cost_u = find_cost_in_string(contents, "cost_u =")
-    cost_accel = find_cost_in_string(contents, "cost_joint_acceleration =")
+    cost_x = FindCostInString(contents, "cost_x =")
+    cost_u = FindCostInString(contents, "cost_u =")
+    cost_accel = FindCostInString(contents, "cost_joint_acceleration =")
     total_cost = cost_x + cost_u + cost_accel
     costs = np.vstack([costs, total_cost])
 
@@ -541,7 +548,7 @@ def GetNominalSamplesToPlot(model_indices):
     for i in range(len(sample_indices)):
       sub_mtc = np.zeros((1, 3))
       ### Read cost
-      cost = plot_nominal_cost([rom_iter], sample_indices[i])[0][0]
+      cost = PlotNominalCost([rom_iter], sample_indices[i])[0][0]
       sub_mtc[0, 2] = cost
       if cost.item() > max_cost_to_ignore:
         continue
@@ -910,19 +917,15 @@ if __name__ == "__main__":
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
   print("log_indices = \n" + str(log_indices))
 
-  ### Build files just in case forgetting
-  build_files('examples/goldilocks_models/...')
-  build_files('examples/Cassie:multibody_sim')
-
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  # run_sim_and_eval_cost(model_indices, log_indices, task_list)
+  # RunSimAndEvalCost(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  # eval_cost_in_multithread(model_indices, log_indices)
+  # EvalCostInMultithread(model_indices, log_indices)
 
   # Delete all logs but a few successful ones (for analysis later)
-  # delete_most_logs(model_indices, log_indices)
+  # DeleteMostLogs(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

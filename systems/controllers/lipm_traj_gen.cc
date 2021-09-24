@@ -46,7 +46,10 @@ LIPMTrajGenerator::LIPMTrajGenerator(
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
       world_(plant_.world_frame()),
-      use_com_(use_CoM) {
+      use_com_(use_CoM),
+      pelvis_frame_(plant.GetFrameByName("pelvis")),
+      toe_left_frame_(plant.GetFrameByName("toe_left")),
+      toe_right_frame_(plant.GetFrameByName("toe_right")) {
   if (use_CoM) {
     this->set_name("lipm_traj");
   } else {
@@ -166,6 +169,26 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     discrete_state->get_mutable_vector(touchdown_com_vel_idx_)
             .get_mutable_value()
         << dCoM;
+
+    // Testing
+    // Heuristic ratio for LIPM dyanmics (because the centroidal angular
+    // momentum is not constant
+    Vector3d toe_left_origin_position;
+    plant_.CalcPointsPositions(*context_, toe_left_frame_, Vector3d::Zero(),
+                               pelvis_frame_, &toe_left_origin_position);
+    Vector3d toe_right_origin_position;
+    plant_.CalcPointsPositions(*context_, toe_right_frame_, Vector3d::Zero(),
+                               pelvis_frame_, &toe_right_origin_position);
+    double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
+    // <0.2 meter: ratio 1
+    // >0.5 meter: ratio 0.8  //0.65
+    // Linear interpolate in between
+    heuristic_ratio_ = 1;
+    if (dist > 0.5) {
+      heuristic_ratio_ = 0.8;
+    } else if (dist > 0.2) {
+      heuristic_ratio_ = 1 + (0.8 - 1) / 0.3 * (dist - 0.2);
+    }
   }
 
   discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;
@@ -220,6 +243,7 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   //       k_2 = (y0 - dy0/w)/2.
   // double omega = sqrt(9.81 / (final_height - stance_foot_pos(2)));
   double omega = sqrt(9.81 / CoM_wrt_foot_z);
+  omega *= heuristic_ratio_;
   double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
   double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
   double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega);

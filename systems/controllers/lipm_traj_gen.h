@@ -108,6 +108,12 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_;
 
   bool use_com_;
+
+  // Testing
+  mutable double heuristic_ratio_;
+  const drake::multibody::Frame<double>& pelvis_frame_;
+  const drake::multibody::Frame<double>& toe_left_frame_;
+  const drake::multibody::Frame<double>& toe_right_frame_;
 };
 
 }  // namespace systems

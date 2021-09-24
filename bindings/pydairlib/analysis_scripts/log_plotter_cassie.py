@@ -133,7 +133,7 @@ def main():
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot", True)
@@ -145,7 +145,7 @@ def main():
   # plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
   # plt.plot(t_osc_debug, 0.1 * fsm)
   #
-  # PlotCenterOfMass(x, t_x, plant_w_spr, world, context)
+  PlotCenterOfMass(x, t_x, plant_w_spr, world, context, t_osc_debug, fsm)
   PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
   # PlotVdot(x, t_x, x_datatypes, True)
 
@@ -154,7 +154,7 @@ def main():
   # PlotSwingFootData(t_osc_debug, fsm)
   # PlotCentroidalAngularMomentum(t_osc_debug, fsm)
 
-  ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr)
+  # ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr)
 
   plt.show()
 
@@ -352,7 +352,7 @@ def PlotSwingFootData(t_osc_debug, fsm):
   t_msg = file_array[:, 0]
   pos_msg = file_array[:, 1:]
 
-  plt.figure("com")
+  plt.figure("predicted com")
   plt.plot(t_msg, pos_msg)
 
   file_array = np.loadtxt("../debug_predicted_com_vel.txt", delimiter=',')
@@ -557,12 +557,12 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   #   plot_osc(osc_debug, osc_traj0, i, "accel")
 
 
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   #
   plot_osc(osc_debug, osc_traj0, 1, "pos")
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
@@ -570,13 +570,13 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   plot_osc(osc_debug, osc_traj0, 1, "accel")
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  # # #
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # # # #
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
 
   # # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1*fsm[t_osc_debug_slice])
@@ -815,7 +815,7 @@ def plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm):
   # plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
   plt.plot(t_osc_debug[t_osc_debug_slice], 30 * fsm[t_osc_debug_slice])
 
-def PlotCenterOfMass(x, t_x, plant, world, context):
+def PlotCenterOfMass(x, t_x, plant, world, context, t_osc_debug, fsm):
   # Compute COM and Comdot
   com = np.zeros((3, t_x.shape[0]))
   comdot = np.zeros((3, t_x.shape[0]))
@@ -831,13 +831,15 @@ def PlotCenterOfMass(x, t_x, plant, world, context):
   figname = "com traj"
   plt.figure(figname, figsize=(6.4, 4.8))
   plt.plot(t_x, com.T)
+  plt.plot(t_osc_debug, 0.1 * fsm)
   plt.xlabel('time (s)')
-  plt.legend(['x', 'y', 'z'])
+  plt.legend(['x', 'y', 'z', 'fsm'])
   figname = "comdot traj"
   plt.figure(figname, figsize=(6.4, 4.8))
   plt.plot(t_x, comdot.T)
+  plt.plot(t_osc_debug, 0.1 * fsm)
   plt.xlabel('time (s)')
-  plt.legend(['x', 'y', 'z'])
+  plt.legend(['x', 'y', 'z', 'fsm'])
   # figname = "comddot traj along the traj"
   # plt.figure(figname, figsize=(6.4, 4.8))
   # plt.plot(t_x, comddot.T, 'ko', markersize=4)

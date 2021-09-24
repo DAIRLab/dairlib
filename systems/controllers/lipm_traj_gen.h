@@ -111,6 +111,8 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   // Testing
   mutable double heuristic_ratio_;
+  double foot_spread_lb_ = 0.3;
+  double foot_spread_ub_ = 0.5;
   const drake::multibody::Frame<double>& pelvis_frame_;
   const drake::multibody::Frame<double>& toe_left_frame_;
   const drake::multibody::Frame<double>& toe_right_frame_;

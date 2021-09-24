@@ -2,8 +2,8 @@
 
 #include <math.h>
 
-#include <string>
 #include <fstream>
+#include <string>
 
 #include <drake/math/saturate.h>
 
@@ -62,12 +62,11 @@ LIPMTrajGenerator::LIPMTrajGenerator(
                contact_points_in_each_state.size());
 
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
+                    .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   touchdown_time_port_ =
@@ -184,10 +183,11 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // >0.5 meter: ratio 0.8  //0.65
     // Linear interpolate in between
     heuristic_ratio_ = 1;
-    if (dist > 0.5) {
+    if (dist > foot_spread_ub_) {
       heuristic_ratio_ = 0.8;
-    } else if (dist > 0.2) {
-      heuristic_ratio_ = 1 + (0.8 - 1) / 0.3 * (dist - 0.2);
+    } else if (dist > foot_spread_lb_) {
+      heuristic_ratio_ = 1 + (0.8 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
+                                 (dist - foot_spread_lb_);
     }
   }
 
@@ -243,7 +243,6 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   //       k_2 = (y0 - dy0/w)/2.
   // double omega = sqrt(9.81 / (final_height - stance_foot_pos(2)));
   double omega = sqrt(9.81 / CoM_wrt_foot_z);
-  omega *= heuristic_ratio_;
   double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
   double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
   double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega);
@@ -252,12 +251,20 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   //  cout << "omega = " << omega << endl;
 
   // Sum of two exponential + one-segment 3D polynomial
-  MatrixXd K = MatrixXd::Zero(3, 2);
-  MatrixXd A = MatrixXd::Zero(2, 2);
-  MatrixXd alpha = MatrixXd::Zero(2, 1);
-  K << k1x, k2x, k1y, k2y, 0, 0;
-  A << omega, 0, 0, -omega;
-  alpha << 1, 1;
+  MatrixXd K = MatrixXd::Zero(3, 4);
+  MatrixXd A = MatrixXd::Zero(4, 4);
+  MatrixXd alpha = MatrixXd::Ones(4, 1);
+  K(0, 0) = k1x;
+  K(0, 1) = k2x;
+  K(1, 2) = k1y;
+  K(1, 3) = k2y;
+  A(0, 0) = omega;
+  A(1, 1) = -omega;
+  A(2, 2) = omega * heuristic_ratio_;
+  A(3, 3) = -omega * heuristic_ratio_;
+  // TODO: this is in global coordinate. But the ratio change should apply
+  //  locally. I think you just need to simply times a rotational matrix in
+  //  front. (lump it into K matrix)
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }
@@ -296,8 +303,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
 
-  double end_time =
-      prev_event_time(0) + unordered_state_durations_[mode_index];
+  double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
   // Ensure "current_time < end_time" to avoid error in
   // creating trajectory.
   start_time = drake::math::saturate(
@@ -338,7 +344,8 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+  *exp_pp_traj =
+      ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 
   /*cout << "start_time = " << start_time << endl;
   cout << "end_time = " << end_time << endl;

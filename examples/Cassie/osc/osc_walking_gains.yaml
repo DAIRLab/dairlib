@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.025
+impact_threshold: 0.1
 use_traj_opt_feet_traj: false
 
 # High level command gains (with radio)
@@ -34,8 +34,8 @@ k_ff_lateral: 0
 k_fb_lateral: 0.23
 
 # Finite state machine
-ss_time: 0.35
-ds_time: 0.05
+ss_time: 0.3
+ds_time: 0.075
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.5
@@ -52,7 +52,7 @@ lipm_height: 0.9
 mu: 0.8
 
 w_accel: 0.0
-w_soft_constraint: 80
+w_soft_constraint: 100
 
 w_swing_toe: 1
 swing_toe_kp: 1500
@@ -69,11 +69,11 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    15]
+      0,    0,     5]
 CoMKd:
   [   2,    0,     0,
       0,    2,     0,
-      0,    0,     5]
+      0,    0,     2]
 
 PelvisBalanceW:
   [ 1,      0,     0,

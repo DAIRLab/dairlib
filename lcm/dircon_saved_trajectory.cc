@@ -166,7 +166,7 @@ DirconTrajectory::DirconTrajectory(
          ++i) {
       force_names.push_back("lambda_" + std::to_string(num_forces));
       collocation_force_names.push_back("lambda_c_" +
-          std::to_string(num_forces));
+                                        std::to_string(num_forces));
       ++num_forces;
     }
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -241,11 +241,8 @@ DirconTrajectory::DirconTrajectory(
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
-const {
+    const {
   PiecewisePolynomial<double> state_traj;
-//  =
-//      PiecewisePolynomial<double>::CubicHermite(
-//          x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
 
   for (int mode = 0; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
@@ -254,6 +251,25 @@ const {
     }
     state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
         x_[mode]->time_vector, x_[mode]->datapoints, xdot_[mode]->datapoints));
+  }
+  return state_traj;
+}
+
+PiecewisePolynomial<double>
+DirconTrajectory::ReconstructStateTrajectoryWithSprings(
+    Eigen::MatrixXd& spr_to_wo_spr_map) const {
+  PiecewisePolynomial<double> state_traj;
+
+  for (int mode = 0; mode < num_modes_; ++mode) {
+    // Cannot form trajectory with only a single break
+    if (x_[mode]->time_vector.size() < 2) {
+      continue;
+    }
+    std::cout << "rows: " << spr_to_wo_spr_map.rows() << std::endl;
+    std::cout << "cols: " << spr_to_wo_spr_map.cols() << std::endl;
+    state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        x_[mode]->time_vector, spr_to_wo_spr_map * x_[mode]->datapoints,
+        spr_to_wo_spr_map * xdot_[mode]->datapoints));
   }
   return state_traj;
 }
@@ -304,8 +320,8 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructMirrorJointTrajectory(
   MatrixXd M = GetTrajectory("mirror_matrix").datapoints;
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(
-          x_[0]->time_vector, (M*x_[0]->datapoints).row(joint_idx),
-          (M*xdot_[0]->datapoints).row(joint_idx));
+          x_[0]->time_vector, (M * x_[0]->datapoints).row(joint_idx),
+          (M * xdot_[0]->datapoints).row(joint_idx));
 
   for (int mode = 1; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
@@ -313,8 +329,8 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructMirrorJointTrajectory(
       continue;
     }
     state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
-        x_[mode]->time_vector, (M*x_[mode]->datapoints).row(joint_idx),
-        (M*xdot_[mode]->datapoints).row(joint_idx)));
+        x_[mode]->time_vector, (M * x_[mode]->datapoints).row(joint_idx),
+        (M * xdot_[mode]->datapoints).row(joint_idx)));
   }
   return state_traj;
 }

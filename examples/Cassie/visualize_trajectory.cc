@@ -32,6 +32,7 @@ DEFINE_int32(visualize_mode, 0,
              "2 - Multipose visualizer");
 DEFINE_bool(use_transparency, false,
             "Transparency setting for the Multipose visualizer");
+DEFINE_bool(use_springs, false, "Set to true if the trajectory is for the model with springs");
 DEFINE_bool(
     mirror_traj, false,
     "Whether or not to extend the trajectory by mirroring the trajectory. Only "

@@ -10,7 +10,7 @@ def main():
   # Default filename for the example
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.5h_0.3d")
-  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.4h_0.3d")
+  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.4h_0.3d_6")
   # filename = "/home/yangwill/Documents/research/projects/cassie/hardware/backup/dair/saved_trajectories/jumping_0.15h_0.3d"
 
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/" + sys.argv[1])

@@ -484,6 +484,7 @@ cc_binary(
         "//lcm:lcm_trajectory_saver",
         "//multibody:visualization_utils",
         "//solvers:optimization_utils",
+        "//solvers:nonlinear_cost",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

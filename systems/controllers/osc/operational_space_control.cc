@@ -418,7 +418,7 @@ void OperationalSpaceControl::Build() {
 
   // 5. Joint Limit cost
   w_joint_limit_ = VectorXd::Zero(n_revolute_joints_);
-  K_joint_pos = MatrixXd::Identity(n_revolute_joints_, n_revolute_joints_);
+  K_joint_pos = 50 * MatrixXd::Identity(n_revolute_joints_, n_revolute_joints_);
   joint_limit_cost_.push_back(
       prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_revolute_joints_))
           .evaluator()
@@ -571,10 +571,11 @@ VectorXd OperationalSpaceControl::SolveQp(
       ///    JdotV_c_active + J_c_active*dv == -epsilon
       /// -> J_c_active*dv + I*epsilon == -JdotV_c_active
       /// -> [J_c_active, I]* [dv, epsilon]^T == -JdotV_c_active
+      double alpha_ii = 1 - alpha;
       MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
       A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          MatrixXd::Identity(n_c_active_, n_c_active_);
+          alpha_ii * MatrixXd::Identity(n_c_active_, n_c_active_);
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }

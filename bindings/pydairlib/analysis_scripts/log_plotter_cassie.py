@@ -45,6 +45,7 @@ def main():
   figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
   ps = plot_styler.PlotStyler()
   ps.set_default_styling(directory=figure_directory)
+  plt.close()
 
   builder = DiagramBuilder()
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
@@ -136,7 +137,7 @@ def main():
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
-  if False:
+  if True:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context_w_spr, x, l_toe_frame,
                         front_contact_disp,
@@ -271,20 +272,20 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 1, "acc")
   # plot_osc(osc_debug, osc_traj0, 2, "acc")
 
-  plot_osc(osc_debug, osc_traj1, 0, "pos")
+  # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  # plot_osc(osc_debug, osc_traj1, 2, "pos")
+  plot_osc(osc_debug, osc_traj1, 2, "pos")
   # #
-  plot_osc(osc_debug, osc_traj2, 0, "pos")
+  # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  # plot_osc(osc_debug, osc_traj2, 2, "pos")
+  plot_osc(osc_debug, osc_traj2, 2, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
-  plot_osc(osc_debug, osc_traj1, 0, "vel")
+  # plot_osc(osc_debug, osc_traj1, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
-  plot_osc(osc_debug, osc_traj2, 0, "vel")
+  # plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
@@ -296,14 +297,16 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 1, "acc")
   # plot_osc(osc_debug, osc_traj2, 2, "acc")
 
-  plot_osc(osc_debug, osc_traj3, 0, "pos")
+  # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
-  plot_osc(osc_debug, osc_traj4, 0, "pos")
+  # plot_osc(osc_debug, osc_traj4, 0, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "pos")
+  # plot_osc(osc_debug, osc_traj5, 0, "vel")
+  # plot_osc(osc_debug, osc_traj5, 0, "acc")
   # plot_osc(osc_debug, osc_traj6, 0, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "vel")
   # plot_osc(osc_debug, osc_traj6, 0, "vel")
@@ -413,7 +416,7 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim], color=ps.blue)
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot[t_u_slice, dim], color=ps.red)
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].ydot_des[t_u_slice, dim] - osc_debug[osc_traj].ydot[t_u_slice, dim], color=ps.yellow)
-    # ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim], color=ps.grey)
+    ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].error_ydot[t_u_slice, dim], color=ps.grey)
     ps.add_legend(["ydot_des", "ydot", "error_ydot", "projected_error_ydot"])
     # plt.legend(["error_ydot", "corrected_error"])
   elif (derivative == "acc"):
@@ -436,7 +439,7 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
   fig = plt.figure('foot pos: ' + filename)
 
   # state_indices = slice(4, 5)
-  state_indices = slice(0, 3)
+  state_indices = slice(2, 3)
   # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
@@ -511,7 +514,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   # vel_indices = slice(23, 23 + 6)
   # vel_indices = slice(23 + 6, 23 + 10)
   # all motor torques
-  u_indices = slice(0, 10)
+  u_indices = slice(2, 3)
 
   plt.figure("positions: " + filename)
   ps.plot(t_x[t_slice], x[t_slice, pos_indices])

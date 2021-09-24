@@ -817,11 +817,11 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 150
+  model_iter_idx_end = 200
   idx_spacing = 5
 
   # Task list
-  n_task = 30
+  n_task = 60
   stride_length = np.linspace(-0.6, 0.6, n_task)
   # stride_length = np.linspace(0, 0.1, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
@@ -842,7 +842,7 @@ if __name__ == "__main__":
   log_indices_for_plot = list(range(log_idx_offset + n_task))
   # log_indices_for_plot = list(range(240))
   save_fig = True
-  plot_nominal = True
+  plot_nominal = False
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
 
   # 2D plot (cost vs model)
@@ -930,14 +930,12 @@ if __name__ == "__main__":
 
   # Parameters for visualization
   max_cost_to_ignore = 100  # 2
-  mean_sl = 0.2
-  delta_sl = 0.1  # 0.1 #0.005
-  min_sl = mean_sl - delta_sl
-  max_sl = mean_sl + delta_sl
+  # mean_sl = 0.2
+  # delta_sl = 0.1  # 0.1 #0.005
+  # min_sl = mean_sl - delta_sl
+  # max_sl = mean_sl + delta_sl
   min_sl = -100
   max_sl = 100
-  # min_sl = 0.15
-  # max_sl = -0.31
 
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:
@@ -945,7 +943,7 @@ if __name__ == "__main__":
   print("log_indices for plotting = " + str(log_indices))
 
   # Get samples to plot
-  # (mtcl stores model index, task value, cost, and log index)
+  # mtcl is a list of (model index, task value, cost, and log index)
   mtcl = GetSamplesToPlot(model_indices, log_indices)
   nominal_mtc = GetNominalSamplesToPlot(model_indices)
 

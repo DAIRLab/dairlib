@@ -534,9 +534,10 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem<systems::SwingFootTrajGenerator>(
             plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
             left_right_support_state_durations, left_right_foot, "pelvis",
-            gains.mid_foot_height, gains.final_foot_height,
-            gains.final_foot_velocity_z, gains.max_CoM_to_footstep_dist,
-            gains.footstep_offset, gains.center_line_offset);
+            double_support_duration, gains.mid_foot_height,
+            gains.final_foot_height, gains.final_foot_velocity_z,
+            gains.max_CoM_to_footstep_dist, gains.footstep_offset,
+            gains.center_line_offset);
     builder.Connect(fsm->get_output_port(0),
                     swing_ft_traj_generator->get_input_port_fsm());
     builder.Connect(event_time->get_output_port_event_time_of_interest(),

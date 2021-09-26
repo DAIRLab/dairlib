@@ -56,7 +56,8 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       std::vector<std::pair<const Eigen::Vector3d,
                             const drake::multibody::Frame<double>&>>
           left_right_foot,
-      std::string floating_base_body_name, double mid_foot_height,
+      std::string floating_base_body_name,
+      double double_support_duration, double mid_foot_height,
       double desired_final_foot_height,
       double desired_final_vertical_foot_velocity,
       double max_com_to_x_footstep_dist, double footstep_offset,
@@ -115,6 +116,8 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::Body<double>& pelvis_;
 
   std::vector<int> left_right_support_fsm_states_;
+
+  double double_support_duration_;
 
   // Parameters
   double mid_foot_height_;

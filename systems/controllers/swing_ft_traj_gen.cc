@@ -40,8 +40,8 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
     std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
         left_right_foot,
-    std::string floating_base_body_name, double mid_foot_height,
-    double desired_final_foot_height,
+    std::string floating_base_body_name, double double_support_duration,
+    double mid_foot_height, double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
     double max_com_to_footstep_dist, double footstep_offset,
     double center_line_offset, bool wrt_com_in_local_frame)
@@ -57,6 +57,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
       max_com_to_footstep_dist_(max_com_to_footstep_dist),
       footstep_offset_(footstep_offset),
       center_line_offset_(center_line_offset),
+      double_support_duration_(double_support_duration),
       wrt_com_in_local_frame_(wrt_com_in_local_frame) {
   this->set_name("swing_ft_traj");
 
@@ -246,18 +247,33 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   }
   CoM_vel_pred = filtered_com_vel_;
 
-  // Compute footstep location
-  double omega = sqrt(9.81 / CoM_pos_pred(2));
+  bool is_right_support = fsm_state(0) == left_right_support_fsm_states_[1];
 
-  // Use LIPM to derive neutral point
-  double T = duration_map_.at(int(fsm_state(0)));
-  Vector2d com_wrt_foot = CoM_vel_pred.head(2) *
-                          ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
-                           (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
-                          omega;
+  // Compute footstep location (use LIPM to derive neutral point)
+  double omega = sqrt(9.81 / CoM_pos_pred(2));
+  double T = duration_map_.at(int(fsm_state(0))) + double_support_duration_;
   if (wrt_com_in_local_frame_) {
-    *x_fs = rot.transpose() * (-com_wrt_foot);
+    // v_i is CoM_vel_pred_local_start_of_next_stride
+    Vector2d v_i = rot.transpose() * CoM_vel_pred.head(2);
+    // v_f is CoM_vel_pred_local_end_of_next_stride
+    Vector2d v_f;
+    double desired_y_vel_end_of_stride = 0.2;
+    if (is_right_support) {
+      v_f << v_i(0), -desired_y_vel_end_of_stride;
+    } else {
+      v_f << v_i(0), desired_y_vel_end_of_stride;
+    }
+    Vector2d com_wrt_foot =
+        ((v_f * exp(omega * T) - v_i) / (exp(2 * omega * T) - 1) -
+         (v_f * exp(-omega * T) - v_i) / (exp(-2 * omega * T) - 1)) /
+        omega;
+    *x_fs = (-com_wrt_foot);
   } else {
+    Vector2d com_wrt_foot =
+        CoM_vel_pred.head(2) *
+        ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
+         (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
+        omega;
     *x_fs = CoM_pos_pred.head(2) - com_wrt_foot;
   }
   /*if (robot_output->get_timestamp() != last_timestamp_) {
@@ -294,7 +310,6 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   }*/
 
   /// Imposing guards
-  bool is_right_support = fsm_state(0) == left_right_support_fsm_states_[1];
   if (wrt_com_in_local_frame_) {
     // Shift footstep laterally away from sagittal plane
     // so that the foot placement position at steady state is right below the

@@ -48,7 +48,8 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
                       double k_ff_lateral, double k_fb_lateral,
                       double k_ff_sagittal, double k_fb_sagittal,
                       double swing_phase_duration = 0,
-                      double speed_control_offset_sagittal = 0);
+                      double speed_control_offset_sagittal = 0,
+                      bool expressed_in_local_frame = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -99,6 +100,9 @@ class WalkingSpeedControl : public drake::systems::LeafSystem<double> {
   double cutoff_freq_ = 200;  // in Hz.
   mutable Eigen::Vector3d filterred_com_vel_ = Eigen::Vector3d::Zero();
   mutable double last_timestamp_ = 0;
+
+  // Flags
+  bool expressed_in_local_frame_;
 };
 
 }  // namespace osc

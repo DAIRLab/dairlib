@@ -289,11 +289,12 @@ int DoMain(int argc, char* argv[]) {
                   pelvis_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
+  bool expressed_in_local_frame = true;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
           gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
-          left_support_duration);
+          left_support_duration, 0, expressed_in_local_frame);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -316,13 +317,15 @@ int DoMain(int argc, char* argv[]) {
                                                        right_support_duration};
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
+  bool wrt_com_in_local_frame = true;
   auto swing_ft_traj_generator =
       builder.AddSystem<systems::SwingFootTrajGenerator>(
           plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
           left_right_support_state_durations, left_right_foot, "pelvis",
           gains.mid_foot_height, gains.final_foot_height,
           gains.final_foot_velocity_z, gains.max_CoM_to_footstep_dist,
-          gains.footstep_offset, gains.center_line_offset);
+          gains.footstep_offset, gains.center_line_offset,
+          wrt_com_in_local_frame);
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),

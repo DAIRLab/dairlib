@@ -469,6 +469,35 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<std::vector<int>> joint_vel_idx_wo_spr_;
 };
 
+
+class TwoFrameTrackingData final : public OscTrackingData {
+ public:
+  TwoFrameTrackingData(
+      const std::string& name, int n_y, const Eigen::MatrixXd& K_p,
+      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      const OscTrackingData& to_frame,
+      const OscTrackingData& from_frame);
+
+ private:
+  void UpdateYddotDes() final;
+  void UpdateY(const Eigen::VectorXd& x_wo_spr,
+               const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYError() final;
+  void UpdateYdot(const Eigen::VectorXd& x_wo_spr,
+                  const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYdotError() final;
+  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
+               const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
+                   const drake::systems::Context<double>& context_wo_spr) final;
+
+  void CheckDerivedOscTrackingData() final;
+
+};
+
+
 class OptimalRomTrackingData final : public OscTrackingData {
  public:
   OptimalRomTrackingData(

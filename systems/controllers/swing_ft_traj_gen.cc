@@ -1,10 +1,9 @@
 #include "systems/controllers/swing_ft_traj_gen.h"
 
-#include <fstream>
-
 #include <math.h>
 
 #include <algorithm>
+#include <fstream>
 #include <string>
 
 #include <drake/math/saturate.h>
@@ -45,7 +44,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
     double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
     double max_com_to_footstep_dist, double footstep_offset,
-    double center_line_offset)
+    double center_line_offset, bool wrt_com_in_local_frame)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -57,7 +56,8 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
           desired_final_vertical_foot_velocity),
       max_com_to_footstep_dist_(max_com_to_footstep_dist),
       footstep_offset_(footstep_offset),
-      center_line_offset_(center_line_offset) {
+      center_line_offset_(center_line_offset),
+      wrt_com_in_local_frame_(wrt_com_in_local_frame) {
   this->set_name("swing_ft_traj");
 
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
@@ -65,12 +65,11 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
   DRAKE_DEMAND(left_right_foot.size() == 2);
 
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
+                    .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   liftoff_time_port_ =
@@ -83,8 +82,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
                       drake::Value<drake::trajectories::Trajectory<double>>(pp))
                   .get_index();
   footstep_adjustment_port_ =
-      this->DeclareVectorInputPort("foot_adjustment_xy",
-                                   BasicVector<double>(2))
+      this->DeclareVectorInputPort("foot_adjustment_xy", BasicVector<double>(2))
           .get_index();
   // Provide an instance to allocate the memory first (for the output)
   drake::trajectories::Trajectory<double>& traj_instance = pp;
@@ -149,6 +147,22 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
     auto swing_foot = swing_foot_map_.at(int(fsm_state(0)));
     plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
+
+    if (wrt_com_in_local_frame_) {
+      // Get approximated heading angle of pelvis and rotational matrix
+      Vector3d pelvis_heading_vec =
+          plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
+      double approx_pelvis_yaw =
+          atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
+      Eigen::Matrix3d rot;
+      rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw), 0,
+          sin(approx_pelvis_yaw), cos(approx_pelvis_yaw), 0, 0, 0, 1;
+
+      // Vector from com to swing foot viewed in pelvis frame
+      swing_foot_pos_at_liftoff =
+          rot.transpose() * (swing_foot_pos_at_liftoff -
+                             plant_.CalcCenterOfMassPositionInWorld(*context_));
+    }
   }
 
   return EventStatus::Succeeded();
@@ -172,24 +186,36 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
                              world_, &stance_foot_pos);
 
-  // Get CoM_pos or predicted CoM_pos
-  Vector3d CoM_pos;
-  Vector3d CoM_vel;
-  // CoM_pos and CoM_vel at the end of the step (predicted)
+  // Get approximated heading angle of pelvis and rotational matrix
+  Vector3d pelvis_heading_vec =
+      plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
+  double approx_pelvis_yaw =
+      atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
+  Eigen::Matrix3d rot;
+  rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw), 0,
+      sin(approx_pelvis_yaw), cos(approx_pelvis_yaw), 0, 0, 0, 1;
+
+  // Get CoM_pos
+  Vector3d CoM_curr = plant_.CalcCenterOfMassPositionInWorld(*context_);
+
+  // Get predicted CoM_pos and CoM_vel
+  Vector3d CoM_pos_pred;
+  Vector3d CoM_vel_pred;
+  // CoM_pos_pred and CoM_vel_pred at the end of the step (predicted)
   const drake::AbstractValue* com_traj_output =
       this->EvalAbstractInput(context, com_port_);
   DRAKE_ASSERT(com_traj_output != nullptr);
   const auto& com_traj =
       com_traj_output->get_value<drake::trajectories::Trajectory<double>>();
-  CoM_pos = com_traj.value(end_time_of_this_interval);
-  CoM_vel = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
+  CoM_pos_pred = com_traj.value(end_time_of_this_interval);
+  CoM_vel_pred = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
   /*if (robot_output->get_timestamp() != last_timestamp_) {
     std::ofstream outfile;
     outfile.open("../debug_predicted_com_pos.txt", std::ios_base::app);
     outfile << robot_output->get_timestamp() << ", ";
-    for (int i = 0; i < CoM_pos.size(); i++) {
-      outfile << CoM_pos(i);
-      if (i == CoM_pos.size() - 1) {
+    for (int i = 0; i < CoM_pos_pred.size(); i++) {
+      outfile << CoM_pos_pred(i);
+      if (i == CoM_pos_pred.size() - 1) {
         outfile << "\n";
       } else {
         outfile << ", ";
@@ -200,9 +226,9 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     std::ofstream outfile;
     outfile.open("../debug_predicted_com_vel.txt", std::ios_base::app);
     outfile << robot_output->get_timestamp() << ", ";
-    for (int i = 0; i < CoM_vel.size(); i++) {
-      outfile << CoM_vel(i);
-      if (i == CoM_vel.size() - 1) {
+    for (int i = 0; i < CoM_vel_pred.size(); i++) {
+      outfile << CoM_vel_pred(i);
+      if (i == CoM_vel_pred.size() - 1) {
         outfile << "\n";
       } else {
         outfile << ", ";
@@ -210,26 +236,30 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     }
   }*/
 
-  // Filter the CoM_pos vel
+  // Filter the CoM_vel_pred
   if (robot_output->get_timestamp() != last_timestamp_) {
     double dt = robot_output->get_timestamp() - last_timestamp_;
-    //last_timestamp_ = robot_output->get_timestamp();
+    // last_timestamp_ = robot_output->get_timestamp();
     double alpha =
         2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
-    filtered_com_vel_ = alpha * CoM_vel + (1 - alpha) * filtered_com_vel_;
+    filtered_com_vel_ = alpha * CoM_vel_pred + (1 - alpha) * filtered_com_vel_;
   }
-  CoM_vel = filtered_com_vel_;
+  CoM_vel_pred = filtered_com_vel_;
 
   // Compute footstep location
-  double omega = sqrt(9.81 / CoM_pos(2));
+  double omega = sqrt(9.81 / CoM_pos_pred(2));
 
   // Use LIPM to derive neutral point
   double T = duration_map_.at(int(fsm_state(0)));
-  Vector2d com_wrt_foot = CoM_vel.head(2) *
+  Vector2d com_wrt_foot = CoM_vel_pred.head(2) *
                           ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
                            (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
                           omega;
-  *x_fs = CoM_pos.head(2) - com_wrt_foot;
+  if (wrt_com_in_local_frame_) {
+    *x_fs = rot.transpose() * (-com_wrt_foot);
+  } else {
+    *x_fs = CoM_pos_pred.head(2) - com_wrt_foot;
+  }
   /*if (robot_output->get_timestamp() != last_timestamp_) {
     std::ofstream outfile;
     outfile.open("../debug_ft_pos_nominal.txt", std::ios_base::app);
@@ -263,36 +293,65 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     }
   }*/
 
-  // Get approximated heading angle of pelvis
-  Vector3d pelvis_heading_vec =
-      plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
-  double approx_pelvis_yaw =
-      atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
+  /// Imposing guards
+  if (wrt_com_in_local_frame_) {
+    // Shift footstep laterally away from sagittal plane
+    // so that the foot placement position at steady state is right below the
+    // hip joint
+    if (fsm_state(0) == left_right_support_fsm_states_[1]) {
+      (*x_fs)(1) -= footstep_offset_;
+    } else {
+      (*x_fs)(1) += footstep_offset_;
+    }
 
-  // Shift footstep laterally away from sagittal plane
-  // so that the foot placement position at steady state is right below the
-  // hip joint
-  Vector2d shift_foothold_dir;
-  if (fsm_state(0) == left_right_support_fsm_states_[1]) {
-    shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 1 / 2),
-        sin(approx_pelvis_yaw + M_PI * 1 / 2);
+    // Impose half-plane guard
+    Vector3d stance_foot_wrt_com_in_local_frame =
+        rot.transpose() * (stance_foot_pos - CoM_curr);
+    if (fsm_state(0) == left_right_support_fsm_states_[1]) {
+      double line_pos =
+          std::min(-center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
+      (*x_fs)(1) = std::min(line_pos, (*x_fs)(1));
+    } else {
+      double line_pos =
+          std::max(center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
+      (*x_fs)(1) = std::max(line_pos, (*x_fs)(1));
+    }
+
+    // Cap by the step length
+    double dist = x_fs->norm();
+    if (dist > max_com_to_footstep_dist_) {
+      (*x_fs) = (*x_fs) * max_com_to_footstep_dist_ / dist;
+    }
   } else {
-    shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 3 / 2),
-        sin(approx_pelvis_yaw + M_PI * 3 / 2);
+    // Shift footstep laterally away from sagittal plane
+    // so that the foot placement position at steady state is right below the
+    // hip joint
+    Vector2d shift_foothold_dir;
+    if (fsm_state(0) == left_right_support_fsm_states_[1]) {
+      shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 1 / 2),
+          sin(approx_pelvis_yaw + M_PI * 1 / 2);
+    } else {
+      shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 3 / 2),
+          sin(approx_pelvis_yaw + M_PI * 3 / 2);
+    }
+    *x_fs += shift_foothold_dir * footstep_offset_;
+
+    *x_fs = ImposeHalfplaneGuard(
+        *x_fs, (fsm_state(0) == left_right_support_fsm_states_[0]),
+        approx_pelvis_yaw, CoM_pos_pred.head(2), stance_foot_pos.head(2),
+        center_line_offset_);
+
+    // Cap by the step length
+    *x_fs = ImposeStepLengthGuard(*x_fs, CoM_pos_pred.head(2),
+                                  max_com_to_footstep_dist_);
   }
-  *x_fs += shift_foothold_dir * footstep_offset_;
 
-  *x_fs = ImposeHalfplaneGuard(
-      *x_fs, (fsm_state(0) == left_right_support_fsm_states_[0]),
-      approx_pelvis_yaw, CoM_pos.head(2), stance_foot_pos.head(2),
-      center_line_offset_);
-
-  // Cap by the step length
-  *x_fs =
-      ImposeStepLengthGuard(*x_fs, CoM_pos.head(2), max_com_to_footstep_dist_);
-
-  // Assignment for stance foot height
-  *stance_foot_height = stance_foot_pos(2);
+  /// Assignment for stance foot height
+  if (wrt_com_in_local_frame_) {
+    *stance_foot_height = stance_foot_pos(2) - CoM_curr(2);
+  } else {
+    *stance_foot_height = stance_foot_pos(2);
+  }
 
   last_timestamp_ = robot_output->get_timestamp();
 }
@@ -325,24 +384,15 @@ PiecewisePolynomial<double> SwingFootTrajGenerator::CreateSplineForSwingFoot(
   Y[1](2, 0) = mid_foot_height_ + stance_foot_height;
   Y[2](2, 0) = desired_final_foot_height_ + stance_foot_height;
 
-  std::vector<MatrixXd> Y_dot(T_waypoint.size(), MatrixXd::Zero(3, 1));
-  // x
-  Y_dot[0](0, 0) = 0;
-  Y_dot[1](0, 0) = (x_fs(0) - init_swing_foot_pos(0)) / stance_duration;
-  Y_dot[2](0, 0) = 0;
-  // y
-  Y_dot[0](1, 0) = 0;
-  Y_dot[1](1, 0) = (x_fs(1) - init_swing_foot_pos(1)) / stance_duration;
-  Y_dot[2](1, 0) = 0;
-  // z
-  Y_dot[0](2, 0) = 0;
-  Y_dot[1](2, 0) = 0;
-  Y_dot[2](2, 0) = desired_final_vertical_foot_velocity_;
+  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
+  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
+  Y_dot_end(2) = desired_final_vertical_foot_velocity_;
+
   // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
   // the traj smooth at the mid point
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          T_waypoint, Y, Y_dot.at(0), Y_dot.at(2));
+          T_waypoint, Y, Y_dot_start, Y_dot_end);
 
   return swing_foot_spline;
 }

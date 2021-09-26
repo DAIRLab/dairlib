@@ -60,7 +60,8 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       double desired_final_foot_height,
       double desired_final_vertical_foot_velocity,
       double max_com_to_x_footstep_dist, double footstep_offset,
-      double center_line_offset);
+      double center_line_offset,
+      bool wrt_com_in_local_frame = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -138,6 +139,9 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   double cutoff_freq_ = 200; // in Hz.
   mutable Eigen::Vector3d filtered_com_vel_ = Eigen::Vector3d::Zero();
   mutable double last_timestamp_ = 0;
+
+  // Flags
+  bool wrt_com_in_local_frame_;
 };
 
 }  // namespace systems

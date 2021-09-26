@@ -700,7 +700,7 @@ def Generate2dPlots(model_indices, mtcl, nominal_mtc):
     levels[-1] += 0.01
     # levels = list(set(np.linspace(0.4, 3, n_levels)))
     # levels.sort()
-    surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels)
+    surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels, cmap='coolwarm')
     fig.colorbar(surf, shrink=0.9, aspect=15)
 
     # plt.xlim([0, 135])

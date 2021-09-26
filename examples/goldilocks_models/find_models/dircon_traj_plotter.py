@@ -357,7 +357,9 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, com_at_knot.T, 'ko', markersize=4)
+    # plt.xlabel('com')
     plt.xlabel('time (s)')
+    # plt.legend(['x', 'y', 'z'])
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
@@ -365,7 +367,9 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=4)
+    # plt.xlabel('comdot')
     plt.xlabel('time (s)')
+    # plt.legend(['x', 'y', 'z'])
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
@@ -373,7 +377,9 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=4)
+    # plt.xlabel('comddot')
     plt.xlabel('time (s)')
+    # plt.legend(['x', 'y', 'z'])
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     if savefig:
       plt.savefig(save_path + figname + ".png")

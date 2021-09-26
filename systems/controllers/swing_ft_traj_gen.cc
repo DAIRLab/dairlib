@@ -191,9 +191,9 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
       plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
   double approx_pelvis_yaw =
       atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
-  Eigen::Matrix3d rot;
-  rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw), 0,
-      sin(approx_pelvis_yaw), cos(approx_pelvis_yaw), 0, 0, 0, 1;
+  Eigen::MatrixXd rot(2,2);
+  rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw),
+      sin(approx_pelvis_yaw), cos(approx_pelvis_yaw);
 
   // Get CoM_pos
   Vector3d CoM_curr = plant_.CalcCenterOfMassPositionInWorld(*context_);
@@ -305,8 +305,8 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     }
 
     // Impose half-plane guard
-    Vector3d stance_foot_wrt_com_in_local_frame =
-        rot.transpose() * (stance_foot_pos - CoM_curr);
+    Vector2d stance_foot_wrt_com_in_local_frame =
+        rot.transpose() * (stance_foot_pos - CoM_curr).head<2>();
     if (fsm_state(0) == left_right_support_fsm_states_[1]) {
       double line_pos =
           std::min(-center_line_offset_, stance_foot_wrt_com_in_local_frame(1));

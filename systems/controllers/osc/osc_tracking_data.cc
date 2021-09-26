@@ -57,21 +57,47 @@ bool OscTrackingData::Update(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
     double t_since_last_state_switch, int finite_state_machine_state,
-    const Eigen::VectorXd& v_proj) {
+    const Eigen::VectorXd& v_proj, bool no_desired_traj) {
   // Update track_at_current_state_
   UpdateTrackingFlag(finite_state_machine_state);
 
   // Proceed based on the result of track_at_current_state_
   if (track_at_current_state_) {
-    // Careful: must update y_des_ before calling UpdateYError()
-    // Update desired output
+    if (pre_update_) {
+      PreUpdate(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj, t,
+                t_since_last_state_switch, finite_state_machine_state,
+                v_proj, true);
+    }
+
+    // 1. Update feedback output (Calling virtual methods)
+    if (use_only_plant_wo_spr_in_evaluation_) {
+      UpdateY(x_wo_spr, context_wo_spr);
+      UpdateYdot(x_wo_spr, context_wo_spr);
+    } else {
+      UpdateY(x_w_spr, context_w_spr);
+      UpdateYdot(x_w_spr, context_w_spr);
+    }
+
+    // Low-pass filtering y_ and ydot_
+    if (tau_ > 0) {
+      LowPassFiltering(t);
+    }
+
+    UpdateJ(x_wo_spr, context_wo_spr);
+    UpdateJdotV(x_wo_spr, context_wo_spr);
+
+    if (no_desired_traj) {
+      return track_at_current_state_;
+    }
+
+    // 2. Update desired output
     y_des_ = traj.value(t);
     if (traj.has_derivative()) {
       ydot_des_ = traj.EvalDerivative(t, 1);
       yddot_des_ = traj.EvalDerivative(t, 2);
     }
-      // TODO (yangwill): Remove this edge case after EvalDerivative has been
-      // implemented for ExponentialPlusPiecewisePolynomial
+    // TODO (yangwill): Remove this edge case after EvalDerivative has been
+    // implemented for ExponentialPlusPiecewisePolynomial
     else {
       ydot_des_ = traj.MakeDerivative(1)->value(t);
       yddot_des_ = traj.MakeDerivative(2)->value(t);
@@ -86,29 +112,16 @@ bool OscTrackingData::Update(
                              yddot_des_converted_;
     }
 
-    // Update feedback output (Calling virtual methods)
-    if (use_only_plant_wo_spr_in_evaluation_) {
-      UpdateY(x_wo_spr, context_wo_spr);
-      UpdateYdot(x_wo_spr, context_wo_spr);
-    } else {
-      UpdateY(x_w_spr, context_w_spr);
-      UpdateYdot(x_w_spr, context_w_spr);
-    }
-
-    // Low-pass filtering y_ and ydot_
-    if (tau_ > 0) {
-      LowPassFiltering(t);
-    }
-
+    // 3. Update error
+    // Careful: must update y and y_des before calling UpdateYError()
     UpdateYError();
     UpdateYdotError();
 
-    UpdateJ(x_wo_spr, context_wo_spr);
-    UpdateJdotV(x_wo_spr, context_wo_spr);
-    if(impact_invariant_projection_){
+    if (impact_invariant_projection_) {
       error_ydot_ -= GetJ() * v_proj;
     }
 
+    // 4. Update command output (desired output with pd control)
     MatrixXd gain_ratio;
     if (gain_ratio_ != nullptr) {
       gain_ratio = gain_ratio_->value(t_since_last_state_switch);
@@ -116,7 +129,6 @@ bool OscTrackingData::Update(
       gain_ratio = MatrixXd::Identity(n_ydot_, n_ydot_);
     }
 
-    // Update command output (desired output with pd control)
     yddot_command_ = yddot_des_converted_ +
                      gain_ratio * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
   }
@@ -219,18 +231,19 @@ void OscTrackingData::AddState(int state) {
 
 // Run this function in OSC constructor to make sure that users constructed
 // OscTrackingData correctly.
-void OscTrackingData::CheckOscTrackingData() {
+void OscTrackingData::CheckOscTrackingData(bool no_control_gains) {
   cout << "Checking " << name_ << endl;
   CheckDerivedOscTrackingData();
-
-  DRAKE_DEMAND((K_p_.rows() == n_ydot_) && (K_p_.cols() == n_ydot_));
-  DRAKE_DEMAND((K_d_.rows() == n_ydot_) && (K_d_.cols() == n_ydot_));
-  DRAKE_DEMAND((W_.rows() == n_ydot_) && (W_.cols() == n_ydot_));
 
   // State_ cannot have repeated state
   auto it = std::unique(state_.begin(), state_.end());
   bool all_state_are_different = (it == state_.end());
   DRAKE_DEMAND(all_state_are_different);
+
+  if (no_control_gains) return;
+  DRAKE_DEMAND((K_p_.rows() == n_ydot_) && (K_p_.cols() == n_ydot_));
+  DRAKE_DEMAND((K_d_.rows() == n_ydot_) && (K_d_.cols() == n_ydot_));
+  DRAKE_DEMAND((W_.rows() == n_ydot_) && (W_.cols() == n_ydot_));
 }
 
 void OscTrackingData::UpdateJAndJdotVForUnitTest(
@@ -275,9 +288,6 @@ void ComTrackingData::UpdateYdot(const VectorXd& x_w_spr,
       context_w_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_,
       &J_w_spr);
   ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_.num_velocities());
-
-  error_ydot_ = ydot_des_ - ydot_;
-  //  error_ydot_ = ydot_des_ - ydot_;
 }
 
 void ComTrackingData::UpdateYdotError() { error_ydot_ = ydot_des_ - ydot_; }
@@ -634,6 +644,77 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
     DRAKE_DEMAND(joint_pos_idx_wo_spr_.size() == state_.size());
     DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == state_.size());
   }
+}
+
+/**** TwoFrameTrackingData ****/
+TwoFrameTrackingData::TwoFrameTrackingData(
+    const std::string& name, const Eigen::MatrixXd& K_p,
+    const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
+    const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+    OscTrackingData& to_frame, OscTrackingData& from_frame)
+    : OscTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
+                      plant_wo_spr),
+      to_frame_(to_frame),
+      from_frame_(from_frame) {
+  auto states1 = to_frame.GetStates();
+  auto states2 = from_frame.GetStates();
+  DRAKE_DEMAND(states1.size() == states2.size());
+  for (int i = 0; i < states1.size(); i++) {
+    DRAKE_DEMAND(states1.at(i) == states2.at(i));
+    AddState(states1.at(i));
+  }
+
+  pre_update_ = true;
+}
+
+void TwoFrameTrackingData::PreUpdate(
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
+    const drake::trajectories::Trajectory<double>& traj, double t,
+    double t_since_last_state_switch, int finite_state_machine_state,
+    const Eigen::VectorXd& v_proj, bool no_desired_traj) {
+  to_frame_.Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj, t,
+                   t_since_last_state_switch, finite_state_machine_state,
+                   v_proj, true);
+  from_frame_.Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj, t,
+                     t_since_last_state_switch, finite_state_machine_state,
+                     v_proj, true);
+}
+
+void TwoFrameTrackingData::UpdateYddotDes() {
+  yddot_des_converted_ = yddot_des_;
+}
+
+void TwoFrameTrackingData::UpdateY(const VectorXd& x_w_spr,
+                                   const Context<double>& context_w_spr) {
+  y_ = to_frame_.GetY() - from_frame_.GetY();
+}
+
+void TwoFrameTrackingData::UpdateYError() { error_y_ = y_des_ - y_; }
+
+void TwoFrameTrackingData::UpdateYdot(const VectorXd& x_w_spr,
+                                      const Context<double>& context_w_spr) {
+  ydot_ = to_frame_.GetYdot() - from_frame_.GetYdot();
+}
+
+void TwoFrameTrackingData::UpdateYdotError() {
+  error_ydot_ = ydot_des_ - ydot_;
+}
+
+void TwoFrameTrackingData::UpdateJ(const VectorXd& x_wo_spr,
+                                   const Context<double>& context_wo_spr) {
+  J_ = to_frame_.GetJ() - from_frame_.GetJ();
+}
+
+void TwoFrameTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
+                                       const Context<double>& context_wo_spr) {
+  JdotV_ = to_frame_.GetJdotTimesV() - from_frame_.GetJdotTimesV();
+}
+
+void TwoFrameTrackingData::CheckDerivedOscTrackingData() {
+  to_frame_.CheckOscTrackingData(true);
+  from_frame_.CheckOscTrackingData(true);
 }
 
 /**** OptimalRomTrackingData ****/

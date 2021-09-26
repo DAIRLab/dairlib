@@ -48,6 +48,7 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::TwoFrameTrackingData;
 
 using multibody::FixedJointEvaluator;
 
@@ -445,11 +446,24 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Swing foot tracking
-  TransTaskSpaceTrackingData swing_foot_traj(
+  TransTaskSpaceTrackingData swing_foot_data(
+      "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
+  swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  ComTrackingData com_data("com_data", gains.K_p_swing_foot,
+                           gains.K_d_swing_foot, gains.W_swing_foot,
+                           plant_w_spr, plant_w_spr);
+  com_data.AddStateToTrack(left_stance_state);
+  com_data.AddStateToTrack(right_stance_state);
+  TwoFrameTrackingData swing_foot_traj(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data, com_data);
+  /*TransTaskSpaceTrackingData swing_foot_traj(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");*/
   std::vector<double> swing_ft_ratio_breaks{0, left_support_duration / 2,
                                             left_support_duration};
   std::vector<drake::MatrixX<double>> swing_ft_ratio_samples(
@@ -474,6 +488,7 @@ int DoMain(int argc, char* argv[]) {
     // swing_foot_traj.DisableFeedforwardAccel({2});
   }
   osc->AddTrackingData(&swing_foot_traj);
+
   // Center of mass tracking
   bool use_pelvis_for_lipm_tracking = true;
 

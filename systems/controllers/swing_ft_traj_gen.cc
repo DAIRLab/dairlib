@@ -191,7 +191,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
       plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
   double approx_pelvis_yaw =
       atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
-  Eigen::MatrixXd rot(2,2);
+  Eigen::MatrixXd rot(2, 2);
   rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw),
       sin(approx_pelvis_yaw), cos(approx_pelvis_yaw);
 
@@ -294,27 +294,28 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   }*/
 
   /// Imposing guards
+  bool is_right_support = fsm_state(0) == left_right_support_fsm_states_[1];
   if (wrt_com_in_local_frame_) {
     // Shift footstep laterally away from sagittal plane
     // so that the foot placement position at steady state is right below the
     // hip joint
-    if (fsm_state(0) == left_right_support_fsm_states_[1]) {
-      (*x_fs)(1) -= footstep_offset_;
-    } else {
+    if (is_right_support) {
       (*x_fs)(1) += footstep_offset_;
+    } else {
+      (*x_fs)(1) -= footstep_offset_;
     }
 
     // Impose half-plane guard
     Vector2d stance_foot_wrt_com_in_local_frame =
         rot.transpose() * (stance_foot_pos - CoM_curr).head<2>();
-    if (fsm_state(0) == left_right_support_fsm_states_[1]) {
-      double line_pos =
-          std::min(-center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
-      (*x_fs)(1) = std::min(line_pos, (*x_fs)(1));
-    } else {
+    if (is_right_support) {
       double line_pos =
           std::max(center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
       (*x_fs)(1) = std::max(line_pos, (*x_fs)(1));
+    } else {
+      double line_pos =
+          std::min(-center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
+      (*x_fs)(1) = std::min(line_pos, (*x_fs)(1));
     }
 
     // Cap by the step length
@@ -327,7 +328,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     // so that the foot placement position at steady state is right below the
     // hip joint
     Vector2d shift_foothold_dir;
-    if (fsm_state(0) == left_right_support_fsm_states_[1]) {
+    if (is_right_support) {
       shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 1 / 2),
           sin(approx_pelvis_yaw + M_PI * 1 / 2);
     } else {
@@ -336,15 +337,27 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     }
     *x_fs += shift_foothold_dir * footstep_offset_;
 
-    *x_fs = ImposeHalfplaneGuard(
-        *x_fs, (fsm_state(0) == left_right_support_fsm_states_[0]),
-        approx_pelvis_yaw, CoM_pos_pred.head(2), stance_foot_pos.head(2),
-        center_line_offset_);
+    *x_fs = ImposeHalfplaneGuard(*x_fs, !is_right_support, approx_pelvis_yaw,
+                                 CoM_pos_pred.head(2), stance_foot_pos.head(2),
+                                 center_line_offset_);
 
     // Cap by the step length
     *x_fs = ImposeStepLengthGuard(*x_fs, CoM_pos_pred.head(2),
                                   max_com_to_footstep_dist_);
   }
+  /*if (robot_output->get_timestamp() != last_timestamp_) {
+    std::ofstream outfile;
+    outfile.open("../debug_ft_pos_after_guard.txt", std::ios_base::app);
+    outfile << robot_output->get_timestamp() << ", ";
+    for (int i = 0; i < x_fs->size(); i++) {
+      outfile << (*x_fs)(i);
+      if (i == x_fs->size() - 1) {
+        outfile << "\n";
+      } else {
+        outfile << ", ";
+      }
+    }
+  }*/
 
   /// Assignment for stance foot height
   if (wrt_com_in_local_frame_) {

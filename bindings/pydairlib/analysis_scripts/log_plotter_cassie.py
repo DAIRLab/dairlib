@@ -341,11 +341,19 @@ def PlotSwingFootData(t_osc_debug, fsm):
 
   # plt.figure("Neutral point with speed control delta")
   plt.plot(t_msg, pos_msg)
-  plt.plot(t_osc_debug, 0.01 * fsm)
+  # plt.plot(t_osc_debug, 0.01 * fsm)
   # plt.legend(["Neutral point w delta x", "Neutral point w delta y", "fsm"])
 
+  file_array = np.loadtxt("../debug_ft_pos_after_guard.txt", delimiter=',')
+  t_msg = file_array[:, 0]
+  pos_msg = file_array[:, 1:]
+
+  plt.plot(t_msg, pos_msg)
+  plt.plot(t_osc_debug, 0.01 * fsm)
+
   plt.legend(["Neutral point x", "Neutral point y", "Neutral point w delta x",
-              "Neutral point w delta y", "fsm"])
+              "Neutral point w delta y", "Neutral point after guard",
+              "Neutral point after guard", "fsm"])
 
   ###
   file_array = np.loadtxt("../debug_predicted_com_pos.txt", delimiter=',')
@@ -571,12 +579,12 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plot_osc(osc_debug, osc_traj0, 1, "accel")
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   # # # #
-  # plot_osc(osc_debug, osc_traj0, 2, "pos")
-  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
-  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  # plot_osc(osc_debug, osc_traj0, 2, "accel")
-  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  plot_osc(osc_debug, osc_traj0, 2, "pos")
+  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  plot_osc(osc_debug, osc_traj0, 2, "accel")
+  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
 
   # # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1*fsm[t_osc_debug_slice])

@@ -25,9 +25,9 @@ target_pos_offset: 0  # -0.16
 
 # Speed control gains
 k_ff_sagittal: 0
-k_fb_sagittal: 0.24
+k_fb_sagittal: 0.2
 k_ff_lateral: 0
-k_fb_lateral: 0.3
+k_fb_lateral: 0.15
 
 # Finite state machine
 ss_time: 0.30
@@ -35,7 +35,7 @@ ds_time: 0.1
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55
-footstep_offset: 0.03
+footstep_offset: 0.0
 center_line_offset: 0.03
 mid_foot_height: 0.05
 final_foot_height: 0.0
@@ -116,7 +116,7 @@ SwingFootW:
     0,    0,     4]
 SwingFootKp:
   [ 150,    0,     0,
-    0,  100,     0,
+    0,  150,     0,
     0,    0,   200]
 SwingFootKd:
   [   1,    0,     0,

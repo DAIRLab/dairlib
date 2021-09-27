@@ -107,7 +107,7 @@ PelvisHeadingKp:
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    7]
+      0,     0,    10]
 period_of_no_heading_control: 0.0
 
 #### With feedforward accel ####
@@ -120,7 +120,7 @@ SwingFootKp:
     0,  100,     0,
     0,    0,   200]
 SwingFootKd:
-  [   1,    0,     0,
+  [   2,    0,     0,
       0,    1,     0,
       0,    0,     1]
 

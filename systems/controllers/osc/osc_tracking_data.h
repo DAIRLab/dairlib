@@ -15,6 +15,27 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
+class OscViewFrame {
+ public:
+  OscViewFrame(const drake::multibody::Body<double>& body) : body_(body) {}
+  virtual Eigen::Matrix3d CalcRotationalMatrix(
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::systems::Context<double>& context_w_spr) const = 0;
+
+ protected:
+  const drake::multibody::Body<double>& body_;
+};
+
+class WorldYawOscViewFrame : public OscViewFrame {
+ public:
+  WorldYawOscViewFrame(const drake::multibody::Body<double>& body)
+      : OscViewFrame(body) {}
+
+  Eigen::Matrix3d CalcRotationalMatrix(
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::systems::Context<double>& context_w_spr) const override;
+};
+
 /// OscTrackingData is a virtual class
 
 /// Input of the constructor:
@@ -186,6 +207,14 @@ class OscTrackingData {
   void DisableFeedforwardAccel(const std::set<int>& indices) {
     idx_zero_feedforward_accel_ = indices;
   };
+
+  // OscViewFrame
+  bool with_view_frame_ = false;
+  const OscViewFrame* view_frame_;
+  void SetViewFrame(const OscViewFrame& view_frame) {
+    view_frame_ = &view_frame;
+    with_view_frame_ = true;
+  }
 
  protected:
   int GetStateIdx() const { return state_idx_; };

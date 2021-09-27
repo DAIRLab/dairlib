@@ -49,6 +49,7 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::TwoFrameTrackingData;
+using systems::controllers::WorldYawOscViewFrame;
 
 using multibody::FixedJointEvaluator;
 
@@ -487,6 +488,8 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_spring_model) {
     // swing_foot_traj.DisableFeedforwardAccel({2});
   }
+  WorldYawOscViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
+  swing_foot_traj.SetViewFrame(pelvis_view_frame);
   osc->AddTrackingData(&swing_foot_traj);
 
   // Center of mass tracking

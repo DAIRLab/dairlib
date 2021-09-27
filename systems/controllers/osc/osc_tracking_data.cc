@@ -65,8 +65,8 @@ bool OscTrackingData::Update(
   if (track_at_current_state_) {
     if (pre_update_) {
       PreUpdate(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj, t,
-                t_since_last_state_switch, finite_state_machine_state,
-                v_proj, true);
+                t_since_last_state_switch, finite_state_machine_state, v_proj,
+                true);
     }
 
     // 1. Update feedback output (Calling virtual methods)
@@ -78,13 +78,25 @@ bool OscTrackingData::Update(
       UpdateYdot(x_w_spr, context_w_spr);
     }
 
+    UpdateJ(x_wo_spr, context_wo_spr);
+    UpdateJdotV(x_wo_spr, context_wo_spr);
+
+    // Rotate for view frame
+    if (with_view_frame_) {
+      Eigen::Matrix3d view_frame_rot_T =
+          view_frame_->CalcRotationalMatrix(plant_w_spr_, context_w_spr)
+              .transpose();
+
+      y_ = view_frame_rot_T * y_;
+      ydot_ = view_frame_rot_T * ydot_;
+      J_ = view_frame_rot_T * J_;
+      JdotV_ = view_frame_rot_T * JdotV_;
+    }
+
     // Low-pass filtering y_ and ydot_
     if (tau_ > 0) {
       LowPassFiltering(t);
     }
-
-    UpdateJ(x_wo_spr, context_wo_spr);
-    UpdateJdotV(x_wo_spr, context_wo_spr);
 
     if (no_desired_traj) {
       return track_at_current_state_;
@@ -777,6 +789,20 @@ void OptimalRomTrackingData::CheckDerivedOscTrackingData() {
   } else {
     DRAKE_DEMAND(state_.size() == rom_.size());
   }
+}
+
+/**** WorldYawOscViewFrame ****/
+Eigen::Matrix3d WorldYawOscViewFrame::CalcRotationalMatrix(
+    const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+    const drake::systems::Context<double>& context_w_spr) const {
+  // Get approximated heading angle of pelvis and rotational matrix
+  Vector3d body_x_axis =
+      plant_w_spr.EvalBodyPoseInWorld(context_w_spr, body_).rotation().col(0);
+  double approx_body_yaw = atan2(body_x_axis(1), body_x_axis(0));
+  Eigen::MatrixXd rot(3, 3);
+  rot << cos(approx_body_yaw), -sin(approx_body_yaw), 0, sin(approx_body_yaw),
+      cos(approx_body_yaw), 0, 0, 0, 1;
+  return rot;
 }
 
 }  // namespace dairlib::systems::controllers

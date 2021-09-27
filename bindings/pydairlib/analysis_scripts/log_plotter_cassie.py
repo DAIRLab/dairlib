@@ -869,7 +869,11 @@ def PlotCenterOfMassAceel(x, t_x, plant, t_osc_debug, fsm):
   ddcom = np.diff(comdot, axis=0)
   dt = np.diff(t_x)
   for i in range(len(dt)):
-    ddcom[i] /= dt[i]
+    if dt[i] == 0:
+      ddcom[i] = 0
+      print("set ddcom[%d] to 0" % i)
+    else:
+      ddcom[i] /= dt[i]
 
   ddcom_filtered = ApplyLowPassFilter(ddcom, t_x[1:], 20)
 
@@ -905,7 +909,11 @@ def PlotCenterOfMassAceel(x, t_x, plant, t_osc_debug, fsm):
   com_wrt_stance_foot = com - stance_foot
 
   for i in range(t_x.size):
-    comddot_lipm[i, :2] = 9.81 * com_wrt_stance_foot[i, :2] / com_wrt_stance_foot[i, 2]
+    if com_wrt_stance_foot[i, 2] == 0:
+      comddot_lipm[i, :2] = 0
+      print("set comddot_lipm[%d, :2] to 0" % i)
+    else:
+      comddot_lipm[i, :2] = 9.81 * com_wrt_stance_foot[i, :2] / com_wrt_stance_foot[i, 2]
 
   # figname = "comddot traj"
   # plt.figure(figname)

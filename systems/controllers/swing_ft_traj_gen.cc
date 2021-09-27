@@ -250,7 +250,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   bool is_right_support = fsm_state(0) == left_right_support_fsm_states_[1];
 
   // Compute footstep location (use LIPM to derive neutral point)
-  double omega = sqrt(9.81 / CoM_pos_pred(2));
+  double omega = sqrt(9.81 / (CoM_pos_pred(2) - stance_foot_pos(2)));
   double T = duration_map_.at(int(fsm_state(0))) + double_support_duration_;
   if (wrt_com_in_local_frame_) {
     // v_i is CoM_vel_pred_local_start_of_next_stride
@@ -376,8 +376,10 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
 
   /// Assignment for stance foot height
   if (wrt_com_in_local_frame_) {
+    // stance foot height wrt COM
     *stance_foot_height = stance_foot_pos(2) - CoM_curr(2);
   } else {
+    // absolute stance foot height
     *stance_foot_height = stance_foot_pos(2);
   }
 

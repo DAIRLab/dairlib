@@ -8,25 +8,31 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/multiplexer.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 
 
 #include "systems/robot_lcm_systems.h"
 #include "common/find_resource.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "systems/controllers/linear_controller.h"
+#include "examples/cartpole/lqr.h"
 
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::controllers::LinearQuadraticRegulator;
+using drake::systems::controllers::LinearQuadraticRegulatorResult;
 using drake::systems::DiagramBuilder;
 using drake::systems::Diagram;
 using drake::systems::Simulator;
 using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::ConstantVectorSource;
 
 
 using dairlib::systems::LcmDrivenLoop;
+using dairlib::systems::LQR;
 using dairlib::FindResourceOrThrow;
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::RobotCommandSender;
@@ -49,19 +55,28 @@ int controller_main(int argc, char* argv[]) {
           "examples/cartpole/urdf/cartpole.urdf"));
   plant.Finalize();
   auto plant_context  = plant.CreateDefaultContext();
-  plant.get_actuation_input_port().FixValue(plant_context.get(),
-      VectorXd::Zero(1));
 
-  MatrixXd Q = 10 * MatrixXd::Identity(4,4);
-  MatrixXd R = MatrixXd::Identity(1,1);
+  Eigen::MatrixXd Q = 10 * MatrixXd::Identity(4,4);
+  Eigen::MatrixXd R = MatrixXd::Identity(1,1);
+  Eigen::MatrixXd A = MatrixXd::Zero(4, 4);
+  Eigen::MatrixXd B = MatrixXd::Zero(4, 1);
 
+  A.block(0, 2, 2, 2) = MatrixXd::Identity(2, 2);
+  A(2, 1) = 3.51;
+  A(3, 1) = 22.2;
+  B(2, 0) = 1.02;
+  B(3, 0) = 1.7;
 
-  auto lqr = LinearQuadraticRegulator(
-      plant, *plant_context, Q, R, MatrixXd::Zero(0,0),
-      plant.get_actuation_input_port().get_index());
-  lqr->set_name("lqr");
-  builder.AddSystem(std::move(lqr));
-
+  LinearQuadraticRegulatorResult lqr_gains =
+      LinearQuadraticRegulator(A, B, Q, R);
+  MatrixXd K = lqr_gains.K;
+  std::cout << K << std::endl;
+  auto lqr = builder.AddSystem<LQR>(
+      plant.num_positions(),
+      plant.num_velocities(),
+      plant.num_actuators(),
+      VectorXd::Zero(4),
+      K);
 
   // LCM
   drake::lcm::DrakeLcm lcm;
@@ -73,27 +88,9 @@ int controller_main(int argc, char* argv[]) {
   auto input_sender = builder.AddSystem<RobotCommandSender>(plant);
 
 
-  // Wire diagram
-  auto state_dmux = builder.AddSystem<SubvectorPassThrough>(
-      state_receiver->get_output_port().size(), 0,
-      plant.num_positions() + plant.num_velocities());
-
-  auto time_dmux = builder.AddSystem<SubvectorPassThrough>(
-      state_receiver->get_output_port().size(),
-      state_receiver->get_output_port().size() -1, 1);
-  std::vector sizes = {1, 1};
-
-  /// TODO: new input mux which creates timestamped vector
-  auto input_mux = builder.AddSystem<drake::systems::Multiplexer>(sizes);
-
-  builder.Connect(*state_receiver, *state_dmux);
-  builder.Connect(*state_receiver, *time_dmux);
-  builder.Connect(*state_dmux, *builder.GetSystems().at(0));
-  builder.Connect(builder.GetSystems().at(0)->get_output_port(),
-      input_mux->get_input_port(0));
-  builder.Connect(time_dmux->get_output_port(),
-      input_mux->get_input_port(1));
-  builder.Connect(*input_mux, *input_sender);
+  builder.Connect(state_receiver->get_output_port(),
+      lqr->get_input_port_output());
+  builder.Connect(*lqr, *input_sender);
   builder.Connect(*input_sender, *input_publisher);
 
   // Build diagram
@@ -107,6 +104,8 @@ int controller_main(int argc, char* argv[]) {
       FLAGS_channel_x,
       true);
   loop.Simulate();
+
+  return 0;
 }
 }
 

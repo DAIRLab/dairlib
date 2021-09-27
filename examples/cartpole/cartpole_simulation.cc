@@ -3,6 +3,7 @@
 // misc includes
 #include <gflags/gflags.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
+#include <drake/systems/lcm/lcm_interface_system.h>
 
 // dairlib includes
 #include "common/find_resource.h"
@@ -20,6 +21,7 @@
 #include "drake/systems/framework/context.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/geometry/drake_visualizer.h"
@@ -69,19 +71,19 @@ int main(int argc, char* argv[]) {
   DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
 
   // setup lcm communications
-  drake::lcm::DrakeLcm lcm;
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto input_subscriber = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm));
+          FLAGS_channel_u, lcm));
   auto input_reciever = builder.AddSystem<RobotInputReceiver>(plant);
   auto input_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      input_reciever->get_output_port().size(), 0,
+      input_reciever->get_output_port(0).size(), 0,
       plant.get_actuation_input_port().size());
 
   auto state_sender = builder.AddSystem<RobotOutputSender>(plant, true);
   auto state_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          FLAGS_channel_x, &lcm));
+          FLAGS_channel_x, lcm));
 
   // wire up the diagram
   builder.Connect(*input_subscriber, *input_reciever);
@@ -92,6 +94,7 @@ int main(int argc, char* argv[]) {
       state_sender->get_input_port_effort());
   builder.Connect(plant.get_state_output_port(),
       state_sender->get_input_port_state());
+
   builder.Connect(*state_sender, *state_publisher);
   auto diagram = builder.Build();
 
@@ -106,10 +109,12 @@ int main(int argc, char* argv[]) {
   const RevoluteJoint<double>& pin =
       plant.GetJointByName<RevoluteJoint>("theta");
   slider.set_translation(&plant_context, 0.1);
-  pin.set_angle(&plant_context, 0.4);
+  pin.set_angle(&plant_context, 0.1);
 
   // Simulate
   Simulator<double> simulator(*diagram, std::move(diagram_context));
+  simulator.set_publish_every_time_step(false);
+  simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_realtime_rate);
   simulator.Initialize();
   simulator.AdvanceTo(10.0);

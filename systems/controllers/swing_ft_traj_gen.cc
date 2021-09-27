@@ -257,7 +257,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     Vector2d v_i = rot.transpose() * CoM_vel_pred.head(2);
     // v_f is CoM_vel_pred_local_end_of_next_stride
     Vector2d v_f;
-    double desired_y_vel_end_of_stride = 0.3;
+    double desired_y_vel_end_of_stride = 0.25;
     if (is_right_support) {
       v_f << v_i(0), -desired_y_vel_end_of_stride;
     } else {

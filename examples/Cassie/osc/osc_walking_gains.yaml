@@ -2,8 +2,8 @@ rows: 3
 cols: 3
 
 # High level command gains (with radio)
-vel_scale_rot: -1.5
-vel_scale_trans_sagital: 0.1
+vel_scale_rot: -2.0
+vel_scale_trans_sagital: 0.25
 vel_scale_trans_lateral: -0.1
 
 # High level command gains (without radio)
@@ -27,7 +27,7 @@ target_pos_offset: 0  # -0.16
 k_ff_sagittal: 0
 k_fb_sagittal: 0.2
 k_ff_lateral: 0
-k_fb_lateral: 0.15
+k_fb_lateral: 0.1
 
 # Finite state machine
 ss_time: 0.30

@@ -25,10 +25,10 @@ void CartpoleOutputInterface::SetupOutputInterface() {
 
 void CartpoleOutputInterface::ConfigureEpos() {
   unsigned int error_code = 0;
-  KeyHandle_ = epos::OpenDevice(&error_code);
+  MotorHandle_ = epos::OpenDevice(&error_code);
   DRAKE_ASSERT(error_code == 0);
-  epos::HomeDevice(KeyHandle_);
-  epos::EnableDevice(KeyHandle_);
+  epos::HomeDevice(MotorHandle_);
+  epos::EnableDevice(MotorHandle_);
 }
 
 void CartpoleOutputInterface::ConfigureLabjack() {
@@ -39,10 +39,11 @@ void CartpoleOutputInterface::Output(
     const Context<double> &context, OutputVector<double> *output) const {
 
   // Maxon API calls
-  double cart_pos = epos::GetCartPosition(KeyHandle_);
-  double effort = epos::GetForceFromCurrent(KeyHandle_);
+  double cart_pos = epos::GetCartPosition(MotorHandle_);
+  double effort = epos::GetForceFromCurrent(MotorHandle_);
 
   // Labjack API calls
+  double pole_angle = lab
 }
 
 

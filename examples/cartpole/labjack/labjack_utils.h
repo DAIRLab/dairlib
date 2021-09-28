@@ -12,7 +12,7 @@ long ConfigureLabjackEncoder(LABJACK_HANDLE handle);
 
 long ResetEncoderAngle(LABJACK_HANDLE handle);
 
-double GetAncoderAngle(LABJACK_HANDLE handle, long* error_code);
+double GetEncoderAngle(LABJACK_HANDLE handle, long* error_code);
 
 
 

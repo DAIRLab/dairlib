@@ -2,6 +2,7 @@
 
 #include "epos/Definitions.h"
 #include "epos/epos_util.h"
+#include "labjack/labjack_utils.h"
 
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/context.h"
@@ -32,7 +33,9 @@ class CartpoleOutputInterface : public drake::systems::LeafSystem<double> {
   void ConfigureLabjack();
   void Output(const drake::systems::Context<double>& context,
               OutputVector<double>* output) const;
-  MAXON_HANDLE KeyHandle_= nullptr;
+
+  MAXON_HANDLE MotorHandle_ = nullptr;
+  LABJACK_HANDLE EncoderHandle_ = nullptr;
   const MultibodyPlant<double>& plant_;
 
   int prev_timestep_idx_;

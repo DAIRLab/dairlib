@@ -16,3 +16,9 @@ cc_library(
     ],
     deps = [],
 )
+
+cc_binary(
+    name = "labjack_test",
+    srcs = ["labjack_test.cc"],
+    deps = [":labjack"],
+)

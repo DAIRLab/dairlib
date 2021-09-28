@@ -3,8 +3,16 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "liblabjack",
-    srcs = [],
-    hdrs = [],
+    name = "labjack",
+    srcs = [
+        "labjack_utils.cc",
+        "liblabjackusb.so.2.6.0",
+        "u6.c",
+    ],
+    hdrs = [
+        "labjack_utils.h",
+        "labjackusb.h",
+        "u6.h",
+    ],
     deps = [],
 )

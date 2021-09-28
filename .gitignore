@@ -11,4 +11,5 @@ attic/multibody/solver_log/
 *.csv
 /examples/Cassie/saved_trajectories/
 /examples/cartpole/epos/libEposCmd.so.6.7.1.0
+/examples/cartpole/labjack/liblabjackusb.so.2.6.0
 .vscode

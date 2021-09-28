@@ -109,6 +109,9 @@ void StandingComTraj::CalcDesiredTraj(
                            feet_center_pos(1) + y_offset,
                            feet_center_pos(2) + target_height);
 
+  desired_com_pos = command_filt_.filter(
+    robot_output->get_timestamp(), desired_com_pos);
+  
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(

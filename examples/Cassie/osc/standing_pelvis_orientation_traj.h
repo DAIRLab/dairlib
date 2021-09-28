@@ -4,6 +4,7 @@
 
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
+#include "systems/filters/internal_low_pass_filter.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -34,6 +35,8 @@ class StandingPelvisOrientationTraj
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
+
+  mutable InternalLowPassFilter command_filt_ = InternalLowPassFilter(1.5, 3);
 
   // A list of pairs of contact body frame and contact point
   const std::vector<

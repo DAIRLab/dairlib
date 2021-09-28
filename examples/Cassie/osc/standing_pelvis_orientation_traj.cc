@@ -84,6 +84,8 @@ void StandingPelvisOrientationTraj::CalcTraj(
           -M_PI, M_PI) +
           cassie_out->pelvis.radio.channel[3];
 
+  rpy = command_filt_.filter(robot_output->get_timestamp(), rpy);
+
   auto rot_mat =
       drake::math::RotationMatrix<double>(drake::math::RollPitchYaw(rpy));
 

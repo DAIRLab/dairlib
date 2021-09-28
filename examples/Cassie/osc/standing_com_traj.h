@@ -3,6 +3,7 @@
 #include "dairlib/lcmt_target_standing_height.hpp"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
+#include "systems/filters/internal_low_pass_filter.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
@@ -54,6 +55,8 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
+
+  mutable InternalLowPassFilter command_filt_ = InternalLowPassFilter(1.0, 3);
 
   int state_port_;
   int target_height_port_;

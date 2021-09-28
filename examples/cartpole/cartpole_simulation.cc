@@ -1,4 +1,4 @@
-/// Simulation of a cartpole as a drake demo for tutorial purposes
+ /// Simulation of a cartpole as a drake demo for tutorial purposes
 
 // misc includes
 #include <gflags/gflags.h>

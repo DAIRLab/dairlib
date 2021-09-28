@@ -49,8 +49,8 @@ drake::systems::EventStatus CartpoleInputInterface::SendEposCommand(
     force = 0;
     std::cout << "Controller delay too long - shutting down" << std::endl;
   }
-
   epos::SetCurrentByForce(KeyHandle_, force);
+  return drake::systems::EventStatus::Succeeded();
 }
 
 }

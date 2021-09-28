@@ -32,7 +32,7 @@ void CartpoleOutputInterface::ConfigureEpos() {
 }
 
 void CartpoleOutputInterface::ConfigureLabjack() {
-
+  EncoderHandle_ = labjack::OpenLabjack();
 }
 
 void CartpoleOutputInterface::Output(
@@ -43,7 +43,8 @@ void CartpoleOutputInterface::Output(
   double effort = epos::GetForceFromCurrent(MotorHandle_);
 
   // Labjack API calls
-  double pole_angle = lab
+  long error_code = 0;
+  double pole_angle = labjack::GetEncoderAngle(EncoderHandle_, &error_code);
 }
 
 

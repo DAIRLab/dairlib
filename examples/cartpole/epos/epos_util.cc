@@ -95,6 +95,11 @@ int make_desired_current(double force) {
   }
 }
 
+double make_current_force(int current) {
+  double force = - (double) current * 0.0075;
+  return force;
+}
+
 unsigned int HomeDevice(MAXON_HANDLE handle) {
   unsigned int activate_err = 0;
   VCS_SetOperationMode(handle, ep_NodeId, OMD_HOMING_MODE, &activate_err);
@@ -116,4 +121,19 @@ unsigned int SetCurrentByForce(MAXON_HANDLE handle, double force) {
   VCS_SetCurrentMustEx(handle, ep_NodeId, current, &activate_err);
   return activate_err;
 }
+
+double GetForceFromCurrent(MAXON_HANDLE handle) {
+  unsigned int activate_err = 0;
+  int measured_current = 0;
+  VCS_GetCurrentIsEx(handle, ep_NodeId, &measured_current, &activate_err);
+  return make_current_force(measured_current);
+}
+
+double GetCartPosition(MAXON_HANDLE handle) {
+  unsigned int activate_err = 0;
+  int enc_pos = 0;
+  VCS_GetPositionIs(handle, ep_NodeId, &enc_pos, &activate_err);
+  return map_motor_to_position(enc_pos);
+}
+
 };

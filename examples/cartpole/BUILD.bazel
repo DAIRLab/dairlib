@@ -41,7 +41,7 @@ cc_library(
 
 cc_library(
     name = "cartpole_input_interface",
-    srcs = ["cartpole_input_interface.cpp"],
+    srcs = ["cartpole_input_interface.cc"],
     hdrs = ["cartpole_input_interface.h"],
     deps = [
         "//examples/cartpole/epos:epos_cmd",
@@ -56,6 +56,7 @@ cc_library(
     hdrs = ["cartpole_output_interface.h"],
     deps = [
         "//examples/cartpole/epos:epos_cmd",
+        "//systems/filters:internal_low_pass_filter",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

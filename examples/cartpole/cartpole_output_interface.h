@@ -9,11 +9,13 @@
 
 #include "systems/framework/timestamped_vector.h"
 #include "systems/framework/output_vector.h"
+#include "systems/filters/internal_low_pass_filter.h"
 
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 
 using dairlib::systems::OutputVector;
+using dairlib::InternalLowPassFilter;
 
 using std::string;
 
@@ -36,5 +38,7 @@ class CartpoleOutputInterface : public drake::systems::LeafSystem<double> {
   int prev_timestep_idx_;
   int prev_state_idx_;
 
+  mutable InternalLowPassFilter state_filt_ =
+      InternalLowPassFilter(0.025, 4);
 };
 }

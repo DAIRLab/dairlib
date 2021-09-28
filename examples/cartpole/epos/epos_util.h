@@ -30,10 +30,13 @@ unsigned int CloseDevice(MAXON_HANDLE handle);
 unsigned int EnableDevice(MAXON_HANDLE handle);
 unsigned int SetCurrentControlMode(MAXON_HANDLE handle);
 unsigned int SetCurrentByForce(MAXON_HANDLE handle, double force);
+double GetForceFromCurrent(MAXON_HANDLE handle);
+double GetCartPosition(MAXON_HANDLE handle);
 
 
 double map_motor_to_position(int enc_pos);
 int make_desired_current(double force);
+double make_current_force(int current);
 
 unsigned int HomeDevice(MAXON_HANDLE handle);
 

@@ -38,3 +38,14 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "cartpole_input_interface",
+    srcs = ["cartpole_input_interface.cpp"],
+    hdrs = ["cartpole_input_interface.h"],
+    deps = [
+        "//examples/cartpole/epos:epos_cmd",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

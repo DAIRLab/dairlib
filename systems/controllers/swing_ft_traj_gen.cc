@@ -220,6 +220,9 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   Eigen::MatrixXd rot(2, 2);
   rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw),
       sin(approx_pelvis_yaw), cos(approx_pelvis_yaw);
+  /*cout << "========\n";
+  cout << approx_pelvis_yaw << endl;
+  cout << rot << endl;*/
 
   // Get CoM_pos
   Vector3d CoM_curr = plant_.CalcCenterOfMassPositionInWorld(*context_);
@@ -280,7 +283,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   double T = duration_map_.at(int(fsm_state(0))) + double_support_duration_;
   if (wrt_com_in_local_frame_) {
     // v_i is CoM_vel_pred_local_start_of_next_stride
-    Vector2d v_i = rot.transpose() * CoM_vel_pred.head(2);
+    Vector2d v_i = rot.transpose() * CoM_vel_pred.head<2>();
     // v_f is CoM_vel_pred_local_end_of_next_stride
     Vector2d v_f;
     double desired_y_vel_end_of_stride = 0.25;
@@ -297,11 +300,11 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     *x_fs = (-com_wrt_foot);
   } else {
     Vector2d com_wrt_foot =
-        CoM_vel_pred.head(2) *
+        CoM_vel_pred.head<2>() *
         ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
          (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
         omega;
-    *x_fs = CoM_pos_pred.head(2) - com_wrt_foot;
+    *x_fs = CoM_pos_pred.head<2>() - com_wrt_foot;
   }
   /*if (robot_output->get_timestamp() != last_timestamp_) {
     std::ofstream outfile;
@@ -380,11 +383,11 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     *x_fs += shift_foothold_dir * footstep_offset_;
 
     *x_fs = ImposeHalfplaneGuard(*x_fs, !is_right_support, approx_pelvis_yaw,
-                                 CoM_pos_pred.head(2), stance_foot_pos.head(2),
+                                 CoM_pos_pred.head<2>(), stance_foot_pos.head<2>(),
                                  center_line_offset_);
 
     // Cap by the step length
-    *x_fs = ImposeStepLengthGuard(*x_fs, CoM_pos_pred.head(2),
+    *x_fs = ImposeStepLengthGuard(*x_fs, CoM_pos_pred.head<2>(),
                                   max_com_to_footstep_dist_);
   }
   /*if (robot_output->get_timestamp() != last_timestamp_) {

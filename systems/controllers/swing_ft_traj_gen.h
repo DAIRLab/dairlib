@@ -56,13 +56,11 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       std::vector<std::pair<const Eigen::Vector3d,
                             const drake::multibody::Frame<double>&>>
           left_right_foot,
-      std::string floating_base_body_name,
-      double double_support_duration, double mid_foot_height,
-      double desired_final_foot_height,
+      std::string floating_base_body_name, double double_support_duration,
+      double mid_foot_height, double desired_final_foot_height,
       double desired_final_vertical_foot_velocity,
       double max_com_to_x_footstep_dist, double footstep_offset,
-      double center_line_offset,
-      bool wrt_com_in_local_frame = false);
+      double center_line_offset, bool wrt_com_in_local_frame = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -139,12 +137,21 @@ class SwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   // COM vel filtering
   // TODO(yminchen): extract this filter out of WalkingSpeedControl and
   //  SwingFootTrajGen
-  double cutoff_freq_ = 200; // in Hz.
+  double cutoff_freq_ = 200;  // in Hz.
   mutable Eigen::Vector3d filtered_com_vel_ = Eigen::Vector3d::Zero();
   mutable double last_timestamp_ = 0;
 
   // Flags
   bool wrt_com_in_local_frame_;
+
+  // Testing
+  mutable double heuristic_ratio_ = 1;
+  double ratio_lb_ = 0;
+  double foot_spread_lb_ = 0.2;
+  double foot_spread_ub_ = 0.5;
+  std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
+      left_right_foot_;
 };
 
 }  // namespace systems

@@ -58,7 +58,8 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
       footstep_offset_(footstep_offset),
       center_line_offset_(center_line_offset),
       double_support_duration_(double_support_duration),
-      wrt_com_in_local_frame_(wrt_com_in_local_frame) {
+      wrt_com_in_local_frame_(wrt_com_in_local_frame),
+      left_right_foot_(left_right_foot) {
   this->set_name("swing_ft_traj");
 
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
@@ -163,6 +164,30 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
       swing_foot_pos_at_liftoff =
           rot.transpose() * (swing_foot_pos_at_liftoff -
                              plant_.CalcCenterOfMassPositionInWorld(*context_));
+
+      // Testing
+      // Heuristic ratio for LIPM dyanmics (because the centroidal angular
+      // momentum is not constant
+      Vector3d toe_left_origin_position;
+      plant_.CalcPointsPositions(*context_, left_right_foot_.at(0).second,
+                                 Vector3d::Zero(), pelvis_.body_frame(),
+                                 &toe_left_origin_position);
+      Vector3d toe_right_origin_position;
+      plant_.CalcPointsPositions(*context_, left_right_foot_.at(1).second,
+                                 Vector3d::Zero(), pelvis_.body_frame(),
+                                 &toe_right_origin_position);
+      double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
+      // <0.2 meter: ratio 1
+      // >0.5 meter: ratio 0.8  //0.65
+      // Linear interpolate in between
+      heuristic_ratio_ = 1;
+      if (dist > foot_spread_ub_) {
+        heuristic_ratio_ = ratio_lb_;
+      } else if (dist > foot_spread_lb_) {
+        heuristic_ratio_ = 1 + (ratio_lb_ - 1) /
+                                   (foot_spread_ub_ - foot_spread_lb_) *
+                                   (dist - foot_spread_lb_);
+      }
     }
   }
 
@@ -259,6 +284,7 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     // v_f is CoM_vel_pred_local_end_of_next_stride
     Vector2d v_f;
     double desired_y_vel_end_of_stride = 0.25;
+    //    double desired_y_vel_end_of_stride = 0.25 * heuristic_ratio_;
     if (is_right_support) {
       v_f << v_i(0), -desired_y_vel_end_of_stride;
     } else {

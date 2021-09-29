@@ -19,6 +19,7 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
+#include "multibody/pinocchio_plant.h"
 #include "systems/controllers/osc/osc_utils.h"
 #include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -260,7 +261,9 @@ int DoMain(int argc, char* argv[]) {
                      FLAGS_spring_model, false /*loop closure*/);
   plant_feedback.Finalize();
   // Build fix-spring Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_control(0.0);
+  dairlib::multibody::PinocchioPlant<double> plant_control(
+      0.0, "examples/Cassie/urdf/cassie_fixed_springs.urdf");
+  //  drake::multibody::MultibodyPlant<double> plant_control(0.0);
   addCassieMultibody(&plant_control, nullptr, true,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false);

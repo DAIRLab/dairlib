@@ -167,6 +167,7 @@ cc_binary(
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:multipose_visualizer",
+        "//multibody:pinocchio_plant",
         "//multibody:utils",
         "//systems:dairlib_signal_lcm_systems",
         "//systems:robot_lcm_systems",

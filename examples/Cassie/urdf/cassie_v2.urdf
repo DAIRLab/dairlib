@@ -469,24 +469,28 @@
   <link name="foot_crank_mass_left">
     <inertial>
       <mass value="0.129"/>
+      <inertia ixx="0" iyy="0" izz="0" ixy="0" iyz="0" ixz="0"/>
     </inertial>
   </link>
 
   <link name="foot_crank_mass_right">
     <inertial>
       <mass value="0.129"/>
+      <inertia ixx="0" iyy="0" izz="0" ixy="0" iyz="0" ixz="0"/>
     </inertial>
   </link>
 
   <link name="plantar_rod_mass_left">
     <inertial>
       <mass value="0.1186"/>
+      <inertia ixx="0" iyy="0" izz="0" ixy="0" iyz="0" ixz="0"/>
     </inertial>
   </link>
 
   <link name="plantar_rod_mass_right">
     <inertial>
       <mass value="0.1186"/>
+      <inertia ixx="0" iyy="0" izz="0" ixy="0" iyz="0" ixz="0"/>
     </inertial>
   </link>
 
@@ -614,7 +618,7 @@
     <parent link="pelvis" />
     <child link="yaw_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-0.262" upper="0.393" effort="300"/>
+    <limit lower="-0.262" upper="0.393" effort="300" velocity="1e3"/>
     <dynamics damping="1" /> 
   </joint>
 
@@ -623,7 +627,7 @@
     <parent link="pelvis" />
     <child link="yaw_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-0.393" upper="0.262" effort="300"/>
+    <limit lower="-0.393" upper="0.262" effort="300" velocity="1e3"/>
     <dynamics damping="1" /> 
   </joint> 
 
@@ -633,7 +637,7 @@
     <parent link="yaw_left" />
     <child link="hip_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-0.393" upper="0.393" effort="300"/>
+    <limit lower="-0.393" upper="0.393" effort="300" velocity="1e3"/>
     <dynamics damping="1" /> 
   </joint>
 
@@ -642,7 +646,7 @@
     <parent link="yaw_right" />
     <child link="hip_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-0.393" upper="0.393" effort="300"/>
+    <limit lower="-0.393" upper="0.393" effort="300" velocity="1e3"/>
     <dynamics damping="1" /> 
   </joint>
 
@@ -652,7 +656,7 @@
     <parent link="hip_left" />
     <child link="thigh_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-0.873" upper="1.396" effort="300"/>
+    <limit lower="-0.873" upper="1.396" effort="300" velocity="1e3"/>
     <dynamics damping="1" /> 
   </joint>
 
@@ -661,7 +665,7 @@
     <parent link="hip_right" />
     <child link="thigh_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-0.873" upper="1.396" effort="300"/>
+    <limit lower="-0.873" upper="1.396" effort="300" velocity="1e3"/>
     <dynamics damping="1" /> 
   </joint>
 
@@ -670,7 +674,7 @@
     <parent link="thigh_left" />
     <child link="knee_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-2.862" upper="-0.646" effort="300"/>
+    <limit lower="-2.862" upper="-0.646" effort="300" velocity="1e3"/>
     <dynamics damping="1" />
   </joint>
 
@@ -679,7 +683,7 @@
     <parent link="thigh_right" />
     <child link="knee_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-2.862" upper="-0.646" effort="300"/>
+    <limit lower="-2.862" upper="-0.646" effort="300" velocity="1e3"/>
     <dynamics damping="1" />
   </joint>
 
@@ -713,7 +717,7 @@
     <parent link="knee_left" />
     <child link="shin_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-.1" upper="0.075"/>
+    <limit lower="-.1" upper="0.075" velocity="1e3" effort="0"/>
     <dynamics damping=".1" />
   </joint>
 
@@ -722,7 +726,7 @@
     <parent link="knee_right" />
     <child link="shin_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-.1" upper="0.075"/>
+    <limit lower="-.1" upper="0.075" velocity="1e3" effort="0"/>
     <dynamics damping=".1" />
   </joint>
 
@@ -745,7 +749,7 @@
     <parent link="shin_left" />
     <child link="tarsus_left" />
     <axis xyz="0 0 1" />
-    <limit lower=".8" upper="3"/>
+    <limit lower=".8" upper="3" velocity="1e3" effort="0"/>
     <dynamics damping="0.1" /> 
   </joint>
 
@@ -754,7 +758,7 @@
     <parent link="shin_right" />
     <child link="tarsus_right" />
     <axis xyz="0 0 1" />
-    <limit lower=".8" upper="3"/>
+    <limit lower=".8" upper="3" velocity="1e3" effort="0"/>
     <dynamics damping="0.1" />
   </joint>
 
@@ -763,7 +767,7 @@
     <origin xyz="-.01269 -.03059 .00092" rpy="0.0780 0.00549 2.7192" />
     <parent link="tarsus_left" />
     <child link="heel_spring_left" />
-    <limit lower="-.1" upper="0.1"/>
+    <limit lower="-.1" upper="0.1" velocity="1e3" effort="0"/>
     <axis xyz="0 0 1" />
     <dynamics damping="10" /> <!-- made up value -->
   </joint> 
@@ -773,7 +777,7 @@
     <origin xyz="-.01269 -.03059 -.00092" rpy="-0.0780 -0.00549 2.7192" />
     <parent link="tarsus_right" />
     <child link="heel_spring_right" />
-    <limit lower="-.1" upper="0.1"/>
+    <limit lower="-.1" upper="0.1" velocity="1e3" effort="0"/>
     <axis xyz="0 0 1" />
     <dynamics damping="10" /> <!-- made up value -->
   </joint> 
@@ -784,7 +788,7 @@
     <parent link="tarsus_left" />
     <child link="toe_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-2.8" upper="0" effort="300"/>
+    <limit lower="-2.8" upper="0" effort="300" velocity="1e3"/>
     <dynamics damping="1" /> 
   </joint>
 
@@ -793,7 +797,7 @@
     <parent link="tarsus_right" />
     <child link="toe_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-2.8" upper="0" effort="300"/>
+    <limit lower="-2.8" upper="0" effort="300" velocity="1e3"/>
     <dynamics damping="1" /> 
   </joint>
 

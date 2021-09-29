@@ -65,6 +65,23 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "pinocchio_plant",
+    srcs = [
+        "pinocchio_plant.cc",
+    ],
+    hdrs = [
+        "pinocchio_plant.h",
+    ],
+    testonly = 1,
+    deps = [
+        ":utils",
+        "@drake//common/test_utilities:eigen_matrix_compare",
+        "@drake//:drake_shared_library",
+        "@pinocchio"
+    ],
+)
+
 cc_binary(
     name = "multipose_visualizer_test",
     srcs = ["test/multipose_visualizer_test.cc"],
@@ -91,3 +108,18 @@ cc_library(
     name = "ball_urdf",
     data = glob(["multibody/ball.urdf"]),
 )
+
+cc_test(
+    name = "pinocchio_plant_test",
+    size = "small",
+    srcs = ["test/pinocchio_plant_test.cc"],
+    deps = [
+        ":pinocchio_plant",
+        ":utils",
+        "//common",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//common/test_utilities",
+        "@gtest//:main",
+    ],
+)
+

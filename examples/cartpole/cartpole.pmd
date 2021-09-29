@@ -21,6 +21,10 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director";
         host = "localhost";
     }
+    cmd "0.visualizer" {
+            exec = "bazel-bin/examples/cartpole/visualizer";
+            host = "localhost";
+        }
 }
 
 group "4.lcm-tools" {

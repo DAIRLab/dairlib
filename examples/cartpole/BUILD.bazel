@@ -56,6 +56,19 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "visualizer",
+    srcs = ["visualizer.cc"],
+    deps = [
+        "//common:find_resource",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
 cc_library(
     name = "lqr",
     srcs = ["lqr.cc"],

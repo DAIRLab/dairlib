@@ -57,14 +57,11 @@ int main(int argc, char* argv[]) {
   // Adding the MultibodyPlant
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(
-      &builder, 0.001);
+      &builder, 0.0001);
   Parser(&plant).AddModelFromFile(
       FindResourceOrThrow(
           "examples/cartpole/urdf/cartpole.urdf"));
   plant.Finalize();
-
-  // Visualization
-  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
 
   // setup lcm communications
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -104,8 +101,8 @@ int main(int argc, char* argv[]) {
       plant.GetJointByName<PrismaticJoint>("x");
   const RevoluteJoint<double>& pin =
       plant.GetJointByName<RevoluteJoint>("theta");
-  slider.set_translation(&plant_context, 0.1);
-  pin.set_angle(&plant_context, 0.1);
+  slider.set_translation(&plant_context, 0.25);
+  pin.set_angle(&plant_context, 0.2);
 
   // Simulate
   Simulator<double> simulator(*diagram, std::move(diagram_context));

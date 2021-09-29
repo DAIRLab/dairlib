@@ -20,6 +20,7 @@ using dairlib::InternalLowPassFilter;
 
 using std::string;
 
+static constexpr double kMaxControllerDelay=0.25;
 
 namespace dairlib {
 class CartpoleOutputInterface : public drake::systems::LeafSystem<double> {
@@ -29,6 +30,7 @@ class CartpoleOutputInterface : public drake::systems::LeafSystem<double> {
   void SetupOutputInterface();
 
  private:
+  void CloseEposDevice() const;
   void ConfigureEpos();
   void ConfigureLabjack();
   void CopyOutput(const drake::systems::Context<double>& context,
@@ -38,12 +40,20 @@ class CartpoleOutputInterface : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* values) const;
 
+  drake::systems::EventStatus SendEposCommand(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* values) const;
+
+
+
   MAXON_HANDLE MotorHandle_ = nullptr;
   LABJACK_HANDLE EncoderHandle_ = nullptr;
   const MultibodyPlant<double>& plant_;
+  mutable bool error_flag_ = false;
 
   int prev_x_idx_;
   int effort_idx_;
+  int prev_time_step_idx_;
 
   int nq_;
   int nv_;

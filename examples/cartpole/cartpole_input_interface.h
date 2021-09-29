@@ -25,7 +25,7 @@ class CartpoleInputInterface : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* values) const;
 
-  void CloseEposDevice();
+  void CloseEposDevice() const;
 
   MAXON_HANDLE KeyHandle_= nullptr;
   int prev_timestamp_idx_;

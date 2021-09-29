@@ -2,8 +2,7 @@
 
 using drake::systems::Context;
 using drake::multibody::MultibodyPlant;
-
-using dairlib::systems::OutputVector;
+using drake::systems::BasicVector;
 
 using Eigen::VectorXd;
 using Eigen::Vector4d;
@@ -15,12 +14,7 @@ CartpoleOutputInterface::CartpoleOutputInterface(
     const MultibodyPlant<double> &plant) : plant_(plant) {
 
   this->DeclareVectorOutputPort(
-      "x, u, t",
-      OutputVector<double>(
-          plant_.num_positions(),
-          plant_.num_velocities(),
-          plant.num_actuators()),
-      &CartpoleOutputInterface::CopyOutput);
+      "x", BasicVector<double>(Vector4d::Zero()), &CartpoleOutputInterface::CopyOutput);
 
   prev_x_idx_ = this->DeclareDiscreteState(Vector4d::Zero());
   effort_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
@@ -78,15 +72,11 @@ drake::systems::EventStatus CartpoleOutputInterface::DiscreteUpdate(
 }
 
 void CartpoleOutputInterface::CopyOutput(
-    const Context<double> &context, OutputVector<double> *output) const {
+    const Context<double> &context, BasicVector<double> *output) const {
 
   Vector4d state = context.get_discrete_state(prev_x_idx_).get_value();
   VectorXd effort = context.get_discrete_state(effort_idx_).get_value();
 
-  output->SetPositions(state.head(nq_));
-  output->SetVelocities(state.tail(nv_));
-  output->SetEfforts(effort);
-  output->SetIMUAccelerations(VectorXd::Zero(3));
-  output->set_timestamp(context.get_time());
+  output->SetFromVector(state);
 }
 }

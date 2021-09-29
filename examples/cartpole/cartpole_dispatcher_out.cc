@@ -6,7 +6,6 @@
 #include "common/find_resource.h"
 #include "cartpole_output_interface.h"
 
-#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -23,7 +22,6 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
-using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::Simulator;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -32,6 +30,7 @@ using systems::RobotOutputSender;
 
 DEFINE_string(channel_x, "CARTPOLE_STATE",
     "state channel to publish on");
+DEFINE_double(pub_rate, 0.005, "LCM pubishing period (s).");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -47,21 +46,21 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   auto output_interface = builder.AddSystem<CartpoleOutputInterface>(plant);
-  auto state_sender = builder.AddSystem<RobotOutputSender>(plant, true);
+  auto state_sender = builder.AddSystem<RobotOutputSender>(plant);
   auto state_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_output>(
-          FLAGS_channel_x, lcm, {TriggerType::kForced}));
+          FLAGS_channel_x, lcm,
+          {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
-  builder.Connect(*output_interface, *state_sender);
+  builder.Connect(output_interface->get_output_port(),
+      state_sender->get_input_port_state());
   builder.Connect(*state_sender, *state_publisher);
 
   auto diagram = builder.Build();
   output_interface->SetupOutputInterface();
   Simulator<double> simulator(std::move(diagram));
-  simulator.set_target_realtime_rate(1.0);
-  simulator.set_publish_every_time_step(true);
-  simulator.set_publish_at_initialization(false);
-  simulator.
+  simulator.Initialize();
+  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
   return 0;
 }
 

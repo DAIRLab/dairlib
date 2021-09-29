@@ -11,19 +11,14 @@ using std::string;
 
 namespace epos {
 
-unsigned short ep_NodeId = 1;
-static const char ep_DeviceName[] = "EPOS4";
-static const char  ep_ProtocolStackName[] = "MAXON SERIAL V2";
-static const char  ep_InterfaceName[] = "USB";
-static const char  ep_PortName[] = "USB0";
-int ep_BaudRate = 1000000;
+static constexpr unsigned short ep_NodeId = 1;
+static constexpr char ep_DeviceName[] = "EPOS4";
+static constexpr char  ep_ProtocolStackName[] = "MAXON SERIAL V2";
+static constexpr char  ep_InterfaceName[] = "USB";
+static constexpr char  ep_PortName[] = "USB0";
+static constexpr int ep_BaudRate = 1000000;
 
-void LogError(string functionName, int p_lResult, unsigned int p_ulErrorCode)
-{
-  std::cerr << "Error in EPOS function: "<<
-  functionName << " failed (result=" << p_lResult <<
-  ", errorCode=0x" << std::hex << p_ulErrorCode << ")"<< std::endl;
-}
+void LogError(string functionName, int p_lResult, unsigned int p_ulErrorCode);
 
 MAXON_HANDLE OpenDevice(unsigned int *error_code);
 unsigned int CloseDevice(MAXON_HANDLE handle);

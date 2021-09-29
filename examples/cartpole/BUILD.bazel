@@ -47,7 +47,7 @@ cc_binary(
     name = "cartpole_dispatcher_out",
     srcs = ["cartpole_dispatcher_out.cc"],
     deps = [
-        ":cartpole_input_interface",
+        ":cartpole_output_interface",
         "//common:find_resource",
         "//systems:robot_lcm_systems",
         "//systems/primitives",

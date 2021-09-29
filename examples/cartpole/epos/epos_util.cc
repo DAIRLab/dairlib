@@ -2,6 +2,12 @@
 
 namespace epos {
 
+void LogError(string functionName, int p_lResult, unsigned int p_ulErrorCode) {
+std::cerr << "Error in EPOS function: "<<
+functionName << " failed (result=" << p_lResult <<
+", errorCode=0x" << std::hex << p_ulErrorCode << ")"<< std::endl;
+}
+
 MAXON_HANDLE OpenDevice(unsigned int *error_code) {
   char *pDeviceName = new char[255];
   char *pProtocolStackName = new char[255];

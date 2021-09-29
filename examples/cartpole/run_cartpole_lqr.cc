@@ -79,7 +79,7 @@ int controller_main(int argc, char* argv[]) {
       K);
 
   // LCM
-  drake::lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
   auto input_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm));

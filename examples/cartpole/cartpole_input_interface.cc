@@ -27,7 +27,7 @@ void CartpoleInputInterface::SetupEposDevice() {
   epos::SetCurrentByForce(KeyHandle_, 0);
 }
 
-void CartpoleInputInterface::CloseEposDevice() {
+void CartpoleInputInterface::CloseEposDevice() const {
   epos::SetCurrentByForce(KeyHandle_, 0);
   epos::CloseDevice(KeyHandle_);
 }
@@ -44,6 +44,7 @@ drake::systems::EventStatus CartpoleInputInterface::SendEposCommand(
       values->get_mutable_vector()[0] > kMaxControllerDelay) {
     force = 0;
     error_flag_ = true;
+    CloseEposDevice();
   }
   if (error_flag_) {
     force = 0;

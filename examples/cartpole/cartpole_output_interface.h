@@ -32,7 +32,7 @@ class CartpoleOutputInterface : public drake::systems::LeafSystem<double> {
   void ConfigureEpos();
   void ConfigureLabjack();
   void CopyOutput(const drake::systems::Context<double>& context,
-              OutputVector<double>* output) const;
+              drake::systems::BasicVector<double>* output) const;
 
   drake::systems::EventStatus DiscreteUpdate(
       const drake::systems::Context<double>& context,

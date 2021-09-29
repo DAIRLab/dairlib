@@ -29,6 +29,33 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "cartpole_dispatcher_in",
+    srcs = ["cartpole_dispatcher_in.cc"],
+    deps = [
+        ":cartpole_input_interface",
+        "//common:find_resource",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "cartpole_dispatcher_out",
+    srcs = ["cartpole_dispatcher_out.cc"],
+    deps = [
+        ":cartpole_input_interface",
+        "//common:find_resource",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
 cc_library(
     name = "lqr",
     srcs = ["lqr.cc"],

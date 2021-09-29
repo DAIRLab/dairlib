@@ -31,17 +31,24 @@ class CartpoleOutputInterface : public drake::systems::LeafSystem<double> {
  private:
   void ConfigureEpos();
   void ConfigureLabjack();
-  void Output(const drake::systems::Context<double>& context,
+  void CopyOutput(const drake::systems::Context<double>& context,
               OutputVector<double>* output) const;
+
+  drake::systems::EventStatus DiscreteUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* values) const;
 
   MAXON_HANDLE MotorHandle_ = nullptr;
   LABJACK_HANDLE EncoderHandle_ = nullptr;
   const MultibodyPlant<double>& plant_;
 
-  int prev_timestep_idx_;
-  int prev_state_idx_;
+  int prev_x_idx_;
+  int effort_idx_;
 
-  mutable InternalLowPassFilter state_filt_ =
-      InternalLowPassFilter(0.025, 4);
+  int nq_;
+  int nv_;
+
+  mutable InternalLowPassFilter vel_filt_ =
+      InternalLowPassFilter(0.01, 2);
 };
 }

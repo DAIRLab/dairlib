@@ -15,6 +15,9 @@ class InternalLowPassFilter {
   InternalLowPassFilter(double tau, int n_y);
   VectorXd filter(const double timestamp, const VectorXd& y);
 
+  double time() {return prev_time_;}
+  VectorXd y() {return prev_y_;}
+
  private:
   const double tau_;
   double prev_time_;

@@ -30,7 +30,7 @@ using systems::RobotOutputSender;
 
 DEFINE_string(channel_x, "CARTPOLE_STATE",
     "state channel to publish on");
-DEFINE_double(pub_rate, 0.005, "LCM pubishing period (s).");
+DEFINE_double(pub_rate, 0.01, "LCM pubishing period (s).");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -59,12 +59,11 @@ int do_main(int argc, char* argv[]) {
   auto diagram = builder.Build();
   output_interface->SetupOutputInterface();
   Simulator<double> simulator(std::move(diagram));
+  simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
   return 0;
 }
-
-
 }
 
 int main(int argc, char* argv[]) {

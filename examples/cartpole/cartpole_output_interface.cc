@@ -16,6 +16,8 @@ CartpoleOutputInterface::CartpoleOutputInterface(
   this->DeclareVectorOutputPort(
       "x", BasicVector<double>(Vector4d::Zero()), &CartpoleOutputInterface::CopyOutput);
 
+  this->DeclarePerStepDiscreteUpdateEvent(
+      &CartpoleOutputInterface::DiscreteUpdate);
   prev_x_idx_ = this->DeclareDiscreteState(Vector4d::Zero());
   effort_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   nq_ = plant_.num_positions();
@@ -37,6 +39,7 @@ void CartpoleOutputInterface::ConfigureEpos() {
 
 void CartpoleOutputInterface::ConfigureLabjack() {
   EncoderHandle_ = labjack::OpenLabjack();
+  labjack::ConfigureLabjackEncoder(EncoderHandle_);
 }
 
 drake::systems::EventStatus CartpoleOutputInterface::DiscreteUpdate(
@@ -67,7 +70,7 @@ drake::systems::EventStatus CartpoleOutputInterface::DiscreteUpdate(
   x.tail(nv_) = vel;
   values->get_mutable_vector(prev_x_idx_).get_mutable_value() << x;
   values->get_mutable_vector(effort_idx_).get_mutable_value()[0] = effort;
-
+//  std::cout << "x:\n" << x << std::endl;
   return drake::systems::EventStatus::Succeeded();
 }
 

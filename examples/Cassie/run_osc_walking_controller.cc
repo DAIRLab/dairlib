@@ -291,12 +291,12 @@ int DoMain(int argc, char* argv[]) {
                   pelvis_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
-  bool expressed_in_local_frame = true;
+  bool wrt_com_in_local_frame = true;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
           gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
-          left_support_duration, 0, expressed_in_local_frame);
+          left_support_duration, 0, wrt_com_in_local_frame);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -319,7 +319,6 @@ int DoMain(int argc, char* argv[]) {
                                                        right_support_duration};
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
-  bool wrt_com_in_local_frame = true;
   auto swing_ft_traj_generator =
       builder.AddSystem<systems::SwingFootTrajGenerator>(
           plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
@@ -447,24 +446,6 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Swing foot tracking
-  TransTaskSpaceTrackingData swing_foot_data(
-      "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr);
-  swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
-  ComTrackingData com_data("com_data", gains.K_p_swing_foot,
-                           gains.K_d_swing_foot, gains.W_swing_foot,
-                           plant_w_spr, plant_w_spr);
-  com_data.AddStateToTrack(left_stance_state);
-  com_data.AddStateToTrack(right_stance_state);
-  TwoFrameTrackingData swing_foot_traj(
-      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data, com_data);
-  /*TransTaskSpaceTrackingData swing_foot_traj(
-      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr);
-  swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");*/
   std::vector<double> swing_ft_ratio_breaks{0, left_support_duration / 2,
                                             left_support_duration};
   std::vector<drake::MatrixX<double>> swing_ft_ratio_samples(
@@ -483,14 +464,44 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> swing_ft_accel_ratio_gain_ratio =
       PiecewisePolynomial<double>::FirstOrderHold(swing_ft_accel_ratio_breaks,
                                                   swing_ft_accel_ratio_samples);
-  swing_foot_traj.SetTimeVaryingGains(swing_ft_ratio_gain_ratio);
-  swing_foot_traj.SetFeedforwardAccelRatio(swing_ft_accel_ratio_gain_ratio);
-  if (FLAGS_spring_model) {
-    // swing_foot_traj.DisableFeedforwardAccel({2});
-  }
+
+  TransTaskSpaceTrackingData swing_foot_data(
+      "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
+  swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  ComTrackingData com_data("com_data", gains.K_p_swing_foot,
+                           gains.K_d_swing_foot, gains.W_swing_foot,
+                           plant_w_spr, plant_w_spr);
+  com_data.AddStateToTrack(left_stance_state);
+  com_data.AddStateToTrack(right_stance_state);
+  TwoFrameTrackingData swing_ft_traj_local(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data, com_data);
   WorldYawOscViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
-  swing_foot_traj.SetViewFrame(pelvis_view_frame);
-  osc->AddTrackingData(&swing_foot_traj);
+  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
+
+  TransTaskSpaceTrackingData swing_ft_traj_global(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
+  swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
+
+  if (FLAGS_spring_model) {
+    // swing_ft_traj.DisableFeedforwardAccel({2});
+  }
+
+  if (wrt_com_in_local_frame) {
+    swing_ft_traj_local.SetTimeVaryingGains(swing_ft_ratio_gain_ratio);
+    swing_ft_traj_local.SetFeedforwardAccelRatio(
+        swing_ft_accel_ratio_gain_ratio);
+    osc->AddTrackingData(&swing_ft_traj_local);
+  } else {
+    swing_ft_traj_global.SetTimeVaryingGains(swing_ft_ratio_gain_ratio);
+    swing_ft_traj_global.SetFeedforwardAccelRatio(
+        swing_ft_accel_ratio_gain_ratio);
+    osc->AddTrackingData(&swing_ft_traj_global);
+  }
 
   // Center of mass tracking
   bool use_pelvis_for_lipm_tracking = true;

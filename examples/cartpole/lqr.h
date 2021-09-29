@@ -9,33 +9,18 @@ using Eigen::MatrixXd;
 using drake::systems::LeafSystem;
 using drake::systems::Context;
 
-namespace dairlib{
-namespace systems {
+namespace dairlib::systems {
 
 class LQR : public LeafSystem<double> {
  public:
   LQR(int num_positions, int num_velocities, int num_inputs,
-      VectorXd x_des, MatrixXd K);
-
-  const drake::systems::InputPort<double> &get_input_port_config()
-  const {
-    return this->get_input_port(config_input_port_);
-  }
-
-  const drake::systems::InputPort<double> &get_input_port_output()
-  const {
-    return this->get_input_port(output_input_port_);
-  }
+      const VectorXd& x_des, const MatrixXd& K);
 
  private:
   void CalcControl(const Context<double> &context,
                    TimestampedVector<double> *output) const;
 
-  int output_input_port_;
-  int config_input_port_;
-
   VectorXd x_des_;
   MatrixXd K_;
 };
-
-}}
+}

@@ -89,7 +89,7 @@ int controller_main(int argc, char* argv[]) {
 
 
   builder.Connect(state_receiver->get_output_port(),
-      lqr->get_input_port_output());
+      lqr->get_input_port());
   builder.Connect(*lqr, *input_sender);
   builder.Connect(*input_sender, *input_publisher);
 

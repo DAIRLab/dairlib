@@ -438,6 +438,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   DRAKE_DEMAND(pos_map_.at("ankle_joint_right") == 7 + 9);
 
   /// Save data for (offline) debug mode
+  writeCSV(param.dir_data + "rom_option.csv", param.rom_option * VectorXd::Ones(1));
   writeCSV(param.dir_data + "model_iter.csv", param.iter * VectorXd::Ones(1));
   writeCSV(param.dir_data + "sample_idx.csv", param.sample * VectorXd::Ones(1));
 }

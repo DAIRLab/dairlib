@@ -882,6 +882,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Solve
   cout << "\nSolving optimization problem... ";
   drake::solvers::MathematicalProgramResult result;
+  //  dairlib::solvers::ResetEvalTime();
   if (param_.use_ipopt) {
     cout << "(ipopt)\n";
     solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,

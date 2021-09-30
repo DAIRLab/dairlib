@@ -1,5 +1,7 @@
 #include "solvers/nonlinear_constraint.h"
 
+#include <chrono>
+
 #include "drake/common/default_scalars.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
@@ -12,6 +14,10 @@ using drake::AutoDiffXd;
 using drake::VectorX;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+
+double nonlinear_constraint_eval_time = 0;
+
+void ResetEvalTime() { nonlinear_constraint_eval_time = 0; }
 
 template <typename T>
 NonlinearConstraint<T>::NonlinearConstraint(int num_constraints, int num_vars,
@@ -69,6 +75,8 @@ void NonlinearConstraint<AutoDiffXd>::DoEval(
 template <>
 void NonlinearConstraint<double>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
+  //  auto start = std::chrono::high_resolution_clock::now();
+
   MatrixXd original_grad = drake::math::autoDiffToGradientMatrix(x);
 
   // forward differencing
@@ -94,6 +102,16 @@ void NonlinearConstraint<double>::DoEval(
   }
 
   this->ScaleConstraint<AutoDiffXd>(y);
+
+  /*auto finish = std::chrono::high_resolution_clock::now();
+
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "count: " << elapsed.count() << "\n";
+  std::cout << "nonlinear_constraint_eval_time: "
+            << nonlinear_constraint_eval_time << "\n";
+  nonlinear_constraint_eval_time += elapsed.count();
+  std::cout << "nonlinear_constraint_eval_time: "
+            << nonlinear_constraint_eval_time << "\n\n";*/
 }
 
 }  // namespace solvers

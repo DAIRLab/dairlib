@@ -8,6 +8,8 @@
 namespace dairlib {
 namespace solvers {
 
+void ResetEvalTime();
+
 /// Abstract class for nonlinear constraints that manages 
 /// manages evaluation of functions and numerical differentiation
 /// 

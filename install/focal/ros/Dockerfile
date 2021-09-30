@@ -1,4 +1,4 @@
-FROM ros:melodic-ros-base-bionic
+FROM ros:noetic-ros-base-focal
 WORKDIR /dairlib
 ENV DAIRLIB_DOCKER_VERSION=0.2
 COPY . .
@@ -15,5 +15,5 @@ RUN if type sudo 2>/dev/null; then \
     fi
 RUN set -eux \
   && export DEBIAN_FRONTEND=noninteractive \
-  && yes | install/install_prereqs_bionic.sh \
+  && yes | install/install_prereqs_focal.sh \
   && rm -rf /var/lib/apt/lists/*

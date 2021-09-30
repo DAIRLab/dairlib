@@ -28,6 +28,9 @@
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
 
+// Maximum time limit for each QP solve
+static constexpr double kMaxSolveDuration = 0.1;
+
 namespace dairlib::systems::controllers {
 
 /// `OperationalSpaceControl` takes in desired trajectory in world frame and
@@ -100,7 +103,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context_w_spr,
       drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
-      bool print_tracking_info = false, double qp_time_limit=0);
+      bool print_tracking_info = false, double qp_time_limit = 0,
+      bool use_new_qp_setting = false);
 
   const drake::systems::OutputPort<double>& get_osc_output_port() const {
     return this->get_output_port(osc_output_port_);
@@ -166,6 +170,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC LeafSystem builder
   void Build();
 
+  void SetDoubleSupportDurationForBlending(double ds_duration) {
+    ds_duration_ = ds_duration;
+  }
+
  private:
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
@@ -181,9 +189,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   void UpdateImpactInvariantProjection(
       const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context, double t, int fsm_state,
-      int next_fsm_state, const Eigen::MatrixXd& M,
-      const Eigen::MatrixXd& J_h) const;
+      const drake::systems::Context<double>& context, double t,
+      double t_since_last_state_switch, int fsm_state, int next_fsm_state,
+      const Eigen::MatrixXd& M, const Eigen::MatrixXd& J_h) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -262,6 +270,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // floating base model flag
   bool is_quaternion_;
 
+  // Solver
+  drake::solvers::OsqpSolver qp_solver_;
+
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
   // Decision variables
@@ -331,6 +342,31 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_;
+
+  // Testing contact force blend
+  double ds_duration_ = -1;
+  double w_blend_constraint_ = 0.1; //0.1 // for soft constraint
+  mutable double prev_distinct_fsm_state_ = -1;
+  drake::solvers::LinearEqualityConstraint* blend_constraint_;
+  drake::solvers::VectorXDecisionVariable epsilon_blend_;
+
+  // Testing -- regularizing input
+  drake::solvers::QuadraticCost* input_reg_cost_;
+  double w_input_reg_ = 0.0000003;
+  Eigen::MatrixXd W_input_reg_;
+
+
+  // testing
+  bool use_new_qp_setting_;
+
+  // Testing
+  std::vector<int> knee_ankle_pos_idx_list_;
+  std::vector<int> knee_ankle_vel_idx_list_;
+
+  // Testing -- translating knee spring deflection to knee joint
+  bool two_models_;
+  std::vector<int> knee_ankle_pos_idx_list_wo_spr_;
+  std::vector<int> spring_pos_idx_list_w_spr_;
 };
 
 }  // namespace dairlib::systems::controllers

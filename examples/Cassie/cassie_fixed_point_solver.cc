@@ -5,21 +5,32 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
 #include "solvers/constraint_factory.h"
+#include "solvers/optimization_utils.h"
 
 #include "drake/common/text_logging.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/solve.h"
+#include "drake/solvers/snopt_solver.h"
 
 namespace dairlib {
 
 using Eigen::VectorXd;
 
 void CassieFixedPointSolver(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    double height, double mu, double min_normal_force,
-    bool linear_friction_cone, double toe_spread, VectorXd* q_result,
-    VectorXd* u_result, VectorXd* lambda_result,
-    std::string visualize_model_urdf) {
+    const drake::multibody::MultibodyPlant<double>& plant, double height,
+    double mu, double min_normal_force, bool linear_friction_cone,
+    double toe_spread, VectorXd* q_result, VectorXd* u_result,
+    VectorXd* lambda_result, std::string visualize_model_urdf,
+    double ground_incline, VectorXd* all_sol) {
+  // Get the rotational matrix
+  Eigen::AngleAxisd rollAngle(ground_incline, Eigen::Vector3d::UnitZ());
+  Eigen::AngleAxisd yawAngle(0, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd pitchAngle(0, Eigen::Vector3d::UnitX());
+  Eigen::Quaternion<double> quat = rollAngle * yawAngle * pitchAngle;
+  Eigen::Matrix3d rotationMatrix = quat.matrix();
+  // Get normal direction
+  Eigen::Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
+
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
   // Add loop closures
@@ -31,25 +42,25 @@ void CassieFixedPointSolver(
   // Add contact points
   auto left_toe = LeftToeFront(plant);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(plant,
-      left_toe.first, left_toe.second, Eigen::Matrix3d::Identity(),
+      left_toe.first, left_toe.second, rotationMatrix,
       Eigen::Vector3d(0, toe_spread, 0), {1, 2});
   evaluators.add_evaluator(&left_toe_evaluator);
 
   auto left_heel = LeftToeRear(plant);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(plant,
-      left_heel.first, left_heel.second, Eigen::Vector3d(0,0,1),
+      left_heel.first, left_heel.second, ground_normal,
       Eigen::Vector3d::Zero(), false);
   evaluators.add_evaluator(&left_heel_evaluator);
 
   auto right_toe = RightToeFront(plant);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(plant,
-      right_toe.first, right_toe.second, Eigen::Matrix3d::Identity(),
+      right_toe.first, right_toe.second, rotationMatrix,
       Eigen::Vector3d(0, -toe_spread, 0), {1, 2});
   evaluators.add_evaluator(&right_toe_evaluator);
 
   auto right_heel = RightToeRear(plant);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(plant,
-      right_heel.first, right_heel.second, Eigen::Vector3d(0,0,1),
+      right_heel.first, right_heel.second, ground_normal,
       Eigen::Vector3d::Zero(), false);
   evaluators.add_evaluator(&right_heel_evaluator);
 
@@ -108,7 +119,7 @@ void CassieFixedPointSolver(
     program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
         lambda.segment(11, 3));
   }
- 
+
   // Add minimum normal forces on all contact points
   program.AddConstraint(lambda(4) >= min_normal_force);
   program.AddConstraint(lambda(7) >= min_normal_force);
@@ -132,10 +143,25 @@ void CassieFixedPointSolver(
 
   // Only cost in this program: u^T u
   program.AddQuadraticCost(u.dot(1.0 * u));
+  // Added contact forces so that the COM is at the center of support polygon
+  program.AddQuadraticCost(lambda(4) * lambda(4));
+  program.AddQuadraticCost(lambda(7) * lambda(7));
+  program.AddQuadraticCost(lambda(10) * lambda(10));
+  program.AddQuadraticCost(lambda(13) * lambda(13));
 
   // Random guess, except for the positions
   Eigen::VectorXd guess = Eigen::VectorXd::Random(program.num_vars());
   guess.head(plant.num_positions()) = q_guess;
+  if (all_sol->size() > 0) {
+    std::cout << "set initial guess from all_sol\n";
+    guess = *all_sol;
+  }
+
+  double tol = 1e-6;
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major optimality tolerance", tol);
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major feasibility tolerance", tol);
 
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = drake::solvers::Solve(program, guess);
@@ -152,9 +178,12 @@ void CassieFixedPointSolver(
     visualizer.DrawPoses(result.GetSolution(q));
   }
 
+//  solvers::CheckGenericConstraints(program, result, tol);
+
   *q_result = result.GetSolution(q);
   *u_result = result.GetSolution(u);
   *lambda_result = result.GetSolution(lambda);
+  *all_sol = result.GetSolution();
 }
 
 void CassieFixedBaseFixedPointSolver(

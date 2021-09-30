@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include <fstream>
 #include <string>
 
 #include <drake/math/saturate.h>
@@ -45,7 +46,10 @@ LIPMTrajGenerator::LIPMTrajGenerator(
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
       world_(plant_.world_frame()),
-      use_com_(use_CoM) {
+      use_com_(use_CoM),
+      pelvis_frame_(plant.GetFrameByName("pelvis")),
+      toe_left_frame_(plant.GetFrameByName("toe_left")),
+      toe_right_frame_(plant.GetFrameByName("toe_right")) {
   if (use_CoM) {
     this->set_name("lipm_traj");
   } else {
@@ -58,12 +62,11 @@ LIPMTrajGenerator::LIPMTrajGenerator(
                contact_points_in_each_state.size());
 
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
+                    .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   touchdown_time_port_ =
@@ -165,6 +168,27 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     discrete_state->get_mutable_vector(touchdown_com_vel_idx_)
             .get_mutable_value()
         << dCoM;
+
+    // Testing
+    // Heuristic ratio for LIPM dyanmics (because the centroidal angular
+    // momentum is not constant
+    Vector3d toe_left_origin_position;
+    plant_.CalcPointsPositions(*context_, toe_left_frame_, Vector3d::Zero(),
+                               pelvis_frame_, &toe_left_origin_position);
+    Vector3d toe_right_origin_position;
+    plant_.CalcPointsPositions(*context_, toe_right_frame_, Vector3d::Zero(),
+                               pelvis_frame_, &toe_right_origin_position);
+    double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
+    // <0.2 meter: ratio 1
+    // >0.5 meter: ratio 0.8  //0.65
+    // Linear interpolate in between
+    heuristic_ratio_ = 1;
+    if (dist > foot_spread_ub_) {
+      heuristic_ratio_ = 0.9;
+    } else if (dist > foot_spread_lb_) {
+      heuristic_ratio_ = 1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
+                                 (dist - foot_spread_lb_);
+    }
   }
 
   discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;
@@ -199,6 +223,7 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   double final_height = drake::math::saturate(
       desired_com_height_ + stance_foot_pos(2),
       CoM(2) - max_height_diff_per_step, CoM(2) + max_height_diff_per_step);
+  //  double final_height = desired_com_height_ + stance_foot_pos(2);
   Y[0](2, 0) = final_height;
   Y[1](2, 0) = final_height;
 
@@ -216,21 +241,42 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   //   y = k_1 * exp(w*t) + k_2 * exp(-w*t)
   // where k_1 = (y0 + dy0/w)/2
   //       k_2 = (y0 - dy0/w)/2.
+  // double omega = sqrt(9.81 / (final_height - stance_foot_pos(2)));
   double omega = sqrt(9.81 / CoM_wrt_foot_z);
+  double omega_y = omega /* * heuristic_ratio_*/;
   double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
   double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
-  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega);
-  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega);
+  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega_y);
+  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega_y);
+
+  //  cout << "omega = " << omega << endl;
 
   // Sum of two exponential + one-segment 3D polynomial
-  MatrixXd K = MatrixXd::Zero(3, 2);
-  MatrixXd A = MatrixXd::Zero(2, 2);
-  MatrixXd alpha = MatrixXd::Zero(2, 1);
-  K << k1x, k2x, k1y, k2y, 0, 0;
-  A << omega, 0, 0, -omega;
-  alpha << 1, 1;
+  MatrixXd K = MatrixXd::Zero(3, 4);
+  MatrixXd A = MatrixXd::Zero(4, 4);
+  MatrixXd alpha = MatrixXd::Ones(4, 1);
+  K(0, 0) = k1x;
+  K(0, 1) = k2x;
+  K(1, 2) = k1y;
+  K(1, 3) = k2y;
+  A(0, 0) = omega;
+  A(1, 1) = -omega;
+  A(2, 2) = omega_y;
+  A(3, 3) = -omega_y;
+  // TODO: this is in global coordinate. But the ratio change should apply
+  //  locally. I think you just need to get the pos/vel in local frame + apply a
+  //  rotational matrix in front ( which can be lumped into K matrix). Then the
+  //  output is in global frame. For OSC swing foot tracking, we can simply view
+  //  the desired traj in local frame at the end of current calculation. And
+  //  change the wrt_frame when calling forward kinematic function in OSC
+  //  tracking data.
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
+}
+
+void Print3dVector(VectorXd input) {
+  cout << "np.array([" << input(0) << ", " << input(1) << ", " << input(2)
+       << "])\n";
 }
 
 void LIPMTrajGenerator::CalcTrajFromCurrent(
@@ -262,8 +308,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
 
-  double end_time =
-      prev_event_time(0) + unordered_state_durations_[mode_index];
+  double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
   // Ensure "current_time < end_time" to avoid error in
   // creating trajectory.
   start_time = drake::math::saturate(
@@ -304,7 +349,60 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *exp_pp_traj = ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+  *exp_pp_traj =
+      ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+
+  /*cout << "start_time = " << start_time << endl;
+  cout << "end_time = " << end_time << endl;
+  cout << "stance_foot_pos = ";
+  Print3dVector(stance_foot_pos);
+  cout << "CoM_wrt_stance_foot_pos = ";
+  Print3dVector((CoM - stance_foot_pos));
+  cout << "dCoM = ";
+  Print3dVector(dCoM);
+  cout << "desired_com_height_ = " << desired_com_height_ << endl;
+  int n = 4;
+  cout << "N = " << n << endl;
+
+  VectorXd times(n);
+  for (int i = 0; i < n; i++) {
+    times(i) = start_time + i * (end_time - start_time) / (n - 1);
+  }
+  cout << "\"\"\"\n";
+  cout << "\ntimes = " << times.transpose() << endl;
+
+  cout << "\ncom along traj = \n";
+  for (int i = 0; i < n; i++) {
+    double t = times(i);
+    VectorXd vec = exp_pp_traj->value(t);
+    cout << vec(0) << ", " << vec(1) << ", " << vec(2) << endl;
+  }
+  cout << "\ncomdot along traj = \n";
+  for (int i = 0; i < n; i++) {
+    double t = times(i);
+    VectorXd vec = exp_pp_traj->MakeDerivative(1)->value(t);
+    cout << vec(0) << ", " << vec(1) << ", " << vec(2) << endl;
+  }
+  cout << "\"\"\"\n";
+  cout << endl;*/
+
+  /// Test centroidal momentum
+  /*drake::Vector3<double> p_WC =
+      plant_.CalcCenterOfMassPositionInWorld(*context_);
+  drake::multibody::SpatialMomentum<double> h_WC_eval =
+      plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, p_WC);
+  auto angular_momentum_wrt_com = h_WC_eval.rotational();
+  std::ofstream outfile;
+  outfile.open("../debug_centroidal_momentum.txt", std::ios_base::app);
+  outfile << robot_output->get_timestamp() << ", ";
+  for (int i = 0; i < angular_momentum_wrt_com.size(); i++) {
+    outfile << angular_momentum_wrt_com(i);
+    if (i == angular_momentum_wrt_com.size() - 1) {
+      outfile << "\n";
+    } else {
+      outfile << ", ";
+    }
+  }*/
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(
     const Context<double>& context,

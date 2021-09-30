@@ -139,5 +139,20 @@ int QuaternionStartIndex(const drake::multibody::MultibodyPlant<T>& plant);
 template <typename T>
 bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 
+/// Computes the matrix for mapping global roll-pitch-yaw angular velocity to
+/// quaternion derivatives
+/// Ref: equation 16 of https://arxiv.org/pdf/0811.2889.pdf
+/// Note: The same calculation happens in Drake's
+/// QuaternionFloatingMobilizer<T>::AngularVelocityToQuaternionRateMatrix()
+/// This matrix transforms angular velocity wrt the WORLD to d/dt quaternion
+Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q);
+
+// Converts Jacobian wrt qdot to jacobian wrt v
+Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
+                                const Eigen::MatrixXd& Jwrtqdot);
+
+// Get total mass of a given multibodyplant
+double GetTotalMass(const drake::multibody::MultibodyPlant<double>& plant);
+
 }  // namespace multibody
 }  // namespace dairlib

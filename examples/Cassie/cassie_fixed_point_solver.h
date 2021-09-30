@@ -18,11 +18,11 @@ namespace dairlib {
 /// @param visualize_model_urdf Draw the resulting pose via DrakeVisualizer
 ///    Requires a model file location to draw. Default is "" (no draw)
 void CassieFixedPointSolver(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    double height, double mu, double min_normal_force,
-    bool linear_friction_cone, double toe_spread, Eigen::VectorXd* q_result,
-    Eigen::VectorXd* u_result, Eigen::VectorXd* lambda_result,
-    std::string visualize_model_urdf = "");
+    const drake::multibody::MultibodyPlant<double>& plant, double height,
+    double mu, double min_normal_force, bool linear_friction_cone,
+    double toe_spread, Eigen::VectorXd* q_result, Eigen::VectorXd* u_result,
+    Eigen::VectorXd* lambda_result, std::string visualize_model_urdf = "",
+    double ground_incline = 0, Eigen::VectorXd* all_sol = nullptr);
 
 /// Utility method to solve for loop constraints for Cassie for a neutral
 /// position

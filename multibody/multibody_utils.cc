@@ -16,8 +16,10 @@ using drake::geometry::HalfSpace;
 using drake::geometry::SceneGraph;
 using drake::math::autoDiffToGradientMatrix;
 using drake::math::autoDiffToValueMatrix;
+using drake::multibody::BodyIndex;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
+using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::VectorXd;
@@ -510,6 +512,61 @@ template <typename T>
 bool isQuaternion(const MultibodyPlant<T>& plant) {
   return QuaternionStartIndex(plant) != -1;
 }
+
+Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
+  // clang-format off
+  Eigen::MatrixXd ret(4,3);
+  ret <<  -q(1), -q(2), -q(3),
+           q(0),  q(3), -q(2),
+          -q(3),  q(0),  q(1),
+           q(2), -q(1),  q(0);
+  ret *= 0.5;
+  // clang-format on
+  return ret;
+}
+
+Eigen::MatrixXd JwrtqdotToJwrtv(
+    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) {
+  //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
+  //                   [      0      , I]
+  DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
+
+  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
+  ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
+      Jwrtqdot.rightCols(q.size() - 4);
+  return ret;
+}
+
+double GetTotalMass(const MultibodyPlant<double>& plant) {
+  // Get all body indices
+  std::vector<ModelInstanceIndex> model_instances;
+  for (ModelInstanceIndex model_instance_index(1);
+       model_instance_index < plant.num_model_instances();
+       ++model_instance_index)
+    model_instances.push_back(model_instance_index);
+  std::vector<BodyIndex> body_indexes;
+  for (auto model_instance : model_instances) {
+    const std::vector<BodyIndex> body_index_in_instance =
+        plant.GetBodyIndices(model_instance);
+    for (BodyIndex body_index : body_index_in_instance)
+      body_indexes.push_back(body_index);
+  }
+
+  // Get total mass
+  double composite_mass = 0;
+  std::unique_ptr<drake::systems::Context<double>> context =
+      plant.CreateDefaultContext();
+  for (BodyIndex body_index : body_indexes) {
+    if (body_index == 0) continue;
+    const drake::multibody::Body<double>& body = plant.get_body(body_index);
+
+    // Calculate composite_mass.
+    const double& body_mass = body.get_mass(*context);
+    // composite_mass = ∑ mᵢ
+    composite_mass += body_mass;
+  }
+  return composite_mass;
+};
 
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT

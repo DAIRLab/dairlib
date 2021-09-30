@@ -4,6 +4,7 @@
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/osc/osc_utils.h"
 
 #include "drake/common/text_logging.h"
 
@@ -50,7 +51,8 @@ OperationalSpaceControl::OperationalSpaceControl(
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
     bool used_with_finite_state_machine, bool print_tracking_info,
-    double qp_time_limit)
+    double qp_time_limit,
+    bool use_new_qp_setting)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -59,7 +61,8 @@ OperationalSpaceControl::OperationalSpaceControl(
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
       print_tracking_info_(print_tracking_info),
-      qp_time_limit_(qp_time_limit) {
+      qp_time_limit_(qp_time_limit),
+      use_new_qp_setting_(use_new_qp_setting) {
   this->set_name("OSC");
 
   n_q_ = plant_wo_spr.num_positions();
@@ -98,42 +101,14 @@ OperationalSpaceControl::OperationalSpaceControl(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
 
-  const std::map<string, int>& pos_map_w_spr =
-      multibody::makeNameToPositionsMap(plant_w_spr);
-  const std::map<string, int>& vel_map_w_spr =
-      multibody::makeNameToVelocitiesMap(plant_w_spr);
-  const std::map<string, int>& pos_map_wo_spr =
-      multibody::makeNameToPositionsMap(plant_wo_spr);
   const std::map<string, int>& vel_map_wo_spr =
       multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
-  map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
-  map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
-
-  for (auto pos_pair_wo_spr : pos_map_wo_spr) {
-    bool successfully_added = false;
-    for (auto pos_pair_w_spr : pos_map_w_spr) {
-      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
-        map_position_from_spring_to_no_spring_(pos_pair_wo_spr.second,
-                                               pos_pair_w_spr.second) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
-
-  for (auto vel_pair_wo_spr : vel_map_wo_spr) {
-    bool successfully_added = false;
-    for (auto vel_pair_w_spr : vel_map_w_spr) {
-      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
-        map_velocity_from_spring_to_no_spring_(vel_pair_wo_spr.second,
-                                               vel_pair_w_spr.second) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
+  map_position_from_spring_to_no_spring_ =
+      PositionMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
+  map_velocity_from_spring_to_no_spring_ =
+      VelocityMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
 
   // Get input limits
   VectorXd u_min(n_u_);
@@ -178,6 +153,38 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
+
+  // Testing
+  /*const std::map<string, int>& pos_map_w_spr =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>& vel_map_w_spr =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  knee_ankle_pos_idx_list_ = {pos_map_w_spr.at("knee_joint_left"),
+                              pos_map_w_spr.at("knee_joint_right"),
+                              pos_map_w_spr.at("ankle_spring_joint_left"),
+                              pos_map_w_spr.at("ankle_spring_joint_right")};
+  knee_ankle_vel_idx_list_ = {vel_map_w_spr.at("knee_joint_leftdot"),
+                              vel_map_w_spr.at("knee_joint_rightdot"),
+                              vel_map_w_spr.at("ankle_spring_joint_leftdot"),
+                              vel_map_w_spr.at("ankle_spring_joint_rightdot")};*/
+
+  // Testing -- translating knee spring deflection to knee joint
+  two_models_ = (plant_w_spr.num_positions() == 23) &&
+                (plant_wo_spr.num_positions() == 19);
+  if (two_models_) {
+    const std::map<string, int>& pos_map_w_spr =
+        multibody::makeNameToPositionsMap(plant_w_spr);
+    const std::map<string, int>& pos_map_wo_spr =
+        multibody::makeNameToPositionsMap(plant_wo_spr);
+    knee_ankle_pos_idx_list_wo_spr_ = {pos_map_wo_spr.at("knee_left"),
+                                       pos_map_wo_spr.at("knee_right"),
+                                       pos_map_wo_spr.at("ankle_joint_left"),
+                                       pos_map_wo_spr.at("ankle_joint_right")};
+    spring_pos_idx_list_w_spr_ = {pos_map_w_spr.at("knee_joint_left"),
+                                  pos_map_w_spr.at("knee_joint_right"),
+                                  pos_map_w_spr.at("ankle_spring_joint_left"),
+                                  pos_map_w_spr.at("ankle_spring_joint_right")};
+  }
 }
 
 // Cost methods
@@ -283,6 +290,8 @@ void OperationalSpaceControl::Build() {
   CheckConstraintSettings();
   for (auto tracking_data : *tracking_data_vec_) {
     tracking_data->CheckOscTrackingData();
+    DRAKE_DEMAND(&tracking_data->plant_w_spr() == &plant_w_spr_);
+    DRAKE_DEMAND(&tracking_data->plant_wo_spr() == &plant_wo_spr_);
   }
 
   // Construct QP
@@ -423,20 +432,52 @@ void OperationalSpaceControl::Build() {
           .evaluator()
           .get());
 
+  // (Testing) 6. contact force blending
+  if (ds_duration_ > 0) {
+    epsilon_blend_ =
+        prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
+    blend_constraint_ =
+        prog_
+            ->AddLinearEqualityConstraint(
+                MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
+                {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
+            .evaluator()
+            .get();
+    /// Soft constraint version
+    //  DRAKE_DEMAND(w_blend_constraint_ > 0);
+    //  prog_->AddQuadraticCost(
+    //      w_blend_constraint_ *
+    //          MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
+    //      VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
+    /// hard constraint version
+    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
+  }
+
+  // (Testing) 7. Cost for staying close to the previous input
+  if (w_input_reg_ > 0) {
+    W_input_reg_ = w_input_reg_ * MatrixXd::Identity(n_u_, n_u_);
+    input_reg_cost_ =
+        prog_->AddQuadraticCost(W_input_reg_, VectorXd::Zero(n_u_), u_)
+            .evaluator()
+            .get();
+  }
+
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
   solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
-  // Max solve duration
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -452,6 +493,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
                             .get_mutable_value();
   if (fsm_state(0) != prev_fsm_state(0)) {
+    prev_distinct_fsm_state_ = prev_fsm_state(0);
     prev_fsm_state(0) = fsm_state(0);
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
@@ -606,7 +648,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   bool near_impact = alpha != 0;
   VectorXd v_proj = VectorXd::Zero(n_v_);
   if (near_impact) {
-    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t, fsm_state,
+    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
+                                    time_since_last_state_switch, fsm_state,
                                     next_fsm_state, M, J_h);
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
@@ -623,8 +666,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       // Create constant trajectory and update
       tracking_data->Update(
           x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
-          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state,
-          v_proj);
+          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
+          time_since_last_state_switch, fsm_state, v_proj);
     } else {
       // Read in traj from input port
       const string& traj_name = tracking_data->GetName();
@@ -636,7 +679,8 @@ VectorXd OperationalSpaceControl::SolveQp(
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
       tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, traj, t, fsm_state, v_proj);
+                            *context_wo_spr_, traj, t,
+                            time_since_last_state_switch, fsm_state, v_proj);
     }
     if (tracking_data->IsActive() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
@@ -670,7 +714,50 @@ VectorXd OperationalSpaceControl::SolveQp(
                         .cwiseMin(0);
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
+  // (Testing) 6. blend contact forces during double support phase
+  // WARNING: we hard coded the finite state machine state here. We also hard
+  // coded the double support duration
+  // Left, right and double support state have to be 0, 1 and 2, resp.
+  if (ds_duration_ > 0) {
+    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
+    if ((fsm_state == 2) || (fsm_state == 3) || (fsm_state == 4)) {
+      double alpha_left = 0;
+      double alpha_right = 0;
+      if (prev_distinct_fsm_state_) {  // We assume right support state is 1
+        // We want left foot force to gradually increase
+        alpha_left = -1;
+        alpha_right = time_since_last_state_switch /
+            (ds_duration_ - time_since_last_state_switch);
+
+      } else if (!prev_distinct_fsm_state_) {  // Assume left support state is 0
+        alpha_left = time_since_last_state_switch /
+            (ds_duration_ - time_since_last_state_switch);
+        alpha_right = -1;
+      }
+      /*cout << "ds_duration_ = " << ds_duration_ << endl;
+      cout << "time_since_last_state_switch = " << time_since_last_state_switch
+           << endl;*/
+      A(0, 0) = alpha_left / 2;
+      A(0, 1) = alpha_left / 2;
+      A(0, 2) = alpha_right / 2;
+      A(0, 3) = alpha_right / 2;
+      A(0, 4) = 1;
+      A(0, 5) = 1;
+      A(0, 6) = 1;
+      A(0, 7) = 1;
+    }
+    // cout << "A = " << A << endl;
+    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
+  }
+
+  // (Testing) 7. Cost for staying close to the previous input
+  if (w_input_reg_ > 0) {
+    input_reg_cost_->UpdateCoefficients(W_input_reg_,
+                                        -W_input_reg_ * (*u_sol_));
+  }
+
   // Solve the QP
+  //  const MathematicalProgramResult result = qp_solver_.Solve(*prog_);
 
   //  const MathematicalProgramResult result = Solve(*prog_);
   const MathematicalProgramResult result = solver_->Solve(*prog_);
@@ -753,8 +840,9 @@ VectorXd OperationalSpaceControl::SolveQp(
 }
 void OperationalSpaceControl::UpdateImpactInvariantProjection(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
-    const Context<double>& context, double t, int fsm_state, int next_fsm_state,
-    const MatrixXd& M, const MatrixXd& J_h) const {
+    const Context<double>& context, double t, double t_since_last_state_switch,
+    int fsm_state, int next_fsm_state, const MatrixXd& M,
+    const MatrixXd& J_h) const {
   auto map_iterator = contact_indices_map_.find(next_fsm_state);
   if (map_iterator == contact_indices_map_.end()) {
     throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
@@ -790,7 +878,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         tracking_data->Update(
             x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            fsm_state, v_proj);
+            t_since_last_state_switch, fsm_state, v_proj);
       } else {
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
@@ -800,7 +888,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                              *context_wo_spr_, traj, t, fsm_state, v_proj);
+                              *context_wo_spr_, traj, t,
+                              t_since_last_state_switch, fsm_state, v_proj);
       }
     }
   }
@@ -918,6 +1007,11 @@ void OperationalSpaceControl::CalcOptimalInput(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
+
+  // Testing: Zero out the spring joints (avoid doing feedback with springs)
+  //  for(auto i : knee_ankle_pos_idx_list_) {q_w_spr(i) = 0;}
+  //  for(auto i : knee_ankle_vel_idx_list_) {v_w_spr(i) = 0;}
+
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
                    plant_w_spr_.num_velocities());
   x_w_spr << q_w_spr, v_w_spr;
@@ -931,6 +1025,15 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd x_wo_spr(n_q_ + n_v_);
   x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
       map_velocity_from_spring_to_no_spring_ * v_w_spr;
+
+  // Testing -- translating the knee spring to knee joint
+  /*if (two_models_) {
+    x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[0]) +=
+        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
+    x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[1]) +=
+        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
+    // TODO: also do this for velocity?
+  }*/
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {

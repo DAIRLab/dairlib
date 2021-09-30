@@ -39,10 +39,12 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 
+DEFINE_bool(broadcast_robot_state, false, "broadcast to planner thread");
+
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive on.");
 DEFINE_int64(port, 25001, "Port to receive on.");
-DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
+DEFINE_double(pub_rate, 0.1, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
             "Simulated or real robot (default=false, real robot)");
 DEFINE_bool(test_with_ground_truth_state, false,
@@ -66,6 +68,10 @@ DEFINE_int64(test_mode, -1,
              "1: both feet never in contact with ground. "
              "2: both feet always in contact with the ground until contact is"
              " detected in which case it swtiches to test mode -1.");
+
+// Initial condition (used for simulation)
+DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
+DEFINE_double(pelvis_y_vel, 0, "for stability");
 
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
@@ -130,12 +136,15 @@ void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "q sol = " << q_sol.transpose() << "\n\n";
 
+  // Pelvis vel
+  Vector3d pelvis_vel(FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel, 0);
+
   // Set initial time and floating base position
   auto& state_estimator_context =
       diagram.GetMutableSubsystemContext(state_estimator, diagram_context);
   state_estimator.setPreviousTime(&state_estimator_context, t0);
   state_estimator.setInitialPelvisPose(&state_estimator_context, q_sol.head(4),
-                                       q_sol.segment<3>(4));
+                                       q_sol.segment<3>(4), pelvis_vel);
   // Set initial imu value
   // Note that initial imu values are all 0 if the robot is dropped from the air
   Eigen::VectorXd init_prev_imu_value = Eigen::VectorXd::Zero(6);
@@ -233,30 +242,21 @@ int do_main(int argc, char* argv[]) {
   // Create and connect RobotOutput publisher.
   auto robot_output_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
-  auto state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
 
   if(FLAGS_floating_base){
-    // Create and connect contact estimation publisher.
-    auto contact_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
-            "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
-    builder.Connect(state_estimator->get_contact_output_port(),
-                    contact_pub->get_input_port());
-    //TODO(yangwill): Consider filtering contact estimation
-    auto gm_contact_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-            "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
-    builder.Connect(state_estimator->get_gm_contact_output_port(),
-                    gm_contact_pub->get_input_port());
+  // Create and connect contact estimation publisher.
+  auto contact_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
+          "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+  builder.Connect(state_estimator->get_contact_output_port(),
+                  contact_pub->get_input_port());
+  //TODO(yangwill): Consider filtering contact estimation
+  auto gm_contact_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+          "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+  builder.Connect(state_estimator->get_gm_contact_output_port(),
+                  gm_contact_pub->get_input_port());
   }
-
-  // Create and connect RobotOutput publisher (low-rate for the network)
-  auto net_state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
-          {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // Pass through to drop all but positions and velocities
   auto state_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
@@ -289,10 +289,43 @@ int do_main(int argc, char* argv[]) {
                   imu_passthrough->get_input_port());
   builder.Connect(imu_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_imu());
+  if (FLAGS_broadcast_robot_state) {
+    // TODO: decide which one to use
+    // Option 1 -- publish only with one channel, 500 Hz
+    /*auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE_DISPATCHER", &lcm_network, {TriggerType::kPeriodic},
+            0.002));
+    builder.Connect(*robot_output_sender, *state_pub);*/
 
-  builder.Connect(*robot_output_sender, *state_pub);
+    // Option 2 -- two channels. One fast (200Hz) and one slower (100Hz).
+    auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(*robot_output_sender, *state_pub);
+    auto net_state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
+            {TriggerType::kPeriodic}, 0.01));
+    builder.Connect(*robot_output_sender, *net_state_pub);
 
-  builder.Connect(*robot_output_sender, *net_state_pub);
+    // Option 3 -- find a way to only publish to network after receiving message
+    // from the planner.
+
+  } else {
+    auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(*robot_output_sender, *state_pub);
+
+    // Create and connect RobotOutput publisher (low-rate for the network)
+    auto net_state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
+            {TriggerType::kPeriodic}, FLAGS_pub_rate));
+
+    builder.Connect(*robot_output_sender, *net_state_pub);
+  }
 
   // Create the diagram, simulator, and context.
   auto owned_diagram = builder.Build();
@@ -328,6 +361,7 @@ int do_main(int argc, char* argv[]) {
                          *state_estimator, &diagram_context);
     }
 
+    double prev_time = -1;
     drake::log()->info("dispatcher_robot_out started");
     while (true) {
       // Wait for an lcmt_cassie_out message.
@@ -337,6 +371,12 @@ int do_main(int argc, char* argv[]) {
       // Write the lcmt_robot_input message into the context and advance.
       input_value.GetMutableData()->set_value(input_sub.message());
       const double time = input_sub.message().utime * 1e-6;
+
+      // Hacks -- for some reason, sometimes the lcm from Mujoco is not in order
+      if (prev_time > time) {
+        std::cout << time << std::endl;
+        continue;
+      }
 
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)
@@ -355,6 +395,8 @@ int do_main(int argc, char* argv[]) {
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
       diagram.Publish(diagram_context);
+
+      prev_time = time;
     }
   } else {
     auto& output_sender_context =

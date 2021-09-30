@@ -51,8 +51,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
     bool used_with_finite_state_machine, bool print_tracking_info,
-    double qp_time_limit,
-    bool use_new_qp_setting)
+    double qp_time_limit)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -61,8 +60,7 @@ OperationalSpaceControl::OperationalSpaceControl(
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
       print_tracking_info_(print_tracking_info),
-      qp_time_limit_(qp_time_limit),
-      use_new_qp_setting_(use_new_qp_setting) {
+      qp_time_limit_(qp_time_limit) {
   this->set_name("OSC");
 
   n_q_ = plant_wo_spr.num_positions();
@@ -153,38 +151,6 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
-
-  // Testing
-  /*const std::map<string, int>& pos_map_w_spr =
-      multibody::makeNameToPositionsMap(plant_w_spr);
-  const std::map<string, int>& vel_map_w_spr =
-      multibody::makeNameToVelocitiesMap(plant_w_spr);
-  knee_ankle_pos_idx_list_ = {pos_map_w_spr.at("knee_joint_left"),
-                              pos_map_w_spr.at("knee_joint_right"),
-                              pos_map_w_spr.at("ankle_spring_joint_left"),
-                              pos_map_w_spr.at("ankle_spring_joint_right")};
-  knee_ankle_vel_idx_list_ = {vel_map_w_spr.at("knee_joint_leftdot"),
-                              vel_map_w_spr.at("knee_joint_rightdot"),
-                              vel_map_w_spr.at("ankle_spring_joint_leftdot"),
-                              vel_map_w_spr.at("ankle_spring_joint_rightdot")};*/
-
-  // Testing -- translating knee spring deflection to knee joint
-  two_models_ = (plant_w_spr.num_positions() == 23) &&
-                (plant_wo_spr.num_positions() == 19);
-  if (two_models_) {
-    const std::map<string, int>& pos_map_w_spr =
-        multibody::makeNameToPositionsMap(plant_w_spr);
-    const std::map<string, int>& pos_map_wo_spr =
-        multibody::makeNameToPositionsMap(plant_wo_spr);
-    knee_ankle_pos_idx_list_wo_spr_ = {pos_map_wo_spr.at("knee_left"),
-                                       pos_map_wo_spr.at("knee_right"),
-                                       pos_map_wo_spr.at("ankle_joint_left"),
-                                       pos_map_wo_spr.at("ankle_joint_right")};
-    spring_pos_idx_list_w_spr_ = {pos_map_w_spr.at("knee_joint_left"),
-                                  pos_map_w_spr.at("knee_joint_right"),
-                                  pos_map_w_spr.at("ankle_spring_joint_left"),
-                                  pos_map_w_spr.at("ankle_spring_joint_right")};
-  }
 }
 
 // Cost methods
@@ -734,9 +700,6 @@ VectorXd OperationalSpaceControl::SolveQp(
             (ds_duration_ - time_since_last_state_switch);
         alpha_right = -1;
       }
-      /*cout << "ds_duration_ = " << ds_duration_ << endl;
-      cout << "time_since_last_state_switch = " << time_since_last_state_switch
-           << endl;*/
       A(0, 0) = alpha_left / 2;
       A(0, 1) = alpha_left / 2;
       A(0, 2) = alpha_right / 2;
@@ -746,7 +709,6 @@ VectorXd OperationalSpaceControl::SolveQp(
       A(0, 6) = 1;
       A(0, 7) = 1;
     }
-    // cout << "A = " << A << endl;
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
   }
 
@@ -1025,15 +987,6 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd x_wo_spr(n_q_ + n_v_);
   x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
       map_velocity_from_spring_to_no_spring_ * v_w_spr;
-
-  // Testing -- translating the knee spring to knee joint
-  /*if (two_models_) {
-    x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[0]) +=
-        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
-    x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[1]) +=
-        x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
-    // TODO: also do this for velocity?
-  }*/
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {

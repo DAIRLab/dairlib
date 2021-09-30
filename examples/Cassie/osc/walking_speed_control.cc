@@ -173,10 +173,6 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
   } else {
     Vector3d delta_x_fs_sagital_3D_local(delta_x_fs_sagital, 0, 0);
     Vector3d delta_x_fs_lateral_3D_local(0, delta_x_fs_lateral, 0);
-    /*delta_x_fs_sagital_3D_global =
-        drake::math::quatRotateVec(quat, delta_x_fs_sagital_3D_local);
-    delta_x_fs_lateral_3D_global =
-        drake::math::quatRotateVec(quat, delta_x_fs_lateral_3D_local);*/
     delta_x_fs_sagital_3D_global = rot * delta_x_fs_sagital_3D_local;
     delta_x_fs_lateral_3D_global = rot * delta_x_fs_lateral_3D_local;
     output->get_mutable_value() =

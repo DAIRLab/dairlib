@@ -46,7 +46,7 @@ template <typename T>
 void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
   VectorX<T> pt_transform(3);
   MatrixX<T> J3d(3, this->plant_.num_velocities());
-  const auto x = plant_.GetPositionsAndVelocities(context);
+  const auto x = this->plant_.GetPositionsAndVelocities(context);
   const auto v = x.tail(this->plant_.num_velocities());
 
   VectorX<T> pt_cast = pt_.template cast<T>();

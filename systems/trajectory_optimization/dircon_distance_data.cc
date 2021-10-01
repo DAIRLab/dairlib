@@ -32,7 +32,7 @@ template <typename T>
 void DirconDistanceData<T>::updateConstraint(const Context<T>& context) {
   Vector3<T> pt1_transform(3);
   MatrixX<T> J1(3, this->plant_.num_velocities());
-  const auto x = plant_.GetPositionsAndVelocities(context);
+  const auto x = this->plant_.GetPositionsAndVelocities(context);
   const auto v = x.tail(this->plant_.num_velocities());
 
   const drake::multibody::Frame<T>& world = this->plant_.world_frame();
